@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { i18n } from "@/i18n";
+import { describeError } from "@/lib/app-error";
+import { formatDateTime, formatNumber } from "@/lib/intl";
 import { SKILLS_QUERY_KEY } from "@/lib/skills";
 import {
   skillsCatalog,
@@ -15,41 +19,68 @@ import {
 
 function formatBytes(bytes: number): string {
   if (!bytes) return "";
-  if (bytes < 1000) return `${bytes} B`;
+  if (bytes < 1000)
+    return i18n.t(($) => $.settings.ai.skills.size.bytes, { value: formatNumber(bytes) });
   const kb = bytes / 1000;
-  if (kb < 1000) return `${kb.toFixed(kb >= 10 ? 0 : 1)} KB`;
+  if (kb < 1000) {
+    const digits = kb >= 10 ? 0 : 1;
+    return i18n.t(($) => $.settings.ai.skills.size.kilobytes, {
+      value: formatNumber(kb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+    });
+  }
   const mb = kb / 1000;
-  return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
+  const digits = mb >= 10 ? 0 : 1;
+  return i18n.t(($) => $.settings.ai.skills.size.megabytes, {
+    value: formatNumber(mb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+  });
 }
 
-function formatWhen(value?: string): string {
-  if (!value) return "unknown time";
+function formatWhen(value?: string): string | null {
+  if (!value) return null;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString();
+  return formatDateTime(parsed);
 }
 
 export function catalogSourceLine(catalog: SkillCatalog): string {
-  const offline = catalog.error ? ", could not reach the network" : "";
+  const offline = Boolean(catalog.error);
   const when = formatWhen(catalog.fetchedAt ?? catalog.generatedAt);
-  if (catalog.source === "bundled") return `Built-in catalog${offline}`;
-  if (catalog.source === "cached") {
-    return `Cached catalog from cdn.oleafly.com, last fetched ${when}${offline}`;
+  if (catalog.source === "bundled") {
+    return offline
+      ? i18n.t(($) => $.settings.ai.skills.catalog.source.bundledOffline)
+      : i18n.t(($) => $.settings.ai.skills.catalog.source.bundled);
   }
-  return `Catalog from cdn.oleafly.com, fetched ${when}`;
+  if (catalog.source === "cached") {
+    if (when === null) {
+      return offline
+        ? i18n.t(($) => $.settings.ai.skills.catalog.source.cachedUnknownOffline)
+        : i18n.t(($) => $.settings.ai.skills.catalog.source.cachedUnknown);
+    }
+    return offline
+      ? i18n.t(($) => $.settings.ai.skills.catalog.source.cachedOffline, { when })
+      : i18n.t(($) => $.settings.ai.skills.catalog.source.cached, { when });
+  }
+  if (when === null) return i18n.t(($) => $.settings.ai.skills.catalog.source.remoteUnknown);
+  return i18n.t(($) => $.settings.ai.skills.catalog.source.remote, { when });
 }
 
 function progressText(entry: SkillAssetProgress): string {
-  if (entry.phase === "done") return "Finishing the install...";
-  if (entry.phase === "error") return entry.message || "The install failed.";
-  const verb = entry.phase === "extract" ? "Unpacking" : "Downloading";
+  if (entry.phase === "done") return i18n.t(($) => $.settings.ai.skills.catalog.progress.finishing);
+  if (entry.phase === "error")
+    return entry.message || i18n.t(($) => $.settings.ai.skills.catalog.progress.failed);
   if (entry.total > 0) {
-    return `${verb} ${Math.round((entry.received / entry.total) * 100)}%`;
+    const percent = formatNumber(Math.round((entry.received / entry.total) * 100));
+    return entry.phase === "extract"
+      ? i18n.t(($) => $.settings.ai.skills.catalog.progress.extractingPercent, { percent })
+      : i18n.t(($) => $.settings.ai.skills.catalog.progress.downloadingPercent, { percent });
   }
-  return `${verb}...`;
+  return entry.phase === "extract"
+    ? i18n.t(($) => $.settings.ai.skills.catalog.progress.extracting)
+    : i18n.t(($) => $.settings.ai.skills.catalog.progress.downloading);
 }
 
 export function SkillCatalogList() {
+  const { t } = useTranslation(["common", "settings"]);
   const queryClient = useQueryClient();
   const [catalog, setCatalog] = useState<SkillCatalog | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +95,7 @@ export function SkillCatalogList() {
     try {
       setCatalog(await skillsCatalog(refresh));
     } catch (error) {
-      setMessage({ ok: false, text: String(error) });
+      setMessage({ ok: false, text: describeError(error) });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -113,9 +144,12 @@ export function SkillCatalogList() {
       clearProgress(entry.id);
       await load(false);
       afterDeviceChange();
-      setMessage({ ok: true, text: `Installed ${entry.name}.` });
+      setMessage({
+        ok: true,
+        text: t(($) => $.settings.ai.skills.catalog.messages.installed, { name: entry.name }),
+      });
     } catch (error) {
-      setMessage({ ok: false, text: String(error) });
+      setMessage({ ok: false, text: describeError(error) });
     } finally {
       setBusyId(null);
     }
@@ -128,9 +162,12 @@ export function SkillCatalogList() {
       await skillsUninstall(entry.id);
       await load(false);
       afterDeviceChange();
-      setMessage({ ok: true, text: `Removed ${entry.name}.` });
+      setMessage({
+        ok: true,
+        text: t(($) => $.settings.ai.skills.catalog.messages.removed, { name: entry.name }),
+      });
     } catch (error) {
-      setMessage({ ok: false, text: String(error) });
+      setMessage({ ok: false, text: describeError(error) });
     } finally {
       setBusyId(null);
     }
@@ -143,9 +180,9 @@ export function SkillCatalogList() {
     <div className="space-y-2 rounded-md border bg-card p-3" data-testid="skills-catalog-section">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium">Domain shelf</p>
+          <p className="text-sm font-medium">{t(($) => $.settings.ai.skills.catalog.title)}</p>
           <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
-            Extra skills for specific research domains. Install one to add it to your list above.
+            {t(($) => $.settings.ai.skills.catalog.description)}
           </p>
         </div>
         <Button
@@ -161,14 +198,18 @@ export function SkillCatalogList() {
           ) : (
             <RefreshCw className="size-3.5" />
           )}
-          Refresh
+          {t(($) => $.settings.ai.skills.catalog.refresh)}
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted-foreground">Loading the catalog...</p>
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.settings.ai.skills.catalog.loading)}
+        </p>
       ) : shelfEntries.length === 0 ? (
-        <p className="text-xs text-muted-foreground">The catalog has no extra skills to install.</p>
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.settings.ai.skills.catalog.empty)}
+        </p>
       ) : (
         <div className="space-y-2">
           {shelfEntries.map((entry) => {
@@ -207,7 +248,7 @@ export function SkillCatalogList() {
                         disabled={busy}
                       >
                         {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                        Update
+                        {t(($) => $.settings.ai.skills.catalog.update)}
                       </Button>
                     ) : null}
                     <Button
@@ -219,7 +260,7 @@ export function SkillCatalogList() {
                       disabled={busy}
                     >
                       <Trash2 className="size-3.5" />
-                      Uninstall
+                      {t(($) => $.settings.ai.skills.catalog.uninstall)}
                     </Button>
                   </div>
                 ) : (
@@ -231,7 +272,7 @@ export function SkillCatalogList() {
                     disabled={busy}
                   >
                     {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                    Install
+                    {t(($) => $.settings.ai.skills.catalog.install)}
                   </Button>
                 )}
               </div>

@@ -6,6 +6,7 @@ import type { ApprovalMode } from "@oleafly/ai-tools";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
 import type { AppConfig, ModelProbe, StoredModel } from "@/lib/tauri";
 import type { ChatMessage, StoredChat } from "@/store/chats";
+import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 
 interface HarnessOptions {
   system: string;
@@ -406,7 +407,7 @@ let agentFileChangeTurnForChat: typeof import("@/store/agent-file-changes").agen
 let useAssistantOutputsStore: typeof import("@/store/assistant-outputs").useAssistantOutputsStore;
 let usePlanModeStore: typeof import("@/store/plan-mode").usePlanModeStore;
 let usePlanApprovalStore: typeof import("@/store/plan-approval").usePlanApprovalStore;
-let PLAN_MODE_HINT: typeof import("./ChatCore").PLAN_MODE_HINT;
+let planModeHint: typeof import("./ChatCore").planModeHint;
 let PLAN_MODE_PLANNING_PROMPT: typeof import("./ChatCore").PLAN_MODE_PLANNING_PROMPT;
 let PLAN_MODE_REVISION_LINE: typeof import("./ChatCore").PLAN_MODE_REVISION_LINE;
 let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
@@ -472,11 +473,12 @@ beforeAll(async () => {
   });
 
   vi.resetModules();
+  await (await import("./acp/tests/ui-fixtures")).initTestI18n();
   ({ createElement, Fragment } = await import("react"));
   ({ act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react"));
   ({ QueryClientProvider } = await import("@tanstack/react-query"));
   ({ createAppQueryClient } = await import("@/lib/query"));
-  ({ ChatCore, PLAN_MODE_HINT, PLAN_MODE_PLANNING_PROMPT, PLAN_MODE_REVISION_LINE } =
+  ({ ChatCore, planModeHint, PLAN_MODE_PLANNING_PROMPT, PLAN_MODE_REVISION_LINE } =
     await import("./ChatCore"));
   ({ ChatPanel } = await import("./ChatPanel"));
   ({ CopilotOverlay } = await import("./CopilotOverlay"));
@@ -2489,9 +2491,7 @@ describe("ChatCore agent turns", () => {
     expect(PLAN_MODE_PLANNING_PROMPT).toContain("do not say you lack access to tools");
     expect(PLAN_MODE_PLANNING_PROMPT).toContain("the approved plan runs with the full toolset");
     expect(PLAN_MODE_PLANNING_PROMPT).toContain("turn Plan off for direct tool access");
-    expect(PLAN_MODE_HINT).toBe(
-      "Plan mode: the assistant proposes a plan before editing. Turn Plan off to give the assistant direct access to all tools.",
-    );
+    expect(planModeHint()).toBe(enAi.composer.planModeHint);
   });
 
   it("adds the planning prompt and info icon only after Plan mode is turned on", async () => {
@@ -2518,8 +2518,8 @@ describe("ChatCore agent turns", () => {
     expect(info.querySelector("svg")).toHaveClass("size-3.5");
     expect(toggle.parentElement?.nextElementSibling).toContainElement(info);
     fireEvent.mouseEnter(info.parentElement as HTMLElement);
-    expect(await rendered.findByRole("tooltip")).toHaveTextContent(PLAN_MODE_HINT);
-    expect(info).toHaveAccessibleDescription(PLAN_MODE_HINT);
+    expect(await rendered.findByRole("tooltip")).toHaveTextContent(planModeHint());
+    expect(info).toHaveAccessibleDescription(planModeHint());
     submit(rendered, "Run with planning posture");
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
     expect(mocks.runs[1].options.system).toContain(PLAN_MODE_PLANNING_PROMPT);

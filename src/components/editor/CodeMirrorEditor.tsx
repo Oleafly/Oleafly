@@ -9,11 +9,15 @@ import {
 import {
   setSpellHost,
   setBibKeysProvider,
+  setEditorTranslator,
   bibKeysFromSources,
   closeEnvironmentOnEnter,
   latexListKeymap,
   latexStructureKeymap,
+  type EditorTranslator,
 } from "@oleafly/editor";
+import { setWysiwygTranslator, type WysiwygTranslator } from "@oleafly/wysiwyg";
+import { i18n } from "@/i18n";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
 import { codeIntel } from "./cm/code-intel";
@@ -65,8 +69,30 @@ function sourceProofreadingContextKey(
   ]);
 }
 
+function translate(
+  key: string,
+  params?: Record<string, string | number>,
+): string {
+  return (
+    i18n.t as unknown as (
+      key: string,
+      params?: Record<string, string | number>,
+    ) => string
+  )(key, params);
+}
+
+const packageMessage: EditorTranslator = (key, params) =>
+  translate(`editor:package.${key}`, params);
+
+const wysiwygMessage: WysiwygTranslator = (key, params) =>
+  translate(`editor:package.wysiwyg.${key}`, params);
+
+setEditorTranslator(packageMessage);
+setWysiwygTranslator(wysiwygMessage);
+
 // Module side effect: must install before any lint runs.
 setSpellHost({
+  t: packageMessage,
   getProjectId: () => useFilesStore.getState().projectId,
   getActivePath: () => useFilesStore.getState().activePath,
   getProofreadingContextKey: sourceProofreadingContextKey,
@@ -146,6 +172,7 @@ installAuxNumbers();
 
 // Module-level so the host identity is stable across renders (its use* members are hooks).
 const HOST: EditorHost = {
+  t: packageMessage,
   useActivePath: () => useFilesStore((s) => s.activePath),
   getActivePath: () => useFilesStore.getState().activePath,
   useDocVersion: () => useFilesStore((s) => s.docVersion),

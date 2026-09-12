@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "日志",
+    "showLogs": "显示编译日志",
+    "showPdf": "显示 PDF 预览",
+    "askAi": "询问 AI",
+    "more": "更多预览控制",
+    "duration": "{{seconds}} 秒",
+    "failed": "失败",
+    "compiledWithErrors": "编译完成，但有错误。",
+    "compiledWithWarnings": "编译完成，但有警告",
+    "compiledSuccessfully": "编译成功"
+  },
+  "pageLayout": {
+    "group": "页面布局",
+    "single": "单页视图",
+    "double": "双页视图"
+  },
+  "pages": {
+    "previous": "上一页",
+    "next": "下一页",
+    "number": "页码",
+    "ofTotal": "/ {{total}}",
+    "pageOfTotal": "第 {{page}} 页，共 {{total}} 页"
+  },
+  "zoom": {
+    "in": "放大",
+    "out": "缩小",
+    "fitToWidth": "适合宽度",
+    "fitToHeight": "适合高度",
+    "reset": "重置为 100%",
+    "percent": "{{percent}}%",
+    "percentLabel": "缩放 {{percent}}%",
+    "menuLabel": "缩放 · {{percent}}%"
+  },
+  "outline": {
+    "open": "文档大纲",
+    "panel": "PDF 文档大纲",
+    "title": "文档大纲",
+    "close": "关闭文档大纲",
+    "loading": "正在加载大纲…",
+    "empty": "此 PDF 不包含文档大纲。",
+    "externalLink": "外部链接",
+    "externalBadge": "链接"
+  },
+  "search": {
+    "open": "搜索 PDF",
+    "panel": "搜索此 PDF",
+    "placeholder": "搜索文档",
+    "input": "搜索 PDF 文本",
+    "previous": "上一个搜索结果",
+    "next": "下一个搜索结果",
+    "close": "关闭 PDF 搜索"
+  },
+  "viewer": {
+    "scrollArea": "PDF 连续滚动区域",
+    "crashedTitle": "PDF 预览已崩溃",
+    "crashedDetail": "重新编译当前版本，或重试查看器。",
+    "retry": "重试查看器",
+    "loadingLatest": "正在加载最新编译的 PDF…",
+    "retryingLoad": "正在重试加载 PDF…",
+    "retainedFailure": "{{detail}}，改为显示上次成功加载的 PDF。",
+    "retainedFailureDetail": "无法加载当前 PDF",
+    "invalidTitle": "无效的 PDF",
+    "emptyTitle": "空白 PDF",
+    "unavailableTitle": "PDF 查看器不可用",
+    "loadFailedTitle": "PDF 加载失败",
+    "loadFailedDetail": "无法加载该 PDF。"
+  },
+  "password": {
+    "title": "需要密码",
+    "label": "PDF 密码",
+    "placeholder": "PDF 密码",
+    "submit": "解锁 PDF"
+  },
+  "actions": {
+    "downloadImage": "下载图片",
+    "downloadPdf": "下载 PDF",
+    "downloadDisplayedPdf": "下载当前显示的 PDF",
+    "downloadStalePdf": "下载过期（非当前）的 PDF。",
+    "saveImage": "将图片保存到项目",
+    "savePdf": "将 PDF 保存到项目",
+    "invert": "反转 PDF 预览颜色。",
+    "restoreColors": "恢复颜色",
+    "readerView": "阅读视图",
+    "exitReaderView": "退出阅读视图",
+    "rotate": "顺时针旋转",
+    "rotateTooltip": "顺时针旋转 PDF（90°）。当前为 {{degrees}}°。",
+    "openWindow": "在新窗口中打开预览。",
+    "hideToolbar": "隐藏工具栏",
+    "showToolbar": "显示工具栏",
+    "settings": "PDF 预览设置",
+    "fullscreen": "全屏预览",
+    "exitFullscreen": "退出全屏",
+    "retryCompile": "重试编译"
+  },
+  "stale": {
+    "badge": "已过期",
+    "badgeLabel": "预览已过期，非最新内容。请重新编译。",
+    "tooltip": "预览未反映编辑器中的更改。{{explanation}} {{syncTex}} 点击以重新编译。",
+    "explanation": "此 PDF 不代表项目的当前版本。",
+    "revisionExplanation": "当前显示的是项目版本 {{displayed}}，项目的当前版本为 {{active}}。",
+    "noIdentity": "所显示的 PDF 缺少针对当前版本的已验证编译标识。",
+    "syncTexAvailable": "对已编辑的内容，SyncTeX 会使用最近的未更改行进行同步。",
+    "syncTexUnavailable": "SyncTeX 需要最新的编译结果。"
+  },
+  "save": {
+    "title": "将 PDF 保存到项目",
+    "imageTitle": "将图片保存到项目",
+    "close": "关闭保存对话框",
+    "staleDescription": "将显示的过期 PDF 保存到项目文件树。它并不代表项目的当前版本。",
+    "description": "将显示的 PDF 保存到项目文件树（通过 Git 提交）。",
+    "nameLabel": "项目保存名称",
+    "namePlaceholder": "文档.pdf",
+    "imageSaved": "图片已保存到项目。",
+    "pdfSaved": "PDF 已保存到项目。",
+    "failed": "无法保存到项目。"
+  },
+  "download": {
+    "pngFilter": "PNG 图像",
+    "imageSaved": "图片已保存 · {{name}}",
+    "pdfSaved": "PDF 已保存 · {{name}}",
+    "showInFolder": "在文件夹中显示",
+    "folderUnavailable": "文件已保存，但 Oleafly 无法打开其所在文件夹（权限被拒绝）。请检查你在保存对话框中选择的位置。",
+    "imageFailed": "无法下载图片。",
+    "imageFailedDetail": "无法下载图片：{{detail}}",
+    "pdfFailed": "无法下载 PDF。",
+    "pdfFailedDetail": "无法下载 PDF：{{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "目前无法编译 PDF。",
+    "compileFailed": "编译失败。打开日志标签页查看出错原因。"
+  },
+  "a11y": {
+    "stale": "PDF 已过期，非最新版本。{{explanation}}",
+    "page": "PDF 第 {{page}} 页，共 {{total}} 页。",
+    "searchResult": "第 {{current}} 个搜索结果，共 {{total}} 个。"
+  },
+  "startup": {
+    "headingReady": "PDF 预览就绪",
+    "headingPreparing": "正在准备 PDF 预览",
+    "headingAttention": "启动需要关注",
+    "progressLabel": "文档启动：{{total}} 个阶段中 {{completed}} 个已完成或跳过",
+    "doneCount": "已完成 {{completed}}/{{total}}",
+    "metaRunning": "{{stages}} 个进行中",
+    "metaQueued": "{{stages}} 个已排队",
+    "metaFailed": "{{stages}} 个失败",
+    "compileNow": "立即编译",
+    "noProject": "无活动项目",
+    "waitingForEngine": "正在等待文档引擎",
+    "orPress": "或按 <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "已完成",
+      "running": "运行中",
+      "queued": "已排队",
+      "skipped": "已跳过",
+      "failed": "失败"
+    },
+    "language": {
+      "serviceLabel": "语言服务",
+      "analysisLabel": "语言分析",
+      "openingFiles": "正在打开项目文件",
+      "starting": "正在启动语言服务",
+      "restarting": "正在重启语言服务",
+      "installing": "正在安装语言服务",
+      "connected": "已启动并连接",
+      "ready": "就绪",
+      "localOnly": "无需语言服务，使用本地分析。",
+      "notApplicable": "不适用于此项目。",
+      "unavailable": "不可用，本地分析仍可用。",
+      "waitingToStart": "等待启动",
+      "waitingForFiles": "正在等待项目文件。",
+      "syncing": "正在同步当前项目文件。",
+      "analyzing": "正在分析项目结构",
+      "analyzed": "已分析当前项目版本。",
+      "partial": "可用的部分分析已就绪。",
+      "needsAttention": "分析需要处理",
+      "notAvailable": "此项目不可用。",
+      "queued": "已加入当前版本的分析队列。",
+      "waitingForService": "正在等待语言服务。"
+    },
+    "compile": {
+      "label": "正在编译",
+      "saving": "正在保存当前更改",
+      "downloading": "正在下载所需的 LaTeX 宏包。",
+      "producing": "正在生成并验证 PDF 输出。",
+      "unavailable": "编译器不可用",
+      "failed": "编译失败。打开日志查看详情。",
+      "accepted": "已接受验证后的输出",
+      "waiting": "正在等待编译当前版本。"
+    },
+    "render": {
+      "label": "正在渲染 PDF",
+      "preparing": "正在准备页面、文本和链接。",
+      "reading": "正在读取 PDF · {{percent}}%",
+      "passwordRequired": "需要密码",
+      "needsAttention": "PDF 渲染需要处理。",
+      "ready": "预览已就绪",
+      "waitingForRenderer": "正在等待已验证的 PDF 渲染器",
+      "waitingForCompile": "正在等待已验证的编译输出"
+    }
+  },
+  "window": {
+    "fitWidth": "适应宽度",
+    "fitHeight": "适合高度",
+    "invert": "反转颜色",
+    "invertLabel": "反转 PDF 颜色",
+    "rotateLabel": "顺时针旋转 PDF",
+    "staleHeading": "已过期 · 非当前预览",
+    "staleCompiling": "较新的项目修订版本正在编译。这是修订版本 {{revision}} 的最后一份已验证 PDF。",
+    "staleUnknownRevision": "未知",
+    "staleCompileFailed": "{{detail}} 最后一份已验证的 PDF 仍会显示。",
+    "staleCompileFailedDetail": "较新的编译未能生成可用的 PDF",
+    "staleIdentity": "此 PDF 不代表最新接受的编译标识。",
+    "crashedDetail": "请重试此查看器，或在主窗口中重新编译。",
+    "compilingTitle": "正在编译 PDF",
+    "compileFailedTitle": "编译失败",
+    "compileUnavailableTitle": "编译不可用",
+    "artifactUnavailableTitle": "PDF 不可用",
+    "noVerifiedTitle": "无已验证 PDF",
+    "compilingDetail": "编译完成后将显示已验证的 PDF。",
+    "noVerifiedDetail": "请在主窗口中编译项目。此窗口仅显示具有已验证编译标识的输出。",
+    "loadingTitle": "正在加载 PDF",
+    "loadingVerified": "正在加载已验证的 PDF…",
+    "restoringLast": "正在恢复上次成功加载的 PDF…",
+    "retryingLoad": "正在重试加载 PDF…",
+    "unlocking": "正在解锁 PDF…",
+    "rotating": "正在旋转 PDF…",
+    "retainedFailureDetail": "无法加载最新的 PDF",
+    "artifactFailure": "编译生成的 PDF 无法验证或读取。如可用，将保留上次成功加载的 PDF。",
+    "downloadStarted": "PDF 下载已开始。",
+    "downloadSaved": "PDF 保存成功。",
+    "downloadFailed": "无法保存当前显示的 PDF。"
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "PDF 密码不正确。",
+      "passwordRequired": "此 PDF 受密码保护。",
+      "invalid": "编译输出不是有效的 PDF。请重新编译或查看编译日志。",
+      "unavailable": "此窗口中的 PDF 渲染器不可用。请恢复窗口或重启应用后重试。",
+      "generic": "无法加载 PDF。请重新编译当前版本后再试。",
+      "empty": "编译生成的 PDF 为空。",
+      "firstPage": "PDF 已打开，但无法渲染第一页。"
+    },
+    "link": {
+      "blockedScheme": "此 PDF 链接使用了被阻止的 URL 协议。"
+    },
+    "search": {
+      "failed": "搜索无法读取所有页面。请重新加载 PDF 后重试。"
+    },
+    "outline": {
+      "empty": "此 PDF 不包含文档大纲。",
+      "failed": "无法加载 PDF 大纲。",
+      "destinationUnavailable": "该大纲目标位置不可用。",
+      "blockedScheme": "此链接使用了被阻止的 URL 协议。",
+      "noDestination": "此大纲项没有目标位置。",
+      "untitled": "无标题章节"
+    },
+    "status": {
+      "loading": "正在加载 PDF…"
+    },
+    "a11y": {
+      "document": "PDF 文档预览",
+      "page": "PDF 第 {{page}} 页，共 {{total}} 页",
+      "textLayer": "PDF 第 {{page}} 页的可选中文本"
+    },
+    "screenReader": {
+      "layer": "屏幕阅读器视图，第 {{page}} 页，共 {{total}} 页",
+      "title": "屏幕阅读器模式",
+      "pageLabel": "第 {{page}} 页，共 {{total}} 页",
+      "empty": "此页面上未找到可读取的文本。"
+    }
+  }
+}

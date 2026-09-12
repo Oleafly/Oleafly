@@ -1,6 +1,7 @@
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import type { MathExpression } from "./math-source";
+import { editorMessage } from "./messages";
 
 export interface MathRenderResult {
   status: "ready" | "error";
@@ -189,7 +190,7 @@ function conciseKatexError(error: unknown): string {
       .replace(/^ParseError:\s*/iu, "")
       .replace(/\s+/gu, " ")
       .trim()
-      .slice(0, 180) || "This expression is incomplete or unsupported."
+      .slice(0, 180) || editorMessage("math.unsupported")
   );
 }
 
@@ -250,14 +251,14 @@ export function renderMathExpression(
     return {
       status: "error",
       html: "",
-      message: `Expression is too long to preview (${body.length.toLocaleString()} characters).`,
+      message: editorMessage("math.tooLong", { characters: body.length }),
     };
   }
   if (!body.trim()) {
     return {
       status: "error",
       html: "",
-      message: "Add a math expression to show a preview.",
+      message: editorMessage("math.empty"),
     };
   }
 
@@ -281,7 +282,7 @@ export function renderMathExpression(
       result = {
         status: "error",
         html: "",
-        message: "Preview output exceeded the safe rendering limit.",
+        message: editorMessage("math.outputTooLarge"),
       };
     } else {
       const sanitized = sanitizeKatexHtml(rendered);
@@ -290,7 +291,7 @@ export function renderMathExpression(
         : {
             status: "error",
             html: "",
-            message: "A safe preview could not be produced.",
+            message: editorMessage("math.unsafeOutput"),
           };
     }
   } catch (error) {
@@ -307,8 +308,15 @@ export function renderMathExpression(
 
 function previewErrorMessage(expression: MathExpression): string {
   return expression.status === "incomplete"
-    ? `Missing closing ${expression.delimiter === "\\(" ? "\\)" : expression.delimiter === "\\[" ? "\\]" : expression.delimiter}.`
-    : "This expression could not be rendered.";
+    ? editorMessage("math.missingClosing", {
+        delimiter:
+          expression.delimiter === "\\("
+            ? "\\)"
+            : expression.delimiter === "\\["
+              ? "\\]"
+              : expression.delimiter,
+      })
+    : editorMessage("math.notRendered");
 }
 
 function applyPreviewResult(
@@ -410,7 +418,7 @@ export function mountMathPreview(
   output.setAttribute("aria-live", "polite");
   const loading = document.createElement("span");
   loading.className = "math-preview-loading";
-  loading.textContent = "Previewing…";
+  loading.textContent = editorMessage("math.previewing");
   output.append(loading);
   host.append(output);
 

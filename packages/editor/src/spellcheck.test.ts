@@ -23,6 +23,9 @@ import {
   grammarSuppressionKey,
   type ProofreadingResult,
 } from "./proofreading";
+import { englishEditorMessage, installEnglishEditorMessages } from "./test-messages";
+
+installEnglishEditorMessages();
 
 let view: EditorView | null = null;
 
@@ -45,6 +48,7 @@ describe("proofreading presentation refresh", () => {
         }),
     );
     setSpellHost({
+      t: englishEditorMessage,
       getProjectId: () => "project",
       getActivePath: () => "main.tex",
       getLintPrefs: () => ({
@@ -204,6 +208,7 @@ describe("proofreading presentation refresh", () => {
     };
     const proofread = vi.fn(async () => result);
     setSpellHost({
+      t: englishEditorMessage,
       getProjectId: () => "project",
       getActivePath: () => "main.tex",
       getLintPrefs: () => ({
@@ -258,6 +263,7 @@ describe("proofreading presentation refresh", () => {
         }),
     );
     setSpellHost({
+      t: englishEditorMessage,
       getProjectId: () => "project",
       getActivePath: () => "main.tex",
       getLintPrefs: () => ({
@@ -356,6 +362,7 @@ describe("proofreading presentation refresh", () => {
         }),
     );
     setSpellHost({
+      t: englishEditorMessage,
       getProjectId: () => "project",
       getActivePath: () => "main.tex",
       getLintPrefs: () => ({
@@ -498,6 +505,7 @@ function proofreadingHost(
   overrides: Record<string, unknown> = {},
 ) {
   return {
+    t: englishEditorMessage,
     getProjectId: () => "project",
     getActivePath: () => "main.tex",
     getProofreadingContextKey: () => "context",

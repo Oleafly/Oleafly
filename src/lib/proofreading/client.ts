@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import {
   PROOFREADING_PROTOCOL_VERSION,
   isProofreadingWorkerResponse,
@@ -176,7 +177,7 @@ class ProofreadingWorkerClient {
       worker = this.ensureWorker();
     } catch {
       const error = new ProofreadingWorkerError(
-        "Offline proofreading could not start.",
+        i18n.t(($) => $.core.proofreading.couldNotStart),
         "worker_unavailable",
         true,
       );
@@ -189,7 +190,7 @@ class ProofreadingWorkerClient {
         const pending = this.pending.get(request.requestId);
         if (!pending) return;
         const error = new ProofreadingWorkerError(
-          "Offline proofreading timed out and will restart on the next edit.",
+          i18n.t(($) => $.core.proofreading.timedOut),
           "timeout",
           true,
         );
@@ -199,7 +200,7 @@ class ProofreadingWorkerClient {
           .fail(request.identity, error.message);
         this.failWorker(
           new ProofreadingWorkerError(
-            "Offline proofreading restarted after a timeout.",
+            i18n.t(($) => $.core.proofreading.restartedAfterTimeout),
             "worker_restarted",
             true,
           ),
@@ -218,7 +219,7 @@ class ProofreadingWorkerClient {
         worker.postMessage(request);
       } catch {
         const error = new ProofreadingWorkerError(
-          "The document could not be sent to offline proofreading.",
+          i18n.t(($) => $.core.proofreading.postFailed),
           "post_message_failed",
           true,
         );
@@ -239,7 +240,7 @@ class ProofreadingWorkerClient {
         this.rejectRequest(
           requestId,
           new ProofreadingWorkerError(
-            "Proofreading was cancelled.",
+            i18n.t(($) => $.core.proofreading.cancelled),
             "cancelled",
             true,
           ),
@@ -265,7 +266,7 @@ class ProofreadingWorkerClient {
     this.worker?.terminate();
     this.worker = null;
     const restartError = new ProofreadingWorkerError(
-      "Offline proofreading restarted.",
+      i18n.t(($) => $.core.proofreading.restarted),
       "worker_restarted",
       true,
     );
@@ -296,7 +297,7 @@ class ProofreadingWorkerClient {
       this.worker = null;
     }
     const error = new ProofreadingWorkerError(
-      "Offline proofreading was disposed.",
+      i18n.t(($) => $.core.proofreading.disposed),
       "disposed",
       false,
     );
@@ -324,7 +325,7 @@ class ProofreadingWorkerClient {
       if (this.worker !== worker) return;
       this.failWorker(
         new ProofreadingWorkerError(
-          "Offline proofreading stopped unexpectedly.",
+          i18n.t(($) => $.core.proofreading.stopped),
           "worker_failed",
           true,
         ),
@@ -340,7 +341,7 @@ class ProofreadingWorkerClient {
     if (!isProofreadingWorkerResponse(event.data)) {
       this.failWorker(
         new ProofreadingWorkerError(
-          "Offline proofreading returned an invalid response.",
+          i18n.t(($) => $.core.proofreading.invalidResponse),
           "protocol_error",
           true,
         ),
@@ -357,7 +358,7 @@ class ProofreadingWorkerClient {
     ) {
       this.failWorker(
         new ProofreadingWorkerError(
-          "Offline proofreading returned a stale response.",
+          i18n.t(($) => $.core.proofreading.staleResponse),
           "protocol_error",
           true,
         ),
@@ -373,7 +374,7 @@ class ProofreadingWorkerClient {
     ) {
       this.failWorker(
         new ProofreadingWorkerError(
-          "Offline proofreading returned an out-of-range diagnostic.",
+          i18n.t(($) => $.core.proofreading.outOfRangeDiagnostic),
           "protocol_error",
           true,
         ),
@@ -443,7 +444,7 @@ class ProofreadingWorkerClient {
     this.rejectRequest(
       previous,
       new ProofreadingWorkerError(
-        "A newer proofreading request replaced this one.",
+        i18n.t(($) => $.core.proofreading.superseded),
         "superseded",
         true,
       ),

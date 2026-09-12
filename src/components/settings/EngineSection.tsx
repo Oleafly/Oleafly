@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Loader2, Trash2 } from "lucide-react";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { useSettingsStore, type DefaultLatexEngine } from "@/store/settings";
@@ -10,38 +11,29 @@ import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { i18n } from "@/i18n";
+import { formatList, formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
 // Kept in step with scripts/fetch-typst.sh, which pins the bundled sidecar.
 const BUNDLED_TYPST_VERSION = "0.15.0";
 
-const ENGINE_CHOICES: Array<{
-  id: DefaultLatexEngine;
-  name: string;
-  detail: string;
-}> = [
-  {
-    id: "tectonic",
-    name: "Tectonic (built in)",
-    detail: "Ships with Oleafly. Fast, offline, zero setup. Covers plain LaTeX and most common packages.",
-  },
-  {
-    id: "latexmk",
-    name: "latexmk (system TeX)",
-    detail:
-      "For trusted projects only. Runs a local TeX distribution that can read files available to your account. Supports full package sets and multi-pass workflows. Host command execution remains a separate per-project permission.",
-  },
-];
+const ENGINE_CHOICES: DefaultLatexEngine[] = ["tectonic", "latexmk"];
 
 // Plain-sentence summary of what a detected distribution ships and where
 // Oleafly runs it from, for the info icon on each row.
 function distroTooltip(distro: TexDistribution): string {
-  const tools = [distro.latexmk && "latexmk", distro.tlmgr && "tlmgr"].filter(Boolean);
-  const bundled =
-    tools.length > 0
-      ? `Bundled with ${tools.join(" and ")}.`
-      : "No latexmk or tlmgr was found in this install.";
-  return `${bundled} Oleafly runs its TeX tools from ${distro.bin_dir}.`;
+  const tools = [distro.latexmk && "latexmk", distro.tlmgr && "tlmgr"].filter(
+    (tool): tool is string => typeof tool === "string",
+  );
+  return tools.length > 0
+    ? i18n.t(($) => $.settings.engine.distributions.rowTooltip, {
+        tools: formatList(tools),
+        binDir: distro.bin_dir,
+      })
+    : i18n.t(($) => $.settings.engine.distributions.rowTooltipNoTools, {
+        binDir: distro.bin_dir,
+      });
 }
 
 /**
@@ -49,6 +41,7 @@ function distroTooltip(distro: TexDistribution): string {
  * Tectonic, so the only moving part the user can affect is pandoc itself.
  */
 function MarkdownEngineTab() {
+  const { t } = useTranslation(["common", "settings"]);
   const [pandoc, setPandoc] = useState<"checking" | "ready" | "missing" | "installing">("checking");
   const refresh = useCallback(async () => {
     try {
@@ -68,11 +61,13 @@ function MarkdownEngineTab() {
   return (
     <>
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Markdown compiler</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t(($) => $.settings.engine.markdown.heading)}
+        </h3>
         <Tooltip
           wide
           side="right"
-          label="Markdown projects are converted with pandoc (Pandoc Markdown: tables, footnotes, citations, math) into LaTeX, then typeset to PDF by the bundled Tectonic. Pandoc is downloaded on demand the first time it is needed."
+          label={t(($) => $.settings.engine.markdown.tooltip)}
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>
@@ -86,43 +81,45 @@ function MarkdownEngineTab() {
       >
         <div className="flex items-center gap-2">
           <Cpu className="size-4 text-muted-foreground" />
-          <span className="text-sm">pandoc</span>
+          <span className="text-sm">{"pandoc"}</span>
           {pandoc === "ready" && <Check className="size-3.5 text-primary" />}
           {pandoc === "missing" && (
             <Button type="button" size="sm" variant="outline" className="ml-auto h-7" onClick={() => void install()}>
-              Install pandoc
+              {t(($) => $.settings.engine.markdown.install)}
             </Button>
           )}
           {pandoc === "installing" && (
-            <span className="ml-auto text-xs text-muted-foreground">Downloading…</span>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {t(($) => $.settings.engine.markdown.downloading)}
+            </span>
           )}
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          {pandoc === "checking" && "Checking for pandoc…"}
-          {pandoc === "ready" && "Detected. Markdown projects convert to LaTeX with pandoc, then compile with the bundled Tectonic."}
-          {pandoc === "missing" &&
-            "Not found on this Mac. Oleafly downloads a compatible pandoc (2.19 or newer) into its own folder; nothing else on your system changes."}
-          {pandoc === "installing" && "Fetching a pinned pandoc release. This takes a moment on first use."}
+          {pandoc === "checking" && t(($) => $.settings.engine.markdown.status.checking)}
+          {pandoc === "ready" && t(($) => $.settings.engine.markdown.status.ready)}
+          {pandoc === "missing" && t(($) => $.settings.engine.markdown.status.missing)}
+          {pandoc === "installing" && t(($) => $.settings.engine.markdown.status.installing)}
         </p>
       </div>
       <div className="rounded-lg border border-primary p-3 ring-1 ring-primary">
         <div className="flex items-center gap-2">
           <Cpu className="size-4 text-muted-foreground" />
-          <span className="text-sm">Tectonic (built in)</span>
+          <span className="text-sm">{t(($) => $.settings.engine.choices.tectonic.name)}</span>
           <Check className="size-3.5 text-primary" />
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Typesets the LaTeX that pandoc produces. Ships with Oleafly; nothing to configure.
+          {t(($) => $.settings.engine.markdown.tectonicDetail)}
         </p>
       </div>
       <p className="text-xs text-muted-foreground">
-        Choosing a different PDF backend for Markdown, or a system pandoc over the managed one, is not available yet.
+        {t(($) => $.settings.engine.markdown.note)}
       </p>
     </>
   );
 }
 
 export function EngineSection() {
+  const { t } = useTranslation(["common", "settings"]);
   const { info, installing, progress, refresh, refreshPackages, install, remove } =
     useEngineStore();
   const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
@@ -156,16 +153,10 @@ export function EngineSection() {
       onValueChange={(value) => setTab(value as "latex" | "typst" | "markdown")}
       className="flex flex-col gap-5"
     >
-      <TabsList aria-label="Engines" className="w-fit self-start">
-        <TabsTrigger value="latex" data-testid="engines-tab-latex">
-          LaTeX
-        </TabsTrigger>
-        <TabsTrigger value="typst" data-testid="engines-tab-typst">
-          Typst
-        </TabsTrigger>
-        <TabsTrigger value="markdown" data-testid="engines-tab-markdown">
-          Markdown
-        </TabsTrigger>
+      <TabsList aria-label={t(($) => $.settings.engine.sectionName)} className="w-fit self-start">
+        <TabsTrigger value="latex" data-testid="engines-tab-latex">LaTeX</TabsTrigger>
+        <TabsTrigger value="typst" data-testid="engines-tab-typst">Typst</TabsTrigger>
+        <TabsTrigger value="markdown" data-testid="engines-tab-markdown">Markdown</TabsTrigger>
       </TabsList>
 
       <TabsContent value="markdown" className="flex flex-col gap-5">
@@ -174,11 +165,13 @@ export function EngineSection() {
 
       <TabsContent value="typst" className="flex flex-col gap-5">
           <div className="flex items-center gap-1.5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Typst compiler</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t(($) => $.settings.engine.typst.heading)}
+            </h3>
             <Tooltip
               wide
               side="right"
-              label="Typst ships inside Oleafly, so there is nothing to install or configure. Every Typst project compiles with the bundled compiler."
+              label={t(($) => $.settings.engine.typst.tooltip)}
             >
               <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
             </Tooltip>
@@ -186,40 +179,42 @@ export function EngineSection() {
           <div className="rounded-lg border border-primary p-3 ring-1 ring-primary">
             <div className="flex items-center gap-2">
               <Cpu className="size-4 text-muted-foreground" />
-              <span className="text-sm">Typst (built in)</span>
+              <span className="text-sm">{t(($) => $.settings.engine.typst.name)}</span>
               <Check className="size-3.5 text-primary" />
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Ships with Oleafly. Fast, offline, zero setup. Compiles Typst documents to PDF.
+              {t(($) => $.settings.engine.typst.detail)}
             </p>
-            <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">Typst {BUNDLED_TYPST_VERSION}</p>
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">{`Typst ${BUNDLED_TYPST_VERSION}`}</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            Typst projects always use the bundled compiler. Choosing a compiler version, and system Typst, are not available yet.
+            {t(($) => $.settings.engine.typst.note)}
           </p>
       </TabsContent>
 
       <TabsContent value="latex" className="flex flex-col gap-5">
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default compile engine</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t(($) => $.settings.engine.defaultEngine.heading)}
+        </h3>
         <Tooltip
           wide
           side="right"
-          label="Applies to new projects. Each project pins its own engine in project.json, so collaborators opening the same project compile it the same way regardless of this setting."
+          label={t(($) => $.settings.engine.defaultEngine.tooltip)}
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>
       </div>
 
       <div className="flex flex-col gap-2">
-        {ENGINE_CHOICES.map((choice) => {
-          const selected = defaultLatexEngine === choice.id;
-          const missing = choice.id === "latexmk" && !info?.latexmk;
+        {ENGINE_CHOICES.map((choiceId) => {
+          const selected = defaultLatexEngine === choiceId;
+          const missing = choiceId === "latexmk" && !info?.latexmk;
           return (
             <button
-              key={choice.id}
+              key={choiceId}
               type="button"
-              onClick={() => setDefaultLatexEngine(choice.id)}
+              onClick={() => setDefaultLatexEngine(choiceId)}
               className={cn(
                 "rounded-lg border p-3 text-left transition-colors hover:bg-accent/50",
                 selected && "border-primary ring-1 ring-primary",
@@ -227,16 +222,18 @@ export function EngineSection() {
             >
               <div className="flex items-center gap-2">
                 <Cpu className="size-4 text-muted-foreground" />
-                <span className="text-sm">{choice.name}</span>
+                <span className="text-sm">{t(($) => $.settings.engine.choices[choiceId].name)}</span>
                 {selected && <Check className="size-3.5 text-primary" />}
                 {missing && (
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-600 dark:text-amber-400">
-                    <AlertTriangle className="size-2.5" /> no latexmk found
+                    <AlertTriangle className="size-2.5" /> {t(($) => $.settings.engine.latexmkMissing)}
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">{choice.detail}</p>
-              {choice.id === "latexmk" && info?.latexmk && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t(($) => $.settings.engine.choices[choiceId].detail)}
+              </p>
+              {choiceId === "latexmk" && info?.latexmk && (
                 <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">{info.latexmk}</p>
               )}
             </button>
@@ -245,11 +242,13 @@ export function EngineSection() {
       </div>
 
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Manage TeX distributions</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t(($) => $.settings.engine.distributions.heading)}
+        </h3>
         <Tooltip
           wide
           side="right"
-          label="Everything the latexmk engine can use on this machine. TinyTeX installs into your home folder with no admin rights. System installs (MacTeX, TeX Live, MiKTeX) are detected automatically."
+          label={t(($) => $.settings.engine.distributions.tooltip)}
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>
@@ -257,7 +256,9 @@ export function EngineSection() {
 
       <div className="flex flex-col gap-2">
         {distros.length === 0 && (
-          <p className="text-xs text-muted-foreground">No TeX distribution detected on this machine.</p>
+          <p className="text-xs text-muted-foreground">
+            {t(($) => $.settings.engine.distributions.empty)}
+          </p>
         )}
         {distros.map((distro) => (
           <div key={distro.bin_dir} className="rounded-lg border p-3">
@@ -269,12 +270,12 @@ export function EngineSection() {
               </Tooltip>
               {distro.latexmk && (
                 <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
-                  latexmk
+                  {"latexmk"}
                 </span>
               )}
               {distro.tlmgr && (
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  tlmgr
+                  {"tlmgr"}
                 </span>
               )}
               {distro.kind === "oleafly-tinytex" && (
@@ -283,7 +284,7 @@ export function EngineSection() {
                   onClick={() => void remove()}
                   className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[11px] hover:bg-accent"
                 >
-                  <Trash2 className="size-3" /> Remove
+                  <Trash2 className="size-3" /> {t(($) => $.common.actions.remove)}
                 </button>
               )}
             </div>
@@ -294,12 +295,10 @@ export function EngineSection() {
           <div className="rounded-lg border p-3">
             <div className="flex items-center gap-2">
               <Download className="size-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm">TinyTeX</span>
+              <span className="text-sm">{"TinyTeX"}</span>
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              A compact TeX Live in your home folder. The core download is about 250 MB.
-              Journal templates can add packages later, up to about 1 GB in total.
-              Installing ahead of time makes system LaTeX available when you explicitly choose it.
+              {t(($) => $.settings.engine.tinytex.detail)}
             </p>
             <div className="mt-2">
               <button
@@ -312,8 +311,10 @@ export function EngineSection() {
                 {installing
                   ? installPhaseLabel(installPhase, progress)
                   : partialDownloadBytes > 0
-                    ? `Resume download (${Math.round(partialDownloadBytes / 1_000_000)} MB done)`
-                    : "Download TinyTeX (~250 MB)"}
+                    ? t(($) => $.settings.engine.tinytex.resume, {
+                        size: formatNumber(Math.round(partialDownloadBytes / 1_000_000)),
+                      })
+                    : t(($) => $.settings.engine.tinytex.download)}
               </button>
             </div>
           </div>
@@ -321,11 +322,13 @@ export function EngineSection() {
       </div>
 
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tagged / accessible export</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t(($) => $.settings.engine.tagging.heading)}
+        </h3>
         <Tooltip
           wide
           side="right"
-          label="The default engine (Tectonic) is fast and offline but cannot produce tagged, Section 508 / PDF-UA PDFs. That needs system LuaLaTeX, which can read local files available to your account and should be used only with trusted projects. Oleafly can use an existing distribution or managed TinyTeX."
+          label={t(($) => $.settings.engine.tagging.tooltip)}
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>
@@ -334,9 +337,7 @@ export function EngineSection() {
       <div className="rounded-lg border p-3">
         <div className="flex items-center gap-2">
           <Cpu className="size-4 shrink-0 text-muted-foreground" />
-          {kind === "system" && <span className="text-sm">Using a system LuaLaTeX / TeX Live</span>}
-          {kind === "tinytex" && <span className="text-sm">TinyTeX installed</span>}
-          {kind === "none" && <span className="text-sm">No tagging engine installed</span>}
+          <span className="text-sm">{t(($) => $.settings.engine.tagging.status[kind])}</span>
         </div>
         {info?.version && (
           <p className="mt-1 truncate pl-6 font-mono text-[11px] text-muted-foreground">
@@ -345,24 +346,16 @@ export function EngineSection() {
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {kind === "none" && (
-            <span className="text-xs text-muted-foreground">
-              Install TinyTeX under “Manage TeX distributions” above to enable tagged export.
-            </span>
-          )}
-          {kind === "tinytex" && (
-            <span className="text-xs text-muted-foreground">Provided by TinyTeX (managed above).</span>
-          )}
-          {kind === "system" && (
-            <span className="text-xs text-muted-foreground">Detected on your system. Nothing to install.</span>
-          )}
+          <span className="text-xs text-muted-foreground">
+            {t(($) => $.settings.engine.tagging.hint[kind])}
+          </span>
         </div>
       </div>
 
       <TexPackagesSection />
       </TabsContent>
       <ResetToDefaults
-        sectionName="Engines"
+        sectionName={t(($) => $.settings.engine.sectionName)}
         onReset={resetEnginePreferences}
       />
     </Tabs>

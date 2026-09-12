@@ -8,41 +8,23 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ApprovalMode } from "@oleafly/ai-tools";
 import { Popover } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+type ApprovalModeKey = "askForApproval" | "approveForMe" | "fullAccess" | "custom";
+
 const MODE_OPTIONS: Array<{
   mode: ApprovalMode;
-  label: string;
-  description: string;
+  key: ApprovalModeKey;
   icon: LucideIcon;
 }> = [
-  {
-    mode: "ask-for-approval",
-    label: "Ask for approval",
-    description: "Ask before file edits, internet access, and commands.",
-    icon: ShieldAlert,
-  },
-  {
-    mode: "approve-for-me",
-    label: "Approve for me",
-    description: "Ask only before actions classified as risky.",
-    icon: ShieldCheck,
-  },
-  {
-    mode: "full-access",
-    label: "Full access",
-    description: "Run tool actions without asking for approval.",
-    icon: Shield,
-  },
-  {
-    mode: "custom",
-    label: "Custom (approvals.toml)",
-    description: "Use the rules in approvals.toml. Edit them under Settings, AI Assistant.",
-    icon: SlidersHorizontal,
-  },
+  { mode: "ask-for-approval", key: "askForApproval", icon: ShieldAlert },
+  { mode: "approve-for-me", key: "approveForMe", icon: ShieldCheck },
+  { mode: "full-access", key: "fullAccess", icon: Shield },
+  { mode: "custom", key: "custom", icon: SlidersHorizontal },
 ];
 
 export function ApprovalModeSelector({
@@ -56,14 +38,27 @@ export function ApprovalModeSelector({
   onOpenProjectRules: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
+  const labels: Record<ApprovalModeKey, string> = {
+    askForApproval: t(($) => $.ai.approval.modes.askForApproval.label),
+    approveForMe: t(($) => $.ai.approval.modes.approveForMe.label),
+    fullAccess: t(($) => $.ai.approval.modes.fullAccess.label),
+    custom: t(($) => $.ai.approval.modes.custom.label),
+  };
+  const descriptions: Record<ApprovalModeKey, string> = {
+    askForApproval: t(($) => $.ai.approval.modes.askForApproval.description),
+    approveForMe: t(($) => $.ai.approval.modes.approveForMe.description),
+    fullAccess: t(($) => $.ai.approval.modes.fullAccess.description),
+    custom: t(($) => $.ai.approval.modes.custom.description),
+  };
   const active = MODE_OPTIONS.find((option) => option.mode === mode) ?? MODE_OPTIONS[1];
   const ActiveIcon = active.icon;
 
   return (
-    <Tooltip label={active.label} className="ai-composer-approval ml-1.5 min-w-0">
+    <Tooltip label={labels[active.key]} className="ai-composer-approval ml-1.5 min-w-0">
       <Popover
         align="left"
-        ariaLabel={`Approval mode. ${active.label}`}
+        ariaLabel={t(($) => $.ai.approval.selectorAriaLabel, { mode: labels[active.key] })}
         disabled={disabled}
         triggerClassName={cn(
           "ai-composer-approval-trigger h-7 min-w-0 max-w-48 gap-1.5 rounded-full border pl-2.5 pr-2 text-xs font-medium",
@@ -80,7 +75,7 @@ export function ApprovalModeSelector({
         trigger={
           <>
             <ActiveIcon className="size-3.5 shrink-0" />
-            <span className="ai-composer-approval-value truncate">{active.label}</span>
+            <span className="ai-composer-approval-value truncate">{labels[active.key]}</span>
             <ChevronDown className="size-3.5 shrink-0" />
           </>
         }
@@ -92,7 +87,7 @@ export function ApprovalModeSelector({
               <button
                 key={option.mode}
                 type="button"
-                aria-label={option.label}
+                aria-label={labels[option.key]}
                 aria-pressed={option.mode === mode}
                 aria-describedby={`approval-mode-description-${option.mode}`}
                 disabled={disabled}
@@ -103,12 +98,12 @@ export function ApprovalModeSelector({
               >
                 <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-medium text-foreground">{option.label}</span>
+                  <span className="block text-xs font-medium text-foreground">{labels[option.key]}</span>
                   <span
                     id={`approval-mode-description-${option.mode}`}
                     className="block text-[11px] leading-snug text-muted-foreground"
                   >
-                    {option.description}
+                    {descriptions[option.key]}
                   </span>
                 </span>
                 {option.mode === mode && (
@@ -121,7 +116,7 @@ export function ApprovalModeSelector({
         {mode === "custom" && (
           <button
             type="button"
-            aria-label="Edit project rules"
+            aria-label={t(($) => $.ai.approval.editProjectRules)}
             disabled={disabled}
             onClick={() => {
               if (!disabled) onOpenProjectRules();
@@ -129,7 +124,7 @@ export function ApprovalModeSelector({
             className="mt-1 flex w-full items-center gap-2 border-t px-2.5 pb-1 pt-2.5 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <Settings2 className="size-3.5 shrink-0" />
-            Edit project rules
+            {t(($) => $.ai.approval.editProjectRules)}
           </button>
         )}
       </Popover>

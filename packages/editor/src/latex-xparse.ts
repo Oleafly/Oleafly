@@ -1,4 +1,5 @@
 import { latexBalancedGroupEnd } from "./latex-lexical";
+import { editorMessage, type EditorMessageKey } from "./messages";
 
 export interface XparseSpecificationDiagnostic {
   readonly from: number;
@@ -12,11 +13,31 @@ function skipWhitespace(source: string, start: number): number {
   return cursor;
 }
 
+type XparseGroupKind =
+  | "processor"
+  | "defaultValue"
+  | "embellishmentList"
+  | "defaultList";
+
+const BRACED_GROUP_KEYS: Record<XparseGroupKind, EditorMessageKey> = {
+  processor: "latex.xparse.bracedProcessor",
+  defaultValue: "latex.xparse.bracedDefaultValue",
+  embellishmentList: "latex.xparse.bracedEmbellishmentList",
+  defaultList: "latex.xparse.bracedDefaultList",
+};
+
+const UNCLOSED_GROUP_KEYS: Record<XparseGroupKind, EditorMessageKey> = {
+  processor: "latex.xparse.unclosedProcessor",
+  defaultValue: "latex.xparse.unclosedDefaultValue",
+  embellishmentList: "latex.xparse.unclosedEmbellishmentList",
+  defaultList: "latex.xparse.unclosedDefaultList",
+};
+
 function requiredGroupEnd(
   source: string,
   start: number,
   type: string,
-  description: string,
+  kind: XparseGroupKind,
   diagnostics: XparseSpecificationDiagnostic[],
 ): number | null {
   const from = skipWhitespace(source, start);
@@ -24,7 +45,7 @@ function requiredGroupEnd(
     diagnostics.push({
       from: Math.min(from, Math.max(0, source.length - 1)),
       to: Math.min(source.length, Math.max(from + 1, 1)),
-      message: `xparse argument type ${type} requires a braced ${description}`,
+      message: editorMessage(BRACED_GROUP_KEYS[kind], { type }),
     });
     return null;
   }
@@ -33,7 +54,7 @@ function requiredGroupEnd(
     diagnostics.push({
       from,
       to: Math.min(source.length, from + 1),
-      message: `xparse argument type ${type} has an unclosed ${description}`,
+      message: editorMessage(UNCLOSED_GROUP_KEYS[kind], { type }),
     });
   }
   return end;
@@ -91,7 +112,7 @@ export function validateXparseArgumentSpecification(
       diagnostics.push({
         from: Math.max(0, source.length - 1),
         to: source.length,
-        message: "xparse argument modifiers require an argument type",
+        message: editorMessage("latex.xparse.modifiersNeedType"),
       });
       break;
     }
@@ -107,7 +128,7 @@ export function validateXparseArgumentSpecification(
         source,
         cursor,
         type,
-        "default value",
+        "defaultValue",
         diagnostics,
       );
       if (end === null) break;
@@ -121,7 +142,7 @@ export function validateXparseArgumentSpecification(
         diagnostics.push({
           from: typeFrom,
           to: typeFrom + 1,
-          message: "xparse argument type t requires a trigger token",
+          message: editorMessage("latex.xparse.triggerToken"),
         });
         break;
       }
@@ -145,7 +166,7 @@ export function validateXparseArgumentSpecification(
             source.length,
             Math.max(typeFrom + 1, leftEnd ?? typeFrom + 1),
           ),
-          message: `xparse argument type ${type} requires two delimiter tokens`,
+          message: editorMessage("latex.xparse.delimiterTokens", { type }),
         });
         break;
       }
@@ -155,7 +176,7 @@ export function validateXparseArgumentSpecification(
           source,
           cursor,
           type,
-          "default value",
+          "defaultValue",
           diagnostics,
         );
         if (defaultEnd === null) break;
@@ -169,7 +190,7 @@ export function validateXparseArgumentSpecification(
         source,
         cursor,
         type,
-        "embellishment list",
+        "embellishmentList",
         diagnostics,
       );
       if (embellishments === null) break;
@@ -179,7 +200,7 @@ export function validateXparseArgumentSpecification(
           source,
           cursor,
           type,
-          "default list",
+          "defaultList",
           diagnostics,
         );
         if (defaults === null) break;
@@ -191,7 +212,7 @@ export function validateXparseArgumentSpecification(
     diagnostics.push({
       from: typeFrom,
       to: typeFrom + 1,
-      message: `Unknown xparse argument type “${type}”`,
+      message: editorMessage("latex.xparse.unknownType", { type }),
     });
   }
 

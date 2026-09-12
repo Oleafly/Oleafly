@@ -10,6 +10,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import {
   BookOpenCheck,
@@ -31,6 +32,7 @@ import {
   serializeMarkdownBody,
   type LatexDocumentSplit,
 } from "@oleafly/wysiwyg";
+import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useDictionary } from "@/lib/dictionary";
 import { cancelProofreading } from "@/lib/proofreading/client";
@@ -114,11 +116,15 @@ interface ProofreadingPopoverPosition {
 function suggestionLabel(
   suggestion: VisualProofreadingIssue["suggestions"][number],
 ): string {
-  if (suggestion.kind === 1) return "Remove";
+  if (suggestion.kind === 1) return i18n.t(($) => $.editor.visual.suggestionRemove);
   if (suggestion.kind === 2) {
-    return suggestion.text ? `Insert “${suggestion.text}”` : "Insert";
+    return suggestion.text
+      ? i18n.t(($) => $.editor.visual.suggestionInsertText, { text: suggestion.text })
+      : i18n.t(($) => $.editor.visual.suggestionInsert);
   }
-  return suggestion.text ? `Replace with “${suggestion.text}”` : "Replace";
+  return suggestion.text
+    ? i18n.t(($) => $.editor.visual.suggestionReplaceText, { text: suggestion.text })
+    : i18n.t(($) => $.editor.visual.suggestionReplace);
 }
 
 function VisualProofreadingPopover({
@@ -132,6 +138,7 @@ function VisualProofreadingPopover({
   onClose: () => void;
   onNavigate: (issue: VisualProofreadingIssue) => void;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] =
     useState<ProofreadingPopoverPosition | null>(null);
@@ -298,7 +305,7 @@ function VisualProofreadingPopover({
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="Proofreading suggestions"
+      aria-label={t(($) => $.editor.visual.proofreadingPanel)}
       data-proofreading-panel-issue={issue.id}
       tabIndex={-1}
       className="fixed z-[70] w-80 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-xl outline-none"
@@ -317,8 +324,8 @@ function VisualProofreadingPopover({
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             {issue.source === "hunspell"
-              ? "Spelling"
-              : "Grammar & style"}
+              ? t(($) => $.editor.visual.spelling)
+              : t(($) => $.editor.visual.grammarAndStyle)}
           </div>
           <p className="mt-1 text-sm leading-snug">{issue.message}</p>
         </div>
@@ -327,7 +334,7 @@ function VisualProofreadingPopover({
           variant="ghost"
           size="icon"
           className="-mr-1 -mt-1 size-7 shrink-0"
-          aria-label="Close proofreading suggestions"
+          aria-label={t(($) => $.editor.visual.closeProofreading)}
           onClick={closeAndFocus}
         >
           <X className="size-3.5" aria-hidden />
@@ -340,7 +347,10 @@ function VisualProofreadingPopover({
             className="text-xs text-muted-foreground"
             aria-live="polite"
           >
-            Finding {issueGroup.index + 1} of {issueGroup.count}
+            {t(($) => $.editor.visual.findingPosition, {
+              index: issueGroup.index + 1,
+              count: issueGroup.count,
+            })}
           </span>
           <div className="flex items-center gap-1">
             <Button
@@ -348,7 +358,7 @@ function VisualProofreadingPopover({
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="Previous finding in this raw block"
+              aria-label={t(($) => $.editor.visual.previousFinding)}
               disabled={!issueGroup.previous}
               onClick={() => {
                 if (issueGroup.previous) {
@@ -363,7 +373,7 @@ function VisualProofreadingPopover({
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="Next finding in this raw block"
+              aria-label={t(($) => $.editor.visual.nextFinding)}
               disabled={!issueGroup.next}
               onClick={() => {
                 if (issueGroup.next) onNavigate(issueGroup.next);
@@ -379,7 +389,7 @@ function VisualProofreadingPopover({
         <fieldset
           className="mt-2 grid max-h-40 gap-1 overflow-y-auto"
         >
-          <legend className="sr-only">Suggested fixes</legend>
+          <legend className="sr-only">{t(($) => $.editor.visual.suggestedFixes)}</legend>
           {suggestions.map((suggestion, index) => {
             const Icon =
               suggestion.kind === 1
@@ -423,7 +433,7 @@ function VisualProofreadingPopover({
             }
             onClick={() => ignore("project")}
           >
-            Ignore in project
+            {t(($) => $.editor.visual.ignoreInProject)}
           </Button>
         )}
         <Button
@@ -437,19 +447,17 @@ function VisualProofreadingPopover({
           }
           onClick={() => ignore("global")}
         >
-          Ignore everywhere
+          {t(($) => $.editor.visual.ignoreEverywhere)}
         </Button>
       </div>
-      <p className="sr-only">
-        Use Tab or the arrow keys to move between actions. Press Escape
-        to close.
-      </p>
+      <p className="sr-only">{t(($) => $.editor.visual.keyboardHint)}</p>
     </div>,
     document.body,
   );
 }
 
 export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
+  const { t } = useTranslation(["common", "editor"]);
   const synchronizeRef = useRef<() => void>(() => {});
   const projectId = useFilesStore((s) => s.projectId);
   const activePath = useFilesStore((s) => s.activePath);
@@ -814,8 +822,8 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
                 className="flex w-full items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
               >
                 {showPreamble
-                  ? "Hide document preamble"
-                  : "Show document preamble"}
+                  ? t(($) => $.editor.visual.hidePreamble)
+                  : t(($) => $.editor.visual.showPreamble)}
                 {showPreamble ? (
                   <ChevronUp className="size-3.5" />
                 ) : (
@@ -843,7 +851,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
         {hasDocumentEnv && (
           <div className="mx-auto w-full max-w-[42rem] px-8 pb-6">
             <div className="rounded-md border border-border px-3 py-2 text-center text-xs text-muted-foreground">
-              End of document
+              {t(($) => $.editor.visual.endOfDocument)}
             </div>
           </div>
         )}

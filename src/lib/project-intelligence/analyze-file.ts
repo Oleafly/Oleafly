@@ -437,7 +437,7 @@ function addDelimiterDiagnostics(
       source: "project-intelligence",
       severity: "error",
       code: "malformed-source",
-      message: `Unexpected closing delimiter "${char}".`,
+      message: { key: "unexpectedClosingDelimiter", params: { char } },
       location: diagnosticLocation,
       related: [],
     });
@@ -462,7 +462,10 @@ function addDelimiterDiagnostics(
       source: "project-intelligence",
       severity: "error",
       code: "malformed-source",
-      message: `Delimiter "${unmatched.char}" is not closed with "${expected}".`,
+      message: {
+        key: "unclosedDelimiter",
+        params: { char: unmatched.char, expected: expected ?? "" },
+      },
       location: diagnosticLocation,
       related: [],
     });
@@ -475,7 +478,7 @@ function addDelimiterDiagnostics(
       source: "project-intelligence",
       severity: "error",
       code: "malformed-source",
-      message: "String literal is not closed.",
+      message: { key: "unclosedString" },
       location: location(file, starts, offset, offset + 1),
       related: [],
     });
@@ -556,7 +559,7 @@ function typstCommentDiagnostics(
       source: "project-intelligence",
       severity: "error",
       code: "malformed-source",
-      message: "Typst block comment is not closed.",
+      message: { key: "unclosedTypstComment" },
       location: location(
         file,
         starts,
@@ -601,8 +604,17 @@ function latexEnvironmentDiagnostics(
       severity: "error",
       code: "malformed-source",
       message: open
-        ? `Expected \\end{${open.name}} before \\end{${name}}.`
-        : `\\end{${name}} has no matching \\begin.`,
+        ? {
+            key: "expectedEndBefore" as const,
+            params: {
+              expected: `\\end{${open.name}}`,
+              found: `\\end{${name}}`,
+            },
+          }
+        : {
+            key: "endWithoutBegin" as const,
+            params: { command: `\\end{${name}}` },
+          },
       location: location(
         file,
         starts,
@@ -612,7 +624,10 @@ function latexEnvironmentDiagnostics(
       related: open
         ? [
             {
-              message: `\\begin{${open.name}} is here.`,
+              message: {
+                key: "beginIsHere" as const,
+                params: { command: `\\begin{${open.name}}` },
+              },
               location: location(file, starts, open.from, open.to),
             },
           ]
@@ -626,7 +641,10 @@ function latexEnvironmentDiagnostics(
       source: "project-intelligence",
       severity: "error",
       code: "malformed-source",
-      message: `\\begin{${open.name}} has no matching \\end.`,
+      message: {
+        key: "beginWithoutEnd" as const,
+        params: { command: `\\begin{${open.name}}` },
+      },
       location: location(file, starts, open.from, open.to),
       related: [],
     });
@@ -1769,7 +1787,7 @@ function markdownAdditionalSyntax(
       source: "project-intelligence",
       severity: "error",
       code: "malformed-source",
-      message: "Fenced code block is not closed.",
+      message: { key: "unclosedFence" },
       location: location(
         file,
         starts,
@@ -1786,7 +1804,7 @@ function markdownAdditionalSyntax(
       source: "project-intelligence",
       severity: "error",
       code: "malformed-source",
-      message: "YAML front matter is not closed.",
+      message: { key: "unclosedFrontMatter" },
       location: location(file, starts, 0, Math.min(source.length, 3)),
       related: [],
     });

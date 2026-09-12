@@ -1,24 +1,53 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-react";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
 import { handoffToAssistant } from "@/features/assistant-handoff";
+import { i18n } from "@/i18n";
 
 interface Action {
+  id: string;
   icon: typeof Sparkles;
-  label: string;
+  label: () => string;
   prompt: string;
 }
 
 const ACTIONS: Action[] = [
-  { icon: ArrowLeftRight, label: "Paraphrase", prompt: "Paraphrase the following text, keeping the same meaning" },
-  { icon: Sparkles, label: "Improve Writing", prompt: "Improve the clarity, tone, and flow of the following text" },
-  { icon: Check, label: "Fix Grammar & Style", prompt: "Fix grammar and style issues in the following text" },
-  { icon: Maximize2, label: "Expand & Elaborate", prompt: "Expand and elaborate on the following text with more detail" },
-  { icon: BookMarked, label: "Find References", prompt: "Find and suggest real, verifiable citations relevant to the following text" },
+  {
+    id: "paraphrase",
+    icon: ArrowLeftRight,
+    label: () => i18n.t(($) => $.editor.selectionActions.paraphrase),
+    prompt: "Paraphrase the following text, keeping the same meaning",
+  },
+  {
+    id: "improve-writing",
+    icon: Sparkles,
+    label: () => i18n.t(($) => $.editor.selectionActions.improveWriting),
+    prompt: "Improve the clarity, tone, and flow of the following text",
+  },
+  {
+    id: "fix-grammar",
+    icon: Check,
+    label: () => i18n.t(($) => $.editor.selectionActions.fixGrammar),
+    prompt: "Fix grammar and style issues in the following text",
+  },
+  {
+    id: "expand",
+    icon: Maximize2,
+    label: () => i18n.t(($) => $.editor.selectionActions.expand),
+    prompt: "Expand and elaborate on the following text with more detail",
+  },
+  {
+    id: "find-references",
+    icon: BookMarked,
+    label: () => i18n.t(($) => $.editor.selectionActions.findReferences),
+    prompt: "Find and suggest real, verifiable citations relevant to the following text",
+  },
 ];
 
 export function SelectionActionMenu() {
+  const { t } = useTranslation(["common", "editor"]);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -92,12 +121,12 @@ export function SelectionActionMenu() {
           {ACTIONS.map((action) => (
             <button
               type="button"
-              key={action.label}
+              key={action.id}
               onClick={() => runAction(action)}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
             >
               <action.icon className="size-4 text-muted-foreground" />
-              {action.label}
+              {action.label()}
             </button>
           ))}
         </div>
@@ -108,7 +137,7 @@ export function SelectionActionMenu() {
           className="flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-lg"
         >
           <Sparkles className="size-3.5" />
-          Ask AI
+          {t(($) => $.editor.selectionActions.askAi)}
         </button>
       )}
     </div>

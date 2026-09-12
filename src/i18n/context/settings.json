@@ -1,0 +1,380 @@
+{
+  "ai": {
+    "agents": {
+      "custom": {
+        "useExample": "Button that fills the definition box with a sample agent definition"
+      },
+      "install": {
+        "confirm": "Button that starts downloading the agent bridge",
+        "installing": "Busy label on the install button while the bridge downloads",
+        "locationLabel": "Row label for the folder the bridge is installed into",
+        "packageLabel": "Row label for the package name of the bridge being installed"
+      },
+      "registry": {
+        "register": "Button that registers a registry entry as an available agent",
+        "registered": "Disabled button state meaning this agent is already registered",
+        "search": "Button that submits the ACP registry search query",
+        "searching": "Busy label on the registry search button while the search runs"
+      }
+    },
+    "approvals": {
+      "file": {
+        "discard": "Button that throws away unsaved edits and re-reads the approvals file",
+        "reload": "Button that re-reads the approvals file from disk when nothing is edited",
+        "saving": "Busy label on the save button while the approvals file is written"
+      },
+      "project": {
+        "allowed": "Badge meaning this tool always runs without asking in this project",
+        "denied": "Badge meaning this tool is always refused in this project"
+      }
+    },
+    "customProvider": {
+      "baseUrlPlaceholder": "Example API endpoint. Keep the URL verbatim.",
+      "idLabel": "Short machine readable identifier for a user added provider",
+      "idPlaceholder": "Example identifier. Keep it lowercase ASCII letters only.",
+      "namePlaceholder": "Example display name for a fictional company",
+      "submitAdd": "Button that creates the new provider"
+    },
+    "instructions": {
+      "saved": "Confirmation shown beside the button after custom instructions are saved"
+    },
+    "models": {
+      "custom": "Badge on a model the user typed in by hand rather than one the provider listed",
+      "metadata": {
+        "unknownDate": "Substituted for a date that could not be read, inside \"Model data updated {{date}}\""
+      },
+      "refresh": "Fetch the provider's current model list again",
+      "restore": "Put this provider's built-in models back into the list",
+      "title": "Heading over the list of AI models available from one provider"
+    },
+    "personas": {
+      "addStarter": "Button that adds one suggested persona to the user's personas",
+      "colors": {
+        "forest": "Color name for a persona swatch, light to dark green",
+        "grape": "Color name for a persona swatch, purple to violet",
+        "ocean": "Color name for a persona swatch, light to dark blue",
+        "slate": "Color name for a persona swatch, grey",
+        "sunset": "Color name for a persona swatch, orange to red"
+      },
+      "form": {
+        "color": "Field label for the persona color picker",
+        "create": "Button that saves a new persona",
+        "instructions": "Field label for the persona prompt text area",
+        "namePlaceholder": "Example persona name shown as placeholder text in the name field"
+      }
+    },
+    "providers": {
+      "badge": {
+        "connected": "A remote provider has a working API key saved",
+        "notRunning": "A locally installed model server is not answering",
+        "running": "A locally installed model server is up and answering"
+      },
+      "docs": "Link to a provider's own documentation website",
+      "getKey": "Link that opens the provider's signup page where the user creates an API key",
+      "modelLabel": "Label beside a dropdown that selects which AI model to use",
+      "ollama": {
+        "active": "This model is the one currently in use",
+        "check": "Button that probes the local machine for a running Ollama server",
+        "disconnect": "Forget the saved Ollama host and stop using it",
+        "noModels": "Keep the shell command ollama pull llama3.2 verbatim.",
+        "recheck": "Button that probes for Ollama again after the first attempt",
+        "setupSteps": "Numbered setup instructions. Keep ollama.com, the shell commands ollama serve and ollama pull llama3.2, and the numbers verbatim."
+      }
+    },
+    "section": {
+      "reset": {
+        "sectionName": "The name of this settings section, shown inside the sentence \"Reset <name> settings?\""
+      },
+      "tabs": {
+        "agents": "Command line coding agents such as Claude Code, not AI personas",
+        "skills": "Reusable instruction bundles the assistant can load, a product feature name"
+      }
+    },
+    "skills": {
+      "catalog": {
+        "install": "Button that downloads and installs a catalog skill.",
+        "refresh": "Button that re-fetches the skill catalog from the network.",
+        "uninstall": "Button that deletes an installed catalog skill.",
+        "update": "Button that installs a newer version of an installed catalog skill."
+      },
+      "editor": {
+        "instructions": "Field label for the body of SKILL.md, the steps the assistant follows.",
+        "submitCreate": "Button that creates the new skill."
+      },
+      "groups": {
+        "shelf": "Heading over skills installed from the downloadable domain catalog.",
+        "user": "Heading over skills the user wrote themselves."
+      },
+      "invalidBadge": "Badge on a skill whose SKILL.md failed validation.",
+      "phases": {
+        "authoring": "Drafting phase of a writing project, a group heading for skills.",
+        "communication": "Communication phase of a writing project, a group heading for skills.",
+        "figures": "Figure preparation phase of a writing project, a group heading for skills.",
+        "research": "Research phase of a writing project, a group heading for skills.",
+        "review": "Reviewing phase of a writing project, a group heading for skills.",
+        "submission": "Submission phase of a writing project, a group heading for skills.",
+        "tooling": "Tooling and utility skills, a group heading."
+      },
+      "source": {
+        "added": "Badge on a skill the user added from a folder on their computer.",
+        "bundled": "Badge on a skill that ships inside the app.",
+        "catalog": "Badge on a skill downloaded from the domain catalog."
+      },
+      "updateAction": "Button that replaces an installed skill with a newer bundled version.",
+      "useDeviceSetting": "Button that clears a per-project override so the skill follows the device-wide setting."
+    }
+  },
+  "appearance": {
+    "app": {
+      "bgPattern": {
+        "dots": "Background pattern made of dots.",
+        "grid": "Background pattern made of grid lines."
+      },
+      "dock": {
+        "bottom": "Screen edge where the home dock sits, along the bottom.",
+        "left": "Screen edge where the home dock sits, on the left.",
+        "right": "Screen edge where the home dock sits, on the right."
+      },
+      "theme": {
+        "label": "Heading for the light, dark, and system theme choice."
+      }
+    },
+    "customTheme": {
+      "tokens": {
+        "accent": "Label for the hover and highlight surface color token.",
+        "card": "Label for the panel surface color token.",
+        "destructive": "Label for the destructive or error color token.",
+        "foreground": "Label for the main text color token.",
+        "input": "Label for the color token used on input field borders.",
+        "muted": "Label for the low emphasis surface color token.",
+        "popover": "Label for the floating popover surface color token.",
+        "primary": "Label for the primary action color token.",
+        "ring": "Label for the color token used on the keyboard focus ring.",
+        "secondary": "Label for the secondary surface color token."
+      }
+    },
+    "files": {
+      "homeView": {
+        "grid": "Library layout that arranges projects as a grid of cards.",
+        "list": "Library layout that arranges projects as rows in a list."
+      }
+    },
+    "sectionName": "Name of the Appearance settings section, used inside the reset confirmation sentence.",
+    "tabs": {
+      "app": "Tab label for settings that affect the whole application window.",
+      "editor": "Tab label for source editor settings.",
+      "files": "Tab label for project and file tree settings.",
+      "pdf": "Tab label for PDF preview settings."
+    },
+    "terminal": {
+      "colors": {
+        "background": "Label for the terminal background color swatch.",
+        "cursor": "Label for the terminal cursor color swatch.",
+        "foreground": "Label for the terminal text color swatch."
+      },
+      "cursorStyle": {
+        "bar": "Terminal cursor drawn as a thin vertical bar.",
+        "block": "Terminal cursor drawn as a filled rectangle.",
+        "underline": "Terminal cursor drawn as a line under the character."
+      }
+    }
+  },
+  "citations": {
+    "connected": "Badge showing that a credential is stored for this search source.",
+    "openAlex": {
+      "emailPlaceholder": "A literal example address. Keep you@example.com unchanged."
+    },
+    "serper": {
+      "docsLink": "Link text. Serper is a product name, keep it unchanged."
+    },
+    "title": "Name of the Oleafly feature that searches scholarly databases."
+  },
+  "cite": {
+    "apa": "Link text. Cite this repository is the name of a GitHub feature, keep it recognizable.",
+    "copyBibtex": "Button that copies the BibTeX entry to the clipboard.",
+    "description": "Keep the file extension .bib and the citation key oleafly inside the tags verbatim."
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Disabled button state once every item is already downloaded.",
+      "download": "Button that starts downloading one item.",
+      "downloadAll": "Button that downloads every item in the list."
+    },
+    "fontPacks": {
+      "lato": {
+        "label": "Font family name. Keep verbatim in every language."
+      },
+      "ptsans": {
+        "label": "Font family name. Keep verbatim in every language."
+      },
+      "ptserif": {
+        "label": "Font family name. Keep verbatim in every language."
+      }
+    },
+    "progress": "{{label}} is the name of the asset being fetched, supplied by the backend.",
+    "size": {
+      "kilobytes": "{{value}} is an already formatted number. KB is the unit symbol, keep it verbatim.",
+      "megabytes": "{{value}} is an already formatted number. MB is the unit symbol, keep it verbatim."
+    },
+    "tabs": {
+      "fonts": "Tab label for downloadable font packs.",
+      "templates": "Tab label for downloadable document template packs."
+    }
+  },
+  "engine": {
+    "distributions": {
+      "rowTooltip": "{{tools}} is a list of TeX tool names such as \"latexmk and tlmgr\". {{binDir}} is a file system path. Keep both verbatim."
+    },
+    "latexmkMissing": "Warning badge shown when the latexmk binary is not present on the machine. Keep latexmk verbatim.",
+    "packages": {
+      "badge": {
+        "breaks": "Badge on a package that prevents tagged accessible PDF output.",
+        "caution": "Badge on a package that may not produce cleanly tagged accessible PDFs."
+      },
+      "heading": "Heading over the list of installable LaTeX packages.",
+      "includedIn": "{{package}} is a TeX Live package name. Keep it verbatim.",
+      "search": "Button that queries the TeX Live package repository. Keep TeX Live verbatim.",
+      "tree": {
+        "both": "Fragmentless phrase shown as a badge: the package is installed in both the system TeX tree and the user's personal tree.",
+        "system": "Badge: the package is installed in the machine-wide TeX tree.",
+        "user": "Badge: the package is installed in the user's personal TeX tree."
+      },
+      "error": {
+        "withDetail": "Joins a failure sentence with the raw tlmgr output that explains it"
+      }
+    },
+    "sectionName": "Name of the Engines settings section. Also used inside the reset confirmation sentence \"Reset {{sectionName}} settings?\"."
+  },
+  "github": {
+    "account": {
+      "connected": "Status shown under the avatar when an account is linked but has no display name. Not an action.",
+      "disconnect": "Button that signs the app out of the linked GitHub account.",
+      "handle": "The connected GitHub account handle. Keep the @ prefix and the placeholder verbatim."
+    },
+    "advanced": {
+      "connect": "Button that signs in with the personal access token the user pasted.",
+      "toggle": "Discloses the fallback sign-in route that uses a personal access token.",
+      "tokenPlaceholder": "Example prefix of a GitHub personal access token. Keep it verbatim."
+    },
+    "connect": "Button that starts the GitHub sign-in flow.",
+    "device": {
+      "openGithub": "Button that opens the GitHub device authorization page in the browser.",
+      "waiting": "Status shown while the app polls GitHub for the user to finish authorizing."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Button that stores the API key the user pasted and links the account.",
+      "disconnect": "Button that deletes the stored API key and unlinks the account."
+    },
+    "cookies": {
+      "action": "Button label. Starts the browser cookie import.",
+      "hostnamePlaceholder": "A literal example hostname. Keep example.com unchanged.",
+      "review": "Button that moves from choosing a profile to the confirmation step.",
+      "status": {
+        "available": "This browser profile can be read right now.",
+        "comingSoon": "Support for this browser is not implemented yet.",
+        "noCookieStore": "The browser is installed but has no readable cookie database.",
+        "notInstalled": "The browser is not installed on this machine."
+      },
+      "tryAgain": "Button that repeats the failed browser detection."
+    }
+  },
+  "mcp": {
+    "import": {
+      "duplicates": {
+        "legend": "Heading for the choice of what to do when an imported server has the same name as an existing one"
+      },
+      "summary": {
+        "commandFallback": "Shown in place of an executable name when the imported command is empty"
+      }
+    },
+    "registry": {
+      "version": "A version number prefixed with a lowercase v, for example v1.2.3"
+    },
+    "section": {
+      "port": {
+        "label": "A network port number, not a verb and not a software port"
+      },
+      "token": {
+        "hide": "Button that hides the secret token again",
+        "regenerate": "Button that issues a new secret token and invalidates the old one",
+        "reveal": "Button that shows the hidden secret token on screen"
+      }
+    },
+    "servers": {
+      "card": {
+        "validate": "Button that runs a connection check against one server"
+      },
+      "editor": {
+        "argsLabel": "Command line arguments passed to the executable, not points in a debate",
+        "commandLabel": "The executable to run, for example npx",
+        "formView": "Segment that switches the editor to the field by field form, as opposed to raw JSON",
+        "jsonView": "Segment that switches the editor to raw JSON. Keep the word JSON verbatim",
+        "pairs": {
+          "storedValuePlaceholder": "Placeholder shown when a secret is already saved and stays hidden",
+          "valuePlaceholder": "Placeholder for the value half of a name and value pair"
+        },
+        "transportLegend": "How the app talks to the server, either a local command or a remote URL"
+      },
+      "status": {
+        "checking": "Badge showing that a check of the server is in progress",
+        "connected": "Badge showing that the server responded to a check",
+        "error": "Badge showing that the last check of the server failed"
+      }
+    }
+  },
+  "proofreading": {
+    "clear": {
+      "confirm": "Button that empties the dictionary of ignored words.",
+      "suppressedConfirm": "Button that brings dismissed grammar findings back into view."
+    },
+    "dismissed": {
+      "showAgain": "Button that un-dismisses every grammar finding hidden in this project."
+    },
+    "profileRules": {
+      "example": "Prefix on a sample of what a grammar rule would flag. {{example}} is rule output and stays in English."
+    },
+    "reset": {
+      "sectionName": "Name of this settings section, used inside the sentence \"Reset <name> settings?\"."
+    },
+    "tabs": {
+      "global": "Tab label for dictionary words that apply to every project.",
+      "projects": "Tab label for dictionary words that apply to one project only."
+    }
+  },
+  "reset": {
+    "button": "Button that restores one settings section to its shipped defaults.",
+    "confirmDescription": "Body of the confirmation dialog. {{sectionName}} is the name of the settings section.",
+    "confirmTitle": "Title of the confirmation dialog. {{sectionName}} is the name of the settings section.",
+    "description": "Sentence under the heading. {{sectionName}} is the name of the settings section, for example Appearance.",
+    "label": "Heading of the row that resets one settings section."
+  },
+  "shortcuts": {
+    "application": {
+      "recording": "Label on the key box while the app waits for the user to press a key combination."
+    },
+    "builtIn": {
+      "labels": {
+        "bold": "Makes the selected text bold.",
+        "italic": "Makes the selected text italic.",
+        "redo": "Redoes the edit that was just undone.",
+        "undo": "Undoes the last edit."
+      }
+    },
+    "categories": {
+      "codeIntelligence": "Group heading for go to definition, find references and rename, features a language server provides.",
+      "editor": "Group heading for shortcuts the text editor handles.",
+      "pdf": "Group heading for shortcuts in the compiled document preview. Keep PDF verbatim."
+    },
+    "error": {
+      "reserved": "{{shortcut}} is the name of an operating system command, for example Copy or Paste."
+    },
+    "reset": {
+      "sectionName": "Name of this settings section, used inside the sentence \"Reset <name> settings?\"."
+    },
+    "tabs": {
+      "application": "Tab label for shortcuts the user can rebind, as opposed to editor shortcuts."
+    }
+  }
+}

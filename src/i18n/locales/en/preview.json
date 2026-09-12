@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Logs",
+    "showLogs": "Show compile logs",
+    "showPdf": "Show PDF preview",
+    "askAi": "Ask AI",
+    "more": "More preview controls",
+    "duration": "{{seconds}}s",
+    "failed": "Failed",
+    "compiledWithErrors": "Compiled with errors",
+    "compiledWithWarnings": "Compiled with warnings",
+    "compiledSuccessfully": "Compiled successfully"
+  },
+  "pageLayout": {
+    "group": "Page layout",
+    "single": "Single page view",
+    "double": "Two-page view"
+  },
+  "pages": {
+    "previous": "Previous page",
+    "next": "Next page",
+    "number": "Page number",
+    "ofTotal": "of {{total}}",
+    "pageOfTotal": "Page {{page}} of {{total}}"
+  },
+  "zoom": {
+    "in": "Zoom in",
+    "out": "Zoom out",
+    "fitToWidth": "Fit to width",
+    "fitToHeight": "Fit to height",
+    "reset": "Reset to 100%",
+    "percent": "{{percent}}%",
+    "percentLabel": "Zoom {{percent}} percent",
+    "menuLabel": "Zoom · {{percent}}%"
+  },
+  "outline": {
+    "open": "Document outline",
+    "panel": "PDF document outline",
+    "title": "Document outline",
+    "close": "Close document outline",
+    "loading": "Loading outline…",
+    "empty": "This PDF does not contain a document outline.",
+    "externalLink": "External link",
+    "externalBadge": "Link"
+  },
+  "search": {
+    "open": "Search PDF",
+    "panel": "Search this PDF",
+    "placeholder": "Search document",
+    "input": "Search PDF text",
+    "previous": "Previous search result",
+    "next": "Next search result",
+    "close": "Close PDF search"
+  },
+  "viewer": {
+    "scrollArea": "PDF continuous scroll area",
+    "crashedTitle": "The PDF preview crashed",
+    "crashedDetail": "Recompile the current revision or retry the viewer.",
+    "retry": "Retry viewer",
+    "loadingLatest": "Loading the latest compiled PDF…",
+    "retryingLoad": "Retrying PDF load…",
+    "retainedFailure": "{{detail}} Showing the last successfully loaded PDF instead.",
+    "retainedFailureDetail": "The current PDF could not be loaded",
+    "invalidTitle": "Invalid PDF",
+    "emptyTitle": "Empty PDF",
+    "unavailableTitle": "PDF viewer unavailable",
+    "loadFailedTitle": "PDF load failed",
+    "loadFailedDetail": "The PDF could not be loaded."
+  },
+  "password": {
+    "title": "Password required",
+    "label": "PDF password",
+    "placeholder": "PDF password",
+    "submit": "Unlock PDF"
+  },
+  "actions": {
+    "downloadImage": "Download image",
+    "downloadPdf": "Download PDF",
+    "downloadDisplayedPdf": "Download displayed PDF",
+    "downloadStalePdf": "Download stale, non-current PDF",
+    "saveImage": "Save image to project",
+    "savePdf": "Save PDF to project",
+    "invert": "Invert PDF preview colors",
+    "restoreColors": "Restore colors",
+    "readerView": "Reader view",
+    "exitReaderView": "Exit reader view",
+    "rotate": "Rotate clockwise",
+    "rotateTooltip": "Rotate PDF clockwise (90°). Currently {{degrees}}°",
+    "openWindow": "Open preview in a new window",
+    "hideToolbar": "Hide toolbar",
+    "showToolbar": "Show toolbar",
+    "settings": "PDF preview settings",
+    "fullscreen": "Fullscreen preview",
+    "exitFullscreen": "Exit fullscreen",
+    "retryCompile": "Retry compile"
+  },
+  "stale": {
+    "badge": "Stale",
+    "badgeLabel": "Stale, non-current preview. Recompile.",
+    "tooltip": "The preview is stale against the editor changes. {{explanation}} {{syncTex}} Click to recompile.",
+    "explanation": "This PDF does not represent the active project revision.",
+    "revisionExplanation": "Showing project revision {{displayed}}. The active project is revision {{active}}.",
+    "noIdentity": "The displayed PDF has no verified compile identity for the active revision.",
+    "syncTexAvailable": "SyncTeX uses the nearest unchanged line for edits.",
+    "syncTexUnavailable": "SyncTeX requires a current compile."
+  },
+  "save": {
+    "title": "Save PDF to project",
+    "imageTitle": "Save image to project",
+    "close": "Close save dialog",
+    "staleDescription": "Saves the displayed stale PDF into the project tree. It does not represent the active revision.",
+    "description": "Saves the displayed PDF into the project tree (committed via Git).",
+    "nameLabel": "Project save name",
+    "namePlaceholder": "document.pdf",
+    "imageSaved": "Image saved to the project.",
+    "pdfSaved": "PDF saved to the project.",
+    "failed": "Couldn't save into the project."
+  },
+  "download": {
+    "pngFilter": "PNG image",
+    "imageSaved": "Image saved · {{name}}",
+    "pdfSaved": "PDF saved · {{name}}",
+    "showInFolder": "Show in folder",
+    "folderUnavailable": "File was saved, but Oleafly could not open its folder (permission denied). Check the location you chose in the save dialog.",
+    "imageFailed": "Couldn't download the image.",
+    "imageFailedDetail": "Couldn't download the image: {{detail}}",
+    "pdfFailed": "Couldn't download the PDF.",
+    "pdfFailedDetail": "Couldn't download the PDF: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "PDF compilation is currently unavailable.",
+    "compileFailed": "Compile failed. Open the Logs tab to see what went wrong."
+  },
+  "a11y": {
+    "stale": "Stale, non-current PDF. {{explanation}}",
+    "page": "PDF page {{page}} of {{total}}.",
+    "searchResult": "Search result {{current}} of {{total}}."
+  },
+  "startup": {
+    "headingReady": "PDF preview ready",
+    "headingPreparing": "Preparing PDF preview",
+    "headingAttention": "Startup needs attention",
+    "progressLabel": "Document startup: {{completed}} of {{total}} stages complete or skipped",
+    "doneCount": "{{completed}}/{{total}} done",
+    "metaRunning": "{{stages}} running",
+    "metaQueued": "{{stages}} queued",
+    "metaFailed": "{{stages}} failed",
+    "compileNow": "Compile now",
+    "noProject": "No active project",
+    "waitingForEngine": "Waiting for document engine",
+    "orPress": "or press <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "done",
+      "running": "running",
+      "queued": "queued",
+      "skipped": "skipped",
+      "failed": "failed"
+    },
+    "language": {
+      "serviceLabel": "Language service",
+      "analysisLabel": "Language analysis",
+      "openingFiles": "Opening project files",
+      "starting": "Starting language service",
+      "restarting": "Restarting language service",
+      "installing": "Installing language service",
+      "connected": "Started and connected",
+      "ready": "Ready",
+      "localOnly": "Not required. Using local analysis.",
+      "notApplicable": "Not applicable for this project",
+      "unavailable": "Unavailable. Local analysis remains available.",
+      "waitingToStart": "Waiting to start",
+      "waitingForFiles": "Waiting for project files",
+      "syncing": "Synchronizing current project files",
+      "analyzing": "Analyzing project structure",
+      "analyzed": "Current project revision analyzed",
+      "partial": "Usable partial analysis is ready",
+      "needsAttention": "Analysis needs attention",
+      "notAvailable": "Not available for this project",
+      "queued": "Queued for the current revision",
+      "waitingForService": "Waiting for the language service"
+    },
+    "compile": {
+      "label": "Compiling",
+      "saving": "Saving current changes",
+      "downloading": "Downloading required LaTeX packages",
+      "producing": "Producing and verifying PDF output",
+      "unavailable": "Compiler unavailable",
+      "failed": "Compile failed. Open Logs for details.",
+      "accepted": "Verified output accepted",
+      "waiting": "Waiting to compile the current revision"
+    },
+    "render": {
+      "label": "Rendering PDF",
+      "preparing": "Preparing pages, text, and links",
+      "reading": "Reading PDF · {{percent}}%",
+      "passwordRequired": "Password required",
+      "needsAttention": "PDF rendering needs attention",
+      "ready": "Preview ready",
+      "waitingForRenderer": "Waiting for the verified PDF renderer",
+      "waitingForCompile": "Waiting for verified compile output"
+    }
+  },
+  "window": {
+    "fitWidth": "Fit width",
+    "fitHeight": "Fit to height",
+    "invert": "Invert colors",
+    "invertLabel": "Invert PDF colors",
+    "rotateLabel": "Rotate PDF clockwise",
+    "staleHeading": "Stale · non-current preview",
+    "staleCompiling": "A newer project revision is compiling. This is the last verified PDF for revision {{revision}}.",
+    "staleUnknownRevision": "unknown",
+    "staleCompileFailed": "{{detail}} The last verified PDF remains visible.",
+    "staleCompileFailedDetail": "The newer compile did not produce a usable PDF",
+    "staleIdentity": "This PDF does not represent the latest accepted compile identity.",
+    "crashedDetail": "Retry this viewer or compile again in the main window.",
+    "compilingTitle": "Compiling PDF",
+    "compileFailedTitle": "Compile failed",
+    "compileUnavailableTitle": "Compilation unavailable",
+    "artifactUnavailableTitle": "PDF unavailable",
+    "noVerifiedTitle": "No verified PDF",
+    "compilingDetail": "The verified PDF will appear when compilation completes.",
+    "noVerifiedDetail": "Compile the project in the main window. This window only displays output with a verified compile identity.",
+    "loadingTitle": "Loading PDF",
+    "loadingVerified": "Loading verified PDF…",
+    "restoringLast": "Restoring the last successfully loaded PDF…",
+    "retryingLoad": "Retrying PDF load…",
+    "unlocking": "Unlocking PDF…",
+    "rotating": "Rotating PDF…",
+    "retainedFailureDetail": "The latest PDF could not be loaded",
+    "artifactFailure": "The compiled PDF could not be verified or read. The last successfully loaded PDF is retained when available.",
+    "downloadStarted": "PDF download started.",
+    "downloadSaved": "PDF saved successfully.",
+    "downloadFailed": "The displayed PDF could not be saved."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "The PDF password was not accepted.",
+      "passwordRequired": "This PDF is password protected.",
+      "invalid": "The compiled output is not a valid PDF. Recompile or inspect the compile log.",
+      "unavailable": "The PDF renderer is unavailable in this window. Retry after restoring the window or restarting the app.",
+      "generic": "The PDF could not be loaded. Recompile the current revision and try again.",
+      "empty": "The compiled PDF is empty.",
+      "firstPage": "The PDF opened, but its first page could not be rendered."
+    },
+    "link": {
+      "blockedScheme": "This PDF link uses a blocked URL scheme."
+    },
+    "search": {
+      "failed": "Search could not read every page. Retry after reloading the PDF."
+    },
+    "outline": {
+      "empty": "This PDF does not contain a document outline.",
+      "failed": "The PDF outline could not be loaded.",
+      "destinationUnavailable": "That outline destination is unavailable.",
+      "blockedScheme": "This link uses a blocked URL scheme.",
+      "noDestination": "This outline item has no destination.",
+      "untitled": "Untitled section"
+    },
+    "status": {
+      "loading": "Loading PDF…"
+    },
+    "a11y": {
+      "document": "PDF document preview",
+      "page": "PDF page {{page}} of {{total}}",
+      "textLayer": "Selectable text for PDF page {{page}}"
+    },
+    "screenReader": {
+      "layer": "Screen reader view, page {{page}} of {{total}}",
+      "title": "Screen reader mode",
+      "pageLabel": "Page {{page}} of {{total}}",
+      "empty": "No readable text was found on this page."
+    }
+  }
+}

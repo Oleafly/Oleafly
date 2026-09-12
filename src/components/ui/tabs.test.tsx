@@ -8,12 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 function renderTabs(size?: "default" | "sm") {
   return render(
     <Tabs defaultValue="one">
-      <TabsList size={size} aria-label="Example views">
-        <TabsTrigger value="one">One</TabsTrigger>
-        <TabsTrigger value="two">Two</TabsTrigger>
+      <TabsList size={size} aria-label={"Example views"}>
+        <TabsTrigger value="one">{"One"}</TabsTrigger>
+        <TabsTrigger value="two">{"Two"}</TabsTrigger>
       </TabsList>
-      <TabsContent value="one">First panel</TabsContent>
-      <TabsContent value="two">Second panel</TabsContent>
+      <TabsContent value="one">{"First panel"}</TabsContent>
+      <TabsContent value="two">{"Second panel"}</TabsContent>
     </Tabs>,
   );
 }
@@ -56,9 +56,9 @@ describe("Tabs", () => {
   it("lets a trigger override the size it inherits from the list", () => {
     render(
       <Tabs defaultValue="one">
-        <TabsList size="sm" aria-label="Mixed views">
+        <TabsList size="sm" aria-label={"Mixed views"}>
           <TabsTrigger value="one" size="default">
-            One
+            {"One"}
           </TabsTrigger>
         </TabsList>
       </Tabs>,

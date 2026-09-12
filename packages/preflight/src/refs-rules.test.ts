@@ -22,7 +22,10 @@ describe("undefined citations", () => {
   it("flags the missing key in a multi-key cite", () => {
     const out = runRefsRules("\\cite{a,b}", ctx({ bibKeys: ["a"] }));
     expect(out.filter((f) => f.id === "refs-undefined-cite")).toHaveLength(1);
-    expect(out.find((f) => f.id === "refs-undefined-cite")?.title).toContain("b");
+    expect(out.find((f) => f.id === "refs-undefined-cite")?.title).toEqual({
+      key: "rules.refs-undefined-cite.title",
+      params: { key: "b" },
+    });
   });
   it("does not check citations when no .bib is loaded (avoids false positives)", () => {
     expect(has("\\cite{smith21}", ctx({ bibLoaded: false }), "refs-undefined-cite")).toBe(false);
@@ -75,8 +78,10 @@ describe("duplicate bib entries", () => {
     const out = runRefsRules("", ctx({ duplicateDois: [{ doi: "10.1/x", keys: ["smith21", "smithdup"] }] }));
     const f = out.find((x) => x.id === "refs-duplicate-bib");
     expect(f).toBeDefined();
-    expect(f!.title).toContain("smith21");
-    expect(f!.title).toContain("smithdup");
+    expect(f!.title).toEqual({
+      key: "rules.refs-duplicate-bib.title",
+      params: { keys: "smith21, smithdup" },
+    });
   });
   it("does not fire when there are no duplicates", () => {
     expect(runRefsRules("", ctx()).some((x) => x.id === "refs-duplicate-bib")).toBe(false);
@@ -166,7 +171,7 @@ describe("declared bibliography files", () => {
     );
     const finding = out.find((f) => f.id === "refs-bib-missing");
     expect(finding?.severity).toBe("error");
-    expect(finding?.title).toContain("references.bib");
+    expect(finding?.title.params?.file).toBe("references.bib");
   });
 
   it("accepts a resource that exists at the project root", () => {
@@ -196,7 +201,7 @@ describe("declared bibliography files", () => {
     );
     const findings = out.filter((f) => f.id === "refs-bib-missing");
     expect(findings).toHaveLength(1);
-    expect(findings[0].title).toContain("absent.bib");
+    expect(findings[0].title.params?.file).toBe("absent.bib");
   });
 
   it("ignores a remote resource and a commented declaration", () => {
@@ -323,7 +328,10 @@ describe("declared bibliography files", () => {
     );
     const finding = out.find((f) => f.id === "refs-bib-missing");
     expect(finding?.severity).toBe("error");
-    expect(finding?.title).toBe("Bibliography file not found: refs.v1");
+    expect(finding?.title).toEqual({
+      key: "rules.refs-bib-missing.title",
+      params: { file: "refs.v1" },
+    });
   });
 
   it("reports a bare \\addbibresource name even when its .bib file exists", () => {
@@ -331,9 +339,10 @@ describe("declared bibliography files", () => {
       "\\addbibresource{refs}",
       ctx({ projectFiles: ["main.tex", "refs.bib"] }),
     );
-    expect(out.find((f) => f.id === "refs-bib-missing")?.title).toBe(
-      "Bibliography file not found: refs",
-    );
+    expect(out.find((f) => f.id === "refs-bib-missing")?.title).toEqual({
+      key: "rules.refs-bib-missing.title",
+      params: { file: "refs" },
+    });
   });
 
   it("accepts an \\addbibresource that spells the whole file name", () => {

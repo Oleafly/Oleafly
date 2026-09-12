@@ -26,7 +26,7 @@ describe("starter personas", () => {
     expect(figure?.prompt).toMatch(/Never invent data/u);
     expect(
       STARTER_PERSONAS.some((persona) =>
-        `${persona.name}${persona.description}${persona.prompt}`.includes("—"),
+        `${persona.name}${persona.prompt}`.includes("—"),
       ),
     ).toBe(false);
   });

@@ -15,9 +15,11 @@ export interface AppContext {
   latexToolsEnabled?: boolean;
 }
 
+export type Message = string | ((ctx: AppContext) => string);
+
 export interface RailTabContribution {
   id: string;
-  label: string;
+  label: Message;
   icon: ComponentType<{ className?: string }>;
   section: "explore" | "review" | "assist";
   order: number;
@@ -33,11 +35,11 @@ export interface RailTabContribution {
 export interface CommandContribution {
   id: string;
   surfaces: readonly ("palette" | "omnibar")[];
-  group?: string;
-  label: string | ((ctx: AppContext) => string);
+  group?: Message;
+  label: Message;
   icon?: (ctx: AppContext) => ReactNode;
-  hint?: string;
-  keywords?: string;
+  hint?: Message;
+  keywords?: Message;
   slash?: readonly string[];
   when?: (ctx: AppContext) => boolean;
   order: number;
@@ -126,6 +128,27 @@ export function commandsFor(
   );
 }
 
+function resolveMessage(value: Message | undefined, ctx: AppContext): string {
+  if (value === undefined) return "";
+  return typeof value === "function" ? value(ctx) : value;
+}
+
+export function railTabLabel(tab: RailTabContribution, ctx: AppContext): string {
+  return resolveMessage(tab.label, ctx);
+}
+
 export function commandLabel(c: CommandContribution, ctx: AppContext): string {
-  return typeof c.label === "function" ? c.label(ctx) : c.label;
+  return resolveMessage(c.label, ctx);
+}
+
+export function commandGroup(c: CommandContribution, ctx: AppContext): string | undefined {
+  return c.group === undefined ? undefined : resolveMessage(c.group, ctx);
+}
+
+export function commandHint(c: CommandContribution, ctx: AppContext): string | undefined {
+  return c.hint === undefined ? undefined : resolveMessage(c.hint, ctx);
+}
+
+export function commandKeywords(c: CommandContribution, ctx: AppContext): string {
+  return resolveMessage(c.keywords, ctx);
 }

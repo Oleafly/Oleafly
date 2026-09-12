@@ -10,7 +10,7 @@ import { AiToolManager } from "./AiToolManager";
 const GROUPS: AvailableToolGroup[] = [
   {
     id: "project",
-    label: "Project tools",
+    kind: "project" as const,
     tools: [
       { name: "read_file", description: "Read a file's contents" },
       { name: "compile", description: "Compile the project to PDF" },
@@ -18,18 +18,18 @@ const GROUPS: AvailableToolGroup[] = [
   },
   {
     id: "mcp:papers",
-    label: "MCP",
+    kind: "mcp" as const,
     server: "Papers",
     tools: [{ name: "search_papers", description: "Search the connected papers server" }],
   },
   {
     id: "skills",
-    label: "Skills",
+    kind: "skills" as const,
     tools: [{ name: "load_skill", description: "Load an enabled skill" }],
   },
   {
     id: "figure",
-    label: "Figure",
+    kind: "figure" as const,
     tools: [{ name: "preview_figure", description: "" }],
   },
 ];

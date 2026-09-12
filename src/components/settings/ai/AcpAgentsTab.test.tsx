@@ -16,7 +16,23 @@ import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { agent, deferred, session } from "@/components/ai/acp/tests/ui-fixtures";
+import { initializeI18n } from "@/i18n";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { AcpAgentsTab } from "./AcpAgentsTab";
+
+await initializeI18n({
+  preference: "en",
+  systemLocale: async () => "en",
+  missingKeyMode: "throw",
+});
+
+const copy = enSettings.ai.agents;
+const withValues = (template: string, values: Record<string, string>) =>
+  Object.entries(values).reduce(
+    (text, [key, value]) => text.replace(`{{${key}}}`, value),
+    template,
+  );
 
 let catalog: AcpAgentStatus[];
 beforeEach(() => {
@@ -57,14 +73,16 @@ describe("ACP agent setup acceptance", () => {
   it("registers exactly the reviewed custom definition without installing or launching it", async () => {
     const ui = render(<AcpAgentsTab projectId="paper" />);
     openSection(ui, "custom");
-    expect(ui.getByRole("button", { name: "Register definition" })).toBeDisabled();
-    fireEvent.click(ui.getByRole("button", { name: "Use example" }));
-    expect((ui.getByLabelText("Register a custom agent") as HTMLTextAreaElement).value).toContain('"my-agent"');
+    expect(ui.getByRole("button", { name: copy.custom.submit })).toBeDisabled();
+    fireEvent.click(ui.getByRole("button", { name: copy.custom.useExample }));
+    expect((ui.getByLabelText(copy.custom.label) as HTMLTextAreaElement).value).toContain('"my-agent"');
     const definition = agent().definition;
     const json = JSON.stringify(definition);
-    fill(ui.getByLabelText("Register a custom agent"), json);
-    fireEvent.click(ui.getByRole("button", { name: "Register definition" }));
-    expect(await ui.findByRole("status")).toHaveTextContent("Research CLI is registered");
+    fill(ui.getByLabelText(copy.custom.label), json);
+    fireEvent.click(ui.getByRole("button", { name: copy.custom.submit }));
+    expect(await ui.findByRole("status")).toHaveTextContent(
+      withValues(copy.notice.registered, { name: "Research CLI" }),
+    );
     expect(acpRegister).toHaveBeenCalledExactlyOnceWith(json);
     expect(ui.getByRole("heading", { name: "Research CLI" })).toBeInTheDocument();
     expect(acpInstall).not.toHaveBeenCalled();
@@ -75,13 +93,13 @@ describe("ACP agent setup acceptance", () => {
     vi.mocked(acpRegister).mockRejectedValueOnce(new Error("The package version must be pinned."));
     const ui = render(<AcpAgentsTab />);
     openSection(ui, "custom");
-    const input = ui.getByLabelText("Register a custom agent");
+    const input = ui.getByLabelText(copy.custom.label);
     const json = JSON.stringify(agent().definition);
     fill(input, json);
-    fireEvent.click(ui.getByRole("button", { name: "Register definition" }));
+    fireEvent.click(ui.getByRole("button", { name: copy.custom.submit }));
     expect(await ui.findByRole("alert")).toHaveTextContent("The package version must be pinned.");
     expect(input).toHaveValue(json);
-    fireEvent.click(ui.getByRole("button", { name: "Register definition" }));
+    fireEvent.click(ui.getByRole("button", { name: copy.custom.submit }));
     await ui.findByRole("status");
     expect(ui.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -94,19 +112,27 @@ describe("ACP agent setup acceptance", () => {
     await expandAgent(ui);
     fireEvent.click(ui.getByTestId("acp-agent-install-fixture"));
     const dialog = await ui.findByRole("dialog");
-    expect(dialog).toHaveTextContent("Install Research CLI bridge 1.2.3");
+    expect(dialog).toHaveTextContent(
+      withValues(copy.install.title, { name: "Research CLI", version: "1.2.3" }),
+    );
     expect(dialog).toHaveTextContent("research-fixture@1.2.3");
     expect(acpInstall).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: enCommon.actions.cancel }));
     await waitFor(() => expect(ui.queryByRole("dialog")).not.toBeInTheDocument());
     fireEvent.click(ui.getByTestId("acp-agent-install-fixture"));
-    fireEvent.click(within(await ui.findByRole("dialog")).getByRole("button", { name: "Install" }));
-    expect(ui.getByRole("button", { name: "Installing" })).toBeDisabled();
+    fireEvent.click(
+      within(await ui.findByRole("dialog")).getByRole("button", { name: copy.install.confirm }),
+    );
+    expect(ui.getByRole("button", { name: copy.install.installing })).toBeDisabled();
     await act(async () => install.reject(new Error("Download interrupted")));
     expect(ui.getByRole("alert")).toHaveTextContent("Download interrupted");
     expect(ui.getByRole("dialog")).toBeInTheDocument();
-    fireEvent.click(within(ui.getByRole("dialog")).getByRole("button", { name: "Install" }));
-    expect(await ui.findByRole("status")).toHaveTextContent("Research CLI is installed");
+    fireEvent.click(
+      within(ui.getByRole("dialog")).getByRole("button", { name: copy.install.confirm }),
+    );
+    expect(await ui.findByRole("status")).toHaveTextContent(
+      withValues(copy.notice.installed, { name: "Research CLI" }),
+    );
     expect(acpInstall).toHaveBeenCalledTimes(2);
     expect(acpInstall).toHaveBeenLastCalledWith("fixture");
     expect(acpRegister).not.toHaveBeenCalled();
@@ -121,16 +147,18 @@ describe("ACP agent setup acceptance", () => {
     ]);
     const ui = render(<AcpAgentsTab />);
     openSection(ui, "registry");
-    fill(ui.getByLabelText("Find an ACP agent"), "research");
-    fireEvent.click(ui.getByRole("button", { name: "Search" }));
+    fill(ui.getByLabelText(copy.registry.searchLabel), "research");
+    fireEvent.click(ui.getByRole("button", { name: copy.registry.search }));
     await ui.findByText("Unverified binary");
-    const buttons = ui.getAllByRole("button", { name: "Register agent" });
+    const buttons = ui.getAllByRole("button", { name: copy.registry.register });
     expect(buttons[0]).toBeDisabled();
     expect(ui.queryByText(/"research-fixture@1.2.3"/)).not.toBeInTheDocument();
-    fireEvent.click(ui.getByRole("button", { name: "Show distribution" }));
-    expect(ui.getByRole("button", { name: "Hide distribution" })).toBeInTheDocument();
+    fireEvent.click(ui.getByRole("button", { name: copy.registry.showDistribution }));
+    expect(
+      ui.getByRole("button", { name: copy.registry.hideDistribution }),
+    ).toBeInTheDocument();
     fireEvent.click(buttons[1]);
-    expect(await ui.findByRole("button", { name: "Registered" })).toBeDisabled();
+    expect(await ui.findByRole("button", { name: copy.registry.registered })).toBeDisabled();
     expect(acpRegistrySearch).toHaveBeenCalledExactlyOnceWith("research");
     expect(acpRegister).toHaveBeenCalledExactlyOnceWith(JSON.stringify(definition));
     expect(acpInstall).not.toHaveBeenCalled();
@@ -141,11 +169,11 @@ describe("ACP agent setup acceptance", () => {
     vi.mocked(acpRemoveAgent).mockRejectedValueOnce("Disconnect its sessions first.").mockImplementation(async (id) => { catalog = catalog.filter((entry) => entry.definition.id !== id); });
     const ui = render(<AcpAgentsTab />);
     const card = await expandAgent(ui);
-    const remove = within(card).getByRole("button", { name: "Remove" });
+    const remove = within(card).getByRole("button", { name: enCommon.actions.remove });
     fireEvent.click(remove);
     expect(await ui.findByRole("alert")).toHaveTextContent("Disconnect its sessions first.");
     fireEvent.click(remove);
-    expect(await ui.findByRole("status")).toHaveTextContent("Installed files and saved conversations remain available.");
+    expect(await ui.findByRole("status")).toHaveTextContent(copy.notice.removed);
     expect(acpRemoveAgent).toHaveBeenLastCalledWith("fixture");
     expect(ui.queryByRole("heading", { name: "Research CLI" })).not.toBeInTheDocument();
     expect(useAcpSessionsStore.getState().sessions.saved).toEqual(session());
@@ -155,14 +183,16 @@ describe("ACP agent setup acceptance", () => {
     useTerminalsStore.getState().setProject("paper");
     const initial = useTerminalsStore.getState().tabs;
     const ui = render(<AcpAgentsTab projectId="paper" />);
-    fireEvent.click(ui.getByRole("button", { name: "Open sign-in terminal" }));
+    fireEvent.click(ui.getByRole("button", { name: copy.openSignInTerminal }));
     await waitFor(() => expect(useTerminalsStore.getState().projectId).toBe("paper"));
     expect(useTerminalsStore.getState().tabs).toHaveLength(initial.length + 1);
     expect(useTerminalsStore.getState().activeId).not.toBe(initial[0].id);
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
     expect(acpStart).not.toHaveBeenCalled();
     ui.rerender(<AcpAgentsTab />);
-    expect(within(ui.container).queryByRole("button", { name: "Open sign-in terminal" })).not.toBeInTheDocument();
+    expect(
+      within(ui.container).queryByRole("button", { name: copy.openSignInTerminal }),
+    ).not.toBeInTheDocument();
   });
 
   it("names the vendor CLI it found instead of reporting the agent as not installed", async () => {
@@ -182,7 +212,9 @@ describe("ACP agent setup acceptance", () => {
     expect(card).not.toHaveTextContent("Not installed");
     fireEvent.click(within(card).getByRole("button", { expanded: false }));
     expect(card).toHaveTextContent("claude auth login");
-    expect(within(card).getByTestId("acp-agent-install-claude")).toHaveTextContent("Install bridge");
+    expect(within(card).getByTestId("acp-agent-install-claude")).toHaveTextContent(
+      copy.installBridge,
+    );
     expect(acpCatalog).toHaveBeenCalledWith(true);
   });
 

@@ -1,0 +1,20 @@
+{
+  "import": {
+    "defaultTarget": "Used inside other sentences when the bibliography file has no known name",
+    "endnote": {
+      "title": "Card heading listing the three supported bibliography formats. Keep the format names verbatim."
+    },
+    "zotero": {
+      "title": "Card heading for the Zotero import path. Keep the product name verbatim."
+    }
+  },
+  "tabs": {
+    "citations": "Tab listing the project's bibliography entries",
+    "results": "Tab listing the locations found by the last Find References run",
+    "symbols": "Tab listing labels, commands, and environments the project defines"
+  },
+  "trees": {
+    "citations": "Accessible name of the citation tree",
+    "symbols": "Accessible name of the symbol tree"
+  }
+}

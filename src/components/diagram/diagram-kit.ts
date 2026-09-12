@@ -28,7 +28,7 @@ function usePrimaryColor(): string {
   return useSettingsStore((s) => s.accentColor);
 }
 
-export const KIT: DiagramKit = {
+export const KIT: Omit<DiagramKit, "t"> = {
   Button,
   Input,
   Textarea,

@@ -13,10 +13,31 @@ import {
 } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
+import { i18n } from "@/i18n";
 
-function packageErrorMessage(error: unknown, fallback: string): string {
+export type PackageErrorKind = "install" | "read" | "remove";
+
+export interface PackageError {
+  kind: PackageErrorKind;
+  name: string;
+  detail: string;
+}
+
+function packageError(error: unknown, kind: PackageErrorKind, name = ""): PackageError {
   const detail = error instanceof Error ? error.message : typeof error === "string" ? error : "";
-  return detail.trim() ? `${fallback} ${detail.trim()}` : fallback;
+  return { kind, name, detail: detail.trim() };
+}
+
+export function packageErrorMessage(error: PackageError): string {
+  const message =
+    error.kind === "read"
+      ? i18n.t(($) => $.settings.engine.packages.error.read)
+      : error.kind === "install"
+        ? i18n.t(($) => $.settings.engine.packages.error.install, { name: error.name })
+        : i18n.t(($) => $.settings.engine.packages.error.remove, { name: error.name });
+  return error.detail
+    ? i18n.t(($) => $.settings.engine.packages.error.withDetail, { message, detail: error.detail })
+    : message;
 }
 
 let packageReadRequest = 0;
@@ -46,7 +67,7 @@ interface EngineStore {
   systemInstalled: string[];
   packageNotice: string | null;
   busyPkg: string | null;
-  packageError: string | null;
+  packageError: PackageError | null;
   loaded: boolean;
   refresh: () => Promise<void>;
   ensureLoaded: () => Promise<void>;
@@ -124,7 +145,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
           installed: [],
           userInstalled: [],
           systemInstalled: [],
-          packageError: packageErrorMessage(error, "Could not read the installed packages."),
+          packageError: packageError(error, "read"),
         });
       }
     }
@@ -163,7 +184,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       });
       const info = await installTinytex();
       set({ info, partialDownloadBytes: 0 });
-      toast.success("TinyTeX installed.");
+      toast.success(i18n.t(($) => $.core.tinytex.installed));
       void get().refreshPackages();
       if (get().compileQueuedDuringInstall) {
         set({ compileQueuedDuringInstall: false, installWaitNoticeOpen: false });
@@ -177,8 +198,8 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       set({ partialDownloadBytes: state?.partial_download_bytes ?? 0 });
       // The backend message already says whether progress was kept; show it
       // verbatim instead of a generic apology.
-      toast.error(detail || "Could not install TinyTeX.", {
-        label: "Install guide",
+      toast.error(detail || i18n.t(($) => $.core.tinytex.installFailed), {
+        label: i18n.t(($) => $.core.tinytex.installGuide),
         onClick: () =>
           void import("@tauri-apps/plugin-shell").then((m) =>
             m.open("https://yihui.org/tinytex/"),
@@ -194,12 +215,12 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
     if (!isTauri()) return;
     try {
       await deleteTinytex();
-      toast.success("Removed TinyTeX");
+      toast.success(i18n.t(($) => $.core.tinytex.removed));
       set({ installed: [], userInstalled: [], systemInstalled: [], partialDownloadBytes: 0 });
       void get().refresh();
     } catch (e) {
       void logError("delete tinytex", e);
-      toast.error("Could not remove TinyTeX");
+      toast.error(i18n.t(($) => $.core.tinytex.removeFailed));
     }
   },
 
@@ -217,9 +238,9 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       await get().refreshPackages();
     } catch (e) {
       void logError("tlmgr install", e);
-      const message = packageErrorMessage(e, `Could not install ${name}.`);
-      set({ packageError: message });
-      toast.error(message);
+      const failure = packageError(e, "install", name);
+      set({ packageError: failure });
+      toast.error(packageErrorMessage(failure));
     } finally {
       set({ busyPkg: null });
     }
@@ -235,9 +256,9 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       await get().refreshPackages();
     } catch (e) {
       void logError("tlmgr remove", e);
-      const message = packageErrorMessage(e, `Could not remove ${name}.`);
-      set({ packageError: message });
-      toast.error(message);
+      const failure = packageError(e, "remove", name);
+      set({ packageError: failure });
+      toast.error(packageErrorMessage(failure));
     } finally {
       set({ busyPkg: null });
     }
@@ -257,12 +278,14 @@ export function installPhaseLabel(
 ): string {
   switch (phase) {
     case "download":
-      return progress != null ? `Downloading… ${progress}%` : "Downloading…";
+      return progress != null
+        ? i18n.t(($) => $.core.tinytex.phase.downloadingPercent, { progress })
+        : i18n.t(($) => $.core.tinytex.phase.downloading);
     case "extract":
-      return "Unpacking…";
+      return i18n.t(($) => $.core.tinytex.phase.unpacking);
     case "packages":
-      return "Adding packages…";
+      return i18n.t(($) => $.core.tinytex.phase.addingPackages);
     default:
-      return "Installing…";
+      return i18n.t(($) => $.core.tinytex.phase.installing);
   }
 }

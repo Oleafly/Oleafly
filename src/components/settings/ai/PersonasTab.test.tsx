@@ -3,6 +3,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AppConfig } from "@/lib/tauri";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { STARTER_PERSONAS } from "@/lib/starter-personas";
 import { PersonasTab } from "./PersonasTab";
 
@@ -39,6 +41,9 @@ function configWithPersona(): AppConfig {
   } as unknown as AppConfig;
 }
 
+const persona = enSettings.ai.personas;
+const named = (template: string, name: string) => template.replace("{{name}}", name);
+
 describe("PersonasTab", () => {
   it("shows all starter personas as installed on a fresh seeded config", () => {
     render(
@@ -49,15 +54,13 @@ describe("PersonasTab", () => {
       />,
     );
 
-    expect(
-      screen.getByText(/Reusable instructions for how the assistant should work/u),
-    ).toBeInTheDocument();
+    expect(screen.getByText(persona.description)).toBeInTheDocument();
     expect(screen.getByText("Research Writer")).toBeInTheDocument();
     expect(screen.getByText("Document Editor")).toBeInTheDocument();
     expect(screen.getByText("Critical Reviewer")).toBeInTheDocument();
     expect(screen.getByText("Draw a Figure")).toBeInTheDocument();
     expect(screen.queryByTestId("ai-personas-empty")).toBeNull();
-    expect(screen.queryByText("Suggested personas")).toBeNull();
+    expect(screen.queryByText(persona.suggestedTitle)).toBeNull();
     expect(screen.queryByRole("button", { name: /Add .* persona/u })).toBeNull();
   });
 
@@ -70,10 +73,10 @@ describe("PersonasTab", () => {
       />,
     );
 
-    expect(screen.getByTestId("ai-personas-empty")).toHaveTextContent(
-      "No personas added yet.",
-    );
-    expect(screen.getByRole("button", { name: "Add Draw a Figure persona" })).toBeVisible();
+    expect(screen.getByTestId("ai-personas-empty")).toHaveTextContent(persona.empty);
+    expect(
+      screen.getByRole("button", { name: named(persona.addStarterNamed, "Draw a Figure") }),
+    ).toBeVisible();
   });
 
   it("explains the instructions when creating a custom persona", () => {
@@ -85,14 +88,10 @@ describe("PersonasTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Create persona" }));
+    fireEvent.click(screen.getByRole("button", { name: persona.create }));
 
-    expect(
-      screen.getByText(
-        "Set reusable instructions for how the assistant should work.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Instructions")).toBeInTheDocument();
+    expect(screen.getByText(persona.form.description)).toBeInTheDocument();
+    expect(screen.getByLabelText(persona.form.instructions)).toBeInTheDocument();
   });
 
   it("adds a starter persona to the saved configuration", async () => {
@@ -106,7 +105,7 @@ describe("PersonasTab", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Add Research Writer persona" }),
+      screen.getByRole("button", { name: named(persona.addStarterNamed, "Research Writer") }),
     );
 
     await waitFor(() => expect(persist).toHaveBeenCalledOnce());
@@ -141,7 +140,7 @@ describe("PersonasTab", () => {
     render(<PersonasTab cfg={cfg} persist={vi.fn()} setMsg={vi.fn()} />);
 
     expect(
-      screen.queryByRole("button", { name: "Add Critical Reviewer persona" }),
+      screen.queryByRole("button", { name: named(persona.addStarterNamed, "Critical Reviewer") }),
     ).toBeNull();
     expect(screen.getByText("Critical Reviewer")).toBeInTheDocument();
   });
@@ -150,9 +149,11 @@ describe("PersonasTab", () => {
     const persist = vi.fn().mockResolvedValue(undefined);
     render(<PersonasTab cfg={emptyConfig()} persist={persist} setMsg={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Create persona" }));
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Methods Coach" } });
-    fireEvent.change(screen.getByLabelText("Instructions"), {
+    fireEvent.click(screen.getByRole("button", { name: persona.create }));
+    fireEvent.change(screen.getByLabelText(enCommon.labels.name), {
+      target: { value: "Methods Coach" },
+    });
+    fireEvent.change(screen.getByLabelText(persona.form.instructions), {
       target: { value: "Check the methods section for reproducibility." },
     });
     fireEvent.click(screen.getByTestId("persona-submit"));
@@ -175,9 +176,13 @@ describe("PersonasTab", () => {
     const persist = vi.fn().mockResolvedValue(undefined);
     render(<PersonasTab cfg={configWithPersona()} persist={persist} setMsg={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit persona Plain Editor" }));
-    expect(screen.getByLabelText("Name")).toHaveValue("Plain Editor");
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Direct Editor" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: named(persona.editNamed, "Plain Editor") }),
+    );
+    expect(screen.getByLabelText(enCommon.labels.name)).toHaveValue("Plain Editor");
+    fireEvent.change(screen.getByLabelText(enCommon.labels.name), {
+      target: { value: "Direct Editor" },
+    });
     fireEvent.click(screen.getByTestId("persona-submit"));
 
     await waitFor(() => expect(persist).toHaveBeenCalledOnce());
@@ -194,20 +199,24 @@ describe("PersonasTab", () => {
     const persist = vi.fn().mockRejectedValue(new Error("disk unavailable"));
     render(<PersonasTab cfg={configWithPersona()} persist={persist} setMsg={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit persona Plain Editor" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: named(persona.editNamed, "Plain Editor") }),
+    );
     fireEvent.click(screen.getByTestId("persona-submit"));
 
-    expect(await screen.findByText("Error: disk unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("dialog", { name: "Edit persona" })).toBeInTheDocument();
+    expect(await screen.findByText("disk unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: persona.form.editTitle })).toBeInTheDocument();
   });
 
   it("deletes an installed persona after confirmation", async () => {
     const persist = vi.fn().mockResolvedValue(undefined);
     render(<PersonasTab cfg={configWithPersona()} persist={persist} setMsg={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete persona Plain Editor" }));
-    const confirmation = screen.getByRole("alertdialog", { name: "Delete persona" });
-    fireEvent.click(within(confirmation).getByRole("button", { name: "Delete" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: named(persona.deleteNamed, "Plain Editor") }),
+    );
+    const confirmation = screen.getByRole("alertdialog", { name: persona.delete });
+    fireEvent.click(within(confirmation).getByRole("button", { name: enCommon.actions.delete }));
 
     await waitFor(() => expect(persist).toHaveBeenCalledOnce());
     expect(persist).toHaveBeenCalledWith(
@@ -225,14 +234,16 @@ describe("PersonasTab", () => {
       <PersonasTab cfg={configWithPersona()} persist={deletePersist} setMsg={deleteMessage} />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete persona Plain Editor" }));
     fireEvent.click(
-      within(screen.getByRole("alertdialog", { name: "Delete persona" })).getByRole("button", {
-        name: "Delete",
+      screen.getByRole("button", { name: named(persona.deleteNamed, "Plain Editor") }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("alertdialog", { name: persona.delete })).getByRole("button", {
+        name: enCommon.actions.delete,
       }),
     );
     await waitFor(() =>
-      expect(deleteMessage).toHaveBeenCalledWith({ ok: false, text: "Error: cannot delete" }),
+      expect(deleteMessage).toHaveBeenCalledWith({ ok: false, text: "cannot delete" }),
     );
     unmount();
 
@@ -244,11 +255,16 @@ describe("PersonasTab", () => {
         setMsg={starterMessage}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Add Research Writer persona" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: named(persona.addStarterNamed, "Research Writer") }),
+    );
     await waitFor(() =>
       expect(starterMessage).toHaveBeenCalledWith({
         ok: false,
-        text: "Could not add Research Writer. Error: cannot save",
+        text: named(persona.addStarterFailed, "Research Writer").replace(
+          "{{error}}",
+          "cannot save",
+        ),
       }),
     );
   });

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
 import {
   Dialog,
@@ -10,33 +11,10 @@ import { cn } from "@/lib/utils";
 
 export type ProjectKind = "research" | "import" | "template";
 
-const KINDS: {
-  id: ProjectKind;
-  title: string;
-  description: string;
-  thumbnail: string;
-}[] = [
-  {
-    id: "research",
-    title: "Research project",
-    description:
-      "A study folder with sections, sources and review notes, and a first task that frames the question.",
-    thumbnail: "/project-kind/research-project-light.webp",
-  },
-  {
-    id: "import",
-    title: "Import a project",
-    description:
-      "Continue a manuscript you already have: an archive, a Word or Markdown draft, or a GitHub repository.",
-    thumbnail: "/project-kind/import-project-light.webp",
-  },
-  {
-    id: "template",
-    title: "Use a template",
-    description:
-      "Begin from a prepared layout for a journal article, thesis, report, poster or talk.",
-    thumbnail: "/project-kind/use-template-light.webp",
-  },
+const KINDS: { id: ProjectKind; thumbnail: string }[] = [
+  { id: "research", thumbnail: "/project-kind/research-project-light.webp" },
+  { id: "import", thumbnail: "/project-kind/import-project-light.webp" },
+  { id: "template", thumbnail: "/project-kind/use-template-light.webp" },
 ];
 
 export function ProjectKindChooser({
@@ -50,6 +28,21 @@ export function ProjectKindChooser({
   onClose: () => void;
   onChoose: (kind: ProjectKind) => void;
 }) {
+  const { t } = useTranslation(["library"]);
+  const copy: Record<ProjectKind, { title: string; description: string }> = {
+    research: {
+      title: t(($) => $.library.kinds.research.title),
+      description: t(($) => $.library.kinds.research.description),
+    },
+    import: {
+      title: t(($) => $.library.kinds.import.title),
+      description: t(($) => $.library.kinds.import.description),
+    },
+    template: {
+      title: t(($) => $.library.kinds.template.title),
+      description: t(($) => $.library.kinds.template.description),
+    },
+  };
   return (
     <Dialog
       open={open}
@@ -70,10 +63,8 @@ export function ProjectKindChooser({
         className="max-w-3xl gap-5"
       >
         <DialogHeader>
-          <DialogTitle>Start a new piece of work</DialogTitle>
-          <DialogDescription>
-            Choose how this manuscript begins. Every part of it stays yours to change.
-          </DialogDescription>
+          <DialogTitle>{t(($) => $.library.kinds.title)}</DialogTitle>
+          <DialogDescription>{t(($) => $.library.kinds.description)}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-3">
           {KINDS.map((kind) => (
@@ -101,7 +92,7 @@ export function ProjectKindChooser({
               <span className="flex min-w-0 flex-1 flex-col gap-1.5 p-3.5">
                 <span className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">
-                    {kind.title}
+                    {copy[kind.id].title}
                   </span>
                   <ArrowRight
                     aria-hidden="true"
@@ -109,7 +100,7 @@ export function ProjectKindChooser({
                   />
                 </span>
                 <span className="text-xs leading-relaxed text-muted-foreground">
-                  {kind.description}
+                  {copy[kind.id].description}
                 </span>
               </span>
             </button>

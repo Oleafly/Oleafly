@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Bookmark, BookmarkCheck, GitFork } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,23 @@ export const BOOK_COLOR_OPTIONS: { name: string; hex: string }[] = [
   { name: "Mint", hex: "#98f5e1" },
   { name: "Spring", hex: "#b9fbc0" },
 ];
+
+export function useBookColorLabels(): Record<string, string> {
+  const { t } = useTranslation(["library"]);
+  return {
+    Blue: t(($) => $.library.colors.blue),
+    Cream: t(($) => $.library.colors.cream),
+    Peach: t(($) => $.library.colors.peach),
+    Rose: t(($) => $.library.colors.rose),
+    Pink: t(($) => $.library.colors.pink),
+    Lilac: t(($) => $.library.colors.lilac),
+    Sky: t(($) => $.library.colors.sky),
+    Aqua: t(($) => $.library.colors.aqua),
+    Cyan: t(($) => $.library.colors.cyan),
+    Mint: t(($) => $.library.colors.mint),
+    Spring: t(($) => $.library.colors.spring),
+  };
+}
 
 function shade(hex: string, amt: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -84,6 +102,7 @@ export function Book({
   preview?: string | null;
   onPreviewRequest?: () => void;
 }) {
+  const { t } = useTranslation(["library"]);
   const coverColor = color ?? DEFAULT_BOOK_COLOR;
   const ink = textColor ?? (isLight(coverColor) ? "#1f2937" : "#ffffff");
   const dark = shade(coverColor, -42);
@@ -112,7 +131,7 @@ export function Book({
       <button
         type="button"
         tabIndex={0}
-        aria-label={openLabel ?? `Open ${title}`}
+        aria-label={openLabel ?? t(($) => $.library.projects.open, { name: title })}
         onClick={onClick}
         onMouseOver={onPreviewRequest}
         onFocus={onPreviewRequest}
@@ -193,7 +212,11 @@ export function Book({
             <button
               type="button"
               onClick={onStarToggle}
-              aria-label={starred ? "Remove from favorites" : "Add to favorites"}
+              aria-label={
+                starred
+                  ? t(($) => $.library.projects.favoriteRemove)
+                  : t(($) => $.library.projects.favoriteAdd)
+              }
               className={cn(
                 "flex size-7 items-center justify-center rounded-md transition-all group-hover:bg-black/15 group-hover:backdrop-blur-sm hover:bg-black/25",
                 starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -217,10 +240,13 @@ export function Book({
             {forkedFrom ? (
               <>
                 <span aria-hidden>•</span>
-                <Tooltip label={`Forked from ${forkedFrom}`} side="top">
+                <Tooltip
+                  label={t(($) => $.library.projects.forkedFrom, { name: forkedFrom })}
+                  side="top"
+                >
                   <span
                     role="img"
-                    aria-label={`Forked from ${forkedFrom}`}
+                    aria-label={t(($) => $.library.projects.forkedFrom, { name: forkedFrom })}
                     className="inline-flex"
                   >
                     <GitFork aria-hidden className="size-3" />

@@ -1,0 +1,123 @@
+{
+  "accents": {
+    "blue": "Accent colour swatch name in Appearance settings, not a noun for the colour itself",
+    "green": "Accent colour swatch name in Appearance settings",
+    "orange": "Accent colour swatch name in Appearance settings",
+    "purple": "Accent colour swatch name in Appearance settings",
+    "rose": "Accent colour swatch name in Appearance settings",
+    "teal": "Accent colour swatch name in Appearance settings"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Status chip: the agent's ACP bridge package still has to be installed",
+      "cliMissing": "Status chip: the agent's command line tool was not found on PATH",
+      "ready": "Status chip: the external coding agent can be started",
+      "unavailable": "Status chip: this agent cannot run on this machine at all"
+    }
+  },
+  "aiBudget": {
+    "approximateCost": "Marks a money amount as an estimate, for example \"~$0.02\""
+  },
+  "citeOleafly": {
+    "undo": "Toast button that removes the citation entry that was just added"
+  },
+  "compatibility": {
+    "blockerFinding_one": "The whole message is the finding title supplied by the compatibility scanner; keep it as the bare placeholder",
+    "chooseEngine": "Toast button that opens the compile engine picker"
+  },
+  "compile": {
+    "retry": "Toast button that starts the compile again after a failure"
+  },
+  "developer": {
+    "nav": "Settings sidebar entry for the debug-build-only developer panel"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "File type filter shown in the operating system save dialog",
+      "zipArchive": "File type filter shown in the operating system save dialog"
+    }
+  },
+  "export": {
+    "saved": "{{kind}} is a format name such as PDF or PNG and is never translated",
+    "showInFolder": "Toast button that reveals the exported file in Finder or File Explorer"
+  },
+  "fonts": {
+    "systemDefault": "Font picker option meaning the operating system's own font is used",
+    "terminalDefault": "Font picker option meaning the terminal's own default font stack is used"
+  },
+  "inlineAi": {
+    "concise": "Inline editor action that shortens the selected text",
+    "expand": "Inline editor action that adds detail to the selected text, not a tree expand",
+    "fixSource": "Inline editor action that repairs LaTeX or Typst syntax in the selection",
+    "grammar": "Inline editor action that corrects spelling and grammar in the selection",
+    "improve": "Inline editor action that rewrites the selected text more clearly",
+    "translate": "Inline editor action that translates the selected text into English"
+  },
+  "intelligence": {
+    "disposed": "Shown when the analysis worker was already shut down before the request",
+    "disposedDuringRequest": "Shown when the analysis worker shut down while the request was in flight",
+    "staleSnapshot": "Shown when the worker no longer holds the analysis the panel asked about"
+  },
+  "mermaid": {
+    "diagram": "Screen-reader name for a rendered Mermaid diagram",
+    "rendering": "Screen-reader status while a Mermaid diagram is still drawing"
+  },
+  "navigation": {
+    "edits_one": "Fragment used only inside the renamed message; never shown on its own",
+    "files_one": "Fragment used only inside the renamed message; never shown on its own",
+    "renamed": "Composed from the edits and files fragments through i18next nesting; keep the $t(...) calls"
+  },
+  "pandoc": {
+    "installGuide": "Toast button that opens the pandoc installation page in a browser"
+  },
+  "projectDiagnostics": {
+    "beginIsHere": "{{command}} is a literal LaTeX command such as \\begin{figure}; keep it verbatim.",
+    "definedHere": "Editor diagnostic pointing at another place the same name is defined.",
+    "kinds": {
+      "anchor": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "asset": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "bibentry": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "bibliography": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "environment": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "file": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "glossary": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "import": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "include": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "label": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "link": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "macro": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence.",
+      "section": "Noun naming a kind of document symbol or file reference, read inside the surrounding diagnostic sentence."
+    },
+    "possibleTarget": "Editor diagnostic listing one of several files a reference could point at."
+  },
+  "skillGroups": {
+    "shelf": "Heading for the skills Oleafly ships, as opposed to the ones the reader wrote",
+    "user": "Heading for the skills the reader added themselves"
+  },
+  "theme": {
+    "unknownProperty": "Substituted into cssPropertyNotAllowed when the offending property name cannot be read"
+  },
+  "tinytex": {
+    "installGuide": "Toast button that opens the TinyTeX installation page in a browser",
+    "phase": {
+      "addingPackages": "Progress label while TinyTeX installs its LaTeX packages",
+      "downloading": "Progress label while the TinyTeX archive downloads",
+      "installing": "Generic progress label when the install phase is not known",
+      "unpacking": "Progress label while the downloaded TinyTeX archive is extracted"
+    }
+  },
+  "toolActivity": {
+    "status": {
+      "cancelled": "Tool call status: the reader stopped the run",
+      "declined": "Tool call status: the reader refused the approval prompt",
+      "done": "Tool call status: the call finished successfully",
+      "failed": "Tool call status: the call ended with an error",
+      "interrupted": "Tool call status: the run was cut short by something other than the reader",
+      "running": "Tool call status: the call is still in flight",
+      "timedOut": "Tool call status: the call passed its deadline"
+    }
+  },
+  "ui": {
+    "transparent": "Colour-picker option that clears the colour instead of choosing one"
+  }
+}

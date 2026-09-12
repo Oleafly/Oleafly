@@ -4,17 +4,21 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   findUpdate: vi.fn(), installUpdate: vi.fn(), close: vi.fn(), invoke: vi.fn(),
-  open: vi.fn(), celebrate: vi.fn(), logError: vi.fn(),
+  open: vi.fn(), celebrate: vi.fn(), logError: vi.fn(), setTitle: vi.fn(),
 }));
 vi.mock("@/lib/updater", () => ({ findUpdate: mocks.findUpdate, installUpdate: mocks.installUpdate }));
-vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ close: mocks.close }) }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({ close: mocks.close, setTitle: mocks.setTitle }),
+}));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: mocks.open }));
 vi.mock("@/lib/confetti", () => ({ celebrate: mocks.celebrate }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/tauri", () => ({ appVersion: async () => "0.4.0" }));
 vi.mock("@/components/ui/markdown", () => ({ Markdown: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
 import { UpdateWindow } from "./UpdateWindow";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -22,6 +26,7 @@ beforeEach(() => {
   mocks.invoke.mockResolvedValue(true);
   mocks.findUpdate.mockResolvedValue({ version: "0.4.1", currentVersion: "0.4.0", body: "Release notes" });
   mocks.close.mockResolvedValue(undefined);
+  mocks.setTitle.mockResolvedValue(undefined);
   mocks.logError.mockResolvedValue(undefined);
 });
 afterEach(() => { cleanup(); window.history.replaceState({}, "", "/"); });
@@ -34,15 +39,15 @@ it("keeps installation single-flight and restores close controls after failure",
     return new Promise((_resolve, reject) => { fail = reject; });
   });
   render(<UpdateWindow />);
-  const install = await screen.findByRole("button", { name: "Update now" });
+  const install = await screen.findByRole("button", { name: enShell.updateChecker.updateNow });
   act(() => { fireEvent.click(install); fireEvent.click(install); });
   expect(mocks.installUpdate).toHaveBeenCalledOnce();
-  expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: enCommon.actions.close })).not.toBeInTheDocument();
   act(() => progress(100));
-  expect(screen.getByText("Installing…")).toBeInTheDocument();
+  expect(screen.getByText(enShell.updateChecker.installing)).toBeInTheDocument();
   await act(async () => fail(new Error("save failed")));
   expect(await screen.findByText("Error: save failed")).toBeInTheDocument();
-  fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: enCommon.actions.close })[0]);
   expect(mocks.close).toHaveBeenCalledOnce();
 });
 
@@ -66,7 +71,7 @@ it("shows check errors with a route to the release download", async () => {
   mocks.findUpdate.mockRejectedValue(new Error("service unavailable"));
   render(<UpdateWindow />);
   expect(await screen.findByText("Error: service unavailable")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "View release" }));
+  fireEvent.click(screen.getByRole("button", { name: enShell.updateWindow.viewRelease }));
   expect(mocks.open).toHaveBeenCalledWith("https://github.com/Oleafly/Oleafly/releases/latest");
   expect(mocks.installUpdate).not.toHaveBeenCalled();
 });
@@ -74,8 +79,8 @@ it("shows check errors with a route to the release download", async () => {
 it("offers a download for package installations that cannot update in place", async () => {
   mocks.invoke.mockResolvedValue(false);
   render(<UpdateWindow />);
-  const download = await screen.findByRole("button", { name: "View release" });
-  expect(screen.queryByRole("button", { name: "Update now" })).not.toBeInTheDocument();
+  const download = await screen.findByRole("button", { name: enShell.updateWindow.viewRelease });
+  expect(screen.queryByRole("button", { name: enShell.updateChecker.updateNow })).not.toBeInTheDocument();
   fireEvent.click(download);
   expect(mocks.open).toHaveBeenCalledOnce();
 });

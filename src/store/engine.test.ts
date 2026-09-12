@@ -14,6 +14,7 @@ vi.mock("@/lib/toast", () => ({
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { installPhaseLabel, useEngineStore } from "./engine";
 
 const engine = {
@@ -35,23 +36,25 @@ function trees(system: string[], user: string[]) {
 
 describe("installPhaseLabel", () => {
   it("shows the download percentage when the total size is known", () => {
-    expect(installPhaseLabel("download", 42)).toBe("Downloading… 42%");
+    expect(installPhaseLabel("download", 42)).toBe(
+      enCore.tinytex.phase.downloadingPercent.replace("{{progress}}", "42"),
+    );
   });
 
   it("shows a plain downloading label when the size is unknown", () => {
-    expect(installPhaseLabel("download", null)).toBe("Downloading…");
+    expect(installPhaseLabel("download", null)).toBe(enCore.tinytex.phase.downloading);
   });
 
   it("labels the extract phase", () => {
-    expect(installPhaseLabel("extract", null)).toBe("Unpacking…");
+    expect(installPhaseLabel("extract", null)).toBe(enCore.tinytex.phase.unpacking);
   });
 
   it("labels the packages phase", () => {
-    expect(installPhaseLabel("packages", null)).toBe("Adding packages…");
+    expect(installPhaseLabel("packages", null)).toBe(enCore.tinytex.phase.addingPackages);
   });
 
   it("falls back to a generic label when idle", () => {
-    expect(installPhaseLabel(null, null)).toBe("Installing…");
+    expect(installPhaseLabel(null, null)).toBe(enCore.tinytex.phase.installing);
   });
 });
 
@@ -114,6 +117,6 @@ describe("package tree membership", () => {
     const state = useEngineStore.getState();
     expect(state.userInstalled).toEqual([]);
     expect(state.systemInstalled).toEqual([]);
-    expect(state.packageError).toContain("tlmgr is not readable");
+    expect(state.packageError).toMatchObject({ kind: "read", detail: "tlmgr is not readable" });
   });
 });

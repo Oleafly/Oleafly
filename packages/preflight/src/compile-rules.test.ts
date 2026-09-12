@@ -76,7 +76,7 @@ describe("compile preflight rules", () => {
     expect(findings).toContainEqual(expect.objectContaining({
       id: "compile-overfull-box",
       severity: "error",
-      title: expect.stringContaining("2 overfull lines"),
+      title: { key: "rules.compile-overfull-box.title", params: { count: 2 } },
     }));
   });
 
@@ -131,8 +131,12 @@ describe("tagging log channel", () => {
     expect(tagging?.lens).toBe("a11y");
     expect(tagging?.severity).toBe("warning");
     expect(tagging?.method).toBe("compile-log");
-    expect(tagging?.title).toContain("2 problems");
-    expect(tagging?.detail).toContain("Alternative text for graphic is missing.");
+    expect(tagging?.title).toEqual({
+      key: "rules.output-tagpdf-warning.title",
+      params: { count: 2 },
+    });
+    expect(tagging?.detail.key).toBe("rules.output-tagpdf-warning.detail");
+    expect(tagging?.detail.params?.warnings).toContain("Alternative text for graphic is missing.");
     expect(tagging?.standards?.length).toBeGreaterThan(0);
   });
 
@@ -170,10 +174,23 @@ describe("tagging log channel", () => {
     expect(status?.lens).toBe("a11y");
     expect(status?.severity).toBe("warning");
     expect(status?.method).toBe("compile-log");
-    expect(status?.title).toContain("4 items");
-    expect(status?.detail).toContain("acmart.cls class is partially compatible");
-    expect(status?.detail).toContain("float.sty, caption.sty");
-    expect(status?.detail).toContain("mystery.sty");
+    expect(status?.title).toEqual({
+      key: "rules.output-tagging-status.title",
+      params: { count: 4 },
+    });
+    expect(status?.detail.key).toBe("rules.output-tagging-status.detail");
+    expect(status?.detailParts).toEqual([
+      {
+        key: "rules.output-tagging-status.partClass",
+        params: { name: "acmart.cls", status: "partially compatible" },
+      },
+      {
+        key: "rules.output-tagging-status.partBlocking",
+        params: { files: "float.sty, caption.sty" },
+      },
+      { key: "rules.output-tagging-status.partUnproven", params: { files: "mystery.sty" } },
+      { key: "rules.output-tagging-status.partAdvice" },
+    ]);
   });
 
   it("names an unsupported class from the report", () => {
@@ -181,7 +198,10 @@ describe("tagging log channel", () => {
       status: "success",
       log: statusReport({ documentClass: "beamer.cls", classStatus: "unsupported" }),
     }).find((finding) => finding.id === "output-tagging-status");
-    expect(status?.detail).toContain("beamer.cls class is unsupported");
+    expect(status?.detailParts?.[0]).toEqual({
+      key: "rules.output-tagging-status.partClass",
+      params: { name: "beamer.cls", status: "unsupported" },
+    });
   });
 
   it("stays quiet when the report has nothing to fix", () => {

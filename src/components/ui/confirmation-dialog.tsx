@@ -1,4 +1,5 @@
 import { useEffect, useId } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -24,6 +25,7 @@ export function ConfirmationDialog({
   onCancel,
   destructive = false,
 }: ConfirmationDialogProps) {
+  const { t } = useTranslation(["common", "shell"]);
   const titleId = useId();
   const descriptionId = useId();
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(
@@ -57,7 +59,7 @@ export function ConfirmationDialog({
     <div className="pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <button
         type="button"
-        aria-label="Cancel"
+        aria-label={t(($) => $.common.actions.cancel)}
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
@@ -81,8 +83,8 @@ export function ConfirmationDialog({
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
-            {cancelLabel ?? "Cancel"}
-            <Kbd className="h-4 min-w-4 px-1 text-[10px]">esc</Kbd>
+            {cancelLabel ?? t(($) => $.common.actions.cancel)}
+            <Kbd className="h-4 min-w-4 px-1 text-[10px]">{t(($) => $.shell.keys.esc)}</Kbd>
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}

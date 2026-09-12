@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PERSONA_COLORS, personaGradient } from "@/lib/persona-colors";
+import { PERSONA_COLORS, personaGradient, type PersonaColorKey } from "@/lib/persona-colors";
 import type { Persona } from "@/lib/tauri";
 
 export interface CreatePersonaDialogProps {
@@ -35,6 +36,7 @@ interface FormState {
 const EMPTY_FORM: FormState = { name: "", color: PERSONA_COLORS[0].key, prompt: "" };
 
 export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: CreatePersonaDialogProps) {
+  const { t } = useTranslation(["common", "settings"]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -54,7 +56,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
     const name = form.name.trim();
     const prompt = form.prompt.trim();
     if (!name || !prompt) {
-      setError("Name and prompt are required.");
+      setError(t(($) => $.settings.ai.personas.form.required));
       return;
     }
     setBusy(true);
@@ -68,13 +70,21 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
       };
       const res = await onSubmit(persona);
       if (!res.ok) {
-        setError(res.message ?? "Could not save that persona.");
+        setError(res.message ?? t(($) => $.settings.ai.personas.form.saveFailed));
         return;
       }
       onOpenChange(false);
     } finally {
       setBusy(false);
     }
+  };
+
+  const colorLabels: Record<PersonaColorKey, string> = {
+    sunset: t(($) => $.settings.ai.personas.colors.sunset),
+    ocean: t(($) => $.settings.ai.personas.colors.ocean),
+    forest: t(($) => $.settings.ai.personas.colors.forest),
+    grape: t(($) => $.settings.ai.personas.colors.grape),
+    slate: t(($) => $.settings.ai.personas.colors.slate),
   };
 
   return (
@@ -90,27 +100,31 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
         }}
       >
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit persona" : "Create persona"}</DialogTitle>
+          <DialogTitle>
+            {editing
+              ? t(($) => $.settings.ai.personas.form.editTitle)
+              : t(($) => $.settings.ai.personas.form.createTitle)}
+          </DialogTitle>
           <DialogDescription>
-            Set reusable instructions for how the assistant should work.
+            {t(($) => $.settings.ai.personas.form.description)}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
             <label htmlFor="persona-name" className="text-xs font-medium text-muted-foreground">
-              Name
+              {t(($) => $.common.labels.name)}
             </label>
             <Input
               id="persona-name"
               data-testid="persona-name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Terse Editor"
+              placeholder={t(($) => $.settings.ai.personas.form.namePlaceholder)}
             />
           </div>
           <div className="space-y-1">
             <label htmlFor="persona-color" className="text-xs font-medium text-muted-foreground">
-              Color
+              {t(($) => $.settings.ai.personas.form.color)}
             </label>
             <Select value={form.color} onValueChange={(color) => setForm((f) => ({ ...f, color }))}>
               <SelectTrigger id="persona-color" data-testid="persona-color">
@@ -124,7 +138,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
                         className="size-3 shrink-0 rounded-full"
                         style={{ background: personaGradient(c.key) }}
                       />
-                      {c.label}
+                      {colorLabels[c.key]}
                     </span>
                   </SelectItem>
                 ))}
@@ -133,7 +147,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
           </div>
           <div className="space-y-1">
             <label htmlFor="persona-prompt" className="text-xs font-medium text-muted-foreground">
-              Instructions
+              {t(($) => $.settings.ai.personas.form.instructions)}
             </label>
             <Textarea
               id="persona-prompt"
@@ -141,7 +155,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
               value={form.prompt}
               onChange={(e) => setForm((f) => ({ ...f, prompt: e.target.value }))}
               rows={5}
-              placeholder="Review my writing for clarity and list the most important issues first."
+              placeholder={t(($) => $.settings.ai.personas.form.instructionsPlaceholder)}
               className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
@@ -150,8 +164,10 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
         <DialogFooter>
           <Button data-testid="persona-submit" disabled={busy} onClick={() => void submit()}>
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            {editing ? "Save" : "Create"}
-            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
+            {editing
+              ? t(($) => $.common.actions.save)
+              : t(($) => $.settings.ai.personas.form.create)}
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">{"↵"}</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>

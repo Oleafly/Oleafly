@@ -5,6 +5,8 @@ import { listen } from "@tauri-apps/api/event";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { createAppQueryClient } from "@/lib/query";
 import type { SkillCatalog, SkillShareTarget } from "@/lib/tauri";
@@ -16,6 +18,21 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: vi.fn() }));
 
 const mocks = vi.hoisted(() => ({ projectId: null as string | null }));
+
+const copy = enSettings.ai.skills;
+
+function fill(template: string, values: Record<string, string>): string {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replace(`{{${key}}}`, value),
+    template,
+  );
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const enableName = (name: string) => fill(copy.enableAria, { name });
 
 vi.mock("@/store/files", () => ({
   useFilesStore: (selector: (state: { projectId: string | null }) => unknown) =>
@@ -322,12 +339,18 @@ describe("SkillsTab", () => {
     expect(within(screen.getByTestId("skills-phase-research")).getByText("Paper Lookup")).toBeInTheDocument();
     expect(screen.getByTestId("skills-phase-user")).toBeInTheDocument();
     expect(within(screen.getByTestId("skills-phase-user")).getByText("Methods Coach")).toBeInTheDocument();
-    expect(screen.getByText("Built in")).toBeInTheDocument();
-    expect(screen.getAllByText("Added")).toHaveLength(2);
-    expect(screen.getByText(/From Scientific Agent Skills, MIT/)).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Enable Paper Lookup" })).toBeChecked();
-    expect(screen.getByRole("switch", { name: "Enable Methods Coach" })).not.toBeChecked();
-    expect(screen.getByRole("switch", { name: "Enable broken" })).toBeDisabled();
+    expect(screen.getByText(copy.source.bundled)).toBeInTheDocument();
+    expect(screen.getAllByText(copy.source.added)).toHaveLength(2);
+    expect(
+      screen.getByText(
+        new RegExp(
+          escapeRegExp(fill(copy.tier.credits, { credits: "Scientific Agent Skills, MIT" })),
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: enableName("Paper Lookup") })).toBeChecked();
+    expect(screen.getByRole("switch", { name: enableName("Methods Coach") })).not.toBeChecked();
+    expect(screen.getByRole("switch", { name: enableName("broken") })).toBeDisabled();
     expect(
       screen.getByText('SKILL.md is missing the front matter field "description".'),
     ).toBeInTheDocument();
@@ -345,7 +368,11 @@ describe("SkillsTab", () => {
     expect(
       within(screen.getByTestId("skills-phase-research")).queryByText("Genomics Toolkit"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/Domain shelf, MIT/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        new RegExp(escapeRegExp(fill(copy.tier.shelfWithLicense, { license: "MIT" }))),
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows a collapsible file list when a skill has supporting files", async () => {
@@ -353,6 +380,9 @@ describe("SkillsTab", () => {
     await screen.findByText("Paper Lookup");
 
     expect(screen.queryByText("SKILL.md")).not.toBeInTheDocument();
+    expect(screen.getByTestId("skill-files-toggle-paper-lookup")).toHaveTextContent(
+      fill(copy.fileCount_other, { count: "2" }),
+    );
     fireEvent.click(screen.getByTestId("skill-files-toggle-paper-lookup"));
     expect(await screen.findByText("SKILL.md")).toBeInTheDocument();
     expect(screen.getByText("references/checklist.md")).toBeInTheDocument();
@@ -362,7 +392,7 @@ describe("SkillsTab", () => {
     renderTab();
     await screen.findByText("Methods Coach");
 
-    fireEvent.click(screen.getByRole("switch", { name: "Enable Methods Coach" }));
+    fireEvent.click(screen.getByRole("switch", { name: enableName("Methods Coach") }));
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_set_enabled", {
@@ -371,7 +401,7 @@ describe("SkillsTab", () => {
       }),
     );
     await waitFor(() =>
-      expect(screen.getByRole("switch", { name: "Enable Methods Coach" })).toBeChecked(),
+      expect(screen.getByRole("switch", { name: enableName("Methods Coach") })).toBeChecked(),
     );
   });
 
@@ -399,7 +429,7 @@ describe("SkillsTab", () => {
 
     const row = screen.getByTestId("skill-row-paper-lookup");
     expect(screen.getByTestId("skill-project-toggle-paper-lookup")).toBeChecked();
-    expect(within(row).getByText("Inherits device setting")).toBeInTheDocument();
+    expect(within(row).getByText(copy.inheritsDevice)).toBeInTheDocument();
     expect(screen.queryByTestId("skill-project-reset-paper-lookup")).toBeNull();
 
     fireEvent.click(screen.getByTestId("skill-project-toggle-paper-lookup"));
@@ -414,7 +444,7 @@ describe("SkillsTab", () => {
     await waitFor(() =>
       expect(screen.getByTestId("skill-project-toggle-paper-lookup")).not.toBeChecked(),
     );
-    expect(within(row).getByText("Off for this project")).toBeInTheDocument();
+    expect(within(row).getByText(copy.offForProject)).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("skill-project-reset-paper-lookup"));
 
@@ -438,7 +468,7 @@ describe("SkillsTab", () => {
       mockInvoke.mock.calls.filter(([command]) => command === "skills_list").length;
     const before = listCalls();
 
-    fireEvent.click(screen.getByRole("switch", { name: "Enable Methods Coach" }));
+    fireEvent.click(screen.getByRole("switch", { name: enableName("Methods Coach") }));
 
     await waitFor(() => expect(listCalls()).toBeGreaterThan(before));
   });
@@ -455,8 +485,8 @@ describe("SkillsTab", () => {
     await screen.findByText("Research Loop");
 
     fireEvent.click(screen.getByTestId("skill-update-oleafly-research-loop"));
-    const confirmation = screen.getByRole("alertdialog", { name: "Update skill" });
-    fireEvent.click(within(confirmation).getByRole("button", { name: "Update" }));
+    const confirmation = screen.getByRole("alertdialog", { name: copy.updateDialog.title });
+    fireEvent.click(within(confirmation).getByRole("button", { name: copy.updateAction }));
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_update_builtin", {
@@ -473,7 +503,7 @@ describe("SkillsTab", () => {
     renderTab();
     await screen.findByText("Paper Lookup");
 
-    fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    fireEvent.click(screen.getByRole("button", { name: copy.addFolder }));
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_add", {
@@ -486,16 +516,18 @@ describe("SkillsTab", () => {
   it("creates a disabled skill from the editor", async () => {
     renderTab();
     await screen.findByText("Paper Lookup");
-    fireEvent.click(screen.getByRole("button", { name: "Create skill" }));
+    fireEvent.click(screen.getByRole("button", { name: copy.createSkill }));
 
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Claim Checker" } });
-    fireEvent.change(screen.getByLabelText("Description"), {
+    fireEvent.change(screen.getByLabelText(enCommon.labels.name), {
+      target: { value: "Claim Checker" },
+    });
+    fireEvent.change(screen.getByLabelText(enCommon.labels.description), {
       target: { value: "Check whether each claim has support." },
     });
-    fireEvent.change(screen.getByLabelText("Instructions"), {
+    fireEvent.change(screen.getByLabelText(copy.editor.instructions), {
       target: { value: "Read every claim and find its supporting citation." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    fireEvent.click(screen.getByRole("button", { name: copy.editor.submitCreate }));
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_create", {
@@ -506,28 +538,34 @@ describe("SkillsTab", () => {
         },
       }),
     );
-    expect(await screen.findByRole("switch", { name: "Enable Claim Checker" })).not.toBeChecked();
-    expect(screen.getByRole("status")).toHaveTextContent("Created Claim Checker.");
+    expect(await screen.findByRole("switch", { name: enableName("Claim Checker") })).not.toBeChecked();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      fill(copy.messages.created, { name: "Claim Checker" }),
+    );
   });
 
   it("validates an invalid user skill and edits it in place", async () => {
     renderTab();
     await screen.findByText("broken");
 
-    fireEvent.click(screen.getByRole("button", { name: "Validate broken" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: fill(copy.validateAria, { name: "broken" }) }),
+    );
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_validate", { id: "broken" }),
     );
     await waitFor(() =>
-      expect(screen.getByRole("switch", { name: "Enable broken" })).not.toBeDisabled(),
+      expect(screen.getByRole("switch", { name: enableName("broken") })).not.toBeDisabled(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit broken" }));
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Draft Reviewer" } });
-    fireEvent.change(screen.getByLabelText("Description"), {
+    fireEvent.click(screen.getByRole("button", { name: fill(copy.editAria, { name: "broken" }) }));
+    fireEvent.change(screen.getByLabelText(enCommon.labels.name), {
+      target: { value: "Draft Reviewer" },
+    });
+    fireEvent.change(screen.getByLabelText(enCommon.labels.description), {
       target: { value: "Review a saved draft." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.save }));
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith(
@@ -544,17 +582,23 @@ describe("SkillsTab", () => {
   it("does not offer Validate or Edit for a bundled skill", async () => {
     renderTab();
     await screen.findByText("Paper Lookup");
-    expect(screen.queryByRole("button", { name: "Validate Paper Lookup" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit Paper Lookup" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: fill(copy.validateAria, { name: "Paper Lookup" }) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: fill(copy.editAria, { name: "Paper Lookup" }) }),
+    ).not.toBeInTheDocument();
   });
 
   it("removes a user skill after confirmation", async () => {
     renderTab();
     await screen.findByText("Methods Coach");
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove Methods Coach" }));
-    const confirmation = screen.getByRole("alertdialog", { name: "Remove skill" });
-    fireEvent.click(within(confirmation).getByRole("button", { name: "Remove" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: fill(copy.removeAria, { name: "Methods Coach" }) }),
+    );
+    const confirmation = screen.getByRole("alertdialog", { name: copy.removeDialog.title });
+    fireEvent.click(within(confirmation).getByRole("button", { name: enCommon.actions.remove }));
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_remove", { id: "methods-coach" }),
@@ -579,7 +623,7 @@ describe("SkillsTab", () => {
     catalog = { ...EMPTY_CATALOG, error: "offline" };
     renderTab();
 
-    await screen.findByText("Built-in catalog, could not reach the network");
+    await screen.findByText(copy.catalog.source.bundledOffline);
     fireEvent.click(screen.getByTestId("skills-catalog-refresh"));
 
     await waitFor(() =>
@@ -597,8 +641,12 @@ describe("SkillsTab", () => {
     };
     renderTab();
 
-    await screen.findByText(/^Cached catalog from cdn\.oleafly\.com, last fetched /);
-    expect(screen.queryByText(/Built-in catalog/)).not.toBeInTheDocument();
+    await screen.findByText(
+      new RegExp(`^${escapeRegExp(copy.catalog.source.cached.replace("{{when}}", ""))}`),
+    );
+    expect(
+      screen.queryByText(new RegExp(escapeRegExp(copy.catalog.source.bundled))),
+    ).not.toBeInTheDocument();
     expect(await screen.findByText("Genomics Toolkit")).toBeInTheDocument();
   });
 
@@ -614,6 +662,10 @@ describe("SkillsTab", () => {
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_share_sync", { enabled: true }),
     );
-    await waitFor(() => expect(screen.getByText("5 of 5 linked")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText(fill(copy.share.status.linked, { linked: "5", total: "5" })),
+      ).toBeInTheDocument(),
+    );
   });
 });

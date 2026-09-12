@@ -11,6 +11,7 @@ export {
   type PdfOutlineState,
 } from "./PdfViewer";
 export type { PdfOutlineItem } from "./pdfOutline";
+export * from "./messages";
 export {
   registerPdfView,
   clearPdfView,

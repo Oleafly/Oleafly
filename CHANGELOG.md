@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The interface is available in Simplified Chinese. Settings > General gets a
+  Language setting (System default, English, 简体中文). Changing it applies
+  right away in every window, including the native menu and dialogs, with no
+  restart. Document content, spellcheck and proofreading settings are
+  unaffected.
 - Typing `$`, `\(` or `\[` in the source editor inserts the closing
   delimiter. Typing `$` again at the end of a formula steps over it, brackets
   pair inside inline math, and an empty `$$` becomes display math. Completing

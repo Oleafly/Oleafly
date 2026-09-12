@@ -7,7 +7,8 @@ import {
   Sparkles,
   SquareTerminal,
 } from "lucide-react";
-import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
+import { useTranslation } from "react-i18next";
+import { railSections, railTabLabel, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useMcpActivityStore } from "@/store/mcp-activity";
@@ -18,7 +19,7 @@ import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
-import { cn } from "@/lib/utils";
+import { cn, shortcut } from "@/lib/utils";
 
 const ctrlBtn = (active: boolean) =>
   cn(
@@ -38,24 +39,34 @@ function DockDivider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
 }
 
+const RAIL_TAB_SHORTCUT: Record<string, string> = {
+  refs: shortcut("Shift-F12"),
+};
+
 function ViewButton({
   tab,
+  ctx,
   active,
   onSelect,
 }: {
   tab: RailTabContribution;
+  ctx: AppContext;
   active: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation(["shell"]);
   const badge = tab.useBadge?.() ?? 0;
   const Icon = tab.icon;
-  const tooltip = tab.beta ? `${tab.label} (beta)` : tab.label;
+  const hotkey = RAIL_TAB_SHORTCUT[tab.id];
+  const label = railTabLabel(tab, ctx);
+  const name = hotkey ? t(($) => $.shell.rail.withShortcut, { label, shortcut: hotkey }) : label;
+  const tooltip = tab.beta ? t(($) => $.shell.rail.betaTab, { label: name }) : name;
   return (
     <Tooltip label={tooltip} side="bottom">
       <button
         type="button"
         data-tour={`rail-${tab.id}`}
-        aria-label={tab.label}
+        aria-label={name}
         aria-current={active ? "page" : undefined}
         onClick={onSelect}
         className={cn("relative", ctrlBtn(active))}
@@ -67,7 +78,7 @@ function ViewButton({
         {badge > 0 && (
           <span
             role="status"
-            aria-label={`${badge} pending`}
+            aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}
             className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white ring-1 ring-background"
           >
             {badge > 99 ? "99+" : badge}
@@ -107,6 +118,7 @@ export function SidebarViews() {
           {i > 0 && <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />}
           <ViewButton
             tab={tab}
+            ctx={ctx}
             active={railTab === tab.id}
             onSelect={() => select(tab.id as RailTab)}
           />
@@ -117,10 +129,13 @@ export function SidebarViews() {
 }
 
 export function SidebarCollapseToggle() {
+  const { t } = useTranslation(["shell"]);
   const showTree = useSettingsStore((s) => s.showTree);
   const toggleTree = useSettingsStore((s) => s.toggleTree);
   const shortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleSidebar));
-  const label = `${showTree ? "Hide" : "Show"} sidebar (${shortcut})`;
+  const label = showTree
+    ? t(($) => $.shell.dock.sidebar.hide, { shortcut })
+    : t(($) => $.shell.dock.sidebar.show, { shortcut });
   return (
     <Tooltip label={label} side="bottom">
       <button
@@ -136,6 +151,7 @@ export function SidebarCollapseToggle() {
 }
 
 export function WorkspaceDockControls() {
+  const { t } = useTranslation(["shell"]);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
@@ -145,10 +161,16 @@ export function WorkspaceDockControls() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
-  const terminalLabel = `${terminalOpen ? "Hide" : "Show"} terminal (${terminalShortcut})`;
+  const terminalLabel = terminalOpen
+    ? t(($) => $.shell.dock.terminal.hide, { shortcut: terminalShortcut })
+    : t(($) => $.shell.dock.terminal.show, { shortcut: terminalShortcut });
   // The browser opens in its own window; the button toggles that window.
-  const browserLabel = `${browserOpen ? "Close" : "Open"} browser (${browserShortcut})`;
-  const assistantLabel = `${assistantOpen ? "Hide" : "Show"} AI assistant`;
+  const browserLabel = browserOpen
+    ? t(($) => $.shell.dock.browser.close, { shortcut: browserShortcut })
+    : t(($) => $.shell.dock.browser.open, { shortcut: browserShortcut });
+  const assistantLabel = assistantOpen
+    ? t(($) => $.shell.dock.assistant.hide)
+    : t(($) => $.shell.dock.assistant.show);
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
@@ -200,12 +222,13 @@ export function WorkspaceDockControls() {
       </Tooltip>
       <DockDivider />
       <ThemeMenu triggerClassName={dockBtn(false)} />
-      <Tooltip label="Settings" side="bottom">
+      <Tooltip label={t(($) => $.shell.dock.settings)} side="bottom">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Settings"
+          data-testid="open-settings"
+          aria-label={t(($) => $.shell.dock.settings)}
           onClick={() => setSettingsOpen(true)}
           className={dockBtn(false)}
         >

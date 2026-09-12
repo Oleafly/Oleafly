@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
 import { packToolOutput, truncateText } from "@/lib/ai-context-pack";
 
@@ -223,7 +224,11 @@ export async function runAgentHarness(args: {
         switch (event.kind) {
           case "stepStart":
             handlers.onStep(event.step);
-            handlers.onThinking(event.step === 0 ? "Thinking…" : "Continuing…");
+            handlers.onThinking(
+              event.step === 0
+                ? i18n.t(($) => $.ai.turn.thinking)
+                : i18n.t(($) => $.ai.turn.continuing),
+            );
             break;
           case "retry":
             handlers.onRetry(event.attempt, event.max);
@@ -238,13 +243,13 @@ export async function runAgentHarness(args: {
               reasoningOpen = true;
               handlers.onReasoningStart();
             }
-            handlers.onThinking("Reasoning…");
+            handlers.onThinking(i18n.t(($) => $.ai.turn.reasoning));
             handlers.onReasoningDelta(event.text);
             break;
           case "toolCallStart":
             endReasoning();
             names.set(event.id, event.name);
-            handlers.onThinking(`Running ${event.name}…`);
+            handlers.onThinking(i18n.t(($) => $.ai.turn.runningTool, { name: event.name }));
             break;
           case "toolCallEnd":
             callArguments.set(event.id, parseJson(event.arguments));
@@ -264,7 +269,7 @@ export async function runAgentHarness(args: {
               name,
               output: parseJson(event.output),
             });
-            handlers.onThinking("Processing result…");
+            handlers.onThinking(i18n.t(($) => $.ai.turn.processingResult));
             break;
           }
           case "usage":
@@ -275,7 +280,7 @@ export async function runAgentHarness(args: {
             handlers.onSubagentUpdate(event);
             break;
           case "compacted":
-            handlers.onThinking("Summarizing earlier conversation…");
+            handlers.onThinking(i18n.t(($) => $.ai.turn.summarizing));
             break;
           case "steered":
             handlers.onActivity();
@@ -304,7 +309,7 @@ export async function runAgentHarness(args: {
           parsed = {};
         }
         await handlers.onToolCall({ id: call.id, name: call.name, args: parsed });
-        handlers.onThinking(`Running ${call.name}…`);
+        handlers.onThinking(i18n.t(($) => $.ai.turn.runningTool, { name: call.name }));
 
         const tool = args.tools[call.name] as
           | { execute?: (input: unknown) => Promise<unknown> }
@@ -326,7 +331,7 @@ export async function runAgentHarness(args: {
 
         if (args.signal.aborted) return { output: "" };
         handlers.onToolResult({ id: call.id, name: call.name, output });
-        handlers.onThinking("Processing result…");
+        handlers.onThinking(i18n.t(($) => $.ai.turn.processingResult));
         const images = args.takePendingImages?.() ?? [];
         let packed = packToolOutputText(output);
         if (images.length && args.imageInstruction) {

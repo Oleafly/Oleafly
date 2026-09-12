@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { logError } from "@/lib/log";
 import { appVersion } from "@/lib/tauri";
 import { celebrate } from "@/lib/confetti";
+import { i18n, onLocaleApplied } from "@/i18n";
 
 const RELEASES_URL = "https://github.com/Oleafly/Oleafly/releases/latest";
 
@@ -22,6 +24,7 @@ type Phase = "checking" | "available" | "upToDate" | "downloading" | "error";
 // (from the menu) keeps the window open to report "up to date"; the automatic
 // path closes silently when there is nothing to install.
 export function UpdateWindow() {
+  const { t } = useTranslation(["common", "shell"]);
   const manual = new URLSearchParams(window.location.search).get("manual") === "1";
   const [phase, setPhase] = useState<Phase>("checking");
   const [update, setUpdate] = useState<Update | null>(null);
@@ -38,6 +41,17 @@ export function UpdateWindow() {
 
   useEffect(() => {
     void appVersion().then(setVersion).catch(() => setVersion(""));
+  }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    const applyTitle = () => {
+      void getCurrentWindow()
+        .setTitle(i18n.t(($) => $.shell.windows.update))
+        .catch(() => {});
+    };
+    applyTitle();
+    return onLocaleApplied(applyTitle);
   }, []);
 
   useEffect(() => {
@@ -95,11 +109,11 @@ export function UpdateWindow() {
 
   const title =
     phase === "checking"
-      ? "Checking for updates…"
+      ? t(($) => $.shell.updateWindow.checking)
       : phase === "upToDate"
-        ? "You're up to date"
+        ? t(($) => $.shell.updateWindow.upToDate)
         : update
-          ? `Update available · v${update.version}`
+          ? t(($) => $.shell.updateChecker.available, { version: update.version })
           : "Oleafly";
 
   const notes = update?.body?.trim();
@@ -111,18 +125,20 @@ export function UpdateWindow() {
         <LeafLogo className="mt-0.5 size-7 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Oleafly
+            {"Oleafly"}
           </p>
           <p className="truncate text-sm font-semibold">{title}</p>
           {update?.currentVersion && phase !== "upToDate" && (
-            <p className="text-xs text-muted-foreground">You're on v{update.currentVersion}</p>
+            <p className="text-xs text-muted-foreground">
+              {t(($) => $.shell.updateWindow.currentVersion, { version: update.currentVersion })}
+            </p>
           )}
         </div>
         {phase !== "downloading" && (
           <button
             type="button"
             onClick={close}
-            aria-label="Close"
+            aria-label={t(($) => $.common.actions.close)}
             className="rounded p-0.5 text-muted-foreground hover:text-foreground"
           >
             <X className="size-4" />
@@ -132,7 +148,9 @@ export function UpdateWindow() {
 
       <div className="min-h-0 flex-1 overflow-auto px-5 py-3">
         {phase === "checking" && (
-          <p className="text-sm text-muted-foreground">Looking for the latest version…</p>
+          <p className="text-sm text-muted-foreground">
+            {t(($) => $.shell.updateWindow.looking)}
+          </p>
         )}
         {phase === "upToDate" && (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -140,11 +158,13 @@ export function UpdateWindow() {
               <CheckCircle2 className="size-14" strokeWidth={1.6} />
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-lg font-semibold text-foreground">You're up to date!</p>
+              <p className="text-lg font-semibold text-foreground">
+                {t(($) => $.shell.updateWindow.upToDateHeadline)}
+              </p>
               <p className="text-sm text-muted-foreground">
                 {version
-                  ? `Oleafly v${version} is the latest version`
-                  : "You're running the latest version of Oleafly"}
+                  ? t(($) => $.shell.updateWindow.upToDateVersion, { version })
+                  : t(($) => $.shell.updateWindow.upToDateGeneric)}
               </p>
             </div>
           </div>
@@ -152,14 +172,16 @@ export function UpdateWindow() {
         {phase === "error" && (
           <p className="inline-flex items-center gap-1.5 text-sm text-destructive">
             <AlertTriangle className="size-4" />
-            {errorMessage || "The update could not finish. Please try again later."}
+            {errorMessage || t(($) => $.shell.updateWindow.error)}
           </p>
         )}
         {(phase === "available" || phase === "downloading") &&
           (notes ? (
             <Markdown className="text-sm text-muted-foreground">{notes}</Markdown>
           ) : (
-            <p className="text-sm text-muted-foreground">A new version is ready to install.</p>
+            <p className="text-sm text-muted-foreground">
+              {t(($) => $.shell.updateWindow.ready)}
+            </p>
           ))}
       </div>
 
@@ -167,39 +189,47 @@ export function UpdateWindow() {
         {phase === "downloading" ? (
           <div className="space-y-1.5">
             <p className="text-xs text-muted-foreground">
-              {percent >= 100 ? "Installing…" : `Downloading… ${percent}%`}
+              {percent >= 100
+                ? t(($) => $.shell.updateChecker.installing)
+                : t(($) => $.shell.updateChecker.downloading, { percent })}
             </p>
             <Progress value={percent} />
-            <p className="text-[10px] text-muted-foreground">Oleafly will restart to finish.</p>
+            <p className="text-[10px] text-muted-foreground">
+              {t(($) => $.shell.updateChecker.restartNotice)}
+            </p>
           </div>
         ) : phase === "available" && !selfInstallable ? (
           <div className="flex items-center justify-between gap-2">
             <p className="text-[11px] text-muted-foreground">
-              Installed from a package. Download the new version to update.
+              {t(($) => $.shell.updateWindow.packageInstall)}
             </p>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={close}>
-                Later
+                {t(($) => $.shell.updateWindow.later)}
               </Button>
               <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>
-                View release
+                {t(($) => $.shell.updateWindow.viewRelease)}
               </Button>
             </div>
           </div>
         ) : phase === "available" ? (
           <div className="flex items-center justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={close}>
-              Later
+              {t(($) => $.shell.updateWindow.later)}
             </Button>
             <Button size="sm" onClick={install}>
-              Update now
+              {t(($) => $.shell.updateChecker.updateNow)}
             </Button>
           </div>
         ) : phase === "upToDate" || phase === "error" ? (
           <div className="flex items-center justify-end gap-2">
-            {phase === "error" && <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>View release</Button>}
+            {phase === "error" && (
+              <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>
+                {t(($) => $.shell.updateWindow.viewRelease)}
+              </Button>
+            )}
             <Button variant="secondary" size="sm" onClick={close}>
-              Close
+              {t(($) => $.common.actions.close)}
             </Button>
           </div>
         ) : null}

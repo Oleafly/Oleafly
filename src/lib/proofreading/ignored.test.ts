@@ -13,6 +13,7 @@ import {
   setSpellHost,
   type ProofreadingResult,
 } from "@oleafly/editor";
+import { i18n } from "@/i18n";
 import { isWordIgnored, useDictionary } from "@/lib/dictionary";
 import { useSettingsStore } from "@/store/settings";
 import { installProofreadingActionHost } from "./actions";
@@ -284,6 +285,13 @@ describe("restoring a finding clears the matching session decision", () => {
   ): Promise<EditorView> {
     box.findings = findings;
     setSpellHost({
+      t: (key: string, params?: Record<string, string | number>) =>
+        (
+          i18n.t as unknown as (
+            key: string,
+            params?: Record<string, string | number>,
+          ) => string
+        )(`editor:package.${key}`, params),
       getProjectId: () => PROJECT,
       getActivePath: () => PATH,
       getProofreadingContextKey: () =>

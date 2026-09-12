@@ -136,11 +136,11 @@ export type UsageReport = {
 export type UsageQuickRange = "7d" | "30d" | "90d" | "month";
 
 export const DAY_MS = 86_400_000;
-export const USAGE_QUICK_RANGES: ReadonlyArray<{ id: UsageQuickRange; label: string }> = [
-  { id: "7d", label: "7d" },
-  { id: "30d", label: "30d" },
-  { id: "90d", label: "90d" },
-  { id: "month", label: "This month" },
+export const USAGE_QUICK_RANGES: ReadonlyArray<{ id: UsageQuickRange }> = [
+  { id: "7d" },
+  { id: "30d" },
+  { id: "90d" },
+  { id: "month" },
 ];
 
 export function utcDayStart(ms: number): number {

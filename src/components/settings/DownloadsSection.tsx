@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Loader2, Sparkles, Trash2, Type } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
+import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
@@ -28,14 +31,29 @@ import {
 
 const ALL = "__all__";
 
+const FONT_PACK_IDS = ["lato", "ptsans", "ptserif"] as const;
+type FontPackId = (typeof FONT_PACK_IDS)[number];
+
+function isFontPackId(id: string): id is FontPackId {
+  return (FONT_PACK_IDS as readonly string[]).includes(id);
+}
+
 function formatSize(bytes: number): string {
   if (!bytes) return "";
   const mb = bytes / 1_000_000;
-  if (mb >= 1) return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1000))} KB`;
+  if (mb >= 1) {
+    const digits = mb >= 10 ? 0 : 1;
+    return i18n.t(($) => $.settings.downloads.size.megabytes, {
+      value: formatNumber(mb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+    });
+  }
+  return i18n.t(($) => $.settings.downloads.size.kilobytes, {
+    value: formatNumber(Math.max(1, Math.round(bytes / 1000))),
+  });
 }
 
 export function DownloadsSection() {
+  const { t } = useTranslation(["common", "settings"]);
   const [components, setComponents] = useState<ComponentInfo[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [progress, setProgress] = useState("");
@@ -94,19 +112,25 @@ export function DownloadsSection() {
       try {
         unlisten = await listen<AssetProgress>("asset-progress", (e) => {
           const p = e.payload;
-          setProgress(`${p.label} (${p.index} of ${p.total})`);
+          setProgress(
+            t(($) => $.settings.downloads.progress, {
+              label: p.label,
+              index: formatNumber(p.index),
+              total: formatNumber(p.total),
+            }),
+          );
         });
         await run();
         await refresh();
       } catch (e) {
-        notifyError(verb, e, `Couldn't ${verb}.`);
+        notifyError(verb, e);
       } finally {
         unlisten?.();
         setBusyId(null);
         setProgress("");
       }
     },
-    [refresh],
+    [refresh, t],
   );
 
   const install = (id: string) =>
@@ -119,7 +143,7 @@ export function DownloadsSection() {
       await removeFontComponent(id);
       await refresh();
     } catch (e) {
-      notifyError("remove the font", e, "Couldn't remove the font.");
+      notifyError("remove the font", e);
     } finally {
       setBusyId(null);
     }
@@ -150,7 +174,13 @@ export function DownloadsSection() {
     try {
       unlisten = await listen<AssetProgress>("asset-progress", (e) => {
         const p = e.payload;
-        if (p.component === id) setPackProgress(`${p.index} of ${p.total}`);
+        if (p.component === id)
+          setPackProgress(
+            t(($) => $.settings.downloads.packProgress, {
+              index: formatNumber(p.index),
+              total: formatNumber(p.total),
+            }),
+          );
       });
       await installTemplatePack(id);
       await refreshPacks();
@@ -165,7 +195,7 @@ export function DownloadsSection() {
     try {
       await runPackInstall(id);
     } catch (e) {
-      notifyError("download the template pack", e, "Couldn't download the template pack.");
+      notifyError("download the template pack", e);
     } finally {
       setPackBusyId(null);
     }
@@ -179,7 +209,7 @@ export function DownloadsSection() {
         await runPackInstall(p.id);
       }
     } catch (e) {
-      notifyError("download the template packs", e, "Couldn't download the template packs.");
+      notifyError("download the template packs", e);
     } finally {
       setPackBusyId(null);
     }
@@ -191,7 +221,7 @@ export function DownloadsSection() {
       await removeTemplatePack(id);
       await refreshPacks();
     } catch (e) {
-      notifyError("remove the template pack", e, "Couldn't remove the template pack.");
+      notifyError("remove the template pack", e);
     } finally {
       setPackBusyId(null);
     }
@@ -208,20 +238,22 @@ export function DownloadsSection() {
     >
       <TabsList className="w-fit">
         <TabsTrigger value="fonts" data-testid="downloads-tab-fonts">
-          Fonts
+          {t(($) => $.settings.downloads.tabs.fonts)}
         </TabsTrigger>
         <TabsTrigger value="templates" data-testid="downloads-tab-templates">
-          Templates
+          {t(($) => $.settings.downloads.tabs.templates)}
         </TabsTrigger>
       </TabsList>
       <TabsContent value="fonts" className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fonts</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {t(($) => $.settings.downloads.fonts.heading)}
+          </h3>
           <Tooltip
             wide
             side="right"
-            label="Some templates use premium open-source fonts. To keep Oleafly small, those fonts are downloaded on demand: when you create such a template, the fonts are fetched and copied into the project so it stays self-contained and compiles offline. You can also pre-download them here, or remove them to free space."
+            label={t(($) => $.settings.downloads.fonts.tooltip)}
           >
             <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
           </Tooltip>
@@ -232,13 +264,17 @@ export function DownloadsSection() {
           className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
         >
           {busyId === ALL ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-          {allInstalled ? "All downloaded" : "Download all"}
+          {allInstalled
+            ? t(($) => $.settings.downloads.actions.allDownloaded)
+            : t(($) => $.settings.downloads.actions.downloadAll)}
         </button>
       </div>
 
       <div className="overflow-hidden rounded-lg border">
         {components.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-muted-foreground">No downloadable fonts.</p>
+          <p className="px-3 py-4 text-sm text-muted-foreground">
+            {t(($) => $.settings.downloads.fonts.empty)}
+          </p>
         ) : (
           components.map((c) => {
             const busy = busyId === c.id || (busyId === ALL && !c.installed);
@@ -251,14 +287,20 @@ export function DownloadsSection() {
                 <Type className="size-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{c.label}</span>
+                    <span className="text-sm font-medium">
+                      {isFontPackId(c.id) ? t(($) => $.settings.downloads.fontPacks[c.id as FontPackId].label) : c.label}
+                    </span>
                     {c.installed && <Check className="size-3.5 text-emerald-500" />}
                     {c.approx_bytes > 0 && (
                       <span className="text-[11px] text-muted-foreground">{formatSize(c.approx_bytes)}</span>
                     )}
                   </div>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    {busy && progress ? progress : c.description}
+                    {busy && progress
+                      ? progress
+                      : isFontPackId(c.id)
+                        ? t(($) => $.settings.downloads.fontPacks[c.id as FontPackId].description)
+                        : c.description}
                     {!busy && c.license?.spdx ? ` · ${c.license.spdx}` : ""}
                   </p>
                 </div>
@@ -268,7 +310,7 @@ export function DownloadsSection() {
                     disabled={anyBusy}
                     className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
                   >
-                    <Trash2 className="size-3.5" /> Remove
+                    <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
                   </button>
                 ) : (
                   <button type="button"
@@ -277,7 +319,7 @@ export function DownloadsSection() {
                     className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
                   >
                     {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                    {busy ? "" : "Download"}
+                    {busy ? "" : t(($) => $.settings.downloads.actions.download)}
                   </button>
                 )}
               </div>
@@ -287,7 +329,7 @@ export function DownloadsSection() {
       </div>
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        The LuaLaTeX engine (for tagged, accessible PDFs) is managed in the LaTeX Engine section.
+        {t(($) => $.settings.downloads.fonts.engineNote)}
       </p>
       </TabsContent>
 
@@ -298,12 +340,12 @@ export function DownloadsSection() {
             ref={templatesHeadingRef}
             className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
           >
-            Templates
+            {t(($) => $.settings.downloads.templates.heading)}
           </h3>
           <Tooltip
             wide
             side="right"
-            label="Extra template packs are downloaded on demand so Oleafly stays small. Download a pack here to use its templates offline, or remove them later to free space."
+            label={t(($) => $.settings.downloads.templates.tooltip)}
           >
             <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
           </Tooltip>
@@ -314,13 +356,17 @@ export function DownloadsSection() {
           className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
         >
           {packBusyId === ALL ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-          {allPacksInstalled ? "All downloaded" : "Download all"}
+          {allPacksInstalled
+            ? t(($) => $.settings.downloads.actions.allDownloaded)
+            : t(($) => $.settings.downloads.actions.downloadAll)}
         </button>
       </div>
 
       <div className="overflow-hidden rounded-lg border">
         {packs.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-muted-foreground">No downloadable template packs.</p>
+          <p className="px-3 py-4 text-sm text-muted-foreground">
+            {t(($) => $.settings.downloads.templates.empty)}
+          </p>
         ) : (
           packs.map((p) => {
             const busy = packBusyId === p.id || (packBusyId === ALL && !p.installed);
@@ -351,7 +397,7 @@ export function DownloadsSection() {
                     disabled={anyPackBusy}
                     className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
                   >
-                    <Trash2 className="size-3.5" /> Remove
+                    <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
                   </button>
                 ) : (
                   <button type="button"
@@ -361,7 +407,7 @@ export function DownloadsSection() {
                     className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
                   >
                     {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                    {busy ? "" : "Download"}
+                    {busy ? "" : t(($) => $.settings.downloads.actions.download)}
                   </button>
                 )}
               </div>
@@ -379,7 +425,7 @@ export function DownloadsSection() {
           className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
         >
           <Sparkles className="size-3.5 text-primary" />
-          Manage AI generated templates
+          {t(($) => $.settings.downloads.aiTemplates.toggle)}
           {aiOpen ? (
             <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
           ) : (
@@ -390,19 +436,19 @@ export function DownloadsSection() {
           <div className="border-t">
             {aiTemplates.length === 0 ? (
               <p className="px-3 py-4 text-sm text-muted-foreground">
-                No AI generated templates yet. Create one from the template gallery.
+                {t(($) => $.settings.downloads.aiTemplates.empty)}
               </p>
             ) : (
-              aiTemplates.map((t) => (
+              aiTemplates.map((template) => (
                 <div
-                  key={t.id}
-                  data-testid={`ai-template-row-${t.id}`}
+                  key={template.id}
+                  data-testid={`ai-template-row-${template.id}`}
                   className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
                 >
-                  {aiPreviews[t.id] ? (
+                  {aiPreviews[template.id] ? (
                     <img
-                      src={aiPreviews[t.id]}
-                      alt=""
+                      src={aiPreviews[template.id]}
+                      alt={""}
                       className="h-14 w-11 shrink-0 rounded border border-black/10 bg-white object-cover object-top shadow-sm"
                     />
                   ) : (
@@ -411,19 +457,20 @@ export function DownloadsSection() {
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <span className="text-sm font-medium">{t.name}</span>
+                    <span className="text-sm font-medium">{template.name}</span>
                     <p className="truncate text-[11px] text-muted-foreground">
-                      {t.description || "AI generated template"}
+                      {template.description ||
+                        t(($) => $.settings.downloads.aiTemplates.fallbackDescription)}
                     </p>
                   </div>
                   <button
                     type="button"
-                    data-testid={`ai-template-delete-${t.id}`}
-                    onClick={() => setAiConfirm(t)}
+                    data-testid={`ai-template-delete-${template.id}`}
+                    onClick={() => setAiConfirm(template)}
                     disabled={aiBusy}
                     className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                   >
-                    <Trash2 className="size-3.5" /> Delete
+                    <Trash2 className="size-3.5" /> {t(($) => $.common.actions.delete)}
                   </button>
                 </div>
               ))
@@ -434,9 +481,11 @@ export function DownloadsSection() {
 
       <ConfirmationDialog
         open={aiConfirm !== null}
-        title="Delete AI generated template"
-        description={`Delete "${aiConfirm?.name ?? ""}" from your library? Projects already created from it keep their own copy and are not affected.`}
-        confirmLabel="Delete"
+        title={t(($) => $.settings.downloads.aiTemplates.deleteTitle)}
+        description={t(($) => $.settings.downloads.aiTemplates.deleteDescription, {
+          name: aiConfirm?.name ?? "",
+        })}
+        confirmLabel={t(($) => $.common.actions.delete)}
         destructive
         onConfirm={() => {
           const target = aiConfirm;
@@ -445,10 +494,12 @@ export function DownloadsSection() {
           setAiBusy(true);
           void deleteCustomTemplate(target.id)
             .then(() => {
-              toast.success(`Deleted "${target.name}" from your library`);
+              toast.success(
+                t(($) => $.settings.downloads.aiTemplates.deleted, { name: target.name }),
+              );
               return refreshAiTemplates();
             })
-            .catch((e) => notifyError("delete the template", e, "Couldn't delete the template."))
+            .catch((e) => notifyError("delete the template", e))
             .finally(() => setAiBusy(false));
         }}
         onCancel={() => setAiConfirm(null)}

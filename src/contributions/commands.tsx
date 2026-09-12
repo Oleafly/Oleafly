@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { ClockCheck } from "@/components/icons/ClockCheck";
 import { registerCommand, type AppContext } from "@oleafly/registry";
+import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useCitationStore } from "@/store/citation";
@@ -43,7 +44,7 @@ import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
-import { TERMINAL_LIMIT, TERMINAL_LIMIT_MESSAGE, useTerminalsStore } from "@/store/terminals";
+import { TERMINAL_LIMIT, terminalLimitMessage, useTerminalsStore } from "@/store/terminals";
 import { toast } from "@/lib/toast";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { requestThemePreference } from "@/lib/theme";
@@ -54,6 +55,9 @@ import {
 } from "@/lib/document-engine";
 import {
   TOOL_DEFINITIONS,
+  toolDescription,
+  toolName,
+  toolTags,
   type ToolDefinition,
 } from "@/lib/tool-catalog";
 
@@ -108,8 +112,32 @@ const openToolsGallery = async () => {
     useHomeViewStore.getState().closeTools();
   }
 };
+const ENGLISH_KEYWORDS = {
+  createProject: "new project create template gallery",
+  theme: "theme dark light appearance mode",
+  generateFigure: "figure diagram draw tikz plot chart illustration",
+  diagramComposer: "diagram figure tikz composer draw canvas",
+  tools: "tools latex pdf equation bibtex table lab search deadlines gallery",
+  settings: "settings preferences options",
+  clearCache: "clear build cache clean rebuild stale reset aux",
+  newTerminal: "terminal shell console new",
+  documentCitationScan: "citations literature scan document paragraph references find",
+  citeOleafly: "citation bibtex bibliography acknowledge oleafly",
+  closeEnvironment: "close end environment begin latex",
+  surroundEnvironment: "surround wrap environment begin end latex",
+  appearance: "theme appearance mode",
+} as const;
+
+const APPEARANCE_LABEL = {
+  system: () => i18n.t(($) => $.shell.commands.appearance.useSystem),
+  light: () => i18n.t(($) => $.shell.commands.appearance.useLight),
+  dark: () => i18n.t(($) => $.shell.commands.appearance.useDark),
+} as const;
+
 const themeLabel = (ctx: AppContext) =>
-  `Switch to ${ctx.theme === "dark" ? "light" : "dark"} theme`;
+  ctx.theme === "dark"
+    ? i18n.t(($) => $.shell.commands.theme.toLight)
+    : i18n.t(($) => $.shell.commands.theme.toDark);
 const themeIcon = (ctx: AppContext) =>
   ctx.theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />;
 const TOOL_COMMAND_ICON_COLOR: Record<ToolDefinition["tone"], string> = {
@@ -126,8 +154,9 @@ export function registerOmnibarCommands() {
   registerCommand({
     id: "omnibar.create",
     surfaces: ["omnibar"],
-    label: "Create a new project",
-    keywords: "new project create template gallery",
+    label: () => i18n.t(($) => $.shell.commands.createProject.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.createProject.keywords)} ${ENGLISH_KEYWORDS.createProject}`,
     icon: () => <Plus className="size-4" />,
     order: 10,
     run: openNewProject,
@@ -136,7 +165,8 @@ export function registerOmnibarCommands() {
     id: "omnibar.theme",
     surfaces: ["omnibar"],
     label: themeLabel,
-    keywords: "theme dark light appearance mode",
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.theme.keywords)} ${ENGLISH_KEYWORDS.theme}`,
     icon: themeIcon,
     order: 40,
     run: toggleTheme,
@@ -145,8 +175,9 @@ export function registerOmnibarCommands() {
   registerCommand({
     id: "omnibar.figure",
     surfaces: ["omnibar"],
-    label: "Generate a figure with AI",
-    keywords: "figure diagram draw tikz plot chart illustration",
+    label: () => i18n.t(($) => $.shell.commands.generateFigure.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.generateFigure.keywords)} ${ENGLISH_KEYWORDS.generateFigure}`,
     icon: () => <Sparkles className="size-4" />,
     order: 30,
     when: (ctx) => !!ctx.projectId && isLatex() && supportsIsolatedCompile(),
@@ -158,9 +189,10 @@ export function registerOmnibarCommands() {
   registerCommand({
     id: "omnibar.diagram-composer",
     surfaces: ["omnibar", "palette"],
-    group: "Tools",
-    label: "Open Diagram Composer",
-    keywords: "diagram figure tikz composer draw canvas",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.diagramComposer.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.diagramComposer.keywords)} ${ENGLISH_KEYWORDS.diagramComposer}`,
     slash: ["diagram-composer", "diagram"],
     hint: "/diagram-composer",
     icon: () => <PenTool className="size-4" />,
@@ -170,9 +202,10 @@ export function registerOmnibarCommands() {
   registerCommand({
     id: "omnibar.tools",
     surfaces: ["omnibar", "palette"],
-    group: "Tools",
-    label: "Open Oleafly Tools",
-    keywords: "tools latex pdf equation bibtex table lab search deadlines gallery",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.tools.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.tools.keywords)} ${ENGLISH_KEYWORDS.tools}`,
     slash: ["tools"],
     hint: "/tools",
     icon: () => <ToolCase className="size-4" />,
@@ -184,9 +217,10 @@ export function registerOmnibarCommands() {
     registerCommand({
       id: `tool.${tool.id}`,
       surfaces: ["omnibar", "palette"],
-      group: "Tools",
-      label: `Open ${tool.name}`,
-      keywords: `${tool.name} ${tool.description} ${tool.tags.join(" ")} ${tool.slash.join(" ")}`,
+      group: () => i18n.t(($) => $.shell.commandGroups.tools),
+      label: () => i18n.t(($) => $.shell.commands.openTool, { name: toolName(tool.id) }),
+      keywords: () =>
+        `${toolName(tool.id)} ${toolDescription(tool.id)} ${toolTags(tool.id).join(" ")} ${tool.slash.join(" ")}`,
       slash: tool.slash,
       hint: `/${tool.slash[0]}`,
       icon: () => (
@@ -202,8 +236,9 @@ export function registerOmnibarCommands() {
   registerCommand({
     id: "omnibar.settings",
     surfaces: ["omnibar"],
-    label: "Open settings",
-    keywords: "settings preferences options",
+    label: () => i18n.t(($) => $.shell.commands.settings.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.settings.keywords)} ${ENGLISH_KEYWORDS.settings}`,
     icon: () => <Settings className="size-4" />,
     order: 50,
     run: () => useSettingsStore.getState().setSettingsOpen(true),
@@ -218,8 +253,8 @@ export function registerPaletteCommands() {
 
   palette({
     id: "palette.new-project",
-    group: "Project",
-    label: "New project…",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.newProject.label),
     icon: () => <FolderPlus className="size-4" />,
     order: 100,
     run: openNewProject,
@@ -227,8 +262,8 @@ export function registerPaletteCommands() {
 
   palette({
     id: "palette.recompile",
-    group: "Compile",
-    label: "Recompile",
+    group: () => i18n.t(($) => $.shell.commandGroups.compile),
+    label: () => i18n.t(($) => $.shell.commands.recompile.label),
     icon: () => <Play className="size-4" />,
     hint: "⌘↵",
     order: 200,
@@ -236,9 +271,11 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.autocompile",
-    group: "Compile",
+    group: () => i18n.t(($) => $.shell.commandGroups.compile),
     label: () =>
-      useCompileStore.getState().autoCompile ? "Disable auto-compile" : "Enable auto-compile",
+      useCompileStore.getState().autoCompile
+        ? i18n.t(($) => $.shell.commands.autoCompile.disable)
+        : i18n.t(($) => $.shell.commands.autoCompile.enable),
     icon: () => <Zap className="size-4" />,
     order: 210,
     run: () => {
@@ -248,8 +285,8 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.synctex",
-    group: "Compile",
-    label: "Go to PDF (SyncTeX)",
+    group: () => i18n.t(($) => $.shell.commandGroups.compile),
+    label: () => i18n.t(($) => $.shell.commands.synctex.label),
     icon: () => <Crosshair className="size-4" />,
     hint: "⌘⇧J",
     order: 220,
@@ -258,17 +295,18 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.export-pdf",
-    group: "Compile",
-    label: "Export PDF…",
+    group: () => i18n.t(($) => $.shell.commandGroups.compile),
+    label: () => i18n.t(($) => $.shell.commands.exportPdf.label),
     icon: () => <Download className="size-4" />,
     order: 230,
     run: () => void exportCurrentPdf(),
   });
   palette({
     id: "palette.clear-cache",
-    group: "Compile",
-    label: "Clear build cache & recompile",
-    keywords: "clear build cache clean rebuild stale reset aux",
+    group: () => i18n.t(($) => $.shell.commandGroups.compile),
+    label: () => i18n.t(($) => $.shell.commands.clearCache.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.clearCache.keywords)} ${ENGLISH_KEYWORDS.clearCache}`,
     icon: () => <Trash2 className="size-4" />,
     order: 240,
     when: (ctx) => !!ctx.projectId,
@@ -288,40 +326,41 @@ export function registerPaletteCommands() {
 
   palette({
     id: "palette.word-count",
-    group: "Tools",
-    label: "Word count",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.wordCount.label),
     icon: () => <Sigma className="size-4" />,
     order: 300,
     run: () => useSettingsStore.getState().setWordCountOpen(true),
   });
   palette({
     id: "palette.history",
-    group: "Tools",
-    label: "Git history",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.gitHistory.label),
     icon: () => <List className="size-4" />,
     order: 310,
     run: () => useSettingsStore.getState().openVersioning("git"),
   });
   palette({
     id: "palette.checkpoints",
-    group: "Tools",
-    label: "Checkpoints",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.checkpoints.label),
     icon: () => <ClockCheck className="size-4" />,
     order: 315,
     run: () => useSettingsStore.getState().openVersioning("checkpoints"),
   });
   palette({
     id: "palette.new-terminal",
-    group: "Tools",
-    label: "New terminal",
-    keywords: "terminal shell console new",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.newTerminal.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.newTerminal.keywords)} ${ENGLISH_KEYWORDS.newTerminal}`,
     icon: () => <SquareTerminal className="size-4" />,
     order: 318,
     when: (ctx) => !!ctx.projectId,
     run: () => {
       const terminals = useTerminalsStore.getState();
       if (terminals.projectId && terminals.tabs.length >= TERMINAL_LIMIT) {
-        toast.info(TERMINAL_LIMIT_MESSAGE);
+        toast.info(terminalLimitMessage());
         return;
       }
       useSettingsStore.getState().setTerminalOpen(true);
@@ -330,19 +369,20 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.add-citation",
-    group: "Tools",
-    label: "Add citation",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.addCitation.label),
     icon: () => <Quote className="size-4" />,
-    hint: "DOI / arXiv / title",
+    hint: () => i18n.t(($) => $.shell.commands.addCitation.hint),
     order: 320,
     when: supportsCitations,
     run: () => useCitationStore.getState().setOpen(true),
   });
   palette({
     id: "document-citation-scan",
-    group: "Tools",
-    label: "Find citations in document",
-    keywords: "citations literature scan document paragraph references find",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.documentCitationScan.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.documentCitationScan.keywords)} ${ENGLISH_KEYWORDS.documentCitationScan}`,
     icon: () => <LibraryBig className="size-4 text-blue-600 dark:text-blue-300" />,
     order: 322,
     run: () => {
@@ -384,18 +424,19 @@ export function registerPaletteCommands() {
 
   palette({
     id: "palette.cite-oleafly",
-    group: "Insert",
-    label: "Cite Oleafly in this paper",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.citeOleafly.label),
     icon: () => <Quote className="size-4" />,
-    keywords: "citation bibtex bibliography acknowledge oleafly",
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.citeOleafly.keywords)} ${ENGLISH_KEYWORDS.citeOleafly}`,
     order: 395,
     when: (ctx) => !!ctx.projectId,
     run: () => void runCiteOleaflyAction(),
   });
   palette({
     id: "palette.bold",
-    group: "Insert",
-    label: "Bold",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.bold.label),
     icon: () => <Bold className="size-4" />,
     hint: "⌘B",
     order: 400,
@@ -404,8 +445,8 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.italic",
-    group: "Insert",
-    label: "Italic",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.italic.label),
     icon: () => <Italic className="size-4" />,
     hint: "⌘I",
     order: 410,
@@ -414,8 +455,8 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.section",
-    group: "Insert",
-    label: "Section",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.section.label),
     icon: () => <Square className="size-4" />,
     order: 420,
     when: engineFormattingAvailable,
@@ -423,8 +464,8 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.list",
-    group: "Insert",
-    label: "Bulleted list",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.list.label),
     icon: () => <List className="size-4" />,
     order: 430,
     when: engineFormattingAvailable,
@@ -432,8 +473,8 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.figure",
-    group: "Insert",
-    label: "Figure",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.figure.label),
     icon: () => <ImageIcon className="size-4" />,
     order: 440,
     when: activeIsLatexSource,
@@ -443,8 +484,8 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.table",
-    group: "Insert",
-    label: "Table",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.table.label),
     icon: () => <Table className="size-4" />,
     order: 450,
     when: activeIsLatexSource,
@@ -454,8 +495,8 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.equation",
-    group: "Insert",
-    label: "Equation",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.equation.label),
     icon: () => <Sigma className="size-4" />,
     order: 460,
     when: activeIsLatexSource,
@@ -463,8 +504,8 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.label",
-    group: "Insert",
-    label: "Label",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.label.label),
     icon: () => <Tag className="size-4" />,
     order: 470,
     when: activeIsLatexSource,
@@ -473,9 +514,10 @@ export function registerPaletteCommands() {
 
   palette({
     id: "palette.close-environment",
-    group: "Editor",
-    label: "Close LaTeX environment",
-    keywords: "close end environment begin latex",
+    group: () => i18n.t(($) => $.shell.commandGroups.editor),
+    label: () => i18n.t(($) => $.shell.commands.closeEnvironment.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.closeEnvironment.keywords)} ${ENGLISH_KEYWORDS.closeEnvironment}`,
     icon: () => <Square className="size-4" />,
     order: 480,
     when: activeIsLatexSource,
@@ -490,9 +532,10 @@ export function registerPaletteCommands() {
   });
   palette({
     id: "palette.surround-environment",
-    group: "Editor",
-    label: "Surround with environment",
-    keywords: "surround wrap environment begin end latex",
+    group: () => i18n.t(($) => $.shell.commandGroups.editor),
+    label: () => i18n.t(($) => $.shell.commands.surroundEnvironment.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.surroundEnvironment.keywords)} ${ENGLISH_KEYWORDS.surroundEnvironment}`,
     icon: () => <PenTool className="size-4" />,
     order: 490,
     when: activeIsLatexSource,
@@ -505,7 +548,7 @@ export function registerPaletteCommands() {
 
   palette({
     id: "palette.theme",
-    group: "Settings",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
     label: themeLabel,
     icon: themeIcon,
     order: 500,
@@ -518,9 +561,10 @@ export function registerPaletteCommands() {
   ] as const) {
     palette({
       id: `palette.theme-${preference}`,
-      group: "Settings",
-      label: `Use ${preference} appearance`,
-      keywords: `theme appearance mode ${preference}`,
+      group: () => i18n.t(($) => $.shell.commandGroups.settings),
+      label: APPEARANCE_LABEL[preference],
+      keywords: () =>
+        `${i18n.t(($) => $.shell.commands.appearance.keywords)} ${ENGLISH_KEYWORDS.appearance} ${preference}`,
       icon: () => <Icon className="size-4" />,
       order,
       run: () => requestThemePreference(preference),
@@ -528,28 +572,33 @@ export function registerPaletteCommands() {
   }
   palette({
     id: "palette.vim",
-    group: "Settings",
-    label: () => (useSettingsStore.getState().vim ? "Disable vim mode" : "Enable vim mode"),
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () =>
+      useSettingsStore.getState().vim
+        ? i18n.t(($) => $.shell.commands.vim.disable)
+        : i18n.t(($) => $.shell.commands.vim.enable),
     icon: () => <CommandIcon className="size-4" />,
     order: 510,
     run: () => useSettingsStore.getState().toggleVim(),
   });
   palette({
     id: "palette.spellcheck",
-    group: "Settings",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
     label: () =>
-      useSettingsStore.getState().spellcheck ? "Disable spellcheck" : "Enable spellcheck",
+      useSettingsStore.getState().spellcheck
+        ? i18n.t(($) => $.shell.commands.spellcheck.disable)
+        : i18n.t(($) => $.shell.commands.spellcheck.enable),
     icon: () => <Sigma className="size-4" />,
     order: 520,
     run: () => useSettingsStore.getState().toggleSpellcheck(),
   });
   palette({
     id: "palette.offline",
-    group: "Settings",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
     label: () =>
       useSettingsStore.getState().offline
-        ? "Online mode (allow package fetch)"
-        : "Offline mode (--only-cached)",
+        ? i18n.t(($) => $.shell.commands.offline.online)
+        : i18n.t(($) => $.shell.commands.offline.offline),
     icon: () => <Zap className="size-4" />,
     order: 530,
     run: () => {

@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { ModelProbe, StoredModel } from "@/lib/tauri";
 import {
   agentListModels,
@@ -11,6 +12,7 @@ import {
   agentRefreshModelMetadata,
 } from "@/lib/tauri";
 import { resetModelListRefreshLedger } from "@/lib/ai-model-state";
+import { formatDate } from "@/lib/intl";
 import { createAppQueryClient } from "@/lib/query";
 import { ModelManager, ModelMetadataStatusLine, type ModelManagerProps } from "./ModelManager";
 
@@ -86,7 +88,7 @@ describe("ModelManager refresh", () => {
 
     fireEvent.click(screen.getByTestId("ai-refresh-models-openai"));
 
-    expect(await screen.findByText("Invalid API key.")).toBeInTheDocument();
+    expect(await screen.findByText(enSettings.ai.models.invalidKey)).toBeInTheDocument();
   });
 
   it("reports what changed and stamps the refresh time", async () => {
@@ -112,7 +114,9 @@ describe("ModelManager refresh", () => {
     const [merged, stamp] = onRefreshed.mock.calls[0] as [StoredModel[], number];
     expect(merged.map((m) => m.id)).toEqual(["gpt-alpha", "gpt-gamma"]);
     expect(stamp).toBe(Date.parse("2026-09-03T10:00:00Z"));
-    expect(screen.getByTestId("ai-refresh-notice-openai")).toHaveTextContent("1 added, 1 removed");
+    expect(screen.getByTestId("ai-refresh-notice-openai")).toHaveTextContent(
+      enSettings.ai.models.changeSummary.replace("{{added}}", "1").replace("{{removed}}", "1"),
+    );
 
     await act(async () => {
       await Promise.resolve();
@@ -129,7 +133,7 @@ describe("ModelManager refresh", () => {
 
     fireEvent.click(screen.getByTestId("ai-refresh-models-openai"));
 
-    expect(await screen.findByText("No changes")).toBeInTheDocument();
+    expect(await screen.findByText(enSettings.ai.models.noChanges)).toBeInTheDocument();
     expect(onChange).toHaveBeenCalledOnce();
   });
 
@@ -141,7 +145,7 @@ describe("ModelManager refresh", () => {
     fireEvent.click(screen.getByTestId("ai-refresh-models-openai"));
 
     expect(
-      await screen.findByText("The provider returned models Oleafly could not read."),
+      await screen.findByText(enSettings.ai.models.unreadableList),
     ).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
     expect(onRefreshed).not.toHaveBeenCalled();
@@ -242,7 +246,7 @@ describe("ModelManager refresh", () => {
     vi.setSystemTime(new Date("2026-09-03T10:00:00Z"));
     renderManager({ refreshedAt: Date.now() - 5 * 60_000 });
     expect(screen.getByTestId("ai-models-updated-openai")).toHaveTextContent(
-      "Updated 5 minutes ago",
+      enSettings.ai.models.updated.replace("{{time}}", "5 minutes ago"),
     );
   });
 
@@ -256,8 +260,8 @@ describe("ModelManager refresh", () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(screen.queryByText("Could not reach the provider.")).not.toBeInTheDocument();
-    expect(screen.queryByText("Invalid API key.")).not.toBeInTheDocument();
+    expect(screen.queryByText(enSettings.ai.models.unreachable)).not.toBeInTheDocument();
+    expect(screen.queryByText(enSettings.ai.models.invalidKey)).not.toBeInTheDocument();
   });
 
   it("does not refresh on open when the list is less than a day old", async () => {
@@ -439,7 +443,10 @@ describe("ModelMetadataStatusLine", () => {
 
     const line = await screen.findByTestId("ai-model-metadata-status");
     expect(line).toHaveTextContent(
-      `Model data updated ${new Date("2026-08-20T12:00:00Z").toLocaleDateString()}, bundled with the app`,
+      enSettings.ai.models.metadata.updatedBundled.replace(
+        "{{date}}",
+        formatDate(new Date("2026-08-20T12:00:00Z")),
+      ),
     );
 
     fireEvent.click(screen.getByTestId("ai-model-metadata-refresh"));
@@ -447,7 +454,10 @@ describe("ModelMetadataStatusLine", () => {
     await waitFor(() => expect(mockRefreshMetadata).toHaveBeenCalledWith(true));
     await waitFor(() =>
       expect(screen.getByTestId("ai-model-metadata-status")).toHaveTextContent(
-        `Model data updated ${new Date("2026-09-01T12:00:00Z").toLocaleDateString()}`,
+        enSettings.ai.models.metadata.updated.replace(
+          "{{date}}",
+          formatDate(new Date("2026-09-01T12:00:00Z")),
+        ),
       ),
     );
     expect(screen.getByTestId("ai-model-metadata-status")).not.toHaveTextContent("bundled");

@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 // MCP bridge: exposes the in-app agent tools to the Rust MCP server.
 //
 // The Rust side is a transport. On `tools/call` it emits `mcp:tool-call`;
@@ -384,7 +385,8 @@ function createMcpOnlyTools(
           if (!known.some((p) => p.id === id)) {
             return { error: `unknown project id: ${id}` };
           }
-          if (!(await confirm({ tool: "open_project", summary: `Open project ${id}` }))) {
+          const summary = i18n.t(($) => $.core.mcp.openProjectSummary, { id });
+          if (!(await confirm({ tool: "open_project", summary }))) {
             return { error: "The user declined this change.", declined: true };
           }
           if (!mutationAllowed()) {

@@ -13,7 +13,9 @@ import {
   Square,
   XCircle,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { subagentDisplayStatus } from "@oleafly/ai-core";
+import { i18n } from "@/i18n";
 import type { TurnRecord } from "@oleafly/ai-core";
 import { useAgentTurnsStore } from "@/store/agent-turns";
 import { agentSubagentsStop, agentThreadRead } from "@/lib/agent-backend";
@@ -102,14 +104,22 @@ function StatusIcon({ status }: { status: AgentDisplayStatus }) {
   return <MessageSquareText className="size-3 shrink-0 text-sky-500" />;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  active: "working",
-  awaiting: "needs permission",
-  updated: "updated",
-  interrupted: "stopped",
-  completed: "done",
-  failed: "failed",
-};
+function statusLabel(status: AgentDisplayStatus): string {
+  switch (status) {
+    case "active":
+      return i18n.t(($) => $.ai.subagents.status.active);
+    case "awaiting":
+      return i18n.t(($) => $.ai.subagents.status.awaiting);
+    case "interrupted":
+      return i18n.t(($) => $.ai.subagents.status.interrupted);
+    case "completed":
+      return i18n.t(($) => $.ai.subagents.status.completed);
+    case "failed":
+      return i18n.t(($) => $.ai.subagents.status.failed);
+    default:
+      return i18n.t(($) => $.ai.subagents.status.updated);
+  }
+}
 
 type Transcript =
   | { agent: string; type: "text"; text: string }
@@ -145,6 +155,7 @@ export function SubagentActivity({
   onOpenSession?: (sessionId: string, runtime?: "built-in" | "acp" | null) => void;
   projectId?: string | null;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   // A stable empty array keeps the selector's output referentially equal
   // for chats without records (a fresh [] would re-render on every touch).
   const records = useAgentTurnsStore((state) => state.recordsByChat[chatId] ?? EMPTY_RECORDS);
@@ -171,11 +182,11 @@ export function SubagentActivity({
         setTranscript({
           agent: agent.id,
           type: "text",
-          text: "This task did not record enough session information to open its transcript.",
+          text: t(($) => $.ai.subagents.noSessionInfo),
         });
         return;
       }
-      setTranscript({ agent: agent.id, type: "text", text: "Loading transcript…" });
+      setTranscript({ agent: agent.id, type: "text", text: t(($) => $.ai.subagents.loadingTranscript) });
       try {
         const result = await readAcpTranscript(projectId, agent.sessionId);
         if (transcriptRequestRef.current !== request) return;
@@ -190,7 +201,7 @@ export function SubagentActivity({
         setTranscript({
           agent: agent.id,
           type: "text",
-          text: "The transcript could not be loaded.",
+          text: t(($) => $.ai.subagents.transcriptFailed),
         });
       }
       return;
@@ -203,11 +214,11 @@ export function SubagentActivity({
       setTranscript({
         agent: agent.id,
         type: "text",
-        text: "This subagent is still working. Its full transcript opens when it finishes.",
+        text: t(($) => $.ai.subagents.stillWorking),
       });
       return;
     }
-    setTranscript({ agent: agent.id, type: "text", text: "Loading transcript…" });
+    setTranscript({ agent: agent.id, type: "text", text: t(($) => $.ai.subagents.loadingTranscript) });
     try {
       const turns = await agentThreadRead(agent.sessionId ?? `thread-${agent.id}`);
       if (transcriptRequestRef.current !== request) return;
@@ -220,14 +231,14 @@ export function SubagentActivity({
       setTranscript({
         agent: agent.id,
         type: "text",
-        text: answer || "This agent did not record a final answer.",
+        text: answer || t(($) => $.ai.subagents.noFinalAnswer),
       });
     } catch {
       if (transcriptRequestRef.current !== request) return;
       setTranscript({
         agent: agent.id,
         type: "text",
-        text: "The transcript could not be loaded.",
+        text: t(($) => $.ai.subagents.transcriptFailed),
       });
     }
   };
@@ -238,7 +249,7 @@ export function SubagentActivity({
     try {
       await agentSubagentsStop(runId);
     } catch {
-      onError?.("The subagents could not be stopped.");
+      onError?.(t(($) => $.ai.subagents.stopFailed));
     }
   };
 
@@ -250,7 +261,9 @@ export function SubagentActivity({
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Bot className="size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 font-medium">
-          {anyRunning ? "Subagents working" : `Subagents (${agents.length})`}
+          {anyRunning
+            ? t(($) => $.ai.subagents.working)
+            : t(($) => $.ai.subagents.count, { count: agents.length })}
         </span>
         {anyRunning && streaming && (
           <button
@@ -260,7 +273,7 @@ export function SubagentActivity({
             onClick={() => void stopAll()}
           >
             <Square className="size-3" />
-            Stop all
+            {t(($) => $.ai.subagents.stopAll)}
           </button>
         )}
       </div>
@@ -301,7 +314,7 @@ export function SubagentActivity({
                   status === "awaiting" && "font-medium text-amber-600 dark:text-amber-400",
                 )}
               >
-                {STATUS_LABELS[status]}
+                {statusLabel(status)}
               </span>
             </button>
           );
@@ -314,14 +327,16 @@ export function SubagentActivity({
               {agents.find((agent) => agent.id === expanded)?.label}
             </span>
             <span className="text-muted-foreground">
-              {agents.find((agent) => agent.id === expanded)?.events ?? 0} updates
+              {t(($) => $.ai.subagents.updates, {
+                count: agents.find((agent) => agent.id === expanded)?.events ?? 0,
+              })}
             </span>
           </div>
           <div>
             {transcript?.agent === expanded && transcript.type === "acp" ? (
               <div className="max-h-80 space-y-2 overflow-y-auto">
                 {transcript.truncated && (
-                  <p className="text-[10px]">This transcript is longer than the section shown here.</p>
+                  <p className="text-[10px]">{t(($) => $.ai.subagents.transcriptTruncated)}</p>
                 )}
                 {transcript.rows.length > 0 ? transcript.rows.slice(-80).map((row) => (
                   <MessageItem
@@ -330,18 +345,25 @@ export function SubagentActivity({
                     live={row.live}
                     expansionScope={`${chatId}:subagent:${expanded}:${row.key}`}
                   />
-                )) : <p>This task has not reported any transcript activity yet.</p>}
+                )) : <p>{t(($) => $.ai.subagents.noTranscriptYet)}</p>}
               </div>
             ) : (
               (() => {
                 const answered = transcript?.agent === expanded && transcript.type === "text";
                 const raw = answered
                   ? transcript.text
-                  : (agents.find((agent) => agent.id === expanded)?.detail ?? "working");
+                  : (agents.find((agent) => agent.id === expanded)?.detail ??
+                      t(($) => $.ai.subagents.workingDetail));
                 const split = splitAgentNotices(raw);
                 return (
                   <>
-                    {split.text ? <p>{answered ? split.text : `Latest: ${split.text}`}</p> : null}
+                    {split.text ? (
+                      <p>
+                        {answered
+                          ? split.text
+                          : t(($) => $.ai.subagents.latest, { text: split.text })}
+                      </p>
+                    ) : null}
                     {split.notices.map((notice) => (
                       <p
                         key={notice}
@@ -372,7 +394,7 @@ export function SubagentActivity({
                 onOpenSession(agent?.sessionId ?? `thread-${expanded}`, agent?.runtime);
               }}
             >
-              Open task
+              {t(($) => $.ai.subagents.openTask)}
             </button>
           )}
         </div>
@@ -380,13 +402,13 @@ export function SubagentActivity({
       {anyAwaiting && (
         <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
           <ShieldAlert className="size-3" />
-          A delegated agent is waiting for permission.
+          {t(($) => $.ai.subagents.awaitingPermission)}
         </div>
       )}
       {agents.some((agent) => agentStatus(agent.kind) === "failed") && (
         <div className="flex items-center gap-1.5 text-[11px] text-destructive">
           <XCircle className="size-3" />
-          A delegated task failed. Open it to read the error.
+          {t(($) => $.ai.subagents.taskFailed)}
         </div>
       )}
     </div>

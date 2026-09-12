@@ -1,0 +1,31 @@
+{
+  "unknown": "Something went wrong. See the app log for details.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "Project name cannot be empty.",
+    "name_conflict": "A project named {{name}} already exists.",
+    "folder_unavailable": "Could not reserve a new project folder."
+  },
+  "settings": {
+    "locale_unsupported": "The language {{locale}} is not available."
+  },
+  "literature": {
+    "query_empty": "Search query cannot be empty.",
+    "query_too_long": "Search query is too long ({{max}} characters maximum).",
+    "unknown_source": "Unknown literature source."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX has no host-compatible {{name}} binary.",
+    "package_operation_timeout": "The package operation passed its {{span}} limit and was stopped, so you can compile again. The TeX Live mirror is probably busy. Try again later, or run tlmgr yourself."
+  },
+  "github": {
+    "sign_in_expired": "The sign-in code expired. Try again.",
+    "sign_in_cancelled": "GitHub authorization was cancelled.",
+    "sign_in_failed": "GitHub sign-in failed.",
+    "repositories_unavailable": "Could not load repositories.",
+    "create_repo_failed": "Could not create the repository ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "Full access was not enabled."
+  }
+}

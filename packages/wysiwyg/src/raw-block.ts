@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { wysiwygMessage } from "./messages";
 import { rawBlockPresentation } from "./raw-presentation";
 
 export const RawBlock = Node.create({
@@ -56,7 +57,7 @@ export const RawBlock = Node.create({
       const edit = document.createElement("button");
       edit.type = "button";
       edit.className = "raw-block-edit";
-      edit.textContent = "Edit source";
+      edit.textContent = wysiwygMessage("block.editSource");
       summary.append(copy, edit);
       dom.append(summary);
 
@@ -68,7 +69,7 @@ export const RawBlock = Node.create({
         preview.textContent = presentation.preview;
         dom.setAttribute(
           "aria-label",
-          `${presentation.label}. Exact LaTeX source preserved.`,
+          wysiwygMessage("block.summaryLabel", { label: presentation.label }),
         );
       };
       updatePresentation();
@@ -107,7 +108,7 @@ export const RawBlock = Node.create({
           14,
         );
         input.spellcheck = false;
-        input.setAttribute("aria-label", "Exact LaTeX block source");
+        input.setAttribute("aria-label", wysiwygMessage("block.inputLabel"));
 
         let composing = false;
         input.addEventListener("compositionstart", () => {

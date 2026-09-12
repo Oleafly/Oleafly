@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { approvalsList, approvalsSet } from "@/lib/tauri";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { createAppQueryClient } from "@/lib/query";
 import { useFilesStore } from "@/store/files";
 import { ProjectApprovals } from "./ProjectApprovals";
@@ -38,8 +39,8 @@ describe("ProjectApprovals", () => {
 
     expect(await screen.findByText("write_file")).toBeInTheDocument();
     expect(screen.getByText("delete_file")).toBeInTheDocument();
-    expect(screen.getByText("Always allowed")).toBeInTheDocument();
-    expect(screen.getByText("Always denied")).toBeInTheDocument();
+    expect(screen.getByText(enSettings.ai.approvals.project.allowed)).toBeInTheDocument();
+    expect(screen.getByText(enSettings.ai.approvals.project.denied)).toBeInTheDocument();
   });
 
   it("removes a decision so the tool prompts again", async () => {
@@ -48,7 +49,9 @@ describe("ProjectApprovals", () => {
     await screen.findByText("write_file");
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Remove rule for write_file" }),
+      screen.getByRole("button", {
+        name: enSettings.ai.approvals.project.removeRule.replace("{{tool}}", "write_file"),
+      }),
     );
 
     await vi.waitFor(() =>
@@ -59,6 +62,6 @@ describe("ProjectApprovals", () => {
   it("renders nothing without an open project", () => {
     useFilesStore.setState({ projectId: null });
     renderCard();
-    expect(screen.queryByText("Tool approvals")).not.toBeInTheDocument();
+    expect(screen.queryByText(enSettings.ai.approvals.project.title)).not.toBeInTheDocument();
   });
 });

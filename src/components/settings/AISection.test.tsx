@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { AppConfig, ProviderModel } from "@/lib/tauri";
 import type { SkillEntry } from "@/lib/skills";
 import { useFilesStore } from "@/store/files";
@@ -28,7 +29,7 @@ vi.mock("@/lib/ollama", () => ({
 vi.mock("./ai/ProvidersTab", () => ({
   ProvidersTab: (props: ProvidersTabProps) => {
     captured.providersTab = props;
-    return <div>Provider settings</div>;
+    return <div>{"Provider settings"}</div>;
   },
 }));
 vi.mock("./ai/ProjectApprovals", () => ({
@@ -38,13 +39,13 @@ vi.mock("./ai/ProjectBudget", () => ({
   ProjectBudget: () => null,
 }));
 vi.mock("./ai/InstructionsTab", () => ({
-  InstructionsTab: () => <div>Instruction settings</div>,
+  InstructionsTab: () => <div>{"Instruction settings"}</div>,
 }));
 vi.mock("./ai/PersonasTab", () => ({
-  PersonasTab: () => <div>Persona settings</div>,
+  PersonasTab: () => <div>{"Persona settings"}</div>,
 }));
 vi.mock("./ai/SkillsTab", () => ({
-  SkillsTab: () => <div>Skill settings</div>,
+  SkillsTab: () => <div>{"Skill settings"}</div>,
 }));
 vi.mock("./ai/AddCustomProviderDialog", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ai/AddCustomProviderDialog")>()),
@@ -59,6 +60,10 @@ let skillsFixture: SkillEntry[] = [];
 let configFixture: AppConfig;
 let failSkillReset = false;
 let listedModels: ProviderModel[] = [];
+
+function providerUpdated(provider: string): string {
+  return enSettings.ai.section.messages.providerUpdated.replace("{{provider}}", provider);
+}
 
 function lastConfigWrite(): AppConfig {
   const writes = mockInvoke.mock.calls.filter(([command]) => command === "set_config");
@@ -247,10 +252,10 @@ describe("AISection", () => {
       expect(mockInvoke.mock.calls.some(([command]) => command === "get_config")).toBe(true),
     );
 
-    await user.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    await user.click(screen.getByRole("button", { name: enSettings.reset.button }));
     const confirmation = await screen.findByRole("alertdialog");
     await user.click(
-      within(confirmation).getByRole("button", { name: "Reset to defaults" }),
+      within(confirmation).getByRole("button", { name: enSettings.reset.button }),
     );
 
     await waitFor(() =>
@@ -279,9 +284,9 @@ describe("AISection", () => {
 
     configFixture = { ...configFixture, skills_share_with_agents: false };
 
-    await user.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    await user.click(screen.getByRole("button", { name: enSettings.reset.button }));
     const confirmation = await screen.findByRole("alertdialog");
-    await user.click(within(confirmation).getByRole("button", { name: "Reset to defaults" }));
+    await user.click(within(confirmation).getByRole("button", { name: enSettings.reset.button }));
 
     await waitFor(() => expect(lastConfigWrite().ai_system_prompt).toBe(""));
     expect(lastConfigWrite().skills_share_with_agents).toBe(false);
@@ -291,7 +296,9 @@ describe("AISection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    const providersTab = screen.getByRole("tab", { name: "Providers and keys" });
+    const providersTab = screen.getByRole("tab", {
+      name: enSettings.ai.section.tabs.providers,
+    });
     const tabList = providersTab.closest('[role="tablist"]');
     if (!(tabList instanceof HTMLElement)) throw new Error("AI settings tab list missing");
     expect(tabList).toHaveClass(
@@ -302,13 +309,15 @@ describe("AISection", () => {
     );
     expect(tabList).not.toHaveClass("w-full");
 
-    const mcpTab = screen.getByRole("tab", { name: "MCP" });
+    const mcpTab = screen.getByRole("tab", { name: enSettings.ai.section.tabs.mcp });
     expect(within(tabList).getAllByRole("tab")).toHaveLength(6);
-    expect(within(tabList).getByRole("tab", { name: "CLI agents" })).toBeInTheDocument();
+    expect(
+      within(tabList).getByRole("tab", { name: enSettings.ai.section.tabs.agents }),
+    ).toBeInTheDocument();
     await user.click(mcpTab);
 
     expect(
-      await screen.findByRole("heading", { name: "Assistant MCP servers" }),
+      await screen.findByRole("heading", { name: enSettings.mcp.servers.title }),
     ).toBeInTheDocument();
     expect(
       mockInvoke.mock.calls.filter(([command]) => command === "mcp_servers_list"),
@@ -316,7 +325,7 @@ describe("AISection", () => {
 
     await user.click(providersTab);
     await user.click(mcpTab);
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
     expect(
       mockInvoke.mock.calls.filter(([command]) => command === "mcp_servers_list"),
     ).toHaveLength(1);
@@ -327,13 +336,13 @@ describe("AISection", () => {
     renderSection();
 
     await waitFor(() => {
-      expect(screen.getByRole("tab", { name: "MCP" })).toHaveAttribute(
+      expect(screen.getByRole("tab", { name: enSettings.ai.section.tabs.mcp })).toHaveAttribute(
         "aria-selected",
         "true",
       );
     });
     expect(
-      await screen.findByRole("heading", { name: "Assistant MCP servers" }),
+      await screen.findByRole("heading", { name: enSettings.mcp.servers.title }),
     ).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
   });
@@ -384,18 +393,13 @@ describe("AISection", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Reset to defaults" }),
+      screen.getByRole("button", { name: enSettings.reset.button }),
     );
     const confirmation = screen.getByRole("alertdialog");
-    expect(confirmation).toHaveTextContent(
-      "including model availability, enabled skills, and this project's budget",
-    );
-    expect(confirmation).toHaveTextContent(
-      "The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged.",
-    );
+    expect(confirmation).toHaveTextContent(enSettings.ai.section.reset.confirmWithProject);
 
     await user.click(
-      within(confirmation).getByRole("button", { name: "Reset to defaults" }),
+      within(confirmation).getByRole("button", { name: enSettings.reset.button }),
     );
 
     await waitFor(() => {
@@ -508,9 +512,7 @@ describe("AISection", () => {
       budgetUsd: null,
     });
     expect(
-      await screen.findByText(
-        "AI Assistant preferences restored to their defaults.",
-      ),
+      await screen.findByText(enSettings.ai.section.messages.preferencesReset),
     ).toBeInTheDocument();
   });
 
@@ -528,7 +530,7 @@ describe("AISection", () => {
 
     renderSection();
 
-    const reset = screen.getByRole("button", { name: "Reset to defaults" });
+    const reset = screen.getByRole("button", { name: enSettings.reset.button });
     expect(reset).toBeDisabled();
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(
@@ -564,13 +566,13 @@ describe("AISection", () => {
     failSkillReset = true;
     localStorage.setItem("oleafly:ai_pdf_capture", "0");
     renderSection();
-    const reset = screen.getByRole("button", { name: "Reset to defaults" });
+    const reset = screen.getByRole("button", { name: enSettings.reset.button });
     await waitFor(() => expect(reset).toBeEnabled());
 
     await user.click(reset);
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
-        name: "Reset to defaults",
+        name: enSettings.reset.button,
       }),
     );
 
@@ -589,13 +591,13 @@ describe("AISection", () => {
       ai_provider_models: {},
     };
     renderSection();
-    const reset = screen.getByRole("button", { name: "Reset to defaults" });
+    const reset = screen.getByRole("button", { name: enSettings.reset.button });
     await waitFor(() => expect(reset).toBeEnabled());
 
     await user.click(reset);
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
-        name: "Reset to defaults",
+        name: enSettings.reset.button,
       }),
     );
 
@@ -621,7 +623,7 @@ describe("credentials changed while AI settings are open", () => {
     renderSection();
     await waitFor(() => expect(captured.providersTab?.cfg.ai_keys).toEqual(configFixture.ai_keys));
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Reset to defaults" })).toBeEnabled(),
+      expect(screen.getByRole("button", { name: enSettings.reset.button })).toBeEnabled(),
     );
   }
 
@@ -717,7 +719,7 @@ describe("AISection custom provider editing", () => {
     renderSection();
     await waitFor(() => expect(captured.providersTab).not.toBeNull());
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Reset to defaults" })).toBeEnabled(),
+      expect(screen.getByRole("button", { name: enSettings.reset.button })).toBeEnabled(),
     );
     act(() => captured.providersTab?.onEditCustomProvider(id));
     await waitFor(() => expect(captured.dialog?.editing?.id).toBe(id));
@@ -762,7 +764,7 @@ describe("AISection custom provider editing", () => {
     ]);
     expect(written.ai_provider_models["local-lab"][1].trust).toBe("untested");
     expect(typeof written.ai_model_lists_refreshed_at?.["local-lab"]).toBe("number");
-    expect(screen.getByText("Lab updated.")).toBeInTheDocument();
+    expect(screen.getByText(providerUpdated("Lab"))).toBeInTheDocument();
   });
 
   it("changes the base URL without the key and keeps the stored key", async () => {
@@ -847,7 +849,7 @@ describe("AISection custom provider editing", () => {
 
     expect(result).toEqual({
       ok: false,
-      message: "The base URL was saved but the key was not. Enter the key again.",
+      message: enSettings.ai.section.errors.keyNotKept,
     });
     expect(lastConfigWrite().ai_keys["local-lab"]).toBe("sk-again");
     await waitFor(() => expect(captured.providersTab?.savedKeys["local-lab"]).toBeUndefined());
@@ -855,7 +857,7 @@ describe("AISection custom provider editing", () => {
     expect(captured.providersTab?.cfg.ai_custom_providers[0].baseURL).toBe(
       "http://127.0.0.1:9100/v1",
     );
-    expect(screen.queryByText("Local Lab updated.")).not.toBeInTheDocument();
+    expect(screen.queryByText(providerUpdated("Local Lab"))).not.toBeInTheDocument();
   });
 
   it("keeps a re-entered key the backend kept", async () => {
@@ -877,7 +879,7 @@ describe("AISection custom provider editing", () => {
 
     expect(result).toEqual({ ok: true });
     await waitFor(() => expect(captured.providersTab?.savedKeys["local-lab"]).toBe("sk-again"));
-    expect(screen.getByText("Local Lab updated.")).toBeInTheDocument();
+    expect(screen.getByText(providerUpdated("Local Lab"))).toBeInTheDocument();
   });
 
   it("stamps the refresh time and keeps trust when a key is saved", async () => {
@@ -888,7 +890,7 @@ describe("AISection custom provider editing", () => {
     renderSection();
     await waitFor(() => expect(captured.providersTab).not.toBeNull());
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Reset to defaults" })).toBeEnabled(),
+      expect(screen.getByRole("button", { name: enSettings.reset.button })).toBeEnabled(),
     );
 
     act(() => captured.providersTab?.setKeys((keys) => ({ ...keys, openai: "sk-new" })));

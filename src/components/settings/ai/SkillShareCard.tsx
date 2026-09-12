@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Switch } from "@/components/ui/switch";
+import { describeError } from "@/lib/app-error";
+import { formatNumber } from "@/lib/intl";
 import { skillsShareSync, skillsShareTargets, type SkillShareTarget } from "@/lib/tauri";
 
 export function SkillShareCard() {
+  const { t } = useTranslation(["common", "settings"]);
   const [targets, setTargets] = useState<SkillShareTarget[]>([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -22,7 +26,7 @@ export function SkillShareCard() {
         setLoaded(true);
       })
       .catch((fetchError) => {
-        if (!cancelled) setError(String(fetchError));
+        if (!cancelled) setError(describeError(fetchError));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -42,31 +46,37 @@ export function SkillShareCard() {
       setTargets(result);
     } catch (syncError) {
       setEnabled(previous);
-      setError(String(syncError));
+      setError(describeError(syncError));
     } finally {
       setBusy(false);
     }
   };
 
   const statusFor = (target: SkillShareTarget): string => {
-    if (!target.supported) return "Not supported on this system";
-    if (!target.detected) return "Not found on this device";
-    return `${target.linked} of ${target.total} linked`;
+    if (!target.supported) return t(($) => $.settings.ai.skills.share.status.unsupported);
+    if (!target.detected) return t(($) => $.settings.ai.skills.share.status.undetected);
+    return t(($) => $.settings.ai.skills.share.status.linked, {
+      linked: formatNumber(target.linked),
+      total: formatNumber(target.total),
+    });
   };
 
   const linkedCount = targets.filter((target) => target.detected && target.linked > 0).length;
   const summary = loading
-    ? "Checking agent folders"
+    ? t(($) => $.settings.ai.skills.share.summary.checking)
     : targets.length === 0
-      ? "No other agent folders were found"
-      : `${linkedCount} of ${targets.length} agents linked`;
+      ? t(($) => $.settings.ai.skills.share.summary.none)
+      : t(($) => $.settings.ai.skills.share.summary.linked, {
+          linked: formatNumber(linkedCount),
+          count: targets.length,
+        });
 
   return (
     <CollapsibleSection
       id="skills-share-card"
       headingLevel="h4"
-      title="Share skills with other agents on this computer"
-      description="Link your skills into the folders other coding agents on this computer already read, so you write a skill once and every agent can use it."
+      title={t(($) => $.settings.ai.skills.share.title)}
+      description={t(($) => $.settings.ai.skills.share.description)}
       trailing={
         <>
           <span data-testid="skills-share-summary" className="hidden text-[11px] text-muted-foreground sm:inline">
@@ -79,7 +89,7 @@ export function SkillShareCard() {
               data-testid="skills-share-toggle"
               checked={enabled}
               disabled={busy || !loaded}
-              aria-label="Share skills with other agents on this computer"
+              aria-label={t(($) => $.settings.ai.skills.share.title)}
               onCheckedChange={(checked) => void toggle(checked)}
             />
           )}
@@ -105,7 +115,9 @@ export function SkillShareCard() {
       ) : null}
 
       {!loading && targets.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No other agent folders were found on this computer.</p>
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.settings.ai.skills.share.emptyBody)}
+        </p>
       ) : null}
 
       {error ? (

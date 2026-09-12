@@ -374,21 +374,29 @@ async fn confirm_native_cookie_import<R: Runtime>(
     profile: &str,
     domain: Option<&str>,
 ) -> Result<(), CookieImportError> {
-    let scope = domain
-        .map(|hostname| format!("cookies for {hostname}"))
-        .unwrap_or_else(|| "all cookies".to_string());
-    let message = format!(
-        "Import {scope} from {} profile \"{profile}\" into Oleafly's in-app browser? Imported cookies may sign you in to websites.",
-        browser.name()
-    );
+    let browser_name = browser.name();
+    let message = match domain {
+        Some(hostname) => crate::i18n::t_with(
+            "dialog.cookieImport.messageHost",
+            &[
+                ("hostname", hostname),
+                ("browser", browser_name),
+                ("profile", profile),
+            ],
+        ),
+        None => crate::i18n::t_with(
+            "dialog.cookieImport.messageAll",
+            &[("browser", browser_name), ("profile", profile)],
+        ),
+    };
     let (sender, receiver) = tokio::sync::oneshot::channel();
     app.dialog()
         .message(message)
-        .title("Confirm cookie import")
+        .title(crate::i18n::t("dialog.cookieImport.title"))
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::OkCancelCustom(
-            "Import cookies".to_string(),
-            "Cancel".to_string(),
+            crate::i18n::t("dialog.cookieImport.confirm"),
+            crate::i18n::t("dialog.cancel"),
         ))
         .show(move |confirmed| {
             let _ = sender.send(confirmed);

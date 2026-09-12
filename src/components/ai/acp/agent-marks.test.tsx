@@ -55,7 +55,7 @@ describe("agent marks", () => {
   });
 
   it("uses the supplied title when one is given", () => {
-    const { container } = render(<AgentLogo agentId="pi" size={18} title="Pi coding agent" />);
+    const { container } = render(<AgentLogo agentId="pi" size={18} title={"Pi coding agent"} />);
     expect(container.querySelector("svg")?.getAttribute("aria-label")).toBe("Pi coding agent");
   });
 });

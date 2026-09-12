@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ConfirmFn, ToolApprovalRequest } from "@/lib/ai-tools";
@@ -185,7 +186,10 @@ export function createMcpRuntimeToolsets(
               mcp: McpApprovalDetails;
             } = {
               tool: tool.name,
-              summary: `Use ${tool.tool_handle} from the ${server.name} MCP server`,
+              summary: i18n.t(($) => $.core.mcp.useToolSummary, {
+          tool: tool.tool_handle,
+          server: server.name,
+        }),
               mcp: {
                 server: server.name,
                 tool: tool.tool_handle,

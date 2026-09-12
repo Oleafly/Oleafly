@@ -1217,6 +1217,8 @@ export async function ensureAiConnected(page: Page) {
   );
 }
 
+const SETTINGS_BUTTON = '[data-testid="open-settings"]';
+
 export async function openSettings(page: Page, section?: string) {
   // The settings modal is lazy-loaded. Wait for its always-present appearance
   // nav via the locator-assertion path (tauriExpect), NOT waitForFunction: the
@@ -1227,14 +1229,14 @@ export async function openSettings(page: Page, section?: string) {
   const appearance = page.locator(
     '[data-testid="settings-section-appearance"]',
   ) as unknown as LocatorLike;
-  await page.click('[aria-label="Settings"]');
+  await page.click(SETTINGS_BUTTON);
   const mounted = await expect(appearance)
     .toBeVisible({ timeout: 8_000 })
     .then(() => true)
     .catch(() => false);
   if (!mounted) {
     await page.press("body", "Escape").catch(() => {});
-    await page.click('[aria-label="Settings"]').catch(() => {});
+    await page.click(SETTINGS_BUTTON).catch(() => {});
     await expect(appearance).toBeVisible({ timeout: 8_000 });
   }
   if (section) {

@@ -1,3 +1,4 @@
+import { message, type MessageRef } from "./messages";
 import type { Finding, FindingMethod, StandardRef } from "./types";
 
 const UA1_URL = "https://pdfa.org/resource/iso-14289-pdfua/";
@@ -353,11 +354,14 @@ export function pdfUaCoverage(
   };
 }
 
-export function pdfUaCoverageLine(coverage: PdfUaCoverage): string {
-  const checked = `PDF/UA-1: ${coverage.passed} of ${coverage.total} machine-checkable rules verified.`;
-  const blind =
-    coverage.unavailable.length > 0
-      ? ` Oleafly reads ${coverage.covered} of those rules, and ${coverage.unavailable.length} of them could not be checked in this file.`
-      : "";
-  return `${checked}${blind} Subset check, not a conformance statement.`;
+export function pdfUaCoverageLine(coverage: PdfUaCoverage): MessageRef {
+  if (coverage.unavailable.length > 0) {
+    return message("standards.coverageWithBlindSpots", {
+      passed: coverage.passed,
+      total: coverage.total,
+      covered: coverage.covered,
+      unavailable: coverage.unavailable.length,
+    });
+  }
+  return message("standards.coverage", { passed: coverage.passed, total: coverage.total });
 }

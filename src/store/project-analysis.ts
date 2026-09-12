@@ -19,11 +19,12 @@ import {
   type ProjectAnalysisSnapshot,
   type ProjectLanguageServiceSnapshot,
 } from "@/lib/analysis/project-snapshot";
+import type { AnalysisReason } from "@/lib/analysis/reason";
 
 export interface ProjectIndexUpdate {
   request: ProjectAnalysisRequestIdentity;
   index: ProjectIndex;
-  partialReason?: string;
+  partialReason?: AnalysisReason;
 }
 
 export interface ProjectAnalysisStore {
@@ -34,7 +35,7 @@ export interface ProjectAnalysisStore {
   setLocalDocument: (
     uri: string,
     version: number,
-    reason: string,
+    reason: AnalysisReason,
   ) => boolean;
   removeDocument: (uri: string) => void;
   beginDocumentDiagnostics: (
@@ -66,7 +67,7 @@ export interface ProjectAnalysisStore {
     feature: ProjectAnalysisFeature,
     request: ProjectAnalysisRequestIdentity,
     data: unknown,
-    reason: string,
+    reason: AnalysisReason,
   ) => boolean;
   failFeature: (
     feature: ProjectAnalysisFeature,
@@ -75,16 +76,16 @@ export interface ProjectAnalysisStore {
   ) => boolean;
   markFeatureUnsupported: (
     feature: ProjectAnalysisFeature,
-    reason: string,
+    reason: AnalysisReason,
   ) => void;
   markFeatureUnavailable: (
     feature: ProjectAnalysisFeature,
-    reason: string,
+    reason: AnalysisReason,
     retryable?: boolean,
   ) => void;
   markFeatureNotRun: (
     feature: ProjectAnalysisFeature,
-    reason?: string,
+    reason?: AnalysisReason,
   ) => void;
   beginProjectIndex: (
     request: ProjectAnalysisRequestIdentity,
@@ -148,8 +149,7 @@ function diagnosticFeatureSlot(
       status: "partial",
       data,
       request,
-      reason:
-        "Diagnostics are partial while the language server acknowledges current document revisions.",
+      reason: { key: "diagnosticsPartial" },
       completedAt: Date.now(),
     };
   }
@@ -190,12 +190,12 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
         ...current,
         identity: { ...current.identity, projectRevision: revision },
         diagnosticsByUri: {},
-        features: createFeaturePlaceholders(
-          "Project content changed. Analysis has not run.",
-        ),
-        projectIndex: notRunAnalysisSlot(
-          "Project content changed. The index is not current.",
-        ),
+        features: createFeaturePlaceholders({
+          key: "projectContentChangedAnalysis",
+        }),
+        projectIndex: notRunAnalysisSlot({
+          key: "projectContentChangedIndex",
+        }),
         updatedAt: Date.now(),
       },
     });
@@ -218,9 +218,9 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
     const diagnosticsByUri = { ...current.diagnosticsByUri };
     if (prior && prior.version !== version) {
       delete diagnosticsByUri[uri];
-      features.diagnostics = notRunAnalysisSlot(
-        "Document changed. Diagnostics are awaiting acknowledgement.",
-      );
+      features.diagnostics = notRunAnalysisSlot({
+        key: "documentChangedDiagnostics",
+      });
     }
     for (const [feature, slot] of Object.entries(features)) {
       if (
@@ -229,7 +229,7 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
         slot.request.documentVersion !== version
       ) {
         features[feature as ProjectAnalysisFeature] =
-          notRunAnalysisSlot("Document changed. Analysis has not run.");
+          notRunAnalysisSlot({ key: "documentChangedAnalysis" });
       }
     }
     set({
@@ -294,11 +294,13 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
     for (const [feature, slot] of Object.entries(features)) {
       if ("request" in slot && slot.request.documentUri === uri) {
         features[feature as ProjectAnalysisFeature] =
-          notRunAnalysisSlot("Document was closed");
+          notRunAnalysisSlot({ key: "documentClosed" });
       }
     }
     if (Object.keys(diagnosticsByUri).length === 0) {
-      features.diagnostics = notRunAnalysisSlot("No diagnostics have run");
+      features.diagnostics = notRunAnalysisSlot({
+        key: "diagnosticsNotRun",
+      });
     } else {
       const request = Object.values(diagnosticsByUri).reduce(
         (latest, entry) =>
@@ -418,7 +420,7 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
     const entries = Object.values(diagnosticsByUri);
     const diagnostics =
       entries.length === 0
-        ? notRunAnalysisSlot("No diagnostics have run")
+        ? notRunAnalysisSlot({ key: "diagnosticsNotRun" })
         : diagnosticFeatureSlot(
             diagnosticsByUri,
             entries.reduce(
@@ -475,9 +477,9 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
           languageServiceGeneration: generation,
         },
         diagnosticsByUri: {},
-        features: createFeaturePlaceholders(
-          "Language service restarted. Analysis has not run.",
-        ),
+        features: createFeaturePlaceholders({
+          key: "languageServiceRestarted",
+        }),
         updatedAt: Date.now(),
       },
     });

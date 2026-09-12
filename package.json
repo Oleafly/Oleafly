@@ -40,7 +40,10 @@
     "test:watch": "vitest",
     "prepare": "git config core.hooksPath .githooks || true",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
-    "test:e2e:app": "./scripts/e2e.sh"
+    "test:e2e:app": "./scripts/e2e.sh",
+    "i18n:types": "node --experimental-strip-types --no-warnings scripts/i18n/gen-types.ts",
+    "i18n:types:check": "node --experimental-strip-types --no-warnings scripts/i18n/gen-types.ts --check",
+    "i18n:validate": "node --experimental-strip-types --no-warnings scripts/i18n/validate.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -62,12 +65,12 @@
     "@oleafly/backend-port": "workspace:*",
     "@oleafly/diagram": "workspace:*",
     "@oleafly/editor": "workspace:*",
-    "@oleafly/i18n-contract": "workspace:*",
     "@oleafly/latex": "workspace:*",
     "@oleafly/latex-intelligence": "workspace:*",
     "@oleafly/preflight": "workspace:*",
     "@oleafly/preview": "workspace:*",
     "@oleafly/registry": "workspace:*",
+    "@oleafly/i18n-contract": "workspace:*",
     "@oleafly/templates": "workspace:*",
     "@oleafly/wysiwyg": "workspace:*",
     "@radix-ui/react-checkbox": "^1.3.10",

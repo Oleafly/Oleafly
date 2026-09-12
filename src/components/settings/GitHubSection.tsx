@@ -1,4 +1,6 @@
+import { describeError } from "@/lib/app-error";
 import { useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Check, ChevronDown, ChevronRight, Copy, Github, Loader2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ import {
 } from "@/lib/github";
 
 export function GitHubSection() {
+  const { t } = useTranslation(["common", "settings"]);
   const ghStatus = useGithubStore((s) => s.status);
   const ghUser = useGithubStore((s) => s.user);
   const ghLoading = useGithubStore((s) => s.loading);
@@ -23,10 +26,12 @@ export function GitHubSection() {
   const refresh = useGithubStore((s) => s.refresh);
 
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [msg, setMsg] = useState<
+    { ok: boolean; kind: "connected"; login: string } | { ok: boolean; kind: "disconnected" } | null
+  >(null);
 
   const [config, setConfigState] = useState<AppConfig | null>(null);
-  const [configError, setConfigError] = useState<string | null>(null);
+  const [configError, setConfigError] = useState<"load" | "save" | null>(null);
   const configRequest = useRef(0);
   const configWrites = useRef<Promise<void>>(Promise.resolve());
 
@@ -40,7 +45,7 @@ export function GitHubSection() {
       })
       .catch(() => {
         if (request !== configRequest.current) return;
-        setConfigError("Couldn't load Git settings.");
+        setConfigError("load");
       });
     return () => {
       configRequest.current += 1;
@@ -54,7 +59,7 @@ export function GitHubSection() {
     configWrites.current = configWrites.current
       .then(() => getConfig())
       .then((latest) => setConfig({ ...latest, git_auto_init: value }))
-      .catch(() => setConfigError("Couldn't save Git settings."));
+      .catch(() => setConfigError("save"));
   };
 
   const [flow, setFlow] = useState<DeviceCode | null>(null);
@@ -70,7 +75,12 @@ export function GitHubSection() {
     if (ghStatus === "unknown") void refresh();
   }, [ghStatus, refresh]);
 
-  const note = (ok: boolean, text: string) => setMsg({ ok, text });
+  const noteConnected = () =>
+    setMsg({
+      ok: true,
+      kind: "connected",
+      login: useGithubStore.getState().user?.login ?? "GitHub",
+    });
 
   // Bumping this invalidates any in-flight poll, letting the user cancel a
   // running device flow and guarding against cancel→reconnect races.
@@ -122,17 +132,17 @@ export function GitHubSection() {
       if (cancelled()) return;
 
       if (!token) {
-        setFlowError("GitHub sign-in timed out. Try again.");
+        setFlowError(t(($) => $.settings.github.device.timedOut));
         setFlow(null);
         return;
       }
       await connectWithToken(token);
       if (cancelled()) return;
       setFlow(null);
-      note(true, `Connected as @${useGithubStore.getState().user?.login ?? "GitHub"}`);
+      noteConnected();
     } catch (e) {
       if (cancelled()) return;
-      setFlowError(String(e));
+      setFlowError(describeError(e));
       setFlow(null);
     } finally {
       if (!cancelled()) setBusy(false);
@@ -161,9 +171,9 @@ export function GitHubSection() {
       await connectWithToken(pat.trim());
       setPat("");
       setShowAdvanced(false);
-      note(true, `Connected as @${useGithubStore.getState().user?.login ?? "GitHub"}`);
+      noteConnected();
     } catch (e) {
-      setFlowError(String(e));
+      setFlowError(describeError(e));
     } finally {
       setBusy(false);
     }
@@ -171,7 +181,7 @@ export function GitHubSection() {
 
   const doDisconnect = async () => {
     await disconnect();
-    note(true, "Disconnected.");
+    setMsg({ ok: true, kind: "disconnected" });
   };
 
   return (
@@ -179,19 +189,21 @@ export function GitHubSection() {
       <div>
         <h3 className="text-sm font-medium">GitHub</h3>
         <p className="text-xs text-muted-foreground">
-          Back up projects, sync across devices, and push/pull from the Git panel.
+          {t(($) => $.settings.github.description)}
         </p>
       </div>
       <div className="space-y-2" data-testid="git-auto-init">
         <SettingsToggleRow
-          label="Initialise Git for every project"
-          description="New and opened projects get a Git repository so the Git panel can track changes. Oleafly never commits on its own."
+          label={t(($) => $.settings.github.autoInit.label)}
+          description={t(($) => $.settings.github.autoInit.description)}
           checked={gitAutoInitEnabled(config)}
           onChange={writeGitAutoInit}
         />
         {configError ? (
           <p className="text-xs text-destructive" role="alert">
-            {configError}
+            {configError === "load"
+              ? t(($) => $.settings.github.config.loadFailed)
+              : t(($) => $.settings.github.config.saveFailed)}
           </p>
         ) : null}
       </div>
@@ -210,10 +222,12 @@ export function GitHubSection() {
           )}
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium">
-              @{ghUser?.login ?? "GitHub"}
+              {t(($) => $.settings.github.account.handle, {
+                login: ghUser?.login ?? "GitHub",
+              })}
             </div>
             <div className="text-xs text-muted-foreground">
-              {ghUser?.name ? ghUser.name : "Connected"}
+              {ghUser?.name ? ghUser.name : t(($) => $.settings.github.account.connected)}
             </div>
           </div>
           <Button
@@ -223,22 +237,29 @@ export function GitHubSection() {
             onClick={() => void doDisconnect()}
             className="hover:bg-destructive/10 hover:text-destructive"
           >
-            Disconnect
+            {t(($) => $.settings.github.account.disconnect)}
           </Button>
         </div>
       ) : flow ? (
         <div className="space-y-3 rounded-lg border bg-background p-4">
           <div>
-            <div className="text-sm font-semibold">Enter this code on GitHub</div>
+            <div className="text-sm font-semibold">
+              {t(($) => $.settings.github.device.title)}
+            </div>
             <div className="text-xs text-muted-foreground">
-              We opened{" "}
-              <button type="button"
-                onClick={() => void open(flow.verification_uri)}
-                className="font-medium text-primary hover:underline dark:text-primary"
-              >
-                {flow.verification_uri}
-              </button>{" "}
-              in your browser. Paste the code there to authorize Oleafly.
+              <Trans
+                ns="settings"
+                i18nKey={($) => $.settings.github.device.opened}
+                values={{ url: flow.verification_uri }}
+                components={{
+                  verificationLink: (
+                    <button type="button"
+                      onClick={() => void open(flow.verification_uri)}
+                      className="font-medium text-primary hover:underline dark:text-primary"
+                    />
+                  ),
+                }}
+              />
             </div>
           </div>
           <div className="flex items-center justify-center gap-2 rounded-md border bg-muted/40 py-4">
@@ -252,19 +273,19 @@ export function GitHubSection() {
               onClick={() => copyCode(flow.user_code)}
             >
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              {copied ? "Copied" : "Copy"}
+              {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
             </Button>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => void open(flow.verification_uri)}>
-              Open GitHub
+              {t(($) => $.settings.github.device.openGithub)}
             </Button>
             <Button size="sm" variant="ghost" onClick={cancelFlow}>
-              Cancel
+              {t(($) => $.common.actions.cancel)}
             </Button>
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin" />
-              Waiting for authorization…
+              {t(($) => $.settings.github.device.waiting)}
             </span>
           </div>
         </div>
@@ -279,7 +300,7 @@ export function GitHubSection() {
             ) : (
               <Github className="size-4" />
             )}
-            Connect GitHub
+            {t(($) => $.settings.github.connect)}
           </Button>
           {flowError && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
@@ -295,7 +316,7 @@ export function GitHubSection() {
             ) : (
               <ChevronRight className="size-3" />
             )}
-            Advanced: use a personal access token
+            {t(($) => $.settings.github.advanced.toggle)}
           </button>
           {showAdvanced && (
             <div className="flex gap-2 pt-1">
@@ -303,7 +324,7 @@ export function GitHubSection() {
                 type="password"
                 value={pat}
                 onChange={(e) => setPat(e.target.value)}
-                placeholder="ghp_…"
+                placeholder={t(($) => $.settings.github.advanced.tokenPlaceholder)}
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
               />
               <Button
@@ -311,14 +332,14 @@ export function GitHubSection() {
                 disabled={busy || !pat.trim()}
                 onClick={() => void connectPat()}
               >
-                Connect
+                {t(($) => $.settings.github.advanced.connect)}
               </Button>
             </div>
           )}
           <p className="text-xs text-muted-foreground">
             {GITHUB_OAUTH_CLIENT_ID
-              ? "Signs you in with a one-time code in your browser."
-              : "OAuth sign-in isn't configured in this build yet - paste a token instead."}
+              ? t(($) => $.settings.github.hint.oauth)
+              : t(($) => $.settings.github.hint.token)}
           </p>
         </>
       )}
@@ -331,7 +352,9 @@ export function GitHubSection() {
               : "rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"
           }
         >
-          {msg.text}
+          {msg.kind === "connected"
+            ? t(($) => $.settings.github.notice.connected, { login: msg.login })
+            : t(($) => $.settings.github.notice.disconnected)}
         </div>
       )}
     </div>

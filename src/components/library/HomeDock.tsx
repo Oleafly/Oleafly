@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { PenTool, Plus, Search, Settings as SettingsIcon, ToolCase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -60,6 +61,7 @@ export const HOME_DOCK_GLASS_SURFACE =
   "border border-white/30 bg-white/10 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.3),inset_0_1px_0_0_rgba(255,255,255,0.3)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-white/5 dark:shadow-[0_8px_30px_-6px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.08)]";
 
 export function HomeDock() {
+  const { t } = useTranslation(["library"]);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
@@ -77,7 +79,7 @@ export function HomeDock() {
   const items = (
     <>
       <DockButton
-        label="New project"
+        label={t(($) => $.library.dock.newProject)}
         icon={<Plus className="size-4" />}
         onClick={() => setNewProjectOpen(true)}
         primary
@@ -87,7 +89,7 @@ export function HomeDock() {
       />
       {hasProjects && (
         <DockButton
-          label={`Search Documents (${shortcut("⌘⇧F")})`}
+          label={t(($) => $.library.dock.search, { shortcut: shortcut("⌘⇧F") })}
           icon={<Search className="size-4" />}
           onClick={() => setSearchOpen(true)}
           testId="open-search"
@@ -95,7 +97,7 @@ export function HomeDock() {
         />
       )}
       <DockButton
-        label="Diagram Composer"
+        label={t(($) => $.library.dock.diagramComposer)}
         icon={<PenTool className="size-4" />}
         onClick={() => goTo("diagram-composer")}
         active={page === "diagram-composer"}
@@ -104,7 +106,7 @@ export function HomeDock() {
       />
       {latexTools && (
         <DockButton
-          label="Oleafly Tools"
+          label={t(($) => $.library.dock.tools)}
           icon={<ToolCase className="size-4" />}
           onClick={openTools}
           active={toolsOpen}
@@ -119,7 +121,7 @@ export function HomeDock() {
         testId="home-theme-menu"
       />
       <DockButton
-        label="Settings"
+        label={t(($) => $.library.dock.settings)}
         icon={<SettingsIcon className="size-4" />}
         onClick={() => setSettingsOpen(true)}
         testId="open-settings"

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type WheelEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Plus } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
@@ -12,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { i18n } from "@/i18n";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
@@ -36,17 +38,18 @@ import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
 
 const APPEARANCE_TABS = [
-  { id: "app", label: "App" },
-  { id: "editor", label: "Editor" },
-  { id: "terminal", label: "Terminal" },
-  { id: "pdf", label: "PDF Preview" },
-  { id: "browser", label: "Browser" },
-  { id: "files", label: "Project" },
+  { id: "app", label: () => i18n.t(($) => $.settings.appearance.tabs.app) },
+  { id: "editor", label: () => i18n.t(($) => $.settings.appearance.tabs.editor) },
+  { id: "terminal", label: () => i18n.t(($) => $.settings.appearance.tabs.terminal) },
+  { id: "pdf", label: () => i18n.t(($) => $.settings.appearance.tabs.pdf) },
+  { id: "browser", label: () => i18n.t(($) => $.settings.appearance.tabs.browser) },
+  { id: "files", label: () => i18n.t(($) => $.settings.appearance.tabs.files) },
 ] as const;
 
 type AppearanceTabId = (typeof APPEARANCE_TABS)[number]["id"];
 
 function AppAppearanceTab() {
+  const { t } = useTranslation(["common", "settings"]);
   const { preference, setPreference } = useTheme();
   const dockPlacement = useSettingsStore((state) => state.dockPlacement);
   const setDockPlacement = useSettingsStore((state) => state.setDockPlacement);
@@ -62,16 +65,18 @@ function AppAppearanceTab() {
   return (
     <div className="space-y-3">
       <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">Dock placement</div>
+        <div className="text-sm font-medium">
+          {t(($) => $.settings.appearance.app.dock.label)}
+        </div>
         <div className="mb-2 text-xs text-muted-foreground">
-          Choose where the home screen dock sits.
+          {t(($) => $.settings.appearance.app.dock.description)}
         </div>
         <div className="grid grid-cols-3 gap-2">
           {(
             [
-              { id: "left", label: "Left" },
-              { id: "bottom", label: "Bottom" },
-              { id: "right", label: "Right" },
+              { id: "left", label: t(($) => $.settings.appearance.app.dock.left) },
+              { id: "bottom", label: t(($) => $.settings.appearance.app.dock.bottom) },
+              { id: "right", label: t(($) => $.settings.appearance.app.dock.right) },
             ] as const
           ).map((option) => {
             const active = dockPlacement === option.id;
@@ -107,16 +112,18 @@ function AppAppearanceTab() {
       </div>
 
       <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">Background pattern</div>
+        <div className="text-sm font-medium">
+          {t(($) => $.settings.appearance.app.bgPattern.label)}
+        </div>
         <div className="mb-2 text-xs text-muted-foreground">
-          Pick the pattern behind the project shelf.
+          {t(($) => $.settings.appearance.app.bgPattern.description)}
         </div>
         <div className="grid grid-cols-3 gap-2">
           {(
             [
-              { id: "dots", label: "Dots" },
-              { id: "grid", label: "Grid" },
-              { id: "none", label: "None" },
+              { id: "dots", label: t(($) => $.settings.appearance.app.bgPattern.dots) },
+              { id: "grid", label: t(($) => $.settings.appearance.app.bgPattern.grid) },
+              { id: "none", label: t(($) => $.common.state.none) },
             ] as const
           ).map((option) => {
             const active = bgPattern === option.id;
@@ -148,9 +155,11 @@ function AppAppearanceTab() {
       </div>
 
       <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">Accent color</div>
+        <div className="text-sm font-medium">
+          {t(($) => $.settings.appearance.app.accent.label)}
+        </div>
         <div className="mb-2 text-xs text-muted-foreground">
-          Used for buttons, selections, and the editor cursor.
+          {t(($) => $.settings.appearance.app.accent.description)}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {ACCENTS.map((accent) => {
@@ -160,7 +169,9 @@ function AppAppearanceTab() {
                 type="button"
                 key={accent.id}
                 title={accent.name}
-                aria-label={`${accent.name} accent`}
+                aria-label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, {
+                  name: accent.name,
+                })}
                 aria-pressed={active}
                 onClick={() => setAccentColor(accent.color)}
                 className={cn(
@@ -182,9 +193,11 @@ function AppAppearanceTab() {
         data-testid="settings-row-appearance"
         className="rounded-lg border bg-card p-3"
       >
-        <div className="text-sm font-medium">Appearance</div>
+        <div className="text-sm font-medium">
+          {t(($) => $.settings.appearance.app.theme.label)}
+        </div>
         <div className="mb-2 text-xs text-muted-foreground">
-          System follows the operating system and changes when it does.
+          {t(($) => $.settings.appearance.app.theme.description)}
         </div>
         <ThemeSegmentedControl
           preference={preference}
@@ -198,9 +211,11 @@ function AppAppearanceTab() {
         className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
       >
         <div>
-          <div className="text-sm font-medium">App font size</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.app.fontSize.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Scale text across menus, panels, and buttons.
+            {t(($) => $.settings.appearance.app.fontSize.description)}
           </div>
         </div>
         <Select
@@ -213,7 +228,7 @@ function AppAppearanceTab() {
           <SelectContent className="z-[100]">
             {[13, 14, 15, 16, 17, 18, 20].map((size) => (
               <SelectItem key={size} value={String(size)}>
-                {size}px
+                {t(($) => $.settings.appearance.fontSizeOption, { size })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -225,9 +240,11 @@ function AppAppearanceTab() {
         className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
       >
         <div>
-          <div className="text-sm font-medium">App font</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.app.font.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Uses the system fallback when a font is not installed.
+            {t(($) => $.settings.appearance.app.font.description)}
           </div>
         </div>
         <Select
@@ -257,6 +274,7 @@ function AppAppearanceTab() {
 }
 
 function EditorAppearanceTab() {
+  const { t } = useTranslation(["common", "settings"]);
   const vim = useSettingsStore((state) => state.vim);
   const toggleVim = useSettingsStore((state) => state.toggleVim);
   const editorAutocomplete = useSettingsStore((state) => state.editorAutocomplete);
@@ -309,9 +327,11 @@ function EditorAppearanceTab() {
         className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
       >
         <div>
-          <div className="text-sm font-medium">Editor font size</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.editor.fontSize.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Set the source editor's text size.
+            {t(($) => $.settings.appearance.editor.fontSize.description)}
           </div>
         </div>
         <Select
@@ -324,7 +344,7 @@ function EditorAppearanceTab() {
           <SelectContent className="z-[100]">
             {[11, 12, 13, 14, 15, 16, 18, 20].map((size) => (
               <SelectItem key={size} value={String(size)}>
-                {size}px
+                {t(($) => $.settings.appearance.fontSizeOption, { size })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -336,9 +356,11 @@ function EditorAppearanceTab() {
         className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
       >
         <div>
-          <div className="text-sm font-medium">Editor font</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.editor.font.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Choose the monospace font used for source files.
+            {t(($) => $.settings.appearance.editor.font.description)}
           </div>
         </div>
         <Select
@@ -368,9 +390,11 @@ function EditorAppearanceTab() {
         className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
       >
         <div>
-          <div className="text-sm font-medium">Editor theme</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.editor.theme.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Set source syntax colors separately from the app theme.
+            {t(($) => $.settings.appearance.editor.theme.description)}
           </div>
         </div>
         <Select
@@ -394,50 +418,50 @@ function EditorAppearanceTab() {
       </div>
 
       <SettingsToggleRow
-        label="Vim mode"
-        description="Use Vim keybindings in the source editor."
+        label={t(($) => $.settings.appearance.editor.vim.label)}
+        description={t(($) => $.settings.appearance.editor.vim.description)}
         checked={vim}
         onChange={toggleVim}
       />
       <SettingsToggleRow
-        label="Auto-complete"
-        description="Show code completions as you type. Ctrl+Space still opens them when this is off."
+        label={t(($) => $.settings.appearance.editor.autocomplete.label)}
+        description={t(($) => $.settings.appearance.editor.autocomplete.description)}
         checked={editorAutocomplete}
         onChange={setEditorAutocomplete}
       />
       <SettingsToggleRow
-        label="Auto-close brackets"
-        description="Insert closing brackets and parentheses automatically."
+        label={t(($) => $.settings.appearance.editor.autoCloseBrackets.label)}
+        description={t(($) => $.settings.appearance.editor.autoCloseBrackets.description)}
         checked={editorAutoCloseBrackets}
         onChange={setEditorAutoCloseBrackets}
       />
       <SettingsToggleRow
-        label="Auto-close math"
-        description="Pair $, \( and \[ as you type."
+        label={t(($) => $.settings.appearance.editor.autoCloseMath.label)}
+        description={t(($) => $.settings.appearance.editor.autoCloseMath.description)}
         checked={editorAutoCloseMath}
         onChange={setEditorAutoCloseMath}
       />
       <SettingsToggleRow
-        label="Auto-close environments"
-        description="Insert \end when you press Enter after \begin."
+        label={t(($) => $.settings.appearance.editor.autoCloseEnvironments.label)}
+        description={t(($) => $.settings.appearance.editor.autoCloseEnvironments.description)}
         checked={editorAutoCloseEnvironments}
         onChange={setEditorAutoCloseEnvironments}
       />
       <SettingsToggleRow
-        label="Inline suggestion"
-        description="Show the likely completion after the cursor. Press Tab to accept it."
+        label={t(($) => $.settings.appearance.editor.ghostCompletion.label)}
+        description={t(($) => $.settings.appearance.editor.ghostCompletion.description)}
         checked={editorGhostCompletion}
         onChange={setEditorGhostCompletion}
       />
       <SettingsToggleRow
-        label="Non-blinking cursor"
-        description="Keep the editor cursor solid."
+        label={t(($) => $.settings.appearance.editor.nonBlinkingCursor.label)}
+        description={t(($) => $.settings.appearance.editor.nonBlinkingCursor.description)}
         checked={editorNonBlinkingCursor}
         onChange={setEditorNonBlinkingCursor}
       />
       <SettingsToggleRow
-        label="Sticky scroll"
-        description="Keep the current LaTeX sections and environments at the top while you scroll."
+        label={t(($) => $.settings.appearance.editor.stickyScroll.label)}
+        description={t(($) => $.settings.appearance.editor.stickyScroll.description)}
         checked={editorStickyScroll}
         onChange={setEditorStickyScroll}
       />
@@ -446,6 +470,7 @@ function EditorAppearanceTab() {
 }
 
 function TerminalAppearanceTab() {
+  const { t } = useTranslation(["common", "settings"]);
   const terminalFontSize = useSettingsStore((state) => state.terminalFontSize);
   const setTerminalFontSize = useSettingsStore(
     (state) => state.setTerminalFontSize,
@@ -516,22 +541,27 @@ function TerminalAppearanceTab() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
         <div>
-          <div className="text-sm font-medium">Terminal font size</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.terminal.fontSize.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Set the text size in the terminal.
+            {t(($) => $.settings.appearance.terminal.fontSize.description)}
           </div>
         </div>
         <Select
           value={String(terminalFontSize)}
           onValueChange={(value) => setTerminalFontSize(Number(value))}
         >
-          <SelectTrigger className="w-[88px]" aria-label="Terminal font size">
+          <SelectTrigger
+            className="w-[88px]"
+            aria-label={t(($) => $.settings.appearance.terminal.fontSize.label)}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
             {[11, 12, 13, 14, 15, 16, 18, 20, 22, 24].map((size) => (
               <SelectItem key={size} value={String(size)}>
-                {size}px
+                {t(($) => $.settings.appearance.fontSizeOption, { size })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -540,13 +570,18 @@ function TerminalAppearanceTab() {
 
       <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
         <div>
-          <div className="text-sm font-medium">Terminal font</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.terminal.font.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Choose the monospace font used by the terminal.
+            {t(($) => $.settings.appearance.terminal.font.description)}
           </div>
         </div>
         <Select value={terminalFontFamily} onValueChange={setTerminalFontFamily}>
-          <SelectTrigger className="w-[168px]" aria-label="Terminal font family">
+          <SelectTrigger
+            className="w-[168px]"
+            aria-label={t(($) => $.settings.appearance.terminal.font.ariaLabel)}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
@@ -561,16 +596,21 @@ function TerminalAppearanceTab() {
 
       <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
         <div>
-          <div className="text-sm font-medium">Regular font weight</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.terminal.fontWeight.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Set the weight for regular terminal text.
+            {t(($) => $.settings.appearance.terminal.fontWeight.description)}
           </div>
         </div>
         <Select
           value={String(terminalFontWeight)}
           onValueChange={(value) => setTerminalFontWeight(Number(value))}
         >
-          <SelectTrigger className="w-[100px]" aria-label="Regular font weight">
+          <SelectTrigger
+            className="w-[100px]"
+            aria-label={t(($) => $.settings.appearance.terminal.fontWeight.label)}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
@@ -585,16 +625,21 @@ function TerminalAppearanceTab() {
 
       <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
         <div>
-          <div className="text-sm font-medium">Bold font weight</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.terminal.fontWeightBold.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Set the weight for bold terminal text.
+            {t(($) => $.settings.appearance.terminal.fontWeightBold.description)}
           </div>
         </div>
         <Select
           value={String(terminalFontWeightBold)}
           onValueChange={(value) => setTerminalFontWeightBold(Number(value))}
         >
-          <SelectTrigger className="w-[100px]" aria-label="Bold font weight">
+          <SelectTrigger
+            className="w-[100px]"
+            aria-label={t(($) => $.settings.appearance.terminal.fontWeightBold.label)}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
@@ -609,9 +654,11 @@ function TerminalAppearanceTab() {
 
       <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
         <div>
-          <div className="text-sm font-medium">Cursor style</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.terminal.cursorStyle.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Choose the shape of the terminal cursor.
+            {t(($) => $.settings.appearance.terminal.cursorStyle.description)}
           </div>
         </div>
         <Select
@@ -620,36 +667,47 @@ function TerminalAppearanceTab() {
             setTerminalCursorStyle(value as TerminalCursorStyle)
           }
         >
-          <SelectTrigger className="w-[120px]" aria-label="Terminal cursor style">
+          <SelectTrigger
+            className="w-[120px]"
+            aria-label={t(($) => $.settings.appearance.terminal.cursorStyle.ariaLabel)}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
-            <SelectItem value="block">Block</SelectItem>
-            <SelectItem value="underline">Underline</SelectItem>
-            <SelectItem value="bar">Bar</SelectItem>
+            <SelectItem value="block">
+              {t(($) => $.settings.appearance.terminal.cursorStyle.block)}
+            </SelectItem>
+            <SelectItem value="underline">
+              {t(($) => $.settings.appearance.terminal.cursorStyle.underline)}
+            </SelectItem>
+            <SelectItem value="bar">
+              {t(($) => $.settings.appearance.terminal.cursorStyle.bar)}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <SettingsToggleRow
-        label="Blink cursor"
-        description="Make the terminal cursor blink."
+        label={t(($) => $.settings.appearance.terminal.cursorBlink.label)}
+        description={t(($) => $.settings.appearance.terminal.cursorBlink.description)}
         checked={terminalCursorBlink}
         onChange={setTerminalCursorBlink}
       />
 
       <SettingsToggleRow
-        label="Start shell with project"
-        description="Start the shell when a project opens rather than the first time you show the terminal."
+        label={t(($) => $.settings.appearance.terminal.startWithProject.label)}
+        description={t(($) => $.settings.appearance.terminal.startWithProject.description)}
         checked={terminalStartWithProject}
         onChange={setTerminalStartWithProject}
       />
 
       <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
         <div>
-          <div className="text-sm font-medium">Color theme</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.terminal.colorTheme.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Choose the terminal's ANSI color palette.
+            {t(($) => $.settings.appearance.terminal.colorTheme.description)}
           </div>
         </div>
         <Select
@@ -658,18 +716,24 @@ function TerminalAppearanceTab() {
             setTerminalColorTheme(value as TerminalColorThemeId)
           }
         >
-          <SelectTrigger className="w-[180px]" aria-label="Terminal color theme">
+          <SelectTrigger
+            className="w-[180px]"
+            aria-label={t(($) => $.settings.appearance.terminal.colorTheme.ariaLabel)}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
             {Object.values(TERMINAL_COLOR_THEMES).map((theme) => (
               <SelectItem key={theme.id} value={theme.id}>
-                {theme.name}
                 {theme.appearance === "system"
-                  ? ""
+                  ? theme.name
                   : theme.appearance === "light"
-                    ? " · light"
-                    : " · dark"}
+                    ? t(($) => $.settings.appearance.terminal.colorTheme.optionLight, {
+                        name: theme.name,
+                      })
+                    : t(($) => $.settings.appearance.terminal.colorTheme.optionDark, {
+                        name: theme.name,
+                      })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -677,18 +741,22 @@ function TerminalAppearanceTab() {
       </div>
 
       <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">Terminal colors</div>
+        <div className="text-sm font-medium">
+          {t(($) => $.settings.appearance.terminal.colors.label)}
+        </div>
         <div className="mb-3 text-xs text-muted-foreground">
           {followsAppTheme
-            ? "Following the app theme: dark palette in dark mode, light palette in light mode. Pick a specific palette above to customize these."
-            : "Adjust the base colors while keeping the selected ANSI palette."}
+            ? t(($) => $.settings.appearance.terminal.colors.followingAppTheme)
+            : t(($) => $.settings.appearance.terminal.colors.description)}
         </div>
         <div className="grid grid-cols-3 gap-3">
           <label className="flex items-center justify-between gap-2 text-xs">
-            <span>Background</span>
+            <span>{t(($) => $.settings.appearance.terminal.colors.background)}</span>
             <input
               type="color"
-              aria-label="Terminal background color"
+              aria-label={t(
+                ($) => $.settings.appearance.terminal.colors.backgroundAriaLabel,
+              )}
               disabled={followsAppTheme}
               value={terminalBackground}
               onChange={(event) => setTerminalBackground(event.target.value)}
@@ -696,10 +764,12 @@ function TerminalAppearanceTab() {
             />
           </label>
           <label className="flex items-center justify-between gap-2 text-xs">
-            <span>Text</span>
+            <span>{t(($) => $.settings.appearance.terminal.colors.foreground)}</span>
             <input
               type="color"
-              aria-label="Terminal foreground color"
+              aria-label={t(
+                ($) => $.settings.appearance.terminal.colors.foregroundAriaLabel,
+              )}
               disabled={followsAppTheme}
               value={terminalForeground}
               onChange={(event) => setTerminalForeground(event.target.value)}
@@ -707,10 +777,10 @@ function TerminalAppearanceTab() {
             />
           </label>
           <label className="flex items-center justify-between gap-2 text-xs">
-            <span>Cursor</span>
+            <span>{t(($) => $.settings.appearance.terminal.colors.cursor)}</span>
             <input
               type="color"
-              aria-label="Terminal cursor color"
+              aria-label={t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel)}
               disabled={followsAppTheme}
               value={terminalCursorColor}
               onChange={(event) => setTerminalCursorColor(event.target.value)}
@@ -724,6 +794,7 @@ function TerminalAppearanceTab() {
 }
 
 function BrowserAppearanceTab() {
+  const { t } = useTranslation(["common", "settings"]);
   const browserSearchEngine = useSettingsStore(
     (state) => state.browserSearchEngine,
   );
@@ -750,9 +821,11 @@ function BrowserAppearanceTab() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
         <div>
-          <div className="text-sm font-medium">Default search engine</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.browser.searchEngine.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Choose the search engine used for text searches.
+            {t(($) => $.settings.appearance.browser.searchEngine.description)}
           </div>
         </div>
         <Select
@@ -761,7 +834,10 @@ function BrowserAppearanceTab() {
             setBrowserSearchEngine(value as BrowserSearchEngineId)
           }
         >
-          <SelectTrigger className="w-44" aria-label="Default search engine">
+          <SelectTrigger
+            className="w-44"
+            aria-label={t(($) => $.settings.appearance.browser.searchEngine.label)}
+          >
             <SelectValue>
               <span className="flex items-center gap-2">
                 <SearchEngineIcon engine={selectedSearchEngine.id} />
@@ -786,14 +862,14 @@ function BrowserAppearanceTab() {
 
       <div className="rounded-lg border bg-card p-3">
         <label htmlFor="browser-home-page" className="text-sm font-medium">
-          Home page
+          {t(($) => $.settings.appearance.browser.homePage.label)}
         </label>
         <div className="mb-2 text-xs text-muted-foreground">
-          Choose the page that opens with the browser dock.
+          {t(($) => $.settings.appearance.browser.homePage.description)}
         </div>
         <Input
           id="browser-home-page"
-          aria-label="Browser home page"
+          aria-label={t(($) => $.settings.appearance.browser.homePage.ariaLabel)}
           value={homePageDraft}
           onChange={(event) => setHomePageDraft(event.target.value)}
           onBlur={saveHomePage}
@@ -802,7 +878,7 @@ function BrowserAppearanceTab() {
             event.preventDefault();
             saveHomePage();
           }}
-          placeholder="https://www.google.com/"
+          placeholder={"https://www.google.com/"}
         />
       </div>
 
@@ -812,6 +888,7 @@ function BrowserAppearanceTab() {
 }
 
 function PdfPreviewTab() {
+  const { t } = useTranslation(["common", "settings"]);
   const pdfDarkMode = useSettingsStore((state) => state.pdfDarkMode);
   const setPdfDarkMode = useSettingsStore((state) => state.setPdfDarkMode);
   const pdfZoomShortcuts = useSettingsStore((state) => state.pdfZoomShortcuts);
@@ -824,20 +901,20 @@ function PdfPreviewTab() {
   return (
     <div className="space-y-3">
       <SettingsToggleRow
-        label="PDF dark mode"
-        description="Invert PDF colors by default. You can still switch colors from the preview toolbar."
+        label={t(($) => $.settings.appearance.preview.darkMode.label)}
+        description={t(($) => $.settings.appearance.preview.darkMode.description)}
         checked={pdfDarkMode}
         onChange={setPdfDarkMode}
       />
       <SettingsToggleRow
-        label="PDF zoom shortcuts"
-        description="Use Cmd/Ctrl +, -, and 0 to zoom the PDF instead of the app window."
+        label={t(($) => $.settings.appearance.preview.zoomShortcuts.label)}
+        description={t(($) => $.settings.appearance.preview.zoomShortcuts.description)}
         checked={pdfZoomShortcuts}
         onChange={setPdfZoomShortcuts}
       />
       <SettingsToggleRow
-        label="Preview PDF on hover"
-        description="Show the last compiled page when you hover over a project in the library."
+        label={t(($) => $.settings.appearance.preview.hoverPreview.label)}
+        description={t(($) => $.settings.appearance.preview.hoverPreview.description)}
         checked={hoverPreview}
         onChange={setHoverPreview}
       />
@@ -846,6 +923,7 @@ function PdfPreviewTab() {
 }
 
 function FileManagementTab() {
+  const { t } = useTranslation(["common", "settings"]);
   const homeProjectLayout = useSettingsStore((state) => state.homeProjectLayout);
   const setHomeProjectLayout = useSettingsStore(
     (state) => state.setHomeProjectLayout,
@@ -878,9 +956,11 @@ function FileManagementTab() {
         className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
       >
         <div>
-          <div className="text-sm font-medium">Default home view</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.files.homeView.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Choose how projects are arranged in the library.
+            {t(($) => $.settings.appearance.files.homeView.description)}
           </div>
         </div>
         <Select
@@ -889,12 +969,19 @@ function FileManagementTab() {
             setHomeProjectLayout(value as typeof homeProjectLayout)
           }
         >
-          <SelectTrigger className="w-[140px]" aria-label="Default home view">
+          <SelectTrigger
+            className="w-[140px]"
+            aria-label={t(($) => $.settings.appearance.files.homeView.label)}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
-            <SelectItem value="grid">Grid</SelectItem>
-            <SelectItem value="list">List</SelectItem>
+            <SelectItem value="grid">
+              {t(($) => $.settings.appearance.files.homeView.grid)}
+            </SelectItem>
+            <SelectItem value="list">
+              {t(($) => $.settings.appearance.files.homeView.list)}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -904,9 +991,11 @@ function FileManagementTab() {
         className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
       >
         <div>
-          <div className="text-sm font-medium">Open projects in</div>
+          <div className="text-sm font-medium">
+            {t(($) => $.settings.appearance.files.openIn.label)}
+          </div>
           <div className="text-xs text-muted-foreground">
-            Choose the layout used when a project opens.
+            {t(($) => $.settings.appearance.files.openIn.description)}
           </div>
         </div>
         <Select
@@ -927,32 +1016,32 @@ function FileManagementTab() {
       </div>
 
       <SettingsToggleRow
-        label="Show file tree on open"
-        description="Open the source file tree whenever you enter a project."
+        label={t(($) => $.settings.appearance.files.showTree.label)}
+        description={t(($) => $.settings.appearance.files.showTree.description)}
         checked={openInTree}
         onChange={setOpenInTree}
       />
 
       <section className="rounded-lg border bg-card p-4" aria-labelledby="hidden-files-heading">
         <h3 id="hidden-files-heading" className="text-sm font-medium">
-          Hide files from file tree
+          {t(($) => $.settings.appearance.files.hidden.title)}
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Choose which generated files and folders stay out of the project tree.
+          {t(($) => $.settings.appearance.files.hidden.description)}
         </p>
 
         <form onSubmit={submitPattern} className="mt-4 flex gap-2">
           <Input
             value={pattern}
             onChange={(event) => setPattern(event.target.value)}
-            placeholder="Add a file name or pattern"
-            aria-label="File name or pattern to hide"
+            placeholder={t(($) => $.settings.appearance.files.hidden.placeholder)}
+            aria-label={t(($) => $.settings.appearance.files.hidden.inputAriaLabel)}
           />
           <Button
             type="submit"
             variant="outline"
             size="icon"
-            aria-label="Add hidden file pattern"
+            aria-label={t(($) => $.settings.appearance.files.hidden.addAriaLabel)}
             disabled={!pattern.trim()}
             className="shrink-0 text-muted-foreground"
           >
@@ -975,9 +1064,12 @@ function FileManagementTab() {
                 size="xs"
                 onClick={() => removeHiddenFilePattern(hiddenPattern)}
                 className="shrink-0"
-                aria-label={`Remove ${hiddenPattern} from hidden files`}
+                aria-label={t(
+                  ($) => $.settings.appearance.files.hidden.removeAriaLabel,
+                  { pattern: hiddenPattern },
+                )}
               >
-                Remove
+                {t(($) => $.common.actions.remove)}
               </Button>
             </div>
           ))}
@@ -992,6 +1084,7 @@ function isAppearanceTab(value: unknown): value is AppearanceTabId {
 }
 
 export function AppearanceSection() {
+  const { t } = useTranslation(["common", "settings"]);
   const requestedTab = useSettingsStore((state) => state.settingsInitialAppearanceTab);
   const setRequestedTab = useSettingsStore((state) => state.setSettingsInitialAppearanceTab);
   const [activeTab, setActiveTab] = useState<AppearanceTabId>(() =>
@@ -1050,7 +1143,7 @@ export function AppearanceSection() {
               data-testid={`appearance-tab-${tab.id}`}
               className="shrink-0"
             >
-              {tab.label}
+              {tab.label()}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -1074,7 +1167,7 @@ export function AppearanceSection() {
         </TabsContent>
       </Tabs>
       <ResetToDefaults
-        sectionName="Appearance"
+        sectionName={t(($) => $.settings.appearance.sectionName)}
         onReset={() => {
           resetAppearancePreferences();
           setPreference("system");

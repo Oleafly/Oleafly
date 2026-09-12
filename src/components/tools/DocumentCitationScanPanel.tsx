@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Bookmark,
@@ -44,6 +45,7 @@ import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 const SOURCE_DOT: Record<LiteratureSource, string> = {
@@ -71,17 +73,22 @@ function formatCount(value: number): string {
 }
 
 function formatAuthors(authors: string[]): string {
-  if (authors.length === 0) return "Unknown authors";
+  if (authors.length === 0) {
+    return i18n.t(($) => $.researchTools.citationScan.unknownAuthors);
+  }
   if (authors.length <= 3) return authors.join(", ");
-  return `${authors.slice(0, 3).join(", ")} +${authors.length - 3}`;
+  return i18n.t(($) => $.researchTools.citationScan.moreAuthors, {
+    authors: authors.slice(0, 3).join(", "),
+    more: authors.length - 3,
+  });
 }
 
-async function copyText(value: string, label: string) {
+async function copyBibtex(value: string) {
   try {
     await navigator.clipboard.writeText(value);
-    toast.success(`${label} copied`);
+    toast.success(i18n.t(($) => $.researchTools.citationScan.toastCopied));
   } catch {
-    toast.error(`Could not copy ${label.toLowerCase()}.`);
+    toast.error(i18n.t(($) => $.researchTools.citationScan.toastCopyFailed));
   }
 }
 
@@ -114,6 +121,7 @@ function SuggestionCard({
 }: {
   suggestion: RankedLiteraturePaper;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   const { record, score, reasoning } = suggestion;
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -131,7 +139,11 @@ function SuggestionCard({
   const handleSave = () => {
     const already = useLiteratureLibraryStore.getState().has(record);
     saveCitation(record);
-    toast.success(already ? "Saved citation updated" : "Citation saved");
+    toast.success(
+      already
+        ? i18n.t(($) => $.researchTools.citationScan.toastUpdated)
+        : i18n.t(($) => $.researchTools.citationScan.toastSaved),
+    );
   };
 
   const handleAddToBib = async () => {
@@ -139,20 +151,26 @@ function SuggestionCard({
     // project/.bib. Never toast success unless a project can actually receive
     // the write (addCitation otherwise returns { key } without persisting).
     if (!useFilesStore.getState().projectId) {
-      toast.error("Open a project to append to a bibliography file");
+      toast.error(i18n.t(($) => $.researchTools.citationScan.openProjectTooltip));
       return;
     }
     setAdding(true);
     try {
       const result = await addCitation(bibtexForLiteratureRecord(record));
       if ("key" in result) {
-        toast.success(`Added \\cite{${result.key}}`);
+        toast.success(
+          i18n.t(($) => $.researchTools.citationScan.citeAdded, {
+            citation: `\\cite{${result.key}}`,
+          }),
+        );
       } else {
         toast.error(result.error);
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Could not add citation.",
+        err instanceof Error
+          ? err.message
+          : i18n.t(($) => $.researchTools.citationScan.addFailed),
       );
     } finally {
       setAdding(false);
@@ -173,7 +191,9 @@ function SuggestionCard({
           )}
           {record.citationCount != null && (
             <span className="text-[11px] text-muted-foreground">
-              {formatCount(record.citationCount)} citations
+              {t(($) => $.researchTools.citationScan.citationCount, {
+                citations: formatCount(record.citationCount),
+              })}
             </span>
           )}
         </div>
@@ -182,7 +202,7 @@ function SuggestionCard({
             "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
             scoreBadgeClass(score),
           )}
-          title="Relevance score"
+          title={t(($) => $.researchTools.citationScan.relevanceScore)}
         >
           {Math.round(score)}
         </span>
@@ -220,19 +240,19 @@ function SuggestionCard({
             ) : (
               <ChevronRight className="size-3.5" />
             )}
-            FOR / AGAINST
+            {t(($) => $.researchTools.citationScan.forAgainst)}
           </button>
           {reasoningOpen && (
             <div className="mt-2 space-y-2 rounded-md border bg-muted/25 px-3 py-2.5 text-xs leading-relaxed">
               <div>
                 <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-                  FOR
+                  {t(($) => $.researchTools.citationScan.for)}
                 </span>
                 <p className="mt-0.5 text-muted-foreground">{reasoning.for}</p>
               </div>
               <div>
                 <span className="font-semibold text-amber-700 dark:text-amber-400">
-                  AGAINST
+                  {t(($) => $.researchTools.citationScan.against)}
                 </span>
                 <p className="mt-0.5 text-muted-foreground">
                   {reasoning.against}
@@ -252,17 +272,17 @@ function SuggestionCard({
           onClick={handleSave}
         >
           {saved ? <BookmarkCheck /> : <Bookmark />}
-          {saved ? "Saved" : "Save citation"}
+          {saved
+            ? t(($) => $.researchTools.citationScan.savedCitation)
+            : t(($) => $.researchTools.citationScan.saveCitation)}
         </Button>
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() =>
-            void copyText(bibtexForLiteratureRecord(record), "BibTeX")
-          }
+          onClick={() => void copyBibtex(bibtexForLiteratureRecord(record))}
         >
-          <Copy /> Copy BibTeX
+          <Copy /> {t(($) => $.researchTools.citationScan.copyBibtex)}
         </Button>
         <Button
           type="button"
@@ -273,12 +293,12 @@ function SuggestionCard({
           onClick={() => void handleAddToBib()}
           title={
             projectId
-              ? "Append to project bibliography and insert \\cite"
-              : "Open a project to append to a bibliography file"
+              ? t(($) => $.researchTools.citationScan.addToBibTooltip)
+              : t(($) => $.researchTools.citationScan.openProjectTooltip)
           }
         >
           {adding ? <Loader2 className="animate-spin" /> : <Plus />}
-          Add to .bib
+          {t(($) => $.researchTools.citationScan.addToBib)}
         </Button>
       </div>
     </article>
@@ -286,6 +306,7 @@ function SuggestionCard({
 }
 
 function ParagraphGroup({ result }: { result: ParagraphCitationResult }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   const [open, setOpen] = useState(true);
   const suggestionCount = result.suggestions.length;
 
@@ -304,15 +325,18 @@ function ParagraphGroup({ result }: { result: ParagraphCitationResult }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Paragraph {result.paragraphIndex + 1}
+              {t(($) => $.researchTools.citationScan.paragraph, {
+                index: result.paragraphIndex + 1,
+              })}
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-              {suggestionCount}{" "}
-              {suggestionCount === 1 ? "suggestion" : "suggestions"}
+              {t(($) => $.researchTools.citationScan.suggestions, {
+                count: suggestionCount,
+              })}
             </span>
             {result.query && (
               <span className="truncate text-[11px] text-muted-foreground/80">
-                query: {result.query}
+                {t(($) => $.researchTools.citationScan.query, { query: result.query })}
               </span>
             )}
           </div>
@@ -332,7 +356,7 @@ function ParagraphGroup({ result }: { result: ParagraphCitationResult }) {
           )}
           {suggestionCount === 0 ? (
             <p className="px-1 text-sm text-muted-foreground">
-              No new candidates above the score threshold for this paragraph.
+              {t(($) => $.researchTools.citationScan.noCandidates)}
             </p>
           ) : (
             result.suggestions.map((suggestion) => (
@@ -349,6 +373,7 @@ function ParagraphGroup({ result }: { result: ParagraphCitationResult }) {
 }
 
 export function DocumentCitationScanPanel() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const offline = useSettingsStore((state) => state.offline);
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
@@ -469,13 +494,11 @@ export function DocumentCitationScanPanel() {
   const runScan = async (opts?: { ignoreCache?: boolean }) => {
     if (!canScan) return;
     if (offline) {
-      setError(
-        "Offline mode is enabled. Document citation scan requires network access.",
-      );
+      setError(t(($) => $.researchTools.citationScan.offline));
       return;
     }
     if (!sourceText.trim()) {
-      setError("No LaTeX source text is available to scan.");
+      setError(t(($) => $.researchTools.citationScan.noSourceText));
       return;
     }
 
@@ -495,7 +518,7 @@ export function DocumentCitationScanPanel() {
           phase: "complete",
           completedParagraphs: cached.totalParagraphs,
           totalParagraphs: cached.totalParagraphs,
-          message: "Restored cached scan results",
+          message: t(($) => $.researchTools.citationScan.progressRestored),
         });
         setError(null);
         return;
@@ -511,7 +534,7 @@ export function DocumentCitationScanPanel() {
       phase: "splitting",
       completedParagraphs: 0,
       totalParagraphs: 0,
-      message: "Splitting document into paragraphs…",
+      message: t(($) => $.researchTools.citationScan.progressSplitting),
     });
 
     try {
@@ -536,7 +559,7 @@ export function DocumentCitationScanPanel() {
             ? {
                 ...current,
                 phase: "error",
-                message: "Scan cancelled",
+                message: t(($) => $.researchTools.citationScan.progressCancelled),
               }
             : current,
         );
@@ -572,7 +595,7 @@ export function DocumentCitationScanPanel() {
           phase: "complete",
           completedParagraphs: results.length,
           totalParagraphs: results.length,
-          message: "Seeded e2e results",
+          message: i18n.t(($) => $.researchTools.citationScan.progressSeeded),
         });
         setError(null);
         setScanning(false);
@@ -597,28 +620,23 @@ export function DocumentCitationScanPanel() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                From document
+                {t(($) => $.researchTools.citationScan.fromDocument)}
               </p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Scan prose paragraphs
                 {selectionSource ? (
-                  <>
-                    {" "}
-                    from{" "}
-                    <span className="font-medium text-foreground/90">
-                      editor selection
-                    </span>
-                  </>
+                  <Trans
+                    ns="researchTools"
+                    i18nKey={($) => $.researchTools.citationScan.scanIntroSelection}
+                    components={{ source: <span className="font-medium text-foreground/90" /> }}
+                  />
                 ) : (
-                  <>
-                    {" "}
-                    in{" "}
-                    <span className="font-mono text-foreground/90">
-                      {sourcePath || "main.tex"}
-                    </span>
-                  </>
-                )}{" "}
-                and rank literature suggestions for each.
+                  <Trans
+                    ns="researchTools"
+                    i18nKey={($) => $.researchTools.citationScan.scanIntroFile}
+                    values={{ path: sourcePath || "main.tex" }}
+                    components={{ path: <span className="font-mono text-foreground/90" /> }}
+                  />
+                )}
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -630,7 +648,7 @@ export function DocumentCitationScanPanel() {
                   onClick={cancelScan}
                 >
                   <Square className="size-3.5" />
-                  Cancel
+                  {t(($) => $.common.actions.cancel)}
                 </Button>
               ) : null}
               {paragraphs.length > 0 && !scanning && (
@@ -641,7 +659,7 @@ export function DocumentCitationScanPanel() {
                   onClick={clearResults}
                 >
                   <Trash2 />
-                  Clear
+                  {t(($) => $.common.actions.clear)}
                 </Button>
               )}
               <Button
@@ -656,7 +674,9 @@ export function DocumentCitationScanPanel() {
                 ) : (
                   <ScanSearch />
                 )}
-                {scanning ? "Scanning" : "Find citations"}
+                {scanning
+                  ? t(($) => $.researchTools.citationScan.scanning)
+                  : t(($) => $.researchTools.citationScan.findCitations)}
               </Button>
             </div>
           </div>
@@ -666,7 +686,7 @@ export function DocumentCitationScanPanel() {
               htmlFor="document-citation-score-threshold"
               className="grid gap-1.5 text-xs font-medium text-muted-foreground"
             >
-              Score threshold
+              {t(($) => $.researchTools.citationScan.scoreThreshold)}
               <Input
                 id="document-citation-score-threshold"
                 type="number"
@@ -687,7 +707,7 @@ export function DocumentCitationScanPanel() {
               htmlFor="document-citation-max-per-paragraph"
               className="grid gap-1.5 text-xs font-medium text-muted-foreground"
             >
-              Max per paragraph
+              {t(($) => $.researchTools.citationScan.maxPerParagraph)}
               <Input
                 id="document-citation-max-per-paragraph"
                 type="number"
@@ -708,7 +728,7 @@ export function DocumentCitationScanPanel() {
               htmlFor="document-citation-max-paragraphs"
               className="grid gap-1.5 text-xs font-medium text-muted-foreground"
             >
-              Max paragraphs
+              {t(($) => $.researchTools.citationScan.maxParagraphs)}
               <Input
                 id="document-citation-max-paragraphs"
                 type="number"
@@ -730,29 +750,31 @@ export function DocumentCitationScanPanel() {
           {offline && (
             <div className="flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              Offline mode is enabled. Document citation scan requires network
-              access.
+              {t(($) => $.researchTools.citationScan.offline)}
             </div>
           )}
           {!offline && !projectId && !selectionSource && (
             <div className="flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              Open a LaTeX project to scan document paragraphs for citations, or
-              run Find citations in document from the editor.
+              {t(($) => $.researchTools.citationScan.noProject)}
             </div>
           )}
           {!offline && !sourceText.trim() && (projectId || selectionSource) && (
             <div className="flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              Source document is empty or not loaded. Open a{" "}
-              <span className="font-mono">.tex</span> file to scan.
+              <span>
+                <Trans
+                  ns="researchTools"
+                  i18nKey={($) => $.researchTools.citationScan.emptySource}
+                  components={{ ext: <span className="font-mono" /> }}
+                />
+              </span>
             </div>
           )}
           {providerReady === false && !offline && (
             <div className="flex items-start gap-2.5 rounded-md border border-sky-500/30 bg-sky-500/10 px-3.5 py-2.5 text-sm text-sky-900 dark:text-sky-300">
               <Info className="mt-0.5 size-4 shrink-0" />
-              Ranking will use citation counts only until an AI provider is
-              configured.
+              {t(($) => $.researchTools.citationScan.heuristicRanking)}
             </div>
           )}
           {error && (
@@ -762,7 +784,7 @@ export function DocumentCitationScanPanel() {
               <button
                 type="button"
                 className="shrink-0 rounded p-0.5 hover:bg-destructive/10"
-                aria-label="Dismiss error"
+                aria-label={t(($) => $.researchTools.citationScan.dismissError)}
                 onClick={() => setError(null)}
               >
                 <X className="size-4" />
@@ -775,8 +797,11 @@ export function DocumentCitationScanPanel() {
               <span>
                 {progress.message ??
                   (progress.totalParagraphs > 0
-                    ? `Processing ${progress.completedParagraphs}/${progress.totalParagraphs} paragraphs…`
-                    : "Preparing scan…")}
+                    ? t(($) => $.researchTools.citationScan.progressProcessing, {
+                        completed: progress.completedParagraphs,
+                        total: progress.totalParagraphs,
+                      })
+                    : t(($) => $.researchTools.citationScan.progressPreparing))}
               </span>
             </div>
           )}
@@ -787,33 +812,39 @@ export function DocumentCitationScanPanel() {
         {paragraphs.length === 0 && !scanning ? (
           <div className="mx-auto flex min-h-[18rem] max-w-2xl flex-col justify-center px-6 py-10">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              Document scan
+              {t(($) => $.researchTools.citationScan.emptyEyebrow)}
             </p>
             <h2 className="mt-2.5 text-2xl font-semibold tracking-tight">
-              Find citation candidates from your prose.
+              {t(($) => $.researchTools.citationScan.emptyHeading)}
             </h2>
             <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-              Each paragraph is searched across scholarly indexes, filtered
-              against your bibliography, and ranked for relevance. Save a result
-              to your literature library, or copy BibTeX.
+              {t(($) => $.researchTools.citationScan.emptyBody)}
             </p>
           </div>
         ) : (
           <div className="mx-auto w-full max-w-6xl px-4 py-2 sm:px-6">
             <div className="flex items-center justify-between border-b border-border/70 px-2 py-3">
               <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {paragraphs.length}
-                </span>{" "}
-                paragraph
-                {paragraphs.length === 1 ? "" : "s"} with results
-                {progress?.totalParagraphs
-                  ? ` · ${progress.totalParagraphs} total`
-                  : ""}
+                {progress?.totalParagraphs ? (
+                  <Trans
+                    ns="researchTools"
+                    i18nKey={($) => $.researchTools.citationScan.paragraphsWithResultsTotal}
+                    count={paragraphs.length}
+                    values={{ total: progress.totalParagraphs }}
+                    components={{ strong: <span className="font-medium text-foreground" /> }}
+                  />
+                ) : (
+                  <Trans
+                    ns="researchTools"
+                    i18nKey={($) => $.researchTools.citationScan.paragraphsWithResults}
+                    count={paragraphs.length}
+                    components={{ strong: <span className="font-medium text-foreground" /> }}
+                  />
+                )}
               </p>
               {scanning && (
                 <span className="text-xs text-muted-foreground">
-                  Scanning…
+                  {t(($) => $.researchTools.citationScan.scanningLabel)}
                 </span>
               )}
             </div>

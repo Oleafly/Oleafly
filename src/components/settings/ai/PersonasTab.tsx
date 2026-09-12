@@ -1,14 +1,17 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
+import { describeError } from "@/lib/app-error";
 import type { AppConfig, Persona } from "@/lib/tauri";
 import { personaGradient } from "@/lib/persona-colors";
 import {
   isStarterPersonaInstalled,
   STARTER_PERSONAS,
   type StarterPersona,
+  type StarterPersonaId,
 } from "@/lib/starter-personas";
 import { CreatePersonaDialog } from "./CreatePersonaDialog";
 
@@ -19,6 +22,7 @@ export interface PersonasTabProps {
 }
 
 export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
+  const { t } = useTranslation(["common", "settings"]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Persona | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Persona | null>(null);
@@ -27,6 +31,12 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
   const availableStarters = STARTER_PERSONAS.filter(
     (starter) => !isStarterPersonaInstalled(personas, starter),
   );
+  const starterDescriptions: Record<StarterPersonaId, string> = {
+    "starter-research-writer": t(($) => $.settings.ai.personas.starters.researchWriter),
+    "starter-document-editor": t(($) => $.settings.ai.personas.starters.documentEditor),
+    "starter-critical-reviewer": t(($) => $.settings.ai.personas.starters.criticalReviewer),
+    "starter-figure": t(($) => $.settings.ai.personas.starters.figure),
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -47,7 +57,7 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
       await persist({ ...cfg, ai_personas: nextPersonas });
       return { ok: true };
     } catch (e) {
-      return { ok: false, message: String(e) };
+      return { ok: false, message: describeError(e) };
     }
   };
 
@@ -55,7 +65,7 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
     try {
       await persist({ ...cfg, ai_personas: personas.filter((p) => p.id !== persona.id) });
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: describeError(e) });
     }
   };
 
@@ -71,7 +81,13 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
       };
       await persist({ ...cfg, ai_personas: [...personas, persona] });
     } catch (e) {
-      setMsg({ ok: false, text: `Could not add ${starter.name}. ${String(e)}` });
+      setMsg({
+        ok: false,
+        text: t(($) => $.settings.ai.personas.addStarterFailed, {
+          name: starter.name,
+          error: describeError(e),
+        }),
+      });
     } finally {
       setAddingStarterId(null);
     }
@@ -80,22 +96,21 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
   return (
     <div className="space-y-3">
       <div>
-        <p className="font-medium">Personas</p>
+        <p className="font-medium">{t(($) => $.settings.ai.personas.title)}</p>
         <p className="text-xs text-muted-foreground">
-          Reusable instructions for how the assistant should work. Choose one in chat
-          for a task. While selected, it replaces your default instructions.
+          {t(($) => $.settings.ai.personas.description)}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" data-testid="ai-create-persona" data-tour="ai-create-persona" onClick={openCreate}>
           <Plus className="size-3.5" />
-          Create persona
+          {t(($) => $.settings.ai.personas.create)}
         </Button>
       </div>
 
       {personas.length === 0 ? (
         <p data-testid="ai-personas-empty" className="text-xs text-muted-foreground">
-          No personas added yet.
+          {t(($) => $.settings.ai.personas.empty)}
         </p>
       ) : (
         <div className="space-y-1">
@@ -117,22 +132,22 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
                   </span>
                 )}
               </div>
-              <Tooltip label="Edit persona">
+              <Tooltip label={t(($) => $.settings.ai.personas.edit)}>
                 <button
                   type="button"
                   data-testid={`ai-persona-edit-${persona.name}`}
-                  aria-label={`Edit persona ${persona.name}`}
+                  aria-label={t(($) => $.settings.ai.personas.editNamed, { name: persona.name })}
                   onClick={() => openEdit(persona)}
                   className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
                   <Pencil className="size-3" />
                 </button>
               </Tooltip>
-              <Tooltip label="Delete persona">
+              <Tooltip label={t(($) => $.settings.ai.personas.delete)}>
                 <button
                   type="button"
                   data-testid={`ai-persona-delete-${persona.name}`}
-                  aria-label={`Delete persona ${persona.name}`}
+                  aria-label={t(($) => $.settings.ai.personas.deleteNamed, { name: persona.name })}
                   onClick={() => setConfirmDelete(persona)}
                   className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
@@ -147,9 +162,11 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
       {availableStarters.length > 0 ? (
         <div className="space-y-2 pt-2">
           <div>
-            <p className="text-xs font-medium">Suggested personas</p>
+            <p className="text-xs font-medium">
+              {t(($) => $.settings.ai.personas.suggestedTitle)}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Start with one of these, then edit its instructions to fit your workflow.
+              {t(($) => $.settings.ai.personas.suggestedDescription)}
             </p>
           </div>
           <div className="space-y-1.5">
@@ -168,19 +185,21 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs font-medium">{starter.name}</span>
                     <span className="block text-xs leading-relaxed text-muted-foreground">
-                      {starter.description}
+                      {starterDescriptions[starter.id]}
                     </span>
                   </span>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    aria-label={`Add ${starter.name} persona`}
+                    aria-label={t(($) => $.settings.ai.personas.addStarterNamed, {
+                      name: starter.name,
+                    })}
                     disabled={addingStarterId !== null}
                     onClick={() => void addStarterPersona(starter)}
                   >
                     {isAdding ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                    Add persona
+                    {t(($) => $.settings.ai.personas.addStarter)}
                   </Button>
                 </div>
               );
@@ -198,9 +217,11 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
 
       <ConfirmationDialog
         open={confirmDelete !== null}
-        title="Delete persona"
-        description={`Delete "${confirmDelete?.name ?? ""}"? Its prompt is removed permanently, and any chat using it falls back to your default instructions.`}
-        confirmLabel="Delete"
+        title={t(($) => $.settings.ai.personas.delete)}
+        description={t(($) => $.settings.ai.personas.deleteDescription, {
+          name: confirmDelete?.name ?? "",
+        })}
+        confirmLabel={t(($) => $.common.actions.delete)}
         destructive
         onConfirm={() => {
           if (confirmDelete) void deletePersona(confirmDelete);

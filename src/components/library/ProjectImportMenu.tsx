@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ExternalLink, Github, Lock, Loader2 } from "lucide-react";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/features/project-import";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
+import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 
@@ -29,20 +31,29 @@ function pickerOptions(kind: ProjectImportFileKind) {
     case "project":
       return {
         multiple: false as const,
-        filters: [{ name: "ZIP archive", extensions: ["zip"] }],
-        title: "Import a project archive",
+        filters: [
+          { name: i18n.t(($) => $.library.import.picker.projectFilter), extensions: ["zip"] },
+        ],
+        title: i18n.t(($) => $.library.import.picker.projectTitle),
       };
     case "word":
       return {
         multiple: false as const,
-        filters: [{ name: "Word document", extensions: ["docx"] }],
-        title: "Import a Word document",
+        filters: [
+          { name: i18n.t(($) => $.library.import.picker.wordFilter), extensions: ["docx"] },
+        ],
+        title: i18n.t(($) => $.library.import.picker.wordTitle),
       };
     case "markdown":
       return {
         multiple: false as const,
-        filters: [{ name: "Markdown document", extensions: ["md", "markdown"] }],
-        title: "Import a Markdown document",
+        filters: [
+          {
+            name: i18n.t(($) => $.library.import.picker.markdownFilter),
+            extensions: ["md", "markdown"],
+          },
+        ],
+        title: i18n.t(($) => $.library.import.picker.markdownTitle),
       };
   }
 }
@@ -58,6 +69,7 @@ export function ProjectImportMenu({
   trigger: (busy: boolean) => ReactElement;
   triggerTooltip?: ReactNode;
 }) {
+  const { t } = useTranslation(["library"]);
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
   const [open, setOpen] = useState(false);
@@ -148,33 +160,38 @@ export function ProjectImportMenu({
         <DropdownMenuTrigger asChild>{trigger(busy)}</DropdownMenuTrigger>
       )}
       <DropdownMenuContent align={align} className="min-w-56">
-        <DropdownMenuLabel>Local</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.library.import.menu.local)}</DropdownMenuLabel>
         <DropdownMenuItem onSelect={() => void importFile("project")}>
-          Existing project (.zip)
+          {t(($) => $.library.import.menu.project)}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void importFile("word")}>
-          Word document
+          {t(($) => $.library.import.menu.word)}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void importFile("markdown")}>
-          Markdown document
+          {t(($) => $.library.import.menu.markdown)}
         </DropdownMenuItem>
-        <DropdownMenuLabel>Cloud</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.library.import.menu.cloud)}</DropdownMenuLabel>
         <DropdownMenuSub open={githubOpen} onOpenChange={setGithubOpen}>
           <DropdownMenuSubTrigger>GitHub</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="max-h-72 min-w-64 overflow-y-auto">
             {githubStatus === "disconnected" ? (
               <DropdownMenuItem onSelect={openGithubSettings}>
                 <Github className="size-4 shrink-0 text-muted-foreground" />
-                Connect GitHub in Settings
+                {t(($) => $.library.import.menu.connect)}
               </DropdownMenuItem>
             ) : githubStatus === "unknown" || loadingRepositories ? (
               <DropdownMenuItem disabled>
-                <Loader2 className="size-3.5 animate-spin" /> Loading repositories…
+                <Loader2 className="size-3.5 animate-spin" />{" "}
+                {t(($) => $.library.import.loadingRepositories)}
               </DropdownMenuItem>
             ) : repositoryLoadFailed ? (
-              <DropdownMenuItem disabled>Could not load repositories.</DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                {t(($) => $.library.import.menu.repositoriesFailed)}
+              </DropdownMenuItem>
             ) : repositories.length === 0 ? (
-              <DropdownMenuItem disabled>No repositories found.</DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                {t(($) => $.library.import.noRepositories)}
+              </DropdownMenuItem>
             ) : (
               repositories.map((repository) => (
                 <DropdownMenuItem
@@ -194,16 +211,22 @@ export function ProjectImportMenu({
                     {repository.full_name}
                   </span>
                   {repository.private ? (
-                    <Tooltip label="Private repository" side="top">
-                      <span role="img" aria-label="Private repository" className="inline-flex shrink-0">
+                    <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
+                      <span
+                        role="img"
+                        aria-label={t(($) => $.library.import.privateRepository)}
+                        className="inline-flex shrink-0"
+                      >
                         <Lock aria-hidden className="size-3 text-muted-foreground" />
                       </span>
                     </Tooltip>
                   ) : null}
-                  <Tooltip label="Open on GitHub" side="top">
+                  <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
                     <button
                       type="button"
-                      aria-label={`Open ${repository.full_name} on GitHub`}
+                      aria-label={t(($) => $.library.import.openRepository, {
+                        name: repository.full_name,
+                      })}
                       // The row imports the repository; this opens it in the
                       // browser. Radix selects the item on pointerdown, so
                       // both events have to stop here or the click would do

@@ -4,6 +4,11 @@ import type {
   Position,
   Range,
 } from "@/lib/language-service";
+import type { AnalysisReason } from "./reason";
+
+export const NO_PROJECT_ANALYSIS_REASON: AnalysisReason = {
+  key: "noProject",
+};
 
 export const PROJECT_ANALYSIS_FEATURES = [
   "completion",
@@ -58,26 +63,27 @@ export interface AnalysisFailure {
   name: string;
   message: string;
   code?: string | number;
+  reason?: AnalysisReason;
   retryable: boolean;
 }
 
 export interface UnsupportedAnalysisSlot {
   status: "unsupported";
   data: null;
-  reason: string;
+  reason: AnalysisReason;
 }
 
 export interface UnavailableAnalysisSlot {
   status: "unavailable";
   data: null;
-  reason: string;
+  reason: AnalysisReason;
   retryable: boolean;
 }
 
 export interface NotRunAnalysisSlot {
   status: "not_run";
   data: null;
-  reason?: string;
+  reason?: AnalysisReason;
 }
 
 export interface RunningAnalysisSlot<T> {
@@ -99,7 +105,7 @@ export interface PartialAnalysisSlot<T> {
   status: "partial";
   data: T;
   request: ProjectAnalysisRequestIdentity;
-  reason: string;
+  reason: AnalysisReason;
   completedAt: number;
 }
 
@@ -129,7 +135,7 @@ export interface ProjectAnalysisDocument {
   version: number;
   analysis: "language_service" | "local_only";
   status?: "not_run";
-  reason?: string;
+  reason?: AnalysisReason;
 }
 
 export interface ProjectLanguageServiceSnapshot {
@@ -137,7 +143,7 @@ export interface ProjectLanguageServiceSnapshot {
   readiness: LanguageServiceReadiness;
   capabilities: Record<ProjectAnalysisFeature, boolean> | null;
   failure: AnalysisFailure | null;
-  reason?: string;
+  reason?: AnalysisReason;
   restartAttempt: number;
 }
 
@@ -197,7 +203,7 @@ export interface ProjectAnalysisSnapshot {
 }
 
 export const notRunAnalysisSlot = (
-  reason?: string,
+  reason?: AnalysisReason,
 ): NotRunAnalysisSlot => ({
   status: "not_run",
   data: null,
@@ -205,7 +211,7 @@ export const notRunAnalysisSlot = (
 });
 
 export function createFeaturePlaceholders(
-  reason?: string,
+  reason?: AnalysisReason,
 ): ProjectAnalysisFeatureSlots {
   return Object.fromEntries(
     PROJECT_ANALYSIS_FEATURES.map((feature) => [
@@ -223,7 +229,9 @@ export function createProjectAnalysisSnapshot(
   },
   now = Date.now(),
 ): ProjectAnalysisSnapshot {
-  const reason = identity.projectId ? undefined : "No project is active";
+  const reason = identity.projectId
+    ? undefined
+    : NO_PROJECT_ANALYSIS_REASON;
   return {
     identity: { ...identity },
     documents: {},
@@ -346,11 +354,17 @@ export function normalizeAnalysisFailure(
   retryable = true,
 ): AnalysisFailure {
   if (error instanceof Error) {
-    const withCode = error as Error & { code?: string | number };
+    const withCode = error as Error & {
+      code?: string | number;
+      analysisReason?: AnalysisReason;
+    };
     return {
       name: error.name,
       message: error.message,
       ...(withCode.code === undefined ? {} : { code: withCode.code }),
+      ...(withCode.analysisReason === undefined
+        ? {}
+        : { reason: withCode.analysisReason }),
       retryable,
     };
   }

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
+import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
 import { CiteOleaflyCard } from "@/components/settings/CiteOleaflyCard";
 import {
   AtSign,
@@ -78,10 +80,13 @@ import {
   type RecycledProjectInfo,
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { i18n } from "@/i18n";
+import { formatBytes } from "@/lib/format-bytes";
+import { formatDateTime, formatNumber } from "@/lib/intl";
 import { notifyError, toast } from "@/lib/toast";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
-import { TOUR_IDS } from "@/lib/tours/registry";
+import { resolveTourText, TOUR_IDS, tourRegistry } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
@@ -114,17 +119,83 @@ type Section =
 type DeveloperSettingsModule = typeof import("@/developer/DeveloperSettings");
 
 const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
-  { id: "general", label: "General", icon: Settings },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "dictionary", label: "Dictionary", icon: BookMarked },
-  { id: "data", label: "Data Storage", icon: Database },
-  { id: "ai", label: "AI Assistant", icon: Sparkles },
-  { id: "engine", label: "Engines", icon: Cpu },
-  { id: "downloads", label: "Downloads", icon: HardDriveDownload },
-  { id: "integrations", label: "Integrations", icon: Blocks },
-  { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
-  { id: "experimentation", label: "Experimentation", icon: FlaskConical },
-  { id: "help", label: "Help & About", icon: LifeBuoy },
+  {
+    id: "general",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.general);
+    },
+    icon: Settings,
+  },
+  {
+    id: "appearance",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.appearance);
+    },
+    icon: Palette,
+  },
+  {
+    id: "dictionary",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.dictionary);
+    },
+    icon: BookMarked,
+  },
+  {
+    id: "data",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.data);
+    },
+    icon: Database,
+  },
+  {
+    id: "ai",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.ai);
+    },
+    icon: Sparkles,
+  },
+  {
+    id: "engine",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.engine);
+    },
+    icon: Cpu,
+  },
+  {
+    id: "downloads",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.downloads);
+    },
+    icon: HardDriveDownload,
+  },
+  {
+    id: "integrations",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.integrations);
+    },
+    icon: Blocks,
+  },
+  {
+    id: "shortcuts",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.shortcuts);
+    },
+    icon: Keyboard,
+  },
+  {
+    id: "experimentation",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.experimentation);
+    },
+    icon: FlaskConical,
+  },
+  {
+    id: "help",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.help);
+    },
+    icon: LifeBuoy,
+  },
 ];
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
@@ -138,25 +209,6 @@ const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   shortcuts: "settings-shortcuts",
   help: "settings-help",
 };
-const TOUR_LABELS = {
-  home: "Home and project creation",
-  workspace: "Project workspace",
-  research: "Research workspace",
-  settings: "Settings",
-  "ai-settings": "AI Assistant settings",
-  ai: "AI Assistant",
-  diagram: "Diagram Composer",
-} as const;
-
-function formatStorageSize(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / 1024 ** unit;
-  return `${value.toLocaleString(undefined, {
-    maximumFractionDigits: unit === 0 ? 0 : value >= 10 ? 1 : 2,
-  })} ${units[unit]}`;
-}
 
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
@@ -175,6 +227,9 @@ export function SettingsModal() {
   const setGrammarDialect = useSettingsStore((s) => s.setGrammarDialect);
   const dictionaryLocale = useSettingsStore((s) => s.dictionaryLocale);
   const setDictionaryLocale = useSettingsStore((s) => s.setDictionaryLocale);
+  const uiLocalePreference = useSettingsStore((s) => s.uiLocalePreference);
+  const setUiLocalePreference = useSettingsStore((s) => s.setUiLocalePreference);
+  const { t } = useTranslation(["common", "settings", "shell"]);
   const showRegionalism = useSettingsStore((s) => s.showRegionalism);
   const setShowRegionalism = useSettingsStore((s) => s.setShowRegionalism);
   const showWordChoice = useSettingsStore((s) => s.showWordChoice);
@@ -271,7 +326,7 @@ export function SettingsModal() {
         }
       })
       .catch(() => {
-        if (!cancelled) setStorageError("Storage details could not be calculated.");
+        if (!cancelled) setStorageError(i18n.t(($) => $.shell.settings.data.storage.error));
       })
       .finally(() => {
         if (!cancelled) setStorageLoading(false);
@@ -286,13 +341,13 @@ export function SettingsModal() {
     try {
       await restoreRecycledProject(project.id);
       await refreshProjects();
-      toast.success(`Restored "${project.name}".`);
+      toast.success(i18n.t(($) => $.shell.settings.data.recycleBin.restored, { name: project.name }));
       setStorageRefreshKey((value) => value + 1);
     } catch (error) {
       notifyError(
         "restore recycled project",
         error,
-        `Couldn't restore "${project.name}".`,
+        i18n.t(($) => $.shell.settings.data.recycleBin.restoreFailed, { name: project.name }),
       );
     } finally {
       setRecycleActionId(null);
@@ -306,13 +361,15 @@ export function SettingsModal() {
     setRecycleActionId(project.id);
     try {
       await permanentlyDeleteRecycledProject(project.id);
-      toast.success(`Permanently deleted "${project.name}".`);
+      toast.success(
+        i18n.t(($) => $.shell.settings.data.recycleBin.deleted, { name: project.name }),
+      );
       setStorageRefreshKey((value) => value + 1);
     } catch (error) {
       notifyError(
         "permanently delete recycled project",
         error,
-        `Couldn't permanently delete "${project.name}".`,
+        i18n.t(($) => $.shell.settings.data.recycleBin.deleteFailed, { name: project.name }),
       );
     } finally {
       setRecycleActionId(null);
@@ -330,7 +387,7 @@ export function SettingsModal() {
         deleted += 1;
       }
       toast.success(
-        `Permanently deleted ${deleted.toLocaleString()} ${deleted === 1 ? "project" : "projects"}.`,
+        i18n.t(($) => $.shell.settings.data.recycleBin.clearedCount, { count: deleted }),
       );
       setStorageRefreshKey((value) => value + 1);
     } catch (error) {
@@ -339,8 +396,8 @@ export function SettingsModal() {
         "clear recycle bin",
         error,
         deleted > 0
-          ? `Permanently deleted ${deleted.toLocaleString()} projects, but couldn't clear the entire Recycle Bin.`
-          : "Couldn't clear the Recycle Bin.",
+          ? i18n.t(($) => $.shell.settings.data.recycleBin.clearPartial, { count: deleted })
+          : i18n.t(($) => $.shell.settings.data.recycleBin.clearFailed),
       );
     } finally {
       setClearingRecycleBin(false);
@@ -355,7 +412,7 @@ export function SettingsModal() {
       if (useFilesStore.getState().projectId) {
         await closeProject();
         if (useFilesStore.getState().projectId) {
-          throw new Error("The open project could not be closed safely.");
+          throw new Error(i18n.t(($) => $.shell.settings.data.danger.closeFailed));
         }
       }
       for (const project of projects) {
@@ -364,7 +421,7 @@ export function SettingsModal() {
       }
       await refreshProjects();
       toast.success(
-        `Moved ${moved.toLocaleString()} ${moved === 1 ? "project" : "projects"} to the Recycle Bin.`,
+        i18n.t(($) => $.shell.settings.data.danger.movedCount, { count: moved }),
       );
       setStorageRefreshKey((value) => value + 1);
     } catch (error) {
@@ -374,8 +431,8 @@ export function SettingsModal() {
         "move all projects to recycle bin",
         error,
         moved > 0
-          ? `Moved ${moved.toLocaleString()} projects, but couldn't finish the operation.`
-          : "Couldn't move the projects to the Recycle Bin.",
+          ? i18n.t(($) => $.shell.settings.data.danger.movePartial, { count: moved })
+          : i18n.t(($) => $.shell.settings.data.danger.moveFailed),
       );
     } finally {
       setDeletingAllProjects(false);
@@ -388,18 +445,23 @@ export function SettingsModal() {
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
     >
-      <button type="button" aria-label="Close settings" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
+      <button
+        type="button"
+        aria-label={t(($) => $.shell.settings.close)}
+        className="absolute inset-0"
+        onMouseDown={onBackdropMouseDown}
+      />
       <div
         role="dialog"
         ref={dialogRef}
         tabIndex={-1}
         data-modal-initial-focus
         aria-modal="true"
-        aria-label="Settings"
+        aria-label={t(($) => $.shell.settings.title)}
         className="relative flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
       >
         <nav
-          aria-label="Settings sections"
+          aria-label={t(($) => $.shell.settings.sectionsNav)}
           data-tour="settings-navigation-panel"
           className="flex min-h-0 w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3"
         >
@@ -407,7 +469,7 @@ export function SettingsModal() {
             data-tour="settings-navigation"
             className="mb-2 shrink-0 px-2 text-sm font-semibold"
           >
-            Settings
+            {t(($) => $.shell.settings.title)}
           </div>
           <div
             data-testid="settings-section-scroll"
@@ -455,7 +517,7 @@ export function SettingsModal() {
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="Close settings"
+              aria-label={t(($) => $.shell.settings.close)}
               data-testid="settings-close"
               onClick={closeSettings}
             >
@@ -467,15 +529,48 @@ export function SettingsModal() {
 
             {section === "general" && (
               <div className="space-y-2 [&>[role=switch]]:bg-card">
+                <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+                  <div>
+                    <div className="text-sm font-medium">{t(($) => $.settings.language.label)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t(($) => $.settings.language.description)}
+                    </div>
+                  </div>
+                  <Select
+                    value={uiLocalePreference}
+                    onValueChange={(value) => {
+                      if (isLocalePreference(value)) setUiLocalePreference(value);
+                    }}
+                  >
+                    <SelectTrigger
+                      aria-label={t(($) => $.settings.language.ariaLabel)}
+                      className="w-[176px]"
+                      data-testid="settings-language"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      <SelectItem value="system">{t(($) => $.settings.language.system)}</SelectItem>
+                      {SUPPORTED_LOCALES.map((locale) => (
+                        <SelectItem key={locale} value={locale}>
+                          {LOCALE_INFO[locale].nativeName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  {t(($) => $.settings.language.note)}
+                </div>
                 <SettingsToggleRow
-                  label="Spellcheck"
-                  description="Underline misspelled words with the selected offline Hunspell dictionary and offer replacement suggestions in Source and Visual editing."
+                  label={t(($) => $.shell.settings.general.spellcheck.label)}
+                  description={t(($) => $.shell.settings.general.spellcheck.description)}
                   checked={spellcheck}
                   onChange={toggleSpellcheck}
                 />
                 <SettingsToggleRow
-                  label="Grammar & style (Harper)"
-                  description="Check English grammar and style in LaTeX and Markdown Source and Visual editing, plus Typst Source, with one-click fixes."
+                  label={t(($) => $.shell.settings.general.harper.label)}
+                  description={t(($) => $.shell.settings.general.harper.description)}
                   checked={harper}
                   onChange={setHarper}
                 />
@@ -487,11 +582,10 @@ export function SettingsModal() {
                     >
                       <div>
                         <div className="text-sm font-medium">
-                          English dialect
+                          {t(($) => $.shell.settings.general.dialect.label)}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Apply the selected spelling, grammar, and regional
-                          conventions.
+                          {t(($) => $.shell.settings.general.dialect.description)}
                         </div>
                       </div>
                       <Select
@@ -501,7 +595,7 @@ export function SettingsModal() {
                         }
                       >
                         <SelectTrigger
-                          aria-label="Proofreading English dialect"
+                          aria-label={t(($) => $.shell.settings.general.dialect.ariaLabel)}
                           className="w-[176px]"
                         >
                           <SelectValue />
@@ -516,14 +610,14 @@ export function SettingsModal() {
                       </Select>
                     </div>
                     <SettingsToggleRow
-                      label="Regionalism suggestions"
-                      description="Flag terms that do not match the selected English dialect. Turn off if you use such terms as product or code names."
+                      label={t(($) => $.shell.settings.general.regionalism.label)}
+                      description={t(($) => $.shell.settings.general.regionalism.description)}
                       checked={showRegionalism}
                       onChange={setShowRegionalism}
                     />
                     <SettingsToggleRow
-                      label="Word-choice suggestions"
-                      description="Suggest alternative words (e.g. “too” vs. “to”). Turn off to keep only spelling and grammar."
+                      label={t(($) => $.shell.settings.general.wordChoice.label)}
+                      description={t(($) => $.shell.settings.general.wordChoice.description)}
                       checked={showWordChoice}
                       onChange={setShowWordChoice}
                     />
@@ -533,11 +627,10 @@ export function SettingsModal() {
                   <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
                     <div>
                       <div className="text-sm font-medium">
-                        Spelling dictionary
+                        {t(($) => $.shell.settings.general.dictionary.label)}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Exact offline Hunspell pack used by Source and Visual
-                        spelling checks.
+                        {t(($) => $.shell.settings.general.dictionary.description)}
                       </div>
                     </div>
                     <Select
@@ -547,7 +640,7 @@ export function SettingsModal() {
                       }
                     >
                       <SelectTrigger
-                        aria-label="Proofreading spelling dictionary"
+                        aria-label={t(($) => $.shell.settings.general.dictionary.ariaLabel)}
                         className="w-[176px]"
                       >
                         <SelectValue />
@@ -563,14 +656,11 @@ export function SettingsModal() {
                   </div>
                 )}
                 <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                  Proofreading runs locally in a background worker. Harper
-                  follows the selected English dialect; spelling always uses
-                  the exact selected Hunspell pack. Math, code, comments,
-                  citation syntax, metadata, and URLs are excluded.
+                  {t(($) => $.shell.settings.general.proofreadingNote)}
                 </div>
                 <SettingsToggleRow
-                  label="Offline mode"
-                  description="Compile with --only-cached and never fetch packages over the network."
+                  label={t(($) => $.shell.settings.general.offline.label)}
+                  description={t(($) => $.shell.settings.general.offline.description)}
                   checked={offline}
                   onChange={setOffline}
                 />
@@ -591,10 +681,15 @@ export function SettingsModal() {
                         aria-hidden
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-medium">Enable tour guides</span>
+                        <span className="block text-sm font-medium">
+                          {t(($) => $.shell.settings.tours.enable)}
+                        </span>
                         <span className="block text-xs text-muted-foreground">
-                          {completedTours} completed · {dismissedTours} dismissed ·{" "}
-                          {TOUR_IDS.length} total
+                          {t(($) => $.shell.settings.tours.summary, {
+                            completed: completedTours,
+                            dismissed: dismissedTours,
+                            total: TOUR_IDS.length,
+                          })}
                         </span>
                       </span>
                     </button>
@@ -602,7 +697,7 @@ export function SettingsModal() {
                       type="button"
                       role="switch"
                       aria-checked={toursEnabled}
-                      aria-label="Enable all tour guides"
+                      aria-label={t(($) => $.shell.settings.tours.enableAll)}
                       onClick={() => {
                         if (toursEnabled) {
                           setTourConfirmation("disable");
@@ -630,14 +725,20 @@ export function SettingsModal() {
                             className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2"
                           >
                             <div className="min-w-0">
-                              <p className="text-sm font-medium">{TOUR_LABELS[id]}</p>
-                              <p className="text-xs capitalize text-muted-foreground">{status}</p>
+                              <p className="text-sm font-medium">
+                                {resolveTourText(tourRegistry[id].label)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {t(($) => $.shell.settings.tours.status[status])}
+                              </p>
                             </div>
                             <button
                               type="button"
                               role="switch"
                               aria-checked={checked}
-                              aria-label={`Enable ${TOUR_LABELS[id]} tour`}
+                              aria-label={t(($) => $.shell.settings.tours.enableOne, {
+                                name: resolveTourText(tourRegistry[id].label),
+                              })}
                               onClick={() =>
                                 useTourStore.getState().setTourEnabled(id, !checked)
                               }
@@ -650,9 +751,14 @@ export function SettingsModal() {
                       })}
                       <div className="flex items-center justify-between gap-3 border-t pt-3">
                         <div>
-                          <p className="text-sm font-medium">Tour progress</p>
+                          <p className="text-sm font-medium">
+                            {t(($) => $.shell.settings.tours.progress)}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {completedTours} completed and {dismissedTours} dismissed.
+                            {t(($) => $.shell.settings.tours.progressDetail, {
+                              completed: completedTours,
+                              dismissed: dismissedTours,
+                            })}
                           </p>
                         </div>
                         <Button
@@ -661,14 +767,14 @@ export function SettingsModal() {
                           disabled={!toursEnabled && dismissedTours === TOUR_IDS.length}
                           onClick={() => setTourConfirmation("dismiss-all")}
                         >
-                          Dismiss all tours
+                          {t(($) => $.shell.settings.tours.dismissAll)}
                         </Button>
                       </div>
                     </div>
                   )}
                 </div>
                 <ResetToDefaults
-                  sectionName="General"
+                  sectionName={t(($) => $.shell.settings.nav.general)}
                   onReset={resetGeneralPreferences}
                 />
               </div>
@@ -680,27 +786,27 @@ export function SettingsModal() {
               <Tabs defaultValue="local" className="space-y-4 text-sm">
                 <TabsList>
                   <TabsTrigger value="local" data-testid="data-tab-local">
-                    Local store
+                    {t(($) => $.shell.settings.data.tabs.local)}
                   </TabsTrigger>
                   <TabsTrigger value="cloud" data-testid="data-tab-cloud">
-                    Cloud sync
+                    {t(($) => $.shell.settings.data.tabs.cloud)}
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="local" className="space-y-3">
                 <p className="text-muted-foreground">
-                  Oleafly is local-first. All projects live on your disk:
+                  {t(($) => $.shell.settings.data.localFirst)}
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
                     {libRoot || "~/.oleafly/projects"}
                   </code>
                   {import.meta.env.DEV && isTauri() && libRoot ? (
-                    <Tooltip label="Reveal projects folder in Finder">
+                    <Tooltip label={t(($) => $.shell.settings.data.reveal)}>
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
-                        aria-label="Reveal projects folder in Finder"
+                        aria-label={t(($) => $.shell.settings.data.reveal)}
                         onClick={() => void openExternal(libRoot)}
                       >
                         <FolderOpen className="size-4" />
@@ -709,8 +815,7 @@ export function SettingsModal() {
                   ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Each project is a plain folder. Git history is optional, and nothing leaves
-                  your machine unless you push to GitHub.
+                  {t(($) => $.shell.settings.data.plainFolders)}
                 </p>
                 <section
                   aria-labelledby="storage-usage-title"
@@ -723,23 +828,25 @@ export function SettingsModal() {
                       </span>
                       <div className="min-w-0">
                         <h3 id="storage-usage-title" className="font-medium">
-                          Storage usage
+                          {t(($) => $.shell.settings.data.storage.title)}
                         </h3>
                         <p className="text-xs text-muted-foreground">
                           {storageSummary
-                            ? `${formatStorageSize(storageSummary.total_bytes)} across the Oleafly data folder`
-                            : "Projects, previews, history, and app data"}
+                            ? t(($) => $.shell.settings.data.storage.total, {
+                                size: formatBytes(storageSummary.total_bytes),
+                              })
+                            : t(($) => $.shell.settings.data.storage.subtitle)}
                         </p>
                       </div>
                     </div>
-                    <Tooltip label="Refresh storage usage">
+                    <Tooltip label={t(($) => $.shell.settings.data.storage.refresh)}>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         className="size-8 shrink-0"
                         disabled={storageLoading || !isTauri()}
-                        aria-label="Refresh storage usage"
+                        aria-label={t(($) => $.shell.settings.data.storage.refresh)}
                         onClick={() => setStorageRefreshKey((value) => value + 1)}
                       >
                         <RefreshCw
@@ -766,53 +873,63 @@ export function SettingsModal() {
                         aria-hidden
                         className="size-4 animate-spin motion-reduce:animate-none"
                       />
-                      Calculating storage usage…
+                      {t(($) => $.shell.settings.data.storage.calculating)}
                     </div>
                   ) : storageSummary ? (
                     <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
                       {[
                         {
-                          label: "Projects",
-                          value: storageSummary.project_count.toLocaleString(),
-                          detail: formatStorageSize(storageSummary.projects_bytes),
+                          id: "projects",
+                          label: t(($) => $.shell.settings.data.storage.stats.projects),
+                          value: formatNumber(storageSummary.project_count),
+                          detail: formatBytes(storageSummary.projects_bytes),
                         },
                         {
-                          label: "Files",
-                          value: storageSummary.file_count.toLocaleString(),
-                          detail: `${storageSummary.directory_count.toLocaleString()} folders`,
+                          id: "files",
+                          label: t(($) => $.shell.settings.data.storage.stats.files),
+                          value: formatNumber(storageSummary.file_count),
+                          detail: t(($) => $.shell.settings.data.storage.stats.folders, {
+                            count: storageSummary.directory_count,
+                          }),
                         },
                         {
-                          label: "Images",
-                          value: storageSummary.image_count.toLocaleString(),
-                          detail: formatStorageSize(storageSummary.image_bytes),
+                          id: "images",
+                          label: t(($) => $.shell.settings.data.storage.stats.images),
+                          value: formatNumber(storageSummary.image_count),
+                          detail: formatBytes(storageSummary.image_bytes),
                         },
                         {
-                          label: "PDFs",
-                          value: storageSummary.pdf_count.toLocaleString(),
-                          detail: formatStorageSize(storageSummary.pdf_bytes),
+                          id: "pdfs",
+                          label: t(($) => $.shell.settings.data.storage.stats.pdfs),
+                          value: formatNumber(storageSummary.pdf_count),
+                          detail: formatBytes(storageSummary.pdf_bytes),
                         },
                         {
-                          label: "Project files",
-                          value: formatStorageSize(storageSummary.source_bytes),
-                          detail: "Sources and metadata",
+                          id: "sources",
+                          label: t(($) => $.shell.settings.data.storage.stats.projectFiles),
+                          value: formatBytes(storageSummary.source_bytes),
+                          detail: t(($) => $.shell.settings.data.storage.stats.projectFilesDetail),
                         },
                         {
-                          label: "Git history",
-                          value: formatStorageSize(storageSummary.git_bytes),
-                          detail: "Local versions",
+                          id: "git",
+                          label: t(($) => $.shell.settings.data.storage.stats.gitHistory),
+                          value: formatBytes(storageSummary.git_bytes),
+                          detail: t(($) => $.shell.settings.data.storage.stats.gitHistoryDetail),
                         },
                         {
-                          label: "Build cache",
-                          value: formatStorageSize(storageSummary.build_bytes),
-                          detail: "Generated output",
+                          id: "build",
+                          label: t(($) => $.shell.settings.data.storage.stats.buildCache),
+                          value: formatBytes(storageSummary.build_bytes),
+                          detail: t(($) => $.shell.settings.data.storage.stats.buildCacheDetail),
                         },
                         {
-                          label: "App data",
-                          value: formatStorageSize(storageSummary.app_data_bytes),
-                          detail: "Assets and settings",
+                          id: "appData",
+                          label: t(($) => $.shell.settings.data.storage.stats.appData),
+                          value: formatBytes(storageSummary.app_data_bytes),
+                          detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
                         },
                       ].map((item) => (
-                        <div key={item.label} className="min-w-0 bg-card px-3 py-3">
+                        <div key={item.id} className="min-w-0 bg-card px-3 py-3">
                           <dt className="text-muted-foreground">{item.label}</dt>
                           <dd className="mt-1 truncate text-sm font-semibold text-foreground">
                             {item.value}
@@ -825,14 +942,14 @@ export function SettingsModal() {
                     </dl>
                   ) : (
                     <p className="px-4 py-5 text-sm text-muted-foreground">
-                      Storage details are available in the desktop app.
+                      {t(($) => $.shell.settings.data.storage.desktopOnly)}
                     </p>
                   )}
                   {storageSummary && storageSummary.unreadable_entries > 0 ? (
                     <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
-                      {storageSummary.unreadable_entries.toLocaleString()} inaccessible
-                      {storageSummary.unreadable_entries === 1 ? " item was" : " items were"}
-                      {" "}excluded.
+                      {t(($) => $.shell.settings.data.storage.unreadable, {
+                        count: storageSummary.unreadable_entries,
+                      })}
                     </p>
                   ) : null}
                 </section>
@@ -848,19 +965,21 @@ export function SettingsModal() {
                       </span>
                       <div className="min-w-0">
                         <h3 id="recycle-bin-title" className="font-medium">
-                          Recycle Bin
+                          {t(($) => $.shell.settings.data.recycleBin.title)}
                         </h3>
                         <p className="text-xs text-muted-foreground">
                           {storageSummary
-                            ? `${formatStorageSize(storageSummary.recycle_bin_bytes)} · no automatic cleanup`
-                            : "Deleted projects stay here until you remove them"}
+                            ? t(($) => $.shell.settings.data.recycleBin.size, {
+                                size: formatBytes(storageSummary.recycle_bin_bytes),
+                              })
+                            : t(($) => $.shell.settings.data.recycleBin.subtitle)}
                         </p>
                       </div>
                     </div>
                     {recycledProjects.length > 0 ? (
                       <div className="flex shrink-0 items-center gap-2">
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                          {recycledProjects.length.toLocaleString()}
+                          {formatNumber(recycledProjects.length)}
                         </span>
                         <Button
                           type="button"
@@ -871,7 +990,9 @@ export function SettingsModal() {
                           onClick={() => setConfirmClearRecycleBin(true)}
                         >
                           <Trash2 aria-hidden className="size-3.5" />
-                          {clearingRecycleBin ? "Clearing…" : "Clear all"}
+                          {clearingRecycleBin
+                            ? t(($) => $.shell.settings.data.recycleBin.clearing)
+                            : t(($) => $.shell.settings.data.recycleBin.clearAll)}
                         </Button>
                       </div>
                     ) : null}
@@ -885,11 +1006,11 @@ export function SettingsModal() {
                         aria-hidden
                         className="size-4 animate-spin motion-reduce:animate-none"
                       />
-                      Loading Recycle Bin…
+                      {t(($) => $.shell.settings.data.recycleBin.loading)}
                     </div>
                   ) : recycledProjects.length === 0 ? (
                     <p className="px-4 py-5 text-sm text-muted-foreground">
-                      The Recycle Bin is empty.
+                      {t(($) => $.shell.settings.data.recycleBin.empty)}
                     </p>
                   ) : (
                     <ul className="divide-y">
@@ -905,8 +1026,10 @@ export function SettingsModal() {
                                 {project.name}
                               </p>
                               <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                                Deleted {new Date(project.deleted_at * 1000).toLocaleString()} ·{" "}
-                                {formatStorageSize(project.size_bytes)}
+                                {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
+                                  date: formatDateTime(project.deleted_at * 1000),
+                                  size: formatBytes(project.size_bytes),
+                                })}
                               </p>
                             </div>
                             <div className="flex shrink-0 items-center gap-1">
@@ -924,16 +1047,22 @@ export function SettingsModal() {
                                     busy && "animate-spin motion-reduce:animate-none",
                                   )}
                                 />
-                                Restore
+                                {t(($) => $.shell.settings.data.recycleBin.restore)}
                               </Button>
-                              <Tooltip label={`Permanently delete ${project.name}`}>
+                              <Tooltip
+                                label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
+                                  name: project.name,
+                                })}
+                              >
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="icon"
                                   className="size-8 text-muted-foreground hover:text-destructive"
                                   disabled={recycleActionId !== null || clearingRecycleBin}
-                                  aria-label={`Permanently delete ${project.name}`}
+                                  aria-label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
+                                    name: project.name,
+                                  })}
                                   onClick={() => setPermanentDeleteTarget(project)}
                                 >
                                   <Trash2 aria-hidden className="size-3.5" />
@@ -950,15 +1079,21 @@ export function SettingsModal() {
                 <div className="flex items-start gap-2 rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">
                   <Github className="mt-0.5 size-4 shrink-0" />
                   <span>
-                    Back up or sync a project across devices: connect GitHub, then use{" "}
-                    <strong className="font-medium text-foreground">Push</strong> /{" "}
-                    <strong className="font-medium text-foreground">Pull</strong> in Source Control.{" "}
-                    <button type="button"
-                      onClick={() => setSection("integrations")}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      Set up GitHub →
-                    </button>
+                    <Trans
+                      ns="shell"
+                      i18nKey={($) => $.shell.settings.data.githubHint}
+                      components={{
+                        push: <strong className="font-medium text-foreground" />,
+                        pull: <strong className="font-medium text-foreground" />,
+                        setup: (
+                          <button
+                            type="button"
+                            onClick={() => setSection("integrations")}
+                            className="font-medium text-primary hover:underline"
+                          />
+                        ),
+                      }}
+                    />
                   </span>
                 </div>
                 ) : null}
@@ -971,16 +1106,16 @@ export function SettingsModal() {
                       id="data-danger-zone-title"
                       className="font-medium text-destructive"
                     >
-                      Danger zone
+                      {t(($) => $.shell.settings.data.danger.title)}
                     </h3>
                   </div>
                   <div className="flex items-center justify-between gap-4 px-4 py-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">
-                        Delete all projects
+                        {t(($) => $.shell.settings.data.danger.deleteAll)}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Moves every project to the Recycle Bin. Nothing is permanently deleted.
+                        {t(($) => $.shell.settings.data.danger.deleteAllDescription)}
                       </p>
                     </div>
                     <Button
@@ -992,7 +1127,9 @@ export function SettingsModal() {
                       onClick={() => setConfirmDeleteAllProjects(true)}
                     >
                       <Trash2 aria-hidden className="size-3.5" />
-                      {deletingAllProjects ? "Deleting…" : "Delete all"}
+                      {deletingAllProjects
+                        ? t(($) => $.shell.settings.data.danger.deleting)
+                        : t(($) => $.shell.settings.data.danger.deleteAllAction)}
                     </Button>
                   </div>
                 </section>
@@ -1005,16 +1142,15 @@ export function SettingsModal() {
                         <Cloud className="absolute left-0 top-0 size-5" />
                         <RefreshCw className="absolute bottom-0 right-0 size-3 rounded-full bg-card stroke-[2.5]" />
                       </span>
-                      <h3 className="font-semibold text-foreground">Cloud sync</h3>
+                      <h3 className="font-semibold text-foreground">
+                        {t(($) => $.shell.settings.data.cloud.title)}
+                      </h3>
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Coming soon
+                        {t(($) => $.shell.settings.data.cloud.comingSoon)}
                       </span>
                     </div>
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Keep projects synchronized across your devices without configuring a Git
-                      remote. Every transfer will be end-to-end encrypted, so your work stays
-                      private in transit. Your local project folders will remain the source of
-                      truth.
+                      {t(($) => $.shell.settings.data.cloud.description)}
                     </p>
                   </div>
                 </div>
@@ -1035,33 +1171,28 @@ export function SettingsModal() {
               <div className="space-y-2">
                 <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-foreground">
                   <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <span>
-                    These features are experimental and still in beta. They are
-                    not fully tested yet and may change, break, or be removed in a
-                    future release. Turn them on only if you want to try work in
-                    progress.
-                  </span>
+                  <span>{t(($) => $.shell.settings.experimentation.warning)}</span>
                 </div>
                 <SettingsToggleRow
-                  label="Visual editor"
-                  description="Show the Visual/Code toggle in the document editor. Off by default, so documents open in the code editor only. Diagrams always keep their own canvas toggle."
+                  label={t(($) => $.shell.settings.experimentation.visualEditor.label)}
+                  description={t(($) => $.shell.settings.experimentation.visualEditor.description)}
                   checked={visualEditor}
                   onChange={setVisualEditor}
                 />
                 <SettingsToggleRow
-                  label="LaTeX tools"
-                  description="Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta."
+                  label={t(($) => $.shell.settings.experimentation.latexTools.label)}
+                  description={t(($) => $.shell.settings.experimentation.latexTools.description)}
                   checked={latexTools}
                   onChange={setLatexTools}
                 />
                 <SettingsToggleRow
-                  label="Web browser"
-                  description="Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while still in beta; when off, there is no browser button and the AI has no browser tool."
+                  label={t(($) => $.shell.settings.experimentation.webBrowser.label)}
+                  description={t(($) => $.shell.settings.experimentation.webBrowser.description)}
                   checked={webBrowser}
                   onChange={setWebBrowser}
                 />
                 <ResetToDefaults
-                  sectionName="Experimentation"
+                  sectionName={t(($) => $.shell.settings.nav.experimentation)}
                   onReset={resetExperimentationPreferences}
                 />
               </div>
@@ -1077,9 +1208,17 @@ export function SettingsModal() {
       </div>
       <ConfirmationDialog
         open={tourConfirmation !== null}
-        title={tourConfirmation === "disable" ? "Disable tour guides?" : "Dismiss all tours?"}
-        description="This dismisses every remaining tour and turns tour guides off. You can enable them again from General settings to start over."
-        confirmLabel={tourConfirmation === "disable" ? "Disable tours" : "Dismiss all"}
+        title={
+          tourConfirmation === "disable"
+            ? t(($) => $.shell.settings.tours.disableTitle)
+            : t(($) => $.shell.settings.tours.dismissAllTitle)
+        }
+        description={t(($) => $.shell.settings.tours.confirmDescription)}
+        confirmLabel={
+          tourConfirmation === "disable"
+            ? t(($) => $.shell.settings.tours.disableConfirm)
+            : t(($) => $.shell.settings.tours.dismissAllConfirm)
+        }
         destructive
         onCancel={() => setTourConfirmation(null)}
         onConfirm={() => {
@@ -1089,27 +1228,33 @@ export function SettingsModal() {
       />
       <ConfirmationDialog
         open={permanentDeleteTarget !== null}
-        title={`Permanently delete “${permanentDeleteTarget?.name ?? "project"}”?`}
-        description="This removes the project, its files, and its Git history from the Recycle Bin. This action cannot be undone."
-        confirmLabel="Delete permanently"
+        title={t(($) => $.shell.settings.data.recycleBin.confirmDeleteTitle, {
+          name: permanentDeleteTarget?.name ?? t(($) => $.shell.toolbar.untitledProject),
+        })}
+        description={t(($) => $.shell.settings.data.recycleBin.confirmDeleteDescription)}
+        confirmLabel={t(($) => $.shell.settings.data.recycleBin.confirmDeleteAction)}
         destructive
         onCancel={() => setPermanentDeleteTarget(null)}
         onConfirm={() => void confirmPermanentProjectDeletion()}
       />
       <ConfirmationDialog
         open={confirmClearRecycleBin}
-        title={`Clear ${recycledProjects.length.toLocaleString()} ${recycledProjects.length === 1 ? "project" : "projects"} from the Recycle Bin?`}
-        description="This permanently deletes every project currently in the Recycle Bin, including its files and Git history. This action cannot be undone."
-        confirmLabel="Clear Recycle Bin"
+        title={t(($) => $.shell.settings.data.recycleBin.confirmClearTitle, {
+          count: recycledProjects.length,
+        })}
+        description={t(($) => $.shell.settings.data.recycleBin.confirmClearDescription)}
+        confirmLabel={t(($) => $.shell.settings.data.recycleBin.confirmClearAction)}
         destructive
         onCancel={() => setConfirmClearRecycleBin(false)}
         onConfirm={() => void clearRecycleBin()}
       />
       <ConfirmationDialog
         open={confirmDeleteAllProjects}
-        title={`Delete all ${projects.length.toLocaleString()} ${projects.length === 1 ? "project" : "projects"}?`}
-        description="Every current project will move to the Recycle Bin, including its files and Git history. You can restore projects individually afterward."
-        confirmLabel="Delete all projects"
+        title={t(($) => $.shell.settings.data.danger.confirmDeleteAllTitle, {
+          count: projects.length,
+        })}
+        description={t(($) => $.shell.settings.data.danger.confirmDeleteAllDescription)}
+        confirmLabel={t(($) => $.shell.settings.data.danger.confirmDeleteAllAction)}
         destructive
         onCancel={() => setConfirmDeleteAllProjects(false)}
         onConfirm={() => void deleteAllProjects()}
@@ -1135,6 +1280,7 @@ const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
 function HelpSection() {
+  const { t } = useTranslation(["common", "shell"]);
   const [version, setVersion] = useState("");
   const [copied, setCopied] = useState(false);
   const [repoStats, setRepoStats] = useState<GitHubRepoStats | null>(null);
@@ -1187,36 +1333,64 @@ function HelpSection() {
     onClick: () => void;
     external: boolean;
   }[] = [
-    { icon: Compass, label: "Start tour", onClick: beginTour, external: false },
-    { icon: BookOpen, label: "Documentation", onClick: ext(DOCS_URL), external: true },
-    { icon: GraduationCap, label: "Learn", onClick: ext(LEARN_URL), external: true },
+    {
+      icon: Compass,
+      label: t(($) => $.shell.settings.help.resources.startTour),
+      onClick: beginTour,
+      external: false,
+    },
+    {
+      icon: BookOpen,
+      label: t(($) => $.shell.settings.help.resources.documentation),
+      onClick: ext(DOCS_URL),
+      external: true,
+    },
+    {
+      icon: GraduationCap,
+      label: t(($) => $.shell.settings.help.resources.learn),
+      onClick: ext(LEARN_URL),
+      external: true,
+    },
     {
       icon: TriangleAlert,
-      label: "Report a crash (attach logs)",
+      label: t(($) => $.shell.settings.help.resources.reportCrash),
       onClick: () => void reportCrashToGithub(),
       external: true,
     },
-    { icon: ScrollText, label: "What's new", onClick: ext(CHANGELOG_URL), external: true },
-    { icon: Scale, label: "License", onClick: ext(LICENSE_URL), external: true },
+    {
+      icon: ScrollText,
+      label: t(($) => $.shell.settings.help.resources.whatsNew),
+      onClick: ext(CHANGELOG_URL),
+      external: true,
+    },
+    {
+      icon: Scale,
+      label: t(($) => $.shell.settings.help.resources.license),
+      onClick: ext(LICENSE_URL),
+      external: true,
+    },
   ];
 
   const community = [
     {
+      id: "discussions",
       icon: MessageCircle,
-      label: "Discussions",
-      description: "Ask questions and share ideas",
+      label: t(($) => $.shell.about.links.discussions.label),
+      description: t(($) => $.shell.about.links.discussions.description),
       onClick: ext(DISCUSSIONS_URL),
     },
     {
+      id: "issues",
       icon: Bug,
-      label: "Issues",
-      description: "Report a bug or request a feature",
+      label: t(($) => $.shell.about.links.issues.label),
+      description: t(($) => $.shell.about.links.issues.description),
       onClick: ext(ISSUES_URL),
     },
     {
+      id: "social",
       icon: AtSign,
-      label: "@OleaflyHQ",
-      description: "Follow releases and development",
+      label: t(($) => $.shell.about.links.social.label),
+      description: t(($) => $.shell.about.links.social.description),
       onClick: ext(X_URL),
     },
   ] as const;
@@ -1227,7 +1401,7 @@ function HelpSection() {
         <OleaflyAssistantMascot className="size-20" />
         <div
           role="note"
-          aria-label="Support Oleafly"
+          aria-label={t(($) => $.shell.settings.help.supportAriaLabel)}
           className="relative mt-1 min-w-0 flex-1 rounded-xl border border-border bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))] px-3 py-2.5 text-left text-[11px] leading-relaxed text-muted-foreground"
         >
           <span
@@ -1239,15 +1413,19 @@ function HelpSection() {
             className="absolute -left-px top-[18px] z-20 h-4 w-1 bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))]"
           />
           <span className="relative z-30">
-            If Oleafly helps your work, please{" "}
-            <button
-              type="button"
-              onClick={ext(REPO_URL)}
-              className="font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:text-primary"
-            >
-              star the project on GitHub
-            </button>
-            . That small click helps more researchers find it and supports continued development.
+            <Trans
+              ns="shell"
+              i18nKey={($) => $.shell.settings.help.support}
+              components={{
+                star: (
+                  <button
+                    type="button"
+                    onClick={ext(REPO_URL)}
+                    className="font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:text-primary"
+                  />
+                ),
+              }}
+            />
           </span>
         </div>
       </div>
@@ -1258,20 +1436,21 @@ function HelpSection() {
       >
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h3 className="text-sm font-semibold">Oleafly</h3>
+            <h3 className="text-sm font-semibold">{"Oleafly"}</h3>
             {version && (
-              <span className="text-[11px] text-muted-foreground">v{version}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {t(($) => $.shell.settings.help.versionShort, { version })}
+              </span>
             )}
           </div>
           <p className="mt-1 max-w-[42rem] text-xs leading-relaxed text-muted-foreground">
-            Write, compile, proofread, manage citations, review PDFs, track changes in Git,
-            and use the AI models you choose. All in one open-source workspace.
+            {t(($) => $.shell.settings.help.tagline)}
           </p>
         </div>
         <img
           data-testid="about-oleafly-logo"
           src="/oleafly-tile-gradient.png"
-          alt="Oleafly"
+          alt={t(($) => $.shell.settings.help.logoAlt)}
           className="size-14 shrink-0 rounded-xl"
         />
         <div className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -1282,7 +1461,9 @@ function HelpSection() {
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-            {copied ? "Copied" : "Copy Info"}
+            {copied
+              ? t(($) => $.common.actions.copied)
+              : t(($) => $.shell.settings.help.copyInfo)}
           </button>
         </div>
       </div>
@@ -1305,32 +1486,38 @@ function HelpSection() {
       </div>
       */}
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t(($) => $.shell.settings.help.project)}
+        </p>
         <button type="button"
           onClick={ext(REPO_URL)}
           className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
         >
           <Github className="size-4 shrink-0 text-muted-foreground" />
-          <span className="flex-1 truncate">Star and explore on GitHub</span>
+          <span className="flex-1 truncate">{t(($) => $.shell.settings.help.starRepo)}</span>
           {repoStats && (
             <span className="flex shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
               <span
                 role="img"
                 className="inline-flex items-center gap-1"
-                aria-label={`${repoStats.stars.toLocaleString()} GitHub stars`}
-                title="GitHub stars"
+                aria-label={t(($) => $.shell.settings.help.stars, {
+                  count: repoStats.stars,
+                })}
+                title={t(($) => $.shell.settings.help.starsTitle)}
               >
                 <Star aria-hidden="true" className="size-3.5" />
-                {repoStats.stars.toLocaleString()}
+                {formatNumber(repoStats.stars)}
               </span>
               <span
                 role="img"
                 className="inline-flex items-center gap-1"
-                aria-label={`${repoStats.forks.toLocaleString()} GitHub forks`}
-                title="GitHub forks"
+                aria-label={t(($) => $.shell.settings.help.forks, {
+                  count: repoStats.forks,
+                })}
+                title={t(($) => $.shell.settings.help.forksTitle)}
               >
                 <GitFork aria-hidden="true" className="size-3.5" />
-                {repoStats.forks.toLocaleString()}
+                {formatNumber(repoStats.forks)}
               </span>
             </span>
           )}
@@ -1340,11 +1527,11 @@ function HelpSection() {
 
       <div className="space-y-1">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Community
+          {t(($) => $.shell.settings.help.community)}
         </p>
         {community.map((item) => (
           <button
-            key={item.label}
+            key={item.id}
             type="button"
             onClick={item.onClick}
             className="group flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left hover:bg-accent"
@@ -1362,7 +1549,9 @@ function HelpSection() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Resources</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {t(($) => $.shell.settings.help.resourcesTitle)}
+        </p>
         {resources.map((r) => (
           <button
             key={r.label}

@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
@@ -32,7 +33,7 @@ export async function registerUpdateInstallGuard(setBusy: (busy: boolean) => voi
           lease?.assertActive();
           if (disposed || active !== request) return;
           if (useFilesStore.getState().projectId !== projectId) {
-            throw new Error("The project changed while saving. Please try the update again.");
+            throw new Error(i18n.t(($) => $.core.update.projectChangedWhileSaving));
           }
           await invoke("confirm_update_install", { token, error: null });
         } catch (error) {

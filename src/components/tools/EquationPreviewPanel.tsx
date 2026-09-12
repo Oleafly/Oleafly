@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 // Chemistry equations (\ce{...}) for the examples below.
@@ -9,29 +10,66 @@ import { CodeField } from "@/components/tools/CodeField";
 import { latexMathLanguage } from "@/components/editor/cm/latex";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 
-export const EQUATION_EXAMPLES: { label: string; latex: string }[] = [
-  { label: "Quadratic", latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}" },
-  { label: "Euler", latex: "e^{i\\pi} + 1 = 0" },
-  { label: "Integral", latex: "\\int_{a}^{b} f(x)\\,dx" },
+export const EQUATION_EXAMPLES: { id: string; label: () => string; latex: string }[] = [
   {
-    label: "Matrix",
+    id: "quadratic",
+    label: () => i18n.t(($) => $.researchTools.equation.example.quadratic),
+    latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+  },
+  {
+    id: "euler",
+    label: () => i18n.t(($) => $.researchTools.equation.example.euler),
+    latex: "e^{i\\pi} + 1 = 0",
+  },
+  {
+    id: "integral",
+    label: () => i18n.t(($) => $.researchTools.equation.example.integral),
+    latex: "\\int_{a}^{b} f(x)\\,dx",
+  },
+  {
+    id: "matrix",
+    label: () => i18n.t(($) => $.researchTools.equation.example.matrix),
     latex: "A = \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}",
   },
   {
-    label: "Cases",
+    id: "cases",
+    label: () => i18n.t(($) => $.researchTools.equation.example.cases),
     latex: "f(x) = \\begin{cases} x^2 & x \\ge 0 \\\\ -x & x < 0 \\end{cases}",
   },
   {
-    label: "Aligned",
+    id: "aligned",
+    label: () => i18n.t(($) => $.researchTools.equation.example.aligned),
     latex:
       "\\begin{aligned} (a+b)^2 &= a^2 + 2ab + b^2 \\\\ &= a^2 + b^2 + 2ab \\end{aligned}",
   },
-  { label: "Series", latex: "\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}" },
-  { label: "Limit", latex: "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1" },
-  { label: "Binomial", latex: "\\binom{n}{k} = \\frac{n!}{k!\\,(n-k)!}" },
-  { label: "Chemistry", latex: "\\ce{2H2 + O2 -> 2H2O}" },
+  {
+    id: "series",
+    label: () => i18n.t(($) => $.researchTools.equation.example.series),
+    latex: "\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}",
+  },
+  {
+    id: "limit",
+    label: () => i18n.t(($) => $.researchTools.equation.example.limit),
+    latex: "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1",
+  },
+  {
+    id: "binomial",
+    label: () => i18n.t(($) => $.researchTools.equation.example.binomial),
+    latex: "\\binom{n}{k} = \\frac{n!}{k!\\,(n-k)!}",
+  },
+  {
+    id: "chemistry",
+    label: () => i18n.t(($) => $.researchTools.equation.example.chemistry),
+    latex: "\\ce{2H2 + O2 -> 2H2O}",
+  },
 ];
+
+function InlineFormula({ html }: { html: string }) {
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 export interface EquationRendered {
   html: string;
@@ -80,11 +118,12 @@ export function EquationPreviewPanel({
   onZoomChange,
   editorTheme,
 }: EquationPreviewPanelProps) {
+  const { t } = useTranslation(["common", "researchTools"]);
   const previewCardRef = useRef<HTMLDivElement>(null);
 
   const copyWrapped = () => {
     void navigator.clipboard.writeText(wrapped);
-    toast.success("Copied LaTeX source");
+    toast.success(t(($) => $.researchTools.equation.copiedSource));
   };
 
   const toggleFullscreen = () => {
@@ -98,7 +137,9 @@ export function EquationPreviewPanel({
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col border-r">
         <div className="flex items-center justify-between border-b px-4 py-2.5">
-          <span className="text-xs font-semibold tracking-wide text-muted-foreground">LATEX</span>
+          <span className="text-xs font-semibold tracking-wide text-muted-foreground">
+            {t(($) => $.researchTools.equation.sourceHeading)}
+          </span>
           <div className="flex h-7 items-center rounded-full bg-muted p-0.5 text-xs font-medium">
             <button
               type="button"
@@ -108,7 +149,7 @@ export function EquationPreviewPanel({
                 !display ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
               )}
             >
-              Inline
+              {t(($) => $.researchTools.equation.inline)}
             </button>
             <button
               type="button"
@@ -118,7 +159,7 @@ export function EquationPreviewPanel({
                 display ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
               )}
             >
-              Display
+              {t(($) => $.researchTools.equation.display)}
             </button>
           </div>
         </div>
@@ -134,17 +175,17 @@ export function EquationPreviewPanel({
 
         <div className="border-t px-4 py-3">
           <div className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground">
-            EXAMPLES
+            {t(($) => $.researchTools.equation.examples)}
           </div>
           <div className="flex flex-wrap gap-2">
             {EQUATION_EXAMPLES.map((ex) => (
               <Button
-                key={ex.label}
+                key={ex.id}
                 variant="outline"
                 size="sm"
                 onClick={() => onInputChange(ex.latex)}
               >
-                {ex.label}
+                {ex.label()}
               </Button>
             ))}
           </div>
@@ -155,16 +196,18 @@ export function EquationPreviewPanel({
         <div className="flex items-center justify-between border-b px-4 py-2.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold tracking-wide text-muted-foreground">
-              PREVIEW
+              {t(($) => $.researchTools.equation.previewHeading)}
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {display ? "Display" : "Inline"}
+              {display
+                ? t(($) => $.researchTools.equation.display)
+                : t(($) => $.researchTools.equation.inline)}
             </span>
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
-              aria-label="Preview on dark"
+              aria-label={t(($) => $.researchTools.equation.previewDark)}
               onClick={() => onPreviewThemeChange("dark")}
               className={cn(
                 "size-5 rounded-full border bg-[#111111] transition-shadow",
@@ -173,7 +216,7 @@ export function EquationPreviewPanel({
             />
             <button
               type="button"
-              aria-label="Preview on light"
+              aria-label={t(($) => $.researchTools.equation.previewLight)}
               onClick={() => onPreviewThemeChange("light")}
               className={cn(
                 "size-5 rounded-full border bg-white transition-shadow",
@@ -203,7 +246,7 @@ export function EquationPreviewPanel({
                 )}
                 onClick={copyWrapped}
               >
-                <Copy className="size-3.5" /> Copy
+                <Copy className="size-3.5" /> {t(($) => $.common.actions.copy)}
               </Button>
             )}
             <div
@@ -218,14 +261,15 @@ export function EquationPreviewPanel({
                   <div dangerouslySetInnerHTML={{ __html: rendered.html }} />
                 ) : (
                   <p className="max-w-md text-base leading-relaxed">
-                    This is how it sits inline within a sentence, like{" "}
-                    {/* biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering */}
-                    <span dangerouslySetInnerHTML={{ __html: rendered.html }} />, flowing with the
-                    surrounding text.
+                    <Trans
+                      ns="researchTools"
+                      i18nKey={($) => $.researchTools.equation.inlineSample}
+                      components={{ formula: <InlineFormula html={rendered.html} /> }}
+                    />
                   </p>
                 )
               ) : (
-                <p className="text-sm opacity-60">Type LaTeX math on the left.</p>
+                <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.empty)}</p>
               )}
             </div>
           </div>
@@ -236,7 +280,7 @@ export function EquationPreviewPanel({
               size="icon"
               className="size-7"
               onClick={() => onZoomChange(Math.max(MIN_ZOOM, zoom - 25))}
-              aria-label="Zoom out"
+              aria-label={t(($) => $.researchTools.equation.zoomOut)}
             >
               <ZoomOut className="size-4" />
             </Button>
@@ -245,14 +289,14 @@ export function EquationPreviewPanel({
               onClick={() => onZoomChange(100)}
               className="min-w-11 px-1 text-center text-xs text-muted-foreground"
             >
-              {zoom}%
+              {`${zoom}%`}
             </button>
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
               onClick={() => onZoomChange(Math.min(MAX_ZOOM, zoom + 25))}
-              aria-label="Zoom in"
+              aria-label={t(($) => $.researchTools.equation.zoomIn)}
             >
               <ZoomIn className="size-4" />
             </Button>
@@ -262,7 +306,7 @@ export function EquationPreviewPanel({
               size="icon"
               className="size-7"
               onClick={() => onZoomChange(100)}
-              aria-label="Reset zoom"
+              aria-label={t(($) => $.researchTools.equation.resetZoom)}
             >
               <RotateCcw className="size-4" />
             </Button>
@@ -271,7 +315,7 @@ export function EquationPreviewPanel({
               size="icon"
               className="size-7"
               onClick={toggleFullscreen}
-              aria-label="Fullscreen preview"
+              aria-label={t(($) => $.researchTools.equation.fullscreen)}
             >
               <Maximize className="size-4" />
             </Button>

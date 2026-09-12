@@ -7,6 +7,8 @@ import type {
   ResearchRootHealth,
   ResearchWorkspace,
 } from "@/lib/research-workspace";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let ResearchRootsPanel: typeof import("./ResearchRootsPanel").ResearchRootsPanel;
 let act: typeof import("@testing-library/react").act;
@@ -62,7 +64,7 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 function root(): LinkedResearchRoot {
-  return { id: "data-root", canonicalPath: "/study/data", identity: "folder-identity", label: "Study data", role: "data", access: "read_only", createdAtMs: 1 };
+  return { id: "data-root", canonicalPath: "/study/data", identity: "folder-identity", label: enResearchTools.roots.dialog.labelPlaceholder, role: "data", access: "read_only", createdAtMs: 1 };
 }
 
 function workspace(roots: LinkedResearchRoot[] = []): ResearchWorkspace {
@@ -87,7 +89,7 @@ function page() {
 
 async function fillLabel(value: string) {
   const user = userEvent.setup({ document });
-  const input = page().getByLabelText("Label");
+  const input = page().getByLabelText(enResearchTools.roots.dialog.labelLabel);
   await user.clear(input);
   await user.type(input, value);
 }
@@ -98,7 +100,8 @@ function select(label: string, option: string) {
 }
 
 function openMenu(label: string) {
-  fireEvent.keyDown(page().getByRole("button", { name: `More actions for ${label}` }), { key: "Enter" });
+  const name = enResearchTools.roots.card.moreActions.replace("{{label}}", label);
+  fireEvent.keyDown(page().getByRole("button", { name }), { key: "Enter" });
 }
 
 describe("ResearchRootsPanel", () => {
@@ -123,32 +126,32 @@ describe("ResearchRootsPanel", () => {
       throw new Error(`Unexpected native mutation: ${command}`);
     });
     render(<ResearchRootsPanel projectId="paper" />);
-    await waitFor(() => expect(page().getByText("No research folders are linked to this manuscript.")).toBeInTheDocument());
+    await waitFor(() => expect(page().getByText(enResearchTools.roots.empty)).toBeInTheDocument());
 
     fireEvent.click(page().getAllByRole("button", { name: "Link folder" })[0]);
     const dialog = () => within(page().getByRole("dialog"));
     expect(dialog().getByRole("button", { name: "Link folder" })).toBeDisabled();
-    expect(page().getByLabelText("Folder")).toHaveAttribute("readonly");
-    fireEvent.click(page().getByRole("button", { name: "Choose folder" }));
-    await waitFor(() => expect(page().getByLabelText("Label")).toHaveValue("data"));
-    expect(native.open).toHaveBeenCalledExactlyOnceWith({ directory: true, multiple: false, title: "Link research folder" });
+    expect(page().getByLabelText(enResearchTools.roots.dialog.folderLabel)).toHaveAttribute("readonly");
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.dialog.chooseFolder }));
+    await waitFor(() => expect(page().getByLabelText(enResearchTools.roots.dialog.labelLabel)).toHaveValue("data"));
+    expect(native.open).toHaveBeenCalledExactlyOnceWith({ directory: true, multiple: false, title: enResearchTools.roots.dialog.pickerTitle });
     await fillLabel("Study data");
     fireEvent.click(dialog().getByRole("button", { name: "Link folder" }));
     await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
     expect(native.invoke).toHaveBeenCalledWith("add_research_root", {
-      request: { projectId: "paper", path: "/study/data", label: "Study data", role: "data", access: "read_only" },
+      request: { projectId: "paper", path: "/study/data", label: enResearchTools.roots.dialog.labelPlaceholder, role: "data", access: "read_only" },
     });
     const card = () => within(page().getByRole("article"));
     expect(card().getByText("Read only")).toBeInTheDocument();
     expect(card().getByText("Available")).toBeInTheDocument();
-    expect(card().getByText("Data")).toBeInTheDocument();
+    expect(card().getByText(enResearchTools.roots.role.data)).toBeInTheDocument();
 
     openMenu("Study data");
-    fireEvent.click(page().getByRole("menuitem", { name: "Edit" }));
+    fireEvent.click(page().getByRole("menuitem", { name: enCommon.actions.edit }));
     await waitFor(() => expect(page().getByRole("dialog")).toBeInTheDocument());
     await fillLabel("Analysis scripts");
-    select("Folder role", "Analysis");
-    fireEvent.click(page().getByRole("button", { name: "Save folder" }));
+    select(enResearchTools.roots.dialog.roleAria, "Analysis");
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.dialog.save }));
     await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
     expect(native.invoke).toHaveBeenCalledWith("update_research_root", {
       request: { projectId: "paper", rootId: "data-root", label: "Analysis scripts", role: "analysis", access: "read_only" },
@@ -228,8 +231,8 @@ describe("ResearchRootsPanel", () => {
       throw new Error(`Unexpected native mutation: ${command}`);
     });
     render(<ResearchRootsPanel projectId="paper" />);
-    await waitFor(() => expect(page().getByRole("button", { name: "Browse files" })).toBeEnabled());
-    fireEvent.click(page().getByRole("button", { name: "Browse files" }));
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.roots.card.browse })).toBeEnabled());
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.card.browse }));
     await waitFor(() => expect(page().getByRole("button", { name: "participants.csv" })).toBeInTheDocument());
     expect(page().getByRole("alert")).toHaveTextContent("2,000 files or eight folder levels");
     expect(page().getByRole("button", { name: "archive" })).toBeDisabled();
@@ -242,7 +245,7 @@ describe("ResearchRootsPanel", () => {
     expect(native.invoke).toHaveBeenCalledWith("list_research_root_files", { projectId: "paper", rootId: "data-root", relativePath: "", maxDepth: 8 });
     expect(native.invoke).toHaveBeenCalledWith("read_research_root_file", { projectId: "paper", rootId: "data-root", relativePath: "participants.csv", maxBytes: 256 * 1024 });
     fireEvent.click(page().getByRole("button", { name: "scan.bin" }));
-    await waitFor(() => expect(page().getByText("Binary files are not shown here.")).toBeInTheDocument());
+    await waitFor(() => expect(page().getByText(enResearchTools.roots.card.binary)).toBeInTheDocument());
     expect(page().queryByText("must not render")).not.toBeInTheDocument();
     expect(native.invoke.mock.calls.filter(([command]) => command === "read_research_root_file").map(([, args]) => args.relativePath)).toEqual(["participants.csv", "scan.bin"]);
   });
@@ -263,19 +266,19 @@ describe("ResearchRootsPanel", () => {
     await waitFor(() => expect(page().getAllByRole("button", { name: "Link folder" })[0]).toBeEnabled());
     fireEvent.click(page().getAllByRole("button", { name: "Link folder" })[0]);
     const dialog = () => within(page().getByRole("dialog"));
-    fireEvent.click(page().getByRole("button", { name: "Choose folder" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.dialog.chooseFolder }));
     await waitFor(() => expect(native.open).toHaveBeenCalledOnce());
-    expect(page().getByLabelText("Folder")).toHaveValue("");
+    expect(page().getByLabelText(enResearchTools.roots.dialog.folderLabel)).toHaveValue("");
     expect(dialog().getByRole("button", { name: "Link folder" })).toBeDisabled();
-    fireEvent.click(page().getByRole("button", { name: "Choose folder" }));
-    await waitFor(() => expect(page().getByLabelText("Folder")).toHaveValue("/study/data"));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.dialog.chooseFolder }));
+    await waitFor(() => expect(page().getByLabelText(enResearchTools.roots.dialog.folderLabel)).toHaveValue("/study/data"));
     await fillLabel("Study data");
-    select("Folder role", "References");
+    select(enResearchTools.roots.dialog.roleAria, enResearchTools.roots.role.references);
     fireEvent.click(dialog().getByRole("button", { name: "Link folder" }));
     await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("already linked"));
-    expect(page().getByLabelText("Folder")).toHaveValue("/study/data");
-    expect(page().getByLabelText("Label")).toHaveValue("Study data");
-    expect(page().getByLabelText("Folder role")).toHaveTextContent("References");
+    expect(page().getByLabelText(enResearchTools.roots.dialog.folderLabel)).toHaveValue("/study/data");
+    expect(page().getByLabelText(enResearchTools.roots.dialog.labelLabel)).toHaveValue(enResearchTools.roots.dialog.labelPlaceholder);
+    expect(page().getByLabelText(enResearchTools.roots.dialog.roleAria)).toHaveTextContent(enResearchTools.roots.role.references);
     failed = false;
     fireEvent.click(dialog().getByRole("button", { name: "Link folder" }));
     await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
@@ -311,8 +314,8 @@ describe("ResearchRootsPanel", () => {
       throw new Error(`Unexpected command: ${command}`);
     });
     render(<ResearchRootsPanel projectId="paper" />);
-    await waitFor(() => expect(page().getByRole("button", { name: "Browse files" })).toBeEnabled());
-    fireEvent.click(page().getByRole("button", { name: "Browse files" }));
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.roots.card.browse })).toBeEnabled());
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.card.browse }));
     await waitFor(() => expect(page().getByRole("button", { name: "first.csv" })).toBeInTheDocument());
     fireEvent.click(page().getByRole("button", { name: "first.csv" }));
     fireEvent.click(page().getByRole("button", { name: "second.csv" }));
@@ -337,19 +340,19 @@ describe("ResearchRootsPanel", () => {
       throw new Error(`Unexpected command: ${command}`);
     });
     render(<ResearchRootsPanel projectId="paper" />);
-    await waitFor(() => expect(page().getByRole("button", { name: "Browse files" })).toBeEnabled());
-    fireEvent.click(page().getByRole("button", { name: "Browse files" }));
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.roots.card.browse })).toBeEnabled());
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.card.browse }));
     await waitFor(() => expect(page().getByRole("button", { name: "first.csv" })).toBeInTheDocument());
     fireEvent.click(page().getByRole("button", { name: "first.csv" }));
     fireEvent.click(page().getByRole("button", { name: "second.csv" }));
     await act(async () => rejectFirst(new Error("Obsolete read failed")));
     expect(page().queryByRole("alert")).not.toBeInTheDocument();
-    expect(page().getByRole("button", { name: "Browse files" })).toBeDisabled();
+    expect(page().getByRole("button", { name: enResearchTools.roots.card.browse })).toBeDisabled();
     await act(async () => resolveSecond(content("second.csv", { content: "current data" })));
     expect(page().getByText("current data")).toBeInTheDocument();
-    expect(page().getByRole("button", { name: "Browse files" })).toBeEnabled();
-    fireEvent.click(page().getByRole("button", { name: "Browse files" }));
+    expect(page().getByRole("button", { name: enResearchTools.roots.card.browse })).toBeEnabled();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.card.browse }));
     expect(page().queryByText("current data")).not.toBeInTheDocument();
-    await waitFor(() => expect(page().getByRole("button", { name: "Browse files" })).toBeEnabled());
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.roots.card.browse })).toBeEnabled());
   });
 });

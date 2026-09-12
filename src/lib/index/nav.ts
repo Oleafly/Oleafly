@@ -1,3 +1,5 @@
+import { i18n } from "@/i18n";
+import { formatList } from "@/lib/intl";
 import type { EditorView } from "@codemirror/view";
 import { useIndexStore } from "@/store/project-index";
 import { useFilesStore } from "@/store/files";
@@ -18,6 +20,7 @@ import type {
 } from "@/lib/project-intelligence/types";
 import { toast } from "@/lib/toast";
 import type { DefKind, Sym } from "./types";
+import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reason";
 
 const RENAMABLE = new Set<DefKind>(["label", "macro", "bibentry", "theorem", "glossary", "environment"]);
 
@@ -75,12 +78,11 @@ function notifyAnalysisUnavailable(): void {
   const state = useIndexStore.getState().intelligenceState;
   if (state.status === "error" || state.status === "unavailable") {
     toast.error(
-      state.failure?.message ??
-        state.reason ??
-        "Project reference analysis is unavailable.",
+      projectIntelligenceFailureText(state) ??
+        i18n.t(($) => $.core.navigation.analysisUnavailable),
     );
   } else {
-    toast.info("Project references are updating.");
+    toast.info(i18n.t(($) => $.core.navigation.analysisUpdating));
   }
 }
 
@@ -106,7 +108,7 @@ export function goToDefinition(view: EditorView): boolean {
 
   const definitions = definitionsForUse(snapshot, symbol.id);
   if (definitions.length === 0) {
-    toast.info(`No definition found for "${symbol.name}"`);
+    toast.info(i18n.t(($) => $.core.navigation.noDefinition, { name: symbol.name }));
     return true;
   }
   if (definitions.length > 1) {
@@ -114,7 +116,7 @@ export function goToDefinition(view: EditorView): boolean {
       snapshot,
       "definitions",
       symbol.id,
-      `Definitions for ${symbol.name}`,
+      i18n.t(($) => $.core.navigation.definitionsFor, { name: symbol.name }),
     );
     return true;
   }
@@ -137,7 +139,7 @@ export function findReferences(view: EditorView): boolean {
   if (!symbol) return false;
   const definitions = definitionsForSymbol(snapshot, symbol);
   if (definitions.length === 0) {
-    toast.info(`No definition found for "${symbol.name}"`);
+    toast.info(i18n.t(($) => $.core.navigation.noDefinition, { name: symbol.name }));
     return true;
   }
   if (definitions.length > 1 && isUse(symbol)) {
@@ -145,21 +147,21 @@ export function findReferences(view: EditorView): boolean {
       snapshot,
       "definitions",
       symbol.id,
-      `Definitions for ${symbol.name}`,
+      i18n.t(($) => $.core.navigation.definitionsFor, { name: symbol.name }),
     );
     return true;
   }
   const definition = definitions[0];
   const references = referencesFor(snapshot, definition.id);
   if (references.length === 0) {
-    toast.info(`No references to "${definition.name}"`);
+    toast.info(i18n.t(($) => $.core.navigation.noReferences, { name: definition.name }));
     return true;
   }
   showReferenceQuery(
     snapshot,
     "references",
     definition.id,
-    `References to ${definition.name}`,
+    i18n.t(($) => $.core.navigation.referencesFor, { name: definition.name }),
   );
   return true;
 }
@@ -170,7 +172,7 @@ export function startRename(view: EditorView): boolean {
   const index = useIndexStore.getState().index;
   const def = (index?.definitionFor(sym) ?? sym) as Sym;
   if (!RENAMABLE.has(def.kind as DefKind)) {
-    toast.info("This symbol cannot be renamed.");
+    toast.info(i18n.t(($) => $.core.navigation.notRenamable));
     return true;
   }
   useRenameStore.getState().open(def);
@@ -186,11 +188,11 @@ export async function applyRename(view: EditorView, sym: Sym, newName: string): 
   if (!index) return;
   const plan = index.renamePlan(sym, newName);
   if (plan.collision) {
-    toast.error(`"${newName}" already exists.`);
+    toast.error(i18n.t(($) => $.core.navigation.nameExists, { name: newName }));
     return;
   }
   if (plan.edits.length === 0) {
-    toast.info("Nothing to rename.");
+    toast.info(i18n.t(($) => $.core.navigation.nothingToRename));
     return;
   }
 
@@ -241,11 +243,20 @@ export async function applyRename(view: EditorView, sym: Sym, newName: string): 
   await store.rebuildFromDisk();
   if (unwritten.length > 0) {
     toast.error(
-      `Renamed to "${newName}" in ${editedFiles} of ${plan.fileCount} files. Could not write ${unwritten.join(", ")}.`,
+      i18n.t(($) => $.core.navigation.renamePartial, {
+        name: newName,
+        edited: editedFiles,
+        total: plan.fileCount,
+        files: formatList(unwritten),
+      }),
     );
     return;
   }
   toast.success(
-    `Renamed to "${newName}" (${editedCount} edit${editedCount > 1 ? "s" : ""} in ${editedFiles} file${editedFiles > 1 ? "s" : ""})`,
+    i18n.t(($) => $.core.navigation.renamed, {
+      name: newName,
+      edits: editedCount,
+      files: editedFiles,
+    }),
   );
 }

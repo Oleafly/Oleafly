@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { i18n } from "@/i18n";
 import type { ProjectIndex } from "@/lib/index/types";
 import { lazyLegacyIndex } from "@/lib/project-intelligence/legacy-index";
 import { mergeLanguageServiceIntelligence } from "@/lib/project-intelligence/merge-language-service";
@@ -10,6 +11,7 @@ import type {
   BibliographyEntryDetail,
   ExternalProjectIntelligence,
   ProjectIntelligenceIdentity,
+  ProjectIntelligenceReason,
   ProjectIntelligenceSnapshot,
   ProjectIntelligenceState,
 } from "@/lib/project-intelligence/types";
@@ -77,7 +79,7 @@ let workerClient: ProjectIntelligenceWorkerClient | null = null;
 let externalContribution: ExternalProjectIntelligence | null = null;
 
 const initialIntelligenceState = (
-  reason = "No project is active.",
+  reason: ProjectIntelligenceReason = { key: "noProject" },
 ): ProjectIntelligenceState => ({
   status: "not_run",
   identity: null,
@@ -183,7 +185,7 @@ export function bibliographyEntryDetails(
   if (!workerClient) {
     return Promise.reject(
       new ProjectIntelligenceWorkerError(
-        "The project-intelligence worker holds no analysis for this snapshot.",
+        "staleSnapshot",
         "stale_snapshot",
         false,
       ),
@@ -216,9 +218,7 @@ function runningState(
     data: retained,
     stale: retained !== null,
     currentFileFallbackAllowed,
-    reason: retained
-      ? "Project content changed. Retained analysis is stale while the current revision runs."
-      : "Project intelligence is analyzing the current revision.",
+    reason: retained ? { key: "retainedStale" } : { key: "analyzing" },
   };
 }
 
@@ -235,9 +235,7 @@ function failureState(
     identity,
     data: previous.data,
     stale: previous.data !== null,
-    reason: unavailable
-      ? "The project-intelligence worker is unavailable."
-      : "Current-revision project analysis failed.",
+    reason: unavailable ? { key: "workerUnavailable" } : { key: "analysisFailed" },
     failure: {
       name:
         error instanceof Error
@@ -246,7 +244,8 @@ function failureState(
       message:
         error instanceof Error
           ? error.message
-          : "Project intelligence failed.",
+          : i18n.t(($) => $.core.intelligence.failed),
+      ...(workerError?.reasonKey ? { reason: { key: workerError.reasonKey } } : {}),
       retryable: workerError?.retryable ?? true,
     },
   };
@@ -509,7 +508,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         .map((file) => ({
           file,
           sourceRevision: currentSourceRevision(file),
-          message: "The project file could not be read.",
+          message: { key: "projectFileUnreadable" as const },
         })),
       mainDocument: resolveEffectiveMainDoc().mainDoc,
       ...(options.immediate === undefined
@@ -552,8 +551,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         requestGeneration,
         intelligenceState: {
           ...runningState(state.intelligenceState, identity),
-          reason:
-            "Project files changed. The source graph is being refreshed.",
+          reason: { key: "sourceGraphRefreshing" },
         },
       }));
     },
@@ -572,8 +570,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
           identity: state.intelligenceState.identity,
           data: state.intelligenceState.data,
           stale: state.intelligenceState.data !== null,
-          reason:
-            "Project files changed. Source snapshots are being loaded for current analysis.",
+          reason: { key: "sourceSnapshotsLoading" },
         },
       }));
 
@@ -670,7 +667,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
           unreadable: [...loaded.unreadable].map((file) => ({
             file,
             sourceRevision: currentSourceRevision(file),
-            message: "The project file could not be read.",
+            message: { key: "projectFileUnreadable" as const },
           })),
           mainDocument: resolveEffectiveMainDoc().mainDoc,
           immediate: true,
@@ -850,9 +847,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         building: false,
         projectRevision: 0,
         requestGeneration: 0,
-        intelligenceState: initialIntelligenceState(
-          "Project intelligence is stopped.",
-        ),
+        intelligenceState: initialIntelligenceState({ key: "stopped" }),
       });
     },
   };

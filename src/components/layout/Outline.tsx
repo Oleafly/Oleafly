@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, Info, ListTree } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -10,6 +11,10 @@ import { buildProjectStructureNodes } from "@/components/layout/project-intellig
 import { cn } from "@/lib/utils";
 import { acceptedProjectSnapshot } from "@/lib/project-intelligence/current";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
+import {
+  projectIntelligenceFailureText,
+  projectIntelligenceReasonText,
+} from "@/lib/project-intelligence/reason";
 import type { ProjectIntelligenceState } from "@/lib/project-intelligence/types";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -35,12 +40,13 @@ function StructureUnavailable({
   projectId: string | null;
   activePath: string | null;
 }) {
+  const { t } = useTranslation(["workspace"]);
   if (!projectId) {
     return (
       <PanelState
         state="empty"
-        title="No project open"
-        detail="Open a document project to browse its local and project structure."
+        title={t(($) => $.workspace.structure.unavailable.noProject.title)}
+        detail={t(($) => $.workspace.structure.unavailable.noProject.detail)}
       />
     );
   }
@@ -48,8 +54,8 @@ function StructureUnavailable({
     return (
       <PanelState
         state="empty"
-        title="No active source"
-        detail="Open a supported source or bibliography file to see its structure."
+        title={t(($) => $.workspace.structure.unavailable.noSource.title)}
+        detail={t(($) => $.workspace.structure.unavailable.noSource.detail)}
       />
     );
   }
@@ -60,18 +66,18 @@ function StructureUnavailable({
       return (
         <PanelState
           state="pending"
-          title="Mapping project structure"
-          detail="Oleafly is indexing headings, linked files, symbols, and bibliography entries."
+          title={t(($) => $.workspace.structure.unavailable.mapping.title)}
+          detail={t(($) => $.workspace.structure.unavailable.mapping.detail)}
         />
       );
     case "unsupported":
       return (
         <PanelState
           state="unsupported"
-          title="Structure is unavailable"
+          title={t(($) => $.workspace.structure.unavailable.unsupported.title)}
           detail={
-            state.reason ??
-            "This file type does not have a project-structure provider."
+            projectIntelligenceReasonText(state.reason) ??
+            t(($) => $.workspace.structure.unavailable.unsupported.detail)
           }
         />
       );
@@ -79,10 +85,10 @@ function StructureUnavailable({
       return (
         <PanelState
           state="error"
-          title="Structure service unavailable"
+          title={t(($) => $.workspace.structure.unavailable.offline.title)}
           detail={
-            state.reason ??
-            "Project analysis is not available for this workspace right now."
+            projectIntelligenceReasonText(state.reason) ??
+            t(($) => $.workspace.structure.unavailable.offline.detail)
           }
         />
       );
@@ -90,11 +96,10 @@ function StructureUnavailable({
       return (
         <PanelState
           state="error"
-          title="Structure could not be built"
+          title={t(($) => $.workspace.structure.unavailable.failed.title)}
           detail={
-            state.failure?.message ??
-            state.reason ??
-            "The project could not be analyzed. Your source files were not changed."
+            projectIntelligenceFailureText(state) ??
+            t(($) => $.workspace.structure.unavailable.failed.detail)
           }
         />
       );
@@ -102,19 +107,20 @@ function StructureUnavailable({
       return (
         <PanelState
           state="pending"
-          title="Waiting for project structure"
-          detail="The latest project revision has not been indexed yet."
+          title={t(($) => $.workspace.structure.unavailable.waiting.title)}
+          detail={t(($) => $.workspace.structure.unavailable.waiting.detail)}
         />
       );
   }
 }
 
-function statusNotice(state: ProjectIntelligenceState): string | null {
+function useStatusNotice(state: ProjectIntelligenceState): string | null {
+  const { t } = useTranslation(["workspace"]);
   if (state.stale) {
-    return "Updating. Previous-revision structure is hidden until current source ranges are ready.";
+    return t(($) => $.workspace.structure.notice.stale);
   }
   if (state.status === "partial" || state.data?.status === "partial") {
-    return "Partial map. Unreadable or malformed files remain visible where possible.";
+    return t(($) => $.workspace.structure.notice.partial);
   }
   return null;
 }
@@ -131,6 +137,7 @@ export function Outline({
   readonly collapsed?: boolean;
   readonly onCollapsedChange?: (next: boolean) => void;
 } = {}) {
+  const { t } = useTranslation(["workspace"]);
   const intelligenceState = useIndexStore((state) => state.intelligenceState);
   const activePath = useFilesStore((state) => state.activePath);
   const projectId = useFilesStore((state) => state.projectId);
@@ -153,7 +160,7 @@ export function Outline({
     [snapshot],
   );
   const nodeCount = useMemo(() => countNodes(nodes), [nodes]);
-  const notice = statusNotice(intelligenceState);
+  const notice = useStatusNotice(intelligenceState);
 
   const navigate = useCallback((node: IntelligenceTreeNode) => {
     if (!node.target) return;
@@ -166,7 +173,7 @@ export function Outline({
 
   return (
     <section
-      aria-label="Document structure"
+      aria-label={t(($) => $.workspace.structure.ariaLabel)}
       aria-busy={intelligenceState.status === "running"}
       className={cn(
         "flex min-h-0 flex-col border-t border-sidebar-border",
@@ -187,7 +194,7 @@ export function Outline({
             <ChevronDown aria-hidden className="size-3" />
           )}
           <ListTree aria-hidden className="size-3.5" />
-          <span className="truncate">Structure</span>
+          <span className="truncate">{t(($) => $.workspace.structure.title)}</span>
           {notice ? (
             <span
               title={notice}
@@ -199,7 +206,7 @@ export function Outline({
           {snapshot ? (
             <span
               role="status"
-              aria-label={`${nodeCount} structure items`}
+              aria-label={t(($) => $.workspace.structure.itemCount, { count: nodeCount })}
               className="ml-auto shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
             >
               {nodeCount}
@@ -217,8 +224,8 @@ export function Outline({
             <IntelligenceFilter
               value={filter}
               onChange={setFilter}
-              label="Filter project structure"
-              placeholder="Filter project map…"
+              label={t(($) => $.workspace.structure.filterLabel)}
+              placeholder={t(($) => $.workspace.structure.filterPlaceholder)}
             />
           </div>
 
@@ -229,14 +236,14 @@ export function Outline({
           <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
             {snapshot ? (
               <IntelligenceTree
-                label="Project structure"
+                label={t(($) => $.workspace.structure.treeLabel)}
                 nodes={nodes}
                 query={filter}
                 onActivate={navigate}
                 emptyMessage={
                   filter
-                    ? `No structure matches “${filter.trim()}”.`
-                    : "No supported files are present in the project map."
+                    ? t(($) => $.workspace.structure.noMatch, { query: filter.trim() })
+                    : t(($) => $.workspace.structure.empty)
                 }
               />
             ) : (

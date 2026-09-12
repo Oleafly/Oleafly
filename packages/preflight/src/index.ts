@@ -1,6 +1,7 @@
 // pdf-extract is deliberately NOT exported here: it imports pdf.js, which
 // must stay out of node test environments. Import it via the
 // "@oleafly/preflight/pdf-extract" subpath instead.
+export * from "./messages";
 export * from "./types";
 export * from "./standards";
 export * from "./engine";

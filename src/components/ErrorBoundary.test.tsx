@@ -2,7 +2,14 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { i18n } from "@/i18n";
 import { ErrorBoundary } from "./ErrorBoundary";
+
+function crashed(surface: "chat" | "diagramComposer" | "pdfPreview"): string {
+  return i18n.t(($) => $.shell.errorBoundary.surfaceCrashed, {
+    surface: i18n.t(($) => $.shell.errorBoundary.surfaces[surface]),
+  });
+}
 
 vi.mock("@/lib/tauri", () => ({
   appendAppLog: vi.fn(() => Promise.resolve()),
@@ -24,23 +31,27 @@ describe("ErrorBoundary surface mode", () => {
     render(
       <div>
         <ErrorBoundary surface="editor">
-          <p>editor content</p>
+          <p>{"editor content"}</p>
         </ErrorBoundary>
         <ErrorBoundary surface="PDF preview">
           <Bomb />
         </ErrorBoundary>
         <ErrorBoundary surface="chat">
-          <p>chat content</p>
+          <p>{"chat content"}</p>
         </ErrorBoundary>
       </div>,
     );
 
     expect(screen.getByText("editor content")).toBeInTheDocument();
     expect(screen.getByText("chat content")).toBeInTheDocument();
-    expect(screen.getByText("The PDF preview crashed.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(screen.getByText(crashed("pdfPreview"))).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Copy diagnostics" }),
+      screen.getByRole("button", { name: i18n.t(($) => $.common.actions.retry) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: i18n.t(($) => $.shell.errorBoundary.copyDiagnostics),
+      }),
     ).toBeInTheDocument();
   });
 
@@ -48,7 +59,7 @@ describe("ErrorBoundary surface mode", () => {
     let shouldThrow = true;
     function Flaky() {
       if (shouldThrow) throw new Error("transient");
-      return <p>recovered</p>;
+      return <p>{"recovered"}</p>;
     }
 
     render(
@@ -57,12 +68,14 @@ describe("ErrorBoundary surface mode", () => {
       </ErrorBoundary>,
     );
 
-    expect(screen.getByText("The chat crashed.")).toBeInTheDocument();
+    expect(screen.getByText(crashed("chat"))).toBeInTheDocument();
     shouldThrow = false;
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t(($) => $.common.actions.retry) }),
+    );
 
     expect(screen.getByText("recovered")).toBeInTheDocument();
-    expect(screen.queryByText("The chat crashed.")).not.toBeInTheDocument();
+    expect(screen.queryByText(crashed("chat"))).not.toBeInTheDocument();
   });
 
   it("copy diagnostics puts the error and component stack on the clipboard", async () => {
@@ -78,7 +91,11 @@ describe("ErrorBoundary surface mode", () => {
       </ErrorBoundary>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Copy diagnostics" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: i18n.t(($) => $.shell.errorBoundary.copyDiagnostics),
+      }),
+    );
 
     expect(writeText).toHaveBeenCalledTimes(1);
     const copied = writeText.mock.calls[0]?.[0] ?? "";
@@ -88,7 +105,7 @@ describe("ErrorBoundary surface mode", () => {
 
   it("still renders the custom fallback node when one is provided", () => {
     render(
-      <ErrorBoundary fallback={<p>custom fallback</p>}>
+      <ErrorBoundary fallback={<p>{"custom fallback"}</p>}>
         <Bomb />
       </ErrorBoundary>,
     );

@@ -40,7 +40,9 @@ describe("no-glyphtounicode severity", () => {
   const DOC = "\\documentclass{article}\n\\begin{document}hi\\end{document}";
   it("stays a note on engines that build the map automatically", () => {
     expect(find(DOC, "no-glyphtounicode", "pdflatex")?.severity).toBe("info");
-    expect(find(DOC, "no-glyphtounicode", "lualatex")?.detail).toContain("2021-06-01");
+    expect(find(DOC, "no-glyphtounicode", "lualatex")?.detail.key).toBe(
+      "rules.no-glyphtounicode.detailAutomatic",
+    );
   });
   it("is a warning on XeTeX and the bundled engine", () => {
     expect(find(DOC, "no-glyphtounicode", "xelatex")?.severity).toBe("warning");
@@ -54,8 +56,7 @@ describe("ua-standard-without-title", () => {
   });
   it("names what is missing", () => {
     const finding = find("\\DocumentMetadata{pdfstandard=ua-2}\\documentclass{article}\\hypersetup{pdftitle={A paper}}", "ua-standard-without-title");
-    expect(finding?.detail).toContain("pdfdisplaydoctitle=true");
-    expect(finding?.detail).not.toContain("pdftitle and");
+    expect(finding?.detail.key).toBe("rules.ua-standard-without-title.detailDisplay");
   });
   it("is satisfied by a title the reader displays", () => {
     const src = "\\DocumentMetadata{pdfstandard=ua-2}\\documentclass{article}\\hypersetup{pdftitle={A paper},pdfdisplaydoctitle=true}";

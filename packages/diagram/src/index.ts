@@ -1,6 +1,7 @@
 // store, Tauri, AI-provider, or app-UI imports.
 export * from "./host";
 export * from "./kit";
+export * from "./messages";
 export { DiagramComposer } from "./DiagramComposer";
 export { DiagramCanvas } from "./DiagramCanvas";
 export { CmCodeEditor, type CmHandle } from "./CmCodeEditor";

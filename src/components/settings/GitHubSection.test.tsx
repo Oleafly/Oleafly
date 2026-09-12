@@ -3,6 +3,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { AppConfig } from "@/lib/tauri";
 
 const mocks = vi.hoisted(() => {
@@ -63,7 +64,7 @@ const config = {
   mcp_servers: [],
 } satisfies AppConfig;
 
-const SWITCH_NAME = "Initialise Git for every project";
+const SWITCH_NAME = enSettings.github.autoInit.label;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -78,11 +79,7 @@ describe("GitHubSection", () => {
 
     const toggle = await screen.findByRole("switch", { name: SWITCH_NAME });
     expect(toggle).toHaveAttribute("aria-checked", "true");
-    expect(
-      screen.getByText(
-        "New and opened projects get a Git repository so the Git panel can track changes. Oleafly never commits on its own.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(enSettings.github.autoInit.description)).toBeInTheDocument();
 
     await user.click(toggle);
     await waitFor(() =>
@@ -172,7 +169,9 @@ describe("GitHubSection", () => {
     resolveConfig(config);
     await waitFor(() => expect(mocks.getConfig).toHaveBeenCalled());
     await user.click(toggle);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't save Git settings.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      enSettings.github.config.saveFailed,
+    );
     expect(screen.getByTestId("git-auto-init")).toBeInTheDocument();
   });
 
@@ -180,6 +179,8 @@ describe("GitHubSection", () => {
     mocks.getConfig.mockRejectedValueOnce(new Error("no config"));
     render(<GitHubSection />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load Git settings.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      enSettings.github.config.loadFailed,
+    );
   });
 });

@@ -11,6 +11,7 @@ import {
   closeSearchPanel,
   selectMatches,
 } from "@codemirror/search";
+import type { EditorTranslator } from "./messages";
 import { preserveCase } from "./preserve-case";
 
 // Lucide paths, matching the icon set the surrounding app uses.
@@ -73,7 +74,7 @@ function setPressed(button: HTMLButtonElement, pressed: boolean): void {
   button.setAttribute("aria-pressed", String(pressed));
 }
 
-function createSearchPanel(view: EditorView): Panel {
+function createSearchPanel(view: EditorView, t: EditorTranslator): Panel {
   const q0 = getSearchQuery(view.state);
   let caseSensitive = q0.caseSensitive;
   let wholeWord = q0.wholeWord;
@@ -84,10 +85,10 @@ function createSearchPanel(view: EditorView): Panel {
   const wrap = document.createElement("div");
   wrap.className = "cm-vs-search";
   wrap.setAttribute("role", "search");
-  wrap.setAttribute("aria-label", "Find and replace");
+  wrap.setAttribute("aria-label", t("search.panel"));
   const replaceRowId = `cm-vs-replace-${++nextPanelId}`;
 
-  const expandBtn = btn(ICON_PATHS.chevronRight, "Toggle Replace", () => {
+  const expandBtn = btn(ICON_PATHS.chevronRight, t("search.toggleReplace"), () => {
     expanded = !expanded;
     replaceRow.style.display = expanded ? "flex" : "none";
     expandBtn.replaceChildren(
@@ -102,24 +103,24 @@ function createSearchPanel(view: EditorView): Panel {
 
   const findInput = document.createElement("input");
   findInput.className = "cm-vs-input";
-  findInput.placeholder = "Find";
-  findInput.setAttribute("aria-label", "Find");
+  findInput.placeholder = t("search.find");
+  findInput.setAttribute("aria-label", t("search.find"));
   findInput.value = q0.search;
 
-  const caseBtn = btn("Aa", "Match case", () => {
+  const caseBtn = btn("Aa", t("search.matchCase"), () => {
     caseSensitive = !caseSensitive;
     setPressed(caseBtn, caseSensitive);
     commit();
   });
   setPressed(caseBtn, caseSensitive);
-  const wordBtn = btn("ab", "Match whole word", () => {
+  const wordBtn = btn("ab", t("search.matchWholeWord"), () => {
     wholeWord = !wholeWord;
     setPressed(wordBtn, wholeWord);
     commit();
   });
   setPressed(wordBtn, wholeWord);
   wordBtn.style.textDecoration = "underline";
-  const reBtn = btn(".*", "Use regular expression", () => {
+  const reBtn = btn(".*", t("search.useRegex"), () => {
     regexp = !regexp;
     setPressed(reBtn, regexp);
     commit();
@@ -132,16 +133,16 @@ function createSearchPanel(view: EditorView): Panel {
   count.setAttribute("aria-live", "polite");
   count.setAttribute("aria-atomic", "true");
 
-  const prevBtn = btn(ICON_PATHS.up, "Previous match (⇧Enter)", () => {
+  const prevBtn = btn(ICON_PATHS.up, t("search.previousMatch"), () => {
     findPrevious(view);
     refresh();
   });
-  const nextBtn = btn(ICON_PATHS.down, "Next match (Enter)", () => {
+  const nextBtn = btn(ICON_PATHS.down, t("search.nextMatch"), () => {
     findNext(view);
     refresh();
   });
-  const selAllBtn = btn(ICON_PATHS.selectAll, "Select all matches", () => selectMatches(view));
-  const closeBtn = btn(ICON_PATHS.close, "Close (Esc)", () => closeSearchPanel(view));
+  const selAllBtn = btn(ICON_PATHS.selectAll, t("search.selectAllMatches"), () => selectMatches(view));
+  const closeBtn = btn(ICON_PATHS.close, t("search.close"), () => closeSearchPanel(view));
 
   const findRow = document.createElement("div");
   findRow.className = "cm-vs-row";
@@ -154,14 +155,14 @@ function createSearchPanel(view: EditorView): Panel {
 
   const replaceInput = document.createElement("input");
   replaceInput.className = "cm-vs-input";
-  replaceInput.placeholder = "Replace";
-  replaceInput.setAttribute("aria-label", "Replace");
+  replaceInput.placeholder = t("search.replace");
+  replaceInput.setAttribute("aria-label", t("search.replace"));
   replaceInput.value = q0.replace;
   const replaceRow = document.createElement("div");
   replaceRow.id = replaceRowId;
   replaceRow.className = "cm-vs-row";
   replaceRow.style.display = "none";
-  const preserveBtn = btn("AB", "Preserve case", () => {
+  const preserveBtn = btn("AB", t("search.preserveCase"), () => {
     preserveCaseOn = !preserveCaseOn;
     setPressed(preserveBtn, preserveCaseOn);
   });
@@ -211,8 +212,8 @@ function createSearchPanel(view: EditorView): Panel {
     refresh();
   };
 
-  const replaceBtn = btn("Replace", "Replace next", doReplaceNext);
-  const replaceAllBtn = btn("All", "Replace all", doReplaceAll);
+  const replaceBtn = btn(t("search.replaceAction"), t("search.replaceNext"), doReplaceNext);
+  const replaceAllBtn = btn(t("search.replaceAllAction"), t("search.replaceAll"), doReplaceAll);
   replaceRow.append(replaceBox, replaceBtn, replaceAllBtn);
 
   const rows = document.createElement("div");
@@ -238,7 +239,7 @@ function createSearchPanel(view: EditorView): Panel {
   function refresh() {
     const q = getSearchQuery(view.state);
     if (!q.search || !q.valid) {
-      count.textContent = q.search && !q.valid ? "Invalid" : "";
+      count.textContent = q.search && !q.valid ? t("search.invalid") : "";
       return;
     }
     const sel = view.state.selection.main;
@@ -259,10 +260,10 @@ function createSearchPanel(view: EditorView): Panel {
     const capped = total >= 2000 ? "2000+" : String(total);
     count.textContent =
       total === 0
-        ? "No results"
+        ? t("search.noResults")
         : cur > 0
-          ? `${cur} of ${capped}`
-          : `${capped} ${total === 1 ? "result" : "results"}`;
+          ? t("search.matchPosition", { current: cur, total: capped })
+          : t("search.matchCount", { count: total, total: capped });
   }
 
   findInput.addEventListener("input", commit);
@@ -443,6 +444,10 @@ const panelBorderOverride = EditorView.baseTheme({
   "&dark .cm-panels-top": { borderBottom: "none" },
 });
 
-export function vscodeSearch() {
-  return [search({ top: true, createPanel: createSearchPanel }), searchTheme, panelBorderOverride];
+export function vscodeSearch(t: EditorTranslator) {
+  return [
+    search({ top: true, createPanel: (view) => createSearchPanel(view, t) }),
+    searchTheme,
+    panelBorderOverride,
+  ];
 }

@@ -3,6 +3,7 @@ import {
   ensureAiProviderOrOpenSettings,
   handoffToAssistant,
 } from "@/features/assistant-handoff";
+import { preflightDetailInEnglish, preflightMessageInEnglish } from "@/components/preflight/message";
 
 function describeFinding(finding: Finding): string {
   const sev =
@@ -12,7 +13,7 @@ function describeFinding(finding: Finding): string {
     : finding.page != null
       ? ` (p.${finding.page})`
       : "";
-  return `- [${sev}] ${finding.title}${where}\n  ${finding.detail}`;
+  return `- [${sev}] ${preflightMessageInEnglish(finding.title)}${where}\n  ${preflightDetailInEnglish(finding)}`;
 }
 
 export async function askAiAboutFinding(finding: Finding) {

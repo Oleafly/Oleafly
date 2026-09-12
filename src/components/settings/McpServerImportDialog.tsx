@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -11,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
+import { describeError } from "@/lib/app-error";
+import { i18n } from "@/i18n";
 import {
   mcpImportSource,
   type McpImportedServer,
@@ -36,23 +39,26 @@ const SOURCE_LABELS: Record<McpImportSourceTool, string> = {
 type SourceCandidates = Partial<Record<McpImportSourceTool, McpImportedServer[]>>;
 type SourceErrors = Partial<Record<McpImportSourceTool, string>>;
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function commandName(command: string) {
-  return command.trim().split(/[\\/]/).at(-1) || "Local command";
+  return (
+    command.trim().split(/[\\/]/).at(-1) ||
+    i18n.t(($) => $.settings.mcp.import.summary.commandFallback)
+  );
 }
 
 function transportSummary(server: McpImportedServer) {
   if (server.transport === "stdio") {
-    const noun = server.args.length === 1 ? "argument" : "arguments";
-    return `Local command: ${commandName(server.command)}. ${server.args.length} ${noun}.`;
+    return i18n.t(($) => $.settings.mcp.import.summary.stdio, {
+      command: commandName(server.command),
+      count: server.args.length,
+    });
   }
   try {
-    return `Remote server: ${new URL(server.url).origin}.`;
+    return i18n.t(($) => $.settings.mcp.import.summary.remote, {
+      origin: new URL(server.url).origin,
+    });
   } catch {
-    return "Remote server.";
+    return i18n.t(($) => $.settings.mcp.import.summary.remoteUnknown);
   }
 }
 
@@ -61,7 +67,10 @@ function connectionKeys(server: McpImportedServer) {
     (a, b) => a.localeCompare(b),
   );
   if (keys.length === 0) return null;
-  return `${server.transport === "stdio" ? "Environment" : "Headers"}: ${keys.join(", ")}`;
+  const names = keys.join(", ");
+  return server.transport === "stdio"
+    ? i18n.t(($) => $.settings.mcp.import.keys.environment, { names })
+    : i18n.t(($) => $.settings.mcp.import.keys.headers, { names });
 }
 
 function candidateId(source: McpImportSourceTool, name: string) {
@@ -88,6 +97,7 @@ export function McpServerImportDialog({
   onClose,
   onImport,
 }: McpServerImportDialogProps) {
+  const { t } = useTranslation(["common", "settings"]);
   const [candidates, setCandidates] = useState<SourceCandidates>({});
   const [sourceErrors, setSourceErrors] = useState<SourceErrors>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -138,7 +148,7 @@ export function McpServerImportDialog({
           if (detectionGeneration.current !== generation) return;
           setSourceErrors((current) => ({
             ...current,
-            [source]: errorMessage(error),
+            [source]: describeError(error),
           }));
         }
       }),
@@ -170,7 +180,7 @@ export function McpServerImportDialog({
       await onImport({ selected, duplicateAction });
       closeDialog();
     } catch (error) {
-      setImportError(errorMessage(error));
+      setImportError(describeError(error));
       setImporting(false);
     }
   };
@@ -197,15 +207,15 @@ export function McpServerImportDialog({
         overlayClassName="z-[120]"
       >
         <DialogHeader>
-          <DialogTitle>Import MCP servers</DialogTitle>
+          <DialogTitle>{t(($) => $.settings.mcp.import.title)}</DialogTitle>
           <DialogDescription>
-            Choose servers from the tools installed on this computer.
+            {t(($) => $.settings.mcp.import.description)}
           </DialogDescription>
         </DialogHeader>
 
         {detecting ? (
           <p role="status" className="text-sm text-muted-foreground">
-            Looking for MCP servers...
+            {t(($) => $.settings.mcp.import.detecting)}
           </p>
         ) : null}
 
@@ -216,7 +226,10 @@ export function McpServerImportDialog({
               role="alert"
               className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
-              {SOURCE_LABELS[source]}: {sourceErrors[source]}
+              {t(($) => $.settings.mcp.import.sourceError, {
+                source: SOURCE_LABELS[source],
+                message: sourceErrors[source],
+              })}
             </p>
           ) : null,
         )}
@@ -251,7 +264,10 @@ export function McpServerImportDialog({
                         });
                       }}
                       className="mt-0.5"
-                      aria-label={`Import ${server.name} from ${SOURCE_LABELS[source]}`}
+                      aria-label={t(($) => $.settings.mcp.import.candidateLabel, {
+                        name: server.name,
+                        source: SOURCE_LABELS[source],
+                      })}
                     />
                     <span className="min-w-0 space-y-1">
                       <span className="block text-sm font-medium">{server.name}</span>
@@ -263,7 +279,9 @@ export function McpServerImportDialog({
                       ) : null}
                       {duplicate ? (
                         <span className="block text-xs text-amber-600 dark:text-amber-400">
-                          Already exists. It will be {duplicateAction === "skip" ? "skipped" : "overwritten"}.
+                          {duplicateAction === "skip"
+                            ? t(($) => $.settings.mcp.import.duplicateSkipped)
+                            : t(($) => $.settings.mcp.import.duplicateOverwritten)}
                         </span>
                       ) : null}
                     </span>
@@ -276,13 +294,13 @@ export function McpServerImportDialog({
 
         {!detecting && candidateCount === 0 && Object.keys(sourceErrors).length === 0 ? (
           <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-            No MCP server configurations were found.
+            {t(($) => $.settings.mcp.import.emptyState)}
           </p>
         ) : null}
 
         {candidateCount > 0 ? (
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">When names match</legend>
+            <legend className="text-sm font-medium">{t(($) => $.settings.mcp.import.duplicates.legend)}</legend>
             <RadioGroup
               value={duplicateAction}
               disabled={importing}
@@ -297,13 +315,15 @@ export function McpServerImportDialog({
                 <RadioGroupItem
                   id="mcp-import-skip-existing"
                   value="skip"
-                  aria-label="Skip existing"
+                  aria-label={t(($) => $.settings.mcp.import.duplicates.skip.label)}
                   className="mt-0.5"
                 />
                 <span className="space-y-1">
-                  <span className="block text-sm font-medium">Skip existing</span>
+                  <span className="block text-sm font-medium">
+                    {t(($) => $.settings.mcp.import.duplicates.skip.label)}
+                  </span>
                   <span className="block text-xs text-muted-foreground">
-                    Keep the server already saved in Oleafly.
+                    {t(($) => $.settings.mcp.import.duplicates.skip.description)}
                   </span>
                 </span>
               </label>
@@ -314,13 +334,15 @@ export function McpServerImportDialog({
                 <RadioGroupItem
                   id="mcp-import-overwrite-existing"
                   value="overwrite"
-                  aria-label="Overwrite existing"
+                  aria-label={t(($) => $.settings.mcp.import.duplicates.overwrite.label)}
                   className="mt-0.5"
                 />
                 <span className="space-y-1">
-                  <span className="block text-sm font-medium">Overwrite existing</span>
+                  <span className="block text-sm font-medium">
+                    {t(($) => $.settings.mcp.import.duplicates.overwrite.label)}
+                  </span>
                   <span className="block text-xs text-muted-foreground">
-                    Replace it with the selected server.
+                    {t(($) => $.settings.mcp.import.duplicates.overwrite.description)}
                   </span>
                 </span>
               </label>
@@ -339,14 +361,16 @@ export function McpServerImportDialog({
 
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={closeDialog} disabled={importing}>
-            Cancel
+            {t(($) => $.common.actions.cancel)}
           </Button>
           <Button
             type="button"
             onClick={() => void importSelected()}
             disabled={detecting || importing || selected.length === 0}
           >
-            {importing ? "Importing..." : "Import selected"}
+            {importing
+              ? t(($) => $.settings.mcp.import.importing)
+              : t(($) => $.settings.mcp.import.submit)}
           </Button>
         </DialogFooter>
       </DialogContent>

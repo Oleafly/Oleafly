@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,14 +10,15 @@ import {
 import type { ComposerCommand } from "./composer-command-registry";
 
 export function ComposerAttachMenu({ commands }: { commands: ComposerCommand[] }) {
+  const { t } = useTranslation(["common", "ai"]);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           data-tour="ai-attachments"
           type="button"
-          aria-label="Add context"
-          title="Add context"
+          aria-label={t(($) => $.ai.composer.addContext)}
+          title={t(($) => $.ai.composer.addContext)}
           className="ai-composer-attach flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Plus className="size-4.5" />
@@ -39,7 +41,7 @@ export function ComposerAttachMenu({ commands }: { commands: ComposerCommand[] }
           }
         }}
       >
-        <DropdownMenuLabel>Add context</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.ai.composer.addContext)}</DropdownMenuLabel>
         {commands.map((command) => (
           <DropdownMenuItem
             key={command.id}

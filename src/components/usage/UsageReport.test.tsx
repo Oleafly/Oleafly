@@ -166,7 +166,7 @@ function renderDialog(query: (filter: UsageReportFilter) => Promise<UsageReportD
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <UsageReportDialog trigger={<button type="button">Open usage</button>} query={query} />
+      <UsageReportDialog trigger={<button type="button">{"Open usage"}</button>} query={query} />
     </QueryClientProvider>,
   );
 }

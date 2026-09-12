@@ -4,7 +4,7 @@ import {
   createResearchArtifactAction,
   projectToolEntry,
   safeWebUrl,
-  SKILLS_BUDGET_NOTICE,
+  skillsBudgetNotice,
   splitAgentNotices,
   stripAnsi,
 } from "./chat-activity";
@@ -21,13 +21,13 @@ describe("splitAgentNotices", () => {
     const split = splitAgentNotices(
       "Warning: Exceeded skills context budget of 4000 tokens.\nThe revision is ready.",
     );
-    expect(split.notices).toEqual([SKILLS_BUDGET_NOTICE]);
+    expect(split.notices).toEqual([skillsBudgetNotice()]);
     expect(split.text).toBe("The revision is ready.");
   });
 
   it("reports the warning once when it is the whole message", () => {
     const split = splitAgentNotices("warning: exceeded skills context budget of 4000 tokens.");
-    expect(split.notices).toEqual([SKILLS_BUDGET_NOTICE]);
+    expect(split.notices).toEqual([skillsBudgetNotice()]);
     expect(split.text).toBe("");
   });
 

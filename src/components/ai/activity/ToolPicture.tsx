@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Check, Code2, Copy, FolderDown, Image as ImageIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { i18n } from "@/i18n";
 import type { ToolEntry } from "@/store/chats";
 import { TikzSourceView } from "@/components/ai/TikzSourceView";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -56,11 +58,15 @@ async function saveToolPicture(tc: ToolEntry): Promise<string | null> {
 }
 
 export function ToolPicture({ tc }: { tc: ToolEntry }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [view, setView] = useState<"image" | "code">("image");
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const hasCode = Boolean(tc.code);
-  const label = tc.name === "preview_figure" ? "Rendered figure preview" : "Image from the tool";
+  const label =
+    tc.name === "preview_figure"
+      ? t(($) => $.ai.toolPicture.figurePreviewAlt)
+      : t(($) => $.ai.toolPicture.toolImageAlt);
   const copyCode = async () => {
     if (!tc.code) return;
     try {
@@ -76,10 +82,10 @@ export function ToolPicture({ tc }: { tc: ToolEntry }) {
     setSaving(true);
     try {
       const path = await saveToolPicture(tc);
-      if (path) toast.success(`Saved ${path}`);
-      else toast.error("Open a project to save this figure.");
-    } catch (error) {
-      toast.error(`Could not save the figure: ${String(error)}`);
+      if (path) toast.success(i18n.t(($) => $.ai.toolPicture.saved, { path }));
+      else toast.error(i18n.t(($) => $.ai.toolPicture.saveNeedsProject));
+    } catch {
+      toast.error(i18n.t(($) => $.ai.toolPicture.saveFailed));
     } finally {
       setSaving(false);
     }
@@ -100,35 +106,39 @@ export function ToolPicture({ tc }: { tc: ToolEntry }) {
             <button
               type="button"
               data-testid="tool-picture-view-image"
-              aria-label="Show the rendered figure"
+              aria-label={t(($) => $.ai.toolPicture.showFigure)}
               aria-pressed={view === "image"}
               onClick={() => setView("image")}
               className={pill(view === "image")}
             >
               <ImageIcon className="size-3.5" />
-              Figure
+              {t(($) => $.ai.toolPicture.figureTab)}
             </button>
             <button
               type="button"
               data-testid="tool-picture-view-code"
-              aria-label="Show the TikZ source"
+              aria-label={t(($) => $.ai.toolPicture.showTikz)}
               aria-pressed={view === "code"}
               onClick={() => setView("code")}
               className={pill(view === "code")}
             >
               <Code2 className="size-3.5" />
-              TikZ
+              {t(($) => $.ai.toolPicture.tikzTab)}
             </button>
           </div>
         ) : (
           <span />
         )}
         <div className="flex items-center justify-end gap-0.5">
-          <Tooltip label={saving ? "Saving" : "Save to project"}>
+          <Tooltip
+            label={
+              saving ? t(($) => $.ai.toolPicture.saving) : t(($) => $.ai.toolPicture.saveToProject)
+            }
+          >
             <button
               type="button"
               data-testid="tool-picture-save"
-              aria-label="Save to project"
+              aria-label={t(($) => $.ai.toolPicture.saveToProject)}
               disabled={saving}
               onClick={() => void saveToProject()}
               className={iconButton}
@@ -137,11 +147,13 @@ export function ToolPicture({ tc }: { tc: ToolEntry }) {
             </button>
           </Tooltip>
           {hasCode && (
-            <Tooltip label={copied ? "Copied" : "Copy code"}>
+            <Tooltip
+              label={copied ? t(($) => $.common.actions.copied) : t(($) => $.ai.toolPicture.copyCode)}
+            >
               <button
                 type="button"
                 data-testid="tool-picture-copy"
-                aria-label="Copy code"
+                aria-label={t(($) => $.ai.toolPicture.copyCode)}
                 onClick={() => void copyCode()}
                 className={iconButton}
               >

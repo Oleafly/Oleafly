@@ -1,0 +1,31 @@
+{
+  "unknown": "出错了。详情请查看应用日志。",
+  "withDetail": "{{message}}（{{detail}}）",
+  "project": {
+    "name_empty": "项目名称不能为空。",
+    "name_conflict": "已存在名为 {{name}} 的项目。",
+    "folder_unavailable": "无法预留新的项目文件夹。"
+  },
+  "settings": {
+    "locale_unsupported": "语言 {{locale}} 不可用。"
+  },
+  "literature": {
+    "query_empty": "搜索内容不能为空。",
+    "query_too_long": "搜索内容过长（最多 {{max}} 个字符）。",
+    "unknown_source": "未知文献来源。"
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX 没有与主机兼容的 {{name}} 二进制文件。",
+    "package_operation_timeout": "宏包操作超出了 {{span}} 的限制并已停止，你可以重新编译。TeX Live 镜像可能正忙。请稍后重试，或自行运行 tlmgr。"
+  },
+  "github": {
+    "sign_in_expired": "登录代码已过期，请重试。",
+    "sign_in_cancelled": "GitHub 授权已取消。",
+    "sign_in_failed": "GitHub 登录失败。",
+    "repositories_unavailable": "无法加载仓库。",
+    "create_repo_failed": "无法创建仓库（{{status}}）。"
+  },
+  "approvals": {
+    "full_access_declined": "未启用完全访问权限。"
+  }
+}

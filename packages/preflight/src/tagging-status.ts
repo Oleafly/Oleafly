@@ -1,5 +1,6 @@
-import catalog from "./tagging-status.json";
+import catalog from "./tagging-status.json" with { type: "json" };
 import { maskComments } from "./mask";
+import { message, type MessageRef } from "./messages";
 
 export type TaggingCompatibility =
   | "compatible"
@@ -135,7 +136,7 @@ export interface TaggingGate {
   documentClass: TaggingStatusEntry | null;
   blocked: boolean;
   cautioned: boolean;
-  reason: string | null;
+  reason: MessageRef | null;
   incompatiblePackages: TaggingStatusEntry[];
   partialPackages: TaggingStatusEntry[];
   unknownPackages: TaggingStatusEntry[];
@@ -143,18 +144,25 @@ export interface TaggingGate {
   retrieved: string;
 }
 
-function classReason(entry: TaggingStatusEntry): string | null {
+function classReason(entry: TaggingStatusEntry): MessageRef | null {
+  const note = entry.note;
   if (entry.status === "no-support") {
-    return `The ${entry.name} class cannot produce tagged output, and the LaTeX Project does not expect it to.${entry.note ? ` ${entry.note}` : ""}`;
+    return note
+      ? message("taggingGate.noSupportWithNote", { name: entry.name, note })
+      : message("taggingGate.noSupport", { name: entry.name });
   }
   if (entry.status === "currently-incompatible") {
-    return `The ${entry.name} class is not compatible with LaTeX tagging yet, so preparing this source would not give you an accessible PDF.${entry.note ? ` ${entry.note}` : ""}`;
+    return note
+      ? message("taggingGate.currentlyIncompatibleWithNote", { name: entry.name, note })
+      : message("taggingGate.currentlyIncompatible", { name: entry.name });
   }
   if (entry.status === "partially-compatible") {
-    return `The ${entry.name} class is only partly compatible with tagging, so expect gaps in the structure tree.${entry.note ? ` ${entry.note}` : ""}`;
+    return note
+      ? message("taggingGate.partiallyCompatibleWithNote", { name: entry.name, note })
+      : message("taggingGate.partiallyCompatible", { name: entry.name });
   }
   if (entry.status === "unchecked" || entry.status === "unknown") {
-    return `The LaTeX Project has not recorded a tagging status for the ${entry.name} class, so the result is unproven. Compile and check the output.`;
+    return message("taggingGate.unrecorded", { name: entry.name });
   }
   return null;
 }

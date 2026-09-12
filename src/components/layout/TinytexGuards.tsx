@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -16,6 +17,7 @@ import { notifyError } from "@/lib/toast";
  *   tells the user it will start as soon as the engine is ready.
  */
 export function TinytexGuards() {
+  const { t } = useTranslation(["common", "shell"]);
   const [quitAsked, setQuitAsked] = useState(false);
   const installing = useEngineStore((s) => s.installing);
   const installPhase = useEngineStore((s) => s.installPhase);
@@ -56,9 +58,9 @@ export function TinytexGuards() {
     <>
       <ConfirmationDialog
         open={quitAsked && installing}
-        title="TinyTeX is still installing"
-        description={`${phaseLabel} right now. If you quit, the install pauses. The downloaded part is kept and resumes the next time you open Oleafly.`}
-        confirmLabel="Quit anyway"
+        title={t(($) => $.shell.tinytexGuards.quit.title)}
+        description={t(($) => $.shell.tinytexGuards.quit.description, { phase: phaseLabel })}
+        confirmLabel={t(($) => $.shell.tinytexGuards.quit.confirm)}
         destructive
         onConfirm={() => {
           void confirmQuitDuringInstall().catch((error) =>
@@ -74,9 +76,11 @@ export function TinytexGuards() {
       />
       <ConfirmationDialog
         open={waitNoticeOpen && installing}
-        title="TinyTeX is still downloading"
-        description={`${installPhaseLabel(installPhase, progress)} Your compile is queued and starts automatically as soon as the engine is ready.`}
-        confirmLabel="OK"
+        title={t(($) => $.shell.tinytexGuards.wait.title)}
+        description={t(($) => $.shell.tinytexGuards.wait.description, {
+          phase: installPhaseLabel(installPhase, progress),
+        })}
+        confirmLabel={t(($) => $.common.actions.ok)}
         onConfirm={closeWaitNotice}
         onCancel={closeWaitNotice}
       />

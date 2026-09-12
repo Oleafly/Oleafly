@@ -151,9 +151,15 @@ pub async fn gh_check_device_token(
             token: None,
             interval: Some(body.get("interval").and_then(|v| v.as_u64()).unwrap_or(5)),
         }),
-        Some("expired_token") => Err("The sign-in code expired. Try again.".into()),
-        Some("access_denied") => Err("GitHub authorization was cancelled.".into()),
-        Some(other) => Err(format!("GitHub sign-in error: {other}")),
+        Some("expired_token") => {
+            Err(crate::app_error::AppError::new("github.sign_in_expired").into())
+        }
+        Some("access_denied") => {
+            Err(crate::app_error::AppError::new("github.sign_in_cancelled").into())
+        }
+        Some(other) => Err(crate::app_error::AppError::new("github.sign_in_failed")
+            .detail(other)
+            .into()),
         None => Ok(TokenPoll {
             status: "pending".into(),
             token: None,
@@ -289,7 +295,11 @@ pub async fn gh_list_repos() -> Result<Vec<GitHubRepo>, String> {
         .await
         .map_err(|e| format!("network error: {e}"))?;
     if !resp.status().is_success() {
-        return Err(format!("Could not load repositories ({}).", resp.status()));
+        return Err(
+            crate::app_error::AppError::new("github.repositories_unavailable")
+                .detail(resp.status())
+                .into(),
+        );
     }
     resp.json::<Vec<GitHubRepo>>()
         .await
@@ -311,7 +321,10 @@ pub async fn gh_create_repo(name: String, private: bool) -> Result<GitHubRepo, S
         let status = resp.status();
         let detail = resp.text().await.unwrap_or_default();
         let detail: String = detail.chars().take(200).collect();
-        return Err(format!("Could not create repo ({status}). {detail}"));
+        return Err(crate::app_error::AppError::new("github.create_repo_failed")
+            .param("status", status)
+            .detail(detail)
+            .into());
     }
     resp.json::<GitHubRepo>()
         .await

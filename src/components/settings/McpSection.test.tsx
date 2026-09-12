@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { AppConfig } from "@/lib/tauri";
 import { McpSection } from "./McpSection";
 
@@ -40,11 +41,15 @@ describe("McpSection", () => {
     render(<McpSection />);
 
     expect(
-      await screen.findByRole("heading", { name: "Oleafly MCP server" }),
+      await screen.findByRole("heading", { name: enSettings.mcp.section.title }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Enable MCP server" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: enSettings.mcp.section.enable.ariaLabel }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Assistant MCP" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Assistant MCP servers" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: enSettings.mcp.servers.title }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId("mcp-pane-tab-strip")).not.toBeInTheDocument();
   });
 
@@ -52,7 +57,7 @@ describe("McpSection", () => {
     const user = userEvent.setup();
     render(<McpSection />);
 
-    await screen.findByRole("heading", { name: "Oleafly MCP server" });
+    await screen.findByRole("heading", { name: enSettings.mcp.section.title });
 
     const tabStrip = screen.getByTestId("mcp-client-tab-strip");
     expect(tabStrip).toHaveClass(

@@ -1,5 +1,6 @@
 import { fetchDoiBibtex, fetchArxiv, crossrefSearch, readFileContent } from "@/lib/tauri";
 import { detectInput } from "@/lib/citation/detect";
+import { i18n } from "@/i18n";
 import { parseEntry, generateCiteKey, setKey, stringifyBibEntry } from "@/lib/citation/bibtex";
 import type { ParsedBib } from "@/lib/citation/types";
 import { parseCrossrefSearch } from "@/lib/citation/crossref";
@@ -33,14 +34,14 @@ export async function resolveCitation(
   input: string,
 ): Promise<{ bibtex?: string; hits?: CitationHit[]; error?: string }> {
   if (useSettingsStore.getState().offline) {
-    return { error: "Citation lookup needs the network. Turn off offline mode in Settings." };
+    return { error: i18n.t(($) => $.core.citation.offline) };
   }
   const d = detectInput(input);
   try {
     if (d.kind === "doi") return { bibtex: (await fetchDoiBibtex(d.value)).trim() };
     if (d.kind === "arxiv") {
       const bib = arxivXmlToBibtex(await fetchArxiv(d.value));
-      return bib ? { bibtex: bib } : { error: "No arXiv entry found." };
+      return bib ? { bibtex: bib } : { error: i18n.t(($) => $.core.citation.noArxivEntry) };
     }
     return { hits: parseCrossrefSearch(await crossrefSearch(d.value)) };
   } catch (e) {
@@ -213,7 +214,7 @@ function pickTargetBib(files: ReturnType<typeof useFilesStore.getState>, source?
 
 function assertCitationProject(projectId: string | null): void {
   if (useFilesStore.getState().projectId !== projectId) {
-    throw new Error("The project changed during citation import. Try again in the original project.");
+    throw new Error(i18n.t(($) => $.core.citation.projectChangedRetry));
   }
 }
 
@@ -222,7 +223,7 @@ function validateCitationFiles(files: ReturnType<typeof useFilesStore.getState>,
   const current = useFilesStore.getState();
   for (const path of [targetPath, files.mainDoc]) {
     if (current.files[path]?.content !== files.files[path]?.content) {
-      throw new Error(`${path} changed during citation import. Try again.`);
+      throw new Error(i18n.t(($) => $.core.citation.fileChanged, { path }));
     }
   }
 }
@@ -234,7 +235,7 @@ async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState
     try {
       return files.files[path]?.content ?? (id ? await readFileContent(id, path, allowMissing) : "");
     } catch (error) {
-      throw new Error(`Could not read ${path}: ${error}`);
+      throw new Error(i18n.t(($) => $.core.citation.readFailed, { path, detail: String(error) }));
     }
   };
   const main = id && (profile === "typst" || profile === "markdown")
@@ -260,7 +261,7 @@ export async function bibliographyTargetForProject(): Promise<
 
 export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
   const parsed = parseEntry(bibtex);
-  if (!parsed) return { error: "Could not parse the citation." };
+  if (!parsed) return { error: i18n.t(($) => $.core.citation.parseFailed) };
 
   const files = useFilesStore.getState();
   const id = files.projectId;
@@ -298,14 +299,24 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
       await useFilesStore.getState().saveFile(target.path);
       assertCitationProject(id);
     } catch (e) {
-      return { error: `Could not write ${target.path}: ${e}` };
+      return {
+        error: i18n.t(($) => $.core.citation.writeFailed, {
+          path: target.path,
+          detail: String(e),
+        }),
+      };
     }
   } else if (id) {
     try {
       await useFilesStore.getState().writeProjectFile(id, target.path, newContent);
       assertCitationProject(id);
     } catch (e) {
-      return { error: `Could not write ${target.path}: ${e}` };
+      return {
+        error: i18n.t(($) => $.core.citation.writeFailed, {
+          path: target.path,
+          detail: String(e),
+        }),
+      };
     }
   }
 
@@ -328,7 +339,7 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
   }
 
   if (useFilesStore.getState().projectId !== id) {
-    return { error: "The project changed during citation import. The citation was not inserted." };
+    return { error: i18n.t(($) => $.core.citation.projectChangedNotInserted) };
   }
   insertCite(key);
   await useIndexStore.getState().rebuildFromDisk();
@@ -392,14 +403,18 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
       await useFilesStore.getState().saveFile(target.path);
       assertCitationProject(id);
     } catch (e) {
-      errors.push(`Could not write ${target.path}: ${e}`);
+      errors.push(
+        i18n.t(($) => $.core.citation.writeFailed, { path: target.path, detail: String(e) }),
+      );
     }
   } else if (id) {
     try {
       await useFilesStore.getState().writeProjectFile(id, target.path, newContent);
       assertCitationProject(id);
     } catch (e) {
-      errors.push(`Could not write ${target.path}: ${e}`);
+      errors.push(
+        i18n.t(($) => $.core.citation.writeFailed, { path: target.path, detail: String(e) }),
+      );
     }
   }
 
@@ -422,7 +437,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
   }
 
   if (useFilesStore.getState().projectId !== id) {
-    errors.push("The project changed during citation import.");
+    errors.push(i18n.t(($) => $.core.citation.projectChanged));
   }
   if (!errors.length) await useIndexStore.getState().rebuildFromDisk();
   return { imported: newBlocks.length, duplicates, errors, bibPath: target.path };
@@ -446,8 +461,8 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
   };
   w.__importCitationFile = async (name, text) => {
     const entries = parseCitationFile(name, text);
-    if (!entries) return { error: `Unrecognized file type: ${name}` };
-    if (!entries.length) return { error: "No references found in that file." };
+    if (!entries) return { error: i18n.t(($) => $.core.citation.unrecognizedFile, { name }) };
+    if (!entries.length) return { error: i18n.t(($) => $.core.citation.noReferences) };
     return addCitations(entries);
   };
 }

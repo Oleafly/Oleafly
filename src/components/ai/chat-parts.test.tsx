@@ -503,7 +503,7 @@ describe("AgentStatusPill", () => {
   it("opens the checklist on hover without taking focus and closes when the pointer leaves", async () => {
     render(
       <>
-        <textarea aria-label="Composer" />
+        <textarea aria-label={"Composer"} />
         <AgentStatusPill todos={PILL_TODOS} turn={null} />
       </>,
     );
@@ -591,7 +591,7 @@ describe("AgentStatusPill", () => {
   it("closes a pinned panel when the pointer goes down elsewhere", () => {
     render(
       <>
-        <button type="button">Elsewhere</button>
+        <button type="button">{"Elsewhere"}</button>
         <AgentStatusPill todos={PILL_TODOS} turn={null} />
       </>,
     );
@@ -606,7 +606,7 @@ describe("AgentStatusPill", () => {
   it("closes when focus leaves the pill and its panel", () => {
     render(
       <>
-        <button type="button">Elsewhere</button>
+        <button type="button">{"Elsewhere"}</button>
         <AgentStatusPill todos={PILL_TODOS} turn={null} />
       </>,
     );
@@ -689,7 +689,7 @@ describe("AgentStatusPill", () => {
     vi.useFakeTimers();
     const { rerender } = render(
       <>
-        <textarea aria-label="Composer" />
+        <textarea aria-label={"Composer"} />
         <AgentStatusPill todos={PILL_TODOS} turn={null} />
       </>,
     );
@@ -699,7 +699,7 @@ describe("AgentStatusPill", () => {
 
     rerender(
       <>
-        <textarea aria-label="Composer" />
+        <textarea aria-label={"Composer"} />
         <AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} />
       </>,
     );

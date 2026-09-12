@@ -52,6 +52,7 @@ import {
   newId,
 } from "@oleafly/latex";
 import { cn } from "./cn";
+import type { DiagramMessageKey } from "./messages";
 
 const FLOAT_CHROME = "!rounded-lg !border !shadow-md !backdrop-blur-sm";
 
@@ -79,15 +80,22 @@ interface NodeStyleDefaults {
   radiusCustomized: boolean;
 }
 
-const PALETTE: { shape: NodeShape; label: string; icon: React.ReactNode; seed?: string }[] = [
-  { shape: "rectangle", label: "Rectangle", icon: <Square className="size-4" /> },
-  { shape: "roundrect", label: "Rounded box", icon: <RectangleHorizontal className="size-4" /> },
-  { shape: "circle", label: "Circle", icon: <Circle className="size-4" /> },
-  { shape: "ellipse", label: "Ellipse", icon: <Egg className="size-4" /> },
-  { shape: "diamond", label: "Diamond", icon: <Diamond className="size-4" /> },
+const PALETTE: {
+  shape: NodeShape;
+  key: DiagramMessageKey;
+  id: string;
+  icon: React.ReactNode;
+  seed?: string;
+}[] = [
+  { shape: "rectangle", id: "rectangle", key: "palette.rectangle", icon: <Square className="size-4" /> },
+  { shape: "roundrect", id: "roundrect", key: "palette.roundedBox", icon: <RectangleHorizontal className="size-4" /> },
+  { shape: "circle", id: "circle", key: "palette.circle", icon: <Circle className="size-4" /> },
+  { shape: "ellipse", id: "ellipse", key: "palette.ellipse", icon: <Egg className="size-4" /> },
+  { shape: "diamond", id: "diamond", key: "palette.diamond", icon: <Diamond className="size-4" /> },
   {
     shape: "parallelogram",
-    label: "Parallelogram",
+    id: "parallelogram",
+    key: "palette.parallelogram",
     icon: (
       <svg
         viewBox="0 0 24 24"
@@ -102,9 +110,9 @@ const PALETTE: { shape: NodeShape; label: string; icon: React.ReactNode; seed?: 
       </svg>
     ),
   },
-  { shape: "text", label: "Text", icon: <TypeIcon className="size-4" /> },
-  { shape: "text", label: "Math", icon: <Sigma className="size-4" />, seed: "$E = mc^2$" },
-  { shape: "text", label: "Code", icon: <Code2 className="size-4" />, seed: "\\texttt{print(x)}" },
+  { shape: "text", id: "text", key: "palette.text", icon: <TypeIcon className="size-4" /> },
+  { shape: "text", id: "math", key: "palette.math", icon: <Sigma className="size-4" />, seed: "$E = mc^2$" },
+  { shape: "text", id: "code", key: "palette.code", icon: <Code2 className="size-4" />, seed: "\\texttt{print(x)}" },
 ];
 
 const routingToType = (r: DiagEdge["routing"]) =>
@@ -311,7 +319,7 @@ function CanvasInner({
   onShowPreview?: () => void;
   readOnly?: boolean;
 }) {
-  const { Tooltip, useThemeMode } = useDiagramKit();
+  const { Tooltip, useThemeMode, t } = useDiagramKit();
   const themeMode = useThemeMode();
   const { screenToFlowPosition } = useReactFlow();
   // Canvas theme is a per-diagram viewing preference (defaults to the app theme).
@@ -717,10 +725,10 @@ function CanvasInner({
     [selEdge, edges],
   );
 
-  let canvasHint = "Drag Shapes to Move · Drag Handles to Connect · Space + Drag to Pan · Double-Click to Edit Text";
-  if (readOnly) canvasHint = "Read-only preview · Drag to pan";
-  else if (pending) canvasHint = "Click and Drag on the Canvas to Draw the Shape (Esc to Cancel)";
-  else if (spacePressed) canvasHint = "Drag to Pan the Canvas";
+  let canvasHint = t("canvas.hintDefault");
+  if (readOnly) canvasHint = t("canvas.hintReadOnly");
+  else if (pending) canvasHint = t("canvas.hintDrawing");
+  else if (spacePressed) canvasHint = t("canvas.hintPanning");
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -745,24 +753,24 @@ function CanvasInner({
         {!readOnly && <div
           data-tour="diagram-palette"
           role="toolbar"
-          aria-label="Shape tools"
+          aria-label={t("canvas.shapeTools")}
           style={chromeStyle}
           className="absolute left-2 top-2 z-10 flex flex-col gap-0.5 rounded-lg border p-1 shadow-md backdrop-blur-sm"
         >
           {PALETTE.map((p) => (
-            <Tooltip key={p.label} label={`${p.label} (click and drag to draw)`} side="right">
+            <Tooltip key={p.id} label={t("palette.drawHint", { shape: t(p.key) })} side="right">
               <button
                 type="button"
-                aria-label={p.label}
-                aria-pressed={pending?.key === p.label}
+                aria-label={t(p.key)}
+                aria-pressed={pending?.key === p.id}
                 onClick={() =>
                   setPending((cur) =>
-                    cur?.key === p.label ? null : { shape: p.shape, seed: p.seed, key: p.label },
+                    cur?.key === p.id ? null : { shape: p.shape, seed: p.seed, key: p.id },
                   )
                 }
                 className={cn(
                   "flex size-8 items-center justify-center rounded-md transition-colors",
-                  pending?.key === p.label
+                  pending?.key === p.id
                     ? "bg-primary text-primary-foreground"
                     : chromeHover,
                 )}
@@ -789,10 +797,10 @@ function CanvasInner({
           className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-full border p-1 shadow-md backdrop-blur-sm"
         >
           {showPreviewAction && onShowPreview && (
-            <Tooltip label="Show compiled preview">
+            <Tooltip label={t("preview.showTooltip")}>
               <button
                 type="button"
-                aria-label="Show preview"
+                aria-label={t("preview.showLabel")}
                 onClick={onShowPreview}
                 className={cn(
                   "mr-0.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
@@ -800,14 +808,14 @@ function CanvasInner({
                 )}
               >
                 <PanelRightOpen className="size-3.5" />
-                Preview
+                {t("preview.label")}
               </button>
             </Tooltip>
           )}
-          <Tooltip label={canvasTheme === "dark" ? "Light canvas" : "Dark canvas"}>
+          <Tooltip label={canvasTheme === "dark" ? t("canvas.lightCanvas") : t("canvas.darkCanvas")}>
             <button
               type="button"
-              aria-label="Toggle canvas theme"
+              aria-label={t("canvas.toggleTheme")}
               onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
               className={cn(
                 "flex size-6 items-center justify-center rounded-full transition-colors",
@@ -817,10 +825,10 @@ function CanvasInner({
               {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
             </button>
           </Tooltip>
-          <Tooltip label={showMinimap ? "Hide minimap" : "Show minimap"}>
+          <Tooltip label={showMinimap ? t("canvas.hideMinimap") : t("canvas.showMinimap")}>
             <button
               type="button"
-              aria-label="Toggle minimap"
+              aria-label={t("canvas.toggleMinimap")}
               aria-pressed={showMinimap}
               onClick={() => setShowMinimap((v) => !v)}
               className={cn(
@@ -837,7 +845,7 @@ function CanvasInner({
           <div
             data-tour="diagram-inspector"
             role="complementary"
-            aria-label="Shape style"
+            aria-label={t("canvas.shapeStyle")}
             style={chromeStyle}
             className="absolute right-2 top-12 z-10 max-h-[calc(100%-3.5rem)] w-56 overflow-y-auto rounded-lg border shadow-md backdrop-blur-sm"
           >

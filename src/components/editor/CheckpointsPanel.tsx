@@ -1,3 +1,4 @@
+import { currentLocale, i18n } from "@/i18n";
 import {
   useCallback,
   useEffect,
@@ -7,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArchiveRestore,
   Check,
@@ -45,6 +47,8 @@ import {
   type CheckpointStoreStats,
   type CheckpointSummary,
 } from "@/lib/checkpoints";
+import { formatBytes } from "@/lib/format-bytes";
+import { formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { pickOpenPath, pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
@@ -68,11 +72,11 @@ type PanelActionToken = {
   request: number;
 };
 
-const REVEAL_LABEL = isWindows
-  ? "Show in Explorer"
-  : isMac
-    ? "Show in Finder"
-    : "Show in file manager";
+function revealLabel(): string {
+  if (isWindows) return i18n.t(($) => $.editor.checkpoints.showInExplorer);
+  if (isMac) return i18n.t(($) => $.editor.checkpoints.showInFinder);
+  return i18n.t(($) => $.editor.checkpoints.showInFileManager);
+}
 
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 31_536_000_000],
@@ -88,30 +92,29 @@ function checkpointsTabIsActive(): boolean {
   return settings.versioningOpen && settings.versioningTab === "checkpoints";
 }
 
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / 1024 ** unit;
-  return `${value.toLocaleString(undefined, {
-    maximumFractionDigits: unit === 0 ? 0 : value >= 10 ? 1 : 2,
-  })} ${units[unit]}`;
-}
-
 function formatCompletedAt(value: number): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Time not recorded" : date.toLocaleString();
+  return Number.isNaN(date.getTime())
+    ? i18n.t(($) => $.editor.checkpoints.timeNotRecorded)
+    : new Intl.DateTimeFormat(currentLocale(), {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+      }).format(date);
 }
 
 function formatRelativeTime(value: number, now: number): string {
-  if (!Number.isFinite(value)) return "Time not recorded";
+  if (!Number.isFinite(value)) return i18n.t(($) => $.editor.checkpoints.timeNotRecorded);
   const elapsed = now - value;
-  if (elapsed < 60_000) return "Just now";
-  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  if (elapsed < 60_000) return i18n.t(($) => $.editor.checkpoints.justNow);
+  const formatter = new Intl.RelativeTimeFormat(currentLocale(), { numeric: "auto" });
   for (const [unit, span] of RELATIVE_UNITS) {
     if (elapsed >= span) return formatter.format(-Math.round(elapsed / span), unit);
   }
-  return "Just now";
+  return i18n.t(($) => $.editor.checkpoints.justNow);
 }
 
 function isoTimestamp(value: number): string | undefined {
@@ -129,21 +132,21 @@ function safeArchiveName(name: string): string {
 }
 
 function unstoredSentence(count: number): string {
-  return count === 1
-    ? "1 file was not stored, so it stays as it is on disk."
-    : `${count} files were not stored, so they stay as they are on disk.`;
+  return i18n.t(($) => $.editor.checkpoints.unstored, { count });
 }
 
 function AdvancedCard({
+  id,
   title,
   description,
   children,
 }: {
+  id: string;
   title: string;
   description: string;
   children: ReactNode;
 }) {
-  const headingId = `checkpoints-advanced-${title.toLowerCase().replace(/\s+/g, "-")}`;
+  const headingId = `checkpoints-advanced-${id}`;
   return (
     <section aria-labelledby={headingId} className="overflow-hidden rounded-xl border bg-card/60">
       <div className="border-b px-4 py-3">
@@ -158,11 +161,18 @@ function AdvancedCard({
 }
 
 function StoreSummary({ stats }: { stats: CheckpointStoreStats }) {
+  const { t } = useTranslation(["common", "editor"]);
   const items = [
-    { label: "Checkpoints", value: stats.checkpoint_count.toLocaleString() },
-    { label: "Stored", value: formatBytes(stats.stored_pack_bytes) },
-    { label: "Source size", value: formatBytes(stats.logical_bytes) },
-    { label: "Reclaimable", value: formatBytes(stats.reclaimable_bytes) },
+    {
+      label: t(($) => $.editor.checkpoints.storeSummary.checkpoints),
+      value: formatNumber(stats.checkpoint_count),
+    },
+    { label: t(($) => $.editor.checkpoints.storeSummary.stored), value: formatBytes(stats.stored_pack_bytes) },
+    { label: t(($) => $.editor.checkpoints.storeSummary.sourceSize), value: formatBytes(stats.logical_bytes) },
+    {
+      label: t(($) => $.editor.checkpoints.storeSummary.reclaimable),
+      value: formatBytes(stats.reclaimable_bytes),
+    },
   ];
 
   return (
@@ -178,16 +188,23 @@ function StoreSummary({ stats }: { stats: CheckpointStoreStats }) {
 }
 
 function CatalogFacts({ inspection }: { inspection: CheckpointStoreInspection }) {
+  const { t } = useTranslation(["common", "editor"]);
   const counts = inspection.table_counts;
   const facts: [string, string][] = [
-    ["Format version", inspection.format_version.toLocaleString()],
-    ["Lineage", inspection.lineage || "Not recorded"],
-    ["Catalog file", inspection.catalog_path || "Not created yet"],
-    ["Checkpoints", counts.checkpoints.toLocaleString()],
-    ["Manifests", counts.manifests.toLocaleString()],
-    ["Packs", counts.packs.toLocaleString()],
-    ["Chunks", counts.chunks.toLocaleString()],
-    ["Manifest chunks", counts.manifest_chunks.toLocaleString()],
+    [t(($) => $.editor.checkpoints.catalog.formatVersion), formatNumber(inspection.format_version)],
+    [
+      t(($) => $.editor.checkpoints.catalog.lineage),
+      inspection.lineage || t(($) => $.editor.checkpoints.catalog.lineageMissing),
+    ],
+    [
+      t(($) => $.editor.checkpoints.catalog.catalogFile),
+      inspection.catalog_path || t(($) => $.editor.checkpoints.catalog.catalogFileMissing),
+    ],
+    [t(($) => $.editor.checkpoints.catalog.checkpoints), formatNumber(counts.checkpoints)],
+    [t(($) => $.editor.checkpoints.catalog.manifests), formatNumber(counts.manifests)],
+    [t(($) => $.editor.checkpoints.catalog.packs), formatNumber(counts.packs)],
+    [t(($) => $.editor.checkpoints.catalog.chunks), formatNumber(counts.chunks)],
+    [t(($) => $.editor.checkpoints.catalog.manifestChunks), formatNumber(counts.manifest_chunks)],
   ];
   return (
     <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
@@ -202,22 +219,25 @@ function CatalogFacts({ inspection }: { inspection: CheckpointStoreInspection })
 }
 
 function PackTable({ inspection }: { inspection: CheckpointStoreInspection }) {
+  const { t } = useTranslation(["common", "editor"]);
   if (inspection.packs.length === 0) {
-    return <p className="text-xs text-muted-foreground">No packs written yet.</p>;
+    return (
+      <p className="text-xs text-muted-foreground">{t(($) => $.editor.checkpoints.catalog.noPacks)}</p>
+    );
   }
   return (
     <table className="w-full text-left text-xs">
-      <caption className="sr-only">Checkpoint store packs</caption>
+      <caption className="sr-only">{t(($) => $.editor.checkpoints.catalog.packsCaption)}</caption>
       <thead className="text-muted-foreground">
         <tr>
           <th scope="col" className="py-1 font-medium">
-            Pack
+            {t(($) => $.editor.checkpoints.catalog.pack)}
           </th>
           <th scope="col" className="py-1 text-right font-medium">
-            Size
+            {t(($) => $.editor.checkpoints.catalog.size)}
           </th>
           <th scope="col" className="py-1 text-right font-medium">
-            Chunks
+            {t(($) => $.editor.checkpoints.catalog.chunkCount)}
           </th>
         </tr>
       </thead>
@@ -226,7 +246,7 @@ function PackTable({ inspection }: { inspection: CheckpointStoreInspection }) {
           <tr key={pack.file_name} className="border-t">
             <td className="py-1 pr-2 font-mono">{pack.file_name}</td>
             <td className="py-1 text-right tabular-nums">{formatBytes(pack.bytes)}</td>
-            <td className="py-1 text-right tabular-nums">{pack.chunk_count.toLocaleString()}</td>
+            <td className="py-1 text-right tabular-nums">{formatNumber(pack.chunk_count)}</td>
           </tr>
         ))}
       </tbody>
@@ -235,23 +255,28 @@ function PackTable({ inspection }: { inspection: CheckpointStoreInspection }) {
 }
 
 function CheckpointFileRows({ state }: { state: FileState | undefined }) {
+  const { t } = useTranslation(["common", "editor"]);
   if (!state || state.status === "loading") {
     return (
       <p className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground" role="status">
         <Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden />
-        Loading files.
+        {t(($) => $.editor.checkpoints.files.loading)}
       </p>
     );
   }
   if (state.status === "error") {
     return (
       <p className="py-1 text-[11px] text-destructive" role="alert">
-        Couldn't load the files in this checkpoint.
+        {t(($) => $.editor.checkpoints.files.loadFailed)}
       </p>
     );
   }
   if (state.files.length === 0) {
-    return <p className="py-1 text-[11px] text-muted-foreground">No files recorded.</p>;
+    return (
+      <p className="py-1 text-[11px] text-muted-foreground">
+        {t(($) => $.editor.checkpoints.files.noneRecorded)}
+      </p>
+    );
   }
   return (
     <ul className="list-none space-y-1 p-0">
@@ -261,7 +286,7 @@ function CheckpointFileRows({ state }: { state: FileState | undefined }) {
           <span className="text-muted-foreground">{formatBytes(file.bytes)}</span>
           {file.stored ? null : (
             <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-              Not stored
+              {t(($) => $.editor.checkpoints.files.notStored)}
             </Badge>
           )}
         </li>
@@ -278,6 +303,7 @@ interface FileListProps {
 }
 
 function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
+  const { t } = useTranslation(["common", "editor"]);
   if (!state || state.status === "loading") {
     return (
       <div
@@ -286,7 +312,7 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
         className="mt-2 flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground"
       >
         <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
-        Loading files.
+        {t(($) => $.editor.checkpoints.files.loading)}
       </div>
     );
   }
@@ -295,10 +321,10 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
     return (
       <div id={id} className="mt-2 rounded-md border bg-muted/20 px-3 py-2 text-xs">
         <p className="text-destructive" role="alert">
-          Couldn't load the files in this checkpoint.
+          {t(($) => $.editor.checkpoints.files.loadFailed)}
         </p>
         <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>
-          Try again
+          {t(($) => $.editor.checkpoints.files.tryAgain)}
         </Button>
       </div>
     );
@@ -307,13 +333,17 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
   if (state.files.length === 0) {
     return (
       <p id={id} className="mt-2 rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-        This checkpoint recorded no files.
+        {t(($) => $.editor.checkpoints.files.noneInCheckpoint)}
       </p>
     );
   }
 
   return (
-    <ul id={id} aria-label={`Files in ${label}`} className="mt-2 list-none rounded-md border bg-muted/20 p-0">
+    <ul
+      id={id}
+      aria-label={t(($) => $.editor.checkpoints.files.listLabel, { version: label })}
+      className="mt-2 list-none rounded-md border bg-muted/20 p-0"
+    >
       {state.files.map((file) => (
         <li
           key={file.path}
@@ -328,7 +358,7 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
               </span>
               {file.stored ? null : (
                 <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                  Not stored
+                  {t(($) => $.editor.checkpoints.files.notStored)}
                 </Badge>
               )}
             </div>
@@ -389,6 +419,7 @@ function TimelineEntry({
   onCancelLabel,
   onRemoveLabel,
 }: TimelineEntryProps) {
+  const { t } = useTranslation(["common", "editor"]);
   const root = checkpoint.snapshot_root;
   const label = checkpoint.label?.trim() ? checkpoint.label.trim() : null;
   const title = label ?? version;
@@ -417,12 +448,12 @@ function TimelineEntry({
               <>
                 <Input
                   autoFocus
-                  aria-label="Checkpoint label"
+                  aria-label={t(($) => $.editor.checkpoints.entry.labelInput)}
                   data-modal-escape-inner=""
                   maxLength={80}
                   value={labelDraft}
                   disabled={savingLabel}
-                  placeholder="Name this checkpoint"
+                  placeholder={t(($) => $.editor.checkpoints.entry.labelPlaceholder)}
                   className="h-7 w-48 text-sm"
                   onChange={(event) => onLabelDraftChange(event.target.value)}
                   onKeyDown={(event) => {
@@ -440,7 +471,7 @@ function TimelineEntry({
                   variant="ghost"
                   size="icon"
                   className="size-7"
-                  aria-label="Save label"
+                  aria-label={t(($) => $.editor.checkpoints.entry.saveLabel)}
                   disabled={savingLabel}
                   onClick={onSaveLabel}
                 >
@@ -450,7 +481,7 @@ function TimelineEntry({
                   variant="ghost"
                   size="icon"
                   className="size-7"
-                  aria-label="Cancel label editing"
+                  aria-label={t(($) => $.editor.checkpoints.entry.cancelLabel)}
                   disabled={savingLabel}
                   onClick={onCancelLabel}
                 >
@@ -467,10 +498,10 @@ function TimelineEntry({
                     {version}
                   </Badge>
                 ) : null}
-                <Tooltip label="Edit label" side="top">
+                <Tooltip label={t(($) => $.editor.checkpoints.entry.editLabel)} side="top">
                   <button
                     type="button"
-                    aria-label={`Edit label for ${version}`}
+                    aria-label={t(($) => $.editor.checkpoints.entry.editLabelFor, { version })}
                     disabled={busy}
                     onClick={onStartLabelEdit}
                     className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
@@ -479,10 +510,10 @@ function TimelineEntry({
                   </button>
                 </Tooltip>
                 {label ? (
-                  <Tooltip label="Remove label" side="top">
+                  <Tooltip label={t(($) => $.editor.checkpoints.entry.removeLabel)} side="top">
                     <button
                       type="button"
-                      aria-label={`Remove label ${label}`}
+                      aria-label={t(($) => $.editor.checkpoints.entry.removeLabelNamed, { label })}
                       disabled={busy}
                       onClick={onRemoveLabel}
                       className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
@@ -501,15 +532,23 @@ function TimelineEntry({
             )}
           </div>
           <div className="mt-0.5 truncate text-xs text-muted-foreground">
-            {checkpoint.engine ? checkpointEngineLabel(checkpoint.engine) : "Unknown engine"} ·{" "}
-            {checkpoint.main_document || "Main document not recorded"}
+            {t(($) => $.editor.checkpoints.engineAndDocument, {
+              engine: checkpoint.engine
+                ? checkpointEngineLabel(checkpoint.engine)
+                : t(($) => $.editor.checkpoints.unknownEngine),
+              document:
+                checkpoint.main_document ||
+                t(($) => $.editor.checkpoints.mainDocumentNotRecorded),
+            })}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span>{formatCompletedAt(checkpoint.completed_at_unix_ms)}</span>
             <span aria-hidden>·</span>
             <span>
-              {checkpoint.file_count.toLocaleString()}{" "}
-              {checkpoint.file_count === 1 ? "file" : "files"}
+              {t(($) => $.editor.checkpoints.fileCount, {
+                count: checkpoint.file_count,
+                formattedCount: formatNumber(checkpoint.file_count),
+              })}
             </span>
             <span aria-hidden>·</span>
             <span>{formatBytes(checkpoint.logical_bytes)}</span>
@@ -517,12 +556,18 @@ function TimelineEntry({
               <>
                 <span aria-hidden>·</span>
                 <Tooltip
-                  label={copied ? "Checkpoint id copied" : "Copy full checkpoint id"}
+                  label={
+                    copied
+                      ? t(($) => $.editor.checkpoints.entry.idCopied)
+                      : t(($) => $.editor.checkpoints.entry.copyId)
+                  }
                   side="top"
                 >
                   <button
                     type="button"
-                    aria-label={`Copy checkpoint id ${shortRoot(root)}`}
+                    aria-label={t(($) => $.editor.checkpoints.entry.copyIdFor, {
+                      id: shortRoot(root),
+                    })}
                     onClick={onCopyRoot}
                     className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-foreground/80 hover:border-primary/40 hover:bg-accent hover:text-foreground"
                   >
@@ -546,12 +591,12 @@ function TimelineEntry({
                 size="sm"
                 disabled={busy}
                 onClick={onRestore}
-                title={`Overwrite your current copies with the files in ${version}. Files added since are left in place.`}
+                title={t(($) => $.editor.checkpoints.entry.restoreTooltip, { version })}
               >
-                Restore files
+                {t(($) => $.editor.checkpoints.entry.restoreFiles)}
               </Button>
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => onConfirm(null)}>
-                Cancel
+                {t(($) => $.common.actions.cancel)}
               </Button>
             </>
           ) : deleting ? (
@@ -561,12 +606,12 @@ function TimelineEntry({
                 size="sm"
                 disabled={busy}
                 onClick={onDelete}
-                title={`Delete ${version} permanently`}
+                title={t(($) => $.editor.checkpoints.entry.deleteTooltip, { version })}
               >
-                Delete checkpoint
+                {t(($) => $.editor.checkpoints.entry.deleteCheckpoint)}
               </Button>
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => onConfirm(null)}>
-                Cancel
+                {t(($) => $.common.actions.cancel)}
               </Button>
             </>
           ) : (
@@ -574,18 +619,18 @@ function TimelineEntry({
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label={`Restore ${version}`}
+                aria-label={t(($) => $.editor.checkpoints.entry.restoreFor, { version })}
                 disabled={busy}
                 onClick={() => onConfirm({ kind: "restore", snapshotRoot: root })}
               >
                 <RotateCcw className="size-3.5" />
-                Restore
+                {t(($) => $.editor.checkpoints.entry.restore)}
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                aria-label={`Delete ${version}`}
+                aria-label={t(($) => $.editor.checkpoints.entry.deleteFor, { version })}
                 disabled={busy}
                 onClick={() => onConfirm({ kind: "delete", snapshotRoot: root })}
               >
@@ -606,7 +651,11 @@ function TimelineEntry({
         type="button"
         aria-expanded={expanded}
         aria-controls={expanded ? filesId : undefined}
-        aria-label={`${expanded ? "Hide" : "Show"} files for ${version}`}
+        aria-label={
+          expanded
+            ? t(($) => $.editor.checkpoints.files.hideFor, { version })
+            : t(($) => $.editor.checkpoints.files.showFor, { version })
+        }
         onClick={onToggleFiles}
         className="mt-1.5 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground"
       >
@@ -614,7 +663,9 @@ function TimelineEntry({
           aria-hidden
           className={cn("size-3 transition-transform", expanded && "rotate-90")}
         />
-        {expanded ? "Hide files" : "Show files"}
+        {expanded
+          ? t(($) => $.editor.checkpoints.files.hide)
+          : t(($) => $.editor.checkpoints.files.show)}
       </button>
 
       {expanded ? (
@@ -625,6 +676,7 @@ function TimelineEntry({
 }
 
 export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boolean) => void }) {
+  const { t } = useTranslation(["common", "editor"]);
   const open = useSettingsStore(
     (state) => state.versioningOpen && state.versioningTab === "checkpoints",
   );
@@ -636,11 +688,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
   const [checkpoints, setCheckpoints] = useState<CheckpointSummary[]>([]);
   const [stats, setStats] = useState<CheckpointStoreStats | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation>(null);
   const [password, setPassword] = useState("");
-  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordTooShort, setPasswordTooShort] = useState(false);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [fileStates, setFileStates] = useState<Record<string, FileState>>({});
   const [copiedRoot, setCopiedRoot] = useState<string | null>(null);
@@ -649,7 +701,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [inspection, setInspection] = useState<CheckpointStoreInspection | null>(null);
   const [inspectionLoading, setInspectionLoading] = useState(false);
-  const [inspectionError, setInspectionError] = useState<string | null>(null);
+  const [inspectionFailed, setInspectionFailed] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogExpanded, setCatalogExpanded] = useState<string[]>([]);
   const loadRequest = useRef(0);
@@ -698,11 +750,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
         setCheckpoints([]);
         setStats(null);
         setLoading(false);
-        setLoadError(null);
+        setLoadFailed(false);
         return;
       }
       if (showLoading) setLoading(true);
-      setLoadError(null);
+      setLoadFailed(false);
       try {
         const [nextCheckpoints, nextStats] = await Promise.all([
           checkpointList(targetProjectId),
@@ -714,7 +766,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       } catch (error) {
         if (request !== loadRequest.current || !isCurrentSession(targetProjectId, session)) return;
         void logError("load checkpoints", error);
-        setLoadError("Couldn't load checkpoints. Try again.");
+        setLoadFailed(true);
       } finally {
         if (request === loadRequest.current && isCurrentSession(targetProjectId, session)) {
           setLoading(false);
@@ -728,7 +780,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     (targetProjectId: string | null, session: number) => {
       const request = ++inspectRequest.current;
       setInspection(null);
-      setInspectionError(null);
+      setInspectionFailed(false);
       if (!targetProjectId) {
         setInspectionLoading(false);
         return;
@@ -743,7 +795,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
         })
         .catch(() => {
           if (!stillCurrent()) return;
-          setInspectionError("Couldn't read this project's checkpoint store.");
+          setInspectionFailed(true);
         })
         .finally(() => {
           if (stillCurrent()) setInspectionLoading(false);
@@ -791,7 +843,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     setBusyAction(null);
     setConfirmation(null);
     setPassword("");
-    setPasswordError(null);
+    setPasswordTooShort(false);
     setExpanded([]);
     setFileStates({});
     setCopiedRoot(null);
@@ -801,7 +853,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     setCatalogOpen(false);
     setCatalogExpanded([]);
     setInspection(null);
-    setInspectionError(null);
+    setInspectionFailed(false);
     setInspectionLoading(false);
     if (!open) {
       setLoading(false);
@@ -861,7 +913,8 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
   const storePath = visibleInspection?.store_path ?? null;
   const packBytes =
     visibleInspection?.packs.reduce((total, pack) => total + pack.bytes, 0) ?? 0;
-  const labelFor = (snapshotRoot: string) => versionLabels.get(snapshotRoot) ?? "Checkpoint";
+  const labelFor = (snapshotRoot: string) =>
+    versionLabels.get(snapshotRoot) ?? t(($) => $.editor.checkpoints.fallbackName);
 
   const ensureFiles = (snapshotRoot: string) => {
     if (!projectId) return;
@@ -904,7 +957,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
         setCopiedRoot((current) => (current === snapshotRoot ? null : current));
       }, 1500);
     } catch (error) {
-      notifyError("copy checkpoint id", error, "Couldn't copy that checkpoint id.");
+      notifyError("copy checkpoint id", error, t(($) => $.editor.checkpoints.toast.copyIdFailed));
     }
   };
 
@@ -937,7 +990,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       }
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError("save checkpoint label", error, "Couldn't save the checkpoint label.");
+      notifyError("save checkpoint label", error, t(($) => $.editor.checkpoints.toast.saveLabelFailed));
     } finally {
       if (isCurrentAction(action)) setBusyAction(null);
     }
@@ -960,15 +1013,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       if (!isCurrentAction(action)) return;
       await useFilesStore.getState().applyProjectStateChanged(event);
       if (!isCurrentAction(action)) return;
-      toast.success("Checkpoint restored.");
+      toast.success(t(($) => $.editor.checkpoints.toast.restored));
       closeVersioning();
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError(
-        "restore checkpoint",
-        error,
-        "Couldn't restore this checkpoint. See the app log for details.",
-      );
+      notifyError("restore checkpoint", error, t(($) => $.editor.checkpoints.toast.restoreFailed));
     } finally {
       if (isCurrentAction(action)) {
         setBusyAction(null);
@@ -988,11 +1037,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       setConfirmation(null);
       await refresh(action.projectId, false, action.session);
       if (!isCurrentAction(action)) return;
-      toast.success("Checkpoint deleted.");
+      toast.success(t(($) => $.editor.checkpoints.toast.deleted));
       if (advancedOpen) loadInspection(action.projectId, action.session);
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError("delete checkpoint", error, "Couldn't delete this checkpoint.");
+      notifyError("delete checkpoint", error, t(($) => $.editor.checkpoints.toast.deleteFailed));
     } finally {
       if (isCurrentAction(action)) setBusyAction(null);
     }
@@ -1009,11 +1058,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       setConfirmation(null);
       await refresh(action.projectId, false, action.session);
       if (!isCurrentAction(action)) return;
-      toast.success("Older checkpoints deleted.");
+      toast.success(t(($) => $.editor.checkpoints.toast.olderDeleted));
       if (advancedOpen) loadInspection(action.projectId, action.session);
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError("keep latest checkpoint", error, "Couldn't delete older checkpoints.");
+      notifyError("keep latest checkpoint", error, t(($) => $.editor.checkpoints.toast.keepLatestFailed));
     } finally {
       if (isCurrentAction(action)) setBusyAction(null);
     }
@@ -1030,11 +1079,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       setConfirmation(null);
       await refresh(action.projectId, false, action.session);
       if (!isCurrentAction(action)) return;
-      toast.success("All checkpoints deleted.");
+      toast.success(t(($) => $.editor.checkpoints.toast.allDeleted));
       if (advancedOpen) loadInspection(action.projectId, action.session);
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError("reset checkpoints", error, "Couldn't reset checkpoints.");
+      notifyError("reset checkpoints", error, t(($) => $.editor.checkpoints.toast.resetFailed));
     } finally {
       if (isCurrentAction(action)) setBusyAction(null);
     }
@@ -1042,7 +1091,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
 
   const archivePasswordIsValid = () => {
     if (Array.from(password).length >= 8) return true;
-    setPasswordError("Password needs at least 8 characters.");
+    setPasswordTooShort(true);
     return false;
   };
 
@@ -1053,7 +1102,12 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     const archivePassword = password;
     const dest = await pickSavePath({
       defaultPath: `${safeArchiveName(projectName || "project")}-checkpoints.oleafly-checkpoints`,
-      filters: [{ name: "Oleafly checkpoint archive", extensions: ["oleafly-checkpoints"] }],
+      filters: [
+        {
+          name: t(($) => $.editor.checkpoints.archive.fileType),
+          extensions: ["oleafly-checkpoints"],
+        },
+      ],
     });
     if (!dest || !isCurrentAction(action)) return;
     setBusyAction("export");
@@ -1061,11 +1115,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       await checkpointExport(action.projectId, dest, archivePassword);
       if (!isCurrentAction(action)) return;
       setPassword("");
-      setPasswordError(null);
-      toast.success("Checkpoint archive exported.");
+      setPasswordTooShort(false);
+      toast.success(t(($) => $.editor.checkpoints.toast.exported));
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError("export checkpoints", error, "Couldn't export the checkpoint archive.");
+      notifyError("export checkpoints", error, t(($) => $.editor.checkpoints.toast.exportFailed));
     } finally {
       if (isCurrentAction(action)) setBusyAction(null);
     }
@@ -1079,7 +1133,12 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     const source = await pickOpenPath({
       multiple: false,
       directory: false,
-      filters: [{ name: "Oleafly checkpoint archive", extensions: ["oleafly-checkpoints"] }],
+      filters: [
+        {
+          name: t(($) => $.editor.checkpoints.archive.fileType),
+          extensions: ["oleafly-checkpoints"],
+        },
+      ],
     });
     if (typeof source !== "string" || !isCurrentAction(action)) return;
     setBusyAction("import");
@@ -1087,14 +1146,14 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       await checkpointImport(action.projectId, source, archivePassword);
       if (!isCurrentAction(action)) return;
       setPassword("");
-      setPasswordError(null);
+      setPasswordTooShort(false);
       await refresh(action.projectId, false, action.session);
       if (!isCurrentAction(action)) return;
-      toast.success("Checkpoint archive imported.");
+      toast.success(t(($) => $.editor.checkpoints.toast.imported));
       if (advancedOpen) loadInspection(action.projectId, action.session);
     } catch (error) {
       if (!isCurrentAction(action)) return;
-      notifyError("import checkpoints", error, "Couldn't import the checkpoint archive.");
+      notifyError("import checkpoints", error, t(($) => $.editor.checkpoints.toast.importFailed));
     } finally {
       if (isCurrentAction(action)) setBusyAction(null);
     }
@@ -1106,10 +1165,10 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 pb-3">
         <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-          One version per successful compile that changed the source.
+          {t(($) => $.editor.checkpoints.panel.summary)}
         </p>
         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-          Source only
+          {t(($) => $.editor.checkpoints.panel.sourceOnly)}
         </span>
       </div>
 
@@ -1117,7 +1176,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
         {!projectId ? (
           <div className="flex min-h-44 flex-col items-center justify-center text-center">
             <ArchiveRestore className="size-7 text-muted-foreground" />
-            <p className="mt-3 text-sm font-medium">Open a project to view its checkpoints.</p>
+            <p className="mt-3 text-sm font-medium">{t(($) => $.editor.checkpoints.panel.noProject)}</p>
           </div>
         ) : visibleLoading ? (
           <div
@@ -1125,36 +1184,35 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
             role="status"
           >
             <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-            Loading checkpoints.
+            {t(($) => $.editor.checkpoints.panel.loading)}
           </div>
-        ) : loadError ? (
+        ) : loadFailed ? (
           <div
             className="flex min-h-44 flex-col items-center justify-center text-center"
             role="alert"
           >
-            <p className="text-sm text-destructive">{loadError}</p>
+            <p className="text-sm text-destructive">{t(($) => $.editor.checkpoints.panel.loadFailed)}</p>
             <Button
               variant="outline"
               size="sm"
               className="mt-3"
               onClick={() => void refresh(projectId, true, sessionRequest.current)}
             >
-              Try again
+              {t(($) => $.editor.checkpoints.panel.tryAgain)}
             </Button>
           </div>
         ) : visibleCheckpoints.length === 0 && !publishing ? (
           <div className="flex min-h-44 flex-col items-center justify-center text-center">
             <ShieldCheck className="size-7 text-muted-foreground" />
-            <p className="mt-3 text-sm font-medium">No checkpoints yet</p>
+            <p className="mt-3 text-sm font-medium">{t(($) => $.editor.checkpoints.panel.empty)}</p>
             <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-              A checkpoint appears after a successful compile, when the project has changed
-              since the last one.
+              {t(($) => $.editor.checkpoints.panel.emptyHint)}
             </p>
           </div>
         ) : (
           <ol
             data-testid="checkpoint-timeline"
-            aria-label="Project checkpoints"
+            aria-label={t(($) => $.editor.checkpoints.panel.timeline)}
             className="relative list-none p-0"
           >
             {railVisible ? (
@@ -1178,7 +1236,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                     className="size-3.5 animate-spin motion-reduce:animate-none"
                     aria-hidden
                   />
-                  Saving a checkpoint from the latest compile.
+                  {t(($) => $.editor.checkpoints.panel.publishing)}
                 </span>
               </li>
             ) : null}
@@ -1232,33 +1290,37 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
               aria-hidden
               className={cn("size-3 transition-transform", advancedOpen && "rotate-90")}
             />
-            Advanced
+            {t(($) => $.editor.checkpoints.panel.advanced)}
           </button>
 
           {advancedOpen ? (
             <div id="checkpoints-advanced-panel" className="mt-3 space-y-3">
               <AdvancedCard
-                title="Overview"
-                description="What this project's checkpoint store holds right now."
+                id="overview"
+                title={t(($) => $.editor.checkpoints.overview.title)}
+                description={t(($) => $.editor.checkpoints.overview.description)}
               >
                 {visibleStats ? (
                   <StoreSummary stats={visibleStats} />
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     {!projectId
-                      ? "Open a project to see its checkpoint totals."
-                      : (loadError ?? "Checkpoint totals are loading.")}
+                      ? t(($) => $.editor.checkpoints.overview.noProject)
+                      : loadFailed
+                        ? t(($) => $.editor.checkpoints.panel.loadFailed)
+                        : t(($) => $.editor.checkpoints.overview.loading)}
                   </p>
                 )}
               </AdvancedCard>
 
               <AdvancedCard
-                title="Storage"
-                description="Checkpoints live outside the project folder and outside version control."
+                id="storage"
+                title={t(($) => $.editor.checkpoints.storage.title)}
+                description={t(($) => $.editor.checkpoints.storage.description)}
               >
                 {!projectId ? (
                   <p className="text-xs text-muted-foreground">
-                    Open a project to see where its checkpoints are stored.
+                    {t(($) => $.editor.checkpoints.storage.noProject)}
                   </p>
                 ) : inspectionLoading ? (
                   <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
@@ -1266,12 +1328,12 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                       className="size-3.5 animate-spin motion-reduce:animate-none"
                       aria-hidden
                     />
-                    Reading the checkpoint store.
+                    {t(($) => $.editor.checkpoints.storage.reading)}
                   </p>
-                ) : inspectionError ? (
+                ) : inspectionFailed ? (
                   <div>
                     <p className="text-xs text-destructive" role="alert">
-                      {inspectionError}
+                      {t(($) => $.editor.checkpoints.storage.readFailed)}
                     </p>
                     <Button
                       type="button"
@@ -1280,13 +1342,12 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                       className="mt-2"
                       onClick={() => loadInspection(projectId, sessionRequest.current)}
                     >
-                      Try again
+                      {t(($) => $.editor.checkpoints.storage.tryAgain)}
                     </Button>
                   </div>
                 ) : !storePath ? (
                   <p className="text-xs text-muted-foreground">
-                    This project has no checkpoint store yet. One is created with its first
-                    checkpoint.
+                    {t(($) => $.editor.checkpoints.storage.noStore)}
                   </p>
                 ) : (
                   <>
@@ -1301,24 +1362,30 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                         onClick={() => void checkpointRevealStore(projectId)}
                       >
                         <FolderOpen className="size-3.5" aria-hidden />
-                        {REVEAL_LABEL}
+                        {revealLabel()}
                       </Button>
                     </div>
                     <dl className="grid grid-cols-3 gap-x-4 gap-y-1">
                       <div className="min-w-0">
-                        <dt className="text-[11px] text-muted-foreground">Catalog size</dt>
+                        <dt className="text-[11px] text-muted-foreground">
+                          {t(($) => $.editor.checkpoints.storage.catalogSize)}
+                        </dt>
                         <dd className="truncate text-sm font-medium tabular-nums">
                           {formatBytes(visibleInspection?.catalog_bytes ?? 0)}
                         </dd>
                       </div>
                       <div className="min-w-0">
-                        <dt className="text-[11px] text-muted-foreground">Packs</dt>
+                        <dt className="text-[11px] text-muted-foreground">
+                          {t(($) => $.editor.checkpoints.storage.packs)}
+                        </dt>
                         <dd className="truncate text-sm font-medium tabular-nums">
-                          {(visibleInspection?.table_counts.packs ?? 0).toLocaleString()}
+                          {formatNumber(visibleInspection?.table_counts.packs ?? 0)}
                         </dd>
                       </div>
                       <div className="min-w-0">
-                        <dt className="text-[11px] text-muted-foreground">Pack size</dt>
+                        <dt className="text-[11px] text-muted-foreground">
+                          {t(($) => $.editor.checkpoints.storage.packSize)}
+                        </dt>
                         <dd className="truncate text-sm font-medium tabular-nums">
                           {formatBytes(packBytes)}
                         </dd>
@@ -1340,7 +1407,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                       aria-hidden
                       className={cn("size-3 transition-transform", catalogOpen && "rotate-90")}
                     />
-                    Inspect catalog
+                    {t(($) => $.editor.checkpoints.catalog.inspect)}
                   </button>
 
                   {catalogOpen && visibleInspection ? (
@@ -1348,10 +1415,12 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                       <CatalogFacts inspection={visibleInspection} />
                       <PackTable inspection={visibleInspection} />
                       <div>
-                        <h4 className="text-xs font-medium">Checkpoints</h4>
+                        <h4 className="text-xs font-medium">
+                          {t(($) => $.editor.checkpoints.catalog.checkpoints)}
+                        </h4>
                         {visibleCheckpoints.length === 0 ? (
                           <p className="mt-1 text-[11px] text-muted-foreground">
-                            No checkpoints yet.
+                            {t(($) => $.editor.checkpoints.catalog.noCheckpoints)}
                           </p>
                         ) : (
                           <ul className="mt-1 list-none space-y-1 p-0">
@@ -1363,7 +1432,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                                   <button
                                     type="button"
                                     aria-expanded={isOpen}
-                                    aria-label={`${isOpen ? "Hide" : "Show"} catalog files for ${version}`}
+                                    aria-label={
+                                      isOpen
+                                        ? t(($) => $.editor.checkpoints.catalog.hideFilesFor, { version })
+                                        : t(($) => $.editor.checkpoints.catalog.showFilesFor, { version })
+                                    }
                                     onClick={() => toggleCatalogFiles(checkpoint.snapshot_root)}
                                     className="flex w-full items-center gap-1.5 rounded-md py-0.5 text-left text-[11px] hover:text-foreground"
                                   >
@@ -1398,8 +1471,9 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
               </AdvancedCard>
 
               <AdvancedCard
-                title="Archive"
-                description="Export or import an encrypted copy of this project's checkpoints."
+                id="archive"
+                title={t(($) => $.editor.checkpoints.archive.title)}
+                description={t(($) => $.editor.checkpoints.archive.description)}
               >
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
@@ -1407,7 +1481,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                       htmlFor="checkpoint-archive-password"
                       className="text-[11px] font-medium text-muted-foreground"
                     >
-                      Archive password
+                      {t(($) => $.editor.checkpoints.archive.password)}
                     </label>
                     <Input
                       id="checkpoint-archive-password"
@@ -1416,12 +1490,12 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                       minLength={8}
                       value={password}
                       disabled={busy || !projectId}
-                      aria-invalid={Boolean(passwordError)}
+                      aria-invalid={passwordTooShort}
                       aria-describedby="checkpoint-password-help"
                       onChange={(event) => {
                         const next = event.target.value;
                         setPassword(next);
-                        if (Array.from(next).length >= 8) setPasswordError(null);
+                        if (Array.from(next).length >= 8) setPasswordTooShort(false);
                       }}
                       className="mt-1 h-8 w-40"
                     />
@@ -1437,7 +1511,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                     ) : (
                       <Download className="size-3.5" />
                     )}
-                    Export
+                    {t(($) => $.editor.checkpoints.archive.export)}
                   </Button>
                   <Button
                     variant="outline"
@@ -1450,28 +1524,31 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                     ) : (
                       <FileUp className="size-3.5" />
                     )}
-                    Import
+                    {t(($) => $.editor.checkpoints.archive.import)}
                   </Button>
                 </div>
                 <p
                   id="checkpoint-password-help"
                   className={cn(
                     "text-[11px]",
-                    passwordError ? "text-destructive" : "text-muted-foreground",
+                    passwordTooShort ? "text-destructive" : "text-muted-foreground",
                   )}
-                  role={passwordError ? "alert" : undefined}
+                  role={passwordTooShort ? "alert" : undefined}
                 >
-                  {passwordError || "Use at least 8 characters. Oleafly does not save this password."}
+                  {passwordTooShort
+                    ? t(($) => $.editor.checkpoints.archive.passwordTooShort)
+                    : t(($) => $.editor.checkpoints.archive.passwordHelp)}
                 </p>
               </AdvancedCard>
 
               <AdvancedCard
-                title="Maintenance"
-                description="Delete checkpoints this project no longer needs."
+                id="maintenance"
+                title={t(($) => $.editor.checkpoints.maintenance.title)}
+                description={t(($) => $.editor.checkpoints.maintenance.description)}
               >
                 {confirmation?.kind === "keep-latest" ? (
                   <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs" role="status">
-                    <p>Delete every checkpoint except the latest one? This cannot be undone.</p>
+                    <p>{t(($) => $.editor.checkpoints.maintenance.keepLatestPrompt)}</p>
                     <div className="mt-2 flex gap-2">
                       <Button
                         autoFocus
@@ -1480,7 +1557,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                         disabled={busy}
                         onClick={() => void keepLatest()}
                       >
-                        Delete older checkpoints
+                        {t(($) => $.editor.checkpoints.maintenance.deleteOlder)}
                       </Button>
                       <Button
                         variant="ghost"
@@ -1488,7 +1565,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                         disabled={busy}
                         onClick={() => setConfirmation(null)}
                       >
-                        Keep all checkpoints
+                        {t(($) => $.editor.checkpoints.maintenance.keepAll)}
                       </Button>
                     </div>
                   </div>
@@ -1496,10 +1573,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
 
                 {confirmation?.kind === "reset" ? (
                   <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs" role="status">
-                    <p>
-                      Delete all checkpoints for this project? Current project files stay unchanged.
-                      This cannot be undone.
-                    </p>
+                    <p>{t(($) => $.editor.checkpoints.maintenance.resetPrompt)}</p>
                     <div className="mt-2 flex gap-2">
                       <Button
                         autoFocus
@@ -1508,7 +1582,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                         disabled={busy}
                         onClick={() => void reset()}
                       >
-                        Delete all checkpoints
+                        {t(($) => $.editor.checkpoints.maintenance.deleteAll)}
                       </Button>
                       <Button
                         variant="ghost"
@@ -1516,7 +1590,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                         disabled={busy}
                         onClick={() => setConfirmation(null)}
                       >
-                        Keep checkpoints
+                        {t(($) => $.editor.checkpoints.maintenance.keepCheckpoints)}
                       </Button>
                     </div>
                   </div>
@@ -1529,7 +1603,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                     disabled={busy || !projectId || checkpointCount <= 1}
                     onClick={() => setConfirmation({ kind: "keep-latest" })}
                   >
-                    Keep latest
+                    {t(($) => $.editor.checkpoints.maintenance.keepLatest)}
                   </Button>
                   <Button
                     variant="ghost"
@@ -1538,7 +1612,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                     disabled={busy || !projectId || checkpointCount === 0}
                     onClick={() => setConfirmation({ kind: "reset" })}
                   >
-                    Reset
+                    {t(($) => $.editor.checkpoints.maintenance.reset)}
                   </Button>
                 </div>
               </AdvancedCard>

@@ -41,6 +41,7 @@ import {
 import { safePdfExternalUrl } from "./pdfSecurity";
 import { createPdfScreenReaderLayer } from "./pdfScreenReader";
 import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
+import { keyEchoTranslator, type PreviewTranslator } from "./messages";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -70,12 +71,8 @@ function normalizeRotation(value: number): 0 | 90 | 180 | 270 {
 class PdfPasswordRequiredError extends Error {
   readonly incorrect: boolean;
 
-  constructor(incorrect: boolean) {
-    super(
-      incorrect
-        ? "The PDF password was not accepted."
-        : "This PDF is password protected.",
-    );
+  constructor(incorrect: boolean, t: PreviewTranslator) {
+    super(t(incorrect ? "error.passwordIncorrect" : "error.passwordRequired"));
     this.name = "PdfPasswordRequiredError";
     this.incorrect = incorrect;
   }
@@ -83,6 +80,7 @@ class PdfPasswordRequiredError extends Error {
 
 function pdfLoadFailure(
   error: unknown,
+  t: PreviewTranslator,
 ): {
   status: Extract<
     PdfLoadStatus,
@@ -112,8 +110,7 @@ function pdfLoadFailure(
   ) {
     return {
       status: "invalid",
-      message:
-        "The compiled output is not a valid PDF. Recompile or inspect the compile log.",
+      message: t("error.invalid"),
     };
   }
   if (
@@ -123,14 +120,12 @@ function pdfLoadFailure(
   ) {
     return {
       status: "unavailable",
-      message:
-        "The PDF renderer is unavailable in this window. Retry after restoring the window or restarting the app.",
+      message: t("error.unavailable"),
     };
   }
   return {
     status: "error",
-    message:
-      "The PDF could not be loaded. Recompile the current revision and try again.",
+    message: t("error.generic"),
   };
 }
 
@@ -823,6 +818,7 @@ export interface PdfViewerProps {
   // projects) doesn't force the session onto the main-thread worker.
   expectText?: boolean;
   screenReaderMode?: boolean;
+  t?: PreviewTranslator;
 }
 
 export interface PdfViewerHandle {
@@ -859,10 +855,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     rotation = 0,
     expectText = true,
     screenReaderMode = false,
+    t = keyEchoTranslator,
   },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const tRef = useRef(t);
+  tRef.current = t;
   const onInverseRef = useRef(onInverse);
   onInverseRef.current = onInverse;
   const onPageChangeRef = useRef(onPageChange);
@@ -1125,6 +1124,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         pageNumber: pageNo,
         totalPages: doc.numPages,
         textContent,
+        t: tRef.current,
       });
       wrap.appendChild(fallbackLayer);
       state.screenReaderLayer = fallbackLayer;
@@ -1145,6 +1145,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           totalPages: doc.numPages,
           textContent,
           structureTree,
+          t: tRef.current,
         });
         fallbackLayer.replaceWith(structuredLayer);
         state.screenReaderLayer = structuredLayer;
@@ -1357,6 +1358,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           textDiv,
           pageNo,
           pdfjsLib.normalizeUnicode,
+          tRef.current,
         );
         state.renderedTextLayer = {
           div: textDiv,
@@ -1449,10 +1451,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           if (!safeUrl) {
             a.removeAttribute("href");
             a.setAttribute("aria-disabled", "true");
-            a.setAttribute(
-              "title",
-              "This PDF link uses a blocked URL scheme.",
-            );
+            a.setAttribute("title", tRef.current("link.blockedScheme"));
             return;
           }
           a.href = safeUrl;
@@ -1470,13 +1469,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         const container = containerRef.current;
         if (container && isCurrent() && renderedRef.current.size === 1) {
           container.dataset.pdfRenderError = String(err);
-          container.textContent =
-            "The PDF opened, but its first page could not be rendered.";
+          container.textContent = tRef.current("error.firstPage");
           onLoadStateChangeRef.current?.({
             status: "error",
             documentIdentity: documentIdentityRef.current,
-            message:
-              "The PDF opened, but its first page could not be rendered.",
+            message: tRef.current("error.firstPage"),
           });
         }
       }
@@ -1798,7 +1795,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             scannedPages: 0,
             totalPages: document.numPages,
           },
-          "Search could not read every page. Retry after reloading the PDF.",
+          tRef.current("search.failed"),
         );
       }
     },
@@ -1824,6 +1821,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       try {
         const normalized = normalizePdfOutline(
           await document.getOutline(),
+          tRef.current,
         );
         if (
           sequence !== outlineSequenceRef.current ||
@@ -1839,7 +1837,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           items: normalized.items,
           ...(normalized.items.length
             ? {}
-            : { message: "This PDF does not contain a document outline." }),
+            : { message: tRef.current("outline.empty") }),
         });
       } catch {
         if (
@@ -1854,7 +1852,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         onOutlineStateChangeRef.current?.({
           status: "error",
           items: [],
-          message: "The PDF outline could not be loaded.",
+          message: tRef.current("outline.failed"),
         });
       }
     },
@@ -1875,7 +1873,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           onOutlineStateChangeRef.current?.({
             status: "error",
             items: outlineItemsRef.current,
-            message: "That outline destination is unavailable.",
+            message: tRef.current("outline.destinationUnavailable"),
           });
         });
     }
@@ -2018,7 +2016,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         wrap.setAttribute("role", "group");
         wrap.setAttribute(
           "aria-label",
-          `PDF page ${p} of ${doc.numPages}`,
+          tRef.current("a11y.page", { page: p, total: doc.numPages }),
         );
         const viewport =
           p === 1
@@ -2133,7 +2131,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       onLoadStateChangeRef.current?.({
         status: "empty",
         documentIdentity: identityAtStart,
-        message: "The compiled PDF is empty.",
+        message: tRef.current("error.empty"),
       });
       return;
     }
@@ -2143,7 +2141,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     onLoadStateChangeRef.current?.({
       status: "loading",
       documentIdentity: identityAtStart,
-      message: "Loading PDF…",
+      message: tRef.current("status.loading"),
     });
 
     const loadSequence = ++loadSeqRef.current;
@@ -2193,6 +2191,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         ) => {
           passwordFailure = new PdfPasswordRequiredError(
             reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD,
+            tRef.current,
           );
           void nextTask.destroy().catch(() => {});
         };
@@ -2218,7 +2217,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           onLoadStateChangeRef.current?.({
             status: "loading",
             documentIdentity: identityAtStart,
-            message: "Loading PDF…",
+            message: tRef.current("status.loading"),
             ...(progress === undefined ? {} : { progress }),
           });
         };
@@ -2285,7 +2284,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             if (cancelled) return;
             textContentRef.current.clear();
             destroyLoadingTask();
-            const failure = pdfLoadFailure(e);
+            const failure = pdfLoadFailure(e, tRef.current);
             if (
               failure.status === "password_required" ||
               failure.status === "invalid"
@@ -2359,7 +2358,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           loadSequence === loadSeqRef.current &&
           documentIdentityRef.current === identityAtStart
         ) {
-          const failure = pdfLoadFailure(e);
+          const failure = pdfLoadFailure(e, tRef.current);
           container.dataset.pdfState = failure.status;
           container.dataset.pdfError = String(e);
           const error = document.createElement("div");
@@ -2622,7 +2621,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       ref={containerRef}
       data-testid="pdf-renderer"
       role="document"
-      aria-label="PDF document preview"
+      aria-label={t("a11y.document")}
       className={
         layout === "double"
           ? // Centered via `w-max mx-auto` (a shrink-to-fit block centered by

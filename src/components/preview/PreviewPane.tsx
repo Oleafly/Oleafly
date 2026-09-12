@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   AlertTriangle,
@@ -105,6 +106,12 @@ import type {
   LanguageServiceReadiness,
   ProjectAnalysisStatus,
 } from "@/lib/analysis/project-snapshot";
+import {
+  analysisReasonText,
+  type AnalysisReason,
+  type AnalysisReasonKey,
+} from "@/lib/analysis/reason";
+import { i18n } from "@/i18n";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, shortcut } from "@/lib/utils";
 import {
@@ -125,11 +132,19 @@ const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2, 4];
 
 const PAGE_LAYOUTS: readonly {
   value: PdfLayout;
-  label: string;
+  label: () => string;
   icon: typeof RectangleVertical;
 }[] = [
-  { value: "single", label: "Single page view", icon: RectangleVertical },
-  { value: "double", label: "Two-page view", icon: Columns2 },
+  {
+    value: "single",
+    label: () => i18n.t(($) => $.preview.pageLayout.single),
+    icon: RectangleVertical,
+  },
+  {
+    value: "double",
+    label: () => i18n.t(($) => $.preview.pageLayout.double),
+    icon: Columns2,
+  },
 ];
 
 interface PreviewDocument {
@@ -179,6 +194,7 @@ interface DocumentStartupState {
   languageReason: string;
   analysisStatus: ProjectAnalysisStatus;
   analysisReason: string;
+  analysisReasonKey: AnalysisReasonKey | null;
   compileStatus: CompileStatus;
   compilePhase: CompilePhase;
   compileCurrent: boolean;
@@ -190,22 +206,25 @@ interface DocumentStartupState {
   retainedLoadFailure: string | null;
 }
 
+const ANALYSIS_IN_PROGRESS_REASON_KEYS: ReadonlySet<AnalysisReasonKey> =
+  new Set(["indexRebuilding"]);
+
 function languageServiceStartupStage(
   state: DocumentStartupState,
 ): DocumentStartupStage {
   if (!state.projectActive) {
     return {
       id: "language-service",
-      label: "Language service",
-      detail: "No active project",
+      label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+      detail: i18n.t(($) => $.preview.startup.noProject),
       status: "skipped",
     };
   }
   if (state.projectLoading) {
     return {
       id: "language-service",
-      label: "Language service",
-      detail: "Opening project files",
+      label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+      detail: i18n.t(($) => $.preview.startup.language.openingFiles),
       status: "running",
     };
   }
@@ -214,70 +233,70 @@ function languageServiceStartupStage(
     case "starting":
       return {
         id: "language-service",
-        label: "Language service",
-        detail: state.languageReason || "Starting language service",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+        detail: state.languageReason || i18n.t(($) => $.preview.startup.language.starting),
         status: "running",
       };
     case "restarting":
       return {
         id: "language-service",
-        label: "Language service",
-        detail: state.languageReason || "Restarting language service",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+        detail: state.languageReason || i18n.t(($) => $.preview.startup.language.restarting),
         status: "running",
       };
     case "installing":
       return {
         id: "language-service",
-        label: "Language service",
-        detail: state.languageReason || "Installing language service",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+        detail: state.languageReason || i18n.t(($) => $.preview.startup.language.installing),
         status: "running",
       };
     case "syncing":
       return {
         id: "language-service",
-        label: "Language service",
-        detail: "Started and connected",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+        detail: i18n.t(($) => $.preview.startup.language.connected),
         status: "complete",
       };
     case "ready":
       return {
         id: "language-service",
-        label: "Language service",
-        detail: "Ready",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+        detail: i18n.t(($) => $.preview.startup.language.ready),
         status: "complete",
       };
     case "local_only":
       return {
         id: "language-service",
-        label: "Language service",
-        detail: "Not required. Using local analysis.",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+        detail: i18n.t(($) => $.preview.startup.language.localOnly),
         status: "skipped",
       };
     case "unsupported":
     case "stopped":
       return {
         id: "language-service",
-        label: "Language service",
-        detail: state.languageReason || "Not applicable for this project",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
+        detail: state.languageReason || i18n.t(($) => $.preview.startup.language.notApplicable),
         status: "skipped",
       };
     case "setup_required":
     case "unavailable":
       return {
         id: "language-service",
-        label: "Language service",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
         detail:
           state.languageReason ||
-          "Unavailable. Local analysis remains available.",
+          i18n.t(($) => $.preview.startup.language.unavailable),
         status: "skipped",
       };
     case "not_run":
       return {
         id: "language-service",
-        label: "Language service",
+        label: i18n.t(($) => $.preview.startup.language.serviceLabel),
         detail: state.engineLoaded
-          ? state.languageReason || "Waiting to start"
-          : "Waiting for document engine",
+          ? state.languageReason || i18n.t(($) => $.preview.startup.language.waitingToStart)
+          : i18n.t(($) => $.preview.startup.waitingForEngine),
         status: state.engineLoaded ? "pending" : "running",
       };
   }
@@ -289,16 +308,16 @@ function languageAnalysisStartupStage(
   if (!state.projectActive) {
     return {
       id: "analysis",
-      label: "Language analysis",
-      detail: "No active project",
+      label: i18n.t(($) => $.preview.startup.language.analysisLabel),
+      detail: i18n.t(($) => $.preview.startup.noProject),
       status: "skipped",
     };
   }
   if (state.projectLoading) {
     return {
       id: "analysis",
-      label: "Language analysis",
-      detail: "Waiting for project files",
+      label: i18n.t(($) => $.preview.startup.language.analysisLabel),
+      detail: i18n.t(($) => $.preview.startup.language.waitingForFiles),
       status: "pending",
     };
   }
@@ -306,16 +325,17 @@ function languageAnalysisStartupStage(
     state.languageReadiness === "syncing" ||
     state.analysisStatus === "running" ||
     (state.analysisStatus === "partial" &&
-      /rebuild|building|running|sync/iu.test(state.analysisReason))
+      state.analysisReasonKey !== null &&
+      ANALYSIS_IN_PROGRESS_REASON_KEYS.has(state.analysisReasonKey))
   ) {
     return {
       id: "analysis",
-      label: "Language analysis",
+      label: i18n.t(($) => $.preview.startup.language.analysisLabel),
       detail:
         state.analysisReason ||
         (state.languageReadiness === "syncing"
-          ? "Synchronizing current project files"
-          : "Analyzing project structure"),
+          ? i18n.t(($) => $.preview.startup.language.syncing)
+          : i18n.t(($) => $.preview.startup.language.analyzing)),
       status: "running",
     };
   }
@@ -324,30 +344,30 @@ function languageAnalysisStartupStage(
     case "success":
       return {
         id: "analysis",
-        label: "Language analysis",
-        detail: "Current project revision analyzed",
+        label: i18n.t(($) => $.preview.startup.language.analysisLabel),
+        detail: i18n.t(($) => $.preview.startup.language.analyzed),
         status: "complete",
       };
     case "partial":
       return {
         id: "analysis",
-        label: "Language analysis",
-        detail: state.analysisReason || "Usable partial analysis is ready",
+        label: i18n.t(($) => $.preview.startup.language.analysisLabel),
+        detail: state.analysisReason || i18n.t(($) => $.preview.startup.language.partial),
         status: "complete",
       };
     case "error":
       return {
         id: "analysis",
-        label: "Language analysis",
-        detail: state.analysisReason || "Analysis needs attention",
+        label: i18n.t(($) => $.preview.startup.language.analysisLabel),
+        detail: state.analysisReason || i18n.t(($) => $.preview.startup.language.needsAttention),
         status: "error",
       };
     case "unsupported":
     case "unavailable":
       return {
         id: "analysis",
-        label: "Language analysis",
-        detail: state.analysisReason || "Not available for this project",
+        label: i18n.t(($) => $.preview.startup.language.analysisLabel),
+        detail: state.analysisReason || i18n.t(($) => $.preview.startup.language.notAvailable),
         status: "skipped",
       };
     case "not_run":
@@ -359,15 +379,15 @@ function languageAnalysisStartupStage(
       ) {
         return {
           id: "analysis",
-          label: "Language analysis",
-          detail: state.analysisReason || "Not available for this project",
+          label: i18n.t(($) => $.preview.startup.language.analysisLabel),
+          detail: state.analysisReason || i18n.t(($) => $.preview.startup.language.notAvailable),
           status: "skipped",
         };
       }
       return {
         id: "analysis",
-        label: "Language analysis",
-        detail: state.analysisReason || "Queued for the current revision",
+        label: i18n.t(($) => $.preview.startup.language.analysisLabel),
+        detail: state.analysisReason || i18n.t(($) => $.preview.startup.language.queued),
         status: "pending",
       };
   }
@@ -379,21 +399,21 @@ function compileStartupStage(
   if (!state.projectActive) {
     return {
       id: "compile",
-      label: "Compiling",
-      detail: "No active project",
+      label: i18n.t(($) => $.preview.startup.compile.label),
+      detail: i18n.t(($) => $.preview.startup.noProject),
       status: "skipped",
     };
   }
   if (state.compileStatus === "compiling") {
     const detail =
       state.compilePhase === "saving"
-        ? "Saving current changes"
+        ? i18n.t(($) => $.preview.startup.compile.saving)
         : state.compilePhase === "downloading"
-          ? "Downloading required LaTeX packages"
-          : "Producing and verifying PDF output";
+          ? i18n.t(($) => $.preview.startup.compile.downloading)
+          : i18n.t(($) => $.preview.startup.compile.producing);
     return {
       id: "compile",
-      label: "Compiling",
+      label: i18n.t(($) => $.preview.startup.compile.label),
       detail,
       status: "running",
     };
@@ -404,29 +424,29 @@ function compileStartupStage(
   ) {
     return {
       id: "compile",
-      label: "Compiling",
+      label: i18n.t(($) => $.preview.startup.compile.label),
       detail:
         state.compileFailureReason ||
         (state.compileStatus === "unavailable"
-          ? "Compiler unavailable"
-          : "Compile failed. Open Logs for details."),
+          ? i18n.t(($) => $.preview.startup.compile.unavailable)
+          : i18n.t(($) => $.preview.startup.compile.failed)),
       status: "error",
     };
   }
   if (state.compileCurrent) {
     return {
       id: "compile",
-      label: "Compiling",
-      detail: "Verified output accepted",
+      label: i18n.t(($) => $.preview.startup.compile.label),
+      detail: i18n.t(($) => $.preview.startup.compile.accepted),
       status: "complete",
     };
   }
   return {
     id: "compile",
-    label: "Compiling",
+    label: i18n.t(($) => $.preview.startup.compile.label),
     detail: state.engineLoaded
-      ? "Waiting to compile the current revision"
-      : "Waiting for document engine",
+      ? i18n.t(($) => $.preview.startup.compile.waiting)
+      : i18n.t(($) => $.preview.startup.waitingForEngine),
     status: "pending",
   };
 }
@@ -440,11 +460,13 @@ function renderStartupStage(
   if (loadMatchesViewer && state.pdfLoadState.status === "loading") {
     return {
       id: "render",
-      label: "Rendering PDF",
+      label: i18n.t(($) => $.preview.startup.render.label),
       detail:
         state.pdfLoadState.progress === undefined
-          ? "Preparing pages, text, and links"
-          : `Reading PDF · ${Math.round(state.pdfLoadState.progress * 100)}%`,
+          ? i18n.t(($) => $.preview.startup.render.preparing)
+          : i18n.t(($) => $.preview.startup.render.reading, {
+              percent: Math.round(state.pdfLoadState.progress * 100),
+            }),
       status: "running",
     };
   }
@@ -459,13 +481,13 @@ function renderStartupStage(
   ) {
     return {
       id: "render",
-      label: "Rendering PDF",
+      label: i18n.t(($) => $.preview.startup.render.label),
       detail:
         state.retainedLoadFailure ||
         state.pdfLoadState.message ||
         (state.pdfLoadState.status === "password_required"
-          ? "Password required"
-          : "PDF rendering needs attention"),
+          ? i18n.t(($) => $.preview.startup.render.passwordRequired)
+          : i18n.t(($) => $.preview.startup.render.needsAttention)),
       status: "error",
     };
   }
@@ -476,8 +498,8 @@ function renderStartupStage(
   ) {
     return {
       id: "render",
-      label: "Rendering PDF",
-      detail: "Preview ready",
+      label: i18n.t(($) => $.preview.startup.render.label),
+      detail: i18n.t(($) => $.preview.startup.render.ready),
       status: "complete",
     };
   }
@@ -487,15 +509,15 @@ function renderStartupStage(
   ) {
     return {
       id: "render",
-      label: "Rendering PDF",
-      detail: "Waiting for the verified PDF renderer",
+      label: i18n.t(($) => $.preview.startup.render.label),
+      detail: i18n.t(($) => $.preview.startup.render.waitingForRenderer),
       status: "running",
     };
   }
   return {
     id: "render",
-    label: "Rendering PDF",
-    detail: "Waiting for verified compile output",
+    label: i18n.t(($) => $.preview.startup.render.label),
+    detail: i18n.t(($) => $.preview.startup.render.waitingForCompile),
     status: "pending",
   };
 }
@@ -511,7 +533,7 @@ function mergedLanguageStartupStage(
   const analysis = languageAnalysisStartupStage(state);
   const merge = (status: StartupStageStatus, detail: string) => ({
     id: "analysis" as const,
-    label: "Language analysis",
+    label: i18n.t(($) => $.preview.startup.language.analysisLabel),
     detail,
     status,
   });
@@ -527,7 +549,7 @@ function mergedLanguageStartupStage(
       // "language analysis has not run" even after it has. Speak for the pair.
       return merge(
         status,
-        analysisSettled ? "Waiting for the language service" : service.detail,
+        analysisSettled ? i18n.t(($) => $.preview.startup.language.waitingForService) : service.detail,
       );
     }
   }
@@ -614,6 +636,7 @@ function previewWindowState(
 }
 
 export function PreviewPane() {
+  const { t } = useTranslation(["common", "preview"]);
   const status = useCompileStore((s) => s.status);
   const phase = useCompileStore((s) => s.phase);
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
@@ -646,10 +669,11 @@ export function PreviewPane() {
         ? state.snapshot.languageService.readiness
         : "not_run",
   );
-  const languageReason = useProjectAnalysisStore((state) =>
-    state.snapshot.identity.projectId === projectId
-      ? (state.snapshot.languageService.reason ?? "")
-      : "",
+  const languageReasonSource = useProjectAnalysisStore(
+    (state): AnalysisReason | null =>
+      state.snapshot.identity.projectId === projectId
+        ? (state.snapshot.languageService.reason ?? null)
+        : null,
   );
   const analysisStatus = useProjectAnalysisStore(
     (state): ProjectAnalysisStatus =>
@@ -657,11 +681,18 @@ export function PreviewPane() {
         ? state.snapshot.projectIndex.status
         : "not_run",
   );
-  const analysisReason = useProjectAnalysisStore((state) => {
+  const analysisReasonSource = useProjectAnalysisStore(
+    (state): AnalysisReason | null => {
+      if (state.snapshot.identity.projectId !== projectId) return null;
+      const slot = state.snapshot.projectIndex;
+      if ("failure" in slot) return slot.failure.reason ?? null;
+      return "reason" in slot ? (slot.reason ?? null) : null;
+    },
+  );
+  const analysisFailureMessage = useProjectAnalysisStore((state) => {
     if (state.snapshot.identity.projectId !== projectId) return "";
     const slot = state.snapshot.projectIndex;
-    if ("failure" in slot) return slot.failure.message;
-    return "reason" in slot ? (slot.reason ?? "") : "";
+    return "failure" in slot ? slot.failure.message : "";
   });
   // Image and diagram projects render a single figure: no pages/spreads, "PDF" reads as "image".
   const projectKindForPreview = useFilesStore((s) => s.projectKind);
@@ -788,7 +819,7 @@ export function PreviewPane() {
     setPdfLoadState({
       status: "loading",
       documentIdentity: identity,
-      message: "Loading the latest compiled PDF…",
+      message: i18n.t(($) => $.preview.viewer.loadingLatest),
     });
     setSearchState(INITIAL_PDF_SEARCH_STATE);
     setOutlineState({
@@ -814,9 +845,19 @@ export function PreviewPane() {
   const displayedBytes = viewerDocument?.bytes ?? null;
   const currentRevisionExplanation = pdfIsStale
     ? displayedCheckpoint
-      ? `Showing project revision ${displayedCheckpoint.projectRevision}. The active project is revision ${projectRevision}.`
-      : "The displayed PDF has no verified compile identity for the active revision."
+      ? t(($) => $.preview.stale.revisionExplanation, {
+          displayed: displayedCheckpoint.projectRevision,
+          active: projectRevision,
+        })
+      : t(($) => $.preview.stale.noIdentity)
     : null;
+  const languageReason = analysisReasonText(languageReasonSource) ?? "";
+  const analysisReason =
+    analysisReasonText(analysisReasonSource) ?? analysisFailureMessage;
+  const analysisReasonKey =
+    analysisReasonSource && "key" in analysisReasonSource
+      ? analysisReasonSource.key
+      : null;
   const startupStages = documentStartupStages({
     projectActive: projectId !== null,
     projectLoading,
@@ -825,6 +866,7 @@ export function PreviewPane() {
     languageReason,
     analysisStatus,
     analysisReason,
+    analysisReasonKey,
     compileStatus: status,
     compilePhase: phase,
     compileCurrent: isCompileCheckpointCurrent(compileCheckpoint),
@@ -1054,7 +1096,7 @@ export function PreviewPane() {
         await refreshTree();
         setSaveOpen(false);
         setSaveName("");
-        toast.success("Image saved to the project.");
+        toast.success(t(($) => $.preview.save.imageSaved));
       } else {
         const raw = saveName.trim() || mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document";
         const name = `${raw.replace(/\.pdf$/i, "")}.pdf`;
@@ -1066,10 +1108,10 @@ export function PreviewPane() {
         await refreshTree();
         setSaveOpen(false);
         setSaveName("");
-        toast.success("PDF saved to the project.");
+        toast.success(t(($) => $.preview.save.pdfSaved));
       }
     } catch (e) {
-      notifyError("save to project", e, "Couldn't save into the project.");
+      notifyError("save to project", e, t(($) => $.preview.save.failed));
     } finally {
       setSaving(false);
     }
@@ -1121,7 +1163,7 @@ export function PreviewPane() {
         defaultPath: filename,
         filters: [
           {
-            name: isImage ? "PNG image" : "PDF",
+            name: isImage ? t(($) => $.preview.download.pngFilter) : "PDF",
             extensions: [extension],
           },
         ],
@@ -1131,14 +1173,14 @@ export function PreviewPane() {
       const fileName =
         destination.split(/[/\\]/).pop() || (isImage ? "image.png" : "document.pdf");
       toast.success(
-        isImage ? `Image saved · ${fileName}` : `PDF saved · ${fileName}`,
+        isImage
+          ? t(($) => $.preview.download.imageSaved, { name: fileName })
+          : t(($) => $.preview.download.pdfSaved, { name: fileName }),
         {
-          label: "Show in folder",
+          label: t(($) => $.preview.download.showInFolder),
           onClick: () => {
             void revealInDir(destination).catch(() => {
-              toast.info(
-                "File was saved, but Oleafly could not open its folder (permission denied). Check the location you chose in the save dialog.",
-              );
+              toast.info(t(($) => $.preview.download.folderUnavailable));
             });
           },
         },
@@ -1151,8 +1193,12 @@ export function PreviewPane() {
         "download preview",
         error,
         detail
-          ? `Couldn't download the ${isImage ? "image" : "PDF"}: ${detail}`
-          : `Couldn't download the ${isImage ? "image" : "PDF"}.`,
+          ? isImage
+            ? t(($) => $.preview.download.imageFailedDetail, { detail })
+            : t(($) => $.preview.download.pdfFailedDetail, { detail })
+          : isImage
+            ? t(($) => $.preview.download.imageFailed)
+            : t(($) => $.preview.download.pdfFailed),
       );
     } finally {
       setExporting(false);
@@ -1187,7 +1233,10 @@ export function PreviewPane() {
     if (!lastReady || lastReady.identity === current.identity) return;
     rejectedDocumentIdentitiesRef.current.add(current.identity);
     setRetainedLoadFailure(
-      `${next.message ?? "The current PDF could not be loaded"} Showing the last successfully loaded PDF instead.`,
+      t(($) => $.preview.viewer.retainedFailure, {
+        detail:
+          next.message ?? t(($) => $.preview.viewer.retainedFailureDetail),
+      }),
     );
     setViewerDocument(lastReady);
     setPdfPassword("");
@@ -1201,7 +1250,7 @@ export function PreviewPane() {
     setPdfLoadState({
       status: "loading",
       documentIdentity: viewerDocument.identity,
-      message: "Retrying PDF load…",
+      message: t(($) => $.preview.viewer.retryingLoad),
     });
   };
 
@@ -1305,22 +1354,22 @@ export function PreviewPane() {
     <>
       <DropdownMenuGroup>
         <DropdownMenuItem disabled={scale >= MAX_PREVIEW_SCALE} onSelect={zoomIn}>
-          Zoom in
+          {t(($) => $.preview.zoom.in)}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={scale <= MIN_PREVIEW_SCALE} onSelect={zoomOut}>
-          Zoom out
+          {t(($) => $.preview.zoom.out)}
         </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
         <DropdownMenuItem onSelect={() => userZoom(() => fitPreview("width"))}>
-          Fit to width
+          {t(($) => $.preview.zoom.fitToWidth)}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => userZoom(() => fitPreview("height"))}>
-          Fit to height
+          {t(($) => $.preview.zoom.fitToHeight)}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => userZoom(() => setScale(1))}>
-          Reset to 100%
+          {t(($) => $.preview.zoom.reset)}
         </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
@@ -1330,7 +1379,7 @@ export function PreviewPane() {
             key={preset}
             onSelect={() => userZoom(() => setClampedScale(preset))}
           >
-            {Math.round(preset * 100)}%
+            {t(($) => $.preview.zoom.percent, { percent: Math.round(preset * 100) })}
           </DropdownMenuItem>
         ))}
       </DropdownMenuGroup>
@@ -1359,11 +1408,11 @@ export function PreviewPane() {
           render: () => (
             <div
               role="radiogroup"
-              aria-label="Page layout"
+              aria-label={t(($) => $.preview.pageLayout.group)}
               className="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/70 p-0.5"
             >
               {PAGE_LAYOUTS.map(({ value, label, icon: Icon }) => (
-                <Tooltip key={value} label={label}>
+                <Tooltip key={value} label={label()}>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1374,7 +1423,7 @@ export function PreviewPane() {
                         "bg-background text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.08)]",
                     )}
                     onClick={() => setLayout(value)}
-                    aria-label={label}
+                    aria-label={label()}
                     aria-checked={layout === value}
                   >
                     <Icon className="size-3.5" />
@@ -1387,7 +1436,7 @@ export function PreviewPane() {
             <DropdownMenuSub key="layout">
               <DropdownMenuSubTrigger>
                 <RectangleVertical className="size-4" />
-                Page layout
+                {t(($) => $.preview.pageLayout.group)}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="min-w-44">
@@ -1400,7 +1449,7 @@ export function PreviewPane() {
                     {PAGE_LAYOUTS.map(({ value, label, icon: Icon }) => (
                       <DropdownMenuRadioItem key={value} value={value}>
                         <Icon className="size-4" />
-                        {label}
+                        {label()}
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
@@ -1420,14 +1469,14 @@ export function PreviewPane() {
         width: 140,
         render: () => (
           <>
-            <Tooltip label="Previous page">
+            <Tooltip label={t(($) => $.preview.pages.previous)}>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-7"
                 disabled={page <= 1}
                 onClick={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
-                aria-label="Previous page"
+                aria-label={t(($) => $.preview.pages.previous)}
               >
                 <ChevronUp className="size-3.5" />
               </Button>
@@ -1444,19 +1493,19 @@ export function PreviewPane() {
                 }}
                 onBlur={jumpToPage}
                 onFocus={(e) => e.target.select()}
-                aria-label="Page number"
+                aria-label={t(($) => $.preview.pages.number)}
                 className="h-6 w-7 rounded border border-input bg-background px-0.5 py-0 text-center text-[11px] leading-none text-foreground outline-none focus:border-primary"
               />
-              <span>of {numPages}</span>
+              <span>{t(($) => $.preview.pages.ofTotal, { total: numPages })}</span>
             </div>
-            <Tooltip label="Next page">
+            <Tooltip label={t(($) => $.preview.pages.next)}>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-7"
                 disabled={page >= numPages}
                 onClick={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
-                aria-label="Next page"
+                aria-label={t(($) => $.preview.pages.next)}
               >
                 <ChevronDown className="size-3.5" />
               </Button>
@@ -1469,7 +1518,10 @@ export function PreviewPane() {
           <DropdownMenuSub key="page-nav">
             <DropdownMenuSubTrigger>
               <FileText className="size-4" />
-              {`Page ${page} of ${numPages}`}
+              {t(($) => $.preview.pages.pageOfTotal, {
+                page,
+                total: numPages,
+              })}
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
               <DropdownMenuSubContent className="min-w-44">
@@ -1478,14 +1530,14 @@ export function PreviewPane() {
                   onSelect={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
                 >
                   <ChevronUp className="size-4" />
-                  Previous page
+                  {t(($) => $.preview.pages.previous)}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={page >= numPages}
                   onSelect={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
                 >
                   <ChevronDown className="size-4" />
-                  Next page
+                  {t(($) => $.preview.pages.next)}
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
@@ -1499,11 +1551,11 @@ export function PreviewPane() {
       iconControl(
         "outline",
         ListTree,
-        "Document outline",
+        t(($) => $.preview.outline.open),
         () => setOutlineOpen((open) => !open),
         { active: outlineOpen },
       ),
-      iconControl("search", Search, "Search PDF", () => {
+      iconControl("search", Search, t(($) => $.preview.search.open), () => {
         setSearchOpen((open) => {
           const next = !open;
           if (next) {
@@ -1524,14 +1576,14 @@ export function PreviewPane() {
     width: 128,
     render: () => (
       <>
-        <Tooltip label="Zoom out">
+        <Tooltip label={t(($) => $.preview.zoom.out)}>
           <Button
             variant="ghost"
             size="icon"
             className="size-7"
             disabled={scale <= MIN_PREVIEW_SCALE}
             onClick={zoomOut}
-            aria-label="Zoom out"
+            aria-label={t(($) => $.preview.zoom.out)}
           >
             <ZoomOut className="size-3.5" />
           </Button>
@@ -1542,10 +1594,12 @@ export function PreviewPane() {
               variant="ghost"
               size="sm"
               className="h-7 min-w-14 gap-1 px-1.5 text-xs tabular-nums text-muted-foreground"
-              aria-label={`Zoom ${Math.round(scale * 100)} percent`}
+              aria-label={t(($) => $.preview.zoom.percentLabel, {
+                percent: Math.round(scale * 100),
+              })}
               disabled={!displayedBytes}
             >
-              {Math.round(scale * 100)}%
+              {t(($) => $.preview.zoom.percent, { percent: Math.round(scale * 100) })}
               <ChevronDown data-icon="inline-end" />
             </Button>
           </DropdownMenuTrigger>
@@ -1553,14 +1607,14 @@ export function PreviewPane() {
             {zoomMenuItems()}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Tooltip label="Zoom in">
+        <Tooltip label={t(($) => $.preview.zoom.in)}>
           <Button
             variant="ghost"
             size="icon"
             className="size-7"
             disabled={scale >= MAX_PREVIEW_SCALE}
             onClick={zoomIn}
-            aria-label="Zoom in"
+            aria-label={t(($) => $.preview.zoom.in)}
           >
             <ZoomIn className="size-3.5" />
           </Button>
@@ -1571,7 +1625,9 @@ export function PreviewPane() {
       <DropdownMenuSub key="zoom">
         <DropdownMenuSubTrigger>
           <ZoomIn className="size-4" />
-          {`Zoom · ${Math.round(scale * 100)}%`}
+          {t(($) => $.preview.zoom.menuLabel, {
+            percent: Math.round(scale * 100),
+          })}
         </DropdownMenuSubTrigger>
         <DropdownMenuPortal>
           <DropdownMenuSubContent className="min-w-40">
@@ -1586,7 +1642,13 @@ export function PreviewPane() {
       id: "download",
       width: ICON_BUTTON_WIDTH,
       render: () => (
-        <Tooltip label={isImage ? "Download image" : "Download displayed PDF"}>
+        <Tooltip
+          label={
+            isImage
+              ? t(($) => $.preview.actions.downloadImage)
+              : t(($) => $.preview.actions.downloadDisplayedPdf)
+          }
+        >
           <Button
             variant="ghost"
             size="icon"
@@ -1595,10 +1657,10 @@ export function PreviewPane() {
             onClick={() => void exportDisplayedPreview()}
             aria-label={
               isImage
-                ? "Download image"
+                ? t(($) => $.preview.actions.downloadImage)
                 : pdfIsStale
-                  ? "Download stale, non-current PDF"
-                  : "Download PDF"
+                  ? t(($) => $.preview.actions.downloadStalePdf)
+                  : t(($) => $.preview.actions.downloadPdf)
             }
           >
             {exporting ? (
@@ -1616,14 +1678,18 @@ export function PreviewPane() {
           onSelect={() => void exportDisplayedPreview()}
         >
           <Download className="size-4" />
-          {isImage ? "Download image" : "Download PDF"}
+          {isImage
+            ? t(($) => $.preview.actions.downloadImage)
+            : t(($) => $.preview.actions.downloadPdf)}
         </DropdownMenuItem>
       ),
     },
     iconControl(
       "save",
       Save,
-      isImage ? "Save image to project" : "Save PDF to project",
+      isImage
+        ? t(($) => $.preview.actions.saveImage)
+        : t(($) => $.preview.actions.savePdf),
       () => {
         if (isImage) {
           const base =
@@ -1642,12 +1708,14 @@ export function PreviewPane() {
     iconControl(
       "invert",
       Contrast,
-      "Invert PDF preview colors",
+      t(($) => $.preview.actions.invert),
       () => setInverted(!inverted),
       {
         disabled: !displayedBytes,
         active: inverted,
-        tooltip: inverted ? "Restore colors" : "Invert PDF preview colors",
+        tooltip: inverted
+          ? t(($) => $.preview.actions.restoreColors)
+          : t(($) => $.preview.actions.invert),
       },
     ),
   );
@@ -1655,12 +1723,14 @@ export function PreviewPane() {
     iconControl(
       "screen-reader",
       Accessibility,
-      "Reader view",
+      t(($) => $.preview.actions.readerView),
       () => setScreenReaderMode(!screenReaderMode),
       {
         disabled: !displayedBytes || isImage,
         active: screenReaderMode,
-        tooltip: screenReaderMode ? "Exit reader view" : "Reader view",
+        tooltip: screenReaderMode
+          ? t(($) => $.preview.actions.exitReaderView)
+          : t(($) => $.preview.actions.readerView),
       },
     ),
   );
@@ -1669,7 +1739,7 @@ export function PreviewPane() {
       iconControl(
         "rotate",
         RotateCw,
-        "Rotate clockwise",
+        t(($) => $.preview.actions.rotate),
         () => {
           setRotationPending(true);
           setRotation((current) => ((current + 90) % 360) as PdfRotation);
@@ -1677,7 +1747,9 @@ export function PreviewPane() {
         {
           disabled: !displayedBytes,
           busy: rotationPending,
-          tooltip: `Rotate PDF clockwise (90°). Currently ${rotation}°`,
+          tooltip: t(($) => $.preview.actions.rotateTooltip, {
+            degrees: rotation,
+          }),
         },
       ),
     );
@@ -1687,7 +1759,7 @@ export function PreviewPane() {
       iconControl(
         "open-window",
         SquareArrowOutUpRight,
-        "Open preview in a new window",
+        t(($) => $.preview.actions.openWindow),
         () => {
           if (!projectId) return;
           void openPreviewWindow(
@@ -1706,21 +1778,30 @@ export function PreviewPane() {
     );
   } else {
     windowGroup.push(
-      iconControl("hide-toolbar", PanelTopClose, "Hide toolbar", () =>
-        setFsToolbarHidden(true),
+      iconControl(
+        "hide-toolbar",
+        PanelTopClose,
+        t(($) => $.preview.actions.hideToolbar),
+        () =>
+          setFsToolbarHidden(true),
       ),
     );
   }
   windowGroup.push(
-    iconControl("pdf-settings", Settings2, "PDF preview settings", () =>
-      useSettingsStore.getState().openSettingsAt("appearance", "pdf"),
+    iconControl(
+      "pdf-settings",
+      Settings2,
+      t(($) => $.preview.actions.settings),
+      () => useSettingsStore.getState().openSettingsAt("appearance", "pdf"),
     ),
   );
   viewGroup.push(
     iconControl(
       "fullscreen",
       isFs ? Minimize : Maximize,
-      isFs ? "Exit fullscreen" : "Fullscreen preview",
+      isFs
+        ? t(($) => $.preview.actions.exitFullscreen)
+        : t(($) => $.preview.actions.fullscreen),
       toggleFullscreen,
       { disabled: !displayedBytes },
     ),
@@ -1757,10 +1838,10 @@ export function PreviewPane() {
       className="relative flex h-full flex-col bg-background"
     >
       {isFs && fsToolbarHidden && (
-        <Tooltip label="Show toolbar">
+        <Tooltip label={t(($) => $.preview.actions.showToolbar)}>
           <button type="button"
             onClick={() => setFsToolbarHidden(false)}
-            aria-label="Show toolbar"
+            aria-label={t(($) => $.preview.actions.showToolbar)}
             className="absolute right-3 top-3 z-20 flex size-8 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
           >
             <PanelTopOpen className="size-4" />
@@ -1781,7 +1862,11 @@ export function PreviewPane() {
           <button
             type="button"
             onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
-            aria-label={tab === "logs" ? "Show PDF preview" : "Show compile logs"}
+            aria-label={
+              tab === "logs"
+                ? t(($) => $.preview.toolbar.showPdf)
+                : t(($) => $.preview.toolbar.showLogs)
+            }
             aria-pressed={tab === "logs"}
             className={cn(
               "flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
@@ -1791,7 +1876,7 @@ export function PreviewPane() {
             )}
           >
             <ScrollText className="size-3.5" />
-            Logs
+            {t(($) => $.preview.toolbar.logs)}
             {errors.length > 0 && (
               <span
                 className={cn(
@@ -1816,10 +1901,10 @@ export function PreviewPane() {
               )}
               title={
                 severity === "error"
-                  ? "Compiled with errors"
+                  ? t(($) => $.preview.toolbar.compiledWithErrors)
                   : severity === "warning"
-                  ? "Compiled with warnings"
-                  : "Compiled successfully"
+                  ? t(($) => $.preview.toolbar.compiledWithWarnings)
+                  : t(($) => $.preview.toolbar.compiledSuccessfully)
               }
               data-testid="compile-status"
               data-severity={severity}
@@ -1832,8 +1917,10 @@ export function PreviewPane() {
                 <CheckCircle2 className="size-3.5" />
               )}
               {severity === "error" || compileTimeMs == null
-                ? "Failed"
-                : `${(compileTimeMs / 1000).toFixed(1)}s`}
+                ? t(($) => $.preview.toolbar.failed)
+                : t(($) => $.preview.toolbar.duration, {
+                    seconds: (compileTimeMs / 1000).toFixed(1),
+                  })}
             </span>
           )}
 
@@ -1843,7 +1930,7 @@ export function PreviewPane() {
           <div className="ml-auto flex items-center">
             <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
               <Sparkles data-icon="inline-start" />
-              Ask AI
+              {t(($) => $.preview.toolbar.askAi)}
             </Button>
           </div>
         )}
@@ -1864,7 +1951,7 @@ export function PreviewPane() {
                     variant="ghost"
                     size="icon"
                     className="size-7"
-                    aria-label="More preview controls"
+                    aria-label={t(($) => $.preview.toolbar.more)}
                   >
                     <MoreHorizontal className="size-3.5" />
                   </Button>
@@ -1896,29 +1983,29 @@ export function PreviewPane() {
                 // positioned by this wrapper rather than by the button itself.
                 <div className="absolute bottom-3 right-3 z-30">
                 <Tooltip
-                  label={`The preview is stale against the editor changes. ${
-                    retainedLoadFailure ??
-                    currentRevisionExplanation ??
-                    "This PDF does not represent the active project revision."
-                  } ${
-                    staleSyncTexAvailable
-                      ? "SyncTeX uses the nearest unchanged line for edits."
-                      : "SyncTeX requires a current compile."
-                  } Click to recompile.`}
+                  label={t(($) => $.preview.stale.tooltip, {
+                    explanation:
+                      retainedLoadFailure ??
+                      currentRevisionExplanation ??
+                      t(($) => $.preview.stale.explanation),
+                    syncTex: staleSyncTexAvailable
+                      ? t(($) => $.preview.stale.syncTexAvailable)
+                      : t(($) => $.preview.stale.syncTexUnavailable),
+                  })}
                   side="left"
                 >
                   <button
                     type="button"
                     onClick={() => void recompile()}
                     data-testid="preview-stale-badge"
-                    aria-label="Stale, non-current preview. Recompile."
+                    aria-label={t(($) => $.preview.stale.badgeLabel)}
                     className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-100 px-2.5 text-[11px] font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-[#181818] dark:text-neutral-300 dark:hover:bg-[#222222]"
                   >
                     <span
                       aria-hidden="true"
                       className="size-1.5 rounded-full bg-amber-500 dark:bg-amber-400"
                     />
-                    Stale
+                    {t(($) => $.preview.stale.badge)}
                   </button>
                 </Tooltip>
                 </div>
@@ -1929,7 +2016,7 @@ export function PreviewPane() {
               {(
                 <aside
                   id="pdf-outline-panel"
-                  aria-label="PDF document outline"
+                  aria-label={t(($) => $.preview.outline.panel)}
                   inert={!outlineOpen}
                   className={cn(
                     "absolute inset-y-2 left-2 z-30 flex w-[min(19rem,calc(100%-1rem))] flex-col overflow-hidden rounded-lg border bg-popover/80 text-popover-foreground shadow-xl backdrop-blur-xl supports-[not(backdrop-filter:blur(0))]:bg-popover",
@@ -1945,14 +2032,14 @@ export function PreviewPane() {
                         aria-hidden
                         className="size-4 text-muted-foreground"
                       />
-                      Document outline
+                      {t(($) => $.preview.outline.title)}
                     </h2>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="size-7"
                       onClick={() => setOutlineOpen(false)}
-                      aria-label="Close document outline"
+                      aria-label={t(($) => $.preview.outline.close)}
                     >
                       <X className="size-3.5" />
                     </Button>
@@ -1964,7 +2051,7 @@ export function PreviewPane() {
                         role="status"
                       >
                         <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-                        Loading outline…
+                        {t(($) => $.preview.outline.loading)}
                       </p>
                     ) : outlineState.items.length ? (
                       <PdfOutlineItems
@@ -1977,7 +2064,7 @@ export function PreviewPane() {
                     ) : (
                       <p className="px-2 py-3 text-xs text-muted-foreground">
                         {outlineState.message ??
-                          "This PDF does not contain a document outline."}
+                          t(($) => $.preview.outline.empty)}
                       </p>
                     )}
                   </div>
@@ -1987,7 +2074,7 @@ export function PreviewPane() {
               {searchOpen && (
                 <search
                   id="pdf-search-panel"
-                  aria-label="Search this PDF"
+                  aria-label={t(($) => $.preview.search.panel)}
                   className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
                 >
                   <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
@@ -2009,8 +2096,8 @@ export function PreviewPane() {
                         }
                       }
                     }}
-                    placeholder="Search document"
-                    aria-label="Search PDF text"
+                    placeholder={t(($) => $.preview.search.placeholder)}
+                    aria-label={t(($) => $.preview.search.input)}
                     className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
                   />
                   <span
@@ -2032,7 +2119,7 @@ export function PreviewPane() {
                       searchState.total === 0
                     }
                     onClick={() => pdfRef.current?.findPrevious()}
-                    aria-label="Previous search result"
+                    aria-label={t(($) => $.preview.search.previous)}
                   >
                     <ChevronLeft className="size-3.5" />
                   </Button>
@@ -2045,7 +2132,7 @@ export function PreviewPane() {
                       searchState.total === 0
                     }
                     onClick={() => pdfRef.current?.findNext()}
-                    aria-label="Next search result"
+                    aria-label={t(($) => $.preview.search.next)}
                   >
                     <ChevronRight className="size-3.5" />
                   </Button>
@@ -2057,7 +2144,7 @@ export function PreviewPane() {
                       setSearchOpen(false);
                       setSearchInput("");
                     }}
-                    aria-label="Close PDF search"
+                    aria-label={t(($) => $.preview.search.close)}
                   >
                     <X className="size-3.5" />
                   </Button>
@@ -2067,7 +2154,7 @@ export function PreviewPane() {
               <section
                 ref={scrollBoxRef}
                 data-pdf-scroll-root
-                aria-label="PDF continuous scroll area"
+                aria-label={t(($) => $.preview.viewer.scrollArea)}
                 className="h-full overflow-auto bg-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 style={
                   inverted && !screenReaderMode
@@ -2080,8 +2167,8 @@ export function PreviewPane() {
                   fallback={
                     <PdfStateMessage
                       kind="error"
-                      title="The PDF preview crashed"
-                      detail="Recompile the current revision or retry the viewer."
+                      title={t(($) => $.preview.viewer.crashedTitle)}
+                      detail={t(($) => $.preview.viewer.crashedDetail)}
                       onRetry={retryPdfLoad}
                     />
                   }
@@ -2151,7 +2238,7 @@ export function PreviewPane() {
                         <LockKeyhole className="mx-auto size-8 text-muted-foreground" />
                         <div>
                           <h2 className="text-sm font-semibold">
-                            Password required
+                            {t(($) => $.preview.password.title)}
                           </h2>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {pdfLoadState.message}
@@ -2165,15 +2252,15 @@ export function PreviewPane() {
                           onChange={(event) =>
                             setPasswordDraft(event.target.value)
                           }
-                          aria-label="PDF password"
-                          placeholder="PDF password"
+                          aria-label={t(($) => $.preview.password.label)}
+                          placeholder={t(($) => $.preview.password.placeholder)}
                         />
                         <Button
                           type="submit"
                           size="sm"
                           disabled={!passwordDraft}
                         >
-                          Unlock PDF
+                          {t(($) => $.preview.password.submit)}
                         </Button>
                       </form>
                     ) : pdfLoadState.status === "loading" ? (
@@ -2183,16 +2270,16 @@ export function PreviewPane() {
                         kind="error"
                         title={
                           pdfLoadState.status === "invalid"
-                            ? "Invalid PDF"
+                            ? t(($) => $.preview.viewer.invalidTitle)
                             : pdfLoadState.status === "empty"
-                              ? "Empty PDF"
+                              ? t(($) => $.preview.viewer.emptyTitle)
                               : pdfLoadState.status === "unavailable"
-                                ? "PDF viewer unavailable"
-                                : "PDF load failed"
+                                ? t(($) => $.preview.viewer.unavailableTitle)
+                                : t(($) => $.preview.viewer.loadFailedTitle)
                         }
                         detail={
                           pdfLoadState.message ??
-                          "The PDF could not be loaded."
+                          t(($) => $.preview.viewer.loadFailedDetail)
                         }
                         onRetry={retryPdfLoad}
                       />
@@ -2209,11 +2296,11 @@ export function PreviewPane() {
                 <p className="max-w-xs text-sm" role="alert">
                   {compileFailureReason ??
                     (status === "unavailable"
-                      ? "PDF compilation is currently unavailable."
-                      : "Compile failed. Open the Logs tab to see what went wrong.")}
+                      ? t(($) => $.preview.empty.compileUnavailable)
+                      : t(($) => $.preview.empty.compileFailed))}
                 </p>
                 <Button size="sm" onClick={() => void recompile()}>
-                  Retry compile
+                  {t(($) => $.preview.actions.retryCompile)}
                 </Button>
               </div>
             ) : (
@@ -2225,19 +2312,24 @@ export function PreviewPane() {
         )}
         <div className="sr-only" aria-live="polite">
           {pdfIsStale
-            ? `Stale, non-current PDF. ${currentRevisionExplanation ?? ""}`
+            ? t(($) => $.preview.a11y.stale, {
+                explanation: currentRevisionExplanation ?? "",
+              })
             : numPages > 0
-              ? `PDF page ${page} of ${numPages}.`
+              ? t(($) => $.preview.a11y.page, { page, total: numPages })
               : ""}
           {searchState.status === "success" && searchInput.trim()
-            ? ` Search result ${searchState.current} of ${searchState.total}.`
+            ? ` ${t(($) => $.preview.a11y.searchResult, {
+                current: searchState.current,
+                total: searchState.total,
+              })}`
             : ""}
         </div>
       </div>
 
       {saveOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <button type="button" aria-label="Close save dialog" className="absolute inset-0" onMouseDown={onSaveBackdropMouseDown} />
+          <button type="button" aria-label={t(($) => $.preview.save.close)} className="absolute inset-0" onMouseDown={onSaveBackdropMouseDown} />
           <div
             ref={saveDialogRef}
             role="dialog"
@@ -2247,11 +2339,15 @@ export function PreviewPane() {
             className="relative w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 id="save-preview-title" className="text-sm font-semibold">{isImage ? "Save image to project" : "Save PDF to project"}</h2>
+              <h2 id="save-preview-title" className="text-sm font-semibold">
+                {isImage
+                  ? t(($) => $.preview.save.imageTitle)
+                  : t(($) => $.preview.save.title)}
+              </h2>
               <button
                 type="button"
                 onClick={closeSave}
-                aria-label="Close save dialog"
+                aria-label={t(($) => $.preview.save.close)}
                 className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <X className="size-4" />
@@ -2259,24 +2355,26 @@ export function PreviewPane() {
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
               {pdfIsStale
-                ? "Saves the displayed stale PDF into the project tree. It does not represent the active revision."
-                : "Saves the displayed PDF into the project tree (committed via Git)."}
+                ? t(($) => $.preview.save.staleDescription)
+                : t(($) => $.preview.save.description)}
             </p>
             <div className="flex items-center gap-2">
               <Input
                 data-modal-initial-focus
-                aria-label="Project save name"
+                aria-label={t(($) => $.preview.save.nameLabel)}
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !saving) void submitSavePdf(); }}
-                placeholder="document.pdf"
+                placeholder={t(($) => $.preview.save.namePlaceholder)}
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
               />
               <Button
                 onClick={() => void submitSavePdf()}
                 disabled={saving || !displayedBytes}
               >
-                {saving ? "Saving…" : "Save"}
+                {saving
+                  ? t(($) => $.common.state.saving)
+                  : t(($) => $.common.actions.save)}
               </Button>
             </div>
           </div>
@@ -2297,6 +2395,7 @@ function PdfOutlineItems({
   onActivate: (id: string) => void;
   depth?: number;
 }) {
+  const { t } = useTranslation(["common", "preview"]);
   return (
     <ul className="space-y-0.5">
       {items.map((item) => (
@@ -2315,7 +2414,7 @@ function PdfOutlineItems({
             {item.external && (
               <SquareArrowOutUpRight
                 className="size-3 shrink-0 text-muted-foreground"
-                aria-label="External link"
+                aria-label={t(($) => $.preview.outline.externalLink)}
               />
             )}
           </button>
@@ -2343,6 +2442,7 @@ function PdfStateMessage({
   detail: string;
   onRetry?: () => void;
 }) {
+  const { t } = useTranslation(["common", "preview"]);
   return (
     <div
       className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center"
@@ -2364,20 +2464,27 @@ function PdfStateMessage({
       </div>
       {onRetry && (
         <Button size="sm" onClick={onRetry}>
-          Retry viewer
+          {t(($) => $.preview.viewer.retry)}
         </Button>
       )}
     </div>
   );
 }
 
-const STARTUP_STATUS_LABEL: Record<StartupStageStatus, string> = {
-  complete: "done",
-  running: "running",
-  pending: "queued",
-  skipped: "skipped",
-  error: "failed",
-};
+function startupStatusLabel(status: StartupStageStatus): string {
+  switch (status) {
+    case "complete":
+      return i18n.t(($) => $.preview.startup.status.done);
+    case "running":
+      return i18n.t(($) => $.preview.startup.status.running);
+    case "pending":
+      return i18n.t(($) => $.preview.startup.status.queued);
+    case "skipped":
+      return i18n.t(($) => $.preview.startup.status.skipped);
+    case "error":
+      return i18n.t(($) => $.preview.startup.status.failed);
+  }
+}
 
 const STARTUP_STATUS_TEXT: Record<StartupStageStatus, string> = {
   complete: "text-emerald-500",
@@ -2443,6 +2550,7 @@ function DocumentStartupProgress({
   compact?: boolean;
   onCompile?: () => void;
 }) {
+  const { t } = useTranslation(["common", "preview"]);
   const activeStage = [...stages]
     .reverse()
     .find((stage) => stage.status === "running");
@@ -2463,9 +2571,15 @@ function DocumentStartupProgress({
     (stage) => stage.status === "error",
   ).length;
   const meta = [
-    runningCount > 0 ? `${runningCount} running` : null,
-    queuedCount > 0 ? `${queuedCount} queued` : null,
-    failedCount > 0 ? `${failedCount} failed` : null,
+    runningCount > 0
+      ? t(($) => $.preview.startup.metaRunning, { stages: runningCount })
+      : null,
+    queuedCount > 0
+      ? t(($) => $.preview.startup.metaQueued, { stages: queuedCount })
+      : null,
+    failedCount > 0
+      ? t(($) => $.preview.startup.metaFailed, { stages: failedCount })
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -2480,7 +2594,10 @@ function DocumentStartupProgress({
       )}
       role="status"
       aria-live="polite"
-      aria-label={`Document startup: ${completedCount} of ${stages.length} stages complete or skipped`}
+      aria-label={t(($) => $.preview.startup.progressLabel, {
+        completed: completedCount,
+        total: stages.length,
+      })}
     >
       <div className="flex items-center gap-2.5">
         <FileText
@@ -2499,10 +2616,10 @@ function DocumentStartupProgress({
           {activeStage
             ? activeStage.label
             : failedStage
-              ? "Startup needs attention"
+              ? t(($) => $.preview.startup.headingAttention)
               : completedCount === stages.length
-                ? "PDF preview ready"
-                : "Preparing PDF preview"}
+                ? t(($) => $.preview.startup.headingReady)
+                : t(($) => $.preview.startup.headingPreparing)}
         </h2>
         {activeStage && (
           <span
@@ -2516,7 +2633,10 @@ function DocumentStartupProgress({
             compact ? "text-[9px]" : "text-[10px]",
           )}
         >
-          {completedCount}/{stages.length} done
+          {t(($) => $.preview.startup.doneCount, {
+            completed: completedCount,
+            total: stages.length,
+          })}
         </span>
       </div>
 
@@ -2590,7 +2710,7 @@ function DocumentStartupProgress({
                 STARTUP_STATUS_TEXT[stage.status],
               )}
             >
-              {STARTUP_STATUS_LABEL[stage.status]}
+              {startupStatusLabel(stage.status)}
             </span>
           </li>
         ))}
@@ -2606,13 +2726,19 @@ function DocumentStartupProgress({
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
           <Button size="sm" onClick={onCompile}>
             <Play className="size-3.5" />
-            Compile now
+            {t(($) => $.preview.startup.compileNow)}
           </Button>
           <span className="text-[10px] text-muted-foreground">
-            or press{" "}
-            <kbd className="rounded bg-muted px-1.5 py-0.5 font-medium">
-              {shortcut("⌘↵")}
-            </kbd>
+            <Trans
+              ns="preview"
+              i18nKey={($) => $.preview.startup.orPress}
+              values={{ keys: shortcut("⌘↵") }}
+              components={{
+                shortcutKey: (
+                  <kbd className="rounded bg-muted px-1.5 py-0.5 font-medium" />
+                ),
+              }}
+            />
           </span>
         </div>
       )}

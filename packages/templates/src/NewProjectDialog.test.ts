@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { compilerLabel, orderedCategories, wrappedModalFocus } from "./NewProjectDialog";
 import { visibleFocusable } from "./modal-coordinator";
 import type { TemplateInfo } from "./types";
+import type { TemplatesMessageKey } from "./messages";
+
+const stubT = (key: TemplatesMessageKey) => key;
 
 const template = (document_engine: TemplateInfo["document_engine"], engine: string): TemplateInfo => ({
   id: "blank", name: "Blank", description: "", category: "Blank", document_engine, engine,
@@ -39,10 +42,11 @@ describe("modal focus wrapping", () => {
 
 describe("compilerLabel", () => {
   it("labels every engine honestly", () => {
-    expect(compilerLabel(template("latex", "xetex"))).toBe("Tectonic");
-    expect(compilerLabel(template("latex", "luatex"))).toBe("LuaLaTeX");
-    expect(compilerLabel(template("typst", "typst"))).toBe("Typst");
-    expect(compilerLabel(template("markdown", "markdown"))).toBe("Pandoc");
+    expect(compilerLabel(template("latex", "xetex"), stubT)).toBe("Tectonic");
+    expect(compilerLabel(template("latex", "luatex"), stubT)).toBe("LuaLaTeX");
+    expect(compilerLabel(template("typst", "typst"), stubT)).toBe("Typst");
+    expect(compilerLabel(template("markdown", "markdown"), stubT)).toBe("Pandoc");
+    expect(compilerLabel(template("unknown", "unknown"), stubT)).toBe("compiler.unknown");
   });
 });
 

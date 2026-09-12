@@ -785,8 +785,11 @@ fn validate_install_marker(root: &Path, asset: &TinytexAsset) -> Result<(), Stri
 }
 
 async fn validate_tinytex_executables(root: &Path) -> Result<EngineInfo, String> {
-    let lualatex = find_in_texdir(root, "lualatex")
-        .ok_or_else(|| "TinyTeX has no host-compatible lualatex binary.".to_string())?;
+    let lualatex = find_in_texdir(root, "lualatex").ok_or_else(|| {
+        crate::app_error::AppError::new("tex.no_host_binary")
+            .param("name", "lualatex")
+            .to_string()
+    })?;
     let mut info = engine_info_for_lualatex_unlocked(lualatex.clone(), "tinytex")
         .await
         .ok_or_else(|| "TinyTeX lualatex did not pass its version probe.".to_string())?;
@@ -796,8 +799,11 @@ async fn validate_tinytex_executables(root: &Path) -> Result<EngineInfo, String>
 }
 
 async fn validate_tinytex_tool(lualatex: &Path, name: &str) -> Result<String, String> {
-    let tool = sibling_tool(lualatex, name)
-        .ok_or_else(|| format!("TinyTeX has no host-compatible {name} binary."))?;
+    let tool = sibling_tool(lualatex, name).ok_or_else(|| {
+        crate::app_error::AppError::new("tex.no_host_binary")
+            .param("name", name)
+            .to_string()
+    })?;
     let output = run_tex_utility(&tool, &["--version".into()], TEX_PROBE_TIMEOUT).await?;
     if !output.success {
         return Err(format!(
@@ -822,8 +828,11 @@ async fn validate_tinytex_root_unlocked(
 }
 
 async fn prepare_staged_tinytex(root: &Path) -> Result<EngineInfo, String> {
-    let lualatex = find_in_texdir(root, "lualatex")
-        .ok_or_else(|| "Downloaded TinyTeX has no host-compatible lualatex binary.".to_string())?;
+    let lualatex = find_in_texdir(root, "lualatex").ok_or_else(|| {
+        crate::app_error::AppError::new("tex.no_host_binary")
+            .param("name", "lualatex")
+            .to_string()
+    })?;
     if sibling_tool(&lualatex, "latexmk").is_none() {
         let tlmgr = sibling_tool(&lualatex, "tlmgr")
             .ok_or_else(|| "Downloaded TinyTeX has no tlmgr binary.".to_string())?;
@@ -1588,7 +1597,9 @@ pub(crate) fn flow_budget_message(budget: std::time::Duration) -> String {
     } else {
         format!("{} seconds", budget.as_secs().max(1))
     };
-    format!("The package operation passed its {span} limit and was stopped, so you can compile again. The TeX Live mirror is probably busy. Try again later, or run tlmgr yourself.")
+    crate::app_error::AppError::new("tex.package_operation_timeout")
+        .param("span", span)
+        .into()
 }
 
 pub(crate) async fn within_flow_budget<F>(
