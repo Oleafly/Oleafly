@@ -82,8 +82,22 @@ async function exportThroughMenu(page: Page, label: string, destination: string)
   );
   await page.getByText(label, { exact: true }).click();
   const deadline = Date.now() + 180_000;
+  let priorSize = -1;
+  let stableReads = 0;
   for (;;) {
-    if (existsSync(destination) && statSync(destination).size > 0) return;
+    if (existsSync(destination)) {
+      const size = statSync(destination).size;
+      if (size > 0 && size === priorSize) {
+        stableReads += 1;
+        // The native write can become visible just before the frontend export
+        // promise settles. Wait for two stable observations so the next menu
+        // open cannot race the toolbar's export-in-progress guard.
+        if (stableReads >= 2) return;
+      } else {
+        stableReads = 0;
+      }
+      priorSize = size;
+    }
     if (Date.now() > deadline) throw new Error(`export did not finish: ${destination}`);
     await new Promise((resolve) => setTimeout(resolve, 500));
   }

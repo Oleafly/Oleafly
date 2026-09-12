@@ -8,7 +8,11 @@ describe("packaged conversion checks", () => {
   it("registers every module loaded by the conversion specs", () => {
     const registry = readFileSync(resolve("src/lib/e2e-import-registry.ts"), "utf8");
     const registered = new Set([...registry.matchAll(/"(\/(?:src|packages)\/[^"\n]+)":/g)].map((match) => match[1]));
-    for (const name of ["74-conversion-matrix.spec.ts", "75-conversion-matrix-ui.spec.ts"]) {
+    for (const name of [
+      "74-conversion-matrix.spec.ts",
+      "75-conversion-matrix-ui.spec.ts",
+      "86-ad-hoc-converters.spec.ts",
+    ]) {
       const source = readFileSync(resolve("e2e/tests", name), "utf8");
       for (const match of source.matchAll(/import\(\s*"(\/(?:src|packages)\/[^"\n]+)"/g)) {
         expect(registered.has(match[1]), `${name}: ${match[1]}`).toBe(true);

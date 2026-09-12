@@ -90,6 +90,12 @@ test("the bundled Pandoc converts Markdown without a project", async ({ tauriPag
     "\\documentclass",
     { timeout: 60_000 },
   );
+  // CodeMirror virtualizes off-screen lines, so scroll the result to its end
+  // before checking the source heading that Pandoc places in the document body.
+  await tauriPage
+    .getByTestId("converter-output")
+    .locator(".cm-scroller")
+    .evaluate((scroller) => scroller.scrollTo(0, scroller.scrollHeight));
   await expect(tauriPage.getByTestId("converter-output")).toContainText(
     "A compact example",
   );

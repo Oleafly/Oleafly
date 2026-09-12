@@ -36,6 +36,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/store/citation.ts": () => import("@/store/citation"),
   "/src/store/compile.ts": () => import("@/store/compile"),
   "/src/store/files.ts": () => import("@/store/files"),
+  "/src/store/import.ts": () => import("@/store/import"),
   "/src/store/inlineEdit.ts": () => import("@/store/inlineEdit"),
   "/src/store/preflight.ts": () => import("@/store/preflight"),
   "/src/store/project-analysis.ts": () => import("@/store/project-analysis"),
