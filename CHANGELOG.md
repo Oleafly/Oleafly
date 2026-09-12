@@ -80,13 +80,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   equation tool. MathJax renders them locally; no content leaves the machine.
 - Spreadsheets import as tables. A CSV, TSV, or XLSX file becomes a booktabs LaTeX table
   or a Typst table, with every LaTeX- or Typst-special character escaped, inserted at the
-  cursor or copied to the clipboard.
+  cursor or copied to the clipboard. Closing during a read leaves the picker ready
+  when reopened, and a successful clipboard retry clears the previous error.
 - The reference library gained a cleaner. Preview citation-key changes and DOI
   duplicates whose fields can all be preserved. Similar titles and conflicting
   metadata stay in the library for review. Applying updates supported citations
   and bibliography links, checks that the saved files still match the preview,
   and backs up the originals before writing. Comments and BibTeX string definitions
-  are preserved; large previews show the first 500 lines of each version.
+  are preserved; large previews show the first 500 lines of each version. Nested
+  source files are supported on Windows as well as macOS and Linux.
 - Add citation recognizes ISBNs (looked up on OpenLibrary) and PubMed ids (NCBI), alongside
   DOIs, arXiv ids, and title searches. An arXiv paper's LaTeX source can be imported as a
   new project from its id.

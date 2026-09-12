@@ -642,10 +642,13 @@ fn project_text_files(root: &Path) -> Result<Vec<PathBuf>, String> {
                         path.strip_prefix(root).unwrap().display()
                     ));
                 }
-                crate::sandbox::resolve_within(
-                    root,
-                    &path.strip_prefix(root).unwrap().to_string_lossy(),
-                )?;
+                let relative = path.strip_prefix(root).unwrap().to_string_lossy();
+                // `resolve_within` intentionally accepts portable project paths
+                // only. Windows produces native separators here, while Unix may
+                // legitimately have a backslash in a file name.
+                #[cfg(windows)]
+                let relative = relative.replace('\\', "/");
+                crate::sandbox::resolve_within(root, relative.as_ref())?;
                 out.push(path);
                 if out.len() > 10_000 {
                     return Err(

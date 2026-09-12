@@ -79,6 +79,82 @@ export interface ConversionRoute {
   pandoc?: { from: string; to: string; flags?: string[] };
 }
 
+type PandocRouteOptions = Readonly<{
+  direction?: "import" | "export";
+  extensions?: readonly string[] | false;
+  flags?: readonly string[];
+  plan?: false;
+  surface?: string;
+  writer?: string;
+}>;
+
+type PandocRouteEntry = readonly [
+  id: string,
+  label: string,
+  blurb: string,
+  target: TargetFormat,
+  status: RouteStatus,
+  gapId?: string,
+  options?: PandocRouteOptions,
+];
+
+const PANDOC_READERS = {
+  docx: "docx",
+  html: "html",
+  latex: "latex",
+  markdown: "markdown",
+  typst: "typst",
+} as const;
+
+const PANDOC_WRITERS: Record<TargetFormat, string> = {
+  bibtex: "bibtex",
+  docx: "docx",
+  html: "html5",
+  image: "image",
+  latex: "latex",
+  markdown: "markdown",
+  pdf: "pdf",
+  typst: "typst",
+};
+
+const PANDOC_STANDALONE = ["--standalone"];
+const PANDOC_HTML = ["--standalone", "--embed-resources", "--mathml"];
+const PANDOC_EXTRACT_MEDIA = ["--standalone", "--extract-media=assets"];
+
+function pandocRoutes(
+  source: keyof typeof PANDOC_READERS,
+  entries: readonly PandocRouteEntry[],
+  defaults: Readonly<{ direction: "import" | "export"; extensions?: readonly string[] }>,
+): ConversionRoute[] {
+  return entries.map(([id, label, blurb, target, status, gapId, options]) => {
+    const direction = options?.direction ?? defaults.direction;
+    const extensions = options?.extensions === false
+      ? undefined
+      : options?.extensions ?? defaults.extensions;
+    const route: ConversionRoute = {
+      id,
+      label,
+      blurb,
+      source,
+      target,
+      direction,
+      engine: "pandoc",
+      status,
+      surface: options?.surface ?? (direction === "import" ? "Import dialog" : "Export menu"),
+    };
+    if (gapId) route.gapId = gapId;
+    if (extensions) route.extensions = [...extensions];
+    if (options?.plan !== false) {
+      route.pandoc = {
+        from: PANDOC_READERS[source],
+        to: options?.writer ?? PANDOC_WRITERS[target],
+        ...(options?.flags ? { flags: [...options.flags] } : {}),
+      };
+    }
+    return route;
+  });
+}
+
 export const REGISTRY: readonly ConversionRoute[] = [
   // --- LaTeX projects -----------------------------------------------------
   {
@@ -92,56 +168,12 @@ export const REGISTRY: readonly ConversionRoute[] = [
     status: "existing",
     surface: "Export menu",
   },
-  {
-    id: "latex-to-docx",
-    label: "Word (.docx)",
-    blurb: "Pandoc writer with native OMML equations.",
-    source: "latex",
-    target: "docx",
-    direction: "export",
-    engine: "pandoc",
-    status: "existing",
-    surface: "Export menu",
-    pandoc: { from: "latex", to: "docx" },
-  },
-  {
-    id: "latex-to-html",
-    label: "HTML (MathML)",
-    blurb: "Standalone self-contained HTML with MathML equations for accessibility.",
-    source: "latex",
-    target: "html",
-    direction: "export",
-    engine: "pandoc",
-    status: "existing",
-    gapId: "G11",
-    surface: "Export menu",
-    pandoc: { from: "latex", to: "html5", flags: ["--standalone", "--embed-resources", "--mathml"] },
-  },
-  {
-    id: "latex-to-markdown",
-    label: "Markdown (.md)",
-    blurb: "Pandoc writer; math lands in dollar delimiters.",
-    source: "latex",
-    target: "markdown",
-    direction: "export",
-    engine: "pandoc",
-    status: "existing",
-    surface: "Export menu",
-    pandoc: { from: "latex", to: "markdown" },
-  },
-  {
-    id: "latex-to-typst",
-    label: "Typst (.typ)",
-    blurb: "Pandoc's typst writer with a fixup for its empty font declaration.",
-    source: "latex",
-    target: "typst",
-    direction: "export",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Export menu",
-    pandoc: { from: "latex", to: "typst", flags: ["--standalone"] },
-  },
+  ...pandocRoutes("latex", [
+    ["latex-to-docx", "Word (.docx)", "Pandoc writer with native OMML equations.", "docx", "existing"],
+    ["latex-to-html", "HTML (MathML)", "Standalone self-contained HTML with MathML equations for accessibility.", "html", "existing", "G11", { flags: PANDOC_HTML }],
+    ["latex-to-markdown", "Markdown (.md)", "Pandoc writer; math lands in dollar delimiters.", "markdown", "existing"],
+    ["latex-to-typst", "Typst (.typ)", "Pandoc's typst writer with a fixup for its empty font declaration.", "typst", "available", "G10", { flags: PANDOC_STANDALONE }],
+  ], { direction: "export" }),
   {
     id: "latex-to-image",
     label: "Equation SVG / PNG",
@@ -156,68 +188,15 @@ export const REGISTRY: readonly ConversionRoute[] = [
   },
 
   // --- Markdown -----------------------------------------------------------
-  {
-    id: "markdown-to-pdf",
-    label: "PDF",
-    blurb: "Pandoc compiles through the bundled Tectonic engine with citeproc.",
-    source: "markdown",
-    target: "pdf",
-    direction: "export",
-    engine: "pandoc",
-    status: "existing",
-    surface: "Export menu",
-  },
-  {
-    id: "markdown-to-docx",
-    label: "Word (.docx)",
-    blurb: "Pandoc writer.",
-    source: "markdown",
-    target: "docx",
-    direction: "export",
-    engine: "pandoc",
-    status: "existing",
-    surface: "Export menu",
-    pandoc: { from: "markdown", to: "docx" },
-  },
-  {
-    id: "markdown-to-html",
-    label: "HTML (MathML)",
-    blurb: "Standalone self-contained HTML with MathML equations.",
-    source: "markdown",
-    target: "html",
-    direction: "export",
-    engine: "pandoc",
-    status: "existing",
-    surface: "Export menu",
-    pandoc: { from: "markdown", to: "html5", flags: ["--standalone", "--embed-resources", "--mathml"] },
-  },
-  {
-    id: "markdown-to-latex",
-    label: "LaTeX (.tex)",
-    blurb: "Import as a LaTeX project, or export .tex from a Markdown project.",
-    source: "markdown",
-    target: "latex",
-    direction: "import",
-    engine: "pandoc",
-    status: "existing",
-    surface: "Import dialog, Export menu",
-    extensions: ["md", "markdown"],
-    pandoc: { from: "markdown", to: "latex", flags: ["--standalone"] },
-  },
-  {
-    id: "markdown-to-typst",
-    label: "Typst (.typ)",
-    blurb: "Import as a Typst project, or export .typ from a Markdown project.",
-    source: "markdown",
-    target: "typst",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog, Export menu",
-    extensions: ["md", "markdown"],
-    pandoc: { from: "markdown", to: "typst", flags: ["--standalone"] },
-  },
+  ...pandocRoutes("markdown", [
+    ["markdown-to-pdf", "PDF", "Pandoc compiles through the bundled Tectonic engine with citeproc.", "pdf", "existing", undefined, { plan: false }],
+    ["markdown-to-docx", "Word (.docx)", "Pandoc writer.", "docx", "existing"],
+    ["markdown-to-html", "HTML (MathML)", "Standalone self-contained HTML with MathML equations.", "html", "existing", undefined, { flags: PANDOC_HTML }],
+  ], { direction: "export" }),
+  ...pandocRoutes("markdown", [
+    ["markdown-to-latex", "LaTeX (.tex)", "Import as a LaTeX project, or export .tex from a Markdown project.", "latex", "existing", undefined, { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
+    ["markdown-to-typst", "Typst (.typ)", "Import as a Typst project, or export .typ from a Markdown project.", "typst", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
+  ], { direction: "import", extensions: ["md", "markdown"] }),
 
   // --- Typst --------------------------------------------------------------
   {
@@ -231,194 +210,32 @@ export const REGISTRY: readonly ConversionRoute[] = [
     status: "existing",
     surface: "Export menu",
   },
-  {
-    id: "typst-to-latex",
-    label: "LaTeX (.tex)",
-    blurb: "Import a Typst file as a LaTeX project, or export .tex from a Typst project.",
-    source: "typst",
-    target: "latex",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog, Export menu",
-    extensions: ["typ"],
-    pandoc: { from: "typst", to: "latex", flags: ["--standalone"] },
-  },
-  {
-    id: "typst-to-markdown",
-    label: "Markdown (.md)",
-    blurb: "Pandoc's markdown writer; import as a Markdown project or export .md.",
-    source: "typst",
-    target: "markdown",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G28",
-    surface: "Import dialog, Export menu",
-    extensions: ["typ"],
-    pandoc: { from: "typst", to: "markdown", flags: ["--standalone"] },
-  },
-  {
-    id: "typst-to-html",
-    label: "HTML (MathML)",
-    blurb: "Standalone HTML export from a Typst project.",
-    source: "typst",
-    target: "html",
-    direction: "export",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G28",
-    surface: "Export menu",
-    pandoc: { from: "typst", to: "html5", flags: ["--standalone", "--embed-resources", "--mathml"] },
-  },
-  {
-    id: "typst-to-docx",
-    label: "Word (.docx)",
-    blurb: "Pandoc reads Typst directly and writes a .docx with OMML equations.",
-    source: "typst",
-    target: "docx",
-    direction: "export",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G28",
-    surface: "Export menu",
-    pandoc: { from: "typst", to: "docx" },
-  },
+  ...pandocRoutes("typst", [
+    ["typst-to-latex", "LaTeX (.tex)", "Import a Typst file as a LaTeX project, or export .tex from a Typst project.", "latex", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
+    ["typst-to-markdown", "Markdown (.md)", "Pandoc's markdown writer; import as a Markdown project or export .md.", "markdown", "available", "G28", { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
+  ], { direction: "import", extensions: ["typ"] }),
+  ...pandocRoutes("typst", [
+    ["typst-to-html", "HTML (MathML)", "Standalone HTML export from a Typst project.", "html", "available", "G28", { flags: PANDOC_HTML }],
+    ["typst-to-docx", "Word (.docx)", "Pandoc reads Typst directly and writes a .docx with OMML equations.", "docx", "available", "G28"],
+  ], { direction: "export" }),
 
   // --- Word ---------------------------------------------------------------
-  {
-    id: "docx-to-latex",
-    label: "LaTeX project",
-    blurb: "Pandoc turns the document into a project, with OMML equations and media extracted to assets/.",
-    source: "docx",
-    target: "latex",
-    direction: "import",
-    engine: "pandoc",
-    status: "existing",
-    surface: "Import dialog",
-    extensions: ["docx"],
-    pandoc: { from: "docx", to: "latex", flags: ["--standalone", "--extract-media=assets"] },
-  },
-  {
-    id: "docx-to-markdown",
-    label: "Markdown project",
-    blurb: "Import as a Markdown project; export other formats from there.",
-    source: "docx",
-    target: "markdown",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog",
-    extensions: ["docx"],
-    pandoc: { from: "docx", to: "markdown", flags: ["--standalone", "--extract-media=assets"] },
-  },
-  {
-    id: "docx-to-typst",
-    label: "Typst project",
-    blurb: "Import as a Typst project.",
-    source: "docx",
-    target: "typst",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog",
-    extensions: ["docx"],
-    pandoc: { from: "docx", to: "typst", flags: ["--standalone", "--extract-media=assets"] },
-  },
-  {
-    id: "docx-to-pdf",
-    label: "PDF",
-    blurb: "Import as a LaTeX project, then compile.",
-    source: "docx",
-    target: "pdf",
-    direction: "import",
-    engine: "pandoc",
-    status: "existing",
-    surface: "Import dialog",
-  },
-  {
-    id: "docx-to-html",
-    label: "HTML (MathML)",
-    blurb: "Import as a Markdown project, then export self-contained HTML with MathML.",
-    source: "docx",
-    target: "html",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog, then Export menu",
-  },
+  ...pandocRoutes("docx", [
+    ["docx-to-latex", "LaTeX project", "Pandoc turns the document into a project, with OMML equations and media extracted to assets/.", "latex", "existing", undefined, { flags: PANDOC_EXTRACT_MEDIA }],
+    ["docx-to-markdown", "Markdown project", "Import as a Markdown project; export other formats from there.", "markdown", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
+    ["docx-to-typst", "Typst project", "Import as a Typst project.", "typst", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
+    ["docx-to-pdf", "PDF", "Import as a LaTeX project, then compile.", "pdf", "existing", undefined, { extensions: false, plan: false }],
+    ["docx-to-html", "HTML (MathML)", "Import as a Markdown project, then export self-contained HTML with MathML.", "html", "available", "G10", { extensions: false, plan: false, surface: "Import dialog, then Export menu" }],
+  ], { direction: "import", extensions: ["docx"] }),
 
   // --- HTML ---------------------------------------------------------------
-  {
-    id: "html-to-latex",
-    label: "LaTeX project",
-    blurb: "Pandoc's html reader; embedded images are extracted to assets/.",
-    source: "html",
-    target: "latex",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog",
-    extensions: ["html", "htm"],
-    pandoc: { from: "html", to: "latex", flags: ["--standalone", "--extract-media=assets"] },
-  },
-  {
-    id: "html-to-markdown",
-    label: "Markdown project",
-    blurb: "Import as a Markdown project.",
-    source: "html",
-    target: "markdown",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog",
-    extensions: ["html", "htm"],
-    pandoc: { from: "html", to: "markdown", flags: ["--standalone", "--extract-media=assets"] },
-  },
-  {
-    id: "html-to-typst",
-    label: "Typst project",
-    blurb: "Import as a Typst project.",
-    source: "html",
-    target: "typst",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog",
-    extensions: ["html", "htm"],
-    pandoc: { from: "html", to: "typst", flags: ["--standalone", "--extract-media=assets"] },
-  },
-  {
-    id: "html-to-pdf",
-    label: "PDF",
-    blurb: "Import as a LaTeX project, then compile.",
-    source: "html",
-    target: "pdf",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog",
-  },
-  {
-    id: "html-to-docx",
-    label: "Word (.docx)",
-    blurb: "Import as a LaTeX or Markdown project, then export Word.",
-    source: "html",
-    target: "docx",
-    direction: "import",
-    engine: "pandoc",
-    status: "available",
-    gapId: "G10",
-    surface: "Import dialog, then Export menu",
-  },
+  ...pandocRoutes("html", [
+    ["html-to-latex", "LaTeX project", "Pandoc's html reader; embedded images are extracted to assets/.", "latex", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
+    ["html-to-markdown", "Markdown project", "Import as a Markdown project.", "markdown", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
+    ["html-to-typst", "Typst project", "Import as a Typst project.", "typst", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
+    ["html-to-pdf", "PDF", "Import as a LaTeX project, then compile.", "pdf", "available", "G10", { extensions: false, plan: false }],
+    ["html-to-docx", "Word (.docx)", "Import as a LaTeX or Markdown project, then export Word.", "docx", "available", "G10", { extensions: false, plan: false, surface: "Import dialog, then Export menu" }],
+  ], { direction: "import", extensions: ["html", "htm"] }),
 
   // --- PDF ----------------------------------------------------------------
   {

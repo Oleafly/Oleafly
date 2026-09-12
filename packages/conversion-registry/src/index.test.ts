@@ -50,6 +50,27 @@ describe("conversion registry invariants", () => {
     );
   });
 
+  it("preserves shared Pandoc plans and routes without a backend plan", () => {
+    expect(route("latex-to-html")).toMatchObject({
+      source: "latex",
+      target: "html",
+      direction: "export",
+      engine: "pandoc",
+      gapId: "G11",
+      surface: "Export menu",
+      pandoc: { from: "latex", to: "html5", flags: ["--standalone", "--embed-resources", "--mathml"] },
+    });
+    expect(route("docx-to-typst")).toMatchObject({
+      extensions: ["docx"],
+      pandoc: { from: "docx", to: "typst", flags: ["--standalone", "--extract-media=assets"] },
+    });
+    expect(route("docx-to-html")).toMatchObject({
+      surface: "Import dialog, then Export menu",
+    });
+    expect(route("docx-to-html").extensions).toBeUndefined();
+    expect(route("docx-to-html").pandoc).toBeUndefined();
+  });
+
   it("resolves an import route for a picked extension and target", () => {
     expect(importRouteFor("html", "latex")?.id).toBe("html-to-latex");
     expect(importRouteFor("docx", "markdown")?.id).toBe("docx-to-markdown");
@@ -112,4 +133,10 @@ function targetKind(route: ConversionRoute): string {
     default:
       return `?${route.target}`;
   }
+}
+
+function route(id: string): ConversionRoute {
+  const match = REGISTRY.find((candidate) => candidate.id === id);
+  if (!match) throw new Error(`Missing route: ${id}`);
+  return match;
 }

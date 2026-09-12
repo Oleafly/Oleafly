@@ -63,6 +63,7 @@ export function TableImportDialog() {
       setError(null);
       setTableContext(null);
       busyRef.current = false;
+      setBusy(false);
     }
   }, [open]);
 
@@ -154,6 +155,7 @@ export function TableImportDialog() {
     if (rows.length === 0) return;
     const tableSource = source();
     if (!tableSource) return;
+    setError(null);
     try {
       await navigator.clipboard.writeText(tableSource);
       toast.success("Table source copied to the clipboard.");
