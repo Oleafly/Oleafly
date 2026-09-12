@@ -676,12 +676,12 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   })()`;
   const baseline = await tauriPage.evaluate<PageGeometry[]>(inspectPages);
 
-  expect(baseline[0].width).toBeCloseTo(612, 2);
-  expect(baseline[0].height).toBeCloseTo(792, 2);
+  expectCssSubpixel(baseline[0].width, 612);
+  expectCssSubpixel(baseline[0].height, 792);
   expect(baseline[0].canvasWidth).toBe(765);
   expect(baseline[0].canvasHeight).toBe(990);
-  expect(baseline[1].width).toBeCloseTo(900, 2);
-  expect(baseline[1].height).toBeCloseTo(628, 2);
+  expectCssSubpixel(baseline[1].width, 900);
+  expectCssSubpixel(baseline[1].height, 628);
   expect(baseline[1].canvasWidth).toBe(1_125);
   expect(baseline[1].canvasHeight).toBe(785);
   expect(baseline[1].rotation).toBe("90");
@@ -807,10 +807,10 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
 
   expect(transient[0].rasterScale).toBe("1");
   expect(transient[1].rasterScale).toBe("1");
-  expect(transient[0].width).toBeCloseTo(1_224, 2);
-  expect(transient[0].height).toBeCloseTo(1_584, 2);
-  expect(transient[1].width).toBeCloseTo(1_800, 2);
-  expect(transient[1].height).toBeCloseTo(1_260, 2);
+  expectCssSubpixel(transient[0].width, 1_224);
+  expectCssSubpixel(transient[0].height, 1_584);
+  expectCssSubpixel(transient[1].width, 1_800);
+  expectCssSubpixel(transient[1].height, 1_260);
   for (let index = 0; index < transient.length; index++) {
     expect(transient[index].layerEdgeError).toBeLessThanOrEqual(0.05);
   }

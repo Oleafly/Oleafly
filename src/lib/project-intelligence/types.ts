@@ -1,3 +1,5 @@
+import type { BibliographyEngine } from "@oleafly/latex";
+
 export const PROJECT_INTELLIGENCE_PROTOCOL_VERSION = 2 as const;
 
 export type ProjectIntelligenceEngine =
@@ -37,6 +39,54 @@ export interface SourceRange {
 export interface SourceLocation {
   readonly file: string;
   readonly range: SourceRange;
+}
+
+export type ProjectDiagnosticMessageKey =
+  | "analysisFailed"
+  | "beginIsHere"
+  | "beginWithoutEnd"
+  | "bibliographyFileMissing"
+  | "citationHasManyDefinitions"
+  | "citationKeyDuplicated"
+  | "citationUnresolved"
+  | "definedHere"
+  | "duplicateTargetDefined"
+  | "endWithoutBegin"
+  | "entryMissingFieldList"
+  | "expectedEndBefore"
+  | "fieldIncompleteValue"
+  | "fieldMissingEquals"
+  | "fieldRepeated"
+  | "fileNotLoaded"
+  | "fileUnreadable"
+  | "incompleteEntry"
+  | "invalidYear"
+  | "malformedDirective"
+  | "missingCitationKey"
+  | "missingRequiredField"
+  | "possibleTarget"
+  | "projectFileUnreadable"
+  | "referenceHasManyDefinitions"
+  | "referenceUnresolved"
+  | "targetMatchesManyFiles"
+  | "targetUnresolved"
+  | "typeDelimiterExpected"
+  | "unclosedDelimiter"
+  | "unclosedDirective"
+  | "unclosedEntry"
+  | "unclosedEntryNamed"
+  | "unclosedFence"
+  | "unclosedFrontMatter"
+  | "unclosedString"
+  | "unclosedTypstComment"
+  | "unexpectedClosingDelimiter"
+  | "unknownEntryType"
+  | "unparsableField"
+  | "unparsableFieldNamed";
+
+export interface ProjectDiagnosticMessage {
+  readonly key: ProjectDiagnosticMessageKey;
+  readonly params?: Readonly<Record<string, string | number>>;
 }
 
 export type ProjectDefinitionKind =
@@ -139,6 +189,7 @@ export interface ProjectEdge {
   readonly targetFile: string | null;
   readonly resolution: ResolutionStatus;
   readonly candidateFiles: readonly string[];
+  readonly bibliographyEngine?: BibliographyEngine;
 }
 
 export interface ProjectHierarchy {
@@ -149,7 +200,7 @@ export interface ProjectHierarchy {
 }
 
 export interface ProjectRelatedLocation {
-  readonly message: string;
+  readonly message: ProjectDiagnosticMessage;
   readonly location: SourceLocation;
 }
 
@@ -168,7 +219,7 @@ export interface ProjectDiagnostic {
     | "bibtex-validation"
     | "unreadable-file"
     | "analysis-limit";
-  readonly message: string;
+  readonly message: ProjectDiagnosticMessage;
   readonly location: SourceLocation;
   readonly related: readonly ProjectRelatedLocation[];
 }
@@ -256,11 +307,40 @@ export interface ProjectIntelligenceStats {
   readonly durationMs: number;
 }
 
+export type ProjectIntelligenceReasonKey =
+  | "analysisFailed"
+  | "analyzing"
+  | "couldNotSend"
+  | "disposed"
+  | "disposedDuringRequest"
+  | "failed"
+  | "identityMismatch"
+  | "malformedResponse"
+  | "malformedSnapshotIdentity"
+  | "noProject"
+  | "partialFiles"
+  | "retainedStale"
+  | "sourceGraphRefreshing"
+  | "sourceSnapshotsLoading"
+  | "staleSnapshot"
+  | "stopped"
+  | "timedOut"
+  | "typeMismatch"
+  | "unexpectedResponse"
+  | "workerFailed"
+  | "workerRestarted"
+  | "workerUnavailable";
+
+export interface ProjectIntelligenceReason {
+  readonly key: ProjectIntelligenceReasonKey;
+  readonly params?: Readonly<Record<string, string | number>>;
+}
+
 export interface ProjectIntelligenceSnapshot {
   readonly protocolVersion: typeof PROJECT_INTELLIGENCE_PROTOCOL_VERSION;
   readonly identity: ProjectIntelligenceIdentity;
   readonly status: "partial" | "success";
-  readonly reason?: string;
+  readonly reason?: ProjectIntelligenceReason;
   readonly fileStates: Readonly<Record<string, ProjectFileState>>;
   readonly definitions: readonly ProjectDefinition[];
   readonly uses: readonly ProjectUse[];
@@ -276,6 +356,7 @@ export interface ProjectIntelligenceSnapshot {
 export interface ProjectIntelligenceFailure {
   readonly name: string;
   readonly message: string;
+  readonly reason?: ProjectIntelligenceReason;
   readonly retryable: boolean;
 }
 
@@ -295,7 +376,7 @@ export interface ProjectIntelligenceState {
    * editor fallbacks cannot resolve against an obsolete project graph.
    */
   readonly currentFileFallbackAllowed?: boolean;
-  readonly reason?: string;
+  readonly reason?: ProjectIntelligenceReason;
   readonly failure?: ProjectIntelligenceFailure;
 }
 

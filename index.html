@@ -14,6 +14,7 @@
       // users and vice versa). Must stay dependency-free and synchronous.
       (function () {
         var theme = "dark";
+        var locale = "en";
         try {
           var stored = localStorage.getItem("oleafly.theme");
           if (stored === "light" || stored === "dark") {
@@ -24,11 +25,20 @@
           ) {
             theme = "light";
           }
+          var preference = localStorage.getItem("oleafly.locale");
+          if (preference === "zh-Hans") {
+            locale = preference;
+          } else if (preference === null || preference === "system") {
+            var nav = (navigator.language || "").toLowerCase();
+            if (nav.indexOf("zh") === 0 && !/tw|hk|mo|hant/.test(nav)) locale = "zh-Hans";
+          }
         } catch (e) {
-          /* storage unavailable: keep dark */
+          /* storage unavailable: keep defaults */
         }
         document.documentElement.className = theme;
         document.documentElement.style.colorScheme = theme;
+        document.documentElement.lang = locale;
+        window.__oleaflyBootLocale = locale;
       })();
     </script>
   </head>
@@ -50,17 +60,36 @@
       // moving on slow starts so the splash never looks frozen. The index is
       // monotonic: progress signals can only move the text forward.
       (function () {
-        var stages = [
-          "Initializing Oleafly",
-          "Loading Oleafly Core",
-          "Loading Oleafly Harness",
-          "Loading Oleafly Parsers",
-        ];
+        var narration = {
+          "en": {
+            "stages": [
+              "Initializing Oleafly",
+              "Loading Oleafly Core",
+              "Loading Oleafly Harness",
+              "Loading Oleafly Parsers"
+            ],
+            "starting": "Starting Oleafly"
+          },
+          "zh-Hans": {
+            "stages": [
+              "正在初始化 Oleafly",
+              "正在加载 Oleafly Core",
+              "正在加载 Oleafly Harness",
+              "正在加载 Oleafly Parsers"
+            ],
+            "starting": "正在启动 Oleafly"
+          }
+        };
+        var texts = narration[window.__oleaflyBootLocale] || narration.en;
+        var stages = texts.stages;
         var current = 0;
         function apply() {
           var el = document.getElementById("oleafly-splash-stage");
           if (el) el.textContent = stages[current];
         }
+        var splash = document.getElementById("oleafly-splash");
+        if (splash) splash.setAttribute("aria-label", texts.starting);
+        apply();
         window.__oleaflySplashStage = function (index) {
           if (typeof index !== "number" || index <= current) return;
           current = Math.min(index, stages.length - 1);

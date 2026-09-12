@@ -1,4 +1,5 @@
 export { WYSIWYG_EXTENSIONS } from "./schema";
+export * from "./messages";
 export { RawBlock } from "./raw-block";
 export {
   parseMarkdownBody,

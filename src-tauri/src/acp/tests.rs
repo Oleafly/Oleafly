@@ -15,9 +15,13 @@ pub(crate) fn fixture_temp() -> tempfile::TempDir {
         .unwrap()
 }
 
-pub(crate) fn fixture_definition(extra: Vec<String>, root: &Path) -> AgentDefinition {
-    let python =
-        catalog::discover("python3").expect("Python 3 is required for ACP protocol fixtures");
+pub(crate) fn fixture_python() -> std::path::PathBuf {
+    // The official Windows installer exposes python.exe, not python3.exe.
+    #[cfg(windows)]
+    let python = catalog::discover("python").or_else(|| catalog::discover("python3"));
+    #[cfg(not(windows))]
+    let python = catalog::discover("python3");
+    let python = python.expect("Python 3 is required for ACP protocol fixtures");
     #[cfg(target_os = "macos")]
     let python = python
         .parent()
@@ -25,6 +29,11 @@ pub(crate) fn fixture_definition(extra: Vec<String>, root: &Path) -> AgentDefini
         .map(|prefix| prefix.join("Resources/Python.app/Contents/MacOS/Python"))
         .filter(|path| path.is_file())
         .unwrap_or(python);
+    python
+}
+
+pub(crate) fn fixture_definition(extra: Vec<String>, root: &Path) -> AgentDefinition {
+    let python = fixture_python();
     let script = Path::new(file!())
         .parent()
         .unwrap()

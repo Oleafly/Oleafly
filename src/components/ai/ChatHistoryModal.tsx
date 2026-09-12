@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquareQuote, Search, Trash2, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { StoredChat } from "@/store/chats";
+import { i18n } from "@/i18n";
 import { formatUsd } from "@/lib/ai-pricing";
+import { formatDate, formatNumber } from "@/lib/intl";
 import { chatsSearch } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -16,16 +19,16 @@ function ftsQuery(raw: string): string {
     .join(" ");
 }
 
-function relativeTime(t: number) {
-  const diff = Date.now() - t;
+function relativeTime(at: number) {
+  const diff = Date.now() - at;
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return i18n.t(($) => $.ai.history.relative.justNow);
+  if (m < 60) return i18n.t(($) => $.ai.history.relative.minutes, { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return i18n.t(($) => $.ai.history.relative.hours, { count: h });
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d ago`;
-  return new Date(t).toLocaleDateString();
+  if (d < 7) return i18n.t(($) => $.ai.history.relative.days, { count: d });
+  return formatDate(at, { dateStyle: "short" });
 }
 
 export function ChatHistoryModal({
@@ -45,6 +48,7 @@ export function ChatHistoryModal({
   onOpen: (chat: StoredChat) => void;
   onDelete: (chatId: string) => void;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, onClose);
@@ -73,7 +77,12 @@ export function ChatHistoryModal({
     <div
       className="fixed inset-0 z-[80] flex animate-in fade-in items-center justify-center bg-black/50 p-4 duration-200 backdrop-blur-sm motion-reduce:animate-none"
     >
-      <button type="button" aria-label="Close chat history" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
+      <button
+        type="button"
+        aria-label={t(($) => $.ai.history.closeBackdrop)}
+        className="absolute inset-0"
+        onMouseDown={onBackdropMouseDown}
+      />
       <div
         role="dialog"
         ref={dialogRef}
@@ -84,13 +93,15 @@ export function ChatHistoryModal({
       >
         <div className="flex shrink-0 items-center gap-2 p-4">
           <MessageSquareQuote className="size-4" />
-          <h2 id="chat-history-title" className="text-base font-semibold">Chat history</h2>
+          <h2 id="chat-history-title" className="text-base font-semibold">
+            {t(($) => $.ai.history.title)}
+          </h2>
           <button
             type="button"
             data-modal-initial-focus
             onClick={onClose}
             className="ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            aria-label="Close"
+            aria-label={t(($) => $.common.actions.close)}
           >
             <X className="size-4" />
           </button>
@@ -100,10 +111,10 @@ export function ChatHistoryModal({
           <div className="flex items-center gap-2 rounded-md border bg-background px-2">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
             <input
-              aria-label="Search chats"
+              aria-label={t(($) => $.ai.history.searchLabel)}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search titles and messages"
+              placeholder={t(($) => $.ai.history.searchPlaceholder)}
               className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
             />
           </div>
@@ -112,11 +123,11 @@ export function ChatHistoryModal({
         <div className="min-h-0 flex-1 overflow-auto p-2">
           {chats.length === 0 ? (
             <p className="px-3 py-10 text-center text-sm text-muted-foreground">
-              No saved chats for this project yet.
+              {t(($) => $.ai.history.emptyProject)}
             </p>
           ) : visibleChats.length === 0 ? (
             <p className="px-3 py-10 text-center text-sm text-muted-foreground">
-              No chats match that search.
+              {t(($) => $.ai.history.emptySearch)}
             </p>
           ) : (
             visibleChats.map((chat) => {
@@ -139,22 +150,25 @@ export function ChatHistoryModal({
                     <div className="flex items-center gap-1.5">
                       <MessageSquareQuote className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="truncate text-sm font-medium">
-                        {chat.title || "New chat"}
+                        {chat.title || t(($) => $.ai.history.untitled)}
                       </span>
                       {stale && (
                         <span
-                          title="This chat was started from an older version of the project"
+                          title={t(($) => $.ai.history.staleTitle)}
                           className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
                         >
-                          older version
+                          {t(($) => $.ai.history.staleBadge)}
                         </span>
                       )}
                     </div>
                     <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
-                      {relativeTime(chat.updatedAt)} · {chat.messages.length} msgs
+                      {relativeTime(chat.updatedAt)} ·{" "}
+                      {t(($) => $.ai.history.messages, { count: chat.messages.length })}
                       {chat.usage &&
                       chat.usage.inputTokens + chat.usage.outputTokens > 0
-                        ? ` · ~${(chat.usage.inputTokens + chat.usage.outputTokens).toLocaleString()} tok`
+                        ? ` · ${t(($) => $.ai.history.tokens, {
+                            amount: formatNumber(chat.usage.inputTokens + chat.usage.outputTokens),
+                          })}`
                         : ""}
                       {chat.usage && (chat.usage.estimatedUsd ?? 0) > 0
                         ? ` · ${formatUsd(chat.usage.estimatedUsd ?? 0)}`
@@ -171,22 +185,24 @@ export function ChatHistoryModal({
                         }}
                         className="rounded bg-destructive px-1.5 py-0.5 text-[11px] font-medium text-destructive-foreground hover:opacity-90"
                       >
-                        Delete
+                        {t(($) => $.common.actions.delete)}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmId(null)}
                         className="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
                       >
-                        Cancel
+                        {t(($) => $.common.actions.cancel)}
                       </button>
                     </div>
                   ) : (
                     <button
                       type="button"
-                      aria-label={`Delete ${chat.title || "chat"}`}
+                      aria-label={t(($) => $.ai.history.deleteAriaLabel, {
+                        title: chat.title || t(($) => $.ai.history.deleteFallbackTitle),
+                      })}
                       onClick={() => setConfirmId(chat.id)}
-                      title="Delete chat"
+                      title={t(($) => $.ai.history.deleteTitle)}
                       className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"
                     >
                       <Trash2 className="size-3.5" />

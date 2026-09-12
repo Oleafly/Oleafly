@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, ToolCase, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,11 @@ import {
   TOOL_CATEGORY_ORDER,
   TOOL_DEFINITIONS,
   toolById,
+  toolCategoryLabel,
+  toolDescription,
+  toolName,
+  toolTags,
+  type ToolCategory,
   type ToolDefinition,
   type ToolId,
 } from "@/lib/tool-catalog";
@@ -62,6 +68,9 @@ function ToolCard({
   onOpen: () => void;
 }) {
   const tone = TOOL_TONES[tool.tone];
+  const name = toolName(tool.id);
+  const description = toolDescription(tool.id);
+  const tags = toolTags(tool.id);
   return (
     <button
       type="button"
@@ -80,7 +89,7 @@ function ToolCard({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-base font-semibold group-hover:text-foreground">
-            {tool.name}
+            {name}
           </span>
           <code
             className={cn(
@@ -88,14 +97,14 @@ function ToolCard({
               tone.slash,
             )}
           >
-            /{tool.slash[0]}
+            {`/${tool.slash[0]}`}
           </code>
         </div>
         <div className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          {tool.description}
+          {description}
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {tool.tags.map((t) => (
+          {tags.map((t) => (
             <span
               key={t}
               className={cn(
@@ -119,18 +128,19 @@ function ToolsGallery({
   search: string;
   onOpenTool: (id: ToolId) => void;
 }) {
+  const { t: translate } = useTranslation(["common", "researchTools"]);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return TOOL_DEFINITIONS;
     return TOOL_DEFINITIONS.filter((t) =>
-      `${t.name} ${t.description} ${t.tags.join(" ")} ${t.slash.join(" ")}`
+      `${toolName(t.id)} ${toolDescription(t.id)} ${toolTags(t.id).join(" ")} ${t.slash.join(" ")}`
         .toLowerCase()
         .includes(q),
     );
   }, [search]);
 
   const grouped = useMemo(() => {
-    const byCategory = new Map<string, ToolDefinition[]>();
+    const byCategory = new Map<ToolCategory, ToolDefinition[]>();
     for (const t of filtered) {
       byCategory.set(t.category, [...(byCategory.get(t.category) ?? []), t]);
     }
@@ -145,14 +155,14 @@ function ToolsGallery({
       <div className="flex-1 p-6">
         {grouped.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            No tools match.
+            {translate(($) => $.researchTools.tools.noMatches)}
           </div>
         ) : (
           <div className="space-y-7">
             {grouped.map(({ category: c, tools }) => (
               <section key={c} className="space-y-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  {c}
+                  {toolCategoryLabel(c)}
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   {tools.map((t) => (
@@ -173,6 +183,7 @@ function ToolsGallery({
 }
 
 export function LatexToolsView() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const active = useHomeViewStore((s) => s.toolsOpen);
   const closeTools = useHomeViewStore((s) => s.closeTools);
   const goTo = useHomeViewStore((s) => s.goTo);
@@ -184,7 +195,7 @@ export function LatexToolsView() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <button
         type="button"
-        aria-label="Close Oleafly Tools"
+        aria-label={t(($) => $.researchTools.tools.closeGallery)}
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
@@ -210,19 +221,21 @@ export function LatexToolsView() {
               id="latex-tools-title"
               className="text-base font-bold tracking-tight"
             >
-              Oleafly Tools
+              {t(($) => $.researchTools.tools.galleryTitle)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Open a tool or use its slash command
+              {t(($) => $.researchTools.tools.gallerySubtitle)}
             </p>
           </div>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              aria-label="Search Oleafly Tools"
+              aria-label={t(($) => $.researchTools.tools.searchAria)}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${TOOL_DEFINITIONS.length} tools or slash commands`}
+              placeholder={t(($) => $.researchTools.tools.searchPlaceholder, {
+                total: TOOL_DEFINITIONS.length,
+              })}
               className="h-10 pl-8 text-sm"
             />
           </div>
@@ -231,7 +244,7 @@ export function LatexToolsView() {
             size="icon"
             className="size-9 shrink-0"
             onClick={closeTools}
-            aria-label="Close"
+            aria-label={t(($) => $.common.actions.close)}
           >
             <X className="size-4" />
           </Button>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   Bookmark,
   BookmarkCheck,
@@ -60,7 +61,12 @@ import { markBootStage } from "@/lib/boot-telemetry";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
-import { Book, BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR } from "@/components/library/Book";
+import {
+  Book,
+  BOOK_COLOR_OPTIONS,
+  DEFAULT_BOOK_COLOR,
+  useBookColorLabels,
+} from "@/components/library/Book";
 import {
   Empty,
   EmptyContent,
@@ -94,6 +100,7 @@ import {
   readCompiledPdf,
   type ProjectInfo,
 } from "@/lib/tauri";
+import { formatNumber } from "@/lib/intl";
 import { projectDateTime, projectModifiedLabel } from "@/lib/project-format";
 import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
 
@@ -186,18 +193,35 @@ function projectMetadataText(project: ProjectInfo) {
     .toLowerCase();
 }
 
+type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
+
+function projectKindLabel(t: Translate, kind: string | undefined): string {
+  switch (kind || "document") {
+    case "document":
+      return t(($) => $.library.projects.kind.document);
+    case "image":
+      return t(($) => $.library.projects.kind.image);
+    case "diagram":
+      return t(($) => $.library.projects.kind.diagram);
+    default:
+      return kind ?? "";
+  }
+}
+
 function FilterSelect({
+  name,
   label,
   value,
   options,
   onChange,
 }: {
+  name: string;
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
 }) {
-  const id = `project-filter-${label.toLowerCase().replace(/\s+/g, "-")}`;
+  const id = `project-filter-${name}`;
   return (
     <label
       htmlFor={id}
@@ -226,6 +250,8 @@ function FilterSelect({
 }
 
 export function Library() {
+  const { t } = useTranslation(["common", "library"]);
+  const colorLabels = useBookColorLabels();
   // Home-shell pages (deadlines/pdf-import/latex-tools/library) are mutually
   // exclusive siblings gated on the same store, so switching between them
   // never requires closing one first.
@@ -291,7 +317,7 @@ export function Library() {
     } catch (error) {
       if (previewRequestRef.current !== request) return;
       void logError("library PDF preview", error);
-      setPreviewError("The compiled PDF could not be loaded.");
+      setPreviewError(t(($) => $.library.projects.preview.failed));
     }
   };
   const closeProjectPreview = () => {
@@ -317,24 +343,24 @@ export function Library() {
     if (p.recovery_pending) {
       return (
         <Item onClick={() => void openProject(p.id)}>
-          <FileText className="mr-2 size-4" /> Open to recover
+          <FileText className="mr-2 size-4" /> {t(($) => $.library.projects.openToRecover)}
         </Item>
       );
     }
     return (
       <>
         <Item onClick={() => void openProject(p.id)}>
-          <FileText className="mr-2 size-4" /> Open project
+          <FileText className="mr-2 size-4" /> {t(($) => $.library.projects.openProject)}
         </Item>
         <Item onClick={() => window.setTimeout(() => setDetailsProject(p), 0)}>
-          <Info className="mr-2 size-4" /> Project details
+          <Info className="mr-2 size-4" /> {t(($) => $.library.projects.details)}
         </Item>
         <Item onClick={() => window.setTimeout(() => setHistoryProject(p), 0)}>
-          <History className="mr-2 size-4" /> Export history
+          <History className="mr-2 size-4" /> {t(($) => $.library.projects.exportHistory)}
         </Item>
         <Sub>
           <SubTrigger>
-            <Palette className="mr-2 size-4" /> Change project color
+            <Palette className="mr-2 size-4" /> {t(($) => $.library.projects.changeColor)}
           </SubTrigger>
           <SubContent className="w-44">
             {BOOK_COLOR_OPTIONS.map((c) => {
@@ -346,7 +372,7 @@ export function Library() {
                     className="mr-2 size-3.5 shrink-0 rounded-full ring-1 ring-black/10"
                     style={{ background: c.hex }}
                   />
-                  {c.name}
+                  {colorLabels[c.name] ?? c.name}
                   {active && <Check className="ml-auto size-3.5" />}
                 </Item>
               );
@@ -355,11 +381,11 @@ export function Library() {
         </Sub>
         <Item
           onClick={() => {
-            setForkName(`${p.name} (copy)`);
+            setForkName(t(($) => $.library.projects.forkDialog.copySuffix, { name: p.name }));
             setForkTarget({ id: p.id, name: p.name });
           }}
         >
-          <GitFork className="mr-2 size-4" /> Fork project
+          <GitFork className="mr-2 size-4" /> {t(($) => $.library.projects.fork)}
         </Item>
         <Item
           className="text-destructive focus:text-destructive"
@@ -372,7 +398,7 @@ export function Library() {
             );
           }}
         >
-          <Trash2 className="mr-2 size-4" /> Delete project
+          <Trash2 className="mr-2 size-4" /> {t(($) => $.library.projects.delete)}
         </Item>
       </>
     );
@@ -387,12 +413,14 @@ export function Library() {
     try {
       await recycleProject(target.id);
       await refreshProjects();
-      toast.success(`Moved "${target.name}" to the Recycle Bin.`);
+      toast.success(
+        t(($) => $.library.projects.deleteDialog.moved, { name: target.name }),
+      );
     } catch (error) {
       notifyError(
         "delete project",
         error,
-        `Couldn't delete "${target.name}".`,
+        t(($) => $.library.projects.deleteDialog.failed, { name: target.name }),
       );
     }
   };
@@ -490,13 +518,15 @@ export function Library() {
 
   const submitFork = async () => {
     if (!forkTarget) return;
-    const n = forkName.trim() || `${forkTarget.name} (copy)`;
+    const n =
+      forkName.trim() ||
+      t(($) => $.library.projects.forkDialog.copySuffix, { name: forkTarget.name });
     try {
       const id = await duplicateProject(forkTarget.id, n);
       await refreshProjects();
       if (id) setProjectColor(id, DEFAULT_BOOK_COLOR);
     } catch (e) {
-      notifyError("fork project", e, "Couldn't fork the project.");
+      notifyError("fork project", e, t(($) => $.library.projects.forkDialog.failed));
     }
     setForkTarget(null);
     setForkName("");
@@ -539,9 +569,7 @@ export function Library() {
               className="flex min-w-0 items-center gap-2"
             >
               <LeafLogo className="size-5 shrink-0" />
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                Oleafly
-              </h1>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Oleafly</h1>
             </div>
           ) : (
             <span data-tauri-drag-region />
@@ -555,8 +583,11 @@ export function Library() {
               />
               <Input
                 type="search"
-                aria-label="Search projects"
-                placeholder={`Search ${projects.length.toLocaleString()} ${projects.length === 1 ? "project" : "projects"} by name, ID, main file, color, or export`}
+                aria-label={t(($) => $.library.home.searchLabel)}
+                placeholder={t(($) => $.library.home.searchPlaceholder, {
+                  count: projects.length,
+                  total: formatNumber(projects.length),
+                })}
                 value={filters.metadata}
                 onChange={(event) =>
                   setFilters((current) => ({
@@ -572,7 +603,7 @@ export function Library() {
               {filters.metadata ? (
                 <button
                   type="button"
-                  aria-label="Clear project search"
+                  aria-label={t(($) => $.library.home.clearSearch)}
                   onClick={() =>
                     setFilters((current) => ({ ...current, metadata: "" }))
                   }
@@ -593,14 +624,14 @@ export function Library() {
             <div className="order-2">
               <ProjectImportMenu
                 align="end"
-                triggerTooltip="Import"
+                triggerTooltip={t(($) => $.library.home.import)}
                 trigger={(busy) => (
                   <Button
                     data-testid="import-project-button"
                     variant="ghost"
                     size="icon"
                     disabled={busy}
-                    aria-label="Import"
+                    aria-label={t(($) => $.library.home.import)}
                     className={cn(
                       HOME_DOCK_GLASS_SURFACE,
                       "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground dark:!bg-background/65 dark:shadow-sm",
@@ -617,9 +648,9 @@ export function Library() {
             </div>
           ) : null}
           {projects.length > 0 && (
-            <Tooltip label="Advanced project filters" className="order-1">
+            <Tooltip label={t(($) => $.library.home.advancedFilters)} className="order-1">
                 <Popover
-                  ariaLabel="Advanced project filters"
+                  ariaLabel={t(($) => $.library.home.advancedFilters)}
                   align="right"
                   closeOnClick={false}
                   className={cn(
@@ -641,9 +672,11 @@ export function Library() {
                 >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-col gap-0.5">
-                    <h2 className="text-sm font-semibold">Advanced filters</h2>
+                    <h2 className="text-sm font-semibold">
+                      {t(($) => $.library.home.filtersTitle)}
+                    </h2>
                     <p className="text-xs text-muted-foreground">
-                      Filters apply to the project shelf immediately
+                      {t(($) => $.library.home.filtersHint)}
                     </p>
                   </div>
                   <Button
@@ -658,12 +691,13 @@ export function Library() {
                       }))
                     }
                   >
-                    Reset
+                    {t(($) => $.library.home.resetFilters)}
                   </Button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <FilterSelect
-                    label="Engine"
+                    name="engine"
+                    label={t(($) => $.library.home.filters.engine)}
                     value={filters.engine}
                     onChange={(engine) =>
                       setFilters((current) => ({
@@ -672,14 +706,15 @@ export function Library() {
                       }))
                     }
                     options={[
-                      { value: "all", label: "All engines" },
+                      { value: "all", label: t(($) => $.library.home.filters.engineAll) },
                       { value: "tectonic", label: "Tectonic" },
                       { value: "typst", label: "Typst" },
                       { value: "markdown", label: "Markdown" },
                     ]}
                   />
                   <FilterSelect
-                    label="Project kind"
+                    name="kind"
+                    label={t(($) => $.library.home.filters.kind)}
                     value={filters.kind}
                     onChange={(kind) =>
                       setFilters((current) => ({
@@ -688,14 +723,15 @@ export function Library() {
                       }))
                     }
                     options={[
-                      { value: "all", label: "All kinds" },
-                      { value: "document", label: "Document" },
-                      { value: "image", label: "Image" },
-                      { value: "diagram", label: "Diagram" },
+                      { value: "all", label: t(($) => $.library.home.filters.kindAll) },
+                      { value: "document", label: t(($) => $.library.home.filters.kindDocument) },
+                      { value: "image", label: t(($) => $.library.home.filters.kindImage) },
+                      { value: "diagram", label: t(($) => $.library.home.filters.kindDiagram) },
                     ]}
                   />
                   <FilterSelect
-                    label="Bookmark"
+                    name="bookmark"
+                    label={t(($) => $.library.home.filters.bookmark)}
                     value={filters.bookmark}
                     onChange={(bookmark) =>
                       setFilters((current) => ({
@@ -704,13 +740,14 @@ export function Library() {
                       }))
                     }
                     options={[
-                      { value: "all", label: "Any status" },
-                      { value: "yes", label: "Bookmarked" },
-                      { value: "no", label: "Not bookmarked" },
+                      { value: "all", label: t(($) => $.library.home.filters.bookmarkAll) },
+                      { value: "yes", label: t(($) => $.library.home.filters.bookmarkYes) },
+                      { value: "no", label: t(($) => $.library.home.filters.bookmarkNo) },
                     ]}
                   />
                   <FilterSelect
-                    label="PDF preview"
+                    name="preview"
+                    label={t(($) => $.library.home.filters.preview)}
                     value={filters.preview}
                     onChange={(preview) =>
                       setFilters((current) => ({
@@ -719,13 +756,14 @@ export function Library() {
                       }))
                     }
                     options={[
-                      { value: "all", label: "Any status" },
-                      { value: "yes", label: "Available" },
-                      { value: "no", label: "Not available" },
+                      { value: "all", label: t(($) => $.library.home.filters.previewAll) },
+                      { value: "yes", label: t(($) => $.library.home.filters.previewYes) },
+                      { value: "no", label: t(($) => $.library.home.filters.previewNo) },
                     ]}
                   />
                   <FilterSelect
-                    label="Created"
+                    name="created"
+                    label={t(($) => $.library.home.filters.created)}
                     value={filters.created}
                     onChange={(created) =>
                       setFilters((current) => ({
@@ -734,14 +772,15 @@ export function Library() {
                       }))
                     }
                     options={[
-                      { value: "all", label: "Any time" },
-                      { value: "7", label: "Last 7 days" },
-                      { value: "30", label: "Last 30 days" },
-                      { value: "365", label: "Last year" },
+                      { value: "all", label: t(($) => $.library.home.filters.anyTime) },
+                      { value: "7", label: t(($) => $.library.home.filters.last7Days) },
+                      { value: "30", label: t(($) => $.library.home.filters.last30Days) },
+                      { value: "365", label: t(($) => $.library.home.filters.lastYear) },
                     ]}
                   />
                   <FilterSelect
-                    label="Modified"
+                    name="modified"
+                    label={t(($) => $.library.home.filters.modified)}
                     value={filters.modified}
                     onChange={(modified) =>
                       setFilters((current) => ({
@@ -750,10 +789,10 @@ export function Library() {
                       }))
                     }
                     options={[
-                      { value: "all", label: "Any time" },
-                      { value: "7", label: "Last 7 days" },
-                      { value: "30", label: "Last 30 days" },
-                      { value: "365", label: "Last year" },
+                      { value: "all", label: t(($) => $.library.home.filters.anyTime) },
+                      { value: "7", label: t(($) => $.library.home.filters.last7Days) },
+                      { value: "30", label: t(($) => $.library.home.filters.last30Days) },
+                      { value: "365", label: t(($) => $.library.home.filters.lastYear) },
                     ]}
                   />
                 </div>
@@ -765,15 +804,15 @@ export function Library() {
           <div data-tauri-drag-region className="flex min-w-max items-center">
             {projects.length > 0 ? (
               <fieldset
-                aria-label="Project layout"
+                aria-label={t(($) => $.library.home.layoutGroup)}
                 className={cn(
                   "flex items-center rounded-xl border border-white/20 bg-background/75 p-1 shadow-sm backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-background/65",
                   isWindows && "mr-3",
                 )}
               >
                 {([
-                  { mode: "list", label: "List view", icon: List },
-                  { mode: "grid", label: "Grid view", icon: LayoutGrid },
+                  { mode: "list", label: t(($) => $.library.home.listView), icon: List },
+                  { mode: "grid", label: t(($) => $.library.home.gridView), icon: LayoutGrid },
                 ] as const).map(({ mode, label, icon: Icon }) => (
                   <Tooltip key={mode} label={label} side="bottom">
                     <button
@@ -823,15 +862,13 @@ export function Library() {
                 <EmptyMedia className="size-16 overflow-hidden rounded-2xl border-white/20 bg-white p-0 shadow-sm sm:size-20">
                   <img
                     src="/oleafly-tile-gradient.png"
-                    alt="Oleafly app icon"
+                    alt={t(($) => $.library.home.appIconAlt)}
                     className="size-full object-cover"
                   />
                 </EmptyMedia>
-                <EmptyTitle>Welcome to Oleafly</EmptyTitle>
+                <EmptyTitle>{t(($) => $.library.home.welcomeTitle)}</EmptyTitle>
                 <EmptyDescription className="max-w-xl leading-relaxed">
-                  Write, compile, and proofread LaTeX, Typst, and Markdown.
-                  Manage citations, review PDFs, track changes in Git, and work
-                  with the AI models you choose.
+                  {t(($) => $.library.home.welcomeDescription)}
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent className="max-w-2xl">
@@ -842,7 +879,7 @@ export function Library() {
                     className="bg-primary text-white hover:bg-primary"
                     onClick={() => setNewProjectOpen(true)}
                   >
-                    <Plus className="size-4" /> Create new project
+                    <Plus className="size-4" /> {t(($) => $.library.home.createFirstProject)}
                   </Button>
                 </div>
               </EmptyContent>
@@ -856,7 +893,7 @@ export function Library() {
                 >
                   <LeafLogo className="size-8 opacity-80" />
                   <span className="ai-shimmer text-sm text-muted-foreground">
-                    Reading your library…
+                    {t(($) => $.library.home.loading)}
                   </span>
                 </div>
               </div>
@@ -873,12 +910,14 @@ export function Library() {
                   )}
                 </EmptyMedia>
                 <EmptyTitle>
-                  {bookmarkIsOnlyActiveFilter ? "No bookmarks yet" : "No matches"}
+                  {bookmarkIsOnlyActiveFilter
+                    ? t(($) => $.library.home.noBookmarksTitle)
+                    : t(($) => $.library.home.noMatchesTitle)}
                 </EmptyTitle>
                 <EmptyDescription>
                   {bookmarkIsOnlyActiveFilter
-                    ? "Hover a book and click its bookmark to add one."
-                    : "No projects match the current filters."}
+                    ? t(($) => $.library.home.noBookmarksDescription)
+                    : t(($) => $.library.home.noMatchesDescription)}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -897,19 +936,23 @@ export function Library() {
                       color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
                       date={
                         p.recovery_pending
-                          ? "Open to recover"
+                          ? t(($) => $.library.projects.openToRecover)
                           : projectModifiedLabel(p.updated_at)
                       }
                       engine={
                         p.recovery_pending
-                          ? "Recovery required"
+                          ? t(($) => $.library.projects.recoveryRequired)
                           : projectEngineLabel(p.engine, p.main_doc)
                       }
                       forkedFrom={p.forked_from}
-                      kind={p.recovery_pending ? "Open to recover" : p.kind || "document"}
+                      kind={
+                        p.recovery_pending
+                          ? t(($) => $.library.projects.openToRecover)
+                          : projectKindLabel(t, p.kind)
+                      }
                       openLabel={
                         p.recovery_pending
-                          ? `Open to recover ${p.name}`
+                          ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
                           : undefined
                       }
                       starred={favs.includes(p.id)}
@@ -921,7 +964,7 @@ export function Library() {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              aria-label={`Actions for ${p.name}`}
+                              aria-label={t(($) => $.library.projects.actions, { name: p.name })}
                               onClick={(event) => event.stopPropagation()}
                               className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
                             >
@@ -970,10 +1013,10 @@ export function Library() {
               aria-hidden="true"
               className="hidden min-h-10 grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] items-center gap-4 border-b border-border/70 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:grid"
             >
-              <span>Name</span>
-              <span>Type</span>
-              <span>Engine</span>
-              <span>Modified</span>
+              <span>{t(($) => $.library.home.columns.name)}</span>
+              <span>{t(($) => $.library.home.columns.type)}</span>
+              <span>{t(($) => $.library.home.columns.engine)}</span>
+              <span>{t(($) => $.library.home.columns.modified)}</span>
               <span />
             </div>
             {visibleProjects.map((p) => {
@@ -992,8 +1035,8 @@ export function Library() {
                         type="button"
                         aria-label={
                           recoveryPending
-                            ? `Open to recover ${p.name}`
-                            : `Open ${p.name}`
+                            ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
+                            : t(($) => $.library.projects.open, { name: p.name })
                         }
                         onClick={() => void openProject(p.id)}
                         onMouseEnter={() => {
@@ -1041,38 +1084,44 @@ export function Library() {
                           </span>
                           {recoveryPending ? (
                             <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
-                              Open to recover
+                              {t(($) => $.library.projects.openToRecover)}
                             </span>
                           ) : (
                             <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
-                              {projectEngineLabel(p.engine, p.main_doc)} · {p.kind || "document"}
+                              {projectEngineLabel(p.engine, p.main_doc)} · {projectKindLabel(t, p.kind)}
                             </span>
                           )}
                         </span>
                       </button>
                       <span className="hidden text-xs capitalize text-muted-foreground lg:block">
-                        {recoveryPending ? "Recovery" : p.kind || "document"}
+                        {recoveryPending
+                          ? t(($) => $.library.projects.recoveryShort)
+                          : projectKindLabel(t, p.kind)}
                       </span>
                       <span className="hidden text-xs text-muted-foreground lg:block">
                         {recoveryPending
-                          ? "Metadata unavailable"
+                          ? t(($) => $.library.projects.recoveryMetadata)
                           : projectEngineLabel(p.engine, p.main_doc)}
                       </span>
                       <span className="hidden text-xs text-muted-foreground sm:block">
                         {recoveryPending
-                          ? "Restore interrupted"
+                          ? t(($) => $.library.projects.recoveryModified)
                           : projectModifiedLabel(p.updated_at)}
                       </span>
                       <span className="flex items-center justify-end gap-0.5">
                         {recoveryPending ? (
                           <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-                            Recovery required
+                            {t(($) => $.library.projects.recoveryRequired)}
                           </span>
                         ) : forkSource ? (
-                          <Tooltip label={`Forked from ${forkSource}`}>
+                          <Tooltip
+                            label={t(($) => $.library.projects.forkedFrom, { name: forkSource })}
+                          >
                             <span
                               role="img"
-                              aria-label={`Forked from ${forkSource}`}
+                              aria-label={t(($) => $.library.projects.forkedFrom, {
+                                name: forkSource,
+                              })}
                               className="flex size-7 items-center justify-center text-muted-foreground"
                             >
                               <GitFork aria-hidden className="size-4" />
@@ -1082,25 +1131,35 @@ export function Library() {
                         {!recoveryPending ? <Tooltip
                           label={
                             p.has_preview
-                              ? "Preview PDF"
-                              : "PDF preview unavailable"
+                              ? t(($) => $.library.projects.previewPdf)
+                              : t(($) => $.library.projects.previewUnavailable)
                           }
                         >
                           <button
                             type="button"
                             disabled={!p.has_preview}
                             onClick={() => void openProjectPreview(p)}
-                            aria-label={`Preview ${p.name}`}
+                            aria-label={t(($) => $.library.projects.previewNamed, { name: p.name })}
                             className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
                           >
                             <Eye aria-hidden className="size-4" />
                           </button>
                         </Tooltip> : null}
-                        {!recoveryPending ? <Tooltip label={starred ? "Remove from favorites" : "Add to favorites"}>
+                        {!recoveryPending ? <Tooltip
+                          label={
+                            starred
+                              ? t(($) => $.library.projects.favoriteRemove)
+                              : t(($) => $.library.projects.favoriteAdd)
+                          }
+                        >
                           <button
                             type="button"
                             onClick={() => toggleFav(p.id)}
-                            aria-label={starred ? "Remove from favorites" : "Add to favorites"}
+                            aria-label={
+                              starred
+                                ? t(($) => $.library.projects.favoriteRemove)
+                                : t(($) => $.library.projects.favoriteAdd)
+                            }
                             className={cn(
                               "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring",
                               starred && "text-amber-500 hover:text-amber-500",
@@ -1121,7 +1180,7 @@ export function Library() {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              aria-label={`Actions for ${p.name}`}
+                              aria-label={t(($) => $.library.projects.actions, { name: p.name })}
                               className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100"
                             >
                               <Info aria-hidden className="size-4" />
@@ -1168,9 +1227,11 @@ export function Library() {
         >
           <DialogContent className="h-[min(88vh,56rem)] max-w-[54rem] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
             <DialogHeader className="px-5 py-4 pr-12">
-              <DialogTitle>PDF preview — {previewProject.name}</DialogTitle>
+              <DialogTitle>
+                {t(($) => $.library.projects.preview.title, { name: previewProject.name })}
+              </DialogTitle>
               <DialogDescription>
-                Latest compiled output for this project
+                {t(($) => $.library.projects.preview.description)}
               </DialogDescription>
             </DialogHeader>
             <div className="relative min-h-0 overflow-hidden border-t bg-sidebar">
@@ -1184,7 +1245,9 @@ export function Library() {
               ) : previewBytes ? (
                 <section
                   data-pdf-scroll-root
-                  aria-label={`PDF preview for ${previewProject.name}`}
+                  aria-label={t(($) => $.library.projects.preview.region, {
+                    name: previewProject.name,
+                  })}
                   className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   <PdfViewer
@@ -1204,7 +1267,7 @@ export function Library() {
                     aria-hidden
                     className="size-4 animate-spin motion-reduce:animate-none"
                   />
-                  Loading PDF preview…
+                  {t(($) => $.library.projects.preview.loading)}
                 </div>
               )}
             </div>
@@ -1223,36 +1286,54 @@ export function Library() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Project details</DialogTitle>
+            <DialogTitle>{t(($) => $.library.projects.detailsDialog.title)}</DialogTitle>
             <DialogDescription>
-              Read-only metadata used by project search and filters.
+              {t(($) => $.library.projects.detailsDialog.description)}
             </DialogDescription>
           </DialogHeader>
           {currentDetailsProject && (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
-              <dt className="text-muted-foreground">Name</dt>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.name)}
+              </dt>
               <dd className="min-w-0 break-words font-medium">{currentDetailsProject.name}</dd>
-              <dt className="text-muted-foreground">Project ID</dt>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.id)}
+              </dt>
               <dd className="min-w-0 break-all font-mono text-xs">{currentDetailsProject.id}</dd>
-              <dt className="text-muted-foreground">Engine</dt>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.engine)}
+              </dt>
               <dd>{projectEngineLabel(currentDetailsProject.engine, currentDetailsProject.main_doc)}</dd>
-              <dt className="text-muted-foreground">Kind</dt>
-              <dd className="capitalize">{currentDetailsProject.kind || "document"}</dd>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.kind)}
+              </dt>
+              <dd className="capitalize">{projectKindLabel(t, currentDetailsProject.kind)}</dd>
               {currentDetailsProject.forked_from && (
                 <>
-                  <dt className="text-muted-foreground">Forked from</dt>
+                  <dt className="text-muted-foreground">
+                    {t(($) => $.library.projects.detailsDialog.forkedFrom)}
+                  </dt>
                   <dd className="min-w-0 break-words">{currentDetailsProject.forked_from}</dd>
                 </>
               )}
-              <dt className="text-muted-foreground">Main document</dt>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.mainDocument)}
+              </dt>
               <dd className="min-w-0 break-all font-mono text-xs">
                 {currentDetailsProject.main_doc}
               </dd>
-              <dt className="text-muted-foreground">Created</dt>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.created)}
+              </dt>
               <dd>{projectDateTime(currentDetailsProject.created_at)}</dd>
-              <dt className="text-muted-foreground">Modified</dt>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.modified)}
+              </dt>
               <dd>{projectDateTime(currentDetailsProject.updated_at)}</dd>
-              <dt className="text-muted-foreground">Cover color</dt>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.color)}
+              </dt>
               <dd className="flex items-center gap-2">
                 <span
                   className="size-3.5 rounded-full border"
@@ -1262,11 +1343,25 @@ export function Library() {
                   {currentDetailsProject.color || DEFAULT_BOOK_COLOR}
                 </span>
               </dd>
-              <dt className="text-muted-foreground">Bookmarked</dt>
-              <dd>{favs.includes(currentDetailsProject.id) ? "Yes" : "No"}</dd>
-              <dt className="text-muted-foreground">PDF preview</dt>
-              <dd>{currentDetailsProject.has_preview ? "Available" : "Not available"}</dd>
-              <dt className="text-muted-foreground">Exports</dt>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.bookmarked)}
+              </dt>
+              <dd>
+                {favs.includes(currentDetailsProject.id)
+                  ? t(($) => $.common.actions.yes)
+                  : t(($) => $.common.actions.no)}
+              </dd>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.preview)}
+              </dt>
+              <dd>
+                {currentDetailsProject.has_preview
+                  ? t(($) => $.library.projects.detailsDialog.previewAvailable)
+                  : t(($) => $.library.projects.detailsDialog.previewUnavailable)}
+              </dd>
+              <dt className="text-muted-foreground">
+                {t(($) => $.library.projects.detailsDialog.exports)}
+              </dt>
               <dd>{currentDetailsProject.exports.length}</dd>
             </dl>
           )}
@@ -1284,18 +1379,20 @@ export function Library() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Export history</DialogTitle>
+            <DialogTitle>{t(($) => $.library.projects.exportsDialog.title)}</DialogTitle>
             <DialogDescription asChild>
               <p>
                 {currentHistoryProject ? (
-                  <>
-                    Files exported from{" "}
-                    <strong className="font-medium text-foreground">
-                      “{currentHistoryProject.name}”
-                    </strong>
-                  </>
+                  <Trans
+                    ns="library"
+                    i18nKey={($) => $.library.projects.exportsDialog.from}
+                    values={{ name: currentHistoryProject.name }}
+                    components={{
+                      name: <strong className="font-medium text-foreground" />,
+                    }}
+                  />
                 ) : (
-                  "Files exported from this project"
+                  t(($) => $.library.projects.exportsDialog.fromUnknown)
                 )}
               </p>
             </DialogDescription>
@@ -1303,7 +1400,7 @@ export function Library() {
           {currentHistoryProject &&
             (currentHistoryProject.exports.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                This project has no recorded exports
+                {t(($) => $.library.projects.exportsDialog.empty)}
               </p>
             ) : (
               <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
@@ -1317,7 +1414,7 @@ export function Library() {
                         {item.filename}
                       </span>
                       <span className="shrink-0 text-xs font-medium uppercase text-muted-foreground">
-                        {item.format || "file"}
+                        {item.format || t(($) => $.library.projects.exportsDialog.fallbackFormat)}
                       </span>
                     </div>
                     <span className="break-all font-mono text-xs text-muted-foreground">
@@ -1336,7 +1433,12 @@ export function Library() {
 
       {forkTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <button type="button" aria-label="Close fork dialog" className="absolute inset-0" onMouseDown={onForkBackdropMouseDown} />
+          <button
+            type="button"
+            aria-label={t(($) => $.library.projects.forkDialog.close)}
+            className="absolute inset-0"
+            onMouseDown={onForkBackdropMouseDown}
+          />
           <div
             ref={forkDialogRef}
             role="dialog"
@@ -1346,13 +1448,20 @@ export function Library() {
             className="relative w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 id="library-fork-title" className="text-base font-semibold">Fork project</h2>
+              <h2 id="library-fork-title" className="text-base font-semibold">
+                {t(($) => $.library.projects.forkDialog.title)}
+              </h2>
               <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
                 <X className="size-4" />
               </Button>
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
-              Copies <span className="font-medium text-foreground">{forkTarget.name}</span> and its Git history into a new project. Checkpoints start empty.
+              <Trans
+                ns="library"
+                i18nKey={($) => $.library.projects.forkDialog.description}
+                values={{ name: forkTarget.name }}
+                components={{ name: <span className="font-medium text-foreground" /> }}
+              />
             </p>
             <div className="flex items-center gap-2">
               <Input
@@ -1360,19 +1469,24 @@ export function Library() {
                 value={forkName}
                 onChange={(e) => setForkName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") void submitFork(); }}
-                placeholder="New project name"
+                placeholder={t(($) => $.library.projects.forkDialog.namePlaceholder)}
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
               />
-              <Button onClick={() => void submitFork()}>Fork</Button>
+              <Button onClick={() => void submitFork()}>
+                {t(($) => $.library.projects.forkDialog.confirm)}
+              </Button>
             </div>
           </div>
         </div>
       )}
       <ConfirmationDialog
         open={deleteTarget !== null}
-        title={`Move “${deleteTarget?.name ?? "project"}” to the Recycle Bin?`}
-        description="The project will leave your library but remain available in Data Storage until you restore or permanently delete it."
-        confirmLabel="Move to Recycle Bin"
+        title={t(($) => $.library.projects.deleteDialog.title, {
+          name:
+            deleteTarget?.name ?? t(($) => $.library.projects.deleteDialog.fallbackName),
+        })}
+        description={t(($) => $.library.projects.deleteDialog.description)}
+        confirmLabel={t(($) => $.library.projects.deleteDialog.confirm)}
         destructive
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmProjectDeletion()}

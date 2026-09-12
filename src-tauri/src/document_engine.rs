@@ -416,13 +416,57 @@ fn denied_shell_escape_feature(source: &str, log: &str) -> Option<&'static str> 
     if ["\\write18", "\\shellescape", "\\input{|", "includesvg"]
         .iter()
         .any(|needle| source.contains(needle))
-        || ["shell escape", "shell-escape", "runsystem"]
-            .iter()
-            .any(|needle| log.contains(needle))
+        || log_refused_a_shell_command(&log)
     {
         return Some("a LaTeX shell command");
     }
     None
+}
+
+fn log_refused_a_shell_command(log: &str) -> bool {
+    const REFUSALS: [&str; 4] = [
+        "shell escape feature is not enabled",
+        "shell-escape feature is not enabled",
+        "shell escape is disabled",
+        "-shell-escape flag",
+    ];
+    if REFUSALS.iter().any(|needle| log.contains(needle)) {
+        return true;
+    }
+    runsystem_statuses(log)
+        .iter()
+        .any(|status| status.starts_with("disabled"))
+}
+
+fn runsystem_statuses(log: &str) -> Vec<String> {
+    const MARKER: &str = "runsystem(";
+    const CLOSE: &str = ")...";
+    const RECORD_LIMIT: usize = 400;
+    let mut statuses = Vec::new();
+    let mut rest = log;
+    while let Some(at) = rest.find(MARKER) {
+        let tail = &rest[at + MARKER.len()..];
+        rest = tail;
+        let joined: String = tail
+            .chars()
+            .take(RECORD_LIMIT)
+            .filter(|ch| *ch != '\n' && *ch != '\r')
+            .collect();
+        let record = match joined.find(MARKER) {
+            Some(next) => &joined[..next],
+            None => &joined[..],
+        };
+        let Some(close) = record.find(CLOSE) else {
+            continue;
+        };
+        let status = &record[close + CLOSE.len()..];
+        let status = match status.find('.') {
+            Some(end) => &status[..end],
+            None => status,
+        };
+        statuses.push(status.trim().to_ascii_lowercase());
+    }
+    statuses
 }
 
 fn pythontex_job_present(log: &str, code_path: &Path) -> bool {
@@ -515,21 +559,26 @@ fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
     Ok(format!("./{value}"))
 }
 
+fn shell_escape_arg(allow: bool, distribution_kind: &str) -> &'static str {
+    match (allow, distribution_kind) {
+        (true, _) => "-shell-escape",
+        (false, "miktex") => "-no-shell-escape",
+        (false, _) => "-shell-restricted",
+    }
+}
+
 fn latexmk_args(
     out_dir: &Path,
     entry: &Path,
     stem: &str,
     flavor: LatexmkFlavor,
     options: CompileOptions,
+    distribution_kind: &str,
 ) -> Result<Vec<String>, String> {
     let out_dir = latexmk_relative_path_arg(out_dir)?;
     let mut args: Vec<String> = vec![
         "-norc".into(),
-        if options.allow_shell_escape {
-            "-shell-escape".into()
-        } else {
-            "-no-shell-escape".into()
-        },
+        shell_escape_arg(options.allow_shell_escape, distribution_kind).into(),
         flavor.as_arg().into(),
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
@@ -639,7 +688,14 @@ impl DocumentEngine for LatexmkEngine {
             .strip_prefix(project_dir)
             .map_err(|_| "latexmk output must stay inside the project directory".to_string())?;
         let artifacts = self.artifacts(out_dir, target);
-        let mut args = latexmk_args(relative_out_dir, entry_path, stem, flavor, options)?;
+        let mut args = latexmk_args(
+            relative_out_dir,
+            entry_path,
+            stem,
+            flavor,
+            options,
+            &crate::tex_distro::distribution_kind_for_tool(&latexmk),
+        )?;
         // latexmk's dependency database is not portable across TeX
         // distributions: after a distro switch it can report "Nothing to do"
         // while replaying the previous run's error. Force one full rebuild
@@ -1029,7 +1085,13 @@ fn parse_pandoc_diagnostics(log: &str) -> Vec<CompileError> {
                 return None;
             }
             let lower = trimmed.to_ascii_lowercase();
-            let kind = if lower.contains("warning") {
+            // Tectonic on Windows can emit this Fontconfig initialization
+            // message and still successfully resolve bundled fonts and write
+            // the PDF. Pandoc forwards it verbatim. Keep it visible without
+            // rejecting valid output; a nonzero exit still fails compilation.
+            let kind = if lower.contains("warning")
+                || lower.starts_with("fontconfig error: cannot load default config file:")
+            {
                 "warning"
             } else if lower.contains("error") || lower.starts_with("pandoc:") {
                 "error"
@@ -1369,6 +1431,7 @@ async fn recover_bibliography(
     spec: &EngineCompileSpec,
     stdout_buf: &mut String,
     exit_code: &mut Option<i32>,
+    bbl_before: Option<crate::biber_toolchain::BblStamp>,
 ) -> Result<(String, Option<PathBuf>), String> {
     if request.engine.id() != DocumentEngineId::Latex
         || !matches!(request.target, CompileTarget::Main { .. })
@@ -1383,8 +1446,8 @@ async fn recover_bibliography(
         .as_ref()
         .and_then(|path| read_log_bounded(path).ok())
         .unwrap_or_else(|| stdout_buf.clone());
-    if !bibliography_recovery_needed(&compile_log, out_dir, stem) {
-        return Ok((String::new(), None));
+    if !bibliography_recovery_needed(out_dir, stem, bbl_before) {
+        return Ok((biber_log_notes(out_dir, stem), None));
     }
     let Some(biber) = crate::biber_toolchain::find_tectonic_biber() else {
         return Ok((
@@ -1396,9 +1459,61 @@ async fn recover_bibliography(
     Ok((notes, Some(biber)))
 }
 
-fn bibliography_recovery_needed(log: &str, output_dir: &Path, stem: &str) -> bool {
-    crate::biber_toolchain::bibliography_needs_biber(log, output_dir, stem)
-        && crate::biber_toolchain::biber_output_missing(output_dir, stem)
+fn bibliography_recovery_needed(
+    output_dir: &Path,
+    stem: &str,
+    bbl_before: Option<crate::biber_toolchain::BblStamp>,
+) -> bool {
+    output_dir.join(format!("{stem}.bcf")).is_file()
+        && !crate::biber_toolchain::bbl_refreshed(output_dir, stem, bbl_before)
+}
+
+fn biber_log_notes(output_dir: &Path, stem: &str) -> String {
+    let path = output_dir.join(format!("{stem}.blg"));
+    let Ok(log) = read_log_bounded(&path) else {
+        return String::new();
+    };
+    let excerpt = crate::biber_toolchain::biber_message_excerpt(&log);
+    if excerpt.is_empty() {
+        return String::new();
+    }
+    format!("\n[Oleafly] Biber messages ({stem}.blg):\n{excerpt}")
+}
+
+const ENGINE_OUTPUT_TAIL_BYTES: usize = 8 * 1024;
+const LOG_NOTES_RESERVE_BYTES: usize = 96 * 1024;
+
+fn reserve_log_budget(mut log: String, reserve: usize) -> String {
+    let keep = MAX_LOG_BYTES.saturating_sub(reserve);
+    if log.len() <= keep {
+        return log;
+    }
+    let boundary = (0..=keep)
+        .rev()
+        .find(|index| log.is_char_boundary(*index))
+        .unwrap_or(0);
+    log.truncate(boundary);
+    log.push_str("\n[Oleafly] Log truncated to keep room for the notes below.\n");
+    log
+}
+
+fn append_engine_output_on_failure(
+    mut log: String,
+    stdout: &str,
+    exit_code: Option<i32>,
+) -> String {
+    if exit_code == Some(0) || stdout.trim().is_empty() {
+        return log;
+    }
+    let start = stdout.len().saturating_sub(ENGINE_OUTPUT_TAIL_BYTES);
+    let start = stdout
+        .char_indices()
+        .map(|(index, _)| index)
+        .find(|index| *index >= start)
+        .unwrap_or(stdout.len());
+    append_bounded(&mut log, b"\n[Oleafly] Engine output:\n");
+    append_bounded(&mut log, &stdout.as_bytes()[start..]);
+    log
 }
 
 async fn run_biber_recovery(
@@ -1491,6 +1606,7 @@ struct CompileFinish {
     spec: EngineCompileSpec,
     retained_stale: Vec<RetainedArtifact>,
     compile_start: std::time::Instant,
+    bbl_before: Option<crate::biber_toolchain::BblStamp>,
     stdout_buf: String,
     exit_code: Option<i32>,
     biber_notes: String,
@@ -1509,6 +1625,7 @@ async fn finish_compile(
         spec,
         retained_stale,
         compile_start,
+        bbl_before,
         stdout_buf,
         exit_code,
         biber_notes,
@@ -1516,8 +1633,9 @@ async fn finish_compile(
         pythontex_notes,
         pythontex_failure,
     } = finish;
-    let mut log = combined_compile_log(&spec, stdout_buf, &biber_notes, &pythontex_notes);
-    append_missing_biber_diagnosis(request, &spec, &mut log, resolved_biber);
+    let mut log =
+        combined_compile_log(&spec, stdout_buf, exit_code, &biber_notes, &pythontex_notes);
+    append_missing_biber_diagnosis(request, &spec, &mut log, resolved_biber, bbl_before);
     let output_id = verify_compile_output(capabilities, &spec, retained_stale).await?;
     let has_pdf = output_id.is_some();
     let mut errors = request.engine.parse_errors(&log);
@@ -1597,15 +1715,23 @@ fn compile_succeeded(
 fn combined_compile_log(
     spec: &EngineCompileSpec,
     stdout: String,
+    exit_code: Option<i32>,
     biber_notes: &str,
     pythontex_notes: &str,
 ) -> String {
-    let mut log = spec
+    let mut log = match spec
         .artifacts
         .log
         .as_ref()
         .and_then(|path| read_log_bounded(path).ok())
-        .unwrap_or(stdout);
+    {
+        Some(file_log) => append_engine_output_on_failure(
+            reserve_log_budget(file_log, LOG_NOTES_RESERVE_BYTES),
+            &stdout,
+            exit_code,
+        ),
+        None => reserve_log_budget(stdout, LOG_NOTES_RESERVE_BYTES),
+    };
     append_bounded(&mut log, biber_notes.as_bytes());
     append_bounded(&mut log, pythontex_notes.as_bytes());
     log
@@ -1616,10 +1742,15 @@ fn append_missing_biber_diagnosis(
     spec: &EngineCompileSpec,
     log: &mut String,
     resolved_biber: Option<PathBuf>,
+    bbl_before: Option<crate::biber_toolchain::BblStamp>,
 ) {
     let needs_diagnosis = request.engine.id() == DocumentEngineId::Latex
         && matches!(request.target, CompileTarget::Main { .. })
-        && bibliography_recovery_needed(log, &spec.artifacts.output_dir, crate::paths::ENTRY_STEM)
+        && bibliography_recovery_needed(
+            &spec.artifacts.output_dir,
+            crate::paths::ENTRY_STEM,
+            bbl_before,
+        )
         && !log.contains("[Oleafly] Bibliography needs Biber");
     if !needs_diagnosis {
         return;
@@ -1687,9 +1818,8 @@ fn append_shell_escape_error(
     let Some(feature) = denied_shell_escape_feature(&source_head, log) else {
         return;
     };
-    let message = format!(
-        "{feature} needs LaTeX shell escape, but host command execution is disabled for this project."
-    );
+    let message =
+        format!("{feature} needs to run an outside program, which this project does not allow.");
     let explanation = "Enable “Allow LaTeX shell commands” in this project's compiler settings only if you trust every project file. Enabling it permits arbitrary commands and persistent background programs to run on your computer. Cancellation cleanup is best-effort for programs that deliberately detach.".to_string();
     append_bounded(
         log,
@@ -1907,10 +2037,12 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     };
     let retained_stale = prepare_compile_artifacts(&request, &spec).await?;
     let compile_start = std::time::Instant::now();
+    let bbl_before =
+        crate::biber_toolchain::bbl_stamp(&spec.artifacts.output_dir, crate::paths::ENTRY_STEM);
     let (mut stdout_buf, mut exit_code) = execute_compile_spec(&request, &spec).await?;
 
     let (biber_notes, resolved_biber) =
-        recover_bibliography(&request, &spec, &mut stdout_buf, &mut exit_code).await?;
+        recover_bibliography(&request, &spec, &mut stdout_buf, &mut exit_code, bbl_before).await?;
     let (pythontex_notes, pythontex_failure) =
         recover_pythontex(&request, &spec, &mut stdout_buf, &mut exit_code).await?;
     let finish = CompileFinish {
@@ -1918,6 +2050,7 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
         spec,
         retained_stale,
         compile_start,
+        bbl_before,
         stdout_buf,
         exit_code,
         biber_notes,
@@ -2524,6 +2657,7 @@ fn clear_stale_compile_artifacts(
 ) -> Vec<RetainedArtifact> {
     let mut retained = clear_stale_artifacts(artifacts);
     if let Some(path) = biber_control {
+        let _ = std::fs::remove_file(path.with_extension("blg"));
         match std::fs::remove_file(path) {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -3911,6 +4045,18 @@ mod tests {
     }
 
     #[test]
+    fn markdown_fontconfig_fallback_is_a_warning_but_pdf_errors_remain_errors() {
+        let diagnostics = MARKDOWN_ENGINE.parse_errors(
+            "Fontconfig error: Cannot load default config file: No such file: (null)\n\
+             Error producing PDF.\npandoc: PDF creation failed\n",
+        );
+        assert_eq!(diagnostics.len(), 3);
+        assert_eq!(diagnostics[0].kind, "warning");
+        assert_eq!(diagnostics[1].kind, "error");
+        assert_eq!(diagnostics[2].kind, "error");
+    }
+
+    #[test]
     fn packaged_tectonic_candidates_cover_tauri_and_cargo_layouts() {
         let candidates = tectonic_sidecar_candidates(
             Some(Path::new(
@@ -4053,13 +4199,14 @@ mod tests {
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
             CompileOptions::default(),
+            "texlive",
         )
         .unwrap();
         assert!(args.contains(&"-pdf".to_string()));
         assert!(args.contains(&"-outdir=./.oleafly/build".to_string()));
         assert!(args.contains(&format!("-jobname={}", crate::paths::ENTRY_STEM)));
         assert!(args.contains(&"-norc".to_string()));
-        assert!(args.contains(&"-no-shell-escape".to_string()));
+        assert!(args.contains(&"-shell-restricted".to_string()));
         assert!(!args.contains(&"-shell-escape".to_string()));
         assert!(!args.contains(&"-latexoption=--nosocket".to_string()));
         assert!(args.contains(&"-f".to_string()));
@@ -4074,6 +4221,7 @@ mod tests {
                 halt_on_error: true,
                 ..Default::default()
             },
+            "mactex",
         )
         .unwrap();
         assert!(halt.contains(&"-xelatex".to_string()));
@@ -4090,10 +4238,12 @@ mod tests {
                 allow_shell_escape: true,
                 ..Default::default()
             },
+            "texlive",
         )
         .unwrap();
         assert!(trusted.contains(&"-shell-escape".to_string()));
         assert!(!trusted.contains(&"-no-shell-escape".to_string()));
+        assert!(!trusted.contains(&"-shell-restricted".to_string()));
         assert!(!trusted.contains(&"-latexoption=--nosocket".to_string()));
         assert!(trusted.contains(&"-norc".to_string()));
 
@@ -4103,10 +4253,98 @@ mod tests {
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Lualatex,
             CompileOptions::default(),
+            "texlive",
         )
         .unwrap();
-        assert!(untrusted_lualatex.contains(&"-no-shell-escape".to_string()));
+        assert!(untrusted_lualatex.contains(&"-shell-restricted".to_string()));
         assert!(untrusted_lualatex.contains(&"-latexoption=--nosocket".to_string()));
+    }
+
+    #[test]
+    fn shell_escape_denials_come_from_refusals_not_from_allowed_helpers() {
+        for allowed in [
+            "runsystem(repstopdf --outfile=./logo-eps-converted-to.pdf ./logo.eps)...executed.\n! undefined control sequence.\nl.42 \\oops",
+            "runsystem(repstopdf disabled.eps)...executed.",
+            "runsystem(repstopdf a.eps)...executed safely (allowed).",
+        ] {
+            assert_eq!(
+                denied_shell_escape_feature("\\documentclass{article}", allowed),
+                None,
+                "{allowed}"
+            );
+        }
+
+        for denial in [
+            "runsystem(rm -rf /tmp/x)...disabled (restricted).",
+            "runsystem(bibtex --very-long-argument-list that-wraps-the-log-line-at-seventy-nine-c\nolumns)...disabled\n(restricted).",
+            "runsystem(mv executed.tex safe.tex)...disabled (restricted).",
+            "package epstopdf warning: shell escape feature is not enabled.",
+            "package svg error: you must invoke latex with the -shell-escape flag.",
+        ] {
+            assert_eq!(
+                denied_shell_escape_feature("\\documentclass{article}", denial),
+                Some("a LaTeX shell command"),
+                "{denial}"
+            );
+        }
+
+        let mixed =
+            "runsystem(repstopdf a.eps)...executed.\nrunsystem(inkscape)...disabled (restricted).";
+        assert!(log_refused_a_shell_command(mixed));
+        assert!(!log_refused_a_shell_command(
+            "restricted \\write18 enabled.\nrunsystem(repstopdf a.eps)...executed."
+        ));
+    }
+
+    #[test]
+    fn shell_command_status_is_read_after_the_command_text_never_inside_it() {
+        assert_eq!(
+            runsystem_statuses("runsystem(repstopdf disabled.eps)...executed."),
+            ["executed"]
+        );
+        assert_eq!(
+            runsystem_statuses("runsystem(mv executed.tex safe.tex)...disabled (restricted)."),
+            ["disabled (restricted)"]
+        );
+        assert_eq!(
+            runsystem_statuses("runsystem(inkscape logo.svg)...disa\nbled (restricted)."),
+            ["disabled (restricted)"]
+        );
+        assert_eq!(
+            runsystem_statuses(
+                "runsystem(a.eps)...executed.\nrunsystem(b.svg)...disabled.\nrunsystem(c.py)...failed."
+            ),
+            ["executed", "disabled", "failed"]
+        );
+        assert!(runsystem_statuses("runsystem(epstopdf a.eps)").is_empty());
+    }
+
+    #[test]
+    fn latexmk_keeps_restricted_shell_escape_off_miktex_and_out_of_trusted_runs() {
+        assert_eq!(shell_escape_arg(false, "texlive"), "-shell-restricted");
+        assert_eq!(shell_escape_arg(false, "mactex"), "-shell-restricted");
+        assert_eq!(shell_escape_arg(false, "tinytex"), "-shell-restricted");
+        assert_eq!(
+            shell_escape_arg(false, "oleafly-tinytex"),
+            "-shell-restricted"
+        );
+        assert_eq!(shell_escape_arg(false, "other"), "-shell-restricted");
+        assert_eq!(shell_escape_arg(false, "miktex"), "-no-shell-escape");
+        for kind in ["texlive", "miktex", "other"] {
+            assert_eq!(shell_escape_arg(true, kind), "-shell-escape");
+        }
+
+        let miktex = latexmk_args(
+            Path::new(".oleafly/build"),
+            Path::new("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions::default(),
+            "miktex",
+        )
+        .unwrap();
+        assert!(miktex.contains(&"-no-shell-escape".to_string()));
+        assert!(!miktex.contains(&"-shell-restricted".to_string()));
     }
 
     #[test]
@@ -4132,6 +4370,7 @@ mod tests {
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
             CompileOptions::default(),
+            "texlive",
         )
         .unwrap();
         let entry = args.last().unwrap();
@@ -4143,6 +4382,7 @@ mod tests {
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
             CompileOptions::default(),
+            "texlive",
         )
         .is_err());
         for hostile in [
@@ -4157,6 +4397,7 @@ mod tests {
                 crate::paths::ENTRY_STEM,
                 LatexmkFlavor::Pdflatex,
                 CompileOptions::default(),
+                "texlive",
             )
             .is_err());
         }
@@ -4379,5 +4620,193 @@ mod tests {
             RetainedArtifactIdentity::Unreadable
         ));
         assert!(biber_control.exists());
+    }
+
+    #[test]
+    fn stale_biber_log_is_removed_with_the_control_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let artifacts = EngineArtifacts {
+            output_dir: directory.path().to_path_buf(),
+            pdf: None,
+            log: None,
+            synctex: None,
+        };
+        let stem = crate::paths::ENTRY_STEM;
+        let biber_control = directory.path().join(format!("{stem}.bcf"));
+        let biber_log = directory.path().join(format!("{stem}.blg"));
+        let bbl = directory.path().join(format!("{stem}.bbl"));
+        std::fs::write(&biber_control, b"stale").unwrap();
+        std::fs::write(&biber_log, b"INFO - stale").unwrap();
+        std::fs::write(&bbl, b"\\entry{a}{article}{}").unwrap();
+
+        let retained = clear_stale_compile_artifacts(&artifacts, Some(&biber_control));
+
+        assert!(retained.is_empty());
+        assert!(!biber_control.exists());
+        assert!(!biber_log.exists());
+        assert!(bbl.exists());
+    }
+
+    fn recovery_fixture(stem: &str, bbl: Option<&str>) -> tempfile::TempDir {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(
+            directory.path().join(format!("{stem}.bcf")),
+            "<bcf:controlfile><bcf:citekey order=\"1\">a</bcf:citekey></bcf:controlfile>",
+        )
+        .unwrap();
+        if let Some(content) = bbl {
+            std::fs::write(directory.path().join(format!("{stem}.bbl")), content).unwrap();
+        }
+        directory
+    }
+
+    #[test]
+    fn recovery_runs_when_this_compile_wrote_no_bbl() {
+        let stem = crate::paths::ENTRY_STEM;
+        let dir = recovery_fixture(stem, None);
+        assert!(bibliography_recovery_needed(dir.path(), stem, None));
+    }
+
+    #[test]
+    fn recovery_is_skipped_when_this_compile_wrote_the_bbl() {
+        let stem = crate::paths::ENTRY_STEM;
+        let dir = recovery_fixture(stem, Some("\\refsection{0}\n\\endrefsection\n"));
+        assert!(!bibliography_recovery_needed(dir.path(), stem, None));
+    }
+
+    #[test]
+    fn recovery_runs_for_a_bbl_left_over_from_an_earlier_compile() {
+        let stem = crate::paths::ENTRY_STEM;
+        let dir = recovery_fixture(
+            stem,
+            Some("\\refsection{0}\n\\entry{a}{article}{}\n\\endrefsection\n"),
+        );
+        let before = crate::biber_toolchain::bbl_stamp(dir.path(), stem);
+        assert!(before.is_some());
+        assert!(bibliography_recovery_needed(dir.path(), stem, before));
+    }
+
+    #[test]
+    fn recovery_needs_a_control_file() {
+        let directory = tempfile::tempdir().unwrap();
+        assert!(!bibliography_recovery_needed(
+            directory.path(),
+            crate::paths::ENTRY_STEM,
+            None
+        ));
+    }
+
+    #[test]
+    fn log_budget_is_reserved_for_notes() {
+        let big = "x".repeat(MAX_LOG_BYTES);
+        let trimmed = reserve_log_budget(big, LOG_NOTES_RESERVE_BYTES);
+        assert!(trimmed.len() <= MAX_LOG_BYTES - LOG_NOTES_RESERVE_BYTES + 80);
+        assert!(trimmed.ends_with("notes below.\n"));
+        let small = "short".to_string();
+        assert_eq!(
+            reserve_log_budget(small.clone(), LOG_NOTES_RESERVE_BYTES),
+            small
+        );
+    }
+
+    #[test]
+    fn engine_output_is_appended_to_the_log_when_the_engine_fails() {
+        let spec_log = "This is TeX, Version 3.14\nOutput written on x.xdv.\n".to_string();
+        let stdout = "note: Running external tool biber ...\nerror: the external tool exited with an error code; its stdout was:\nERROR - Cannot find 'references.bib'!\n".to_string();
+        let combined = append_engine_output_on_failure(spec_log.clone(), &stdout, Some(1));
+        assert!(combined.starts_with(&spec_log));
+        assert!(combined.contains("[Oleafly] Engine output:"));
+        assert!(combined.contains("ERROR - Cannot find 'references.bib'!"));
+        let clean = append_engine_output_on_failure(spec_log.clone(), &stdout, Some(0));
+        assert_eq!(clean, spec_log);
+    }
+
+    const BIBLATEX_MAIN: &str = "\\documentclass{article}\n\\usepackage[backend=biber,style=numeric]{biblatex}\n\\addbibresource{references.bib}\n\\begin{document}\nHello \\cite{miles2004laddering}.\n\\printbibliography\n\\end{document}\n";
+    const BIBLATEX_BIB: &str = "@article{miles2004laddering,\n  author = {Miles, Sarah and Rowe, Gene},\n  title = {The laddering technique},\n  journal = {Doing Social Psychology Research},\n  year = {2004}\n}\n";
+
+    #[test]
+    #[ignore = "runs the real Tectonic and Biber sidecars: cargo test --lib -- --ignored biblatex_pipeline"]
+    fn biblatex_pipeline_resolves_references_bib_and_recovers_a_stale_bbl() {
+        let Some(triple) = crate::biber_toolchain::host_triple_guess() else {
+            return;
+        };
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let suffix = std::env::consts::EXE_SUFFIX;
+        let tectonic = manifest
+            .join("binaries")
+            .join(format!("tectonic-{triple}{suffix}"));
+        let biber = manifest
+            .join("binaries")
+            .join(format!("tectonic-biber-{triple}{suffix}"));
+        if !tectonic.is_file() || !biber.is_file() {
+            return;
+        }
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        std::fs::write(root.join("main.tex"), BIBLATEX_MAIN).unwrap();
+        std::fs::write(root.join("references.bib"), BIBLATEX_BIB).unwrap();
+        let build = root.join(".oleafly").join("build");
+        std::fs::create_dir_all(&build).unwrap();
+        let stem = crate::paths::ENTRY_STEM;
+        let entry = build.join(format!("{stem}.tex"));
+        std::fs::write(&entry, "\\input{\\detokenize{main.tex}}\n").unwrap();
+        let bin = root.join("bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let shim = bin.join(format!("tectonic-biber{suffix}"));
+        std::fs::copy(&biber, &shim).unwrap();
+        let mut path_entries = vec![bin.clone()];
+        path_entries.extend(
+            std::env::var_os("PATH")
+                .map(|p| std::env::split_paths(&p).collect::<Vec<_>>())
+                .unwrap_or_default(),
+        );
+        let path = std::env::join_paths(path_entries).unwrap();
+        let args = tectonic_args(
+            build.to_str().unwrap(),
+            &format!("search-path={}", root.display()),
+            entry.to_str().unwrap(),
+            CompileOptions {
+                offline: false,
+                fast: false,
+                halt_on_error: false,
+                latex_flavor: None,
+                allow_shell_escape: false,
+                source_date_epoch: None,
+            },
+        );
+        let before = crate::biber_toolchain::bbl_stamp(&build, stem);
+        let output = std::process::Command::new(&tectonic)
+            .args(&args)
+            .current_dir(root)
+            .env("PATH", &path)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "tectonic failed: {}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let log = std::fs::read_to_string(build.join(format!("{stem}.log"))).unwrap();
+        assert!(!log.contains("Please (re)run Biber"));
+        assert!(!bibliography_recovery_needed(&build, stem, before));
+        let bbl = build.join(format!("{stem}.bbl"));
+        assert!(std::fs::read_to_string(&bbl).unwrap().contains("\\entry{"));
+
+        let stale = crate::biber_toolchain::bbl_stamp(&build, stem);
+        std::fs::remove_file(build.join(format!("{stem}.blg"))).unwrap();
+        assert!(bibliography_recovery_needed(&build, stem, stale));
+        let recovery = std::process::Command::new(&biber)
+            .args(crate::biber_toolchain::biber_cli_args(&build, stem))
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(
+            recovery.status.success(),
+            "biber failed: {}",
+            String::from_utf8_lossy(&recovery.stdout)
+        );
+        assert!(std::fs::read_to_string(&bbl).unwrap().contains("\\entry{"));
+        assert!(!bibliography_recovery_needed(&build, stem, stale));
     }
 }

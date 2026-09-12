@@ -3,6 +3,11 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { CompileResult, LogDiagnostic } from "@oleafly/backend-port";
 
 const mocks = vi.hoisted(() => ({
+  latexEngineInfo: vi.fn(),
+  tlmgrInstallMissing: vi.fn(),
+  toastInfo: vi.fn(),
+  toastError: vi.fn(),
+  refreshPackages: vi.fn(),
   events: new Map<string, (event: { payload: string }) => void>(),
   listen: vi.fn(
     async (name: string, handler: (event: { payload: string }) => void) => {
@@ -59,6 +64,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/tauri", () => ({
+  latexEngineInfo: mocks.latexEngineInfo,
+  tlmgrInstallMissing: mocks.tlmgrInstallMissing,
   compileProject: mocks.compileProject,
   readCompiledPdf: mocks.readCompiledPdf,
   validateCompileFingerprint: mocks.validateCompileFingerprint,
@@ -87,8 +94,9 @@ vi.mock("@/store/project-index", () => ({
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/lib/toast", () => ({
   notifyError: vi.fn(),
-  toast: { errorUnique: vi.fn() },
+  toast: { errorUnique: vi.fn(), error: mocks.toastError, info: mocks.toastInfo },
 }));
+vi.mock("@/store/engine", () => ({ useEngineStore: { getState: () => ({ refreshPackages: mocks.refreshPackages }) } }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/preview-window", () => ({
   refreshPreviewWindow: mocks.refreshPreviewWindow,
@@ -99,9 +107,11 @@ vi.mock("@/lib/cross-window", () => ({
 }));
 
 import {
+  installerNotices,
   isCompileCheckpointCurrent,
   useCompileStore,
 } from "./compile";
+import { useEnginePickerStore } from "@/store/engine-picker";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import {
   createCompileSuccessCheckpoint,
@@ -193,6 +203,9 @@ beforeEach(() => {
 
 describe("compile output lifecycle", () => {
   it("coalesces bursty compiler output so WebKit gets a paint frame", async () => {
+    // This case measures log buffering; syntax validation has separate cases
+    // below and lazily loads the language service on the first compile.
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
     const compile = deferred<{
       ok: boolean;
       has_pdf: boolean;
@@ -921,5 +934,168 @@ describe("compile log diagnostics", () => {
     useCompileStore.setState({ diagnostics: [diagnostic] });
     useCompileStore.getState().reset();
     expect(useCompileStore.getState().diagnostics).toBeNull();
+  });
+});
+
+describe("missing TeX file installation", () => {
+  let project = 0;
+  beforeEach(() => {
+    mocks.files.projectId = `missing-packages-${++project}`;
+    mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
+    mocks.latexEngineInfo.mockReset().mockResolvedValue({ tlmgr: "/tex/tlmgr" });
+    mocks.tlmgrInstallMissing.mockReset().mockResolvedValue("installed");
+    mocks.refreshPackages.mockReset().mockResolvedValue(undefined);
+    mocks.toastInfo.mockReset();
+    mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, output_id: null, output_revision: null, log: "! LaTeX Error: File `tikz.sty' not found.", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
+  });
+
+  async function offer() {
+    await useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.toastInfo).toHaveBeenCalled());
+    return mocks.toastInfo.mock.calls.find((call) => call[1]?.onClick)?.[1] as { onClick: () => void };
+  }
+
+  it("sends filenames to the resolver and recompiles only after installation", async () => {
+    const action = await offer();
+    const install = deferred<string>();
+    mocks.tlmgrInstallMissing.mockReturnValue(install.promise);
+    action.onClick();
+    action.onClick();
+    expect(mocks.tlmgrInstallMissing).toHaveBeenCalledExactlyOnceWith(["tikz.sty"]);
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    install.resolve("installed");
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not compile a different project after an installation finishes", async () => {
+    const action = await offer();
+    const install = deferred<string>();
+    mocks.tlmgrInstallMissing.mockReturnValue(install.promise);
+    action.onClick();
+    mocks.files.projectId = "other-project";
+    install.resolve("installed");
+    await vi.waitFor(() => expect(mocks.refreshPackages).toHaveBeenCalled());
+    await vi.dynamicImportSettled();
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers a retry after failure and ignores an action from another project", async () => {
+    const action = await offer();
+    mocks.tlmgrInstallMissing.mockRejectedValueOnce("Repository unavailable");
+    action.onClick();
+    await vi.waitFor(() => expect(mocks.tlmgrInstallMissing).toHaveBeenCalled());
+    await vi.dynamicImportSettled();
+    mocks.toastInfo.mockClear();
+    const retry = await offer();
+    expect(retry).toBeDefined();
+    mocks.files.projectId = "another-project";
+    retry.onClick();
+    expect(mocks.tlmgrInstallMissing).toHaveBeenCalledTimes(1);
+  });
+
+  it("repeats the backend notice when packages land in the personal TeX tree", async () => {
+    const action = await offer();
+    mocks.tlmgrInstallMissing.mockResolvedValue(
+      "[Oleafly] The system TeX tree is not writable, so the packages went into your personal tree at /home/u/texmf.\ntlmgr: installing pgf",
+    );
+    mocks.toastInfo.mockClear();
+    action.onClick();
+    await vi.waitFor(() =>
+      expect(
+        mocks.toastInfo.mock.calls.some((call) =>
+          String(call[0]).includes("personal tree at /home/u/texmf"),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("reads only Oleafly notices out of the installer output", () => {
+    expect(installerNotices("tlmgr: installing pgf\nrunning mktexlsr")).toEqual([]);
+    expect(
+      installerNotices("[Oleafly] Packages went to the user tree.\ntlmgr: done"),
+    ).toEqual(["Packages went to the user tree."]);
+    expect(installerNotices(`[Oleafly] ${"x".repeat(500)}`)).toEqual([]);
+  });
+});
+
+describe("bundled-engine compile failures", () => {
+  let project = 0;
+  beforeEach(() => {
+    mocks.files.projectId = `bundled-engine-${++project}`;
+    mocks.files.engine = LATEX_ENGINE;
+    mocks.latexEngineInfo.mockReset().mockResolvedValue({ tlmgr: "/tex/tlmgr" });
+    mocks.toastInfo.mockReset();
+    mocks.toastError.mockReset();
+    useEnginePickerStore.setState({ open: false, source: "manual", findings: [] });
+  });
+
+  function failWith(log: string) {
+    mocks.compileProject.mockResolvedValue({
+      ok: false,
+      has_pdf: false,
+      output_id: null,
+      output_revision: null,
+      log,
+      errors: [],
+      synctex_path: null,
+      out_dir: null,
+      compile_time_ms: 1,
+    });
+  }
+
+  it("opens the picker with the pdfLaTeX findings a Tectonic template failure produces", async () => {
+    failWith(
+      [
+        "! Package hyperref Error: Wrong driver option `pdftex',",
+        'error: pdf: image inclusion failed for "images/MDHlogga.eps"',
+      ].join("\n"),
+    );
+    await useCompileStore.getState().recompile();
+    const picker = useEnginePickerStore.getState();
+    expect(picker.open).toBe(true);
+    expect(picker.source).toBe("compile-failure");
+    expect(picker.findings.map((f) => f.id)).toEqual([
+      "hyperref-pdftex-driver",
+      "eps-image",
+    ]);
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("offers a plain retry for a failed bundle download and never opens the picker", async () => {
+    failWith(
+      [
+        "error: this bundle isn't cached, and we couldn't get it from the internet",
+        "caused by: unexpected HTTP response code 503 for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar",
+        "! LaTeX Error: File `amsmath.sty' not found.",
+      ].join("\n"),
+    );
+    await useCompileStore.getState().recompile();
+    expect(useEnginePickerStore.getState().open).toBe(false);
+    const call = mocks.toastError.mock.calls.at(-1);
+    expect(String(call?.[0])).toContain("HTTP 503");
+    expect(call?.[1]?.label).toBe("Compile again");
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    call?.[1]?.onClick();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+  });
+
+  it("runs the missing-package offer on the first failure after the switch to latexmk", async () => {
+    failWith("! LaTeX Error: File `thesisMDU.cls' not found.");
+    await useCompileStore.getState().recompile();
+    expect(useEnginePickerStore.getState().findings.map((f) => f.id)).toContain(
+      "missing-sty-on-bundled-engine",
+    );
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+
+    mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
+    mocks.tlmgrInstallMissing.mockReset().mockResolvedValue("installed");
+    await useCompileStore.getState().recompile();
+    await vi.waitFor(() =>
+      expect(
+        mocks.toastInfo.mock.calls.some((call) =>
+          String(call[0]).includes("thesisMDU.cls"),
+        ),
+      ).toBe(true),
+    );
   });
 });

@@ -38,6 +38,7 @@ import {
   mcpSetActiveProject,
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
+import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { scanImportCompatibility } from "@oleafly/latex";
@@ -52,6 +53,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
+import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import {
@@ -129,7 +131,11 @@ async function checkTexPinStatus(
     );
     if (!fresh) return;
     toast.info(
-      `This project was pinned with ${status.pinned_label}. The active ${status.local_label} is missing ${missing.length} of its packages, so compiles may fail until that distribution is used again.`,
+      i18n.t(($) => $.core.tex.distributionGap, {
+        pinned: status.pinned_label,
+        local: status.local_label,
+        count: missing.length,
+      }),
     );
     return;
   }
@@ -137,20 +143,20 @@ async function checkTexPinStatus(
     const fresh = remember(`oleafly.texGap.${projectId}`, texGapSignature(missing));
     if (!fresh) return;
     toast.info(
-      `This project pins ${missing.length} LaTeX package${missing.length === 1 ? "" : "s"} that ${missing.length === 1 ? "is" : "are"} not installed here.`,
+      i18n.t(($) => $.core.tex.pinnedPackagesMissing, { count: missing.length }),
       {
-        label: missing.length === 1 ? "Install it" : `Install all ${missing.length}`,
+        label: i18n.t(($) => $.core.tex.installPinned, { count: missing.length }),
         onClick: () => {
           void (async () => {
-            toast.info(`Installing ${missing.length} pinned package${missing.length === 1 ? "" : "s"}…`);
+            toast.info(i18n.t(($) => $.core.tex.installingPinned, { count: missing.length }));
             try {
               await tlmgrInstall(missing);
-              toast.success("Pinned LaTeX packages installed.");
+              toast.success(i18n.t(($) => $.core.tex.pinnedPackagesInstalled));
             } catch (error) {
               notifyError(
                 "install pinned packages",
                 error,
-                "Some pinned packages could not be installed. See Settings → LaTeX Engine.",
+                i18n.t(($) => $.core.tex.pinnedPackagesFailed),
               );
             }
           })();
@@ -165,7 +171,10 @@ async function checkTexPinStatus(
     );
     if (!fresh) return;
     toast.info(
-      `This project was pinned with ${status.pinned_label} and this machine compiles with ${status.local_label}. Output may differ slightly.`,
+      i18n.t(($) => $.core.tex.distributionSkew, {
+        pinned: status.pinned_label,
+        local: status.local_label,
+      }),
     );
   }
 }
@@ -173,6 +182,7 @@ async function checkTexPinStatus(
 interface FileState {
   content: string;
   dirty: boolean;
+  edits?: number;
 }
 
 interface FilesStore {
@@ -184,7 +194,7 @@ interface FilesStore {
   mainDoc: string;
   engine: DocumentEngineDescriptor;
   engineLoaded: boolean;
-  engineError: string | null;
+  engineError: EngineErrorCode | null;
   tree: FileEntry[];
   files: Record<string, FileState>;
   openTabs: string[];
@@ -240,7 +250,9 @@ interface FilesStore {
     action: (generation: number) => Promise<T>,
   ) => Promise<T>;
   recordMutationGeneration: (projectId: string, generation: number) => void;
+  writeProjectFile: (projectId: string, path: string, content: string) => Promise<void>;
   applyExternalWrite: (projectId: string, path: string, content: string) => boolean;
+  applyExternalReload: (projectId: string, path: string, content: string) => boolean;
   applyExternalDelete: (projectId: string, path: string) => boolean;
   applyExternalRename: (projectId: string, from: string, to: string) => boolean;
   applyProjectStateChanged: (event: ProjectStateChanged) => Promise<boolean>;
@@ -302,6 +314,10 @@ function cancelPendingAutosave() {
 
 function writeKey(projectId: string, path: string) {
   return `${projectId}\0${path}`;
+}
+
+function editedSinceLoad(file: FileState | undefined): boolean {
+  return (file?.edits ?? 0) > 0;
 }
 
 function resetMutationGeneration(projectId: string | null = null) {
@@ -598,12 +614,15 @@ function showCompatibilityFindings(
   }
   const blockers = findings.filter((finding) => finding.level === "blocker");
   if (blockers.length > 0) {
-    const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
     toast.infoUnique(
       `engine-compatibility:${id}`,
-      `${blockers[0].title}${extra}`,
+      i18n.t(($) => $.core.compatibility.blockerFinding, {
+        count: blockers.length,
+        title: blockers[0].title,
+        more: blockers.length - 1,
+      }),
       {
-        label: "Choose engine…",
+        label: i18n.t(($) => $.core.compatibility.chooseEngine),
         onClick: () => useEnginePickerStore.getState().openPicker("project-open", findings),
       },
       true,
@@ -619,11 +638,15 @@ function showCompatibilityWarnings(
 ): void {
   if (warnings.length === 0) return;
   if (warnings.length === 1 && warnings[0].id === "biblatex-biber") {
-    toast.info("This project uses biblatex/Biber for the bibliography.");
+    toast.info(i18n.t(($) => $.core.compatibility.biblatexBiber));
   } else {
-    const plural = warnings.length === 1 ? "" : "s";
-    const extra = warnings.length > 1 ? ` (+${warnings.length - 1} more)` : "";
-    toast.info(`${warnings.length} import note${plural}: ${warnings[0].title}${extra}`);
+    toast.info(
+      i18n.t(($) => $.core.compatibility.importNotes, {
+        count: warnings.length,
+        title: warnings[0].title,
+        more: warnings.length - 1,
+      }),
+    );
   }
   dismissEngineHint(id, warnings);
 }
@@ -648,7 +671,7 @@ async function prepareProjectSwitch(
       notifyError(
         "save before switching projects",
         error,
-        "The project stayed open because one or more files could not be saved.",
+        i18n.t(($) => $.core.project.saveBlockedSwitch),
       );
       return null;
     }
@@ -711,7 +734,7 @@ async function loadOpenedProject(
     ...engine.state,
   });
   if (engine.failure !== null) {
-    notifyError("load document engine", engine.failure, ENGINE_LOAD_FAILURE_MESSAGE);
+    notifyError("load document engine", engine.failure, engineErrorMessage("loadFailed"));
   }
   await preloadBibliographies(id, tree, superseded, set);
   await get().openFile(meta.main_doc || "main.tex");
@@ -720,8 +743,13 @@ async function loadOpenedProject(
   if (seq === openSeq) void scanOpenProjectCompatibility(id, meta, tree, seq, get);
 }
 
-const ENGINE_LOAD_FAILURE_MESSAGE =
-  "Document engine details could not be loaded. Engine-specific actions are disabled.";
+export type EngineErrorCode = "loadFailed" | "renameReloadFailed";
+
+export function engineErrorMessage(code: EngineErrorCode): string {
+  return code === "loadFailed"
+    ? i18n.t(($) => $.core.engine.error.loadFailed)
+    : i18n.t(($) => $.core.engine.error.renameReloadFailed);
+}
 
 type ProjectEngineState = Pick<FilesStore, "engine" | "engineLoaded" | "engineError">;
 
@@ -736,7 +764,7 @@ async function loadOpenedProjectEngine(
       state: {
         engine: UNKNOWN_ENGINE,
         engineLoaded: false,
-        engineError: ENGINE_LOAD_FAILURE_MESSAGE,
+        engineError: "loadFailed",
       },
       failure,
     };
@@ -779,7 +807,7 @@ async function openProjectTransition(
       await mcpSetActiveProject(null).catch(() => {});
       resetMutationGeneration();
       set(EMPTY_PROJECT_STATE);
-      notifyError("open project", error, "Could not open the project. See the app log for details.");
+      notifyError("open project", error, i18n.t(($) => $.core.project.openFailed));
     }
   } finally {
     if (seq === openSeq) set({ loading: false });
@@ -939,9 +967,7 @@ function reconciledProjectState(
 
 function restoreRemovedDirtyFiles(paths: string[], get: FilesGet): void {
   if (paths.length === 0) return;
-  toast.info(
-    "A project update removed files with unsaved edits. Oleafly kept your edits and is restoring those files.",
-  );
+  toast.info(i18n.t(($) => $.core.project.restoringUnsavedFiles));
   for (const path of paths) {
     pendingSaves.add(path);
     void get()
@@ -1012,7 +1038,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         notifyError(
           "save before closing project",
           error,
-          "The project stayed open because one or more files could not be saved.",
+          i18n.t(($) => $.core.project.saveBlockedClose),
         );
         return;
       }
@@ -1068,7 +1094,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   importProject: async (path) => {
     const id = await importOverleafProjectCmd(path);
-    toast.success("Project imported.");
+    toast.success(i18n.t(($) => $.core.project.imported));
     await get().refreshProjects();
     await get().openProject(id);
     return id;
@@ -1160,7 +1186,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   setContent: (path, content, opts) => {
     set((s) => ({
-      files: { ...s.files, [path]: { content, dirty: true } },
+      files: {
+        ...s.files,
+        [path]: { content, dirty: true, edits: (s.files[path]?.edits ?? 0) + 1 },
+      },
       docVersion: opts?.bumpVersion ? s.docVersion + 1 : s.docVersion,
     }));
     // Debounce a save of THIS file. Track every edited path so the single timer
@@ -1335,10 +1364,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         }
       } catch (error) {
         if (seq === mainDocSeq && get().projectId === projectId) {
-          const message =
-            "Document engine details could not be loaded after renaming the main document.";
-          set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
-          notifyError("rename main document", error, message);
+          set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: "renameReloadFailed" });
+          notifyError("rename main document", error, engineErrorMessage("renameReloadFailed"));
         }
       }
     }
@@ -1359,7 +1386,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }
       if (get().projectId === projectId) await get().refreshTree();
     } catch (e) {
-      notifyError("copy file", e, `Could not copy "${path}".`);
+      notifyError("copy file", e, i18n.t(($) => $.core.project.copyFailed, { path }));
     }
   }),
 
@@ -1397,7 +1424,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }
       if (get().projectId === projectId) await get().refreshTree();
     } catch (e) {
-      notifyError("import files", e, "Could not import. See the app log for details.");
+      notifyError("import files", e, i18n.t(($) => $.core.project.importFailed));
     }
   }),
 
@@ -1473,6 +1500,70 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
+  writeProjectFile: async (projectId, path, content) => {
+    const baselineRevision = fileReloadRevision;
+    const adoptable = (file: FileState | undefined) =>
+      file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
+    const expectedGeneration = await get().prepareExternalMutation(projectId);
+    const canonicalContent = normalizeTextContent(content);
+    const result = await writeFileContent(
+      projectId,
+      path,
+      canonicalContent,
+      expectedGeneration,
+    );
+    if (Number.isSafeInteger(result?.generation)) {
+      rememberMutationGeneration(projectId, result.generation);
+    }
+    if (get().projectId !== projectId) return;
+    const current = get().files[path];
+    if (adoptable(current)) {
+      pendingSaves.delete(path);
+      set((s) => {
+        if (s.projectId !== projectId || !adoptable(s.files[path])) return {};
+        return {
+          files: {
+            ...s.files,
+            [path]: { content: canonicalContent, dirty: false },
+          },
+          docVersion: s.activePath === path ? s.docVersion + 1 : s.docVersion,
+        };
+      });
+    } else if (current !== undefined && current.content !== canonicalContent) {
+      set((s) => {
+        if (s.projectId !== projectId) return {};
+        const latest = s.files[path];
+        if (!latest || latest.dirty || latest.content === canonicalContent) return {};
+        return { files: { ...s.files, [path]: { ...latest, dirty: true } } };
+      });
+      if (get().files[path]?.dirty && (!pendingSaves.has(path) || autosaveTimer === null)) {
+        pendingSaves.add(path);
+        scheduleAutosave(get);
+      }
+    }
+    await get().refreshTree();
+    notifyProjectFilesChanged(projectId, [path]);
+  },
+
+  applyExternalReload: (projectId, path, content) => {
+    if (get().projectId !== projectId) return false;
+    const current = get().files[path];
+    if (!current || current.dirty || pendingSaves.has(path)) return false;
+    const canonicalContent = normalizeTextContent(content);
+    if (current.content === canonicalContent) return false;
+    void refreshMutationGeneration(projectId).catch(() => {});
+    set((s) => {
+      if (s.projectId !== projectId) return {};
+      const latest = s.files[path];
+      if (!latest || latest.dirty || latest.content !== current.content) return {};
+      return {
+        files: { ...s.files, [path]: { content: canonicalContent, dirty: false } },
+        docVersion: s.activePath === path ? s.docVersion + 1 : s.docVersion,
+      };
+    });
+    return true;
+  },
+
   // Called after an external actor (e.g. the AI assistant) mutates a file on
   // disk, so the in-memory editor buffer stays in sync and the next save does
   // not clobber the edit. Cross-window broadcast is done by the AI host so
@@ -1494,7 +1585,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
             set((s) => ({
               files: {
                 ...s.files,
-                [path]: { content: localContent, dirty: false },
+                [path]: { ...s.files[path], content: localContent, dirty: false },
               },
             }));
             pendingSaves.delete(path);
@@ -1518,12 +1609,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
           notifyError(
             "preserve local file change",
             error,
-            `Could not preserve your local update to "${path}".`,
+            i18n.t(($) => $.core.externalChange.preserveLocalFailed, { path }),
           );
         });
-      toast.info(
-        `An external edit to "${path}" arrived while you had unsaved changes. Your local edit was kept.`,
-      );
+      toast.info(i18n.t(($) => $.core.externalChange.localEditKept, { path }));
       return false;
     }
     const mustFollowPendingWrite = pendingWrites.has(writeKey(projectId, path));
@@ -1555,7 +1644,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         notifyError(
           "preserve external file change",
           error,
-          `Could not persist the latest external update to "${path}".`,
+          i18n.t(($) => $.core.externalChange.persistExternalFailed, { path }),
         );
       });
     }
@@ -1602,7 +1691,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
             set((s) => ({
               files: {
                 ...s.files,
-                [preservedPath]: { content: file.content, dirty: false },
+                [preservedPath]: { ...file, dirty: false },
               },
             }));
             pendingSaves.delete(preservedPath);
@@ -1618,12 +1707,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
           notifyError(
             "restore local file after external delete",
             error,
-            `Could not restore your unsaved update to "${preservedPath}".`,
+            i18n.t(($) => $.core.externalChange.restoreLocalFailed, { path: preservedPath }),
           );
         });
     }
     if (preserved.length > 0) {
-      toast.info("An external deletion raced unsaved edits. Your local edits were restored.");
+      toast.info(i18n.t(($) => $.core.externalChange.deletionRestored));
     }
     void get().refreshTree();
     return preserved.length === 0;
@@ -1673,10 +1762,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         })
         .catch((error) => {
           if (seq !== mainDocSeq || get().projectId !== projectId) return;
-          const message =
-            "Document engine details could not be loaded after renaming the main document.";
-          set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
-          notifyError("reconcile renamed main document", error, message);
+          set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: "renameReloadFailed" });
+          notifyError(
+            "reconcile renamed main document",
+            error,
+            engineErrorMessage("renameReloadFailed"),
+          );
         });
     }
     for (const [path, file] of Object.entries(get().files)) {
@@ -1737,7 +1828,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       notifyError(
         "reload project after external change",
         error,
-        "Project settings were updated, but some changed files could not be reloaded.",
+        i18n.t(($) => $.core.externalChange.reloadFailed),
       );
       return false;
     }
@@ -1775,9 +1866,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set({ mainDoc: meta.main_doc, engine, engineLoaded: true, engineError: null });
     } catch (error) {
       if (seq !== mainDocSeq || get().projectId !== projectId) return;
-      const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
-      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
-      notifyError("set main document", error, message);
+      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: "loadFailed" });
+      notifyError("set main document", error, engineErrorMessage("loadFailed"));
       throw error;
     }
   },
@@ -1806,9 +1896,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set({ engine, engineLoaded: true, engineError: null });
     } catch (error) {
       if (seq !== mainDocSeq || get().projectId !== projectId) return;
-      const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
-      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
-      notifyError("set compile engine", error, message);
+      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: "loadFailed" });
+      notifyError("set compile engine", error, engineErrorMessage("loadFailed"));
       throw error;
     }
   },

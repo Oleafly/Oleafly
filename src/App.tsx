@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
 import {
   Fragment,
   lazy,
@@ -89,71 +91,10 @@ import {
   sidebarMinimumPercent,
   sidebarPanelGroupWidth,
 } from "@/lib/assistant-layout";
-
-type ExternalFileChange =
-  | { kind: "write"; path: string; content: string }
-  | { kind: "create" | "delete"; path: string }
-  | { kind: "rename"; from: string; to: string };
-
-interface ExternalFileChangePayload {
-  projectId: string;
-  paths?: string[];
-  from?: string;
-  change?: ExternalFileChange;
-}
-
-function applyExternalFileChange(payload: ExternalFileChangePayload, selfLabel: string) {
-  if (payload.from === selfLabel) return;
-  const files = useFilesStore.getState();
-  if (!payload.projectId) return;
-  if (payload.projectId !== files.projectId) return;
-  if (applyKnownExternalChange(files, payload.projectId, payload.change)) return;
-  void files.refreshTree();
-  if (payload.change?.kind === "create") return;
-  let paths = payload.paths;
-  if (!paths?.length) paths = Object.keys(files.files);
-  for (const path of paths) refreshExternalFile(payload.projectId, path, files.files[path]);
-}
-
-function applyKnownExternalChange(
-  files: ReturnType<typeof useFilesStore.getState>,
-  projectId: string,
-  change: ExternalFileChange | undefined,
-): boolean {
-  switch (change?.kind) {
-    case "delete":
-      files.applyExternalDelete(projectId, change.path);
-      return true;
-    case "rename":
-      files.applyExternalRename(projectId, change.from, change.to);
-      return true;
-    case "write":
-      files.applyExternalWrite(projectId, change.path, change.content);
-      return true;
-    default:
-      return false;
-  }
-}
-
-function refreshExternalFile(
-  projectId: string,
-  path: string,
-  file: { content: string; dirty: boolean } | undefined,
-) {
-  if (!file || file.dirty) return;
-  const contentBeforeRead = file.content;
-  void import("@/lib/tauri").then(({ readFileContent }) => {
-    void readFileContent(projectId, path)
-      .then((content) => {
-        const current = useFilesStore.getState();
-        const latest = current.files[path];
-        if (current.projectId !== projectId || latest?.dirty) return;
-        if (latest?.content !== contentBeforeRead) return;
-        current.applyExternalWrite(projectId, path, content);
-      })
-      .catch(() => {});
-  });
-}
+import {
+  applyExternalFileChange,
+  type ExternalFileChangePayload,
+} from "@/lib/external-file-changes";
 
 const SettingsModal = lazy(() =>
   import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
@@ -260,6 +201,7 @@ const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
 function AppContent() {
+  const { t } = useTranslation(["workspace"]);
   const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
@@ -820,6 +762,7 @@ function AppContent() {
         )}
         <LazyModals>
           <SettingsModal />
+          <CiteOleaflyDialog />
           <HotkeysModal />
           <DiagramComposer />
           <TourGuide />
@@ -841,14 +784,14 @@ function AppContent() {
             resetKey={projectId}
             fallback={
               <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
-                <p>The panel layout hit a snag. Your project files are safe on disk.</p>
+                <p>{t(($) => $.workspace.panelError.message)}</p>
                 <button
                   type="button"
                   onClick={() => window.location.reload()}
                   className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
                 >
                   <RefreshCw className="size-4" />
-                  Reload Oleafly
+                  {t(($) => $.workspace.panelError.reload)}
                 </button>
               </div>
             }
@@ -898,7 +841,7 @@ function AppContent() {
                             className="min-h-0 min-w-0"
                           >
                             <ErrorBoundary surface="editor" resetKey={projectId}>
-                              <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
+                              <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.editor)} />}>
                                 <Editor />
                               </Suspense>
                             </ErrorBoundary>
@@ -915,7 +858,7 @@ function AppContent() {
                             className="min-h-0 min-w-0"
                           >
                             <ErrorBoundary surface="PDF preview" resetKey={projectId}>
-                              <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
+                              <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.preview)} />}>
                                 <PreviewPane />
                               </Suspense>
                             </ErrorBoundary>
@@ -944,7 +887,7 @@ function AppContent() {
                     className="min-h-0 min-w-0 border-l"
                   >
                     <ErrorBoundary surface="AI assistant" resetKey={projectId}>
-                      <Suspense fallback={<SurfaceLoading label="Loading assistant" />}>
+                      <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.assistant)} />}>
                         <ChatPanel />
                       </Suspense>
                     </ErrorBoundary>
@@ -991,7 +934,7 @@ function AppContent() {
                   )}
                 >
                   <ErrorBoundary surface="terminal dock" resetKey={projectId}>
-                    <Suspense fallback={<SurfaceLoading label="Loading terminal" />}>
+                    <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.terminal)} />}>
                       <TerminalDock
                         projectId={projectId}
                         projectName={projectName}
@@ -1021,6 +964,7 @@ function AppContent() {
         )}
         <LazyModals>
           <SettingsModal />
+          <CiteOleaflyDialog />
           <WordCountModal />
           <VersioningModal />
           <HotkeysModal />

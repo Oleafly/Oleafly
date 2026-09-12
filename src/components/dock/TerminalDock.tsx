@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Check, Palette, Pencil, Plus, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,7 +14,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
+import { BOOK_COLOR_OPTIONS, useBookColorLabels } from "@/components/library/Book";
 import { useAppTheme } from "@/lib/theme";
 import { useResolvedTerminalTheme, useSettingsStore } from "@/store/settings";
 
@@ -21,7 +22,7 @@ const stripButtonClass =
   "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
 import {
   TERMINAL_LIMIT,
-  TERMINAL_LIMIT_MESSAGE,
+  terminalLimitMessage,
   TERMINAL_TITLE_MAX_LENGTH,
   isTerminalColorKey,
   useTerminalsStore,
@@ -70,6 +71,8 @@ function TerminalTabItem({
   onRename: (title: string) => void;
   onColor: (color: TerminalColorKey | null) => void;
 }) {
+  const { t } = useTranslation(["common", "workspace"]);
+  const colorLabels = useBookColorLabels();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(tab.title);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -162,7 +165,7 @@ function TerminalTabItem({
           {editing ? (
             <Input
               ref={inputRef}
-              aria-label="Terminal title"
+              aria-label={t(($) => $.workspace.terminal.titleInput)}
               value={draft}
               maxLength={TERMINAL_TITLE_MAX_LENGTH}
               onChange={(event) => setDraft(event.target.value)}
@@ -188,10 +191,10 @@ function TerminalTabItem({
               {tab.title}
             </button>
           )}
-          <Tooltip label="Close" side="bottom">
+          <Tooltip label={t(($) => $.common.actions.close)} side="bottom">
             <button
               type="button"
-              aria-label={`Close ${tab.title}`}
+              aria-label={t(($) => $.workspace.terminal.closeTab, { title: tab.title })}
               onClick={onClose}
               className={closeClass}
             >
@@ -212,11 +215,11 @@ function TerminalTabItem({
           data-testid="dock-terminal-menu-rename"
           onClick={() => window.setTimeout(startEditing, 0)}
         >
-          <Pencil className="mr-2 size-4" aria-hidden /> Rename
+          <Pencil className="mr-2 size-4" aria-hidden /> {t(($) => $.common.actions.rename)}
         </ContextMenuItem>
         <ContextMenuSub>
           <ContextMenuSubTrigger data-testid="dock-terminal-menu-color">
-            <Palette className="mr-2 size-4" aria-hidden /> Color
+            <Palette className="mr-2 size-4" aria-hidden /> {t(($) => $.workspace.terminal.color)}
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="w-44">
             {TERMINAL_SWATCHES.map((swatch) => (
@@ -226,14 +229,14 @@ function TerminalTabItem({
                   className={cn(swatchClass, "mr-2 size-3.5")}
                   style={{ backgroundColor: swatch.hex }}
                 />
-                {swatch.name}
+                {colorLabels[swatch.name] ?? swatch.name}
                 {tab.color === swatch.key && <Check className="ml-auto size-3.5" aria-hidden />}
               </ContextMenuItem>
             ))}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onColor(null)}>
               <span aria-hidden className={cn(swatchClass, "mr-2 size-3.5 bg-transparent")} />
-              None
+              {t(($) => $.common.state.none)}
               {!tab.color && <Check className="ml-auto size-3.5" aria-hidden />}
             </ContextMenuItem>
           </ContextMenuSubContent>
@@ -241,32 +244,32 @@ function TerminalTabItem({
         <ContextMenuSeparator />
         <ContextMenuSub>
           <ContextMenuSubTrigger data-testid="dock-terminal-menu-close-menu">
-            <X className="mr-2 size-4" aria-hidden /> Close
+            <X className="mr-2 size-4" aria-hidden /> {t(($) => $.common.actions.close)}
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="w-52">
             <ContextMenuItem data-testid="dock-terminal-menu-close" onClick={onClose}>
-              Close current
+              {t(($) => $.workspace.terminal.closeCurrent)}
             </ContextMenuItem>
             <ContextMenuItem
               data-testid="dock-terminal-menu-close-others"
               disabled={!canCloseOthers}
               onClick={onCloseOthers}
             >
-              Close others
+              {t(($) => $.workspace.terminal.closeOthers)}
             </ContextMenuItem>
             <ContextMenuItem
               data-testid="dock-terminal-menu-close-left"
               disabled={!canCloseLeft}
               onClick={onCloseLeft}
             >
-              Close all to the left
+              {t(($) => $.workspace.terminal.closeLeft)}
             </ContextMenuItem>
             <ContextMenuItem
               data-testid="dock-terminal-menu-close-right"
               disabled={!canCloseRight}
               onClick={onCloseRight}
             >
-              Close all to the right
+              {t(($) => $.workspace.terminal.closeRight)}
             </ContextMenuItem>
           </ContextMenuSubContent>
         </ContextMenuSub>
@@ -284,6 +287,7 @@ export function TerminalDock({
   projectName?: string;
   visible?: boolean;
 }) {
+  const { t } = useTranslation(["common", "workspace"]);
   const storeProjectId = useTerminalsStore((state) => state.projectId);
   const tabs = useTerminalsStore((state) => state.tabs);
   const activeId = useTerminalsStore((state) => state.activeId);
@@ -322,7 +326,7 @@ export function TerminalDock({
     <div className="flex h-full min-h-0 w-full flex-col">
       <div
         role="tablist"
-        aria-label="Terminals"
+        aria-label={t(($) => $.workspace.terminal.tabs)}
         data-testid="dock-terminal-tabs"
         className="flex h-8 shrink-0 items-end gap-0.5 overflow-x-auto px-1"
         style={{ backgroundColor: terminalBackground }}
@@ -345,10 +349,13 @@ export function TerminalDock({
               onColor={(color) => useTerminalsStore.getState().setTerminalColor(tab.id, color)}
             />
           ))}
-        <Tooltip label={atLimit ? TERMINAL_LIMIT_MESSAGE : "New terminal"} side="bottom">
+        <Tooltip
+          label={atLimit ? terminalLimitMessage() : t(($) => $.workspace.terminal.newTerminal)}
+          side="bottom"
+        >
           <button
             type="button"
-            aria-label="New terminal"
+            aria-label={t(($) => $.workspace.terminal.newTerminal)}
             disabled={atLimit || !ready}
             onClick={() => useTerminalsStore.getState().addTerminal()}
             className={stripButtonClass}
@@ -356,10 +363,10 @@ export function TerminalDock({
             <Plus className="size-4" aria-hidden />
           </button>
         </Tooltip>
-        <Tooltip label="Terminal settings" side="bottom">
+        <Tooltip label={t(($) => $.workspace.terminal.settings)} side="bottom">
           <button
             type="button"
-            aria-label="Terminal settings"
+            aria-label={t(($) => $.workspace.terminal.settings)}
             onClick={openTerminalSettings}
             className={cn(stripButtonClass, "ml-auto mr-0.5")}
           >

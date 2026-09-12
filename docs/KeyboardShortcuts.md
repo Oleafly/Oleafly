@@ -19,6 +19,23 @@ Windows and Linux.
 The reference list is generated from `SHORTCUT_DEFINITIONS` in
 `src/store/shortcuts.ts`; it is the source of truth for labels and defaults.
 
+## Editor keys
+
+These live in the editor's own keymap rather than the shortcut store, so they
+are not remappable. They apply in LaTeX sources.
+
+| Key | Effect |
+| --- | --- |
+| Enter on an `\item` line | Starts the next item at the same level |
+| Enter at the end of a `\begin{...}` line | Writes the matching `\end` below |
+| Shift-Enter | Plain newline, no item marker |
+| Backspace behind an `\item` marker | Blanks the marker, then deletes it |
+| Backspace inside an empty math pair | Removes both delimiters |
+
+The completion popup binds Enter ahead of these keys. When it has a suggestion
+ready, it takes the key; otherwise Enter falls through to the editor keys
+below.
+
 ## Configuration model
 
 - Users can change bindings from the shortcut settings surface.

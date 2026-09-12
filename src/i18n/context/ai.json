@@ -1,0 +1,217 @@
+{
+  "acp": {
+    "connecting": "Shown while the CLI agent session is being established",
+    "stop": "Stops the CLI agent mid-answer",
+    "send": "Sends the composed message to the CLI agent",
+    "agentModel": "Picker for the model the CLI agent uses",
+    "sessionStatus": {
+      "connecting": "Lowercase status inside the session pill",
+      "authRequired": "Lowercase status inside the session pill: the agent needs a sign-in",
+      "ready": "Lowercase status inside the session pill: idle and able to take a message",
+      "running": "Lowercase status inside the session pill: answering now",
+      "cancelling": "Lowercase status inside the session pill: a stop is in flight",
+      "cancelled": "Lowercase status inside the session pill: the turn was stopped",
+      "disconnected": "Lowercase status inside the session pill: the process ended",
+      "failed": "Lowercase status inside the session pill: the session errored"
+    },
+    "roster": {
+      "comingSoon": "Hint on an agent that Oleafly does not support yet"
+    },
+    "bridgeSource": {
+      "notInstalled": "The ACP bridge for this agent is not installed",
+      "managed": "Oleafly installed and updates this agent's bridge",
+      "onPath": "The bridge was found on the system PATH rather than installed by Oleafly"
+    },
+    "agentReported": "Labels the CLI agent's own raw diagnostic output, which is interpolated verbatim",
+    "agentToolFallback": "Stands in for a CLI agent tool that reported no name",
+    "imageAttachmentName": "Name shown on an image chip when the image itself carries no filename",
+    "agentImage": "Stands in for an image the CLI agent returned; the square brackets mark it as a placeholder, not agent prose"
+  },
+  "approval": {
+    "reject": "Declines one pending assistant action",
+    "approve": "Allows one pending assistant action",
+    "alwaysAllow": "Allows this tool for the rest of the session without asking again",
+    "alwaysInProject": "Allows this tool in this project from now on",
+    "toolLabel": "Field label naming which tool is being called",
+    "commandLabel": "Field label above the shell command the assistant wants to run",
+    "arguments": "Field label above the arguments sent to an external MCP tool",
+    "line": "Line number badge next to a file, not a text line of prose",
+    "firstChange": "Marks the first changed line in a diff; L is the abbreviation for line"
+  },
+  "chat": {
+    "errorHints": {
+      "where": {
+        "inSettings": "Names where the reader can switch AI provider, read inside the surrounding hint sentence.",
+        "modelMenu": "Names where the reader can switch AI provider, read inside the surrounding hint sentence."
+      }
+    },
+    "exploration": {
+      "explored": "Collapsed summary of read-only tool calls when nothing is counted",
+      "files_one": "Counts one file the assistant read, phrased as an article plus noun",
+      "searches_one": "Counts one project search the assistant ran",
+      "lists_one": "Counts one directory listing the assistant ran"
+    },
+    "fileChanges": {
+      "changed": "Heading above files edited but not yet committed"
+    },
+    "pill": {
+      "plan": "Uppercase badge on the run status pill meaning a plan is in progress",
+      "step": "Uppercase badge showing progress through plan steps",
+      "review": "Uppercase badge meaning file changes are waiting to be reviewed"
+    },
+    "plan": {
+      "headingPlan": "Heading of the panel listing the assistant's planned steps",
+      "headingChanges": "Heading of the panel listing changed files when there is no plan",
+      "revise": "Sends the plan back for changes instead of approving it",
+      "statusApproved": "The plan has been approved, not an approved file change"
+    },
+    "reasoning": {
+      "label": "Header of a collapsed block of model reasoning with no timing"
+    },
+    "runSummary": {
+      "plan": "Prefix of the run summary line meaning the run followed a plan"
+    },
+    "steered": "Badge on a message that was injected into a run already in progress",
+    "subagent": {
+      "finished": "A delegated agent finished its task",
+      "failed": "A delegated agent ended with an error",
+      "stopped": "A delegated agent was interrupted before finishing",
+      "openTask": "Opens the delegated agent's full transcript"
+    },
+    "todos": {
+      "status": {
+        "completed": "Screen reader wording for a finished checklist item",
+        "inProgress": "Screen reader wording for the checklist item being worked on",
+        "pending": "Screen reader wording for a checklist item not started",
+        "cancelled": "Screen reader wording for an abandoned checklist item"
+      }
+    }
+  },
+  "commands": {
+    "groups": {
+      "skills": "Heading above skill entries in the slash command menu"
+    },
+    "archive": {
+      "label": "Slash command that files the current chat away"
+    },
+    "goal": {
+      "label": "Slash command that sets a standing objective for the assistant"
+    },
+    "model": {
+      "label": "Slash command that opens the model picker"
+    },
+    "files": {
+      "label": "Attach menu entry that picks files from disk"
+    }
+  },
+  "composer": {
+    "plan": "Label on the composer toggle that turns Plan mode on and off",
+    "personaNone": "Picks no persona, leaving the default instructions in place",
+    "persona": "Label on the persona button when no persona is selected",
+    "stop": "Stops the assistant mid-answer",
+    "send": "Sends the composed message",
+    "prompts": "Label of the menu of ready-made prompts",
+    "checkAgain": "Re-runs the compatibility probe for the selected model"
+  },
+  "goal": {
+    "label": "Field label for the standing objective the assistant works toward",
+    "clear": "Removes the standing objective"
+  },
+  "history": {
+    "staleBadge": "Badge on a chat started from an older version of the project",
+    "deleteFallbackTitle": "Stands in for the chat title when the chat has no title",
+    "untitled": "Default name of a chat with no title yet"
+  },
+  "home": {
+    "headingAccent": "Trailing fragment of the home heading that is painted in the accent gradient; it must appear verbatim at the end of the heading",
+    "recentStaleBadge": "Screen reader label on the dot marking a chat from an older project version"
+  },
+  "models": {
+    "trust": {
+      "verified": "Badge: the assistant has been tested on this model",
+      "untested": "Badge: the assistant has not been tested on this model yet",
+      "blocked": "Badge: the assistant cannot run on this model"
+    }
+  },
+  "runtime": {
+    "builtIn": "Name of the in-app assistant runtime, the alternative to a CLI agent",
+    "cli": "Name of the runtime that drives an external command line coding agent"
+  },
+  "shortcuts": {
+    "shorten": {
+      "label": "Prompt that makes the selected text more concise"
+    },
+    "expand": {
+      "label": "Prompt that adds detail to a section, not expanding a tree node"
+    },
+    "keywords": {
+      "label": "Prompt that extracts index keywords from the paper"
+    },
+    "myLibrary": {
+      "label": "Prompt that searches the user's own imported references"
+    }
+  },
+  "subagents": {
+    "status": {
+      "active": "Short chip status: the delegated agent is running",
+      "awaiting": "Short chip status: the delegated agent is waiting for a permission answer",
+      "updated": "Short chip status: the delegated agent reported new activity",
+      "interrupted": "Short chip status: the delegated agent was stopped",
+      "completed": "Short chip status: the delegated agent finished",
+      "failed": "Short chip status: the delegated agent errored"
+    },
+    "workingDetail": "Fallback detail line when a delegated agent has reported nothing yet",
+    "openTask": "Opens the delegated agent's session"
+  },
+  "toolCard": {
+    "approved": "Badge on a tool call the user allowed",
+    "rejected": "Badge on a tool call the user declined",
+    "openFile": "Opens the file the tool produced in the editor",
+    "openSource": "Opens the cited paper or web page the tool found",
+    "openTask": "Opens the delegated agent's transcript",
+    "inspectSource": "Previews a linked research file without opening the project"
+  },
+  "toolPicture": {
+    "figureTab": "Tab showing the rendered picture, the alternative to the TikZ source tab",
+    "tikzTab": "Tab showing the TikZ source code of the figure",
+    "saving": "Transient label while the figure is being written to the project"
+  },
+  "tools": {
+    "approval": {
+      "never": "This tool never asks for approval",
+      "everyTime": "This tool asks for approval on every call"
+    },
+    "groupHeading": "Accessible name for a tool group, joining the group label with the MCP server name",
+    "groups": {
+      "files": "Group of tools that read and write project files",
+      "buildAndPdf": "Group of tools that compile the project and inspect the PDF",
+      "research": "Group of tools that search papers and citations",
+      "figures": "Group of tools that draw and insert figures",
+      "planAndMemory": "Group of tools for the checklist and saved notes",
+      "skills": "Group of tools that load skill instructions",
+      "agents": "Group of tools that start and manage helper agents",
+      "system": "Group of tools that run commands and change app settings"
+    },
+    "managerHeading": "Heading of the panel that turns individual agent tools on and off",
+    "managerTooltip": "Tooltip on the wrench button that opens the tool manager",
+    "table": {
+      "tool": "Column header listing tool names",
+      "whatItDoes": "Column header describing each tool",
+      "asksFirst": "Column header saying when a tool needs approval"
+    }
+  },
+  "turn": {
+    "thinking": "Status shown on the first model step of a run",
+    "continuing": "Status shown on later model steps of the same run",
+    "reasoning": "Status shown while the model streams its reasoning"
+  },
+  "usage": {
+    "steps": "Number of model steps in a run, not plan steps",
+    "input": "Input tokens sent to the model",
+    "output": "Output tokens returned by the model",
+    "runs": "Number of assistant runs in this chat",
+    "tokens": "Total tokens for this chat",
+    "lastRun": "Heading above the most recent run's numbers",
+    "thisChat": "Heading above the running totals for the whole chat"
+  }
+}

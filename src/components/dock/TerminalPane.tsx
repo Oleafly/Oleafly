@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { i18n } from "@/i18n";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Channel, invoke } from "@tauri-apps/api/core";
@@ -8,6 +10,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { Loader2 } from "lucide-react";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useAppTheme } from "@/lib/theme";
+import { createTerminalResizer } from "@/lib/terminal-resize";
 import {
   resolveTerminalTheme,
   useSettingsStore,
@@ -105,6 +108,7 @@ export function TerminalPane({
   autoStart = false,
   onExit,
 }: TerminalPaneProps) {
+  const { t } = useTranslation(["workspace"]);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -113,6 +117,7 @@ export function TerminalPane({
   const hiddenOutputLengthRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
   const sessionLiveRef = useRef(false);
+  const resizerRef = useRef<ReturnType<typeof createTerminalResizer> | null>(null);
   const surfacedErrorsRef = useRef(new Set<string>());
   const outputWrittenRef = useRef<(() => void) | undefined>(undefined);
   const visibleRef = useRef(visible);
@@ -216,6 +221,7 @@ export function TerminalPane({
     let sessionLive = false;
     let sessionExited = false;
     let disposed = false;
+    let resizer: ReturnType<typeof createTerminalResizer> | null = null;
     const pendingInput: string[] = [];
     const writeInput = (id: string, data: string) => {
       void invoke("term_write", { id, projectId, data }).catch((error) => {
@@ -223,7 +229,7 @@ export function TerminalPane({
           writeTerminalErrorOnce(
             terminal,
             surfacedErrorsRef.current,
-            "The shell could not accept input",
+            i18n.t(($) => $.workspace.terminal.errors.input),
             error,
             outputWritten,
           );
@@ -263,10 +269,12 @@ export function TerminalPane({
         return;
       }
       if (message.event === "input_error") {
-        writeTerminalErrorOnce(terminal, surfacedErrorsRef.current, "The shell could not accept input", message.message, outputWritten);
+        writeTerminalErrorOnce(terminal, surfacedErrorsRef.current, i18n.t(($) => $.workspace.terminal.errors.input), message.message, outputWritten);
         return;
       }
       sessionExited = true;
+      resizer?.dispose();
+      resizerRef.current = null;
       sessionLive = false;
       sessionLiveRef.current = false;
       sessionId = null;
@@ -294,25 +302,20 @@ export function TerminalPane({
         sessionIdRef.current = id;
         sessionLive = true;
         sessionLiveRef.current = true;
+        resizer = createTerminalResizer(
+          (cols, rows) => invoke("term_resize", { id, projectId, cols, rows }),
+          (error) => {
+            if (!disposed && sessionLive) {
+              writeTerminalErrorOnce(terminal, surfacedErrorsRef.current,
+                i18n.t(($) => $.workspace.terminal.errors.resize), error, outputWritten);
+            }
+          },
+        );
+        resizerRef.current = resizer;
         for (const data of pendingInput.splice(0)) writeInput(id, data);
         setBooted(true);
         if (visibleRef.current || terminal.cols !== openedCols || terminal.rows !== openedRows) {
-          void invoke("term_resize", {
-            id,
-            projectId,
-            cols: terminal.cols,
-            rows: terminal.rows,
-          }).catch((error) => {
-            if (!disposed && sessionLive) {
-              writeTerminalErrorOnce(
-                terminal,
-                surfacedErrorsRef.current,
-                "The terminal could not resize",
-                error,
-                outputWritten,
-              );
-            }
-          });
+          resizer.request(terminal.cols, terminal.rows);
         }
         if (visibleRef.current) terminal.focus();
       })
@@ -321,7 +324,7 @@ export function TerminalPane({
         pendingInput.length = 0;
         if (disposed || sessionExited) return;
         setBooted(true);
-        writeTerminalError(terminal, "The shell could not start", error, outputWritten);
+        writeTerminalError(terminal, i18n.t(($) => $.workspace.terminal.errors.start), error, outputWritten);
       });
     }, 0);
 
@@ -336,28 +339,15 @@ export function TerminalPane({
       if (!visibleRef.current || !openedRef.current) return;
       fit.fit();
       if (sessionLive && sessionId) {
-        void invoke("term_resize", {
-          id: sessionId,
-          projectId,
-          cols: terminal.cols,
-          rows: terminal.rows,
-        }).catch((error) => {
-          if (!disposed && sessionLive) {
-            writeTerminalErrorOnce(
-              terminal,
-              surfacedErrorsRef.current,
-              "The terminal could not resize",
-              error,
-              outputWritten,
-            );
-          }
-        });
+        resizer?.request(terminal.cols, terminal.rows);
       }
     });
     observer.observe(host);
 
     return () => {
       disposed = true;
+      resizer?.dispose();
+      if (resizerRef.current === resizer) resizerRef.current = null;
       if (openTimer !== null) {
         window.clearTimeout(openTimer);
         openTimer = null;
@@ -397,30 +387,10 @@ export function TerminalPane({
     fitRef.current?.fit();
     const id = sessionIdRef.current;
     if (id && sessionLiveRef.current) {
-      void invoke("term_resize", {
-        id,
-        projectId,
-        cols: terminal.cols,
-        rows: terminal.rows,
-      }).catch((error) => {
-        if (
-          sessionLiveRef.current &&
-          sessionIdRef.current === id &&
-          terminalRef.current === terminal
-        ) {
-          writeTerminalErrorOnce(
-            terminal,
-            surfacedErrorsRef.current,
-            "The terminal could not resize",
-            error,
-            outputWrittenRef.current,
-          );
-        }
-      });
+      resizerRef.current?.request(terminal.cols, terminal.rows);
     }
   }, [
     appTheme,
-    projectId,
     terminalBackground,
     terminalColorTheme,
     terminalCursorBlink,
@@ -463,30 +433,11 @@ export function TerminalPane({
       terminal?.focus();
       const id = sessionIdRef.current;
       if (terminal && id && sessionLiveRef.current) {
-        void invoke("term_resize", {
-          id,
-          projectId,
-          cols: terminal.cols,
-          rows: terminal.rows,
-        }).catch((error) => {
-          if (
-            sessionLiveRef.current &&
-            sessionIdRef.current === id &&
-            terminalRef.current === terminal
-          ) {
-            writeTerminalErrorOnce(
-              terminal,
-              surfacedErrorsRef.current,
-              "The terminal could not resize",
-              error,
-              outputWrittenRef.current,
-            );
-          }
-        });
+        resizerRef.current?.request(terminal.cols, terminal.rows);
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [projectId, visible]);
+  }, [visible]);
 
   const paneBackground = resolveTerminalTheme(
     { terminalColorTheme, terminalBackground, terminalForeground, terminalCursorColor },
@@ -518,7 +469,7 @@ export function TerminalPane({
           style={{ backgroundColor: paneBackground }}
         >
           <Loader2 className="size-6 animate-spin motion-reduce:animate-none" />
-          <p className="text-xs">Starting the project shell…</p>
+          <p className="text-xs">{t(($) => $.workspace.terminal.starting)}</p>
         </div>
       )}
     </div>

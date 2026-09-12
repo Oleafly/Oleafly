@@ -1,7 +1,10 @@
 import { create } from "zustand";
+import { i18n } from "@/i18n";
 
 export const TERMINAL_LIMIT = 10;
-export const TERMINAL_LIMIT_MESSAGE = "Close a terminal to open another";
+export function terminalLimitMessage(): string {
+  return i18n.t(($) => $.workspace.terminal.limitReached);
+}
 export const TERMINAL_TITLE_MAX_LENGTH = 40;
 
 const TITLES_KEY_PREFIX = "oleafly.terminal.titles.";
@@ -58,7 +61,7 @@ interface TerminalsState {
 let tabSeq = 0;
 
 export function defaultTerminalTitle(index: number): string {
-  return `Terminal ${index}`;
+  return i18n.t(($) => $.core.terminal.defaultTitle, { index });
 }
 
 export function terminalTitlesKey(projectId: string): string {

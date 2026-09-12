@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Dialect, LocalLinter } from "harper.js";
-import { binary } from "harper.js/binary";
+// Harper's Node file loader uses URL.pathname, which duplicates the drive
+// prefix on Windows. The inlined build exercises the same WASM and dialects
+// without depending on that loader's filesystem conversion.
+import { binaryInlined as binary } from "harper.js/binaryInlined";
 import type { ProofreadingDialect } from "@oleafly/editor";
 import { harperDialectFor } from "./dialects";
 

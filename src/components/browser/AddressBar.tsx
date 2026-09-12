@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   ArrowRight,
@@ -19,8 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { BrowserTab } from "./browser-state";
 import type { OverlayGate } from "./use-overlay-gate";
-
-export const ADDRESS_FIELD_LABEL = "Search or enter a URL";
 
 interface AddressBarProps {
   tab: BrowserTab | null;
@@ -77,6 +76,8 @@ export function AddressBar({
   onNewTab,
   addressRef,
 }: AddressBarProps) {
+  const { t } = useTranslation(["shell"]);
+  const addressFieldLabel = t(($) => $.shell.browser.address);
   const url = tab?.url ?? "";
   const [draft, setDraft] = useState(url);
   const [editing, setEditing] = useState(false);
@@ -101,13 +102,13 @@ export function AddressBar({
 
   return (
     <div className="flex h-[52px] shrink-0 items-center gap-1 border-b border-border bg-background px-2">
-      <ToolButton label="Back" onClick={onBack} disabled={!hasTab}>
+      <ToolButton label={t(($) => $.shell.browser.back)} onClick={onBack} disabled={!hasTab}>
         <ArrowLeft className="size-4" aria-hidden />
       </ToolButton>
-      <ToolButton label="Forward" onClick={onForward} disabled={!hasTab}>
+      <ToolButton label={t(($) => $.shell.browser.forward)} onClick={onForward} disabled={!hasTab}>
         <ArrowRight className="size-4" aria-hidden />
       </ToolButton>
-      <ToolButton label="Reload" onClick={onReload} disabled={!hasTab}>
+      <ToolButton label={t(($) => $.shell.browser.reload)} onClick={onReload} disabled={!hasTab}>
         {loading ? (
           <Loader2 className="size-4 animate-spin" aria-hidden data-testid="browser-loading" />
         ) : (
@@ -128,8 +129,8 @@ export function AddressBar({
         <Input
           ref={addressRef}
           type="text"
-          aria-label={ADDRESS_FIELD_LABEL}
-          placeholder={ADDRESS_FIELD_LABEL}
+          aria-label={addressFieldLabel}
+          placeholder={addressFieldLabel}
           value={editing ? draft : url}
           spellCheck={false}
           autoCorrect="off"
@@ -152,7 +153,7 @@ export function AddressBar({
           className="h-8 rounded-full bg-muted/50 px-4 text-sm focus-visible:bg-background"
         />
       </form>
-      <ToolButton label="Open in your browser" onClick={onOpenExternal} disabled={!url}>
+      <ToolButton label={t(($) => $.shell.browser.openExternal)} onClick={onOpenExternal} disabled={!url}>
         <ExternalLink className="size-4" aria-hidden />
       </ToolButton>
       <DropdownMenu open={gate.open} onOpenChange={gate.setOpen}>
@@ -161,23 +162,23 @@ export function AddressBar({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="More options"
+            aria-label={t(($) => $.shell.browser.moreOptions)}
             className="size-8 text-muted-foreground hover:text-foreground"
           >
             <Ellipsis className="size-4" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={6}>
-          <DropdownMenuItem onSelect={onNewTab}>New tab</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onNewTab}>{t(($) => $.shell.browser.newTab)}</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled={!url} onSelect={onCopyUrl}>
-            Copy URL
+            {t(($) => $.shell.browser.copyUrl)}
           </DropdownMenuItem>
           <DropdownMenuItem disabled={!url} onSelect={onSetHomePage}>
-            Set as home page
+            {t(($) => $.shell.browser.setHomePage)}
           </DropdownMenuItem>
           <DropdownMenuItem disabled={!url} onSelect={onOpenExternal}>
-            Open in your browser
+            {t(($) => $.shell.browser.openExternal)}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

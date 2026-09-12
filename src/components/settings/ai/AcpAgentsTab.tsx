@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   ChevronRight,
@@ -20,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -54,9 +56,10 @@ const example = JSON.stringify(
 );
 
 function CopyValue({ value, label }: { value: string; label: string }) {
+  const { t } = useTranslation(["common"]);
   const [copied, setCopied] = useState(false);
   return (
-    <Tooltip label={copied ? "Copied" : label}>
+    <Tooltip label={copied ? t(($) => $.common.actions.copied) : label}>
       <Button
         type="button"
         variant="ghost"
@@ -145,6 +148,7 @@ function RegistryResult({
   busy: boolean;
   onRegister: (definition: AcpDefinition) => void;
 }) {
+  const { t } = useTranslation(["settings"]);
   const [shown, setShown] = useState(false);
   return (
     <article className="space-y-2 rounded-md border bg-background p-3">
@@ -163,7 +167,9 @@ function RegistryResult({
             if (entry.definition) onRegister(entry.definition);
           }}
         >
-          {registered ? "Registered" : "Register agent"}
+          {registered
+            ? t(($) => $.settings.ai.agents.registry.registered)
+            : t(($) => $.settings.ai.agents.registry.register)}
         </Button>
         {entry.definition && (
           <Button
@@ -173,7 +179,9 @@ function RegistryResult({
             aria-expanded={shown}
             onClick={() => setShown((value) => !value)}
           >
-            {shown ? "Hide distribution" : "Show distribution"}
+            {shown
+              ? t(($) => $.settings.ai.agents.registry.hideDistribution)
+              : t(($) => $.settings.ai.agents.registry.showDistribution)}
           </Button>
         )}
       </div>
@@ -197,10 +205,11 @@ function AgentCard({
   agent: AcpAgentStatus;
   projectId?: string | null;
   busy: string | null;
-  onInstall: (definition: AcpDefinition) => void;
+  onInstall: (definition: AcpDefinition, opener: HTMLButtonElement) => void;
   onRemove: (agentId: string) => void;
   onOpenTerminal: () => void;
 }) {
+  const { t } = useTranslation(["common", "settings"]);
   const [open, setOpen] = useState(false);
   const readiness = acpReadiness(agent);
   const cli = agent.cli;
@@ -239,10 +248,11 @@ function AgentCard({
       {open && (
         <div className="space-y-2 px-3 pb-3">
           {cli && (
-            <DetailRow title="Command line tool">
+            <DetailRow title={t(($) => $.settings.ai.agents.cliTitle)}>
               <div className="flex items-center gap-2">
                 <p className="min-w-0 flex-1 break-all font-mono text-[11px] text-foreground">
-                  {cli.path ?? `${cli.command} was not found on your PATH.`}
+                  {cli.path ??
+                    t(($) => $.settings.ai.agents.cliNotOnPath, { command: cli.command })}
                 </p>
                 {cli.version && (
                   <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
@@ -254,26 +264,29 @@ function AgentCard({
                 <code className="min-w-0 flex-1 truncate rounded bg-background px-1.5 py-1 font-mono text-[11px]">
                   {cli.signInCommand}
                 </code>
-                <CopyValue value={cli.signInCommand} label="Copy sign-in command" />
+                <CopyValue
+                  value={cli.signInCommand}
+                  label={t(($) => $.settings.ai.agents.copySignInCommand)}
+                />
                 {projectId && (
                   <Button type="button" variant="ghost" size="xs" onClick={onOpenTerminal}>
-                    <Terminal className="size-3" /> Open terminal
+                    <Terminal className="size-3" /> {t(($) => $.settings.ai.agents.openTerminal)}
                   </Button>
                 )}
               </div>
             </DetailRow>
           )}
-          <DetailRow title="ACP bridge">
+          <DetailRow title={t(($) => $.settings.ai.agents.bridgeTitle)}>
             <div className="flex items-center gap-2">
               <p className="min-w-0 flex-1 break-all font-mono text-[11px] text-foreground">
-                {agent.executable ?? "No bridge executable resolved yet."}
+                {agent.executable ?? t(($) => $.settings.ai.agents.bridgeUnresolved)}
               </p>
               <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
                 {agent.installedVersion ?? agent.definition.version}
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {bridgeSourceLabel(agent)} · {agent.platform}
+              {bridgeSourceLabel(agent)}{" · "}{agent.platform}
             </p>
             {agent.taskUnavailableReason && (
               <p className="text-[11px] text-muted-foreground">{agent.taskUnavailableReason}</p>
@@ -288,14 +301,16 @@ function AgentCard({
                 size="sm"
                 data-testid={`acp-agent-install-${agent.definition.id}`}
                 disabled={!!busy || !agent.canInstall}
-                onClick={() => onInstall(agent.definition)}
+                onClick={(event) => onInstall(agent.definition, event.currentTarget)}
               >
                 {installing ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <Download className="size-3.5" />
                 )}
-                {agent.installed ? "Update bridge" : "Install bridge"}
+                {agent.installed
+                  ? t(($) => $.settings.ai.agents.updateBridge)
+                  : t(($) => $.settings.ai.agents.installBridge)}
               </Button>
             )}
             {!agent.definition.builtin && (
@@ -307,7 +322,7 @@ function AgentCard({
                 onClick={() => onRemove(agent.definition.id)}
                 className="text-muted-foreground hover:text-destructive"
               >
-                <Trash2 className="size-3.5" /> Remove
+                <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
               </Button>
             )}
           </div>
@@ -318,6 +333,7 @@ function AgentCard({
 }
 
 export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
+  const { t } = useTranslation(["common", "settings"]);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -326,6 +342,13 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
   const [results, setResults] = useState<AcpRegistryEntry[]>([]);
   const [definition, setDefinition] = useState("");
   const [review, setReview] = useState<AcpDefinition | null>(null);
+  const reviewOpener = useRef<HTMLElement | null>(null);
+  const reviewing = review !== null;
+  useEffect(() => {
+    if (!reviewing) return;
+    const id = appModalCoordinator.add(reviewOpener.current);
+    return () => { appModalCoordinator.remove(id)?.focus({ preventScroll: true }); };
+  }, [reviewing]);
 
   useEffect(() => {
     void useAcpSessionsStore
@@ -351,7 +374,9 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
       const registered = await acpRegister(json);
       await useAcpSessionsStore.getState().refreshCatalog();
       setReview(null);
-      setNotice(`${registered.name} is registered. Registration does not install or launch it.`);
+      setNotice(
+        t(($) => $.settings.ai.agents.notice.registered, { name: registered.name }),
+      );
     });
   const openTerminal = () => {
     if (!projectId) return;
@@ -359,9 +384,7 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
     terminals.setProject(projectId);
     terminals.addTerminal();
     useSettingsStore.getState().setTerminalOpen(true);
-    setNotice(
-      "The project terminal is open. Run the sign-in command shown for your agent, then reconnect the conversation.",
-    );
+    setNotice(t(($) => $.settings.ai.agents.notice.terminalOpen));
   };
   const packageName =
     review?.distribution.npx?.package ??
@@ -371,12 +394,10 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
     "";
 
   return (
-    <section className="space-y-4" aria-label="ACP agents">
+    <section className="space-y-4" aria-label={t(($) => $.settings.ai.agents.sectionLabel)}>
       <div className="space-y-2">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Connect a local agent through ACP. Each agent manages its own models, tools and
-          sign-in, and API provider settings stay separate. Use the official CLI account for
-          sign-in: Oleafly does not import account tokens or estimate subscription quotas.
+          {t(($) => $.settings.ai.agents.intro)}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -391,18 +412,18 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
             {busy === "preflight" ? (
               <>
                 <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-                Checking installed agents
+                {t(($) => $.settings.ai.agents.checkingInstalled)}
               </>
             ) : (
               <>
                 <RefreshCw aria-hidden="true" className="size-3.5" />
-                Check installed agents
+                {t(($) => $.settings.ai.agents.checkInstalled)}
               </>
             )}
           </Button>
           {projectId && (
             <Button variant="outline" size="sm" type="button" onClick={openTerminal}>
-              <Terminal className="size-3.5" /> Open sign-in terminal
+              <Terminal className="size-3.5" /> {t(($) => $.settings.ai.agents.openSignInTerminal)}
             </Button>
           )}
         </div>
@@ -425,15 +446,17 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
             agent={agent}
             projectId={projectId}
             busy={busy}
-            onInstall={setReview}
+            onInstall={(definition, opener) => {
+              reviewOpener.current = opener;
+              setError(null);
+              setReview(definition);
+            }}
             onOpenTerminal={openTerminal}
             onRemove={(agentId) =>
               void action(agentId, async () => {
                 await acpRemoveAgent(agentId);
                 await useAcpSessionsStore.getState().refreshCatalog();
-                setNotice(
-                  "Agent definition removed. Installed files and saved conversations remain available.",
-                );
+                setNotice(t(($) => $.settings.ai.agents.notice.removed));
               })
             }
           />
@@ -442,8 +465,8 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
 
       <Section
         id="registry"
-        title="Find more agents"
-        description="Search the ACP registry for agents published by other teams."
+        title={t(($) => $.settings.ai.agents.registry.title)}
+        description={t(($) => $.settings.ai.agents.registry.description)}
         icon={Search}
       >
         <form
@@ -454,24 +477,25 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
           }}
         >
           <label className="block text-xs font-medium" htmlFor="acp-registry-search">
-            Find an ACP agent
+            {t(($) => $.settings.ai.agents.registry.searchLabel)}
           </label>
           <div className="flex gap-2">
             <Input
               id="acp-registry-search"
               className="min-w-0 flex-1 text-xs"
-              placeholder="Search the ACP registry"
+              placeholder={t(($) => $.settings.ai.agents.registry.searchPlaceholder)}
               value={query}
               maxLength={200}
               onChange={(event) => setQuery(event.target.value)}
             />
             <Button variant="outline" size="sm" type="submit" disabled={!!busy}>
-              {busy === "search" ? "Searching" : "Search"}
+              {busy === "search"
+                ? t(($) => $.settings.ai.agents.registry.searching)
+                : t(($) => $.settings.ai.agents.registry.search)}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Registry entries describe software from its publishers. Review the distribution before
-            registering or installing it.
+            {t(($) => $.settings.ai.agents.registry.reviewHint)}
           </p>
         </form>
         {results.length > 0 && (
@@ -491,8 +515,8 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
 
       <Section
         id="custom"
-        title="Add a custom agent"
-        description="Paste an agent definition to register an agent Oleafly does not ship."
+        title={t(($) => $.settings.ai.agents.custom.title)}
+        description={t(($) => $.settings.ai.agents.custom.description)}
         icon={Plus}
       >
         <form
@@ -503,11 +527,10 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
           }}
         >
           <label className="block text-xs font-medium" htmlFor="acp-custom-definition">
-            Register a custom agent
+            {t(($) => $.settings.ai.agents.custom.label)}
           </label>
           <p className="text-xs text-muted-foreground">
-            Paste an agent definition with a pinned npm or uv package, a verified binary, or an
-            installed executable. Keep passwords and API keys out of this JSON.
+            {t(($) => $.settings.ai.agents.custom.hint)}
           </p>
           <Textarea
             id="acp-custom-definition"
@@ -519,7 +542,7 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
           />
           <div className="flex gap-2">
             <Button size="sm" type="submit" disabled={!!busy || !definition.trim()}>
-              Register definition
+              {t(($) => $.settings.ai.agents.custom.submit)}
             </Button>
             <Button
               variant="outline"
@@ -527,32 +550,48 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
               type="button"
               onClick={() => setDefinition(example)}
             >
-              Use example
+              {t(($) => $.settings.ai.agents.custom.useExample)}
             </Button>
           </div>
         </form>
       </Section>
 
-      <Dialog open={review !== null} onOpenChange={(open) => !open && setReview(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog open={reviewing} onOpenChange={(open) => { if (!open && !busy) setReview(null); }}>
+        <DialogContent
+          className="z-[120] max-w-md"
+          overlayClassName="z-[120]"
+          closeDisabled={!!busy}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }}
+          onPointerDownOutside={(event) => { if (busy) event.preventDefault(); }}
+        >
           <DialogHeader>
             <DialogTitle>
-              Install {review?.name} bridge {review?.version}
+              {t(($) => $.settings.ai.agents.install.title, {
+                name: review?.name ?? "",
+                version: review?.version ?? "",
+              })}
             </DialogTitle>
             <DialogDescription>
-              Oleafly downloads this pinned package into its own agent folder. The agent then runs
-              with your CLI account when you start a conversation.
+              {t(($) => $.settings.ai.agents.install.description)}
             </DialogDescription>
           </DialogHeader>
           <dl className="space-y-2 rounded-md border bg-muted/30 p-2.5 text-xs">
             <div className="flex gap-2">
-              <dt className="w-24 shrink-0 text-muted-foreground">Package</dt>
+              <dt className="w-24 shrink-0 text-muted-foreground">
+                {t(($) => $.settings.ai.agents.install.packageLabel)}
+              </dt>
               <dd className="min-w-0 break-all font-mono text-[11px]">{packageName}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-24 shrink-0 text-muted-foreground">Installs to</dt>
+              <dt className="w-24 shrink-0 text-muted-foreground">
+                {t(($) => $.settings.ai.agents.install.locationLabel)}
+              </dt>
               <dd className="min-w-0 break-all font-mono text-[11px]">
-                Oleafly agents folder, {review?.id}/{review?.version}
+                {t(($) => $.settings.ai.agents.install.location, {
+                  id: review?.id ?? "",
+                  version: review?.version ?? "",
+                })}
               </dd>
             </div>
           </dl>
@@ -569,7 +608,7 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
               disabled={!!busy}
               onClick={() => setReview(null)}
             >
-              Cancel
+              {t(($) => $.common.actions.cancel)}
             </Button>
             <Button
               size="sm"
@@ -583,13 +622,17 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
                   }
                   await acpInstall(review.id);
                   await useAcpSessionsStore.getState().refreshCatalog(true);
-                  setNotice(`${review.name} is installed. Sign in through its CLI before starting a conversation.`);
+                  setNotice(
+                    t(($) => $.settings.ai.agents.notice.installed, { name: review.name }),
+                  );
                   setReview(null);
                 })
               }
             >
               {busy === "install" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-              {busy === "install" ? "Installing" : "Install"}
+              {busy === "install"
+                ? t(($) => $.settings.ai.agents.install.installing)
+                : t(($) => $.settings.ai.agents.install.confirm)}
             </Button>
           </DialogFooter>
         </DialogContent>

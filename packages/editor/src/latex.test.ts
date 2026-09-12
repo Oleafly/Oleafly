@@ -10,7 +10,7 @@ import {
   type Completion,
   type CompletionResult,
 } from "@codemirror/autocomplete";
-import { EditorState, Transaction } from "@codemirror/state";
+import { EditorSelection, EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -20,6 +20,9 @@ import {
   setBibKeysProvider,
   slashCompletions,
 } from "./latex";
+import { installEnglishEditorMessages } from "./test-messages";
+
+installEnglishEditorMessages();
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
   Object.defineProperty(Range.prototype, "getClientRects", {
@@ -301,6 +304,63 @@ describe("recovery-oriented LaTeX completion", () => {
     );
     expect(option(result, "lemma").detail).toBe("document environment");
     expect(option(result, "equation").detail).toContain("standard");
+  });
+
+  it("expands a begin environment completion into a skeleton", () => {
+    const source = "\\begin{enum}";
+    const cursor = source.length - 1;
+    const state = EditorState.create({ doc: source });
+    const result = latexCommandCompletions(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "enumerate");
+    const view = new EditorView({ state, parent: document.body });
+    (
+      candidate.apply as Exclude<Completion["apply"], string | undefined>
+    )(view, candidate, result?.from ?? cursor, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\begin{enumerate}\n  \\item \n\\end{enumerate}",
+    );
+    expect(view.state.selection.main.head).toBe(
+      "\\begin{enumerate}\n  \\item ".length,
+    );
+    view.destroy();
+  });
+
+  it("expands a document-defined environment into a skeleton", () => {
+    const source = "\\newtheorem{lemma}{Lemma}\n\\begin{lem}";
+    const cursor = source.length - 1;
+    const state = EditorState.create({ doc: source });
+    const result = latexCommandCompletions(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "lemma");
+    const view = new EditorView({ state, parent: document.body });
+    (
+      candidate.apply as Exclude<Completion["apply"], string | undefined>
+    )(view, candidate, result?.from ?? cursor, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\newtheorem{lemma}{Lemma}\n\\begin{lemma}\n  \n\\end{lemma}",
+    );
+    view.destroy();
+  });
+
+  it("inserts only the name when completing an end environment", () => {
+    const source = "\\begin{quote}\nx\n\\end{quo}";
+    const cursor = source.length - 1;
+    const state = EditorState.create({ doc: source });
+    const result = latexCommandCompletions(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "quote");
+    const view = new EditorView({ state, parent: document.body });
+    (
+      candidate.apply as Exclude<Completion["apply"], string | undefined>
+    )(view, candidate, result?.from ?? cursor, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\begin{quote}\nx\n\\end{quote}",
+    );
+    view.destroy();
   });
 
   it("completes document classes, packages, and loaded-package commands", () => {
@@ -607,4 +667,43 @@ describe("recovery-oriented LaTeX completion", () => {
       view.destroy();
     },
   );
+});
+
+describe("environment completion inside a linked begin and end snippet", () => {
+  function accept(doc: string, cursors: number[], label: string): string {
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.create(
+        cursors.map((at) => EditorSelection.cursor(at)),
+        0,
+      ),
+      extensions: [EditorState.allowMultipleSelections.of(true)],
+    });
+    const view = new EditorView({ state, parent: document.body });
+    const context = new CompletionContext(view.state, cursors[0], false);
+    const result = latexCommandCompletions(context);
+    const chosen = option(result, label);
+    expect(chosen.detail).toBe("standard LaTeX environment");
+    if (typeof chosen.apply !== "function") throw new Error("apply is not a function");
+    chosen.apply(view, chosen, result!.from, cursors[0]);
+    const text = view.state.doc.toString();
+    view.destroy();
+    return text;
+  }
+
+  it("fills both environment names when two linked cursors accept a name", () => {
+    const doc = "\\begin{itemi}\n  \n\\end{itemi}";
+    const first = "\\begin{itemi".length;
+    const second = doc.length - 1;
+    expect(accept(doc, [first, second], "itemize")).toBe(
+      "\\begin{itemize}\n  \n\\end{itemize}",
+    );
+  });
+
+  it("expands the whole environment when a single cursor accepts a name", () => {
+    const text = accept("\\begin{itemi", ["\\begin{itemi".length], "itemize");
+    expect(text).toContain("\\begin{itemize}");
+    expect(text).toContain("\\item");
+    expect(text).toContain("\\end{itemize}");
+  });
 });

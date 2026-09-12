@@ -2,6 +2,8 @@ import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ResearchTask } from "@/lib/research-tasks";
 import type { ResearchTaskAgentOption } from "./ResearchTasksPanel";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let TaskComposer: typeof import("./TaskComposer").TaskComposer;
 let composerDraftKey: typeof import("./TaskComposer").composerDraftKey;
@@ -133,20 +135,20 @@ describe("TaskComposer draft ownership", () => {
   it("opens as a dialog and preserves starter skills, edits, dependencies, and agent choice across catalog refreshes", async () => {
     const input = props();
     const view = render(<TaskComposer {...input} />);
-    expect(page().getByRole("dialog")).toHaveTextContent("New research task");
-    choose("Start from", "Analysis");
-    expect(page().getByLabelText("Title")).toHaveValue("Run the analysis");
-    await fill("Title", "My analysis");
-    await fill("Instructions", "Use the cohort data");
-    choose("Agent and model", /Second model/);
+    expect(page().getByRole("dialog")).toHaveTextContent(enResearchTools.tasks.composer.newTitle);
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue(enResearchTools.tasks.starter.analysis.title);
+    await fill(enResearchTools.tasks.composer.titleLabel, "My analysis");
+    await fill(enResearchTools.tasks.composer.promptLabel, "Use the cohort data");
+    choose(enResearchTools.tasks.composer.agentLabel, /Second model/);
     fireEvent.click(page().getByRole("checkbox", { name: /Task dependency/ }));
 
     view.rerender(<TaskComposer {...input} agents={agents.map((agent) => ({ ...agent }))} tasks={[task("dependency"), task("new")]} />);
 
-    expect(page().getByLabelText("Title")).toHaveValue("My analysis");
-    expect(page().getByLabelText("Instructions")).toHaveValue("Use the cohort data");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("My analysis");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("Use the cohort data");
     expect(page().getByRole("checkbox", { name: /Task dependency/ })).toBeChecked();
-    fireEvent.click(page().getByRole("button", { name: "Create task" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     expect(input.onCreate).toHaveBeenCalledExactlyOnceWith({
       projectId: "paper",
       title: "My analysis",
@@ -167,22 +169,22 @@ describe("TaskComposer draft ownership", () => {
       );
     });
     render(<TaskComposer {...input} />);
-    choose("Start from", "Analysis");
-    fireEvent.click(page().getByRole("button", { name: "Create task" }));
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     await waitFor(() =>
       expect(page().getByRole("alert")).toHaveTextContent(
         "The skill statistical-analysis is turned off. Enable it in Settings, AI, Skills.",
       ),
     );
-    expect(page().getByLabelText("Title")).toHaveValue("Run the analysis");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue(enResearchTools.tasks.starter.analysis.title);
   });
 
   it("clears an attached starter skill when the user returns to a blank task", () => {
     const input = props();
     render(<TaskComposer {...input} />);
-    choose("Start from", "Analysis");
-    choose("Start from", "A blank task");
-    fireEvent.click(page().getByRole("button", { name: "Create task" }));
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.composer.blankStarter);
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     expect(input.onCreate).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ skillIds: [] }),
     );
@@ -192,12 +194,12 @@ describe("TaskComposer draft ownership", () => {
     const original = task("first");
     const input = props(original);
     const view = render(<TaskComposer {...input} />);
-    expect(page().getByRole("dialog")).toHaveTextContent("Edit task");
-    await fill("Title", "Unsaved title");
-    await fill("Instructions", "Unsaved instructions");
+    expect(page().getByRole("dialog")).toHaveTextContent(enResearchTools.tasks.composer.editTitle);
+    await fill(enResearchTools.tasks.composer.titleLabel, "Unsaved title");
+    await fill(enResearchTools.tasks.composer.promptLabel, "Unsaved instructions");
 
     view.rerender(<TaskComposer {...input} agents={agents.map((agent) => ({ ...agent }))} editingTask={{ ...original, updatedAt: 2 }} />);
-    fireEvent.click(page().getByRole("button", { name: "Save task" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
     expect(input.onSave).toHaveBeenCalledExactlyOnceWith("first", expect.objectContaining({
       title: "Unsaved title",
       prompt: "Unsaved instructions",
@@ -205,26 +207,26 @@ describe("TaskComposer draft ownership", () => {
     }));
 
     view.rerender(<TaskComposer {...input} editingTask={task("second")} />);
-    expect(page().getByLabelText("Title")).toHaveValue("Task second");
-    expect(page().getByLabelText("Instructions")).toHaveValue("Complete second");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("Task second");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("Complete second");
   });
 
   it("keeps a draft while agents load and requires an explicit replacement if its chosen agent disappears", async () => {
     const input = props();
     const view = render(<TaskComposer {...input} agents={[]} />);
-    await fill("Title", "Keep this draft");
-    await fill("Instructions", "Pending provider configuration");
-    expect(page().getByLabelText("Agent and model")).toHaveTextContent("No agents available");
+    await fill(enResearchTools.tasks.composer.titleLabel, "Keep this draft");
+    await fill(enResearchTools.tasks.composer.promptLabel, "Pending provider configuration");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.agentLabel)).toHaveTextContent(enResearchTools.tasks.composer.noAgents);
 
     view.rerender(<TaskComposer {...input} />);
-    expect(page().getByLabelText("Title")).toHaveValue("Keep this draft");
-    expect(page().getByRole("button", { name: "Create task" })).toBeEnabled();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("Keep this draft");
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeEnabled();
     view.rerender(<TaskComposer {...input} agents={[agents[1]]} />);
-    expect(page().getByRole("button", { name: "Create task" })).toBeDisabled();
-    expect(page().getByLabelText("Instructions")).toHaveValue("Pending provider configuration");
-    expect(page().getByLabelText("Agent and model")).toHaveTextContent("Choose an agent and model");
-    choose("Agent and model", /Second model/);
-    fireEvent.click(page().getByRole("button", { name: "Create task" }));
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeDisabled();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("Pending provider configuration");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.agentLabel)).toHaveTextContent(enResearchTools.tasks.composer.chooseAgent);
+    choose(enResearchTools.tasks.composer.agentLabel, /Second model/);
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     expect(input.onCreate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       title: "Keep this draft",
       prompt: "Pending provider configuration",
@@ -234,8 +236,8 @@ describe("TaskComposer draft ownership", () => {
     }));
 
     view.rerender(<TaskComposer {...input} projectId="another-project" />);
-    expect(page().getByLabelText("Title")).toHaveValue("");
-    expect(page().getByLabelText("Instructions")).toHaveValue("");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("");
   });
 
   it("shows why an unavailable agent cannot run and refuses to submit against it", () => {
@@ -246,7 +248,7 @@ describe("TaskComposer draft ownership", () => {
     };
     render(<TaskComposer {...props()} agents={[blocked]} />);
     expect(page().getByText("This CLI agent cannot run isolated tasks on Windows.")).toBeInTheDocument();
-    fireEvent.keyDown(page().getByLabelText("Agent and model"), { key: "ArrowDown" });
+    fireEvent.keyDown(page().getByLabelText(enResearchTools.tasks.composer.agentLabel), { key: "ArrowDown" });
     const option = page().getByRole("option", { name: /Second model/ });
     expect(option).toHaveAttribute("data-disabled");
     expect(option).toHaveTextContent("This CLI agent cannot run isolated tasks on Windows.");
@@ -255,26 +257,26 @@ describe("TaskComposer draft ownership", () => {
   it("keeps submitted task edits fixed while saving and leaves cancellation available", async () => {
     const input = props(task("editing"));
     const view = render(<TaskComposer {...input} />);
-    await fill("Title", "Submitted title");
-    await fill("Instructions", "Submitted instructions");
+    await fill(enResearchTools.tasks.composer.titleLabel, "Submitted title");
+    await fill(enResearchTools.tasks.composer.promptLabel, "Submitted instructions");
     const user = userEvent.setup({ document });
     await user.click(page().getByRole("checkbox", { name: /Task dependency/ }));
     view.rerender(<TaskComposer {...input} busy />);
 
-    await user.type(page().getByLabelText("Title"), " later edit");
-    await user.type(page().getByLabelText("Instructions"), " later instructions");
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), " later edit");
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.promptLabel), " later instructions");
     await user.click(page().getByRole("checkbox", { name: /Task dependency/ }));
-    expect(page().getByLabelText("Title")).toHaveValue("Submitted title");
-    expect(page().getByLabelText("Instructions")).toHaveValue("Submitted instructions");
-    expect(page().getByLabelText("Agent and model")).toHaveTextContent("First model");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("Submitted title");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("Submitted instructions");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.agentLabel)).toHaveTextContent("First model");
     expect(page().getByRole("checkbox", { name: /Task dependency/ })).toBeChecked();
-    expect(page().getByRole("button", { name: "Saving..." })).toBeDisabled();
-    await user.click(page().getByRole("button", { name: "Cancel" }));
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.saving })).toBeDisabled();
+    await user.click(page().getByRole("button", { name: enCommon.actions.cancel }));
     expect(input.onCancel).toHaveBeenCalledOnce();
     expect(input.onSave).not.toHaveBeenCalled();
 
     view.rerender(<TaskComposer {...input} />);
-    await user.click(page().getByRole("button", { name: "Save task" }));
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
     expect(input.onSave).toHaveBeenCalledExactlyOnceWith("editing", expect.objectContaining({
       title: "Submitted title",
       prompt: "Submitted instructions",
@@ -286,8 +288,8 @@ describe("TaskComposer draft ownership", () => {
   it("keeps an unsaved draft when the dialog is dismissed and discards it on cancel", async () => {
     const input = props();
     const first = render(<TaskComposer {...input} />);
-    await fill("Title", "Interrupted draft");
-    await fill("Instructions", "Half written instructions");
+    await fill(enResearchTools.tasks.composer.titleLabel, "Interrupted draft");
+    await fill(enResearchTools.tasks.composer.promptLabel, "Half written instructions");
     fireEvent.keyDown(page().getByRole("dialog"), { key: "Escape" });
     expect(input.onDismiss).toHaveBeenCalledOnce();
     expect(input.onCancel).not.toHaveBeenCalled();
@@ -298,13 +300,13 @@ describe("TaskComposer draft ownership", () => {
     first.unmount();
 
     const second = render(<TaskComposer {...input} />);
-    expect(page().getByLabelText("Title")).toHaveValue("Interrupted draft");
-    expect(page().getByLabelText("Instructions")).toHaveValue("Half written instructions");
-    fireEvent.click(page().getByRole("button", { name: "Cancel" }));
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("Interrupted draft");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("Half written instructions");
+    fireEvent.click(page().getByRole("button", { name: enCommon.actions.cancel }));
     expect(useResearchTasksStore.getState().composerDrafts[composerDraftKey("paper", null)]).toBeUndefined();
     second.unmount();
 
     render(<TaskComposer {...input} />);
-    expect(page().getByLabelText("Title")).toHaveValue("");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("");
   });
 });

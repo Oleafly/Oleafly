@@ -3,6 +3,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const appWindow = vi.hoisted(() => ({
   isMaximized: vi.fn(() => Promise.resolve(false)),
@@ -49,7 +51,11 @@ describe("WindowControls", () => {
     const labels = screen
       .getAllByRole("button")
       .map((button) => button.getAttribute("aria-label"));
-    expect(labels).toEqual(["Minimize", "Maximize", "Close"]);
+    expect(labels).toEqual([
+      enShell.windowControls.minimize,
+      enShell.windowControls.maximize,
+      enCommon.actions.close,
+    ]);
   });
 
   it("drives the native window from each button", async () => {
@@ -57,13 +63,13 @@ describe("WindowControls", () => {
     const user = userEvent.setup();
     render(<WindowControls />);
 
-    await user.click(screen.getByLabelText("Minimize"));
+    await user.click(screen.getByLabelText(enShell.windowControls.minimize));
     expect(appWindow.minimize).toHaveBeenCalledTimes(1);
 
-    await user.click(screen.getByLabelText("Maximize"));
+    await user.click(screen.getByLabelText(enShell.windowControls.maximize));
     expect(appWindow.toggleMaximize).toHaveBeenCalledTimes(1);
 
-    await user.click(screen.getByLabelText("Close"));
+    await user.click(screen.getByLabelText(enCommon.actions.close));
     expect(appWindow.close).toHaveBeenCalledTimes(1);
   });
 
@@ -71,13 +77,13 @@ describe("WindowControls", () => {
     appWindow.isMaximized.mockResolvedValue(true);
     const WindowControls = await loadControls(true);
     render(<WindowControls />);
-    expect(await screen.findByLabelText("Restore")).toBeInTheDocument();
+    expect(await screen.findByLabelText(enShell.windowControls.restore)).toBeInTheDocument();
   });
 
   it("keeps every caption button at its full width", async () => {
     const WindowControls = await loadControls(true);
     render(<WindowControls />);
-    const strip = screen.getByLabelText("Window controls");
+    const strip = screen.getByLabelText(enShell.windowControls.group);
     expect(strip.className).toContain("shrink-0");
     for (const button of screen.getAllByRole("button")) {
       expect(button.className).toContain("w-[46px]");

@@ -4,13 +4,33 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
+# E2E owns a fixed app build. Worker HMR sockets can fail inside Playwright's
+# Firefox transport even when the main-page Vite client is intercepted.
+if (-not $env:OLEAFLY_E2E_DISABLE_HMR) { $env:OLEAFLY_E2E_DISABLE_HMR = "1" }
+
+# Match the Unix runner: exercise bundled assets with a prebuilt e2e binary.
+# Build with VITE_E2E_HOOKS=1 and `tauri build --debug --features e2e-testing --no-bundle`.
+$appBinary = $env:OLEAFLY_E2E_APP_BINARY
+if ($appBinary) {
+  if (-not (Test-Path -LiteralPath $appBinary -PathType Leaf)) {
+    throw "e2e: OLEAFLY_E2E_APP_BINARY does not exist: $appBinary"
+  }
+  $appBinary = (Resolve-Path -LiteralPath $appBinary).Path
+  $env:OLEAFLY_E2E_PRODUCTION = "1"
+}
+
 $suiteMaxFailures = 0
+$fromSpec = ""
 $shardIndex = 0
 $shardTotal = 0
 $playwrightArgs = [System.Collections.Generic.List[string]]::new()
 for ($index = 0; $index -lt $args.Count; $index++) {
   $argument = [string]$args[$index]
-  if ($argument -match "^--suite-max-failures=(\d+)$") {
+  if ($argument -match "^--from-spec=([A-Za-z0-9._-]+\.spec\.ts)$") {
+    $fromSpec = $Matches[1]
+  } elseif ($argument -like "--from-spec*") {
+    throw "--from-spec requires an exact spec filename (e.g. --from-spec=31-ai-figure.spec.ts)"
+  } elseif ($argument -match "^--suite-max-failures=(\d+)$") {
     $suiteMaxFailures = [int]$Matches[1]
   } elseif ($argument -eq "--suite-max-failures") {
     $index++
@@ -52,7 +72,7 @@ if (-not $env:OLEAFLY_SKILLS_BASE_URL) { $env:OLEAFLY_SKILLS_BASE_URL = "http://
 function Start-OutputProcess([string]$command) {
   $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
   Start-Process -FilePath "powershell.exe" `
-    -ArgumentList "-NoProfile", "-EncodedCommand", $encoded `
+    -ArgumentList "-NoProfile", "-NonInteractive", "-OutputFormat", "Text", "-EncodedCommand", $encoded `
     -NoNewWindow -PassThru
 }
 
@@ -94,12 +114,16 @@ function Set-CheckpointsForSpec {
       $script:checkpointHints -match "24-synctex-inverse") {
     $enabled = "true"
   }
+  $script:uiLocale = "en"
+  if ($script:checkpointHints -match "97-locale-zh-hans") {
+    $script:uiLocale = "zh-Hans"
+  }
   $writer = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp-checkpoints.js"
   if (-not (Test-Path -LiteralPath $writer)) {
     $nodeScript = @'
 const fs = require("node:fs");
 const path = require("node:path");
-const [target, enabled] = process.argv.slice(2);
+const [target, enabled, locale] = process.argv.slice(2);
 let config = {};
 try {
   config = JSON.parse(fs.readFileSync(target, "utf8"));
@@ -107,13 +131,14 @@ try {
   config = {};
 }
 config.checkpoints_enabled = enabled === "true";
+config.ui_locale = locale || "en";
 fs.mkdirSync(path.dirname(target), { recursive: true });
 fs.writeFileSync(target, JSON.stringify(config, null, 2));
 '@
     Set-Content -LiteralPath $writer -Value $nodeScript -Encoding ASCII
   }
   $configPath = Join-Path $script:dataDir "config.json"
-  & node $writer $configPath $enabled
+  & node $writer $configPath $enabled $script:uiLocale
   if ($LASTEXITCODE -ne 0) {
     throw "e2e: could not write checkpoints_enabled into $configPath"
   }
@@ -129,9 +154,31 @@ function Start-App([string]$label) {
   Write-Host "e2e: launching app for $label"
   Write-Host "e2e: app log $($script:log)"
   $env:OLEAFLY_DATA_DIR = $script:dataDir
-  $script:app = Start-Process -FilePath "cmd.exe" `
-    -ArgumentList "/c", "pnpm tauri dev --features e2e-testing > `"$($script:log)`" 2>&1" `
-    -PassThru -WindowStyle Hidden
+  if ($script:appBinary) {
+    $seed = @{
+      "oleafly.locale" = $script:uiLocale
+      "oleafly.shortcuts" = $null
+      "oleafly.visualEditor" = "1"
+      "oleafly.latexTools" = "1"
+      "oleafly.webBrowser" = "1"
+      "oleafly.openInTree" = "0"
+      "oleafly:compile:mode" = "normal"
+      "oleafly.appFontSize" = "16"
+      "oleafly.appFont" = ""
+      "oleafly.assistant-runtime.v1" = '{"state":{"runtime":"built-in"},"version":0}'
+    }
+    if ($script:checkpointHints -notmatch "00-tours") {
+      $seed["oleafly.tours"] = '{"state":{"schemaVersion":1,"enabled":false,"tours":{}},"version":1}'
+    }
+    $env:OLEAFLY_E2E_BOOT_LOCALSTORAGE = ConvertTo-Json -InputObject $seed -Compress
+    $script:app = Start-Process -FilePath $script:appBinary `
+      -RedirectStandardError $script:log -RedirectStandardOutput "$($script:log).stdout" `
+      -PassThru -WindowStyle Hidden
+  } else {
+    $script:app = Start-Process -FilePath "cmd.exe" `
+      -ArgumentList "/c", "pnpm tauri dev --features e2e-testing > `"$($script:log)`" 2>&1" `
+      -PassThru -WindowStyle Hidden
+  }
 
   $escapedLog = $script:log.Replace("'", "''")
   $script:logStream = Start-OutputProcess @"
@@ -186,8 +233,12 @@ while (`$true) {
 
 function Preserve-RunArtifacts([string]$label) {
   $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
-  $resultDir = Join-Path "e2e-artifacts" $safeLabel
-  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $resultDir
+  $artifactRoot = [System.IO.Path]::GetFullPath((Join-Path $PWD "e2e-artifacts"))
+  $resultDir = [System.IO.Path]::GetFullPath((Join-Path $artifactRoot $safeLabel))
+  if (-not $resultDir.StartsWith($artifactRoot + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "e2e: artifact path escaped its directory"
+  }
+  Remove-Item -LiteralPath $resultDir -Recurse -Force -ErrorAction SilentlyContinue
   New-Item -ItemType Directory -Force -Path $resultDir | Out-Null
   if (Test-Path "test-results") {
     $sourceRoot = (Resolve-Path "test-results").Path.TrimEnd([char[]]"\/")
@@ -202,6 +253,9 @@ function Preserve-RunArtifacts([string]$label) {
   }
   if ($null -ne $script:log -and (Test-Path $script:log)) {
     Copy-Item $script:log (Join-Path $resultDir "app.log") -Force
+    if (Test-Path -LiteralPath "$($script:log).stdout") {
+      Copy-Item -LiteralPath "$($script:log).stdout" -Destination (Join-Path $resultDir "app-stdout.log") -Force
+    }
   }
   $userLog = Join-Path $script:dataDir "app.log"
   if (Test-Path $userLog) {
@@ -241,6 +295,14 @@ try {
     $code = 0
     $failures = 0
     $specs = Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts" | Sort-Object Name
+    if ($appBinary) {
+      $specs = $specs | Where-Object {
+        if ($_.Name -like "*-browser.spec.ts") {
+          Write-Host "e2e: skipping $($_.Name) in packaged mode (dev-server harness; covered by the browser-harness job)"
+          $false
+        } else { $true }
+      }
+    }
     if ($shardTotal -gt 0) {
       # Round-robin split for parallel CI runners, matching scripts/e2e.sh.
       # Every shard gets 02-create-compile first: it creates the shared
@@ -259,6 +321,13 @@ try {
       }
       $specs = $selected
       Write-Host "e2e: shard $shardIndex/$shardTotal runs $($specs.Count) spec file(s)"
+    }
+    if ($fromSpec) {
+      if ($fromSpec -notin @($specs.Name)) {
+        throw "e2e: start spec is not in this suite: $fromSpec"
+      }
+      # A resumed sweep still needs the shared document created by the anchor.
+      $specs = $specs | Where-Object { $_.Name -ge $fromSpec -or $_.Name -eq "02-create-compile.spec.ts" }
     }
     foreach ($spec in $specs) {
       $label = $spec.Name

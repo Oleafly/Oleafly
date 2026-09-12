@@ -1,16 +1,35 @@
+import { annotate } from "./standards";
+import { message, type MessageRef } from "./messages";
 import type { Finding } from "./types";
 
 export interface StructNode {
   role: string;
   alt?: string | null;
   lang?: string | null;
+  ids?: string[];
   children: StructNode[];
+}
+
+export interface PdfUaFacts {
+  displayDocTitle: boolean | null;
+  suspects: boolean | null;
+  xmpTitle: string | null;
+  infoTitle: string | null;
+  uaPart: number | null;
+  uaRev: string | null;
+  taggedTextRuns: number;
+  untaggedTextRuns: number;
+  artifactTextRuns?: number;
+  links: { hasContents: boolean }[];
 }
 
 export interface StructDoc {
   root: StructNode | null;
   tagged: boolean | null;
+  ua?: PdfUaFacts;
 }
+
+const UNTAGGED_CONTENT_SHARE = 0.05;
 
 function hasRole(node: StructNode, role: string): boolean {
   if (node.role === role) return true;
@@ -22,6 +41,113 @@ function walk(node: StructNode, visit: (n: StructNode) => void) {
   for (const c of node.children) walk(c, visit);
 }
 
+function countNodes(node: StructNode): number {
+  return node.children.reduce((total, child) => total + countNodes(child), 1);
+}
+
+const observed = (finding: Omit<Finding, "lens">): Finding =>
+  annotate({ ...finding, lens: "a11y" }, "pdf-object-model");
+
+function singlePassFinding(structuralNodes: number): Finding[] {
+  if (structuralNodes > 1) return [];
+  return [
+    observed({
+      id: "pdf-structure-single-pass",
+      severity: "info",
+      title: message("rules.pdf-structure-single-pass.title"),
+      detail: message("rules.pdf-structure-single-pass.detail"),
+    }),
+  ];
+}
+
+function claimMismatch(ua: PdfUaFacts, tagged: boolean): Finding[] {
+  if (ua.uaPart === null) return [];
+  const gaps = [
+    !ua.xmpTitle ? message("rules.pdf-ua-claim-mismatch.partNoXmpTitle") : null,
+    ua.displayDocTitle === false ? message("rules.pdf-ua-claim-mismatch.partNoDisplayDocTitle") : null,
+    !tagged ? message("rules.pdf-ua-claim-mismatch.partNotTagged") : null,
+  ].filter((gap): gap is MessageRef => gap !== null);
+  if (gaps.length === 0) return [];
+  return [
+    observed({
+      id: "pdf-ua-claim-mismatch",
+      severity: "error",
+      title: message("rules.pdf-ua-claim-mismatch.title", { part: ua.uaPart }),
+      detail: message("rules.pdf-ua-claim-mismatch.detail", { part: ua.uaPart }),
+      detailParts: [...gaps, message("rules.pdf-ua-claim-mismatch.partAdvice")],
+      certainty: "verified",
+    }),
+  ];
+}
+
+function xmpTitleFindings(ua: PdfUaFacts): Finding[] {
+  if (ua.xmpTitle || !ua.infoTitle) return [];
+  return [
+    observed({
+      id: "pdf-xmp-title",
+      severity: "warning",
+      title: message("rules.pdf-xmp-title.title"),
+      detail: message("rules.pdf-xmp-title.detail"),
+      certainty: "verified",
+    }),
+  ];
+}
+
+function catalogUaFindings(ua: PdfUaFacts): Finding[] {
+  const out: Finding[] = [];
+  if (ua.displayDocTitle === false) {
+    out.push(
+      observed({
+        id: "pdf-display-doc-title",
+        severity: "warning",
+        title: message("rules.pdf-display-doc-title.title"),
+        detail: message("rules.pdf-display-doc-title.detail"),
+        certainty: "verified",
+      }),
+    );
+  }
+  if (ua.suspects === true) {
+    out.push(
+      observed({
+        id: "pdf-suspects",
+        severity: "warning",
+        title: message("rules.pdf-suspects.title"),
+        detail: message("rules.pdf-suspects.detail"),
+        certainty: "verified",
+      }),
+    );
+  }
+  const linksWithoutContents = ua.links.filter((link) => !link.hasContents).length;
+  if (linksWithoutContents > 0) {
+    out.push(
+      observed({
+        id: "pdf-link-alt",
+        severity: "warning",
+        title: message("rules.pdf-link-alt.title", { count: linksWithoutContents }),
+        detail: message("rules.pdf-link-alt.detail"),
+        certainty: "verified",
+      }),
+    );
+  }
+  const totalRuns = ua.taggedTextRuns + ua.untaggedTextRuns;
+  if (totalRuns > 0 && ua.untaggedTextRuns / totalRuns > UNTAGGED_CONTENT_SHARE) {
+    const percent = Math.round((ua.untaggedTextRuns / totalRuns) * 100);
+    out.push(
+      observed({
+        id: "pdf-untagged-content",
+        severity: "warning",
+        title: message("rules.pdf-untagged-content.title", { percent }),
+        detail: message("rules.pdf-untagged-content.detail", {
+          untagged: ua.untaggedTextRuns,
+          total: totalRuns,
+        }),
+        certainty: "verified",
+      }),
+    );
+  }
+  return out;
+}
+
 export function verifyStructure(
   doc: StructDoc,
   structureFailedPages: readonly number[] = [],
@@ -29,43 +155,44 @@ export function verifyStructure(
   const extractionFindings: Finding[] =
     structureFailedPages.length > 0
       ? [
-          {
+          observed({
             id: "pdf-structure-extraction-failed",
-            lens: "a11y",
             severity: "info",
-            title: "PDF structure could not be fully inspected",
-            detail: `The accessibility structure tree could not be extracted for page${
-              structureFailedPages.length === 1 ? "" : "s"
-            } ${structureFailedPages.join(", ")}. Preflight will not treat the unavailable structure as proof that the PDF is untagged.`,
-          },
+            title: message("rules.pdf-structure-extraction-failed.title"),
+            detail: message("rules.pdf-structure-extraction-failed.detail", {
+              count: structureFailedPages.length,
+              pages: structureFailedPages.join(", "),
+            }),
+          }),
         ]
       : [];
+  const titleFindings = doc.ua ? xmpTitleFindings(doc.ua) : [];
 
-  if (doc.tagged === null) return extractionFindings;
+  if (doc.tagged === null) return [...extractionFindings, ...titleFindings];
   if (!doc.tagged) {
     return [
       ...extractionFindings,
-      {
+      observed({
         id: "pdf-untagged-output",
-        lens: "a11y",
         severity: "info",
-        title: "Not Section 508 / PDF-UA ready: this PDF is not tagged",
-        detail:
-          "The compiled PDF has no accessibility tags, so it cannot pass a formal Section 508 or PDF/UA check and a screen reader has no structure to follow. The current compile engine does not produce tags. Use the source and output checks above to prepare the document as fully as possible. Tagged export is planned for a future release.",
-      },
+        title: message("rules.pdf-untagged-output.title"),
+        detail: message("rules.pdf-untagged-output.detail"),
+      }),
+      ...(doc.ua ? claimMismatch(doc.ua, false) : []),
+      ...titleFindings,
     ];
   }
   if (!doc.root) {
-    if (structureFailedPages.length > 0) return extractionFindings;
+    if (structureFailedPages.length > 0) return [...extractionFindings, ...titleFindings];
     return [
-      {
+      observed({
         id: "pdf-structure-missing",
-        lens: "a11y",
         severity: "warning",
-        title: "Tagged PDF has no readable structure tree",
-        detail:
-          "The PDF declares itself tagged, but Preflight found no document structure to navigate. Screen readers may not receive headings, lists, tables, or reading order.",
-      },
+        title: message("rules.pdf-structure-missing.title"),
+        detail: message("rules.pdf-structure-missing.detail"),
+      }),
+      ...(doc.ua ? [...claimMismatch(doc.ua, false), ...titleFindings, ...catalogUaFindings(doc.ua)] : []),
+      ...singlePassFinding(0),
     ];
   }
 
@@ -76,46 +203,56 @@ export function verifyStructure(
     const h = /^H([1-6])$/.exec(n.role);
     if (h) headingLevels.push(Number(h[1]));
 
-    if (n.role === "Figure" || n.role === "Formula") {
-      if (!n.alt || !n.alt.trim()) {
-        out.push({
+    if (n.role === "Figure" && (!n.alt || !n.alt.trim())) {
+      out.push(
+        observed({
           id: "output-figure-alt",
-          lens: "a11y",
           severity: "error",
-          title: "Tagged figure has no alt text",
-          detail:
-            "This figure is tagged but carries no alternative text, so a screen reader cannot describe it. Add a description at the source, for example \\includegraphics[alt={...}]{...}.",
-        });
-      }
+          title: message("rules.output-figure-alt.title"),
+          detail: message("rules.output-figure-alt.detail"),
+        }),
+      );
     }
 
-    if (n.role === "Table") {
-      if (!hasRole(n, "TH")) {
-        out.push({
-          id: "output-table-headers",
-          lens: "a11y",
+    if (n.role === "Formula" && (!n.alt || !n.alt.trim())) {
+      out.push(
+        observed({
+          id: "output-formula-alt",
           severity: "warning",
-          title: "Tagged table has no header cells",
-          detail:
-            "This table has no header (TH) cells, so a screen reader cannot associate data with its column or row headings. Mark the header row so its cells are tagged as headers.",
-        });
-      }
+          title: message("rules.output-formula-alt.title"),
+          detail: message("rules.output-formula-alt.detail"),
+        }),
+      );
+    }
+
+    if (n.role === "Table" && !hasRole(n, "TH")) {
+      out.push(
+        observed({
+          id: "output-table-headers",
+          severity: "warning",
+          title: message("rules.output-table-headers.title"),
+          detail: message("rules.output-table-headers.detail"),
+        }),
+      );
     }
   });
 
   for (let i = 1; i < headingLevels.length; i++) {
     if (headingLevels[i] > headingLevels[i - 1] + 1) {
-      out.push({
-        id: "output-heading-skip",
-        lens: "a11y",
-        severity: "warning",
-        title: "Heading level skipped in the tag tree",
-        detail:
-          "The tagged headings jump more than one level (for example H1 straight to H3), which breaks the outline a screen reader navigates by. Do not skip heading levels.",
-      });
+      out.push(
+        observed({
+          id: "output-heading-skip",
+          severity: "warning",
+          title: message("rules.output-heading-skip.title"),
+          detail: message("rules.output-heading-skip.detail"),
+        }),
+      );
       break;
     }
   }
+
+  if (doc.ua) out.push(...claimMismatch(doc.ua, true), ...titleFindings, ...catalogUaFindings(doc.ua));
+  out.push(...singlePassFinding(countNodes(doc.root) - 1));
 
   return out;
 }

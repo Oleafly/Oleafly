@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { cn } from "@/lib/utils";
@@ -20,16 +21,22 @@ export function AgentPickerRow({
   disabled?: boolean;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   if (agents.length === 0) return null;
   return (
     <fieldset
-      aria-label="CLI agent"
+      aria-label={t(($) => $.ai.agents.pickerAriaLabel)}
       data-testid="agent-picker-row"
       className="no-scrollbar mx-auto flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-full border bg-muted/60 p-1"
     >
       {agents.map((agent) => {
         const selected = agent.id === selectedId;
-        const label = agent.available ? agent.name : `${agent.name}: ${agent.hint ?? "not installed"}`;
+        const label = agent.available
+          ? agent.name
+          : t(($) => $.ai.agents.unavailableTooltip, {
+              name: agent.name,
+              hint: agent.hint ?? t(($) => $.ai.agents.notInstalled),
+            });
         return (
           <Tooltip key={agent.id} label={label}>
             <button

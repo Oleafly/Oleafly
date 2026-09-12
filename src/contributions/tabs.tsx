@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { FileText, FlaskConical, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
 import { registerRailTab } from "@oleafly/registry";
+import { i18n } from "@/i18n";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { SourceControl } from "@/components/layout/SourceControl";
@@ -21,7 +22,7 @@ const ResearchWorkspacePanel = lazy(() =>
 export function registerRailTabs() {
   registerRailTab({
     id: "research",
-    label: "Research workspace",
+    label: () => i18n.t(($) => $.shell.rail.research),
     icon: FlaskConical,
     section: "assist",
     order: 60,
@@ -30,7 +31,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "files",
-    label: "Source Tree",
+    label: () => i18n.t(($) => $.shell.rail.files),
     icon: FileText,
     section: "explore",
     order: 10,
@@ -38,7 +39,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "search",
-    label: "Search Project",
+    label: () => i18n.t(($) => $.shell.rail.search),
     icon: Search,
     section: "explore",
     order: 20,
@@ -46,7 +47,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "source",
-    label: "Source Control",
+    label: () => i18n.t(($) => $.shell.rail.sourceControl),
     icon: GitBranch,
     section: "explore",
     order: 30,
@@ -55,7 +56,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "preflight",
-    label: "Preflight Checks",
+    label: () => i18n.t(($) => $.shell.rail.preflight),
     icon: ShieldCheck,
     section: "review",
     order: 40,
@@ -65,7 +66,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "refs",
-    label: "References & citations (Shift-F12)",
+    label: () => i18n.t(($) => $.shell.rail.references),
     icon: SearchCode,
     section: "review",
     order: 50,
@@ -75,7 +76,7 @@ export function registerRailTabs() {
   // local MCP server is running (Settings → Integrations → Oleafly MCP).
   registerRailTab({
     id: "mcp",
-    label: "MCP activity",
+    label: () => i18n.t(($) => $.shell.rail.mcp),
     icon: Plug,
     section: "assist",
     order: 65,

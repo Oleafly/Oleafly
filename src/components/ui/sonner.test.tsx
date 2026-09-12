@@ -19,6 +19,9 @@ import { Toaster } from "./sonner";
 import { toast } from "@/lib/toast";
 import { useToastStore } from "@/store/toast";
 
+const KEEP_MESSAGE = "Keep me";
+const CHOOSE_MESSAGE = "Choose a compatible engine";
+
 describe("Toaster keyed updates", () => {
   beforeEach(() => {
     useToastStore.setState({ toasts: [] });
@@ -31,10 +34,10 @@ describe("Toaster keyed updates", () => {
     render(<Toaster />);
 
     act(() => {
-      toast.infoUnique("unrelated", "Keep me");
+      toast.infoUnique("unrelated", KEEP_MESSAGE);
       toast.infoUnique(
         "engine-compatibility:project-1",
-        "Choose a compatible engine",
+        CHOOSE_MESSAGE,
         { label: "Choose engine…", onClick: firstAction },
         true,
       );
@@ -45,7 +48,7 @@ describe("Toaster keyed updates", () => {
     act(() => {
       toast.infoUnique(
         "engine-compatibility:project-1",
-        "Choose a compatible engine",
+        CHOOSE_MESSAGE,
         { label: "Choose engine…", onClick: latestAction },
         true,
       );
@@ -53,13 +56,13 @@ describe("Toaster keyed updates", () => {
 
     await waitFor(() => expect(mocks.info).toHaveBeenCalledTimes(1));
     expect(mocks.info).toHaveBeenCalledWith(
-      "Choose a compatible engine",
+      CHOOSE_MESSAGE,
       expect.objectContaining({
         action: { label: "Choose engine…", onClick: latestAction },
         duration: Number.POSITIVE_INFINITY,
       }),
     );
-    expect(mocks.info).not.toHaveBeenCalledWith("Keep me", expect.anything());
+    expect(mocks.info).not.toHaveBeenCalledWith(KEEP_MESSAGE, expect.anything());
   });
 
 });

@@ -269,18 +269,31 @@ pub fn atomic_write(destination: &Path, bytes: &[u8]) -> Result<(), String> {
 pub(crate) fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
     #[cfg(windows)]
     {
-        const RETRY_DELAYS_MS: [u64; 9] = [10, 20, 40, 80, 160, 320, 500, 500, 500];
-        for delay in RETRY_DELAYS_MS {
+        // Indexers and compiler processes can hold a non-delete-sharing read
+        // handle for several seconds. Preserve atomic replacement while giving
+        // those transient locks a bounded chance to clear.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
+        let mut delay = std::time::Duration::from_millis(10);
+        loop {
             match atomicwrites::replace_atomic(source, destination) {
                 Ok(()) => return Ok(()),
-                Err(error) if is_retryable_replace_error_code(error.raw_os_error()) => {
-                    std::thread::sleep(std::time::Duration::from_millis(delay));
+                Err(error)
+                    if is_retryable_replace_error_code(error.raw_os_error())
+                        && std::time::Instant::now() < deadline =>
+                {
+                    std::thread::sleep(
+                        delay.min(deadline.saturating_duration_since(std::time::Instant::now())),
+                    );
+                    delay = (delay * 2).min(std::time::Duration::from_millis(250));
                 }
                 Err(error) => return Err(error),
             }
         }
     }
-    atomicwrites::replace_atomic(source, destination)
+    #[cfg(not(windows))]
+    {
+        atomicwrites::replace_atomic(source, destination)
+    }
 }
 
 #[cfg(any(windows, test))]
@@ -453,6 +466,33 @@ mod tests {
             assert!(!is_retryable_replace_error_code(Some(code)));
         }
         assert!(!is_retryable_replace_error_code(None));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn atomic_save_waits_for_a_longer_lived_windows_reader_without_truncating() {
+        use std::fs::OpenOptions;
+        use std::os::windows::fs::OpenOptionsExt;
+        use windows_sys::Win32::Storage::FileSystem::{FILE_SHARE_READ, FILE_SHARE_WRITE};
+
+        let root = tempfile::tempdir().unwrap();
+        let destination = root.path().join("main.tex");
+        std::fs::write(&destination, b"previous complete draft").unwrap();
+        let reader = OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+            .open(&destination)
+            .unwrap();
+        let observed = destination.clone();
+        let release = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(3));
+            assert_eq!(std::fs::read(observed).unwrap(), b"previous complete draft");
+            drop(reader);
+        });
+        atomic_write(&destination, b"next complete draft").unwrap();
+        release.join().unwrap();
+        assert_eq!(std::fs::read(destination).unwrap(), b"next complete draft");
+        assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
     }
 
     #[test]

@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { useHomeViewStore } from "@/store/home-view";
 import { ToolPageShell } from "./ToolPageShell";
+
+const title = enResearchTools.tools.bibtex.name;
+const body = "content";
 
 beforeEach(() => {
   useHomeViewStore.setState({ page: "library" });
@@ -11,8 +15,8 @@ beforeEach(() => {
 describe("ToolPageShell", () => {
   it("renders nothing when its page isn't active", () => {
     const { container } = render(
-      <ToolPageShell page="bibtex" title="BibTeX Validator" testId="bibtex-tool-view">
-        <div>content</div>
+      <ToolPageShell page="bibtex" title={title} testId="bibtex-tool-view">
+        <div>{body}</div>
       </ToolPageShell>,
     );
     expect(container).toBeEmptyDOMElement();
@@ -21,20 +25,20 @@ describe("ToolPageShell", () => {
   it("renders its children and title when active", () => {
     useHomeViewStore.setState({ page: "bibtex" });
     render(
-      <ToolPageShell page="bibtex" title="BibTeX Validator" testId="bibtex-tool-view">
-        <div>content</div>
+      <ToolPageShell page="bibtex" title={title} testId="bibtex-tool-view">
+        <div>{body}</div>
       </ToolPageShell>,
     );
     expect(screen.getByTestId("bibtex-tool-view")).toBeInTheDocument();
-    expect(screen.getByText("BibTeX Validator")).toBeInTheDocument();
-    expect(screen.getByText("content")).toBeInTheDocument();
+    expect(screen.getByText(title)).toBeInTheDocument();
+    expect(screen.getByText(body)).toBeInTheDocument();
   });
 
   it("the back button returns to library", () => {
     useHomeViewStore.setState({ page: "bibtex" });
     render(
-      <ToolPageShell page="bibtex" title="BibTeX Validator" testId="bibtex-tool-view">
-        <div>content</div>
+      <ToolPageShell page="bibtex" title={title} testId="bibtex-tool-view">
+        <div>{body}</div>
       </ToolPageShell>,
     );
     fireEvent.click(screen.getByTestId("bibtex-tool-view-back"));

@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -49,14 +50,14 @@ export function acpReadiness(agent: AcpAgentStatus): AcpReadiness {
   if (agent.canInstall || agent.cli?.path) return "bridge-missing";
   return "unavailable";
 }
-const READINESS_LABELS: Record<AcpReadiness, string> = {
-  ready: "Ready",
-  "bridge-missing": "Bridge needed",
-  "cli-missing": "CLI not found",
-  unavailable: "Unavailable",
+const READINESS_LABELS: Record<AcpReadiness, () => string> = {
+  ready: () => i18n.t(($) => $.core.acp.readiness.ready),
+  "bridge-missing": () => i18n.t(($) => $.core.acp.readiness.bridgeMissing),
+  "cli-missing": () => i18n.t(($) => $.core.acp.readiness.cliMissing),
+  unavailable: () => i18n.t(($) => $.core.acp.readiness.unavailable),
 };
 export function acpReadinessLabel(readiness: AcpReadiness): string {
-  return READINESS_LABELS[readiness];
+  return READINESS_LABELS[readiness]();
 }
 export interface AcpRegistryEntry {
   id: string;
@@ -150,5 +151,7 @@ export const onAcpEvent = (listener: (event: AcpEvent) => void) => listen<AcpEve
 export const onAcpResync = (listener: () => void) => listen("acp:resync", listener);
 
 export function acpError(error: unknown): string {
-  return typeof error === "string" ? error : error instanceof Error ? error.message : "The ACP request could not be completed.";
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  return i18n.t(($) => $.core.acp.requestFailed);
 }

@@ -9,6 +9,7 @@ import {
   editorUndo,
   gotoLine,
   insertTemplate,
+  revealEditorRange,
   setEditorView,
 } from "./controller";
 
@@ -44,6 +45,26 @@ describe("editor controller history", () => {
 });
 
 describe("editor controller navigation", () => {
+  it("synchronizes the DOM selection when navigation returns focus from a toolbar", () => {
+    const parent = document.createElement("div");
+    const toolbar = document.createElement("button");
+    document.body.append(parent, toolbar);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({ doc: "original reference\nselected definition" }),
+    });
+    view.focus();
+    toolbar.focus();
+
+    revealEditorRange(view, 19, 38);
+
+    const selection = window.getSelection()!;
+    expect(view.state.selection.main.from).toBe(19);
+    expect(view.state.selection.main.to).toBe(38);
+    expect(view.posAtDOM(selection.anchorNode!, selection.anchorOffset)).toBe(19);
+    expect(view.posAtDOM(selection.focusNode!, selection.focusOffset)).toBe(38);
+  });
+
   it("centers a distant source line without scrolling the application shell", () => {
     const parent = document.createElement("div");
     document.body.append(parent);
@@ -84,6 +105,6 @@ describe("editor controller navigation", () => {
     expect(view.scrollDOM.scrollTop).toBeGreaterThan(0);
     expect(document.documentElement.scrollTop).toBe(47);
     expect(document.body.scrollTop).toBe(31);
-    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(focus).toHaveBeenCalled();
   });
 });

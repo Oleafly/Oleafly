@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, FileText, List } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -35,6 +36,7 @@ export function DocumentOutline({
   readonly collapsed?: boolean;
   readonly onCollapsedChange?: (next: boolean) => void;
 } = {}) {
+  const { t } = useTranslation(["workspace"]);
   const index = useIndexStore((state) => state.index);
   const texts = useIndexStore((state) => state.texts);
   const activePath = useFilesStore((state) => state.activePath);
@@ -92,7 +94,7 @@ export function DocumentOutline({
 
   return (
     <section
-      aria-label="Document outline"
+      aria-label={t(($) => $.workspace.outline.ariaLabel)}
       className={cn(
         "flex min-h-0 flex-col border-t border-sidebar-border",
         collapsed ? "shrink-0" : "flex-1",
@@ -112,11 +114,11 @@ export function DocumentOutline({
             <ChevronDown aria-hidden className="size-3" />
           )}
           <List aria-hidden className="size-3.5" />
-          <span className="truncate">Outline</span>
+          <span className="truncate">{t(($) => $.workspace.outline.title)}</span>
           {items.length > 0 ? (
             <span
               role="status"
-              aria-label={`${items.length} outline entries`}
+              aria-label={t(($) => $.workspace.outline.entryCount, { count: items.length })}
               className="ml-auto shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
             >
               {items.length}
@@ -138,7 +140,7 @@ export function DocumentOutline({
         >
           {items.length === 0 ? (
             <p className="px-3 py-2 text-[11px] text-muted-foreground/70">
-              No sections or includes in this document.
+              {t(($) => $.workspace.outline.empty)}
             </p>
           ) : (
             items.map((item, index) => {

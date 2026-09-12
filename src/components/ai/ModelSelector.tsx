@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Command } from "cmdk";
 import { CheckCircle2, ChevronDown, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -23,23 +24,11 @@ export type ModelSelectorGroup = {
   models: ModelSelectorModel[];
 };
 
-const TRUST_LABEL: Record<ModelTrust, string> = {
-  verified: "Verified",
-  untested: "Untested",
-  blocked: "Blocked",
-};
-
 const TRUST_CLASS: Record<ModelTrust, string> = {
   verified:
     "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   untested: "border-border bg-muted text-muted-foreground",
   blocked: "border-destructive/30 bg-destructive/10 text-destructive",
-};
-
-const TRUST_TITLE: Record<ModelTrust, string> = {
-  verified: "Oleafly has run the assistant on this model",
-  untested: "Not tried with the assistant yet. It is checked on first use",
-  blocked: "The assistant cannot run on this model",
 };
 
 export function ModelTrustBadge({
@@ -53,6 +42,17 @@ export function ModelTrustBadge({
   className?: string;
   focusable?: boolean;
 }>) {
+  const { t } = useTranslation(["common", "ai"]);
+  const trustLabel: Record<ModelTrust, string> = {
+    verified: t(($) => $.ai.models.trust.verified),
+    untested: t(($) => $.ai.models.trust.untested),
+    blocked: t(($) => $.ai.models.trust.blocked),
+  };
+  const trustTitle: Record<ModelTrust, string> = {
+    verified: t(($) => $.ai.models.trustTitle.verified),
+    untested: t(($) => $.ai.models.trustTitle.untested),
+    blocked: t(($) => $.ai.models.trustTitle.blocked),
+  };
   if (!trust) return null;
   const reachable = focusable && trust === "blocked";
   const shell = cn(
@@ -63,8 +63,8 @@ export function ModelTrustBadge({
   );
   const content = (
     <>
-      {TRUST_LABEL[trust]}
-      {trust === "blocked" && reason ? <span className="sr-only">. {reason}</span> : null}
+      {trustLabel[trust]}
+      {trust === "blocked" && reason ? <span className="sr-only">{`. ${reason}`}</span> : null}
     </>
   );
   const badge = reachable ? (
@@ -81,7 +81,7 @@ export function ModelTrustBadge({
       {content}
     </span>
   );
-  const label = trust === "blocked" && reason ? reason : TRUST_TITLE[trust];
+  const label = trust === "blocked" && reason ? reason : trustTitle[trust];
   return (
     <Tooltip label={label} side="top" className="inline-flex shrink-0">
       {badge}
@@ -143,6 +143,7 @@ export function ModelSelector({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const [query, setQuery] = useState("");
@@ -190,14 +191,16 @@ export function ModelSelector({
       }}
     >
       <Tooltip
-        label={`${selectedModel?.name || modelId || "Select a model"}. Switch provider or model`}
+        label={t(($) => $.ai.models.triggerTooltip, {
+          model: selectedModel?.name || modelId || t(($) => $.ai.models.placeholder),
+        })}
         className="min-w-0"
       >
         <PopoverPrimitive.Trigger asChild>
           <button
             type="button"
             role="combobox"
-            aria-label="AI model"
+            aria-label={t(($) => $.ai.models.ariaLabel)}
             aria-haspopup="listbox"
             aria-expanded={open}
             disabled={disabled}
@@ -217,7 +220,7 @@ export function ModelSelector({
                 </span>
               )}
               <span className="ai-model-selector-value truncate leading-none">
-                {selectedModel?.name || modelId || "Select a model"}
+                {selectedModel?.name || modelId || t(($) => $.ai.models.placeholder)}
               </span>
             </span>
             <ChevronDown className="ai-model-selector-chevron size-4 shrink-0 self-center opacity-50" />
@@ -236,7 +239,7 @@ export function ModelSelector({
           )}
         >
           <Command
-            label="Search models"
+            label={t(($) => $.ai.models.searchLabel)}
             shouldFilter={false}
             className="bg-transparent"
           >
@@ -246,7 +249,7 @@ export function ModelSelector({
                 value={query}
                 onValueChange={setQuery}
                 autoFocus
-                placeholder="Search models…"
+                placeholder={t(($) => $.ai.models.searchPlaceholder)}
                 className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
               />
             </div>
@@ -254,9 +257,9 @@ export function ModelSelector({
             <Command.List className="max-h-[min(50vh,20rem)] overflow-y-auto p-1.5">
               {visibleGroups.length === 0 && (
                 <div className="px-4 py-8 text-center">
-                  <p className="text-xs font-medium">No models found</p>
+                  <p className="text-xs font-medium">{t(($) => $.ai.models.emptyTitle)}</p>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Try a different search.
+                    {t(($) => $.ai.models.emptyHint)}
                   </p>
                 </div>
               )}

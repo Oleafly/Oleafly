@@ -888,6 +888,9 @@ mod tests {
 
     #[test]
     fn source_symlinks_are_rejected() {
+        if !crate::paths::symlink_creation_is_permitted() {
+            return;
+        }
         let temp = tempfile::tempdir().unwrap();
         let project = temp.path().join("project");
         fs::create_dir(&project).unwrap();

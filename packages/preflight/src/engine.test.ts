@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { runPreflight } from "./engine";
-import type { PositionedText } from "./types";
+import { pdfUaAvailability, runPreflight } from "./engine";
+import { pdfUaCoverage } from "./standards";
+import { verifyStructure } from "./structure";
+import type { PdfExtractionStatus, PositionedText } from "./types";
 
 describe("runPreflight", () => {
   it("runs source rules and scores a clean-ish document at or near 100", () => {
@@ -122,5 +124,204 @@ describe("runPreflight", () => {
       id: "refs-undefined-cite",
       file: "sections/results.tex",
     }));
+  });
+
+  it("flags only the file whose bibliography declaration does not resolve, when two files share a name", () => {
+    const report = runPreflight({
+      source: "\\documentclass{article}",
+      project: {
+        mainFile: "main.tex",
+        files: [
+          { path: "main.tex", content: "\\documentclass{article}" },
+          { path: "one/one.tex", content: "\\bibliography{refs}" },
+          { path: "one/refs.bib", content: "" },
+          { path: "two/two.tex", content: "\\bibliography{refs}" },
+        ],
+      },
+      refs: {
+        definedLabels: [],
+        bibKeys: [],
+        bibLoaded: false,
+        projectFiles: ["main.tex", "one/one.tex", "one/refs.bib", "two/two.tex"],
+        unresolvedBibliographies: [{ file: "two/two.tex", name: "refs" }],
+        duplicateDois: [],
+      },
+    });
+    const missing = report.findings.filter((f) => f.id === "refs-bib-missing");
+    expect(missing).toHaveLength(1);
+    expect(missing[0]).toMatchObject({ file: "two/two.tex" });
+  });
+});
+
+describe("pdfUaAvailability", () => {
+  const ua = {
+    displayDocTitle: true,
+    suspects: false,
+    xmpTitle: "Title",
+    infoTitle: "Title",
+    uaPart: null,
+    uaRev: null,
+    taggedTextRuns: 10,
+    untaggedTextRuns: 0,
+    links: [],
+  };
+  const root = { role: "Document", alt: null, lang: "en", children: [] };
+  const read: PdfExtractionStatus = {
+    metadata: "ok",
+    markInfo: "ok",
+    structure: "ok",
+    structureFailedPages: [],
+  };
+
+  it("counts nothing as read when the PDF was never inspected", () => {
+    expect(pdfUaAvailability(undefined, undefined, undefined)).toMatchObject({
+      structure: false,
+      markedContent: false,
+      viewerPreferences: false,
+      annotations: false,
+      identifiesAsPdfUa1: false,
+      tagged: null,
+    });
+  });
+
+  it("stops trusting the marked-content and structure evidence when extraction failed", () => {
+    const facts = pdfUaAvailability(
+      { metadata: "ok", markInfo: "ok", structure: "failed", structureFailedPages: [2] },
+      { root, tagged: true, ua },
+      undefined,
+    );
+    expect(facts.structure).toBe(false);
+    expect(facts.markedContent).toBe(false);
+  });
+
+  it("does not treat catalog rules as evaluated on an untagged PDF", () => {
+    const facts = pdfUaAvailability(read, { root: null, tagged: false, ua: { ...ua, uaPart: 1 } }, undefined);
+    expect(facts.viewerPreferences).toBe(false);
+    expect(facts.annotations).toBe(false);
+    expect(facts.markInfo).toBe(false);
+    expect(facts.identifiesAsPdfUa1).toBe(true);
+  });
+
+  it("treats everything it read on a tagged file with a tag tree as evaluated", () => {
+    const facts = pdfUaAvailability(read, { root, tagged: true, ua: { ...ua, uaPart: 1 } }, undefined);
+    expect(facts).toEqual({
+      metadata: true,
+      markInfo: true,
+      structure: true,
+      viewerPreferences: true,
+      annotations: true,
+      markedContent: true,
+      identifiesAsPdfUa1: true,
+      tagged: true,
+    });
+  });
+
+  it("keeps an unreadable viewer preference out of the evaluated set", () => {
+    const facts = pdfUaAvailability(read, { root, tagged: true, ua: { ...ua, displayDocTitle: null } }, undefined);
+    expect(facts.viewerPreferences).toBe(false);
+    expect(facts.annotations).toBe(true);
+  });
+});
+
+describe("PDF/UA-1 identification coverage", () => {
+  const read: PdfExtractionStatus = {
+    metadata: "ok",
+    markInfo: "ok",
+    structure: "ok",
+    structureFailedPages: [],
+  };
+  const cleanUa = (uaPart: number | null) => ({
+    displayDocTitle: true,
+    suspects: false,
+    xmpTitle: "A tagged paper",
+    infoTitle: "A tagged paper",
+    uaPart,
+    uaRev: null,
+    taggedTextRuns: 100,
+    untaggedTextRuns: 0,
+    links: [],
+  });
+  const taggedRoot = {
+    role: "Document",
+    alt: null,
+    lang: "en",
+    children: [
+      { role: "H1", alt: null, lang: null, children: [] },
+      { role: "P", alt: null, lang: null, children: [] },
+      { role: "P", alt: null, lang: null, children: [] },
+    ],
+  };
+  const coverageFor = (uaPart: number | null, extraction: PdfExtractionStatus = read) => {
+    const struct = { root: taggedRoot, tagged: true, ua: cleanUa(uaPart) };
+    return pdfUaCoverage(
+      verifyStructure(struct, extraction.structureFailedPages),
+      pdfUaAvailability(extraction, struct, undefined),
+    );
+  };
+
+  it("leaves the identification rules unchecked on a clean file that claims nothing", () => {
+    const coverage = coverageFor(null);
+    expect(coverage.outcomes["5-1"]).toBe("unavailable");
+    expect(coverage.outcomes["5-2"]).toBe("unavailable");
+    expect(coverage.failed).toEqual([]);
+  });
+
+  it("leaves the PDF/UA-1 identification rules unchecked when the file declares part 2", () => {
+    const coverage = coverageFor(2);
+    expect(coverage.outcomes["5-1"]).toBe("unavailable");
+    expect(coverage.outcomes["5-2"]).toBe("unavailable");
+  });
+
+  it("verifies the identification rules on a clean file that declares part 1", () => {
+    const coverage = coverageFor(1);
+    expect(coverage.outcomes["5-1"]).toBe("passed");
+    expect(coverage.outcomes["5-2"]).toBe("passed");
+  });
+
+  it("leaves the identification rules unchecked when the metadata could not be read", () => {
+    const coverage = coverageFor(null, { ...read, metadata: "failed" });
+    expect(coverage.outcomes["5-1"]).toBe("unavailable");
+    expect(coverage.outcomes["5-2"]).toBe("unavailable");
+  });
+
+  it("fails the identification rules when a part 1 claim is not backed by the file", () => {
+    const struct = {
+      root: taggedRoot,
+      tagged: true,
+      ua: { ...cleanUa(1), displayDocTitle: false },
+    };
+    const findings = verifyStructure(struct);
+    expect(findings.some((finding) => finding.id === "pdf-ua-claim-mismatch")).toBe(true);
+    const coverage = pdfUaCoverage(findings, pdfUaAvailability(read, struct, undefined));
+    expect(coverage.outcomes["5-1"]).toBe("failed");
+    expect(coverage.outcomes["5-2"]).toBe("failed");
+  });
+
+  it("still reports a mismatched part 2 claim without counting the UA-1 rules", () => {
+    const struct = {
+      root: taggedRoot,
+      tagged: true,
+      ua: { ...cleanUa(2), displayDocTitle: false },
+    };
+    const findings = verifyStructure(struct);
+    expect(findings.some((finding) => finding.id === "pdf-ua-claim-mismatch")).toBe(true);
+    const coverage = pdfUaCoverage(findings, pdfUaAvailability(read, struct, undefined));
+    expect(coverage.outcomes["5-1"]).toBe("unavailable");
+    expect(coverage.outcomes["5-2"]).toBe("unavailable");
+  });
+
+  it("does not count the XMP title rule as verified when only the Info title exists", () => {
+    for (const tagged of [true, false]) {
+      const struct = {
+        root: tagged ? taggedRoot : null,
+        tagged,
+        ua: { ...cleanUa(null), xmpTitle: null },
+      };
+      const coverage = pdfUaCoverage(
+        verifyStructure(struct),
+        pdfUaAvailability(read, struct, undefined),
+      );
+      expect(coverage.outcomes["7.1-9"], String(tagged)).toBe("failed");
+    }
   });
 });

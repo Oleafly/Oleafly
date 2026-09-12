@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Globe, Loader2, Plus, X } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn, isMac } from "@/lib/utils";
@@ -13,6 +14,7 @@ interface TabStripProps {
 }
 
 export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: TabStripProps) {
+  const { t } = useTranslation(["shell"]);
   return (
     <div
       data-tauri-drag-region
@@ -21,7 +23,7 @@ export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: TabStr
         isMac && "pl-[78px]",
       )}
     >
-      <div role="tablist" aria-label="Open tabs" className="flex min-w-0 flex-1 items-end gap-1 overflow-hidden">
+      <div role="tablist" aria-label={t(($) => $.shell.browser.openTabs)} className="flex min-w-0 flex-1 items-end gap-1 overflow-hidden">
         {tabs.map((tab) => {
           const selected = tab.label === active;
           const text = tabText(tab);
@@ -62,7 +64,7 @@ export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: TabStr
               </button>
               <button
                 type="button"
-                aria-label="Close tab"
+                aria-label={t(($) => $.shell.browser.closeTab)}
                 onClick={() => onClose(tab.label)}
                 className={cn(
                   "flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
@@ -75,10 +77,10 @@ export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: TabStr
           );
         })}
       </div>
-      <Tooltip label="New tab" side="bottom">
+      <Tooltip label={t(($) => $.shell.browser.newTab)} side="bottom">
         <button
           type="button"
-          aria-label="New tab"
+          aria-label={t(($) => $.shell.browser.newTab)}
           onClick={onNewTab}
           className="mb-0.5 flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >

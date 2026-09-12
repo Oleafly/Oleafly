@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import type { DocumentEngineDescriptor, EngineCapabilities } from "@/lib/tauri";
 
 export const LATEX_ENGINE: DocumentEngineDescriptor = {
@@ -51,7 +52,7 @@ export function compileOfflineForEngine(
   }
   return {
     offline: false,
-    notice: `${engine.label} does not expose an offline compiler mode. Compiling normally.`,
+    notice: i18n.t(($) => $.core.compile.noOfflineMode, { engine: engine.label }),
   };
 }
 

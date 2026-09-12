@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import katex from "katex";
 import {
   ArrowLeft,
@@ -23,8 +24,10 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { toast } from "@/lib/toast";
+import { toolName } from "@/lib/tool-catalog";
 
 export function EquationToolView() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
   const editorTheme = useSettingsStore((s) => s.editorTheme);
@@ -67,7 +70,7 @@ export function EquationToolView() {
       a.download = "latex-preview.png";
       a.click();
     };
-    img.onerror = () => toast.error("Couldn't export this snippet as an image");
+    img.onerror = () => toast.error(t(($) => $.researchTools.equation.exportImageFailed));
     img.src = svgUrl;
   };
 
@@ -86,16 +89,16 @@ export function EquationToolView() {
       const math = new DOMParser().parseFromString(markup, "text/html").querySelector("math");
       if (!math) throw new Error("No MathML in output");
       void navigator.clipboard.writeText(math.outerHTML);
-      toast.success("Copied MathML (pastes into Word)");
+      toast.success(t(($) => $.researchTools.equation.copiedMathml));
     } catch {
-      toast.error("Couldn't convert this snippet to MathML");
+      toast.error(t(($) => $.researchTools.equation.mathmlFailed));
     }
   };
 
   const copyHtml = () => {
     if (!rendered.html) return;
     void navigator.clipboard.writeText(rendered.html);
-    toast.success("Copied KaTeX HTML (needs the KaTeX stylesheet)");
+    toast.success(t(($) => $.researchTools.equation.copiedKatexHtml));
   };
 
   return (
@@ -113,15 +116,17 @@ export function EquationToolView() {
           onClick={() => goTo("library")}
           data-testid="equation-tool-view-back"
         >
-          <ArrowLeft className="size-4" /> Back
+          <ArrowLeft className="size-4" /> {t(($) => $.researchTools.tools.back)}
         </Button>
         <div className="h-6 w-px bg-border" />
         <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted">
           <Sigma className="size-4" />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-semibold leading-tight">LaTeX Preview</div>
-          <div className="text-xs leading-tight text-muted-foreground">Live LaTeX workspace</div>
+          <div className="text-sm font-semibold leading-tight">{toolName("equation")}</div>
+          <div className="text-xs leading-tight text-muted-foreground">
+            {t(($) => $.researchTools.equation.subtitle)}
+          </div>
         </div>
 
         <div className="flex-1" />
@@ -133,7 +138,9 @@ export function EquationToolView() {
               rendered.error ? "bg-destructive" : "bg-emerald-500",
             )}
           />
-          {rendered.error ? "Error" : "Rendered"}
+          {rendered.error
+            ? t(($) => $.researchTools.equation.statusError)
+            : t(($) => $.researchTools.equation.statusRendered)}
         </div>
         <ThemeMenu testId="equation-theme-menu" />
         <Button
@@ -141,39 +148,39 @@ export function EquationToolView() {
           size="sm"
           onClick={() => {
             void navigator.clipboard.writeText(wrapped);
-            toast.success("Copied LaTeX source");
+            toast.success(t(($) => $.researchTools.equation.copiedSource));
           }}
         >
-          <Copy className="size-4" /> Copy LaTeX
+          <Copy className="size-4" /> {t(($) => $.researchTools.equation.copyLatex)}
         </Button>
         {rendered.html ? (
           <Popover
             align="right"
-            ariaLabel="Export options"
+            ariaLabel={t(($) => $.researchTools.equation.exportOptions)}
             className="w-56"
             triggerClassName="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
             trigger={
               <>
-                <Download className="size-4" /> Export
+                <Download className="size-4" /> {t(($) => $.researchTools.equation.export)}
               </>
             }
           >
             <PopoverItem onClick={exportPng}>
-              <ImageIcon className="size-4" /> Download PNG
+              <ImageIcon className="size-4" /> {t(($) => $.researchTools.equation.downloadPng)}
             </PopoverItem>
             <PopoverItem onClick={exportSvg}>
-              <FileCode2 className="size-4" /> Download SVG
+              <FileCode2 className="size-4" /> {t(($) => $.researchTools.equation.downloadSvg)}
             </PopoverItem>
             <PopoverItem onClick={copyMathML}>
-              <Braces className="size-4" /> Copy MathML for Word
+              <Braces className="size-4" /> {t(($) => $.researchTools.equation.copyMathml)}
             </PopoverItem>
             <PopoverItem onClick={copyHtml}>
-              <Copy className="size-4" /> Copy KaTeX HTML
+              <Copy className="size-4" /> {t(($) => $.researchTools.equation.copyKatexHtml)}
             </PopoverItem>
           </Popover>
         ) : (
           <Button size="sm" disabled>
-            <Download className="size-4" /> Export
+            <Download className="size-4" /> {t(($) => $.researchTools.equation.export)}
           </Button>
         )}
         <WindowControls />

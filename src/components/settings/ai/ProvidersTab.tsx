@@ -1,4 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   Check,
   ChevronDown,
@@ -49,21 +50,26 @@ function ProviderStatusBadge({
   ollamaStatus: OllamaStatus;
   isConfigured: boolean;
 }>) {
+  const { t } = useTranslation(["common", "settings"]);
   if (isHost) {
     if (ollamaStatus === "ok") {
       return (
         <span className={RUNNING_BADGE}>
-          <Check className="size-3 shrink-0" /> Running
+          <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.badge.running)}
         </span>
       );
     }
-    if (ollamaStatus === "down") return <span className={STOPPED_BADGE}>Not running</span>;
+    if (ollamaStatus === "down") {
+      return (
+        <span className={STOPPED_BADGE}>{t(($) => $.settings.ai.providers.badge.notRunning)}</span>
+      );
+    }
     return null;
   }
   if (!isConfigured) return null;
   return (
     <span className={RUNNING_BADGE}>
-      <Check className="size-3 shrink-0" /> Connected
+      <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.badge.connected)}
     </span>
   );
 }
@@ -72,20 +78,33 @@ function OllamaStatusLine({
   status,
   models,
 }: Readonly<{ status: OllamaStatus; models: string[] }>) {
+  const { t } = useTranslation(["common", "settings"]);
   if (status === "loading") {
-    return <span className="text-[11px] text-muted-foreground">Checking…</span>;
+    return (
+      <span className="text-[11px] text-muted-foreground">
+        {t(($) => $.settings.ai.providers.ollama.checking)}
+      </span>
+    );
   }
   if (status === "ok") {
     return (
       <span className="text-[11px] text-emerald-600 dark:text-emerald-500">
-        Running · {models.length} model{models.length === 1 ? "" : "s"}
+        {t(($) => $.settings.ai.providers.ollama.runningModels, { count: models.length })}
       </span>
     );
   }
   if (status === "down") {
-    return <span className="text-[11px] text-amber-600 dark:text-amber-500">Not detected</span>;
+    return (
+      <span className="text-[11px] text-amber-600 dark:text-amber-500">
+        {t(($) => $.settings.ai.providers.ollama.notDetected)}
+      </span>
+    );
   }
-  return <span className="text-[11px] text-muted-foreground">Not checked yet</span>;
+  return (
+    <span className="text-[11px] text-muted-foreground">
+      {t(($) => $.settings.ai.providers.ollama.notChecked)}
+    </span>
+  );
 }
 
 function OllamaModelChoice({
@@ -99,15 +118,18 @@ function OllamaModelChoice({
   selectedModel: string;
   onUse: (model: string) => void;
 }>) {
+  const { t } = useTranslation(["common", "settings"]);
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] text-muted-foreground">Model</span>
+      <span className="text-[11px] text-muted-foreground">
+        {t(($) => $.settings.ai.providers.modelLabel)}
+      </span>
       <Select
         value={active && models.includes(selectedModel) ? selectedModel : ""}
         onValueChange={onUse}
       >
         <SelectTrigger className="h-8 flex-1">
-          <SelectValue placeholder="Choose a model to use" />
+          <SelectValue placeholder={t(($) => $.settings.ai.providers.ollama.modelPlaceholder)} />
         </SelectTrigger>
         <SelectContent className="z-[100]">
           {models.map((id) => (
@@ -119,7 +141,7 @@ function OllamaModelChoice({
       </Select>
       {active && (
         <span className="inline-flex items-center gap-1 text-[10px] font-medium leading-none text-primary">
-          <Check className="size-3 shrink-0" /> Active
+          <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.ollama.active)}
         </span>
       )}
     </div>
@@ -135,6 +157,7 @@ function OllamaHostControls({
   onHostChange: (v: string) => void;
   onDisconnect?: () => void;
 }>) {
+  const { t } = useTranslation(["common", "settings"]);
   const [showHost, setShowHost] = useState(false);
   return (
     <>
@@ -143,14 +166,16 @@ function OllamaHostControls({
           onClick={() => setShowHost((s) => !s)}
           className="text-[11px] text-muted-foreground hover:text-foreground"
         >
-          {showHost ? "Hide host" : "Change host (advanced)"}
+          {showHost
+            ? t(($) => $.settings.ai.providers.ollama.hideHost)
+            : t(($) => $.settings.ai.providers.ollama.changeHost)}
         </button>
         {onDisconnect && (
           <button type="button"
             onClick={onDisconnect}
             className="text-[11px] text-muted-foreground hover:text-destructive"
           >
-            Disconnect
+            {t(($) => $.settings.ai.providers.ollama.disconnect)}
           </button>
         )}
       </div>
@@ -194,6 +219,7 @@ function OllamaSetup({
   onUse: (model: string) => void;
   onDisconnect?: () => void;
 }>) {
+  const { t } = useTranslation(["common", "settings"]);
   const shown = host.trim() || DEFAULT_OLLAMA_HOST;
   return (
     <div className="mt-2 space-y-2">
@@ -209,7 +235,9 @@ function OllamaSetup({
           ) : (
             <RefreshCw className="size-3.5" />
           )}
-          {status === "idle" ? "Check for Ollama" : "Re-check"}
+          {status === "idle"
+            ? t(($) => $.settings.ai.providers.ollama.check)
+            : t(($) => $.settings.ai.providers.ollama.recheck)}
         </Button>
         <OllamaStatusLine status={status} models={models} />
       </div>
@@ -217,7 +245,12 @@ function OllamaSetup({
       {status === "down" && (
         <div className="space-y-2 rounded-md border border-dashed bg-background p-3 text-[11px] text-muted-foreground">
           <p>
-            No Ollama responding at <code>{shown}</code>.
+            <Trans
+              ns="settings"
+              i18nKey={($) => $.settings.ai.providers.ollama.noneResponding}
+              values={{ host: shown }}
+              components={{ host: <code /> }}
+            />
           </p>
           {installed ? (
             <div className="flex items-center gap-2">
@@ -229,29 +262,39 @@ function OllamaSetup({
                 onClick={onStart}
               >
                 {starting ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                Start Ollama
+                {t(($) => $.settings.ai.providers.ollama.start)}
               </Button>
-              <span>Ollama is installed here. Starting it takes a moment.</span>
+              <span>{t(($) => $.settings.ai.providers.ollama.installedHint)}</span>
             </div>
           ) : null}
           <p>
-            1. Install from{" "}
-            <button type="button"
-              onClick={() => void open("https://ollama.com/download")}
-              className="font-medium text-primary hover:underline"
-            >
-              ollama.com <ExternalLink className="inline size-3" />
-            </button>{" "}
-            · 2. It starts automatically (or run <code>ollama serve</code>) · 3. Pull a
-            model, e.g. <code>ollama pull llama3.2</code> · 4. Re-check.
+            <Trans
+              ns="settings"
+              i18nKey={($) => $.settings.ai.providers.ollama.setupSteps}
+              components={{
+                download: (
+                  <button
+                    type="button"
+                    onClick={() => void open("https://ollama.com/download")}
+                    className="font-medium text-primary hover:underline"
+                  />
+                ),
+                icon: <ExternalLink className="inline size-3" />,
+                serve: <code />,
+                pull: <code />,
+              }}
+            />
           </p>
         </div>
       )}
 
       {status === "ok" && models.length === 0 && (
         <p className="text-[11px] text-amber-600 dark:text-amber-500">
-          Ollama is running but no models are installed. Run{" "}
-          <code>ollama pull llama3.2</code>, then Re-check.
+          <Trans
+            ns="settings"
+            i18nKey={($) => $.settings.ai.providers.ollama.noModels}
+            components={{ pull: <code /> }}
+          />
         </p>
       )}
 
@@ -298,6 +341,26 @@ export interface ProvidersTabProps {
   deleteCustomProvider: (id: string) => Promise<void>;
 }
 
+const BUILT_IN_PROVIDER_IDS = [
+  "anthropic",
+  "deepseek",
+  "google",
+  "groq",
+  "mistral",
+  "ollama",
+  "openai",
+  "openrouter",
+  "perplexity",
+  "xai",
+  "zai",
+] as const;
+
+type BuiltInProviderId = (typeof BUILT_IN_PROVIDER_IDS)[number];
+
+function isBuiltInProviderId(id: string): id is BuiltInProviderId {
+  return (BUILT_IN_PROVIDER_IDS as readonly string[]).includes(id);
+}
+
 export function ProvidersTab({
   cfg,
   keys,
@@ -321,6 +384,7 @@ export function ProvidersTab({
   onEditCustomProvider,
   deleteCustomProvider,
 }: ProvidersTabProps) {
+  const { t } = useTranslation(["common", "settings"]);
   const activeProvider = cfg.ai_provider;
   const allProviders = mergeCustomProviders(cfg.ai_custom_providers);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
@@ -339,14 +403,15 @@ export function ProvidersTab({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Connect any providers you use below. Keys are stored locally only. Saving one sets it as the
-        default. You can switch between configured providers and models from the dropdown in the
-        chat panel.
+        {t(($) => $.settings.ai.providers.intro)}
       </p>
 
       <div className="space-y-2.5" data-tour="ai-settings-providers">
         {allProviders.map((p) => {
           const isCustom = cfg.ai_custom_providers.some((c) => c.id === p.id);
+          const providerBlurbKey: BuiltInProviderId | "custom" = isBuiltInProviderId(p.id)
+            ? p.id
+            : "custom";
           const value = keys[p.id] ?? "";
           const saved = savedKeys[p.id] ?? "";
           const dirty = value.trim().length > 0 && value !== saved;
@@ -383,7 +448,13 @@ export function ProvidersTab({
                       <ProviderLogo providerId={p.id} size={18} />
                       {p.name}
                     </span>
-                    {isOpen && <p className="mt-0.5 text-xs text-muted-foreground">{p.blurb}</p>}
+                    {isOpen && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {providerBlurbKey === "custom"
+                          ? t(($) => $.settings.ai.providers.blurbs.custom)
+                          : t(($) => $.settings.ai.providers.blurbs[providerBlurbKey])}
+                      </p>
+                    )}
                   </div>
                 </button>
                 <div className="mt-0.5 flex shrink-0 items-center gap-2">
@@ -399,7 +470,10 @@ export function ProvidersTab({
                       }}
                       className="flex shrink-0 items-center gap-1 text-[11px] leading-none text-primary hover:underline dark:text-primary"
                     >
-                      {p.isHost ? "Docs" : "Get key"} <ExternalLink className="size-3" />
+                      {p.isHost
+                        ? t(($) => $.settings.ai.providers.docs)
+                        : t(($) => $.settings.ai.providers.getKey)}{" "}
+                      <ExternalLink className="size-3" />
                     </button>
                   )}
                 </div>
@@ -431,7 +505,9 @@ export function ProvidersTab({
                       isSelected &&
                       enabled.length > 0 && (
                         <div className="mt-2 flex items-center gap-2">
-                          <span className="text-[11px] text-muted-foreground">Model</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {t(($) => $.settings.ai.providers.modelLabel)}
+                          </span>
                           <Select
                             value={cfg.ai_model || defaultModel(p.id)}
                             onValueChange={(v) => void changeModel(v)}
@@ -457,7 +533,7 @@ export function ProvidersTab({
                         type="password"
                         value={value}
                         onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
-                        placeholder="Paste your API key here"
+                        placeholder={t(($) => $.settings.ai.providers.keyPlaceholder)}
                         data-testid={`ai-provider-key-${p.id}`}
                         autoFocus={hasSaved}
                         className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
@@ -471,7 +547,7 @@ export function ProvidersTab({
                         onClick={() => setEditingKey((m) => ({ ...m, [p.id]: true }))}
                         className="h-8 text-xs"
                       >
-                        Replace key
+                        {t(($) => $.settings.ai.providers.replaceKey)}
                       </Button>
                     )}
                     {dirty ? (
@@ -484,15 +560,17 @@ export function ProvidersTab({
                         {saving === p.id ? (
                           <Loader2 className="size-3.5 animate-spin" />
                         ) : null}
-                        Save
+                        {t(($) => $.common.actions.save)}
                       </Button>
                     ) : null}
                     {isCustom ? (
                       <>
-                        <Tooltip label="Edit name or endpoint">
+                        <Tooltip label={t(($) => $.settings.ai.providers.editTooltip)}>
                           <button type="button"
                             data-testid={`ai-provider-edit-${p.id}`}
-                            aria-label={`Edit ${p.name}`}
+                            aria-label={t(($) => $.settings.ai.providers.editAriaLabel, {
+                              provider: p.name,
+                            })}
                             disabled={saving === p.id}
                             onClick={() => onEditCustomProvider(p.id)}
                             className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
@@ -500,10 +578,12 @@ export function ProvidersTab({
                             <Pencil className="size-3.5" />
                           </button>
                         </Tooltip>
-                        <Tooltip label="Remove custom provider">
+                        <Tooltip label={t(($) => $.settings.ai.providers.removeTooltip)}>
                           <button type="button"
                             data-testid={`ai-provider-delete-${p.id}`}
-                            aria-label={`Remove ${p.name}`}
+                            aria-label={t(($) => $.settings.ai.providers.removeAriaLabel, {
+                              provider: p.name,
+                            })}
                             disabled={saving === p.id}
                             onClick={() => setConfirmRemove({ id: p.id, name: p.name })}
                             className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
@@ -513,10 +593,12 @@ export function ProvidersTab({
                         </Tooltip>
                       </>
                     ) : hasSaved ? (
-                      <Tooltip label="Delete key">
+                      <Tooltip label={t(($) => $.settings.ai.providers.deleteKeyTooltip)}>
                         <button type="button"
                           data-testid={`ai-provider-delete-${p.id}`}
-                          aria-label={`Delete ${p.name} key`}
+                          aria-label={t(($) => $.settings.ai.providers.deleteKeyAriaLabel, {
+                            provider: p.name,
+                          })}
                           disabled={saving === p.id}
                           onClick={() => void deleteKey(p.id)}
                           className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
@@ -541,10 +623,14 @@ export function ProvidersTab({
                         }
                       >
                         {providerStatus === "validating"
-                          ? "Checking key..."
+                          ? t(($) => $.settings.ai.providers.status.validating)
                           : providerStatus === "valid"
-                            ? "Key valid. Models are ready below."
-                            : `Error: ${errorMsg[p.id] ?? "Could not validate the key."}`}
+                            ? t(($) => $.settings.ai.providers.status.valid)
+                            : t(($) => $.settings.ai.providers.status.error, {
+                                message:
+                                  errorMsg[p.id] ??
+                                  t(($) => $.settings.ai.providers.status.errorFallback),
+                              })}
                       </p>
                     );
                   })()}
@@ -572,16 +658,18 @@ export function ProvidersTab({
         <div className="ml-auto flex justify-end" data-tour="ai-settings-custom-provider">
           <Button data-testid="ai-add-custom-provider" onClick={onAddCustomProvider}>
             <Plus className="size-4" />
-            Add custom provider
+            {t(($) => $.settings.ai.providers.addCustom)}
           </Button>
         </div>
       </div>
 
       <ConfirmationDialog
         open={confirmRemove !== null}
-        title="Remove custom provider"
-        description={`Remove "${confirmRemove?.name ?? ""}"? Its saved key and model list are deleted with it.`}
-        confirmLabel="Remove"
+        title={t(($) => $.settings.ai.providers.removeDialog.title)}
+        description={t(($) => $.settings.ai.providers.removeDialog.description, {
+          provider: confirmRemove?.name ?? "",
+        })}
+        confirmLabel={t(($) => $.common.actions.remove)}
         destructive
         onConfirm={() => {
           if (confirmRemove) void deleteCustomProvider(confirmRemove.id);

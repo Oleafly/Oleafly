@@ -16,11 +16,13 @@ import type {
   ProjectIntelligenceSnapshot,
   ProjectUse,
 } from "@/lib/project-intelligence/types";
+import { i18n } from "@/i18n";
 import { toast } from "@/lib/toast";
 import { useIndexStore } from "@/store/project-index";
 import { useReferencesStore } from "@/store/references";
 import { useSettingsStore } from "@/store/settings";
 import { setWysiwygProjectIntelligenceCurrent } from "./controller";
+import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reason";
 
 type VisualTokenKind = "citation" | "reference" | "ambiguous";
 
@@ -192,23 +194,31 @@ function tokenAttributes(
   const resolution = resolutionFor(snapshot, path, token);
   const noun =
     token.kind === "citation"
-      ? "Citation"
+      ? i18n.t(($) => $.intelligence.token.citation)
       : token.kind === "reference"
-        ? "Reference"
-        : "Citation or reference";
+        ? i18n.t(($) => $.intelligence.token.reference)
+        : i18n.t(($) => $.intelligence.token.citationOrReference);
   const state =
     resolution === "duplicate"
-      ? "multiple definitions"
+      ? i18n.t(($) => $.intelligence.token.stateDuplicate)
       : resolution === "unresolved"
-        ? "unresolved"
-        : "resolved";
+        ? i18n.t(($) => $.intelligence.token.stateUnresolved)
+        : i18n.t(($) => $.intelligence.token.stateResolved);
   return {
     class: `wysiwyg-project-intelligence is-${resolution}`,
     role: "link",
     tabindex: "0",
-    "aria-label": `${noun} ${token.key}, ${state}. Enter or F12 to go to definition. Shift+Enter or Shift+F12 to find references.`,
+    "aria-label": i18n.t(($) => $.intelligence.token.ariaLabel, {
+      noun,
+      key: token.key,
+      state,
+    }),
     "aria-keyshortcuts": "Enter F12 Shift+Enter Shift+F12",
-    title: `${noun} “${token.key}” · ${state}\nClick/F12: go to definition · Shift-click/Shift-F12: find references`,
+    title: i18n.t(($) => $.intelligence.token.title, {
+      noun,
+      key: token.key,
+      state,
+    }),
     "data-project-intelligence-key": token.key,
     "data-project-intelligence-kind": token.kind,
     ...(token.sourceFrom !== undefined
@@ -464,12 +474,11 @@ function activateVisualToken(
     const state = useIndexStore.getState().intelligenceState;
     if (state.status === "error" || state.status === "unavailable") {
       toast.error(
-        state.failure?.message ??
-          state.reason ??
-          "Project reference analysis is unavailable.",
+        projectIntelligenceFailureText(state) ??
+          i18n.t(($) => $.intelligence.references.unavailable),
       );
     } else {
-      toast.info("Project references are updating.");
+      toast.info(i18n.t(($) => $.intelligence.references.updating));
     }
     return true;
   }
@@ -485,7 +494,7 @@ function activateVisualToken(
   );
 
   if (definitions.length === 0) {
-    toast.info(`No definition found for “${resolved.key}”.`);
+    toast.info(i18n.t(($) => $.intelligence.references.noDefinition, { name: resolved.key }));
     return true;
   }
   if (definitions.length > 1) {
@@ -494,11 +503,14 @@ function activateVisualToken(
         current.snapshot,
         "definitions",
         use.id,
-        `Definitions for ${resolved.key}`,
+        i18n.t(($) => $.intelligence.references.definitionsFor, { name: resolved.key }),
       );
     } else {
       toast.info(
-        `“${resolved.key}” has ${definitions.length} definitions. Open References to inspect them.`,
+        i18n.t(($) => $.intelligence.references.multipleDefinitions, {
+          name: resolved.key,
+          count: definitions.length,
+        }),
       );
       openReferencesPanel();
     }
@@ -509,14 +521,14 @@ function activateVisualToken(
   if (findAllReferences) {
     const uses = referencesFor(current.snapshot, definition.id);
     if (uses.length === 0) {
-      toast.info(`No references to “${definition.name}”.`);
+      toast.info(i18n.t(($) => $.intelligence.references.noReferences, { name: definition.name }));
       return true;
     }
     showQuery(
       current.snapshot,
       "references",
       definition.id,
-      `References to ${definition.name}`,
+      i18n.t(($) => $.intelligence.references.referencesTo, { name: definition.name }),
     );
     return true;
   }
@@ -536,7 +548,7 @@ function visualAnalysisIsCurrent(view: EditorView): boolean {
   ) {
     return true;
   }
-  toast.info("Project references are updating.");
+  toast.info(i18n.t(($) => $.intelligence.references.updating));
   return false;
 }
 

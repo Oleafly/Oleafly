@@ -1,0 +1,50 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "关于 Oleafly",
+    "checkUpdates": "检查更新…",
+    "reloadViews": "重新加载视图",
+    "restartApp": "重启应用",
+    "quit": "退出 Oleafly",
+    "edit": "编辑",
+    "undo": "撤销",
+    "redo": "重做",
+    "cut": "剪切",
+    "copy": "复制",
+    "paste": "粘贴",
+    "selectAll": "全选",
+    "view": "视图",
+    "toggleTerminal": "切换终端",
+    "toggleBrowser": "切换浏览器"
+  },
+  "window": {
+    "browser": "Oleafly 浏览器",
+    "browserTitled": "{{title}} - Oleafly 浏览器"
+  },
+  "dialog": {
+    "cancel": "取消",
+    "fullAccess": {
+      "title": "启用完全访问权限？",
+      "message": "完全访问权限允许助手运行 shell 命令和编辑文件，无需每次请求批准。要启用完全访问权限吗？",
+      "confirm": "启用完全访问权限"
+    },
+    "cookieImport": {
+      "title": "确认导入 Cookie",
+      "messageHost": "要将 {{browser}} 配置文件“{{profile}}”中 {{hostname}} 的 Cookie 导入 Oleafly 的内置浏览器吗？导入的 Cookie 可能会让你自动登录网站。",
+      "messageAll": "要将 {{browser}} 配置文件“{{profile}}”中的全部 Cookie 导入 Oleafly 的内置浏览器吗？导入的 Cookie 可能会让你自动登录网站。",
+      "confirm": "导入 Cookie"
+    },
+    "mcpApprove": {
+      "title": "批准 MCP 工具",
+      "confirm": "使用工具"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "应用菜单不可用",
+    "viewMenuUnavailable": "视图菜单不可用",
+    "menuItemUnavailable": "菜单项 {{id}} 不可用",
+    "fullAccessDismissed": "完全访问权限确认已关闭。",
+    "fullAccessDeclined": "未启用完全访问权限。",
+    "approvalDialogClosed": "原生审批对话框意外关闭了。"
+  }
+}

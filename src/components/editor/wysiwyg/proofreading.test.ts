@@ -43,6 +43,7 @@ describe("Visual semantic raw-block proofreading", () => {
           source: "hunspell",
           word: "abstrakt",
           suggestions: [{ text: "abstract", kind: 0 }],
+          rule: null,
         },
       ],
       extraction,
@@ -93,6 +94,7 @@ describe("Visual semantic raw-block proofreading", () => {
         source: "hunspell" as const,
         word,
         suggestions: [{ text: word.slice(0, -1), kind: 0 as const }],
+        rule: null,
       };
     });
     const painted = mapVisualProofreadingDiagnostics(

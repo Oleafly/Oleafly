@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowUp, Square, X } from "lucide-react";
 import { PRESETS } from "@/lib/ai-inline";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
@@ -30,6 +31,7 @@ export function PromptPopover({
   modelGroups: ModelSelectorGroup[];
   onModelChange: (providerId: string, modelId: string) => void;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     inputRef.current?.focus({ preventScroll: true });
@@ -60,7 +62,7 @@ export function PromptPopover({
               onSubmit();
             }
           }}
-          placeholder="Describe the change…  (Shift+Enter for a new line)"
+          placeholder={t(($) => $.editor.inlineAi.promptPlaceholder)}
           disabled={streaming}
           rows={2}
           className="min-h-[2.75rem] min-w-0 flex-1 resize-none border-0 bg-transparent text-sm leading-snug shadow-none outline-none placeholder:text-muted-foreground disabled:opacity-60"
@@ -68,7 +70,7 @@ export function PromptPopover({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t(($) => $.common.actions.close)}
           className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <X className="size-3.5" />
@@ -92,7 +94,11 @@ export function PromptPopover({
 
       <div className="mt-2 flex items-center gap-2">
         <div className="min-w-0 flex-1">
-          {streaming && <span className="ai-shimmer text-[10px] font-medium">Thinking…</span>}
+          {streaming && (
+            <span className="ai-shimmer text-[10px] font-medium">
+              {t(($) => $.editor.inlineAi.thinking)}
+            </span>
+          )}
         </div>
         <ModelSelector
           compact
@@ -107,7 +113,7 @@ export function PromptPopover({
           <button
             type="button"
             onClick={onStop}
-            aria-label="Stop"
+            aria-label={t(($) => $.editor.inlineAi.stop)}
             className="flex size-6 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground hover:bg-accent"
           >
             <Square className="size-3.5" />
@@ -117,7 +123,7 @@ export function PromptPopover({
             type="button"
             onClick={onSubmit}
             disabled={!instruction.trim()}
-            aria-label="Submit"
+            aria-label={t(($) => $.editor.inlineAi.submit)}
             className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
           >
             <ArrowUp className="size-3.5" />

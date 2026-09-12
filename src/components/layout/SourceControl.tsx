@@ -6,6 +6,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Check,
   FileText,
@@ -53,6 +54,7 @@ import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHub
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { toGithubWebUrl } from "@/lib/github-url";
 import { toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 import { open } from "@tauri-apps/plugin-shell";
 import { cn } from "@/lib/utils";
 
@@ -70,8 +72,6 @@ function meta(code: string) {
 
 const COMMIT_TITLE_LIMIT = 72;
 
-const REMOTE_HINT =
-  "Create a new repo or link an existing one as this project's remote, then push.";
 
 function composeCommitMessage(title: string, description: string): string {
   const subject = title.trim();
@@ -84,7 +84,14 @@ type ProjectActionToken = {
   session: number;
 };
 
+type PendingRefresh = ProjectActionToken & {
+  queued: boolean;
+  promise: Promise<void>;
+};
+
 export function SourceControl() {
+  const { t } = useTranslation(["common", "shell"]);
+  const remoteHint = t(($) => $.shell.sourceControl.remoteHint);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
@@ -106,7 +113,7 @@ export function SourceControl() {
     if (!githubUrl) return;
     try {
       await navigator.clipboard.writeText(githubUrl);
-      toast.success("GitHub link copied");
+      toast.success(i18n.t(($) => $.shell.sourceControl.linkCopied));
     } catch {
       toast.info(githubUrl);
     }
@@ -122,6 +129,8 @@ export function SourceControl() {
   const previousProjectId = useRef(projectId);
   const refreshRequestId = useRef(0);
   const projectSession = useRef(0);
+  const pendingRefresh = useRef<PendingRefresh | null>(null);
+  const pendingMutation = useRef<ProjectActionToken | null>(null);
   const openDiff = useDiffStore((s) => s.openDiff);
   const clearActiveDiff = useDiffStore((s) => s.clearActiveDiff);
   const openFile = useFilesStore((s) => s.openFile);
@@ -131,6 +140,8 @@ export function SourceControl() {
     previousProjectId.current = projectId;
     projectSession.current += 1;
     refreshRequestId.current += 1;
+    pendingRefresh.current = null;
+    pendingMutation.current = null;
     setChanges([]);
     setInitialized(null);
     setBranch("");
@@ -159,7 +170,7 @@ export function SourceControl() {
     clearActiveDiff();
   };
 
-  const refresh = useCallback(async () => {
+  const refreshOnce = useCallback(async () => {
     if (!projectId || useFilesStore.getState().projectId !== projectId) return;
     const targetProjectId = projectId;
     const requestId = ++refreshRequestId.current;
@@ -208,6 +219,34 @@ export function SourceControl() {
     }
   }, [projectId]);
 
+  // A slow Git process must not turn repeated refreshes into an unbounded
+  // queue of readers ahead of a stage/commit waiting for the worktree lock.
+  const refresh = useCallback(async () => {
+    if (!projectId || useFilesStore.getState().projectId !== projectId) return;
+    const current = pendingRefresh.current;
+    if (current?.projectId === projectId && current.session === projectSession.current) {
+      current.queued = true;
+      refreshRequestId.current += 1;
+      return current.promise;
+    }
+    const operation: PendingRefresh = {
+      projectId,
+      session: projectSession.current,
+      queued: false,
+      promise: Promise.resolve(),
+    };
+    pendingRefresh.current = operation;
+    operation.promise = (async () => {
+      do {
+        operation.queued = false;
+        await refreshOnce();
+      } while (operation.queued && pendingRefresh.current === operation);
+    })().finally(() => {
+      if (pendingRefresh.current === operation) pendingRefresh.current = null;
+    });
+    return operation.promise;
+  }, [projectId, refreshOnce]);
+
   const initialize = async () => {
     const action = beginProjectAction();
     if (!action) return;
@@ -216,7 +255,10 @@ export function SourceControl() {
     try {
       const initializedBranch = await gitInitialize(action.projectId);
       if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: true, text: `Initialized Git on ${initializedBranch}.` });
+      setStatus({
+        ok: true,
+        text: t(($) => $.shell.sourceControl.initialized, { branch: initializedBranch }),
+      });
       await refresh();
     } catch (error) {
       if (!isCurrentProjectAction(action)) return;
@@ -263,7 +305,7 @@ export function SourceControl() {
       setAheadBehind(null);
       await refresh();
       if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: true, text: "Unlinked from GitHub." });
+      setStatus({ ok: true, text: t(($) => $.shell.sourceControl.unlinked) });
     } catch (e) {
       if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
@@ -281,7 +323,7 @@ export function SourceControl() {
       await gitCleanRemoteCredentials(action.projectId);
       if (!isCurrentProjectAction(action)) return;
       setCredentialCleanupRequired(false);
-      setStatus({ ok: true, text: "Removed the saved credential from this Git remote." });
+      setStatus({ ok: true, text: t(($) => $.shell.sourceControl.credentialRemoved) });
       await refresh();
     } catch (error) {
       if (!isCurrentProjectAction(action)) return;
@@ -314,13 +356,22 @@ export function SourceControl() {
     window.dispatchEvent(new CustomEvent("oleafly:git-changed"));
 
   const runGit = async (action: ProjectActionToken, op: () => Promise<unknown>) => {
+    if (busy || pendingMutation.current) return;
+    pendingMutation.current = action;
+    setBusy(true);
     try {
       await op();
       if (!isCurrentProjectAction(action)) return;
       notifyGitChanged(); // the listener refreshes this panel; an open diff reloads too
+      await pendingRefresh.current?.promise;
     } catch (e) {
       if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
+    } finally {
+      if (pendingMutation.current === action) {
+        pendingMutation.current = null;
+        if (isCurrentProjectAction(action)) setBusy(false);
+      }
     }
   };
   const stageFile = (path: string) => {
@@ -348,7 +399,7 @@ export function SourceControl() {
     const hasStaged = changes.some((c) => c.staged);
     // A commit requires staged files + a message; pushing existing commits does not.
     if (hasStaged && !subject) {
-      setStatus({ ok: false, text: "Enter a commit title before committing." });
+      setStatus({ ok: false, text: t(($) => $.shell.sourceControl.titleRequiredStatus) });
       return;
     }
     setBusy(true);
@@ -358,13 +409,15 @@ export function SourceControl() {
       const committed = hasStaged ? await gitCommit(action.projectId, msg) : false;
       if (!isCurrentProjectAction(action)) return;
       const parts: string[] = [
-        committed ? `Committed: "${subject}"` : "Nothing staged to commit.",
+        committed
+          ? t(($) => $.shell.sourceControl.committed, { subject })
+          : t(($) => $.shell.sourceControl.nothingStaged),
       ];
       if (andPush) {
         if (!hasToken) {
-          parts.push("⚠ Skipped push - no GitHub token (Settings → GitHub).");
+          parts.push(t(($) => $.shell.sourceControl.pushSkippedNoToken));
         } else if (!remote) {
-          parts.push("⚠ Skipped push - no remote origin set below.");
+          parts.push(t(($) => $.shell.sourceControl.pushSkippedNoRemote));
         } else {
           parts.push(await gitPush(action.projectId));
           if (!isCurrentProjectAction(action)) return;
@@ -434,8 +487,8 @@ export function SourceControl() {
         </button>
         <button type="button"
           onClick={() => openSourceFile(c.path)}
-          aria-label="Open file"
-          title="Open file"
+          aria-label={t(($) => $.shell.sourceControl.openFile)}
+          title={t(($) => $.shell.sourceControl.openFile)}
           className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
         >
           <FileText className="size-3.5" />
@@ -448,15 +501,15 @@ export function SourceControl() {
                   setConfirmDiscard(null);
                   void discard(c.path);
                 }}
-                aria-label="Confirm discard"
-                title="Discard all changes to this file"
+                aria-label={t(($) => $.shell.sourceControl.confirmDiscard)}
+                title={t(($) => $.shell.sourceControl.confirmDiscardTitle)}
                 className="flex size-6 shrink-0 items-center justify-center rounded text-destructive hover:bg-destructive/10"
               >
                 <Check className="size-3.5" />
               </button>
               <button type="button"
                 onClick={() => setConfirmDiscard(null)}
-                aria-label="Cancel"
+                aria-label={t(($) => $.common.actions.cancel)}
                 className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <X className="size-3.5" />
@@ -465,8 +518,8 @@ export function SourceControl() {
           ) : (
             <button type="button"
               onClick={() => setConfirmDiscard(c.path)}
-              aria-label="Discard changes"
-              title="Discard changes (revert to last version)"
+              aria-label={t(($) => $.shell.sourceControl.discard)}
+              title={t(($) => $.shell.sourceControl.discardTitle)}
               className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"
             >
               <Undo2 className="size-3.5" />
@@ -474,8 +527,17 @@ export function SourceControl() {
           ))}
         <button type="button"
           onClick={() => void (c.staged ? unstageFile(c.path) : stageFile(c.path))}
-          aria-label={c.staged ? "Unstage" : "Stage"}
-          title={c.staged ? "Unstage" : "Stage"}
+          disabled={busy}
+          aria-label={
+            c.staged
+              ? t(($) => $.shell.sourceControl.unstage)
+              : t(($) => $.shell.sourceControl.stage)
+          }
+          title={
+            c.staged
+              ? t(($) => $.shell.sourceControl.unstage)
+              : t(($) => $.shell.sourceControl.stage)
+          }
           className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
         >
           {c.staged ? <Minus className="size-3.5" /> : <Plus className="size-3.5" />}
@@ -492,8 +554,8 @@ export function SourceControl() {
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={onTitleKeyDown}
         maxLength={COMMIT_TITLE_LIMIT}
-        placeholder="Commit title"
-        aria-label="Commit title"
+        placeholder={t(($) => $.shell.sourceControl.commitTitle)}
+        aria-label={t(($) => $.shell.sourceControl.commitTitle)}
         className="h-8 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none"
       />
       <Textarea
@@ -501,16 +563,20 @@ export function SourceControl() {
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={2}
-        placeholder="Description (optional)"
-        aria-label="Commit description"
+        placeholder={t(($) => $.shell.sourceControl.commitDescriptionPlaceholder)}
+        aria-label={t(($) => $.shell.sourceControl.commitDescription)}
         className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-xs outline-none"
       />
       {staged.length === 0 && changes.length > 0 ? (
-        <p className="-mt-1 text-[10px] text-muted-foreground">Stage a file to commit.</p>
+        <p className="-mt-1 text-[10px] text-muted-foreground">
+          {t(($) => $.shell.sourceControl.stageToCommit)}
+        </p>
       ) : (
         staged.length > 0 &&
         !title.trim() && (
-          <p className="-mt-1 text-[10px] text-muted-foreground">A commit title is required.</p>
+          <p className="-mt-1 text-[10px] text-muted-foreground">
+            {t(($) => $.shell.sourceControl.titleRequired)}
+          </p>
         )
       )}
       <div className="flex gap-1.5">
@@ -520,38 +586,38 @@ export function SourceControl() {
           disabled={busy || staged.length === 0 || !title.trim()}
           title={
             staged.length === 0
-              ? "Stage a file first"
+              ? t(($) => $.shell.sourceControl.stageFirst)
               : !title.trim()
-                ? "Enter a commit title"
+                ? t(($) => $.shell.sourceControl.enterTitle)
                 : undefined
           }
           className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-          Commit
+          {t(($) => $.shell.sourceControl.commit)}
         </button>
         {githubConnected && (
           <>
-            <Tooltip label="Commit and push to origin" className="flex-1">
+            <Tooltip label={t(($) => $.shell.sourceControl.push)} className="flex-1">
               <button type="button"
                 onClick={() => void submit(true)}
                 disabled={busy || !remote || (staged.length > 0 && !title.trim())}
-                aria-label="Commit and push to origin"
+                aria-label={t(($) => $.shell.sourceControl.push)}
                 className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
               >
                 <Upload className="size-3.5" />
-                Push
+                {t(($) => $.shell.sourceControl.pushShort)}
               </button>
             </Tooltip>
-            <Tooltip label="Pull from origin" className="flex-1">
+            <Tooltip label={t(($) => $.shell.sourceControl.pull)} className="flex-1">
               <button type="button"
                 onClick={() => void pull()}
                 disabled={busy || !remote}
-                aria-label="Pull from origin"
+                aria-label={t(($) => $.shell.sourceControl.pull)}
                 className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
               >
                 <RefreshCw className="size-3.5" />
-                Pull
+                {t(($) => $.shell.sourceControl.pullShort)}
               </button>
             </Tooltip>
           </>
@@ -579,12 +645,12 @@ export function SourceControl() {
       <div className="flex items-center justify-between gap-2 px-1 pb-1">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-            Remote
+            {t(($) => $.shell.sourceControl.remote)}
           </span>
-          <Tooltip wide side="top" label={REMOTE_HINT}>
+          <Tooltip wide side="top" label={remoteHint}>
             <Info
               role="img"
-              aria-label={REMOTE_HINT}
+              aria-label={remoteHint}
               className="size-3.5 cursor-help text-muted-foreground hover:text-foreground"
             />
           </Tooltip>
@@ -600,14 +666,14 @@ export function SourceControl() {
             disabled={busy}
             className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-accent disabled:opacity-40"
           >
-            <Github className="size-3" /> Change repo
+            <Github className="size-3" /> {t(($) => $.shell.sourceControl.changeRepo)}
           </button>
           <button type="button"
             onClick={() => void unlink()}
             disabled={busy}
             className="rounded-md border px-2 py-1 text-[11px] hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
           >
-            Unlink
+            {t(($) => $.shell.sourceControl.unlink)}
           </button>
         </div>
       ) : (
@@ -617,7 +683,7 @@ export function SourceControl() {
             disabled={busy}
             className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
           >
-            <Github className="size-3.5" /> Publish to GitHub
+            <Github className="size-3.5" /> {t(($) => $.shell.sourceControl.publish)}
           </button>
         </div>
       )}
@@ -629,13 +695,13 @@ export function SourceControl() {
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
         <GitBranch className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          Source Control
+          {t(($) => $.shell.sourceControl.title)}
         </span>
         <span className="ml-auto" />
-        <Tooltip label="Refresh" side="bottom">
+        <Tooltip label={t(($) => $.shell.sourceControl.refresh)} side="bottom">
           <button type="button"
             onClick={() => void refresh()}
-            aria-label="Refresh"
+            aria-label={t(($) => $.shell.sourceControl.refresh)}
             className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <RefreshCw className="size-3.5" />
@@ -656,7 +722,11 @@ export function SourceControl() {
         )}
         {remote && aheadBehind?.has_upstream && (aheadBehind.ahead > 0 || aheadBehind.behind > 0) && (
           <Tooltip
-            label={`${aheadBehind.ahead} ahead · ${aheadBehind.behind} behind origin/${branch}`}
+            label={t(($) => $.shell.sourceControl.aheadBehind, {
+              ahead: aheadBehind.ahead,
+              behind: aheadBehind.behind,
+              branch,
+            })}
             side="bottom"
           >
             <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
@@ -692,7 +762,7 @@ export function SourceControl() {
                       {githubUser.name}
                     </span>
                   )}
-                  <span className="truncate text-xs text-muted-foreground">@{githubUser?.login}</span>
+                  <span className="truncate text-xs text-muted-foreground">{`@${githubUser?.login}`}</span>
                 </div>
               </div>
             }
@@ -718,14 +788,14 @@ export function SourceControl() {
             <div className="flex items-start gap-2">
               <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p>Older Oleafly versions saved a credential in this Git remote.</p>
+                <p>{t(($) => $.shell.sourceControl.credentialWarning)}</p>
                 <button
                   type="button"
                   onClick={() => void cleanSavedCredential()}
                   disabled={busy}
                   className="mt-1.5 rounded border border-current/30 px-2 py-1 font-medium hover:bg-amber-500/10 disabled:opacity-40"
                 >
-                  Remove saved credential
+                  {t(($) => $.shell.sourceControl.removeCredential)}
                 </button>
               </div>
             </div>
@@ -735,9 +805,11 @@ export function SourceControl() {
           <div className="flex h-full flex-col items-center justify-center gap-3 px-5 text-center">
             <GitBranch className="size-8 text-muted-foreground/60" />
             <div>
-              <p className="text-xs font-medium">Source Control is not initialized</p>
+              <p className="text-xs font-medium">
+                {t(($) => $.shell.sourceControl.notInitialized)}
+              </p>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                Oleafly will not commit to a Git repository automatically.
+                {t(($) => $.shell.sourceControl.notInitializedHint)}
               </p>
             </div>
             <button
@@ -746,7 +818,7 @@ export function SourceControl() {
               disabled={busy}
               className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
             >
-              Initialize Repository
+              {t(($) => $.shell.sourceControl.initialize)}
             </button>
             <button
               type="button"
@@ -754,16 +826,16 @@ export function SourceControl() {
               disabled={busy}
               className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-40"
             >
-              <Github className="size-3.5" /> Publish to GitHub
+              <Github className="size-3.5" /> {t(($) => $.shell.sourceControl.publish)}
             </button>
           </div>
         ) : initialized === null ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-            Checking Source Control…
+            {t(($) => $.shell.sourceControl.checking)}
           </div>
         ) : changes.length === 0 ? (
           <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-            No changes. Working tree is clean.
+            {t(($) => $.shell.sourceControl.clean)}
           </p>
         ) : (
           <>
@@ -771,15 +843,16 @@ export function SourceControl() {
               <div className="mb-2">
                 <div className="group/hdr flex items-center gap-1.5 px-2 pb-1">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                    Staged
+                    {t(($) => $.shell.sourceControl.staged)}
                   </span>
                   <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                     {staged.length}
                   </span>
                   <button type="button"
                     onClick={() => void unstageAll()}
-                    title="Unstage all"
-                    aria-label="Unstage all"
+                    disabled={busy}
+                    title={t(($) => $.shell.sourceControl.unstageAll)}
+                    aria-label={t(($) => $.shell.sourceControl.unstageAll)}
                     className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
                   >
                     <Minus className="size-3.5" />
@@ -792,15 +865,16 @@ export function SourceControl() {
               <div className="group/hdr">
                 <div className="flex items-center gap-1.5 px-2 pb-1">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                    Changes
+                    {t(($) => $.shell.sourceControl.changes)}
                   </span>
                   <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                     {unstaged.length}
                   </span>
                   <button type="button"
                     onClick={() => void stageAll()}
-                    title="Stage all"
-                    aria-label="Stage all"
+                    disabled={busy}
+                    title={t(($) => $.shell.sourceControl.stageAll)}
+                    aria-label={t(($) => $.shell.sourceControl.stageAll)}
                     className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
                   >
                     <Plus className="size-3.5" />
@@ -841,7 +915,10 @@ export function SourceControl() {
         projectName={projectName}
         onPublished={(url) => {
           void refresh();
-          setStatus({ ok: true, text: `Published to ${url}` });
+          setStatus({
+            ok: true,
+            text: t(($) => $.shell.sourceControl.published, { url }),
+          });
         }}
       />
     </div>

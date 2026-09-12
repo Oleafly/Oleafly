@@ -1,10 +1,17 @@
-// `\DocumentMetadata` must be the literal first line of the source (before
-// `\documentclass`) for LuaLaTeX tagging to pick it up; tagging/pdfstandard
-// keys and `unicode-math` are otherwise silently not applied.
+import { maskComments } from "./mask";
+import {
+  findDocumentMetadata,
+  parseMetadataKeys,
+  serializeMetadataKeys,
+  unwrapBraces,
+} from "./document-metadata";
+import { loadedPackagesOf, packageTaggingVerdict } from "./tagging-status";
+import { message, type MessageRef } from "./messages";
+import type { PreflightEngine } from "./types";
 
 export interface PrepChange {
   kind: "add" | "modify" | "warn" | "info";
-  summary: string;
+  summary: MessageRef;
 }
 
 export interface PrepResult {
@@ -12,65 +19,76 @@ export interface PrepResult {
   changes: PrepChange[];
 }
 
+export interface PrepOptions {
+  lang?: string;
+  engine?: PreflightEngine;
+}
+
 const REQUIRED_META: Record<string, string> = { pdfstandard: "ua-2", tagging: "on" };
+const TABLE_ENVIRONMENT = /\\begin\s*\{(?:tabular\*?|tabularx|longtable|tabulary)\}/;
+const HEADER_ROWS_KEY = /table\/header-rows/;
+const UNICODE_MATH_ENGINES: PreflightEngine[] = ["lualatex", "xelatex"];
 
-function parseKeys(body: string): { order: string[]; map: Map<string, string> } {
-  const order: string[] = [];
-  const map = new Map<string, string>();
-  for (const part of body.split(",")) {
-    const eq = part.indexOf("=");
-    if (eq === -1) continue;
-    const k = part.slice(0, eq).trim();
-    const v = part.slice(eq + 1).trim();
-    if (k) {
-      if (!map.has(k)) order.push(k);
-      map.set(k, v);
-    }
-  }
-  return { order, map };
-}
+const list = (names: readonly string[]) => names.join(", ");
 
-function serializeKeys(order: string[], map: Map<string, string>): string {
-  return order.map((k) => `${k}=${map.get(k)}`).join(",");
-}
-
-export function prepareAccessibleSource(source: string, opts?: { lang?: string }): PrepResult {
+export function prepareAccessibleSource(source: string, opts?: PrepOptions): PrepResult {
   const lang = opts?.lang ?? "en-US";
+  const engine = opts?.engine ?? "unknown";
   const changes: PrepChange[] = [];
   let out = source;
 
-  const metaRe = /\\DocumentMetadata\s{0,20}\{([^}]{0,2000})\}/;
-  const existing = metaRe.exec(out);
+  const needsHeaderRows = TABLE_ENVIRONMENT.test(maskComments(out));
+  const existing = findDocumentMetadata(maskComments(out));
+  let headerRowsSet = false;
   if (existing) {
-    const { order, map } = parseKeys(existing[1]);
+    const keys = parseMetadataKeys(existing.body);
     let touched = false;
-    if (!map.has("lang")) {
-      order.push("lang");
-      map.set("lang", lang);
+    if (!keys.map.has("lang")) {
+      keys.order.push("lang");
+      keys.map.set("lang", lang);
       touched = true;
     }
-    for (const [k, v] of Object.entries(REQUIRED_META)) {
-      if (!map.has(k)) {
-        order.push(k);
-        map.set(k, v);
+    for (const [key, value] of Object.entries(REQUIRED_META)) {
+      if (!keys.map.has(key)) {
+        keys.order.push(key);
+        keys.map.set(key, value);
         touched = true;
       }
     }
+    if (needsHeaderRows) {
+      const setup = keys.map.get("tagging-setup");
+      if (setup === undefined) {
+        keys.order.push("tagging-setup");
+        keys.map.set("tagging-setup", "{table/header-rows={1}}");
+        headerRowsSet = true;
+      } else if (!HEADER_ROWS_KEY.test(setup)) {
+        const inner = unwrapBraces(setup);
+        keys.map.set("tagging-setup", `{${inner ? `${inner},` : ""}table/header-rows={1}}`);
+        headerRowsSet = true;
+      }
+      touched = touched || headerRowsSet;
+    }
     if (touched) {
-      out = out.replace(metaRe, `\\DocumentMetadata{${serializeKeys(order, map)}}`);
-      changes.push({ kind: "modify", summary: "Added the required tagging keys to your \\DocumentMetadata." });
+      out = `${out.slice(0, existing.start)}\\DocumentMetadata{${serializeMetadataKeys(keys)}}${out.slice(existing.end)}`;
+      changes.push({ kind: "modify", summary: message("prep.metadataUpdated") });
     }
   } else {
-    out = `\\DocumentMetadata{lang=${lang},pdfstandard=ua-2,tagging=on}\n${out}`;
-    changes.push({ kind: "add", summary: "Added \\DocumentMetadata as the first line (required, must precede \\documentclass)." });
+    const headerRows = needsHeaderRows ? ",tagging-setup={table/header-rows={1}}" : "";
+    headerRowsSet = needsHeaderRows;
+    out = `\\DocumentMetadata{lang=${lang},pdfstandard=ua-2,tagging=on${headerRows}}\n${out}`;
+    changes.push({ kind: "add", summary: message("prep.metadataAdded") });
+  }
+  if (headerRowsSet) {
+    changes.push({ kind: "info", summary: message("prep.headerRows") });
   }
 
-  const hasUnicodeMath = /\\usepackage(?:\[[^\]]{0,500}\])?\{unicode-math\}/.test(out);
-  const dc = /\\documentclass\s{0,20}(?:\[[^\]]{0,500}\])?\s{0,20}\{[^}]{0,500}\}/.exec(out);
-  if (!hasUnicodeMath && dc) {
+  const masked = maskComments(out);
+  const hasUnicodeMath = /\\usepackage(?:\[[^\]]{0,500}\])?\{unicode-math\}/.test(masked);
+  const dc = /\\documentclass\s{0,20}(?:\[[^\]]{0,500}\])?\s{0,20}\{[^}]{0,500}\}/.exec(masked);
+  if (!hasUnicodeMath && dc && UNICODE_MATH_ENGINES.includes(engine)) {
     const insertAt = dc.index + dc[0].length;
     out = `${out.slice(0, insertAt)}\n\\usepackage{unicode-math}${out.slice(insertAt)}`;
-    changes.push({ kind: "add", summary: "Added \\usepackage{unicode-math} (required for tagged output)." });
+    changes.push({ kind: "add", summary: message("prep.unicodeMath") });
   }
 
   let altAdded = 0;
@@ -84,20 +102,47 @@ export function prepareAccessibleSource(source: string, opts?: { lang?: string }
   if (altAdded > 0) {
     changes.push({
       kind: "modify",
-      summary: `Added alt-text placeholders to ${altAdded} image${altAdded > 1 ? "s" : ""}. Replace the TODO text with a real description.`,
+      summary: message("prep.altPlaceholders", { count: altAdded }),
     });
   }
 
-  if (/\\usepackage(?:\[[^\]]{0,500}\])?\{listings\}/.test(out) || /\\begin\{lstlisting\}/.test(out)) {
+  const hasTitle = /pdftitle\s*=/.test(maskComments(out));
+  const showsTitle = /pdfdisplaydoctitle\s*=\s*true/i.test(maskComments(out));
+  if (!hasTitle || !showsTitle) {
+    changes.push({ kind: "warn", summary: message("prep.titleRequired") });
+  }
+
+  const verdicts = loadedPackagesOf(maskComments(out)).map(packageTaggingVerdict);
+  const incompatible = verdicts
+    .filter((entry) => entry.status === "currently-incompatible" || entry.status === "no-support")
+    .map((entry) => entry.name);
+  if (incompatible.length > 0) {
     changes.push({
       kind: "warn",
-      summary: "The listings package is not compatible with tagging. Replace code listings, or expect tagging errors.",
+      summary: message("prep.incompatiblePackages", {
+        count: incompatible.length,
+        packages: list(incompatible),
+      }),
+    });
+  }
+  const cautions = verdicts
+    .filter(
+      (entry) =>
+        entry.status === "partially-compatible" ||
+        entry.status === "unchecked" ||
+        entry.status === "unknown",
+    )
+    .map((entry) => entry.name);
+  if (cautions.length > 0) {
+    changes.push({
+      kind: "warn",
+      summary: message("prep.cautionPackages", { packages: list(cautions) }),
     });
   }
 
   changes.push({
     kind: "info",
-    summary: "Tagged export needs LuaLaTeX with TeX Live 2025 or newer and OpenType fonts. Run the prepared source through that engine, then re-check the output.",
+    summary: message(engine === "lualatex" ? "prep.compileLua" : "prep.compileAny"),
   });
 
   return { output: out, changes };

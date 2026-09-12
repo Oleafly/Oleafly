@@ -1,0 +1,50 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "About Oleafly",
+    "checkUpdates": "Check for Updates…",
+    "reloadViews": "Reload Views",
+    "restartApp": "Restart Application",
+    "quit": "Quit Oleafly",
+    "edit": "Edit",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select All",
+    "view": "View",
+    "toggleTerminal": "Toggle Terminal",
+    "toggleBrowser": "Toggle Browser"
+  },
+  "window": {
+    "browser": "Oleafly Browser",
+    "browserTitled": "{{title}} - Oleafly Browser"
+  },
+  "dialog": {
+    "cancel": "Cancel",
+    "fullAccess": {
+      "title": "Enable full access?",
+      "message": "Full access lets the assistant run shell commands and edit files without asking for approval each time. Enable full access?",
+      "confirm": "Enable full access"
+    },
+    "cookieImport": {
+      "title": "Confirm cookie import",
+      "messageHost": "Import cookies for {{hostname}} from {{browser}} profile \"{{profile}}\" into Oleafly's in-app browser? Imported cookies may sign you in to websites.",
+      "messageAll": "Import all cookies from {{browser}} profile \"{{profile}}\" into Oleafly's in-app browser? Imported cookies may sign you in to websites.",
+      "confirm": "Import cookies"
+    },
+    "mcpApprove": {
+      "title": "Approve MCP tool",
+      "confirm": "Use tool"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Application menu is unavailable",
+    "viewMenuUnavailable": "View menu is unavailable",
+    "menuItemUnavailable": "Menu item {{id}} is unavailable",
+    "fullAccessDismissed": "The full access confirmation was dismissed.",
+    "fullAccessDeclined": "Full access was not enabled.",
+    "approvalDialogClosed": "The native approval dialog closed unexpectedly."
+  }
+}

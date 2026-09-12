@@ -187,4 +187,21 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 إذا جعل Oleafly الكتابة أسهل عليك، [امنحه ⭐ على GitHub](https://github.com/Oleafly/Oleafly) ليساعد باحثًا آخر على اكتشافه أيضًا.
 
+### الاستشهاد بـ Oleafly
+
+إذا ساعدك Oleafly في كتابة ورقة بحثية، فيرجى الاستشهاد به. إدخال BibTeX واحد في قائمة مراجعك يخبر الباحث التالي من أين جاءت الأداة ويُبقي مشروعًا مجانيًا مفتوح المصدر ظاهرًا:
+
+```bibtex
+@software{oleafly,
+  author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
+  title   = {Oleafly: a local-first desktop workspace for research writing},
+  year    = {2026},
+  version = {0.4.0},
+  url     = {https://github.com/Oleafly/Oleafly},
+  license = {AGPL-3.0-or-later}
+}
+```
+
+يوفر زر **Cite this repository** أعلى صفحة المستودع المرجع نفسه بصيغتي APA و BibTeX، مولّدًا من [CITATION.cff](../../CITATION.cff). يحتوي التطبيق على زر نسخ له في الإعدادات، المساعدة وحول.
+
 [الأمان](../../SECURITY.md) · [مدونة السلوك](../../CODE_OF_CONDUCT.md) · [AGPL-3.0-or-later](../../LICENSE)

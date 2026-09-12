@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertCircle, AtSign, BookOpen, Loader2, Search } from "lucide-react";
 import { useCitationStore } from "@/store/citation";
 import { resolveCitation, bibtexForHit, addCitation } from "@/features/citation";
@@ -7,16 +8,36 @@ import { toast } from "@/lib/toast";
 import { objectKey } from "@/lib/react-key";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { Input } from "@/components/ui/input";
+import { i18n } from "@/i18n";
 
 type Status = "idle" | "loading" | "hits" | "preview" | "error";
 
 const EXAMPLES = [
-  { label: "DOI", value: "10.1038/nature14539" },
-  { label: "arXiv", value: "1706.03762" },
-  { label: "Title", value: "Attention is all you need" },
+  {
+    id: "doi",
+    get label() {
+      return i18n.t(($) => $.shell.addCitation.examples.doi);
+    },
+    value: "10.1038/nature14539",
+  },
+  {
+    id: "arxiv",
+    get label() {
+      return i18n.t(($) => $.shell.addCitation.examples.arxiv);
+    },
+    value: "1706.03762",
+  },
+  {
+    id: "title",
+    get label() {
+      return i18n.t(($) => $.shell.addCitation.examples.title);
+    },
+    value: "Attention is all you need",
+  },
 ];
 
 export function AddCitationDialog() {
+  const { t } = useTranslation(["common", "shell"]);
   const open = useCitationStore((s) => s.open);
   const setOpen = useCitationStore((s) => s.setOpen);
 
@@ -58,7 +79,7 @@ export function AddCitationDialog() {
     } else {
       setHits(r.hits ?? []);
       if ((r.hits ?? []).length === 0) {
-        setError("No results found. Check the identifier, or try different title words.");
+        setError(t(($) => $.shell.addCitation.noResults));
         setStatus("error");
       } else {
         setStatus("hits");
@@ -78,7 +99,7 @@ export function AddCitationDialog() {
     setAdding(false);
     if ("key" in r) {
       close();
-      toast.success(`Added \\cite{${r.key}}`);
+      toast.success(i18n.t(($) => $.shell.addCitation.added, { cite: `\\cite{${r.key}}` }));
     } else {
       setError(r.error);
     }
@@ -86,7 +107,12 @@ export function AddCitationDialog() {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/40 pt-[15vh] backdrop-blur-sm">
-      <button type="button" aria-label="Close citation dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
+      <button
+        type="button"
+        aria-label={t(($) => $.shell.addCitation.close)}
+        className="absolute inset-0"
+        onMouseDown={onBackdropMouseDown}
+      />
       <div
         ref={dialogRef}
         role="dialog"
@@ -97,7 +123,9 @@ export function AddCitationDialog() {
       >
         <div className="flex items-center gap-2 border-b px-3 py-2.5">
           <AtSign className="size-4 text-muted-foreground" />
-          <span id="citation-dialog-title" className="text-sm font-semibold">Add citation</span>
+          <span id="citation-dialog-title" className="text-sm font-semibold">
+            {t(($) => $.shell.addCitation.title)}
+          </span>
         </div>
 
         <div className="border-b p-3">
@@ -111,7 +139,7 @@ export function AddCitationDialog() {
                 if (e.key === "Enter") void search();
                 if (e.key === "Escape") close();
               }}
-              placeholder="DOI, arXiv id, URL, or a paper title…"
+              placeholder={t(($) => $.shell.addCitation.placeholder)}
               className="h-9 w-full border-0 bg-transparent text-sm shadow-none outline-none placeholder:text-muted-foreground"
             />
             <button type="button"
@@ -120,11 +148,11 @@ export function AddCitationDialog() {
               className="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded bg-primary px-2.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {status === "loading" && <Loader2 className="size-3.5 animate-spin" />}
-              Look up
+              {t(($) => $.shell.addCitation.lookUp)}
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-muted-foreground">
-            Only the identifier or title is sent, to doi.org, arXiv, or Crossref.
+            {t(($) => $.shell.addCitation.privacyNote)}
           </p>
         </div>
 
@@ -132,20 +160,19 @@ export function AddCitationDialog() {
           {status === "idle" && (
             <div className="py-1">
               <p className="text-xs text-muted-foreground">
-                Paste a DOI, an arXiv id, or a URL to fetch the entry directly, or type a title to
-                search Crossref. Try one:
+                {t(($) => $.shell.addCitation.hint)}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {EXAMPLES.map((ex) => (
                   <button type="button"
-                    key={ex.label}
+                    key={ex.id}
                     onClick={() => {
                       setInput(ex.value);
                       void search(ex.value);
                     }}
                     className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] text-primary hover:bg-primary/20"
                   >
-                    <span className="font-medium">{ex.label}:</span> {ex.value}
+                    <span className="font-medium">{`${ex.label}:`}</span> {ex.value}
                   </button>
                 ))}
               </div>
@@ -155,7 +182,7 @@ export function AddCitationDialog() {
           {status === "loading" && (
             <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Looking up "{input.trim()}"…
+              {t(($) => $.shell.addCitation.lookingUp, { query: input.trim() })}
             </div>
           )}
 
@@ -169,7 +196,7 @@ export function AddCitationDialog() {
           {status === "hits" && (
             <div className="flex flex-col gap-1">
               <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {hits.length} {hits.length === 1 ? "match" : "matches"} from Crossref. Pick one:
+                {t(($) => $.shell.addCitation.matches, { count: hits.length })}
               </p>
               {hits.map((h) => (
                 <button type="button"
@@ -193,7 +220,9 @@ export function AddCitationDialog() {
 
           {status === "preview" && (
             <div>
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Entry</p>
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t(($) => $.shell.addCitation.entry)}
+              </p>
               <pre className="max-h-52 overflow-auto rounded-md border border-sidebar-border bg-background p-2.5 font-mono text-[11px] leading-relaxed">
                 {bibtex}
               </pre>
@@ -210,7 +239,7 @@ export function AddCitationDialog() {
         {status === "preview" && (
           <div className="flex justify-end gap-2 border-t p-3">
             <button type="button" onClick={close} className="rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent">
-              Cancel
+              {t(($) => $.common.actions.cancel)}
             </button>
             <button type="button"
               onClick={() => void add()}
@@ -218,7 +247,9 @@ export function AddCitationDialog() {
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {adding && <Loader2 className="size-3.5 animate-spin" />}
-              {adding ? "Adding…" : "Add to .bib and cite"}
+              {adding
+                ? t(($) => $.shell.addCitation.adding)
+                : t(($) => $.shell.addCitation.confirm)}
             </button>
           </div>
         )}

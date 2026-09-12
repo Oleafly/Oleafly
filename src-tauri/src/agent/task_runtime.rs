@@ -641,8 +641,8 @@ async fn execute_command(
     let containment = match crate::proc::contain_process_tree(pid) {
         Ok(value) => value,
         Err(error) => {
-            let _ = child.kill().await;
-            let _ = child.wait().await;
+            let _ = child.start_kill();
+            let _ = tokio::time::timeout(Duration::from_secs(2), child.wait()).await;
             return Err(format!("The task command could not be contained: {error}"));
         }
     };
@@ -665,7 +665,10 @@ async fn execute_command(
     };
     drop(containment);
     let _ = child.start_kill();
-    let reaped = child.wait().await.ok();
+    let reaped = tokio::time::timeout(Duration::from_secs(2), child.wait())
+        .await
+        .ok()
+        .and_then(Result::ok);
     let read = async { tokio::join!(&mut stdout, &mut stderr) };
     let (mut output, errors) = match tokio::time::timeout(Duration::from_secs(2), read).await {
         Ok((stdout, stderr)) => (stdout.unwrap_or_default(), stderr.unwrap_or_default()),

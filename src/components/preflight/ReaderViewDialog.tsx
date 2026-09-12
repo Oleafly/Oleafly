@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Eye, FileText } from "lucide-react";
 import {
   Dialog,
@@ -18,6 +19,7 @@ export function ReaderViewDialog({
   pages: string[];
   onClose: () => void;
 }) {
+  const { t } = useTranslation(["common", "preflight"]);
   const [activePage, setActivePage] = useState(0);
 
   useEffect(() => {
@@ -34,16 +36,13 @@ export function ReaderViewDialog({
         <DialogHeader className="shrink-0 px-6 pb-4 pt-5 pr-14">
           <DialogTitle className="flex items-center gap-2">
             <Eye className="size-5" />
-            What the reader sees
+            {t(($) => $.preflight.reader.title)}
           </DialogTitle>
-          <DialogDescription>
-            Text extracted from the current PDF in reading order. This is close to what a screen reader or automated
-            parser receives.
-          </DialogDescription>
+          <DialogDescription>{t(($) => $.preflight.reader.description)}</DialogDescription>
         </DialogHeader>
 
         <div className="grid min-h-0 flex-1 grid-cols-[10rem_minmax(0,1fr)] border-t">
-          <nav aria-label="PDF pages" className="overflow-auto border-r bg-muted/20 p-2">
+          <nav aria-label={t(($) => $.preflight.reader.pagesNav)} className="overflow-auto border-r bg-muted/20 p-2">
             {pages.map((text, page) => (
               <button
                 // PDF page order is intrinsic and pages have no independent IDs.
@@ -58,20 +57,25 @@ export function ReaderViewDialog({
                 )}
               >
                 <FileText className="size-4 shrink-0 text-muted-foreground" />
-                <span>Page {page + 1}</span>
-                {!text.trim() && <span className="ml-auto text-[10px] text-muted-foreground">empty</span>}
+                <span>{t(($) => $.preflight.reader.page, { page: page + 1 })}</span>
+                {!text.trim() && (
+                  <span className="ml-auto text-[10px] text-muted-foreground">
+                    {t(($) => $.preflight.reader.empty)}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
 
-          <section aria-label={`Extracted text from page ${activePage + 1}`} className="min-h-0 overflow-auto p-6">
+          <section
+            aria-label={t(($) => $.preflight.reader.extractedFrom, { page: activePage + 1 })}
+            className="min-h-0 overflow-auto p-6"
+          >
             <div className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Page {activePage + 1} of {pages.length}
+              {t(($) => $.preflight.reader.pageOf, { page: activePage + 1, total: pages.length })}
             </div>
             <pre className="whitespace-pre-wrap break-words font-mono text-sm leading-6 text-foreground/90">
-              {pages[activePage]?.trim()
-                ? pages[activePage]
-                : "No selectable text was found on this page."}
+              {pages[activePage]?.trim() ? pages[activePage] : t(($) => $.preflight.reader.noText)}
             </pre>
           </section>
         </div>

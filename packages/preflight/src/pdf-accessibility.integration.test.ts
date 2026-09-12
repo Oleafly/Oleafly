@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runPreflight, type PreflightInput } from "./engine";
-import type { StructDoc } from "./structure";
-import type { PositionedText } from "./types";
+import type { PdfUaFacts, StructDoc } from "./structure";
+import type { PdfExtractionStatus, PositionedText } from "./types";
 
 const text = (
   str: string,
@@ -15,7 +15,10 @@ const taggedDocument: StructDoc = {
     role: "Document",
     alt: null,
     lang: "en-US",
-    children: [{ role: "P", alt: null, lang: null, children: [] }],
+    children: [
+      { role: "H1", alt: null, lang: null, children: [] },
+      { role: "P", alt: null, lang: null, children: [] },
+    ],
   },
   tagged: true,
 };
@@ -30,6 +33,26 @@ const base: PreflightInput = {
 
 const ids = (input: PreflightInput) =>
   runPreflight(input).findings.map((finding) => finding.id);
+
+const cleanUa: PdfUaFacts = {
+  displayDocTitle: true,
+  suspects: false,
+  xmpTitle: "Accessible document",
+  infoTitle: "Accessible document",
+  uaPart: null,
+  uaRev: null,
+  taggedTextRuns: 40,
+  untaggedTextRuns: 0,
+  artifactTextRuns: 2,
+  links: [{ hasContents: true }],
+};
+
+const everythingRead: PdfExtractionStatus = {
+  metadata: "ok",
+  markInfo: "ok",
+  structure: "ok",
+  structureFailedPages: [],
+};
 
 describe("deterministic PDF accessibility verdicts", () => {
   it("passes a selectable, single-column, tagged PDF with metadata", () => {
@@ -112,7 +135,127 @@ describe("deterministic PDF accessibility verdicts", () => {
     ]);
   });
 
-  it("keeps the Tectonic untagged limitation as one informational verdict", () => {
+  it("reports no PDF/UA coverage at all when there is no compiled output", () => {
+    expect(runPreflight({ source: "", sourceProfile: "none" }).pdfUa).toBeUndefined();
+  });
+
+  it("counts only the rules it could actually read on the compiled file", () => {
+    const report = runPreflight({
+      ...base,
+      extraction: { metadata: "ok", markInfo: "ok", structure: "ok", structureFailedPages: [] },
+      struct: {
+        ...taggedDocument,
+        ua: {
+          displayDocTitle: true,
+          suspects: false,
+          xmpTitle: "Accessible document",
+          infoTitle: "Accessible document",
+          uaPart: null,
+          uaRev: null,
+          taggedTextRuns: 40,
+          untaggedTextRuns: 0,
+          artifactTextRuns: 2,
+          links: [],
+        },
+      },
+    });
+    expect(report.pdfUa?.unavailable).toEqual(["5-1", "5-2"]);
+    expect(report.pdfUa?.passed).toBe((report.pdfUa?.covered ?? 0) - 2);
+    expect(report.pdfUa?.total).toBe(106);
+  });
+
+  it("does not claim a structure rule as verified when the structure never loaded", () => {
+    const report = runPreflight({
+      ...base,
+      meta: { lang: "en-US", title: "Resume", tagged: null },
+      struct: { root: null, tagged: null },
+      extraction: { metadata: "ok", markInfo: "failed", structure: "failed", structureFailedPages: [2] },
+    });
+    expect(report.pdfUa?.outcomes["7.3-1"]).toBe("unavailable");
+    expect(report.pdfUa?.outcomes["7.1-11"]).toBe("unavailable");
+    expect(report.pdfUa?.failed).toEqual([]);
+    expect(report.pdfUa?.passed).toBeLessThan(report.pdfUa?.covered ?? 0);
+  });
+
+  it("marks the tagging rules failed on an untagged PDF and the rest unavailable", () => {
+    const report = runPreflight({
+      ...base,
+      meta: { lang: "en-US", title: "Resume", tagged: false },
+      struct: { root: null, tagged: false },
+      extraction: { metadata: "ok", markInfo: "ok", structure: "ok", structureFailedPages: [] },
+    });
+    expect(report.pdfUa?.failed).toContain("7.1-11");
+    expect(report.pdfUa?.outcomes["7.3-1"]).toBe("unavailable");
+  });
+
+  it("leaves the marked-content rule unchecked when the structure extraction failed", () => {
+    const report = runPreflight({
+      ...base,
+      struct: { ...taggedDocument, ua: { ...cleanUa } },
+      extraction: { metadata: "ok", markInfo: "ok", structure: "failed", structureFailedPages: [2] },
+    });
+    expect(report.pdfUa?.outcomes["7.1-3"]).toBe("unavailable");
+    for (const rule of ["7.3-1", "7.4.2-1", "7.5-1", "7.5-2"]) {
+      expect(report.pdfUa?.outcomes[rule], rule).toBe("unavailable");
+    }
+    expect(report.pdfUa?.failed).toEqual([]);
+  });
+
+  it("leaves the viewer and link rules unchecked on an untagged PDF instead of passing them", () => {
+    const report = runPreflight({
+      ...base,
+      meta: { lang: "en-US", title: "Resume", tagged: false },
+      struct: {
+        root: null,
+        tagged: false,
+        ua: { ...cleanUa, displayDocTitle: false, links: [{ hasContents: false }] },
+      },
+      extraction: everythingRead,
+    });
+    expect(report.findings.map((finding) => finding.id)).toEqual(["pdf-untagged-output"]);
+    expect(report.pdfUa?.outcomes["7.1-10"]).toBe("unavailable");
+    expect(report.pdfUa?.outcomes["7.18.5-2"]).toBe("unavailable");
+    expect(report.pdfUa?.outcomes["7.1-3"]).toBe("unavailable");
+    expect(report.pdfUa?.outcomes["7.1-4"]).toBe("unavailable");
+    expect(report.pdfUa?.failed).toContain("7.1-11");
+  });
+
+  it("verifies every rule it read on a tagged PDF that comes back clean", () => {
+    const report = runPreflight({
+      ...base,
+      struct: { ...taggedDocument, ua: { ...cleanUa, uaPart: 1 } },
+      extraction: everythingRead,
+    });
+    expect(report.findings).toEqual([]);
+    expect(report.pdfUa?.unavailable).toEqual([]);
+    expect(report.pdfUa?.failed).toEqual([]);
+    expect(report.pdfUa?.passed).toBe(report.pdfUa?.covered);
+  });
+
+  it("fails the viewer rule, and only that rule, when DisplayDocTitle is off", () => {
+    const report = runPreflight({
+      ...base,
+      struct: { ...taggedDocument, ua: { ...cleanUa, displayDocTitle: false } },
+      extraction: everythingRead,
+    });
+    expect(report.findings.map((finding) => finding.id)).toEqual(["pdf-display-doc-title"]);
+    expect(report.pdfUa?.failed).toEqual(["7.1-10"]);
+    expect(report.pdfUa?.unavailable).toEqual(["5-1", "5-2"]);
+    expect(report.pdfUa?.passed).toBe((report.pdfUa?.covered ?? 0) - 3);
+  });
+
+  it("leaves the identification rules unchecked when the file declares PDF/UA-2", () => {
+    const report = runPreflight({
+      ...base,
+      struct: { ...taggedDocument, ua: { ...cleanUa, uaPart: 2 } },
+      extraction: everythingRead,
+    });
+    expect(report.findings).toEqual([]);
+    expect(report.pdfUa?.outcomes["5-1"]).toBe("unavailable");
+    expect(report.pdfUa?.outcomes["5-2"]).toBe("unavailable");
+  });
+
+  it("keeps the untagged verdict as one informational finding with an honest remedy", () => {
     const report = runPreflight({
       ...base,
       meta: { lang: "en-US", title: "Resume", tagged: false },
@@ -122,7 +265,7 @@ describe("deterministic PDF accessibility verdicts", () => {
       expect.objectContaining({
         id: "pdf-untagged-output",
         severity: "info",
-        detail: expect.stringContaining("current compile engine does not produce tags"),
+        detail: { key: "rules.pdf-untagged-output.detail" },
       }),
     ]);
   });

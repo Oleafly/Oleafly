@@ -255,7 +255,11 @@ fi
 # tours key. Argument: the spec path about to run ("" for non-spec runs).
 boot_seed_for() {
   local spec="${1:-}"
-  local flags='"oleafly.shortcuts":null,"oleafly.visualEditor":"1","oleafly.latexTools":"1","oleafly.webBrowser":"1","oleafly.openInTree":"0","oleafly:compile:mode":"normal","oleafly.appFontSize":"16","oleafly.appFont":"","oleafly.assistant-runtime.v1":"{\"state\":{\"runtime\":\"built-in\"},\"version\":0}"'
+  local locale="en"
+  case "$spec" in
+    *97-locale-zh-hans*) locale="zh-Hans" ;;
+  esac
+  local flags='"oleafly.locale":"'"$locale"'","oleafly.shortcuts":null,"oleafly.visualEditor":"1","oleafly.latexTools":"1","oleafly.webBrowser":"1","oleafly.openInTree":"0","oleafly:compile:mode":"normal","oleafly.appFontSize":"16","oleafly.appFont":"","oleafly.assistant-runtime.v1":"{\"state\":{\"runtime\":\"built-in\"},\"version\":0}"'
   case "$spec" in
     *00-tours*) printf '{%s}' "$flags" ;;
     *) printf '{%s,"oleafly.tours":"{\\"state\\":{\\"schemaVersion\\":1,\\"enabled\\":false,\\"tours\\":{}},\\"version\\":1}"}' "$flags" ;;
@@ -271,7 +275,11 @@ configure_checkpoints_for_spec() {
   case "$specs" in
     *66-checkpoints*|*24-synctex-inverse*) enabled=true ;;
   esac
-  CHECKPOINTS_ENABLED="$enabled" CONFIG_PATH="$DATA_DIR/config.json" node -e '
+  local ui_locale="en"
+  case "$specs" in
+    *97-locale-zh-hans*) ui_locale="zh-Hans" ;;
+  esac
+  CHECKPOINTS_ENABLED="$enabled" UI_LOCALE="$ui_locale" CONFIG_PATH="$DATA_DIR/config.json" node -e '
     const fs = require("node:fs");
     const path = process.env.CONFIG_PATH;
     let config = {};
@@ -281,6 +289,7 @@ configure_checkpoints_for_spec() {
       config = {};
     }
     config.checkpoints_enabled = process.env.CHECKPOINTS_ENABLED === "true";
+    config.ui_locale = process.env.UI_LOCALE || "en";
     fs.mkdirSync(require("node:path").dirname(path), { recursive: true });
     fs.writeFileSync(path, JSON.stringify(config, null, 2));
   '
@@ -386,26 +395,22 @@ else
       SUITE_SPECS+=("$spec")
     done
   fi
-  # Browser-harness specs load TSX fixtures through the Vite dev server, so a
-  # packaged run cannot serve them. Their subject is Playwright's own
-  # Chromium/WebKit (platform-independent), and the Windows dev-mode lane runs
-  # them — skipping here loses no coverage, and the log says so out loud.
-  PACKAGED_UNSERVABLE=(
-    "e2e/tests/24-pdf-selection-browser.spec.ts"
-    "e2e/tests/27-markdown-rendering-browser.spec.ts"
-    "e2e/tests/56-preview-window-browser.spec.ts"
-  )
+  # Browser-harness specs (the *-browser.spec.ts files) load TSX fixtures
+  # through the Vite dev server, so a packaged run cannot serve them. Their
+  # subject is Playwright's own Chromium/WebKit (platform-independent), and
+  # scripts/e2e-browser-harness.sh runs them in their own CI job — skipping
+  # here loses no coverage, and the log says so out loud.
   if [ -n "$APP_BINARY" ]; then
     filtered=()
     for spec in "${SUITE_SPECS[@]}"; do
-      skip_this=0
-      for unservable in "${PACKAGED_UNSERVABLE[@]}"; do
-        if [ "$spec" = "$unservable" ]; then
-          skip_this=1
-          echo "e2e: skipping $(basename "$spec") in packaged mode (dev-server harness; covered by the Windows dev-mode lane)"
-        fi
-      done
-      [ "$skip_this" -eq 1 ] || filtered+=("$spec")
+      case "$spec" in
+        *-browser.spec.ts)
+          echo "e2e: skipping $(basename "$spec") in packaged mode (dev-server harness; covered by the browser-harness job)"
+          ;;
+        *)
+          filtered+=("$spec")
+          ;;
+      esac
     done
     SUITE_SPECS=("${filtered[@]}")
   fi

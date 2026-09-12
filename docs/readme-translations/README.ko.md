@@ -187,4 +187,21 @@ Oleafly는 [Prajwal Murthy](https://github.com/prajwal-svm)와 기여자가 만�
 
 Oleafly 덕분에 글쓰기가 편해졌다면, [GitHub에서 ⭐을 눌러](https://github.com/Oleafly/Oleafly) 다른 연구자도 Oleafly를 발견할 수 있도록 도와주세요.
 
+### Oleafly 인용하기
+
+Oleafly가 논문 작성에 도움이 되었다면 인용해 주세요. 참고문헌에 BibTeX 항목 하나를 추가하면 다음 연구자에게 이 도구의 출처를 알리고, 무료 오픈소스 프로젝트가 계속 눈에 띄도록 도울 수 있습니다.
+
+```bibtex
+@software{oleafly,
+  author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
+  title   = {Oleafly: a local-first desktop workspace for research writing},
+  year    = {2026},
+  version = {0.4.0},
+  url     = {https://github.com/Oleafly/Oleafly},
+  license = {AGPL-3.0-or-later}
+}
+```
+
+저장소 페이지 상단의 **Cite this repository** 버튼에서도 [CITATION.cff](../../CITATION.cff)로 생성된 같은 참조를 APA와 BibTeX 형식으로 받을 수 있습니다. 앱의 설정, 도움말 및 정보에는 복사 버튼이 있습니다.
+
 [보안](../../SECURITY.md) · [행동 강령](../../CODE_OF_CONDUCT.md) · [AGPL-3.0-or-later](../../LICENSE)

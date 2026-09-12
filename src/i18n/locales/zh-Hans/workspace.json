@@ -1,0 +1,181 @@
+{
+  "files": {
+    "confirmDelete": "删除 {{path}}？此操作无法撤销。",
+    "conflict": {
+      "cancelAriaLabel": "取消移动文件",
+      "createBody": "<destination>{{destination}}</destination> 已存在。可使用 <suggestion>{{suggestion}}</suggestion> 保留两个文件。创建操作绝不会替换现有文件。",
+      "dialogAriaLabel": "移动文件冲突",
+      "keepBoth": "保留两者",
+      "renameBody": "<destination>{{destination}}</destination> 已存在。可使用 <suggestion>{{suggestion}}</suggestion> 保留两个文件，或替换现有的目标文件。除非你选择“替换”，否则 Oleafly 不会替换该文件。",
+      "replace": "替换",
+      "title": "该名称已被使用",
+      "unchanged": "原始路径和目标路径均未更改。"
+    },
+    "createFailed": "无法创建“{{path}}”。",
+    "deleteFailed": "无法删除“{{path}}”。",
+    "importAriaLabel": "导入到所选文件夹",
+    "importFiles": "导入文件",
+    "importFolder": "导入文件夹",
+    "importTitle": "导入文件或文件夹（到所选文件夹）",
+    "makeCopy": "创建副本",
+    "moreActions": "{{name}} 的更多操作",
+    "moveFailed": "无法移动“{{path}}”。原始路径未更改。",
+    "newEntry": {
+      "fileInFolder": "文件夹 {{folder}} 中的新文件名",
+      "fileInRoot": "项目根目录中的新文件名",
+      "filePlaceholder": "新文件名",
+      "folderInFolder": "文件夹 {{folder}} 中的新文件夹名",
+      "folderInRoot": "项目根目录中的新文件夹名",
+      "folderPlaceholder": "新文件夹名"
+    },
+    "newFile": "新建文件",
+    "newFileAriaLabel": "在所选文件夹中新建文件",
+    "newFileTitle": "新建文件（在所选文件夹中）",
+    "newFolder": "新建文件夹",
+    "newFolderAriaLabel": "在所选文件夹中新建文件夹",
+    "newFolderTitle": "新建文件夹（在所选文件夹中）",
+    "renameAriaLabel": "重命名文件",
+    "renameFailed": "无法重命名“{{path}}”。原始路径未更改。",
+    "setMain": "已将此文件设为主文档。",
+    "treeAriaLabel": "源码树"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "歧义",
+      "cycle": "循环",
+      "definitions_other": "{{count}} 个定义",
+      "duplicate": "重复",
+      "external": "外部",
+      "folded": "已折叠",
+      "incomplete": "不完整",
+      "missing": "缺失"
+    },
+    "bibEntryIn": "{{file}} 中的 {{type}} 条目",
+    "duplicateKey": "重复键。",
+    "duplicateKeyIn": "{{file}} 中存在重复键 {{key}}。",
+    "folded": {
+      "description": "此分支已折叠，以确保超大项目关系图保持流畅。",
+      "label": "打开关联的源文件以继续"
+    },
+    "fromFile": "来自 {{file}} 的 {{kind}}",
+    "groups": {
+      "bibliography": "参考文献",
+      "bibtexEntries": "BibTeX 条目",
+      "commands": "命令",
+      "definitions_other": "定义",
+      "dependencies": "链接与依赖",
+      "duplicateCitations": "重复引用键",
+      "environments": "环境",
+      "labels": "标签与锚点",
+      "occurrences": "出现位置",
+      "sections": "章节",
+      "unlinked": "未链接的文件",
+      "unresolvedCitations": "未解析的引用",
+      "unresolvedDuplicate": "未解析与重复"
+    },
+    "inFile": "{{file}} 中的 {{kind}}",
+    "incompleteEntry": "条目不完整。",
+    "kinds": {
+      "anchor": "锚点",
+      "asset": "资源",
+      "bibentry": "参考文献条目",
+      "bibliography": "参考文献",
+      "citation": "引用",
+      "environment": "环境",
+      "file": "文件",
+      "glossary": "术语表",
+      "import": "导入",
+      "include": "包含文件",
+      "label": "标签",
+      "link": "链接",
+      "macro": "宏",
+      "reference": "交叉引用",
+      "section": "章节"
+    }
+  },
+  "outline": {
+    "ariaLabel": "文档大纲",
+    "empty": "此文档中没有章节或包含文件。",
+    "entryCount_other": "{{count}} 个大纲条目",
+    "title": "大纲"
+  },
+  "panelError": {
+    "message": "面板布局遇到了问题，你的项目文件在磁盘上是安全的。",
+    "reload": "重新加载 Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "文档结构",
+    "empty": "项目结构图中没有受支持的文件。",
+    "filterLabel": "筛选项目结构",
+    "filterPlaceholder": "筛选项目结构图…",
+    "itemCount_other": "{{count}} 个结构条目",
+    "noMatch": "没有与“{{query}}”匹配的结构。",
+    "notice": {
+      "partial": "结构图不完整。无法读取或格式错误的文件会尽可能保持可见。",
+      "stale": "正在更新。当前源码范围就绪前，会先隐藏上一版本的结构。"
+    },
+    "title": "结构",
+    "treeLabel": "项目结构",
+    "unavailable": {
+      "failed": {
+        "detail": "无法分析该项目。你的源文件未作任何更改。",
+        "title": "无法构建结构"
+      },
+      "mapping": {
+        "detail": "Oleafly 正在索引标题、链接文件、符号和参考文献条目。",
+        "title": "正在映射项目结构"
+      },
+      "noProject": {
+        "detail": "打开一个文档项目，即可浏览其本地与项目结构。",
+        "title": "未打开项目"
+      },
+      "noSource": {
+        "detail": "打开受支持的源码或参考文献文件以查看其结构。",
+        "title": "无活动源码"
+      },
+      "offline": {
+        "detail": "当前工作区暂时无法使用项目分析。",
+        "title": "结构服务不可用"
+      },
+      "unsupported": {
+        "detail": "此文件类型没有对应的项目结构提供程序。",
+        "title": "结构不可用"
+      },
+      "waiting": {
+        "detail": "最新项目版本尚未完成索引。",
+        "title": "正在等待项目结构"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "正在加载助手",
+    "editor": "正在加载编辑器",
+    "preview": "正在加载预览",
+    "terminal": "正在加载终端"
+  },
+  "terminal": {
+    "closeCurrent": "关闭当前标签页",
+    "closeLeft": "关闭左侧所有标签页",
+    "closeOthers": "关闭其他标签页",
+    "closeRight": "关闭右侧所有标签页",
+    "closeTab": "关闭 {{title}}",
+    "color": "颜色",
+    "errors": {
+      "input": "shell 无法接受输入。",
+      "resize": "终端无法调整大小。",
+      "start": "shell 无法启动。"
+    },
+    "limitReached": "关闭一个终端以打开另一个终端。",
+    "newTerminal": "新建终端",
+    "settings": "终端设置",
+    "starting": "正在启动项目 shell…",
+    "tabs": "终端",
+    "titleInput": "终端标题"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}，{{path}}",
+    "clearFilter": "清除筛选",
+    "filterPlaceholder": "筛选…",
+    "noProject": "无项目"
+  }
+}

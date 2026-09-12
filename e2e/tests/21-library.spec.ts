@@ -102,7 +102,7 @@ test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }
     70_000,
   );
 
-  const stacked = await tauriPage.evaluate<boolean>(
+  const layers = await tauriPage.evaluate<{ bookmark: number; preview: number } | null>(
     `(() => {
       const el = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
         .find((b) => b.textContent.includes('E2E Doc'));
@@ -110,12 +110,13 @@ test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }
       const img = el && el.querySelector('img[draggable="false"]');
       const overlay = img && img.parentElement;
       const bookmarkLayer = btn?.parentElement;
-      if (!bookmarkLayer || !overlay) return false;
+      if (!bookmarkLayer || !overlay) return null;
       const z = (n) => parseInt(getComputedStyle(n).zIndex || '0', 10) || 0;
-      return z(bookmarkLayer) > z(overlay);
+      return { bookmark: z(bookmarkLayer), preview: z(overlay) };
     })()`,
   );
-  expect(stacked).toBe(true);
+  expect(layers).not.toBeNull();
+  expect(layers!.bookmark).toBeGreaterThan(layers!.preview);
 });
 
 test("fork a project from the context menu", async ({ tauriPage }) => {
@@ -287,7 +288,7 @@ test("list view exposes favorites and the compiled PDF preview", async ({
 
   await tauriPage.click('[aria-label="Preview E2E Doc"]');
   const previewDialog = tauriPage.getByRole("dialog");
-  await expect(previewDialog).toContainText("PDF preview — E2E Doc");
+  await expect(previewDialog).toContainText("PDF preview: E2E Doc");
   await expect(previewDialog.locator(".pdf-canvas").first()).toBeVisible({
     timeout: 30_000,
   });

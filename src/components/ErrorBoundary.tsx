@@ -1,8 +1,33 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Trans } from "react-i18next";
 import { Check, Copy, Github, RefreshCw } from "lucide-react";
 import { appendAppLog } from "@/lib/tauri";
 import { reportCrashToGithub } from "@/lib/crash-report";
 import { SpecimenIllustration } from "@/components/SpecimenIllustration";
+import { i18n } from "@/i18n";
+
+const APP_LOG_PATH = "~/.oleafly/app.log";
+
+export type ErrorSurface =
+  | "AI assistant"
+  | "PDF preview"
+  | "assistant panel"
+  | "chat"
+  | "diagram composer"
+  | "editor"
+  | "research assistant"
+  | "terminal dock";
+
+const SURFACE_KEYS = {
+  "AI assistant": "aiAssistant",
+  "PDF preview": "pdfPreview",
+  "assistant panel": "assistantPanel",
+  chat: "chat",
+  "diagram composer": "diagramComposer",
+  editor: "editor",
+  "research assistant": "researchAssistant",
+  "terminal dock": "terminalDock",
+} as const;
 
 interface Props {
   children: ReactNode;
@@ -13,7 +38,7 @@ interface Props {
   // Names a UI surface (editor, chat, PDF preview…). A caught error renders a
   // compact in-place fallback with Retry and Copy diagnostics instead of the
   // full-screen crash screen, so the rest of the workspace survives.
-  surface?: string;
+  surface?: ErrorSurface;
   // A new render payload (for example, a newly compiled PDF) gets one fresh
   // attempt after a scoped child crashed.
   resetKey?: unknown;
@@ -96,13 +121,16 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.props.fallback !== undefined) return this.props.fallback;
 
     if (this.props.surface !== undefined) {
+      const surfaceKey = SURFACE_KEYS[this.props.surface];
       return (
         <div
           data-testid="surface-error-boundary"
           className="flex h-full min-h-24 w-full flex-1 flex-col items-center justify-center gap-3 p-6 text-center"
         >
           <p className="text-sm text-muted-foreground">
-            The {this.props.surface} crashed.
+            {i18n.t(($) => $.shell.errorBoundary.surfaceCrashed, {
+              surface: i18n.t(($) => $.shell.errorBoundary.surfaces[surfaceKey]),
+            })}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -111,7 +139,7 @@ export class ErrorBoundary extends Component<Props, State> {
               className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
               <RefreshCw className="size-3.5" />
-              Retry
+              {i18n.t(($) => $.common.actions.retry)}
             </button>
             <button
               type="button"
@@ -123,7 +151,7 @@ export class ErrorBoundary extends Component<Props, State> {
               ) : (
                 <Copy className="size-3.5" />
               )}
-              Copy diagnostics
+              {i18n.t(($) => $.shell.errorBoundary.copyDiagnostics)}
             </button>
           </div>
         </div>
@@ -137,19 +165,19 @@ export class ErrorBoundary extends Component<Props, State> {
       >
         <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-white/40">
-            Runtime error
+            {i18n.t(($) => $.shell.errorBoundary.runtimeError)}
           </p>
-          <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Something went wrong</h1>
+          <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
+            {i18n.t(($) => $.shell.errorBoundary.title)}
+          </h1>
           <p className="text-base leading-relaxed text-white/60">
-            Oleafly encountered an unexpected error and could not render this
-            screen. Your project files remain on disk. Diagnostic details are
-            available below.
+            {i18n.t(($) => $.shell.errorBoundary.description)}
           </p>
 
           <div className="overflow-hidden rounded-lg border border-white/15">
             <div className="flex items-center justify-between border-b border-white/15 px-4 py-2.5">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-                Stack trace
+                {i18n.t(($) => $.shell.errorBoundary.stackTrace)}
               </span>
               <button
                 type="button"
@@ -157,16 +185,23 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="flex items-center gap-1.5 text-xs text-white/60 transition-colors hover:text-white"
               >
                 {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-                {copied ? "Copied" : "Copy"}
+                {copied
+                  ? i18n.t(($) => $.common.actions.copied)
+                  : i18n.t(($) => $.common.actions.copy)}
               </button>
             </div>
             <pre className="max-h-40 overflow-auto px-4 py-3 text-left font-mono text-xs text-white/80">
-              {error.name}: {error.message}
+              {`${error.name}: ${error.message}`}
             </pre>
           </div>
 
           <p className="font-mono text-xs text-white/40">
-            Log saved to <span className="text-white/60">~/.oleafly/app.log</span>
+            <Trans
+              ns="shell"
+              i18nKey={($) => $.shell.errorBoundary.logSaved}
+              values={{ path: APP_LOG_PATH }}
+              components={{ path: <span className="text-white/60" /> }}
+            />
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -176,7 +211,7 @@ export class ErrorBoundary extends Component<Props, State> {
               className="flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-black transition-opacity hover:opacity-90"
             >
               <RefreshCw className="size-4" />
-              Reload Oleafly
+              {i18n.t(($) => $.shell.errorBoundary.reload)}
             </button>
             <button
               type="button"
@@ -184,17 +219,17 @@ export class ErrorBoundary extends Component<Props, State> {
               className="flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
             >
               <Github className="size-4" />
-              Report to GitHub
+              {i18n.t(($) => $.shell.errorBoundary.report)}
             </button>
           </div>
         </div>
 
         <div className="hidden overflow-hidden rounded-xl border border-white/15 bg-white/[0.02] lg:block">
           <div className="flex items-center justify-between border-b border-white/15 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-            <span>Specimen Viewer</span>
+            <span>{i18n.t(($) => $.shell.errorBoundary.specimenViewer)}</span>
             <span className="flex items-center gap-1.5 text-red-400">
               <span className="size-1.5 rounded-full bg-red-400" />
-              Halted
+              {i18n.t(($) => $.shell.errorBoundary.halted)}
             </span>
           </div>
           <div className="aspect-square p-6">

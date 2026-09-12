@@ -23,6 +23,7 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { ThemeProvider } from "@/lib/theme";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 function renderToolbar() {
   const { container } = render(
@@ -54,14 +55,14 @@ beforeEach(() => {
 describe("TopToolbar on Windows", () => {
   it("ends the toolbar with the caption buttons", () => {
     renderToolbar();
-    const strip = screen.getByLabelText("Window controls");
+    const strip = screen.getByLabelText(enShell.windowControls.group);
     expect(strip.nextElementSibling).toBeNull();
     expect(strip.parentElement?.nextElementSibling).toBeNull();
   });
 
   it("clips the action cluster rather than letting it push the caption buttons off screen", () => {
     renderToolbar();
-    const cluster = screen.getByLabelText("Window controls").parentElement;
+    const cluster = screen.getByLabelText(enShell.windowControls.group).parentElement;
     expect(cluster?.className).toContain("min-w-0");
     expect(cluster?.className).toContain("overflow-x-clip");
     expect(cluster?.className).not.toContain("overflow-hidden");
@@ -83,11 +84,11 @@ describe("TopToolbar on Windows", () => {
     expect(chevron?.parentElement).toBe(toolbar);
     expect(chevron?.getAttribute("class")).toContain("shrink-0");
 
-    const brand = screen.getByLabelText("Home").parentElement;
+    const brand = screen.getByLabelText(enShell.home.ariaLabel).parentElement;
     expect(brand?.parentElement).toBe(toolbar);
     expect(brand?.className).toContain("shrink-0");
 
-    const viewSwitch = screen.getByLabelText("Split View").closest("div.shrink-0");
+    const viewSwitch = screen.getByLabelText(enShell.toolbar.views.split).closest("div.shrink-0");
     const titleSlot = screen.getByTestId("project-title").parentElement?.parentElement;
     expect(viewSwitch?.parentElement).toBe(titleSlot);
     expect(titleSlot?.parentElement).toBe(toolbar);

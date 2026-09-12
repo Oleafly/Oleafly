@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import type { RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import type { ChatMessage } from "@/store/chats";
 import { cn } from "@/lib/utils";
 import { CHAT_SCROLL_TO_INDEX_EVENT } from "./MessageList";
@@ -52,6 +53,7 @@ export function ChatMinimap({
   messages: ChatMessage[];
   visible: boolean;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const prompts = useMemo(
     () =>
       messages
@@ -121,7 +123,10 @@ export function ChatMinimap({
   const preview = hover ? turnPreview(messages, hover.index) : null;
 
   return (
-    <nav className="pointer-events-none absolute inset-y-0 left-0 z-20" aria-label="Conversation turns">
+    <nav
+      className="pointer-events-none absolute inset-y-0 left-0 z-20"
+      aria-label={t(($) => $.ai.minimap.ariaLabel)}
+    >
       <div className="pointer-events-auto absolute inset-y-0 left-1.5 flex flex-col items-start justify-center gap-2">
         {prompts.map(({ message, index }) => {
           const active = index === activeIndex;
@@ -142,7 +147,7 @@ export function ChatMinimap({
               onMouseLeave={() =>
                 setHover((current) => (current?.index === index ? null : current))
               }
-              aria-label={`Jump to: ${firstLine(message.content)}`}
+              aria-label={t(($) => $.ai.minimap.jumpTo, { text: firstLine(message.content) })}
               className="group flex h-3 items-center"
               title={firstLine(message.content)}
             >

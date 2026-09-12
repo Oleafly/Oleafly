@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 import { SourceControl } from "./SourceControl";
-
-const REMOTE_HINT =
-  "Create a new repo or link an existing one as this project's remote, then push.";
+import { i18n } from "@/i18n";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
   gitAheadBehind: vi.fn(),
@@ -148,6 +147,39 @@ function withRepository(changes = MIXED_CHANGES) {
 }
 
 describe("SourceControl", () => {
+  it("coalesces repeated refreshes while Git is slow and fetches one final snapshot", async () => {
+    withRepository();
+    render(<SourceControl />);
+    await screen.findByTestId("git-change-src/main.tex");
+    const slowStatus = deferred<typeof MIXED_CHANGES>();
+    mocks.gitStatus.mockImplementationOnce(() => slowStatus.promise);
+    fireEvent.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
+    await waitFor(() => expect(mocks.gitStatus).toHaveBeenCalledTimes(2));
+    for (let index = 0; index < 20; index++) {
+      fireEvent.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
+    }
+    expect(mocks.gitStatus).toHaveBeenCalledTimes(2);
+    await act(async () => slowStatus.resolve(MIXED_CHANGES));
+    await waitFor(() => expect(mocks.gitStatus).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(mocks.refreshGitCount).toHaveBeenCalledTimes(2));
+  });
+
+  it("admits one staging action until its refreshed status is visible", async () => {
+    withRepository([{ path: "main.tex", status: "M", staged: false }]);
+    const staged = deferred<void>();
+    mocks.gitStageAll.mockImplementationOnce(() => staged.promise);
+    render(<SourceControl />);
+    const stageAll = await screen.findByRole("button", { name: enShell.sourceControl.stageAll });
+    fireEvent.click(stageAll);
+    for (let index = 0; index < 20; index++) fireEvent.click(stageAll);
+    expect(mocks.gitStageAll).toHaveBeenCalledTimes(1);
+    expect(stageAll).toBeDisabled();
+    expect(screen.getByRole("button", { name: enShell.sourceControl.stage })).toBeDisabled();
+    mocks.gitStatus.mockResolvedValue([{ path: "main.tex", status: "M", staged: true }]);
+    await act(async () => staged.resolve());
+    await waitFor(() => expect(screen.getByRole("button", { name: enShell.sourceControl.unstageAll })).toBeEnabled());
+  });
+
   it("keeps the current project's status when an older project refresh finishes last", async () => {
     const user = userEvent.setup();
     const slowOlderProjectStatus = deferred<
@@ -181,7 +213,7 @@ describe("SourceControl", () => {
     expect(await screen.findByText("project-a.tex")).toBeInTheDocument();
     expect(screen.getByTestId("source-control-actions")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
     await slowRefreshStarted.promise;
 
     fileState.projectId = "project-b";
@@ -220,13 +252,13 @@ describe("SourceControl", () => {
     fileState.projectId = "project-a";
     const view = render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: "Pull from origin" }));
+    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.pull }));
     expect(fileState.pullFromGit).toHaveBeenCalledWith("project-a");
 
     fileState.projectId = "project-b";
     view.rerender(<SourceControl />);
     const projectBPullButton = await screen.findByRole("button", {
-      name: "Pull from origin",
+      name: enShell.sourceControl.pull,
     });
     expect(projectBPullButton).toBeEnabled();
     await user.click(projectBPullButton);
@@ -257,8 +289,8 @@ describe("SourceControl", () => {
     render(<SourceControl />);
 
     await screen.findByText("main.tex");
-    await user.click(screen.getByRole("button", { name: "Discard changes" }));
-    await user.click(screen.getByRole("button", { name: "Confirm discard" }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.discard }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.confirmDiscard }));
 
     await waitFor(() =>
       expect(fileState.discardFromGit).toHaveBeenCalledWith("project-1", "main.tex"),
@@ -303,20 +335,20 @@ describe("SourceControl", () => {
     withRepository();
     render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: "Stage" }));
+    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.stage }));
     await waitFor(() =>
       expect(mocks.gitStage).toHaveBeenCalledWith("project-1", "src/main.tex"),
     );
 
-    await user.click(screen.getByRole("button", { name: "Unstage" }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.unstage }));
     await waitFor(() =>
       expect(mocks.gitUnstage).toHaveBeenCalledWith("project-1", "refs/library.bib"),
     );
 
-    await user.click(screen.getByRole("button", { name: "Stage all" }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.stageAll }));
     await waitFor(() => expect(mocks.gitStageAll).toHaveBeenCalledWith("project-1"));
 
-    await user.click(screen.getByRole("button", { name: "Unstage all" }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.unstageAll }));
     await waitFor(() => expect(mocks.gitUnstageAll).toHaveBeenCalledWith("project-1"));
 
     expect(mocks.gitStatus.mock.calls.length).toBeGreaterThan(4);
@@ -328,7 +360,7 @@ describe("SourceControl", () => {
     mocks.gitStage.mockRejectedValue(new Error("index.lock exists"));
     render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: "Stage" }));
+    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.stage }));
 
     expect(await screen.findByText(/index\.lock exists/)).toBeInTheDocument();
   });
@@ -419,7 +451,7 @@ describe("SourceControl", () => {
     render(<SourceControl />);
 
     await user.type(await screen.findByTestId("commit-title"), "Push me");
-    await user.click(screen.getByRole("button", { name: "Commit and push to origin" }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.push }));
 
     await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
     expect(await screen.findByText(/Pushed to origin\/main\./)).toBeInTheDocument();
@@ -482,7 +514,7 @@ describe("SourceControl", () => {
     fileState.pullFromGit.mockRejectedValue(new Error("merge conflict in main.tex"));
     render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: "Pull from origin" }));
+    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.pull }));
 
     expect(await screen.findByText(/merge conflict in main\.tex/)).toBeInTheDocument();
   });
@@ -507,8 +539,8 @@ describe("SourceControl", () => {
     render(<SourceControl />);
 
     await screen.findByText("main.tex");
-    await user.click(screen.getByRole("button", { name: "Discard changes" }));
-    await user.click(screen.getByRole("button", { name: "Confirm discard" }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.discard }));
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.confirmDiscard }));
 
     expect(await screen.findByText(/file is locked/)).toBeInTheDocument();
   });
@@ -523,10 +555,10 @@ describe("SourceControl", () => {
 
     expect(await screen.findByText("main.tex")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Unlink" })).toBeNull();
-    expect(screen.queryByText(/Older Oleafly versions/)).toBeNull();
+    expect(screen.queryByText(enShell.sourceControl.credentialWarning)).toBeNull();
   });
 
-  it("drops a refresh that a newer one has already superseded", async () => {
+  it("queues a fresh snapshot and drops the superseded response", async () => {
     const user = userEvent.setup();
     const firstInitializedRead = deferred<boolean>();
     let reads = 0;
@@ -538,15 +570,16 @@ describe("SourceControl", () => {
     mocks.gitStatus.mockResolvedValue([{ path: "second.tex", status: "M", staged: false }]);
     render(<SourceControl />);
 
-    await user.click(screen.getByRole("button", { name: "Refresh" }));
-    expect(await screen.findByText("second.tex")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
+    expect(reads).toBe(1);
 
     await act(async () => {
       firstInitializedRead.resolve(false);
       await firstInitializedRead.promise;
     });
 
-    expect(screen.getByText("second.tex")).toBeInTheDocument();
+    expect(await screen.findByText("second.tex")).toBeInTheDocument();
+    expect(reads).toBe(2);
     expect(screen.queryByRole("button", { name: "Initialize Repository" })).toBeNull();
   });
 
@@ -555,7 +588,7 @@ describe("SourceControl", () => {
     render(<SourceControl />);
 
     await screen.findByRole("button", { name: "Initialize Repository" });
-    const publish = screen.getByRole("button", { name: "Publish to GitHub" });
+    const publish = screen.getByRole("button", { name: enShell.sourceControl.publish });
     await user.click(publish);
 
     expect(mocks.gitInitialize).not.toHaveBeenCalled();
@@ -566,9 +599,9 @@ describe("SourceControl", () => {
     withRepository();
     render(<SourceControl />);
 
-    const info = await screen.findByRole("img", { name: REMOTE_HINT });
+    const info = await screen.findByRole("img", { name: enShell.sourceControl.remoteHint });
     expect(info).toHaveClass("size-3.5", "text-muted-foreground");
-    expect(screen.queryByText(REMOTE_HINT)).toBeNull();
+    expect(screen.queryByText(enShell.sourceControl.remoteHint)).toBeNull();
   });
 
   it("keeps committing and hides pushing and pulling while GitHub is disconnected", async () => {
@@ -581,11 +614,11 @@ describe("SourceControl", () => {
     expect(screen.getByTestId("commit-title")).toBeInTheDocument();
     expect(screen.getByTestId("commit-description")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
-    expect(screen.getByText("Stage a file to commit.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Commit and push to origin" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Pull from origin" })).toBeNull();
+    expect(screen.getByText(enShell.sourceControl.stageToCommit)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enShell.sourceControl.push })).toBeNull();
+    expect(screen.queryByRole("button", { name: enShell.sourceControl.pull })).toBeNull();
     expect(actions.firstElementChild).toHaveTextContent("Remote");
-    expect(screen.getByRole("button", { name: "Publish to GitHub" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enShell.sourceControl.publish })).toBeInTheDocument();
   });
 
   it("commits the staged set while GitHub is disconnected", async () => {
@@ -601,7 +634,11 @@ describe("SourceControl", () => {
     await waitFor(() =>
       expect(mocks.gitCommit).toHaveBeenCalledWith("project-1", "Local only commit"),
     );
-    expect(await screen.findByText(/Committed: "Local only commit"/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        i18n.t(($) => $.shell.sourceControl.committed, { subject: "Local only commit" }),
+      ),
+    ).toBeInTheDocument();
   });
 
   it("adds pushing and pulling once GitHub is connected", async () => {
@@ -612,9 +649,9 @@ describe("SourceControl", () => {
     expect(actions.firstElementChild).toContainElement(screen.getByTestId("commit-title"));
     expect(screen.getByTestId("commit-description")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Commit and push to origin" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pull from origin" })).toBeInTheDocument();
-    expect(screen.getByText("Stage a file to commit.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enShell.sourceControl.push })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enShell.sourceControl.pull })).toBeInTheDocument();
+    expect(screen.getByText(enShell.sourceControl.stageToCommit)).toBeInTheDocument();
   });
 
   it("holds the commit layout while the account status is still unknown", async () => {
@@ -626,8 +663,8 @@ describe("SourceControl", () => {
     const actions = await screen.findByTestId("source-control-actions");
     expect(actions.firstElementChild).toContainElement(screen.getByTestId("commit-title"));
     expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Commit and push to origin" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Pull from origin" })).toBeNull();
+    expect(screen.queryByRole("button", { name: enShell.sourceControl.push })).toBeNull();
+    expect(screen.queryByRole("button", { name: enShell.sourceControl.pull })).toBeNull();
   });
 
   it("sends Publish to the GitHub settings tab while the account is disconnected", async () => {
@@ -637,7 +674,7 @@ describe("SourceControl", () => {
     withRepository();
     render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: "Publish to GitHub" }));
+    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.publish }));
 
     const settings = useSettingsStore.getState();
     expect(settings.settingsOpen).toBe(true);
@@ -650,7 +687,7 @@ describe("SourceControl", () => {
     withRepository();
     render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: "Publish to GitHub" }));
+    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.publish }));
 
     expect(useSettingsStore.getState().settingsOpen).toBe(false);
   });

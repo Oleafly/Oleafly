@@ -128,16 +128,25 @@ export async function reloadNativePage(page: TauriPage) {
 }
 
 async function ensureNativePageReady(page: TauriPage) {
-  try {
-    await page.waitForFunction(
-      productionE2e
-        ? 'document.readyState !== "loading" && (document.querySelector("#root")?.childElementCount ?? 0) > 0'
-        : 'document.readyState !== "loading" && !!window.__PW_ACTIVE__ && (document.querySelector("#root")?.childElementCount ?? 0) > 0',
-      10_000,
-    );
-  } catch {
-    await reloadNativePage(page);
+  // The TCP listener precedes WebView2 navigation and Vite's cold transforms.
+  // Reloading after ten seconds restarts a healthy boot and can discard an
+  // in-flight bridge result. Poll read-only readiness before any page access.
+  const deadline = Date.now() + 90_000;
+  let lastError: unknown = "the app root has not mounted";
+  while (Date.now() < deadline) {
+    try {
+      const ready = await page.evaluate<boolean>(
+        productionE2e
+          ? 'document.readyState !== "loading" && (document.querySelector("#root")?.childElementCount ?? 0) > 0'
+          : 'document.readyState !== "loading" && !!window.__PW_ACTIVE__ && (document.querySelector("#root")?.childElementCount ?? 0) > 0',
+      );
+      if (ready) return;
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
+  throw new Error(`Native app did not become ready: ${String(lastError)}`);
 }
 
 async function focusNativeWindow(page: TauriPage) {
@@ -250,6 +259,7 @@ function createNativeTest(dismissTours: boolean) {
       if (!ping.ok) throw new Error("plugin ping failed");
       const page = adaptForPackagedRuntime(new TauriPage(client));
       page.setDefaultTimeout(20_000);
+      await ensureNativePageReady(page);
       const firstPage = !nativePageOpened;
       const inheritedProject = firstPage && await page.evaluate<boolean>(
         `document.querySelector('button[aria-label="Home"]') !== null`,
@@ -262,8 +272,10 @@ function createNativeTest(dismissTours: boolean) {
         // Enable the experimental Visual editor and LaTeX tools (default off)
         // so the gated e2e specs run. Wrapped as an IIFE expression, the form
         // this bridge evaluates reliably (bare multi-statement strings time out).
+        const locale = testInfo.file.includes("97-locale-zh-hans") ? "zh-Hans" : "en";
         await page.evaluate(`(function(){
           localStorage.removeItem("oleafly.shortcuts");
+          localStorage.setItem("oleafly.locale", "${locale}");
           localStorage.setItem("oleafly.visualEditor", "1");
           localStorage.setItem("oleafly.latexTools", "1");
           localStorage.setItem("oleafly.webBrowser", "1");

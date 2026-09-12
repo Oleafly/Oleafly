@@ -1,3 +1,4 @@
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { beforeEach, describe, it, expect } from "vitest";
 import type { ModelMetadata, StoredModel } from "@/lib/tauri";
 import {
@@ -158,8 +159,10 @@ describe("model list refresh helpers", () => {
     const before = [stored("a"), stored("b")];
     const after = [stored("b"), stored("c"), stored("d")];
     expect(diffModelLists(before, after)).toEqual({ added: 2, removed: 1 });
-    expect(describeModelListChange({ added: 2, removed: 1 })).toBe("2 added, 1 removed");
-    expect(describeModelListChange({ added: 0, removed: 0 })).toBe("No changes");
+    expect(describeModelListChange({ added: 2, removed: 1 })).toBe(
+      enCore.models.listChange.summary.replace("{{added}}", "2").replace("{{removed}}", "1"),
+    );
+    expect(describeModelListChange({ added: 0, removed: 0 })).toBe(enCore.models.listChange.none);
   });
 
   it("asks for an automatic refresh only once a day", () => {

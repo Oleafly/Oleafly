@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   getEditorView,
@@ -23,6 +24,7 @@ export function ProofreadingNotifications({
   path: string | null;
   surface: ProofreadingSurface;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   const status = useProofreadingStore((state) => state[surface]);
   const spellcheck = useSettingsStore((state) => state.spellcheck);
   const grammar = useSettingsStore((state) => state.harper);
@@ -56,14 +58,16 @@ export function ProofreadingNotifications({
   const notificationMessage =
     status.message ??
     (status.phase === "error"
-      ? "Proofreading could not finish this document."
+      ? t(($) => $.editor.proofreading.error)
       : status.phase === "unavailable"
-        ? "Offline proofreading is unavailable."
+        ? t(($) => $.editor.proofreading.unavailable)
         : status.phase === "too_large"
-          ? "Proofreading is paused because this document is too large."
+          ? t(($) => $.editor.proofreading.tooLarge)
           : status.phase === "unsupported"
-            ? "Proofreading is not supported for this document format."
-            : `Proofreading recovered ${status.diagnosticCount.toLocaleString()} findings, but one engine did not finish.`);
+            ? t(($) => $.editor.proofreading.unsupported)
+            : t(($) => $.editor.proofreading.partial, {
+                count: status.diagnosticCount,
+              }));
 
   useEffect(() => {
     const toastId = `proofreading:${surface}`;
@@ -76,7 +80,7 @@ export function ProofreadingNotifications({
       duration: Number.POSITIVE_INFINITY,
       action: failure
         ? {
-            label: "Retry",
+            label: t(($) => $.editor.proofreading.retry),
             onClick: retry,
           }
         : undefined,
@@ -95,6 +99,7 @@ export function ProofreadingNotifications({
     notificationMessage,
     retry,
     surface,
+    t,
   ]);
 
   return null;

@@ -187,4 +187,21 @@ Oleafly 由 [Prajwal Murthy](https://github.com/prajwal-svm) 和贡献者共同�
 
 如果 Oleafly 让你的写作更轻松，[在 GitHub 上点一颗⭐](https://github.com/Oleafly/Oleafly)，帮助更多研究者发现它。
 
+### 引用 Oleafly
+
+如果 Oleafly 帮你完成了一篇论文，请引用它。在参考文献里加入一条 BibTeX 条目，就能让下一位研究者知道这个工具的来历，也让一个免费开源项目继续被看见：
+
+```bibtex
+@software{oleafly,
+  author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
+  title   = {Oleafly: a local-first desktop workspace for research writing},
+  year    = {2026},
+  version = {0.4.0},
+  url     = {https://github.com/Oleafly/Oleafly},
+  license = {AGPL-3.0-or-later}
+}
+```
+
+仓库页面顶部的 **Cite this repository** 按钮提供同一条引用的 APA 和 BibTeX 版本，由 [CITATION.cff](../../CITATION.cff) 生成。应用内的设置、帮助与关于中有复制按钮。
+
 [安全](../../SECURITY.md) · [行为准则](../../CODE_OF_CONDUCT.md) · [AGPL-3.0-or-later](../../LICENSE)

@@ -10,7 +10,10 @@ allowBuilds:
 # Force transitive build and test dependencies to patched versions.
 overrides:
   decode-uri-component@<0.5.0: "0.5.0"
-  "@tiptap/core": "3.30.4"
+  # Exact, so the editor extension types resolve against one core. Held at the
+  # patched release for GHSA-j95f-988m-3j2f: quadratic ReDoS in block and
+  # inline Markdown attribute parsing, fixed in 3.30.5.
+  "@tiptap/core": "3.30.5"
   "rehype-katex>katex": "0.18.1"
   nanoid@<3.3.18: "3.3.18"
   # GHSA-6g55-p6wh-862q: source map disclosure in postcss < 8.5.23.

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { TurnRecord } from "@oleafly/ai-core";
 import { agentThreadRead } from "@/lib/agent-backend";
 import { MessageItem } from "@/components/ai/chat-parts";
@@ -25,6 +26,7 @@ export function SessionTranscriptDialog({
   threadId: string | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [state, setState] = useState<TranscriptState>({ status: "loading" });
 
   useEffect(() => {
@@ -52,23 +54,21 @@ export function SessionTranscriptDialog({
         className="flex h-[min(85vh,800px)] max-w-3xl flex-col gap-0 overflow-hidden p-0"
       >
         <DialogHeader className="shrink-0 border-b px-5 py-3 pr-12">
-          <DialogTitle>Delegated task transcript</DialogTitle>
-          <DialogDescription>
-            Everything the delegated agent read, ran, and answered while it worked on this task.
-          </DialogDescription>
+          <DialogTitle>{t(($) => $.ai.transcript.dialogTitle)}</DialogTitle>
+          <DialogDescription>{t(($) => $.ai.transcript.dialogDescription)}</DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {state.status === "loading" && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Loading transcript
+              {t(($) => $.ai.transcript.loading)}
             </p>
           )}
           {state.status === "error" && (
-            <p className="text-sm text-muted-foreground">The transcript could not be loaded.</p>
+            <p className="text-sm text-muted-foreground">{t(($) => $.ai.transcript.failed)}</p>
           )}
           {state.status === "ready" && state.rows.length === 0 && (
-            <p className="text-sm text-muted-foreground">This task did not record a transcript.</p>
+            <p className="text-sm text-muted-foreground">{t(($) => $.ai.transcript.empty)}</p>
           )}
           {state.status === "ready" && state.rows.length > 0 && (
             <div className="flex flex-col gap-3">

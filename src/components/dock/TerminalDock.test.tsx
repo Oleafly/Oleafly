@@ -40,7 +40,7 @@ vi.mock("./TerminalPane", () => ({
         data-auto-start={props.autoStart ? "true" : "false"}
       >
         <button type="button" data-testid="pane-exit" onClick={() => props.onExit?.()}>
-          exit
+          {"exit"}
         </button>
       </div>
     );

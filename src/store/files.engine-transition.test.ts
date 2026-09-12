@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { supportsFigureTools, LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
@@ -1555,11 +1556,11 @@ describe("project engine transition", () => {
     expect(state.projectId).toBe("project");
     expect(state.engineLoaded).toBe(false);
     expect(state.engine.capabilities.supports_isolated_compile).toBe(false);
-    expect(state.engineError).toContain("actions are disabled");
+    expect(state.engineError).toBe("loadFailed");
     expect(mocks.notifyError).toHaveBeenCalledWith(
       "load document engine",
       expect.any(Error),
-      expect.stringContaining("actions are disabled"),
+      enCore.engine.error.loadFailed,
     );
   });
 

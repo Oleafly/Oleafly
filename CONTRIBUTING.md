@@ -93,6 +93,54 @@ app binary receives the manifest that Tauri normally embeds. Leave the
 variable unset for `cargo build` and `pnpm tauri` commands so the app binary
 keeps its single embedded manifest.
 
+The ACP protocol tests also need Python 3 on `PATH` (`python.exe` on Windows,
+`python3` on Unix). On Windows without Developer Mode, tests that require
+creating symbolic links report that the session lacks that permission.
+
+### Windows native and compiler checks
+
+`powershell -File scripts/e2e.ps1` drives the real WebView2 app, with one
+temporary library shared across fresh app launches. To test bundled frontend
+assets instead of the Vite development server:
+
+```powershell
+$env:VITE_E2E_HOOKS = "1"
+pnpm tauri build --debug --features e2e-testing --no-bundle
+Remove-Item Env:VITE_E2E_HOOKS
+$env:OLEAFLY_E2E_APP_BINARY = (Resolve-Path src-tauri/target/debug/oleafly.exe).Path
+powershell -File scripts/e2e.ps1
+Remove-Item Env:OLEAFLY_E2E_APP_BINARY
+```
+
+This binary contains test hooks and must not be distributed. The packaged
+runner explicitly lists the three browser harness specs that require Vite;
+run those separately in development mode. Live provider tests are opt-in
+through the variables in `e2e/.env.example`. Keep credentials outside Git.
+Use `--from-spec=<filename>.spec.ts` to resume the Windows sweep at an exact
+spec filename; the runner first creates the shared document in a fresh library.
+
+For the browser harnesses, start Vite with `OLEAFLY_E2E_DISABLE_HMR=1`
+(PowerShell: `$env:OLEAFLY_E2E_DISABLE_HMR="1"; pnpm dev`). This also disables
+HMR sockets in PDF module workers, avoiding a Playwright Firefox transport
+assertion before selection tests can run. Normal development keeps HMR on.
+The Windows native E2E runner sets this flag automatically for its dev server.
+
+The standalone compiler matrix checks valid PDFs, included source files,
+math, references, font selection, and errors without touching user projects:
+
+```powershell
+node scripts/smoke-document-engines.mjs
+# Optionally include installed TeX Live engines:
+$env:OLEAFLY_TEX_BIN_DIR = "C:/path/to/TinyTeX/bin/windows"
+node scripts/smoke-document-engines.mjs
+```
+
+It always checks the bundled Tectonic and Typst sidecars; setting the TeX
+directory adds pdfLaTeX, XeLaTeX, and LuaLaTeX. Logs and source fixtures are
+preserved in the temporary directory printed at completion. Run performance
+checks separately from builds and broad test suites to avoid measuring CPU
+and disk contention.
+
 Backend logic that touches the filesystem, git, or user paths **must** have a
 test. The path-sandboxing helpers (`resolve_within`, `validate_project_id`) and
 log/URL parsers are covered in `#[cfg(test)]` modules - extend them when you

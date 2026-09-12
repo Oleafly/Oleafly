@@ -1,0 +1,119 @@
+{
+  "citeOleafly": "Cite Oleafly in this paper",
+  "empty": {
+    "citations": {
+      "detail": "Import a reference library or add a citation to begin.",
+      "title": "No citations yet"
+    },
+    "symbols": {
+      "detail": "Headings, labels, commands, and environments appear here as the project is authored.",
+      "title": "No symbols yet"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filter citations",
+    "ariaLabelResults": "Filter results",
+    "ariaLabelSymbols": "Filter symbols",
+    "clear": "Clear filter",
+    "noCitation": "No citation matches “{{query}}”.",
+    "noResult": "No result matches “{{query}}”.",
+    "noSymbol": "No symbol matches “{{query}}”.",
+    "placeholderCitations": "Filter keys, titles, authors…",
+    "placeholderResults": "Filter locations…",
+    "placeholderSymbols": "Filter labels and commands…"
+  },
+  "import": {
+    "added_one": "{{count}} reference added to {{target}}.",
+    "added_other": "{{count}} references added to {{target}}.",
+    "addedWithDuplicates_one": "{{count}} reference added to {{target}}, {{duplicates}} already there.",
+    "addedWithDuplicates_other": "{{count}} references added to {{target}}, {{duplicates}} already there.",
+    "allDuplicates_one": "That reference is already in {{target}}.",
+    "allDuplicates_other": "Those {{count}} references are already in {{target}}.",
+    "defaultTarget": "the bibliography",
+    "description": "Add references from a citation manager or bibliography file to this project.",
+    "duplicateNote": "References with a DOI that already exists in the bibliography are skipped.",
+    "empty": "No references found in that file.",
+    "endnote": {
+      "button": "Choose XML, RIS, or BibTeX file",
+      "description": "Choose an EndNote XML, RIS, or BibTeX file. Oleafly adds the references to the project bibliography.",
+      "title": "EndNote, RIS, or BibTeX"
+    },
+    "failed": "Could not import those references.",
+    "nothingNew": "Nothing new to add to {{target}}.",
+    "problems_one": "{{count}} problem during import. {{details}}",
+    "problems_other": "{{count}} problems during import. {{details}}",
+    "readFailed": "Could not read that file.",
+    "title": "Import reference library",
+    "unrecognized": "Unrecognized file type: {{name}}",
+    "zotero": {
+      "button": "Choose Zotero RDF file",
+      "description": "In Zotero, select File → Export Library → Zotero RDF. Then choose the exported file.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Partial results. Malformed or unreadable files may omit some occurrences.",
+    "stale": "Updating. Previous-revision citations, symbols, and ranges are hidden."
+  },
+  "panel": {
+    "ariaLabel": "References (Shift-F12)",
+    "clearQuery": "Clear reference query",
+    "importAriaLabel": "Import references",
+    "issues_one": "{{count}} reference or citation issue",
+    "issues_other": "{{count}} reference or citation issues",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "References",
+    "viewTabs": "Reference panel view"
+  },
+  "query": {
+    "expired": {
+      "detail": "The project changed after this query. Run Find References again to use current source ranges.",
+      "title": "Reference results expired"
+    },
+    "noLocations": {
+      "detail": "The symbol exists in this revision, but it has no matching definitions or occurrences.",
+      "title": "No locations found"
+    },
+    "none": {
+      "detail": "Place the cursor on a label, citation, command, or environment and press Shift-F12.",
+      "title": "No reference query"
+    }
+  },
+  "tabs": {
+    "citations": "Citations",
+    "results": "References",
+    "symbols": "Symbols"
+  },
+  "trees": {
+    "citations": "Project citations",
+    "noCitations": "No bibliography entries or citation uses were found.",
+    "noSymbols": "No project-defined symbols were found.",
+    "symbols": "Project symbols"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "The latest project revision could not be analyzed. Source files were not changed.",
+      "title": "Project analysis failed"
+    },
+    "indexing": {
+      "detail": "References and citations will appear when the current project revision is ready.",
+      "title": "Indexing project intelligence"
+    },
+    "noProject": {
+      "detail": "Open a document project to inspect citations, symbols, and cross-file references.",
+      "title": "No project open"
+    },
+    "offline": {
+      "detail": "References and citations cannot be checked in this workspace right now.",
+      "title": "Analysis service unavailable"
+    },
+    "unsupported": {
+      "detail": "The active project does not use a supported document engine.",
+      "title": "Project intelligence unavailable"
+    },
+    "waiting": {
+      "detail": "The latest project revision has not been indexed yet.",
+      "title": "Waiting for project analysis"
+    }
+  }
+}

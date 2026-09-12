@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyCompileFailure,
+  importCompatAction,
   importCompatFinding,
   latexmkFixesFinding,
   loadsPackage,
-  missingLatexPackages,
+  missingLatexFiles,
+  needsPdflatexFinding,
   scanImportCompatibility,
   stripLineComments,
 } from "./import-compat";
@@ -163,6 +165,107 @@ describe("classifyCompileFailure", () => {
     ].join("\n");
     expect(classifyCompileFailure(log)).toEqual([]);
   });
+
+  it("recognizes a class that pins hyperref to the pdftex driver", () => {
+    const log = [
+      "! Package hyperref Error: Wrong driver option `pdftex',",
+      "(hyperref)                because XeTeX is running.",
+    ].join("\n");
+    const finding = classifyCompileFailure(log).find(
+      (f) => f.id === "hyperref-pdftex-driver",
+    );
+    expect(finding).toBeDefined();
+    expect(needsPdflatexFinding("hyperref-pdftex-driver")).toBe(true);
+    expect(
+      classifyCompileFailure("! Package hyperref Error: Wrong driver option `dvips'."),
+    ).toEqual([]);
+  });
+
+  it("names the EPS image the bundled engine could not place", () => {
+    const tectonic = classifyCompileFailure(
+      'error: pdf: image inclusion failed for "images/MDHlogga.eps"',
+    ).find((f) => f.id === "eps-image");
+    expect(tectonic?.detail).toContain("images/MDHlogga.eps");
+
+    const epstopdf = classifyCompileFailure(
+      [
+        "Package epstopdf Warning: Shell escape feature is not enabled.",
+        "! LaTeX Error: File `images/MDUlogo-eps-converted-to.pdf' not found.",
+      ].join("\n"),
+    ).find((f) => f.id === "eps-image");
+    expect(epstopdf?.detail).toContain("images/MDUlogo.eps");
+
+    expect(
+      classifyCompileFailure('error: pdf: image inclusion failed for "figure.png"').map(
+        (f) => f.id,
+      ),
+    ).not.toContain("eps-image");
+  });
+
+  it("offers the package installer for a file missing from the bundled engine", () => {
+    const log = "! LaTeX Error: File `thesisMDU.cls' not found.";
+    const finding = classifyCompileFailure(log).find(
+      (f) => f.id === "missing-sty-on-bundled-engine",
+    );
+    expect(finding?.detail).toContain("thesisMDU.cls");
+    expect(importCompatAction("missing-sty-on-bundled-engine")).toBe(
+      "install-after-switch",
+    );
+    expect(
+      classifyCompileFailure(log, { bundledEngine: false }).map((f) => f.id),
+    ).not.toContain("missing-sty-on-bundled-engine");
+  });
+
+  it("reports a failed bundle download on its own and never as a missing package", () => {
+    const log = [
+      "error: this bundle isn't cached, and we couldn't get it from the internet",
+      'caused by: unexpected HTTP response code 429 Too Many Requests for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar',
+      "! LaTeX Error: File `amsmath.sty' not found.",
+    ].join("\n");
+    const findings = classifyCompileFailure(log);
+    expect(findings.map((f) => f.id)).toEqual(["bundle-fetch-failed"]);
+    expect(findings[0].detail).toContain("HTTP 429");
+    expect(importCompatAction("bundle-fetch-failed")).toBe("retry-compile");
+    expect(latexmkFixesFinding("bundle-fetch-failed")).toBe(false);
+
+    const noStatus = classifyCompileFailure(
+      'note: failed to download "msbm10.tfm" from https://mirrors.oleafly.com/tex-bundles/x.tar',
+    );
+    expect(noStatus.map((f) => f.id)).toEqual(["bundle-fetch-failed"]);
+    expect(noStatus[0].detail).not.toContain("HTTP");
+  });
+
+  it("keeps unrelated connection text from hiding a missing package", () => {
+    const unrelated = classifyCompileFailure(
+      [
+        "Package biblatex Warning: error connecting to the citation service",
+        "! LaTeX Error: File `thesisMDU.cls' not found.",
+      ].join("\n"),
+    ).map((f) => f.id);
+    expect(unrelated).toContain("missing-sty-on-bundled-engine");
+    expect(unrelated).not.toContain("bundle-fetch-failed");
+
+    const mirror = classifyCompileFailure(
+      [
+        "error: connecting to https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar failed",
+        "! LaTeX Error: File `thesisMDU.cls' not found.",
+      ].join("\n"),
+    ).map((f) => f.id);
+    expect(mirror).toEqual(["bundle-fetch-failed"]);
+  });
+
+  it("reads the HTTP status from the mirror failure, not from unrelated text", () => {
+    const finding = classifyCompileFailure(
+      [
+        "Package foo Info: unexpected HTTP response code 418 from the linter",
+        "error: failed to download the bundle",
+        "caused by: unexpected HTTP response code 503 for URL https://mirrors.oleafly.com/tex-bundles/x.tar",
+      ].join("\n"),
+    )[0];
+    expect(finding.id).toBe("bundle-fetch-failed");
+    expect(finding.detail).toContain("HTTP 503");
+    expect(finding.detail).not.toContain("418");
+  });
 });
 
 describe("taxonomy catalog", () => {
@@ -174,19 +277,37 @@ describe("taxonomy catalog", () => {
     expect(finding.level).toBe("warning");
     expect(finding.title.length).toBeGreaterThan(0);
   });
+
+  it("gives every entry an action and no em dashes", () => {
+    for (const id of [
+      "minted",
+      "pdftex-only",
+      "class-compat",
+      "hyperref-pdftex-driver",
+      "eps-image",
+      "missing-sty-on-bundled-engine",
+      "bundle-fetch-failed",
+    ] as const) {
+      const finding = importCompatFinding(id);
+      expect(finding.detail).not.toMatch(/[\u2014\u2013]/);
+      expect(importCompatAction(id)).toBeDefined();
+    }
+    expect(importCompatAction("not-a-real-id")).toBe("switch-to-latexmk");
+    expect(needsPdflatexFinding("minted")).toBe(false);
+  });
 });
 
-describe("missingLatexPackages", () => {
-  it("extracts package stems from missing .sty and .cls errors", () => {
+describe("missingLatexFiles", () => {
+  it("extracts filenames from missing .sty and .cls errors", () => {
     const log = [
       "! LaTeX Error: File `siunitx.sty' not found.",
       "! LaTeX Error: File `sn-jnl.cls' not found.",
       "! I can't find file `algorithmic.sty'.",
     ].join("\n");
-    expect(missingLatexPackages(log).sort()).toEqual([
-      "algorithmic",
-      "siunitx",
-      "sn-jnl",
+    expect(missingLatexFiles(log).sort()).toEqual([
+      "algorithmic.sty",
+      "siunitx.sty",
+      "sn-jnl.cls",
     ]);
   });
 
@@ -195,7 +316,7 @@ describe("missingLatexPackages", () => {
       "! LaTeX Error: File `figure1.pdf' not found.",
       "! I can't find file `chapters/intro.tex'.",
     ].join("\n");
-    expect(missingLatexPackages(log)).toEqual([]);
+    expect(missingLatexFiles(log)).toEqual([]);
   });
 
   it("deduplicates repeated misses and rejects unsafe names", () => {
@@ -204,6 +325,15 @@ describe("missingLatexPackages", () => {
       "! LaTeX Error: File `siunitx.sty' not found.",
       "! LaTeX Error: File `bad name$.sty' not found.",
     ].join("\n");
-    expect(missingLatexPackages(log)).toEqual(["siunitx"]);
+    expect(missingLatexFiles(log)).toEqual(["siunitx.sty"]);
   });
+  it("preserves filenames and recognizes quote variants without treating project paths as packages", () => {
+    const log = [
+      "! LaTeX Error: File 'tikz.sty' not found.",
+      '! LaTeX Error: File "university_thesis.cls" not found.',
+      "! LaTeX Error: File `styles/custom.sty' not found.",
+    ].join("\n");
+    expect(missingLatexFiles(log)).toEqual(["tikz.sty", "university_thesis.cls"]);
+  });
+
 });

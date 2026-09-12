@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 // Three axes per package:
 //  - scope:     "all" packages matter in every export; "pdf" only affect PDF.
 //  - defaultOn: part of the sensible default set for a new document.
@@ -7,59 +8,145 @@
 // The tagging axis is what makes one catalog serve both research-PDF users
 // and the accessibility path. See the accessibility/ATS preflight design spec.
 
+import { packageTaggingVerdict, type TaggingCompatibility } from "@oleafly/preflight";
+
 export type PkgScope = "all" | "pdf";
 export type TaggingStatus = "ok" | "caution" | "breaks";
 
 export interface LatexPackage {
   name: string;
   description: string;
+  texLivePackage?: string;
   scope: PkgScope;
   defaultOn: boolean;
   tagging: TaggingStatus;
 }
 
-export const LATEX_PACKAGES: LatexPackage[] = [
-  { name: "amsmath", description: "Advanced math typesetting", scope: "all", defaultOn: true, tagging: "ok" },
-  { name: "amssymb", description: "Extended math symbols", scope: "all", defaultOn: true, tagging: "ok" },
-  { name: "mathtools", description: "amsmath superset with fixes and tools", scope: "all", defaultOn: false, tagging: "ok" },
-  { name: "amsthm", description: "Theorem and proof environments", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "unicode-math", description: "Unicode math for Xe/LuaLaTeX (required for tagged math)", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "graphicx", description: "Include graphics and images", scope: "all", defaultOn: true, tagging: "ok" },
-  { name: "hyperref", description: "Hyperlinks, bookmarks, and PDF metadata", scope: "pdf", defaultOn: true, tagging: "ok" },
-  { name: "bookmark", description: "Improved PDF bookmarks", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "geometry", description: "Page layout customization", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "booktabs", description: "Professional table rules", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "xcolor", description: "Color support", scope: "all", defaultOn: true, tagging: "ok" },
-  { name: "listings", description: "Code listings (not compatible with tagging)", scope: "pdf", defaultOn: false, tagging: "breaks" },
-  { name: "tikz", description: "Programmable vector graphics (needs manual alt text)", scope: "pdf", defaultOn: false, tagging: "caution" },
-  { name: "algorithm2e", description: "Algorithm typesetting", scope: "pdf", defaultOn: false, tagging: "caution" },
-  { name: "biblatex", description: "Advanced bibliography support", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "natbib", description: "Author-year and numeric citations", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "csquotes", description: "Context-sensitive quotes (needed by biblatex)", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "fontspec", description: "OpenType font selection (Xe/LuaLaTeX)", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "microtype", description: "Micro-typography refinements", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "siunitx", description: "SI units and number formatting", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "cleveref", description: "Smart cross-references (load after hyperref)", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "enumitem", description: "List customization", scope: "all", defaultOn: true, tagging: "ok" },
-  { name: "fancyhdr", description: "Custom headers and footers", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "caption", description: "Caption customization (some versions break tagging)", scope: "pdf", defaultOn: false, tagging: "caution" },
-  { name: "subcaption", description: "Subfigures and subtables", scope: "pdf", defaultOn: false, tagging: "caution" },
-  { name: "float", description: "Improved float placement", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "array", description: "Extended array and tabular", scope: "all", defaultOn: true, tagging: "ok" },
-  { name: "tabularx", description: "Auto-width tables", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "multirow", description: "Multi-row table cells", scope: "pdf", defaultOn: false, tagging: "caution" },
-  { name: "url", description: "URL typesetting", scope: "all", defaultOn: true, tagging: "ok" },
-  { name: "inputenc", description: "Input encoding (unnecessary on Xe/LuaLaTeX)", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "babel", description: "Multilingual support and document language", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "setspace", description: "Line spacing control", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "parskip", description: "Paragraph spacing", scope: "pdf", defaultOn: false, tagging: "ok" },
-  { name: "lipsum", description: "Placeholder (lorem ipsum) text", scope: "all", defaultOn: false, tagging: "ok" },
+type LatexPackageSeed = Omit<LatexPackage, "tagging" | "description">;
+
+const AXIS: Record<TaggingCompatibility, TaggingStatus> = {
+  compatible: "ok",
+  "partially-compatible": "caution",
+  "currently-incompatible": "breaks",
+  "no-support": "breaks",
+  unchecked: "caution",
+  unknown: "caution",
+};
+
+export function taggingAxis(name: string): TaggingStatus {
+  return AXIS[packageTaggingVerdict(name).status];
+}
+
+const SEEDS: LatexPackageSeed[] = [
+  { name: "amsmath", scope: "all", defaultOn: true },
+  { name: "amssymb", texLivePackage: "amsfonts", scope: "all", defaultOn: true },
+  { name: "mathtools", scope: "all", defaultOn: false },
+  { name: "amsthm", texLivePackage: "amscls", scope: "pdf", defaultOn: false },
+  { name: "unicode-math", scope: "pdf", defaultOn: false },
+  { name: "graphicx", texLivePackage: "graphics", scope: "all", defaultOn: true },
+  { name: "hyperref", scope: "pdf", defaultOn: true },
+  { name: "bookmark", scope: "pdf", defaultOn: false },
+  { name: "geometry", scope: "pdf", defaultOn: false },
+  { name: "booktabs", scope: "pdf", defaultOn: false },
+  { name: "xcolor", scope: "all", defaultOn: true },
+  { name: "listings", scope: "pdf", defaultOn: false },
+  { name: "minted", scope: "pdf", defaultOn: false },
+  { name: "tikz", texLivePackage: "pgf", scope: "pdf", defaultOn: false },
+  { name: "algorithm2e", scope: "pdf", defaultOn: false },
+  { name: "biblatex", scope: "pdf", defaultOn: false },
+  { name: "natbib", scope: "pdf", defaultOn: false },
+  { name: "csquotes", scope: "pdf", defaultOn: false },
+  { name: "fontspec", scope: "pdf", defaultOn: false },
+  { name: "microtype", scope: "pdf", defaultOn: false },
+  { name: "siunitx", scope: "pdf", defaultOn: false },
+  { name: "cleveref", scope: "pdf", defaultOn: false },
+  { name: "enumitem", scope: "all", defaultOn: true },
+  { name: "fancyhdr", scope: "pdf", defaultOn: false },
+  { name: "caption", scope: "pdf", defaultOn: false },
+  { name: "subcaption", texLivePackage: "caption", scope: "pdf", defaultOn: false },
+  { name: "subfig", scope: "pdf", defaultOn: false },
+  { name: "float", scope: "pdf", defaultOn: false },
+  { name: "wrapfig", scope: "pdf", defaultOn: false },
+  { name: "array", texLivePackage: "tools", scope: "all", defaultOn: true },
+  { name: "tabularx", texLivePackage: "tools", scope: "pdf", defaultOn: false },
+  { name: "multirow", scope: "pdf", defaultOn: false },
+  { name: "threeparttable", scope: "pdf", defaultOn: false },
+  { name: "titlesec", scope: "pdf", defaultOn: false },
+  { name: "lineno", scope: "pdf", defaultOn: false },
+  { name: "authblk", texLivePackage: "preprint", scope: "pdf", defaultOn: false },
+  { name: "todonotes", scope: "pdf", defaultOn: false },
+  { name: "pdfpages", scope: "pdf", defaultOn: false },
+  { name: "url", scope: "all", defaultOn: true },
+  { name: "inputenc", texLivePackage: "latex", scope: "pdf", defaultOn: false },
+  { name: "babel", scope: "pdf", defaultOn: false },
+  { name: "setspace", scope: "pdf", defaultOn: false },
+  { name: "parskip", scope: "pdf", defaultOn: false },
+  { name: "lipsum", scope: "all", defaultOn: false },
 ];
+
+const DESCRIPTIONS: Record<string, () => string> = {
+  amsmath: () => i18n.t(($) => $.core.latexPackages.amsmath),
+  amssymb: () => i18n.t(($) => $.core.latexPackages.amssymb),
+  mathtools: () => i18n.t(($) => $.core.latexPackages.mathtools),
+  amsthm: () => i18n.t(($) => $.core.latexPackages.amsthm),
+  "unicode-math": () => i18n.t(($) => $.core.latexPackages["unicode-math"]),
+  graphicx: () => i18n.t(($) => $.core.latexPackages.graphicx),
+  hyperref: () => i18n.t(($) => $.core.latexPackages.hyperref),
+  bookmark: () => i18n.t(($) => $.core.latexPackages.bookmark),
+  geometry: () => i18n.t(($) => $.core.latexPackages.geometry),
+  booktabs: () => i18n.t(($) => $.core.latexPackages.booktabs),
+  xcolor: () => i18n.t(($) => $.core.latexPackages.xcolor),
+  listings: () => i18n.t(($) => $.core.latexPackages.listings),
+  minted: () => i18n.t(($) => $.core.latexPackages.minted),
+  tikz: () => i18n.t(($) => $.core.latexPackages.tikz),
+  algorithm2e: () => i18n.t(($) => $.core.latexPackages.algorithm2e),
+  biblatex: () => i18n.t(($) => $.core.latexPackages.biblatex),
+  natbib: () => i18n.t(($) => $.core.latexPackages.natbib),
+  csquotes: () => i18n.t(($) => $.core.latexPackages.csquotes),
+  fontspec: () => i18n.t(($) => $.core.latexPackages.fontspec),
+  microtype: () => i18n.t(($) => $.core.latexPackages.microtype),
+  siunitx: () => i18n.t(($) => $.core.latexPackages.siunitx),
+  cleveref: () => i18n.t(($) => $.core.latexPackages.cleveref),
+  enumitem: () => i18n.t(($) => $.core.latexPackages.enumitem),
+  fancyhdr: () => i18n.t(($) => $.core.latexPackages.fancyhdr),
+  caption: () => i18n.t(($) => $.core.latexPackages.caption),
+  subcaption: () => i18n.t(($) => $.core.latexPackages.subcaption),
+  subfig: () => i18n.t(($) => $.core.latexPackages.subfig),
+  float: () => i18n.t(($) => $.core.latexPackages.float),
+  wrapfig: () => i18n.t(($) => $.core.latexPackages.wrapfig),
+  array: () => i18n.t(($) => $.core.latexPackages.array),
+  tabularx: () => i18n.t(($) => $.core.latexPackages.tabularx),
+  multirow: () => i18n.t(($) => $.core.latexPackages.multirow),
+  threeparttable: () => i18n.t(($) => $.core.latexPackages.threeparttable),
+  titlesec: () => i18n.t(($) => $.core.latexPackages.titlesec),
+  lineno: () => i18n.t(($) => $.core.latexPackages.lineno),
+  authblk: () => i18n.t(($) => $.core.latexPackages.authblk),
+  todonotes: () => i18n.t(($) => $.core.latexPackages.todonotes),
+  pdfpages: () => i18n.t(($) => $.core.latexPackages.pdfpages),
+  url: () => i18n.t(($) => $.core.latexPackages.url),
+  inputenc: () => i18n.t(($) => $.core.latexPackages.inputenc),
+  babel: () => i18n.t(($) => $.core.latexPackages.babel),
+  setspace: () => i18n.t(($) => $.core.latexPackages.setspace),
+  parskip: () => i18n.t(($) => $.core.latexPackages.parskip),
+  lipsum: () => i18n.t(($) => $.core.latexPackages.lipsum),
+};
+
+function packageDescription(name: string): string {
+  return DESCRIPTIONS[name]?.() ?? "";
+}
+
+export const LATEX_PACKAGES: LatexPackage[] = SEEDS.map((seed) => ({
+  ...seed,
+  get description() {
+    return packageDescription(seed.name);
+  },
+  tagging: taggingAxis(seed.name),
+}));
 
 const BY_NAME = new Map(LATEX_PACKAGES.map((p) => [p.name, p]));
 
 export function taggingStatus(name: string): TaggingStatus {
-  return BY_NAME.get(name)?.tagging ?? "ok";
+  return BY_NAME.get(name)?.tagging ?? taggingAxis(name);
 }
 
 export function packagesThatBreakTagging(): string[] {

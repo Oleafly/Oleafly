@@ -9,10 +9,15 @@ import {
 import {
   setSpellHost,
   setBibKeysProvider,
+  setEditorTranslator,
   bibKeysFromSources,
+  closeEnvironmentOnEnter,
   latexListKeymap,
   latexStructureKeymap,
+  type EditorTranslator,
 } from "@oleafly/editor";
+import { setWysiwygTranslator, type WysiwygTranslator } from "@oleafly/wysiwyg";
+import { i18n } from "@/i18n";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
 import { codeIntel } from "./cm/code-intel";
@@ -54,6 +59,9 @@ function sourceProofreadingContextKey(
     settings.dictionaryLocale,
     settings.showRegionalism,
     settings.showWordChoice,
+    [...settings.harperDisabledRules].sort((a, b) => Number(a > b) - Number(a < b)),
+    [...settings.harperEnabledRules].sort((a, b) => Number(a > b) - Number(a < b)),
+    dictionary.revision,
     [...dictionary.global].sort((a, b) => Number(a > b) - Number(a < b)),
     projectId
       ? [...(dictionary.ignored[projectId] ?? [])].sort((a, b) => Number(a > b) - Number(a < b))
@@ -61,8 +69,30 @@ function sourceProofreadingContextKey(
   ]);
 }
 
+function translate(
+  key: string,
+  params?: Record<string, string | number>,
+): string {
+  return (
+    i18n.t as unknown as (
+      key: string,
+      params?: Record<string, string | number>,
+    ) => string
+  )(key, params);
+}
+
+const packageMessage: EditorTranslator = (key, params) =>
+  translate(`editor:package.${key}`, params);
+
+const wysiwygMessage: WysiwygTranslator = (key, params) =>
+  translate(`editor:package.wysiwyg.${key}`, params);
+
+setEditorTranslator(packageMessage);
+setWysiwygTranslator(wysiwygMessage);
+
 // Module side effect: must install before any lint runs.
 setSpellHost({
+  t: packageMessage,
   getProjectId: () => useFilesStore.getState().projectId,
   getActivePath: () => useFilesStore.getState().activePath,
   getProofreadingContextKey: sourceProofreadingContextKey,
@@ -142,6 +172,7 @@ installAuxNumbers();
 
 // Module-level so the host identity is stable across renders (its use* members are hooks).
 const HOST: EditorHost = {
+  t: packageMessage,
   useActivePath: () => useFilesStore((s) => s.activePath),
   getActivePath: () => useFilesStore.getState().activePath,
   useDocVersion: () => useFilesStore((s) => s.docVersion),
@@ -167,6 +198,7 @@ const HOST: EditorHost = {
     editorTheme: useSettingsStore((s) => s.editorTheme),
     autocomplete: useSettingsStore((s) => s.editorAutocomplete),
     autoCloseBrackets: useSettingsStore((s) => s.editorAutoCloseBrackets),
+    autoCloseMath: useSettingsStore((s) => s.editorAutoCloseMath),
     nonBlinkingCursor: useSettingsStore((s) => s.editorNonBlinkingCursor),
     ghostCompletion: useSettingsStore((s) => s.editorGhostCompletion),
     stickyScroll: useSettingsStore((s) => s.editorStickyScroll),
@@ -193,7 +225,16 @@ const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
 ];
 
 const EXTRA_KEYMAP: KeyBinding[] = [
-  // List keymap first so its Enter binding is checked before defaults.
+  {
+    key: "Enter",
+    run: (view) => {
+      const settings = useSettingsStore.getState();
+      return settings.editorAutoCloseBrackets &&
+        settings.editorAutoCloseEnvironments
+        ? closeEnvironmentOnEnter(view)
+        : false;
+    },
+  },
   ...latexListKeymap,
   ...latexStructureKeymap,
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },

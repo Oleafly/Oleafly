@@ -823,24 +823,56 @@ fn malformed_and_truncated_archives_fail() {
 }
 
 #[tokio::test]
-async fn local_install_commands_bound_output_and_hide_failed_command_details() {
-    let python = discover("python3").expect("Python 3 is required for ACP protocol fixtures");
+async fn local_install_commands_bound_output_and_report_why_the_command_failed() {
+    let python = crate::acp::tests::fixture_python();
     let mut command = tokio::process::Command::new(&python);
     command.args(["-c", "import sys; sys.stdout.write('x' * 100000)"]);
     let output = bounded_command(command, Duration::from_secs(5))
         .await
         .unwrap();
     assert_eq!(output, "x".repeat(64 * 1024));
-    let mut command = tokio::process::Command::new(python);
+
+    let mut command = tokio::process::Command::new(&python);
     command.args([
         "-c",
-        "import sys; sys.stderr.write('fixture private diagnostic'); sys.exit(2)",
+        "import sys; sys.stdout.write('npm notice line\\n'); sys.stderr.write('npm error code E404\\nnpm error 404 Not Found\\n'); sys.exit(2)",
     ]);
     let error = bounded_command(command, Duration::from_secs(5))
         .await
         .unwrap_err();
-    assert!(error.contains("installation failed"));
-    assert!(!error.contains("private diagnostic"));
+    assert_eq!(
+        error.lines().collect::<Vec<_>>(),
+        [
+            "npm notice line",
+            "npm error code E404",
+            "npm error 404 Not Found"
+        ]
+    );
+
+    let mut command = tokio::process::Command::new(python);
+    command.args(["-c", "import sys; sys.exit(2)"]);
+    let silent = bounded_command(command, Duration::from_secs(5))
+        .await
+        .unwrap_err();
+    assert_eq!(silent, INSTALL_FAILED);
+}
+
+#[tokio::test]
+async fn a_verbose_failure_still_reports_its_final_lines() {
+    let python = crate::acp::tests::fixture_python();
+    let mut command = tokio::process::Command::new(&python);
+    command.args([
+        "-c",
+        "import sys\nfor n in range(4000): sys.stderr.write('npm warn deprecated package-%d\\n' % n)\nsys.stderr.write('npm error code EBADENGINE\\n')\nsys.stderr.write('npm error Unsupported engine for agent@1.0.0\\n')\nsys.exit(1)\n",
+    ]);
+    let error = bounded_command(command, Duration::from_secs(30))
+        .await
+        .unwrap_err();
+    assert!(
+        error.contains("npm error Unsupported engine for agent@1.0.0"),
+        "{error}"
+    );
+    assert_eq!(error.lines().count(), 5);
 }
 
 #[tokio::test]
@@ -851,7 +883,7 @@ async fn local_install_commands_handle_spawn_failure_and_timeout() {
         .await
         .unwrap_err()
         .contains("could not be started"));
-    let python = discover("python3").expect("Python 3 is required for ACP protocol fixtures");
+    let python = crate::acp::tests::fixture_python();
     let mut command = tokio::process::Command::new(python);
     command.args(["-c", "import time; time.sleep(30)"]);
     assert!(bounded_command(command, Duration::from_millis(100))
@@ -1344,4 +1376,68 @@ async fn an_agent_pinning_a_newer_node_cannot_be_installed() {
     definition.distribution.npx.as_mut().unwrap().node_major = Some(1);
     let allowed = status(temp.path(), definition, false).await;
     assert!(allowed.can_install);
+}
+
+#[test]
+fn a_failed_install_reports_the_last_output_lines_and_falls_back_when_silent() {
+    let message = command_failure_message(
+        &trailing_lines("npm notice one\n\nnpm notice two\n"),
+        &trailing_lines(
+            "npm error code E404\nnpm error 404 Not Found - GET https://registry.npmjs.org/@nope%2fagent\n",
+        ),
+    );
+    assert_eq!(
+        message.lines().collect::<Vec<_>>(),
+        [
+            "npm notice one",
+            "npm notice two",
+            "npm error code E404",
+            "npm error 404 Not Found - GET https://registry.npmjs.org/@nope%2fagent",
+        ]
+    );
+
+    let long = (1..=9)
+        .map(|n| format!("line {n}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let trimmed = command_failure_message(&trailing_lines(&long), &[]);
+    assert_eq!(trimmed.lines().count(), 5);
+    assert_eq!(trimmed.lines().next().unwrap(), "line 5");
+
+    assert_eq!(
+        command_failure_message(&trailing_lines(""), &trailing_lines("   \n\n")),
+        INSTALL_FAILED
+    );
+    let wide = "x".repeat(4096);
+    assert_eq!(
+        command_failure_message(&[], &trailing_lines(&wide))
+            .chars()
+            .count(),
+        REPORTED_LINE_CHARS
+    );
+}
+
+#[test]
+fn windows_runtime_lookup_covers_the_installer_and_version_manager_locations() {
+    let lookup = |name: &str| -> Option<std::ffi::OsString> {
+        match name {
+            "ProgramFiles" => Some("C:\\Program Files".into()),
+            "ProgramFiles(x86)" => Some("C:\\Program Files (x86)".into()),
+            "APPDATA" => Some("C:\\Users\\tester\\AppData\\Roaming".into()),
+            "LOCALAPPDATA" => Some("C:\\Users\\tester\\AppData\\Local".into()),
+            _ => None,
+        }
+    };
+    assert_eq!(
+        windows_runtime_directories(lookup),
+        [
+            PathBuf::from("C:\\Program Files").join("nodejs"),
+            PathBuf::from("C:\\Program Files (x86)").join("nodejs"),
+            PathBuf::from("C:\\Users\\tester\\AppData\\Roaming").join("npm"),
+            PathBuf::from("C:\\Users\\tester\\AppData\\Local").join("nvm\\current"),
+            PathBuf::from("C:\\Users\\tester\\AppData\\Local").join("Programs\\nodejs"),
+        ]
+    );
+    assert!(windows_runtime_directories(|_| None).is_empty());
+    assert!(windows_runtime_directories(|_| Some(std::ffi::OsString::new())).is_empty());
 }

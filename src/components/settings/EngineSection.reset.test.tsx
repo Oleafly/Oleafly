@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { EngineInfo } from "@/lib/tauri";
 import { useEngineStore } from "@/store/engine";
 import { useSettingsStore } from "@/store/settings";
@@ -36,18 +37,24 @@ describe("Engines reset", () => {
 
     render(<EngineSection />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.reset.button }));
 
     const confirmation = screen.getByRole("alertdialog", {
-      name: /Reset Engines settings/u,
+      name: enSettings.reset.confirmTitle.replace(
+        "{{sectionName}}",
+        enSettings.engine.sectionName,
+      ),
     });
     expect(confirmation).toHaveTextContent(
-      "Restore Engines preferences to their defaults.",
+      enSettings.reset.confirmDescription.replace(
+        "{{sectionName}}",
+        enSettings.engine.sectionName,
+      ),
     );
     expect(useSettingsStore.getState().defaultLatexEngine).toBe("latexmk");
 
     fireEvent.click(
-      within(confirmation).getByRole("button", { name: "Reset to defaults" }),
+      within(confirmation).getByRole("button", { name: enSettings.reset.button }),
     );
 
     expect(useSettingsStore.getState().defaultLatexEngine).toBe("tectonic");

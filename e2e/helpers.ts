@@ -971,6 +971,20 @@ export async function waitEditorShowsFile(page: Page, path: string, timeoutMs = 
   }
 }
 
+export async function typeAtCaret(page: Page, text: string) {
+  for (const character of text) {
+    const ok = await page.evaluate<boolean>(
+      `(() => {
+        const content = document.querySelector('.cm-content');
+        if (!content) return false;
+        content.focus();
+        return document.execCommand('insertText', false, ${JSON.stringify(character)});
+      })()`,
+    );
+    if (!ok) throw new Error(`typeAtCaret: editor rejected ${character}`);
+  }
+}
+
 export async function typeInEditorAtStart(page: Page, text: string) {
   const inserted = await page.evaluate<boolean>(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
@@ -1093,6 +1107,15 @@ export async function ensureGithubConnected(page: Page) {
 // switched the active provider (HTTP 401s).
 export async function expandProviderCard(page: Page) {
   const provider = process.env.E2E_AI_PROVIDER || "Z.AI";
+  const providers = page.locator('[data-testid="ai-settings-tab-providers"]');
+  await expect(providers).toBeVisible({ timeout: 15_000 });
+  await providers.focus();
+  await providers.press("Enter");
+  await page.waitForFunction(
+    `Array.from(document.querySelectorAll('button[aria-expanded]')).some(
+      button => (button.textContent || '').includes(${JSON.stringify(provider)}))`,
+    15_000,
+  );
   await page.evaluate(
     `(() => {
       const modal = document.querySelector('[aria-label="Close settings"]')?.closest('.fixed');
@@ -1123,10 +1146,8 @@ export async function ensureAiConnected(page: Page) {
   const token = process.env.E2E_AI_TOKEN;
   if (!token) throw new Error("ensureAiConnected: E2E_AI_TOKEN not set");
   await openRailTab(page, "Research Assistant");
-  const ready = await page.evaluate<boolean>(
-    `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
-  );
-  if (ready) return;
+  // A composer can belong to a previous spec's mock provider. Reconnect the
+  // requested provider through settings before sending a live request.
   await openSettings(page, "ai");
   await expandProviderCard(page);
   await page.evaluate(
@@ -1180,12 +1201,23 @@ export async function ensureAiConnected(page: Page) {
     );
   }
   await page.click('[aria-label="Close settings"]');
+  const model = process.env.E2E_AI_MODEL;
+  if (model) {
+    await page.evaluate(`(async () => {
+      const { getConfig, setConfig } = await import("/src/lib/tauri.ts");
+      const config = await getConfig();
+      await setConfig({ ...config, ai_model: ${JSON.stringify(model)} });
+      window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed"));
+    })()`);
+  }
   await openRailTab(page, "Research Assistant");
   await page.waitForFunction(
     `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
     10_000,
   );
 }
+
+const SETTINGS_BUTTON = '[data-testid="open-settings"]';
 
 export async function openSettings(page: Page, section?: string) {
   // The settings modal is lazy-loaded. Wait for its always-present appearance
@@ -1197,14 +1229,14 @@ export async function openSettings(page: Page, section?: string) {
   const appearance = page.locator(
     '[data-testid="settings-section-appearance"]',
   ) as unknown as LocatorLike;
-  await page.click('[aria-label="Settings"]');
+  await page.click(SETTINGS_BUTTON);
   const mounted = await expect(appearance)
     .toBeVisible({ timeout: 8_000 })
     .then(() => true)
     .catch(() => false);
   if (!mounted) {
     await page.press("body", "Escape").catch(() => {});
-    await page.click('[aria-label="Settings"]').catch(() => {});
+    await page.click(SETTINGS_BUTTON).catch(() => {});
     await expect(appearance).toBeVisible({ timeout: 8_000 });
   }
   if (section) {
@@ -1776,4 +1808,43 @@ export async function clickTabByText(page: Page, scope: string, name: string, ti
     return true;
   })()`);
   await page.waitForFunction(`(${match})?.getAttribute("aria-selected") === "true"`, timeoutMs);
+}
+
+export async function stageAllGitChanges(page: Page) {
+  await page.waitForFunction(
+    `import("/src/store/files.ts").then(({ useFilesStore }) =>
+      Object.values(useFilesStore.getState().files).every((file) => !file.dirty))`,
+    60_000,
+  );
+  // The rail may already be open from a previous commit. Request the current
+  // saved working tree instead of relying on a mount-time status snapshot.
+  await page.click('[aria-label="Refresh"]');
+  // The control is hover-revealed. Wait for Git's initial status, then invoke
+  // the real button once; polling must not enqueue more stage/refresh work.
+  await page.waitForFunction(
+    `(() => {
+      const button = document.querySelector('[aria-label="Stage all"]');
+      return button instanceof HTMLButtonElement && !button.disabled;
+    })()`,
+    30_000,
+  );
+  await page.evaluate(`document.querySelector('[aria-label="Stage all"]').click()`);
+  await page.waitForFunction(
+    `(() => {
+      const button = document.querySelector('[aria-label="Unstage all"]');
+      return button instanceof HTMLButtonElement && !button.disabled;
+    })()`,
+    60_000,
+  );
+}
+
+/** Inspect a completed tool card, never a tool name echoed in the user prompt. */
+export async function expectCompletedReadFile(page: Page) {
+  await page.waitForFunction(`(() => {
+    const message = Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1);
+    const worked = Array.from(message?.querySelectorAll('button') ?? [])
+      .find(button => /^Worked (for|through)/.test(button.textContent.trim()));
+    if (worked?.getAttribute('aria-expanded') === 'false') worked.click();
+    return !!message?.querySelector('[data-tool-name="read_file"][data-tool-status="done"]');
+  })()`, 20_000);
 }

@@ -12,7 +12,7 @@ function Failing() {
     queryFn: () => Promise.reject(new Error("backend unreachable")),
     retry: false,
   });
-  return <p>rendered</p>;
+  return <p>{"rendered"}</p>;
 }
 
 function Silent() {
@@ -22,7 +22,7 @@ function Silent() {
     retry: false,
     meta: { silent: true },
   });
-  return <p>silent rendered</p>;
+  return <p>{"silent rendered"}</p>;
 }
 
 describe("app query client", () => {

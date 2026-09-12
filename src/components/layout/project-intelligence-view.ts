@@ -9,11 +9,13 @@ import type {
   ProjectUse,
   SourceLocation,
 } from "@/lib/project-intelligence/types";
+import { projectDiagnosticText } from "@/lib/project-intelligence/reason";
 import type {
   IntelligenceNodeKind,
   IntelligenceNodeTone,
   IntelligenceTreeNode,
 } from "@/components/layout/IntelligenceTree";
+import { i18n } from "@/i18n";
 
 function basename(path: string): string {
   const slash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
@@ -37,7 +39,40 @@ function provenance(location: SourceLocation): string {
 }
 
 function kindLabel(kind: string): string {
-  return kind.replaceAll("-", " ");
+  switch (kind) {
+    case "file":
+      return i18n.t(($) => $.workspace.intelligence.kinds.file);
+    case "section":
+      return i18n.t(($) => $.workspace.intelligence.kinds.section);
+    case "label":
+      return i18n.t(($) => $.workspace.intelligence.kinds.label);
+    case "anchor":
+      return i18n.t(($) => $.workspace.intelligence.kinds.anchor);
+    case "macro":
+      return i18n.t(($) => $.workspace.intelligence.kinds.macro);
+    case "environment":
+      return i18n.t(($) => $.workspace.intelligence.kinds.environment);
+    case "glossary":
+      return i18n.t(($) => $.workspace.intelligence.kinds.glossary);
+    case "bibentry":
+      return i18n.t(($) => $.workspace.intelligence.kinds.bibentry);
+    case "citation":
+      return i18n.t(($) => $.workspace.intelligence.kinds.citation);
+    case "reference":
+      return i18n.t(($) => $.workspace.intelligence.kinds.reference);
+    case "include":
+      return i18n.t(($) => $.workspace.intelligence.kinds.include);
+    case "import":
+      return i18n.t(($) => $.workspace.intelligence.kinds.import);
+    case "link":
+      return i18n.t(($) => $.workspace.intelligence.kinds.link);
+    case "asset":
+      return i18n.t(($) => $.workspace.intelligence.kinds.asset);
+    case "bibliography":
+      return i18n.t(($) => $.workspace.intelligence.kinds.bibliography);
+    default:
+      return kind.replaceAll("-", " ");
+  }
 }
 
 function outlineKind(kind: OutlineNode["kind"]): IntelligenceNodeKind {
@@ -79,9 +114,9 @@ function resolutionTone(
 function resolutionBadge(
   resolution: ProjectUse["resolution"] | ProjectEdge["resolution"],
 ): string | undefined {
-  if (resolution === "unresolved") return "missing";
-  if (resolution === "duplicate") return "ambiguous";
-  if (resolution === "external") return "external";
+  if (resolution === "unresolved") return i18n.t(($) => $.workspace.intelligence.badges.missing);
+  if (resolution === "duplicate") return i18n.t(($) => $.workspace.intelligence.badges.ambiguous);
+  if (resolution === "external") return i18n.t(($) => $.workspace.intelligence.badges.external);
   return undefined;
 }
 
@@ -122,7 +157,10 @@ function presentOutlineNode(
     id: `${idPrefix}:outline:${node.item.id}`,
     label: node.item.title,
     kind: outlineKind(node.item.kind),
-    description: `${kindLabel(node.item.kind)} in ${node.item.file}`,
+    description: i18n.t(($) => $.workspace.intelligence.inFile, {
+      kind: kindLabel(node.item.kind),
+      file: node.item.file,
+    }),
     provenance: `${basename(node.item.file)}:${node.item.range.startLine}:${node.item.range.startColumn + 1}`,
     searchText: `${node.item.file} ${node.item.kind}`,
     defaultExpanded: node.item.kind === "file" || node.item.kind === "section",
@@ -141,7 +179,10 @@ function presentEdge(
     id: `${idPrefix}:edge:${edge.id}`,
     label: edge.rawTarget,
     kind: edge.kind === "include" || edge.kind === "import" ? "include" : "reference",
-    description: `${kindLabel(edge.kind)} from ${edge.fromFile}`,
+    description: i18n.t(($) => $.workspace.intelligence.fromFile, {
+      kind: kindLabel(edge.kind),
+      file: edge.fromFile,
+    }),
     provenance: provenance(edge.location),
     badge: resolutionBadge(edge.resolution),
     tone: resolutionTone(edge.resolution),
@@ -179,22 +220,21 @@ function fileNodeForProject(
         ...edgeNode,
         badge:
           target && (ancestry.has(target) || target === file)
-            ? "cycle"
+            ? i18n.t(($) => $.workspace.intelligence.badges.cycle)
             : edgeNode.badge,
       };
     }
     if (context.rendered >= 5_000 || ancestry.size >= 32) {
       return {
         ...edgeNode,
-        badge: "folded",
+        badge: i18n.t(($) => $.workspace.intelligence.badges.folded),
         tone: "warning" as const,
         children: [
           {
             id: `${occurrenceId}:${file}:edge:${edge.id}:render-limit`,
-            label: "Open the linked source to continue",
+            label: i18n.t(($) => $.workspace.intelligence.folded.label),
             kind: "warning" as const,
-            description:
-              "This branch is folded to keep very large project graphs responsive.",
+            description: i18n.t(($) => $.workspace.intelligence.folded.description),
             tone: "warning" as const,
           },
         ],
@@ -218,7 +258,7 @@ function fileNodeForProject(
   if (dependencyChildren.length) {
     children.push({
       id: `${occurrenceId}:${file}:dependencies`,
-      label: "Links & dependencies",
+      label: i18n.t(($) => $.workspace.intelligence.groups.dependencies),
       kind: "group",
       badge: String(dependencyChildren.length),
       defaultExpanded: true,
@@ -303,7 +343,7 @@ export function buildProjectStructureNodes(
   if (disconnected.length) {
     nodes.push({
       id: "project:unlinked",
-      label: "Unlinked files",
+      label: i18n.t(($) => $.workspace.intelligence.groups.unlinked),
       kind: "group",
       badge: String(disconnected.length),
       defaultExpanded: false,
@@ -326,7 +366,12 @@ function bibliographyMetadata(entry: BibliographyEntry): {
 } {
   const description = [entry.title, entry.author].filter(Boolean).join(", ");
   return {
-    description: description || `${entry.type} entry in ${entry.file}`,
+    description:
+      description ||
+      i18n.t(($) => $.workspace.intelligence.bibEntryIn, {
+        type: entry.type,
+        file: entry.file,
+      }),
     badge: entry.year || entry.type,
   };
 }
@@ -339,7 +384,10 @@ function presentUse(
     id: `${idPrefix}:use:${use.id}`,
     label: use.name,
     kind: projectUseKind(use.kind),
-    description: `${kindLabel(use.kind)} in ${use.location.file}`,
+    description: i18n.t(($) => $.workspace.intelligence.inFile, {
+      kind: kindLabel(use.kind),
+      file: use.location.file,
+    }),
     provenance: provenance(use.location),
     badge: resolutionBadge(use.resolution),
     tone: resolutionTone(use.resolution),
@@ -392,7 +440,7 @@ export function buildCitationNodes(
   if (unresolved.length) {
     nodes.push({
       id: "citations:unresolved",
-      label: "Unresolved citations",
+      label: i18n.t(($) => $.workspace.intelligence.groups.unresolvedCitations),
       kind: "warning",
       badge: String(unresolved.length),
       tone: "danger",
@@ -406,7 +454,9 @@ export function buildCitationNodes(
       id: `citations:duplicate:${duplicate.key}`,
       label: duplicate.key,
       kind: "bibentry" as const,
-      badge: `${duplicate.locations.length} definitions`,
+      badge: i18n.t(($) => $.workspace.intelligence.badges.definitions, {
+        count: duplicate.locations.length,
+      }),
       tone: "warning" as const,
       defaultExpanded: true,
       searchText: duplicate.locations.map((item) => item.file).join(" "),
@@ -415,13 +465,16 @@ export function buildCitationNodes(
         label: basename(location.file),
         kind: "bibentry" as const,
         provenance: provenance(location),
-        description: `Duplicate key ${duplicate.key} in ${location.file}`,
+        description: i18n.t(($) => $.workspace.intelligence.duplicateKeyIn, {
+          key: duplicate.key,
+          file: location.file,
+        }),
         target: locationTarget(location),
       })),
     }));
     nodes.push({
       id: "citations:duplicates",
-      label: "Duplicate citation keys",
+      label: i18n.t(($) => $.workspace.intelligence.groups.duplicateCitations),
       kind: "warning",
       badge: String(
         Math.max(snapshot.bibliography.duplicates.length, duplicateUses.length),
@@ -465,8 +518,8 @@ export function buildCitationNodes(
           label: entry.key,
           kind: "bibentry" as const,
           description: [
-            entry.duplicate ? "Duplicate key." : "",
-            entry.complete ? "" : "Incomplete entry.",
+            entry.duplicate ? i18n.t(($) => $.workspace.intelligence.duplicateKey) : "",
+            entry.complete ? "" : i18n.t(($) => $.workspace.intelligence.incompleteEntry),
             metadata.description,
           ]
             .filter(Boolean)
@@ -476,7 +529,7 @@ export function buildCitationNodes(
             ? `${entry.duplicateIndex + 1}/${entry.duplicateCount}`
             : entry.complete
               ? metadata.badge
-              : "incomplete",
+              : i18n.t(($) => $.workspace.intelligence.badges.incomplete),
           tone: entry.duplicate
             ? ("warning" as const)
             : entry.complete
@@ -498,7 +551,7 @@ export function buildCitationNodes(
   if (entryFiles.length) {
     nodes.push({
       id: "citations:bibliography",
-      label: "Bibliography",
+      label: i18n.t(($) => $.workspace.intelligence.groups.bibliography),
       kind: "group",
       badge: String(snapshot.bibliography.entries.length),
       defaultExpanded: true,
@@ -520,9 +573,12 @@ function presentDefinition(
     kind: definitionKind(definition.kind),
     description:
       definition.detail ??
-      `${kindLabel(definition.kind)} in ${definition.location.file}`,
+      i18n.t(($) => $.workspace.intelligence.inFile, {
+        kind: kindLabel(definition.kind),
+        file: definition.location.file,
+      }),
     provenance: provenance(definition.location),
-    badge: duplicate ? "duplicate" : undefined,
+    badge: duplicate ? i18n.t(($) => $.workspace.intelligence.badges.duplicate) : undefined,
     tone: duplicate ? "warning" : "default",
     searchText: `${definition.location.file} ${definition.kind} ${definition.detail ?? ""}`,
     target: locationTarget(definition.location),
@@ -537,7 +593,7 @@ function diagnosticNode(
     diagnostic.severity === "error" ? "danger" : "warning";
   return {
     id: `${idPrefix}:diagnostic:${diagnostic.id}`,
-    label: diagnostic.message,
+    label: projectDiagnosticText(diagnostic.message),
     kind: "warning",
     description: `${diagnostic.code} in ${diagnostic.location.file}`,
     provenance: provenance(diagnostic.location),
@@ -547,7 +603,7 @@ function diagnosticNode(
     defaultExpanded: true,
     children: diagnostic.related.map((related) => ({
       id: `${idPrefix}:diagnostic:${diagnostic.id}:related:${related.location.file}:${related.location.range.from}:${related.location.range.to}`,
-      label: related.message,
+      label: projectDiagnosticText(related.message),
       kind: "reference",
       description: related.location.file,
       provenance: provenance(related.location),
@@ -575,7 +631,7 @@ export function buildSymbolNodes(
   if (referenceIssues.length || definitionDiagnostics.length) {
     nodes.push({
       id: "symbols:issues",
-      label: "Unresolved & duplicate",
+      label: i18n.t(($) => $.workspace.intelligence.groups.unresolvedDuplicate),
       kind: "warning",
       badge: String(referenceIssues.length + definitionDiagnostics.length),
       tone: referenceIssues.some((use) => use.resolution === "unresolved")
@@ -606,11 +662,31 @@ export function buildSymbolNodes(
     label: string;
     kinds: readonly ProjectDefinition["kind"][];
   }[] = [
-    { id: "sections", label: "Sections", kinds: ["section"] },
-    { id: "labels", label: "Labels & anchors", kinds: ["label", "anchor"] },
-    { id: "macros", label: "Commands", kinds: ["macro"] },
-    { id: "environments", label: "Environments", kinds: ["environment"] },
-    { id: "bibliography", label: "BibTeX entries", kinds: ["bibentry"] },
+    {
+      id: "sections",
+      label: i18n.t(($) => $.workspace.intelligence.groups.sections),
+      kinds: ["section"],
+    },
+    {
+      id: "labels",
+      label: i18n.t(($) => $.workspace.intelligence.groups.labels),
+      kinds: ["label", "anchor"],
+    },
+    {
+      id: "macros",
+      label: i18n.t(($) => $.workspace.intelligence.groups.commands),
+      kinds: ["macro"],
+    },
+    {
+      id: "environments",
+      label: i18n.t(($) => $.workspace.intelligence.groups.environments),
+      kinds: ["environment"],
+    },
+    {
+      id: "bibliography",
+      label: i18n.t(($) => $.workspace.intelligence.groups.bibtexEntries),
+      kinds: ["bibentry"],
+    },
   ];
 
   for (const group of groups) {
@@ -651,7 +727,9 @@ export function buildReferenceResultNodes(
   if (definitions.length) {
     nodes.push({
       id: "query:definitions",
-      label: definitions.length === 1 ? "Definition" : "Definitions",
+      label: i18n.t(($) => $.workspace.intelligence.groups.definitions, {
+        count: definitions.length,
+      }),
       kind: "group",
       badge: String(definitions.length),
       defaultExpanded: true,
@@ -667,7 +745,7 @@ export function buildReferenceResultNodes(
   if (uses.length) {
     nodes.push({
       id: "query:references",
-      label: "Occurrences",
+      label: i18n.t(($) => $.workspace.intelligence.groups.occurrences),
       kind: "group",
       badge: String(uses.length),
       defaultExpanded: true,

@@ -8,7 +8,7 @@ describe("Book project metadata", () => {
   it("can expose a recovery-specific open action", () => {
     render(
       <Book
-        title="recovery-project"
+        title={"recovery-project"}
         engine="Recovery required"
         kind="Open to recover"
         openLabel="Open to recover recovery-project"
@@ -25,7 +25,7 @@ describe("Book project metadata", () => {
 
   it("shows the engine without an icon for a regular project", () => {
     const { container } = render(
-      <Book title="Paper" engine="Tectonic" kind="document" />,
+      <Book title={"Paper"} engine="Tectonic" kind="document" />,
     );
 
     expect(screen.getByText("Tectonic")).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe("Book project metadata", () => {
   it("shows an inline fork marker beside the project type only for a fork", () => {
     render(
       <Book
-        title="Paper copy"
+        title={"Paper copy"}
         engine="Tectonic"
         kind="document"
         forkedFrom="Original paper"

@@ -14,6 +14,9 @@ import {
   PROOFREADING_PROTOCOL_VERSION,
   type ProofreadingResult,
 } from "./proofreading";
+import { englishEditorMessage, installEnglishEditorMessages } from "./test-messages";
+
+installEnglishEditorMessages();
 
 let view: EditorView | null = null;
 
@@ -41,6 +44,7 @@ function buildResult(count: number, docLength: number): ProofreadingResult {
       source: "hunspell",
       word: "misspelledword",
       suggestions: [],
+      rule: null,
     };
   });
   return {
@@ -73,7 +77,8 @@ describe("presentation refresh perf (large doc)", () => {
       let page = 0;
       let dispatchCount = 0;
       setSpellHost({
-        getProjectId: () => "project",
+        t: englishEditorMessage,
+      getProjectId: () => "project",
         getActivePath: () => "clip_paper.tex",
         getLintPrefs: () => ({
           showRegionalism: true,
@@ -143,7 +148,8 @@ describe("presentation refresh perf (large doc)", () => {
       let dispatchCount = 0;
       let running = false;
       setSpellHost({
-        getProjectId: () => "project",
+        t: englishEditorMessage,
+      getProjectId: () => "project",
         getActivePath: () => "clip_paper.tex",
         getLintPrefs: () => ({
           showRegionalism: true,
@@ -218,7 +224,8 @@ describe("presentation refresh perf (large doc)", () => {
       let dispatchCount = 0;
       let running = false;
       setSpellHost({
-        getProjectId: () => "project",
+        t: englishEditorMessage,
+      getProjectId: () => "project",
         getActivePath: () => "clip_paper.tex",
         getLintPrefs: () => ({
           showRegionalism: true,
@@ -279,7 +286,8 @@ describe("presentation refresh perf (large doc)", () => {
           }),
       );
       setSpellHost({
-        getProjectId: () => "project",
+        t: englishEditorMessage,
+      getProjectId: () => "project",
         getActivePath: () => "clip_paper.tex",
         getLintPrefs: () => ({
           showRegionalism: true,

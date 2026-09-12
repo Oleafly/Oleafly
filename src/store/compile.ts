@@ -11,16 +11,20 @@ import {
   type CompileResult,
   type LogDiagnostic,
 } from "@/lib/tauri";
-import { useFilesStore } from "@/store/files";
+import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
 import {
   classifyCompileFailure,
+  importCompatAction,
   importCompatFinding,
-  missingLatexPackages,
+  missingLatexFiles,
+  type ImportCompatFinding,
 } from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
+import { formatList } from "@/lib/intl";
 
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { ensurePandoc } from "@/features/pandoc";
@@ -406,41 +410,54 @@ function maybeSuggestMissingPackages(log: string): void {
   const files = useFilesStore.getState();
   const projectId = files.projectId;
   if (files.engine.id !== "latexmk" || !projectId) return;
-  const packages = missingLatexPackages(log);
+  const packages = missingLatexFiles(log);
   if (packages.length === 0) return;
   const signature = packageSuggestionSignature(packages);
   if (suggestedPackagesByProject.get(projectId) === signature) return;
-  suggestedPackagesByProject.set(projectId, signature);
   void (async () => {
     const tauri = await import("@/lib/tauri");
     const info = await tauri.latexEngineInfo().catch(() => null);
-    if (!info?.tlmgr) return; // MiKTeX installs on the fly; nothing to offer
-    const label = packages.length === 1 ? `Install ${packages[0]}` : `Install all ${packages.length}`;
-    const summary =
-      packages.length === 1
-        ? `The compile needs the LaTeX package "${packages[0]}", which is not installed.`
-        : `The compile needs ${packages.length} LaTeX packages that are not installed (${packages.join(", ")}).`;
+    if (!info?.tlmgr || useFilesStore.getState().projectId !== projectId || useFilesStore.getState().engine.id !== "latexmk") return;
+    if (suggestedPackagesByProject.get(projectId) === signature) return;
+    suggestedPackagesByProject.set(projectId, signature);
+    const label = i18n.t(($) => $.core.missingPackages.action, {
+      count: packages.length,
+      name: packages[0],
+    });
+    const summary = i18n.t(($) => $.core.missingPackages.summary, {
+      count: packages.length,
+      name: packages[0],
+      names: formatList(packages),
+    });
+    let installing = false;
     toast.info(
       summary,
       {
         label,
         onClick: () => {
+          if (installing || useFilesStore.getState().projectId !== projectId || useFilesStore.getState().engine.id !== "latexmk") return;
+          installing = true;
           void (async () => {
             toast.info(
-              packages.length === 1
-                ? `Installing ${packages[0]}. The compile restarts when it finishes.`
-                : `Installing ${packages.length} packages. The compile restarts when they finish.`,
+              i18n.t(($) => $.core.missingPackages.installing, {
+                count: packages.length,
+                name: packages[0],
+              }),
             );
             try {
-              await tauri.tlmgrInstall(packages);
+              const outcome = await tauri.tlmgrInstallMissing(packages);
+              for (const notice of installerNotices(outcome)) toast.info(notice);
+              const engineStore = await import("@/store/engine");
+              await engineStore.useEngineStore.getState().refreshPackages();
               suggestedPackagesByProject.delete(projectId);
-              void useCompileStore.getState().recompile();
+              if (useFilesStore.getState().projectId === projectId && useFilesStore.getState().engine.id === "latexmk") {
+                void useCompileStore.getState().recompile();
+              }
             } catch (error) {
-              notifyError(
-                "install missing packages",
-                error,
-                "The packages could not be installed. See Settings, LaTeX Engine for details.",
-              );
+              suggestedPackagesByProject.delete(projectId);
+              notifyError("install missing packages", error);
+            } finally {
+              installing = false;
             }
           })();
         },
@@ -450,10 +467,44 @@ function maybeSuggestMissingPackages(log: string): void {
   })();
 }
 
+const INSTALLER_NOTICE_PREFIX = "[Oleafly] ";
+
+export function installerNotices(outcome: string): string[] {
+  return outcome
+    .split("\n")
+    .filter((line) => line.startsWith(INSTALLER_NOTICE_PREFIX))
+    .map((line) => line.slice(INSTALLER_NOTICE_PREFIX.length).trim())
+    .filter((line) => line.length > 0 && line.length <= 400)
+    .slice(0, 2);
+}
+
+function offerCompileRetry(projectId: string, finding: ImportCompatFinding): void {
+  let retrying = false;
+  toast.error(
+    finding.detail,
+    {
+      label: i18n.t(($) => $.core.compile.retry),
+      onClick: () => {
+        if (retrying || useFilesStore.getState().projectId !== projectId) return;
+        retrying = true;
+        void useCompileStore.getState().recompile();
+      },
+    },
+    true,
+  );
+}
+
 function maybePromptEngineGap(log: string, errors: CompileError[]): void {
   const files = useFilesStore.getState();
   if (files.engine.id !== "latex" || !files.projectId) return;
-  let findings = classifyCompileFailure(log);
+  let findings = classifyCompileFailure(log, { bundledEngine: true });
+  const retryable = findings.find(
+    (finding) => importCompatAction(finding.id) === "retry-compile",
+  );
+  if (retryable) {
+    offerCompileRetry(files.projectId, retryable);
+    return;
+  }
   if (findings.length === 0) {
     const classFileError = errors.some(
       (error) =>
@@ -628,9 +679,9 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       current = get().lastCompileCheckpoint,
     ) => hasCompileCheckpointAdvanced(checkpointAtStart, current);
     if (!files.engineLoaded) {
-      const reason =
-        files.engineError ??
-        "Document engine details are still loading.";
+      const reason = files.engineError
+        ? engineErrorMessage(files.engineError)
+        : i18n.t(($) => $.core.engine.error.stillLoading);
       set({
         status: "unavailable",
         phase: "idle",
@@ -642,7 +693,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       notifyError(
         "compile",
         reason,
-        "Compile is disabled until the document engine is loaded.",
+        i18n.t(($) => $.core.compile.engineNotLoaded),
       );
       abortIntent();
       return undefined;

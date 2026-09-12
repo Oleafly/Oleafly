@@ -24,6 +24,7 @@ import {
 } from "@/lib/proofreading/client";
 import { scrollVisualSelectionLocally } from "./scroll";
 import {
+  dictionaryWordFromSelection,
   ignoreWordForProject,
   ignoreWordGlobally,
   useDictionary,
@@ -999,9 +1000,9 @@ export function ignoreVisualProofreadingIssue(
   scope: "project" | "global",
 ): boolean {
   const active = currentIssue(editor, issue);
-  const ignoredWord = active?.word
-    .replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "")
-    .trim();
+  const ignoredWord = active
+    ? dictionaryWordFromSelection(active.word)
+    : "";
   if (!active || !ignoredWord) return false;
   if (scope === "project") {
     if (!active.projectId) return false;

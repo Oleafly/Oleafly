@@ -18,7 +18,7 @@ const fixture = (name: string): string =>
       import.meta.url,
     ),
     "utf8",
-  );
+  ).replace(/\r\n?/gu, "\n");
 
 function highlightedState(path: string, text: string): {
   state: EditorState;

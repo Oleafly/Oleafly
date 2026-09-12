@@ -1,20 +1,23 @@
 cff-version: 1.2.0
-message: "If you use Oleafly in your work, please cite it as below."
+message: "If you use Oleafly in your research, please cite it as below."
 title: Oleafly
-abstract: "A free, local-first LaTeX and resume editor for macOS, Windows, and Linux. An offline Overleaf alternative with Git versioning, GitHub sync, SyncTeX, and bring-your-own-key AI."
+abstract: "A free, local-first desktop workspace for writing research papers in LaTeX, Typst, and Markdown, with citation management, proofreading, PDF preflight, Git versioning, and bring-your-own-key AI assistance."
 type: software
 authors:
   - family-names: Venkateshmurthy
     given-names: Prajwal S
+  - name: "The Oleafly contributors"
 repository-code: "https://github.com/Oleafly/Oleafly"
 url: "https://oleafly.com/"
 license: AGPL-3.0-or-later
-version: 0.2.5
-date-released: 2026-07-20
+version: 0.4.0
+date-released: 2026-09-07
 keywords:
   - latex
-  - resume
-  - overleaf-alternative
+  - typst
+  - markdown
+  - academic-writing
+  - research-writing
+  - citations
   - local-first
   - tauri
-  - academic-writing

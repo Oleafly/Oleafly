@@ -72,6 +72,11 @@ struct Patterns {
     missing_char: Regex,
     bib_empty: Regex,
     biber_warn: Regex,
+    biber_missing_entry_raw: Regex,
+    biber_cannot_find: Regex,
+    biber_version_mismatch: Regex,
+    biber_bibtex_line: Regex,
+    tectonic_cannot_open: Regex,
     biblatex_rerun_biber: Regex,
     oleafly_biber_mode_a: Regex,
     oleafly_biber_mode_b: Regex,
@@ -129,6 +134,18 @@ fn patterns() -> &'static Patterns {
         biber_warn: compile(format!(
             r"^Biber warning:{ANY}*WARN - I didn't find a database entry for '([^']+)'"
         )),
+        biber_missing_entry_raw: compile(
+            r"^WARN - I didn't find a database entry for '([^']+)'".into(),
+        ),
+        biber_cannot_find: compile(r"^ERROR - Cannot find '([^']+)'".into()),
+        biber_version_mismatch: compile(
+            r"^ERROR - Error: Found biblatex control file version ([^,]+), expected version ([0-9][0-9.]*[0-9])"
+                .into(),
+        ),
+        biber_bibtex_line: compile(
+            r"^ERROR - BibTeX subsystem: (.+?), line ([0-9]+), (.*)$".into(),
+        ),
+        tectonic_cannot_open: compile(r"^error: can't open path `([^`]+)`".into()),
         biblatex_rerun_biber: compile(
             r"^Package biblatex Warning: Please \(re\)run Biber on the file:".into(),
         ),
@@ -242,7 +259,9 @@ pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic>
         out: Vec::new(),
     };
     for line in head(log).split('\n') {
-        parser.parse_line(line);
+        // Windows compiler pipes use CRLF. Keep the line terminator out of
+        // anchored patterns and diagnostic context, matching the LF path.
+        parser.parse_line(line.strip_suffix('\r').unwrap_or(line));
     }
     if let Some(current) = parser.current.take() {
         if !patterns().bib_empty.is_match(&current.text) {
@@ -269,6 +288,57 @@ impl Parser<'_> {
     fn start(&mut self, entry: Entry) {
         self.push_current();
         self.current = Some(entry);
+    }
+
+    fn biber_entry(&self, p: &Patterns, line: &str) -> Option<Entry> {
+        let biber =
+            |severity: LogSeverity, file: Option<String>, line: Option<u32>, text: String| Entry {
+                severity,
+                category: LogCategory::Biber,
+                file,
+                line,
+                text,
+                context: None,
+            };
+        if let Some(caps) = p.biber_missing_entry_raw.captures(line) {
+            return Some(biber(
+                LogSeverity::Warning,
+                None,
+                None,
+                format!("No bib entry found for '{}'", &caps[1]),
+            ));
+        }
+        if let Some(caps) = p.biber_cannot_find.captures(line) {
+            return Some(biber(
+                LogSeverity::Error,
+                None,
+                None,
+                format!(
+                    "Biber could not find {}. Check the file name in \\addbibresource and that the file is in the project.",
+                    &caps[1]
+                ),
+            ));
+        }
+        if let Some(caps) = p.biber_version_mismatch.captures(line) {
+            return Some(biber(
+                LogSeverity::Error,
+                None,
+                None,
+                format!(
+                    "Biber and biblatex versions do not match (control file {}, expected {}). Oleafly uses its pinned Biber for the built-in engine; if this appears, report it with the compile log.",
+                    &caps[1], &caps[2]
+                ),
+            ));
+        }
+        if let Some(caps) = p.biber_bibtex_line.captures(line) {
+            return Some(biber(
+                LogSeverity::Error,
+                Some(caps[1].to_string()),
+                caps[2].parse().ok(),
+                caps[3].to_string(),
+            ));
+        }
+        None
     }
 
     fn parse_line(&mut self, line: &str) {
@@ -412,6 +482,30 @@ impl Parser<'_> {
             self.search_empty_line = false;
             let end = caps.get(0).map_or(line.len(), |m| m.end());
             return Step::Resume(end);
+        }
+        if let Some(caps) = p.tectonic_cannot_open.captures(line) {
+            self.start(Entry {
+                severity: LogSeverity::Error,
+                category: LogCategory::Error,
+                file: None,
+                line: None,
+                text: format!(
+                    "The compile could not open {}. Check the file name and that the file is in the project.",
+                    &caps[1]
+                ),
+                context: None,
+            });
+            self.search_empty_line = false;
+            self.inside_error = false;
+            return Step::Stop;
+        }
+        if line.starts_with("ERROR - ") || line.starts_with("WARN - ") {
+            if let Some(entry) = self.biber_entry(p, line) {
+                self.start(entry);
+                self.search_empty_line = false;
+                self.inside_error = false;
+                return Step::Stop;
+            }
         }
         if (line.starts_with('!') || line.contains(':')) && !line.contains("ignored error") {
             if let Some(caps) = p.latex_error.captures(line) {

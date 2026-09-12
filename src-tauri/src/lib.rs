@@ -8,6 +8,7 @@ mod agent_exec;
 mod agent_server;
 mod ai_model_metadata;
 mod ai_model_registry;
+mod app_error;
 mod approvals;
 mod assets;
 mod biber_toolchain;
@@ -32,6 +33,7 @@ mod document_stats;
 mod fsperm;
 mod git;
 mod github;
+mod i18n;
 mod initial_state;
 mod language_service;
 mod latex_engine;
@@ -97,6 +99,7 @@ pub fn run() {
     if research_mcp::stdio_bridge_requested() {
         std::process::exit(research_mcp::serve_stdio_bridge());
     }
+    i18n::startup();
     let mut builder = tauri::Builder::default()
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);
@@ -429,6 +432,8 @@ pub fn run() {
             terminal::term_resize,
             terminal::term_kill,
             menu::set_dock_shortcut_accelerators,
+            i18n::set_ui_locale,
+            i18n::get_ui_locale,
             cua_policy::cua_action_confirm,
             agent_exec::agent_exec_cwd,
             agent_exec::agent_exec_authorize,
@@ -499,6 +504,8 @@ pub fn run() {
             latex_engine::install_tinytex,
             latex_engine::delete_tinytex,
             latex_engine::tlmgr_installed,
+            latex_engine::packages::tlmgr_search,
+            latex_engine::packages::tlmgr_install_missing,
             latex_engine::tlmgr_install,
             latex_engine::tlmgr_remove,
             latex_engine::compile_tagged,

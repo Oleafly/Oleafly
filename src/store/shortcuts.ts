@@ -20,67 +20,40 @@ export interface ShortcutBinding {
 
 export interface ShortcutDefinition {
   id: ShortcutId;
-  label: string;
-  description: string;
-  category: string;
   defaultBinding: ShortcutBinding;
 }
 
 export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: "recompile",
-    label: "Recompile",
-    description: "Compile the current project and reveal its PDF.",
-    category: "Compile",
     defaultBinding: { key: "Enter", mod: true },
   },
   {
     id: "commandPalette",
-    label: "Command palette",
-    description: "Search and run Oleafly commands.",
-    category: "Navigation",
     defaultBinding: { key: "k", mod: true },
   },
   {
     id: "searchDocuments",
-    label: "Search all documents",
-    description: "Search across projects and documents.",
-    category: "Navigation",
     defaultBinding: { key: "f", mod: true, shift: true },
   },
   {
     id: "forwardSync",
-    label: "Go to PDF",
-    description: "Jump from the editor cursor to the compiled PDF.",
-    category: "Navigation",
     defaultBinding: { key: "j", mod: true, shift: true },
   },
   {
     id: "shortcutReference",
-    label: "Shortcut reference",
-    description: "Open the project shortcut reference.",
-    category: "Settings",
     defaultBinding: { key: "/", mod: true },
   },
   {
     id: "toggleTerminal",
-    label: "Toggle terminal",
-    description: "Show or hide the project terminal.",
-    category: "Navigation",
     defaultBinding: { key: "`", ctrl: true },
   },
   {
     id: "toggleBrowser",
-    label: "Toggle browser",
-    description: "Show or hide the project browser.",
-    category: "Navigation",
     defaultBinding: { key: "b", ctrl: true, shift: true },
   },
   {
     id: "toggleSidebar",
-    label: "Toggle sidebar",
-    description: "Show or hide the project sidebar.",
-    category: "Navigation",
     defaultBinding: { key: "b", mod: true },
   },
 ];
@@ -180,24 +153,35 @@ export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   };
 }
 
-export function reservedShortcutLabel(binding: ShortcutBinding): string | null {
+export type ReservedShortcutAction =
+  | "closeWindow"
+  | "copy"
+  | "cut"
+  | "paste"
+  | "quit"
+  | "save"
+  | "selectAll"
+  | "systemSearch"
+  | "windowSwitching";
+
+export function reservedShortcutAction(binding: ShortcutBinding): ReservedShortcutAction | null {
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const primaryModifier = apple
     ? Boolean(binding.mod) && !binding.ctrl
     : Boolean(binding.mod || binding.ctrl);
   if (!primaryModifier || binding.alt || binding.shift) return null;
-  if (apple && binding.key === "`") return "Window switching";
-  const reserved: Record<string, string> = {
-    a: "Select all",
-    c: "Copy",
-    q: "Quit",
-    s: "Save",
-    v: "Paste",
-    w: "Close window",
-    x: "Cut",
-    " ": "System search",
-    space: "System search",
+  if (apple && binding.key === "`") return "windowSwitching";
+  const reserved: Record<string, ReservedShortcutAction> = {
+    a: "selectAll",
+    c: "copy",
+    q: "quit",
+    s: "save",
+    v: "paste",
+    w: "closeWindow",
+    x: "cut",
+    " ": "systemSearch",
+    space: "systemSearch",
   };
   return reserved[binding.key.toLowerCase()] ?? null;
 }

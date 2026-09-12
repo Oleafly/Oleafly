@@ -1,6 +1,7 @@
 import type { AcpEvent } from "@/lib/acp";
 import type { ChatMessage, ToolEntry } from "@/store/chats";
 import type { RenderedMessage } from "@/components/ai/MessageList";
+import { i18n } from "@/i18n";
 import { splitAgentNotices } from "@/lib/chat-activity";
 
 type Data = Record<string, unknown>;
@@ -8,12 +9,16 @@ type Row = { id: string; turn: string | null; kind: string; msg: ChatMessage; ra
 function object(value: unknown): Data { return value && typeof value === "object" ? value as Data : {}; }
 function text(value: unknown): string { return typeof value === "string" ? value : ""; }
 
-function noticed(message: ChatMessage, raw: string, prefix = ""): ChatMessage {
+function noticed(
+  message: ChatMessage,
+  raw: string,
+  label: (detail: string) => string = (detail) => detail,
+): ChatMessage {
   const split = splitAgentNotices(raw);
-  if (split.notices.length === 0) return { ...message, content: `${prefix}${raw}` };
+  if (split.notices.length === 0) return { ...message, content: label(raw) };
   return {
     ...message,
-    content: split.text ? `${prefix}${split.text}` : "",
+    content: split.text ? label(split.text) : "",
     notices: split.notices,
   };
 }
@@ -40,7 +45,7 @@ function toolOutput(data: Data): string {
     const value = object(entry);
     if (value.type === "content") return text(object(value.content).text);
     if (value.type === "diff") return `${text(value.path)}\n${text(value.oldText)}\n→\n${text(value.newText)}`;
-    if (value.type === "terminal") return "The agent is running a terminal command.";
+    if (value.type === "terminal") return i18n.t(($) => $.ai.acp.terminalCommand);
     return "";
   }).filter(Boolean).join("\n");
 }
@@ -61,10 +66,10 @@ export function createAcpProjector() {
       const id = `${event.sessionId}:${event.sequence}`;
       const append = (kind: string, msg: ChatMessage, raw?: string) => { rows.push({ id, turn: event.turnId, kind, msg: { id, createdAt: event.timestamp, ...msg }, raw }); };
       if (event.kind === "user_message") {
-        append("user", { role: "user", content: text(data.text), attachments: Array.isArray(data.images) ? data.images.map((image: unknown, index) => ({ name: `Image ${index + 1}`, mediaType: text(object(image).mimeType) })) : undefined });
+        append("user", { role: "user", content: text(data.text), attachments: Array.isArray(data.images) ? data.images.map((image: unknown, index) => ({ name: i18n.t(($) => $.ai.acp.imageAttachmentName, { index: index + 1 }), mediaType: text(object(image).mimeType) })) : undefined });
       } else if (event.kind === "agent_message_chunk" || event.kind === "agent_thought_chunk") {
         const content = object(data.content);
-        const chunk = content.type === "text" ? text(content.text) : content.type === "image" ? "[The agent returned an image.]" : "";
+        const chunk = content.type === "text" ? text(content.text) : content.type === "image" ? i18n.t(($) => $.ai.acp.agentImage) : "";
         if (!chunk) continue;
         const previous = rows.at(-1);
         const reasoning = event.kind === "agent_thought_chunk";
@@ -88,14 +93,16 @@ export function createAcpProjector() {
         const index = tools.get(key);
         const previous = index === undefined ? undefined : rows[index].msg.toolCalls?.[0];
         const status = data.status === "completed" ? "done" : data.status === "failed" ? "error" : data.status === "in_progress" || data.status === "pending" ? "running" : previous?.status ?? "running";
-        const tool: ToolEntry = { id: toolId, name: text(data.title) || previous?.name || "Agent tool", status, output: data.content ? toolOutput(data) : previous?.output };
+        const tool: ToolEntry = { id: toolId, name: text(data.title) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback), status, output: data.content ? toolOutput(data) : previous?.output };
         if (index === undefined) { tools.set(key, rows.length); append("tool", { role: "assistant", content: "", toolCalls: [tool] }); }
         else rows[index].msg = { ...rows[index].msg, toolCalls: [tool] };
       } else if (event.kind === "plan" && Array.isArray(data.entries)) {
         append("plan", { role: "assistant", content: data.entries.map((entry: unknown) => { const value = object(entry); return `- ${value.status === "completed" ? "[x]" : "[ ]"} ${text(value.content)}`; }).join("\n") });
       } else if (event.kind === "diagnostics") {
         const detail = text(data.stderr);
-        if (detail) append("error", noticed({ role: "assistant", content: "" }, detail, "The agent reported: "));
+        if (detail) append("error", noticed({ role: "assistant", content: "" }, detail, (value) =>
+          i18n.t(($) => $.ai.acp.agentReported, { detail: value }),
+        ));
       } else if (event.kind === "turn_complete" || event.kind === "status") {
         const terminal = event.kind === "turn_complete" || ["failed", "disconnected", "cancelled"].includes(text(data.status));
         if (terminal) {

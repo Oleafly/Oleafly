@@ -7,9 +7,11 @@ export interface AvailableToolEntry {
   description: string;
 }
 
+export type AvailableToolGroupKind = "figure" | "mcp" | "project" | "skills";
+
 export interface AvailableToolGroup {
   id: string;
-  label: "Project tools" | "MCP" | "Skills" | "Figure";
+  kind: AvailableToolGroupKind;
   server?: string;
   tools: AvailableToolEntry[];
 }
@@ -37,11 +39,11 @@ function inferredSource(toolset: AiToolsetContribution): AiToolsetSource {
 
 function groupDetails(source: AiToolsetSource): Omit<AvailableToolGroup, "tools"> {
   if (source.kind === "mcp") {
-    return { id: `mcp:${source.server}`, label: "MCP", server: source.server };
+    return { id: `mcp:${source.server}`, kind: "mcp", server: source.server };
   }
-  if (source.kind === "figure") return { id: "figure", label: "Figure" };
-  if (source.kind === "skills") return { id: "skills", label: "Skills" };
-  return { id: "project", label: "Project tools" };
+  if (source.kind === "figure") return { id: "figure", kind: "figure" };
+  if (source.kind === "skills") return { id: "skills", kind: "skills" };
+  return { id: "project", kind: "project" };
 }
 
 function descriptionOf(tool: ToolSet[string]): string {

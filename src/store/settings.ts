@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
+import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -65,6 +67,10 @@ export type GrammarDialect =
   | "australian"
   | "canadian"
   | "indian";
+import { isLocalePreference, type LocalePreference } from "@oleafly/i18n-contract";
+import { i18n } from "@/i18n";
+import { changeLocalePreference } from "@/i18n/desktop";
+
 export type DictionaryLocale = "en_US" | "en_GB" | "en_AU" | "de_DE" | "fr_FR";
 export const DICTIONARY_LOCALES: { id: DictionaryLocale; name: string }[] = [
   { id: "en_US", name: "English (US)" },
@@ -170,7 +176,7 @@ export const TERMINAL_COLOR_THEMES: Record<TerminalColorThemeId, TerminalColorTh
   // The colors here are only a placeholder for code that reads the map directly.
   system: {
     id: "system",
-    name: "Match app theme",
+    get name() { return i18n.t(($) => $.core.themes.matchApp); },
     appearance: "system",
     colors: palette(
       { background: "#1e1e1e", foreground: "#f2f2f2", cursor: "#ffffff", selectionBackground: "#264f78" },
@@ -567,14 +573,14 @@ function notifyProofreadingSettingsChanged(
 // Font choices offered in Appearance. "" means the app default stack. Names
 // apply if installed, otherwise the browser falls back (like VS Code).
 export const APP_FONTS: { name: string; value: string }[] = [
-  { name: "System default", value: "" },
+  { get name() { return i18n.t(($) => $.core.fonts.systemDefault); }, value: "" },
   { name: "Inter", value: '"Inter", system-ui, sans-serif' },
   { name: "Helvetica Neue", value: '"Helvetica Neue", Helvetica, Arial, sans-serif' },
   { name: "Segoe UI", value: '"Segoe UI", system-ui, sans-serif' },
   { name: "Georgia (serif)", value: 'Georgia, "Times New Roman", serif' },
 ];
 export const EDITOR_FONTS: { name: string; value: string }[] = [
-  { name: "System default", value: "" },
+  { get name() { return i18n.t(($) => $.core.fonts.systemDefault); }, value: "" },
   { name: "JetBrains Mono", value: '"JetBrains Mono", ui-monospace, monospace' },
   { name: "Fira Code", value: '"Fira Code", ui-monospace, monospace' },
   { name: "Cascadia Code", value: '"Cascadia Code", ui-monospace, monospace' },
@@ -583,7 +589,7 @@ export const EDITOR_FONTS: { name: string; value: string }[] = [
   { name: "Consolas", value: "Consolas, ui-monospace, monospace" },
 ];
 export const TERMINAL_FONTS: { name: string; value: string }[] = [
-  { name: "Terminal default", value: DEFAULT_TERMINAL_FONT_FAMILY },
+  { get name() { return i18n.t(($) => $.core.fonts.terminalDefault); }, value: DEFAULT_TERMINAL_FONT_FAMILY },
   { name: "MesloLGS Nerd Font (Powerlevel10k)", value: '"MesloLGS NF", "MesloLGS Nerd Font Mono", ui-monospace, monospace' },
   { name: "JetBrainsMono Nerd Font", value: '"JetBrainsMono Nerd Font Mono", "JetBrainsMono NF", ui-monospace, monospace' },
   { name: "FiraCode Nerd Font", value: '"FiraCode Nerd Font Mono", "FiraCode NF", ui-monospace, monospace' },
@@ -596,7 +602,7 @@ export const TERMINAL_FONTS: { name: string; value: string }[] = [
 // `[data-editor-theme="..."]`; "system" applies no override and follows
 // the app's own light/dark mode.
 export const EDITOR_THEMES: { id: EditorThemeId; name: string }[] = [
-  { id: "system", name: "Match app theme" },
+  { id: "system", get name() { return i18n.t(($) => $.core.themes.matchApp); } },
   { id: "linear", name: "Linear" },
   { id: "github-dark", name: "GitHub Dark" },
   { id: "dracula", name: "Dracula" },
@@ -608,12 +614,12 @@ export const EDITOR_THEMES: { id: EditorThemeId; name: string }[] = [
 ];
 
 export const ACCENTS: { id: string; name: string; color: string }[] = [
-  { id: "blue", name: "Blue", color: "#2563eb" },
-  { id: "green", name: "Green", color: "#0b8842" },
-  { id: "purple", name: "Purple", color: "#7c3aed" },
-  { id: "rose", name: "Rose", color: "#db2777" },
-  { id: "orange", name: "Orange", color: "#ea580c" },
-  { id: "teal", name: "Teal", color: "#0d9488" },
+  { id: "blue", get name() { return i18n.t(($) => $.core.accents.blue); }, color: "#2563eb" },
+  { id: "green", get name() { return i18n.t(($) => $.core.accents.green); }, color: "#0b8842" },
+  { id: "purple", get name() { return i18n.t(($) => $.core.accents.purple); }, color: "#7c3aed" },
+  { id: "rose", get name() { return i18n.t(($) => $.core.accents.rose); }, color: "#db2777" },
+  { id: "orange", get name() { return i18n.t(($) => $.core.accents.orange); }, color: "#ea580c" },
+  { id: "teal", get name() { return i18n.t(($) => $.core.accents.teal); }, color: "#0d9488" },
 ];
 
 export const DEFAULT_HIDDEN_FILE_PATTERNS = [
@@ -659,6 +665,14 @@ export const DEFAULT_HIDDEN_FILE_PATTERNS = [
   "node_modules",
   ".next",
 ] as const;
+
+function readLintRuleNames(raw: string): string[] {
+  try {
+    return sanitizeLintRuleNames(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
 
 function readHiddenFilePatterns(raw: string): string[] {
   try {
@@ -717,6 +731,10 @@ interface SettingsState {
   /** Auto-insert closing brackets, parentheses, and quotes. */
   editorAutoCloseBrackets: boolean;
   setEditorAutoCloseBrackets: (v: boolean) => void;
+  editorAutoCloseMath: boolean;
+  setEditorAutoCloseMath: (v: boolean) => void;
+  editorAutoCloseEnvironments: boolean;
+  setEditorAutoCloseEnvironments: (v: boolean) => void;
   /** Dim inline preview of the most likely completion, accepted with Tab. */
   editorGhostCompletion: boolean;
   setEditorGhostCompletion: (v: boolean) => void;
@@ -732,12 +750,20 @@ interface SettingsState {
   setHarper: (v: boolean) => void;
   grammarDialect: GrammarDialect;
   setGrammarDialect: (v: GrammarDialect) => void;
+  uiLocalePreference: LocalePreference;
+  setUiLocalePreference: (v: LocalePreference) => void;
   dictionaryLocale: DictionaryLocale;
   setDictionaryLocale: (v: DictionaryLocale) => void;
   showRegionalism: boolean;
   setShowRegionalism: (v: boolean) => void;
   showWordChoice: boolean;
   setShowWordChoice: (v: boolean) => void;
+  harperDisabledRules: string[];
+  setHarperDisabledRules: (v: readonly string[]) => void;
+  disableHarperRule: (rule: string) => void;
+  harperEnabledRules: string[];
+  setHarperEnabledRules: (v: readonly string[]) => void;
+  enableHarperRule: (rule: string) => void;
   offline: boolean;
   setOffline: (v: boolean) => void;
   paletteOpen: boolean;
@@ -885,15 +911,20 @@ const PREF_DEFAULTS = {
   vim: false,
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
+  editorAutoCloseMath: true,
+  editorAutoCloseEnvironments: true,
   editorGhostCompletion: true,
   editorNonBlinkingCursor: false,
   editorStickyScroll: true,
   spellcheck: true,
   harper: true,
   grammarDialect: "american" as GrammarDialect,
+  uiLocalePreference: "system" as LocalePreference,
   dictionaryLocale: "en_US" as DictionaryLocale,
   showRegionalism: true,
   showWordChoice: true,
+  harperDisabledRules: [] as readonly string[],
+  harperEnabledRules: [] as readonly string[],
   offline: false,
   editorFontSize: 13,
   appFontSize: 16,
@@ -948,6 +979,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editor.closeBrackets", v ? "1" : "0");
     set({ editorAutoCloseBrackets: v });
   },
+  editorAutoCloseMath: ls("oleafly.editor.closeMath", "1") !== "0",
+  setEditorAutoCloseMath: (v) => {
+    saveLs("oleafly.editor.closeMath", v ? "1" : "0");
+    set({ editorAutoCloseMath: v });
+  },
+  editorAutoCloseEnvironments:
+    ls("oleafly.editor.closeEnvironments", "1") !== "0",
+  setEditorAutoCloseEnvironments: (v) => {
+    saveLs("oleafly.editor.closeEnvironments", v ? "1" : "0");
+    set({ editorAutoCloseEnvironments: v });
+  },
   editorGhostCompletion: ls("oleafly.editor.ghostCompletion", "1") !== "0",
   setEditorGhostCompletion: (v) => {
     saveLs("oleafly.editor.ghostCompletion", v ? "1" : "0");
@@ -985,6 +1027,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ grammarDialect: dialect });
     notifyProofreadingSettingsChanged("grammarDialect", get());
   },
+  uiLocalePreference: (() => {
+    const raw = ls("oleafly.locale", "system");
+    return isLocalePreference(raw) ? raw : PREF_DEFAULTS.uiLocalePreference;
+  })(),
+  setUiLocalePreference: (v) => {
+    saveLs("oleafly.locale", v);
+    set({ uiLocalePreference: v });
+    void changeLocalePreference(v);
+  },
   dictionaryLocale: (() => {
     const raw = ls("oleafly.dictionary.locale", "en_US") as DictionaryLocale;
     return DICTIONARY_LOCALES.some((locale) => locale.id === raw) ? raw : "en_US";
@@ -1006,6 +1057,42 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.harper.wordchoice", v ? "1" : "0");
     set({ showWordChoice: v });
     notifyProofreadingSettingsChanged("wordChoice", get());
+  },
+  harperDisabledRules: readLintRuleNames(
+    ls("oleafly.harper.disabledRules", "[]"),
+  ),
+  setHarperDisabledRules: (v) => {
+    const harperDisabledRules = sanitizeLintRuleNames(v);
+    const stillDisabled = new Set(harperDisabledRules);
+    for (const rule of get().harperDisabledRules) {
+      if (!stillDisabled.has(rule)) forgetRuleSuppressedHere(rule);
+    }
+    saveLs(
+      "oleafly.harper.disabledRules",
+      JSON.stringify(harperDisabledRules),
+    );
+    set({ harperDisabledRules });
+    notifyProofreadingSettingsChanged("harperDisabledRules", get());
+  },
+  disableHarperRule: (rule) => {
+    get().setHarperDisabledRules([...get().harperDisabledRules, rule]);
+  },
+  harperEnabledRules: readLintRuleNames(
+    ls("oleafly.harper.enabledRules", "[]"),
+  ),
+  setHarperEnabledRules: (v) => {
+    const harperEnabledRules = sanitizeLintRuleNames(v);
+    saveLs(
+      "oleafly.harper.enabledRules",
+      JSON.stringify(harperEnabledRules),
+    );
+    set({ harperEnabledRules });
+    notifyProofreadingSettingsChanged("harperEnabledRules", get());
+  },
+  enableHarperRule: (rule) => {
+    get().setHarperDisabledRules(
+      get().harperDisabledRules.filter((candidate) => candidate !== rule),
+    );
   },
   offline: false,
   setOffline: (v) => set({ offline: v }),
@@ -1360,6 +1447,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ defaultLatexEngine: v });
   },
   resetGeneralPreferences: () => {
+    get().setUiLocalePreference(PREF_DEFAULTS.uiLocalePreference);
+    for (const rule of get().harperDisabledRules) {
+      forgetRuleSuppressedHere(rule);
+    }
     saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
     saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
     saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);
@@ -1372,6 +1463,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       "oleafly.harper.wordchoice",
       PREF_DEFAULTS.showWordChoice ? "1" : "0",
     );
+    saveLs(
+      "oleafly.harper.disabledRules",
+      JSON.stringify(PREF_DEFAULTS.harperDisabledRules),
+    );
+    saveLs(
+      "oleafly.harper.enabledRules",
+      JSON.stringify(PREF_DEFAULTS.harperEnabledRules),
+    );
     set({
       spellcheck: PREF_DEFAULTS.spellcheck,
       harper: PREF_DEFAULTS.harper,
@@ -1379,6 +1478,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       dictionaryLocale: PREF_DEFAULTS.dictionaryLocale,
       showRegionalism: PREF_DEFAULTS.showRegionalism,
       showWordChoice: PREF_DEFAULTS.showWordChoice,
+      harperDisabledRules: [...PREF_DEFAULTS.harperDisabledRules],
+      harperEnabledRules: [...PREF_DEFAULTS.harperEnabledRules],
       offline: PREF_DEFAULTS.offline,
     });
     notifyProofreadingSettingsChanged("reset", get());
@@ -1392,6 +1493,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs(
       "oleafly.editor.closeBrackets",
       PREF_DEFAULTS.editorAutoCloseBrackets ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.editor.closeMath",
+      PREF_DEFAULTS.editorAutoCloseMath ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.editor.closeEnvironments",
+      PREF_DEFAULTS.editorAutoCloseEnvironments ? "1" : "0",
     );
     saveLs(
       "oleafly.editor.ghostCompletion",
@@ -1455,6 +1564,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       vim: PREF_DEFAULTS.vim,
       editorAutocomplete: PREF_DEFAULTS.editorAutocomplete,
       editorAutoCloseBrackets: PREF_DEFAULTS.editorAutoCloseBrackets,
+      editorAutoCloseMath: PREF_DEFAULTS.editorAutoCloseMath,
+      editorAutoCloseEnvironments: PREF_DEFAULTS.editorAutoCloseEnvironments,
       editorGhostCompletion: PREF_DEFAULTS.editorGhostCompletion,
       editorNonBlinkingCursor: PREF_DEFAULTS.editorNonBlinkingCursor,
       editorStickyScroll: PREF_DEFAULTS.editorStickyScroll,

@@ -14,6 +14,7 @@ import type {
   OutlineNode,
   ProjectDefinition,
   ProjectDiagnostic,
+  ProjectDiagnosticMessage,
   ProjectUse,
 } from "./types";
 
@@ -220,7 +221,7 @@ export function parseBibtexIntelligence(
   const malformed = (
     from: number,
     to: number,
-    message: string,
+    message: ProjectDiagnosticMessage,
   ) => {
     partial = true;
     const diagnosticLocation = location(file, starts, from, to);
@@ -237,7 +238,7 @@ export function parseBibtexIntelligence(
   const validationFinding = (
     range: ReturnType<typeof rangeFromOffsets>,
     severity: "error" | "warning",
-    message: string,
+    message: ProjectDiagnosticMessage,
     discriminator: string,
   ) => {
     diagnostics.push({
@@ -267,7 +268,7 @@ export function parseBibtexIntelligence(
       malformed(
         at,
         Math.min(source.length, at + 1),
-        "Malformed BibTeX directive or entry type.",
+        { key: "malformedDirective" },
       );
       cursor = at + 1;
       continue;
@@ -280,7 +281,7 @@ export function parseBibtexIntelligence(
       malformed(
         at,
         Math.min(source.length, position + 1),
-        `@${type} must be followed by "{" or "(".`,
+        { key: "typeDelimiterExpected", params: { type } },
       );
       cursor = position + 1;
       continue;
@@ -294,7 +295,7 @@ export function parseBibtexIntelligence(
         malformed(
           at,
           directiveEnd,
-          `@${type} directive is not closed.`,
+          { key: "unclosedDirective", params: { type } },
         );
       }
       cursor = directiveEnd;
@@ -321,7 +322,7 @@ export function parseBibtexIntelligence(
       malformed(
         position,
         Math.min(source.length, Math.max(position + 1, keyDelimiter)),
-        `@${type} is missing a citation key.`,
+        { key: "missingCitationKey", params: { type } },
       );
     }
     if (source[keyDelimiter] !== ",") {
@@ -329,8 +330,8 @@ export function parseBibtexIntelligence(
         entryFrom,
         Math.min(source.length, Math.max(keyDelimiter + 1, entryFrom + 1)),
         key
-          ? `Bibliography entry "${key}" has no field list.`
-          : `Incomplete @${type} entry.`,
+          ? { key: "entryMissingFieldList" as const, params: { key } }
+          : { key: "incompleteEntry" as const, params: { type } },
       );
     }
 
@@ -368,8 +369,8 @@ export function parseBibtexIntelligence(
           position,
           Math.max(position + 1, recovery),
           key
-            ? `Could not parse a field in "${key}".`
-            : `Could not parse an @${type} field.`,
+            ? { key: "unparsableFieldNamed" as const, params: { key } }
+            : { key: "unparsableField" as const, params: { type } },
         );
         position = recovery;
         continue;
@@ -382,7 +383,7 @@ export function parseBibtexIntelligence(
         malformed(
           fieldFrom,
           Math.min(source.length, Math.max(position + 1, fieldFrom + 1)),
-          `Field "${name}" is missing "=".`,
+          { key: "fieldMissingEquals", params: { name } },
         );
         const comma = source.indexOf(",", position);
         const end = source.indexOf(close, position);
@@ -402,7 +403,7 @@ export function parseBibtexIntelligence(
         malformed(
           fieldFrom,
           Math.max(fieldFrom + 1, position),
-          `Field "${name}" has an incomplete value.`,
+          { key: "fieldIncompleteValue", params: { name } },
         );
       }
       fields.push({
@@ -420,8 +421,8 @@ export function parseBibtexIntelligence(
         entryFrom,
         entryTo,
         key
-          ? `Bibliography entry "${key}" is not closed.`
-          : `@${type} entry is not closed.`,
+          ? { key: "unclosedEntryNamed" as const, params: { key } }
+          : { key: "unclosedEntry" as const, params: { type } },
       );
     }
 
@@ -452,7 +453,7 @@ export function parseBibtexIntelligence(
         validationFinding(
           entry.typeRange,
           "warning",
-          `Unknown bibliography entry type @${type}.`,
+          { key: "unknownEntryType", params: { type } },
           `unknown-type:${type}`,
         );
       } else {
@@ -462,7 +463,13 @@ export function parseBibtexIntelligence(
           validationFinding(
             entry.keyRange,
             "error",
-            `@${type}{${key}} is missing required field ${alternatives.join(" or ")}.`,
+            {
+              key: "missingRequiredField",
+              params: {
+                entry: `@${type}{${key}}`,
+                fields: alternatives.join(" or "),
+              },
+            },
             `missing-field:${alternatives.join("|")}`,
           );
         }
@@ -479,7 +486,7 @@ export function parseBibtexIntelligence(
           validationFinding(
             field.range,
             "error",
-            `Field "${name}" is repeated in bibliography entry "${key}".`,
+            { key: "fieldRepeated", params: { name, key } },
             `duplicate-field:${name}:${field.range.from}`,
           );
         }
@@ -541,7 +548,7 @@ export function parseBibtexIntelligence(
         validationFinding(
           year.valueRange,
           "warning",
-          `Year "${year.value}" is not a four-digit BibTeX year.`,
+          { key: "invalidYear", params: { year: year.value } },
           "invalid-year",
         );
       }

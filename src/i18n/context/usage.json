@@ -1,0 +1,45 @@
+{
+  "quickRanges": {
+    "days7": "Compact button label for the last seven days, keep it very short",
+    "days30": "Compact button label for the last thirty days, keep it very short",
+    "days90": "Compact button label for the last ninety days, keep it very short"
+  },
+  "report": {
+    "sessions": "Metric tile counting recorded sessions",
+    "projects": "Heading of the per-project breakdown table",
+    "agents": "Heading of the per-agent breakdown table",
+    "providers": "Heading of the per-provider breakdown table",
+    "models": "Heading of the per-model breakdown table"
+  },
+  "cost": {
+    "local": "The model ran on this computer, so there is nothing to bill",
+    "plan": "The request was covered by a subscription plan, not billed per token"
+  },
+  "labels": {
+    "mixed": "The rows behind this value span more than one provider, model or billing mode",
+    "generalProject": "Usage that belongs to no project",
+    "runtimeAcp": "Command line coding agents connected over ACP"
+  },
+  "billing": {
+    "api": "Billed per token against an API key",
+    "subscription": "Covered by a subscription plan",
+    "local": "Ran on this computer, nothing is billed",
+    "mixed": "More than one billing mode in the same row"
+  },
+  "scope": {
+    "child": "A run started by another agent rather than by the user",
+    "task": "A background task run",
+    "helper": "A short internal model call, such as naming a chat"
+  },
+  "breakdown": {
+    "name": "Column header for the project, agent, provider or model name",
+    "sessions": "Column header counting sessions"
+  },
+  "heatmap": {
+    "less": "Legend end meaning the lowest token activity",
+    "more": "Legend end meaning the highest token activity"
+  },
+  "trend": {
+    "day": "Table column header for the calendar day"
+  }
+}

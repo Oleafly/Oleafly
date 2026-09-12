@@ -1,0 +1,88 @@
+{
+  "dock": {
+    "search": "Opens the document search palette. {{shortcut}} is a keyboard shortcut and stays verbatim",
+    "tools": "Product name of the utilities modal"
+  },
+  "colors": {
+    "blue": "Cover colour of a project book on the shelf",
+    "cream": "Cover colour of a project book on the shelf",
+    "peach": "Cover colour of a project book on the shelf",
+    "rose": "Cover colour of a project book on the shelf",
+    "pink": "Cover colour of a project book on the shelf",
+    "lilac": "Cover colour of a project book on the shelf",
+    "sky": "Cover colour of a project book on the shelf",
+    "aqua": "Cover colour of a project book on the shelf",
+    "cyan": "Cover colour of a project book on the shelf",
+    "mint": "Cover colour of a project book on the shelf",
+    "spring": "Cover colour of a project book on the shelf"
+  },
+  "home": {
+    "resetFilters": "Button that returns every advanced filter to its default",
+    "columns": {
+      "type": "Column header for the project kind: document, image or diagram",
+      "engine": "Column header for the compiler a project uses"
+    },
+    "filters": {
+      "bookmarkAll": "Select option meaning the bookmark filter is off",
+      "previewAll": "Select option meaning the PDF preview filter is off",
+      "previewYes": "A compiled PDF exists for the project",
+      "previewNo": "No compiled PDF exists for the project"
+    }
+  },
+  "projects": {
+    "openToRecover": "The project was interrupted mid restore and must be opened to finish recovery",
+    "recoveryShort": "Short badge for a project that needs recovery",
+    "kind": {
+      "document": "Project kind, shown in lower case and capitalised by the style sheet",
+      "image": "Project kind, shown in lower case and capitalised by the style sheet",
+      "diagram": "Project kind, shown in lower case and capitalised by the style sheet"
+    },
+    "forkDialog": {
+      "confirm": "Button that creates the copy"
+    },
+    "exportsDialog": {
+      "fallbackFormat": "Shown when an exported file has no recorded format"
+    }
+  },
+  "import": {
+    "menu": {
+      "local": "Menu heading for import sources on this computer",
+      "cloud": "Menu heading for import sources on the internet"
+    },
+    "picker": {
+      "projectFilter": "File type name in the native open dialog",
+      "wordFilter": "File type name in the native open dialog",
+      "markdownFilter": "File type name in the native open dialog"
+    }
+  },
+  "pdfImport": {
+    "local": "Badge saying the conversion runs on this computer, nothing is uploaded",
+    "views": {
+      "preview": "Shows the rendered pages of the source PDF",
+      "source": "Shows the converted LaTeX source",
+      "split": "Shows pages and source side by side"
+    }
+  },
+  "generate": {
+    "badge": "Marks a template that an AI model produced",
+    "saved": "Button state after the template was saved, hovering it offers Unsave",
+    "unsave": "Removes a saved template from the library again"
+  },
+  "github": {
+    "private": "Repository visibility, not a person's privacy"
+  },
+  "deadlines": {
+    "eyebrow": "Small label above the page heading",
+    "estimatedBadge": "Short badge meaning the date is an estimate, keep it very short",
+    "urgency": {
+      "comfortable": "The deadline is far enough away that no warning is needed"
+    },
+    "units": {
+      "days": "Countdown unit label",
+      "hours": "Countdown unit label",
+      "minutes": "Countdown unit label",
+      "seconds": "Countdown unit label"
+    },
+    "nextDeadline": "{{kind}} is a deadline name from the dataset, such as Abstract or Submission, and stays verbatim"
+  }
+}

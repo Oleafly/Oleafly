@@ -9,6 +9,7 @@ import type {
 } from "@oleafly/latex";
 import { BringToFront, ChevronsDown, ChevronsUp, SendToBack } from "lucide-react";
 import { useDiagramKit } from "./kit";
+import type { DiagramMessageKey } from "./messages";
 
 export type ReorderDir = "front" | "back" | "forward" | "backward";
 
@@ -16,10 +17,31 @@ const ROUNDABLE = new Set(["rectangle", "roundrect", "text"]);
 const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28];
 const RADII = [0, 2, 4, 6, 8, 12, 16, 24];
 const WIDTHS = [0.5, 1, 1.5, 2, 3];
-const FONTS = [
-  { value: "serif", label: "Serif" },
-  { value: "sans", label: "Sans Serif" },
-  { value: "mono", label: "Monospace" },
+const FONTS: { value: string; key: DiagramMessageKey }[] = [
+  { value: "serif", key: "inspector.fontSerif" },
+  { value: "sans", key: "inspector.fontSans" },
+  { value: "mono", key: "inspector.fontMono" },
+];
+const REORDER: { dir: ReorderDir; key: DiagramMessageKey; icon: React.ReactNode }[] = [
+  { dir: "front", key: "inspector.bringToFront", icon: <BringToFront className="size-3.5" /> },
+  { dir: "forward", key: "inspector.forward", icon: <ChevronsUp className="size-3.5" /> },
+  { dir: "backward", key: "inspector.backward", icon: <ChevronsDown className="size-3.5" /> },
+  { dir: "back", key: "inspector.sendToBack", icon: <SendToBack className="size-3.5" /> },
+];
+const LINE_STYLES: { value: string; key: DiagramMessageKey }[] = [
+  { value: "solid", key: "inspector.strokeSolid" },
+  { value: "dashed", key: "inspector.strokeDashed" },
+  { value: "dotted", key: "inspector.strokeDotted" },
+];
+const ARROWHEADS: { value: string; key: DiagramMessageKey }[] = [
+  { value: "forward", key: "inspector.arrowEnd" },
+  { value: "both", key: "inspector.arrowBoth" },
+  { value: "none", key: "inspector.arrowNone" },
+];
+const ROUTINGS: { value: string; key: DiagramMessageKey }[] = [
+  { value: "straight", key: "inspector.routingStraight" },
+  { value: "orthogonal", key: "inspector.routingOrthogonal" },
+  { value: "curved", key: "inspector.routingCurved" },
 ];
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -82,28 +104,25 @@ export function Inspector({
   onEdgeChange: (patch: Partial<DiagEdge>) => void;
   onReorder?: (dir: ReorderDir) => void;
 }) {
-  const { Input, Tooltip } = useDiagramKit();
+  const { Input, Tooltip, t } = useDiagramKit();
   if (!node && !edge) return null;
+  const labelled = (options: { value: string; key: DiagramMessageKey }[]) =>
+    options.map((o) => ({ value: o.value, label: t(o.key) }));
 
   if (node) {
     return (
       <div className="flex flex-col gap-2.5 p-3">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Shape</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t("inspector.shape")}
+          </span>
           {onReorder && (
             <div className="flex items-center gap-0.5">
-              {(
-                [
-                  { dir: "front", label: "Bring to front", icon: <BringToFront className="size-3.5" /> },
-                  { dir: "forward", label: "Forward", icon: <ChevronsUp className="size-3.5" /> },
-                  { dir: "backward", label: "Backward", icon: <ChevronsDown className="size-3.5" /> },
-                  { dir: "back", label: "Send to back", icon: <SendToBack className="size-3.5" /> },
-                ] as { dir: ReorderDir; label: string; icon: React.ReactNode }[]
-              ).map((b) => (
-                <Tooltip key={b.dir} label={b.label} side="bottom">
+              {REORDER.map((b) => (
+                <Tooltip key={b.dir} label={t(b.key)} side="bottom">
                   <button
                     type="button"
-                    aria-label={b.label}
+                    aria-label={t(b.key)}
                     onClick={() => onReorder(b.dir)}
                     className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
@@ -115,31 +134,27 @@ export function Inspector({
           )}
         </div>
         <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted-foreground">Label (LaTeX)</span>
+          <span className="text-muted-foreground">{t("inspector.nodeLabel")}</span>
           <Input
             value={node.label}
             onChange={(e) => onNodeChange({ label: e.target.value })}
             className="rounded border border-input bg-background px-1.5 py-1 text-xs outline-none focus:border-primary"
           />
         </label>
-        <Field label="Fill">
+        <Field label={t("inspector.fill")}>
           <ColorInput value={node.fill} onChange={(v) => onNodeChange({ fill: v })} />
         </Field>
-        <Field label="Border">
+        <Field label={t("inspector.border")}>
           <ColorInput value={node.stroke} onChange={(v) => onNodeChange({ stroke: v })} />
         </Field>
-        <Field label="Border style">
+        <Field label={t("inspector.borderStyle")}>
           <Pick
             value={node.strokeStyle || "solid"}
             onChange={(v) => onNodeChange({ strokeStyle: v as StrokeStyle })}
-            options={[
-              { value: "solid", label: "Solid" },
-              { value: "dashed", label: "Dashed" },
-              { value: "dotted", label: "Dotted" },
-            ]}
+            options={labelled(LINE_STYLES)}
           />
         </Field>
-        <Field label="Border width">
+        <Field label={t("inspector.borderWidth")}>
           <Pick
             value={String(node.strokeWidth ?? 1)}
             onChange={(v) => onNodeChange({ strokeWidth: Number(v) })}
@@ -148,7 +163,7 @@ export function Inspector({
           />
         </Field>
         {ROUNDABLE.has(node.shape) && (
-          <Field label="Corner radius">
+          <Field label={t("inspector.cornerRadius")}>
             <Pick
               value={String(node.radius ?? (node.shape === "roundrect" ? 6 : 0))}
               onChange={(v) => onNodeChange({ radius: Number(v) })}
@@ -157,7 +172,7 @@ export function Inspector({
             />
           </Field>
         )}
-        <Field label="Font size">
+        <Field label={t("inspector.fontSize")}>
           <Pick
             value={String(node.fontSize ?? 11)}
             onChange={(v) => onNodeChange({ fontSize: Number(v) })}
@@ -165,16 +180,16 @@ export function Inspector({
             width="w-20"
           />
         </Field>
-        <Field label="Font">
+        <Field label={t("inspector.font")}>
           <Pick
             value={node.fontFamily ?? "serif"}
             onChange={(v) =>
               onNodeChange({ fontFamily: v as DiagramFontFamily })
             }
-            options={FONTS}
+            options={labelled(FONTS)}
           />
         </Field>
-        <Field label="Font color">
+        <Field label={t("inspector.fontColor")}>
           <ColorInput value={node.textColor} onChange={(v) => onNodeChange({ textColor: v })} />
         </Field>
       </div>
@@ -183,46 +198,36 @@ export function Inspector({
 
   return (
     <div className="flex flex-col gap-2.5 p-3">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Arrow</div>
+      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {t("inspector.arrow")}
+      </div>
       <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted-foreground">Label</span>
+        <span className="text-muted-foreground">{t("inspector.edgeLabel")}</span>
         <Input
           value={edge!.label || ""}
           onChange={(e) => onEdgeChange({ label: e.target.value })}
           className="rounded border border-input bg-background px-1.5 py-1 text-xs outline-none focus:border-primary"
         />
       </label>
-      <Field label="Arrowhead">
+      <Field label={t("inspector.arrowhead")}>
         <Pick
           value={edge!.arrow}
           onChange={(v) => onEdgeChange({ arrow: v as EdgeArrow })}
-          options={[
-            { value: "forward", label: "End" },
-            { value: "both", label: "Both" },
-            { value: "none", label: "None" },
-          ]}
+          options={labelled(ARROWHEADS)}
         />
       </Field>
-      <Field label="Routing">
+      <Field label={t("inspector.routing")}>
         <Pick
           value={edge!.routing}
           onChange={(v) => onEdgeChange({ routing: v as EdgeRouting })}
-          options={[
-            { value: "straight", label: "Straight" },
-            { value: "orthogonal", label: "Orthogonal" },
-            { value: "curved", label: "Curved" },
-          ]}
+          options={labelled(ROUTINGS)}
         />
       </Field>
-      <Field label="Line">
+      <Field label={t("inspector.line")}>
         <Pick
           value={edge!.style}
           onChange={(v) => onEdgeChange({ style: v as EdgeStyle })}
-          options={[
-            { value: "solid", label: "Solid" },
-            { value: "dashed", label: "Dashed" },
-            { value: "dotted", label: "Dotted" },
-          ]}
+          options={labelled(LINE_STYLES)}
         />
       </Field>
     </div>

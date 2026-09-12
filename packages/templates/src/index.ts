@@ -3,3 +3,4 @@
 export { NewProjectDialog } from "./NewProjectDialog";
 export { ModalCoordinator, modalCoordinator } from "./modal-coordinator";
 export type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
+export * from "./messages";

@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
+
+const originalNavigator = globalThis.navigator;
 
 const toggleBrowser = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/browser-window", () => ({ toggleBrowser }));
@@ -43,6 +45,7 @@ import {
 
 describe("native dock shortcuts", () => {
   beforeEach(() => {
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
     native.invoke.mockClear();
     native.listeners.clear();
     native.projectId = "project-1";
@@ -50,6 +53,8 @@ describe("native dock shortcuts", () => {
     useSettingsStore.setState({ terminalOpen: false, browserOpen: false, webBrowser: true });
     useShortcutStore.getState().resetAll();
   });
+
+  afterEach(() => vi.stubGlobal("navigator", originalNavigator));
 
   it("serializes fixed Ctrl dock bindings for Tauri menu accelerators", () => {
     expect(nativeAccelerator({ key: "`", ctrl: true }, true)).toBe("Ctrl+`");
@@ -95,6 +100,14 @@ describe("native dock shortcuts", () => {
     expect(usesNativeDockMenu(true, "Linux x86_64")).toBe(true);
     expect(usesNativeDockMenu(true, "Win32")).toBe(false);
     expect(usesNativeDockMenu(false, "MacIntel")).toBe(false);
+  });
+
+  it("does not install native menu listeners or accelerators on Windows", async () => {
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    const stop = await startNativeDockShortcutBridge();
+    expect(native.invoke).not.toHaveBeenCalled();
+    expect(native.listeners.size).toBe(0);
+    stop();
   });
 
   it("syncs current and edited dock bindings to the native menu", async () => {

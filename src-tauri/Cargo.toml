@@ -28,6 +28,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-playwright = { version = "0.4", optional = true }
 tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"
+sys-locale = "0.3"
 # In-app auto-update: checks the `latest.json` feed on updates.oleafly.com,
 # falling back to GitHub Releases, verifies the minisign signature against the
 # pubkey in tauri.conf.json, and installs. The process plugin provides
@@ -71,14 +72,17 @@ tempfile = { workspace = true }
 security-framework = "=2.11.1"
 
 [target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Security",
+  "Win32_Security_Authorization",
   "Win32_Storage_FileSystem",
   "Win32_System_Diagnostics_ToolHelp",
   "Win32_System_IO",
   "Win32_System_JobObjects",
   "Win32_System_Threading",
+  "Win32_UI_Input_KeyboardAndMouse",
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { budgetGet, budgetSet, usageSummary } from "@/lib/tauri";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { createAppQueryClient } from "@/lib/query";
 import { useFilesStore } from "@/store/files";
 import { ProjectBudget } from "./ProjectBudget";
@@ -47,9 +48,9 @@ describe("ProjectBudget", () => {
 
   it("saves a new budget", async () => {
     renderCard();
-    const input = await screen.findByLabelText("AI budget in US dollars");
+    const input = await screen.findByLabelText(enSettings.ai.budget.inputLabel);
     fireEvent.change(input, { target: { value: "12.5" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save budget" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.ai.budget.save }));
 
     await vi.waitFor(() =>
       expect(mockSet).toHaveBeenCalledWith("proj-1", 12.5),
@@ -59,7 +60,7 @@ describe("ProjectBudget", () => {
   it("clears the budget", async () => {
     renderCard();
     await screen.findByDisplayValue("5");
-    fireEvent.click(screen.getByRole("button", { name: "Clear budget" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.ai.budget.clear }));
 
     await vi.waitFor(() => expect(mockSet).toHaveBeenCalledWith("proj-1", null));
   });
@@ -71,7 +72,7 @@ describe("ProjectBudget", () => {
         <ProjectBudget key={0} />
       </QueryClientProvider>,
     );
-    const input = await screen.findByLabelText("AI budget in US dollars");
+    const input = await screen.findByLabelText(enSettings.ai.budget.inputLabel);
     fireEvent.change(input, { target: { value: "12.5" } });
     expect(input).toHaveValue("12.5");
 
@@ -83,9 +84,9 @@ describe("ProjectBudget", () => {
     );
 
     await vi.waitFor(() =>
-      expect(screen.getByLabelText("AI budget in US dollars")).toHaveValue(""),
+      expect(screen.getByLabelText(enSettings.ai.budget.inputLabel)).toHaveValue(""),
     );
-    expect(screen.getByRole("button", { name: "Save budget" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: enSettings.ai.budget.save })).toBeDisabled();
     expect(mockSet).not.toHaveBeenCalled();
   });
 });

@@ -1,8 +1,17 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
   "files": {
-    "includes": ["src/**/*.ts", "src/**/*.tsx"]
+    "includes": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "packages/*/src/**/*.ts",
+      "packages/*/src/**/*.tsx"
+    ]
   },
+  "plugins": [
+    ".biome/i18n-attributes.grit",
+    ".biome/i18n-toast-literals.grit"
+  ],
   "linter": {
     "enabled": true,
     "rules": {
@@ -24,7 +33,78 @@
       },
       "style": {
         "useTemplate": "warn",
-        "noNonNullAssertion": "warn"
+        "noNonNullAssertion": "warn",
+        "noJsxLiterals": {
+          "level": "error",
+          "options": {
+            "allowedStrings": [
+              "·",
+              "•",
+              "/",
+              "×",
+              "…",
+              "(",
+              ")",
+              ":",
+              "-",
+              "+",
+              "%",
+              "=",
+              "|",
+              "→",
+              "←",
+              "↑",
+              "↓",
+              "⌘",
+              "⇧",
+              "⌥",
+              "⌃",
+              "©",
+              "*",
+              "#",
+              "&",
+              ",",
+              ".",
+              "!",
+              "?",
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "LaTeX",
+              "Typst",
+              "Markdown",
+              "PDF",
+              "BibTeX",
+              "Git",
+              "GitHub",
+              "MCP",
+              "Oleafly",
+              "↵",
+              " · ",
+              " ·"
+            ]
+          }
+        },
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "@/lib/tauri": {
+                "importNames": [
+                  "writeFileContent"
+                ],
+                "message": "Write project files with useFilesStore.getState().writeProjectFile so the file tree and the project index refresh."
+              }
+            }
+          }
+        }
       },
       "complexity": {
         "useOptionalChain": "warn",
@@ -37,5 +117,73 @@
   },
   "assist": {
     "enabled": false
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/store/files.ts",
+        "src/lib/ai-tools.ts",
+        "src/components/diagram/DiagramComposer.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "packages/**"
+      ],
+      "linter": {
+        "rules": {
+          "recommended": false,
+          "style": {
+            "noJsxLiterals": {
+              "level": "error",
+              "options": {
+                "allowedStrings": [
+                  "·",
+                  "•",
+                  "/",
+                  "×",
+                  "…",
+                  "(",
+                  ")",
+                  ":",
+                  "-",
+                  "+",
+                  "%"
+                ]
+              }
+            },
+            "useTemplate": "off",
+            "noNonNullAssertion": "off",
+            "noRestrictedImports": "off"
+          },
+          "a11y": {
+            "useButtonType": "off",
+            "useKeyWithClickEvents": "off",
+            "noStaticElementInteractions": "off",
+            "noAutofocus": "off",
+            "useSemanticElements": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off",
+            "noArrayIndexKey": "off",
+            "noAssignInExpressions": "off"
+          },
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          },
+          "complexity": {
+            "useOptionalChain": "off",
+            "noUselessFragments": "off"
+          }
+        }
+      }
+    }
+  ]
 }

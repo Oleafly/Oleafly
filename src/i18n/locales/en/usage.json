@@ -1,0 +1,188 @@
+{
+  "dialog": {
+    "title": "Usage report",
+    "description": "Recorded token activity by project, agent, provider, model and session.",
+    "from": "From",
+    "through": "Through",
+    "quickRangesLegend": "Quick ranges",
+    "utcNote": "Dates and hours are in UTC.",
+    "apply": "Apply",
+    "refresh": "Refresh",
+    "refreshLabel": "Refresh usage report",
+    "loading": "Loading usage…",
+    "loadFailed": "The usage report could not be loaded.",
+    "loadFailedHint": "Try again in a moment.",
+    "tryAgain": "Try again",
+    "emptyTitle": "No usage was recorded for these filters.",
+    "emptyDescription": "Change the date range or remove a filter."
+  },
+  "quickRanges": {
+    "days7": "7d",
+    "days30": "30d",
+    "days90": "90d",
+    "month": "This month"
+  },
+  "filters": {
+    "project": "Project",
+    "projectAll": "All projects",
+    "agent": "Agent",
+    "agentAll": "All agents",
+    "provider": "Provider",
+    "providerAll": "All providers",
+    "model": "Model",
+    "modelAll": "All models",
+    "session": "Session",
+    "sessionAll": "All sessions"
+  },
+  "report": {
+    "range": "{{start}} to {{end}} (UTC)",
+    "costDisclaimer": "Cost estimates use saved price data, not your provider bill or plan quota.",
+    "exportCsv": "Export CSV",
+    "exportSaved": "Saved {{path}}",
+    "exportFailed": "The usage report could not be saved.",
+    "inputTokens": "Input tokens",
+    "inputIncludesCache": "Includes cached input",
+    "outputTokens": "Output tokens",
+    "outputIncludesReasoning": "Includes reasoning tokens",
+    "cacheReads": "Cache reads",
+    "costEstimate": "Cost estimate",
+    "allRecordsPriced": "All records priced",
+    "sessions": "Sessions",
+    "dailyTokens": "Daily tokens",
+    "activityByHour": "Activity by hour",
+    "projects": "Projects",
+    "agents": "Agents",
+    "providers": "Providers",
+    "models": "Models"
+  },
+  "counts": {
+    "records_one": "{{total}} record",
+    "records_other": "{{total}} records",
+    "sessions_one": "{{total}} session",
+    "sessions_other": "{{total}} sessions",
+    "tokens_one": "{{total}} token",
+    "tokens_other": "{{total}} tokens",
+    "inputUnknown_one": "{{total}} record without an input count",
+    "inputUnknown_other": "{{total}} records without an input count",
+    "outputUnknown_one": "{{total}} record without an output count",
+    "outputUnknown_other": "{{total}} records without an output count",
+    "cacheUnknown_one": "{{total}} record without comparable cache data",
+    "cacheUnknown_other": "{{total}} records without comparable cache data",
+    "unpriced_one": "{{total}} record unpriced",
+    "unpriced_other": "{{total}} records unpriced",
+    "partlyUnpriced_one": "{{unpriced}} of {{total}} record unpriced",
+    "partlyUnpriced_other": "{{unpriced}} of {{total}} records unpriced",
+    "onPlan_one": "{{total}} record on a plan or local",
+    "onPlan_other": "{{total}} records on a plan or local",
+    "childRuns_one": "{{total}} child run",
+    "childRuns_other": "{{total}} child runs",
+    "usageRecords_one": "{{total}} usage record",
+    "usageRecords_other": "{{total}} usage records",
+    "excludedChildRecords_one": "{{total}} child record already counted in a parent total, so not counted twice.",
+    "excludedChildRecords_other": "{{total}} child records already counted in a parent total, so not counted twice.",
+    "unmeasured_one": "{{total}} record without measured token counts.",
+    "unmeasured_other": "{{total}} records without measured token counts."
+  },
+  "cache": {
+    "rate": "{{percent}}% of comparable input",
+    "rateWithUnknown": "{{percent}}% of comparable input, {{unknown}} not comparable"
+  },
+  "cost": {
+    "local": "Local",
+    "plan": "Plan",
+    "notBilledPerToken": "Not billed per token",
+    "noEstimate": "No estimate",
+    "noSavedPrice": "No saved price for these records",
+    "priceSource": "Price source: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Daily input and output token trend",
+    "chartTitle": "Daily token use",
+    "empty": "No daily activity.",
+    "tokensUnavailable": "Token counts unavailable",
+    "inOut": "{{input}} in, {{output}} out",
+    "incompleteDays": "Days with incomplete token counts are left out of the line.",
+    "day": "Day",
+    "inputTokens": "Input tokens",
+    "outputTokens": "Output tokens"
+  },
+  "heatmap": {
+    "label": "Token activity by UTC weekday and hour",
+    "cell": "{{weekday}} {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "No recorded activity",
+    "tokenUnavailable": "Token count unavailable",
+    "hoursInUtc": "Hours in UTC",
+    "less": "Less",
+    "more": "More",
+    "weekdays": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    }
+  },
+  "breakdown": {
+    "empty": "No recorded usage.",
+    "name": "Name",
+    "tokens": "Tokens",
+    "cost": "Cost",
+    "sessions": "Sessions"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "subtitle": "Chats, tasks, subagent runs and helper calls, most recent first.",
+    "emptyTitle": "No sessions match these filters",
+    "emptyDescription": "Change the date range or remove a filter.",
+    "session": "Session",
+    "project": "Project",
+    "agent": "Agent",
+    "model": "Model",
+    "lastActivity": "Last activity (UTC)",
+    "input": "Input",
+    "output": "Output",
+    "cost": "Cost",
+    "billing": "Billing",
+    "status": "Status",
+    "rowsPerPage": "Rows per page",
+    "page": "Page {{page}} of {{pageCount}}",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "labels": {
+    "unknown": "Unknown",
+    "mixed": "Mixed",
+    "generalProject": "General",
+    "runtimeBuiltIn": "Oleafly assistant",
+    "runtimeHelper": "Helper calls",
+    "runtimeAcp": "CLI agents"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Plan",
+    "local": "Local",
+    "unknown": "Unknown",
+    "mixed": "Mixed"
+  },
+  "scope": {
+    "child": "Subagent",
+    "task": "Task",
+    "helper": "Helper"
+  },
+  "status": {
+    "in_progress": "In progress",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled",
+    "interrupted": "Interrupted"
+  },
+  "measurement": {
+    "provider_reported": "Counted by the provider",
+    "runtime_reported": "Counted by the agent",
+    "estimated": "Estimated locally",
+    "unavailable": "Not measured",
+    "mixed_or_unavailable": "Partly measured"
+  }
+}

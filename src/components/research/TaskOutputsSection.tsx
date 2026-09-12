@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronRight, FlaskConical, Loader2, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import {
 } from "@/store/research-tasks";
 import { useFilesStore } from "@/store/files";
 import { cn } from "@/lib/utils";
+import { i18n } from "@/i18n";
 
 const CHANGE_MARKS: Record<TaskFileChange["kind"], string> = {
   added: "A",
@@ -56,6 +58,7 @@ function awaitsAttention(task: ResearchTask): boolean {
 }
 
 export function TaskOutputsSection() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const projectId = useFilesStore((state) => state.projectId);
   const tasks = useResearchTasksStore((state) => state.tasks);
   const openTaskDetail = useResearchTasksStore((state) => state.openTaskDetail);
@@ -126,9 +129,9 @@ export function TaskOutputsSection() {
         text: result.after.text,
         truncated: result.after.truncated,
         note: !result.after.exists
-          ? "This task deleted the file."
+          ? i18n.t(($) => $.researchTools.outputs.deleted)
           : result.after.binary
-            ? "This file is binary, so it cannot be previewed here."
+            ? i18n.t(($) => $.researchTools.outputs.binaryFile)
             : null,
       });
     } catch (cause) {
@@ -143,7 +146,10 @@ export function TaskOutputsSection() {
       settle(request, {
         text: result.content.text,
         truncated: result.content.truncated,
-        note: result.content.text === null ? "This artifact is binary, so it cannot be previewed here." : null,
+        note:
+          result.content.text === null
+            ? i18n.t(($) => $.researchTools.outputs.binaryArtifact)
+            : null,
       });
     } catch (cause) {
       settle(request, { error: failure(cause) });
@@ -152,7 +158,7 @@ export function TaskOutputsSection() {
 
   return (
     <section
-      aria-label="Task outputs"
+      aria-label={t(($) => $.researchTools.outputs.title)}
       data-testid="task-outputs-section"
       className="shrink-0 border-t border-sidebar-border"
     >
@@ -171,7 +177,7 @@ export function TaskOutputsSection() {
         />
         <FlaskConical aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="flex-1 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          Task outputs
+          {t(($) => $.researchTools.outputs.title)}
         </span>
         <Badge variant="quiet" className="px-1.5 text-[10px] tabular-nums">
           {groups.length}
@@ -197,7 +203,7 @@ export function TaskOutputsSection() {
                   className="shrink-0"
                   onClick={() => openTaskDetail(task.id, "review")}
                 >
-                  Review
+                  {t(($) => $.researchTools.outputs.review)}
                 </Button>
               </div>
               {(task.result?.changedFiles ?? []).map((change) => (
@@ -245,7 +251,9 @@ export function TaskOutputsSection() {
           <DialogHeader>
             <DialogTitle className="truncate">{preview?.label ?? ""}</DialogTitle>
             <DialogDescription>
-              Read only preview from the task {preview?.taskTitle ?? ""}.
+              {t(($) => $.researchTools.outputs.previewDescription, {
+                title: preview?.taskTitle ?? "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 overflow-auto rounded-md border bg-muted/20 p-3">
@@ -255,7 +263,7 @@ export function TaskOutputsSection() {
               </p>
             ) : preview?.loading ? (
               <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Loading...
+                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
               </p>
             ) : preview?.note ? (
               <p className="text-sm text-muted-foreground">{preview.note}</p>
@@ -263,7 +271,9 @@ export function TaskOutputsSection() {
               <>
                 <pre className="whitespace-pre-wrap break-words text-xs">{preview?.text ?? ""}</pre>
                 {preview?.truncated ? (
-                  <p className="mt-2 text-xs text-muted-foreground">Preview stopped at 256 KiB.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {t(($) => $.researchTools.outputs.previewTruncated)}
+                  </p>
                 ) : null}
               </>
             )}
@@ -275,7 +285,7 @@ export function TaskOutputsSection() {
                 setPreview(null);
               }}
             >
-              Close
+              {t(($) => $.common.actions.close)}
             </Button>
           </DialogFooter>
         </DialogContent>

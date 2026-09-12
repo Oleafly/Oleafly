@@ -8,6 +8,7 @@ edition = "2021"
 rust-version = "1.77"
 
 [dependencies]
+fs4 = "1.1"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

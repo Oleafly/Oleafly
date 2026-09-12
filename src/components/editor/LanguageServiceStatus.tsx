@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Download,
   ExternalLink,
@@ -10,10 +11,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
   retryActiveLanguageService,
   setupActiveLanguageService,
 } from "@/lib/analysis/language-service-actions";
+import {
+  analysisReasonText,
+  type AnalysisReason,
+} from "@/lib/analysis/reason";
 import { getLanguageServiceSetupDisclosure } from "@/lib/language-service/setup-disclosure";
 import type { LanguageServiceKind } from "@/lib/language-service/transport";
 import { Button } from "@/components/ui/button";
@@ -28,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
+import { i18n } from "@/i18n";
 
 const BIBTEX_DOCUMENT = /\.bib$/i;
 
@@ -46,6 +51,9 @@ export function LanguageServiceStatus() {
   const failureMessage = useProjectAnalysisStore(
     (state) => state.snapshot.languageService.failure?.message,
   );
+  const failureReason = useProjectAnalysisStore(
+    (state) => state.snapshot.languageService.failure?.reason,
+  );
   const bibtexActive =
     activePath !== null && BIBTEX_DOCUMENT.test(activePath);
 
@@ -55,6 +63,7 @@ export function LanguageServiceStatus() {
     <LanguageServiceFailureStatus
       key={`${projectId}:${kind ?? "none"}`}
       failureMessage={failureMessage}
+      failureReason={failureReason}
       kind={kind}
       reason={reason}
       setupRequired={readiness === "setup_required"}
@@ -69,19 +78,22 @@ export function LanguageServiceStatus() {
 
 interface LanguageServiceFailureStatusProps {
   failureMessage?: string;
+  failureReason?: AnalysisReason;
   kind: LanguageServiceKind | null;
-  reason?: string;
+  reason?: AnalysisReason;
   setupRequired: boolean;
   visible: boolean;
 }
 
 function LanguageServiceFailureStatus({
   failureMessage,
+  failureReason,
   kind,
   reason,
   setupRequired,
   visible,
 }: LanguageServiceFailureStatusProps) {
+  const { t } = useTranslation(["common", "intelligence"]);
   const [setupOpen, setSetupOpen] = useState(false);
   const [installPending, setInstallPending] = useState(false);
   const [installFailure, setInstallFailure] = useState<string | null>(
@@ -105,19 +117,22 @@ function LanguageServiceFailureStatus({
       disclosureFailure =
         error instanceof Error
           ? error.message
-          : "TexLab setup metadata is invalid";
+          : i18n.t(($) => $.intelligence.languageService.setupMetadataInvalid);
     }
   }
   const canSetUp = setupRequired && disclosure !== null;
-  const actionLabel = canSetUp ? "Set up" : "Retry";
+  const actionLabel = canSetUp
+    ? t(($) => $.intelligence.languageService.setUp)
+    : t(($) => $.intelligence.languageService.retry);
   const unavailableLabel =
+    analysisReasonText(failureReason) ??
     failureMessage ??
-    reason ??
-    "The project language service could not be started.";
+    analysisReasonText(reason) ??
+    t(($) => $.intelligence.languageService.startFailed);
   const statusMessage = setupRequired
     ? disclosureFailure
-      ? "Language service setup details unavailable"
-      : "Language service setup required"
+      ? t(($) => $.intelligence.languageService.setupDetailsUnavailable)
+      : t(($) => $.intelligence.languageService.setupRequired)
     : unavailableLabel;
   const toastId = `language-service:${kind ?? "unknown"}`;
 
@@ -160,7 +175,9 @@ function LanguageServiceFailureStatus({
       setSetupOpen(false);
     } catch {
       if (!mounted.current) return;
-      setInstallFailure(LANGUAGE_SERVICE_SETUP_FAILURE_REASON);
+      setInstallFailure(
+        t(($) => $.intelligence.languageService.reasons.setupFailed),
+      );
     } finally {
       if (mounted.current) setInstallPending(false);
     }
@@ -173,8 +190,10 @@ function LanguageServiceFailureStatus({
           <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle>
-                Install {disclosure.displayName}{" "}
-                {disclosure.version}?
+                {t(($) => $.intelligence.languageService.installTitle, {
+                  name: disclosure.displayName,
+                  version: disclosure.version,
+                })}
               </DialogTitle>
               <DialogDescription>
                 {disclosure.purpose}
@@ -184,7 +203,7 @@ function LanguageServiceFailureStatus({
             <dl className="grid gap-3 rounded-lg border bg-muted/30 p-4 text-sm">
               <div className="grid gap-1">
                 <dt className="font-medium text-foreground">
-                  License and source
+                  {t(($) => $.intelligence.languageService.licenseAndSource)}
                 </dt>
                 <dd className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
                   <a
@@ -193,7 +212,9 @@ function LanguageServiceFailureStatus({
                     rel="noopener noreferrer"
                     target="_blank"
                   >
-                    {disclosure.license.spdx} license
+                    {t(($) => $.intelligence.languageService.licenseLink, {
+                      spdx: disclosure.license.spdx,
+                    })}
                     <ExternalLink
                       aria-hidden="true"
                       className="size-3"
@@ -205,7 +226,7 @@ function LanguageServiceFailureStatus({
                     rel="noopener noreferrer"
                     target="_blank"
                   >
-                    Pinned corresponding source
+                    {t(($) => $.intelligence.languageService.sourceLink)}
                     <ExternalLink
                       aria-hidden="true"
                       className="size-3"
@@ -215,17 +236,15 @@ function LanguageServiceFailureStatus({
               </div>
               <div className="grid gap-1">
                 <dt className="font-medium text-foreground">
-                  Verification
+                  {t(($) => $.intelligence.languageService.verification)}
                 </dt>
                 <dd className="text-muted-foreground">
-                  Oleafly verifies the downloaded archive and
-                  extracted executable against their
-                  manifest-pinned sizes and SHA-256 checksums.
+                  {t(($) => $.intelligence.languageService.verificationDetail)}
                 </dd>
               </div>
               <div className="grid gap-1">
                 <dt className="font-medium text-foreground">
-                  Destination
+                  {t(($) => $.intelligence.languageService.destination)}
                 </dt>
                 <dd className="break-all font-mono text-xs text-muted-foreground">
                   {disclosure.destination}
@@ -250,7 +269,7 @@ function LanguageServiceFailureStatus({
                   type="button"
                   variant="outline"
                 >
-                  Cancel
+                  {t(($) => $.common.actions.cancel)}
                 </Button>
               </DialogClose>
               <Button
@@ -267,10 +286,17 @@ function LanguageServiceFailureStatus({
                   <Download aria-hidden="true" />
                 )}
                 {installPending
-                  ? `Installing ${disclosure.displayName}…`
+                  ? t(($) => $.intelligence.languageService.installing, {
+                      name: disclosure.displayName,
+                    })
                   : installFailure
-                    ? `Retry ${disclosure.displayName} download`
-                    : `Install ${disclosure.displayName} ${disclosure.version}`}
+                    ? t(($) => $.intelligence.languageService.retryDownload, {
+                        name: disclosure.displayName,
+                      })
+                    : t(($) => $.intelligence.languageService.install, {
+                        name: disclosure.displayName,
+                        version: disclosure.version,
+                      })}
               </Button>
             </DialogFooter>
           </DialogContent>

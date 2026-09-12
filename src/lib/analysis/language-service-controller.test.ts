@@ -15,17 +15,21 @@ import {
   LanguageServiceClient,
   TauriLanguageServiceTransport,
 } from "@/lib/language-service";
-import { LANGUAGE_SERVICE_SETUP_FAILURE_REASON } from "@/lib/analysis/language-service-actions";
+import {
+  LANGUAGE_SERVICE_SETUP_FAILURE_ANALYSIS_REASON,
+  LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
+} from "@/lib/analysis/language-service-actions";
 import { createProjectAnalysisStore } from "@/store/project-analysis";
 import { describe, expect, it, vi } from "vitest";
 import {
-  BIBTEX_LOCAL_ONLY_REASON,
+  BIBTEX_LOCAL_ONLY_ANALYSIS_REASON,
   fileUriForProjectPath,
+  LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
   LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
   LanguageServiceController,
   languageServiceKindForEngine,
   languageServiceLanguageIdForPath,
-  MARKDOWN_LOCAL_ONLY_REASON,
+  MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON,
   type LanguageServiceProjectSnapshot,
   type LanguageServiceRestartScheduler,
   type LifecycleAnalysisCoordinator,
@@ -177,7 +181,7 @@ class FakeCoordinator implements LifecycleAnalysisCoordinator {
     for (const feature of PROJECT_ANALYSIS_FEATURES) {
       this.store
         .getState()
-        .markFeatureNotRun(feature, "Ready; analysis has not run.");
+        .markFeatureNotRun(feature, { key: "supportedNotRun" });
     }
   }
 
@@ -602,7 +606,8 @@ describe("LanguageServiceController", () => {
     );
     expect(
       Object.values(store.getState().snapshot.documents).find(
-        (document) => document.reason === BIBTEX_LOCAL_ONLY_REASON,
+        (document) =>
+          document.reason === BIBTEX_LOCAL_ONLY_ANALYSIS_REASON,
       ),
     ).toMatchObject({
       analysis: "local_only",
@@ -698,7 +703,10 @@ describe("LanguageServiceController", () => {
     expect(store.getState().snapshot.identity.projectRevision).toBe(4);
     const bib = Object.values(
       store.getState().snapshot.documents,
-    ).find((document) => document.reason === BIBTEX_LOCAL_ONLY_REASON);
+    ).find(
+      (document) =>
+        document.reason === BIBTEX_LOCAL_ONLY_ANALYSIS_REASON,
+    );
     expect(bib?.version).toBe(2);
   });
 
@@ -816,7 +824,7 @@ describe("LanguageServiceController", () => {
     expect(clients).toHaveLength(0);
     expect(store.getState().snapshot.languageService).toMatchObject({
       readiness: "local_only",
-      reason: MARKDOWN_LOCAL_ONLY_REASON,
+      reason: MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON,
     });
     expect(store.getState().snapshot.features.completion.status).toBe(
       "unsupported",
@@ -826,7 +834,7 @@ describe("LanguageServiceController", () => {
     ).toMatchObject({
       analysis: "local_only",
       status: "not_run",
-      reason: MARKDOWN_LOCAL_ONLY_REASON,
+      reason: MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON,
     });
   });
 
@@ -869,7 +877,7 @@ describe("LanguageServiceController", () => {
     await controller.whenIdle();
     expect(store.getState().snapshot.languageService).toMatchObject({
       readiness: "setup_required",
-      reason: LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
+      reason: LANGUAGE_SERVICE_SETUP_FAILURE_ANALYSIS_REASON,
       failure: {
         message: LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
         retryable: true,
@@ -1221,7 +1229,7 @@ describe("LanguageServiceController", () => {
     expect(clients).toHaveLength(1);
     expect(store.getState().snapshot.languageService).toMatchObject({
       readiness: "unavailable",
-      reason: LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
+      reason: LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
       failure: {
         message: LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
         retryable: true,
@@ -1260,7 +1268,7 @@ describe("LanguageServiceController", () => {
     expect(scheduler.pending).toBe(0);
     expect(store.getState().snapshot.languageService).toMatchObject({
       readiness: "unavailable",
-      reason: LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
+      reason: LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
       failure: {
         message: LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
         retryable: true,

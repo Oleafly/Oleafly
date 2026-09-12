@@ -124,6 +124,8 @@ test("custom instructions steer a real reply", async ({ tauriPage }) => {
   // before that resolves gets clobbered back to the saved text, leaving
   // Save disabled - hence the wait below before clearing.
   await openSettings(tauriPage, "ai");
+  await tauriPage.locator('[data-testid="ai-settings-tab-instructions"]').focus();
+  await tauriPage.locator('[data-testid="ai-settings-tab-instructions"]').press("Enter");
   await tauriPage.waitForFunction(
     `((document.querySelector(${JSON.stringify(instructionTa)}) || {}).value || '').includes(${JSON.stringify(prefix)})`,
     10_000,

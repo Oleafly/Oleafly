@@ -702,8 +702,8 @@ test("every symbol inventory macro compiles and exposes its deterministic PDF ma
     `import("/src/components/editor/SymbolPicker.tsx").then(
       ({ SYMBOL_CATEGORIES }) => SYMBOL_CATEGORIES.map((category) => ({
         id: category.id,
-        label: category.label,
-        items: category.items.map(({ char, latex, name }) => ({ char, latex, name })),
+        label: category.label(),
+        items: category.items.map(({ char, latex, name }) => ({ char, latex, name: name() })),
       }))
     )`,
   );

@@ -7,7 +7,7 @@ import {
   findProductionDevHookTokens,
   findStyleSrcDirective,
 } from "../../scripts/production-hook-audit.mjs";
-import tauriConfig from "../../src-tauri/tauri.conf.json";
+import tauriConfig from "../../src-tauri/tauri.conf.json" with { type: "json" };
 import { rejectProductionDevHooks } from "../../vite.config";
 
 describe("production DEV-hook audit", () => {

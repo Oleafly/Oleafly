@@ -214,6 +214,61 @@ describe("project LaTeX completion revisions and argument parity", () => {
     view.destroy();
   });
 
+  it("expands a standard environment into a begin/end skeleton", () => {
+    const source = "\\begin{item}";
+    installProject({ "main.tex": source });
+    const state = EditorState.create({ doc: source });
+    const cursor = source.length - 1;
+    const result = synchronousProjectCompletion(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "itemize");
+    const view = new EditorView({ state, parent: document.body });
+    apply(view, result as CompletionResult, candidate, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\begin{itemize}\n  \\item \n\\end{itemize}",
+    );
+    view.destroy();
+  });
+
+  it("expands a cross-file environment without arguments into a skeleton", () => {
+    const source = "\\begin{exp}";
+    installProject({
+      "main.tex": source,
+      "macros.sty":
+        String.raw`\newenvironment{experiment}{\begin{quote}}{\end{quote}}`,
+    });
+    const state = EditorState.create({ doc: source });
+    const cursor = source.length - 1;
+    const result = synchronousProjectCompletion(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "experiment");
+    const view = new EditorView({ state, parent: document.body });
+    apply(view, result as CompletionResult, candidate, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\begin{experiment}\n  \n\\end{experiment}",
+    );
+    view.destroy();
+  });
+
+  it("inserts only the name when completing an end environment", () => {
+    const source = "\\begin{itemize}\n\\end{item}";
+    installProject({ "main.tex": source });
+    const state = EditorState.create({ doc: source });
+    const cursor = source.length - 1;
+    const result = synchronousProjectCompletion(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "itemize");
+    const view = new EditorView({ state, parent: document.body });
+    apply(view, result as CompletionResult, candidate, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\begin{itemize}\n\\end{itemize}",
+    );
+    view.destroy();
+  });
+
   it("rejects project completion after an edit-away/edit-back same-text revision", () => {
     const source = "\\clas";
     installProject({

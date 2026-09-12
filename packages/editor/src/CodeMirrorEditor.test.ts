@@ -12,6 +12,7 @@ import {
   type EditorHost,
 } from "./CodeMirrorEditor";
 import { getEditorView } from "./controller";
+import { englishEditorMessage } from "./test-messages";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -53,6 +54,7 @@ describe("CodeMirrorEditor measurement", () => {
     );
 
     const host: EditorHost = {
+      t: englishEditorMessage,
       useActivePath: () => "main.tex",
       getActivePath: () => "main.tex",
       useDocVersion: () => 0,
@@ -90,6 +92,7 @@ describe("CodeMirrorEditor measurement", () => {
         : null;
     });
     const host: EditorHost = {
+      t: englishEditorMessage,
       useActivePath: () => "main.typ",
       getActivePath: () => "main.typ",
       useDocVersion: () => 0,
@@ -134,6 +137,7 @@ it("blocks document commands during a mutation while allowing authoritative sync
   let owner: { setLocked: (locked: boolean) => void; reconcile: () => void } | undefined;
   const setContent = vi.fn();
   const host: EditorHost = {
+    t: englishEditorMessage,
     useActivePath: () => "notes.txt",
     getActivePath: () => "notes.txt",
     useDocVersion: () => 0,

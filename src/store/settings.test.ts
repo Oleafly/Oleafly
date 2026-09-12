@@ -9,6 +9,11 @@ import {
   useSettingsStore,
   withTerminalGlyphFallbacks,
 } from "./settings";
+import {
+  clearWordsIgnoredHere,
+  isFindingSuppressedHere,
+  suppressFindingHere,
+} from "@/lib/proofreading/ignored";
 
 const lsValues = new Map<string, string>();
 
@@ -305,19 +310,28 @@ describe("useSettingsStore reset", () => {
     const settings = useSettingsStore.getState();
     settings.setEditorAutocomplete(false);
     settings.setEditorAutoCloseBrackets(false);
+    settings.setEditorAutoCloseMath(false);
+    settings.setEditorAutoCloseEnvironments(false);
     settings.setEditorGhostCompletion(false);
     settings.setEditorNonBlinkingCursor(true);
+
+    expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("0");
+    expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("0");
 
     settings.resetToDefaults();
 
     expect(useSettingsStore.getState()).toMatchObject({
       editorAutocomplete: true,
       editorAutoCloseBrackets: true,
+      editorAutoCloseMath: true,
+      editorAutoCloseEnvironments: true,
       editorGhostCompletion: true,
       editorNonBlinkingCursor: false,
     });
     expect(localStorage.getItem("oleafly.editor.autocomplete")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.closeBrackets")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.ghostCompletion")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.solidCursor")).toBe("0");
   });
@@ -440,5 +454,122 @@ describe("terminal font glyph fallbacks", () => {
     const stack = withTerminalGlyphFallbacks("");
     expect(stack.startsWith(DEFAULT_TERMINAL_FONT_FAMILY.replace(/,\s*monospace$/u, ""))).toBe(true);
     expect(withTerminalGlyphFallbacks(stack)).toBe(stack);
+  });
+});
+
+describe("harper rule preferences", () => {
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", {
+      clear: () => lsValues.clear(),
+      getItem: (key: string) => lsValues.get(key) ?? null,
+      setItem: (key: string, value: string) => lsValues.set(key, value),
+      removeItem: (key: string) => lsValues.delete(key),
+    });
+    lsValues.clear();
+    useSettingsStore.setState({
+      harperDisabledRules: [],
+      harperEnabledRules: [],
+    });
+  });
+
+  it("starts with no rule turned off or back on", () => {
+    expect(useSettingsStore.getState().harperDisabledRules).toEqual([]);
+    expect(useSettingsStore.getState().harperEnabledRules).toEqual([]);
+  });
+
+  it("persists a rule turned off from a proofreading card", () => {
+    useSettingsStore.getState().disableHarperRule("RepeatedWords");
+
+    expect(useSettingsStore.getState().harperDisabledRules).toEqual([
+      "RepeatedWords",
+    ]);
+    expect(localStorage.getItem("oleafly.harper.disabledRules")).toBe(
+      JSON.stringify(["RepeatedWords"]),
+    );
+  });
+
+  it("persists a profile rule turned back on", () => {
+    useSettingsStore.getState().setHarperEnabledRules(["LongSentences"]);
+
+    expect(useSettingsStore.getState().harperEnabledRules).toEqual([
+      "LongSentences",
+    ]);
+    expect(localStorage.getItem("oleafly.harper.enabledRules")).toBe(
+      JSON.stringify(["LongSentences"]),
+    );
+  });
+
+  it("de-duplicates and drops anything that is not a rule name", () => {
+    useSettingsStore
+      .getState()
+      .setHarperDisabledRules(["AnA", "AnA", "not a rule", ""]);
+
+    expect(useSettingsStore.getState().harperDisabledRules).toEqual(["AnA"]);
+  });
+
+  it("turns a rule back on again", () => {
+    useSettingsStore.getState().setHarperDisabledRules(["AnA", "Hedging"]);
+    useSettingsStore.getState().enableHarperRule("AnA");
+
+    expect(useSettingsStore.getState().harperDisabledRules).toEqual([
+      "Hedging",
+    ]);
+  });
+
+  it("announces the change so the editor re-lints immediately", () => {
+    const events: string[] = [];
+    const target = new EventTarget();
+    target.addEventListener(
+      "oleafly:proofreading-settings-changed",
+      (event) =>
+        void events.push(
+          (event as CustomEvent<{ setting: string }>).detail.setting,
+        ),
+    );
+    vi.stubGlobal("window", target);
+    try {
+      useSettingsStore.getState().disableHarperRule("AnA");
+    } finally {
+      vi.stubGlobal("window", undefined);
+    }
+
+    expect(events).toContain("harperDisabledRules");
+  });
+
+  it("restores the defaults on a general reset", () => {
+    useSettingsStore.getState().setHarperDisabledRules(["AnA"]);
+    useSettingsStore.getState().setHarperEnabledRules(["Hedging"]);
+
+    useSettingsStore.getState().resetGeneralPreferences();
+
+    expect(useSettingsStore.getState().harperDisabledRules).toEqual([]);
+    expect(useSettingsStore.getState().harperEnabledRules).toEqual([]);
+    expect(localStorage.getItem("oleafly.harper.disabledRules")).toBe("[]");
+    expect(localStorage.getItem("oleafly.harper.enabledRules")).toBe("[]");
+  });
+
+  it("forgets the session dismissals behind a rule it turns back on", () => {
+    suppressFindingHere("p", "main.tex", "AnA:abcd1234");
+    suppressFindingHere("q", "intro.tex", "AnA:99887766");
+    suppressFindingHere("p", "main.tex", "Hedging:abcd1234");
+    useSettingsStore.getState().setHarperDisabledRules(["AnA", "Hedging"]);
+
+    useSettingsStore.getState().enableHarperRule("AnA");
+
+    expect(isFindingSuppressedHere("p", "main.tex", "AnA:abcd1234")).toBe(
+      false,
+    );
+    expect(isFindingSuppressedHere("q", "intro.tex", "AnA:99887766")).toBe(
+      false,
+    );
+    expect(
+      isFindingSuppressedHere("p", "main.tex", "Hedging:abcd1234"),
+    ).toBe(true);
+
+    useSettingsStore.getState().resetGeneralPreferences();
+    expect(
+      isFindingSuppressedHere("p", "main.tex", "Hedging:abcd1234"),
+    ).toBe(false);
+    clearWordsIgnoredHere();
   });
 });

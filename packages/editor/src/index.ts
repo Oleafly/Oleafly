@@ -8,6 +8,7 @@
 // need the index (controller, commands). Import it via the
 // "@oleafly/editor/CodeMirrorEditor" subpath instead.
 export * from "./controller";
+export * from "./messages";
 export { editorTheme } from "./theme";
 export { languageForPath } from "./languages";
 export {
@@ -35,6 +36,22 @@ export {
   type TypstWordRange,
 } from "./typst-mask";
 export { latexFolding } from "./latex-folding";
+export {
+  closeEnvironmentOnEnter,
+  environmentSnippet,
+  openEnvironmentCompletion,
+} from "./latex-environments";
+export {
+  inLatexIgnoredRegion,
+  latexIgnoredRangesField,
+  mathContextAt,
+} from "./latex-lexical";
+export {
+  latexPairChange,
+  latexPairInputHandler,
+  latexPairKeymap,
+  type LatexPairOptions,
+} from "./latex-pairs";
 export {
   continueListOnEnter,
   closeEnvironmentAtCursor,
@@ -68,7 +85,14 @@ export {
 export {
   PROOFREADING_LIMITS,
   PROOFREADING_PROTOCOL_VERSION,
+  PROOFREADING_RENDER_LIMITS,
+  createGrammarSuppressionKeyer,
+  grammarSuppressionKey,
+  guardProofreadingDiagnostics,
   isProofreadingWorkerResponse,
+  isSpellingDiagnosticKind,
+  proofreadingContextSentence,
+  proofreadingSuppressionDigest,
   sameProofreadingIdentity,
   type ProofreadingDiagnostic,
   type ProofreadingDialect,
@@ -84,7 +108,9 @@ export {
   type ProofreadingSurface,
   type ProofreadingWorkerRequest,
   type ProofreadingWorkerResponse,
+  type GrammarSuppressionKeyer,
 } from "./proofreading";
+export { diagnosticCardSource } from "./diagnostic-card";
 export { vscodeSearch } from "./search-panel";
 export {
   diagnosticPresentationExtensions,
@@ -96,6 +122,9 @@ export {
   createSpellLinter,
   createHarperLinter,
   setSpellHost,
+  setProofreadingActionHost,
   type GrammarDiag,
   type GrammarSuggestion,
+  type ProofreadingActionHost,
 } from "./spellcheck";
+export { isStandardLatexEnvironment } from "./latex";

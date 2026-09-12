@@ -61,16 +61,16 @@ describe("AI tool availability", () => {
       "preview_figure",
       "load_skill",
     ]);
-    expect(resolved.groups.map(({ label, server, tools }) => ({
-      label,
+    expect(resolved.groups.map(({ kind, server, tools }) => ({
+      kind,
       server,
       tools: tools.map((entry) => entry.name),
     }))).toEqual([
-      { label: "Project tools", server: undefined, tools: ["read_file", "literature_search"] },
-      { label: "MCP", server: "Papers", tools: ["search_papers"] },
-      { label: "MCP", server: "Library", tools: ["fetch_record"] },
-      { label: "Figure", server: undefined, tools: ["preview_figure"] },
-      { label: "Skills", server: undefined, tools: ["load_skill"] },
+      { kind: "project", server: undefined, tools: ["read_file", "literature_search"] },
+      { kind: "mcp", server: "Papers", tools: ["search_papers"] },
+      { kind: "mcp", server: "Library", tools: ["fetch_record"] },
+      { kind: "figure", server: undefined, tools: ["preview_figure"] },
+      { kind: "skills", server: undefined, tools: ["load_skill"] },
     ]);
   });
 
@@ -100,7 +100,7 @@ describe("AI tool availability", () => {
     });
 
     expect(Object.keys(resolved.tools)).toEqual(["read_file"]);
-    expect(resolved.groups.map((group) => group.label)).toEqual(["Project tools"]);
+    expect(resolved.groups.map((group) => group.kind)).toEqual(["project"]);
   });
 
   it("keeps resolving when one active contribution fails to initialize", () => {

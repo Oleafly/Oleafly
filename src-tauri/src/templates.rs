@@ -297,21 +297,27 @@ fn list_templates_in_roots(
 }
 
 #[tauri::command]
-pub fn list_templates(app: AppHandle) -> Result<Vec<TemplateInfo>, String> {
-    let roots = template_roots(&app);
+pub async fn list_templates(app: AppHandle) -> Result<Vec<TemplateInfo>, String> {
+    tauri::async_runtime::spawn_blocking(move || list_templates_blocking(&app))
+        .await
+        .map_err(|error| format!("failed to list templates: {error}"))
+}
+
+fn list_templates_blocking(app: &AppHandle) -> Vec<TemplateInfo> {
+    let roots = template_roots(app);
     let mut items = list_templates_in_roots(&roots);
     items.sort_by(|a, b| {
         a.0.order
             .cmp(&b.0.order)
             .then_with(|| a.0.name.cmp(&b.0.name))
     });
-    Ok(items
+    items
         .into_iter()
         .map(|(m, dir, source)| {
             let has_preview = dir.join("preview.png").is_file();
-            to_info(&app, m, has_preview, source)
+            to_info(app, m, has_preview, source)
         })
-        .collect())
+        .collect()
 }
 
 #[derive(serde::Deserialize)]
@@ -422,9 +428,18 @@ pub fn save_custom_template(
 /// The pre-rendered page-1 preview as a `data:` URI, or `None` if absent. Called
 /// lazily per card so the gallery list stays light.
 #[tauri::command]
-pub fn template_preview(app: AppHandle, template_id: String) -> Result<Option<String>, String> {
+pub async fn template_preview(
+    app: AppHandle,
+    template_id: String,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || template_preview_blocking(&app, &template_id))
+        .await
+        .map_err(|error| format!("failed to load template preview: {error}"))?
+}
+
+fn template_preview_blocking(app: &AppHandle, template_id: &str) -> Result<Option<String>, String> {
     use base64::{engine::general_purpose::STANDARD, Engine};
-    let dir = template_dir(&app, &template_id)?;
+    let dir = template_dir(app, template_id)?;
     let png = dir.join("preview.png");
     if !png.is_file() {
         return Ok(None);

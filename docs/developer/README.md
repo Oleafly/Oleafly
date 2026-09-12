@@ -17,6 +17,8 @@ The references below are for contributors, integrators, and release maintainers.
 | [Releasing](../releasing.md) | Release workflow and artifact checks |
 | [Code signing](../signing.md) | Platform signing requirements |
 | [Auto-updates](../updates.md) | Update manifests, signatures, and rollback |
+| [Windows v0.4 validation](windows-v0.4-validation.md) | The flow inventory run against a packaged Windows build |
+| [Windows lifecycle audit](windows-lifecycle-audit.md) | Process, storage, and terminal lifetimes and their bounds |
 
 ## Build from source
 

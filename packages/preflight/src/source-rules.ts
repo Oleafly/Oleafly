@@ -1,16 +1,23 @@
 import { maskComments } from "./mask";
+import { findDocumentMetadata, parseMetadataKeys } from "./document-metadata";
 import { containsContactToken } from "./contact";
 import { matchResumeSectionHeading } from "./resume-sections";
-import type { Finding, Lens, Severity } from "./types";
+import { annotate } from "./standards";
+import { message, type MessageRef } from "./messages";
+import type { Finding, Lens, PreflightEngine, Severity } from "./types";
 
-type Rule = (text: string) => Finding[];
+export interface SourceRuleContext {
+  engine: PreflightEngine;
+}
+
+type Rule = (text: string, context: SourceRuleContext) => Finding[];
 
 const make = (
   id: string,
   lens: Lens,
   severity: Severity,
-  title: string,
-  detail: string,
+  title: MessageRef,
+  detail: MessageRef,
   range?: { from: number; to: number },
   certainty?: Finding["certainty"],
 ): Finding => ({ id, lens, severity, title, detail, ...range, ...(certainty ? { certainty } : {}) });
@@ -31,16 +38,16 @@ const multiColumn: Rule = (text) => {
         "multi-column",
         "ats",
         "info",
-        "Two-column layout",
-        "Resume parsers commonly linearize two columns in the wrong order. Prefer a single-column layout for documents that must be parsed by an ATS.",
+        message("rules.multi-column.titleTwoColumn"),
+        message("rules.multi-column.detailTwoColumn"),
         dc ? { from: dc.from, to: dc.to } : undefined,
       ),
       make(
         "multi-column-reading-order-risk",
         "a11y",
         "info",
-        "Verify the two-column reading order",
-        "Multi-column publishing layouts can be accessible when the PDF tag tree preserves the intended sequence. Compile and confirm the actual reader order instead of treating the visual columns alone as a failure.",
+        message("rules.multi-column-reading-order-risk.titleTwoColumn"),
+        message("rules.multi-column-reading-order-risk.detailTwoColumn"),
         dc ? { from: dc.from, to: dc.to } : undefined,
         "advisory",
       ),
@@ -55,16 +62,16 @@ const multiColumn: Rule = (text) => {
         "multi-column",
         "ats",
         "info",
-        "Multi-column layout",
-        "Resume parsers commonly linearize columns in the wrong order. Use a single column for ATS-facing documents.",
+        message("rules.multi-column.titleMultiColumn"),
+        message("rules.multi-column.detailMultiColumn"),
         { from: hit.index, to: hit.index + hit[0].length },
       ),
       make(
         "multi-column-reading-order-risk",
         "a11y",
         "info",
-        "Verify the multi-column reading order",
-        "Columns are not automatically inaccessible, but their tag and content order must remain meaningful. Compile and inspect the actual reader sequence.",
+        message("rules.multi-column-reading-order-risk.titleMultiColumn"),
+        message("rules.multi-column-reading-order-risk.detailMultiColumn"),
         { from: hit.index, to: hit.index + hit[0].length },
         "advisory",
       ),
@@ -73,17 +80,22 @@ const multiColumn: Rule = (text) => {
   return [];
 };
 
-const noGlyphToUnicode: Rule = (text) => {
+const noGlyphToUnicode: Rule = (text, context) => {
   if (!documentClass(text)) return [];
   const ok = /\\pdfgentounicode|glyphtounicode|\\usepackage(?:\[[^\]]*\])?\{cmap\}/.test(text);
   if (ok) return [];
+  const engineNeedsMap = context.engine === "bundled" || context.engine === "xelatex";
   return [
     make(
       "no-glyphtounicode",
       "both",
-      "warning",
-      "Unicode extraction map is not declared",
-      "Some pdfTeX font workflows need a glyph-to-Unicode map for reliable extraction, while modern Unicode engines may not. Compile and verify the extracted reader text; for pdfTeX, add \\input{glyphtounicode} and \\pdfgentounicode=1 or load cmap.",
+      engineNeedsMap ? "warning" : "info",
+      message("rules.no-glyphtounicode.title"),
+      message(
+        engineNeedsMap
+          ? "rules.no-glyphtounicode.detailEngineNeedsMap"
+          : "rules.no-glyphtounicode.detailAutomatic",
+      ),
       undefined,
       "advisory",
     ),
@@ -101,8 +113,8 @@ const iconNearContact: Rule = (text) => {
           "icon-near-contact",
           "both",
           "warning",
-          "Icon next to contact info",
-          "Font icons (like \\faPhone or \\faEnvelope) render as glyphs a parser reads as unknown characters and a screen reader cannot label, so the contact detail beside them can be lost. Make sure the email or phone is also present as plain selectable text.",
+          message("rules.icon-near-contact.title"),
+          message("rules.icon-near-contact.detail"),
           { from: offset + icon.index, to: offset + icon.index + icon[0].length },
           "advisory",
         ),
@@ -123,8 +135,8 @@ const layoutTable: Rule = (text) => {
             "layout-table",
             "ats",
             "warning",
-            "Table content may not parse as resume fields",
-            "ATS tools often flatten tabular content unpredictably. Avoid using a table to position resume text side by side; real research data tables are evaluated separately in Accessibility.",
+            message("rules.layout-table.titleTable"),
+            message("rules.layout-table.detailTable"),
             { from: tabular.index, to: tabular.index + tabular[0].length },
             "advisory",
           ),
@@ -136,8 +148,8 @@ const layoutTable: Rule = (text) => {
             "layout-table",
             "both",
             "warning",
-            "TikZ content needs a semantic alternative",
-            "TikZ draws visual content without exposing its meaning as normal text. Provide an accessible description for publication output and avoid it for ATS-facing resume content.",
+            message("rules.layout-table.titleTikz"),
+            message("rules.layout-table.detailTikz"),
             { from: tikz.index, to: tikz.index + tikz[0].length },
             "advisory",
           ),
@@ -159,8 +171,8 @@ const contactInHeader: Rule = (text) => {
           "contact-in-header",
           "ats",
           "warning",
-          "Contact info in the page header",
-          "Some resume parsers omit page headers and footers. Put your email and phone in the document body so the extracted text preserves them.",
+          message("rules.contact-in-header.title"),
+          message("rules.contact-in-header.detail"),
           { from: m.index, to: m.index + m[0].length },
           "advisory",
         ),
@@ -186,8 +198,8 @@ const figureAlt: Rule = (text) => {
           "figure-alt",
           "a11y",
           "warning",
-          "Image without alt text",
-          "This image has no descriptive alt text, so a screen reader cannot convey it. Add a description, for example \\includegraphics[alt={A headshot of the author}]{...}. Mark purely decorative images as artifacts instead.",
+          message("rules.figure-alt.title"),
+          message("rules.figure-alt.detail"),
           { from: m.index, to: m.index + m[0].length },
         ),
       );
@@ -211,8 +223,8 @@ const linkText: Rule = (text) => {
           "link-text",
           "a11y",
           "warning",
-          "Non-descriptive link text",
-          "Link text like 'click here' or a bare URL tells a screen-reader user nothing about the destination. Use text that names the target, for example 'my portfolio'.",
+          message("rules.link-text.title"),
+          message("rules.link-text.detail"),
           { from: m.index, to: m.index + m[0].length },
         ),
       );
@@ -234,8 +246,8 @@ const noLang: Rule = (text) => {
       "no-lang",
       "a11y",
       "warning",
-      "No document language set",
-      "The PDF has no language, so a screen reader may read it with the wrong pronunciation rules. Set one, for example \\usepackage[english]{babel} or hyperref's pdflang=en-US.",
+      message("rules.no-lang.title"),
+      message("rules.no-lang.detail"),
     ),
   ];
 };
@@ -249,8 +261,8 @@ const noTitle: Rule = (text) => {
       "no-title",
       "a11y",
       "info",
-      "No PDF title",
-      "The PDF has no title in its metadata, which assistive tech and browsers use to announce the document. Set one with hyperref, for example \\hypersetup{pdftitle={Your Name, CV}}.",
+      message("rules.no-title.title"),
+      message("rules.no-title.detail"),
     ),
   ];
 };
@@ -278,8 +290,8 @@ const headingSkip: Rule = (text) => {
           "heading-skip",
           "both",
           "warning",
-          "Heading level skipped",
-          "This heading jumps more than one level deeper than the previous one, which breaks the document outline that screen readers and parsers rely on. Do not skip levels, for example go section then subsection then subsubsection.",
+          message("rules.heading-skip.title"),
+          message("rules.heading-skip.detail"),
           { from: m.index, to: m.index + m[0].length },
         ),
       );
@@ -307,8 +319,8 @@ const nonstandardHeadings: Rule = (text) => {
         "nonstandard-headings",
         "ats",
         "info",
-        `Nonstandard section heading: "${t.label}"`,
-        "Parsers map sections by recognizing standard headings like Experience, Education, and Skills. A creative title can leave that section uncategorized. Consider a conventional heading.",
+        message("rules.nonstandard-headings.title", { heading: t.label }),
+        message("rules.nonstandard-headings.detail"),
         { from: t.from, to: t.to },
         "advisory",
       ),
@@ -323,8 +335,8 @@ const colorOnly: Rule = (text) => {
       "color-only",
       "a11y",
       "info",
-      "Check that color is not the only cue",
-      "Preflight found colored content but cannot determine its meaning automatically. If color distinguishes status or categories, pair it with text, shape, weight, or another perceivable cue.",
+      message("rules.color-only.title"),
+      message("rules.color-only.detail"),
       { from: m.index, to: m.index + m[0].length },
       "advisory",
     ),
@@ -339,12 +351,89 @@ const readingOrderRisk: Rule = (text) => {
       "reading-order-risk",
       "both",
       "info",
-      "Layout that can disturb reading order",
-      "Margin notes and wrapped figures place content outside the main flow, so parsers and screen readers may read it out of order. Check the reading order in the preview below after compiling.",
+      message("rules.reading-order-risk.title"),
+      message("rules.reading-order-risk.detail"),
       { from: m.index, to: m.index + m[0].length },
       "advisory",
     ),
   ];
+};
+
+
+function uaStandardDeclaration(text: string): { body: string; from: number; to: number } | null {
+  const metadata = findDocumentMetadata(text);
+  if (!metadata) return null;
+  const standard = parseMetadataKeys(metadata.body).map.get("pdfstandard");
+  if (!standard || !/^\{?\s*ua/i.test(standard)) return null;
+  return { body: metadata.body, from: metadata.start, to: metadata.end };
+}
+
+const uaStandardWithoutTitle: Rule = (text) => {
+  const declaration = uaStandardDeclaration(text);
+  if (!declaration) return [];
+  const hasTitle = /pdftitle\s*=/.test(text);
+  const showsTitle = /pdfdisplaydoctitle\s*=\s*true/i.test(text);
+  if (hasTitle && showsTitle) return [];
+  const detailKey = !hasTitle && !showsTitle
+    ? "rules.ua-standard-without-title.detailBoth"
+    : hasTitle
+      ? "rules.ua-standard-without-title.detailDisplay"
+      : "rules.ua-standard-without-title.detailTitle";
+  return [
+    make(
+      "ua-standard-without-title",
+      "a11y",
+      "warning",
+      message("rules.ua-standard-without-title.title"),
+      message(detailKey),
+      { from: declaration.from, to: declaration.to },
+    ),
+  ];
+};
+
+const uaStandardOnBundledEngine: Rule = (text, context) => {
+  if (context.engine !== "bundled") return [];
+  const declaration = uaStandardDeclaration(text);
+  if (!declaration) return [];
+  return [
+    make(
+      "ua-standard-on-tectonic",
+      "a11y",
+      "error",
+      message("rules.ua-standard-on-tectonic.title"),
+      message("rules.ua-standard-on-tectonic.detail"),
+      { from: declaration.from, to: declaration.to },
+    ),
+  ];
+};
+
+const HEADER_RULE = /^\s*(?:\[[^\]]*\]\s*)?(?:\\hline|\\midrule|\\cline\b)/;
+
+const tableHeaderRows: Rule = (text) => {
+  if (/table\/header-rows/.test(text)) return [];
+  const re = /\\begin\{(tabular\*?|tabularx|longtable)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const end = text.indexOf(`\\end{${m[1]}}`, m.index);
+    const body = text.slice(m.index + m[0].length, end === -1 ? text.length : end);
+    const firstRowEnd = body.indexOf("\\\\");
+    if (firstRowEnd === -1) continue;
+    const afterFirstRow = body.slice(firstRowEnd + 2);
+    const nextRowEnd = afterFirstRow.indexOf("\\\\");
+    const gap = nextRowEnd === -1 ? afterFirstRow : afterFirstRow.slice(0, nextRowEnd);
+    if (!HEADER_RULE.test(gap)) continue;
+    return [
+      make(
+        "table-header-rows",
+        "a11y",
+        "warning",
+        message("rules.table-header-rows.title"),
+        message("rules.table-header-rows.detail"),
+        { from: m.index, to: m.index + m[0].length },
+      ),
+    ];
+  }
+  return [];
 };
 
 const RULES: Rule[] = [
@@ -361,11 +450,17 @@ const RULES: Rule[] = [
   nonstandardHeadings,
   colorOnly,
   readingOrderRisk,
+  uaStandardWithoutTitle,
+  uaStandardOnBundledEngine,
+  tableHeaderRows,
 ];
 
-export function runSourceRules(text: string): Finding[] {
+export function runSourceRules(text: string, context?: Partial<SourceRuleContext>): Finding[] {
   // Blank out commented-out LaTeX first so `% \usepackage{multicol}` does not
   // raise a false error. Offsets are preserved (comments become spaces).
   const masked = maskComments(text);
-  return RULES.flatMap((rule) => rule(masked)).sort((a, b) => (a.from ?? 0) - (b.from ?? 0));
+  const resolved: SourceRuleContext = { engine: context?.engine ?? "unknown" };
+  return RULES.flatMap((rule) => rule(masked, resolved))
+    .map((finding) => annotate(finding, "source-heuristic"))
+    .sort((a, b) => (a.from ?? 0) - (b.from ?? 0));
 }

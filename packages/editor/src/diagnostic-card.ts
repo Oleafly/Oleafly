@@ -1,4 +1,5 @@
 import { forEachDiagnostic, type Action, type Diagnostic } from "@codemirror/lint";
+import { isSpellingDiagnosticKind } from "./proofreading";
 import {
   ViewPlugin,
   hoverTooltip,
@@ -7,6 +8,7 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { editorMessage } from "./messages";
 
 /**
  * The hover card shown for every editor diagnostic.
@@ -26,16 +28,83 @@ import type { Extension } from "@codemirror/state";
 /** How long the pointer must rest before the card appears. */
 const HOVER_TIME = 90;
 
+export type ProofreadingCardIcon = "project" | "everywhere" | "now" | "rule";
+
+export interface ProofreadingCardAction {
+  label: string;
+  action: Action;
+  icon?: ProofreadingCardIcon;
+}
+
+const ICON_PATHS: Record<ProofreadingCardIcon, string[]> = {
+  project: [
+    "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
+  ],
+  everywhere: [
+    "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z",
+    "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20",
+    "M2 12h20",
+  ],
+  now: [
+    "M9.88 9.88a3 3 0 1 0 4.24 4.24",
+    "M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68",
+    "M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61",
+    "M2 2l20 20",
+  ],
+  rule: ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z", "m4.9 4.9 14.2 14.2"],
+};
+
+function iconElement(icon: ProofreadingCardIcon): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("cm-proofread-action-icon");
+  for (const d of ICON_PATHS[icon]) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
+
+const SLOT = "\u0000";
+
+function appendEmphasized(
+  target: HTMLElement,
+  template: string,
+  value: string,
+): void {
+  const strong = document.createElement("strong");
+  strong.textContent = value;
+  const slot = template.indexOf(SLOT);
+  if (slot < 0) {
+    target.append(template, strong);
+    return;
+  }
+  target.append(
+    template.slice(0, slot),
+    strong,
+    template.slice(slot + SLOT.length),
+  );
+}
+
 export interface ProofreadingCard {
   /** The flagged word or phrase, shown in the header. */
   word: string;
   /** Replacements, best first. */
   suggestions: readonly { label: string; action: Action }[];
-  /** Footer entries such as "Ignore" and "Ignore everywhere". */
-  ignores: readonly { label: string; action: Action }[];
+  ignores: readonly ProofreadingCardAction[];
   /** Shown instead of "Did you mean…" when there is no spelling suggestion. */
   message?: string;
   severity?: Diagnostic["severity"];
+  kind?: string;
+  rule?: string | null;
+  suppressionKey?: string | null;
 }
 
 /**
@@ -76,6 +145,12 @@ export function hasProofreadingCard(diagnostic: Diagnostic): boolean {
   return cards.has(diagnostic);
 }
 
+export function proofreadingCardFor(
+  diagnostic: Diagnostic,
+): ProofreadingCard | null {
+  return cards.get(diagnostic) ?? null;
+}
+
 function button(label: string, className: string, onClick: () => void) {
   const element = document.createElement("button");
   element.type = "button";
@@ -109,22 +184,32 @@ function renderCard(
   // and loose text nodes would each become a gapped flex item.
   const headerText = document.createElement("span");
   headerText.className = "cm-proofread-header-text";
-  if (card.word && card.suggestions.length > 0) {
-    headerText.append("Did you mean ");
-    const strong = document.createElement("strong");
-    strong.textContent = card.suggestions[0].label;
-    headerText.append(strong, "?");
-  } else if (card.message) {
+  const spelling = isSpellingDiagnosticKind(card.kind);
+  if (spelling && card.word && card.suggestions.length > 0) {
+    appendEmphasized(
+      headerText,
+      editorMessage("spellcheck.didYouMean", { suggestion: SLOT }),
+      card.suggestions[0].label,
+    );
+  } else if (!spelling || card.message) {
     headerText.classList.add("is-message");
-    headerText.textContent = card.message;
+    headerText.textContent = card.message ?? "";
   } else {
-    headerText.append("Not in dictionary: ");
-    const strong = document.createElement("strong");
-    strong.textContent = card.word;
-    headerText.append(strong);
+    appendEmphasized(
+      headerText,
+      editorMessage("spellcheck.notInDictionary", { word: SLOT }),
+      card.word,
+    );
   }
   header.append(dot, headerText);
   root.append(header);
+
+  if (!spelling && card.rule) {
+    const rule = document.createElement("div");
+    rule.className = "cm-proofread-rule";
+    rule.textContent = card.rule;
+    root.append(rule);
+  }
 
   if (card.suggestions.length > 0) {
     const list = document.createElement("div");
@@ -145,19 +230,13 @@ function renderCard(
   if (card.ignores.length > 0) {
     const footer = document.createElement("div");
     footer.className = "cm-proofread-footer";
-    card.ignores.forEach((ignore, index) => {
-      if (index > 0) {
-        const divider = document.createElement("span");
-        divider.className = "cm-proofread-footer-divider";
-        divider.textContent = "|";
-        footer.append(divider);
-      }
-      footer.append(
-        button(ignore.label, "cm-proofread-ignore", () =>
-          ignore.action.apply(view, from, to),
-        ),
+    for (const ignore of card.ignores) {
+      const row = button(ignore.label, "cm-proofread-ignore", () =>
+        ignore.action.apply(view, from, to),
       );
-    });
+      if (ignore.icon) row.prepend(iconElement(ignore.icon));
+      footer.append(row);
+    }
     root.append(footer);
   }
 

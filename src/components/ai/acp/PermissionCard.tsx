@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ShieldQuestion, XCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AiChrome } from "@/components/ai/AiChrome";
 import type { AcpPermission } from "@/lib/acp";
@@ -21,6 +22,7 @@ export function PermissionCard({
   agentName?: string;
   onChoose: (id: string, option: string | null) => Promise<void>;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [busy, setBusy] = useState(false);
   const [expired, setExpired] = useState(request.expiresAt <= Date.now());
   useEffect(() => {
@@ -33,7 +35,7 @@ export function PermissionCard({
   };
   return (
     <AiChrome borderVariant="animated" contentClassName="p-3.5">
-      <fieldset aria-label="Agent permission" className="flex flex-col gap-3">
+      <fieldset aria-label={t(($) => $.ai.acp.permission.ariaLabel)} className="flex flex-col gap-3">
         <div className="flex items-start gap-2.5">
           <span
             aria-hidden
@@ -43,14 +45,16 @@ export function PermissionCard({
           </span>
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-sm font-semibold leading-snug text-foreground">
-              {agentName ? `${agentName} needs permission` : "The agent needs permission"}
+              {agentName
+                ? t(($) => $.ai.acp.permission.namedHeadline, { agent: agentName })
+                : t(($) => $.ai.acp.permission.headline)}
             </p>
             <p className="text-[13px] leading-snug text-muted-foreground">{request.title}</p>
           </div>
         </div>
         {expired ? (
           <p className="text-xs text-muted-foreground">
-            This request expired. Ask the agent to try again.
+            {t(($) => $.ai.acp.permission.expired)}
           </p>
         ) : (
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/50 pt-2.5">
@@ -62,7 +66,7 @@ export function PermissionCard({
               onClick={() => choose(null)}
               className="text-muted-foreground hover:text-foreground"
             >
-              Dismiss
+              {t(($) => $.ai.acp.permission.dismiss)}
             </Button>
             {request.options.map((option, index) => (
               <Button

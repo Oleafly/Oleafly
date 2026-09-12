@@ -1,3 +1,5 @@
+import { i18n } from "@/i18n";
+import { formatList } from "@/lib/intl";
 // Pure logic behind the LaTeX tools view: BibTeX parsing/validation and
 // LaTeX table generation. Kept UI-free so it is unit-testable.
 
@@ -88,7 +90,7 @@ export function parseBib(src: string): { entries: BibEntry[]; parseErrors: strin
     }
     const keyEnd = src.slice(p).search(/[,}]/);
     if (keyEnd < 0) {
-      parseErrors.push(`Unterminated entry near character ${at}`);
+      parseErrors.push(i18n.t(($) => $.core.bibtex.unterminatedEntry, { position: at }));
       break;
     }
     const key = src.slice(p, p + keyEnd).trim();
@@ -105,7 +107,9 @@ export function parseBib(src: string): { entries: BibEntry[]; parseErrors: strin
       const nameMatch = src.slice(p).match(/^([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*/);
       if (!nameMatch) {
         const close = src.indexOf("}", p);
-        parseErrors.push(`Could not read fields of "${key || type}"`);
+        parseErrors.push(
+          i18n.t(($) => $.core.bibtex.unreadableFields, { entry: key || type }),
+        );
         p = close < 0 ? src.length : close + 1;
         depth = 0;
         break;
@@ -138,7 +142,7 @@ export function parseBib(src: string): { entries: BibEntry[]; parseErrors: strin
       fields[name] = value.replace(/\s+/g, " ").trim();
     }
     if (key) entries.push({ type, key, fields });
-    else parseErrors.push(`Entry of type @${type} is missing a citation key`);
+    else parseErrors.push(i18n.t(($) => $.core.bibtex.missingKey, { type }));
     i = p;
   }
   return { entries, parseErrors };
@@ -158,40 +162,43 @@ export function validateBib(entries: BibEntry[]): BibFinding[] {
     let level: BibFinding["level"] = "ok";
     const spec = SPEC[e.type];
     if (!spec) {
-      messages.push(`Unknown entry type @${e.type}`);
+      messages.push(i18n.t(($) => $.core.bibtex.unknownType, { type: e.type }));
       level = "warning";
     } else {
       for (const group of spec.required) {
         if (!group.some((f) => e.fields[f]?.length)) {
-          messages.push(`Missing required field: ${group.join(" or ")}`);
+          messages.push(
+            i18n.t(($) => $.core.bibtex.missingField, {
+              fields: formatList(group, { type: "disjunction" }),
+            }),
+          );
           level = "error";
         }
       }
       const known = new Set([...spec.required.flat(), ...spec.optional]);
       for (const f of Object.keys(e.fields)) {
         if (!known.has(f) && !["keywords", "abstract", "note", "url", "doi"].includes(f)) {
-          messages.push(`Unusual field for @${e.type}: ${f}`);
+          messages.push(i18n.t(($) => $.core.bibtex.unusualField, { type: e.type, field: f }));
           if (level === "ok") level = "warning";
         }
       }
     }
     if ((seenKeys.get(e.key) ?? 0) > 1) {
-      messages.push("Duplicate citation key");
+      messages.push(i18n.t(($) => $.core.bibtex.duplicateKey));
       level = "error";
     }
     const doi = e.fields.doi?.toLowerCase();
     if (doi && (doiToKeys.get(doi)?.length ?? 0) > 1) {
       messages.push(
-        `Duplicate DOI shared with: ${doiToKeys
-          .get(doi)
-          ?.filter((k) => k !== e.key)
-          .join(", ")}`,
+        i18n.t(($) => $.core.bibtex.duplicateDoi, {
+          keys: formatList(doiToKeys.get(doi)?.filter((k) => k !== e.key) ?? []),
+        }),
       );
       if (level === "ok") level = "warning";
     }
     const year = e.fields.year;
     if (year && !/^\d{4}$/.test(year)) {
-      messages.push(`Year "${year}" is not a four digit number`);
+      messages.push(i18n.t(($) => $.core.bibtex.invalidYear, { year }));
       if (level === "ok") level = "warning";
     }
     findings.push({ key: e.key, type: e.type, level, messages });

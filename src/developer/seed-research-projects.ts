@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import {
   importOverleafProjectCmd,
   listProjects,
@@ -30,7 +31,7 @@ export function researchSeedRoot(libraryPath: string): string {
   const normalized = libraryPath.trim().replaceAll("\\", "/").replace(/\/+$/, "");
   const suffix = "/.oleafly-dev/projects";
   if (!normalized.toLowerCase().endsWith(suffix)) {
-    throw new Error("Research fixtures can only be copied into the .oleafly-dev sandbox");
+    throw new Error(i18n.t(($) => $.core.developer.sandboxOnly));
   }
   const home = normalized.slice(0, -suffix.length);
   return `${home}/Codespace/Oleafly/oleafly-seed`;
@@ -56,7 +57,9 @@ async function copySeedProject(seedRoot: string, project: ResearchSeedProject): 
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) return error.message;
-  return typeof error === "string" && error.trim() ? error : "Unknown seed error";
+  return typeof error === "string" && error.trim()
+    ? error
+    : i18n.t(($) => $.core.developer.unknownSeedError);
 }
 
 export async function seedResearchProjects(

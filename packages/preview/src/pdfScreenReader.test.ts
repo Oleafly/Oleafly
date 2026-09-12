@@ -10,6 +10,10 @@ import {
   createPdfScreenReaderLayer,
   extractPdfScreenReaderText,
 } from "./pdfScreenReader";
+import type { PreviewMessageKey } from "./messages";
+
+const stubT = (key: PreviewMessageKey, params?: Record<string, string | number>) =>
+  params ? `${key} ${JSON.stringify(params)}` : key;
 
 function textItem(str: string, hasEOL = false): TextItem {
   return {
@@ -39,6 +43,7 @@ describe("PDF screen reader view", () => {
         pageNumber: 1,
         totalPages: 1,
         textContent,
+        t: stubT,
       }).querySelector("article p")?.textContent,
     ).toBe("Training Compute Optimal.");
   });
@@ -87,14 +92,15 @@ describe("PDF screen reader view", () => {
       totalPages: 12,
       textContent,
       structureTree,
+      t: stubT,
     });
 
     expect(layer.getAttribute("aria-label")).toBe(
-      "Screen reader view, page 2 of 12",
+      'screenReader.layer {"page":2,"total":12}',
     );
     expect(layer).not.toHaveClass("overflow-auto");
     expect(layer).toHaveClass("relative", "w-full");
-    expect(layer.textContent).not.toContain("Screen reader mode");
+    expect(layer.textContent).not.toContain("screenReader.title");
     expect(layer.querySelector("header")).toHaveClass("justify-end");
     expect(layer.querySelector("h1")?.textContent).toBe("Compute-optimal training");
     expect(layer.querySelector("p")?.textContent).toBe("A concise summary.");
@@ -105,10 +111,11 @@ describe("PDF screen reader view", () => {
       pageNumber: 1,
       totalPages: 1,
       textContent: { items: [], styles: {}, lang: null },
+      t: stubT,
     });
 
-    expect(layer.textContent).toContain("No readable text was found on this page.");
-    expect(layer.textContent).toContain("Screen reader mode");
+    expect(layer.textContent).toContain("screenReader.empty");
+    expect(layer.textContent).toContain("screenReader.title");
   });
 
   it("maps list, table, quote, code, and unknown structure roles", () => {
@@ -156,6 +163,7 @@ describe("PDF screen reader view", () => {
       totalPages: 1,
       textContent,
       structureTree,
+      t: stubT,
     });
 
     expect(layer.querySelector("ul li")?.textContent).toBe("List item");

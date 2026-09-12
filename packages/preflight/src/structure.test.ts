@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { verifyStructure } from "./structure";
-import type { StructNode, StructDoc } from "./structure";
+import type { PdfUaFacts, StructNode, StructDoc } from "./structure";
 
 const node = (role: string, children: StructNode[] = [], extra: Partial<StructNode> = {}): StructNode => ({
   role,
@@ -8,6 +8,19 @@ const node = (role: string, children: StructNode[] = [], extra: Partial<StructNo
   ...extra,
 });
 const doc = (root: StructNode | null, tagged = root !== null): StructDoc => ({ root, tagged });
+const ua = (over: Partial<PdfUaFacts> = {}): PdfUaFacts => ({
+  displayDocTitle: true,
+  suspects: false,
+  xmpTitle: "A tagged paper",
+  infoTitle: "A tagged paper",
+  uaPart: null,
+  uaRev: null,
+  taggedTextRuns: 100,
+  untaggedTextRuns: 0,
+  links: [],
+  ...over,
+});
+const ids = (findings: ReturnType<typeof verifyStructure>) => findings.map((finding) => finding.id);
 
 describe("verifyStructure: untagged output", () => {
   it("returns one honest verdict when the PDF has no structure tree", () => {
@@ -32,9 +45,16 @@ describe("verifyStructure: figures", () => {
     const root = node("Document", [node("Figure", [], { alt: "A chart of results" })]);
     expect(verifyStructure(doc(root)).some((f) => f.id === "output-figure-alt")).toBe(false);
   });
-  it("flags a Formula with no alt text", () => {
-    const root = node("Document", [node("Formula")]);
-    expect(verifyStructure(doc(root)).some((f) => f.id === "output-figure-alt")).toBe(true);
+  it("flags a Formula with no alt text as a math-specific warning, not a figure error", () => {
+    const root = node("Document", [node("Formula"), node("P")]);
+    const findings = verifyStructure(doc(root));
+    expect(ids(findings)).toEqual(["output-formula-alt"]);
+    expect(findings[0].severity).toBe("warning");
+    expect(findings[0].detail.key).toBe("rules.output-formula-alt.detail");
+  });
+  it("accepts a Formula that carries alt text", () => {
+    const root = node("Document", [node("Formula", [], { alt: "E equals m c squared" }), node("P")]);
+    expect(verifyStructure(doc(root))).toHaveLength(0);
   });
 });
 
@@ -69,5 +89,153 @@ describe("verifyStructure: clean tagged doc", () => {
       node("Table", [node("TR", [node("TH")]), node("TR", [node("TD")])]),
     ]);
     expect(verifyStructure(doc(root))).toHaveLength(0);
+  });
+});
+
+
+describe("verifyStructure: PDF/UA catalog facts", () => {
+  const body = node("Document", [node("H1"), node("P"), node("P")]);
+
+  it("reports a missing DisplayDocTitle", () => {
+    const findings = verifyStructure({ root: body, tagged: true, ua: ua({ displayDocTitle: false }) });
+    expect(ids(findings)).toEqual(["pdf-display-doc-title"]);
+    expect(findings[0].machineCheckable).toBe(true);
+    expect(findings[0].method).toBe("pdf-object-model");
+  });
+
+  it("reports Suspects set to true", () => {
+    expect(ids(verifyStructure({ root: body, tagged: true, ua: ua({ suspects: true }) }))).toEqual(["pdf-suspects"]);
+  });
+
+  it("reports a title that only exists in the Info dictionary", () => {
+    expect(ids(verifyStructure({ root: body, tagged: true, ua: ua({ xmpTitle: null }) }))).toEqual(["pdf-xmp-title"]);
+  });
+
+  it("stays quiet when neither title is present, because the catalog check owns that case", () => {
+    expect(
+      ids(verifyStructure({ root: body, tagged: true, ua: ua({ xmpTitle: null, infoTitle: null }) })),
+    ).toEqual([]);
+  });
+
+  it("reports link annotations with no description", () => {
+    const findings = verifyStructure({
+      root: body,
+      tagged: true,
+      ua: ua({ links: [{ hasContents: true }, { hasContents: false }, { hasContents: false }] }),
+    });
+    expect(ids(findings)).toEqual(["pdf-link-alt"]);
+    expect(findings[0].title).toEqual({ key: "rules.pdf-link-alt.title", params: { count: 2 } });
+  });
+
+  it("reports real content that sits outside the tag tree", () => {
+    const findings = verifyStructure({
+      root: body,
+      tagged: true,
+      ua: ua({ taggedTextRuns: 80, untaggedTextRuns: 20 }),
+    });
+    expect(ids(findings)).toEqual(["pdf-untagged-content"]);
+    expect(findings[0].title).toEqual({
+      key: "rules.pdf-untagged-content.title",
+      params: { percent: 20 },
+    });
+  });
+
+  it("tolerates a few untagged runs", () => {
+    expect(
+      ids(verifyStructure({ root: body, tagged: true, ua: ua({ taggedTextRuns: 99, untaggedTextRuns: 1 }) })),
+    ).toEqual([]);
+  });
+
+  it("flags a one-node tag tree as an unfinished compile pass", () => {
+    const findings = verifyStructure({
+      root: node("Document", [node("P")]),
+      tagged: true,
+      ua: ua(),
+    });
+    expect(ids(findings)).toEqual(["pdf-structure-single-pass"]);
+    expect(findings[0].severity).toBe("info");
+  });
+
+  it("flags a short one-node output even when it holds almost no text", () => {
+    const findings = verifyStructure({
+      root: node("Document", [node("P")]),
+      tagged: true,
+      ua: ua({ taggedTextRuns: 2, untaggedTextRuns: 0 }),
+    });
+    expect(ids(findings)).toEqual(["pdf-structure-single-pass"]);
+  });
+
+  it("flags an empty tag tree as an unfinished compile pass as well", () => {
+    const findings = verifyStructure({ root: null, tagged: true, ua: ua() });
+    expect(ids(findings)).toEqual(["pdf-structure-missing", "pdf-structure-single-pass"]);
+  });
+
+  it("says nothing about a first pass once the tree has real structure", () => {
+    const findings = verifyStructure({
+      root: node("Document", [node("H1"), node("P")]),
+      tagged: true,
+      ua: ua({ taggedTextRuns: 2, untaggedTextRuns: 0 }),
+    });
+    expect(ids(findings)).toEqual([]);
+  });
+});
+
+describe("verifyStructure: PDF/UA claims", () => {
+  it("calls out a PDF/UA claim the file does not meet", () => {
+    const findings = verifyStructure({
+      root: node("Document", [node("H1"), node("P"), node("P")]),
+      tagged: true,
+      ua: ua({ uaPart: 1, displayDocTitle: false, xmpTitle: null, infoTitle: "Only info" }),
+    });
+    const claim = findings.find((finding) => finding.id === "pdf-ua-claim-mismatch");
+    expect(claim?.severity).toBe("error");
+    expect(claim?.title).toEqual({ key: "rules.pdf-ua-claim-mismatch.title", params: { part: 1 } });
+    expect(claim?.detailParts?.map((part) => part.key)).toEqual([
+      "rules.pdf-ua-claim-mismatch.partNoXmpTitle",
+      "rules.pdf-ua-claim-mismatch.partNoDisplayDocTitle",
+      "rules.pdf-ua-claim-mismatch.partAdvice",
+    ]);
+  });
+
+  it("accepts a claim the file actually backs up", () => {
+    expect(
+      ids(
+        verifyStructure({
+          root: node("Document", [node("H1"), node("P"), node("P")]),
+          tagged: true,
+          ua: ua({ uaPart: 2 }),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not fail the claim on a viewer preference it could not read", () => {
+    const findings = verifyStructure({
+      root: node("Document", [node("H1"), node("P"), node("P")]),
+      tagged: true,
+      ua: ua({ uaPart: 1, displayDocTitle: null }),
+    });
+    expect(ids(findings)).toEqual([]);
+  });
+
+  it("still names the gaps it did observe when another one is unknown", () => {
+    const findings = verifyStructure({
+      root: node("Document", [node("H1"), node("P"), node("P")]),
+      tagged: true,
+      ua: ua({ uaPart: 1, displayDocTitle: null, xmpTitle: null, infoTitle: "Only info" }),
+    });
+    const claim = findings.find((finding) => finding.id === "pdf-ua-claim-mismatch");
+    expect(claim?.detailParts?.map((part) => part.key)).toEqual([
+      "rules.pdf-ua-claim-mismatch.partNoXmpTitle",
+      "rules.pdf-ua-claim-mismatch.partAdvice",
+    ]);
+  });
+
+  it("adds the claim mismatch to an untagged file without a wall of other failures", () => {
+    const findings = verifyStructure({ root: null, tagged: false, ua: ua({ uaPart: 1, displayDocTitle: false }) });
+    expect(ids(findings)).toEqual(["pdf-untagged-output", "pdf-ua-claim-mismatch"]);
+    expect(findings[1].detailParts?.map((part) => part.key)).toContain(
+      "rules.pdf-ua-claim-mismatch.partNotTagged",
+    );
   });
 });

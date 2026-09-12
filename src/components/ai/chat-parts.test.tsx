@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, getByRole, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearExpansionState } from "./activity/expansion-state";
 import { ResearchToolCard } from "./activity/ResearchToolCard";
 import { useFilesStore } from "@/store/files";
@@ -20,16 +20,27 @@ vi.mock("@/lib/tauri", async (importOriginal) => {
   };
 });
 
+import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 import {
   AgentRunSummary,
   AgentStatusPill,
+  ExplorationGroup,
   MessageItem,
   ReasoningBlock,
   SubagentCard,
   ToolBadge,
   ToolPicture,
+  explorationSummary,
+  formatError,
+  formatToolOutput,
   freeFigurePath,
+  friendlyHint,
 } from "./chat-parts";
+
+beforeAll(async () => {
+  // Keep cold loading of the lazy renderer outside interaction deadlines.
+  await import("@/components/ui/markdown-renderer");
+});
 
 describe("ToolPicture", () => {
   const png = "data:image/png;base64,iVBORw0KGgo=";
@@ -74,11 +85,11 @@ describe("ToolPicture", () => {
   });
 
   it("saves the TikZ source into the project's figures folder without clobbering", async () => {
-    const refreshTree = vi.fn(async () => undefined);
+    const writeProjectFile = vi.fn(async () => undefined);
     useFilesStore.setState({
       projectId: "proj-save",
       tree: [{ path: "figures", is_dir: true }, { path: "figures/figure.tex", is_dir: false }],
-      refreshTree,
+      writeProjectFile,
     });
     tauriMocks.writeFileContent.mockClear();
     render(
@@ -96,13 +107,13 @@ describe("ToolPicture", () => {
     fireEvent.click(screen.getByTestId("tool-picture-save"));
 
     await waitFor(() =>
-      expect(tauriMocks.writeFileContent).toHaveBeenCalledWith(
+      expect(writeProjectFile).toHaveBeenCalledWith(
         "proj-save",
         "figures/figure-2.tex",
         "\\begin{tikzpicture}\\end{tikzpicture}\n",
       ),
     );
-    await waitFor(() => expect(refreshTree).toHaveBeenCalled());
+    expect(tauriMocks.writeFileContent).not.toHaveBeenCalled();
   });
 
   it("shows only the last finished preview outside the folded steps", () => {
@@ -498,7 +509,7 @@ describe("AgentStatusPill", () => {
   it("opens the checklist on hover without taking focus and closes when the pointer leaves", async () => {
     render(
       <>
-        <textarea aria-label="Composer" />
+        <textarea aria-label={"Composer"} />
         <AgentStatusPill todos={PILL_TODOS} turn={null} />
       </>,
     );
@@ -586,7 +597,7 @@ describe("AgentStatusPill", () => {
   it("closes a pinned panel when the pointer goes down elsewhere", () => {
     render(
       <>
-        <button type="button">Elsewhere</button>
+        <button type="button">{"Elsewhere"}</button>
         <AgentStatusPill todos={PILL_TODOS} turn={null} />
       </>,
     );
@@ -601,7 +612,7 @@ describe("AgentStatusPill", () => {
   it("closes when focus leaves the pill and its panel", () => {
     render(
       <>
-        <button type="button">Elsewhere</button>
+        <button type="button">{"Elsewhere"}</button>
         <AgentStatusPill todos={PILL_TODOS} turn={null} />
       </>,
     );
@@ -684,7 +695,7 @@ describe("AgentStatusPill", () => {
     vi.useFakeTimers();
     const { rerender } = render(
       <>
-        <textarea aria-label="Composer" />
+        <textarea aria-label={"Composer"} />
         <AgentStatusPill todos={PILL_TODOS} turn={null} />
       </>,
     );
@@ -694,7 +705,7 @@ describe("AgentStatusPill", () => {
 
     rerender(
       <>
-        <textarea aria-label="Composer" />
+        <textarea aria-label={"Composer"} />
         <AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} />
       </>,
     );
@@ -1309,7 +1320,11 @@ describe("MessageItem footer", () => {
       const copyButton = getByRole("button", { name: "Copy message" });
       const footer = time?.parentElement;
 
-      expect(time).toHaveTextContent("5:41 PM");
+      expect(time).toHaveTextContent(new Date(createdAt).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }));
       expect(copyButton.parentElement).toBe(footer);
       expect(footer?.previousElementSibling).toHaveTextContent("Timestamped message");
     },
@@ -1323,5 +1338,123 @@ describe("MessageItem footer", () => {
     expect(getByRole("button", { name: "Copy message" })).toBeInTheDocument();
     expect(container.querySelector("time")).toBeNull();
     expect(container).not.toHaveTextContent("Invalid Date");
+  });
+});
+
+const chatCopy = enAi.chat;
+
+function tool(name: string, index: number) {
+  return { id: `t${index}`, name, args: {}, status: "done" as const };
+}
+
+describe("explorationSummary", () => {
+  it("says only that it explored when no read-only tool ran", () => {
+    expect(explorationSummary([])).toBe(chatCopy.exploration.explored);
+    expect(explorationSummary([tool("compile", 0)])).toBe(chatCopy.exploration.explored);
+  });
+
+  it("counts files, searches, and lists together", () => {
+    const summary = explorationSummary([
+      tool("read_file", 0),
+      tool("get_log", 1),
+      tool("search_project", 2),
+      tool("list_files", 3),
+    ]);
+
+    expect(summary).toContain(chatCopy.exploration.files_other.replace("{{count}}", "2"));
+    expect(summary).toContain(chatCopy.exploration.searches_one);
+    expect(summary).toContain(chatCopy.exploration.lists_one);
+  });
+});
+
+describe("ExplorationGroup", () => {
+  it("expands the collapsed run into its individual tool badges", () => {
+    render(
+      <ExplorationGroup tools={[tool("read_file", 0), tool("search_project", 1)]} />,
+    );
+
+    const toggle = screen.getByRole("button");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("exploration-group")).toBeInTheDocument();
+  });
+});
+
+describe("formatToolOutput", () => {
+  it("reads a string, a content field, an error field, and anything else", () => {
+    expect(formatToolOutput("plain")).toBe("plain");
+    expect(formatToolOutput({ content: "from content" })).toBe("from content");
+    expect(formatToolOutput({ error: "boom" })).toBe(
+      chatCopy.toolOutputError.replace("{{message}}", "boom"),
+    );
+    expect(formatToolOutput({ n: 1 })).toContain("\"n\": 1");
+  });
+});
+
+describe("friendlyHint", () => {
+  const modelMenu = chatCopy.errorHints.where.modelMenu;
+  const inSettings = chatCopy.errorHints.where.inSettings;
+
+  it("names the surface the user should fix the key on", () => {
+    expect(friendlyHint("invalid api key")).toBe(
+      chatCopy.errorHints.invalidKey.replace("{{where}}", modelMenu),
+    );
+    expect(friendlyHint("invalid api key", undefined, "settings")).toBe(
+      chatCopy.errorHints.invalidKey.replace("{{where}}", inSettings),
+    );
+  });
+
+  it("recognises each provider failure it knows how to explain", () => {
+    expect(friendlyHint("", 402)).toBe(
+      chatCopy.errorHints.outOfCredits.replace("{{where}}", modelMenu),
+    );
+    expect(friendlyHint("", 429)).toBe(
+      chatCopy.errorHints.rateLimited.replace("{{where}}", modelMenu),
+    );
+    expect(friendlyHint("this model has been retired")).toBe(
+      chatCopy.errorHints.retiredModel.replace("{{where}}", modelMenu),
+    );
+    expect(friendlyHint("", 503)).toBe(
+      chatCopy.errorHints.overloaded.replace("{{where}}", modelMenu),
+    );
+    expect(friendlyHint("fetch failed")).toBe(chatCopy.errorHints.unreachable);
+    expect(friendlyHint("something else entirely")).toBeNull();
+  });
+});
+
+describe("formatError", () => {
+  it("prefers a friendly hint and keeps the raw detail", () => {
+    const shown = formatError(
+      { message: "Unauthorized", statusCode: 401, responseBody: "{\"error\":{\"message\":\"bad key\"}}" },
+      "OpenAI",
+    );
+
+    expect(shown).toContain("OpenAI");
+    expect(shown).toContain(
+      chatCopy.errorHints.invalidKey.replace(
+        "{{where}}",
+        chatCopy.errorHints.where.modelMenu,
+      ),
+    );
+    expect(shown).toContain("bad key");
+  });
+
+  it("falls back to the raw name, message, and status", () => {
+    const shown = formatError({
+      name: "TypeError",
+      message: "something odd",
+      status: 500,
+      responseBody: "not json",
+    });
+
+    expect(shown).toContain("TypeError");
+    expect(shown).toContain("something odd");
+    expect(shown).toContain("500");
+    expect(shown).toContain("not json");
+  });
+
+  it("describes a value that is not an error object at all", () => {
+    expect(formatError("plain string")).toContain("plain string");
   });
 });

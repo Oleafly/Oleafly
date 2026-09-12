@@ -1,5 +1,6 @@
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import {
@@ -14,6 +15,7 @@ import { languageForPath } from "../cm/languages";
 import { gitShow, readFileContent } from "@/lib/tauri";
 import { useDiffStore, activeDiff } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
+import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { diffSides } from "./sides";
 import { attachSplitResizer } from "./split-resizer";
@@ -35,6 +37,7 @@ function hasNullByte(s: string): boolean {
 }
 
 export function DiffView() {
+  const { t } = useTranslation(["common", "editor"]);
   const diff = useDiffStore(activeDiff);
   const mode = useDiffStore((s) => s.mode);
   const setMode = useDiffStore((s) => s.setMode);
@@ -45,11 +48,32 @@ export function DiffView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const baselineRef = useRef<string | null>(null);
 
-  // Rebuild only the staged diff on git changes; working diffs already update live.
+  // Both views depend on INDEX. Working edits update live, but staging,
+  // unstaging, and committing also change the comparison baseline. A working
+  // diff is editable, so rebuild it only when that baseline really moved: an
+  // unrelated git change must not discard the caret, scroll, and undo history
+  // of someone typing in it.
   useEffect(() => {
     const onChanged = () => {
-      if (activeDiff(useDiffStore.getState())?.side === "staged") setReloadKey((k) => k + 1);
+      const current = activeDiff(useDiffStore.getState());
+      if (!current) return;
+      if (current.side === "staged") {
+        setReloadKey((k) => k + 1);
+        return;
+      }
+      const activeProject = useFilesStore.getState().projectId;
+      if (!activeProject) return;
+      const baseline = baselineRef.current;
+      void gitShow(activeProject, diffSides(current.side).oldRev, current.path)
+        .then((next) => {
+          const still = activeDiff(useDiffStore.getState());
+          if (still?.path !== current.path || still.side !== current.side) return;
+          if (baselineRef.current !== baseline || next === baseline) return;
+          setReloadKey((k) => k + 1);
+        })
+        .catch(() => setReloadKey((k) => k + 1));
     };
     window.addEventListener("oleafly:git-changed", onChanged);
     return () => window.removeEventListener("oleafly:git-changed", onChanged);
@@ -65,6 +89,7 @@ export function DiffView() {
     setLoading(true);
     setError(null);
     setNotice(null);
+    baselineRef.current = null;
     const { oldRev, newRev, editable } = diffSides(side);
 
     let synchronizing = false;
@@ -95,7 +120,7 @@ export function DiffView() {
           view = null;
           navViewRef.current = null;
           if (hostRef.current) hostRef.current.innerHTML = "";
-          setError("The diff could not be reloaded. Close this tab and open it again.");
+          setError(i18n.t(($) => $.editor.diff.reloadFailed));
           throw error;
         });
         if (cancelled || useFilesStore.getState().projectId !== projectId) return;
@@ -113,6 +138,7 @@ export function DiffView() {
     const build = async () => {
       try {
         const oldText = await gitShow(projectId, oldRev, path);
+        baselineRef.current = oldText;
         const newText =
           newRev === "WORKTREE"
             ? useFilesStore.getState().files[path]?.content ?? await readFileContent(projectId, path).catch(() => "")
@@ -120,13 +146,13 @@ export function DiffView() {
         if (cancelled) return;
 
         if (isBinaryPath(path) || hasNullByte(oldText) || hasNullByte(newText)) {
-          setNotice("Binary file, diff not shown.");
+          setNotice(i18n.t(($) => $.editor.diff.binaryNotice));
           setLoading(false);
           return;
         }
         const MAX = 2_000_000; // ~2 MB per side
         if (oldText.length > MAX || newText.length > MAX) {
-          setNotice("File is too large to display a diff.");
+          setNotice(i18n.t(($) => $.editor.diff.tooLarge));
           setLoading(false);
           return;
         }
@@ -239,14 +265,16 @@ export function DiffView() {
       <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2">
         <GitCompare className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="text-[11px] text-muted-foreground">
-          {diff.side === "staged" ? "Staged ↔ HEAD" : "Working ↔ Index"}
+          {diff.side === "staged"
+            ? t(($) => $.editor.diff.stagedHeading)
+            : t(($) => $.editor.diff.workingHeading)}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
             onClick={() => goChunk("prev")}
-            aria-label="Previous change"
-            title="Previous change"
+            aria-label={t(($) => $.editor.diff.previousChange)}
+            title={t(($) => $.editor.diff.previousChange)}
             className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <ChevronUp className="size-3.5" />
@@ -254,8 +282,8 @@ export function DiffView() {
           <button
             type="button"
             onClick={() => goChunk("next")}
-            aria-label="Next change"
-            title="Next change"
+            aria-label={t(($) => $.editor.diff.nextChange)}
+            title={t(($) => $.editor.diff.nextChange)}
             className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <ChevronDown className="size-3.5" />
@@ -265,7 +293,7 @@ export function DiffView() {
           <button
             type="button"
             onClick={() => setMode("split")}
-            aria-label="Split view"
+            aria-label={t(($) => $.editor.diff.splitView)}
             className={cn(
               "flex size-6 items-center justify-center",
               mode === "split" ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent",
@@ -276,7 +304,7 @@ export function DiffView() {
           <button
             type="button"
             onClick={() => setMode("unified")}
-            aria-label="Unified view"
+            aria-label={t(($) => $.editor.diff.unifiedView)}
             className={cn(
               "flex size-6 items-center justify-center",
               mode === "unified" ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent",
@@ -291,7 +319,7 @@ export function DiffView() {
         <div ref={hostRef} className="h-full" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-            Loading diff…
+            {t(($) => $.editor.diff.loading)}
           </div>
         )}
         {error && (

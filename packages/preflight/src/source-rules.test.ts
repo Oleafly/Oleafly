@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { runSourceRules } from "./source-rules";
 
-const has = (text: string, id: string) => runSourceRules(text).some((f) => f.id === id);
+import type { PreflightEngine } from "./types";
+
+const has = (text: string, id: string, engine?: PreflightEngine) =>
+  runSourceRules(text, engine ? { engine } : undefined).some((f) => f.id === id);
+const find = (text: string, id: string, engine?: PreflightEngine) =>
+  runSourceRules(text, engine ? { engine } : undefined).find((f) => f.id === id);
 
 describe("multi-column", () => {
   it("flags a twocolumn documentclass", () => {
@@ -28,6 +33,102 @@ describe("no-glyphtounicode", () => {
   });
   it("is satisfied by the cmap package", () => {
     expect(has("\\documentclass{article}\\usepackage{cmap}", "no-glyphtounicode")).toBe(false);
+  });
+});
+
+describe("no-glyphtounicode severity", () => {
+  const DOC = "\\documentclass{article}\n\\begin{document}hi\\end{document}";
+  it("stays a note on engines that build the map automatically", () => {
+    expect(find(DOC, "no-glyphtounicode", "pdflatex")?.severity).toBe("info");
+    expect(find(DOC, "no-glyphtounicode", "lualatex")?.detail.key).toBe(
+      "rules.no-glyphtounicode.detailAutomatic",
+    );
+  });
+  it("is a warning on XeTeX and the bundled engine", () => {
+    expect(find(DOC, "no-glyphtounicode", "xelatex")?.severity).toBe("warning");
+    expect(find(DOC, "no-glyphtounicode", "bundled")?.severity).toBe("warning");
+  });
+});
+
+describe("ua-standard-without-title", () => {
+  it("flags a PDF/UA declaration with no title", () => {
+    expect(has("\\DocumentMetadata{pdfstandard=ua-2,tagging=on}\\documentclass{article}", "ua-standard-without-title")).toBe(true);
+  });
+  it("names what is missing", () => {
+    const finding = find("\\DocumentMetadata{pdfstandard=ua-2}\\documentclass{article}\\hypersetup{pdftitle={A paper}}", "ua-standard-without-title");
+    expect(finding?.detail.key).toBe("rules.ua-standard-without-title.detailDisplay");
+  });
+  it("is satisfied by a title the reader displays", () => {
+    const src = "\\DocumentMetadata{pdfstandard=ua-2}\\documentclass{article}\\hypersetup{pdftitle={A paper},pdfdisplaydoctitle=true}";
+    expect(has(src, "ua-standard-without-title")).toBe(false);
+  });
+  it("does not fire without a PDF/UA declaration", () => {
+    expect(has("\\DocumentMetadata{tagging=on}\\documentclass{article}", "ua-standard-without-title")).toBe(false);
+  });
+
+  it("reads a declaration that sits behind a nested key group", () => {
+    const src = "\\DocumentMetadata{tagging-setup={table/header-rows={1}},pdfstandard=ua-2}\\documentclass{article}";
+    expect(has(src, "ua-standard-without-title")).toBe(true);
+  });
+
+  it("reads a declaration whose value is wrapped in braces", () => {
+    const src = "\\DocumentMetadata{lang=en-US,pdfstandard={ua-2}}\\documentclass{article}";
+    expect(has(src, "ua-standard-without-title")).toBe(true);
+  });
+
+  it("covers the whole declaration with the reported source range", () => {
+    const src = "\\DocumentMetadata{tagging-setup={table/header-rows={1}},pdfstandard=ua-2}\\documentclass{article}";
+    const finding = find(src, "ua-standard-without-title");
+    expect(src.slice(finding?.from, finding?.to)).toBe(
+      "\\DocumentMetadata{tagging-setup={table/header-rows={1}},pdfstandard=ua-2}",
+    );
+  });
+});
+
+describe("ua-standard-on-tectonic", () => {
+  const SRC = "\\DocumentMetadata{pdfstandard=ua-2,tagging=on}\\documentclass{article}";
+  it("is an error when the bundled engine would compile it", () => {
+    expect(find(SRC, "ua-standard-on-tectonic", "bundled")?.severity).toBe("error");
+  });
+  it("does not fire on an engine that can tag", () => {
+    expect(has(SRC, "ua-standard-on-tectonic", "lualatex")).toBe(false);
+    expect(has(SRC, "ua-standard-on-tectonic", "pdflatex")).toBe(false);
+  });
+  it("does not fire when the engine is not known", () => {
+    expect(has(SRC, "ua-standard-on-tectonic")).toBe(false);
+  });
+  it("still sees the declaration when the keys are nested and reordered", () => {
+    const nested = "\\DocumentMetadata{tagging-setup={table/header-rows={1}},pdfstandard=ua-2}\\documentclass{article}";
+    expect(has(nested, "ua-standard-on-tectonic", "bundled")).toBe(true);
+  });
+});
+
+describe("table-header-rows", () => {
+  const TABLE = "\\begin{tabular}{ll}Name & Score \\\\\\hline Ada & 1\\end{tabular}";
+  it("flags a ruled header row that is not declared as one", () => {
+    expect(has(TABLE, "table-header-rows")).toBe(true);
+  });
+  it("is satisfied by a declared header row", () => {
+    expect(has(`\\DocumentMetadata{tagging-setup={table/header-rows={1}}}${TABLE}`, "table-header-rows")).toBe(false);
+  });
+  it("does not fire on a table with no rule under its first row", () => {
+    expect(has("\\begin{tabular}{ll}a & b \\\\ c & d\\end{tabular}", "table-header-rows")).toBe(false);
+  });
+  it("does not mistake a bottom rule for a header separator", () => {
+    expect(has("\\begin{tabular}{ll}a & b \\\\ c & d \\\\ \\hline\\end{tabular}", "table-header-rows")).toBe(false);
+  });
+  it("accepts a booktabs midrule under the first row", () => {
+    expect(has("\\begin{tabular}{ll}Name & Score \\\\\\midrule Ada & 1\\end{tabular}", "table-header-rows")).toBe(true);
+  });
+  it("reads a rule that follows a spaced row terminator", () => {
+    expect(has("\\begin{tabular}{ll}Name & Score \\\\[2pt]\n\\hline\nAda & 1\\end{tabular}", "table-header-rows")).toBe(true);
+  });
+  it("is satisfied by a header row declared through a nested metadata key", () => {
+    const src = "\\DocumentMetadata{tagging-setup={table/header-rows={1}},pdfstandard=ua-2}\\begin{tabular}{ll}Name & Score \\\\\\hline Ada & 1\\end{tabular}";
+    expect(has(src, "table-header-rows")).toBe(false);
+  });
+  it("reports once for a document with several tables", () => {
+    expect(runSourceRules(`${TABLE}${TABLE}`).filter((f) => f.id === "table-header-rows")).toHaveLength(1);
   });
 });
 
@@ -186,6 +287,11 @@ describe("finding shape", () => {
     for (const f of runSourceRules("\\documentclass[twocolumn]{article}\\includegraphics{p.png}")) {
       expect(["ats", "a11y", "both"]).toContain(f.lens);
       expect(["error", "warning", "info"]).toContain(f.severity);
+    }
+  });
+  it("records that source findings are predictions, not readings of the PDF", () => {
+    for (const f of runSourceRules("\\documentclass[twocolumn]{article}\\includegraphics{p.png}")) {
+      expect(f.method).toBe("source-heuristic");
     }
   });
 });

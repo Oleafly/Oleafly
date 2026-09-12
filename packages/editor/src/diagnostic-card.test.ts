@@ -10,6 +10,9 @@ import {
   diagnosticCardGutter,
   diagnosticCardSource,
 } from "./diagnostic-card";
+import { installEnglishEditorMessages } from "./test-messages";
+
+installEnglishEditorMessages();
 
 // CodeMirror's delayed lint hover asks the DOM Range for layout rectangles.
 // jsdom intentionally has no layout engine, so provide the smallest safe
@@ -52,7 +55,11 @@ function mount(diagnostics: Diagnostic[]) {
 
 function spellingDiagnostic(
   suggestions: string[],
-  ignores: { label: string; action: { name: string; apply: () => void } }[] = [],
+  ignores: {
+    label: string;
+    action: { name: string; apply: () => void };
+    icon?: "project" | "everywhere" | "now" | "rule";
+  }[] = [],
 ): Diagnostic {
   return attachProofreadingCard(
     {
@@ -119,7 +126,7 @@ describe("proofreading hover card", () => {
     const everywhere = { name: "e", apply: vi.fn() };
     const editor = mount([
       spellingDiagnostic(["unbounded"], [
-        { label: "Ignore", action: project },
+        { label: "Ignore", action: project, icon: "project" },
         { label: "Ignore everywhere", action: everywhere },
       ]),
     ]);
@@ -131,9 +138,8 @@ describe("proofreading hover card", () => {
       "Ignore",
       "Ignore everywhere",
     ]);
-    expect(footer.querySelectorAll(".cm-proofread-footer-divider")).toHaveLength(
-      1,
-    );
+    expect(entries[0].querySelector("svg.cm-proofread-action-icon")).not.toBeNull();
+    expect(entries[1].querySelector("svg")).toBeNull();
 
     entries[1].dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     expect(everywhere.apply).toHaveBeenCalledOnce();
@@ -304,5 +310,94 @@ describe("proofreading gutter card", () => {
     expect(
       document.body.querySelector(".cm-proofread-header")?.textContent,
     ).toBe("compile error");
+  });
+});
+
+function grammarDiagnostic(
+  card: {
+    message: string;
+    kind: string;
+    rule?: string | null;
+    suggestions?: string[];
+  },
+): Diagnostic {
+  return attachProofreadingCard(
+    {
+      from: FROM,
+      to: TO,
+      severity: "warning",
+      message: card.message,
+      actions: [],
+    },
+    {
+      word: "unblinded",
+      kind: card.kind,
+      rule: card.rule ?? null,
+      message: card.message,
+      suggestions: (card.suggestions ?? []).map((text) => ({
+        label: text,
+        action: replaceAction(text),
+      })),
+      ignores: [],
+    },
+  );
+}
+
+describe("proofreading hover card by kind", () => {
+  it("shows what the grammar checker actually found", () => {
+    const editor = mount([
+      grammarDiagnostic({
+        message: "This sentence is 81 words long.",
+        kind: "Readability",
+        rule: "LongSentences",
+      }),
+    ]);
+    const dom = card(editor, FROM)!;
+    expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
+      "This sentence is 81 words long.",
+    );
+    expect(dom.querySelector(".cm-proofread-header")?.textContent).not.toContain(
+      "Not in dictionary",
+    );
+  });
+
+  it("names the rule behind a grammar finding", () => {
+    const editor = mount([
+      grammarDiagnostic({
+        message: "Did you mean to repeat this word?",
+        kind: "Repetition",
+        rule: "RepeatedWords",
+      }),
+    ]);
+    const dom = card(editor, FROM)!;
+    expect(dom.querySelector(".cm-proofread-rule")?.textContent).toBe(
+      "RepeatedWords",
+    );
+  });
+
+  it("keeps the message as the header even when a grammar fix exists", () => {
+    const editor = mount([
+      grammarDiagnostic({
+        message: "Incorrect indefinite article.",
+        kind: "Miscellaneous",
+        rule: "AnA",
+        suggestions: ["an"],
+      }),
+    ]);
+    const dom = card(editor, FROM)!;
+    expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
+      "Incorrect indefinite article.",
+    );
+    expect(
+      [...dom.querySelectorAll(".cm-proofread-suggestion")].map(
+        (row) => row.textContent,
+      ),
+    ).toEqual(["an"]);
+  });
+
+  it("shows no rule label for a spelling finding", () => {
+    const editor = mount([spellingDiagnostic([])]);
+    const dom = card(editor, FROM)!;
+    expect(dom.querySelector(".cm-proofread-rule")).toBeNull();
   });
 });

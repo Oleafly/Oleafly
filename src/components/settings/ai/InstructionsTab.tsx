@@ -1,9 +1,11 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { setConfig, type AppConfig } from "@/lib/tauri";
+import { describeError } from "@/lib/app-error";
 import { mergeCustomProviders } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
 import { AiToolsTable } from "@/components/ai/AiToolsList";
@@ -32,6 +34,7 @@ export function InstructionsTab({
   saveSystemPrompt,
   setMsg,
 }: InstructionsTabProps) {
+  const { t } = useTranslation(["settings"]);
   const [toolsOpen, setToolsOpen] = useState(false);
   // Providers the user has actually connected (saved key, or a custom
   // provider with an optional key), same "configured" definition ChatCore
@@ -52,10 +55,9 @@ export function InstructionsTab({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <p className="font-medium">Default chat model</p>
+        <p className="font-medium">{t(($) => $.settings.ai.instructions.defaultModelTitle)}</p>
         <p className="text-xs text-muted-foreground">
-          Used whenever you start a new chat. You can still switch models for an individual
-          conversation from the chat panel.
+          {t(($) => $.settings.ai.instructions.defaultModelDescription)}
         </p>
         <div data-testid="ai-default-model" data-tour="ai-default-model">
           <ModelSelector
@@ -72,17 +74,15 @@ export function InstructionsTab({
       </div>
 
       <div className="space-y-2" data-tour="ai-instructions">
-        <p className="font-medium">Custom instructions</p>
+        <p className="font-medium">{t(($) => $.settings.ai.instructions.customTitle)}</p>
         <p className="text-xs text-muted-foreground">
-          Added to every AI request as your personal style and preferences. The
-          assistant follows these on top of its built-in behavior. They can't
-          override its tools or safety rules.
+          {t(($) => $.settings.ai.instructions.customDescription)}
         </p>
         <Textarea
           value={sysPrompt}
           onChange={(e) => setSysPrompt(e.target.value)}
           rows={5}
-          placeholder="e.g. Always write in British English. Keep explanations short. Prefer the enumitem package for lists."
+          placeholder={t(($) => $.settings.ai.instructions.customPlaceholder)}
           className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
         />
         <div className="flex items-center gap-2">
@@ -91,16 +91,18 @@ export function InstructionsTab({
             onClick={() => void saveSystemPrompt()}
             disabled={sysPrompt === (cfg.ai_system_prompt || "")}
           >
-            Save instructions
+            {t(($) => $.settings.ai.instructions.save)}
           </Button>
           {sysPromptSaved && (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400">Saved</span>
+            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+              {t(($) => $.settings.ai.instructions.saved)}
+            </span>
           )}
         </div>
       </div>
 
       <div className="space-y-2 border-t pt-4">
-        <p className="font-medium">Agent capabilities</p>
+        <p className="font-medium">{t(($) => $.settings.ai.instructions.capabilitiesTitle)}</p>
         <label htmlFor="ai-pdf-capture" className="flex cursor-pointer items-start gap-2.5 text-xs">
           <Checkbox
             id="ai-pdf-capture"
@@ -115,14 +117,15 @@ export function InstructionsTab({
               } catch {
                 /* ignore */
               }
-              void setConfig(next).catch((err) => setMsg({ ok: false, text: String(err) }));
+              void setConfig(next).catch((err) => setMsg({ ok: false, text: describeError(err) }));
             }}
           />
           <span>
-            <span className="font-medium text-foreground">Allow PDF page capture for AI</span>
+            <span className="font-medium text-foreground">
+              {t(($) => $.settings.ai.instructions.pdfCaptureLabel)}
+            </span>
             <span className="mt-0.5 block text-muted-foreground">
-              Lets the agent rasterize compiled pages (verify_pdf_pages) for vision layout checks.
-              Disable if you prefer not to send page images to your provider.
+              {t(($) => $.settings.ai.instructions.pdfCaptureDescription)}
             </span>
           </span>
         </label>
@@ -136,7 +139,7 @@ export function InstructionsTab({
           aria-expanded={toolsOpen}
         >
           <Sparkles className="size-3.5 text-primary" />
-          The assistant currently supports these tools
+          {t(($) => $.settings.ai.instructions.toolsTitle)}
           {toolsOpen ? (
             <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
           ) : (
@@ -146,8 +149,7 @@ export function InstructionsTab({
         {toolsOpen && (
           <div className="border-t px-3 pb-3 pt-2">
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Ask it things like "fix the LaTeX errors", "add a Publications section", or "recompile
-              and check the PDF".
+              {t(($) => $.settings.ai.instructions.toolsHint)}
             </p>
             <AiToolsTable />
           </div>

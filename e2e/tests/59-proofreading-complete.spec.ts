@@ -18,6 +18,7 @@ interface ProofreadingDiagnosticSnapshot {
   to: number;
   message: string;
   kind: string;
+  rule: string | null;
   source: "harper" | "hunspell";
   word: string;
   suggestions: { text: string; kind: number }[];
@@ -82,6 +83,7 @@ async function proofreadingSnapshot(
           to: diagnostic.to,
           message: diagnostic.message,
           kind: diagnostic.kind,
+          rule: diagnostic.rule ?? null,
           source: diagnostic.source,
           word: diagnostic.word,
           suggestions: diagnostic.suggestions.map((suggestion) => ({
@@ -145,6 +147,8 @@ async function resetProofreadingState(page: TauriPage): Promise<void> {
       state.setDictionaryLocale("en_US");
       state.setShowRegionalism(true);
       state.setShowWordChoice(true);
+      state.setHarperDisabledRules([]);
+      state.setHarperEnabledRules([]);
       state.setDefaultView("editor-preview");
       dictionary.useDictionary.getState().clearAll();
       document
@@ -692,6 +696,133 @@ $ x + y $
     await expectDesktopShellAnchored(tauriPage);
     await returnToLibrary(tauriPage);
   }
+});
+
+test("a pasted LaTeX block produces word-sized findings with their real message", async ({
+  tauriPage,
+}) => {
+  await resetProofreadingState(tauriPage);
+  const name = `E2E Pasted LaTeX ${RUN}`;
+  await createProjectForFormat(tauriPage, "latex", name);
+  await replaceEditorSource(
+    tauriPage,
+    String.raw`\documentclass{article}
+\usepackage{booktabs}
+\begin{document}
+
+\section{Results}
+\label{sec:results}
+
+We evaluate on three benchmarks. The the results are in
+Table~\ref{tab:results}, and reach $88.7\%$ accuracy against
+\citet{smith2020} and \cite{jones2021,lee2022}.
+
+\begin{table}[t]
+\centering
+\caption{Accuracy and latency on the benchmark suite.}
+\label{tab:results}
+\begin{tabular}{lcc}
+\toprule
+Model & Accuracy & Latency \\
+\midrule
+Baseline & 81.2 & 14 \\
+Ours & 88.7 & 12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+  \item The first point concerns \gls{sdp} throughput.
+  \item The second point is that $\alpha = 0.5$ works best.
+  \item A third point about \verb|--flag=value| in the runner.
+\end{itemize}
+
+% A comment carrying Qwertzuiopz that must never be checked.
+Finally, a Qwertzuiopz remains for the spellchecker.
+\end{document}
+`,
+  );
+
+  const snapshot = await waitForProofreading(
+    tauriPage,
+    "source",
+    (state) =>
+      state.phase === "ready" &&
+      state.identity?.path === "main.tex" &&
+      hasDiagnostic(state, "hunspell", "Qwertzuiopz") &&
+      state.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.source === "harper" &&
+          /repeat|repeated|duplicate/iu.test(
+            `${diagnostic.kind} ${diagnostic.message}`,
+          ),
+      ),
+    "pasted LaTeX proofreading did not finish",
+  );
+
+  const source = await editorSource(tauriPage);
+  const wide = snapshot.diagnostics.filter(
+    (diagnostic) =>
+      diagnostic.to - diagnostic.from > 40 ||
+      source.slice(diagnostic.from, diagnostic.to).includes("\n"),
+  );
+  expect(
+    wide,
+    `pasted LaTeX must not produce a finding wider than a word:\n${JSON.stringify(wide, null, 2)}`,
+  ).toEqual([]);
+
+  const markup = snapshot.diagnostics.filter((diagnostic) =>
+    /smith2020|jones2021|lee2022|tab:results|sec:results|booktabs|toprule|midrule|bottomrule|tabular|flag=value|Dummy/u.test(
+      diagnostic.word,
+    ),
+  );
+  expect(
+    markup,
+    `masked markup must not be reported:\n${JSON.stringify(markup, null, 2)}`,
+  ).toEqual([]);
+
+  const repeated = snapshot.diagnostics.find(
+    (diagnostic) =>
+      diagnostic.source === "harper" &&
+      /repeat|repeated|duplicate/iu.test(
+        `${diagnostic.kind} ${diagnostic.message}`,
+      ),
+  );
+  expect(repeated).toBeTruthy();
+  expect(repeated?.rule ?? "").not.toBe("");
+
+  await tauriPage.waitForFunction(
+    `typeof window.__e2eMountProofreadingCard === "function"`,
+    20_000,
+  );
+  const opened = await tauriPage.evaluate<boolean>(
+    `window.__e2eMountProofreadingCard(${JSON.stringify("The the")})`,
+  );
+  expect(opened).toBe(true);
+  const card = tauriPage.locator('[data-e2e-proofreading-card="true"]');
+  await expect(card).toBeVisible({ timeout: 15_000 });
+  const header = await tauriPage.evaluate<string>(
+    `document.querySelector('[data-e2e-proofreading-card="true"] .cm-proofread-header')?.textContent ?? ""`,
+  );
+  expect(header).not.toContain("Not in dictionary");
+  expect(header).toBe(repeated?.message ?? "");
+  const ruleLabel = await tauriPage.evaluate<string>(
+    `document.querySelector('[data-e2e-proofreading-card="true"] .cm-proofread-rule')?.textContent ?? ""`,
+  );
+  expect(ruleLabel).toBe(repeated?.rule ?? "");
+  const footer = await tauriPage.evaluate<string[]>(
+    `Array.from(
+      document.querySelectorAll('[data-e2e-proofreading-card="true"] .cm-proofread-ignore'),
+    ).map((entry) => entry.textContent ?? "")`,
+  );
+  expect(footer[0]).toBe("Ignore in this project");
+  expect(footer[1]).toContain("Turn off rule");
+
+  await tauriPage.evaluate(
+    `document.querySelector('[data-e2e-proofreading-card="true"]')?.remove()`,
+  );
+  await expectDesktopShellAnchored(tauriPage);
+  await returnToLibrary(tauriPage);
 });
 
 test("LaTeX and Markdown Visual proofreading paints real prose issues", async ({

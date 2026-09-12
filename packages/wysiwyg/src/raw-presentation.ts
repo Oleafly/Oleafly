@@ -1,19 +1,21 @@
-const BLOCK_LABELS: Record<string, string> = {
-  abstract: "Abstract",
-  author: "Authors",
-  bibliography: "Bibliography",
-  bibliographystyle: "Bibliography style",
-  date: "Date",
-  figure: "Figure",
-  "figure*": "Figure",
-  IEEEkeywords: "Keywords",
-  keywords: "Keywords",
-  maketitle: "Document title",
-  table: "Table",
-  "table*": "Table",
-  tabular: "Table",
-  "tabular*": "Table",
-  title: "Title",
+import { wysiwygMessage, type WysiwygMessageKey } from "./messages";
+
+const BLOCK_LABEL_KEYS: Record<string, WysiwygMessageKey> = {
+  abstract: "block.abstract",
+  author: "block.author",
+  bibliography: "block.bibliography",
+  bibliographystyle: "block.bibliographyStyle",
+  date: "block.date",
+  figure: "block.figure",
+  "figure*": "block.figure",
+  IEEEkeywords: "block.keywords",
+  keywords: "block.keywords",
+  maketitle: "block.documentTitle",
+  table: "block.table",
+  "table*": "block.table",
+  tabular: "block.table",
+  "tabular*": "block.table",
+  title: "block.title",
 };
 
 const PREVIEW_SOURCE_LIMIT = 12_000;
@@ -82,20 +84,21 @@ export function rawBlockPresentation(source: string): {
   const environment = environmentName(source);
   const command = commandName(source);
   const name = environment ?? command ?? "";
-  const label =
-    BLOCK_LABELS[name] ??
-    (source.trimStart().startsWith("%")
-      ? "Comment"
+  const labelKey = BLOCK_LABEL_KEYS[name];
+  const label = labelKey
+    ? wysiwygMessage(labelKey)
+    : source.trimStart().startsWith("%")
+      ? wysiwygMessage("block.comment")
       : environment
-        ? `${environment} environment`
+        ? wysiwygMessage("block.environment", { environment })
         : command
-          ? `\\${command} command`
-          : "LaTeX source");
+          ? wysiwygMessage("block.command", { command })
+          : wysiwygMessage("block.latexSource");
 
   if (name === "maketitle") {
     return {
       label,
-      preview: "Generated from the document title and author metadata.",
+      preview: wysiwygMessage("block.maketitlePreview"),
     };
   }
 
@@ -105,14 +108,16 @@ export function rawBlockPresentation(source: string): {
       label,
       preview: caption
         ? readableLatex(caption)
-        : `Exact ${name.startsWith("figure") ? "figure" : "table"} source preserved.`,
+        : name.startsWith("figure")
+          ? wysiwygMessage("block.figurePreserved")
+          : wysiwygMessage("block.tablePreserved"),
     };
   }
 
   const preview = readableLatex(source);
   return {
     label,
-    preview: preview || "Exact source preserved",
+    preview: preview || wysiwygMessage("block.sourcePreserved"),
   };
 }
 

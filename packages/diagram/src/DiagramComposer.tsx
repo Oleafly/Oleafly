@@ -51,6 +51,7 @@ import {
 import { useDiagramKit } from "./kit";
 import type { DiagramHost } from "./host";
 import { cn } from "./cn";
+import type { DiagramMessageKey } from "./messages";
 
 function starterModel(): DiagramModel {
   const STROKE = "#1e293b";
@@ -228,12 +229,12 @@ function starterModel(): DiagramModel {
   return { version: 1, nodes, edges };
 }
 
-const TIKZ_SNIPPETS: { label: string; icon: ReactNode; snippet: string }[] = [
-  { label: "Rectangle node", icon: <Square className="size-3.5" />, snippet: "\\node (n) [draw, rounded corners] {Label};\n" },
-  { label: "Circle node", icon: <Circle className="size-3.5" />, snippet: "\\node (n) [draw, circle] {};\n" },
-  { label: "Arrow edge", icon: <MoveRight className="size-3.5" />, snippet: "\\draw[->] (a) -- (b);\n" },
-  { label: "Line edge", icon: <Minus className="size-3.5" />, snippet: "\\draw (a) -- (b);\n" },
-  { label: "Scope", icon: <Braces className="size-3.5" />, snippet: "\\begin{scope}\n  \n\\end{scope}\n" },
+const TIKZ_SNIPPETS: { id: string; key: DiagramMessageKey; icon: ReactNode; snippet: string }[] = [
+  { id: "rectangleNode", key: "snippets.rectangleNode", icon: <Square className="size-3.5" />, snippet: "\\node (n) [draw, rounded corners] {Label};\n" },
+  { id: "circleNode", key: "snippets.circleNode", icon: <Circle className="size-3.5" />, snippet: "\\node (n) [draw, circle] {};\n" },
+  { id: "arrowEdge", key: "snippets.arrowEdge", icon: <MoveRight className="size-3.5" />, snippet: "\\draw[->] (a) -- (b);\n" },
+  { id: "lineEdge", key: "snippets.lineEdge", icon: <Minus className="size-3.5" />, snippet: "\\draw (a) -- (b);\n" },
+  { id: "scope", key: "snippets.scope", icon: <Braces className="size-3.5" />, snippet: "\\begin{scope}\n  \n\\end{scope}\n" },
 ];
 
 function safeName(name: string): string {
@@ -280,7 +281,7 @@ export function DiagramComposer({
   // of the toolbar on platforms that draw a frameless window (e.g. Windows).
   windowControls?: ReactNode;
 }) {
-  const { Button, Input, ColorPicker, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast } =
+  const { Button, Input, ColorPicker, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast, t } =
     useDiagramKit();
 
   const [mode, setMode] = useState<Mode>("draw");
@@ -409,15 +410,15 @@ export function DiagramComposer({
         );
       } else {
         setPng(null);
-        toast.error("Diagram did not compile. Check the log below.");
+        toast.error(t("toast.compileFailed"));
       }
     } catch (e) {
-      toast.error(String(e));
+      toast.error(t("toast.compileError", { detail: String(e) }));
     } finally {
       setBusy(false);
       setHasCompiled(true);
     }
-  }, [projectId, busy, code, model, mode, hasDrawing, scale, background, host, toast]);
+  }, [projectId, busy, code, model, mode, hasDrawing, scale, background, host, toast, t]);
 
   // When a caller (the product tour) forces the preview pane open, compile the
   // starter drawing once so the pane demonstrates a real preview instead of
@@ -437,14 +438,12 @@ export function DiagramComposer({
         const existing = new Set(files.map((f) => f.path));
         const clash = paths.filter((p) => existing.has(p));
         if (clash.length === 0) return true;
-        return window.confirm(
-          `${clash.join(", ")} already exists. Overwrite? (Choose a different name to keep both.)`,
-        );
+        return window.confirm(t("confirm.overwrite", { files: clash.join(", ") }));
       } catch {
         return true;
       }
     },
-    [projectId, host],
+    [projectId, host, t],
   );
 
   const snippetCode =
@@ -455,13 +454,13 @@ export function DiagramComposer({
   const [projectPicks, setProjectPicks] = useState<{ id: string; name: string }[]>([]);
 
   const openSavePicker = useCallback(async () => {
-    if (!png) { toast.error("Compile the diagram first so there is something to save."); return; }
+    if (!png) { toast.error(t("toast.compileBeforeSave")); return; }
     setProjectPicks(await host.listProjectNames());
     setSavePickerOpen(true);
-  }, [png, host, toast]);
+  }, [png, host, toast, t]);
 
   const saveToExistingProject = useCallback(async (targetProjectId: string) => {
-    if (!stem) { toast.error("Enter a name for the diagram first."); return; }
+    if (!stem) { toast.error(t("toast.nameRequired")); return; }
     if (!png) return;
     if (!(await confirmOverwrite([`figures/${stem}.png`, `figures/${stem}.tikz`]))) return;
     try {
@@ -469,13 +468,13 @@ export function DiagramComposer({
       await host.writeProjectBytes(targetProjectId, `figures/${stem}.png`, b64);
       await host.writeFileContent(targetProjectId, `figures/${stem}.tikz`, snippetCode);
       await host.refreshTree();
-      toast.success(`Saved to figures/${stem}.png`);
+      toast.success(t("toast.savedToProject", { path: `figures/${stem}.png` }));
     } catch (e) {
-      toast.error(`Could not save the diagram: ${e}`);
+      toast.error(t("toast.saveFailed", { detail: String(e) }));
     } finally {
       setSavePickerOpen(false);
     }
-  }, [stem, png, snippetCode, confirmOverwrite, host, toast]);
+  }, [stem, png, snippetCode, confirmOverwrite, host, toast, t]);
 
   const saveAsNewProject = useCallback(async () => {
     const src = buildStandaloneDoc({
@@ -483,39 +482,39 @@ export function DiagramComposer({
       libraries: DIAGRAM_LIBS,
       background,
     });
-    const targetName = name.trim() || "Untitled Diagram";
+    const targetName = name.trim() || t("composer.untitledName");
     try {
       await host.createDiagramProject(targetName, src);
       await host.refreshProjects();
-      toast.success("Saved as a new diagram project. Find it on your home screen.");
+      toast.success(t("toast.savedAsProject"));
     } catch (e) {
-      toast.error(`Could not save as a project: ${e}`);
+      toast.error(t("toast.saveAsProjectFailed", { detail: String(e) }));
     } finally {
       setSavePickerOpen(false);
     }
-  }, [name, model, code, hasDrawing, background, host, toast]);
+  }, [name, model, code, hasDrawing, background, host, toast, t]);
 
   const saveFigureGlobally = useCallback(async () => {
-    if (!stem) { toast.error("Enter a name for the diagram first."); return; }
-    if (!png) { toast.error("Compile the diagram first so there is something to save."); return; }
+    if (!stem) { toast.error(t("toast.nameRequired")); return; }
+    if (!png) { toast.error(t("toast.compileBeforeSave")); return; }
     try {
       const b64 = png.slice(png.indexOf(",") + 1);
       const result = await host.saveFigureToCache(stem, b64, snippetCode);
-      toast.success(result.alreadyCached ? "Already cached, reusing the existing figure." : "Saved to your figures cache.");
+      toast.success(result.alreadyCached ? t("toast.figureCached") : t("toast.figureSaved"));
     } catch (e) {
-      toast.error(`Could not save the figure: ${e}`);
+      toast.error(t("toast.saveFigureFailed", { detail: String(e) }));
     }
-  }, [stem, png, snippetCode, host, toast]);
+  }, [stem, png, snippetCode, host, toast, t]);
 
   const [downloadPickerOpen, setDownloadPickerOpen] = useState(false);
 
   const downloadFigure = useCallback(async (format: "png") => {
-    if (!png) { toast.error("Compile the diagram first so there is something to download."); return; }
+    if (!png) { toast.error(t("toast.compileBeforeDownload")); return; }
     setDownloadPickerOpen(false);
     const b64 = png.slice(png.indexOf(",") + 1);
     const saved = await host.saveBytesToDisk(stem || "diagram", format, b64);
-    if (saved) toast.success("Downloaded.");
-  }, [png, stem, host, toast]);
+    if (saved) toast.success(t("toast.downloaded"));
+  }, [png, stem, host, toast, t]);
 
   const [importing, setImporting] = useState(false);
   const importTikzFile = useCallback(async () => {
@@ -532,15 +531,15 @@ export function DiagramComposer({
       }
       toast.success(
         drawable
-          ? `Imported ${picked.name} for editing.`
-          : `Imported ${picked.name} (code only, not drawable).`,
+          ? t("toast.imported", { name: picked.name })
+          : t("toast.importedCodeOnly", { name: picked.name }),
       );
     } catch (e) {
-      toast.error(`Could not import that file: ${e}`);
+      toast.error(t("toast.importFailed", { detail: String(e) }));
     } finally {
       setImporting(false);
     }
-  }, [importing, host, toast, applyLoadedContent]);
+  }, [importing, host, toast, t, applyLoadedContent]);
 
   // Ask the configured AI to fix a failed compile from the log. One-shot: it
   // returns corrected TikZ, which we drop into Code and recompile (undoable in
@@ -553,20 +552,20 @@ export function DiagramComposer({
       const cur = sourceToCompile(syncRef.current, mode, model, code);
       const fixed = await host.fixWithAi(cur, log.slice(-3000));
       if (!fixed) {
-        toast.error("The AI did not return a fix.");
+        toast.error(t("toast.noAiFix"));
         return;
       }
       syncRef.current = readSync(fixed, null);
       setCode(fixed);
       setMode("code");
-      toast.success("Applied an AI fix. Recompiling…");
+      toast.success(t("toast.aiFixApplied"));
       await compile(fixed);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : `Fix failed: ${e}`);
+      toast.error(e instanceof Error ? e.message : t("toast.fixFailed", { detail: String(e) }));
     } finally {
       setFixing(false);
     }
-  }, [fixing, hasDrawing, mode, model, code, log, compile, host, toast]);
+  }, [fixing, hasDrawing, mode, model, code, log, compile, host, toast, t]);
 
   const compileFailed = !!log && !png;
 
@@ -637,7 +636,7 @@ export function DiagramComposer({
       if (parsed) {
         if (parsed.background !== undefined) setBackground(parsed.background);
       } else {
-        toast.info("Nothing in this code could be drawn. The code is untouched.");
+        toast.info(t("toast.notDrawable"));
       }
     }
     setMode(m);
@@ -649,24 +648,26 @@ export function DiagramComposer({
   const previewOpts = (
     <>
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        PNG scale
+        {t("preview.pngScale")}
         <Select value={String(scale)} onValueChange={(v) => setScale(Number(v))}>
           <SelectTrigger className="h-7 w-16 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
-            <SelectItem value="1" className="text-xs">1x</SelectItem>
-            <SelectItem value="2" className="text-xs">2x</SelectItem>
-            <SelectItem value="3" className="text-xs">3x</SelectItem>
+            {[1, 2, 3].map((factor) => (
+              <SelectItem key={factor} value={String(factor)} className="text-xs">
+                {t("preview.scaleFactor", { factor })}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        Background
+        {t("preview.background")}
         <ColorPicker
           value={background}
           allowTransparent
-          ariaLabel="Figure background color"
+          ariaLabel={t("preview.backgroundLabel")}
           onChange={(value) => {
             setBackground(value);
             if (!value) void compile(undefined, "");
@@ -679,7 +680,7 @@ export function DiagramComposer({
   return (
     <div
       role="dialog"
-      aria-label="Insert diagram"
+      aria-label={t("composer.title")}
       aria-modal="true"
       aria-labelledby={brand ? undefined : "diagram-composer-title"}
       data-tour="diagram-composer"
@@ -697,10 +698,10 @@ export function DiagramComposer({
         <div data-tour="diagram-intro-anchor" className="flex shrink-0 items-center gap-2">
           {brand ?? (
             <>
-              <Tooltip label="Back to project">
+              <Tooltip label={t("composer.backToProject")}>
                 <button
                   type="button"
-                  aria-label="Back to project"
+                  aria-label={t("composer.backToProject")}
                   onClick={onClose}
                   className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
@@ -710,9 +711,9 @@ export function DiagramComposer({
               <h2
                 id="diagram-composer-title"
                 className="max-w-[15ch] shrink-0 truncate text-sm font-semibold"
-                title={projectName || "Insert diagram"}
+                title={projectName || t("composer.title")}
               >
-                {projectName || "Insert diagram"}
+                {projectName || t("composer.title")}
               </h2>
             </>
           )}
@@ -723,7 +724,7 @@ export function DiagramComposer({
             <span ref={nameEditRef} className="flex items-center gap-1">
               <Input
                 id="diagram-name"
-                aria-label="Diagram name"
+                aria-label={t("composer.nameLabel")}
                 autoFocus
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
@@ -738,22 +739,22 @@ export function DiagramComposer({
                 }}
                 className="h-6 w-[160px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
               />
-              <span className="text-sm text-muted-foreground">.{diagramExt}</span>
-              <Tooltip label="Save (Enter)">
+              <span className="text-sm text-muted-foreground">{`.${diagramExt}`}</span>
+              <Tooltip label={t("composer.saveNameTooltip")}>
                 <button
                   type="button"
                   onClick={commitName}
-                  aria-label="Save name"
+                  aria-label={t("composer.saveName")}
                   className="flex size-6 items-center justify-center rounded text-emerald-600 hover:bg-accent dark:text-emerald-400"
                 >
                   <Check className="size-3.5" />
                 </button>
               </Tooltip>
-              <Tooltip label="Cancel (Esc)">
+              <Tooltip label={t("composer.cancelRenameTooltip")}>
                 <button
                   type="button"
                   onClick={cancelEditName}
-                  aria-label="Cancel rename"
+                  aria-label={t("composer.cancelRename")}
                   className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <X className="size-3.5" />
@@ -766,18 +767,18 @@ export function DiagramComposer({
                 type="button"
                 data-testid="diagram-name-display"
                 onClick={startEditName}
-                title="Rename diagram"
+                title={t("composer.renameTooltip")}
                 className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
               </button>
             </Tooltip>
           )}
-          <Tooltip label="Import a .tikz or .tex file, replacing this draft">
+          <Tooltip label={t("composer.importTooltip")}>
             <button
               type="button"
               data-tour="diagram-import"
-              aria-label="Import TikZ file"
+              aria-label={t("composer.importLabel")}
               onClick={() => void importTikzFile()}
               disabled={importing}
               className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
@@ -806,17 +807,17 @@ export function DiagramComposer({
               )}
             >
               {m === "draw" ? <MousePointerSquareDashed className="size-3.5" /> : <Code2 className="size-3.5" />}
-              {m === "draw" ? "Draw" : "Code"}
+              {m === "draw" ? t("composer.modeDraw") : t("composer.modeCode")}
             </button>
           ))}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
           {compileFailed && host.fixWithAi && (
-            <Tooltip label="Ask AI to fix the compile error">
+            <Tooltip label={t("composer.fixWithAiTooltip")}>
               <Button variant="secondary" size="sm" onClick={() => void fixWithAi()} disabled={fixing}>
                 {fixing ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-                Fix with AI
+                {t("composer.fixWithAi")}
               </Button>
             </Tooltip>
           )}
@@ -829,16 +830,16 @@ export function DiagramComposer({
               <Play className="size-3.5" />
             )}
             <span className={busy ? "ai-shimmer" : undefined}>
-              {busy ? "Compiling…" : hasCompiled ? "Recompile" : "Compile"}
+              {busy ? t("composer.compiling") : hasCompiled ? t("composer.recompile") : t("composer.compile")}
             </span>
           </Button>
           <div className="relative" ref={savePickerRef}>
-            <Tooltip label="Save this diagram">
+            <Tooltip label={t("composer.saveTooltip")}>
               <Button
                 data-tour="diagram-save-project"
                 variant="ghost"
                 size="sm"
-                aria-label="Save"
+                aria-label={t("composer.save")}
                 onClick={() => void openSavePicker()}
               >
                 <Save className="size-3.5" />
@@ -859,7 +860,7 @@ export function DiagramComposer({
                   >
                     <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="flex flex-1 items-center justify-end gap-2">
-                      Save to project <FolderOpen className="size-3.5" />
+                      {t("composer.saveToProject")} <FolderOpen className="size-3.5" />
                     </span>
                   </button>
                   {saveToProjectHover && (
@@ -869,12 +870,12 @@ export function DiagramComposer({
                         onClick={() => void saveAsNewProject()}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
                       >
-                        <Save className="size-3.5" /> New project
+                        <Save className="size-3.5" /> {t("composer.newProject")}
                       </button>
                       <div className="my-1 border-t" />
                       <div className="max-h-40 overflow-auto">
                         {projectPicks.length === 0 ? (
-                          <div className="px-2 py-1.5 text-xs text-muted-foreground">No other projects yet.</div>
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("composer.noOtherProjects")}</div>
                         ) : (
                           projectPicks.map((p) => (
                             <button
@@ -897,18 +898,18 @@ export function DiagramComposer({
                   onClick={() => void saveFigureGlobally()}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
                 >
-                  <Save className="size-3.5" /> Save Figure
+                  <Save className="size-3.5" /> {t("composer.saveFigure")}
                 </button>
               </div>
             )}
           </div>
           <div className="relative" ref={downloadPickerRef}>
-            <Tooltip label="Download this diagram">
+            <Tooltip label={t("composer.downloadTooltip")}>
               <Button
                 variant="ghost"
                 size="sm"
                 data-tour="diagram-download"
-                aria-label="Download"
+                aria-label={t("composer.download")}
                 onClick={() => setDownloadPickerOpen((v) => !v)}
               >
                 <Download className="size-3.5" />
@@ -922,15 +923,15 @@ export function DiagramComposer({
                   onClick={() => void downloadFigure("png")}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
                 >
-                  PNG
+                  {t("composer.formatPng")}
                 </button>
-                <Tooltip label="SVG export needs a vector renderer, not available yet">
+                <Tooltip label={t("composer.svgTooltip")}>
                   <button
                     type="button"
                     disabled
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground/50"
                   >
-                    SVG (coming soon)
+                    {t("composer.formatSvgSoon")}
                   </button>
                 </Tooltip>
               </div>
@@ -955,12 +956,12 @@ export function DiagramComposer({
           ) : (
             <>
               <div className="flex h-[34px] shrink-0 items-center gap-0.5 border-b bg-sidebar px-2">
-                <span className="mr-1 text-[11px] text-muted-foreground">Snippets</span>
+                <span className="mr-1 text-[11px] text-muted-foreground">{t("composer.snippets")}</span>
                 {TIKZ_SNIPPETS.map((s) => (
-                  <Tooltip key={s.label} label={s.label} side="bottom">
+                  <Tooltip key={s.id} label={t(s.key)} side="bottom">
                     <button
                       type="button"
-                      aria-label={s.label}
+                      aria-label={t(s.key)}
                       onClick={() => cmRef.current?.insert(s.snippet)}
                       className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     >
@@ -970,15 +971,15 @@ export function DiagramComposer({
                 ))}
                 {hasPreviewResult && !showPreview && (
                   <div className="ml-auto">
-                    <Tooltip label="Show compiled preview">
+                    <Tooltip label={t("preview.showTooltip")}>
                       <button
                         type="button"
-                        aria-label="Show preview"
+                        aria-label={t("preview.showLabel")}
                         onClick={() => setPreviewOpen(true)}
                         className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                       >
                         <PanelRightOpen className="size-3.5" />
-                        Preview
+                        {t("preview.label")}
                       </button>
                     </Tooltip>
                   </div>
@@ -994,19 +995,19 @@ export function DiagramComposer({
         {showPreview && (
           <div data-tour="diagram-preview-panel" className="flex min-h-0 min-w-0 flex-col">
             <div className="flex min-h-[34px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-sidebar px-3 py-1">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preview</span>
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("preview.label")}</span>
               {previewOpts}
               <div className="ml-auto flex items-center gap-1">
                 {busy && (
                   <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                     <Loader2 className="size-3.5 animate-spin" />
-                    Compiling…
+                    {t("composer.compiling")}
                   </span>
                 )}
-                <Tooltip label="Minimize preview">
+                <Tooltip label={t("preview.minimize")}>
                   <button
                     type="button"
-                    aria-label="Minimize preview"
+                    aria-label={t("preview.minimize")}
                     onClick={() => {
                       setPreviewOpen(false);
                     }}
@@ -1022,13 +1023,13 @@ export function DiagramComposer({
               {busy && !png && !log ? (
                 <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
                   <Loader2 className="mr-2 size-4 animate-spin" />
-                  Compiling…
+                  {t("composer.compiling")}
                 </div>
               ) : png ? (
                 <div className="flex h-full items-center justify-center">
                   <img
                     src={png}
-                    alt="Diagram preview"
+                    alt={t("preview.alt")}
                     className={cn(
                       "max-h-full max-w-full object-contain",
                       background === "" &&
@@ -1040,7 +1041,7 @@ export function DiagramComposer({
                 <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
               ) : (
                 <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
-                  Compile to see a preview.
+                  {t("preview.empty")}
                 </div>
               )}
             </div>

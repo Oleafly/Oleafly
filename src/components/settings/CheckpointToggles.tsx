@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { History } from "lucide-react";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 
 export function CheckpointToggles() {
+  const { t } = useTranslation(["common", "settings"]);
   const [config, setConfigState] = useState<AppConfig | null>(null);
-  const [configError, setConfigError] = useState<string | null>(null);
+  const [configError, setConfigError] = useState<"load" | "save" | null>(null);
   const configRequest = useRef(0);
 
   useEffect(() => {
@@ -18,7 +20,7 @@ export function CheckpointToggles() {
       })
       .catch(() => {
         if (request !== configRequest.current) return;
-        setConfigError("Couldn't load checkpoint settings.");
+        setConfigError("load");
       });
     return () => {
       configRequest.current += 1;
@@ -28,7 +30,7 @@ export function CheckpointToggles() {
   const writeConfig = (next: AppConfig) => {
     setConfigState(next);
     setConfigError(null);
-    void setConfig(next).catch(() => setConfigError("Couldn't save checkpoint settings."));
+    void setConfig(next).catch(() => setConfigError("save"));
   };
 
   const checkpointsEnabled = config ? config.checkpoints_enabled !== false : true;
@@ -46,17 +48,17 @@ export function CheckpointToggles() {
         </span>
         <div className="min-w-0">
           <h3 id="checkpoint-toggles-title" className="font-medium">
-            Checkpoints
+            {t(($) => $.settings.checkpoints.title)}
           </h3>
           <p className="text-xs text-muted-foreground">
-            A checkpoint records the source files a successful compile used.
+            {t(($) => $.settings.checkpoints.description)}
           </p>
         </div>
       </div>
       <div className="space-y-2 px-4 py-4">
         <SettingsToggleRow
-          label="Save a checkpoint after each successful compile"
-          description="Oleafly saves it in the background and only when the source changed."
+          label={t(($) => $.settings.checkpoints.afterCompile.label)}
+          description={t(($) => $.settings.checkpoints.afterCompile.description)}
           checked={checkpointsEnabled}
           onChange={(value) => {
             if (!config) return;
@@ -64,8 +66,8 @@ export function CheckpointToggles() {
           }}
         />
         <SettingsToggleRow
-          label="Show a notice when a checkpoint cannot be saved"
-          description="Oleafly tells you when a checkpoint cannot be saved, including storage problems or files it could not capture."
+          label={t(($) => $.settings.checkpoints.notifyOnFailure.label)}
+          description={t(($) => $.settings.checkpoints.notifyOnFailure.description)}
           checked={notificationsEnabled}
           onChange={(value) => {
             if (!config) return;
@@ -74,7 +76,9 @@ export function CheckpointToggles() {
         />
         {configError ? (
           <p className="text-xs text-destructive" role="alert">
-            {configError}
+            {configError === "load"
+              ? t(($) => $.settings.checkpoints.config.loadFailed)
+              : t(($) => $.settings.checkpoints.config.saveFailed)}
           </p>
         ) : null}
       </div>

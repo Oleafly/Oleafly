@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::paths;
-use crate::proc::NoConsole;
 use crate::sandbox::{atomic_write, guard_export_dest, resolve, AtomicFile};
 
 /// Public path resolver (sandbox). Re-exported so call sites keep importing
@@ -2970,11 +2969,17 @@ fn create_markdown_project_in(
 }
 
 #[tauri::command]
-pub fn rename_project(project_id: String, name: String) -> Result<ProjectMeta, String> {
+pub async fn rename_project(project_id: String, name: String) -> Result<ProjectMeta, String> {
+    tauri::async_runtime::spawn_blocking(move || rename_project_blocking(project_id, name))
+        .await
+        .map_err(|error| format!("project rename task failed: {error}"))?
+}
+
+fn rename_project_blocking(project_id: String, name: String) -> Result<ProjectMeta, String> {
     with_project_metadata(&project_id, || {
         let trimmed = name.trim();
         if trimmed.is_empty() {
-            return Err("Project name cannot be empty".into());
+            return Err(crate::app_error::AppError::new("project.name_empty").into());
         }
         let mut meta = read_meta(&project_id)?;
         meta.name = trimmed.to_string();
@@ -4336,11 +4341,11 @@ fn canonical_supported_pandoc(candidate: &Path) -> Option<PathBuf> {
     if !candidate.is_file() {
         return None;
     }
-    let output = Command::new(&candidate)
-        .no_console()
-        .arg("--version")
-        .output()
-        .ok()?;
+    let mut command = Command::new(&candidate);
+    command.arg("--version");
+    let output =
+        crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5))
+            .ok()?;
     (output.status.success() && pandoc_version_supported(&output.stdout)).then_some(candidate)
 }
 
@@ -4899,11 +4904,11 @@ async fn download_pandoc_impl(
         .map_err(|e| e.to_string())?;
     staging_file.sync_all().map_err(|e| e.to_string())?;
     drop(staging_file);
-    let version = std::process::Command::new(&staging)
-        .no_console()
-        .arg("--version")
-        .output()
-        .map_err(|e| format!("Downloaded Pandoc failed to run: {e}"))?;
+    let mut command = std::process::Command::new(&staging);
+    command.arg("--version");
+    let version =
+        crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5))
+            .map_err(|e| format!("Downloaded Pandoc failed to run: {e}"))?;
     if !version.status.success()
         || !String::from_utf8_lossy(&version.stdout).starts_with("pandoc 3.9.0.2")
     {
@@ -8444,7 +8449,12 @@ mod tests {
         assert!(trusted.allow_shell_escape);
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
-        let renamed = super::rename_project(project_id.clone(), "Trusted Paper".into()).unwrap();
+        let renamed = tauri::async_runtime::block_on(super::rename_project(
+            project_id.clone(),
+            "Trusted Paper".into(),
+        ))
+        .unwrap();
+        assert_eq!(renamed.name, "Trusted Paper");
         assert!(renamed.allow_shell_escape);
         assert!(!std::fs::read_to_string(project.join("project.json"))
             .unwrap()

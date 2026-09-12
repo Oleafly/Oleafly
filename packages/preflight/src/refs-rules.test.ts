@@ -22,7 +22,10 @@ describe("undefined citations", () => {
   it("flags the missing key in a multi-key cite", () => {
     const out = runRefsRules("\\cite{a,b}", ctx({ bibKeys: ["a"] }));
     expect(out.filter((f) => f.id === "refs-undefined-cite")).toHaveLength(1);
-    expect(out.find((f) => f.id === "refs-undefined-cite")?.title).toContain("b");
+    expect(out.find((f) => f.id === "refs-undefined-cite")?.title).toEqual({
+      key: "rules.refs-undefined-cite.title",
+      params: { key: "b" },
+    });
   });
   it("does not check citations when no .bib is loaded (avoids false positives)", () => {
     expect(has("\\cite{smith21}", ctx({ bibLoaded: false }), "refs-undefined-cite")).toBe(false);
@@ -75,8 +78,10 @@ describe("duplicate bib entries", () => {
     const out = runRefsRules("", ctx({ duplicateDois: [{ doi: "10.1/x", keys: ["smith21", "smithdup"] }] }));
     const f = out.find((x) => x.id === "refs-duplicate-bib");
     expect(f).toBeDefined();
-    expect(f!.title).toContain("smith21");
-    expect(f!.title).toContain("smithdup");
+    expect(f!.title).toEqual({
+      key: "rules.refs-duplicate-bib.title",
+      params: { keys: "smith21, smithdup" },
+    });
   });
   it("does not fire when there are no duplicates", () => {
     expect(runRefsRules("", ctx()).some((x) => x.id === "refs-duplicate-bib")).toBe(false);
@@ -155,5 +160,198 @@ describe("finding shape", () => {
     const f = out.find((x) => x.id === "refs-undefined-ref");
     expect(f?.lens).toBe("refs");
     expect(typeof f?.from).toBe("number");
+  });
+});
+
+describe("declared bibliography files", () => {
+  it("flags an \\addbibresource the project does not contain", () => {
+    const out = runRefsRules(
+      "\\addbibresource{references.bib}",
+      ctx({ projectFiles: ["main.tex"] }),
+    );
+    const finding = out.find((f) => f.id === "refs-bib-missing");
+    expect(finding?.severity).toBe("error");
+    expect(finding?.title.params?.file).toBe("references.bib");
+  });
+
+  it("accepts a resource that exists at the project root", () => {
+    expect(
+      has(
+        "\\addbibresource{references.bib}",
+        ctx({ projectFiles: ["main.tex", "references.bib"] }),
+        "refs-bib-missing",
+      ),
+    ).toBe(false);
+  });
+
+  it("supplies the .bib extension a natbib declaration omits", () => {
+    expect(
+      has(
+        "\\bibliography{refs}",
+        ctx({ projectFiles: ["main.tex", "refs.bib"] }),
+        "refs-bib-missing",
+      ),
+    ).toBe(false);
+  });
+
+  it("reports each missing file of a comma list", () => {
+    const out = runRefsRules(
+      "\\bibliography{present,absent}",
+      ctx({ projectFiles: ["main.tex", "present.bib"] }),
+    );
+    const findings = out.filter((f) => f.id === "refs-bib-missing");
+    expect(findings).toHaveLength(1);
+    expect(findings[0].title.params?.file).toBe("absent.bib");
+  });
+
+  it("ignores a remote resource and a commented declaration", () => {
+    expect(
+      has(
+        "\\addbibresource[location=remote]{https://example.org/refs.bib}",
+        ctx({ projectFiles: ["main.tex"] }),
+        "refs-bib-missing",
+      ),
+    ).toBe(false);
+    expect(
+      has(
+        "% \\addbibresource{references.bib}",
+        ctx({ projectFiles: ["main.tex"] }),
+        "refs-bib-missing",
+      ),
+    ).toBe(false);
+  });
+
+  it("stays quiet when the project file list is unavailable", () => {
+    expect(
+      has("\\addbibresource{references.bib}", ctx(), "refs-bib-missing"),
+    ).toBe(false);
+  });
+
+  it("refuses a file that only shares the basename of the declared path", () => {
+    expect(
+      has(
+        "\\addbibresource{missing/refs.bib}",
+        ctx({ projectFiles: ["main.tex", "other/refs.bib"] }),
+        "refs-bib-missing",
+      ),
+    ).toBe(true);
+  });
+
+  it("resolves against the declaring file when the root has no copy", () => {
+    const out = runRefsRules(
+      "\\addbibresource{local.bib}",
+      ctx({ projectFiles: ["chapters/one.tex", "chapters/local.bib"] }),
+      { file: "chapters/one.tex" },
+    );
+    expect(out.some((f) => f.id === "refs-bib-missing")).toBe(false);
+  });
+
+  it("takes the caller's unresolved list over its own lookup", () => {
+    const files = ["main.tex", "references.bib"];
+    expect(
+      runRefsRules(
+        "\\addbibresource{references.bib}",
+        ctx({
+          projectFiles: files,
+          unresolvedBibliographies: [{ file: "main.tex", name: "references.bib" }],
+        }),
+        { file: "main.tex" },
+      ).some((f) => f.id === "refs-bib-missing"),
+    ).toBe(true);
+    expect(
+      runRefsRules(
+        "\\addbibresource{gone.bib}",
+        ctx({ projectFiles: files, unresolvedBibliographies: [] }),
+        { file: "main.tex" },
+      ).some((f) => f.id === "refs-bib-missing"),
+    ).toBe(false);
+  });
+
+  it("blames only the declaring file whose copy is missing", () => {
+    const source = "\\addbibresource{local.bib}";
+    const context = ctx({
+      projectFiles: ["chapters/good.tex", "chapters/local.bib", "appendix/bad.tex"],
+      unresolvedBibliographies: [{ file: "appendix/bad.tex", name: "local.bib" }],
+    });
+
+    expect(
+      runRefsRules(source, context, { file: "chapters/good.tex" }).some(
+        (f) => f.id === "refs-bib-missing",
+      ),
+    ).toBe(false);
+    expect(
+      runRefsRules(source, context, { file: "appendix/bad.tex" }).some(
+        (f) => f.id === "refs-bib-missing",
+      ),
+    ).toBe(true);
+  });
+
+  it("stays quiet about a name another file resolved when the declaring file is unknown", () => {
+    const source = "\\addbibresource{local.bib}";
+    const context = ctx({
+      projectFiles: ["chapters/good.tex", "chapters/local.bib", "appendix/bad.tex"],
+      unresolvedBibliographies: [{ file: "appendix/bad.tex", name: "local.bib" }],
+    });
+
+    expect(runRefsRules(source, context).some((f) => f.id === "refs-bib-missing")).toBe(
+      false,
+    );
+  });
+
+  it("reports a name no declaring file resolved even without the declaring file", () => {
+    const context = ctx({
+      projectFiles: ["main.tex", "other/refs.bib"],
+      unresolvedBibliographies: [{ file: "main.tex", name: "gone.bib" }],
+    });
+
+    expect(
+      runRefsRules("\\addbibresource{gone.bib}", context).some(
+        (f) => f.id === "refs-bib-missing",
+      ),
+    ).toBe(true);
+  });
+
+  it("resolves a dotted declaration against its .bib file", () => {
+    expect(
+      has(
+        "\\bibliography{refs.v1}",
+        ctx({ projectFiles: ["main.tex", "refs.v1.bib"] }),
+        "refs-bib-missing",
+      ),
+    ).toBe(false);
+  });
+
+  it("reports a dotted \\addbibresource that names no file in the project", () => {
+    const out = runRefsRules(
+      "\\addbibresource{refs.v1}",
+      ctx({ projectFiles: ["main.tex", "refs.v1.bib"] }),
+    );
+    const finding = out.find((f) => f.id === "refs-bib-missing");
+    expect(finding?.severity).toBe("error");
+    expect(finding?.title).toEqual({
+      key: "rules.refs-bib-missing.title",
+      params: { file: "refs.v1" },
+    });
+  });
+
+  it("reports a bare \\addbibresource name even when its .bib file exists", () => {
+    const out = runRefsRules(
+      "\\addbibresource{refs}",
+      ctx({ projectFiles: ["main.tex", "refs.bib"] }),
+    );
+    expect(out.find((f) => f.id === "refs-bib-missing")?.title).toEqual({
+      key: "rules.refs-bib-missing.title",
+      params: { file: "refs" },
+    });
+  });
+
+  it("accepts an \\addbibresource that spells the whole file name", () => {
+    expect(
+      has(
+        "\\addbibresource{refs.v1.bib}",
+        ctx({ projectFiles: ["main.tex", "refs.v1.bib"] }),
+        "refs-bib-missing",
+      ),
+    ).toBe(false);
   });
 });

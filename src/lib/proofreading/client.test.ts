@@ -112,6 +112,7 @@ describe("proofreading client retention", () => {
           source: "hunspell" as const,
           word: input.text,
           suggestions: [],
+          rule: null,
         },
       ],
     };

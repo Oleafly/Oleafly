@@ -309,13 +309,8 @@ impl ExecLease<'_> {
             }
         }
     }
-}
 
-impl Drop for ExecLease<'_> {
-    fn drop(&mut self) {
-        if self.completed {
-            return;
-        }
+    fn stop_process_tree(&mut self) {
         let process = match self.unregister() {
             UnregisterResult::Removed(process) => process.and_then(|entry| entry.pid),
             UnregisterResult::RegistryUnavailable => self.pid,
@@ -323,6 +318,16 @@ impl Drop for ExecLease<'_> {
         if let Some(pid) = process {
             terminate_process(pid);
         }
+        self.pid = None;
+    }
+}
+
+impl Drop for ExecLease<'_> {
+    fn drop(&mut self) {
+        if self.completed {
+            return;
+        }
+        self.stop_process_tree();
         self.finish_completion();
     }
 }
@@ -697,14 +702,15 @@ async fn execute_command_with_timeout(
         Ok(containment) => containment,
         Err(error) => {
             terminate_process(pid);
-            let _ = child.kill().await;
-            let _ = child.wait().await;
+            let _ = child.start_kill();
+            let _ = tokio::time::timeout(Duration::from_secs(2), child.wait()).await;
             return Err(format!("failed to contain command process: {error}"));
         }
     };
     if let Err(error) = lease.activate(pid, containment) {
         terminate_process(pid);
-        let _ = child.wait().await;
+        let _ = child.start_kill();
+        let _ = tokio::time::timeout(Duration::from_secs(2), child.wait()).await;
         return Err(error);
     }
 
@@ -733,17 +739,23 @@ async fn execute_command_with_timeout(
     .await;
     let timed_out = completion.is_err();
     let status = match completion {
-        Ok(status) => status,
+        Ok(status) => {
+            lease.complete();
+            status
+        }
         Err(_) => {
-            terminate_process(pid);
-            child.wait().await.ok()
+            // Close the owned Job Object before waiting, so grandchildren
+            // cannot outlive a timed-out command while cleanup is pending.
+            lease.stop_process_tree();
+            let _ = child.start_kill();
+            let status = tokio::time::timeout(Duration::from_secs(2), child.wait())
+                .await
+                .ok()
+                .and_then(Result::ok);
+            drop(lease);
+            status
         }
     };
-    if timed_out {
-        drop(lease);
-    } else {
-        lease.complete();
-    }
 
     let exit_code = status.and_then(|s| s.code());
     let mut combined = stdout_bytes;
@@ -1419,7 +1431,11 @@ mod tests {
         let root = test_root("approval-replay");
         let cwd = root.join("projects/proj");
         let state = AgentExecState::default();
-        let command = "touch approved-once";
+        let command = if cfg!(windows) {
+            "type nul > approved-once"
+        } else {
+            "touch approved-once"
+        };
         let token = state.authorize("proj", command, "run-once").unwrap();
 
         let first = execute_command(
@@ -1445,7 +1461,7 @@ mod tests {
         let marker_exists = cwd.join("approved-once").exists();
 
         std::fs::remove_dir_all(&root).ok();
-        assert!(first.is_ok());
+        assert_eq!(first.unwrap().exit_code, Some(0));
         assert_eq!(
             second.err().as_deref(),
             Some("run_command approval is invalid or already used")

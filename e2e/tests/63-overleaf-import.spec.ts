@@ -197,7 +197,7 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
   );
   expect(modalText).toContain("minted");
   expect(modalText).toContain("Keep using Tectonic");
-  expect(modalText).toContain("Shell-dependent features were detected");
+  expect(modalText).toContain("features that need arbitrary external commands");
   await expect(tauriPage.getByTestId("engine-picker-shell-escape")).not.toBeChecked();
   await tauriPage.click('[data-testid="engine-picker-keep-tectonic"]');
   await waitLong(

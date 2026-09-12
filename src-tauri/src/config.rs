@@ -5,6 +5,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use crate::paths;
 use crate::secrets;
+use oleafly_core::locking::{lock_file, lock_mutex, STORAGE_LOCK_TIMEOUT};
 
 static CONFIG_WRITE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -172,6 +173,12 @@ pub struct AppConfig {
     pub mcp_servers: Vec<McpServerConfig>,
     #[serde(default = "default_true")]
     pub skills_share_with_agents: bool,
+    #[serde(default = "default_ui_locale")]
+    pub ui_locale: String,
+}
+
+fn default_ui_locale() -> String {
+    "system".into()
 }
 
 fn default_mcp_port() -> u16 {
@@ -216,6 +223,7 @@ impl Default for AppConfig {
             mcp_token: String::new(),
             mcp_servers: Vec::new(),
             skills_share_with_agents: true,
+            ui_locale: default_ui_locale(),
         }
     }
 }
@@ -230,10 +238,11 @@ pub fn read_config() -> Result<AppConfig, String> {
 }
 
 fn lock_config_writes() -> Result<ConfigTransactionLock, String> {
-    let guard = CONFIG_WRITE_LOCK
-        .get_or_init(|| Mutex::new(()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let guard = lock_mutex(
+        CONFIG_WRITE_LOCK.get_or_init(|| Mutex::new(())),
+        STORAGE_LOCK_TIMEOUT,
+    )
+    .map_err(|error| format!("failed to lock config transaction: {error}"))?;
     let root = paths::oleafly_root()?;
     std::fs::create_dir_all(&root)
         .map_err(|error| format!("failed to create config directory: {error}"))?;
@@ -255,7 +264,7 @@ fn lock_config_writes() -> Result<ConfigTransactionLock, String> {
         .open(&path)
         .map_err(|error| format!("failed to open config transaction lock: {error}"))?;
     crate::fsperm::harden_file(&path);
-    fs4::FileExt::lock(&file)
+    lock_file(&file, true, STORAGE_LOCK_TIMEOUT)
         .map_err(|error| format!("failed to lock config transaction: {error}"))?;
     Ok(ConfigTransactionLock {
         _file: file,
@@ -598,7 +607,7 @@ fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), Str
     }
     crate::fsperm::harden_file(&tmp);
 
-    std::fs::rename(&tmp, path).map_err(|e| {
+    crate::sandbox::replace_file(&tmp, path).map_err(|e| {
         let _ = std::fs::remove_file(&tmp);
         format!("failed to replace config: {e}")
     })
@@ -904,7 +913,13 @@ fn drop_probes_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
 }
 
 #[tauri::command]
-pub fn set_config(mut config: AppConfig) -> Result<(), String> {
+pub async fn set_config(config: AppConfig) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || set_config_blocking(config))
+        .await
+        .map_err(|error| format!("configuration worker failed: {error}"))?
+}
+
+fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     let _guard = lock_config_writes()?;
     let stored = read_config_unlocked()?;
     if config.github_token.is_empty() {
@@ -2016,7 +2031,7 @@ mod tests {
         incoming.github_user = "octocat".to_string();
         incoming.mcp_servers.clear();
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(persisted.github_user, "octocat");
@@ -2038,7 +2053,7 @@ mod tests {
         incoming.checkpoints_enabled = false;
         incoming.checkpoint_notifications = false;
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(persisted.github_user, "octocat");
@@ -2069,7 +2084,7 @@ mod tests {
             .insert("groq".to_string(), 41);
         incoming.ai_model_probes.clear();
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(
@@ -2108,7 +2123,7 @@ mod tests {
         assert_eq!(incoming.ai_model_probes.len(), 2);
         incoming.ai_custom_providers[0].base_url = "http://other.test/v1".into();
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert!(!persisted
@@ -2134,7 +2149,7 @@ mod tests {
         incoming.github_user = "octocat".to_string();
         incoming.git_auto_init = false;
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(persisted.github_user, "octocat");

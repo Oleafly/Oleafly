@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   ChevronDown,
@@ -40,6 +41,7 @@ function basename(path: string): string {
  * when that comment points at a file that does not exist.
  */
 function TexRootIndicator() {
+  const { t } = useTranslation(["shell"]);
   // Flattened so the shallow comparison only re-renders when the effective
   // root, its provenance, or the broken-target details really change.
   const [mainDoc, overriddenBy, brokenIn, brokenTarget] = useFilesStore(
@@ -57,14 +59,17 @@ function TexRootIndicator() {
   if (brokenIn !== null) {
     return (
       <Tooltip
-        label={`% !TEX root in ${brokenIn} points to a missing file (${brokenTarget})`}
+        label={t(($) => $.shell.compile.texRootBroken, {
+          file: brokenIn,
+          target: brokenTarget,
+        })}
       >
         <span
           data-testid="tex-root-broken"
           className="flex max-w-40 items-center gap-1 truncate text-xs text-amber-600 dark:text-amber-400"
         >
           <AlertTriangle className="size-3.5 shrink-0" />
-          <span className="truncate">TEX root</span>
+          <span className="truncate">{t(($) => $.shell.compile.texRootLabel)}</span>
         </span>
       </Tooltip>
     );
@@ -72,14 +77,17 @@ function TexRootIndicator() {
   if (overriddenBy === null) return null;
   return (
     <Tooltip
-      label={`root: ${mainDoc} (set by % !TEX root in ${overriddenBy})`}
+      label={t(($) => $.shell.compile.texRootOverride, {
+        path: mainDoc,
+        file: overriddenBy,
+      })}
     >
       <span
         data-testid="tex-root-indicator"
         className="flex max-w-40 items-center gap-1 truncate text-xs text-muted-foreground"
       >
         <FileText className="size-3.5 shrink-0" />
-        <span className="truncate">root: {basename(mainDoc)}</span>
+        <span className="truncate">{t(($) => $.shell.compile.texRootName, { name: basename(mainDoc) })}</span>
       </span>
     </Tooltip>
   );
@@ -92,6 +100,7 @@ function TexRootIndicator() {
  * with the button that starts one rather than in the settings dialog.
  */
 export function CompileControls() {
+  const { t } = useTranslation(["shell"]);
   const engine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const setEngine = useFilesStore((s) => s.setEngine);
@@ -117,13 +126,21 @@ export function CompileControls() {
   );
   const compiling = status === "compiling";
   const hasCompileResult = status === "success" || status === "error";
-  const compileLabel = hasCompileResult ? "Recompile" : "Compile";
+  const compileLabel = hasCompileResult
+    ? t(($) => $.shell.compile.recompile)
+    : t(($) => $.shell.compile.compile);
 
   return (
   <>
   <TexRootIndicator />
   <ButtonGroup data-tour="project-compile" className="shrink-0">
-    <Tooltip label={`${compileLabel} ${engine.label} (${shortcut("⌘↵")})`}>
+    <Tooltip
+      label={t(($) => $.shell.compile.runTooltip, {
+        action: compileLabel,
+        engine: engine.label,
+        shortcut: shortcut("⌘↵"),
+      })}
+    >
       <Button
         data-testid="compile-button"
         {...(E2E_HOOKS
@@ -176,23 +193,27 @@ export function CompileControls() {
           // Everything else here is a preference that applies to the next
           // compile, and "Recompile from scratch" disables itself.
           disabled={!engineLoaded}
-          aria-label="Compile options"
+          aria-label={t(($) => $.shell.compile.options)}
         >
           <ChevronDown className="size-3.5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Auto compile</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.shell.compile.autoCompile.title)}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={autoCompile ? "on" : "off"}
           onValueChange={(value) => setAutoCompile(value === "on")}
         >
-          <DropdownMenuRadioItem value="on">On</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="off">Off</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="on">
+            {t(($) => $.shell.compile.autoCompile.on)}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="off">
+            {t(($) => $.shell.compile.autoCompile.off)}
+          </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
 
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Compile mode</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.shell.compile.mode.title)}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={compileMode}
           onValueChange={(value) =>
@@ -200,16 +221,19 @@ export function CompileControls() {
           }
         >
           <DropdownMenuRadioItem value="normal">
-            Normal
+            {t(($) => $.shell.compile.mode.normal)}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="fast">
-            Fast{" "}
-            <span className="ml-1 text-muted-foreground">[draft]</span>
+            <Trans
+              ns="shell"
+              i18nKey={($) => $.shell.compile.mode.fast}
+              components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+            />
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
 
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Syntax checks</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.shell.compile.syntax.title)}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={checkSyntaxBeforeCompile ? "check" : "skip"}
           onValueChange={(value) =>
@@ -217,10 +241,10 @@ export function CompileControls() {
           }
         >
           <DropdownMenuRadioItem value="check">
-            Check syntax before compile
+            {t(($) => $.shell.compile.syntax.check)}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="skip">
-            Don’t check syntax
+            {t(($) => $.shell.compile.syntax.skip)}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
 
@@ -228,11 +252,11 @@ export function CompileControls() {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="flex items-center gap-1.5">
-              Compiler (this project)
+              {t(($) => $.shell.compile.compiler.title)}
               <Tooltip
                 wide
                 side="right"
-                label="Tectonic is built in and needs no setup. The other choices run system TeX, which can read local files available to your account and should be used only with trusted projects. Auto picks the compiler from the source. pdfLaTeX matches most journal templates. XeLaTeX and LuaLaTeX add system fonts and Unicode."
+                label={t(($) => $.shell.compile.compiler.help)}
               >
                 <Info className="size-3 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
               </Tooltip>
@@ -264,26 +288,46 @@ export function CompileControls() {
               }}
             >
               <DropdownMenuRadioItem value="tectonic" data-testid="compiler-tectonic">
-                Tectonic <span className="ml-1 text-muted-foreground">[built in]</span>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.tectonic}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="auto" data-testid="compiler-auto">
-                Auto <span className="ml-1 text-muted-foreground">[system TeX]</span>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.auto}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="pdflatex" data-testid="compiler-pdflatex">
-                pdfLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.pdflatex}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="xelatex" data-testid="compiler-xelatex">
-                XeLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.xelatex}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="lualatex" data-testid="compiler-lualatex">
-                LuaLaTeX <span className="ml-1 text-muted-foreground">[system TeX]</span>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.lualatex}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </>
         )}
 
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Compile error handling</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.shell.compile.errors.title)}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={stopOnFirstError ? "stop" : "continue"}
           onValueChange={(value) =>
@@ -291,10 +335,10 @@ export function CompileControls() {
           }
         >
           <DropdownMenuRadioItem value="stop">
-            Stop on first error
+            {t(($) => $.shell.compile.errors.stop)}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="continue">
-            Try to compile despite errors
+            {t(($) => $.shell.compile.errors.continue)}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
 
@@ -303,7 +347,7 @@ export function CompileControls() {
           disabled={!compiling}
           onSelect={() => void stopCompile()}
         >
-          Stop compilation
+          {t(($) => $.shell.compile.stop)}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={compiling || !engineLoaded}
@@ -312,7 +356,7 @@ export function CompileControls() {
             void recompile({ fromScratch: true });
           }}
         >
-          Recompile from scratch
+          {t(($) => $.shell.compile.fromScratch)}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

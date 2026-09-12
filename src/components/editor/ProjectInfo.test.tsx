@@ -63,6 +63,7 @@ describe("ProjectInfoContent", () => {
             source: "hunspell",
             word: "teh",
             suggestions: [{ text: "the", kind: 0 }],
+            rule: null,
           },
           {
             from: 5,
@@ -72,6 +73,7 @@ describe("ProjectInfoContent", () => {
             source: "harper",
             word: "very",
             suggestions: [],
+            rule: null,
           },
         ],
         truncated: true,
