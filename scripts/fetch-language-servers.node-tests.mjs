@@ -857,8 +857,8 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
     "x86_64-pc-windows-msvc",
     cargoBuildPattern,
   );
-  // The macOS and Linux shards consume a prebuilt app; the staging obligation
-  // follows the build, so it lives in the job that actually compiles.
+  // Every e2e shard consumes a prebuilt app; the staging obligation follows
+  // the build, so it lives in the three jobs that actually compile.
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
     "e2e-build-macos",
@@ -873,9 +873,9 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
   );
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
-    "e2e-windows",
+    "e2e-build-windows",
     "x86_64-pc-windows-msvc",
-    e2eBuildPattern,
+    packagedE2eBuildPattern,
   );
 
   const exactFetchPattern =
@@ -888,7 +888,7 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
       .split("\n")
       .map((line) => line.trim())
       .filter((line) =>
-        line.includes("scripts/fetch-language-servers.mjs") &&
+        /^(?:run: )?node scripts\/fetch-language-servers\.mjs\b/.test(line) &&
         !line.includes("--check"),
       );
     assert.equal(
