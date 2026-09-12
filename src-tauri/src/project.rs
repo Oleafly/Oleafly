@@ -2448,8 +2448,7 @@ pub async fn read_picked_file_base64(path: String) -> Result<String, String> {
         if metadata.len() > MAX_PICKED_BYTES {
             return Err("that file is larger than the 16 MB table-import limit".into());
         }
-        let bytes = std::fs::read(&read_path)
-            .map_err(|e| format!("failed to read {path}: {e}"))?;
+        let bytes = std::fs::read(&read_path).map_err(|e| format!("failed to read {path}: {e}"))?;
         Ok(STANDARD.encode(&bytes))
     })
     .await
