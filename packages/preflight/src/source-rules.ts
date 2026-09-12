@@ -380,6 +380,9 @@ const uaStandardWithoutTitle: Rule = (text) => {
       "PDF/UA is declared without a document title",
       `This document declares pdfstandard=ua but sets no ${missing}. PDF/UA requires a title in the XMP metadata and a viewer preference that displays it, so the output would claim a standard it does not meet. Load hyperref and set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}.`,
       { from: declaration.from, to: declaration.to },
+    ),
+  ];
+};
 
 // Math renders accessibly on the web only as MathML (or images with alt
 // text). When the source contains math, point at the HTML export, which
