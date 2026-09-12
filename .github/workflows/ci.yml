@@ -1139,6 +1139,7 @@ jobs:
           name: e2e-app-windows
 
       - name: Unpack the app build
+        id: unpack-app
         shell: bash
         run: bash scripts/ci/unpack-windows-e2e-app.sh oleafly-e2e-windows.tar.gz e2e-app
 
@@ -1197,6 +1198,7 @@ jobs:
         # Same reasoning as the macOS lane: report every failing spec in one
         # run instead of one per round.
         env:
+          OLEAFLY_E2E_APP_BINARY: ${{ steps.unpack-app.outputs.binary }}
           E2E_INTERACTION_SEED: ${{ github.event_name != 'schedule' && '62024' || '' }}
         run: powershell -File scripts/e2e.ps1 --shard=${{ matrix.shard }}/8 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 

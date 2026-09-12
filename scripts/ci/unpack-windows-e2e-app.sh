@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Unpack the archive produced by pack-windows-e2e-app.sh and point the e2e
-# runner at the app through OLEAFLY_E2E_APP_BINARY.
-# Usage: unpack-windows-e2e-app.sh <archive.tar.gz> <dest-dir>
 set -euo pipefail
 
 archive="${1:-}"
@@ -36,7 +33,7 @@ app="$(cd "$(dirname "$app")" && pwd)/$(basename "$app")"
 if command -v cygpath >/dev/null 2>&1; then
   app="$(cygpath -w "$app")"
 fi
-echo "OLEAFLY_E2E_APP_BINARY=$app" >> "${GITHUB_ENV:-/dev/null}"
+echo "binary=$app" >> "${GITHUB_OUTPUT:-/dev/null}"
 echo "app binary: $app"
 echo "--- unpacked into $dest ---"
 ls -la "$dest" | sed -n '1,40p'

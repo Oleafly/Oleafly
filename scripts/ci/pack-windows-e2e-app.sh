@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Pack a `tauri build --debug --no-bundle` output directory into one archive
-# for the Windows e2e shards: the app, the sidecar executables, any DLLs and
-# the resources directory. Cargo's own directories and debug symbols stay out.
-# Usage: pack-windows-e2e-app.sh <target-debug-dir> <archive.tar.gz>
 set -euo pipefail
 
 dir="${1:-}"
