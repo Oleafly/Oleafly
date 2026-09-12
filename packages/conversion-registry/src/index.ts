@@ -119,7 +119,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   },
   {
     id: "latex-to-markdown",
-    label: "Markdown",
+    label: "Markdown (.md)",
     blurb: "Pandoc writer; math lands in dollar delimiters.",
     source: "latex",
     target: "markdown",
@@ -131,7 +131,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   },
   {
     id: "latex-to-typst",
-    label: "Typst",
+    label: "Typst (.typ)",
     blurb: "Pandoc's typst writer with a fixup for its empty font declaration.",
     source: "latex",
     target: "typst",
@@ -193,7 +193,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   },
   {
     id: "markdown-to-latex",
-    label: "LaTeX",
+    label: "LaTeX (.tex)",
     blurb: "Import as a LaTeX project, or export .tex from a Markdown project.",
     source: "markdown",
     target: "latex",
@@ -206,7 +206,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   },
   {
     id: "markdown-to-typst",
-    label: "Typst",
+    label: "Typst (.typ)",
     blurb: "Import as a Typst project, or export .typ from a Markdown project.",
     source: "markdown",
     target: "typst",
@@ -233,7 +233,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   },
   {
     id: "typst-to-latex",
-    label: "LaTeX",
+    label: "LaTeX (.tex)",
     blurb: "Import a Typst file as a LaTeX project, or export .tex from a Typst project.",
     source: "typst",
     target: "latex",
@@ -247,7 +247,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   },
   {
     id: "typst-to-markdown",
-    label: "Markdown",
+    label: "Markdown (.md)",
     blurb: "Pandoc's markdown writer; import as a Markdown project or export .md.",
     source: "typst",
     target: "markdown",

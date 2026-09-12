@@ -55,6 +55,12 @@ const limits = {
   // picker modal, TinyTeX install guards, import taxonomy and classifier,
   // Library import entry points): combined graph measures 9.27 MB.
   //
+  // +2.35 MB for the equation image export and spreadsheet table import:
+  // the MathJax tex-to-SVG graph (~1.86 MB, split into small pieces) and the
+  // SheetJS reader (~0.49 MB). Both load on first use only (an equation
+  // export or a CSV/XLSX import); neither enters the entry chunk, and the
+  // measured entry (3.24 MB) stays under the startup gates below.
+  //
   // +3.6 MB for the chat markdown/math/mermaid rendering feature, taking the
   // whole-graph total to ~12.86 MB. This is entirely lazy weight, not startup
   // weight: the mermaid ecosystem dominates it (mermaid.core ~0.6 MB, ~30
@@ -73,7 +79,7 @@ const limits = {
   // Raised to 14 MB after the Markdown project editing and terminal prompt
   // work on main (13.14 MB there) plus the skills settings tab, catalog,
   // sharing card and slash invocation: combined graph measures 13.17 MB.
-  totalJavaScript: 14_000_000,
+  totalJavaScript: 16_200_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

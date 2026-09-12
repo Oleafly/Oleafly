@@ -28,6 +28,15 @@ overrides:
   # GHSA-73wf-gq98-2v4g and GHSA-c83g-rgw3-j3cx: prototype write via untrusted
   # browserslist-stats.json and unbounded cache growth in browserslist <= 4.28.6.
   browserslist@<4.28.7: "4.28.7"
+  # Eleven advisories in @xmldom/xmldom <= 0.9.11 (GHSA-6mj3-qw4j-hgrw,
+  # GHSA-g53g-w8rj-fmg7, GHSA-w2rr-34g9-rvrj, GHSA-4w3w-2rp5-g8jm,
+  # GHSA-c7q8-3ch8-vqpv, GHSA-27p8-2357-5qqv, GHSA-3px3-54cx-rmw9,
+  # GHSA-vr34-hp96-76pp, GHSA-8344-3jmq-59r6, GHSA-965w-775f-mr7g,
+  # GHSA-93r5-fhx6-vmg9), all reached only through mathjax-full's
+  # speech-rule-engine. That extension is never imported by the equation
+  # export (TeX in, SVG out, lite adaptor) and does not appear in the
+  # bundle; the override still pins the patched release for the audit gate.
+  "@xmldom/xmldom@<0.9.12": "0.9.12"
   # Held at 6.7.0: 6.7.1 correlated with large-editor scroll-probe failures
   # in the e2e chaos test (CI twice, locally not fully reproducible). The
   # override also guarantees a single copy — duplicate @codemirror/state

@@ -124,7 +124,7 @@ test.describe("LaTeX project exports (registry routes)", () => {
     await waitLong(tauriPage, `!!document.querySelector('[data-tour="project-editor"] .cm-content')`, 60_000);
 
     const typ = join(scratch, "paper.typ");
-    await exportThroughMenu(tauriPage, "Export as Typst", typ);
+    await exportThroughMenu(tauriPage, "Export as Typst (.typ)", typ);
     const typSource = readFileSync(typ, "utf8");
     expect(typSource).toContain("= Introduction");
     expect(typSource).toContain("=");
@@ -141,7 +141,7 @@ test.describe("LaTeX project exports (registry routes)", () => {
     expect(htmlSource).toContain("Introduction");
 
     const md = join(scratch, "paper.md");
-    await exportThroughMenu(tauriPage, "Export as Markdown", md);
+    await exportThroughMenu(tauriPage, "Export as Markdown (.md)", md);
     const mdSource = readFileSync(md, "utf8");
     expect(mdSource).toContain("# Introduction");
     expect(mdSource).toContain("$");

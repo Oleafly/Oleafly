@@ -8,9 +8,9 @@ Legend: ✅ shipped · 🟡 deferred with a gap id · — not applicable.
 
 | Source ↓ / Target → | PDF | DOCX | HTML | Markdown | LaTeX | Typst | BibTeX | SVG / PNG |
 |---|---|---|---|---|---|---|---|---|
-| LaTeX project | ✅ [PDF](#latex-to-pdf) | ✅ [Word (.docx)](#latex-to-docx) | ✅ [HTML (MathML)](#latex-to-html) | ✅ [Markdown](#latex-to-markdown) | — | ✅ [Typst](#latex-to-typst) | — | ✅ [Equation SVG / PNG](#latex-to-image) |
-| Markdown | ✅ [PDF](#markdown-to-pdf) | ✅ [Word (.docx)](#markdown-to-docx) | ✅ [HTML (MathML)](#markdown-to-html) | — | ✅ [LaTeX](#markdown-to-latex) | ✅ [Typst](#markdown-to-typst) | — | — |
-| Typst | ✅ [PDF](#typst-to-pdf) | ✅ [Word (.docx)](#typst-to-docx) | ✅ [HTML (MathML)](#typst-to-html) | ✅ [Markdown](#typst-to-markdown) | ✅ [LaTeX](#typst-to-latex) | — | — | — |
+| LaTeX project | ✅ [PDF](#latex-to-pdf) | ✅ [Word (.docx)](#latex-to-docx) | ✅ [HTML (MathML)](#latex-to-html) | ✅ [Markdown (.md)](#latex-to-markdown) | — | ✅ [Typst (.typ)](#latex-to-typst) | — | ✅ [Equation SVG / PNG](#latex-to-image) |
+| Markdown | ✅ [PDF](#markdown-to-pdf) | ✅ [Word (.docx)](#markdown-to-docx) | ✅ [HTML (MathML)](#markdown-to-html) | — | ✅ [LaTeX (.tex)](#markdown-to-latex) | ✅ [Typst (.typ)](#markdown-to-typst) | — | — |
+| Typst | ✅ [PDF](#typst-to-pdf) | ✅ [Word (.docx)](#typst-to-docx) | ✅ [HTML (MathML)](#typst-to-html) | ✅ [Markdown (.md)](#typst-to-markdown) | ✅ [LaTeX (.tex)](#typst-to-latex) | — | — | — |
 | Word (.docx) | ✅ [PDF](#docx-to-pdf) | — | ✅ [HTML (MathML)](#docx-to-html) | ✅ [Markdown project](#docx-to-markdown) | ✅ [LaTeX project](#docx-to-latex) | ✅ [Typst project](#docx-to-typst) | — | — |
 | HTML | ✅ [PDF](#html-to-pdf) | ✅ [Word (.docx)](#html-to-docx) | — | ✅ [Markdown project](#html-to-markdown) | ✅ [LaTeX project](#html-to-latex) | ✅ [Typst project](#html-to-typst) | — | — |
 | PDF | — | 🟡 DEFERRED (G13) [Word (.docx)](#pdf-to-docx) | 🟡 DEFERRED (G13) [HTML](#pdf-to-html) | 🟡 DEFERRED (G13) [Markdown](#pdf-to-markdown) | ✅ [LaTeX project](#pdf-to-latex)<br>🟡 DEFERRED (G2) [Scanned PDF to LaTeX](#pdf-scanned-to-latex) | — | — | ✅ [Page PNG](#pdf-to-image) |
