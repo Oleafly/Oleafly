@@ -2,7 +2,9 @@
 
 Every document conversion Oleafy ships or has deliberately deferred,
 generated from `packages/conversion-registry` by `pnpm gen:conversion-matrix`.
-Edit the registry, not this file.
+Edit the registry, not this file. Deferred routes carry a gap id; the
+[conversion roadmap](conversion-roadmap.md) lists everything deliberately
+unbuilt, with reasons.
 
 Legend: ✅ shipped · 🟡 deferred with a gap id · — not applicable.
 
