@@ -14,9 +14,7 @@
 use std::process::Command;
 
 mod output;
-pub use output::{
-    output_contained, output_contained_with_bounds, output_contained_with_timeout, OutputBounds,
-};
+pub use output::{output_contained_with_bounds, output_contained_with_timeout, OutputBounds};
 
 /// `CREATE_NO_WINDOW` (winbase.h): the child runs without allocating a console.
 #[cfg(windows)]
@@ -405,7 +403,8 @@ mod windows_tests {
             "/C",
             "echo contained-out & echo contained-err 1>&2",
         ]);
-        let output = output_contained(command).expect("run contained synchronous child");
+        let output = output_contained_with_timeout(command, std::time::Duration::from_secs(30))
+            .expect("run contained synchronous child");
 
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("contained-out"));
