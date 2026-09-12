@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 import {
-  Archive,
   ArrowLeftRight,
   BookOpenText,
   Braces,
@@ -22,6 +21,7 @@ import {
   Table2,
   TextCursorInput,
 } from "lucide-react";
+import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import type { ConverterToolId } from "@/lib/converter-types";
 import type { HomePage } from "@/store/home-view";
 
@@ -117,7 +117,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     converter: "arxiv-to-latex",
     name: "arXiv to LaTeX",
     description: "Download an arXiv source bundle, or open a saved archive from disk.",
-    icon: Archive,
+    icon: ArxivIcon,
     tags: ["Source archive", "ID needs network", "Offline file mode"],
     slash: ["arxiv-to-latex", "arxiv-source"],
     tone: "rose",

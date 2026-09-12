@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   PDFs, images, equations, Mermaid diagrams, and saved arXiv source archives.
   Pandoc ships with the desktop app, while image and scanned-PDF transcription
   uses a vision model in Ollama. Entering an arXiv ID is the one converter path
-  that needs a network connection; a saved source archive works offline.
+  that needs a network connection; a saved source archive works offline. The
+  detected main LaTeX file is shown with syntax highlighting.
 - Typing `$`, `\(` or `\[` in the source editor inserts the closing
   delimiter. Typing `$` again at the end of a formula steps over it, brackets
   pair inside inline math, and an empty `$$` becomes display math. Completing

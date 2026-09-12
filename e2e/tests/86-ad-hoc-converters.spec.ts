@@ -102,6 +102,9 @@ test("the Tools page exposes all 22 converters and the palette opens one directl
   for (const id of CONVERTER_IDS) {
     await expect(tauriPage.getByTestId(`latex-tool-card-${id}`)).toBeVisible();
   }
+  await expect(
+    tauriPage.getByTestId("latex-tool-card-arxiv-to-latex").locator('[data-icon="arxiv"]'),
+  ).toBeVisible();
 
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
   await expect(tauriPage.locator("[cmdk-input]")).toBeVisible();
@@ -249,6 +252,12 @@ test("file, archive, PDF, and local-vision converters complete without a project
   await expect(tauriPage.getByTestId("converter-output")).toContainText("OFFLINEARCHIVE", {
     timeout: 90_000,
   });
+  await expect(
+    tauriPage.getByTestId("converter-output").locator(".cm-content"),
+  ).toHaveAttribute("contenteditable", "false");
+  await expect(
+    tauriPage.getByTestId("converter-output").locator(".cm-line span").first(),
+  ).toBeVisible();
 });
 
 test("the five specialized converter cards open and run their production workflows", async ({

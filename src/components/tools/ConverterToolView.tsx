@@ -189,9 +189,12 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const useFile = definition.inputKind === "file" || (allowsModes && mode === "file");
   const sourceName = definition.sourceFileName ?? (id === "equation-to-latex" ? "equation.tex" : "source.txt");
   const sourceLanguage = useMemo(() => () => languageForPath(sourceName) ?? [], [sourceName]);
+  const outputSourceName = output?.kind === "bundle"
+    ? output.mainFile ?? definition.outputFileName
+    : output?.fileName ?? definition.outputFileName;
   const outputLanguage = useMemo(
-    () => () => languageForPath(output?.fileName ?? definition.outputFileName) ?? [],
-    [definition.outputFileName, output?.fileName],
+    () => () => languageForPath(outputSourceName) ?? [],
+    [outputSourceName],
   );
   const canConvert = useFile ? Boolean(file) : Boolean(text.trim());
 
@@ -502,23 +505,15 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
               </div>
             </div>
           ) : output?.text !== null && output ? (
-            output.kind === "bundle" ? (
-              <pre
-                data-testid="converter-output"
-                className="min-h-72 flex-1 overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-relaxed"
-              >
-                {output.text}
-              </pre>
-            ) : (
-              <CodeField
-                value={output.text}
-                onChange={(next) => setOutput({ ...output, text: next })}
-                language={outputLanguage}
-                themeId={editorTheme}
-                testId="converter-output"
-                className="min-h-72 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
-              />
-            )
+            <CodeField
+              value={output.text}
+              onChange={(next) => setOutput({ ...output, text: next })}
+              language={outputLanguage}
+              themeId={editorTheme}
+              readOnly={output.kind === "bundle"}
+              testId="converter-output"
+              className="min-h-72 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
+            />
           ) : (
             <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
               <div className="max-w-xs">

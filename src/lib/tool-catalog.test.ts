@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import { TOOL_DEFINITIONS } from "@/lib/tool-catalog";
 
 describe("tool catalog", () => {
@@ -47,5 +48,11 @@ describe("tool catalog", () => {
     expect(
       TOOL_DEFINITIONS.find((tool) => tool.id === "pdf-to-latex")?.slash,
     ).toContain("pdf-to-latex");
+  });
+
+  it("uses the recognizable arXiv mark for the source converter", () => {
+    expect(TOOL_DEFINITIONS.find((tool) => tool.id === "arxiv-to-latex")?.icon).toBe(
+      ArxivIcon,
+    );
   });
 });

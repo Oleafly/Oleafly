@@ -8,6 +8,7 @@ import { useSettingsStore } from "@/store/settings";
 const mocks = vi.hoisted(() => ({
   createProjectFromAdHoc: vi.fn(),
   logError: vi.fn(),
+  languageForPath: vi.fn(() => []),
   openProject: vi.fn(),
   pickSavePath: vi.fn(),
   refreshProjects: vi.fn(),
@@ -17,6 +18,11 @@ const mocks = vi.hoisted(() => ({
   writeBytesFile: vi.fn(),
 }));
 
+vi.mock("@oleafly/editor", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@oleafly/editor")>();
+  return { ...actual, languageForPath: mocks.languageForPath };
+});
+
 vi.mock("@/features/ad-hoc-converters", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/ad-hoc-converters")>();
   return { ...actual, runAdHocConverter: mocks.runAdHocConverter };
@@ -25,18 +31,26 @@ vi.mock("@/components/tools/CodeField", () => ({
   CodeField: ({
     value,
     onChange,
+    language,
+    readOnly,
     testId,
   }: {
     value: string;
     onChange: (value: string) => void;
+    language: () => unknown;
+    readOnly?: boolean;
     testId?: string;
-  }) => (
-    <textarea
-      data-testid={testId}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
+  }) => {
+    language();
+    return (
+      <textarea
+        data-testid={testId}
+        value={value}
+        readOnly={readOnly}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  },
 }));
 vi.mock("@/lib/tauri", () => ({
   convertAdHoc: vi.fn(),
@@ -346,7 +360,7 @@ describe("ConverterToolView", () => {
     });
   });
 
-  it("publishes an arXiv bundle with its detected main file", async () => {
+  it("highlights an arXiv bundle as read-only LaTeX and publishes its detected main file", async () => {
     useHomeViewStore.setState({ page: "converter", activeConverter: "arxiv-to-latex" });
     mocks.runAdHocConverter.mockResolvedValue({
       kind: "bundle",
@@ -359,6 +373,8 @@ describe("ConverterToolView", () => {
     });
     render(<ConverterToolView />);
     fireEvent.click(screen.getByTestId("converter-run"));
+    expect(await screen.findByTestId("converter-output")).toHaveAttribute("readonly");
+    expect(mocks.languageForPath).toHaveBeenCalledWith("paper.tex");
     fireEvent.click(await screen.findByRole("button", { name: /Create project/i }));
     await waitFor(() => {
       expect(mocks.createProjectFromAdHoc).toHaveBeenCalledWith({
