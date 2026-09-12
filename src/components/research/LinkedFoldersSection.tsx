@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ChevronRight,
   Folder,
@@ -40,6 +41,7 @@ function joinPath(root: string, relative: string): string {
 }
 
 export function LinkedFoldersSection() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const projectId = useFilesStore((state) => state.projectId);
   const roots = useLinkedRootsStore((state) => state.roots);
   const health = useLinkedRootsStore((state) => state.health);
@@ -103,7 +105,7 @@ export function LinkedFoldersSection() {
           className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
-          <Loader2 className="size-3 animate-spin" /> Loading...
+          <Loader2 className="size-3 animate-spin" /> {t(($) => $.common.state.loading)}
         </p>
       );
     }
@@ -125,7 +127,7 @@ export function LinkedFoldersSection() {
           className="py-1 text-[11px] text-muted-foreground"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
-          This folder is empty.
+          {t(($) => $.researchTools.linked.emptyFolder)}
         </p>
       );
     }
@@ -141,7 +143,9 @@ export function LinkedFoldersSection() {
           >
             <Lock aria-hidden="true" className="size-3.5 shrink-0" />
             <span className="truncate">{entry.name}</span>
-            <span className="ml-auto shrink-0 text-[11px]">Blocked link</span>
+            <span className="ml-auto shrink-0 text-[11px]">
+              {t(($) => $.researchTools.linked.blockedLink)}
+            </span>
           </div>
         );
       }
@@ -185,26 +189,26 @@ export function LinkedFoldersSection() {
 
   return (
     <section
-      aria-label="Linked folders"
+      aria-label={t(($) => $.researchTools.linked.title)}
       data-testid="linked-folders-section"
       className="shrink-0 border-t border-sidebar-border"
     >
       <div className="flex h-8 items-center gap-1.5 px-3">
         <Link2 aria-hidden="true" className="size-3.5 text-muted-foreground" />
         <span className="flex-1 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          Linked folders
+          {t(($) => $.researchTools.linked.title)}
         </span>
-        <Tooltip label="Linked folders are read only. They stay out of compiles, search, and Git.">
+        <Tooltip label={t(($) => $.researchTools.linked.readOnlyTooltip)}>
           <Badge variant="quiet" className="gap-1 text-[10px]">
             <Lock aria-hidden="true" className="size-2.5" />
-            Read only
+            {t(($) => $.researchTools.linked.readOnly)}
           </Badge>
         </Tooltip>
         <Button
           variant="ghost"
           size="icon"
           className="size-7"
-          aria-label="Refresh linked folders"
+          aria-label={t(($) => $.researchTools.linked.refresh)}
           onClick={() => void refresh()}
         >
           <RefreshCw className="size-3.5" />
@@ -236,7 +240,9 @@ export function LinkedFoldersSection() {
                 <span className="truncate">{root.label}</span>
                 {availability !== "available" ? (
                   <span className="ml-auto shrink-0 text-[10px] text-destructive">
-                    {availability === "missing" ? "Missing" : "Unreadable"}
+                    {availability === "missing"
+                      ? t(($) => $.researchTools.linked.missing)
+                      : t(($) => $.researchTools.linked.unreadable)}
                   </span>
                 ) : null}
               </button>
@@ -251,7 +257,9 @@ export function LinkedFoldersSection() {
           <DialogHeader>
             <DialogTitle className="truncate">{preview?.relativePath ?? ""}</DialogTitle>
             <DialogDescription>
-              Read only preview from the linked folder {preview?.rootLabel ?? ""}.
+              {t(($) => $.researchTools.linked.previewDescription, {
+                label: preview?.rootLabel ?? "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 overflow-auto rounded-md border bg-muted/20 p-3">
@@ -261,17 +269,19 @@ export function LinkedFoldersSection() {
               </p>
             ) : !preview?.content ? (
               <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Loading...
+                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
               </p>
             ) : preview.content.isBinary ? (
               <p className="text-sm text-muted-foreground">
-                This file is binary. Copy its path to open it in another app.
+                {t(($) => $.researchTools.linked.binary)}
               </p>
             ) : (
               <>
                 <pre className="whitespace-pre-wrap break-words text-xs">{preview.content.content}</pre>
                 {preview.content.truncated ? (
-                  <p className="mt-2 text-xs text-muted-foreground">Preview stopped at 256 KiB.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {t(($) => $.researchTools.linked.previewTruncated)}
+                  </p>
                 ) : null}
               </>
             )}
@@ -287,9 +297,11 @@ export function LinkedFoldersSection() {
                   .catch(() => {});
               }}
             >
-              {copied ? "Path copied" : "Copy path"}
+              {copied
+                ? t(($) => $.researchTools.linked.pathCopied)
+                : t(($) => $.researchTools.linked.copyPath)}
             </Button>
-            <Button onClick={() => setPreview(null)}>Close</Button>
+            <Button onClick={() => setPreview(null)}>{t(($) => $.common.actions.close)}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

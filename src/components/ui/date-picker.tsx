@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { format, isValid, parseISO } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -37,7 +38,7 @@ export interface DatePickerProps {
 export function DatePicker({
   value,
   onChange,
-  placeholder = "Pick a date",
+  placeholder,
   id,
   disabled,
   min,
@@ -49,6 +50,7 @@ export function DatePicker({
   clearable = false,
   ...rest
 }: DatePickerProps) {
+  const { t } = useTranslation(["common", "shell"]);
   const [open, setOpen] = React.useState(false);
   const selected = parseIsoDate(value);
   const minDate = parseIsoDate(min);
@@ -74,7 +76,11 @@ export function DatePicker({
           )}
         >
           <CalendarIcon className="size-4 shrink-0 opacity-60" />
-          <span className="truncate">{selected ? format(selected, displayFormat) : placeholder}</span>
+          <span className="truncate">
+            {selected
+              ? format(selected, displayFormat)
+              : (placeholder ?? t(($) => $.shell.datePicker.placeholder))}
+          </span>
         </Button>
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
@@ -114,7 +120,7 @@ export function DatePicker({
                   setOpen(false);
                 }}
               >
-                Clear
+                {t(($) => $.common.actions.clear)}
               </Button>
             </div>
           )}

@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, type HTMLAttributes, type ReactNode } from "react";
 import { PanelRightOpen } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";
 import { cn } from "@/lib/utils";
@@ -48,14 +49,15 @@ export function AssistantShellHeader({
 }
 
 export function AssistantFloatButton({ disabled }: { disabled?: boolean }) {
+  const { t } = useTranslation(["common", "ai"]);
   const chatFloating = useSettingsStore((state) => state.chatFloating);
   const setChatFloating = useSettingsStore((state) => state.setChatFloating);
   if (chatFloating) return null;
   return (
-    <Tooltip label="Float the assistant">
+    <Tooltip label={t(($) => $.ai.shell.float)}>
       <button
         type="button"
-        aria-label="Float the assistant over the app"
+        aria-label={t(($) => $.ai.shell.floatAriaLabel)}
         data-testid="ai-chat-float"
         disabled={disabled}
         onClick={() => setChatFloating(true)}

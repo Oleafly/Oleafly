@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { useDictionary } from "@/lib/dictionary";
 import { useSettingsStore } from "@/store/settings";
 import { ProofreadingDictionarySection } from "./ProofreadingDictionarySection";
@@ -21,13 +22,18 @@ describe("Dictionary reset", () => {
 
     render(<ProofreadingDictionarySection />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: enSettings.reset.button }),
+    );
 
     const confirmation = screen.getByRole("alertdialog", {
-      name: /Reset Dictionary settings/u,
+      name: enSettings.reset.confirmTitle.replace(
+        "{{sectionName}}",
+        enSettings.proofreading.reset.sectionName,
+      ),
     });
     expect(confirmation).toHaveTextContent(
-      "This permanently removes every ignored word, global and per-project, and turns back on every grammar rule you turned off. The academic profile keeps its own rules off.",
+      enSettings.proofreading.reset.confirmationDescription,
     );
     expect(useDictionary.getState()).toMatchObject({
       global: ["Oleafly"],
@@ -35,7 +41,7 @@ describe("Dictionary reset", () => {
     });
 
     fireEvent.click(
-      within(confirmation).getByRole("button", { name: "Reset to defaults" }),
+      within(confirmation).getByRole("button", { name: enSettings.reset.button }),
     );
 
     expect(useDictionary.getState()).toMatchObject({ global: [], ignored: {} });

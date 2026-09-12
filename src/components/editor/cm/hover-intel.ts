@@ -20,6 +20,7 @@ import type {
   ProjectIntelligenceSnapshot,
   ProjectUse,
 } from "@/lib/project-intelligence/types";
+import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { loadAssetThumbnail, THUMBNAIL_TARGET_RE } from "./hover-asset";
@@ -174,6 +175,43 @@ function mathBodyForDefinition(
     ?.body;
 }
 
+export function kindNoun(kind: string): string {
+  switch (kind) {
+    case "file":
+      return i18n.t(($) => $.intelligence.symbolKind.file);
+    case "section":
+      return i18n.t(($) => $.intelligence.symbolKind.section);
+    case "label":
+      return i18n.t(($) => $.intelligence.symbolKind.label);
+    case "anchor":
+      return i18n.t(($) => $.intelligence.symbolKind.anchor);
+    case "macro":
+      return i18n.t(($) => $.intelligence.symbolKind.macro);
+    case "environment":
+      return i18n.t(($) => $.intelligence.symbolKind.environment);
+    case "glossary":
+      return i18n.t(($) => $.intelligence.symbolKind.glossary);
+    case "bibentry":
+      return i18n.t(($) => $.intelligence.symbolKind.bibentry);
+    case "reference":
+      return i18n.t(($) => $.intelligence.symbolKind.reference);
+    case "citation":
+      return i18n.t(($) => $.intelligence.symbolKind.citation);
+    case "include":
+      return i18n.t(($) => $.intelligence.symbolKind.include);
+    case "import":
+      return i18n.t(($) => $.intelligence.symbolKind.import);
+    case "link":
+      return i18n.t(($) => $.intelligence.symbolKind.link);
+    case "asset":
+      return i18n.t(($) => $.intelligence.symbolKind.asset);
+    case "bibliography":
+      return i18n.t(($) => $.intelligence.symbolKind.bibliography);
+    default:
+      return kind;
+  }
+}
+
 function describe(
   snapshot: ProjectIntelligenceSnapshot,
   symbol: ProjectSymbol,
@@ -185,7 +223,7 @@ function describe(
         : null;
     if (target && THUMBNAIL_TARGET_RE.test(target)) {
       return {
-        title: `figure · ${basename(target)}`,
+        title: i18n.t(($) => $.intelligence.hover.figure, { name: basename(target) }),
         detail: target,
         extras: { assetPath: target },
       };
@@ -195,29 +233,30 @@ function describe(
   if (isUse(symbol)) {
     const definitions = definitionsForUse(snapshot, symbol.id);
     const noun =
-      symbol.kind === "citation"
-        ? "citation"
-        : symbol.kind === "macro"
-          ? "macro"
-          : symbol.kind === "environment"
-            ? "environment"
-            : "reference";
+      symbol.kind === "citation" || symbol.kind === "macro" || symbol.kind === "environment"
+        ? kindNoun(symbol.kind)
+        : kindNoun("reference");
     if (definitions.length === 0) {
       return {
-        title: `Unresolved ${noun}: ${symbol.name}`,
-        detail: "No definition was found in the current project revision.",
+        title: i18n.t(($) => $.intelligence.hover.unresolved, { kind: noun, name: symbol.name }),
+        detail: i18n.t(($) => $.intelligence.hover.unresolvedDetail),
       };
     }
     if (definitions.length > 1) {
       return {
-        title: `Duplicate ${noun}: ${symbol.name}`,
-        detail: `${definitions.length} definitions · press F12 to inspect every candidate`,
+        title: i18n.t(($) => $.intelligence.hover.duplicate, { kind: noun, name: symbol.name }),
+        detail: i18n.t(($) => $.intelligence.hover.duplicateDetail, {
+          count: definitions.length,
+        }),
       };
     }
     const texts = useIndexStore.getState().texts;
     const definition = definitions[0];
     return {
-      title: `${definition.kind} · ${definition.name}`,
+      title: i18n.t(($) => $.intelligence.hover.definition, {
+        kind: kindNoun(definition.kind),
+        name: definition.name,
+      }),
       detail: definitionDetail(definition, texts),
       extras: {
         math: mathBodyForDefinition(definition),
@@ -229,8 +268,11 @@ function describe(
   const count = referencesFor(snapshot, symbol.id).length;
   if (count === 0) return null;
   return {
-    title: `${symbol.kind} · ${symbol.name}`,
-    detail: `${count} reference${count === 1 ? "" : "s"} in the current project revision`,
+    title: i18n.t(($) => $.intelligence.hover.definition, {
+      kind: kindNoun(symbol.kind),
+      name: symbol.name,
+    }),
+    detail: i18n.t(($) => $.intelligence.hover.referenceCount, { count }),
     extras:
       symbol.kind === "label" || symbol.kind === "anchor"
         ? { aux: auxNumberFor(symbol.name) ?? undefined }
@@ -238,7 +280,7 @@ function describe(
   };
 }
 
-const projectHover = hoverTooltip((view, position) => {
+export function projectHoverCard(view: EditorView, position: number) {
   const current = currentSymbol(view, position);
   if (!current) return null;
   const info = describe(current.snapshot, current.symbol);
@@ -272,19 +314,22 @@ const projectHover = hoverTooltip((view, position) => {
       if (extras?.aux) {
         const aux = dom.appendChild(document.createElement("div"));
         aux.className = "cm-code-hover-aux";
-        aux.textContent = `№ ${extras.aux.number} · p. ${extras.aux.page} (last compile)`;
+        aux.textContent = i18n.t(($) => $.intelligence.hover.auxNumber, {
+          number: extras.aux.number,
+          page: extras.aux.page,
+        });
       }
       if (extras?.assetPath) {
         const thumb = dom.appendChild(document.createElement("div"));
         thumb.className = "cm-code-hover-thumb";
-        thumb.textContent = "Loading preview…";
+        thumb.textContent = i18n.t(($) => $.intelligence.hover.loadingPreview);
         const projectId = useFilesStore.getState().projectId;
         if (projectId) {
           void loadAssetThumbnail(projectId, extras.assetPath).then(
             (url) => {
               if (!thumb.isConnected) return;
               if (!url) {
-                thumb.textContent = "Preview unavailable";
+                thumb.textContent = i18n.t(($) => $.intelligence.hover.previewUnavailable);
                 return;
               }
               const image = document.createElement("img");
@@ -294,13 +339,15 @@ const projectHover = hoverTooltip((view, position) => {
             },
           );
         } else {
-          thumb.textContent = "Preview unavailable";
+          thumb.textContent = i18n.t(($) => $.intelligence.hover.previewUnavailable);
         }
       }
       return { dom };
     },
   };
-});
+}
+
+const projectHover = hoverTooltip(projectHoverCard);
 
 const theme = EditorView.baseTheme({
   ".cm-cmd-link": {

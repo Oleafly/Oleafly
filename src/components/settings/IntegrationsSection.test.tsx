@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { AppConfig } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 import { IntegrationsSection } from "./IntegrationsSection";
@@ -14,16 +15,18 @@ vi.mock("@/lib/mcp-bridge", () => ({
   revokeMcpBridgeCalls: vi.fn(),
 }));
 vi.mock("@/components/settings/GitHubSection", () => ({
-  GitHubSection: () => <div>GitHub settings</div>,
+  GitHubSection: () => <div data-testid="github-settings-stub" />,
 }));
 vi.mock("@/components/settings/AlphaXivSection", () => ({
-  AlphaXivSection: () => <div>alphaXiv settings</div>,
+  AlphaXivSection: () => <div data-testid="alphaxiv-settings-stub" />,
 }));
 vi.mock("@/components/settings/ZoteroSection", () => ({
-  ZoteroSection: () => <div>Zotero settings</div>,
+  ZoteroSection: () => <div data-testid="zotero-settings-stub" />,
 }));
 vi.mock("@/components/settings/CitationSearchIntegrationSection", () => ({
-  CitationSearchIntegrationSection: () => <div>Citation Search settings</div>,
+  CitationSearchIntegrationSection: () => (
+    <div data-testid="citation-search-settings-stub" />
+  ),
 }));
 
 const mockInvoke = vi.mocked(invoke);
@@ -51,19 +54,25 @@ describe("IntegrationsSection", () => {
   it("switches between every integration", async () => {
     const user = userEvent.setup();
     render(<IntegrationsSection />);
-    expect(screen.getByText("GitHub settings")).toBeInTheDocument();
+    expect(screen.getByTestId("github-settings-stub")).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "alphaXiv" }));
-    expect(screen.getByText("alphaXiv settings")).toBeInTheDocument();
+    expect(screen.getByTestId("alphaxiv-settings-stub")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Zotero" }));
-    expect(screen.getByText("Zotero settings")).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "Citation Search" }));
-    expect(screen.getByText("Citation Search settings")).toBeInTheDocument();
+    expect(screen.getByTestId("zotero-settings-stub")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("tab", { name: enSettings.citations.title }),
+    );
+    expect(
+      screen.getByTestId("citation-search-settings-stub"),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Oleafly MCP" }));
     expect(
-      await screen.findByRole("heading", { name: "Oleafly MCP server" }),
+      await screen.findByRole("heading", { name: enSettings.mcp.section.title }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Enable MCP server" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: enSettings.mcp.section.enable.ariaLabel }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "GitHub" }));
     await user.click(screen.getByRole("tab", { name: "Oleafly MCP" }));
@@ -75,12 +84,14 @@ describe("IntegrationsSection", () => {
   it("honors and clears settings deep links", () => {
     useSettingsStore.setState({ settingsScrollTarget: "citation-search" });
     const { rerender } = render(<IntegrationsSection />);
-    expect(screen.getByText("Citation Search settings")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("citation-search-settings-stub"),
+    ).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
 
     useSettingsStore.setState({ settingsScrollTarget: "github" });
     rerender(<IntegrationsSection />);
-    expect(screen.getByText("GitHub settings")).toBeInTheDocument();
+    expect(screen.getByTestId("github-settings-stub")).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
 
     useSettingsStore.setState({ settingsScrollTarget: "oleafly-mcp" });
@@ -91,7 +102,9 @@ describe("IntegrationsSection", () => {
     );
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
     return waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Oleafly MCP server" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: enSettings.mcp.section.title }),
+      ).toBeInTheDocument();
     });
   });
 });

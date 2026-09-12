@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   CalendarClock,
@@ -51,6 +52,8 @@ import {
   type SortKey,
   type Venue,
 } from "@/lib/deadlines";
+import { i18n } from "@/i18n";
+import { formatDate, formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { useDeadlinesStore } from "@/store/deadlines";
 import { useHomeViewStore } from "@/store/home-view";
@@ -59,26 +62,41 @@ function pad(number: number): string {
   return String(number).padStart(2, "0");
 }
 
-const SUB_LABELS: Record<string, string> = {
-  AI: "Artificial intelligence and machine learning",
-  CG: "Computer graphics and multimedia",
-  CT: "Theory of computation",
-  CV: "Computer vision",
-  DB: "Databases and data mining",
-  DS: "Computer architecture, parallel and storage systems",
-  HI: "Human-computer interaction",
-  MX: "Interdisciplinary and emerging areas",
-  NW: "Computer networks",
-  SC: "Security and cryptography",
-  SE: "Software engineering and programming languages",
-  NEURO: "Neuroscience",
-  PHYS: "Physics and optics",
-  MAT: "Materials science",
-  RO: "Robotics",
-};
-
 export function subLabel(sub: string): string {
-  return SUB_LABELS[sub] ?? sub;
+  switch (sub) {
+    case "AI":
+      return i18n.t(($) => $.library.deadlines.areas.AI);
+    case "CG":
+      return i18n.t(($) => $.library.deadlines.areas.CG);
+    case "CT":
+      return i18n.t(($) => $.library.deadlines.areas.CT);
+    case "CV":
+      return i18n.t(($) => $.library.deadlines.areas.CV);
+    case "DB":
+      return i18n.t(($) => $.library.deadlines.areas.DB);
+    case "DS":
+      return i18n.t(($) => $.library.deadlines.areas.DS);
+    case "HI":
+      return i18n.t(($) => $.library.deadlines.areas.HI);
+    case "MX":
+      return i18n.t(($) => $.library.deadlines.areas.MX);
+    case "NW":
+      return i18n.t(($) => $.library.deadlines.areas.NW);
+    case "SC":
+      return i18n.t(($) => $.library.deadlines.areas.SC);
+    case "SE":
+      return i18n.t(($) => $.library.deadlines.areas.SE);
+    case "NEURO":
+      return i18n.t(($) => $.library.deadlines.areas.NEURO);
+    case "PHYS":
+      return i18n.t(($) => $.library.deadlines.areas.PHYS);
+    case "MAT":
+      return i18n.t(($) => $.library.deadlines.areas.MAT);
+    case "RO":
+      return i18n.t(($) => $.library.deadlines.areas.RO);
+    default:
+      return sub;
+  }
 }
 
 interface FieldStyle {
@@ -193,11 +211,7 @@ function formatUpdated(raw: string | null): string | null {
     ? new Date(Number(legacy[1]) * 1000)
     : new Date(timestamp);
   if (Number.isNaN(date.getTime())) return raw;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDate(date, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function formatDeadlineKind(kind: string): string {
@@ -242,41 +256,35 @@ function HelpDialog({
   open: boolean;
   onOpenChange: (value: boolean) => void;
 }) {
+  const { t } = useTranslation(["library"]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>About deadline data</DialogTitle>
-          <DialogDescription>
-            Timezone, estimate, and source details.
-          </DialogDescription>
+          <DialogTitle>{t(($) => $.library.deadlines.help.title)}</DialogTitle>
+          <DialogDescription>{t(($) => $.library.deadlines.help.description)}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
           <div>
-            <h3 className="font-medium text-foreground">Timezones</h3>
-            <p className="mt-1">
-              Each countdown follows the timezone listed in the official call.
-              Many computer science venues use Anywhere on Earth, also known as
-              AoE or UTC-12. Other venues use regional timezones.
-            </p>
+            <h3 className="font-medium text-foreground">
+              {t(($) => $.library.deadlines.help.timezonesTitle)}
+            </h3>
+            <p className="mt-1">{t(($) => $.library.deadlines.help.timezonesBody)}</p>
           </div>
           <div>
-            <h3 className="font-medium text-foreground">Estimated dates</h3>
-            <p className="mt-1">
-              An EST. badge marks a projection based on the prior schedule.
-              The official call has not been published yet.
-            </p>
+            <h3 className="font-medium text-foreground">
+              {t(($) => $.library.deadlines.help.estimatedTitle)}
+            </h3>
+            <p className="mt-1">{t(($) => $.library.deadlines.help.estimatedBody)}</p>
           </div>
           <div>
-            <h3 className="font-medium text-foreground">Sources</h3>
-            <p className="mt-1">
-              Records combine the open ccf-deadlines dataset with official
-              conference websites tracked by Oleafly.
-            </p>
+            <h3 className="font-medium text-foreground">
+              {t(($) => $.library.deadlines.help.sourcesTitle)}
+            </h3>
+            <p className="mt-1">{t(($) => $.library.deadlines.help.sourcesBody)}</p>
           </div>
           <p className="rounded-md border bg-muted/30 p-3 text-foreground">
-            Confirm every date on the official conference website before
-            submitting.
+            {t(($) => $.library.deadlines.help.confirm)}
           </p>
         </div>
       </DialogContent>
@@ -285,16 +293,18 @@ function HelpDialog({
 }
 
 function CountdownUnit({
+  unit,
   value,
   label,
 }: {
+  unit: string;
   value: number;
   label: string;
 }) {
   return (
     <div
       className="min-w-0"
-      data-countdown-unit={label.toLowerCase()}
+      data-countdown-unit={unit}
       data-countdown-value={value}
     >
       <div className="font-mono text-xl font-semibold tabular-nums">
@@ -308,6 +318,7 @@ function CountdownUnit({
 }
 
 function DeadlineCountdown({ venue, now }: { venue: Venue; now: Date }) {
+  const { t } = useTranslation(["library"]);
   const next = nextDeadline(venue, now);
   const urgencyKey = next ? urgency(next.when, now) : "passed";
   const style = URGENCY_STYLE[urgencyKey];
@@ -315,7 +326,7 @@ function DeadlineCountdown({ venue, now }: { venue: Venue; now: Date }) {
     return (
       <div className={cn("rounded-lg border p-3.5", style.panel)}>
         <p className={cn("text-sm font-medium", style.text)}>
-          All listed deadlines have passed
+          {t(($) => $.library.deadlines.allPassed)}
         </p>
       </div>
     );
@@ -327,7 +338,7 @@ function DeadlineCountdown({ venue, now }: { venue: Venue; now: Date }) {
     <div className={cn("rounded-lg border p-3.5", style.panel)}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Next {formatDeadlineKind(next.kind)} deadline
+          {t(($) => $.library.deadlines.nextDeadline, { kind: formatDeadlineKind(next.kind) })}
         </p>
         <span
           className={cn(
@@ -337,20 +348,36 @@ function DeadlineCountdown({ venue, now }: { venue: Venue; now: Date }) {
           )}
         >
           {urgencyKey === "critical"
-            ? "Closing soon"
+            ? t(($) => $.library.deadlines.urgency.critical)
             : urgencyKey === "soon"
-              ? "Upcoming"
-              : "Scheduled"}
+              ? t(($) => $.library.deadlines.urgency.soon)
+              : t(($) => $.library.deadlines.urgency.comfortable)}
         </span>
       </div>
       <div className={cn("mt-2.5 grid grid-cols-4 gap-3", style.text)}>
-        <CountdownUnit value={remaining.days} label="Days" />
-        <CountdownUnit value={remaining.hours} label="Hours" />
-        <CountdownUnit value={remaining.minutes} label="Minutes" />
-        <CountdownUnit value={remaining.seconds} label="Seconds" />
+        <CountdownUnit
+          unit="days"
+          value={remaining.days}
+          label={t(($) => $.library.deadlines.units.days)}
+        />
+        <CountdownUnit
+          unit="hours"
+          value={remaining.hours}
+          label={t(($) => $.library.deadlines.units.hours)}
+        />
+        <CountdownUnit
+          unit="minutes"
+          value={remaining.minutes}
+          label={t(($) => $.library.deadlines.units.minutes)}
+        />
+        <CountdownUnit
+          unit="seconds"
+          value={remaining.seconds}
+          label={t(($) => $.library.deadlines.units.seconds)}
+        />
       </div>
       <Tooltip
-        label={`The listed time uses the venue timezone, ${venue.timezone}`}
+        label={t(($) => $.library.deadlines.timezoneTooltip, { timezone: venue.timezone })}
       >
         <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Clock3 className="size-3.5" />
@@ -362,6 +389,7 @@ function DeadlineCountdown({ venue, now }: { venue: Venue; now: Date }) {
 }
 
 function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
+  const { t } = useTranslation(["library"]);
   const fieldStyle = FIELD_STYLES[venue.sub] ?? DEFAULT_FIELD_STYLE;
   return (
     <article
@@ -389,8 +417,8 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
               <Tooltip
                 label={
                   venue.rank.startsWith("CCF")
-                    ? "China Computer Federation venue ranking"
-                    : "CORE venue ranking"
+                    ? t(($) => $.library.deadlines.rankCcf)
+                    : t(($) => $.library.deadlines.rankCore)
                 }
               >
                 <span className="rounded border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
@@ -399,9 +427,9 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
               </Tooltip>
             )}
             {venue.estimated && (
-              <Tooltip label="Projected from the prior schedule. The official call is not available yet.">
+              <Tooltip label={t(($) => $.library.deadlines.estimatedTooltip)}>
                 <span className="rounded border border-dashed px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-muted-foreground">
-                  EST.
+                  {t(($) => $.library.deadlines.estimatedBadge)}
                 </span>
               </Tooltip>
             )}
@@ -453,7 +481,7 @@ function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
             className="mt-1 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary"
             onClick={() => void openExternal(venue.link)}
           >
-            <Globe2 /> Official website
+            <Globe2 /> {t(($) => $.library.deadlines.officialWebsite)}
             <ExternalLink className="opacity-60" />
           </Button>
         )}
@@ -514,6 +542,7 @@ function DeadlineStat({
 }
 
 export function DeadlinesView() {
+  const { t } = useTranslation(["common", "library"]);
   const activePage = useHomeViewStore((state) => state.page);
   const venues = useDeadlinesStore((state) => state.venues);
   const generatedAt = useDeadlinesStore((state) => state.generatedAt);
@@ -594,27 +623,37 @@ export function DeadlinesView() {
     <>
       <ToolPageShell
         page="deadlines"
-        title="Conference Deadlines"
-        subtitle="Upcoming submission dates and venue details"
+        title={t(($) => $.library.deadlines.title)}
+        subtitle={t(($) => $.library.deadlines.subtitle)}
         icon={CalendarClock}
         testId="deadlines-view"
         actions={
           <div className="flex items-center gap-1.5">
             {updated && (
-              <Tooltip label="When the deadline dataset was last updated">
+              <Tooltip label={t(($) => $.library.deadlines.updatedTooltip)}>
                 <span className="hidden text-xs text-muted-foreground md:inline">
-                  Updated {updated}
+                  {t(($) => $.library.deadlines.updated, { date: updated })}
                 </span>
               </Tooltip>
             )}
-            <Tooltip label={busy ? "Refreshing" : "Refresh deadlines"}>
+            <Tooltip
+              label={
+                busy
+                  ? t(($) => $.library.deadlines.refreshing)
+                  : t(($) => $.library.deadlines.refresh)
+              }
+            >
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
                 className="size-8"
                 disabled={busy}
-                aria-label={busy ? "Refreshing deadlines" : "Refresh deadlines"}
+                aria-label={
+                  busy
+                    ? t(($) => $.library.deadlines.refreshingLabel)
+                    : t(($) => $.library.deadlines.refresh)
+                }
                 data-testid="deadlines-refresh"
                 onClick={() => void refresh()}
               >
@@ -623,13 +662,13 @@ export function DeadlinesView() {
                 />
               </Button>
             </Tooltip>
-            <Tooltip label="About deadline data">
+            <Tooltip label={t(($) => $.library.deadlines.about)}>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="size-8"
-                aria-label="About deadline data"
+                aria-label={t(($) => $.library.deadlines.about)}
                 data-testid="deadlines-help"
                 onClick={() => setHelpOpen(true)}
               >
@@ -644,37 +683,35 @@ export function DeadlinesView() {
             <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 sm:py-6">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                  Conference Deadlines
+                  {t(($) => $.library.deadlines.title)}
                 </p>
                 <span className="h-4 w-px bg-border" />
                 <span className="text-[11px] text-muted-foreground">
-                  Research venue calendar
+                  {t(($) => $.library.deadlines.eyebrow)}
                 </span>
               </div>
               <div className="mt-2 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
                 <div>
                   <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                    Plan around upcoming submission dates
+                    {t(($) => $.library.deadlines.heading)}
                   </h1>
                   <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                    Browse venues by research area and compare upcoming
-                    deadlines. Each countdown follows the timezone listed by
-                    the conference.
+                    {t(($) => $.library.deadlines.intro)}
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <DeadlineStat
-                    label="Next 7 days"
+                    label={t(($) => $.library.deadlines.stats.next7Days)}
                     value={stats.withinSevenDays}
                     tone="red"
                   />
                   <DeadlineStat
-                    label="Next 30 days"
+                    label={t(($) => $.library.deadlines.stats.next30Days)}
                     value={stats.withinThirtyDays}
                     tone="amber"
                   />
                   <DeadlineStat
-                    label="Estimated"
+                    label={t(($) => $.library.deadlines.stats.estimated)}
                     value={stats.estimated}
                     tone="violet"
                   />
@@ -686,8 +723,8 @@ export function DeadlinesView() {
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search by conference name or acronym"
-                  aria-label="Search conference deadlines"
+                  placeholder={t(($) => $.library.deadlines.searchPlaceholder)}
+                  aria-label={t(($) => $.library.deadlines.searchLabel)}
                   className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
                   data-testid="deadlines-search"
                 />
@@ -698,7 +735,7 @@ export function DeadlinesView() {
                     size="sm"
                     onClick={() => setQuery("")}
                   >
-                    Clear
+                    {t(($) => $.common.actions.clear)}
                   </Button>
                 )}
               </div>
@@ -713,13 +750,13 @@ export function DeadlinesView() {
                   >
                     <SelectTrigger
                       className="h-9 w-64 bg-background text-sm"
-                      aria-label="Filter by research area"
+                      aria-label={t(($) => $.library.deadlines.areaLabel)}
                     >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">
-                        All research areas
+                        {t(($) => $.library.deadlines.allAreas)}
                       </SelectItem>
                       {subs.map((area) => (
                         <SelectItem
@@ -727,7 +764,10 @@ export function DeadlinesView() {
                           value={area}
                           data-testid={`deadlines-sub-${area}`}
                         >
-                          {area}: {subLabel(area)}
+                          {t(($) => $.library.deadlines.areaOption, {
+                            code: area,
+                            label: subLabel(area),
+                          })}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -740,19 +780,19 @@ export function DeadlinesView() {
                   >
                     <SelectTrigger
                       className="h-9 w-44 bg-background text-sm"
-                      aria-label="Sort conferences"
+                      aria-label={t(($) => $.library.deadlines.sortLabel)}
                     >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="deadline">
-                        Soonest deadline
+                        {t(($) => $.library.deadlines.sortDeadline)}
                       </SelectItem>
                       <SelectItem value="name">
-                        Conference name
+                        {t(($) => $.library.deadlines.sortName)}
                       </SelectItem>
                       <SelectItem value="field">
-                        Research area
+                        {t(($) => $.library.deadlines.sortField)}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -764,9 +804,9 @@ export function DeadlinesView() {
                       id="deadlines-show-passed"
                       checked={showPassed}
                       onCheckedChange={setShowPassed}
-                      aria-label="Include passed deadlines"
+                      aria-label={t(($) => $.library.deadlines.includePassedLabel)}
                     />
-                    Include passed
+                    {t(($) => $.library.deadlines.includePassed)}
                   </label>
                 </div>
                 {filtersActive && (
@@ -776,18 +816,21 @@ export function DeadlinesView() {
                     size="sm"
                     onClick={clearFilters}
                   >
-                    <RotateCcw /> Reset filters
+                    <RotateCcw /> {t(($) => $.library.deadlines.resetFilters)}
                   </Button>
                 )}
                 <p className="text-xs text-muted-foreground lg:ml-auto">
-                  {shown.length} {shown.length === 1 ? "venue" : "venues"}
+                  {t(($) => $.library.deadlines.venueCount, {
+                    count: shown.length,
+                    total: formatNumber(shown.length),
+                  })}
                 </p>
               </div>
 
               {error && (
                 <div className="mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                  Deadline data could not be loaded. Refresh to try again.
+                  {t(($) => $.library.deadlines.loadFailed)}
                 </div>
               )}
             </div>
@@ -798,12 +841,15 @@ export function DeadlinesView() {
               <div className="mb-4 flex items-center justify-between border-b pb-4">
                 <p className="text-sm font-medium">
                   {venues === null
-                    ? "Loading conference deadlines"
-                    : `${shown.length} ${shown.length === 1 ? "conference" : "conferences"} shown`}
+                    ? t(($) => $.library.deadlines.loadingConferences)
+                    : t(($) => $.library.deadlines.shown, {
+                        count: shown.length,
+                        total: formatNumber(shown.length),
+                      })}
                 </p>
                 {updated && (
                   <p className="text-xs text-muted-foreground">
-                    Dataset updated {updated}
+                    {t(($) => $.library.deadlines.datasetUpdated, { date: updated })}
                   </p>
                 )}
               </div>
@@ -816,10 +862,9 @@ export function DeadlinesView() {
                     <EmptyMedia variant="icon">
                       <CalendarX2 className="size-6" />
                     </EmptyMedia>
-                    <EmptyTitle>No conferences match</EmptyTitle>
+                    <EmptyTitle>{t(($) => $.library.deadlines.emptyTitle)}</EmptyTitle>
                     <EmptyDescription>
-                      Try a shorter search, select another research area, or
-                      include passed deadlines.
+                      {t(($) => $.library.deadlines.emptyDescription)}
                     </EmptyDescription>
                   </EmptyHeader>
                   <EmptyContent>
@@ -829,7 +874,7 @@ export function DeadlinesView() {
                       size="sm"
                       onClick={clearFilters}
                     >
-                      Clear filters
+                      {t(($) => $.library.deadlines.clearFilters)}
                     </Button>
                   </EmptyContent>
                 </Empty>

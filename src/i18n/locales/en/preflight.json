@@ -1,0 +1,647 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Two-column layout",
+      "detailTwoColumn": "Resume parsers commonly linearize two columns in the wrong order. Prefer a single-column layout for documents that must be parsed by an ATS.",
+      "titleMultiColumn": "Multi-column layout",
+      "detailMultiColumn": "Resume parsers commonly linearize columns in the wrong order. Use a single column for ATS-facing documents."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Verify the two-column reading order",
+      "detailTwoColumn": "Multi-column publishing layouts can be accessible when the PDF tag tree preserves the intended sequence. Compile and confirm the actual reader order instead of treating the visual columns alone as a failure.",
+      "titleMultiColumn": "Verify the multi-column reading order",
+      "detailMultiColumn": "Columns are not automatically inaccessible, but their tag and content order must remain meaningful. Compile and inspect the actual reader sequence."
+    },
+    "no-glyphtounicode": {
+      "title": "Unicode extraction map is not declared",
+      "detailEngineNeedsMap": "XeTeX, and the bundled engine that builds on it, do not generate the glyph-to-Unicode map automatically, so extracted text can come out unreadable. Compile and check the reader view, and prefer a font with a full Unicode mapping.",
+      "detailAutomatic": "pdfLaTeX and LuaLaTeX have generated this map automatically since the LaTeX 2021-06-01 release, so no declaration is needed. Compile and confirm the extracted reader text. On XeTeX, load cmap or switch engine."
+    },
+    "icon-near-contact": {
+      "title": "Icon next to contact info",
+      "detail": "Font icons (like \\faPhone or \\faEnvelope) render as glyphs a parser reads as unknown characters and a screen reader cannot label, so the contact detail beside them can be lost. Make sure the email or phone is also present as plain selectable text."
+    },
+    "layout-table": {
+      "titleTable": "Table content may not parse as resume fields",
+      "detailTable": "ATS tools often flatten tabular content unpredictably. Avoid using a table to position resume text side by side; real research data tables are evaluated separately in Accessibility.",
+      "titleTikz": "TikZ content needs a semantic alternative",
+      "detailTikz": "TikZ draws visual content without exposing its meaning as normal text. Provide an accessible description for publication output and avoid it for ATS-facing resume content."
+    },
+    "contact-in-header": {
+      "title": "Contact info in the page header",
+      "detail": "Some resume parsers omit page headers and footers. Put your email and phone in the document body so the extracted text preserves them."
+    },
+    "figure-alt": {
+      "title": "Image without alt text",
+      "detail": "This image has no descriptive alt text, so a screen reader cannot convey it. Add a description, for example \\includegraphics[alt={A headshot of the author}]{...}. Mark purely decorative images as artifacts instead."
+    },
+    "link-text": {
+      "title": "Non-descriptive link text",
+      "detail": "Link text like 'click here' or a bare URL tells a screen-reader user nothing about the destination. Use text that names the target, for example 'my portfolio'."
+    },
+    "mathml-export-hint": {
+      "title": "Export an HTML copy with MathML to check math accessibility",
+      "detail": "The document contains math. Screen readers read equations reliably when they are MathML. Use Export as HTML, which pandoc writes with --mathml, and open the file with a screen reader or an accessibility checker before submission."
+    },
+    "no-lang": {
+      "title": "No document language set",
+      "detail": "The PDF has no language, so a screen reader may read it with the wrong pronunciation rules. Set one, for example \\usepackage[english]{babel} or hyperref's pdflang=en-US."
+    },
+    "no-title": {
+      "title": "No PDF title",
+      "detail": "The PDF has no title in its metadata, which assistive tech and browsers use to announce the document. Set one with hyperref, for example \\hypersetup{pdftitle={Your Name, CV}}."
+    },
+    "heading-skip": {
+      "title": "Heading level skipped",
+      "detail": "This heading jumps more than one level deeper than the previous one, which breaks the document outline that screen readers and parsers rely on. Do not skip levels, for example go section then subsection then subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Nonstandard section heading: \"{{heading}}\"",
+      "detail": "Parsers map sections by recognizing standard headings like Experience, Education, and Skills. A creative title can leave that section uncategorized. Consider a conventional heading."
+    },
+    "color-only": {
+      "title": "Check that color is not the only cue",
+      "detail": "Preflight found colored content but cannot determine its meaning automatically. If color distinguishes status or categories, pair it with text, shape, weight, or another perceivable cue."
+    },
+    "reading-order-risk": {
+      "title": "Layout that can disturb reading order",
+      "detail": "Margin notes and wrapped figures place content outside the main flow, so parsers and screen readers may read it out of order. Check the reading order in the preview below after compiling."
+    },
+    "ua-standard-without-title": {
+      "title": "PDF/UA is declared without a document title",
+      "detailBoth": "This document declares pdfstandard=ua but sets no pdftitle and no pdfdisplaydoctitle=true. PDF/UA requires a title in the XMP metadata and a viewer preference that displays it, so the output would claim a standard it does not meet. Load hyperref and set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}.",
+      "detailTitle": "This document declares pdfstandard=ua but sets no pdftitle. PDF/UA requires a title in the XMP metadata and a viewer preference that displays it, so the output would claim a standard it does not meet. Load hyperref and set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}.",
+      "detailDisplay": "This document declares pdfstandard=ua but sets no pdfdisplaydoctitle=true. PDF/UA requires a title in the XMP metadata and a viewer preference that displays it, so the output would claim a standard it does not meet. Load hyperref and set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "The bundled engine cannot produce the declared PDF/UA output",
+      "detail": "This document declares pdfstandard=ua, but the bundled engine cannot write a tag tree, so the PDF would carry a PDF/UA claim it does not meet. Compile with pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer, or remove the pdfstandard key."
+    },
+    "table-header-rows": {
+      "title": "Table header row is not marked as a header",
+      "detail": "This table rules off its first row, so it reads as a header, but LaTeX tags every cell as a data cell by default. A screen reader then cannot tie a value to its column. Declare the header row, for example \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Columns read across in the output",
+      "detail": "On this page the text of two columns lands on the same lines, so a parser reads them straight across into scrambled text and a screen reader announces them out of order. Use a single-column layout for content that must be parsed. See the reader view below."
+    },
+    "pdf-garbled": {
+      "title": "Garbled or unmapped text in the output",
+      "detail": "The extracted text contains characters that did not map to Unicode, so copy-paste and parsers see garbled output and a screen reader cannot read it. This usually means a missing glyph-to-Unicode map or a font that is not embedded as text."
+    },
+    "pdf-selectable": {
+      "title": "Page has no selectable text",
+      "detail": "This page contains little or no extractable text, so a parser and a screen reader see nothing. It is likely rendered as an image or uses fonts that are not embedded as text. Make sure the content is real, selectable text."
+    },
+    "output-clipped-content": {
+      "title": "Text extends outside the page",
+      "detail": "Selectable text lies beyond this page's media box and may be clipped or missing in print and publisher processing. Inspect wide equations, tables, URLs, and positioned content."
+    },
+    "output-small-text": {
+      "title": "Very small text detected",
+      "detail_one": "{{count}} text run measures below approximately 7 pt. Small type is difficult to read in print and at normal zoom. Confirm that the venue permits it and increase nonessentially small labels or footnotes.",
+      "detail_other": "{{count}} text runs measure below approximately 7 pt. Small type is difficult to read in print and at normal zoom. Confirm that the venue permits it and increase nonessentially small labels or footnotes."
+    },
+    "pdf-no-bookmarks": {
+      "title": "Long PDF has no bookmarks",
+      "detail": "Long documents should expose a hierarchical bookmark outline so keyboard and assistive-technology users can navigate sections without reading every page in sequence. This is a WCAG best practice rather than a PDF/UA requirement. Load hyperref, or bookmark, to emit one."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "PDF metadata could not be inspected",
+      "detail": "Preflight could not read the PDF metadata, so it cannot verify the document title or language. This is an unknown result, not evidence that those fields are missing. Recompile and run the check again."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF is missing a language and title",
+      "titleLang": "PDF is missing a language",
+      "titleTitle": "PDF is missing a title",
+      "detail": "Assistive tech and browsers use the PDF's catalog language and title to announce the document correctly. Set them with hyperref, for example \\hypersetup{pdftitle={Your Name, CV}, pdflang=en-US}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "PDF tagging status could not be inspected",
+      "detail": "Preflight could not read the PDF's MarkInfo dictionary. That is an unknown result, not evidence either way, so it will not call the output tagged or untagged on that check alone."
+    },
+    "compile-failed": {
+      "title": "The latest compilation failed",
+      "detail": "Submission output must come from a successful build. Fix the first compiler error, compile again, and rerun Preflight."
+    },
+    "compile-overfull-box": {
+      "title_one": "{{count}} overfull line in the output",
+      "title_other": "{{count}} overfull lines in the output",
+      "detail": "The compiler reports content extending beyond its text box, up to {{width}} pt. Inspect these locations for clipped text, equations, tables, or links."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} missing glyph",
+      "title_other": "{{count}} missing glyphs",
+      "detail": "The selected fonts cannot render every character. Missing glyphs can silently disappear from the PDF, including symbols in names, equations, and citations."
+    },
+    "compile-unresolved-references": {
+      "title": "The compiled output has unresolved references",
+      "detail": "At least one citation or cross-reference remained unresolved after compilation. The submitted PDF may contain [?] or ??. Check the log and run the required bibliography and LaTeX passes."
+    },
+    "compile-rerun-required": {
+      "title": "Another compilation pass is required",
+      "detail": "The latest log says labels, citations, or the table of contents are not settled. Recompile until the rerun warning disappears before exporting."
+    },
+    "compile-duplicate-destination": {
+      "title": "Duplicate PDF destinations",
+      "detail": "Two anchors share the same destination, so links or bookmarks can jump to the wrong place. This commonly comes from duplicate labels or page numbering resets."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Mixed page sizes in one PDF",
+      "detail_one": "The PDF contains {{count}} page size ({{sizes}}). Mixed media boxes often indicate an incorrectly included page or figure and can fail publisher production checks.",
+      "detail_other": "The PDF contains {{count}} page sizes ({{sizes}}). Mixed media boxes often indicate an incorrectly included page or figure and can fail publisher production checks."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "Tagging reported {{count}} problem",
+      "title_other": "Tagging reported {{count}} problems",
+      "detail": "The tagging code wrote these warnings to the log: {{warnings}} Each one is a place where the structure tree does not match the content. Fix them at the source and compile again."
+    },
+    "output-tagging-status": {
+      "title_one": "The tagging status report flagged {{count}} item",
+      "title_other": "The tagging status report flagged {{count}} items",
+      "detail": "LaTeX wrote its own tagging status report at the end of the build.",
+      "partClass": "The {{name}} class is {{status}}.",
+      "partBlocking": "Not compatible with tagging: {{files}}.",
+      "partUnproven": "No recorded verdict for: {{files}}.",
+      "partPartial": "Tagging only in part: {{files}}.",
+      "partAdvice": "Anything that cannot tag can leave whole sections out of the structure tree, so replace what you can."
+    },
+    "pdf-structure-single-pass": {
+      "title": "The tag tree looks like a first compile pass",
+      "detail": "The PDF is marked as tagged but its structure tree holds almost nothing, which is what a single pass produces. Tagged output needs two passes. Compile again and re-check."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "This PDF claims PDF/UA-{{part}} but does not meet it",
+      "detail": "The XMP metadata declares pdfuaid:part {{part}}, but the file does not back that up.",
+      "partNoXmpTitle": "There is no document title in the XMP metadata.",
+      "partNoDisplayDocTitle": "DisplayDocTitle is not set to true.",
+      "partNotTagged": "The file is not tagged.",
+      "partAdvice": "Anything that trusts the claim will report this PDF as conforming when it is not, so either close the gaps or drop the claim. With hyperref, set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} and compile with tagging on."
+    },
+    "pdf-xmp-title": {
+      "title": "The title is only in the Info dictionary",
+      "detail": "The document title is set in the Info dictionary but not as dc:title in the XMP metadata, which is where PDF/UA looks for it. Loading hyperref with pdftitle writes both."
+    },
+    "pdf-display-doc-title": {
+      "title": "The reader will show the filename, not the title",
+      "detail": "ViewerPreferences has no DisplayDocTitle entry set to true, so a PDF reader announces the filename in its window and to assistive tech. Set it with hyperref, for example \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "The PDF marks its own tagging as unreliable",
+      "detail": "MarkInfo sets Suspects to true, which is the producer saying the tag tree may not match the visible content. Recompile with a current engine, and check the tagging warnings in the log."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} link annotation has no description",
+      "title_other": "{{count}} link annotations have no description",
+      "detail": "A link annotation with no Contents entry gives a screen reader nothing to announce when it lists the links on a page. Describe the destination in the link text, and let hyperref carry that text into the annotation."
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}}% of the text sits outside the tag tree",
+      "detail": "{{untagged}} of {{total}} text runs are not linked to anything in the tag tree, so a screen reader skips them. Artifacts are not counted. Real content has to be tagged, and decorative content has to be marked as an artifact, for example \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "PDF structure could not be fully inspected",
+      "detail_one": "The accessibility structure tree could not be extracted for page {{pages}}. Preflight will not treat the unavailable structure as proof that the PDF is untagged.",
+      "detail_other": "The accessibility structure tree could not be extracted for pages {{pages}}. Preflight will not treat the unavailable structure as proof that the PDF is untagged."
+    },
+    "pdf-untagged-output": {
+      "title": "This PDF is not tagged",
+      "detail": "The compiled PDF carries no structure tree, so a screen reader gets no headings, lists, tables, or reading order, and the file cannot satisfy PDF/UA-1 clause 7.1. Tagged output needs pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer with \\DocumentMetadata{tagging=on}. The bundled engine cannot produce tags. The source and output checks above still apply in the meantime."
+    },
+    "pdf-structure-missing": {
+      "title": "Tagged PDF has no readable structure tree",
+      "detail": "The PDF declares itself tagged, but Preflight found no document structure to navigate. Screen readers may not receive headings, lists, tables, or reading order. Tagging needs two compile passes, so compile again and re-check before treating this as final."
+    },
+    "output-figure-alt": {
+      "title": "Tagged figure has no alt text",
+      "detail": "This figure is tagged but carries no alternative text, so a screen reader cannot describe it. Add a description at the source, for example \\includegraphics[alt={...}]{...}. Mark decorative images with [artifact] instead."
+    },
+    "output-formula-alt": {
+      "title": "Equation has no text alternative",
+      "detail": "Under PDF/UA-1 a Formula needs Alt or ActualText. Add one at the source, for example with \\tagpdfsetup or an alt key on the equation. Under PDF/UA-2 you can associate MathML instead by compiling with LuaLaTeX and \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}."
+    },
+    "output-table-headers": {
+      "title": "Tagged table has no header cells",
+      "detail": "This table has no header (TH) cells, so a screen reader cannot associate data with its column or row headings. Mark the header row, for example \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "Heading level skipped in the tag tree",
+      "detail": "The tagged headings jump more than one level (for example H1 straight to H3), which breaks the outline a screen reader navigates by. Do not skip heading levels."
+    },
+    "ats-no-name": {
+      "title": "A parser could not identify your name",
+      "detail": "No plausible person name was found in the extracted text. Keep your name as plain text near the start of the document, outside page headers, graphics, and positioned text boxes."
+    },
+    "ats-no-email": {
+      "title": "A parser could not find your email",
+      "detail": "No email address was found in the extracted text, which is the field a parser most relies on. If your email sits next to an icon or inside a header, it may not be selectable text. Put it in the body as plain text."
+    },
+    "ats-no-phone": {
+      "title": "A parser could not find a phone number",
+      "detail": "No phone number was found in the extracted text. If it is present but hidden behind an icon or in a header, add it as plain selectable text in the body."
+    },
+    "ats-no-experience": {
+      "title": "A parser did not detect a Work Experience section",
+      "detail": "No standard Experience heading was found, so a parser may not group your roles into work history. Use a conventional heading like Experience or Work Experience as real, selectable text."
+    },
+    "ats-long-resume": {
+      "title_one": "Resume is {{count}} page long",
+      "title_other": "Resume is {{count}} pages long",
+      "detail": "Many hiring workflows expect one or two pages, although senior, academic, and government CVs can be longer. Confirm that this length fits the role and document type."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} bibliography entry has incomplete metadata",
+      "title_other": "{{count}} bibliography entries have incomplete metadata",
+      "detail": "Incomplete records can produce broken or ambiguous references in publisher styles. {{examples}}.",
+      "detailTruncated": "Incomplete records can produce broken or ambiguous references in publisher styles. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} DOI value looks malformed",
+      "title_other": "{{count}} DOI values look malformed",
+      "detail": "Review the DOI fields for {{keys}}. Store only the DOI identifier, for example 10.1000/example, rather than descriptive text."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} possible duplicate reference",
+      "title_other": "{{count}} possible duplicate reference groups",
+      "detail": "These keys have the same normalized title: {{groups}}. Merge true duplicates so citation style and metadata stay consistent."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} uncited bibliography entry",
+      "title_other": "{{count}} uncited bibliography entries",
+      "detail": "Unused entries add noise to submission metadata and make duplicate management harder. Review {{keys}}.",
+      "detailTruncated": "Unused entries add noise to submission metadata and make duplicate management harder. Review {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} label is defined in multiple files",
+      "title_other": "{{count}} labels are defined in multiple files",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "{{count}} figure, table, or equation label is never referenced",
+      "title_other": "{{count}} figure, table, or equation labels are never referenced",
+      "detail": "Confirm that each numbered result is discussed in the manuscript: {{labels}}.",
+      "detailTruncated": "Confirm that each numbered result is discussed in the manuscript: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "Citation \"{{key}}\" is not in any .bib",
+      "detail": "This citation key was not found in the loaded bibliography, so it will render as [?] in the PDF. Check the key, or add the entry to your .bib (Add citation can fetch it)."
+    },
+    "refs-undefined-ref": {
+      "title": "Reference to \"{{label}}\" has no matching \\label",
+      "detail": "This cross-reference points to a label that is not defined, so it will render as ?? in the PDF. Check the label name, or add the missing \\label."
+    },
+    "refs-duplicate-label": {
+      "title": "Duplicate label \"{{label}}\"",
+      "detail": "The same label is defined more than once, so references to it are ambiguous. Make each label unique."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Image not found: {{file}}",
+      "detailImage": "This \\includegraphics points to a file that is not in the project, so the figure will be missing. Check the filename and path.",
+      "titleInclude": "Included file not found: {{file}}",
+      "detailInclude": "This \\input or \\include points to a file that is not in the project. Check the filename and path."
+    },
+    "refs-bib-missing": {
+      "title": "Bibliography file not found: {{file}}",
+      "detail": "This \\bibliography or \\addbibresource points to a file that is not in the project, so every citation will render as [?]. Check the filename, or import a reference library to create it."
+    },
+    "refs-duplicate-bib": {
+      "title": "Duplicate bibliography entries: {{keys}}",
+      "detail": "These entries share the DOI {{doi}}, so they are the same reference under different keys. Keep one and cite it, or your bibliography will list it twice."
+    },
+    "submission-path-case": {
+      "title": "Filename case does not match: {{target}}",
+      "detailFigure": "This figure resolves only on a case-insensitive filesystem. The project contains \"{{match}}\", so match that capitalization exactly before submitting to Linux-based build systems.",
+      "detailInclude": "This included file resolves only on a case-insensitive filesystem. The project contains \"{{match}}\", so match that capitalization exactly before submitting to Linux-based build systems."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Missing figure: {{target}}",
+      "titleInclude": "Missing included file: {{target}}",
+      "detail": "No project file resolves this reference from {{file}}. A clean submission build will fail even if a local cache currently lets the document compile."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "figure without a caption",
+      "titleTable": "table without a caption",
+      "detail": "Publication figures and tables should have a numbered, descriptive caption so they can be referenced and understood independently."
+    },
+    "submission-label-before-caption": {
+      "title": "Label appears before its caption",
+      "detail": "Place the label after the caption. Otherwise LaTeX can bind it to the previous counter and produce the wrong figure or table number."
+    },
+    "privacy-sensitive-file": {
+      "title": "Sensitive file included: {{file}}",
+      "detail": "Remove credentials and private-key files from the project before exporting, syncing, or publishing the source archive."
+    },
+    "privacy-credential": {
+      "title": "Possible credential in {{file}}",
+      "detail": "The project contains text shaped like an API token, cloud access key, or private key. Revoke exposed credentials, then remove them from the project and its Git history."
+    },
+    "privacy-internal-comment": {
+      "title": "Internal note remains in {{file}}",
+      "detail": "Source comments are not visible in the PDF but may be public in a conference, journal, or preprint source archive. Review and remove private editorial notes."
+    },
+    "privacy-draft-artifact": {
+      "title": "Draft markup is still enabled",
+      "detail": "The source enables draft, TODO, change-tracking, watermark, or label-debugging output. Disable it and visually inspect the final PDF before submission."
+    },
+    "privacy-blind-author": {
+      "title": "Author identity remains in blind-review source",
+      "detail": "The source contains a non-anonymous author, affiliation, email, address, or thanks field. Replace identifying content using the venue's anonymous-review mode."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Acknowledgements may reveal the authors",
+      "detail": "Acknowledgements commonly identify institutions, grants, collaborators, or facilities. Remove them from a blind-review submission unless the venue explicitly permits them."
+    },
+    "privacy-pdf-author": {
+      "title": "PDF metadata identifies an author",
+      "detail": "The PDF Author field is \"{{author}}\". Clear author metadata before uploading a blind-review PDF."
+    },
+    "submission-nonportable-filename": {
+      "title": "Non-portable filename: {{file}}",
+      "detail": "This profile permits only letters, numbers, underscores, plus, minus, dots, commas, equals signs, and directory separators. Rename the file and update its references."
+    },
+    "submission-absolute-path": {
+      "title": "Machine-specific path in {{file}}",
+      "detail": "Absolute local paths do not exist on publisher build servers. Move the dependency into the project and reference it with a relative path."
+    },
+    "submission-shell-escape": {
+      "title": "External command execution required by {{file}}",
+      "detail": "Many publisher and archive builders disable shell escape. Pre-generate the output or confirm that the target venue supports this package and command."
+    },
+    "submission-generated-file": {
+      "title": "Generated build file included: {{file}}",
+      "detail": "Generated auxiliary files make source packages noisy and can preserve stale state. Exclude them unless the selected venue explicitly requires that file."
+    },
+    "submission-document-class": {
+      "title": "{{profile}} document class is not active",
+      "detail": "This profile expects {{expected}}, but the project uses {{actual}}. Start from the venue's current official template.",
+      "detailNoClass": "This profile expects {{expected}}, but no document class was detected. Start from the venue's current official template."
+    },
+    "submission-no-abstract": {
+      "title": "No abstract detected",
+      "detail": "This publication profile expects an abstract in a standard abstract environment. Add it or confirm that the specific venue does not require one."
+    },
+    "submission-no-keywords": {
+      "title": "No publication keywords detected",
+      "detail": "The {{profile}} profile expects keywords using its standard template command or environment."
+    },
+    "submission-figure-format": {
+      "title": "Unsupported figure format: {{file}}",
+      "detail": "{{profile}} accepts {{formats}} figure files for its supported TeX workflows. Convert this figure before upload."
+    },
+    "submission-placeholder": {
+      "title": "Draft placeholder remains in the manuscript",
+      "detail": "The source contains TODO, TBD, FIXME, placeholder copy, or question-mark markers. Review each occurrence before producing the final submission."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} is below the required version",
+      "detail": "{{profile}} requires PDF {{minimum}} or later. Update the compiler PDF settings and regenerate the file."
+    },
+    "submission-bookmarks": {
+      "title": "PDF bookmarks are not permitted",
+      "detail": "{{profile}} rejects PDF bookmarks. Remove the document outline for this submission profile."
+    },
+    "submission-links": {
+      "title": "PDF links are not permitted",
+      "detail": "{{profile}} rejects link annotations. Disable generated hyperlinks for the submitted PDF."
+    },
+    "submission-attachments": {
+      "title": "PDF contains embedded attachments",
+      "detail": "{{profile}} rejects PDF attachments and packages. Remove all embedded files before submission."
+    },
+    "submission-security": {
+      "title": "PDF security restrictions are enabled",
+      "detail": "{{profile}} requires a PDF without password or permission restrictions."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} font is not embedded",
+      "title_other": "{{count}} fonts are not embedded",
+      "detail": "{{profile}} requires every font to be embedded or subset so text and mathematics render reliably. Fix {{fonts}}."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "Some font embedding could not be verified",
+      "detail": "Preflight could not prove the embedding status of {{fonts}}. Confirm them with the venue's official PDF checker."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Accessibility",
+    "both": "ATS + Accessibility",
+    "refs": "References",
+    "compile": "Compile",
+    "submission": "Submission",
+    "privacy": "Privacy"
+  },
+  "severity": {
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Note"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Build",
+    "a11y": "Access",
+    "refs": "Refs",
+    "submission": "Submit",
+    "privacy": "Privacy"
+  },
+  "checks": {
+    "compile": {
+      "label": "Compile & layout",
+      "who": "For every final document",
+      "info": "Build errors, unresolved references, missing glyphs, and page-layout problems.",
+      "detail": "Inspects the latest compiler log and PDF for failed builds, unresolved references, missing glyphs, overfull or clipped content, stale rerun warnings, and mixed page sizes."
+    },
+    "submission": {
+      "label": "Submission readiness",
+      "who": "For conferences, journals, preprints, and theses",
+      "info": "Publication-profile rules and files that should not ship in the source package.",
+      "detail": "Applies a publication profile to the complete project: official document class, portable source paths, figure formats, abstract and keywords, PDF restrictions, captions, and clean source packaging."
+    },
+    "ats": {
+      "label": "ATS readiness",
+      "who": "For resumes and CVs",
+      "info": "The contact details and sections a resume parser can recover.",
+      "detail": "Simulates what an Applicant Tracking System (Workday, Taleo, Greenhouse) extracts from your PDF, and flags layout and formatting that scrambles it. Not relevant for research papers."
+    },
+    "a11y": {
+      "label": "Accessibility",
+      "who": "For research, government, and published PDFs",
+      "info": "Tagging, alt text, document language and title, viewer settings, structure, links, and reading order.",
+      "detail": "Checks the compiled PDF against the machine-checkable part of PDF/UA-1 (ISO 14289-1) and the WCAG 2.2 PDF techniques: tagging, alt text, document language and title, viewer settings, heading and table structure, link descriptions, reading order, and selectable text. Source checks flag likely problems before you compile."
+    },
+    "refs": {
+      "label": "References & assets",
+      "who": "For research and multi-file documents",
+      "info": "Broken citations, duplicate labels, incomplete bibliography entries, and missing assets.",
+      "detail": "Finds undefined citations and cross-references, duplicate labels, and missing figure or included files, before they break your PDF at submission."
+    },
+    "privacy": {
+      "label": "Privacy & blind review",
+      "who": "Before sharing source or submitting anonymously",
+      "info": "Secrets, draft notes, sensitive files, and identity leaks during blind review.",
+      "detail": "Finds credentials, private keys, internal comments, draft markup, sensitive project files, author metadata, and identity leaks in anonymous-review submissions."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "General publication",
+      "description": "Portable source, clean output, complete metadata, and common publication risks."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Portable source that can be rebuilt on arXiv's case-sensitive submission system."
+    },
+    "ieee": {
+      "label": "IEEE conference / journal",
+      "description": "IEEEtran source plus the PDF constraints checked for IEEE Xplore publication."
+    },
+    "acm": {
+      "label": "ACM conference / journal",
+      "description": "ACM acmart source structure and publication-ready research metadata."
+    },
+    "journal": {
+      "label": "Other journal",
+      "description": "Publisher-neutral journal checks. Add the journal's exact limits before submission."
+    },
+    "thesis": {
+      "label": "Thesis / dissertation",
+      "description": "Long-document structure, navigation, references, and portable source checks."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Experience",
+      "education": "Education",
+      "skills": "Skills",
+      "projects": "Projects",
+      "summary": "Summary"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: {{passed}} of {{total}} machine-checkable rules verified. Subset check, not a conformance statement.",
+    "coverageWithBlindSpots": "PDF/UA-1: {{passed}} of {{total}} machine-checkable rules verified. Oleafly reads {{covered}} of those rules, and {{unavailable}} of them could not be checked in this file. Subset check, not a conformance statement."
+  },
+  "taggingGate": {
+    "noSupport": "The {{name}} class cannot produce tagged output, and the LaTeX Project does not expect it to.",
+    "noSupportWithNote": "The {{name}} class cannot produce tagged output, and the LaTeX Project does not expect it to. {{note}}",
+    "currentlyIncompatible": "The {{name}} class is not compatible with LaTeX tagging yet, so preparing this source would not give you an accessible PDF.",
+    "currentlyIncompatibleWithNote": "The {{name}} class is not compatible with LaTeX tagging yet, so preparing this source would not give you an accessible PDF. {{note}}",
+    "partiallyCompatible": "The {{name}} class is only partly compatible with tagging, so expect gaps in the structure tree.",
+    "partiallyCompatibleWithNote": "The {{name}} class is only partly compatible with tagging, so expect gaps in the structure tree. {{note}}",
+    "unrecorded": "The LaTeX Project has not recorded a tagging status for the {{name}} class, so the result is unproven. Compile and check the output."
+  },
+  "prep": {
+    "metadataUpdated": "Added the required tagging keys to your \\DocumentMetadata.",
+    "metadataAdded": "Added \\DocumentMetadata as the first line (required, must precede \\documentclass).",
+    "headerRows": "Set table/header-rows to 1 so the first row of each table is tagged as header cells. Change the number if a table has a different header depth.",
+    "unicodeMath": "Added \\usepackage{unicode-math}, which this engine needs for tagged math.",
+    "altPlaceholders_one": "Added alt-text placeholders to {{count}} image. Replace the TODO text with a real description.",
+    "altPlaceholders_other": "Added alt-text placeholders to {{count}} images. Replace the TODO text with a real description.",
+    "titleRequired": "PDF/UA needs a document title that the reader displays. Load hyperref and set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}.",
+    "incompatiblePackages_one": "This package is not compatible with tagging: {{packages}}. Content from it can land in the PDF untagged. Replace it where you can.",
+    "incompatiblePackages_other": "These packages are not compatible with tagging: {{packages}}. Content from them can land in the PDF untagged. Replace them where you can.",
+    "cautionPackages": "These packages only partly tag, or carry no recorded tagging verdict: {{packages}}. Compile and check the structure tree for gaps.",
+    "compileLua": "Compile the prepared source with LuaLaTeX from TeX Live 2025 or newer, then re-check the output.",
+    "compileAny": "Compile the prepared source with pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer, then re-check the output. Accessible math needs LuaLaTeX. The bundled engine cannot produce tags."
+  },
+  "gate": {
+    "incompatiblePackages_one": "This package is not compatible with tagging: {{packages}}. Content from it can land in the PDF untagged.",
+    "incompatiblePackages_other": "These packages are not compatible with tagging: {{packages}}. Content from them can land in the PDF untagged.",
+    "incompatiblePackagesTruncated": "These packages are not compatible with tagging: {{packages}} and {{more}} more. Content from them can land in the PDF untagged.",
+    "partialPackages": "These packages only partly tag: {{packages}}.",
+    "partialPackagesTruncated": "These packages only partly tag: {{packages}} and {{more}} more.",
+    "unknownPackages": "No tagging verdict is recorded for {{packages}}.",
+    "unknownPackagesTruncated": "No tagging verdict is recorded for {{packages}} and {{more}} more.",
+    "cautionAdvice": "Compile and check the structure tree for gaps."
+  },
+  "panel": {
+    "title": "Preflight",
+    "readerDisabled": "Compile and run an output check first",
+    "readerEnabled": "Open the text extracted from the PDF",
+    "readerButton": "Show what the reader sees",
+    "aboutLabel": "About Preflight",
+    "aboutTitle": "What Preflight checks",
+    "aboutIntro": "Preflight reads the project source, compiler log, and current PDF. Turn on only the checks that fit this document.",
+    "aboutFooter": "Verified findings come from direct observations. Advisory findings still need your judgment. A clean report helps with review, but it does not certify acceptance or accessibility. All checks run locally.",
+    "enableCheck": "Enable {{check}}",
+    "runCheck": "Run {{check}}",
+    "rerunCheck": "Re-run {{check}}",
+    "run": "Run",
+    "rerun": "Re-run",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "publicationProfile": "Publication profile",
+    "anonymousReview": "Anonymous review",
+    "anonymousReviewHint": "Also inspect author fields, acknowledgements, and PDF metadata.",
+    "anonymousReviewToggle": "Check anonymous review identity",
+    "engineUnsupported": "{{engine}} source checks are not implemented yet. This check uses the compiled PDF only and does not report missing source support as a failure.",
+    "runToSeeResults": "Run this check to see results.",
+    "analyzing": "Analyzing…",
+    "runEnabled_one": "Run {{count}} enabled check",
+    "runEnabled_other": "Run {{count}} enabled checks",
+    "rerunEnabled_one": "Re-run {{count}} enabled check",
+    "rerunEnabled_other": "Re-run {{count}} enabled checks",
+    "failed": "Preflight failed: {{error}}",
+    "standardsCaveat": "Oleafly reads the part of PDF/UA and WCAG that can be checked in the file itself. It cannot tell whether alt text is meaningful, whether the reading order makes sense, or whether color contrast is high enough. A person has to judge those. For a formal conformance statement, validate with veraPDF or PAC 2024.",
+    "pdfRequired": "PDF required. Compile the project and run again. This check is not evaluated yet.",
+    "compileFirst": "Compile the project first. Preflight needs the current compiler log or PDF to evaluate build quality.",
+    "partialCoverage": "Source checks completed. Compile the project and run again to finish the PDF-level checks.",
+    "unsupportedCoverage": "Not evaluated. Source checks for this engine are not implemented.",
+    "groupSource": "Project & source",
+    "groupOutput": "Compiled output",
+    "fixAll_one": "Fix {{count}} with AI",
+    "fixAll_other": "Fix all {{count}} with AI",
+    "noProblems": "No problems found."
+  },
+  "finding": {
+    "review": "Review",
+    "manual": "Manual",
+    "page": "p.{{page}}",
+    "needsJudgment": "Needs your judgment. No tool can decide this one from the file alone.",
+    "jumpToSource": "Jump to source",
+    "fixWithAi": "Fix with AI"
+  },
+  "score": {
+    "notEvaluated": "{{label}} not evaluated",
+    "readiness": "{{label}} readiness {{score}} out of 100",
+    "notScored": "Not scored"
+  },
+  "reader": {
+    "title": "What the reader sees",
+    "description": "Text extracted from the current PDF in reading order. This is close to what a screen reader or automated parser receives.",
+    "pagesNav": "PDF pages",
+    "page": "Page {{page}}",
+    "empty": "empty",
+    "extractedFrom": "Extracted text from page {{page}}",
+    "pageOf": "Page {{page}} of {{total}}",
+    "noText": "No selectable text was found on this page."
+  },
+  "atsCard": {
+    "title": "What a parser extracted",
+    "notFound": "Not found",
+    "links_one": "{{count}} link",
+    "links_other": "{{count}} links",
+    "detected": "{{section}}: detected",
+    "requiredMissing": "{{section}}: required section not detected",
+    "optionalMissing": "{{section}}: optional section not detected",
+    "detectedTitle": "{{section}} section detected",
+    "requiredMissingTitle": "{{section}} is expected but was not detected",
+    "optionalMissingTitle": "{{section}} is optional and was not detected",
+    "optionalSuffix": ", optional"
+  },
+  "prepExport": {
+    "title": "Accessible export",
+    "intro": "Prepare this document for tagged output that targets PDF/UA-2. Oleafly adds \\DocumentMetadata with pdfstandard=ua-2 and tagging=on, plus the alt-text and table setup it can fill in. Compile the result with pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer, then re-check. Accessible math needs LuaLaTeX. The bundled engine cannot produce tags.",
+    "activeFileFallback": "Oleafly could not load the main document, so it checked the file you are editing. Open the main document to see the class and packages your build actually loads.",
+    "prepare": "Prepare for accessible export",
+    "unavailable": "Preparation is off for this document class. Switch to a class the tagging code supports, then run the check again. Compatibility data from the LaTeX Project, retrieved {{retrieved}}.",
+    "unavailableUndated": "Preparation is off for this document class. Switch to a class the tagging code supports, then run the check again. Compatibility data from the LaTeX Project.",
+    "applied": "Applied",
+    "apply": "Apply to document",
+    "copied": "Copied",
+    "copy": "Copy source",
+    "compileTagged": "Compile tagged and verify",
+    "compileTaggedWarning": "System LuaLaTeX can read local files. Run it only for a project you trust.",
+    "noEngine": "To produce the tagged PDF in the app, enable an engine in Settings, LaTeX Engine. Or compile the prepared source with your own pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer."
+  }
+}

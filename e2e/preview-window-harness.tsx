@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts } from "pdf-lib";
 import { createRoot } from "react-dom/client";
 import "/packages/preview/src/polyfills";
 import { PreviewWindow } from "/src/components/preview/PreviewWindow";
+import { prepareHarnessI18n } from "./harness-i18n";
 import "/src/styles/globals.css";
 
 async function makeFixture(pageCount: number): Promise<Uint8Array> {
@@ -26,6 +27,7 @@ try {
   const requested = Number(new URLSearchParams(window.location.search).get("pages") ?? "2");
   const pages = Math.max(1, Math.min(3, Math.floor(requested) || 2));
   const bytes = await makeFixture(pages);
+  await prepareHarnessI18n();
   createRoot(root).render(
     <PreviewWindow harnessBytes={bytes} disableNativeBridge />,
   );

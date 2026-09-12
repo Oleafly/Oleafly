@@ -22,6 +22,7 @@ import {
   type CompletionRequestGuard,
 } from "./completion-request";
 import { validateXparseArgumentSpecification } from "./latex-xparse";
+import { editorMessage, type EditorMessageKey } from "./messages";
 import {
   boundedCompletionContext,
   shouldRunCompletionSource,
@@ -87,88 +88,94 @@ export function bibKeysFromSources(sources: Iterable<string>): string[] {
   return out;
 }
 
-function cmd(label: string, detail: string, template?: string): Completion {
+function cmd(
+  label: string,
+  detail: EditorMessageKey,
+  template?: string,
+): Completion {
   return {
     label,
     type: "function",
-    detail,
+    detail: editorMessage(detail),
     apply: template ? snippet(template) : undefined,
   };
 }
 
-const LATEX_COMMANDS: Completion[] = [
-  cmd("\\documentclass", "document class", "\\documentclass{${1}}"),
-  cmd("\\begin", "begin environment", "\\begin{${1}}\n  ${2}\n\\end{${1}}"),
-  cmd("\\end", "end environment", "\\end{${1}}"),
-  cmd("\\textbf", "bold text", "\\textbf{${1}}"),
-  cmd("\\textit", "italic text", "\\textit{${1}}"),
-  cmd("\\emph", "emphasize", "\\emph{${1}}"),
-  cmd("\\underline", "underline", "\\underline{${1}}"),
-  cmd("\\texttt", "monospace text", "\\texttt{${1}}"),
-  cmd("\\textsc", "small caps", "\\textsc{${1}}"),
-  cmd("\\textsf", "sans-serif text", "\\textsf{${1}}"),
-  cmd("\\textrm", "roman text", "\\textrm{${1}}"),
-  cmd("\\textcolor", "colored text", "\\textcolor{${1}}{${2}}"),
-  cmd("\\part", "part heading", "\\part{${1}}"),
-  cmd("\\chapter", "chapter heading", "\\chapter{${1}}"),
-  cmd("\\section", "section", "\\section{${1}}"),
-  cmd("\\subsection", "subsection", "\\subsection{${1}}"),
-  cmd("\\subsubsection", "subsubsection", "\\subsubsection{${1}}"),
-  cmd("\\paragraph", "paragraph heading", "\\paragraph{${1}}"),
-  cmd("\\subparagraph", "subparagraph heading", "\\subparagraph{${1}}"),
-  cmd("\\item", "list item", "\\item ${1}"),
-  cmd("\\label", "label", "\\label{${1}}"),
-  cmd("\\ref", "reference", "\\ref{${1}}"),
-  cmd("\\eqref", "equation ref", "\\eqref{${1}}"),
-  cmd("\\pageref", "page reference", "\\pageref{${1}}"),
-  cmd("\\autoref", "automatic reference", "\\autoref{${1}}"),
-  cmd("\\cref", "clever reference", "\\cref{${1}}"),
-  cmd("\\cite", "citation", "\\cite{${1}}"),
-  cmd("\\parencite", "parenthetical citation", "\\parencite{${1}}"),
-  cmd("\\textcite", "textual citation", "\\textcite{${1}}"),
-  cmd("\\footnote", "footnote", "\\footnote{${1}}"),
-  cmd("\\usepackage", "use package", "\\usepackage{${1}}"),
-  cmd("\\title", "title", "\\title{${1}}"),
-  cmd("\\author", "author", "\\author{${1}}"),
-  cmd("\\date", "date", "\\date{${1}}"),
-  cmd("\\thanks", "author acknowledgement", "\\thanks{${1}}"),
-  cmd("\\maketitle", "render title"),
-  cmd("\\tableofcontents", "table of contents"),
-  cmd("\\newpage", "page break"),
-  cmd("\\clearpage", "flush floats and start page"),
-  cmd("\\pagebreak", "request page break"),
-  cmd("\\linebreak", "request line break"),
-  cmd("\\hspace", "horizontal space", "\\hspace{${1}}"),
-  cmd("\\vspace", "vertical space", "\\vspace{${1}}"),
-  cmd("\\input", "include file", "\\input{${1}}"),
-  cmd("\\include", "include file", "\\include{${1}}"),
-  cmd("\\includegraphics", "image", "\\includegraphics[width=${1}\\textwidth]{${2}}"),
-  cmd("\\caption", "float caption", "\\caption{${1}}"),
-  cmd("\\centering", "center following content"),
-  cmd("\\url", "URL", "\\url{${1}}"),
-  cmd("\\href", "hyperlink", "\\href{${1}}{${2}}"),
-  cmd("\\addbibresource", "bibliography resource", "\\addbibresource{${1}}"),
-  cmd("\\bibliography", "bibliography database", "\\bibliography{${1}}"),
-  cmd("\\printbibliography", "render bibliography"),
-  cmd("\\frac", "fraction", "\\frac{${1}}{${2}}"),
-  cmd("\\sqrt", "square root", "\\sqrt{${1}}"),
-  cmd("\\overline", "overline", "\\overline{${1}}"),
-  cmd("\\vec", "vector accent", "\\vec{${1}}"),
-  cmd("\\hat", "hat accent", "\\hat{${1}}"),
-  cmd("\\mathrm", "roman math text", "\\mathrm{${1}}"),
-  cmd("\\mathbf", "bold math text", "\\mathbf{${1}}"),
-  cmd("\\mathcal", "calligraphic math text", "\\mathcal{${1}}"),
-  cmd("\\mathbb", "blackboard-bold math text", "\\mathbb{${1}}"),
-  cmd("\\operatorname", "math operator name", "\\operatorname{${1}}"),
-  cmd("\\sum", "summation"),
-  cmd("\\prod", "product"),
-  cmd("\\int", "integral"),
-  cmd("\\lim", "limit"),
-  cmd("\\itemize", "bulleted list", "\\begin{itemize}\n  \\item ${1}\n\\end{itemize}"),
-  cmd("\\enumerate", "numbered list", "\\begin{enumerate}\n  \\item ${1}\n\\end{enumerate}"),
-  cmd("\\equation", "display math", "\\begin{equation}\n  ${1}\n\\end{equation}"),
-  cmd("\\align", "aligned math", "\\begin{align}\n  ${1}\n\\end{align}"),
-];
+function latexCommands(): Completion[] {
+  return [
+    cmd("\\documentclass", "latex.command.documentclass", "\\documentclass{${1}}"),
+    cmd("\\begin", "latex.command.begin", "\\begin{${1}}\n  ${2}\n\\end{${1}}"),
+    cmd("\\end", "latex.command.end", "\\end{${1}}"),
+    cmd("\\textbf", "latex.command.textbf", "\\textbf{${1}}"),
+    cmd("\\textit", "latex.command.textit", "\\textit{${1}}"),
+    cmd("\\emph", "latex.command.emph", "\\emph{${1}}"),
+    cmd("\\underline", "latex.command.underline", "\\underline{${1}}"),
+    cmd("\\texttt", "latex.command.texttt", "\\texttt{${1}}"),
+    cmd("\\textsc", "latex.command.textsc", "\\textsc{${1}}"),
+    cmd("\\textsf", "latex.command.textsf", "\\textsf{${1}}"),
+    cmd("\\textrm", "latex.command.textrm", "\\textrm{${1}}"),
+    cmd("\\textcolor", "latex.command.textcolor", "\\textcolor{${1}}{${2}}"),
+    cmd("\\part", "latex.command.part", "\\part{${1}}"),
+    cmd("\\chapter", "latex.command.chapter", "\\chapter{${1}}"),
+    cmd("\\section", "latex.command.section", "\\section{${1}}"),
+    cmd("\\subsection", "latex.command.subsection", "\\subsection{${1}}"),
+    cmd("\\subsubsection", "latex.command.subsubsection", "\\subsubsection{${1}}"),
+    cmd("\\paragraph", "latex.command.paragraph", "\\paragraph{${1}}"),
+    cmd("\\subparagraph", "latex.command.subparagraph", "\\subparagraph{${1}}"),
+    cmd("\\item", "latex.command.item", "\\item ${1}"),
+    cmd("\\label", "latex.command.label", "\\label{${1}}"),
+    cmd("\\ref", "latex.command.ref", "\\ref{${1}}"),
+    cmd("\\eqref", "latex.command.eqref", "\\eqref{${1}}"),
+    cmd("\\pageref", "latex.command.pageref", "\\pageref{${1}}"),
+    cmd("\\autoref", "latex.command.autoref", "\\autoref{${1}}"),
+    cmd("\\cref", "latex.command.cref", "\\cref{${1}}"),
+    cmd("\\cite", "latex.command.cite", "\\cite{${1}}"),
+    cmd("\\parencite", "latex.command.parencite", "\\parencite{${1}}"),
+    cmd("\\textcite", "latex.command.textcite", "\\textcite{${1}}"),
+    cmd("\\footnote", "latex.command.footnote", "\\footnote{${1}}"),
+    cmd("\\usepackage", "latex.command.usepackage", "\\usepackage{${1}}"),
+    cmd("\\title", "latex.command.title", "\\title{${1}}"),
+    cmd("\\author", "latex.command.author", "\\author{${1}}"),
+    cmd("\\date", "latex.command.date", "\\date{${1}}"),
+    cmd("\\thanks", "latex.command.thanks", "\\thanks{${1}}"),
+    cmd("\\maketitle", "latex.command.maketitle"),
+    cmd("\\tableofcontents", "latex.command.tableofcontents"),
+    cmd("\\newpage", "latex.command.newpage"),
+    cmd("\\clearpage", "latex.command.clearpage"),
+    cmd("\\pagebreak", "latex.command.pagebreak"),
+    cmd("\\linebreak", "latex.command.linebreak"),
+    cmd("\\hspace", "latex.command.hspace", "\\hspace{${1}}"),
+    cmd("\\vspace", "latex.command.vspace", "\\vspace{${1}}"),
+    cmd("\\input", "latex.command.input", "\\input{${1}}"),
+    cmd("\\include", "latex.command.include", "\\include{${1}}"),
+    cmd("\\includegraphics", "latex.command.includegraphics", "\\includegraphics[width=${1}\\textwidth]{${2}}"),
+    cmd("\\caption", "latex.command.caption", "\\caption{${1}}"),
+    cmd("\\centering", "latex.command.centering"),
+    cmd("\\url", "latex.command.url", "\\url{${1}}"),
+    cmd("\\href", "latex.command.href", "\\href{${1}}{${2}}"),
+    cmd("\\addbibresource", "latex.command.addbibresource", "\\addbibresource{${1}}"),
+    cmd("\\bibliography", "latex.command.bibliography", "\\bibliography{${1}}"),
+    cmd("\\printbibliography", "latex.command.printbibliography"),
+    cmd("\\frac", "latex.command.frac", "\\frac{${1}}{${2}}"),
+    cmd("\\sqrt", "latex.command.sqrt", "\\sqrt{${1}}"),
+    cmd("\\overline", "latex.command.overline", "\\overline{${1}}"),
+    cmd("\\vec", "latex.command.vec", "\\vec{${1}}"),
+    cmd("\\hat", "latex.command.hat", "\\hat{${1}}"),
+    cmd("\\mathrm", "latex.command.mathrm", "\\mathrm{${1}}"),
+    cmd("\\mathbf", "latex.command.mathbf", "\\mathbf{${1}}"),
+    cmd("\\mathcal", "latex.command.mathcal", "\\mathcal{${1}}"),
+    cmd("\\mathbb", "latex.command.mathbb", "\\mathbb{${1}}"),
+    cmd("\\operatorname", "latex.command.operatorname", "\\operatorname{${1}}"),
+    cmd("\\sum", "latex.command.sum"),
+    cmd("\\prod", "latex.command.prod"),
+    cmd("\\int", "latex.command.int"),
+    cmd("\\lim", "latex.command.lim"),
+    cmd("\\itemize", "latex.command.itemize", "\\begin{itemize}\n  \\item ${1}\n\\end{itemize}"),
+    cmd("\\enumerate", "latex.command.enumerate", "\\begin{enumerate}\n  \\item ${1}\n\\end{enumerate}"),
+    cmd("\\equation", "latex.command.equation", "\\begin{equation}\n  ${1}\n\\end{equation}"),
+    cmd("\\align", "latex.command.align", "\\begin{align}\n  ${1}\n\\end{align}"),
+  ];
+}
 
 const STANDARD_ENVIRONMENT_BOOST = 1;
 
@@ -338,21 +345,19 @@ function argumentDetail(
   specification?: string,
 ): string {
   if (specification !== undefined) {
-    return `document macro · xparse ${specification || "no arguments"}`;
+    return specification
+      ? editorMessage("latex.macro.xparse", { specification })
+      : editorMessage("latex.macro.xparseNoArguments");
   }
   const total = required + optional;
-  if (total === 0) return "document macro";
+  if (total === 0) return editorMessage("latex.macro.plain");
   if (optional === 0) {
-    return `document macro · ${required} argument${required === 1 ? "" : "s"}`;
+    return editorMessage("latex.macro.arguments", { count: required });
   }
-  const parts: string[] = [];
-  if (optional > 0) {
-    parts.push(`${optional} optional`);
+  if (required === 0) {
+    return editorMessage("latex.macro.optionalArguments", { count: optional });
   }
-  if (required > 0) {
-    parts.push(`${required} required`);
-  }
-  return `document macro · ${parts.join(" + ")} argument${total === 1 ? "" : "s"}`;
+  return editorMessage("latex.macro.mixedArguments", { optional, required });
 }
 
 function classicCommandDefinition(
@@ -730,21 +735,42 @@ function localCommandCompletions(
 // Package-aware additions keep completion useful even before an LSP is
 // installed. The project language service can still contribute richer symbols
 // when TexLab is available.
-const PACKAGE_COMMANDS: Record<string, Completion[]> = {
-  amsmath: [cmd("\\dfrac", "display fraction", "\\dfrac{${1}}{${2}}"), cmd("\\DeclareMathOperator", "math operator", "\\DeclareMathOperator{${1}}{${2}}")],
-  amssymb: [cmd("\\mathbb", "blackboard-bold symbol")],
-  graphicx: [cmd("\\rotatebox", "rotate graphic", "\\rotatebox{${1}}{${2}}")],
-  hyperref: [cmd("\\hypersetup", "hyperlink setup", "\\hypersetup{${1}}")],
-  booktabs: [cmd("\\toprule", "table top rule"), cmd("\\midrule", "table mid rule"), cmd("\\bottomrule", "table bottom rule")],
-  siunitx: [cmd("\\SI", "quantity", "\\SI{${1}}{${2}}"), cmd("\\num", "number", "\\num{${1}}")],
-};
+function packageCommands(): Record<string, Completion[]> {
+  return {
+    amsmath: [
+      cmd("\\dfrac", "latex.packageCommand.dfrac", "\\dfrac{${1}}{${2}}"),
+      cmd(
+        "\\DeclareMathOperator",
+        "latex.packageCommand.declareMathOperator",
+        "\\DeclareMathOperator{${1}}{${2}}",
+      ),
+    ],
+    amssymb: [cmd("\\mathbb", "latex.packageCommand.mathbb")],
+    graphicx: [
+      cmd("\\rotatebox", "latex.packageCommand.rotatebox", "\\rotatebox{${1}}{${2}}"),
+    ],
+    hyperref: [
+      cmd("\\hypersetup", "latex.packageCommand.hypersetup", "\\hypersetup{${1}}"),
+    ],
+    booktabs: [
+      cmd("\\toprule", "latex.packageCommand.toprule"),
+      cmd("\\midrule", "latex.packageCommand.midrule"),
+      cmd("\\bottomrule", "latex.packageCommand.bottomrule"),
+    ],
+    siunitx: [
+      cmd("\\SI", "latex.packageCommand.si", "\\SI{${1}}{${2}}"),
+      cmd("\\num", "latex.packageCommand.num", "\\num{${1}}"),
+    ],
+  };
+}
 
 function packageCompletions(
   state: EditorState,
   guard: CompletionRequestGuard,
 ): Completion[] {
+  const table = packageCommands();
   return latexCatalog(state).packages.flatMap((name) =>
-    (PACKAGE_COMMANDS[name] ?? []).map((option) =>
+    (table[name] ?? []).map((option) =>
       guardCompletionForSource(guard, option),
     ),
   );
@@ -853,12 +879,16 @@ function structuralArgumentCompletions(
     const query = currentArgumentQuery(environmentMatch.text);
     const local = latexCatalog(context.state).environments.map((name) =>
       opening
-        ? guardedEnvironmentCompletion(guard, name, "document environment")
+        ? guardedEnvironmentCompletion(
+            guard,
+            name,
+            editorMessage("latex.completion.documentEnvironment"),
+          )
         : guardedLocalCompletion(
             guard,
             name,
             "type",
-            "document environment",
+            editorMessage("latex.completion.documentEnvironment"),
           ),
     );
     return {
@@ -870,12 +900,12 @@ function structuralArgumentCompletions(
             ? guardedEnvironmentCompletion(
                 guard,
                 name,
-                "standard LaTeX environment",
+                editorMessage("latex.completion.environment"),
               )
             : guardCompletionForSource(guard, {
                 label: name,
                 type: "type",
-                detail: "standard LaTeX environment",
+                detail: editorMessage("latex.completion.environment"),
                 boost: STANDARD_ENVIRONMENT_BOOST,
               }),
         ),
@@ -896,7 +926,7 @@ function structuralArgumentCompletions(
         guardCompletionForSource(guard, {
           label: name,
           type: "namespace",
-          detail: "LaTeX package",
+          detail: editorMessage("latex.completion.package"),
         }),
       ),
     };
@@ -915,7 +945,7 @@ function structuralArgumentCompletions(
         guardCompletionForSource(guard, {
           label: name,
           type: "type",
-          detail: "LaTeX document class",
+          detail: editorMessage("latex.completion.documentClass"),
         }),
       ),
     };
@@ -940,7 +970,7 @@ function referenceCitationCompletions(
         guardCompletionForSource(guard, {
           label,
           type: "variable",
-          detail: "label",
+          detail: editorMessage("latex.completion.label"),
         }),
       ),
     };
@@ -959,7 +989,7 @@ function referenceCitationCompletions(
         guardCompletionForSource(guard, {
           label,
           type: "constant",
-          detail: "citation",
+          detail: editorMessage("latex.completion.citation"),
         }),
       ),
     };
@@ -1010,7 +1040,7 @@ function commandCompletions(
     from: cmdMatch ? cmdMatch.from : context.pos,
     options: uniqueCompletions([
       ...localCommandCompletions(context.state, guard),
-      ...LATEX_COMMANDS.map((option) =>
+      ...latexCommands().map((option) =>
         guardCompletionForSource(guard, option),
       ),
       ...packageCompletions(context.state, guard),
@@ -1045,20 +1075,20 @@ export function slashCompletions(
   const m = before.match(/\/([a-zA-Z]*)$/);
   if (!m) return null;
   const slash: Completion[] = [
-    { label: "/section", type: "snippet", detail: "Section", apply: snippet("\\section{${1}}") },
-    { label: "/subsection", type: "snippet", detail: "Subsection", apply: snippet("\\subsection{${1}}") },
-    { label: "/itemize", type: "snippet", detail: "Bulleted list", apply: snippet("\\begin{itemize}\n  \\item ${1}\n\\end{itemize}") },
-    { label: "/enumerate", type: "snippet", detail: "Numbered list", apply: snippet("\\begin{enumerate}\n  \\item ${1}\n\\end{enumerate}") },
-    { label: "/equation", type: "snippet", detail: "Display equation", apply: snippet("\\begin{equation}\n  ${1}\n\\end{equation}") },
-    { label: "/align", type: "snippet", detail: "Aligned equations", apply: snippet("\\begin{align}\n  ${1}\n\\end{align}") },
-    { label: "/figure", type: "snippet", detail: "Figure float", apply: snippet("\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=${1}\\textwidth]{${2}}\n  \\caption{${3}}\n\\end{figure}") },
-    { label: "/table", type: "snippet", detail: "Table float", apply: snippet("\\begin{table}[htbp]\n  \\centering\n  \\caption{${1}}\n  \\begin{tabular}{${2}}\n  \\end{tabular}\n\\end{table}") },
-    { label: "/item", type: "snippet", detail: "List item", apply: snippet("\\item ${1}") },
-    { label: "/frac", type: "snippet", detail: "Fraction", apply: snippet("\\frac{${1}}{${2}}") },
-    { label: "/bold", type: "snippet", detail: "Bold", apply: snippet("\\textbf{${1}}") },
-    { label: "/italic", type: "snippet", detail: "Italic", apply: snippet("\\textit{${1}}") },
-    { label: "/label", type: "snippet", detail: "Label", apply: snippet("\\label{${1}}") },
-    { label: "/usepackage", type: "snippet", detail: "Use package", apply: snippet("\\usepackage{${1}}") },
+    { label: "/section", type: "snippet", detail: editorMessage("latex.snippet.section"), apply: snippet("\\section{${1}}") },
+    { label: "/subsection", type: "snippet", detail: editorMessage("latex.snippet.subsection"), apply: snippet("\\subsection{${1}}") },
+    { label: "/itemize", type: "snippet", detail: editorMessage("latex.snippet.itemize"), apply: snippet("\\begin{itemize}\n  \\item ${1}\n\\end{itemize}") },
+    { label: "/enumerate", type: "snippet", detail: editorMessage("latex.snippet.enumerate"), apply: snippet("\\begin{enumerate}\n  \\item ${1}\n\\end{enumerate}") },
+    { label: "/equation", type: "snippet", detail: editorMessage("latex.snippet.equation"), apply: snippet("\\begin{equation}\n  ${1}\n\\end{equation}") },
+    { label: "/align", type: "snippet", detail: editorMessage("latex.snippet.align"), apply: snippet("\\begin{align}\n  ${1}\n\\end{align}") },
+    { label: "/figure", type: "snippet", detail: editorMessage("latex.snippet.figure"), apply: snippet("\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=${1}\\textwidth]{${2}}\n  \\caption{${3}}\n\\end{figure}") },
+    { label: "/table", type: "snippet", detail: editorMessage("latex.snippet.table"), apply: snippet("\\begin{table}[htbp]\n  \\centering\n  \\caption{${1}}\n  \\begin{tabular}{${2}}\n  \\end{tabular}\n\\end{table}") },
+    { label: "/item", type: "snippet", detail: editorMessage("latex.snippet.item"), apply: snippet("\\item ${1}") },
+    { label: "/frac", type: "snippet", detail: editorMessage("latex.snippet.frac"), apply: snippet("\\frac{${1}}{${2}}") },
+    { label: "/bold", type: "snippet", detail: editorMessage("latex.snippet.bold"), apply: snippet("\\textbf{${1}}") },
+    { label: "/italic", type: "snippet", detail: editorMessage("latex.snippet.italic"), apply: snippet("\\textit{${1}}") },
+    { label: "/label", type: "snippet", detail: editorMessage("latex.snippet.label"), apply: snippet("\\label{${1}}") },
+    { label: "/usepackage", type: "snippet", detail: editorMessage("latex.snippet.usepackage"), apply: snippet("\\usepackage{${1}}") },
   ];
   return {
     from: context.pos - m[0].length,

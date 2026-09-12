@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Download,
   Globe2,
@@ -33,6 +34,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
+import { describeError } from "@/lib/app-error";
+import { i18n } from "@/i18n";
 import { notifyMcpAgentToolsChanged } from "@/lib/mcp-agent-tools";
 import {
   parseMcpServerJson,
@@ -52,7 +55,6 @@ import {
   type McpManagedServer,
   type McpServerConfig,
   type McpServerValidation,
-  type McpServerValidationStatus,
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +69,9 @@ type EditorState =
   | { mode: "add"; originalName: null; config: McpServerConfig }
   | { mode: "edit"; originalName: string; config: McpServerConfig };
 
+const COMMAND_PLACEHOLDER = "npx";
+const URL_PLACEHOLDER = "https://example.com/mcp";
+
 const LIVE_STATUS_REFRESH_MS = 60_000;
 const AUTO_VALIDATION_LIMIT = 64;
 const AUTO_VALIDATION_CONCURRENCY = 4;
@@ -79,9 +84,6 @@ const emptyStdioConfig = (): McpServerConfig => ({
   args: [],
   env: {},
 });
-
-const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : String(error);
 
 function replaceRecord(records: McpManagedServer[], next: McpManagedServer) {
   const found = records.some((record) => record.config.name === next.config.name);
@@ -107,34 +109,44 @@ function validationError(name: string, error: unknown): McpServerValidation {
     status: "error",
     tool_count: 0,
     tools: [],
-    error: errorMessage(error),
+    error: describeError(error),
   };
-}
-
-function statusLabel(status: McpServerValidationStatus) {
-  if (status === "connected") return "Connected";
-  if (status === "error") return "Error";
-  if (status === "disabled") return "Disabled";
-  return "Checking...";
 }
 
 function liveStatus(record: McpManagedServer) {
   const { name, enabled } = record.config;
-  const { status, tool_count: toolCount } = record.validation;
-  const tools = toolCount === 1 ? "1 tool" : `${toolCount} tools`;
-  if (status === "checking") return `Checking ${name}.`;
+  const { status, tool_count: count } = record.validation;
+  if (status === "checking") return i18n.t(($) => $.settings.mcp.servers.live.checking, { name });
   if (!enabled) {
-    if (status === "connected") return `${name} is disabled. Last check found ${tools}.`;
-    if (status === "error") return `${name} is disabled. Last check failed.`;
-    return `${name} is disabled.`;
+    if (status === "connected") {
+      return i18n.t(($) => $.settings.mcp.servers.live.disabledLastCheckFound, {
+        name,
+        count,
+      });
+    }
+    if (status === "error") {
+      return i18n.t(($) => $.settings.mcp.servers.live.disabledLastCheckFailed, { name });
+    }
+    return i18n.t(($) => $.settings.mcp.servers.live.disabled, { name });
   }
-  if (status === "connected") return `${name} connected. ${tools} available.`;
-  if (status === "error") return `${name} validation failed.`;
-  return `${name} is disabled.`;
+  if (status === "connected") {
+    return i18n.t(($) => $.settings.mcp.servers.live.connected, { name, count });
+  }
+  if (status === "error") return i18n.t(($) => $.settings.mcp.servers.live.failed, { name });
+  return i18n.t(($) => $.settings.mcp.servers.live.disabled, { name });
 }
 
 function StatusBadge({ record }: { record: McpManagedServer }) {
+  const { t } = useTranslation(["common", "settings"]);
   const status = record.config.enabled ? record.validation.status : "disabled";
+  const label =
+    status === "connected"
+      ? t(($) => $.settings.mcp.servers.status.connected)
+      : status === "error"
+        ? t(($) => $.settings.mcp.servers.status.error)
+        : status === "disabled"
+          ? t(($) => $.settings.mcp.servers.status.disabled)
+          : t(($) => $.settings.mcp.servers.status.checking);
   return (
     <Badge
       variant="outline"
@@ -145,7 +157,7 @@ function StatusBadge({ record }: { record: McpManagedServer }) {
       )}
     >
       {status === "checking" ? <Loader2 className="mr-1 size-3 animate-spin" /> : null}
-      {statusLabel(status)}
+      {label}
     </Badge>
   );
 }
@@ -178,13 +190,16 @@ function PairEditor({
   rows: PairValue[];
   onChange: (rows: PairValue[]) => void;
 }) {
+  const { t } = useTranslation(["common", "settings"]);
   const nextId = useRef(Math.max(1, ...rows.map((row) => row.id)) + 1);
-  const noun = kind === "Environment" ? "variable" : "header";
+  const environment = kind === "Environment";
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-medium">
-          {kind === "Environment" ? "Environment variables" : "Request headers"}
+          {environment
+            ? t(($) => $.settings.mcp.servers.editor.pairs.environmentTitle)
+            : t(($) => $.settings.mcp.servers.editor.pairs.headersTitle)}
         </span>
         <Button
           type="button"
@@ -195,15 +210,25 @@ function PairEditor({
           }}
         >
           <Plus aria-hidden />
-          Add {noun}
+          {environment
+            ? t(($) => $.settings.mcp.servers.editor.pairs.addVariable)
+            : t(($) => $.settings.mcp.servers.editor.pairs.addHeader)}
         </Button>
       </div>
       {rows.map((row, index) => (
         <div key={row.id} className="flex items-center gap-2">
           <Input
-            aria-label={`${kind} key ${index + 1}`}
+            aria-label={
+              environment
+                ? t(($) => $.settings.mcp.servers.editor.pairs.environmentKeyLabel, {
+                    index: index + 1,
+                  })
+                : t(($) => $.settings.mcp.servers.editor.pairs.headerKeyLabel, {
+                    index: index + 1,
+                  })
+            }
             autoComplete="off"
-            placeholder="Name"
+            placeholder={t(($) => $.common.labels.name)}
             value={row.key}
             onChange={(event) =>
               onChange(
@@ -216,9 +241,21 @@ function PairEditor({
             }
           />
           <Input
-            aria-label={`${kind} value ${index + 1}`}
+            aria-label={
+              environment
+                ? t(($) => $.settings.mcp.servers.editor.pairs.environmentValueLabel, {
+                    index: index + 1,
+                  })
+                : t(($) => $.settings.mcp.servers.editor.pairs.headerValueLabel, {
+                    index: index + 1,
+                  })
+            }
             autoComplete="off"
-            placeholder={row.stored ? "Stored value" : "Value"}
+            placeholder={
+              row.stored
+                ? t(($) => $.settings.mcp.servers.editor.pairs.storedValuePlaceholder)
+                : t(($) => $.settings.mcp.servers.editor.pairs.valuePlaceholder)
+            }
             type="password"
             value={row.value}
             onChange={(event) =>
@@ -235,7 +272,15 @@ function PairEditor({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={`Remove ${noun} ${index + 1}`}
+            aria-label={
+              environment
+                ? t(($) => $.settings.mcp.servers.editor.pairs.removeVariableLabel, {
+                    index: index + 1,
+                  })
+                : t(($) => $.settings.mcp.servers.editor.pairs.removeHeaderLabel, {
+                    index: index + 1,
+                  })
+            }
             onClick={() => {
               const remaining = rows.filter((candidate) => candidate.id !== row.id);
               onChange(
@@ -266,6 +311,7 @@ function ServerEditor({
   onClose: () => void;
   onSubmit: (originalName: string | null, config: McpServerConfig) => Promise<void>;
 }) {
+  const { t } = useTranslation(["common", "settings"]);
   const [config, setConfig] = useState<McpServerConfig>(state?.config ?? emptyStdioConfig());
   const [argsText, setArgsText] = useState(
     state?.config.transport === "stdio" ? state.config.args.join("\n") : "",
@@ -335,7 +381,7 @@ function ServerEditor({
         setJsonError(null);
         void onSubmit(state.originalName, parseMcpServerJson(jsonText));
       } catch (parseError) {
-        setJsonError(errorMessage(parseError));
+        setJsonError(describeError(parseError));
       }
       return;
     }
@@ -361,15 +407,19 @@ function ServerEditor({
         }}
       >
         <DialogHeader>
-          <DialogTitle>{state?.mode === "edit" ? "Edit MCP server" : "Add MCP server"}</DialogTitle>
+          <DialogTitle>
+            {state?.mode === "edit"
+              ? t(($) => $.settings.mcp.servers.editor.titleEdit)
+              : t(($) => $.settings.mcp.servers.editor.titleAdd)}
+          </DialogTitle>
           <DialogDescription>
-            Enabled servers are checked before their settings are saved.
+            {t(($) => $.settings.mcp.servers.editor.description)}
           </DialogDescription>
         </DialogHeader>
         {state?.mode === "add" ? (
           <fieldset
             className="absolute right-11 top-3 flex rounded-md bg-muted p-0.5"
-            aria-label="Configuration editor"
+            aria-label={t(($) => $.settings.mcp.servers.editor.viewSwitchLabel)}
           >
             <Button
               type="button"
@@ -383,12 +433,12 @@ function ServerEditor({
                     setEditorView("form");
                     setJsonError(null);
                   } catch (parseError) {
-                    setJsonError(errorMessage(parseError));
+                    setJsonError(describeError(parseError));
                   }
                 }
               }}
             >
-              Form
+              {t(($) => $.settings.mcp.servers.editor.formView)}
             </Button>
             <Button
               type="button"
@@ -402,7 +452,7 @@ function ServerEditor({
                 setJsonError(null);
               }}
             >
-              JSON
+              {t(($) => $.settings.mcp.servers.editor.jsonView)}
             </Button>
           </fieldset>
         ) : null}
@@ -410,7 +460,7 @@ function ServerEditor({
           {state?.mode === "add" && editorView === "json" ? (
             <div className="space-y-1.5">
               <label className="text-xs font-medium" htmlFor="mcp-server-json">
-                Full configuration
+                {t(($) => $.settings.mcp.servers.editor.jsonLabel)}
               </label>
               <Textarea
                 id="mcp-server-json"
@@ -423,14 +473,14 @@ function ServerEditor({
                 }}
               />
               <p className="text-[11px] text-muted-foreground">
-                Paste one server keyed by name, or a block wrapped in mcpServers.
+                {t(($) => $.settings.mcp.servers.editor.jsonHint)}
               </p>
             </div>
           ) : (
             <>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium" htmlFor="mcp-server-name">
-                  Server name
+                  {t(($) => $.settings.mcp.servers.editor.nameLabel)}
                 </label>
                 <Input
                   ref={serverNameRef}
@@ -442,7 +492,9 @@ function ServerEditor({
               </div>
 
               <fieldset className="space-y-2">
-                <legend className="text-xs font-medium">Transport</legend>
+                <legend className="text-xs font-medium">
+                  {t(($) => $.settings.mcp.servers.editor.transportLegend)}
+                </legend>
                 <RadioGroup
                   className="grid grid-cols-2 gap-2"
                   value={config.transport}
@@ -475,7 +527,7 @@ function ServerEditor({
                   >
                     <RadioGroupItem id="mcp-transport-stdio" value="stdio" />
                     <Terminal aria-hidden className="size-4 text-muted-foreground" />
-                    Local command
+                    {t(($) => $.settings.mcp.servers.editor.transportStdio)}
                   </label>
                   <label
                     htmlFor="mcp-transport-remote"
@@ -483,7 +535,7 @@ function ServerEditor({
                   >
                     <RadioGroupItem id="mcp-transport-remote" value="remote" />
                     <Globe2 aria-hidden className="size-4 text-muted-foreground" />
-                    Remote URL
+                    {t(($) => $.settings.mcp.servers.editor.transportRemote)}
                   </label>
                 </RadioGroup>
               </fieldset>
@@ -492,12 +544,12 @@ function ServerEditor({
                 <>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium" htmlFor="mcp-server-command">
-                      Command
+                      {t(($) => $.settings.mcp.servers.editor.commandLabel)}
                     </label>
                     <Input
                       id="mcp-server-command"
                       autoComplete="off"
-                      placeholder="npx"
+                      placeholder={COMMAND_PLACEHOLDER}
                       value={config.command}
                       onChange={(event) =>
                         setConfig({ ...config, command: event.target.value })
@@ -506,7 +558,7 @@ function ServerEditor({
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium" htmlFor="mcp-server-args">
-                      Arguments
+                      {t(($) => $.settings.mcp.servers.editor.argsLabel)}
                     </label>
                     <Textarea
                       id="mcp-server-args"
@@ -518,7 +570,7 @@ function ServerEditor({
                       onChange={(event) => setArgsText(event.target.value)}
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      Enter one argument per line.
+                      {t(($) => $.settings.mcp.servers.editor.argsHint)}
                     </p>
                   </div>
                   <PairEditor kind="Environment" rows={pairs} onChange={setPairs} />
@@ -527,12 +579,12 @@ function ServerEditor({
                 <>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium" htmlFor="mcp-server-url">
-                      Remote URL
+                      {t(($) => $.settings.mcp.servers.editor.urlLabel)}
                     </label>
                     <Input
                       id="mcp-server-url"
                       autoComplete="off"
-                      placeholder="https://example.com/mcp"
+                      placeholder={URL_PLACEHOLDER}
                       type="url"
                       value={config.url}
                       onChange={(event) => setConfig({ ...config, url: event.target.value })}
@@ -552,15 +604,15 @@ function ServerEditor({
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
-              Cancel
+              {t(($) => $.common.actions.cancel)}
             </Button>
             <Button type="submit" disabled={!valid || busy}>
               {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
               {state?.mode === "edit" && !config.enabled
-                ? "Save changes"
+                ? t(($) => $.settings.mcp.servers.editor.saveChanges)
                 : state?.mode === "edit"
-                  ? "Save and validate"
-                  : "Add and validate"}
+                  ? t(($) => $.settings.mcp.servers.editor.saveAndValidate)
+                  : t(($) => $.settings.mcp.servers.editor.addAndValidate)}
             </Button>
           </DialogFooter>
         </form>
@@ -570,6 +622,7 @@ function ServerEditor({
 }
 
 export function McpServersManager() {
+  const { t } = useTranslation(["common", "settings"]);
   const [records, setRecords] = useState<McpManagedServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -685,7 +738,7 @@ export function McpServersManager() {
       })
       .catch((error) => {
         if (!active) return;
-        setLoadError(errorMessage(error));
+        setLoadError(describeError(error));
         setLoading(false);
       });
     return () => {
@@ -726,7 +779,7 @@ export function McpServersManager() {
       notifyMcpAgentToolsChanged();
       setEditor(null);
     } catch (error) {
-      setEditorError(errorMessage(error));
+      setEditorError(describeError(error));
     } finally {
       setBusyFor("editor", false);
     }
@@ -791,12 +844,10 @@ export function McpServersManager() {
     <section className="space-y-3" aria-labelledby="assistant-mcp-servers-heading">
       <div>
         <h3 id="assistant-mcp-servers-heading" className="text-sm font-medium">
-          Assistant MCP servers
+          {t(($) => $.settings.mcp.servers.title)}
         </h3>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Connect the AI Assistant to local commands or remote MCP endpoints. Oleafly checks each
-          enabled server when this page opens, every minute, and on demand. It also shows the tools
-          each server provides.
+          {t(($) => $.settings.mcp.servers.description)}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -812,7 +863,7 @@ export function McpServersManager() {
           }}
         >
           <Download aria-hidden />
-          Import from other tools
+          {t(($) => $.settings.mcp.servers.importButton)}
         </Button>
         <Button
           type="button"
@@ -822,7 +873,9 @@ export function McpServersManager() {
           onClick={() => setRegistryOpen((open) => !open)}
         >
           <Search aria-hidden />
-          {registryOpen ? "Hide registry" : "Browse registry"}
+          {registryOpen
+            ? t(($) => $.settings.mcp.servers.hideRegistry)
+            : t(($) => $.settings.mcp.servers.browseRegistry)}
         </Button>
         <Button
           type="button"
@@ -833,7 +886,7 @@ export function McpServersManager() {
           }}
         >
           <Plus aria-hidden />
-          Add server
+          {t(($) => $.settings.mcp.servers.addServer)}
         </Button>
       </div>
 
@@ -853,14 +906,20 @@ export function McpServersManager() {
           className="space-y-1 rounded-md border bg-card px-3 py-2 text-xs"
         >
           <p>
-            Imported {importSummary.imported}, skipped {importSummary.skipped}, failed{" "}
-            {importSummary.failed}.
+            {t(($) => $.settings.mcp.servers.importSummary, {
+              imported: importSummary.imported,
+              skipped: importSummary.skipped,
+              failed: importSummary.failed,
+            })}
           </p>
           {importSummary.failures.length > 0 ? (
             <ul className="m-0 list-none space-y-1 p-0 text-destructive">
               {importSummary.failures.map((failure) => (
                 <li key={`${failure.name}:${failure.reason}`}>
-                  {failure.name}: {failure.reason}
+                  {t(($) => $.settings.mcp.servers.importFailure, {
+                    name: failure.name,
+                    reason: failure.reason,
+                  })}
                 </li>
               ))}
             </ul>
@@ -871,7 +930,7 @@ export function McpServersManager() {
       {loading ? (
         <div className="flex items-center gap-2 rounded-lg border bg-card p-3 text-xs text-muted-foreground">
           <Loader2 className="size-4 animate-spin" aria-hidden />
-          Loading servers...
+          {t(($) => $.settings.mcp.servers.loading)}
         </div>
       ) : null}
 
@@ -887,10 +946,11 @@ export function McpServersManager() {
             <Server className="size-6" aria-hidden />
           </span>
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">No servers added</p>
+            <p className="text-sm font-medium text-foreground">
+              {t(($) => $.settings.mcp.servers.empty.title)}
+            </p>
             <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">
-              Add a server to give the assistant new tools, or import the ones you already use in
-              another editor.
+              {t(($) => $.settings.mcp.servers.empty.description)}
             </p>
           </div>
         </div>
@@ -918,7 +978,7 @@ export function McpServersManager() {
                   </p>
                 </div>
                 <Switch
-                  aria-label={`Enable ${name}`}
+                  aria-label={t(($) => $.settings.mcp.servers.card.enableLabel, { name })}
                   checked={record.config.enabled}
                   disabled={toggling}
                   onCheckedChange={(enabled) => void toggle(record, enabled)}
@@ -938,11 +998,14 @@ export function McpServersManager() {
               {record.validation.tools.length > 0 ? (
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-medium text-muted-foreground">
-                    {record.validation.tool_count === 1
-                      ? "1 tool"
-                      : `${record.validation.tool_count} tools`}
+                    {t(($) => $.settings.mcp.servers.card.toolCount, {
+                      count: record.validation.tool_count,
+                    })}
                   </p>
-                  <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0" aria-label={`Tools from ${name}`}>
+                  <ul
+                    className="m-0 flex list-none flex-wrap gap-1.5 p-0"
+                    aria-label={t(($) => $.settings.mcp.servers.card.toolsLabel, { name })}
+                  >
                     {record.validation.tools.map((tool) => (
                       <li key={tool.name}>
                         <Badge variant="quiet" title={tool.description ?? undefined}>
@@ -953,7 +1016,9 @@ export function McpServersManager() {
                   </ul>
                 </div>
               ) : record.validation.status === "connected" ? (
-                <p className="text-[11px] text-muted-foreground">No tools reported.</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t(($) => $.settings.mcp.servers.card.noTools)}
+                </p>
               ) : null}
 
               <div className="flex flex-wrap justify-end gap-1">
@@ -961,36 +1026,36 @@ export function McpServersManager() {
                   type="button"
                   variant="ghost"
                   size="xs"
-                  aria-label={`Validate ${name}`}
+                  aria-label={t(($) => $.settings.mcp.servers.card.validateLabel, { name })}
                   disabled={validating || toggling}
                   onClick={() => void validate(name)}
                 >
                   <RefreshCw className={cn(validating && "animate-spin")} aria-hidden />
-                  Validate
+                  {t(($) => $.settings.mcp.servers.card.validate)}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="xs"
-                  aria-label={`Edit ${name}`}
+                  aria-label={t(($) => $.settings.mcp.servers.card.editLabel, { name })}
                   onClick={() => {
                     setEditorError(null);
                     setEditor({ mode: "edit", originalName: name, config: record.config });
                   }}
                 >
                   <Pencil aria-hidden />
-                  Edit
+                  {t(($) => $.common.actions.edit)}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="xs"
                   className="text-destructive hover:text-destructive"
-                  aria-label={`Remove ${name}`}
+                  aria-label={t(($) => $.settings.mcp.servers.card.removeLabel, { name })}
                   onClick={() => setRemoveName(name)}
                 >
                   <Trash2 aria-hidden />
-                  Remove
+                  {t(($) => $.common.actions.remove)}
                 </Button>
               </div>
             </article>
@@ -1020,9 +1085,13 @@ export function McpServersManager() {
 
       <ConfirmationDialog
         open={removeName !== null}
-        title="Remove server?"
-        description={`This removes ${removeName ?? "this server"} from Oleafly. You can add it again later.`}
-        confirmLabel="Remove server"
+        title={t(($) => $.settings.mcp.servers.remove.title)}
+        description={
+          removeName
+            ? t(($) => $.settings.mcp.servers.remove.description, { name: removeName })
+            : t(($) => $.settings.mcp.servers.remove.descriptionFallback)
+        }
+        confirmLabel={t(($) => $.settings.mcp.servers.remove.confirm)}
         destructive
         onCancel={() => setRemoveName(null)}
         onConfirm={() => void remove()}

@@ -2,8 +2,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerPdfTextSelection } from "./pdfTextSelection";
+import type { PreviewMessageKey } from "./messages";
 
 const normalizePdfText = (text: string) => text.normalize("NFKC");
+const stubT = (key: PreviewMessageKey, params?: Record<string, string | number>) =>
+  params ? `${key} ${JSON.stringify(params)}` : key;
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -25,7 +28,7 @@ describe("registerPdfTextSelection", () => {
     layer.append(first, second, lineBreak, third);
     document.body.append(layer);
 
-    const unregister = registerPdfTextSelection(layer, 2, normalizePdfText);
+    const unregister = registerPdfTextSelection(layer, 2, normalizePdfText, stubT);
     layer.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
@@ -42,7 +45,7 @@ describe("registerPdfTextSelection", () => {
     expect(selection?.toString()).toContain("and reaches");
     expect(layer).toHaveClass("selecting");
     expect(layer.tabIndex).toBe(0);
-    expect(layer).toHaveAttribute("aria-label", "Selectable text for PDF page 2");
+    expect(layer).toHaveAttribute("aria-label", 'a11y.textLayer {"page":2}');
 
     const end = layer.querySelector<HTMLElement>(".endOfContent");
     expect(end).not.toBeNull();
@@ -82,7 +85,7 @@ describe("registerPdfTextSelection", () => {
     layer.append(first, second, third);
     document.body.append(layer);
 
-    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText);
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
     const sentinel = layer.querySelector<HTMLDivElement>(".endOfContent");
     expect(sentinel).not.toBeNull();
 
@@ -107,7 +110,7 @@ describe("registerPdfTextSelection", () => {
     const text = document.createTextNode("ﬁ\0nal");
     layer.append(text);
     document.body.append(layer);
-    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText);
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
 
     const range = document.createRange();
     range.selectNodeContents(text);
@@ -136,7 +139,7 @@ describe("registerPdfTextSelection", () => {
     second.textContent = "second";
     layer.append(first, second);
     document.body.append(layer);
-    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText);
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
     const sentinel = layer.querySelector<HTMLDivElement>(".endOfContent");
     const getComputedStyle = vi.spyOn(window, "getComputedStyle").mockImplementation(
       (element) =>
@@ -174,11 +177,12 @@ describe("registerPdfTextSelection", () => {
     remainingLayer.append(remainingText);
     document.body.append(firstLayer, remainingLayer);
 
-    const unregisterFirst = registerPdfTextSelection(firstLayer, 1, normalizePdfText);
+    const unregisterFirst = registerPdfTextSelection(firstLayer, 1, normalizePdfText, stubT);
     const unregisterRemaining = registerPdfTextSelection(
       remainingLayer,
       2,
       normalizePdfText,
+      stubT,
     );
     const firstRange = document.createRange();
     firstRange.selectNodeContents(firstText);

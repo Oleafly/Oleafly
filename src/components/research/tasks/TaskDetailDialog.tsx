@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   AlertCircle,
   AlertTriangle,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCompactCount } from "@/lib/format";
+import { formatDateTime } from "@/lib/intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,7 +39,7 @@ import type {
   TaskTranscriptEvent,
 } from "@/lib/research-tasks";
 import type { ResearchTaskDetailTab } from "@/store/research-tasks";
-import { relativeTime, STATUS_LABELS } from "./task-status";
+import { relativeTime, statusLabel } from "./task-status";
 import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
 import { buildTaskTimeline, type TaskTimelineItem } from "./task-timeline";
 
@@ -69,11 +71,7 @@ const EMPTY_CHANGES: NonNullable<ResearchTask["result"]>["changedFiles"] = [];
 
 function timestamp(value: number): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
-}
-
-function tokenCount(value: number | null): string {
-  return value === null ? "unknown" : formatCompactCount(value);
+  return Number.isNaN(date.getTime()) ? "" : formatDateTime(date);
 }
 
 function isErrorMilestone(text: string, error: string | null): boolean {
@@ -84,6 +82,7 @@ function isErrorMilestone(text: string, error: string | null): boolean {
 }
 
 function ReasoningRow({ text }: { text: string }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   const [open, setOpen] = useState(false);
   return (
     <div className="min-w-0 text-xs text-muted-foreground">
@@ -94,7 +93,7 @@ function ReasoningRow({ text }: { text: string }) {
         className="flex h-6 items-center gap-1 text-left hover:text-foreground"
       >
         <ChevronRight className={cn("size-3 shrink-0 transition-transform", open && "rotate-90")} />
-        Reported reasoning
+        {t(($) => $.researchTools.tasks.detail.reasoning)}
       </button>
       {open ? (
         <p className="mb-1 whitespace-pre-wrap break-words leading-relaxed">{text}</p>
@@ -164,11 +163,22 @@ export function TaskDetailDialog({
   error,
   onDismissError,
 }: TaskDetailDialogProps) {
+  const { t, i18n: instance } = useTranslation(["common", "researchTools"]);
+  const language = instance.language;
+  const tokenCount = (value: number | null): string =>
+    value === null ? t(($) => $.researchTools.tasks.detail.unknownTokens) : formatCompactCount(value);
+  const changeKindLabel = (kind: "added" | "modified" | "deleted"): string =>
+    kind === "added"
+      ? t(($) => $.researchTools.tasks.detail.changeAdded)
+      : kind === "modified"
+        ? t(($) => $.researchTools.tasks.detail.changeModified)
+        : t(($) => $.researchTools.tasks.detail.changeDeleted);
   const taskRunKey = `${task.id}:${task.executionGeneration}`;
   const activeTaskRun = useRef(taskRunKey);
   activeTaskRun.current = taskRunKey;
   const running = task.status === "running";
-  const timeline = useMemo(() => buildTaskTimeline(events, running), [events, running]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the timeline carries translated milestone text, so it is rebuilt on a language switch
+  const timeline = useMemo(() => buildTaskTimeline(events, running), [events, running, language]);
   const changedFiles = task.result?.changedFiles ?? EMPTY_CHANGES;
   const changedPathsKey = changedFiles.map((change) => change.path).join("\n");
   const [selectedPaths, setSelectedPaths] = useState<string[]>(() =>
@@ -298,14 +308,18 @@ export function TaskDetailDialog({
                 {task.status === "queued" ? (
                   <>
                     <Button size="sm" variant="outline" disabled={busy} onClick={onEdit}>
-                      Edit
+                      {t(($) => $.common.actions.edit)}
                     </Button>
                     <Button
                       size="sm"
                       disabled={busy || task.startRequested}
                       onClick={() => void onStart().catch(() => {})}
                     >
-                      {task.startRequested ? "Waiting" : blocked ? "Start when ready" : "Start"}
+                      {task.startRequested
+                        ? t(($) => $.researchTools.tasks.detail.waiting)
+                        : blocked
+                          ? t(($) => $.researchTools.tasks.detail.startWhenReady)
+                          : t(($) => $.researchTools.tasks.detail.start)}
                     </Button>
                     <Button
                       size="sm"
@@ -313,7 +327,7 @@ export function TaskDetailDialog({
                       disabled={busy}
                       onClick={() => void onCancel().catch(() => {})}
                     >
-                      Cancel
+                      {t(($) => $.common.actions.cancel)}
                     </Button>
                   </>
                 ) : null}
@@ -324,17 +338,19 @@ export function TaskDetailDialog({
                     disabled={busy || task.cancelRequested}
                     onClick={() => void onCancel().catch(() => {})}
                   >
-                    {task.cancelRequested ? "Stopping..." : "Stop task"}
+                    {task.cancelRequested
+                      ? t(($) => $.researchTools.tasks.detail.stopping)
+                      : t(($) => $.researchTools.tasks.detail.stopTask)}
                   </Button>
                 ) : null}
                 {task.status === "failed" || task.status === "cancelled" ? (
                   <Button size="sm" disabled={busy} onClick={() => void onRetry().catch(() => {})}>
-                    Retry
+                    {t(($) => $.common.actions.retry)}
                   </Button>
                 ) : null}
                 {task.runtimeId === "acp" && task.nativeSessionId && onOpenSession ? (
                   <Button size="sm" variant="outline" onClick={() => onOpenSession(task)}>
-                    Open session
+                    {t(($) => $.researchTools.tasks.detail.openSession)}
                     <ExternalLink />
                   </Button>
                 ) : null}
@@ -342,11 +358,13 @@ export function TaskDetailDialog({
                   <Button
                     size="sm"
                     variant="ghost"
-                    aria-label={`Delete ${task.title}`}
+                    aria-label={t(($) => $.researchTools.tasks.detail.deleteAria, {
+                      title: task.title,
+                    })}
                     disabled={busy}
                     onClick={onDelete}
                   >
-                    <Trash2 /> Delete
+                    <Trash2 /> {t(($) => $.common.actions.delete)}
                   </Button>
                 ) : null}
               </div>
@@ -359,7 +377,9 @@ export function TaskDetailDialog({
                 role="alert"
                 className="rounded-md border border-destructive/40 bg-destructive/5 p-3"
               >
-                <p className="text-sm font-medium text-destructive">This task needs attention</p>
+                <p className="text-sm font-medium text-destructive">
+                  {t(($) => $.researchTools.tasks.detail.needsAttention)}
+                </p>
                 <p className="mt-1 break-words text-sm text-foreground">{task.error}</p>
               </div>
             ) : null}
@@ -374,7 +394,7 @@ export function TaskDetailDialog({
                 </div>
                 {onDismissError ? (
                   <Button size="xs" variant="ghost" onClick={onDismissError}>
-                    Dismiss
+                    {t(($) => $.researchTools.tasks.detail.dismiss)}
                   </Button>
                 ) : null}
               </div>
@@ -388,13 +408,13 @@ export function TaskDetailDialog({
           >
             <TabsList className="mx-5 mt-3 flex h-auto w-fit max-w-full shrink-0 justify-start gap-1 self-start overflow-x-auto no-scrollbar">
               <TabsTrigger value="activity" className="shrink-0">
-                Activity
+                {t(($) => $.researchTools.tasks.detail.tabActivity)}
               </TabsTrigger>
               <TabsTrigger value="review" className="shrink-0">
-                Review
+                {t(($) => $.researchTools.tasks.detail.tabReview)}
               </TabsTrigger>
               <TabsTrigger value="output" className="shrink-0">
-                Output
+                {t(($) => $.researchTools.tasks.detail.tabOutput)}
               </TabsTrigger>
             </TabsList>
 
@@ -411,14 +431,16 @@ export function TaskDetailDialog({
               {dependencies.length > 0 ? (
                 <section aria-labelledby="research-task-dependencies" className="mb-4">
                   <h4 id="research-task-dependencies" className="text-sm font-medium">
-                    Dependencies
+                    {t(($) => $.researchTools.tasks.detail.dependencies)}
                   </h4>
                   <ul className="mt-2 space-y-1 text-sm">
                     {dependencies.map((dependency) => (
                       <li key={dependency.id} className="flex items-center justify-between gap-3">
                         <span className="min-w-0 truncate">{dependency.title}</span>
                         <span className="shrink-0 text-xs text-muted-foreground">
-                          {dependency.status ? STATUS_LABELS[dependency.status] : "Unavailable"}
+                          {dependency.status
+                            ? statusLabel(dependency.status)
+                            : t(($) => $.researchTools.tasks.detail.dependencyUnavailable)}
                         </span>
                       </li>
                     ))}
@@ -428,13 +450,13 @@ export function TaskDetailDialog({
 
               <section aria-labelledby="research-task-activity" className="min-w-0">
                 <h4 id="research-task-activity" className="sr-only">
-                  Activity
+                  {t(($) => $.researchTools.tasks.detail.tabActivity)}
                 </h4>
                 {timeline.items.length === 0 && !eventsLoading ? (
                   <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                     {task.executionGeneration > 0
-                      ? "No activity was recorded for this run."
-                      : "Start this task to record its activity."}
+                      ? t(($) => $.researchTools.tasks.detail.noActivity)
+                      : t(($) => $.researchTools.tasks.detail.startToRecord)}
                   </p>
                 ) : (
                   <div className="relative min-w-0">
@@ -493,8 +515,10 @@ export function TaskDetailDialog({
                                   <Paperclip aria-hidden="true" />
                                   <span className="min-w-0 truncate">
                                     {previewingPath === item.artifact.path
-                                      ? "Loading..."
-                                      : `Saved ${item.artifact.label}`}
+                                      ? t(($) => $.researchTools.tasks.detail.loading)
+                                      : t(($) => $.researchTools.tasks.detail.savedArtifact, {
+                                          label: item.artifact.label,
+                                        })}
                                   </span>
                                 </Button>
                               ) : null}
@@ -507,7 +531,8 @@ export function TaskDetailDialog({
                 )}
                 {eventsLoading ? (
                   <p role="status" className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="size-3 animate-spin" /> Loading activity...
+                    <Loader2 className="size-3 animate-spin" />{" "}
+                    {t(($) => $.researchTools.tasks.detail.loadingActivity)}
                   </p>
                 ) : null}
               </section>
@@ -517,11 +542,21 @@ export function TaskDetailDialog({
               {task.sourceRevision ? (
                 <section className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
                   <p className="break-all">
-                    {task.isolation?.kind === "git_worktree" ? "Git worktree" : "Staged copy"} ·
-                    source <span className="font-mono">{task.sourceRevision.slice(0, 28)}</span>
+                    <Trans
+                      ns="researchTools"
+                      i18nKey={($) => $.researchTools.tasks.detail.sourceRevision}
+                      values={{
+                        isolation:
+                          task.isolation?.kind === "git_worktree"
+                            ? t(($) => $.researchTools.tasks.detail.isolationWorktree)
+                            : t(($) => $.researchTools.tasks.detail.isolationStaged),
+                        revision: task.sourceRevision.slice(0, 28),
+                      }}
+                      components={{ revision: <span className="font-mono" /> }}
+                    />
                   </p>
                   <p className="mt-1">
-                    The original project stays unchanged until you apply reviewed files.
+                    {t(($) => $.researchTools.tasks.detail.originalUnchanged)}
                   </p>
                 </section>
               ) : null}
@@ -531,7 +566,7 @@ export function TaskDetailDialog({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h5 className="flex items-center gap-2 text-sm font-medium">
                       <FileDiff className="size-4" />
-                      File changes
+                      {t(($) => $.researchTools.tasks.detail.fileChanges)}
                     </h5>
                     <button
                       type="button"
@@ -547,12 +582,12 @@ export function TaskDetailDialog({
                       }
                     >
                       {selectedPaths.length === changedFiles.length
-                        ? "Clear selection"
-                        : "Select all"}
+                        ? t(($) => $.researchTools.tasks.detail.clearSelection)
+                        : t(($) => $.researchTools.tasks.detail.selectAll)}
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Preview every selected file before applying it.
+                    {t(($) => $.researchTools.tasks.detail.previewBeforeApply)}
                   </p>
                   {driftedPaths.length > 0 ? (
                     <p
@@ -562,8 +597,12 @@ export function TaskDetailDialog({
                       <AlertTriangle aria-hidden="true" className="mt-px size-3.5 shrink-0" />
                       <span className="min-w-0 break-words">
                         {driftedPaths.length === 1
-                          ? `${driftedPaths[0]} changed in your project after this task started. Its diff is against the older version, so it cannot be applied.`
-                          : `${driftedPaths.length} files changed in your project after this task started. Their diffs are against the older versions, so they cannot be applied.`}
+                          ? t(($) => $.researchTools.tasks.detail.driftedOne, {
+                              path: driftedPaths[0],
+                            })
+                          : t(($) => $.researchTools.tasks.detail.driftedMany, {
+                              fileCount: driftedPaths.length,
+                            })}
                       </span>
                     </p>
                   ) : null}
@@ -575,7 +614,9 @@ export function TaskDetailDialog({
                         <div key={change.path} className="p-3">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
                             <Checkbox
-                              aria-label={`Apply ${change.path}`}
+                              aria-label={t(($) => $.researchTools.tasks.detail.applyAria, {
+                                path: change.path,
+                              })}
                               checked={selectedPaths.includes(change.path)}
                               disabled={task.status !== "awaiting_review" || busy || drifted}
                               onCheckedChange={(checked) =>
@@ -597,11 +638,11 @@ export function TaskDetailDialog({
                                 className="shrink-0 gap-1 border-amber-500/50"
                               >
                                 <AlertTriangle aria-hidden="true" className="size-3" />
-                                Changed since
+                                {t(($) => $.researchTools.tasks.detail.changedSince)}
                               </Badge>
                             ) : null}
                             <span className="text-xs capitalize text-muted-foreground">
-                              {change.kind}
+                              {changeKindLabel(change.kind)}
                             </span>
                             <Button
                               size="xs"
@@ -610,10 +651,10 @@ export function TaskDetailDialog({
                               onClick={() => void previewFile(change.path)}
                             >
                               {previewingPath === change.path
-                                ? "Loading..."
+                                ? t(($) => $.researchTools.tasks.detail.loading)
                                 : preview
-                                  ? "Refresh preview"
-                                  : "Preview"}
+                                  ? t(($) => $.researchTools.tasks.detail.refreshPreview)
+                                  : t(($) => $.researchTools.tasks.detail.preview)}
                             </Button>
                           </div>
                           {preview ? (
@@ -627,14 +668,18 @@ export function TaskDetailDialog({
                               ) : (
                                 <div className="grid grid-cols-2 divide-x text-xs text-muted-foreground">
                                   <div className="p-3">
-                                    Before:{" "}
                                     {preview.before.exists
-                                      ? `${preview.before.size} bytes`
-                                      : "absent"}
+                                      ? t(($) => $.researchTools.tasks.detail.beforeBytes, {
+                                          size: preview.before.size,
+                                        })
+                                      : t(($) => $.researchTools.tasks.detail.beforeAbsent)}
                                   </div>
                                   <div className="p-3">
-                                    After:{" "}
-                                    {preview.after.exists ? `${preview.after.size} bytes` : "absent"}
+                                    {preview.after.exists
+                                      ? t(($) => $.researchTools.tasks.detail.afterBytes, {
+                                          size: preview.after.size,
+                                        })
+                                      : t(($) => $.researchTools.tasks.detail.afterAbsent)}
                                   </div>
                                 </div>
                               )}
@@ -656,7 +701,7 @@ export function TaskDetailDialog({
                         disabled={busy}
                         onClick={() => void onCancel().catch(() => {})}
                       >
-                        Discard changes
+                        {t(($) => $.researchTools.tasks.detail.discardChanges)}
                       </Button>
                       <Button
                         disabled={
@@ -666,21 +711,27 @@ export function TaskDetailDialog({
                         }
                         onClick={() => void onApply(selectedPaths).catch(() => {})}
                       >
-                        {busy ? "Applying..." : `Apply ${selectedPaths.length} selected`}
+                        {busy
+                          ? t(($) => $.researchTools.tasks.detail.applying)
+                          : t(($) => $.researchTools.tasks.detail.applySelected, {
+                              selected: selectedPaths.length,
+                            })}
                       </Button>
                     </div>
                   ) : null}
                 </div>
               ) : task.status === "awaiting_review" ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-                  <p className="text-sm text-muted-foreground">No project files changed.</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t(($) => $.researchTools.tasks.detail.noFilesChanged)}
+                  </p>
                   <Button disabled={busy} onClick={() => void onAccept().catch(() => {})}>
-                    Mark reviewed
+                    {t(($) => $.researchTools.tasks.detail.markReviewed)}
                   </Button>
                 </div>
               ) : (
                 <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                  This task has nothing waiting for review.
+                  {t(($) => $.researchTools.tasks.detail.nothingToReview)}
                 </p>
               )}
             </TabsContent>
@@ -690,25 +741,25 @@ export function TaskDetailDialog({
                 <section aria-labelledby="research-task-result" className="space-y-3">
                   <div className="min-w-0">
                     <h4 id="research-task-result" className="text-sm font-medium">
-                      Result
+                      {t(($) => $.researchTools.tasks.detail.result)}
                     </h4>
                     <div className="mt-1 min-w-0 break-words text-sm text-muted-foreground">
                       <Markdown className="min-w-0 break-words">
-                        {task.result.summary || "The task finished without a written summary."}
+                        {task.result.summary || t(($) => $.researchTools.tasks.detail.noSummary)}
                       </Markdown>
                     </div>
                   </div>
                 </section>
               ) : (
                 <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                  This task has not produced a result yet.
+                  {t(($) => $.researchTools.tasks.detail.noResult)}
                 </p>
               )}
 
               {artifacts.length > 0 ? (
                 <div className="space-y-2">
                   <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Artifacts
+                    {t(($) => $.researchTools.tasks.detail.artifacts)}
                   </h5>
                   {artifacts.map((artifact) => (
                     <button
@@ -719,7 +770,9 @@ export function TaskDetailDialog({
                       className="flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-70"
                     >
                       <span className="min-w-0 truncate">
-                        {previewingPath === artifact.path ? "Loading..." : artifact.label}
+                        {previewingPath === artifact.path
+                          ? t(($) => $.researchTools.tasks.detail.loading)
+                          : artifact.label}
                       </span>
                       <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
                         {artifact.path}
@@ -743,8 +796,9 @@ export function TaskDetailDialog({
                         />
                       ) : (
                         <p className="mt-2 text-xs text-muted-foreground">
-                          Binary file · {artifactPreview.content.size ?? 0} bytes. Apply it to your
-                          project to open it.
+                          {t(($) => $.researchTools.tasks.detail.binaryArtifact, {
+                            size: artifactPreview.content.size ?? 0,
+                          })}
                         </p>
                       )}
                     </div>
@@ -762,8 +816,11 @@ export function TaskDetailDialog({
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-5 py-2.5">
             <p className="text-[11px] tabular-nums text-muted-foreground">
               {usage.inputTokens === null && usage.outputTokens === null
-                ? "No token usage reported."
-                : `Input ${tokenCount(usage.inputTokens)}, output ${tokenCount(usage.outputTokens)}`}
+                ? t(($) => $.researchTools.tasks.detail.noTokenUsage)
+                : t(($) => $.researchTools.tasks.detail.tokenUsage, {
+                    input: tokenCount(usage.inputTokens),
+                    output: tokenCount(usage.outputTokens),
+                  })}
             </p>
             {canLoadMoreEvents ? (
               <Button
@@ -772,7 +829,7 @@ export function TaskDetailDialog({
                 disabled={eventsLoading}
                 onClick={() => void onLoadMoreEvents().catch(() => {})}
               >
-                Load more activity
+                {t(($) => $.researchTools.tasks.detail.loadMore)}
               </Button>
             ) : null}
           </footer>

@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
+import { i18n } from "@/i18n";
 import { acpCatalog } from "@/lib/acp";
 import type { DelegationTarget } from "@/lib/agent-mentions";
 
@@ -27,7 +28,7 @@ export function useAgentTargets(projectId: string | null, groups: readonly Provi
     ...(catalog.data ?? []).filter((agent) => agent.installed).map((agent) => ({
       id: agent.definition.id,
       label: agent.definition.name,
-      detail: "CLI agent · uses its own account",
+      detail: i18n.t(($) => $.ai.agents.cliDetail),
       runtime: "acp" as const,
       agentId: agent.definition.id,
       taskUnavailableReason: agent.taskUnavailableReason,
@@ -35,7 +36,7 @@ export function useAgentTargets(projectId: string | null, groups: readonly Provi
     ...groups.flatMap((group) => group.models.filter((model) => model.trust !== "blocked").map((model) => ({
       id: `api:${encodeURIComponent(group.id)}:${encodeURIComponent(model.id)}`,
       label: model.name ?? model.id,
-      detail: `${group.name} · Oleafly agent`,
+      detail: i18n.t(($) => $.ai.agents.builtInDetail, { provider: group.name }),
       runtime: "built-in" as const,
       providerId: group.id,
       modelId: model.id,

@@ -42,3 +42,5 @@ export function notifyCompileSucceeded(
     checkpoint,
   }).catch(() => {});
 }
+
+export { LOCALE_CHANGED_EVENT } from "@/i18n";

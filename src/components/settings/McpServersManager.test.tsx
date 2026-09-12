@@ -5,6 +5,9 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { i18n } from "@/i18n";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type {
   McpImportedServer,
   McpManagedServer,
@@ -54,6 +57,28 @@ const DISABLED: McpManagedServer = {
 };
 
 const mockInvoke = vi.mocked(invoke);
+
+const enableLabel = (name: string) =>
+  i18n.t(($) => $.settings.mcp.servers.card.enableLabel, { name });
+const validateLabel = (name: string) =>
+  i18n.t(($) => $.settings.mcp.servers.card.validateLabel, { name });
+const editLabel = (name: string) =>
+  i18n.t(($) => $.settings.mcp.servers.card.editLabel, { name });
+const removeLabel = (name: string) =>
+  i18n.t(($) => $.settings.mcp.servers.card.removeLabel, { name });
+const environmentKeyLabel = (index: number) =>
+  i18n.t(($) => $.settings.mcp.servers.editor.pairs.environmentKeyLabel, { index });
+const environmentValueLabel = (index: number) =>
+  i18n.t(($) => $.settings.mcp.servers.editor.pairs.environmentValueLabel, { index });
+const headerKeyLabel = (index: number) =>
+  i18n.t(($) => $.settings.mcp.servers.editor.pairs.headerKeyLabel, { index });
+const headerValueLabel = (index: number) =>
+  i18n.t(($) => $.settings.mcp.servers.editor.pairs.headerValueLabel, { index });
+const candidateLabel = (name: string, source: string) =>
+  i18n.t(($) => $.settings.mcp.import.candidateLabel, { name, source });
+const importSummary = (imported: number, skipped: number, failed: number) =>
+  i18n.t(($) => $.settings.mcp.servers.importSummary, { imported, skipped, failed });
+
 let records: McpManagedServer[];
 let validationCount: Record<string, number>;
 
@@ -80,10 +105,12 @@ function renderManager() {
   return render(<McpServersManager />);
 }
 
+const PARENT_MODAL_LABEL = "Settings";
+
 function ParentModal({ onClose }: { onClose: () => void }) {
   const { dialogRef } = useModalAccessibility<HTMLDivElement>(true, onClose);
   return (
-    <div ref={dialogRef} role="dialog" aria-label="Settings" tabIndex={-1}>
+    <div ref={dialogRef} role="dialog" aria-label={PARENT_MODAL_LABEL} tabIndex={-1}>
       <McpServersManager />
     </div>
   );
@@ -248,18 +275,22 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("files");
 
-    await user.click(screen.getByRole("button", { name: "Browse registry" }));
-    await user.type(screen.getByLabelText("Search the official MCP registry"), "papers");
-    await user.click(screen.getByRole("button", { name: "Search" }));
+    await user.click(screen.getByRole("button", { name: enSettings.mcp.servers.browseRegistry }));
+    await user.type(screen.getByLabelText(enSettings.mcp.registry.searchLabel), "papers");
+    await user.click(screen.getByRole("button", { name: enCommon.actions.search }));
 
     expect(await screen.findByText("io.example/papers")).toBeInTheDocument();
-    expect(screen.getByText("Environment: PAPERS_TOKEN")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        i18n.t(($) => $.settings.mcp.registry.environmentLine, { names: "PAPERS_TOKEN" }),
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("1 registry entry was ignored because its metadata was invalid.")).toBeInTheDocument();
     expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_add", expect.anything());
 
-    await user.click(screen.getByRole("button", { name: "Review before adding" }));
-    expect(screen.getByRole("dialog", { name: "Add MCP server" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Server name")).toHaveValue("papers");
+    await user.click(screen.getByRole("button", { name: enSettings.mcp.registry.review }));
+    expect(screen.getByRole("dialog", { name: enSettings.mcp.servers.editor.titleAdd })).toBeInTheDocument();
+    expect(screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel)).toHaveValue("papers");
     expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_add", expect.anything());
   });
 
@@ -268,35 +299,39 @@ describe("McpServersManager", () => {
 
     expect(await screen.findByText("read_file")).toBeInTheDocument();
     expect(screen.getByText("list_directory")).toBeInTheDocument();
-    expect(screen.getByText("2 tools")).toBeInTheDocument();
-    expect(screen.getByText("Disabled")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        i18n.t(($) => $.settings.mcp.servers.card.toolCount, { count: 2 }),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(enSettings.mcp.servers.status.disabled)).toBeInTheDocument();
     expect(screen.queryByText("files_search")).not.toBeInTheDocument();
   });
 
   it("portals the server editor above the Settings modal", async () => {
     records = [];
     const { container } = renderManager();
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
 
-    const dialog = screen.getByRole("dialog", { name: "Add MCP server" });
+    const dialog = screen.getByRole("dialog", { name: enSettings.mcp.servers.editor.titleAdd });
     expect(container).not.toContainElement(dialog);
     expect(dialog).toHaveClass("z-[120]");
     expect(dialog.previousElementSibling).toHaveClass("z-[120]");
-    expect(screen.getByLabelText("Server name")).toBeEnabled();
+    expect(screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel)).toBeEnabled();
   });
 
   it("keeps Tab navigation inside the server editor above a parent modal", async () => {
     records = [];
     const user = userEvent.setup();
     render(<ParentModal onClose={vi.fn()} />);
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    await user.click(screen.getByRole("button", { name: "Add server" }));
+    await user.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
 
-    const dialog = screen.getByRole("dialog", { name: "Add MCP server" });
-    const serverName = screen.getByLabelText("Server name");
+    const dialog = screen.getByRole("dialog", { name: enSettings.mcp.servers.editor.titleAdd });
+    const serverName = screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel);
     await waitFor(() => expect(serverName).toHaveFocus());
     await user.tab();
 
@@ -309,14 +344,14 @@ describe("McpServersManager", () => {
     const user = userEvent.setup();
     const closeParent = vi.fn();
     render(<ParentModal onClose={closeParent} />);
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    await user.click(screen.getByRole("button", { name: "Add server" }));
-    await screen.findByRole("dialog", { name: "Add MCP server" });
+    await user.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    await screen.findByRole("dialog", { name: enSettings.mcp.servers.editor.titleAdd });
     await user.keyboard("{Escape}");
 
     await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Add MCP server" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: enSettings.mcp.servers.editor.titleAdd })).not.toBeInTheDocument();
     });
     expect(closeParent).not.toHaveBeenCalled();
   });
@@ -400,34 +435,34 @@ describe("McpServersManager", () => {
   it("adds and validates a stdio server with exact arguments and environment values", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
-    fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "papers" } });
-    fireEvent.change(screen.getByLabelText("Command"), { target: { value: "node" } });
-    fireEvent.change(screen.getByLabelText("Arguments"), {
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel), { target: { value: "papers" } });
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.commandLabel), { target: { value: "node" } });
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.argsLabel), {
       target: { value: "server.js\n--root\n/tmp/papers" },
     });
-    fireEvent.change(screen.getByLabelText("Environment key 1"), {
+    fireEvent.change(screen.getByLabelText(environmentKeyLabel(1)), {
       target: { value: "API_KEY" },
     });
-    fireEvent.change(screen.getByLabelText("Environment value 1"), {
+    fireEvent.change(screen.getByLabelText(environmentValueLabel(1)), {
       target: { value: "secret" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Add and validate" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.addAndValidate }));
 
     expect(await screen.findByText("papers_search")).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Enable papers" })).toBeChecked();
+    expect(screen.getByRole("switch", { name: enableLabel("papers") })).toBeChecked();
   });
 
   it("adds a wrapped JSON configuration through the existing validation path", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
-    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Full configuration" }), {
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.jsonView }));
+    fireEvent.change(screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.jsonLabel }), {
       target: {
         value: JSON.stringify({
           mcpServers: {
@@ -441,7 +476,7 @@ describe("McpServersManager", () => {
         }),
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Add and validate" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.addAndValidate }));
 
     expect(await screen.findByText("papers_search")).toBeInTheDocument();
   });
@@ -449,65 +484,65 @@ describe("McpServersManager", () => {
   it("keeps the editor open and explains malformed JSON without adding a server", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
-    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Full configuration" }), {
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.jsonView }));
+    fireEvent.change(screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.jsonLabel }), {
       target: { value: "{" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Add and validate" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.addAndValidate }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       'MCP server JSON is malformed. Expected either {"server-name": {...}} or {"mcpServers": {"server-name": {...}}}.',
     );
-    expect(screen.getByRole("dialog", { name: "Add MCP server" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: enSettings.mcp.servers.editor.titleAdd })).toBeInTheDocument();
     expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_add", expect.anything());
   });
 
   it("preserves an in-progress form configuration through the JSON view", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
-    fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "papers" } });
-    fireEvent.change(screen.getByLabelText("Command"), { target: { value: "node" } });
-    fireEvent.change(screen.getByLabelText("Arguments"), {
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel), { target: { value: "papers" } });
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.commandLabel), { target: { value: "node" } });
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.argsLabel), {
       target: { value: "server.js\n--root\n/tmp/papers" },
     });
-    fireEvent.change(screen.getByLabelText("Environment key 1"), {
+    fireEvent.change(screen.getByLabelText(environmentKeyLabel(1)), {
       target: { value: "API_KEY" },
     });
-    fireEvent.change(screen.getByLabelText("Environment value 1"), {
+    fireEvent.change(screen.getByLabelText(environmentValueLabel(1)), {
       target: { value: "secret" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.jsonView }));
 
-    const fullConfiguration = screen.getByRole("textbox", { name: "Full configuration" });
+    const fullConfiguration = screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.jsonLabel });
     expect((fullConfiguration as HTMLTextAreaElement).value).toContain('"papers"');
     expect((fullConfiguration as HTMLTextAreaElement).value).toContain('"API_KEY": "secret"');
 
-    fireEvent.click(screen.getByRole("button", { name: "Form" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.formView }));
 
-    expect(screen.getByLabelText("Server name")).toHaveValue("papers");
-    expect(screen.getByLabelText("Command")).toHaveValue("node");
-    expect(screen.getByLabelText("Arguments")).toHaveValue(
+    expect(screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel)).toHaveValue("papers");
+    expect(screen.getByLabelText(enSettings.mcp.servers.editor.commandLabel)).toHaveValue("node");
+    expect(screen.getByLabelText(enSettings.mcp.servers.editor.argsLabel)).toHaveValue(
       "server.js\n--root\n/tmp/papers",
     );
-    expect(screen.getByLabelText("Environment key 1")).toHaveValue("API_KEY");
-    expect(screen.getByLabelText("Environment value 1")).toHaveValue("secret");
+    expect(screen.getByLabelText(environmentKeyLabel(1))).toHaveValue("API_KEY");
+    expect(screen.getByLabelText(environmentValueLabel(1))).toHaveValue("secret");
   });
 
   it("keeps in-progress JSON when the active JSON segment is clicked again", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
-    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
-    const fullConfiguration = screen.getByRole("textbox", { name: "Full configuration" });
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.jsonView }));
+    const fullConfiguration = screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.jsonLabel });
     const pasted = JSON.stringify({
       docs: {
         type: "http",
@@ -517,7 +552,7 @@ describe("McpServersManager", () => {
     });
     fireEvent.change(fullConfiguration, { target: { value: pasted } });
 
-    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.jsonView }));
 
     expect(fullConfiguration).toHaveValue(pasted);
   });
@@ -525,11 +560,11 @@ describe("McpServersManager", () => {
   it("maps edited remote JSON back into the form", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
-    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Full configuration" }), {
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.jsonView }));
+    fireEvent.change(screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.jsonLabel }), {
       target: {
         value: JSON.stringify({
           docs: {
@@ -541,15 +576,15 @@ describe("McpServersManager", () => {
       },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Form" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.formView }));
 
-    expect(screen.getByLabelText("Server name")).toHaveValue("docs");
-    expect(screen.getByRole("radio", { name: "Remote URL" })).toBeChecked();
-    expect(screen.getByRole("textbox", { name: "Remote URL" })).toHaveValue(
-      "https://docs.example.test/mcp",
-    );
-    expect(screen.getByLabelText("Header key 1")).toHaveValue("Authorization");
-    expect(screen.getByLabelText("Header value 1")).toHaveValue("Bearer secret");
+    expect(screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel)).toHaveValue("docs");
+    expect(screen.getByRole("radio", { name: enSettings.mcp.servers.editor.transportRemote })).toBeChecked();
+    expect(
+      screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.urlLabel }),
+    ).toHaveValue("https://docs.example.test/mcp");
+    expect(screen.getByLabelText(headerKeyLabel(1))).toHaveValue("Authorization");
+    expect(screen.getByLabelText(headerValueLabel(1))).toHaveValue("Bearer secret");
   });
 
   it("imports through add validation, skips duplicate names, and reports failures", async () => {
@@ -611,11 +646,21 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("read_file");
 
-    fireEvent.click(screen.getByRole("button", { name: "Import from other tools" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.importButton }));
 
-    expect(await screen.findByRole("checkbox", { name: /Import papers from Cursor/ })).toBeChecked();
-    expect(screen.getByText("Environment: PAPERS_TOKEN")).toBeInTheDocument();
-    expect(screen.getByText("Headers: Authorization")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("checkbox", { name: candidateLabel("papers", "Cursor") }),
+    ).toBeChecked();
+    expect(
+      screen.getByText(
+        i18n.t(($) => $.settings.mcp.import.keys.environment, { names: "PAPERS_TOKEN" }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        i18n.t(($) => $.settings.mcp.import.keys.headers, { names: "Authorization" }),
+      ),
+    ).toBeInTheDocument();
     for (const secret of [
       "argument-secret",
       "duplicate-secret",
@@ -626,10 +671,17 @@ describe("McpServersManager", () => {
       expect(document.body.textContent).not.toContain(secret);
     }
 
-    fireEvent.click(screen.getByRole("button", { name: "Import selected" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.import.submit }));
 
-    expect(await screen.findByText("Imported 1, skipped 1, failed 1.")).toBeInTheDocument();
-    expect(screen.getByText("broken: Could not connect to the imported server.")).toBeInTheDocument();
+    expect(await screen.findByText(importSummary(1, 1, 1))).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        i18n.t(($) => $.settings.mcp.servers.importFailure, {
+          name: "broken",
+          reason: "Could not connect to the imported server.",
+        }),
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("node imported.js")).toBeInTheDocument();
     expect(addCalls).toEqual([
       {
@@ -660,14 +712,14 @@ describe("McpServersManager", () => {
     });
     renderManager();
 
-    expect(screen.getByRole("button", { name: "Import from other tools" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: enSettings.mcp.servers.importButton })).toBeDisabled();
 
     await act(async () => {
       listed.resolve([CONNECTED]);
     });
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Import from other tools" })).toBeEnabled(),
+      expect(screen.getByRole("button", { name: enSettings.mcp.servers.importButton })).toBeEnabled(),
     );
   });
 
@@ -681,7 +733,7 @@ describe("McpServersManager", () => {
     renderManager();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load MCP servers.");
-    expect(screen.getByRole("button", { name: "Import from other tools" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: enSettings.mcp.servers.importButton })).toBeDisabled();
   });
 
   it("validates a disabled matching import before overwriting it", async () => {
@@ -730,12 +782,12 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("read_file");
 
-    fireEvent.click(screen.getByRole("button", { name: "Import from other tools" }));
-    await screen.findByRole("checkbox", { name: /Import files from Claude Code/ });
-    fireEvent.click(screen.getByRole("radio", { name: "Overwrite existing" }));
-    fireEvent.click(screen.getByRole("button", { name: "Import selected" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.importButton }));
+    await screen.findByRole("checkbox", { name: candidateLabel("files", "Claude Code") });
+    fireEvent.click(screen.getByRole("radio", { name: enSettings.mcp.import.duplicates.overwrite.label }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.import.submit }));
 
-    expect(await screen.findByText("Imported 1, skipped 0, failed 0.")).toBeInTheDocument();
+    expect(await screen.findByText(importSummary(1, 0, 0))).toBeInTheDocument();
     expect(screen.getByText("bun replacement.js")).toBeInTheDocument();
     expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_add", expect.anything());
     expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_update", expect.anything());
@@ -747,13 +799,16 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("docs-api");
 
-    fireEvent.click(screen.getByRole("button", { name: "Validate docs-api" }));
+    fireEvent.click(screen.getByRole("button", { name: validateLabel("docs-api") }));
 
     expect(await screen.findByText("docs-api_search")).toBeInTheDocument();
-    expect(screen.getByText("Disabled")).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Enable docs-api" })).not.toBeChecked();
+    expect(screen.getByText(enSettings.mcp.servers.status.disabled)).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: enableLabel("docs-api") })).not.toBeChecked();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "docs-api is disabled. Last check found 1 tool.",
+      i18n.t(($) => $.settings.mcp.servers.live.disabledLastCheckFound, {
+        name: "docs-api",
+        count: 1,
+      }),
     );
   });
 
@@ -775,13 +830,13 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("docs-api");
 
-    fireEvent.click(screen.getByRole("button", { name: "Validate docs-api" }));
+    fireEvent.click(screen.getByRole("button", { name: validateLabel("docs-api") }));
 
     expect(
       await screen.findByText("Could not connect to the remote MCP server: connection refused."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Disabled")).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Enable docs-api" })).not.toBeChecked();
+    expect(screen.getByText(enSettings.mcp.servers.status.disabled)).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: enableLabel("docs-api") })).not.toBeChecked();
   });
 
   it("edits a disabled remote server without connecting automatically", async () => {
@@ -789,17 +844,18 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("docs-api");
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit docs-api" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Remote URL" }), {
-      target: { value: "https://new.example.test/mcp" },
-    });
-    fireEvent.change(screen.getByLabelText("Header value 1"), {
+    fireEvent.click(screen.getByRole("button", { name: editLabel("docs-api") }));
+    fireEvent.change(
+      screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.urlLabel }),
+      { target: { value: "https://new.example.test/mcp" } },
+    );
+    fireEvent.change(screen.getByLabelText(headerValueLabel(1)), {
       target: { value: "Bearer replacement" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.saveChanges }));
 
     expect(await screen.findByText("https://new.example.test/mcp")).toBeInTheDocument();
-    expect(screen.getByText("Disabled")).toBeInTheDocument();
+    expect(screen.getByText(enSettings.mcp.servers.status.disabled)).toBeInTheDocument();
     expect(screen.queryByText("docs-api_search")).not.toBeInTheDocument();
   });
 
@@ -832,9 +888,9 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("files");
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit files" }));
-    fireEvent.change(screen.getByLabelText("Command"), { target: { value: "new-node" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save and validate" }));
+    fireEvent.click(screen.getByRole("button", { name: editLabel("files") }));
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.commandLabel), { target: { value: "new-node" } });
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.saveAndValidate }));
     expect(await screen.findByText("new_search")).toBeInTheDocument();
 
     oldValidation.resolve(CONNECTED.validation);
@@ -850,15 +906,15 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("read_file");
 
-    fireEvent.click(screen.getByRole("switch", { name: "Enable files" }));
+    fireEvent.click(screen.getByRole("switch", { name: enableLabel("files") }));
     await waitFor(() =>
-      expect(screen.getByRole("switch", { name: "Enable files" })).not.toBeChecked(),
+      expect(screen.getByRole("switch", { name: enableLabel("files") })).not.toBeChecked(),
     );
-    expect(screen.getByText("Disabled")).toBeInTheDocument();
+    expect(screen.getByText(enSettings.mcp.servers.status.disabled)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("switch", { name: "Enable files" }));
+    fireEvent.click(screen.getByRole("switch", { name: enableLabel("files") }));
     await waitFor(() =>
-      expect(screen.getByRole("switch", { name: "Enable files" })).toBeChecked(),
+      expect(screen.getByRole("switch", { name: enableLabel("files") })).toBeChecked(),
     );
     expect(await screen.findByText("files_search")).toBeInTheDocument();
     expect(changed).toHaveBeenCalledTimes(2);
@@ -883,12 +939,12 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("files");
 
-    fireEvent.click(screen.getByRole("switch", { name: "Enable files" }));
-    await waitFor(() => expect(screen.getByText("Disabled")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("switch", { name: enableLabel("files") }));
+    await waitFor(() => expect(screen.getByText(enSettings.mcp.servers.status.disabled)).toBeInTheDocument());
 
     oldValidation.resolve(CONNECTED.validation);
 
-    await waitFor(() => expect(screen.getByText("Disabled")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(enSettings.mcp.servers.status.disabled)).toBeInTheDocument());
     expect(screen.queryByText("read_file")).not.toBeInTheDocument();
   });
 
@@ -913,12 +969,12 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("read_file");
 
-    fireEvent.click(screen.getByRole("button", { name: "Validate files" }));
+    fireEvent.click(screen.getByRole("button", { name: validateLabel("files") }));
 
     expect(
       await screen.findByText('Command "missing-mcp" was not found. Check the command and PATH.'),
     ).toBeInTheDocument();
-    expect(screen.getByText("Error")).toBeInTheDocument();
+    expect(screen.getByText(enSettings.mcp.servers.status.error)).toBeInTheDocument();
   });
 
   it("keeps a rejected add open and does not add the unreachable server", async () => {
@@ -931,19 +987,19 @@ describe("McpServersManager", () => {
       throw new Error(`Unexpected command: ${command}`);
     });
     renderManager();
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
-    fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "broken" } });
-    fireEvent.change(screen.getByLabelText("Command"), { target: { value: "missing-mcp" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add and validate" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel), { target: { value: "broken" } });
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.commandLabel), { target: { value: "missing-mcp" } });
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.addAndValidate }));
 
     expect(
       await screen.findByText("Could not start 'missing-mcp': command not found."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("dialog", { name: "Add MCP server" })).toBeInTheDocument();
-    expect(screen.getByText("No servers added")).toBeInTheDocument();
-    expect(screen.queryByRole("switch", { name: "Enable broken" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: enSettings.mcp.servers.editor.titleAdd })).toBeInTheDocument();
+    expect(screen.getByText(enSettings.mcp.servers.empty.title)).toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: enableLabel("broken") })).not.toBeInTheDocument();
   });
 
   it("removes a server only after confirmation", async () => {
@@ -951,13 +1007,13 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("docs-api");
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove docs-api" }));
-    const confirmation = screen.getByRole("alertdialog", { name: "Remove server?" });
+    fireEvent.click(screen.getByRole("button", { name: removeLabel("docs-api") }));
+    const confirmation = screen.getByRole("alertdialog", { name: enSettings.mcp.servers.remove.title });
     expect(within(confirmation).getByText(/docs-api/)).toBeInTheDocument();
-    fireEvent.click(within(confirmation).getByRole("button", { name: "Remove server" }));
+    fireEvent.click(within(confirmation).getByRole("button", { name: enSettings.mcp.servers.remove.confirm }));
 
     await waitFor(() => expect(screen.queryByText("docs-api")).not.toBeInTheDocument());
-    expect(screen.getByText("No servers added")).toBeInTheDocument();
+    expect(screen.getByText(enSettings.mcp.servers.empty.title)).toBeInTheDocument();
   });
 
   it("does not apply an old validation after a server name is removed and reused", async () => {
@@ -996,18 +1052,18 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("files");
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove files" }));
+    fireEvent.click(screen.getByRole("button", { name: removeLabel("files") }));
     fireEvent.click(
-      within(screen.getByRole("alertdialog", { name: "Remove server?" })).getByRole("button", {
-        name: "Remove server",
+      within(screen.getByRole("alertdialog", { name: enSettings.mcp.servers.remove.title })).getByRole("button", {
+        name: enSettings.mcp.servers.remove.confirm,
       }),
     );
-    await screen.findByText("No servers added");
+    await screen.findByText(enSettings.mcp.servers.empty.title);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
-    fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "files" } });
-    fireEvent.change(screen.getByLabelText("Command"), { target: { value: "new-node" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add and validate" }));
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.nameLabel), { target: { value: "files" } });
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.commandLabel), { target: { value: "new-node" } });
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.editor.addAndValidate }));
     expect(await screen.findByText("new_search")).toBeInTheDocument();
 
     oldValidation.resolve(CONNECTED.validation);

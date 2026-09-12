@@ -3,18 +3,21 @@
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
+use crate::i18n::{t, t_with};
+
 pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
-    let about = MenuItemBuilder::with_id("about", "About Oleafly").build(handle)?;
+    let about = MenuItemBuilder::with_id("about", t("menu.about")).build(handle)?;
     let check_updates =
-        MenuItemBuilder::with_id("check_updates", "Check for Updates…").build(handle)?;
-    let reload_views = MenuItemBuilder::with_id("reload_views", "Reload Views").build(handle)?;
+        MenuItemBuilder::with_id("check_updates", t("menu.checkUpdates")).build(handle)?;
+    let reload_views =
+        MenuItemBuilder::with_id("reload_views", t("menu.reloadViews")).build(handle)?;
     let restart_app =
-        MenuItemBuilder::with_id("restart_app", "Restart Application").build(handle)?;
-    let quit = MenuItemBuilder::with_id("quit_app", "Quit Oleafly")
+        MenuItemBuilder::with_id("restart_app", t("menu.restartApp")).build(handle)?;
+    let quit = MenuItemBuilder::with_id("quit_app", t("menu.quit"))
         .accelerator("CmdOrCtrl+Q")
         .build(handle)?;
 
-    let app_menu = SubmenuBuilder::new(handle, "Oleafly")
+    let app_menu = SubmenuBuilder::with_id(handle, "app_menu", t("menu.app"))
         .item(&reload_views)
         .item(&restart_app)
         .separator()
@@ -33,25 +36,25 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     // handled entirely in the webview (uniform on every platform) and these
     // items exist only as clickable Edit-menu entries that route to the same
     // editor history.
-    let undo = MenuItemBuilder::with_id("edit_undo", "Undo").build(handle)?;
-    let redo = MenuItemBuilder::with_id("edit_redo", "Redo").build(handle)?;
-    let edit_menu = SubmenuBuilder::new(handle, "Edit")
+    let undo = MenuItemBuilder::with_id("edit_undo", t("menu.undo")).build(handle)?;
+    let redo = MenuItemBuilder::with_id("edit_redo", t("menu.redo")).build(handle)?;
+    let edit_menu = SubmenuBuilder::with_id(handle, "edit_menu", t("menu.edit"))
         .item(&undo)
         .item(&redo)
         .separator()
-        .cut()
-        .copy()
-        .paste()
-        .select_all()
+        .cut_with_text(t("menu.cut"))
+        .copy_with_text(t("menu.copy"))
+        .paste_with_text(t("menu.paste"))
+        .select_all_with_text(t("menu.selectAll"))
         .build()?;
 
-    let toggle_terminal = MenuItemBuilder::with_id("toggle_terminal", "Toggle Terminal")
+    let toggle_terminal = MenuItemBuilder::with_id("toggle_terminal", t("menu.toggleTerminal"))
         .accelerator("Ctrl+`")
         .build(handle)?;
-    let toggle_browser = MenuItemBuilder::with_id("toggle_browser", "Toggle Browser")
+    let toggle_browser = MenuItemBuilder::with_id("toggle_browser", t("menu.toggleBrowser"))
         .accelerator("Ctrl+Shift+B")
         .build(handle)?;
-    let view_menu = SubmenuBuilder::with_id(handle, "view_menu", "View")
+    let view_menu = SubmenuBuilder::with_id(handle, "view_menu", t("menu.view"))
         .item(&toggle_terminal)
         .item(&toggle_browser)
         .build()?;
@@ -61,6 +64,22 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&edit_menu)
         .item(&view_menu)
         .build()
+}
+
+pub fn rebuild<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(target_os = "windows")]
+    {
+        let _ = app;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            if let Ok(menu) = build(&handle) {
+                let _ = handle.set_menu(menu);
+            }
+        });
+    }
 }
 
 fn frontend_event(id: &str) -> Option<&'static str> {
@@ -93,20 +112,18 @@ pub fn set_dock_shortcut_accelerators(
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let menu = app
-            .menu()
-            .ok_or_else(|| "Application menu is unavailable".to_string())?;
+        let menu = app.menu().ok_or_else(|| t("errors.menuUnavailable"))?;
         let view_menu = menu
             .get("view_menu")
             .and_then(|item| item.as_submenu().cloned())
-            .ok_or_else(|| "View menu is unavailable".to_string())?;
+            .ok_or_else(|| t("errors.viewMenuUnavailable"))?;
         for (id, accelerator) in
             dock_accelerator_updates(&terminal_accelerator, &browser_accelerator)
         {
             let item = view_menu
                 .get(id)
                 .and_then(|item| item.as_menuitem().cloned())
-                .ok_or_else(|| format!("Menu item {id} is unavailable"))?;
+                .ok_or_else(|| t_with("errors.menuItemUnavailable", &[("id", id)]))?;
             item.set_accelerator(Some(accelerator))
                 .map_err(|error| error.to_string())?;
         }

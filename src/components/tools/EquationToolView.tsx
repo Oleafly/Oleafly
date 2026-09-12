@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import katex from "katex";
 import {
   ArrowLeft,
@@ -37,6 +38,7 @@ import {
   equationToSvgDocument,
   svgDocumentToPngBytes,
 } from "@/features/equation-export";
+import { toolName } from "@/lib/tool-catalog";
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -71,6 +73,7 @@ function pngFileName(value: string): string | null {
 }
 
 export function EquationToolView() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
   const editorTheme = useSettingsStore((s) => s.editorTheme);
@@ -116,7 +119,9 @@ export function EquationToolView() {
       );
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "Couldn't export this snippet as an image",
+        e instanceof Error
+          ? e.message
+          : t(($) => $.researchTools.equation.exportImageFailed),
       );
     }
   };
@@ -142,9 +147,13 @@ export function EquationToolView() {
       const math = new DOMParser().parseFromString(markup, "text/html").querySelector("math");
       if (!math) throw new Error("No MathML in output");
       await navigator.clipboard.writeText(math.outerHTML);
-      toast.success("Copied MathML (pastes into Word)");
+      toast.success(t(($) => $.researchTools.equation.copiedMathml));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't copy MathML from this snippet");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t(($) => $.researchTools.equation.mathmlFailed),
+      );
     }
   };
 
@@ -152,7 +161,7 @@ export function EquationToolView() {
     if (!rendered.html) return;
     try {
       await navigator.clipboard.writeText(rendered.html);
-      toast.success("Copied KaTeX HTML (needs the KaTeX stylesheet)");
+      toast.success(t(($) => $.researchTools.equation.copiedKatexHtml));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't copy the KaTeX HTML");
     }
@@ -161,7 +170,7 @@ export function EquationToolView() {
   const copyLatex = async () => {
     try {
       await navigator.clipboard.writeText(wrapped);
-      toast.success("Copied LaTeX source");
+      toast.success(t(($) => $.researchTools.equation.copiedSource));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't copy LaTeX source");
     }
@@ -243,15 +252,17 @@ export function EquationToolView() {
           onClick={() => goTo("tools")}
           data-testid="equation-tool-view-back"
         >
-          <ArrowLeft className="size-4" /> Back
+          <ArrowLeft className="size-4" /> {t(($) => $.researchTools.tools.back)}
         </Button>
         <div className="h-6 w-px bg-border" />
         <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted">
           <Sigma className="size-4" />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-semibold leading-tight">LaTeX Preview</div>
-          <div className="text-xs leading-tight text-muted-foreground">Live LaTeX workspace</div>
+          <div className="text-sm font-semibold leading-tight">{toolName("equation")}</div>
+          <div className="text-xs leading-tight text-muted-foreground">
+            {t(($) => $.researchTools.equation.subtitle)}
+          </div>
         </div>
 
         <div className="flex-1" />
@@ -263,7 +274,9 @@ export function EquationToolView() {
               rendered.error ? "bg-destructive" : "bg-emerald-500",
             )}
           />
-          {rendered.error ? "Error" : "Rendered"}
+          {rendered.error
+            ? t(($) => $.researchTools.equation.statusError)
+            : t(($) => $.researchTools.equation.statusRendered)}
         </div>
         <ThemeMenu testId="equation-theme-menu" />
         <Button
@@ -271,7 +284,7 @@ export function EquationToolView() {
           size="sm"
           onClick={() => void copyLatex()}
         >
-          <Copy className="size-4" /> Copy LaTeX
+          <Copy className="size-4" /> {t(($) => $.researchTools.equation.copyLatex)}
         </Button>
         {rendered.html && (
           <Popover
@@ -318,31 +331,31 @@ export function EquationToolView() {
         {rendered.html ? (
           <Popover
             align="right"
-            ariaLabel="Export options"
+            ariaLabel={t(($) => $.researchTools.equation.exportOptions)}
             className="w-56"
             triggerClassName="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
             trigger={
               <>
-                <Download className="size-4" /> Export
+                <Download className="size-4" /> {t(($) => $.researchTools.equation.export)}
               </>
             }
           >
             <PopoverItem onClick={exportPng}>
-              <ImageIcon className="size-4" /> Download PNG
+              <ImageIcon className="size-4" /> {t(($) => $.researchTools.equation.downloadPng)}
             </PopoverItem>
             <PopoverItem onClick={exportSvg}>
-              <FileCode2 className="size-4" /> Download SVG
+              <FileCode2 className="size-4" /> {t(($) => $.researchTools.equation.downloadSvg)}
             </PopoverItem>
             <PopoverItem onClick={() => void copyMathML()}>
-              <Braces className="size-4" /> Copy MathML for Word
+              <Braces className="size-4" /> {t(($) => $.researchTools.equation.copyMathml)}
             </PopoverItem>
             <PopoverItem onClick={() => void copyHtml()}>
-              <Copy className="size-4" /> Copy KaTeX HTML
+              <Copy className="size-4" /> {t(($) => $.researchTools.equation.copyKatexHtml)}
             </PopoverItem>
           </Popover>
         ) : (
           <Button size="sm" disabled>
-            <Download className="size-4" /> Export
+            <Download className="size-4" /> {t(($) => $.researchTools.equation.export)}
           </Button>
         )}
         <WindowControls />

@@ -16,14 +16,14 @@ describe("prepGate", () => {
     const gate = prepGate("\\documentclass{IEEEtran}\n\\begin{document}x\\end{document}");
     expect(gate.offer).toBe(false);
     expect(gate.classSeverity).toBe("block");
-    expect(gate.classNotice).toContain("IEEEtran");
+    expect(gate.classNotice?.params?.name).toBe("IEEEtran");
   });
 
   it("does not offer preparation for a class the LaTeX Project will not support", () => {
     const gate = prepGate("\\documentclass{beamer}");
     expect(gate.offer).toBe(false);
-    expect(gate.classNotice).toContain("beamer");
-    expect(gate.classNotice).toContain("ltx-talk");
+    expect(gate.classNotice?.params?.name).toBe("beamer");
+    expect(String(gate.classNotice?.params?.note)).toContain("ltx-talk");
   });
 
   it("offers preparation for a compatible class and lists packages that will not tag", () => {
@@ -31,37 +31,39 @@ describe("prepGate", () => {
     expect(gate.offer).toBe(true);
     expect(gate.classSeverity).toBeNull();
     expect(gate.classNotice).toBeNull();
-    expect(gate.packageNotice).toContain("float");
-    expect(gate.packageNotice).not.toContain("amsmath");
+    expect(gate.packageNotice?.params?.packages).toBe("float");
   });
 
   it("offers preparation with a caution for a partially compatible class", () => {
     const gate = prepGate("\\documentclass{acmart}");
     expect(gate.offer).toBe(true);
     expect(gate.classSeverity).toBe("caution");
-    expect(gate.classNotice).toContain("acmart");
+    expect(gate.classNotice?.params?.name).toBe("acmart");
   });
 
   it("says nothing about packages when every one of them tags", () => {
     const gate = prepGate("\\documentclass{article}\n\\usepackage{booktabs}");
     expect(gate.packageNotice).toBeNull();
-    expect(gate.packageCautionNotice).toBeNull();
+    expect(gate.cautionNotices).toEqual([]);
   });
 
   it("shows the cautions for packages that only partly tag", () => {
     const gate = prepGate("\\documentclass{article}\n\\usepackage{enumitem}\n\\usepackage{amsmath}");
     expect(gate.offer).toBe(true);
-    expect(gate.packageNotice).toContain("enumitem");
-    expect(gate.packageCautionNotice).toContain("amsmath");
-    expect(gate.packageCautionNotice).toContain("only partly tag");
+    expect(gate.packageNotice?.params?.packages).toBe("enumitem");
+    expect(gate.cautionNotices).toEqual([
+      { key: "gate.partialPackages", params: { packages: "amsmath" } },
+      { key: "gate.cautionAdvice" },
+    ]);
   });
 
   it("cautions about a package with no recorded verdict instead of passing it", () => {
     const gate = prepGate("\\documentclass{article}\n\\usepackage{oleafly-invented-package}");
     expect(gate.packageNotice).toBeNull();
-    expect(gate.packageCautionNotice).toContain("No tagging verdict is recorded");
-    expect(gate.packageCautionNotice).toContain("oleafly-invented-package");
-    expect(gate.packageCautionNotice).toMatch(/^[A-Z]/);
+    expect(gate.cautionNotices).toEqual([
+      { key: "gate.unknownPackages", params: { packages: "oleafly-invented-package" } },
+      { key: "gate.cautionAdvice" },
+    ]);
   });
 
   it("ignores a class and a package that are only there in a comment", () => {
@@ -91,7 +93,7 @@ describe("gateDocument", () => {
     );
     expect(gated.origin).toBe("main");
     expect(prepGate(gated.source).offer).toBe(false);
-    expect(prepGate(gated.source).classNotice).toContain("IEEEtran");
+    expect(prepGate(gated.source).classNotice?.params?.name).toBe("IEEEtran");
   });
 
   it("does not let an included chapter look like a clean document", () => {
@@ -139,9 +141,9 @@ describe("gateDocument", () => {
     );
     const gate = prepGate(gated.source);
     expect(gate.offer).toBe(false);
-    expect(gate.classNotice).toContain("IEEEtran");
-    expect(gate.packageNotice).toContain("float");
-    expect(gate.packageCautionNotice).toBeNull();
+    expect(gate.classNotice?.params?.name).toBe("IEEEtran");
+    expect(gate.packageNotice?.params?.packages).toBe("float");
+    expect(gate.cautionNotices).toEqual([]);
   });
 
   it("reads the preamble past a body marker that is only there in a comment", () => {
@@ -155,8 +157,8 @@ describe("gateDocument", () => {
     );
     const gate = prepGate(gated.source);
     expect(gate.offer).toBe(false);
-    expect(gate.classNotice).toContain("IEEEtran");
-    expect(gate.packageNotice).toContain("float");
+    expect(gate.classNotice?.params?.name).toBe("IEEEtran");
+    expect(gate.packageNotice?.params?.packages).toBe("float");
   });
 
   it("keeps an escaped percent from hiding the real body marker", () => {
@@ -182,7 +184,7 @@ describe("gateDocument", () => {
       }),
       chapter,
     );
-    expect(prepGate(gated.source).packageNotice).toContain("float");
+    expect(prepGate(gated.source).packageNotice?.params?.packages).toBe("float");
   });
 });
 
@@ -223,7 +225,7 @@ describe("gateDocument on the project the compile path would use", () => {
     const gated = gateForProject(chapter);
     expect(gated.origin).toBe("main");
     expect(prepGate(gated.source).offer).toBe(false);
-    expect(prepGate(gated.source).classNotice).toContain("IEEEtran");
+    expect(prepGate(gated.source).classNotice?.params?.name).toBe("IEEEtran");
   });
 
   it("gates on the open file, and says so, when no main document is loaded", () => {

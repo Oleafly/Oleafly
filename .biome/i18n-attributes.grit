@@ -1,0 +1,12 @@
+language js
+
+JsxAttribute(name = $name, initializer = $init) as $attr where {
+  $name <: or { `placeholder`, `aria-label`, `title`, `label`, `aria-description`, `tooltip` },
+  $init <: JsxAttributeInitializerClause(value = $value),
+  $value <: JsxString(),
+  register_diagnostic(
+    span = $attr,
+    message = "User-visible attribute text must come from the catalog. Wrap it in t().",
+    severity = "error"
+  )
+}

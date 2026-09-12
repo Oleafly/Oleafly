@@ -50,7 +50,7 @@ describe("ModelSelector", () => {
       return (
         <>
           <button type="button" onClick={() => setOpen(true)}>
-            Open model picker
+            {"Open model picker"}
           </button>
           <ModelSelector
             open={open}

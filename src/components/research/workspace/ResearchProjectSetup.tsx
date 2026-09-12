@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronRight, FolderOpen, FolderTree, Loader2, Star } from "lucide-react";
 import { FileIcon } from "@/components/files/fileIcon";
 import { HighlightedCode } from "@/components/ui/code-highlighter";
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { i18n } from "@/i18n";
 import {
   createResearchProject,
   finishResearchProjectSetup,
@@ -37,18 +39,40 @@ const ENGINES: { value: ResearchDocumentEngine; label: string }[] = [
   { value: "markdown", label: "Markdown" },
 ];
 
-const STARTERS: { value: ResearchStarter; label: string; description: string }[] = [
-  { value: "article", label: "Article", description: "A standard research paper with methods, results, and discussion." },
-  { value: "literature_review", label: "Literature review", description: "A source-led review organized around scope, themes, and evidence gaps." },
-  { value: "thesis", label: "Thesis", description: "A longer study with background, methods, results, and conclusion sections." },
-  { value: "reproducible_analysis", label: "Reproducible analysis", description: "A manuscript with data provenance, environment notes, and separate outputs." },
+const STARTERS: {
+  value: ResearchStarter;
+  label: () => string;
+  description: () => string;
+}[] = [
+  {
+    value: "article",
+    label: () => i18n.t(($) => $.researchTools.setup.starter.article.label),
+    description: () => i18n.t(($) => $.researchTools.setup.starter.article.description),
+  },
+  {
+    value: "literature_review",
+    label: () => i18n.t(($) => $.researchTools.setup.starter.literatureReview.label),
+    description: () => i18n.t(($) => $.researchTools.setup.starter.literatureReview.description),
+  },
+  {
+    value: "thesis",
+    label: () => i18n.t(($) => $.researchTools.setup.starter.thesis.label),
+    description: () => i18n.t(($) => $.researchTools.setup.starter.thesis.description),
+  },
+  {
+    value: "reproducible_analysis",
+    label: () => i18n.t(($) => $.researchTools.setup.starter.reproducibleAnalysis.label),
+    description: () =>
+      i18n.t(($) => $.researchTools.setup.starter.reproducibleAnalysis.description),
+  },
 ];
 
-const TASK_TITLES: Record<ResearchStarter, string> = {
-  article: "Plan the article",
-  literature_review: "Plan the literature review",
-  thesis: "Plan the thesis",
-  reproducible_analysis: "Plan the analysis",
+const TASK_TITLES: Record<ResearchStarter, () => string> = {
+  article: () => i18n.t(($) => $.researchTools.setup.starter.article.task),
+  literature_review: () => i18n.t(($) => $.researchTools.setup.starter.literatureReview.task),
+  thesis: () => i18n.t(($) => $.researchTools.setup.starter.thesis.task),
+  reproducible_analysis: () =>
+    i18n.t(($) => $.researchTools.setup.starter.reproducibleAnalysis.task),
 };
 
 const PREVIEW_TREE_SKELETON = [82, 58, 71, 46, 64, 52];
@@ -78,6 +102,7 @@ export function ResearchProjectSetup({
     starter: ResearchStarter;
   }) => void | Promise<void>;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   const [name, setName] = useState("");
   const [engine, setEngine] = useState<ResearchDocumentEngine>("latex");
   const [starter, setStarter] = useState<ResearchStarter>("article");
@@ -143,7 +168,7 @@ export function ResearchProjectSetup({
       await finishResearchProjectSetup({
         request: { name, engine, starter },
         task: {
-          title: TASK_TITLES[starter],
+          title: TASK_TITLES[starter](),
           prompt: preview.initialTask,
           starter,
         },
@@ -165,13 +190,15 @@ export function ResearchProjectSetup({
             await onCreated(cause.projectId);
           } catch (openCause) {
             const openDetail = openCause instanceof Error ? openCause.message : String(openCause);
-            setError(`The project was created, but Oleafly couldn't save its first task or open the project. Retry setup. ${detail} ${openDetail}`);
+            setError(
+              t(($) => $.researchTools.setup.errorProjectOnly, { detail, openDetail }),
+            );
             return;
           }
         }
-        setError(`The project is open, but its first task wasn't saved. Retry to finish setup. ${detail}`);
+        setError(t(($) => $.researchTools.setup.errorTask, { detail }));
       } else if (cause instanceof ResearchProjectSetupStageError && cause.stage === "open") {
-        setError(`The project and its first task are ready, but Oleafly couldn't open it. Retry to open it. ${detail}`);
+        setError(t(($) => $.researchTools.setup.errorOpen, { detail }));
       } else {
         setError(detail);
       }
@@ -186,17 +213,29 @@ export function ResearchProjectSetup({
     <Dialog open={open} onOpenChange={(next) => !next && !creating && onClose()}>
       <DialogContent className="max-h-[92vh] max-w-4xl overflow-hidden" closeDisabled={creating}>
         <DialogHeader>
-          <DialogTitle>New research project</DialogTitle>
-          <DialogDescription>Choose a starting structure and inspect every file before Oleafly creates it.</DialogDescription>
+          <DialogTitle>{t(($) => $.researchTools.setup.title)}</DialogTitle>
+          <DialogDescription>{t(($) => $.researchTools.setup.description)}</DialogDescription>
         </DialogHeader>
         <div className="grid min-h-0 gap-5 overflow-auto md:grid-cols-[18rem_minmax(0,1fr)]">
           <div className="space-y-4">
             <div className="grid gap-1.5 text-sm font-medium">
-              <label htmlFor="research-project-name">Project name</label>
-              <Input id="research-project-name" autoFocus disabled={creating || Boolean(createdProjectId)} value={name} maxLength={120} placeholder="My research project" onChange={(event) => setName(event.target.value)} />
+              <label htmlFor="research-project-name">
+                {t(($) => $.researchTools.setup.nameLabel)}
+              </label>
+              <Input
+                id="research-project-name"
+                autoFocus
+                disabled={creating || Boolean(createdProjectId)}
+                value={name}
+                maxLength={120}
+                placeholder={t(($) => $.researchTools.setup.namePlaceholder)}
+                onChange={(event) => setName(event.target.value)}
+              />
             </div>
             <div className="grid gap-1.5 text-sm font-medium">
-              <label htmlFor="research-project-engine">Document engine</label>
+              <label htmlFor="research-project-engine">
+                {t(($) => $.researchTools.setup.engineLabel)}
+              </label>
               <Select value={engine} disabled={creating || Boolean(createdProjectId)} onValueChange={(value) => setEngine(value as ResearchDocumentEngine)}>
                 <SelectTrigger id="research-project-engine"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -205,15 +244,23 @@ export function ResearchProjectSetup({
               </Select>
             </div>
             <div className="grid gap-1.5 text-sm font-medium">
-              <label htmlFor="research-project-starter">Study starter</label>
+              <label htmlFor="research-project-starter">
+                {t(($) => $.researchTools.setup.starterLabel)}
+              </label>
               <Select value={starter} disabled={creating || Boolean(createdProjectId)} onValueChange={(value) => setStarter(value as ResearchStarter)}>
                 <SelectTrigger id="research-project-starter"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {STARTERS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+                  {STARTERS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label()}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            <p className="min-h-[2.5rem] text-xs leading-relaxed text-muted-foreground">{selectedStarter?.description}</p>
+            <p className="min-h-[2.5rem] text-xs leading-relaxed text-muted-foreground">
+              {selectedStarter?.description()}
+            </p>
             <div className="flex min-h-[4.75rem] items-start gap-3 rounded-md border bg-muted/30 p-3">
               <img
                 src="/project-kind/first-research-task.webp"
@@ -225,14 +272,14 @@ export function ResearchProjectSetup({
                 className="pointer-events-none size-9 shrink-0 select-none object-contain"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium">First research task</p>
+                <p className="text-xs font-medium">{t(($) => $.researchTools.setup.firstTask)}</p>
                 {preview ? (
                   <p className="mt-1 text-xs text-muted-foreground">{preview.initialTask}</p>
                 ) : (
                   <p className="mt-1 text-xs text-muted-foreground">
                     {previewing
-                      ? "Working out the first task…"
-                      : "Name the project to see the task Oleafly queues for it."}
+                      ? t(($) => $.researchTools.setup.firstTaskWorking)
+                      : t(($) => $.researchTools.setup.firstTaskEmpty)}
                   </p>
                 )}
               </div>
@@ -243,16 +290,18 @@ export function ResearchProjectSetup({
               <div className="flex items-center gap-1.5">
                 <FolderTree aria-hidden="true" className="size-3.5 text-muted-foreground" />
                 <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-                  Project preview
+                  {t(($) => $.researchTools.setup.previewTitle)}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-muted-foreground">
-                  {preview ? `Main document: ${preview.mainDocument}` : "\u00a0"}
+                  {preview
+                    ? t(($) => $.researchTools.setup.mainDocument, { path: preview.mainDocument })
+                    : "\u00a0"}
                 </span>
                 {previewing ? (
                   <Loader2
-                    aria-label="Building the preview"
+                    aria-label={t(($) => $.researchTools.setup.buildingPreview)}
                     className="size-3.5 animate-spin text-muted-foreground"
                   />
                 ) : null}
@@ -272,10 +321,13 @@ export function ResearchProjectSetup({
                   </ul>
                 ) : !preview ? (
                   <p className="p-2 text-sm text-muted-foreground">
-                    Name the project to see its files.
+                    {t(($) => $.researchTools.setup.previewEmpty)}
                   </p>
                 ) : (
-                  <ul aria-label="Project preview files" className="space-y-px">
+                  <ul
+                    aria-label={t(($) => $.researchTools.setup.previewFiles)}
+                    className="space-y-px"
+                  >
                     {preview.files.map((file) => {
                       const depth = file.path.split("/").length - 1;
                       const name = file.path.split("/").pop() ?? file.path;
@@ -369,9 +421,14 @@ export function ResearchProjectSetup({
         </div>
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
         <DialogFooter>
-          <Button variant="outline" disabled={creating} onClick={onClose}>Cancel</Button>
+          <Button variant="outline" disabled={creating} onClick={onClose}>
+            {t(($) => $.common.actions.cancel)}
+          </Button>
           <Button disabled={creating || previewing || !preview} onClick={create}>
-            {creating && <Loader2 className="animate-spin" />} {createdProjectId ? "Retry setup" : "Create and open project"}
+            {creating && <Loader2 className="animate-spin" />}{" "}
+            {createdProjectId
+              ? t(($) => $.researchTools.setup.retry)
+              : t(($) => $.researchTools.setup.create)}
           </Button>
         </DialogFooter>
       </DialogContent>

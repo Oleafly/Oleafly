@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Command, defaultFilter } from "cmdk";
-import { commandsFor, commandLabel, type AppContext } from "@oleafly/registry";
+import { useTranslation } from "react-i18next";
+import {
+  commandGroup,
+  commandHint,
+  commandKeywords,
+  commandLabel,
+  commandsFor,
+  type AppContext,
+} from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
@@ -22,6 +30,7 @@ export function CommandPalette() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const activePath = useFilesStore((s) => s.activePath);
   const { theme } = useTheme();
+  const { t } = useTranslation(["common", "shell"]);
 
   const close = () => setPaletteOpen(false);
   const run = (fn: () => void) => () => {
@@ -88,7 +97,7 @@ export function CommandPalette() {
           .map((command) => {
             const label = commandLabel(command, ctx);
             const searchValue =
-              `${label} ${command.keywords ?? ""} ${commandAliasSearchText(command.slash)}`;
+              `${label} ${commandKeywords(command, ctx)} ${commandAliasSearchText(command.slash)}`;
             return {
               command,
               score: defaultFilter(searchValue, search),
@@ -100,18 +109,18 @@ export function CommandPalette() {
       : cmds;
     const byGroup = new Map<string, typeof cmds>();
     for (const c of visibleCommands) {
-      const g = c.group ?? "Commands";
+      const g = commandGroup(c, ctx) ?? t(($) => $.shell.commandGroups.commands);
       const list = byGroup.get(g);
       if (list) list.push(c);
       else byGroup.set(g, [c]);
     }
     return [...byGroup.entries()];
-  }, [ctx, query]);
+  }, [ctx, query, t]);
 
   const bestMatchValue = useMemo(() => {
     const command = groups[0]?.[1][0];
     if (!command) return "";
-    return `${commandLabel(command, ctx)} ${command.keywords ?? ""} ${commandAliasSearchText(command.slash)}`;
+    return `${commandLabel(command, ctx)} ${commandKeywords(command, ctx)} ${commandAliasSearchText(command.slash)}`;
   }, [ctx, groups]);
 
   useEffect(() => {
@@ -122,7 +131,7 @@ export function CommandPalette() {
     <Command.Dialog
       open={open}
       onOpenChange={setPaletteOpen}
-      label="Command Palette"
+      label={t(($) => $.shell.commandPalette.label)}
       shouldFilter={false}
       value={selectedValue}
       onValueChange={setSelectedValue}
@@ -134,12 +143,12 @@ export function CommandPalette() {
           value={query}
           onValueChange={setQuery}
           autoFocus
-          placeholder="Type a command or search…"
+          placeholder={t(($) => $.shell.commandPalette.placeholder)}
           className="flex h-12 w-full border-b border-border bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground"
         />
         <Command.List className="max-h-[min(60vh,360px)] overflow-auto p-1.5">
           <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
-            No results found.
+            {t(($) => $.shell.commandPalette.empty)}
           </Command.Empty>
 
           {groups.map(([heading, cmds]) => (
@@ -153,8 +162,8 @@ export function CommandPalette() {
                   key={c.id}
                   icon={c.icon?.(ctx)}
                   label={commandLabel(c, ctx)}
-                  hint={c.hint}
-                  searchValue={`${commandLabel(c, ctx)} ${c.keywords ?? ""} ${commandAliasSearchText(c.slash)}`}
+                  hint={commandHint(c, ctx)}
+                  searchValue={`${commandLabel(c, ctx)} ${commandKeywords(c, ctx)} ${commandAliasSearchText(c.slash)}`}
                   onSelect={run(() => c.run(ctx))}
                 />
               ))}

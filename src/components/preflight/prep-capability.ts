@@ -1,4 +1,4 @@
-import { maskComments, taggingGate } from "@oleafly/preflight";
+import { maskComments, message, taggingGate, type MessageRef } from "@oleafly/preflight";
 import { resolveProjectPath } from "@/lib/project-intelligence/source";
 
 export const canPrepareAccessible = (loaded: boolean, profile: string) =>
@@ -50,16 +50,35 @@ export function gateDocument(
 
 export interface PrepGate {
   offer: boolean;
-  classNotice: string | null;
+  classNotice: MessageRef | null;
   classSeverity: "block" | "caution" | null;
-  packageNotice: string | null;
-  packageCautionNotice: string | null;
+  packageNotice: MessageRef | null;
+  cautionNotices: MessageRef[];
   source: string;
   retrieved: string;
 }
 
-const list = (names: readonly string[]) =>
-  names.length > 4 ? `${names.slice(0, 4).join(", ")} and ${names.length - 4} more` : names.join(", ");
+const listing = (names: readonly string[]) =>
+  names.length > 4
+    ? { packages: names.slice(0, 4).join(", "), more: names.length - 4 }
+    : { packages: names.join(", "), more: 0 };
+
+function packageNoticeFor(names: readonly string[]): MessageRef | null {
+  if (names.length === 0) return null;
+  const { packages, more } = listing(names);
+  return more > 0
+    ? message("gate.incompatiblePackagesTruncated", { packages, more })
+    : message("gate.incompatiblePackages", { count: names.length, packages });
+}
+
+function cautionNoticeFor(
+  names: readonly string[],
+  base: "gate.partialPackages" | "gate.unknownPackages",
+): MessageRef | null {
+  if (names.length === 0) return null;
+  const { packages, more } = listing(names);
+  return more > 0 ? message(`${base}Truncated`, { packages, more }) : message(base, { packages });
+}
 
 export function prepGate(source: string): PrepGate {
   const gate = taggingGate(source);
@@ -67,21 +86,15 @@ export function prepGate(source: string): PrepGate {
   const partial = gate.partialPackages.map((entry) => entry.name);
   const unproven = gate.unknownPackages.map((entry) => entry.name);
   const cautions = [
-    partial.length > 0 ? `These packages only partly tag: ${list(partial)}.` : null,
-    unproven.length > 0 ? `No tagging verdict is recorded for ${list(unproven)}.` : null,
-  ].filter((part): part is string => part !== null);
+    cautionNoticeFor(partial, "gate.partialPackages"),
+    cautionNoticeFor(unproven, "gate.unknownPackages"),
+  ].filter((part): part is MessageRef => part !== null);
   return {
     offer: !gate.blocked,
     classNotice: gate.blocked || gate.cautioned ? gate.reason : null,
     classSeverity: gate.blocked ? "block" : gate.cautioned ? "caution" : null,
-    packageNotice:
-      blocking.length > 0
-        ? `These packages are not compatible with tagging: ${list(blocking)}. Content from ${blocking.length === 1 ? "it" : "them"} can land in the PDF untagged.`
-        : null,
-    packageCautionNotice:
-      cautions.length > 0
-        ? `${cautions.join(" ")} Compile and check the structure tree for gaps.`
-        : null,
+    packageNotice: packageNoticeFor(blocking),
+    cautionNotices: cautions.length > 0 ? [...cautions, message("gate.cautionAdvice")] : [],
     source: gate.source,
     retrieved: gate.retrieved,
   };

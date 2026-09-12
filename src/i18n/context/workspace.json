@@ -1,0 +1,20 @@
+{
+  "files": {
+    "newFile": "Context-menu item that creates an empty file",
+    "newFolder": "Context-menu item that creates an empty folder",
+    "setMain": "Marks this file as the document the compiler builds"
+  },
+  "outline": {
+    "title": "Panel heading listing the headings of the open document"
+  },
+  "structure": {
+    "title": "Panel heading listing the files and symbols of the whole project"
+  },
+  "terminal": {
+    "color": "Submenu that tints a terminal tab",
+    "tabs": "Accessible name of the terminal tab strip"
+  },
+  "tree": {
+    "clearFilter": "Clears the text typed in the tree filter box"
+  }
+}

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   agentListModels,
@@ -19,6 +20,7 @@ import {
   restoreSeedModels,
   seedProviderModels,
 } from "@/lib/ai-model-state";
+import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import {
   listOllamaModels,
@@ -106,8 +108,6 @@ const DEFAULT_CFG: AppConfig = {
   mcp_servers: [],
 };
 
-const KEY_NOT_KEPT = "The base URL was saved but the key was not. Enter the key again.";
-
 export function changedConfigFields(
   previous: AppConfig,
   next: AppConfig,
@@ -166,6 +166,7 @@ function resetProviderModelPreferences(
 }
 
 export function AISection() {
+  const { t } = useTranslation(["common", "settings"]);
   const [tab, setTab] = useState<AiSettingsTab>("providers");
   const [mcpMounted, setMcpMounted] = useState(false);
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
@@ -316,9 +317,9 @@ export function AISection() {
         ai_model: model,
       });
       setKeys(editableKeys(nextKeys));
-      setMsg({ ok: true, text: `Ollama connected · ${model}` });
+      setMsg({ ok: true, text: t(($) => $.settings.ai.section.messages.ollamaConnected, { model }) });
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: describeError(e) });
     } finally {
       setSaving(null);
     }
@@ -344,7 +345,7 @@ export function AISection() {
       });
       if (!res.ok && res.reason === "invalid-key" && !custom) {
         setStatus((s) => ({ ...s, [id]: "error" }));
-        setErrorMsg((m) => ({ ...m, [id]: "Invalid API key." }));
+        setErrorMsg((m) => ({ ...m, [id]: t(($) => $.settings.ai.section.errors.invalidKey) }));
         return;
       }
       const nextKeys = withKey(cfg.ai_keys, id, value);
@@ -375,14 +376,14 @@ export function AISection() {
         ok: true,
         text:
           custom && !res.ok
-            ? `${custom.name} key saved. Add models manually below.`
+            ? t(($) => $.settings.ai.section.messages.keySavedAddModels, { provider: custom.name })
             : validated
-              ? `${label} connected.`
-              : `${label} key saved. It is checked on first use.`,
+              ? t(($) => $.settings.ai.section.messages.providerConnected, { provider: label })
+              : t(($) => $.settings.ai.section.messages.keySavedCheckedOnUse, { provider: label }),
       });
     } catch (e) {
       setStatus((s) => ({ ...s, [id]: "error" }));
-      setErrorMsg((m) => ({ ...m, [id]: String(e) }));
+      setErrorMsg((m) => ({ ...m, [id]: describeError(e) }));
     } finally {
       setSaving(null);
     }
@@ -397,7 +398,7 @@ export function AISection() {
     const { id, name, apiKey } = input;
     const baseURL = normalizeBaseURL(input.baseURL);
     if (getProvider(id) || cfg.ai_custom_providers.some((c) => c.id === id)) {
-      return { ok: false, message: "That provider ID is already in use." };
+      return { ok: false, message: t(($) => $.settings.ai.section.errors.providerIdInUse) };
     }
     const res = await discoverModels({ providerId: id, key: apiKey, baseURL, isCustom: true });
     const models: StoredModel[] = res.ok ? mergeFetchedModels([], res.models) : [];
@@ -421,10 +422,10 @@ export function AISection() {
         setKeys((k) => ({ ...k, [id]: apiKey }));
       }
       setOpenProviders((m) => ({ ...m, [id]: true }));
-      setMsg({ ok: true, text: `${name} added.` });
+      setMsg({ ok: true, text: t(($) => $.settings.ai.section.messages.providerAdded, { provider: name }) });
       return { ok: true };
     } catch (e) {
-      return { ok: false, message: String(e) };
+      return { ok: false, message: describeError(e) };
     }
   };
 
@@ -433,7 +434,7 @@ export function AISection() {
   ): Promise<{ ok: boolean; message?: string }> => {
     const { id, name, apiKey } = input;
     const current = cfg.ai_custom_providers.find((c) => c.id === id);
-    if (!current) return { ok: false, message: "That provider no longer exists." };
+    if (!current) return { ok: false, message: t(($) => $.settings.ai.section.errors.providerGone) };
     const baseURL = normalizeBaseURL(input.baseURL);
     const urlChanged = baseURL !== normalizeBaseURL(current.baseURL);
     const res = await discoverModels({
@@ -476,17 +477,21 @@ export function AISection() {
           window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: corrected }));
           setKeys((k) => ({ ...k, [id]: "" }));
           setSavedKeys((k) => withoutKey(k, id));
-          return { ok: false, message: KEY_NOT_KEPT };
+          return { ok: false, message: t(($) => $.settings.ai.section.errors.keyNotKept) };
         }
         setKeys((k) => ({ ...k, [id]: "" }));
       }
       setMsg({
         ok: true,
-        text: res.ok ? `${name} updated.` : `${name} updated. Its model list could not be refreshed.`,
+        text: res.ok
+          ? t(($) => $.settings.ai.section.messages.providerUpdated, { provider: name })
+          : t(($) => $.settings.ai.section.messages.providerUpdatedWithoutModels, {
+              provider: name,
+            }),
       });
       return { ok: true };
     } catch (e) {
-      return { ok: false, message: String(e) };
+      return { ok: false, message: describeError(e) };
     }
   };
 
@@ -523,7 +528,7 @@ export function AISection() {
       await persist(next);
       setKeys(editableKeys(nextKeys));
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: describeError(e) });
     } finally {
       setSaving(null);
     }
@@ -552,7 +557,7 @@ export function AISection() {
     try {
       await persist(nextConfig);
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: describeError(e) });
     }
   };
 
@@ -565,7 +570,7 @@ export function AISection() {
     try {
       await persist({ ...cfg, ai_model: modelId });
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: describeError(e) });
     }
   };
 
@@ -575,7 +580,7 @@ export function AISection() {
       setSysPromptSaved(true);
       setTimeout(() => setSysPromptSaved(false), 1500);
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: describeError(e) });
     }
   };
 
@@ -605,7 +610,7 @@ export function AISection() {
       }
       setMsg({
         ok: true,
-        text: "AI Assistant preferences restored to their defaults.",
+        text: t(($) => $.settings.ai.section.messages.preferencesReset),
       });
     } catch (error) {
       void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
@@ -614,7 +619,7 @@ export function AISection() {
           queryKey: ["project-budget", projectId],
         });
       }
-      setMsg({ ok: false, text: String(error) });
+      setMsg({ ok: false, text: describeError(error) });
     }
   };
 
@@ -634,14 +639,15 @@ export function AISection() {
       };
       await persist(next);
       setKeys(editableKeys(nextKeys));
+      const provider = getProvider(id)?.name ?? id;
       setMsg({
         ok: true,
         text: wasActive
-          ? `${getProvider(id)?.name ?? id} key removed - AI access disabled.`
-          : `${getProvider(id)?.name ?? id} key removed.`,
+          ? t(($) => $.settings.ai.section.messages.keyRemovedAccessDisabled, { provider })
+          : t(($) => $.settings.ai.section.messages.keyRemoved, { provider }),
       });
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: describeError(e) });
     } finally {
       setSaving(null);
     }
@@ -667,10 +673,10 @@ export function AISection() {
             data-testid="ai-settings-tab-providers"
             className="shrink-0"
           >
-            Providers and keys
+            {t(($) => $.settings.ai.section.tabs.providers)}
           </TabsTrigger>
           <TabsTrigger value="agents" data-testid="ai-settings-tab-agents" className="shrink-0">
-            CLI agents
+            {t(($) => $.settings.ai.section.tabs.agents)}
           </TabsTrigger>
           <TabsTrigger
             value="instructions"
@@ -678,7 +684,7 @@ export function AISection() {
             data-tour="ai-settings-tab-instructions"
             className="shrink-0"
           >
-            Instructions
+            {t(($) => $.settings.ai.section.tabs.instructions)}
           </TabsTrigger>
           <TabsTrigger
             value="personas"
@@ -686,14 +692,14 @@ export function AISection() {
             data-tour="ai-settings-tab-personas"
             className="shrink-0"
           >
-            Personas
+            {t(($) => $.settings.ai.section.tabs.personas)}
           </TabsTrigger>
           <TabsTrigger
             value="skills"
             data-testid="ai-settings-tab-skills"
             className="shrink-0"
           >
-            Skills
+            {t(($) => $.settings.ai.section.tabs.skills)}
           </TabsTrigger>
           <TabsTrigger
             value="mcp"
@@ -701,7 +707,7 @@ export function AISection() {
             data-tour="settings-mcp"
             className="shrink-0"
           >
-            MCP
+            {t(($) => $.settings.ai.section.tabs.mcp)}
           </TabsTrigger>
         </TabsList>
 
@@ -737,7 +743,13 @@ export function AISection() {
         </TabsContent>
 
         <TabsContent value="agents">
-          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading agents…</p>}>
+          <Suspense
+            fallback={
+              <p className="text-sm text-muted-foreground">
+                {t(($) => $.settings.ai.section.agentsLoading)}
+              </p>
+            }
+          >
             <AcpAgentsTab projectId={projectId ?? undefined} />
           </Suspense>
         </TabsContent>
@@ -798,12 +810,12 @@ export function AISection() {
         </div>
       )}
       <ResetToDefaults
-        sectionName="AI Assistant"
+        sectionName={t(($) => $.settings.ai.section.reset.sectionName)}
         disabled={!configLoaded}
         confirmationDescription={
           projectId
-            ? "Restore AI Assistant preferences to their defaults, including model availability, enabled skills, and this project's budget. The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged."
-            : "Restore AI Assistant preferences to their defaults, including model availability and enabled skills. The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged."
+            ? t(($) => $.settings.ai.section.reset.confirmWithProject)
+            : t(($) => $.settings.ai.section.reset.confirmWithoutProject)
         }
         onReset={() => void resetAssistantPreferences()}
       />

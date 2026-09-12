@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Bug, RefreshCw } from "lucide-react";
 import { openDevtools } from "@/lib/tauri";
 
 // Yields to component-level context menus (e.g. the editor's) by bailing
 // when the event was already handled (`defaultPrevented`).
 export function DevContextMenu() {
+  const { t } = useTranslation(["shell"]);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +61,7 @@ export function DevContextMenu() {
         }}
         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent"
       >
-        <RefreshCw className="size-3.5 text-muted-foreground" /> Refresh App
+        <RefreshCw className="size-3.5 text-muted-foreground" /> {t(($) => $.shell.devMenu.refreshApp)}
       </button>
       <button
         type="button"
@@ -69,7 +71,7 @@ export function DevContextMenu() {
         }}
         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent"
       >
-        <Bug className="size-3.5 text-muted-foreground" /> Inspect
+        <Bug className="size-3.5 text-muted-foreground" /> {t(($) => $.shell.devMenu.inspect)}
       </button>
     </div>
   );

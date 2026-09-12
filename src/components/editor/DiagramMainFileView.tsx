@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { DiagramCanvas, DiagramKitContext } from "@oleafly/diagram";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { DiagramCanvas, DiagramKitContext, type DiagramKit } from "@oleafly/diagram";
 import {
   diagramFromSource,
   sameDiagramModel,
@@ -21,12 +22,25 @@ export default function DiagramMainFileView({
   projectId: string;
   path: string;
 }) {
+  const { t } = useTranslation(["common", "editor", "diagram"]);
   const [model, setModel] = useState<DiagramModel | null>(null);
   const [notDrawable, setNotDrawable] = useState(false);
   const [readOnly, setReadOnly] = useState(true);
   const [mutationLocked, setMutationLocked] = useState(false);
   const loadedSource = useRef<string | null>(null);
   const background = useRef<string | undefined>(undefined);
+
+  const kit = useMemo<DiagramKit>(
+    () => ({
+      ...KIT,
+      t: (key, params) =>
+        (t as unknown as (k: string, p?: Record<string, unknown>) => string)(
+          `diagram:package.${key}`,
+          params,
+        ),
+    }),
+    [t],
+  );
 
   const loadGeneration = useRef(0);
   // React Flow emits a model on its first measurement pass, with no user
@@ -83,21 +97,21 @@ export default function DiagramMainFileView({
   if (notDrawable) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-        No shapes could be read out of this file's TikZ, so there is nothing to draw. Use the code view instead.
+        {t(($) => $.editor.diagram.notDrawable)}
       </div>
     );
   }
   if (!model) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+    return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
   }
   return (
     <div className="flex h-full min-h-0 flex-col">
       {readOnly && (
         <output className="border-b px-4 py-2 text-sm text-muted-foreground">
-          This file contains source that Draw cannot preserve. The canvas is a partial, read-only preview. Use Code to edit the original file.
+          {t(($) => $.editor.diagram.readOnlyNotice)}
         </output>
       )}
-      <DiagramKitContext.Provider value={KIT}>
+      <DiagramKitContext.Provider value={kit}>
         <DiagramCanvas model={model} onChange={onModelChange} readOnly={readOnly || mutationLocked} />
       </DiagramKitContext.Provider>
     </div>

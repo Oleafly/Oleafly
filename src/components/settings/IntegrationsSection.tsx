@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Github, LibraryBig } from "lucide-react";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +15,7 @@ import {
 import { useSettingsStore } from "@/store/settings";
 
 export function IntegrationsSection() {
+  const { t } = useTranslation(["common", "settings"]);
   const [tab, setTab] = useState("github");
   const [oleaflyMcpVisited, setOleaflyMcpVisited] = useState(false);
   const scrollTarget = useSettingsStore(
@@ -48,32 +50,32 @@ export function IntegrationsSection() {
     >
       <TabsList>
         <TabsTrigger value="github" data-testid="integrations-tab-github">
-          <Github className="mr-1.5 size-3.5" /> GitHub
+          <Github className="mr-1.5 size-3.5" /> {"GitHub"}
         </TabsTrigger>
         <TabsTrigger
           value="alphaxiv"
           data-testid="integrations-tab-alphaxiv"
         >
           <AlphaXivBrandIcon className="mr-1.5 size-3.5 rounded-sm" />
-          alphaXiv
+          {"alphaXiv"}
         </TabsTrigger>
         <TabsTrigger value="zotero" data-testid="integrations-tab-zotero">
           <ZoteroBrandIcon className="mr-1.5 size-3.5 text-[#cc2936]" />
-          Zotero
+          {"Zotero"}
         </TabsTrigger>
         <TabsTrigger
           value="citation-search"
           data-testid="integrations-tab-citation-search"
         >
           <LibraryBig className="mr-1.5 size-3.5 text-blue-600 dark:text-blue-300" />
-          Citation Search
+          {t(($) => $.settings.citations.title)}
         </TabsTrigger>
         <TabsTrigger
           value="oleafly-mcp"
           data-testid="integrations-tab-oleafly-mcp"
         >
           <McpBrandIcon className="mr-1.5 size-3.5" />
-          Oleafly MCP
+          {"Oleafly MCP"}
         </TabsTrigger>
       </TabsList>
       <TabsContent value="github">

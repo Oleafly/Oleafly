@@ -7,6 +7,8 @@ import {
 } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Accessibility,
@@ -30,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { i18n, onLocaleApplied } from "@/i18n";
 import {
   PdfViewer,
   type PdfLayout,
@@ -211,6 +214,18 @@ function shouldAcceptPreviewState(
   return rank(candidate.status) >= rank(current.status);
 }
 
+function previewWindowTitle(title: string): string {
+  return i18n.t(($) => $.shell.windows.preview, { title });
+}
+
+function projectTitleFromWindowTitle(current: string): string {
+  const marker = "\u0000";
+  const [prefix = "", suffix = ""] = previewWindowTitle(marker).split(marker);
+  return current.startsWith(prefix) && current.endsWith(suffix)
+    ? current.slice(prefix.length, current.length - suffix.length)
+    : current;
+}
+
 function OutlineItems({
   items,
   onActivate,
@@ -220,6 +235,7 @@ function OutlineItems({
   onActivate: (id: string) => void;
   depth?: number;
 }) {
+  const { t } = useTranslation(["common", "preview"]);
   return (
     <ul className={cn(depth > 0 && "ml-3 border-l pl-1")}>
       {items.map((item) => (
@@ -234,7 +250,7 @@ function OutlineItems({
             <span className="min-w-0 flex-1 truncate">{item.title}</span>
             {item.external && (
               <span className="text-[9px] uppercase text-muted-foreground">
-                Link
+                {t(($) => $.preview.outline.externalBadge)}
               </span>
             )}
           </button>
@@ -262,6 +278,7 @@ function PreviewMessage({
   loading?: boolean;
   onRetry?: () => void;
 }) {
+  const { t } = useTranslation(["common", "preview"]);
   return (
     <div
       className="flex max-w-sm flex-col items-center gap-3 px-6 text-center"
@@ -279,7 +296,7 @@ function PreviewMessage({
       </div>
       {onRetry && (
         <Button size="sm" variant="outline" onClick={onRetry}>
-          Retry
+          {t(($) => $.common.actions.retry)}
         </Button>
       )}
     </div>
@@ -303,6 +320,7 @@ export function PreviewWindow({
   harnessBytes,
   disableNativeBridge = false,
 }: PreviewWindowProps = {}) {
+  const { t } = useTranslation(["common", "preview"]);
   const [initialContext] = useState(readInitialPreviewContext);
   const harnessDocument = harnessBytes
     ? {
@@ -580,7 +598,7 @@ export function PreviewWindow({
         setPdfLoadState({
           status: "loading",
           documentIdentity: nextDocument.identity,
-          message: "Loading verified PDF…",
+          message: i18n.t(($) => $.preview.window.loadingVerified),
         });
         setSearchState(INITIAL_SEARCH_STATE);
         setOutlineState({ status: "loading", items: [] });
@@ -604,9 +622,7 @@ export function PreviewWindow({
           return;
         }
         setArtifactLoading(false);
-        setArtifactFailure(
-          "The compiled PDF could not be verified or read. The last successfully loaded PDF is retained when available.",
-        );
+        setArtifactFailure(i18n.t(($) => $.preview.window.artifactFailure));
       }
     })();
     return () => {
@@ -746,6 +762,29 @@ export function PreviewWindow({
     return () => root.removeEventListener("keydown", onKeyDown);
   }, [outlineOpen, pdfZoomShortcuts, searchOpen, userZoom]);
 
+  useEffect(() => {
+    if (!isTauri()) return;
+    let active = true;
+    const projectTitle = getCurrentWindow()
+      .title()
+      .then(projectTitleFromWindowTitle)
+      .catch(() => null);
+    const apply = () => {
+      void projectTitle
+        .then((title) =>
+          active && title !== null
+            ? getCurrentWindow().setTitle(previewWindowTitle(title))
+            : undefined,
+        )
+        .catch(() => {});
+    };
+    const stop = onLocaleApplied(apply);
+    return () => {
+      active = false;
+      stop();
+    };
+  }, []);
+
   const jumpToPage = () => {
     const requested = Number.parseInt(pageInput, 10);
     if (
@@ -789,10 +828,13 @@ export function PreviewWindow({
     setPdfLoadState({
       status: "loading",
       documentIdentity: fallback.identity,
-      message: "Restoring the last successfully loaded PDF…",
+      message: t(($) => $.preview.window.restoringLast),
     });
     setRetainedLoadFailure(
-      `${next.message ?? "The latest PDF could not be loaded"} Showing the last successfully loaded PDF instead.`,
+      t(($) => $.preview.viewer.retainedFailure, {
+        detail:
+          next.message ?? t(($) => $.preview.window.retainedFailureDetail),
+      }),
     );
     setPdfPassword("");
     setPasswordDraft("");
@@ -804,7 +846,7 @@ export function PreviewWindow({
     setPdfLoadState({
       status: "loading",
       documentIdentity: current.identity,
-      message: "Retrying PDF load…",
+      message: t(($) => $.preview.window.retryingLoad),
     });
     setViewerReload((generation) => generation + 1);
   };
@@ -814,7 +856,7 @@ export function PreviewWindow({
     setPdfLoadState({
       status: "loading",
       documentIdentity: previewDocument.identity,
-      message: "Unlocking PDF…",
+      message: t(($) => $.preview.window.unlocking),
     });
     setPdfPassword(passwordDraft);
   };
@@ -844,7 +886,7 @@ export function PreviewWindow({
         } finally {
           window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
         }
-        setExportMessage("PDF download started.");
+        setExportMessage(t(($) => $.preview.window.downloadStarted));
         return;
       }
       const destination = await pickSavePath({
@@ -856,9 +898,9 @@ export function PreviewWindow({
         destination,
         uint8ToBase64(previewDocument.bytes),
       );
-      setExportMessage("PDF saved successfully.");
+      setExportMessage(t(($) => $.preview.window.downloadSaved));
     } catch {
-      setExportMessage("The displayed PDF could not be saved.");
+      setExportMessage(t(($) => $.preview.window.downloadFailed));
     } finally {
       setExporting(false);
     }
@@ -876,18 +918,26 @@ export function PreviewWindow({
     retainedLoadFailure ??
     artifactFailure ??
     (compileState?.status === "compiling"
-      ? `A newer project revision is compiling. This is the last verified PDF for revision ${previewDocument?.checkpoint?.projectRevision ?? "unknown"}.`
+      ? t(($) => $.preview.window.staleCompiling, {
+          revision:
+            previewDocument?.checkpoint?.projectRevision ??
+            t(($) => $.preview.window.staleUnknownRevision),
+        })
       : compileState?.status === "error" ||
           compileState?.status === "unavailable"
-        ? `${compileState.message ?? "The newer compile did not produce a usable PDF"} The last verified PDF remains visible.`
-        : "This PDF does not represent the latest accepted compile identity.");
+        ? t(($) => $.preview.window.staleCompileFailed, {
+            detail:
+              compileState.message ??
+              t(($) => $.preview.window.staleCompileFailedDetail),
+          })
+        : t(($) => $.preview.window.staleIdentity));
 
   const rotateClockwise = () => {
     if (!previewDocument) return;
     setPdfLoadState({
       status: "loading",
       documentIdentity: previewDocument.identity,
-      message: "Rotating PDF…",
+      message: t(($) => $.preview.window.rotating),
     });
     setRotation(
       (current) => ((current + 90) % 360) as PdfRotation,
@@ -903,21 +953,21 @@ export function PreviewWindow({
       className="flex h-screen flex-col bg-background text-foreground"
     >
       <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0">
-        <Tooltip label="Document outline">
+        <Tooltip label={t(($) => $.preview.outline.open)}>
           <Button
             variant="ghost"
             size="icon"
             className={cn("size-7", outlineOpen && "bg-accent")}
             disabled={!previewDocument}
             onClick={() => setOutlineOpen((open) => !open)}
-            aria-label="Document outline"
+            aria-label={t(($) => $.preview.outline.open)}
             aria-expanded={outlineOpen}
             aria-controls="detached-pdf-outline"
           >
             <ListTree className="size-3.5" />
           </Button>
         </Tooltip>
-        <Tooltip label="Search PDF">
+        <Tooltip label={t(($) => $.preview.search.open)}>
           <Button
             variant="ghost"
             size="icon"
@@ -931,7 +981,7 @@ export function PreviewWindow({
                 }),
               );
             }}
-            aria-label="Search PDF"
+            aria-label={t(($) => $.preview.search.open)}
             aria-expanded={searchOpen}
             aria-controls="detached-pdf-search"
           >
@@ -945,7 +995,7 @@ export function PreviewWindow({
             {/* A one-page document has nothing to lay out: hide the toggles entirely. */}
             {numPages > 1 && (
               <>
-                <Tooltip label="Single page view">
+                <Tooltip label={t(($) => $.preview.pageLayout.single)}>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -954,13 +1004,13 @@ export function PreviewWindow({
                       layout === "single" && "bg-accent text-foreground",
                     )}
                     onClick={() => setLayout("single")}
-                    aria-label="Single page view"
+                    aria-label={t(($) => $.preview.pageLayout.single)}
                     aria-pressed={layout === "single"}
                   >
                     <RectangleVertical className="size-3.5" />
                   </Button>
                 </Tooltip>
-                <Tooltip label="Two-page view">
+                <Tooltip label={t(($) => $.preview.pageLayout.double)}>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -969,7 +1019,7 @@ export function PreviewWindow({
                       layout === "double" && "bg-accent text-foreground",
                     )}
                     onClick={() => setLayout("double")}
-                    aria-label="Two-page view"
+                    aria-label={t(($) => $.preview.pageLayout.double)}
                     aria-pressed={layout === "double"}
                   >
                     <Columns2 className="size-3.5" />
@@ -977,7 +1027,7 @@ export function PreviewWindow({
                 </Tooltip>
               </>
             )}
-            <Tooltip label="Previous page">
+            <Tooltip label={t(($) => $.preview.pages.previous)}>
               <Button
                 variant="ghost"
                 size="icon"
@@ -988,7 +1038,7 @@ export function PreviewWindow({
                     page - (layout === "double" ? 2 : 1),
                   )
                 }
-                aria-label="Previous page"
+                aria-label={t(($) => $.preview.pages.previous)}
               >
                 <ChevronUp className="size-3.5" />
               </Button>
@@ -1009,12 +1059,12 @@ export function PreviewWindow({
                 }}
                 onBlur={jumpToPage}
                 onFocus={(event) => event.target.select()}
-                aria-label="Page number"
+                aria-label={t(($) => $.preview.pages.number)}
                 className="h-7 w-10 px-1 text-center"
               />
-              <span>of {numPages}</span>
+              <span>{t(($) => $.preview.pages.ofTotal, { total: numPages })}</span>
             </div>
-            <Tooltip label="Next page">
+            <Tooltip label={t(($) => $.preview.pages.next)}>
               <Button
                 variant="ghost"
                 size="icon"
@@ -1025,7 +1075,7 @@ export function PreviewWindow({
                     page + (layout === "double" ? 2 : 1),
                   )
                 }
-                aria-label="Next page"
+                aria-label={t(($) => $.preview.pages.next)}
               >
                 <ChevronDown className="size-3.5" />
               </Button>
@@ -1041,7 +1091,7 @@ export function PreviewWindow({
             onClick={() => fitPreview("width")}
             aria-pressed={fitMode === "width"}
           >
-            Fit width
+            {t(($) => $.preview.window.fitWidth)}
           </Button>
           <Button
             variant={fitMode === "height" ? "secondary" : "ghost"}
@@ -1050,9 +1100,9 @@ export function PreviewWindow({
             onClick={() => fitPreview("height")}
             aria-pressed={fitMode === "height"}
           >
-            Fit to height
+            {t(($) => $.preview.window.fitHeight)}
           </Button>
-          <Tooltip label="Zoom out">
+          <Tooltip label={t(($) => $.preview.zoom.out)}>
             <Button
               variant="ghost"
               size="icon"
@@ -1065,7 +1115,7 @@ export function PreviewWindow({
                   ),
                 )
               }
-              aria-label="Zoom out"
+              aria-label={t(($) => $.preview.zoom.out)}
             >
               <Minus className="size-3.5" />
             </Button>
@@ -1074,9 +1124,9 @@ export function PreviewWindow({
             data-testid="detached-preview-zoom"
             className="w-10 text-center text-xs tabular-nums text-muted-foreground"
           >
-            {Math.round(scale * 100)}%
+            {t(($) => $.preview.zoom.percent, { percent: Math.round(scale * 100) })}
           </span>
-          <Tooltip label="Zoom in">
+          <Tooltip label={t(($) => $.preview.zoom.in)}>
             <Button
               variant="ghost"
               size="icon"
@@ -1089,57 +1139,69 @@ export function PreviewWindow({
                   ),
                 )
               }
-              aria-label="Zoom in"
+              aria-label={t(($) => $.preview.zoom.in)}
             >
               <Plus className="size-3.5" />
             </Button>
           </Tooltip>
-          <Tooltip label="Rotate clockwise">
+          <Tooltip label={t(($) => $.preview.actions.rotate)}>
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
               disabled={!previewDocument}
               onClick={rotateClockwise}
-              aria-label="Rotate PDF clockwise"
+              aria-label={t(($) => $.preview.window.rotateLabel)}
             >
               <RotateCw className="size-3.5" />
             </Button>
           </Tooltip>
-          <Tooltip label={inverted ? "Restore colors" : "Invert colors"}>
+          <Tooltip
+            label={
+              inverted
+                ? t(($) => $.preview.actions.restoreColors)
+                : t(($) => $.preview.window.invert)
+            }
+          >
             <Button
               variant="ghost"
               size="icon"
               className={cn("size-7", inverted && "bg-accent")}
               disabled={!previewDocument}
               onClick={() => setInverted(!inverted)}
-              aria-label="Invert PDF colors"
+              aria-label={t(($) => $.preview.window.invertLabel)}
               aria-pressed={inverted}
             >
               <Contrast className="size-3.5" />
             </Button>
           </Tooltip>
-          <Tooltip label={screenReaderMode ? "Exit reader view" : "Reader view"}>
+          <Tooltip
+            label={
+              screenReaderMode
+                ? t(($) => $.preview.actions.exitReaderView)
+                : t(($) => $.preview.actions.readerView)
+            }
+          >
             <Button
               variant="ghost"
               size="icon"
               className={cn("size-7", screenReaderMode && "bg-accent")}
               disabled={!previewDocument}
               onClick={() => setScreenReaderMode(!screenReaderMode)}
-              aria-label="Reader view"
+              aria-label={t(($) => $.preview.actions.readerView)}
               aria-pressed={screenReaderMode}
             >
               <Accessibility className="size-3.5" />
             </Button>
           </Tooltip>
-          <Tooltip label="Download displayed PDF">
+          <Tooltip label={t(($) => $.preview.actions.downloadDisplayedPdf)}>
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
               disabled={!previewDocument || exporting}
               onClick={() => void downloadDisplayedPdf()}
-              aria-label="Download displayed PDF"
+              aria-label={t(($) => $.preview.actions.downloadDisplayedPdf)}
             >
               {exporting ? (
                 <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
@@ -1161,7 +1223,7 @@ export function PreviewWindow({
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <div className="min-w-0 text-xs">
               <p className="font-semibold uppercase tracking-wide">
-                Stale · non-current preview
+                {t(($) => $.preview.window.staleHeading)}
               </p>
               <p>{staleExplanation}</p>
             </div>
@@ -1172,7 +1234,7 @@ export function PreviewWindow({
                 className="ml-auto shrink-0"
                 onClick={() => setArtifactRetry((value) => value + 1)}
               >
-                Retry
+                {t(($) => $.common.actions.retry)}
               </Button>
             )}
           </div>
@@ -1183,7 +1245,7 @@ export function PreviewWindow({
         {previewDocument && (
           <aside
             id="detached-pdf-outline"
-            aria-label="PDF document outline"
+            aria-label={t(($) => $.preview.outline.panel)}
             inert={!outlineOpen}
             className={cn(
               "absolute inset-y-2 left-2 z-30 flex w-[min(19rem,calc(100%-1rem))] flex-col overflow-hidden rounded-lg border bg-popover/80 text-popover-foreground shadow-xl backdrop-blur-xl supports-[not(backdrop-filter:blur(0))]:bg-popover",
@@ -1197,14 +1259,14 @@ export function PreviewWindow({
                   aria-hidden
                   className="size-4 text-muted-foreground"
                 />
-                Document outline
+                {t(($) => $.preview.outline.title)}
               </h2>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-7"
                 onClick={() => setOutlineOpen(false)}
-                aria-label="Close document outline"
+                aria-label={t(($) => $.preview.outline.close)}
               >
                 <X className="size-3.5" />
               </Button>
@@ -1216,7 +1278,7 @@ export function PreviewWindow({
                   role="status"
                 >
                   <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-                  Loading outline…
+                  {t(($) => $.preview.outline.loading)}
                 </p>
               ) : outlineState.items.length ? (
                 <OutlineItems
@@ -1228,8 +1290,7 @@ export function PreviewWindow({
                 />
               ) : (
                 <p className="px-2 py-3 text-xs text-muted-foreground">
-                  {outlineState.message ??
-                    "This PDF does not contain a document outline."}
+                  {outlineState.message ?? t(($) => $.preview.outline.empty)}
                 </p>
               )}
             </div>
@@ -1239,7 +1300,7 @@ export function PreviewWindow({
         {searchOpen && previewDocument && (
           <search
             id="detached-pdf-search"
-            aria-label="Search this PDF"
+            aria-label={t(($) => $.preview.search.panel)}
             className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
           >
             <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
@@ -1259,8 +1320,8 @@ export function PreviewWindow({
                   }
                 }
               }}
-              placeholder="Search document"
-              aria-label="Search PDF text"
+              placeholder={t(($) => $.preview.search.placeholder)}
+              aria-label={t(($) => $.preview.search.input)}
               className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
             />
             <span
@@ -1282,7 +1343,7 @@ export function PreviewWindow({
                 searchState.total === 0
               }
               onClick={() => pdfRef.current?.findPrevious()}
-              aria-label="Previous search result"
+              aria-label={t(($) => $.preview.search.previous)}
             >
               <ChevronLeft className="size-3.5" />
             </Button>
@@ -1295,7 +1356,7 @@ export function PreviewWindow({
                 searchState.total === 0
               }
               onClick={() => pdfRef.current?.findNext()}
-              aria-label="Next search result"
+              aria-label={t(($) => $.preview.search.next)}
             >
               <ChevronRight className="size-3.5" />
             </Button>
@@ -1307,7 +1368,7 @@ export function PreviewWindow({
                 setSearchOpen(false);
                 setSearchInput("");
               }}
-              aria-label="Close PDF search"
+              aria-label={t(($) => $.preview.search.close)}
             >
               <X className="size-3.5" />
             </Button>
@@ -1318,7 +1379,7 @@ export function PreviewWindow({
           ref={scrollBoxRef}
           data-testid="detached-preview-scroll"
           data-pdf-scroll-root
-          aria-label="PDF continuous scroll area"
+          aria-label={t(($) => $.preview.viewer.scrollArea)}
           className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           style={
             inverted && !screenReaderMode
@@ -1332,8 +1393,8 @@ export function PreviewWindow({
               fallback={
                 <div className="flex h-full items-center justify-center">
                   <PreviewMessage
-                    title="The PDF preview crashed"
-                    detail="Retry this viewer or compile again in the main window."
+                    title={t(($) => $.preview.viewer.crashedTitle)}
+                    detail={t(($) => $.preview.window.crashedDetail)}
                     onRetry={retryViewer}
                   />
                 </div>
@@ -1367,21 +1428,21 @@ export function PreviewWindow({
                 }
                 title={
                   compileState?.status === "compiling"
-                    ? "Compiling PDF"
+                    ? t(($) => $.preview.window.compilingTitle)
                     : compileState?.status === "error"
-                      ? "Compile failed"
+                      ? t(($) => $.preview.window.compileFailedTitle)
                       : compileState?.status === "unavailable"
-                        ? "Compilation unavailable"
+                        ? t(($) => $.preview.window.compileUnavailableTitle)
                         : artifactFailure
-                          ? "PDF unavailable"
-                          : "No verified PDF"
+                          ? t(($) => $.preview.window.artifactUnavailableTitle)
+                          : t(($) => $.preview.window.noVerifiedTitle)
                 }
                 detail={
                   artifactFailure ??
                   compileState?.message ??
                   (compileState?.status === "compiling"
-                    ? "The verified PDF will appear when compilation completes."
-                    : "Compile the project in the main window. This window only displays output with a verified compile identity.")
+                    ? t(($) => $.preview.window.compilingDetail)
+                    : t(($) => $.preview.window.noVerifiedDetail))
                 }
                 onRetry={
                   artifactFailure
@@ -1409,7 +1470,7 @@ export function PreviewWindow({
                   <LockKeyhole className="mx-auto size-8 text-muted-foreground" />
                   <div>
                     <h2 className="text-sm font-semibold">
-                      Password required
+                      {t(($) => $.preview.password.title)}
                     </h2>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {pdfLoadState.message}
@@ -1423,15 +1484,15 @@ export function PreviewWindow({
                     onChange={(event) =>
                       setPasswordDraft(event.target.value)
                     }
-                    aria-label="PDF password"
-                    placeholder="PDF password"
+                    aria-label={t(($) => $.preview.password.label)}
+                    placeholder={t(($) => $.preview.password.placeholder)}
                   />
                   <Button
                     type="submit"
                     size="sm"
                     disabled={!passwordDraft}
                   >
-                    Unlock PDF
+                    {t(($) => $.preview.password.submit)}
                   </Button>
                 </form>
               ) : (
@@ -1439,21 +1500,21 @@ export function PreviewWindow({
                   loading={pdfLoadState.status === "loading"}
                   title={
                     pdfLoadState.status === "loading"
-                      ? "Loading PDF"
+                      ? t(($) => $.preview.window.loadingTitle)
                       : pdfLoadState.status === "invalid"
-                        ? "Invalid PDF"
+                        ? t(($) => $.preview.viewer.invalidTitle)
                         : pdfLoadState.status === "empty"
-                          ? "Empty PDF"
+                          ? t(($) => $.preview.viewer.emptyTitle)
                           : pdfLoadState.status === "unavailable"
-                            ? "PDF viewer unavailable"
-                            : "PDF load failed"
+                            ? t(($) => $.preview.viewer.unavailableTitle)
+                            : t(($) => $.preview.viewer.loadFailedTitle)
                   }
                   detail={
                     pdfLoadState.status === "loading" &&
                     pdfLoadState.progress !== undefined
                       ? `${Math.round(pdfLoadState.progress * 100)}%`
                       : pdfLoadState.message ??
-                        "The PDF could not be loaded."
+                        t(($) => $.preview.viewer.loadFailedDetail)
                   }
                   onRetry={
                     pdfLoadState.status === "loading"

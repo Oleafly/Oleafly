@@ -34,7 +34,7 @@ async function openRowAction(page: Page, path: string, action: string) {
   );
   expect(opened).toBe(true);
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('[role="menuitem"]')).some(item => {
+    `Array.from(document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')).some(item => {
       const rect = item.getBoundingClientRect();
       return item.textContent?.trim() === ${JSON.stringify(action)} && rect.width > 0 && rect.height > 0;
     })`,
@@ -42,7 +42,7 @@ async function openRowAction(page: Page, path: string, action: string) {
   );
   const pressed = await page.evaluate<boolean>(
     `(() => {
-      const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(candidate => {
+      const item = Array.from(document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')).find(candidate => {
         const rect = candidate.getBoundingClientRect();
         return candidate.textContent?.trim() === ${JSON.stringify(action)} &&
           rect.width > 0 && rect.height > 0;

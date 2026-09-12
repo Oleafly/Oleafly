@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import type { Theme } from "@/lib/theme";
 
 export const THEME_CUSTOMIZATION_STORAGE_KEY = "oleafly.theme-customization.v1";
@@ -79,15 +80,19 @@ export function normalizeThemeTokenName(value: string): ThemeTokenName | null {
   return tokenNameSet.has(normalized) ? (normalized as ThemeTokenName) : null;
 }
 
+type ThemeTokenScope = "tokens" | "light" | "dark";
+
 export function validateThemeTokenOverrides(
   value: unknown,
-  options: { skipUnknown?: boolean; skipped?: string[]; label?: string } = {},
+  options: { skipUnknown?: boolean; skipped?: string[]; scope?: ThemeTokenScope } = {},
 ): ThemeTokenOverrides {
-  const label = options.label ?? "Theme tokens";
-  if (!isRecord(value)) throw new Error(`${label} must be an object.`);
+  const scope = options.scope ?? "tokens";
+  if (!isRecord(value)) throw new Error(i18n.t(($) => $.core.theme[scope].notObject));
   const entries = Object.entries(value);
   if (entries.length > MAX_IMPORT_TOKEN_KEYS) {
-    throw new Error(`${label} list more than ${MAX_IMPORT_TOKEN_KEYS} entries.`);
+    throw new Error(
+      i18n.t(($) => $.core.theme[scope].tooManyEntries, { max: MAX_IMPORT_TOKEN_KEYS }),
+    );
   }
   const output: ThemeTokenOverrides = {};
   for (const [key, rawValue] of entries) {
@@ -98,10 +103,14 @@ export function validateThemeTokenOverrides(
         options.skipped?.push(key.slice(0, 64));
         continue;
       }
-      throw new Error(`Unsupported theme token: ${key.slice(0, 64)}.`);
+      throw new Error(
+        i18n.t(($) => $.core.theme.unsupportedToken, { token: key.slice(0, 64) }),
+      );
     }
     if (rawValue === null || rawValue === undefined || rawValue === "") continue;
-    if (!validColorValue(rawValue)) throw new Error(`Theme token ${token} has an invalid color value.`);
+    if (!validColorValue(rawValue)) {
+      throw new Error(i18n.t(($) => $.core.theme.invalidColor, { token }));
+    }
     output[token] = rawValue.trim();
   }
   return output;
@@ -110,7 +119,7 @@ export function validateThemeTokenOverrides(
 export function validateRadius(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value !== "string" || !radiusPattern.test(value.trim())) {
-    throw new Error("Corner radius must use px, rem, em, or percent.");
+    throw new Error(i18n.t(($) => $.core.theme.invalidRadius));
   }
   return value.trim();
 }
@@ -119,26 +128,30 @@ function declarations(css: string) {
   const trimmed = css.trim();
   if (!trimmed) return "";
   if (bytes(trimmed) > MAX_CUSTOM_CSS_BYTES) {
-    throw new Error("Custom CSS is larger than 64 KiB.");
+    throw new Error(i18n.t(($) => $.core.theme.cssTooLarge));
   }
   if (forbiddenCssPattern.test(trimmed)) {
-    throw new Error("Custom CSS cannot use at-rules, URLs, or selectors.");
+    throw new Error(i18n.t(($) => $.core.theme.cssForbiddenSyntax));
   }
   const rows = trimmed.split(";").map((row) => row.trim()).filter(Boolean);
-  if (rows.length > 64) throw new Error("Custom CSS can contain at most 64 declarations.");
+  if (rows.length > 64) throw new Error(i18n.t(($) => $.core.theme.cssTooManyDeclarations));
   const accepted: string[] = [];
   for (const row of rows) {
     const separator = row.indexOf(":");
     if (separator <= 0 || row.indexOf(":", separator + 1) !== -1) {
-      throw new Error("Custom CSS must contain simple property declarations.");
+      throw new Error(i18n.t(($) => $.core.theme.cssNotSimple));
     }
     const property = row.slice(0, separator).trim().toLowerCase();
     const value = row.slice(separator + 1).trim();
     if ((!customPropertyPattern.test(property) && !scopedPropertyPattern.test(property)) || !value) {
-      throw new Error(`Custom CSS property is not allowed: ${property || "unknown"}.`);
+      throw new Error(
+        i18n.t(($) => $.core.theme.cssPropertyNotAllowed, {
+          property: property || i18n.t(($) => $.core.theme.unknownProperty),
+        }),
+      );
     }
     if (value.length > 512 || forbiddenCssPattern.test(value)) {
-      throw new Error("Custom CSS contains an unsafe value.");
+      throw new Error(i18n.t(($) => $.core.theme.cssUnsafeValue));
     }
     accepted.push(`${property}: ${value}`);
   }
@@ -147,16 +160,16 @@ function declarations(css: string) {
 
 export function validateCustomCss(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;
-  if (typeof value !== "string") throw new Error("Custom CSS must be text.");
+  if (typeof value !== "string") throw new Error(i18n.t(($) => $.core.theme.cssNotText));
   const normalized = declarations(value);
   return normalized || null;
 }
 
 export function validateThemeCustomization(value: unknown): ThemeCustomization {
-  if (!isRecord(value)) throw new Error("Theme customization must be an object.");
+  if (!isRecord(value)) throw new Error(i18n.t(($) => $.core.theme.customizationNotObject));
   const version = value.version;
   if (version !== undefined && version !== THEME_CUSTOMIZATION_VERSION) {
-    throw new Error("This theme file uses an unsupported version.");
+    throw new Error(i18n.t(($) => $.core.theme.unsupportedVersion));
   }
   return {
     version: THEME_CUSTOMIZATION_VERSION,
@@ -178,27 +191,29 @@ function importThemeTokens(cssVars: JsonRecord, mode: Theme, skipped: string[]) 
   return validateThemeTokenOverrides(modeTokens, {
     skipUnknown: true,
     skipped,
-    label: `The ${mode} CSS variables`,
+    scope: mode,
   });
 }
 
 export function parseThemeCustomizationImport(text: unknown): ThemeImportResult {
-  if (typeof text !== "string") throw new Error("Theme file must be text.");
-  if (bytes(text) > MAX_THEME_IMPORT_BYTES) throw new Error("Theme file is larger than 128 KiB.");
+  if (typeof text !== "string") throw new Error(i18n.t(($) => $.core.theme.fileNotText));
+  if (bytes(text) > MAX_THEME_IMPORT_BYTES) {
+    throw new Error(i18n.t(($) => $.core.theme.fileTooLarge));
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error("Theme file is not valid JSON.");
+    throw new Error(i18n.t(($) => $.core.theme.fileNotJson));
   }
-  if (!isRecord(parsed)) throw new Error("Theme file must contain an object.");
+  if (!isRecord(parsed)) throw new Error(i18n.t(($) => $.core.theme.fileNotObject));
   if ("light" in parsed || "dark" in parsed || "version" in parsed) {
     return { customization: validateThemeCustomization(parsed), skippedTokens: [] };
   }
   const cssVars = isRecord(parsed.cssVars) ? parsed.cssVars : null;
-  if (!cssVars) throw new Error("Theme file must include cssVars with light and dark entries.");
+  if (!cssVars) throw new Error(i18n.t(($) => $.core.theme.fileMissingCssVars));
   if (!("light" in cssVars) && !("dark" in cssVars)) {
-    throw new Error("Theme file must include light and dark CSS variables.");
+    throw new Error(i18n.t(($) => $.core.theme.fileMissingModes));
   }
   const skippedTokens: string[] = [];
   const light = importThemeTokens(cssVars, "light", skippedTokens);

@@ -1,3 +1,5 @@
+import type { PreviewTranslator } from "./messages";
+
 interface RegisteredTextLayer {
   endOfContent: HTMLDivElement;
   removeLocalListeners: () => void;
@@ -185,9 +187,10 @@ export function registerPdfTextSelection(
   textLayer: HTMLDivElement,
   pageNumber: number,
   normalizeText: (text: string) => string,
+  t: PreviewTranslator,
 ): () => void {
   textLayer.tabIndex = 0;
-  textLayer.setAttribute("aria-label", `Selectable text for PDF page ${pageNumber}`);
+  textLayer.setAttribute("aria-label", t("a11y.textLayer", { page: pageNumber }));
 
   const endOfContent = document.createElement("div");
   endOfContent.className = "endOfContent";

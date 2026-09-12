@@ -3,6 +3,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { AppConfig } from "@/lib/tauri";
 
 const mocks = vi.hoisted(() => ({
@@ -53,10 +54,10 @@ describe("CheckpointToggles", () => {
     render(<CheckpointToggles />);
 
     const compileSwitch = await screen.findByRole("switch", {
-      name: "Save a checkpoint after each successful compile",
+      name: enSettings.checkpoints.afterCompile.label,
     });
     const noticeSwitch = screen.getByRole("switch", {
-      name: "Show a notice when a checkpoint cannot be saved",
+      name: enSettings.checkpoints.notifyOnFailure.label,
     });
     expect(compileSwitch).toHaveAttribute("aria-checked", "true");
     expect(noticeSwitch).toHaveAttribute("aria-checked", "true");
@@ -84,12 +85,12 @@ describe("CheckpointToggles", () => {
 
     await user.click(
       await screen.findByRole("switch", {
-        name: "Save a checkpoint after each successful compile",
+        name: enSettings.checkpoints.afterCompile.label,
       }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Couldn't save checkpoint settings.",
+      enSettings.checkpoints.config.saveFailed,
     );
     expect(screen.getByTestId("checkpoint-toggles")).toBeInTheDocument();
   });
@@ -99,7 +100,7 @@ describe("CheckpointToggles", () => {
     render(<CheckpointToggles />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Couldn't load checkpoint settings.",
+      enSettings.checkpoints.config.loadFailed,
     );
   });
 });

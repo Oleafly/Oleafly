@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { BarChart3, History, Plus, Settings2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { AssistantFloatButton } from "@/components/ai/AssistantShellHeader";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ export function openCliAgentSettings() {
 const ACTION_CLASS = "size-7 text-muted-foreground hover:text-foreground";
 
 function AcpWorkspaceActions({ projectId }: { projectId: string }) {
+  const { t } = useTranslation(["common", "ai"]);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const allSessions = useAcpSessionsStore((state) => state.sessions);
   const activeId = useAcpSessionsStore((state) => state.activeByProject[projectId] ?? null);
@@ -74,12 +76,12 @@ function AcpWorkspaceActions({ projectId }: { projectId: string }) {
 
   return (
     <>
-      <Tooltip label="New conversation">
+      <Tooltip label={t(($) => $.ai.acp.newConversation)}>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="New conversation"
+          aria-label={t(($) => $.ai.acp.newConversation)}
           data-testid="acp-new-conversation"
           className={ACTION_CLASS}
           disabled={busy || running || !installed}
@@ -89,13 +91,13 @@ function AcpWorkspaceActions({ projectId }: { projectId: string }) {
         </Button>
       </Tooltip>
       <DropdownMenu>
-        <Tooltip label="Saved conversations">
+        <Tooltip label={t(($) => $.ai.acp.savedConversations)}>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              aria-label="Saved conversations"
+              aria-label={t(($) => $.ai.acp.savedConversations)}
               data-testid="acp-history-picker"
               className={ACTION_CLASS}
               disabled={busy || running || sessions.length === 0}
@@ -105,7 +107,7 @@ function AcpWorkspaceActions({ projectId }: { projectId: string }) {
           </DropdownMenuTrigger>
         </Tooltip>
         <DropdownMenuContent align="end" className="z-[100] max-h-72 w-72 overflow-y-auto">
-          <DropdownMenuLabel>Saved conversations</DropdownMenuLabel>
+          <DropdownMenuLabel>{t(($) => $.ai.acp.savedConversations)}</DropdownMenuLabel>
           {sessions.map((value) => (
             <DropdownMenuItem
               key={value.id}
@@ -114,7 +116,7 @@ function AcpWorkspaceActions({ projectId }: { projectId: string }) {
               onSelect={() => openSaved(value.id)}
             >
               <span className="min-w-0 flex-1 truncate">
-                {value.title || "Untitled conversation"} · {value.agentId}
+                {value.title || t(($) => $.ai.acp.untitledConversation)} · {value.agentId}
               </span>
             </DropdownMenuItem>
           ))}
@@ -125,29 +127,30 @@ function AcpWorkspaceActions({ projectId }: { projectId: string }) {
 }
 
 export function AssistantShellAcpActions({ projectId }: { projectId?: string | null }) {
+  const { t } = useTranslation(["common", "ai"]);
   return (
     <>
       {projectId ? <AcpWorkspaceActions projectId={projectId} /> : null}
-      <Tooltip label="Agent setup">
+      <Tooltip label={t(($) => $.ai.acp.agentSetup)}>
         <Button
           variant="ghost"
           size="icon"
           className={ACTION_CLASS}
-          aria-label="Agent setup"
+          aria-label={t(($) => $.ai.acp.agentSetup)}
           onClick={openCliAgentSettings}
         >
           <Settings2 className="size-4" />
         </Button>
       </Tooltip>
       <Suspense fallback={null}>
-        <Tooltip label="Usage report">
+        <Tooltip label={t(($) => $.ai.acp.usageReport)}>
           <UsageReportDialog
             trigger={
               <Button
                 variant="ghost"
                 size="icon"
                 className={ACTION_CLASS}
-                aria-label="Usage report"
+                aria-label={t(($) => $.ai.acp.usageReport)}
               >
                 <BarChart3 className="size-4" />
               </Button>

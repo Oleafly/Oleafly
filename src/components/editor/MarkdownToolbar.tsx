@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Bold,
   ChevronDown,
@@ -63,9 +64,10 @@ import {
 import { shortcut } from "@/lib/utils";
 
 function MarkdownHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
-      ariaLabel="Heading level"
+      ariaLabel={t(($) => $.editor.toolbar.headingLevel)}
       className="w-auto min-w-0"
       triggerClassName={
         variant === "bar"
@@ -81,24 +83,24 @@ function MarkdownHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
         ) : (
           <>
             <Type className="size-4" />
-            <span className="flex-1 text-left">Heading</span>
+            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.heading)}</span>
             <ChevronDown className="size-3" />
           </>
         )
       }
     >
       <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-        Heading
+        {t(($) => $.editor.toolbar.heading)}
       </div>
       {MARKDOWN_HEADING_LEVELS.map((level) => (
         <PopoverItem
-          key={level.label}
+          key={level.hLabel}
           onClick={() => insertMarkdownHeading(level)}
         >
           <span className="w-6 shrink-0 text-[10px] font-medium text-muted-foreground">
             {level.hLabel}
           </span>
-          <span className={level.className}>{level.label}</span>
+          <span className={level.className}>{level.label()}</span>
         </PopoverItem>
       ))}
     </Popover>
@@ -126,6 +128,7 @@ function TargetPopover({
   removeLabel?: string;
   menuRow?: boolean;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   const [value, setValue] = useState("");
   return (
     <Popover
@@ -184,7 +187,7 @@ function TargetPopover({
             type="submit"
             className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
           >
-            Apply
+            {t(($) => $.editor.toolbar.apply)}
           </button>
         </div>
       </form>
@@ -193,9 +196,10 @@ function TargetPopover({
 }
 
 function MarkdownListDropdown({ variant }: { variant: "bar" | "menu" }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
-      ariaLabel="List type"
+      ariaLabel={t(($) => $.editor.toolbar.listType)}
       className="w-auto min-w-0"
       triggerClassName={
         variant === "bar"
@@ -211,15 +215,15 @@ function MarkdownListDropdown({ variant }: { variant: "bar" | "menu" }) {
         ) : (
           <>
             <List className="size-4" />
-            <span className="flex-1 text-left">List</span>
+            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.list)}</span>
             <ChevronDown className="size-3" />
           </>
         )
       }
     >
-      <PopoverItem onClick={insertMarkdownBulletList}>Bulleted list</PopoverItem>
-      <PopoverItem onClick={insertMarkdownOrderedList}>Numbered list</PopoverItem>
-      <PopoverItem onClick={insertMarkdownTaskList}>Task list</PopoverItem>
+      <PopoverItem onClick={insertMarkdownBulletList}>{t(($) => $.editor.toolbar.bulletedList)}</PopoverItem>
+      <PopoverItem onClick={insertMarkdownOrderedList}>{t(($) => $.editor.toolbar.numberedList)}</PopoverItem>
+      <PopoverItem onClick={insertMarkdownTaskList}>{t(($) => $.editor.toolbar.taskList)}</PopoverItem>
     </Popover>
   );
 }
@@ -243,6 +247,7 @@ export function MarkdownToolbar({
   /** Project statistics describe the compiled document, so hide them for stray .md files in other projects. */
   showProjectInfo?: boolean;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
       {
@@ -262,41 +267,41 @@ export function MarkdownToolbar({
       btnControl(
         "blockquote",
         Quote,
-        "Blockquote",
+        t(($) => $.editor.toolbar.blockquote),
         insertMarkdownBlockquote,
-        "Insert blockquote",
+        t(($) => $.editor.toolbar.insertBlockquote),
       ),
       dividerControl("divider-1"),
       btnControl(
         "bold",
         Bold,
-        "Bold",
+        t(($) => $.editor.toolbar.bold),
         insertMarkdownBold,
-        `Bold (${shortcut("⌘B")})`,
+        t(($) => $.editor.toolbar.boldWithShortcut, { shortcut: shortcut("⌘B") }),
       ),
       btnControl(
         "italic",
         Italic,
-        "Italic",
+        t(($) => $.editor.toolbar.italic),
         insertMarkdownItalic,
-        `Italic (${shortcut("⌘I")})`,
+        t(($) => $.editor.toolbar.italicWithShortcut, { shortcut: shortcut("⌘I") }),
       ),
       btnControl(
         "strikethrough",
         Strikethrough,
-        "Strikethrough",
+        t(($) => $.editor.toolbar.strikethrough),
         insertMarkdownStrikethrough,
       ),
-      btnControl("code", Code, "Inline code", insertMarkdownCode),
+      btnControl("code", Code, t(($) => $.editor.toolbar.inlineCode), insertMarkdownCode),
     ];
 
     if (!wysiwyg) {
       list.push(
-        btnControl("underline", Underline, "Underline", insertMarkdownUnderline),
+        btnControl("underline", Underline, t(($) => $.editor.toolbar.underline), insertMarkdownUnderline),
         btnControl(
           "highlight",
           Highlighter,
-          "Highlight",
+          t(($) => $.editor.toolbar.highlight),
           insertMarkdownHighlight,
         ),
       );
@@ -309,11 +314,11 @@ export function MarkdownToolbar({
         render: () => (
           <TargetPopover
             icon={<LinkIcon className="size-4" />}
-            label="Link URL"
-            placeholder="https://"
+            label={t(($) => $.editor.toolbar.linkUrl)}
+            placeholder={t(($) => $.editor.toolbar.linkPlaceholder)}
             initialValue={() => currentMarkdownLinkHref() ?? ""}
             onApply={insertMarkdownLink}
-            removeLabel="Remove link"
+            removeLabel={t(($) => $.editor.toolbar.removeLink)}
           />
         ),
         renderMenu: () => (
@@ -321,16 +326,18 @@ export function MarkdownToolbar({
             key="link"
             menuRow
             icon={<LinkIcon className="size-4" />}
-            label="Link URL"
-            placeholder="https://"
+            label={t(($) => $.editor.toolbar.linkUrl)}
+            placeholder={t(($) => $.editor.toolbar.linkPlaceholder)}
             initialValue={() => currentMarkdownLinkHref() ?? ""}
             onApply={insertMarkdownLink}
-            removeLabel="Remove link"
+            removeLabel={t(($) => $.editor.toolbar.removeLink)}
           />
         ),
       });
     } else {
-      list.push(btnControl("link", LinkIcon, "Insert link", () => insertMarkdownLink()));
+      list.push(
+        btnControl("link", LinkIcon, t(($) => $.editor.toolbar.insertLink), () => insertMarkdownLink()),
+      );
     }
 
     if (!wysiwyg) {
@@ -339,13 +346,13 @@ export function MarkdownToolbar({
         btnControl(
           "superscript",
           Superscript,
-          "Superscript",
+          t(($) => $.editor.toolbar.superscript),
           insertMarkdownSuperscript,
         ),
         btnControl(
           "subscript",
           Subscript,
-          "Subscript",
+          t(($) => $.editor.toolbar.subscript),
           insertMarkdownSubscript,
         ),
       );
@@ -360,8 +367,8 @@ export function MarkdownToolbar({
             render: () => (
               <TargetPopover
                 icon={<ImageIcon className="size-4" />}
-                label="Image file"
-                placeholder="figures/plot.png"
+                label={t(($) => $.editor.toolbar.imageFile)}
+                placeholder={t(($) => $.editor.toolbar.imagePlaceholder)}
                 onApply={insertMarkdownImage}
               />
             ),
@@ -370,20 +377,22 @@ export function MarkdownToolbar({
                 key="image"
                 menuRow
                 icon={<ImageIcon className="size-4" />}
-                label="Image file"
-                placeholder="figures/plot.png"
+                label={t(($) => $.editor.toolbar.imageFile)}
+                placeholder={t(($) => $.editor.toolbar.imagePlaceholder)}
                 onApply={insertMarkdownImage}
               />
             ),
           }
-        : btnControl("image", ImageIcon, "Insert image", () => insertMarkdownImage()),
+        : btnControl("image", ImageIcon, t(($) => $.editor.toolbar.insertImage), () =>
+            insertMarkdownImage(),
+          ),
       {
         id: "table",
         width: ICON_BUTTON_WIDTH,
         render: () => (
           <IconBtn
             onClick={() => insertMarkdownTable(2, 3)}
-            title="Insert table"
+            title={t(($) => $.editor.toolbar.insertTable)}
           >
             <Table className="size-4" />
           </IconBtn>
@@ -392,7 +401,7 @@ export function MarkdownToolbar({
           <MenuRow
             key="table"
             icon={<Table className="size-4" />}
-            label="Insert table"
+            label={t(($) => $.editor.toolbar.insertTable)}
             onClick={() => insertMarkdownTable(2, 3)}
           />
         ),
@@ -400,7 +409,7 @@ export function MarkdownToolbar({
     );
 
     return list;
-  }, [wysiwyg]);
+  }, [t, wysiwyg]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
   const visibleCount = fitCount(controls, availableWidth);
@@ -420,10 +429,10 @@ export function MarkdownToolbar({
         </>
       )}
 
-      <IconBtn onClick={editorUndo} title={`Undo (${shortcut("⌘Z")})`}>
+      <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
         <Undo2 className="size-4" />
       </IconBtn>
-      <IconBtn onClick={editorRedo} title={`Redo (${shortcut("⌘⇧Z")})`}>
+      <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
         <Redo2 className="size-4" />
       </IconBtn>
 
@@ -438,7 +447,7 @@ export function MarkdownToolbar({
         ))}
         {overflowControls.length > 0 && (
           <Popover
-            ariaLabel="More formatting options"
+            ariaLabel={t(($) => $.editor.toolbar.moreOptions)}
             closeOnClick={false}
             className="max-h-96 w-56 overflow-y-auto p-1"
             trigger={<MoreHorizontal className="size-4" />}
@@ -451,7 +460,7 @@ export function MarkdownToolbar({
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
         {showProjectInfo && <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />}
         {!wysiwyg && (
-          <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
+          <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>
             <Search className="size-4" />
           </IconBtn>
         )}

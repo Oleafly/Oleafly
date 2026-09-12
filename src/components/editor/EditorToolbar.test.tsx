@@ -158,12 +158,14 @@ describe("EditorToolbar wysiwyg toggle", () => {
 describe("EditorToolbar focus", () => {
   it("keeps the caret where it was when a toolbar button is pressed", () => {
     const onClick = vi.fn();
+    const probeTitle = "Undo probe";
+    const probeChild = "undo";
     render(
-      <IconBtn onClick={onClick} title="Undo probe">
-        <span>undo</span>
+      <IconBtn onClick={onClick} title={probeTitle}>
+        <span>{probeChild}</span>
       </IconBtn>,
     );
-    const button = screen.getByLabelText("Undo probe");
+    const button = screen.getByLabelText(probeTitle);
 
     expect(fireEvent.mouseDown(button)).toBe(false);
     expect(onClick).not.toHaveBeenCalled();

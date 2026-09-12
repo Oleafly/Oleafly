@@ -9,6 +9,7 @@ import {
 import { usePreflightStore } from "@/store/preflight";
 import { useEngineStore } from "@/store/engine";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 import {
   canApplyLocalCompileOutcome,
   createCompileSuccessCheckpoint,
@@ -25,7 +26,7 @@ import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 export async function compileTaggedAndVerify(): Promise<void> {
   const engine = useEngineStore.getState().info;
   if (!engine || engine.kind === "none") {
-    toast.info("Enable a tagging engine in Settings, LaTeX Engine, first.");
+    toast.info(i18n.t(($) => $.core.tagged.engineRequired));
     return;
   }
 
@@ -220,9 +221,9 @@ export async function compileTaggedAndVerify(): Promise<void> {
       return;
     }
     if (acceptedSuccess) {
-      toast.success("Tagged PDF compiled. See the accessibility verdict below.");
+      toast.success(i18n.t(($) => $.core.tagged.compiled));
     } else {
-      toast.error("Tagged compile finished with errors. Check the log.");
+      toast.error(i18n.t(($) => $.core.tagged.compiledWithErrors));
     }
   } catch (e) {
     if (isCompileOutputStillWanted(requestIdentity)) {
@@ -242,7 +243,7 @@ export async function compileTaggedAndVerify(): Promise<void> {
     notifyError(
       "compile tagged",
       e,
-      "Tagged compile failed. Check the engine and try again.",
+      i18n.t(($) => $.core.tagged.compileFailed),
     );
   }
 }

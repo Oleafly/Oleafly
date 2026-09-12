@@ -1,0 +1,1378 @@
+{
+  "ai": {
+    "agents": {
+      "bridgeTitle": "ACP 桥接",
+      "bridgeUnresolved": "尚未解析到桥接可执行文件。",
+      "checkInstalled": "检查已安装的代理",
+      "checkingInstalled": "正在检查已安装的代理",
+      "cliNotOnPath": "在 PATH 中找不到 {{command}}。",
+      "cliTitle": "命令行工具",
+      "copySignInCommand": "复制登录命令",
+      "custom": {
+        "description": "粘贴代理定义，注册 Oleafly 未内置的代理。",
+        "hint": "粘贴包含固定版本 npm 或 uv 包、已验证二进制文件或已安装可执行文件的代理定义。请勿将密码和 API 密钥写入此 JSON。",
+        "label": "注册自定义代理",
+        "submit": "注册定义",
+        "title": "添加自定义代理",
+        "useExample": "使用示例"
+      },
+      "install": {
+        "confirm": "安装",
+        "description": "Oleafly 会将此固定版本的包下载到自己的代理文件夹。当你开始对话时，代理将使用你的 CLI 账户运行。",
+        "installing": "正在安装",
+        "location": "Oleafly 代理文件夹，{{id}}/{{version}}",
+        "locationLabel": "安装位置",
+        "packageLabel": "软件包",
+        "title": "安装 {{name}} 桥接 {{version}}"
+      },
+      "installBridge": "安装桥接程序",
+      "intro": "通过 ACP 连接本地代理。每个代理自行管理其模型、工具和登录，API 提供商设置保持独立。请使用官方 CLI 账户登录：Oleafly 不会导入账户令牌，也不会估算订阅配额。",
+      "notice": {
+        "installed": "{{name}} 已安装。开始对话前，请先通过其 CLI 登录。",
+        "registered": "{{name}} 已注册。注册不会安装或启动它。",
+        "removed": "代理定义已移除。已安装的文件和已保存的对话仍可使用。",
+        "terminalOpen": "项目终端已打开。请运行为该代理显示的登录命令，然后重新连接对话。"
+      },
+      "openSignInTerminal": "打开登录终端",
+      "openTerminal": "打开终端",
+      "registry": {
+        "description": "在 ACP 注册表中搜索其他团队发布的代理。",
+        "hideDistribution": "隐藏分发",
+        "register": "注册代理",
+        "registered": "已注册",
+        "reviewHint": "注册表条目由发布者提供，用于描述相应软件。在注册或安装前，请先审查其分发内容。",
+        "search": "搜索",
+        "searchLabel": "查找 ACP 代理",
+        "searchPlaceholder": "搜索 ACP 注册表",
+        "searching": "正在搜索",
+        "showDistribution": "显示分发信息",
+        "title": "查找更多代理"
+      },
+      "sectionLabel": "ACP 代理",
+      "updateBridge": "更新桥接"
+    },
+    "approvals": {
+      "file": {
+        "description": "自定义审批模式会读取此文件。它位于 ~/.oleafly/approvals.toml，并作用于本设备上的所有项目。",
+        "discard": "丢弃更改",
+        "emptyFile": "文件目前为空。",
+        "help": {
+          "comments": "在此处保存时，以 # 开头的注释会被保留；但在审批卡片上选择“在此项目中始终允许”会重写文件，注释不会保留。",
+          "modes": "第一个表 <modesTable>\"$approval_modes\"]</modesTable> 为每个项目设置审批模式：<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full> 或 <custom>\"custom\"</custom>。未列出的项目使用“为我审批”。",
+          "openProject": "当前打开的项目是 {{name}}，其 id 为 <projectId>{{id}}</projectId>。",
+          "projectIds": "项目 id 即 ~/.oleafly/projects 下的文件夹名称。",
+          "rules": "接下来，每个项目 id 各有一个表，为每个工具定义一条规则：<allow>\"allow\"</allow> 表示不经询问直接运行工具，<deny>\"deny\"</deny> 表示拒绝运行。拒绝规则在所有模式下都生效；允许规则仅在自定义模式下生效，不过对 run_command 而言，它在其他模式下也会跳过提示。",
+          "toolNames": "可使用的工具名称：<names>{{names}}</names>，以及“工具”列表中任意 MCP 工具的完整名称。"
+        },
+        "helpToggle": "文件的工作原理",
+        "insertExample": "插入示例",
+        "reload": "重新加载",
+        "saved": "已保存。规则将在下一次工具调用时生效。",
+        "saving": "正在保存",
+        "title": "审批规则文件"
+      },
+      "project": {
+        "allowed": "始终允许",
+        "denied": "始终拒绝",
+        "description": "{{name}} 的已保存规则。这些规则在审批模式为“自定义”时生效。移除规则后，该工具将使用标准风险策略。",
+        "empty": "还没有已保存的规则。在审批提示上使用“在此项目中始终允许”即可添加。",
+        "removeRule": "移除 {{tool}} 的规则",
+        "thisProject": "此项目",
+        "title": "工具审批"
+      }
+    },
+    "budget": {
+      "clear": "清除预算",
+      "inputLabel": "AI 预算（美元）",
+      "inputPlaceholder": "无预算",
+      "limit": "达到预算后将暂停运行。",
+      "save": "保存预算",
+      "spent": "目前预估花费：{{amount}}。达到预算后将暂停运行。",
+      "title": "AI 预算"
+    },
+    "customProvider": {
+      "addDescription": "通过基础 URL 连接任何兼容 OpenAI 的端点。",
+      "addTitle": "添加自定义提供商",
+      "baseUrlLabel": "基础 URL",
+      "baseUrlNote": "已保存的 API 密钥将发送到这个新地址。",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "更改名称或基础 URL。",
+      "editTitle": "编辑自定义提供商",
+      "errors": {
+        "addFailed": "无法添加该提供商。",
+        "baseUrlHost": "URL 缺少主机名。",
+        "baseUrlInvalid": "请输入完整的 URL，例如 https://api.example.com/v1 或 http://localhost:1234/v1。",
+        "baseUrlProtocol": "请使用 https://，本地服务器可使用 http://。",
+        "baseUrlRequired": "必须填写基础 URL。",
+        "idFormat": "只能使用小写字母、数字和连字符，例如 acme。",
+        "idRequired": "必须填写 ID。",
+        "nameRequired": "必须填写名称。",
+        "saveFailed": "无法保存该提供商。"
+      },
+      "idLabel": "ID",
+      "idPlaceholder": "acme",
+      "keyLabel": "API 密钥（可选）",
+      "keyLabelKeepSaved": "API 密钥（留空则保留已保存的密钥）",
+      "keyPlaceholder": "如无需密钥请留空",
+      "keyPlaceholderStored": "除非输入新密钥，否则已保存的密钥保持不变。",
+      "namePlaceholder": "Acme",
+      "submitAdd": "添加提供商"
+    },
+    "instructions": {
+      "capabilitiesTitle": "代理能力",
+      "customDescription": "会作为你的个人风格和偏好添加到每个 AI 请求中。助手会在内置行为的基础上遵循这些内容，它们无法覆盖助手的工具或安全规则。",
+      "customPlaceholder": "例如：始终用英式英语写作。解释保持简短。列表优先使用 enumitem 宏包。",
+      "customTitle": "自定义指令",
+      "defaultModelDescription": "每当你开始新聊天时都会使用该模型。你仍可在聊天面板中为单个对话切换模型。",
+      "defaultModelTitle": "默认聊天模型",
+      "pdfCaptureDescription": "允许代理栅格化编译后的页面（verify_pdf_pages）以进行视觉版式检查。如果你不希望向提供商发送页面图像，请关闭此选项。",
+      "pdfCaptureLabel": "允许 AI 捕获 PDF 页面",
+      "save": "保存指令",
+      "saved": "已保存",
+      "toolsHint": "例如，你可以让它“修复 LaTeX 错误”、“添加 Publications 章节”或“重新编译并检查 PDF”。",
+      "toolsTitle": "助手目前支持以下工具"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "该模型已在列表中。",
+        "empty": "请输入模型 ID。",
+        "spaces": "模型 ID 不能包含空格。"
+      },
+      "addPlaceholder": "添加模型 ID",
+      "changeSummary": "已添加 {{added}} 个，已移除 {{removed}} 个",
+      "custom": "自定义",
+      "deleteAriaLabel": "删除模型 {{model}}",
+      "deleteDialog": {
+        "description": "要从该提供商的模型列表中移除“{{model}}”吗？内置模型可通过“恢复默认”找回。自定义模型可按 ID 再次添加。",
+        "title": "删除模型"
+      },
+      "deleteTooltip": "删除模型",
+      "empty": "还没有模型。请在下方添加一个。",
+      "invalidKey": "API 密钥无效。",
+      "metadata": {
+        "refreshFailed": "无法刷新模型数据。",
+        "unknownDate": "未知日期",
+        "updated": "模型数据更新于 {{date}}",
+        "updatedBundled": "模型数据更新于 {{date}}，随应用附带",
+        "updatedFromCache": "模型数据更新于 {{date}}，来自上次下载"
+      },
+      "noChanges": "无更改",
+      "refresh": "刷新",
+      "restore": "恢复默认",
+      "restoreTooltip": "重新添加该提供商的内置模型",
+      "title": "模型",
+      "unreachable": "无法连接到提供商。",
+      "unreadableList": "提供商返回了 Oleafly 无法读取的模型。",
+      "updated": "更新于 {{time}}"
+    },
+    "personas": {
+      "addStarter": "添加人设",
+      "addStarterFailed": "无法添加 {{name}}。{{error}}",
+      "addStarterNamed": "添加人设 {{name}}",
+      "colors": {
+        "forest": "森林绿",
+        "grape": "葡萄紫",
+        "ocean": "海洋蓝",
+        "slate": "石板灰",
+        "sunset": "日落橙"
+      },
+      "create": "创建人设",
+      "delete": "删除人设",
+      "deleteDescription": "要删除“{{name}}”吗？其指令将被永久移除，使用它的聊天将回退到你的默认指令。",
+      "deleteNamed": "删除人设 {{name}}",
+      "description": "可复用的指令，用于定义助手的工作方式。在聊天中可为任务选择一个。选中期间，它会替换你的默认指令。",
+      "edit": "编辑人设",
+      "editNamed": "编辑人设 {{name}}",
+      "empty": "尚未添加人设。",
+      "form": {
+        "color": "颜色",
+        "create": "创建",
+        "createTitle": "创建人设",
+        "description": "设置可复用的指令，定义助手的工作方式。",
+        "editTitle": "编辑人设",
+        "instructions": "指令",
+        "instructionsPlaceholder": "审查我的写作是否清晰，并优先列出最重要的问题",
+        "namePlaceholder": "简洁编辑",
+        "required": "名称和指令为必填项。",
+        "saveFailed": "无法保存该人设。"
+      },
+      "starters": {
+        "criticalReviewer": "找出论证、方法、证据和表述中的弱点。",
+        "documentEditor": "对行文、结构、引用和 LaTeX 进行有针对性的稳妥修改。",
+        "figure": "以 LaTeX TikZ 或 PGFPlots 生成出版级质量的图片和图表。",
+        "researchWriter": "起草并组织学术文本，不虚构证据或引用。"
+      },
+      "suggestedDescription": "从其中一个开始，然后编辑其指令以适应你的工作流。",
+      "suggestedTitle": "推荐人设",
+      "title": "人设"
+    },
+    "providers": {
+      "addCustom": "添加自定义提供商",
+      "badge": {
+        "connected": "已连接",
+        "notRunning": "未运行",
+        "running": "运行中"
+      },
+      "blurbs": {
+        "anthropic": "Claude 模型，擅长代码与写作。",
+        "custom": "自定义提供商",
+        "deepseek": "DeepSeek V4 模型",
+        "google": "来自 Google AI Studio 的 Gemini 模型。",
+        "groq": "开源模型推理，速度极快。",
+        "mistral": "Mistral 与 Codestral 模型。",
+        "ollama": "在你的电脑上运行模型。无需密钥，只需安装 Ollama 并拉取一个模型。",
+        "openai": "GPT 模型，默认之选。",
+        "openrouter": "一个密钥即可访问多家实验室的模型。",
+        "perplexity": "Sonar 模型，支持实时联网检索。",
+        "xai": "来自 xAI 的 Grok 模型。",
+        "zai": "通过 Z.AI GLM Coding Plan 订阅使用 GLM 模型。"
+      },
+      "deleteKeyAriaLabel": "删除 {{provider}} 密钥",
+      "deleteKeyTooltip": "删除密钥",
+      "docs": "文档",
+      "editAriaLabel": "编辑 {{provider}}",
+      "editTooltip": "编辑名称或端点",
+      "getKey": "获取密钥",
+      "intro": "在下方连接你使用的提供商。密钥仅存储在本地。保存后即设为默认。你可以通过聊天面板的下拉菜单切换已配置的提供商和模型。",
+      "keyPlaceholder": "在此粘贴你的 API 密钥",
+      "modelLabel": "模型",
+      "ollama": {
+        "active": "使用中",
+        "changeHost": "更改主机（高级）",
+        "check": "检测 Ollama",
+        "checking": "正在检查…",
+        "disconnect": "断开连接",
+        "hideHost": "隐藏主机",
+        "installedHint": "Ollama 已安装在本机。启动需要一点时间。",
+        "modelPlaceholder": "选择要使用的模型",
+        "noModels": "Ollama 正在运行，但尚未安装任何模型。请运行 <pull>ollama pull llama3.2</pull>，然后重新检测。",
+        "noneResponding": "在 <host>{{host}}</host> 上没有 Ollama 响应。",
+        "notChecked": "尚未检测",
+        "notDetected": "未检测到",
+        "recheck": "重新检测",
+        "runningModels_other": "运行中 · {{count}} 个模型",
+        "setupSteps": "1. 从 <download>ollama.com <icon></icon></download> 安装 · 2. 它会自动启动（或运行 <serve>ollama serve</serve>）· 3. 拉取一个模型，例如 <pull>ollama pull llama3.2</pull> · 4. 重新检测。",
+        "start": "启动 Ollama"
+      },
+      "removeAriaLabel": "移除 {{provider}}",
+      "removeDialog": {
+        "description": "要移除“{{provider}}”吗？其保存的密钥和模型列表也会一并删除。",
+        "title": "移除自定义提供商"
+      },
+      "removeTooltip": "移除自定义提供商",
+      "replaceKey": "更换密钥",
+      "status": {
+        "error": "错误：{{message}}",
+        "errorFallback": "无法验证密钥。",
+        "valid": "密钥有效。下方模型已就绪。",
+        "validating": "正在检查密钥…"
+      }
+    },
+    "section": {
+      "agentsLoading": "正在加载代理…",
+      "errors": {
+        "invalidKey": "API 密钥无效。",
+        "keyNotKept": "基础 URL 已保存，但密钥未保存。请重新输入密钥。",
+        "providerGone": "该提供商已不存在。",
+        "providerIdInUse": "该提供商 ID 已被使用。"
+      },
+      "messages": {
+        "keyRemoved": "{{provider}} 密钥已移除。",
+        "keyRemovedAccessDisabled": "{{provider}} 密钥已移除。AI 访问已禁用。",
+        "keySavedAddModels": "{{provider}} 密钥已保存。请在下方手动添加模型。",
+        "keySavedCheckedOnUse": "{{provider}} 密钥已保存。将在首次使用时验证。",
+        "ollamaConnected": "Ollama 已连接 · {{model}}",
+        "preferencesReset": "AI 助手偏好设置已恢复为默认值。",
+        "providerAdded": "{{provider}} 已添加。",
+        "providerConnected": "{{provider}} 已连接。",
+        "providerUpdated": "{{provider}} 已更新。",
+        "providerUpdatedWithoutModels": "{{provider}} 已更新。其模型列表无法刷新。"
+      },
+      "reset": {
+        "confirmWithProject": "将 AI 助手偏好设置恢复为默认值，包括模型可用性、已启用的技能和本项目的预算。当前提供商和模型、提供商密钥、人设、审批规则、使用历史以及 MCP 服务器将保持不变。",
+        "confirmWithoutProject": "将 AI 助手偏好设置恢复为默认值，包括模型可用性和已启用的技能。当前提供商和模型、提供商密钥、人设、审批规则、使用历史以及 MCP 服务器将保持不变。",
+        "sectionName": "AI 助手"
+      },
+      "tabs": {
+        "agents": "CLI 代理",
+        "instructions": "指令",
+        "mcp": "MCP",
+        "personas": "人设",
+        "providers": "提供商与密钥",
+        "skills": "技能"
+      }
+    },
+    "skills": {
+      "addFolder": "添加文件夹",
+      "addFolderDialogTitle": "添加技能文件夹",
+      "catalog": {
+        "description": "面向特定研究领域的额外技能。安装后即可将其添加到上方列表。",
+        "empty": "目录中没有可安装的额外技能。",
+        "install": "安装",
+        "loading": "正在加载目录…",
+        "messages": {
+          "installed": "已安装 {{name}}。",
+          "removed": "已移除 {{name}}。"
+        },
+        "progress": {
+          "downloading": "正在下载…",
+          "downloadingPercent": "正在下载 {{percent}}%",
+          "extracting": "正在解压…",
+          "extractingPercent": "正在解压 {{percent}}%",
+          "failed": "安装失败。",
+          "finishing": "正在完成安装…"
+        },
+        "refresh": "刷新",
+        "source": {
+          "bundled": "内置目录",
+          "bundledOffline": "内置目录，无法连接网络。",
+          "cached": "来自 cdn.oleafly.com 的缓存目录，上次获取于 {{when}}。",
+          "cachedOffline": "来自 cdn.oleafly.com 的缓存目录，上次获取于 {{when}}，无法连接网络。",
+          "cachedUnknown": "来自 cdn.oleafly.com 的缓存目录，上次获取时间未知。",
+          "cachedUnknownOffline": "来自 cdn.oleafly.com 的缓存目录，上次获取时间未知，无法连接网络。",
+          "remote": "来自 cdn.oleafly.com 的目录，获取于 {{when}}。",
+          "remoteUnknown": "来自 cdn.oleafly.com 的目录，获取时间未知。"
+        },
+        "title": "领域技能库",
+        "uninstall": "卸载",
+        "update": "更新"
+      },
+      "createSkill": "创建技能",
+      "description": "助手只会在判断需要某项技能时才加载其完整指令，若你在聊天中输入 /skill-id 则会立即加载。在这里开启的技能会在所有项目中生效，除非某个项目单独覆盖。",
+      "editAria": "编辑 {{name}}",
+      "editor": {
+        "createDescription": "在你的 Oleafly 技能文件夹中创建 SKILL.md 草稿。",
+        "createTitle": "创建技能",
+        "descriptionPlaceholder": "检查每个论断是否有依据",
+        "editDescription": "完善存储在 SKILL.md 中的元数据和指令。",
+        "editTitle": "编辑技能",
+        "instructions": "指令",
+        "instructionsHint": "留空可创建最简指令框架。",
+        "instructionsPlaceholder": "列出使用此技能的时机，以及助手应遵循的步骤",
+        "namePlaceholder": "论断检查器",
+        "requiredAll": "名称、描述和指令为必填项。",
+        "requiredBasics": "名称和描述为必填项。",
+        "submitCreate": "创建"
+      },
+      "empty": "未找到技能。可添加文件夹，或新建技能。",
+      "enableAria": "启用 {{name}}",
+      "fileCount_other": "{{count}} 个文件",
+      "groups": {
+        "shelf": "领域技能库",
+        "user": "你的技能"
+      },
+      "inheritsDevice": "继承设备设置",
+      "invalidBadge": "无效",
+      "loadFailed": "无法加载技能。{{message}}",
+      "loading": "正在加载技能…",
+      "messages": {
+        "added": "已添加 {{name}}。",
+        "created": "已创建 {{name}}。",
+        "editorClosed": "技能编辑器已关闭。",
+        "removed": "已移除 {{name}}。",
+        "saved": "已保存 {{name}}。",
+        "updated": "已更新 {{name}}。"
+      },
+      "missingDescription": "此技能需要填写描述。",
+      "offForProject": "在此项目中已关闭",
+      "onForProject": "在此项目中已启用",
+      "phases": {
+        "authoring": "撰写",
+        "communication": "沟通",
+        "figures": "图片",
+        "research": "研究",
+        "review": "审阅",
+        "submission": "投稿",
+        "tooling": "工具"
+      },
+      "removeAria": "移除 {{name}}",
+      "removeDialog": {
+        "description": "要从 Oleafly 中移除“{{name}}”及其文件夹吗？此操作无法撤销。",
+        "title": "移除技能"
+      },
+      "share": {
+        "description": "将你的技能链接到此计算机上其他编码代理已在读取的文件夹，这样你只需编写一次技能，每个代理都能使用。",
+        "emptyBody": "未在此计算机上找到其他代理文件夹。",
+        "status": {
+          "linked": "已链接 {{linked}}/{{total}} 个",
+          "undetected": "未在此设备上找到",
+          "unsupported": "此系统不支持"
+        },
+        "summary": {
+          "checking": "正在检查代理文件夹",
+          "linked_other": "已链接 {{linked}}/{{count}} 个代理",
+          "none": "未找到其他代理文件夹"
+        },
+        "title": "与此计算机上的其他代理共享技能"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "已添加",
+        "bundled": "内置",
+        "catalog": "已安装"
+      },
+      "tier": {
+        "credits": "{{credits}} 起",
+        "native": "Oleafly 工作流",
+        "shelf": "领域货架技能",
+        "shelfWithLicense": "领域货架，{{license}}",
+        "user": "你的自定义技能",
+        "vendored": "第三方技能"
+      },
+      "title": "技能",
+      "updateAction": "更新",
+      "updateDialog": {
+        "description": "要将“{{name}}”替换为最新内置版本吗？其文件的所有本地修改都将丢失。",
+        "title": "更新技能"
+      },
+      "useDeviceSetting": "使用设备设置",
+      "useDeviceSettingAria": "为 {{name}} 使用设备设置",
+      "useInProject": "在此项目中使用",
+      "useInProjectAria": "在此项目中使用 {{name}}",
+      "validateAria": "验证 {{name}}"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "用于按钮、选中内容和编辑器光标。",
+        "label": "强调色",
+        "swatchAriaLabel": "{{name}} 强调色"
+      },
+      "bgPattern": {
+        "description": "选择项目架背后的图案。",
+        "dots": "圆点",
+        "grid": "网格",
+        "label": "背景图案"
+      },
+      "dock": {
+        "bottom": "底部",
+        "description": "选择程序坞在主屏幕上的位置。",
+        "label": "程序坞位置",
+        "left": "左侧",
+        "right": "右侧"
+      },
+      "font": {
+        "description": "未安装某字体时使用系统回退字体。",
+        "label": "应用字体"
+      },
+      "fontSize": {
+        "description": "调整菜单、面板和按钮中的文字大小。",
+        "label": "应用字体大小"
+      },
+      "theme": {
+        "description": "“跟随系统”会随操作系统外观的变化自动切换。",
+        "label": "外观"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "浏览器主页",
+        "description": "选择打开浏览器坞时显示的页面。",
+        "label": "主页"
+      },
+      "searchEngine": {
+        "description": "选择用于文字搜索的搜索引擎。",
+        "label": "默认搜索引擎"
+      }
+    },
+    "customTheme": {
+      "cleared": "主题自定义已清除。",
+      "customCss": {
+        "description": "可选的声明仅在应用内生效。规则、导入和 URL 会被阻止。",
+        "label": "限定作用域的 CSS 声明"
+      },
+      "darkRestored": "深色令牌已恢复。",
+      "description": "分别为各模式调整应用的颜色令牌。更改会保存在本地，并立即生效。",
+      "exportTheme": "导出主题",
+      "fileTooLarge": "主题文件超过 128 KiB。",
+      "importFileAriaLabel": "导入主题文件",
+      "importTheme": "导入主题",
+      "imported": "主题已导入并应用。",
+      "importedSkippedMore_other": "主题已导入并应用。已跳过 {{count}} 个 Oleafly 未使用的令牌：{{tokens}} 等。",
+      "importedSkipped_other": "主题已导入并应用。已跳过 {{count}} 个 Oleafly 未使用的令牌：{{tokens}}。",
+      "lightRestored": "浅色令牌已恢复",
+      "modeDark": "深色模式",
+      "modeFieldsetAriaLabel": "要编辑的主题模式",
+      "modeLight": "浅色模式",
+      "pickColorDark": "选择深色模式的 {{token}} 颜色。",
+      "pickColorLight": "选择浅色模式的 {{token}} 颜色。",
+      "radius": {
+        "description": "可输入 8px、0.5rem 或 1em 之类的值。留空则使用默认值。",
+        "label": "圆角半径"
+      },
+      "resetAll": "全部重置",
+      "resetMode": "重置此模式",
+      "title": "主题自定义",
+      "tokenInputDark": "深色模式的 {{token}} 令牌。",
+      "tokenInputLight": "浅色模式的 {{token}} 令牌。",
+      "tokens": {
+        "accent": "强调色",
+        "accentForeground": "强调色文字",
+        "background": "背景色",
+        "border": "边框色",
+        "card": "面板色",
+        "cardForeground": "面板色文字",
+        "destructive": "危险色",
+        "destructiveForeground": "危险色文字",
+        "foreground": "文字色",
+        "input": "输入框边框",
+        "muted": "柔和色",
+        "mutedForeground": "弱化文本",
+        "popover": "弹出层",
+        "popoverForeground": "弹出层文本",
+        "primary": "主色",
+        "primaryForeground": "主色文本",
+        "ring": "焦点环",
+        "secondary": "次要色",
+        "secondaryForeground": "次要色文本",
+        "sidebar": "侧边栏",
+        "sidebarAccent": "侧边栏强调色",
+        "sidebarAccentForeground": "侧边栏强调色文本",
+        "sidebarBorder": "侧边栏边框",
+        "sidebarForeground": "侧边栏文本"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "自动插入闭合的方括号和圆括号。",
+        "label": "自动闭合括号"
+      },
+      "autoCloseEnvironments": {
+        "description": "在 \\begin 后按 Enter 时自动插入 \\end。",
+        "label": "自动闭合环境"
+      },
+      "autoCloseMath": {
+        "description": "输入时自动配对 $、\\( 和 \\[。",
+        "label": "自动闭合公式"
+      },
+      "autocomplete": {
+        "description": "输入时显示代码补全。关闭后仍可用 Ctrl+Space 打开。",
+        "label": "自动补全"
+      },
+      "font": {
+        "description": "选择源码文件使用的等宽字体。",
+        "label": "编辑器字体"
+      },
+      "fontSize": {
+        "description": "设置源码编辑器的文字大小。",
+        "label": "编辑器字号"
+      },
+      "ghostCompletion": {
+        "description": "在光标后显示可能的补全建议，按 Tab 即可接受。",
+        "label": "行内建议"
+      },
+      "nonBlinkingCursor": {
+        "description": "保持编辑器光标不闪烁。",
+        "label": "光标不闪烁"
+      },
+      "stickyScroll": {
+        "description": "滚动时将当前 LaTeX 章节和环境固定在顶部。",
+        "label": "粘性滚动"
+      },
+      "theme": {
+        "description": "独立于应用主题单独设置源码语法颜色。",
+        "label": "编辑器主题"
+      },
+      "vim": {
+        "description": "在源码编辑器中使用 Vim 键位绑定。",
+        "label": "Vim 模式"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "添加隐藏文件模式",
+        "description": "选择哪些生成的文件和文件夹不显示在项目树中。",
+        "inputAriaLabel": "要隐藏的文件名或模式",
+        "placeholder": "添加文件名或模式",
+        "removeAriaLabel": "从隐藏文件中移除 {{pattern}}",
+        "title": "从文件树中隐藏文件"
+      },
+      "homeView": {
+        "description": "选择项目在库中的排列方式。",
+        "grid": "网格",
+        "label": "默认主页视图",
+        "list": "列表"
+      },
+      "openIn": {
+        "description": "选择项目打开时使用的布局。",
+        "label": "项目打开方式"
+      },
+      "showTree": {
+        "description": "每次进入项目时打开源码文件树。",
+        "label": "打开时显示文件树"
+      }
+    },
+    "fontSizeOption": "{{size}}px",
+    "preview": {
+      "darkMode": {
+        "description": "默认反转 PDF 颜色。你仍可在预览工具栏中切换颜色。",
+        "label": "PDF 深色模式"
+      },
+      "hoverPreview": {
+        "description": "在库中将鼠标悬停在项目上时，显示最后编译的页面。",
+        "label": "悬停时预览 PDF"
+      },
+      "zoomShortcuts": {
+        "description": "使用 Cmd/Ctrl +、- 和 0 来缩放 PDF，而非应用窗口。",
+        "label": "PDF 缩放快捷键"
+      }
+    },
+    "sectionName": "外观",
+    "tabs": {
+      "app": "应用",
+      "browser": "浏览器",
+      "editor": "编辑器",
+      "files": "项目",
+      "pdf": "PDF 预览",
+      "terminal": "终端"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "终端颜色主题",
+        "description": "选择终端的 ANSI 调色板。",
+        "label": "配色主题",
+        "optionDark": "{{name}} · 深色",
+        "optionLight": "{{name}} · 浅色"
+      },
+      "colors": {
+        "background": "背景色",
+        "backgroundAriaLabel": "终端背景色",
+        "cursor": "光标色",
+        "cursorAriaLabel": "终端光标色",
+        "description": "在保留所选 ANSI 调色板的同时调整基础颜色。",
+        "followingAppTheme": "跟随应用主题：深色模式使用深色调色板，浅色模式使用浅色调色板。可在上方选择具体调色板来自定义这些颜色。",
+        "foreground": "文字色",
+        "foregroundAriaLabel": "终端前景色",
+        "label": "终端颜色"
+      },
+      "cursorBlink": {
+        "description": "让终端光标闪烁。",
+        "label": "光标闪烁"
+      },
+      "cursorStyle": {
+        "ariaLabel": "终端光标样式",
+        "bar": "竖线",
+        "block": "方块",
+        "description": "选择终端光标的形状。",
+        "label": "光标样式",
+        "underline": "下划线"
+      },
+      "font": {
+        "ariaLabel": "终端字体",
+        "description": "选择终端使用的等宽字体。",
+        "label": "终端字体"
+      },
+      "fontSize": {
+        "description": "设置终端中的文字大小。",
+        "label": "终端字体大小"
+      },
+      "fontWeight": {
+        "description": "设置常规终端文字的字重。",
+        "label": "常规字重"
+      },
+      "fontWeightBold": {
+        "description": "设置粗体终端文字的字重。",
+        "label": "粗体字重"
+      },
+      "startWithProject": {
+        "description": "在项目打开时启动 shell，而不是在首次显示终端时才启动。",
+        "label": "随项目启动 shell"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly 会在后台保存检查点，且仅在源码发生变化时保存。",
+      "label": "每次编译成功后保存检查点"
+    },
+    "config": {
+      "loadFailed": "无法加载检查点设置。",
+      "saveFailed": "无法保存检查点设置。"
+    },
+    "description": "检查点会记录成功编译所使用的源文件。",
+    "notifyOnFailure": {
+      "description": "当检查点无法保存时，Oleafly 会通知你，包括存储问题或未能捕获的文件。",
+      "label": "检查点无法保存时显示通知"
+    },
+    "title": "检查点"
+  },
+  "citations": {
+    "actions": {
+      "removeEmail": "移除邮箱",
+      "removeKey": "移除密钥",
+      "saveEmail": "保存邮箱",
+      "saveKey": "保存密钥"
+    },
+    "connected": "已连接",
+    "description": "管理学术搜索源使用的凭据。",
+    "keyFree": {
+      "description": "这些源无需 API 密钥即可使用。",
+      "title": "无需凭据的源"
+    },
+    "openAlex": {
+      "docsLink": "OpenAlex 速率限制",
+      "emailLabel": "OpenAlex 联系邮箱",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "无法移除 OpenAlex 联系邮箱。",
+      "emailRemoved": "OpenAlex 联系邮箱已移除。",
+      "emailSaveFailed": "无法保存 OpenAlex 联系邮箱。",
+      "emailSaved": "OpenAlex 联系邮箱已保存。",
+      "hint": "可选的联系邮箱。OpenAlex 会用它获取更高的速率限制（礼貌池）。仅存储在本地。"
+    },
+    "semanticScholar": {
+      "docsLink": "Semantic Scholar API 信息",
+      "hint": "API 密钥为可选项。匿名搜索将使用 Semantic Scholar 的公共限额。",
+      "keyLabel": "Semantic Scholar API 密钥",
+      "keyRemoveFailed": "无法移除 Semantic Scholar API 密钥。",
+      "keyRemoved": "Semantic Scholar API 密钥已移除。",
+      "keySaveFailed": "无法保存 Semantic Scholar API 密钥。",
+      "keySaved": "Semantic Scholar API 密钥已保存。"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "可选。通过 Serper 在引用搜索中启用 Google Scholar 来源。如果没有密钥，选中该来源时将被跳过。",
+      "keyLabel": "Serper API 密钥",
+      "keyRemoveFailed": "无法移除 Serper API 密钥。",
+      "keyRemoved": "已移除 Serper API 密钥。",
+      "keySaveFailed": "无法保存 Serper API 密钥。",
+      "keySaved": "已保存 Serper API 密钥。"
+    },
+    "title": "引用搜索"
+  },
+  "cite": {
+    "apa": "同一文献的 APA 格式可在 GitHub 的“Cite this repository”中找到。",
+    "copyBibtex": "复制 BibTeX",
+    "description": "Oleafly 免费开源，而让更多人知道它的存在，它才能一直这样。如果它曾为你的论文出过力，在参考文献中加上一条记录，就能告诉下一位研究者这个工具来自哪里。复制它，粘贴到你的 .bib 文件中，并以 <citeKey>oleafly</citeKey> 为引用键进行引用。",
+    "title": "在论文中引用 Oleafly"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "已全部下载",
+      "download": "下载",
+      "downloadAll": "全部下载"
+    },
+    "aiTemplates": {
+      "deleteDescription": "从你的库中删除“{{name}}”吗？已基于它创建的项目会保留各自的副本，不受影响。",
+      "deleteTitle": "删除 AI 生成的模板",
+      "deleted": "已从库中删除“{{name}}”。",
+      "empty": "还没有 AI 生成的模板。可从模板画廊创建一个。",
+      "fallbackDescription": "AI 生成的模板。",
+      "toggle": "管理 AI 生成的模板。"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "一款温暖的人文无衬线字体，被众多现代简历与履历模板采用。",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "一款简洁、中性的无衬线字体，屏幕显示与印刷均清晰易读。",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "一款精致的过渡型衬线字体，非常适合学术与正式文书。",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "暂无可下载的字体",
+      "engineNote": "LuaLaTeX 引擎（用于生成带标签的无障碍 PDF）在“LaTeX 引擎”部分中管理。",
+      "heading": "字体",
+      "tooltip": "部分模板使用优质的开源字体。为了让 Oleafly 保持小巧，这些字体按需下载：当你基于此类模板创建项目时，字体会被获取并复制到项目中，让项目保持独立自包含，可离线编译。你也可以在此预先下载这些字体，或将其移除以释放空间。"
+    },
+    "packProgress": "{{index}} / {{total}}",
+    "progress": "{{label}}（{{index}} / {{total}}）",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "字体",
+      "templates": "模板"
+    },
+    "templates": {
+      "empty": "暂无可下载的模板包。",
+      "heading": "模板",
+      "tooltip": "额外的模板包按需下载，让 Oleafly 保持小巧。在此下载模板包即可离线使用其中的模板，之后也可将其删除以释放空间。"
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "仅适用于受信任的项目。运行本地 TeX 发行版，可读取你的账户有权访问的文件。支持完整宏包集和多轮编译工作流。宿主机命令执行仍是一项单独的按项目权限。",
+        "name": "latexmk（系统 TeX）"
+      },
+      "tectonic": {
+        "detail": "内置于 Oleafly。快速、离线、零配置。支持纯 LaTeX 和大多数常用宏包。",
+        "name": "Tectonic（内置）"
+      }
+    },
+    "defaultEngine": {
+      "heading": "默认编译引擎",
+      "tooltip": "适用于新项目。每个项目都会在 project. 中固定自己的引擎，因此协作者打开同一项目时会以相同方式编译，不受此设置影响。"
+    },
+    "distributions": {
+      "empty": "未在这台电脑上检测到 TeX 发行版。",
+      "heading": "管理 TeX 发行版",
+      "rowTooltip": "捆绑了 {{tools}}。Oleafly 从 {{binDir}} 运行其 TeX 工具。",
+      "rowTooltipNoTools": "此安装中未找到 latexmk 或 tlmgr。Oleafly 从 {{binDir}} 运行其 TeX 工具。",
+      "tooltip": "latexmk 引擎在这台电脑上可使用的所有 TeX 发行版。TinyTeX 无需管理员权限即可安装到你的主文件夹。系统级安装（MacTeX、TeX Live、MiKTeX）会被自动检测。"
+    },
+    "latexmkMissing": "未找到 latexmk",
+    "markdown": {
+      "downloading": "正在下载…",
+      "heading": "Markdown 编译器",
+      "install": "安装 pandoc",
+      "note": "为 Markdown 选择其他 PDF 后端，或以系统 pandoc 取代托管的 pandoc，目前尚不可用。",
+      "status": {
+        "checking": "正在检查 pandoc…",
+        "installing": "正在获取固定版本的 pandoc。首次使用需要一点时间。",
+        "missing": "未在此 Mac 上找到。Oleafly 会将兼容的 pandoc（2.19 或更高版本）下载到自己的文件夹中；系统中的其他内容不会有任何变化。",
+        "ready": "已检测到。Markdown 项目先用 pandoc 转换为 LaTeX，再用内置的 Tectonic 编译。"
+      },
+      "tectonicDetail": "对 pandoc 生成的 LaTeX 进行排版。内置于 Oleafly，无需配置。",
+      "tooltip": "Markdown 项目先由 pandoc（Pandoc Markdown：表格、脚注、引用、数学公式）转换为 LaTeX，再由内置的 Tectonic 排版为 PDF。Pandoc 会在首次需要时按需下载。"
+    },
+    "packages": {
+      "ariaLabel": "LaTeX 宏包",
+      "badge": {
+        "breaks": "破坏标记",
+        "caution": "标记：注意"
+      },
+      "emptySearch": "未找到宏包。请尝试其他名称或关键词。",
+      "emptySuggested": "没有匹配的推荐宏包。请搜索 TeX Live 查看完整目录。",
+      "error": {
+        "install": "无法安装 {{name}}。",
+        "read": "无法读取已安装的宏包。",
+        "remove": "无法移除 {{name}}。",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "查找 LaTeX 宏包",
+      "filterPlaceholder": "筛选宏包…",
+      "heading": "宏包",
+      "includedIn": "已包含在 {{package}} 中。移除它也会移除该宏包中的其他文件。",
+      "intro": {
+        "available": "这些宏包适用于使用 latexmk（系统 TeX）的项目。Tectonic 使用自带的宏包集合。",
+        "unavailable": "宏包管理需要 TeX Live 或 TinyTeX。如使用 MiKTeX，请改用 MiKTeX Console。"
+      },
+      "refreshInstalled": "刷新已安装的宏包",
+      "resultsCapped": "共 {{total}} 条 TeX Live 结果。请使用更精确的搜索以缩小列表。",
+      "results_other": "{{count}} 条 TeX Live 结果。",
+      "search": "搜索 TeX Live",
+      "searching": "正在搜索…",
+      "suggested": "推荐宏包。可搜索 TeX Live 获取更多。",
+      "tree": {
+        "both": "位于两个目录树",
+        "system": "位于系统目录树",
+        "user": "位于你的个人目录树"
+      }
+    },
+    "sectionName": "引擎",
+    "tagging": {
+      "heading": "标记化 / 无障碍导出",
+      "hint": {
+        "none": "请在上方的“管理 TeX 发行版”中安装 TinyTeX，以启用标记化导出。",
+        "system": "已在你的系统上检测到，无需安装。",
+        "tinytex": "由 TinyTeX 提供（在上方管理）。"
+      },
+      "status": {
+        "none": "未安装标记引擎。",
+        "system": "正在使用系统 LuaLaTeX / TeX Live。",
+        "tinytex": "已安装 TinyTeX"
+      },
+      "tooltip": "默认引擎（Tectonic）快速且支持离线使用，但无法生成带标记的 Section 508 / PDF-UA PDF。这需要系统 LuaLaTeX，它能读取你账户可访问的本地文件，因此仅应在受信任的项目中使用。Oleafly 可以使用现有发行版或由应用托管的 TinyTeX。"
+    },
+    "tinytex": {
+      "detail": "安装在你主目录中的精简版 TeX Live。核心下载量约为 250 MB。期刊模板之后可能会添加宏包，总计最高约 1 GB。提前安装后，系统 LaTeX 便可在你明确选择时使用。",
+      "download": "下载 TinyTeX（约 250 MB）",
+      "resume": "继续下载（已完成 {{size}} MB）"
+    },
+    "typst": {
+      "detail": "Oleafly 内置。快速、离线、无需配置。可将 Typst 文档编译为 PDF。",
+      "heading": "Typst 编译器",
+      "name": "Typst（内置）",
+      "note": "Typst 项目始终使用内置编译器。目前尚不支持选择编译器版本或使用系统 Typst。",
+      "tooltip": "Typst 内置于 Oleafly，无需安装或配置。每个 Typst 项目都使用内置编译器进行编译。"
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "已连接",
+      "disconnect": "断开连接",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "连接",
+      "toggle": "高级：使用个人访问令牌。",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "新建和打开的项目都会创建 Git 仓库，以便 Git 面板跟踪更改。Oleafly 绝不会自行提交。",
+      "label": "为每个项目初始化 Git"
+    },
+    "config": {
+      "loadFailed": "无法加载 Git 设置。",
+      "saveFailed": "无法保存 Git 设置。"
+    },
+    "connect": "连接 GitHub",
+    "description": "备份项目、跨设备同步，并在 Git 面板中推送/拉取。",
+    "device": {
+      "openGithub": "打开 GitHub",
+      "opened": "我们已在你的浏览器中打开 <verificationLink>{{url}}</verificationLink>。请在该页面粘贴代码以授权 Oleafly。",
+      "timedOut": "GitHub 登录已超时，请重试。",
+      "title": "在 GitHub 上输入此代码",
+      "waiting": "正在等待授权…"
+    },
+    "hint": {
+      "oauth": "在浏览器中通过一次性代码为你登录。",
+      "token": "此版本尚未配置 OAuth 登录，请改为粘贴令牌。"
+    },
+    "notice": {
+      "connected": "已连接为 @{{login}}",
+      "disconnected": "已断开连接"
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "连接",
+      "disconnect": "断开连接"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "获取密钥：登录 <siteLink>alphaxiv.org</siteLink>，打开你的 <keyLink>API 密钥页面</keyLink>，生成一个密钥（以 <keyPrefix>axv1_</keyPrefix> 开头），然后粘贴到下方。",
+      "apiKeyLabel": "alphaXiv API 密钥",
+      "description": "为助手提供文献检索与论文分析工具。"
+    },
+    "cookies": {
+      "action": "导入 Cookie",
+      "confirmAllDomains": "你即将从 {{browser}} 的 {{profile}} 配置文件导入所有域名的 Cookie。Cookie 值将存储在内置浏览器中，并且只会发送到与之匹配的网站。Oleafly 在读取该配置文件之前，会再通过原生对话框请你确认一次。",
+      "confirmDomain": "你即将从 {{browser}} 的 {{profile}} 配置文件导入 {{domain}} 的 Cookie。Cookie 值将存储在内置浏览器中，并且只会发送到与之匹配的网站。Oleafly 在读取该配置文件之前，会再通过原生对话框请你确认一次。",
+      "confirmTitle": "确认导入 Cookie",
+      "description": "在 Oleafly 的内置浏览器中使用已有的浏览器登录状态。",
+      "detecting": "正在查找已安装的浏览器配置文件…",
+      "dialogDescription": "选择一个已安装的浏览器配置文件。Oleafly 只会在你查看并确认导入后才读取该文件。Chromium 的 Cookie 在本地通过 macOS 钥匙串解锁。Oleafly 不会将 Cookie 值发送到任何 Oleafly 服务。",
+      "dialogTitle": "导入浏览器 Cookie",
+      "empty": "未找到支持的浏览器配置文件。",
+      "errors": {
+        "chooseProfile": "请选择一个可用的浏览器配置文件。",
+        "hostname": "请输入主机名，例如 example.com。"
+      },
+      "hostnameHint": "输入网站主机名，则仅导入该网站可使用的 Cookie。留空则导入此配置文件中所有符合条件的 Cookie。",
+      "hostnameLabel": "目标主机名（可选）",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_other": "已从 {{browser}} 为 {{domain}} 导入 {{count}} 个 Cookie。",
+      "importedProfileDomain_other": "已从 {{browser}}（{{profile}}）为 {{domain}} 导入 {{count}} 个 Cookie。",
+      "importedProfile_other": "已从 {{browser}}（{{profile}}）导入 {{count}} 个 Cookie。",
+      "imported_other": "已从 {{browser}} 导入 {{count}} 个 Cookie。",
+      "importing": "正在导入 Cookie…",
+      "profileGroupLabel": "浏览器配置文件",
+      "profileLegend": "浏览器配置文件",
+      "review": "查看导入内容",
+      "status": {
+        "available": "可用",
+        "comingSoon": "即将推出",
+        "noCookieStore": "无 Cookie 存储",
+        "notInstalled": "未安装"
+      },
+      "title": "导入 Cookie",
+      "tryAgain": "重试"
+    },
+    "zotero": {
+      "apiKeyHint": "获取密钥的方法：登录 <siteLink>zotero.org</siteLink>，打开 <keyLink>API 密钥页面</keyLink> 创建密钥，并在同一页面复制你的数字用户 ID。",
+      "apiKeyLabel": "Zotero API 密钥",
+      "description": "从你的 Zotero 库导入引用和参考文献。",
+      "userIdLabel": "Zotero 用户 ID",
+      "userIdPlaceholder": "用户 ID"
+    }
+  },
+  "language": {
+    "ariaLabel": "界面语言",
+    "description": "选择界面语言。系统默认会跟随你的操作系统。",
+    "label": "语言",
+    "note": "更改界面语言不会更改文档语言或校对设置。",
+    "system": "系统默认"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "从 {{source}} 导入 {{name}}",
+      "description": "从本机已安装的工具中选择服务器。",
+      "detecting": "正在查找 MCP 服务器…",
+      "duplicateOverwritten": "已存在，将被覆盖。",
+      "duplicateSkipped": "已存在，将被跳过。",
+      "duplicates": {
+        "legend": "名称重复时",
+        "overwrite": {
+          "description": "用所选服务器替换。",
+          "label": "覆盖已有项"
+        },
+        "skip": {
+          "description": "保留 Oleafly 中已保存的服务器。",
+          "label": "跳过已有项"
+        }
+      },
+      "emptyState": "未找到 MCP 服务器配置。",
+      "importing": "正在导入…",
+      "keys": {
+        "environment": "环境变量：{{names}}",
+        "headers": "请求头：{{names}}"
+      },
+      "sourceError": "{{source}}：{{message}}",
+      "submit": "导入所选",
+      "summary": {
+        "commandFallback": "本地命令",
+        "remote": "远程服务器：{{origin}}",
+        "remoteUnknown": "远程服务器",
+        "stdio_other": "本地命令：{{command}}，共 {{count}} 个参数。"
+      },
+      "title": "导入 MCP 服务器"
+    },
+    "registry": {
+      "argumentsLine": "参数：{{args}}",
+      "description": "搜索公开的服务器元数据。此处不会安装或启动任何服务器。添加前请先检查命令或 URL。",
+      "emptyQuery": "输入服务器名称以搜索官方 MCP 注册表。",
+      "environmentLine": "环境变量：{{names}}",
+      "loadMore": "加载更多",
+      "noResults": "未找到匹配的注册表条目。",
+      "review": "添加前检查",
+      "searchLabel": "搜索官方 MCP 注册表",
+      "searchPlaceholder": "搜索服务器名称",
+      "title": "MCP 官方注册表",
+      "unsupportedEntry": "该条目未列出 Oleafly 可审核的软件包或远程传输方式。",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "连接你的应用"
+      },
+      "description": "Claude Desktop、Claude Code、Cursor 及其他 MCP 客户端可以读取、编辑和编译当前打开的项目，每次更改都需经你批准。",
+      "enable": {
+        "ariaLabel": "启用 MCP 服务器",
+        "description": "仅在 Oleafly 打开时监听本机。",
+        "label": "启用 MCP 服务器"
+      },
+      "footer": "服务器仅监听本机（127.0.0.1），并且需要上方的令牌。在前两种策略下，删除文件时 Oleafly 始终会请求你确认。浏览器中的 claude.ai 无法访问本地服务器，请改用 Claude Desktop。",
+      "policy": {
+        "ask": {
+          "description": "写入、重命名和删除操作在应用前会在 Oleafly 中显示带有差异对比的批准卡片。",
+          "label": "确认每次更改"
+        },
+        "autoWrites": {
+          "description": "写入和重命名会立即生效。删除仍会显示批准卡片。",
+          "label": "自动批准编辑，删除需确认"
+        },
+        "legend": "批准策略",
+        "trust": {
+          "description": "文件更改不会弹出提示。Shell 命令和计算机控制始终需要批准。你的 MCP 客户端仍是一道额外的关卡。",
+          "label": "信任此连接"
+        }
+      },
+      "port": {
+        "ariaLabel": "自动选择的 MCP 服务器端口",
+        "label": "端口",
+        "restartAriaLabel": "重启 MCP 服务器并选择可用端口",
+        "restartTooltip": "重启 MCP 服务器。Oleafly 会在此端口可用时复用它，否则选择另一个空闲端口。"
+      },
+      "readOnly": {
+        "ariaLabel": "只读模式",
+        "description": "外部应用可以读取和编译，但不能修改文件。",
+        "label": "只读"
+      },
+      "status": {
+        "restartedAt": "已在 {{url}} 重启",
+        "runningAt": "正在 {{url}} 运行"
+      },
+      "title": "Oleafly MCP 服务器",
+      "token": {
+        "copyUrl": "复制 URL",
+        "enableToView": "启用服务器后即可查看令牌。",
+        "help": "显示或复制 Bearer 令牌，复制服务器 URL，或为已连接的 MCP 客户端重新生成令牌。",
+        "hide": "隐藏",
+        "label": "Bearer 令牌",
+        "regenerate": "重新生成",
+        "regenerateWarning": "现有客户端将需要新令牌。",
+        "reveal": "显示"
+      }
+    },
+    "servers": {
+      "addServer": "添加服务器",
+      "browseRegistry": "浏览注册表",
+      "card": {
+        "editLabel": "编辑 {{name}}",
+        "enableLabel": "启用 {{name}}",
+        "noTools": "未报告任何工具",
+        "removeLabel": "移除 {{name}}",
+        "toolCount_other": "{{count}} 个工具",
+        "toolsLabel": "来自 {{name}} 的工具",
+        "validate": "验证",
+        "validateLabel": "验证 {{name}}"
+      },
+      "description": "将 AI 助手连接到本地命令或远程 MCP 端点。Oleafly 会在打开此页面时、每分钟以及按需检查每个已启用的服务器，并显示各服务器提供的工具。",
+      "editor": {
+        "addAndValidate": "添加并验证",
+        "argsHint": "每行输入一个参数。",
+        "argsLabel": "参数",
+        "commandLabel": "命令",
+        "description": "保存设置前会先检查已启用的服务器。",
+        "formView": "表单",
+        "jsonHint": "粘贴一个以名称为键的服务器配置，或粘贴包含 mcpServers 的整段配置。",
+        "jsonLabel": "完整配置",
+        "jsonView": "JSON",
+        "nameLabel": "服务器名称",
+        "pairs": {
+          "addHeader": "添加标头",
+          "addVariable": "添加变量",
+          "environmentKeyLabel": "环境变量名 {{index}}",
+          "environmentTitle": "环境变量",
+          "environmentValueLabel": "环境变量值 {{index}}",
+          "headerKeyLabel": "标头名 {{index}}",
+          "headerValueLabel": "标头值 {{index}}",
+          "headersTitle": "请求标头",
+          "removeHeaderLabel": "移除标头 {{index}}",
+          "removeVariableLabel": "移除变量 {{index}}",
+          "storedValuePlaceholder": "已保存的值",
+          "valuePlaceholder": "值"
+        },
+        "saveAndValidate": "保存并验证",
+        "saveChanges": "保存更改",
+        "titleAdd": "添加 MCP 服务器",
+        "titleEdit": "编辑 MCP 服务器",
+        "transportLegend": "传输方式",
+        "transportRemote": "远程 URL",
+        "transportStdio": "本地命令",
+        "urlLabel": "远程 URL",
+        "viewSwitchLabel": "配置编辑器"
+      },
+      "empty": {
+        "description": "添加服务器可为助手提供新工具，也可以导入你在其他编辑器中已使用的服务器。",
+        "title": "尚未添加服务器"
+      },
+      "hideRegistry": "隐藏注册表",
+      "importButton": "从其他工具导入",
+      "importFailure": "{{name}}：{{reason}}",
+      "importSummary": "已导入 {{imported}} 个，跳过 {{skipped}} 个，失败 {{failed}} 个。",
+      "live": {
+        "checking": "正在检查 {{name}}…",
+        "connected_other": "{{name}} 已连接。{{count}} 个工具可用。",
+        "disabled": "{{name}} 已禁用",
+        "disabledLastCheckFailed": "{{name}} 已禁用。上次检查失败。",
+        "disabledLastCheckFound_other": "{{name}} 已禁用。上次检查发现 {{count}} 个工具。",
+        "failed": "{{name}} 验证失败"
+      },
+      "loading": "正在加载服务器…",
+      "remove": {
+        "confirm": "移除服务器",
+        "description": "这会从 Oleafly 中移除 {{name}}。你稍后可以重新添加。",
+        "descriptionFallback": "这会从 Oleafly 中移除该服务器。你稍后可以重新添加。",
+        "title": "移除服务器？"
+      },
+      "status": {
+        "checking": "正在检查…",
+        "connected": "已连接",
+        "disabled": "已禁用",
+        "error": "错误"
+      },
+      "title": "助手 MCP 服务器"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "添加全局忽略的词语",
+      "placeholder": "添加词语或术语",
+      "projectAriaLabel": "添加在 {{project}} 中忽略的词语",
+      "submitAriaLabel": "添加忽略词"
+    },
+    "clear": {
+      "confirm": "清除词语",
+      "descriptionFallback": "这会从该词典中移除所有词语，它们将立即重新接受检查。",
+      "descriptionGlobal": "这会从全局词典中移除所有词语，它们将立即重新接受检查。",
+      "descriptionProject": "这会从 {{project}} 中移除所有词语，它们将立即重新接受检查。",
+      "descriptionSuppressed": "这会从 {{project}} 中已忽略的检查结果里移除所有词语，它们将立即重新接受检查。",
+      "suppressedConfirm": "重新显示",
+      "suppressedTitle": "重新显示已忽略的检查结果？",
+      "title": "清除忽略的词语？"
+    },
+    "dismissed": {
+      "countTitle": "已忽略 {{dismissed}} 项，项目最多可记住 {{limit}} 项",
+      "hidden_other": "本项目中隐藏了 {{count}} 条语法检查结果，因为你选择了“在本项目中忽略”。重新显示后会再次为它们添加下划线。",
+      "none": "当前没有已忽略的内容。当你在某条语法检查结果上选择“在本项目中忽略”时，它会显示在这里。",
+      "showAgain": "重新显示它们",
+      "title": "已忽略的检查结果",
+      "titleInProject": "{{project}} 中已忽略的检查结果"
+    },
+    "global": {
+      "emptyDescription": "你在这里添加的词语会在所有项目中被校对工具跳过。",
+      "scope": "适用于所有项目"
+    },
+    "intro": "向你的个人拼写检查词典添加词语。这些词语存储在本地设置中，并在所有项目中被忽略。匹配基于 Unicode 规范化，且不区分大小写。",
+    "profileRules": {
+      "description": "这些规则默认关闭，因为它们会妨碍论文写作。你可以在需要时开启。",
+      "example": "示例：{{example}}",
+      "help": "Harper 原本面向聊天和邮件调优。这些规则要么推行论文并不采用的风格（例如要求将 kB 和 min 写成完整单词），要么会被代表 LaTeX 标记的占位符干扰，因此 Oleafly 将它们保持关闭。每条规则都会显示它将标出的内容。如果你想要这些检查结果，可以将其开启。",
+      "reasons": {
+        "AvoidContractions": "要求你把每个缩写形式都写成完整形式。",
+        "BoringWords": "建议使用更生动的词汇。",
+        "CompoundNouns": "将分写成两个单词的复合名词合并为一个单词。",
+        "Dashes": "将输入的 -- 或 --- 替换为正确的破折号字符。",
+        "DiscourseMarkers": "标记以 however 等话语标记开头、且其后缺少逗号的句子。",
+        "EllipsisLength": "修正不是由三个点组成的省略号。",
+        "ExpandAlgorithm": "要求写出 algo 的完整形式。",
+        "ExpandArgument": "要求写出 arg 的完整形式。",
+        "ExpandCoordinate": "要求写出 coord 的完整形式。",
+        "ExpandMemoryShorthands": "要求写出 KB 和 MB 的完整形式。",
+        "ExpandParameter": "要求写出 param 的完整形式。",
+        "ExpandStandardInputAndOutput": "要求写出 stdin 和 stdout 的完整形式。",
+        "ExpandTimeShorthands": "要求写出 min 和 sec 的完整形式。",
+        "ExplainLikeImFive": "将首字母缩写展开为完整词组。",
+        "FillerWords": "标记被视为填充词的词语。",
+        "Hedging": "标记 I would argue that、to a certain degree 之类的模糊限制语短语。",
+        "LongSentences": "标记超出长度限制的句子。",
+        "MergeWords": "合并被多余空格拆成两部分的单词，例如 to gether。",
+        "MoreAdjective": "偏好使用比较级形式，而不是 more 加形容词。",
+        "NoFrenchSpaces": "删除法语排版置于标点前的空格。",
+        "NoOxfordComma": "删除牛津逗号。",
+        "NumericRangeEnDash": "要求数字范围两端之间使用 en dash。",
+        "OxfordComma": "要求使用牛津逗号。",
+        "SentenceCapitalization": "将句子首词首字母大写，包括位于被遮蔽标记之后的句子。",
+        "Spaces": "合并连续空格，它们是正文掩码在标记被清空处留下的。",
+        "SplitWords": "将本应写成两个的单词拆开，例如 alot。",
+        "TransposedSpace": "移动位于标点错误一侧的空格，这类空格常由掩蔽产生。"
+      },
+      "title": "学术配置中保持关闭的规则",
+      "toggleAriaLabel": "开启 {{rule}}"
+    },
+    "projects": {
+      "empty": "打开一个项目以添加项目专属词语。",
+      "emptyDescription": "为此项目添加的词语只会在该项目中被校对工具跳过。",
+      "terms_other": "{{used}} / {{limit}} 个词语"
+    },
+    "reset": {
+      "confirmationDescription": "这将永久移除所有已忽略的词语（包括全局和项目级别），并重新开启你关闭的所有语法规则。学术配置自身的规则仍保持关闭。校对会再次标出这些词语。",
+      "sectionName": "词典"
+    },
+    "search": {
+      "ariaLabel": "搜索已忽略的词",
+      "placeholder": "搜索词典"
+    },
+    "tabs": {
+      "global": "全局",
+      "projects": "项目"
+    },
+    "turnedOff": {
+      "description": "你在此项目中关闭的规则和忽略的问题。",
+      "help": "在编辑器中将鼠标悬停于带下划线的词语或句子上，会弹出一张小卡片，显示 Harper 发现的问题，并提供修复或忽略操作。你通过该卡片关闭的规则以及在此项目中忽略的问题都会列在这里，方便你随时恢复。",
+      "listAriaLabel": "已关闭的语法规则",
+      "none": "你尚未关闭任何规则。",
+      "restoreAriaLabel": "重新开启 {{rule}} 规则",
+      "restoreTitle": "重新开启“{{rule}}”规则",
+      "title": "语法规则与已忽略的问题"
+    },
+    "words": {
+      "emptyCompact": "还没有忽略任何词。",
+      "emptyTitle": "还没有忽略任何词",
+      "listAriaLabel": "已忽略的词",
+      "noMatches": "没有已忽略的词与此次搜索匹配。",
+      "removeAriaLabel": "取消忽略 {{word}}",
+      "removeTitle": "取消忽略“{{word}}”"
+    }
+  },
+  "reset": {
+    "button": "恢复默认设置",
+    "confirmDescription": "将{{sectionName}}偏好设置恢复为默认值。其他设置将保持不变。",
+    "confirmTitle": "要重置{{sectionName}}设置吗？",
+    "description": "将{{sectionName}}偏好设置恢复为默认值。",
+    "label": "重置设置"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "搜索并运行 Oleafly 命令。",
+        "label": "命令面板"
+      },
+      "forwardSync": {
+        "description": "从编辑器光标跳转到编译后的 PDF。",
+        "label": "跳转到 PDF"
+      },
+      "recompile": {
+        "description": "编译当前项目并显示其 PDF。",
+        "label": "重新编译"
+      },
+      "searchDocuments": {
+        "description": "在所有项目和文档中搜索。",
+        "label": "搜索所有文档"
+      },
+      "shortcutReference": {
+        "description": "打开项目快捷键参考。",
+        "label": "快捷键参考"
+      },
+      "toggleBrowser": {
+        "description": "显示或隐藏项目浏览器。",
+        "label": "切换浏览器"
+      },
+      "toggleSidebar": {
+        "description": "显示或隐藏项目侧边栏。",
+        "label": "切换侧边栏"
+      },
+      "toggleTerminal": {
+        "description": "显示或隐藏项目终端。",
+        "label": "切换终端"
+      }
+    },
+    "application": {
+      "editAriaLabel": "编辑{{action}}，当前为 {{shortcut}}",
+      "heading": "应用快捷键",
+      "prompt": "请按下新的组合键",
+      "recordAriaLabel": "正在录制{{action}}，请按下快捷键",
+      "recording": "录制中",
+      "resetAriaLabel": "重置{{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "让 AI 编辑所选内容",
+        "bold": "加粗",
+        "findAndReplace": "查找和替换",
+        "findReferences": "查找引用",
+        "goToDefinition": "转到定义",
+        "goToDefinitionWithPointer": "转到指针处的定义",
+        "indentOrAcceptAutocomplete": "缩进或接受自动补全",
+        "italic": "斜体",
+        "jumpToSourceFromPdf": "从 PDF 跳转到源码",
+        "redo": "重做",
+        "renameSymbol": "全项目重命名符号",
+        "slashCommandMenu": "斜杠命令插入菜单",
+        "triggerAutocomplete": "触发自动补全",
+        "undo": "撤销"
+      },
+      "managed": "由编辑器管理"
+    },
+    "categories": {
+      "codeIntelligence": "代码智能",
+      "editor": "编辑器",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "已分配给{{action}}。",
+      "reserved": "{{shortcut}} 已被操作系统保留。"
+    },
+    "intro": "自定义应用快捷键，并查看编辑器内置的组合键。",
+    "reserved": {
+      "closeWindow": "关闭窗口",
+      "copy": "复制",
+      "cut": "剪切",
+      "paste": "粘贴",
+      "quit": "退出",
+      "save": "保存",
+      "selectAll": "全选",
+      "systemSearch": "系统搜索",
+      "windowSwitching": "窗口切换"
+    },
+    "reset": {
+      "sectionName": "键盘快捷键"
+    },
+    "tabs": {
+      "application": "应用"
+    }
+  }
+}

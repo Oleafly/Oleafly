@@ -1,0 +1,77 @@
+{
+  "symbolKind": {
+    "file": "Kind of a project symbol, shown as a lowercase noun in a hover card",
+    "section": "Kind of a project symbol: a sectioning command",
+    "label": "Kind of a project symbol: a \\label target",
+    "anchor": "Kind of a project symbol: a Typst label target",
+    "macro": "Kind of a project symbol: a user-defined command",
+    "environment": "Kind of a project symbol: a user-defined environment",
+    "glossary": "Kind of a project symbol: a glossary entry",
+    "bibentry": "Kind of a project symbol: a bibliography entry",
+    "reference": "Kind of a project symbol: a \\ref use",
+    "citation": "Kind of a project symbol: a \\cite use",
+    "include": "Kind of a project symbol: an \\include or \\input",
+    "import": "Kind of a project symbol: a Typst import",
+    "link": "Kind of a project symbol: a URL",
+    "asset": "Kind of a project symbol: an image or PDF the document includes",
+    "bibliography": "Kind of a project symbol: a bibliography file reference"
+  },
+  "hover": {
+    "figure": "Hover card title over an included image; {{name}} is the file name",
+    "definition": "Hover card title: the symbol kind followed by its name",
+    "auxNumber": "Number and page the last compile assigned to this label",
+    "duplicateDetail_other": "F12 is a keyboard shortcut and stays verbatim"
+  },
+  "diagnostics": {
+    "finding": "Joins a preflight finding's title and its detail into one sentence",
+    "typstLabelOrCitation": "Typst @foo can be either a label or a citation, so the diagnostic names both",
+    "citation": "Noun used in a diagnostic about a \\cite",
+    "reference": "Noun used in a diagnostic about a \\ref",
+    "unresolved": "{{noun}} arrives already lowercased for mid-sentence use"
+  },
+  "completion": {
+    "standardEnvironment": "Completion detail for an environment built into LaTeX rather than defined in the project",
+    "latexPackage": "Completion detail shown when CTAN has no description for the package",
+    "latexDocumentClass": "Completion detail shown when CTAN has no description for the class",
+    "packageCommand": "Completion detail for a command a package provides",
+    "packageOption": "Completion detail for one option of a package; {{name}} is the package name",
+    "keyvalKey": "Completion detail for a key of a key-value command; {{command}} is the command name without its backslash",
+    "duplicateCount": "Chip saying the same name is defined more than once",
+    "duplicateIndex": "Chip saying which of several entries with the same key this one is"
+  },
+  "references": {
+    "updating": "Shown when a navigation action runs before the project analysis finished",
+    "definitionsFor": "Title of the results panel listing every definition of a name",
+    "referencesTo": "Title of the results panel listing every use of a definition"
+  },
+  "languageService": {
+    "setUp": "Starts downloading and installing the language server",
+    "retry": "Tries to start the language server again",
+    "install": "Button that downloads and installs the language server",
+    "destination": "Filesystem path the language server is installed to",
+    "verification": "Heading for the checksum verification note",
+    "reasons": {
+      "backpressure": "Status line: the server refused work because it was overloaded",
+      "beingInstalled": "Status line shown while the download and install run",
+      "couldNotSynchronize": "Status line, not a full sentence, shown in the startup checklist",
+      "exitedRestartScheduled": "{{attempt}} is the restart attempt number, such as 1 or 2",
+      "installingPinned": "{{kind}} is the server name, texlab or tinymist, and stays verbatim",
+      "internal": "Status line for an unclassified failure inside the native worker",
+      "notInstalled": "{{kind}} is the server name and stays verbatim; {{version}} is its version number",
+      "starting": "Per-feature status shown while the server is launching",
+      "versionMismatch": "{{kind}} is the server name and stays verbatim; {{expected}} and {{reported}} are version numbers"
+    }
+  },
+  "analysis": {
+    "reasons": {
+      "diagnosticsNotRun": "Status line, not a full sentence, shown when no diagnostics exist yet",
+      "documentClosed": "Status line, not a full sentence, explaining why a result was dropped",
+      "documentVersionNotTracked": "Status line, not a full sentence, shown when a request names an unknown document",
+      "featureNotAdvertised": "{{feature}} is an LSP capability name such as hover or completion and stays verbatim",
+      "identityMismatch": "Status line, not a full sentence, shown when a result arrives for an older project revision",
+      "languageServiceUnavailable": "Status line, not a full sentence, shown when the server is down",
+      "noProject": "Status line, not a full sentence, shown when no project is open",
+      "supportedNotRun": "Status line: the feature is available but nothing has requested it yet"
+    }
+  }
+}

@@ -10,9 +10,11 @@ import {
   type TooltipRenderProps,
 } from "react-joyride";
 import { ArrowLeft, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
+import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Kbd } from "@/components/ui/kbd";
@@ -26,6 +28,7 @@ import {
   type TourTooltipMetrics,
 } from "@/lib/tours/placement";
 import {
+  resolveTourText,
   stepNeedsReachableTarget,
   tourRegistry,
   type TourContext,
@@ -109,7 +112,9 @@ function TourProgress({ index, size }: { index: number; size: number }) {
   const start = tourDotWindowStart(index, size);
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      <span className="sr-only">{`Step ${index + 1} of ${size}`}</span>
+      <span className="sr-only">
+        {i18n.t(($) => $.shell.tour.stepOfTotal, { step: index + 1, total: size })}
+      </span>
       {Array.from({ length: slots }, (_, slot) => {
         const dot = start + slot;
         const truncated =
@@ -158,6 +163,7 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
     step,
     tooltipProps,
   } = props;
+  const { t } = useTranslation(["common", "shell", "onboarding"]);
   const definition = step.data as TourStepDefinition & {
     tourLabel?: string;
     maxTooltipHeight?: number | null;
@@ -210,7 +216,7 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
           viewBox="0 0 120 180"
           preserveAspectRatio="none"
         >
-          <title>Hand-drawn arrow pointing to the welcome paragraph</title>
+          <title>{t(($) => $.shell.tour.welcomeArrow)}</title>
           <defs>
             <marker
               id="tour-welcome-arrowhead"
@@ -250,7 +256,7 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
           viewBox="0 0 80 96"
           preserveAspectRatio="none"
         >
-          <title>Curved arrow pointing to the diagram canvas</title>
+          <title>{t(($) => $.shell.tour.diagramArrow)}</title>
           <defs>
             <marker
               id="tour-diagram-arrowhead"
@@ -285,16 +291,19 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
       ) : null}
       <div className="min-w-0 shrink-0">
         <span className="block text-[10px] font-semibold uppercase tracking-widest text-primary">
-          Step {index + 1}
-          {tourLabel ? ` · ${tourLabel}` : ""}
+          {tourLabel
+            ? t(($) => $.shell.tour.stepOfTour, { step: index + 1, tour: tourLabel })
+            : t(($) => $.shell.tour.step, { step: index + 1 })}
         </span>
-        {step.title ? <h2 className="mt-1 text-sm font-semibold">{step.title}</h2> : null}
+        {definition.title ? (
+          <h2 className="mt-1 text-sm font-semibold">{resolveTourText(definition.title)}</h2>
+        ) : null}
       </div>
       <div
         data-tour-tooltip-body
         className="mt-1 min-h-0 grow overflow-y-auto text-xs leading-relaxed text-muted-foreground"
       >
-        {step.content}
+        {resolveTourText(definition.content)}
       </div>
       <div className="mt-4 flex shrink-0 items-center gap-2">
         <TourProgress index={index} size={size} />
@@ -310,8 +319,8 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
               size="sm"
               className="text-muted-foreground"
             >
-              Skip
-              <Kbd className={KBD_CHIP}>esc</Kbd>
+              {t(($) => $.shell.tour.skip)}
+              <Kbd className={KBD_CHIP}>{t(($) => $.shell.keys.esc)}</Kbd>
             </Button>
           </Tooltip>
           {index > 0 ? (
@@ -335,7 +344,7 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
                 size="sm"
                 className="rounded-full px-3"
               >
-                {isLastStep ? "Done" : "Next"}
+                {isLastStep ? t(($) => $.common.actions.done) : t(($) => $.common.actions.next)}
                 <ChordHint variant="primary" />
               </Button>
             </Tooltip>
@@ -388,6 +397,7 @@ export function isAiStepApplicable(stepId: string, root: HTMLElement) {
 }
 
 function SeamlessArrow({ base, placement, size }: ArrowRenderProps) {
+  const { t } = useTranslation(["shell"]);
   const side = tourArrowSide(placement);
   const points =
     side === "top"
@@ -423,7 +433,7 @@ function SeamlessArrow({ base, placement, size }: ArrowRenderProps) {
       viewBox={`0 0 ${width} ${height}`}
       style={{ overflow: "visible", transform: overlap }}
     >
-      <title>Tour tooltip pointer</title>
+      <title>{t(($) => $.shell.tour.pointer)}</title>
       <polygon points={points} fill="var(--popover)" />
       <polyline
         points={exposedEdge}
@@ -506,8 +516,8 @@ export function toJoyrideStep(
     id: step.id,
     target: step.target,
     skipScroll: !needsScroll,
-    title: step.title,
-    content: step.content,
+    title: resolveTourText(step.title),
+    content: resolveTourText(step.content),
     placement,
     spotlightTarget: step.spotlightTarget,
     data: { ...step, tourLabel, maxTooltipHeight },
@@ -594,6 +604,7 @@ export function autoSkipAction(
 }
 
 function Welcome({ onStart }: { onStart: () => void }) {
+  const { t } = useTranslation(["shell"]);
   const dialogRef = useRef<HTMLDivElement>(null);
   const onStartRef = useRef(onStart);
   onStartRef.current = onStart;
@@ -707,16 +718,14 @@ function Welcome({ onStart }: { onStart: () => void }) {
         </div>
         <LeafLogo className="relative mx-auto size-12" />
         <h1 id="tour-welcome-title" className="mt-4 text-xl font-semibold">
-          Welcome to Oleafly
+          {t(($) => $.shell.tour.welcomeTitle)}
         </h1>
         <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
-          Take a paper from first draft to final PDF in one open-source workspace. Write,
-          compile, proofread, manage citations, build figures, review every change in Git,
-          and use the AI models you choose. Your projects stay on your machine.
+          {t(($) => $.shell.tour.welcomeBody)}
         </p>
         <div className="mt-5">
           <p className="text-sm font-semibold text-muted-foreground">
-            Choose your signature color
+            {t(($) => $.shell.tour.chooseColor)}
           </p>
           <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
             {ACCENTS.map((a) => {
@@ -726,7 +735,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
                   type="button"
                   key={a.id}
                   title={a.name}
-                  aria-label={`Use the ${a.name} accent color`}
+                  aria-label={t(($) => $.shell.tour.useAccent, { name: a.name })}
                   aria-pressed={active}
                   onClick={() => setAccentColor(a.color)}
                   className={
@@ -743,7 +752,9 @@ function Welcome({ onStart }: { onStart: () => void }) {
           </div>
         </div>
         <div className="mt-5">
-          <p className="text-sm font-semibold text-muted-foreground">Set the mood</p>
+          <p className="text-sm font-semibold text-muted-foreground">
+            {t(($) => $.shell.tour.setMood)}
+          </p>
           <ThemeSegmentedControl
             preference={preference}
             onChange={setPreference}
@@ -752,7 +763,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
           />
         </div>
         <Button className="mt-5" onClick={onStart}>
-          Show me around
+          {t(($) => $.shell.tour.showMeAround)}
           <ChordHint variant="primary" />
         </Button>
       </div>
@@ -873,6 +884,7 @@ function currentContext(
 }
 
 export function TourGuide() {
+  const { t } = useTranslation(["common", "shell", "onboarding"]);
   const projectId = useFilesStore((state) => state.projectId);
   const newProjectOpen = useSettingsStore((state) => state.newProjectOpen);
   const settingsOpen = useSettingsStore((state) => state.settingsOpen);
@@ -928,6 +940,7 @@ export function TourGuide() {
   const steps = useMemo<Step[]>(
     () => {
       void inputRevision;
+      void t;
       // Rebuilt per step: `toJoyrideStep` measures each target to decide whether
       // Joyride may scroll for it, and a target's position is only meaningful
       // once the tour has actually reached it.
@@ -937,14 +950,14 @@ export function TourGuide() {
           const element = document.querySelector(step.target);
           return toJoyrideStep(
             step,
-            definition.label,
+            resolveTourText(definition.label),
             stepNeedsScroll(element),
             measureTourPlacement(step, element, tooltipMetrics, viewport),
           );
         }) ?? []
       );
     },
-    [activeStepIndex, definition, inputRevision, tooltipMetrics, viewport],
+    [activeStepIndex, definition, inputRevision, t, tooltipMetrics, viewport],
   );
 
   const handleTooltipMeasure = useCallback((metrics: TourTooltipMetrics) => {
@@ -1627,9 +1640,9 @@ export function TourGuide() {
       />
       <ConfirmationDialog
         open={quitConfirmOpen}
-        title="Quit the tour?"
-        description="Your progress is not saved. You can restart any tour later from the Help menu."
-        confirmLabel="Quit tour"
+        title={t(($) => $.shell.tour.quitTitle)}
+        description={t(($) => $.shell.tour.quitDescription)}
+        confirmLabel={t(($) => $.shell.tour.quitConfirm)}
         onConfirm={() => {
           setQuitConfirmOpen(false);
           useTourStore.getState().dismiss();

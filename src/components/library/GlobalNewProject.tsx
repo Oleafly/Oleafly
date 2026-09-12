@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { NewProjectDialog } from "@/components/library/NewProjectDialog";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -11,6 +12,7 @@ import { finishHomeTourAfterProjectCreation } from "@/lib/tours/coordinator";
 // Mounted at the app root so it can be opened from anywhere (Library, the
 // omnibar's `/create`, the command palette), not just the Library screen.
 export function GlobalNewProject() {
+  const { t } = useTranslation(["library"]);
   const open = useSettingsStore((s) => s.newProjectOpen);
   const setOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const createFromTemplate = useFilesStore((s) => s.createFromTemplate);
@@ -30,7 +32,11 @@ export function GlobalNewProject() {
     setCreating(true);
     try {
       // Creation stages the template (and any fonts) and opens the project.
-      await createFromTemplate(rawName.trim() || "Untitled", templateId, color);
+      await createFromTemplate(
+        rawName.trim() || t(($) => $.library.newProject.untitled),
+        templateId,
+        color,
+      );
       setOpen(false);
       const tours = useTourStore.getState();
       finishHomeTourAfterProjectCreation(tours);
@@ -66,7 +72,7 @@ export function GlobalNewProject() {
       });
       chainWorkspace();
     } catch (e) {
-      notifyError("create project", e, "Couldn't create the project.");
+      notifyError("create project", e, t(($) => $.library.newProject.createFailed));
       useTourStore.getState().stop();
       setOpen(false);
     } finally {

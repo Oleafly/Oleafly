@@ -132,7 +132,7 @@ describe("LanguageServiceStatus", () => {
     activateProject();
     useProjectAnalysisStore.getState().setLanguageService({
       readiness: "not_run",
-      reason: "Document engine details are still loading.",
+      reason: { text: "Document engine details are still loading." },
     });
     renderStatus();
 
@@ -141,7 +141,9 @@ describe("LanguageServiceStatus", () => {
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
         readiness: "unsupported",
-        reason: "No language analyzer is available for this engine.",
+        reason: {
+          text: "No language analyzer is available for this engine.",
+        },
       });
     });
     expect(sonner.warning).not.toHaveBeenCalled();
@@ -158,7 +160,7 @@ describe("LanguageServiceStatus", () => {
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
         readiness: "syncing",
-        reason: "Synchronizing",
+        reason: { text: "Synchronizing" },
       });
     });
     expect(sonner.warning).not.toHaveBeenCalled();
@@ -178,7 +180,7 @@ describe("LanguageServiceStatus", () => {
       useProjectAnalysisStore.getState().setLanguageService({
         kind: "texlab",
         readiness: "setup_required",
-        reason: "Install the pinned server",
+        reason: { text: "Install the pinned server" },
       });
     });
     await invokeToastAction("Set up");
@@ -235,7 +237,7 @@ describe("LanguageServiceStatus", () => {
     act(() => {
       useProjectAnalysisStore.getState().setLanguageService({
         readiness: "unavailable",
-        reason: "Server crashed",
+        reason: { text: "Server crashed" },
       });
     });
     await invokeToastAction("Retry");
@@ -264,7 +266,7 @@ describe("LanguageServiceStatus", () => {
       useProjectAnalysisStore.getState().setLanguageService({
         kind: "texlab",
         readiness: "setup_required",
-        reason: "Install the pinned server",
+        reason: { text: "Install the pinned server" },
       });
     });
 
@@ -439,7 +441,7 @@ describe("LanguageServiceStatus", () => {
     useProjectAnalysisStore.getState().setLanguageService({
       kind: "texlab",
       readiness: "setup_required",
-      reason: "Install the pinned server",
+      reason: { text: "Install the pinned server" },
     });
     const user = userEvent.setup();
     const view = renderStatus();
@@ -464,7 +466,7 @@ describe("LanguageServiceStatus", () => {
     useProjectAnalysisStore.getState().setLanguageService({
       kind: null,
       readiness: "unsupported",
-      reason: "Replacement project has no language server.",
+      reason: { text: "Replacement project has no language server." },
     });
     renderStatus();
     await act(async () => {

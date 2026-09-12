@@ -2866,18 +2866,18 @@ async fn native_agent_tool_confirmation(
     let (sender, receiver) = tokio::sync::oneshot::channel();
     app.dialog()
         .message(message)
-        .title("Approve MCP tool")
+        .title(crate::i18n::t("dialog.mcpApprove.title"))
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::OkCancelCustom(
-            "Use tool".to_string(),
-            "Cancel".to_string(),
+            crate::i18n::t("dialog.mcpApprove.confirm"),
+            crate::i18n::t("dialog.cancel"),
         ))
         .show(move |approved| {
             let _ = sender.send(approved);
         });
     receiver
         .await
-        .map_err(|_| "The native approval dialog closed unexpectedly.".to_string())
+        .map_err(|_| crate::i18n::t("errors.approvalDialogClosed"))
 }
 
 #[allow(clippy::too_many_arguments)]

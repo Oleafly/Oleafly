@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,13 +12,14 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { useTheme, type ThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { i18n } from "@/i18n";
 
 export const THEME_PREFERENCES: readonly ThemePreference[] = ["system", "light", "dark"];
 
-const THEME_LABELS: Record<ThemePreference, string> = {
-  system: "System",
-  light: "Light",
-  dark: "Dark",
+const THEME_LABELS: Record<ThemePreference, () => string> = {
+  system: () => i18n.t(($) => $.shell.theme.system),
+  light: () => i18n.t(($) => $.shell.theme.light),
+  dark: () => i18n.t(($) => $.shell.theme.dark),
 };
 
 const THEME_ICONS: Record<ThemePreference, LucideIcon> = {
@@ -46,11 +48,11 @@ function themeOptionClass(pill: boolean, active: boolean) {
 }
 
 export function themePreferenceLabel(preference: ThemePreference): string {
-  return THEME_LABELS[preference];
+  return THEME_LABELS[preference]();
 }
 
 export function themeMenuLabel(preference: ThemePreference): string {
-  return `Appearance: ${THEME_LABELS[preference]}`;
+  return i18n.t(($) => $.shell.theme.menuLabel, { name: themePreferenceLabel(preference) });
 }
 
 export function ThemeMenu({
@@ -66,6 +68,7 @@ export function ThemeMenu({
   contentClassName?: string;
   testId?: string;
 }>) {
+  useTranslation(["shell"]);
   const { preference, theme, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
   const pointerToggled = useRef(false);
@@ -111,7 +114,7 @@ export function ThemeMenu({
                 onClick={() => setPreference(value)}
               >
                 <OptionIcon className="size-4" aria-hidden />
-                {THEME_LABELS[value]}
+                {themePreferenceLabel(value)}
               </DropdownMenuRadioItem>
             );
           })}
@@ -134,6 +137,7 @@ export function ThemeSegmentedControl({
   testIdPrefix?: string;
   className?: string;
 }>) {
+  const { t } = useTranslation(["shell"]);
   const pill = variant === "pill";
   return (
     <div
@@ -151,7 +155,13 @@ export function ThemeSegmentedControl({
             type="button"
             key={value}
             data-testid={testIdPrefix ? `${testIdPrefix}-${value}` : undefined}
-            aria-label={`Use ${value} theme`}
+            aria-label={
+              value === "system"
+                ? t(($) => $.shell.theme.useSystem)
+                : value === "light"
+                  ? t(($) => $.shell.theme.useLight)
+                  : t(($) => $.shell.theme.useDark)
+            }
             aria-pressed={active}
             onClick={() => onChange(value)}
             className={cn(
@@ -160,7 +170,7 @@ export function ThemeSegmentedControl({
             )}
           >
             <Icon className="size-3.5" aria-hidden />
-            {THEME_LABELS[value]}
+            {themePreferenceLabel(value)}
           </button>
         );
       })}

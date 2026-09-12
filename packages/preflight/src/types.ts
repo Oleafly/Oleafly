@@ -1,3 +1,5 @@
+import type { MessageRef } from "./messages";
+
 export const CHECK_IDS = [
   "ats",
   "compile",
@@ -31,9 +33,9 @@ export interface Finding {
   id: string;
   lens: Lens;
   severity: Severity;
-  // Uses commas/periods, never em dashes (project style).
-  title: string;
-  detail: string;
+  title: MessageRef;
+  detail: MessageRef;
+  detailParts?: MessageRef[];
   from?: number;
   to?: number;
   page?: number;

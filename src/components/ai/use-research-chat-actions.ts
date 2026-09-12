@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { i18n } from "@/i18n";
 import { openBrowserWindow } from "@/lib/browser-window";
 import {
   createResearchArtifactAction,
@@ -18,10 +19,10 @@ export function useResearchChatActions(projectId: string | null): ResearchChatAc
       const url = safeWebUrl(target.url) ?? safeWebUrl(target.sourceId) ??
         (doi && /^10\.\d{4,9}\/\S+$/i.test(doi) ? `https://doi.org/${encodeURI(doi)}` : undefined) ??
         (target.sourceId && /^W\d+$/.test(target.sourceId) ? `https://openalex.org/${target.sourceId}` : undefined);
-      if (!url) { toast.error("This result does not include a source link."); return; }
+      if (!url) { toast.error(i18n.t(($) => $.ai.research.noSourceLink)); return; }
       void openBrowserWindow(url).then((opened) => {
-        if (!opened) toast.error("The source could not be opened.");
-      }).catch(() => toast.error("The source could not be opened."));
+        if (!opened) toast.error(i18n.t(($) => $.ai.research.sourceOpenFailed));
+      }).catch(() => toast.error(i18n.t(($) => $.ai.research.sourceOpenFailed)));
     },
     openArtifact: createResearchArtifactAction(projectId, {
       inspectLinked(currentProjectId, target) {
@@ -38,13 +39,13 @@ export function useResearchChatActions(projectId: string | null): ResearchChatAc
 function openProjectArtifact(projectId: string, target: ProjectResearchArtifactTarget): Promise<void> | void {
       const path = target.path.replaceAll("\\", "/");
       if (!path || path.startsWith("/") || /^[A-Za-z]:/.test(path) || path.includes("\0") || path.split("/").some((part) => part === ".." || [".git", ".private"].includes(part.toLowerCase()))) {
-        toast.error("This result does not contain a project file path.");
+        toast.error(i18n.t(($) => $.ai.research.noProjectPath));
         return;
       }
       return useFilesStore.getState().openFile(path).then(async () => {
         const files = useFilesStore.getState();
         if (files.projectId !== projectId) return;
-        if (files.activePath !== path) { toast.error("The result file could not be opened."); return; }
+        if (files.activePath !== path) { toast.error(i18n.t(($) => $.ai.research.resultOpenFailed)); return; }
         const settings = useSettingsStore.getState();
         if (settings.viewMode === "pdf") settings.setViewMode("split");
         if (!target.line || !Number.isInteger(target.line) || target.line < 1) return;
@@ -57,6 +58,6 @@ function openProjectArtifact(projectId: string, target: ProjectResearchArtifactT
           if (ready && current.projectId === projectId && current.activePath === path) editor.gotoLine(target.line);
         } finally { clearTimeout(timeout); }
       }).catch(() => {
-        toast.error("The result file could not be opened.");
+        toast.error(i18n.t(($) => $.ai.research.resultOpenFailed));
       });
 }

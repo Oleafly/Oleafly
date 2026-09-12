@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { parseLatexLog, type LogDiagnostic } from "@oleafly/latex";
 import { useCompileStore } from "@/store/compile";
@@ -126,15 +127,18 @@ function extractErrorExcerpt(log: string, message: string): string {
 }
 
 function ErrorCard({ err, log }: { err: CompileError; log: string }) {
+  const { t } = useTranslation(["common", "editor"]);
   const [expanded, setExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const excerpt = extractErrorExcerpt(log, err.message);
   const collapsible = Boolean(excerpt);
   const title = err.explanation ?? err.message;
   const location = err.file
-    ? `${err.file}${err.line != null ? ` · line ${err.line}` : ""}`
+    ? err.line != null
+      ? t(($) => $.editor.log.locationFileLine, { file: err.file, line: err.line })
+      : err.file
     : err.line != null
-      ? `line ${err.line}`
+      ? t(($) => $.editor.log.locationLine, { line: err.line })
       : "";
 
   const copyError = async () => {
@@ -177,10 +181,13 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
             {location && <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">{location}</span>}
           </span>
         </button>
-        <Tooltip label={copied ? "Copied" : "Copy error"} side="top">
+        <Tooltip
+          label={copied ? t(($) => $.common.actions.copied) : t(($) => $.editor.log.copyError)}
+          side="top"
+        >
           <button
             type="button"
-            aria-label="Copy error"
+            aria-label={t(($) => $.editor.log.copyError)}
             onClick={() => void copyError()}
             className="flex shrink-0 items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -188,14 +195,14 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
           </button>
         </Tooltip>
         {err.line != null && (
-          <Tooltip label="Go to code location" side="top">
+          <Tooltip label={t(($) => $.editor.log.goToLocation)} side="top">
             <button
               type="button"
-              aria-label="Go to code location"
+              aria-label={t(($) => $.editor.log.goToLocation)}
               onClick={() => void openFileAndGotoLine(err.file, err.line as number)}
               className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Open
+              {t(($) => $.editor.log.open)}
               <ArrowUpRight className="size-3" />
             </button>
           </Tooltip>
@@ -220,11 +227,12 @@ const SEVERITY_DOT: Record<LogDiagnostic["severity"], string> = {
 };
 
 function DiagnosticCard({ d }: { d: LogDiagnostic }) {
+  const { t } = useTranslation(["common", "editor"]);
   const hasLocation = d.file != null && d.line != null;
   const location = d.file
     ? `${d.file}${d.line != null ? `:${d.line}` : ""}`
     : d.line != null
-      ? `line ${d.line}`
+      ? t(($) => $.editor.log.locationLine, { line: d.line })
       : "";
 
   return (
@@ -239,7 +247,7 @@ function DiagnosticCard({ d }: { d: LogDiagnostic }) {
             {d.message}
           </span>
           {hasLocation ? (
-            <Tooltip label="Go to code location" side="top">
+            <Tooltip label={t(($) => $.editor.log.goToLocation)} side="top">
               <button
                 type="button"
                 onClick={() => void openFileAndGotoLine(d.file, d.line as number)}
@@ -296,6 +304,7 @@ function DiagnosticGroup({ label, items }: { label: string; items: LogDiagnostic
 }
 
 function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean }) {
+  const { t } = useTranslation(["common", "editor"]);
   const [open, setOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
 
@@ -318,7 +327,7 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
           className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-sidebar-foreground"
         >
           {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-          Raw logs
+          {t(($) => $.editor.log.rawLogs)}
         </button>
         <button
           type="button"
@@ -330,7 +339,7 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
           ) : (
             <Copy className="size-3" />
           )}
-          {copied ? "Copied" : "Copy log"}
+          {copied ? t(($) => $.common.actions.copied) : t(($) => $.editor.log.copyLog)}
         </button>
       </div>
       {open && (
@@ -345,6 +354,7 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
 const NO_DIAGNOSTICS: readonly LogDiagnostic[] = [];
 
 export function LogPane() {
+  const { t } = useTranslation(["common", "editor"]);
   const log = useCompileStore((s) => s.log);
   const errors = useCompileStore((s) => s.errors);
   const status = useCompileStore((s) => s.status);
@@ -444,10 +454,10 @@ export function LogPane() {
           {[...groups.errs, ...groups.refs, ...groups.warns].map((d) => (
             <DiagnosticCard key={objectKey(d, "log-diagnostic")} d={d} />
           ))}
-          <DiagnosticGroup label="Typesetting" items={groups.boxes} />
-          <DiagnosticGroup label="Info" items={groups.infos} />
+          <DiagnosticGroup label={t(($) => $.editor.log.typesetting)} items={groups.boxes} />
+          <DiagnosticGroup label={t(($) => $.editor.log.info)} items={groups.infos} />
           {!log && errors.length === 0 && (
-            <p className="text-[11px] text-muted-foreground">Compile output will appear here.</p>
+            <p className="text-[11px] text-muted-foreground">{t(($) => $.editor.log.empty)}</p>
           )}
           {log && (
             <RawLogSection
@@ -461,20 +471,20 @@ export function LogPane() {
       </div>
       {log && (
         <div className="absolute bottom-3 right-3 flex flex-col gap-1">
-          <Tooltip label="Scroll to top" side="left">
+          <Tooltip label={t(($) => $.editor.log.scrollToTop)} side="left">
             <button
               type="button"
-              aria-label="Scroll to top"
+              aria-label={t(($) => $.editor.log.scrollToTop)}
               onClick={scrollToTop}
               className="flex size-7 items-center justify-center rounded-full border border-sidebar-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
             >
               <ArrowUp className="size-3.5" />
             </button>
           </Tooltip>
-          <Tooltip label="Scroll to bottom" side="left">
+          <Tooltip label={t(($) => $.editor.log.scrollToBottom)} side="left">
             <button
               type="button"
-              aria-label="Scroll to bottom"
+              aria-label={t(($) => $.editor.log.scrollToBottom)}
               onClick={scrollToBottom}
               className="flex size-7 items-center justify-center rounded-full border border-sidebar-border bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
             >

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 import {
   PROVIDERS,
@@ -22,6 +23,7 @@ import { DiffActionBar, DiffErrorBar } from "./DiffActionBar";
 // Rendered inside a CodeMirror block widget below the target line; the widget
 // mounts it when a session opens and unmounts it when it closes.
 export function InlineEditPanel() {
+  const { t } = useTranslation(["common", "editor"]);
   const session = useInlineEditStore((s) => s.session);
   const [providerReady, setProviderReady] = useState(true);
   const [config, setLocalConfig] = useState<AppConfig | null>(null);
@@ -229,17 +231,17 @@ export function InlineEditPanel() {
           contentClassName="ai-surface-elevated p-3 text-popover-foreground"
         >
           <p className="flex items-center gap-1.5 text-sm font-medium">
-            <AiMark /> Set up an AI provider
+            <AiMark /> {t(($) => $.editor.inlineAi.setUpProvider)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Add an API key (or local Ollama) to use inline AI edits.
+            {t(($) => $.editor.inlineAi.setUpProviderHint)}
           </p>
           <button
             type="button"
             onClick={openAiSettings}
             className="mt-2 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Open Settings → AI
+            {t(($) => $.editor.inlineAi.openAiSettings)}
           </button>
         </AiChrome>
       ) : session.phase === "error" ? (

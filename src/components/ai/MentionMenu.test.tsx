@@ -275,7 +275,7 @@ describe("MentionMenu with agents", () => {
     const onSelect = vi.fn();
     render(
       <>
-        <textarea aria-label="Composer" />
+        <textarea aria-label={"Composer"} />
         <MentionMenu entries={[]} agents={AGENTS} onSelect={onSelect} onClose={() => {}} />
       </>,
     );

@@ -14,6 +14,7 @@ import {
   Paperclip,
   XCircle,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ChatMessage, SubagentEntry, ToolEntry } from "@/store/chats";
 import { agentTodoProgress, type AgentTodo } from "@/store/agent-todos";
 import {
@@ -34,6 +35,8 @@ import {
   type ResearchChatActions,
 } from "@/lib/chat-activity";
 import { tokenizeComposer } from "@/lib/composer-tokens";
+import { i18n } from "@/i18n";
+import { formatList, formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
 const USER_SKILL_CHIP_CLASS =
@@ -88,14 +91,31 @@ export interface AgentPlanApproval {
   onRevise: () => void;
 }
 
+function todoStatusLabel(status: AgentTodo["status"]): string {
+  switch (status) {
+    case "completed":
+      return i18n.t(($) => $.ai.chat.todos.status.completed);
+    case "in_progress":
+      return i18n.t(($) => $.ai.chat.todos.status.inProgress);
+    case "cancelled":
+      return i18n.t(($) => $.ai.chat.todos.status.cancelled);
+    default:
+      return i18n.t(($) => $.ai.chat.todos.status.pending);
+  }
+}
+
 function AgentTodoList({ todos }: { todos: readonly AgentTodo[] }) {
+  const { t } = useTranslation(["common", "ai"]);
   return (
     <ul className="space-y-1">
       {todos.map((todo) => (
         <li
           key={todo.id}
           data-todo-status={todo.status}
-          aria-label={`${todo.status.replace("_", " ")}: ${todo.content}`}
+          aria-label={t(($) => $.ai.chat.todos.ariaLabel, {
+            status: todoStatusLabel(todo.status),
+            content: todo.content,
+          })}
           className="flex items-start gap-1.5 text-[11px] leading-snug"
         >
           {todo.status === "completed" && (
@@ -142,6 +162,7 @@ function AgentTodoList({ todos }: { todos: readonly AgentTodo[] }) {
 }
 
 function AgentPlanStatusBadge({ status }: { status: AgentPlanApproval["status"] }) {
+  const { t } = useTranslation(["common", "ai"]);
   return (
     <span
       data-testid="agent-plan-status"
@@ -152,7 +173,9 @@ function AgentPlanStatusBadge({ status }: { status: AgentPlanApproval["status"] 
           : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
       )}
     >
-      {status === "awaiting" ? "Awaiting approval" : "Approved"}
+      {status === "awaiting"
+        ? t(($) => $.ai.chat.plan.statusAwaiting)
+        : t(($) => $.ai.chat.plan.statusApproved)}
     </span>
   );
 }
@@ -168,6 +191,7 @@ export function AgentStatusPill({
   turn: AgentFileChangeTurn | null;
   approval?: AgentPlanApproval;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -288,22 +312,23 @@ export function AgentStatusPill({
                 : "text-emerald-600 dark:text-emerald-400"
             }
           >
-            PLAN
+            {t(($) => $.ai.chat.pill.plan)}
           </span>
         )}
         {approval && (hasSteps || hasFiles) && <span aria-hidden="true"> · </span>}
         {hasSteps && (
           <span data-pill-segment="steps" className="tabular-nums">
-            STEP {progress.current}/{progress.total}
+            {t(($) => $.ai.chat.pill.step, {
+              current: progress.current,
+              total: progress.total,
+            })}
           </span>
         )}
         {hasSteps && hasFiles && <span aria-hidden="true"> · </span>}
         {hasFiles && (
           <span data-pill-segment="review">
-            REVIEW{" "}
-            <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
-              +{totals.additions}
-            </span>{" "}
+            {t(($) => $.ai.chat.pill.review)}{" "}
+            <span className="tabular-nums text-emerald-600 dark:text-emerald-400">+{totals.additions}</span>{" "}
             <span className="tabular-nums text-destructive">-{totals.deletions}</span>
           </span>
         )}
@@ -314,7 +339,7 @@ export function AgentStatusPill({
           <div
             id={panelId}
             role="dialog"
-            aria-label="Plan details"
+            aria-label={t(($) => $.ai.chat.plan.detailsAriaLabel)}
             data-testid="agent-todos"
             data-plan-status={planStatus}
             onMouseEnter={cancelClose}
@@ -324,7 +349,9 @@ export function AgentStatusPill({
           >
             <div className="mb-1.5 flex items-center gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {approval || hasSteps ? "Plan" : "Changes"}
+                {approval || hasSteps
+                  ? t(($) => $.ai.chat.plan.headingPlan)
+                  : t(($) => $.ai.chat.plan.headingChanges)}
               </span>
               {approval && <AgentPlanStatusBadge status={approval.status} />}
             </div>
@@ -333,7 +360,7 @@ export function AgentStatusPill({
               <div className="mt-2 flex items-center gap-1.5">
                 <button
                   type="button"
-                  aria-label="Approve plan"
+                  aria-label={t(($) => $.ai.chat.plan.approve)}
                   onClick={() => {
                     close();
                     approval.onApprove();
@@ -342,11 +369,11 @@ export function AgentStatusPill({
                   className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Check aria-hidden="true" className="size-3.5 shrink-0" />
-                  Approve plan
+                  {t(($) => $.ai.chat.plan.approve)}
                 </button>
                 <button
                   type="button"
-                  aria-label="Revise"
+                  aria-label={t(($) => $.ai.chat.plan.revise)}
                   onClick={() => {
                     close();
                     approval.onRevise();
@@ -354,7 +381,7 @@ export function AgentStatusPill({
                   disabled={approval.busy}
                   className="flex h-7 shrink-0 items-center rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Revise
+                  {t(($) => $.ai.chat.plan.revise)}
                 </button>
               </div>
             )}
@@ -384,15 +411,14 @@ function FileChangeRow({
       className="flex min-w-0 items-center gap-2 text-[11px]"
     >
       <span className="min-w-0 flex-1 truncate text-foreground">{file.path}</span>
-      <span className="shrink-0 tabular-nums text-emerald-600 dark:text-emerald-400">
-        +{file.additions}
-      </span>
+      <span className="shrink-0 tabular-nums text-emerald-600 dark:text-emerald-400">+{file.additions}</span>
       <span className="shrink-0 tabular-nums text-destructive">-{file.deletions}</span>
     </span>
   );
 }
 
 function FileChangeDetails({ turn }: { turn: AgentFileChangeTurn }) {
+  const { t } = useTranslation(["common", "ai"]);
   const changed = Object.values(turn.changedFiles);
   const committed = new Map<string, AgentFileChange[]>();
   for (const file of turn.committedFiles) {
@@ -407,7 +433,7 @@ function FileChangeDetails({ turn }: { turn: AgentFileChangeTurn }) {
       {changed.length > 0 && (
         <span className="block space-y-1.5">
           <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Changed
+            {t(($) => $.ai.chat.fileChanges.changed)}
           </span>
           {changed.map((file) => (
             <FileChangeRow key={file.path} file={file} state="changed" />
@@ -417,7 +443,7 @@ function FileChangeDetails({ turn }: { turn: AgentFileChangeTurn }) {
       {[...committed.entries()].map(([commitId, files]) => (
         <span key={commitId} data-commit-id={commitId} className="block space-y-1.5">
           <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Committed {commitId.slice(0, 7)}
+            {t(($) => $.ai.chat.fileChanges.committed, { commit: commitId.slice(0, 7) })}
           </span>
           {files.map((file) => (
             <FileChangeRow
@@ -441,6 +467,7 @@ export function AgentRunSummary({
   turn: AgentFileChangeTurn | null;
   plan?: boolean;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const progress = agentTodoProgress(todos);
   const totals = agentFileChangeTotals(turn);
   if (progress.total === 0 && totals.files === 0) return null;
@@ -455,20 +482,18 @@ export function AgentRunSummary({
       className="rounded-md border bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground"
     >
       <div className="font-medium">
-        {plan && <span>Plan</span>}
+        {plan && <span>{t(($) => $.ai.chat.runSummary.plan)}</span>}
         {plan && hasSteps && <span aria-hidden="true"> · </span>}
         {hasSteps && (
           <span className="tabular-nums">
-            {done}/{progress.total} done
+            {t(($) => $.ai.chat.runSummary.stepsDone, { done, total: progress.total })}
           </span>
         )}
         {(plan || hasSteps) && hasFiles && <span aria-hidden="true"> · </span>}
         {hasFiles && (
           <span>
-            {totals.files} {totals.files === 1 ? "file" : "files"} changed{" "}
-            <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
-              +{totals.additions}
-            </span>{" "}
+            {t(($) => $.ai.chat.runSummary.filesChanged, { count: totals.files })}{" "}
+            <span className="tabular-nums text-emerald-600 dark:text-emerald-400">+{totals.additions}</span>{" "}
             <span className="tabular-nums text-destructive">-{totals.deletions}</span>
           </span>
         )}
@@ -483,6 +508,7 @@ export function AgentRunSummary({
 }
 
 export function CopyMessageButton({ text }: { text: string }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [copied, setCopied] = useState(false);
   const resetTimerRef = useRef<number | null>(null);
   useEffect(
@@ -494,8 +520,8 @@ export function CopyMessageButton({ text }: { text: string }) {
   return (
     <button
       type="button"
-      aria-label="Copy message"
-      title="Copy message"
+      aria-label={t(($) => $.ai.chat.copyMessage)}
+      title={t(($) => $.ai.chat.copyMessage)}
       onClick={() => {
         void navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
@@ -524,9 +550,16 @@ const EXPLORATION_TOOLS: Record<string, "file" | "search" | "list"> = {
   project_map: "list",
 };
 
-function pluralize(count: number, one: string, many: string): string | null {
-  if (count === 0) return null;
-  return count === 1 ? `a ${one}` : `${count} ${many}`;
+function exploredFiles(count: number): string | null {
+  return count === 0 ? null : i18n.t(($) => $.ai.chat.exploration.files, { count });
+}
+
+function exploredSearches(count: number): string | null {
+  return count === 0 ? null : i18n.t(($) => $.ai.chat.exploration.searches, { count });
+}
+
+function exploredLists(count: number): string | null {
+  return count === 0 ? null : i18n.t(($) => $.ai.chat.exploration.lists, { count });
 }
 
 // "Explored 3 files, 2 searches" from a run of read-only tool calls.
@@ -540,12 +573,14 @@ export function explorationSummary(tools: ToolEntry[]): string {
     else if (kind === "search") searches++;
     else if (kind === "list") lists++;
   }
-  const parts = [
-    pluralize(files, "file", "files"),
-    pluralize(searches, "search", "searches"),
-    pluralize(lists, "list", "lists"),
-  ].filter((p): p is string => p != null);
-  return parts.length === 0 ? "Explored" : `Explored ${parts.join(", ")}`;
+  const parts = [exploredFiles(files), exploredSearches(searches), exploredLists(lists)].filter(
+    (p): p is string => p != null,
+  );
+  return parts.length === 0
+    ? i18n.t(($) => $.ai.chat.exploration.explored)
+    : i18n.t(($) => $.ai.chat.exploration.exploredItems, {
+        items: formatList(parts, { type: "unit", style: "narrow" }),
+      });
 }
 
 // A collapsed run of read-only tool calls: "Explored 3 files, 2 searches",
@@ -560,6 +595,7 @@ export function ExplorationGroup({
   actions?: ResearchChatActions;
   expansionKey?: string;
 }) {
+  useTranslation(["common", "ai"]);
   const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
   return (
@@ -614,41 +650,53 @@ export function formatToolOutput(output: unknown): string {
   if (output && typeof output === "object") {
     const record = output as Record<string, unknown>;
     if (typeof record.content === "string") return record.content;
-    if (typeof record.error === "string") return `Error: ${record.error}`;
+    if (typeof record.error === "string") {
+      return i18n.t(($) => $.ai.chat.toolOutputError, { message: record.error });
+    }
   }
   return JSON.stringify(output, null, 2) ?? String(output);
 }
 
-export function friendlyHint(text: string, statusCode?: number): string | null {
+export type AiHintSurface = "chat" | "settings";
+
+export function friendlyHint(
+  text: string,
+  statusCode?: number,
+  surface: AiHintSurface = "chat",
+): string | null {
   const t = text.toLowerCase();
+  const where =
+    surface === "settings"
+      ? i18n.t(($) => $.ai.chat.errorHints.where.inSettings)
+      : i18n.t(($) => $.ai.chat.errorHints.where.modelMenu);
   if (
     statusCode === 402 ||
     /insufficient balance|no resource package|recharge|out of credit|insufficient[_ ]?quota|exceeded your current quota|billing|payment required/.test(t)
   ) {
-    return "Your AI provider is out of credits or quota. Top up the account, or switch to another provider (or local Ollama) from the model menu above.";
+    return i18n.t(($) => $.ai.chat.errorHints.outOfCredits, { where });
   }
   if (
     statusCode === 401 ||
     statusCode === 403 ||
     /invalid api key|incorrect api key|unauthorized|invalid[_ ]?api[_ ]?key|authentication|no api key/.test(t)
   ) {
-    return "Your API key looks invalid or expired. Update it in Settings → AI Assistant, or switch providers from the model menu above.";
+    return i18n.t(($) => $.ai.chat.errorHints.invalidKey, { where });
   }
   if (statusCode === 429 || /rate limit|too many requests|\b429\b/.test(t)) {
-    return "The provider is rate-limiting requests. Wait a moment and retry, or switch providers from the model menu above.";
+    return i18n.t(($) => $.ai.chat.errorHints.rateLimited, { where });
   }
   if (
     /no longer available|has been retired|model.{0,40}(deprecated|discontinued|not found|does not exist)|unknown model|model_not_found/.test(
       t,
     )
   ) {
-    return "The provider retired or restricted this model. Pick a newer model from the model menu above (Settings → AI Assistant lists what your key can use).";
+    return i18n.t(($) => $.ai.chat.errorHints.retiredModel, { where });
   }
   if (statusCode === 503 || /high demand|overloaded|over capacity|service unavailable|\b503\b/.test(t)) {
-    return "The provider's servers are overloaded right now (this was already retried). Wait a minute and try again, or switch to a sibling model from the model menu above.";
+    return i18n.t(($) => $.ai.chat.errorHints.overloaded, { where });
   }
   if (/econnrefused|failed to fetch|fetch failed|load failed|network error|not reachable|connection refused/.test(t)) {
-    return "Couldn't reach the AI provider. Check your connection, or if you're using Ollama, make sure it's running (Settings → AI Assistant → Check for Ollama).";
+    return i18n.t(($) => $.ai.chat.errorHints.unreachable);
   }
   return null;
 }
@@ -701,6 +749,7 @@ export function ReasoningBlock({
   durationMs?: number;
   expansionKey?: string;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -712,10 +761,12 @@ export function ReasoningBlock({
   }, [text, active, open]);
 
   const label = active
-    ? "Thinking…"
+    ? t(($) => $.ai.chat.reasoning.thinking)
     : durationMs
-      ? `Thought for ${Math.max(1, Math.round(durationMs / 1000))}s`
-      : "Reasoning";
+      ? t(($) => $.ai.chat.reasoning.thoughtFor, {
+          seconds: Math.max(1, Math.round(durationMs / 1000)),
+        })
+      : t(($) => $.ai.chat.reasoning.label);
 
   // A finished reasoning block with no text carries nothing to read; hide it
   // rather than render an empty "Reasoning" collapsible.
@@ -788,6 +839,7 @@ export function SubagentCard({
   entry: SubagentEntry;
   actions?: ResearchChatActions;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const settled =
     entry.state === "done" || entry.state === "error" || entry.state === "interrupted";
   const running = !settled;
@@ -821,14 +873,14 @@ export function SubagentCard({
       : null;
   const statusLabel =
     entry.state === "done"
-      ? "Finished"
+      ? t(($) => $.ai.chat.subagent.finished)
       : entry.state === "error"
-        ? "Failed"
+        ? t(($) => $.ai.chat.subagent.failed)
         : entry.state === "interrupted"
-          ? "Stopped"
+          ? t(($) => $.ai.chat.subagent.stopped)
           : entry.state === "tool" && detail.text
-            ? `Using ${detail.text}`
-            : "Working on it";
+            ? t(($) => $.ai.chat.subagent.usingTool, { tool: detail.text })
+            : t(($) => $.ai.chat.subagent.working);
 
   return (
     <div
@@ -874,8 +926,8 @@ export function SubagentCard({
             ) : (
               <span className="text-muted-foreground">
                 {entry.state === "error"
-                  ? "The agent could not complete this task."
-                  : "The task was stopped before it answered."}
+                  ? t(($) => $.ai.chat.subagent.errorBody)
+                  : t(($) => $.ai.chat.subagent.stoppedBody)}
               </span>
             )}
           </div>
@@ -908,7 +960,7 @@ export function SubagentCard({
                 className="rounded px-1.5 py-1 text-[10px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                 onClick={() => setExpanded((value) => !value)}
               >
-                {expanded ? "Show less" : "Show more"}
+                {expanded ? t(($) => $.common.actions.showLess) : t(($) => $.common.actions.showMore)}
               </button>
             )}
           </span>
@@ -918,7 +970,7 @@ export function SubagentCard({
               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-foreground hover:bg-accent"
               onClick={openSession}
             >
-              Open task
+              {t(($) => $.ai.chat.subagent.openTask)}
               <ChevronRight aria-hidden="true" className="size-3" />
             </button>
           )}
@@ -940,12 +992,14 @@ function WorkedSteps({
   totalMs: number;
   expansionKey?: string;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
   const seconds = Math.max(1, Math.round(totalMs / 1000));
-  const label = totalMs > 0
-    ? `Worked for ${seconds}s`
-    : `Worked through ${rows.length} ${rows.length === 1 ? "step" : "steps"}`;
+  const label =
+    totalMs > 0
+      ? t(($) => $.ai.chat.workedSteps.duration, { seconds })
+      : t(($) => $.ai.chat.workedSteps.steps, { count: rows.length });
   return (
     <div className="max-w-[85%]">
       <button
@@ -986,6 +1040,7 @@ export const MessageItem = memo(function MessageItem({
   actions?: ResearchChatActions;
   expansionScope?: string;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const tools = msg.toolCalls ?? [];
   const attachmentOccurrences = new Map<string, number>();
   // Fall back to the legacy single-block fields for chats persisted before
@@ -1077,11 +1132,9 @@ export const MessageItem = memo(function MessageItem({
   const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
   const createdAt = msg.createdAt === undefined ? null : new Date(msg.createdAt);
   const validCreatedAt = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
-  const messageTime = validCreatedAt?.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const messageTime = validCreatedAt
+    ? formatTime(validCreatedAt, { hour: "numeric", minute: "2-digit" })
+    : undefined;
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
       {foldSteps ? (
@@ -1105,7 +1158,7 @@ export const MessageItem = memo(function MessageItem({
           data-testid="steered-message-label"
           className="text-[10px] font-medium text-muted-foreground"
         >
-          Steered
+          {t(($) => $.ai.chat.steered)}
         </span>
       )}
       {msg.attachments && msg.attachments.length > 0 && (

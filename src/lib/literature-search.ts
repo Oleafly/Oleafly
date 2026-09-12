@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { literatureSearch as invokeLiteratureSearch } from "@/lib/tauri";
 import {
   cleanField,
@@ -33,56 +34,63 @@ export const LITERATURE_SOURCES: LiteratureSourceDefinition[] = [
     label: "arXiv",
     shortLabel: "arXiv",
     available: true,
-    description:
-      "More than 2.4 million preprints in physics, mathematics, computer science, quantitative biology, and related fields.",
+    get description() {
+      return i18n.t(($) => $.core.literatureSources.arxiv);
+    },
   },
   {
     id: "semantic-scholar",
     label: "Semantic Scholar",
     shortLabel: "S2",
     available: true,
-    description:
-      "A scholarly index with citation graphs, influential citation data, and TLDR summaries.",
+    get description() {
+      return i18n.t(($) => $.core.literatureSources.semanticScholar);
+    },
   },
   {
     id: "crossref",
     label: "Crossref",
     shortLabel: "Crossref",
     available: true,
-    description:
-      "The DOI registry with metadata for more than 150 million research outputs.",
+    get description() {
+      return i18n.t(($) => $.core.literatureSources.crossref);
+    },
   },
   {
     id: "pubmed",
     label: "PubMed",
     shortLabel: "PubMed",
     available: true,
-    description:
-      "More than 40 million citations and abstracts from biomedical and life sciences literature, including MEDLINE.",
+    get description() {
+      return i18n.t(($) => $.core.literatureSources.pubmed);
+    },
   },
   {
     id: "openalex",
     label: "OpenAlex",
     shortLabel: "OpenAlex",
     available: true,
-    description:
-      "An open catalog of scholarly works, authors, sources, institutions, topics, publishers, and funders.",
+    get description() {
+      return i18n.t(($) => $.core.literatureSources.openalex);
+    },
   },
   {
     id: "google-scholar",
     label: "Google Scholar",
     shortLabel: "Scholar",
     available: true,
-    description:
-      "Google Scholar results via Serper. Requires a Serper API key under Settings → Integrations → Citation Search.",
+    get description() {
+      return i18n.t(($) => $.core.literatureSources.googleScholar);
+    },
   },
   {
     id: "uspto",
     label: "USPTO",
     shortLabel: "USPTO",
     available: false,
-    description:
-      "US patent grants and published applications for prior art and applied research. Search is paused during the PatentsView migration.",
+    get description() {
+      return i18n.t(($) => $.core.literatureSources.uspto);
+    },
   },
 ];
 
@@ -786,9 +794,7 @@ export async function searchLiterature(
       const started = performance.now();
       try {
         if (source === "uspto") {
-          throw new Error(
-            "USPTO has temporarily paused PatentsView search APIs during its Open Data Portal migration.",
-          );
+          throw new Error(i18n.t(($) => $.core.literatureSources.usptoPaused));
         }
         const raw = await transport(source, options.query, {
           limit,

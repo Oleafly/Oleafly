@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import { ChatCore } from "@/components/ai/ChatCore";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import {
@@ -19,6 +20,7 @@ const AcpWorkspaceAssistant = lazy(() =>
 const runtimeSwitch = <RuntimeSwitch />;
 
 export function ResearchAssistant() {
+  const { t } = useTranslation(["common", "ai"]);
   const runtime = useAssistantRuntimeStore(selectActiveRuntime);
   const projectId = useFilesStore((state) => state.projectId);
 
@@ -37,11 +39,19 @@ export function ResearchAssistant() {
             {runtime === "built-in" ? (
               <ChatCore />
             ) : projectId ? (
-              <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading agents…</p>}>
+              <Suspense
+                fallback={
+                  <p className="p-4 text-sm text-muted-foreground">
+                    {t(($) => $.ai.shell.loadingAgents)}
+                  </p>
+                }
+              >
                 <AcpWorkspaceAssistant projectId={projectId} />
               </Suspense>
             ) : (
-              <p className="p-5 text-sm text-muted-foreground">Open a project to work with a CLI agent.</p>
+              <p className="p-5 text-sm text-muted-foreground">
+                {t(($) => $.ai.shell.openProjectForCli)}
+              </p>
             )}
           </ErrorBoundary>
         </div>

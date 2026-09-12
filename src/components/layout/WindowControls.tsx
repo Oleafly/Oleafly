@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Copy, Minus, Square, X } from "lucide-react";
 import { isWindows } from "@/lib/utils";
 
 export function WindowControls() {
+  const { t } = useTranslation(["common", "shell"]);
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -34,12 +36,12 @@ export function WindowControls() {
   return (
     <fieldset
       className="m-0 flex h-12 shrink-0 border-0 p-0"
-      aria-label="Window controls"
+      aria-label={t(($) => $.shell.windowControls.group)}
     >
       <div className="mx-1 h-5 w-px shrink-0 self-center bg-border" />
       <button
         type="button"
-        aria-label="Minimize"
+        aria-label={t(($) => $.shell.windowControls.minimize)}
         className={base}
         onClick={() => void win.minimize()}
       >
@@ -47,7 +49,11 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label={maximized ? "Restore" : "Maximize"}
+        aria-label={
+          maximized
+            ? t(($) => $.shell.windowControls.restore)
+            : t(($) => $.shell.windowControls.maximize)
+        }
         className={base}
         onClick={() => void win.toggleMaximize()}
       >
@@ -55,7 +61,7 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t(($) => $.common.actions.close)}
         className="flex w-[46px] shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-[#e81123] hover:text-white"
         onClick={() => void win.close()}
       >

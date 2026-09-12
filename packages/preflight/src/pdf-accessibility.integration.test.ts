@@ -265,7 +265,7 @@ describe("deterministic PDF accessibility verdicts", () => {
       expect.objectContaining({
         id: "pdf-untagged-output",
         severity: "info",
-        detail: expect.stringContaining("cannot satisfy PDF/UA-1 clause 7.1"),
+        detail: { key: "rules.pdf-untagged-output.detail" },
       }),
     ]);
   });

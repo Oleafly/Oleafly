@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/store/settings";
 import { ProjectInfoContent } from "@/components/editor/ProjectInfo";
@@ -15,6 +16,7 @@ import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
  * it differs.
  */
 export function WordCountModal() {
+  const { t } = useTranslation(["common", "editor"]);
   const open = useSettingsStore((s) => s.wordCountOpen);
   const setOpen = useSettingsStore((s) => s.setWordCountOpen);
   const [snapshot, setSnapshot] = useState<ProjectInfoSnapshot | null>(null);
@@ -45,7 +47,7 @@ export function WordCountModal() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <button
         type="button"
-        aria-label="Close project info"
+        aria-label={t(($) => $.editor.wordCount.close)}
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
@@ -65,7 +67,7 @@ export function WordCountModal() {
         </div>
         <div className="mt-4 flex justify-end">
           <Button data-modal-initial-focus size="sm" onClick={() => setOpen(false)}>
-            Close
+            {t(($) => $.common.actions.close)}
           </Button>
         </div>
       </div>

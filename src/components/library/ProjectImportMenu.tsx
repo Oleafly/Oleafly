@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ExternalLink, Github, Lock, Loader2 } from "lucide-react";
 import {
@@ -39,6 +40,7 @@ export function ProjectImportMenu({
   trigger: (busy: boolean) => ReactElement;
   triggerTooltip?: ReactNode;
 }) {
+  const { t } = useTranslation(["library"]);
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
   const [open, setOpen] = useState(false);
@@ -143,9 +145,9 @@ export function ProjectImportMenu({
         <DropdownMenuTrigger asChild>{trigger(busy)}</DropdownMenuTrigger>
       )}
       <DropdownMenuContent align={align} className="min-w-56">
-        <DropdownMenuLabel>Local</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.library.import.menu.local)}</DropdownMenuLabel>
         <DropdownMenuItem onSelect={() => void importFile("project")}>
-          Existing project (.zip)
+          {t(($) => $.library.import.menu.project)}
         </DropdownMenuItem>
         {IMPORT_FILE_SOURCES.filter((source) => source.kind !== "project").map(({ kind, title: label }) => {
           const targets = importTargetsForKind(kind);
@@ -169,7 +171,7 @@ export function ProjectImportMenu({
             </DropdownMenuSub>
           );
         })}
-        <DropdownMenuLabel>Cloud</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(($) => $.library.import.menu.cloud)}</DropdownMenuLabel>
         <DropdownMenuItem data-testid="import-arxiv" onSelect={() => setArxivOpen(true)}>arXiv paper</DropdownMenuItem>
         <DropdownMenuSub open={githubOpen} onOpenChange={setGithubOpen}>
           <DropdownMenuSubTrigger>GitHub</DropdownMenuSubTrigger>
@@ -177,16 +179,19 @@ export function ProjectImportMenu({
             {githubStatus === "disconnected" ? (
               <DropdownMenuItem onSelect={openGithubSettings}>
                 <Github className="size-4 shrink-0 text-muted-foreground" />
-                Connect GitHub in Settings
+                {t(($) => $.library.import.menu.connect)}
               </DropdownMenuItem>
             ) : githubStatus === "unknown" || loadingRepositories ? (
               <DropdownMenuItem disabled>
-                <Loader2 className="size-3.5 animate-spin" /> Loading repositories…
+                <Loader2 className="size-3.5 animate-spin" />{" "}
+                {t(($) => $.library.import.loadingRepositories)}
               </DropdownMenuItem>
             ) : repositoryLoadFailed ? (
               <DropdownMenuItem onSelect={(event) => { event.preventDefault(); setRepositoryAttempt((attempt) => attempt + 1); }}>Could not load repositories. Try again</DropdownMenuItem>
             ) : repositories.length === 0 ? (
-              <DropdownMenuItem disabled>No repositories found.</DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                {t(($) => $.library.import.noRepositories)}
+              </DropdownMenuItem>
             ) : (
               repositories.map((repository) => (
                 <DropdownMenuItem
@@ -206,16 +211,22 @@ export function ProjectImportMenu({
                     {repository.full_name}
                   </span>
                   {repository.private ? (
-                    <Tooltip label="Private repository" side="top">
-                      <span role="img" aria-label="Private repository" className="inline-flex shrink-0">
+                    <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
+                      <span
+                        role="img"
+                        aria-label={t(($) => $.library.import.privateRepository)}
+                        className="inline-flex shrink-0"
+                      >
                         <Lock aria-hidden className="size-3 text-muted-foreground" />
                       </span>
                     </Tooltip>
                   ) : null}
-                  <Tooltip label="Open on GitHub" side="top">
+                  <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
                     <button
                       type="button"
-                      aria-label={`Open ${repository.full_name} on GitHub`}
+                      aria-label={t(($) => $.library.import.openRepository, {
+                        name: repository.full_name,
+                      })}
                       // The row imports the repository; this opens it in the
                       // browser. Radix selects the item on pointerdown, so
                       // both events have to stop here or the click would do

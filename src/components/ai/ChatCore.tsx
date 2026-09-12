@@ -1,5 +1,8 @@
 import { lazy, Suspense, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
 import { DeltaQueues, MAX_BATCH, normalizeAgentUsage } from "@oleafly/ai-core";
@@ -179,7 +182,7 @@ import { buildWorkspaceContext } from "@/lib/ai-context";
 import { packChatHistory } from "@/lib/ai-context-pack";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
-import { PROMPT_CATEGORIES } from "@/components/ai/prompt-shortcuts";
+import { promptCategories } from "@/components/ai/prompt-shortcuts";
 import {
   createLoadSkillTools,
   createSkill,
@@ -237,61 +240,72 @@ function figureCodeOf(args: unknown): string | undefined {
 }
 
 interface ChatSuggestion {
+  id: string;
   label: string;
   send: string;
   icon: LucideIcon;
   skillId?: string;
 }
 
-const SUGGESTIONS: ChatSuggestion[] = [
-  {
-    label: "Sweep the literature for this project",
-    send: "/oleafly-literature-sweep Build an annotated reading list for this project's research question",
-    icon: Search,
-    skillId: "oleafly-literature-sweep",
-  },
-  {
-    label: "Draft the related work section",
-    send: "/oleafly-related-work Draft the related work section from the reading list and the bibliography",
-    icon: BookOpen,
-    skillId: "oleafly-related-work",
-  },
-  {
-    label: "Check every claim against its source",
-    send: "/oleafly-verify-claims Audit the claims in this manuscript against their cited sources",
-    icon: ClipboardCheck,
-    skillId: "oleafly-verify-claims",
-  },
-  {
-    label: "Review it like a referee",
-    send: "/oleafly-review-manuscript Review the full manuscript and write the report",
-    icon: Glasses,
-    skillId: "oleafly-review-manuscript",
-  },
-  {
-    label: "Fix any source errors in my document",
-    send: "/oleafly-latex-build Compile this project and fix every error until it builds cleanly",
-    icon: Wrench,
-    skillId: "oleafly-latex-build",
-  },
-  {
-    label: "Get it ready to submit",
-    send: "/oleafly-pre-submission Run the pre-submission checks for the target venue",
-    icon: Send,
-    skillId: "oleafly-pre-submission",
-  },
-  {
-    label: "Turn this paper into a talk",
-    send: "/oleafly-slides-and-posters Build a 15 minute conference talk from this paper",
-    icon: Presentation,
-    skillId: "oleafly-slides-and-posters",
-  },
-  {
-    label: "Recompile and check for errors",
-    send: "Recompile and check for errors",
-    icon: RotateCcw,
-  },
-];
+function chatSuggestions(): ChatSuggestion[] {
+  return [
+    {
+      id: "literature-sweep",
+      label: i18n.t(($) => $.ai.suggestions.literatureSweep),
+      send: "/oleafly-literature-sweep Build an annotated reading list for this project's research question",
+      icon: Search,
+      skillId: "oleafly-literature-sweep",
+    },
+    {
+      id: "related-work",
+      label: i18n.t(($) => $.ai.suggestions.relatedWork),
+      send: "/oleafly-related-work Draft the related work section from the reading list and the bibliography",
+      icon: BookOpen,
+      skillId: "oleafly-related-work",
+    },
+    {
+      id: "verify-claims",
+      label: i18n.t(($) => $.ai.suggestions.verifyClaims),
+      send: "/oleafly-verify-claims Audit the claims in this manuscript against their cited sources",
+      icon: ClipboardCheck,
+      skillId: "oleafly-verify-claims",
+    },
+    {
+      id: "review-manuscript",
+      label: i18n.t(($) => $.ai.suggestions.reviewManuscript),
+      send: "/oleafly-review-manuscript Review the full manuscript and write the report",
+      icon: Glasses,
+      skillId: "oleafly-review-manuscript",
+    },
+    {
+      id: "latex-build",
+      label: i18n.t(($) => $.ai.suggestions.latexBuild),
+      send: "/oleafly-latex-build Compile this project and fix every error until it builds cleanly",
+      icon: Wrench,
+      skillId: "oleafly-latex-build",
+    },
+    {
+      id: "pre-submission",
+      label: i18n.t(($) => $.ai.suggestions.preSubmission),
+      send: "/oleafly-pre-submission Run the pre-submission checks for the target venue",
+      icon: Send,
+      skillId: "oleafly-pre-submission",
+    },
+    {
+      id: "slides",
+      label: i18n.t(($) => $.ai.suggestions.slides),
+      send: "/oleafly-slides-and-posters Build a 15 minute conference talk from this paper",
+      icon: Presentation,
+      skillId: "oleafly-slides-and-posters",
+    },
+    {
+      id: "recompile",
+      label: i18n.t(($) => $.ai.suggestions.recompile),
+      send: "Recompile and check for errors",
+      icon: RotateCcw,
+    },
+  ];
+}
 
 export function availableSuggestions(
   suggestions: readonly ChatSuggestion[],
@@ -320,9 +334,11 @@ export function approvalPostureLine(mode: ApprovalMode): string {
   return APPROVAL_POSTURE_LINES[mode];
 }
 
-export const PLAN_MODE_HINT =
-  "Plan mode: the assistant proposes a plan before editing. Turn Plan off to give the assistant direct access to all tools.";
-export const PLAN_REVISION_PLACEHOLDER = "Describe what to change in the plan";
+export function planModeHint(): string {
+  return i18n.t(($) => $.ai.composer.planModeHint);
+}
+
+
 export const PLAN_APPROVED_MESSAGE = "Carry out the approved plan.";
 export const PLAN_MODE_PLANNING_PROMPT =
   "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. Stop there and wait for the user to approve the plan. Do not start the work. When the request needs editing, deleting, compiling, or running commands, do not say you lack access to tools; put that work into the numbered plan as pending items, because the approved plan runs with the full toolset. Mention that the user can turn Plan off for direct tool access.";
@@ -550,20 +566,27 @@ type ModelNotice = { providerId: string; modelId: string } & (
   | { kind: "error"; message: string }
 );
 
-export const CHAT_ONLY_MODEL_HINT = "Chat only, this model cannot use tools";
-export const CHECKING_MODEL_HINT = "Checking this model";
+export function chatOnlyModelHint(): string {
+  return i18n.t(($) => $.ai.models.chatOnlyHint);
+}
+
+export function checkingModelHint(): string {
+  return i18n.t(($) => $.ai.models.checkingHint);
+}
 
 export function blockedModelMessage(reason: string): string {
   const trimmed = reason.trim();
   return trimmed
-    ? `This model is blocked for the assistant: ${trimmed}`
-    : "This model is blocked for the assistant.";
+    ? i18n.t(($) => $.ai.models.blockedWithReason, { reason: trimmed })
+    : i18n.t(($) => $.ai.models.blocked);
 }
 
 function describeProbeFailure(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
   const detail = raw.replace(/^\[[a-z_]+\]\s*/, "").trim().slice(0, 160);
-  return detail ? `Could not check this model. ${detail}` : "Could not check this model.";
+  return detail
+    ? i18n.t(($) => $.ai.models.probeFailedWithDetail, { detail })
+    : i18n.t(($) => $.ai.models.probeFailed);
 }
 
 export function modelNoticeRole(notice: ModelNotice | null): "alert" | "status" {
@@ -574,10 +597,10 @@ export function modelNoticeText(
   notice: ModelNotice | null,
   chatOnly: boolean,
 ): string {
-  if (notice?.kind === "checking") return CHECKING_MODEL_HINT;
+  if (notice?.kind === "checking") return checkingModelHint();
   if (notice?.kind === "blocked") return blockedModelMessage(notice.reason);
   if (notice?.kind === "error") return notice.message;
-  return chatOnly ? CHAT_ONLY_MODEL_HINT : "";
+  return chatOnly ? chatOnlyModelHint() : "";
 }
 
 const UsageReportDialog = lazy(() =>
@@ -585,6 +608,7 @@ const UsageReportDialog = lazy(() =>
 );
 
 export function ChatCore() {
+  const { t } = useTranslation(["common", "ai"]);
   const projectId = useFilesStore((s) => s.projectId);
   const researchChatActions = useResearchChatActions(projectId);
   const [transcriptThreadId, setTranscriptThreadId] = useState<string | null>(null);
@@ -596,7 +620,7 @@ export function ChatCore() {
         void useAcpSessionsStore
           .getState()
           .open(projectId, target.threadId)
-          .catch(() => toast.error("The agent session could not be opened."));
+          .catch(() => toast.error(i18n.t(($) => $.ai.toasts.sessionOpenFailed)));
         return;
       }
       setTranscriptThreadId(target.threadId);
@@ -710,7 +734,7 @@ export function ChatCore() {
   const changeApprovalMode = useCallback(
     (nextMode: ApprovalMode) => {
       void setApprovalMode(projectId, nextMode).catch(() => {
-        toast.error("Could not save the approval mode.");
+        toast.error(i18n.t(($) => $.ai.toasts.approvalModeSaveFailed));
       });
     },
     [projectId, setApprovalMode],
@@ -868,10 +892,10 @@ export function ChatCore() {
     return () => cancelAnimationFrame(frame);
   }, [goalEditorOpen]);
   const inputPlaceholder = !engineLoaded
-    ? "Document engine unavailable. AI editing disabled"
+    ? t(($) => $.ai.composer.placeholderEngineUnavailable)
     : planApprovalStatus === "awaiting"
-      ? PLAN_REVISION_PLACEHOLDER
-      : "Ask AI to help with your document…";
+      ? t(($) => $.ai.composer.planRevisionPlaceholder)
+      : t(($) => $.ai.composer.placeholderDefault);
   useAutoSizeTextarea(
     textareaRef,
     inputShellRef,
@@ -888,7 +912,7 @@ export function ChatCore() {
     const picked: PendingAttachment[] = [];
     for (const f of Array.from(files)) {
       if (f.size > MAX_ATTACH_BYTES) {
-        toast.error(`${f.name} is too large (max 10 MB).`);
+        toast.error(i18n.t(($) => $.ai.toasts.attachmentTooLarge, { name: f.name }));
         continue;
       }
       try {
@@ -905,7 +929,7 @@ export function ChatCore() {
           dataUrl,
         });
       } catch {
-        toast.error(`Couldn't read ${f.name}.`);
+        toast.error(i18n.t(($) => $.ai.toasts.attachmentReadFailed, { name: f.name }));
       }
     }
     if (picked.length) setAttachments((cur) => [...cur, ...picked].slice(0, MAX_ATTACH));
@@ -1003,8 +1027,10 @@ export function ChatCore() {
     availableSkills.length > 0
       ? [
           {
-            label: "Skills",
+            id: "skills",
+            label: i18n.t(($) => $.ai.commands.groups.skills),
             items: availableSkills.map((skill) => ({
+              id: `skill:${skill.id}`,
               icon: Sparkles,
               label: skill.name,
               description: skill.description,
@@ -1035,9 +1061,9 @@ export function ChatCore() {
       );
       void Promise.resolve(skillsQueryRef.current.refetch()).catch(() => undefined);
       openSkillsSettings();
-      toast.success("Draft skill saved. Review it before enabling.");
+      toast.success(i18n.t(($) => $.ai.toasts.skillDraftSaved));
     } catch (error) {
-      toast.error(`Could not save the skill draft. ${String(error)}`);
+      toast.error(i18n.t(($) => $.ai.toasts.skillDraftFailed, { error: String(error) }));
     }
   }, [openSkillsSettings, queryClient]);
   // Trailing-debounce timer for persisting the streaming conversation.
@@ -1396,9 +1422,9 @@ export function ChatCore() {
         setMessages([]);
         useAgentTodoStore.getState().selectChat(null);
       }
-      toast.success("Chat archived.");
+      toast.success(i18n.t(($) => $.ai.toasts.chatArchived));
     } catch {
-      toast.error("Could not archive this chat.");
+      toast.error(i18n.t(($) => $.ai.toasts.chatArchiveFailed));
     }
   }, [activeChatId, activeThreadId, removeChat, setMessages]);
 
@@ -1419,9 +1445,9 @@ export function ChatCore() {
       }));
       setMessages(messages);
       useAgentTodoStore.getState().selectChat(fork.id);
-      toast.success("Chat forked.");
+      toast.success(i18n.t(($) => $.ai.toasts.chatForked));
     } catch {
-      toast.error("Could not fork this chat.");
+      toast.error(i18n.t(($) => $.ai.toasts.chatForkFailed));
     }
   }, [activeChatId, activeThreadId, currentHead, projectId, setMessages]);
 
@@ -1617,7 +1643,7 @@ export function ChatCore() {
       return;
     }
     if (!engineLoaded) {
-      toast.error("Document engine details are not loaded. AI editing is disabled for safety.");
+      toast.error(i18n.t(($) => $.ai.toasts.engineNotLoaded));
       return;
     }
     if (!apiKey) { openAISettings(); return; }
@@ -1650,13 +1676,13 @@ export function ChatCore() {
         const result = await skillsQueryRef.current.refetch();
         if (!result?.data) {
           cancelSendPreparation();
-          toast.error("Could not load enabled skills. Try again.");
+          toast.error(i18n.t(($) => $.ai.toasts.skillsLoadFailed));
           return;
         }
         runSkills = result.data;
       } catch {
         cancelSendPreparation();
-        toast.error("Could not load enabled skills. Try again.");
+        toast.error(i18n.t(($) => $.ai.toasts.skillsLoadFailed));
         return;
       }
     }
@@ -1724,7 +1750,11 @@ export function ChatCore() {
       cancelSendPreparation();
       const excess = enabledToolCount - MAX_AGENT_TOOL_DEFINITIONS;
       toast.error(
-        `${enabledToolCount} tools are enabled, but a run supports up to ${MAX_AGENT_TOOL_DEFINITIONS}. Disable at least ${excess} in Tools and try again.`,
+        i18n.t(($) => $.ai.toasts.tooManyTools, {
+          enabled: enabledToolCount,
+          max: MAX_AGENT_TOOL_DEFINITIONS,
+          excess,
+        }),
       );
       return;
     }
@@ -1822,7 +1852,7 @@ export function ChatCore() {
       runApprovalMode = await useApprovalModeStore.getState().ready(projectId);
     } catch {
       releaseRunReservation();
-      toast.error("Could not load the approval mode.");
+      toast.error(i18n.t(($) => $.ai.toasts.approvalModeLoadFailed));
       return;
     }
     if (!reservationIsCurrent()) {
@@ -1856,7 +1886,7 @@ export function ChatCore() {
         projectApprovalsRef.current = await approvalsList(projectId);
       } catch {
         releaseRunReservation();
-        toast.error("Could not load the project approval rules.");
+        toast.error(i18n.t(($) => $.ai.toasts.approvalRulesLoadFailed));
         return;
       }
     }
@@ -2599,7 +2629,7 @@ ${sandboxedCustom}`;
         updateRunLast((m) => ({
           ...m,
           content: errMsg.includes("NoOutputGenerated")
-            ? "The model returned no output. Check Settings → AI Assistant."
+            ? i18n.t(($) => $.ai.conversation.noOutput)
             : errMsg,
         }));
       }
@@ -2695,8 +2725,8 @@ ${sandboxedCustom}`;
 
   const homeQuickStarts = useMemo(
     () =>
-      availableSuggestions(SUGGESTIONS, skillsQuery.data).map((suggestion) => ({
-        id: suggestion.label,
+      availableSuggestions(chatSuggestions(), skillsQuery.data).map((suggestion) => ({
+        id: suggestion.id,
         label: suggestion.label,
         icon: suggestion.icon,
         onSelect: () => void send(suggestion.send),
@@ -2756,9 +2786,7 @@ ${sandboxedCustom}`;
       if (!projectId || !message.id || !message.checkpointOid || restoringCheckpoint) return;
       if (
         !isLatest &&
-        !window.confirm(
-          "Restore project files to before this response? This also discards code changes made by later AI responses. The conversation will stay here.",
-        )
+        !window.confirm(i18n.t(($) => $.ai.conversation.restoreConfirm))
       ) {
         return;
       }
@@ -2779,9 +2807,9 @@ ${sandboxedCustom}`;
         if (activeChatId && approval.status(activeChatId) === "awaiting") {
           approval.setStatus(activeChatId, "planning");
         }
-        toast.success("Restored project files. The conversation was kept.");
+        toast.success(i18n.t(($) => $.ai.toasts.restored));
       } catch (error) {
-        toast.error(`Could not restore: ${error}`);
+        toast.error(i18n.t(($) => $.ai.toasts.restoreFailed, { error: String(error) }));
       } finally {
         setRestoringCheckpoint(null);
       }
@@ -2894,10 +2922,18 @@ ${sandboxedCustom}`;
           chatUsage.steps > 0)),
   );
   const usageSummary = runUsage
-    ? `Last run: ${runUsage.steps} step${runUsage.steps === 1 ? "" : "s"}, ${runUsage.input === null || runUsage.output === null ? "token total unavailable" : `${(runUsage.input + runUsage.output).toLocaleString()} reported tokens`}`
+    ? runUsage.input === null || runUsage.output === null
+      ? t(($) => $.ai.usage.summaryRunNoTokens, { count: runUsage.steps })
+      : t(($) => $.ai.usage.summaryRunWithTokens, {
+          count: runUsage.steps,
+          tokens: formatNumber(runUsage.input + runUsage.output),
+        })
     : chatUsage
-      ? `This chat: ${chatUsage.steps} steps, ${chatTotal.toLocaleString()} tokens`
-      : "AI usage";
+      ? t(($) => $.ai.usage.summaryChat, {
+          steps: chatUsage.steps,
+          tokens: formatNumber(chatTotal),
+        })
+      : t(($) => $.ai.usage.summaryFallback);
 
   return (
     <div
@@ -2921,12 +2957,12 @@ ${sandboxedCustom}`;
         leading={shellLeading}
         actions={
           <>
-            <Tooltip label="Configure assistant MCP servers">
+            <Tooltip label={t(($) => $.ai.header.mcpTooltip)}>
               <Button
                 type="button"
                 variant="ghost"
                 size="xs"
-                aria-label="Assistant MCP settings"
+                aria-label={t(($) => $.ai.header.mcpAriaLabel)}
                 onClick={openMcpSettings}
                 className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
               >
@@ -2937,12 +2973,12 @@ ${sandboxedCustom}`;
               groups={toolManagerAvailability.groups}
               onOpen={() => void mcpAgentToolsQuery.refetch()}
             />
-            <Tooltip label="Assistant settings">
+            <Tooltip label={t(($) => $.ai.header.settings)}>
               <Button
                 type="button"
                 variant="ghost"
                 size="xs"
-                aria-label="Assistant settings"
+                aria-label={t(($) => $.ai.header.settings)}
                 onClick={openAssistantSettings}
                 className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
               >
@@ -2954,7 +2990,7 @@ ${sandboxedCustom}`;
                 <Tooltip label={usageSummary}>
                   <Popover
                     align="right"
-                    ariaLabel="View AI usage"
+                    ariaLabel={t(($) => $.ai.header.usageAriaLabel)}
                     className="w-64 p-0"
                     trigger={<BadgeDollarSign className="size-4" />}
                   >
@@ -2965,15 +3001,23 @@ ${sandboxedCustom}`;
                       {runUsage && (
                         <section data-testid="ai-run-usage">
                           <div className="mb-1.5 flex items-center justify-between">
-                            <span className="font-medium text-foreground">Last run</span>
+                            <span className="font-medium text-foreground">{t(($) => $.ai.usage.lastRun)}</span>
                           </div>
                           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                            <dt>Steps</dt>
+                            <dt>{t(($) => $.ai.usage.steps)}</dt>
                             <dd className="text-right tabular-nums">{runUsage.steps}</dd>
-                            <dt>Input</dt>
-                            <dd className="text-right tabular-nums">{runUsage.input?.toLocaleString() ?? "Unknown"}</dd>
-                            <dt>Output</dt>
-                            <dd className="text-right tabular-nums">{runUsage.output?.toLocaleString() ?? "Unknown"}</dd>
+                            <dt>{t(($) => $.ai.usage.input)}</dt>
+                            <dd className="text-right tabular-nums">
+                              {runUsage.input === null
+                                ? t(($) => $.common.state.unknown)
+                                : formatNumber(runUsage.input)}
+                            </dd>
+                            <dt>{t(($) => $.ai.usage.output)}</dt>
+                            <dd className="text-right tabular-nums">
+                              {runUsage.output === null
+                                ? t(($) => $.common.state.unknown)
+                                : formatNumber(runUsage.output)}
+                            </dd>
                           </dl>
                         </section>
                       )}
@@ -2983,20 +3027,20 @@ ${sandboxedCustom}`;
                           data-testid="ai-chat-usage"
                         >
                           <div className="mb-1.5 flex items-center justify-between">
-                            <span className="font-medium text-foreground">This chat</span>
+                            <span className="font-medium text-foreground">{t(($) => $.ai.usage.thisChat)}</span>
                           </div>
                           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                            <dt>Runs</dt>
+                            <dt>{t(($) => $.ai.usage.runs)}</dt>
                             <dd className="text-right tabular-nums">{chatUsage.runs}</dd>
-                            <dt>Steps</dt>
+                            <dt>{t(($) => $.ai.usage.steps)}</dt>
                             <dd className="text-right tabular-nums">{chatUsage.steps}</dd>
-                            <dt>Tokens</dt>
-                            <dd className="text-right tabular-nums">{chatTotal.toLocaleString()}</dd>
+                            <dt>{t(($) => $.ai.usage.tokens)}</dt>
+                            <dd className="text-right tabular-nums">{formatNumber(chatTotal)}</dd>
                           </dl>
                         </section>
                       )}
                       <p className="border-t pt-2 text-[10px] leading-relaxed text-muted-foreground">
-                        Cache usage and cost estimates are in the usage report.
+                        {t(($) => $.ai.usage.cacheNote)}
                       </p>
                     </div>
                   </Popover>
@@ -3004,14 +3048,14 @@ ${sandboxedCustom}`;
               </div>
             )}
             <Suspense fallback={null}>
-              <Tooltip label="Usage report">
+              <Tooltip label={t(($) => $.ai.header.usageReport)}>
                 <UsageReportDialog
                   trigger={
                     <Button
                       type="button"
                       variant="ghost"
                       size="xs"
-                      aria-label="Usage report"
+                      aria-label={t(($) => $.ai.header.usageReport)}
                       className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
                     >
                       <BarChart3 className="size-4" />
@@ -3022,21 +3066,21 @@ ${sandboxedCustom}`;
             </Suspense>
             {configuredProviders.length > 0 && (
               <>
-                <Tooltip label="New chat">
+                <Tooltip label={t(($) => $.ai.header.newChat)}>
                   <button type="button"
                     onClick={newChat}
                     disabled={streaming}
-                    aria-label="New chat"
+                    aria-label={t(($) => $.ai.header.newChat)}
                     className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
                   >
                     <Plus className="size-4" />
                   </button>
                 </Tooltip>
-                <Tooltip label="Chat history">
+                <Tooltip label={t(($) => $.ai.header.chatHistory)}>
                   <button type="button"
                     data-tour="ai-history"
                     onClick={() => setHistoryOpen(true)}
-                    aria-label="Chat history"
+                    aria-label={t(($) => $.ai.header.chatHistory)}
                     className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     <History className="size-4" />
@@ -3049,13 +3093,13 @@ ${sandboxedCustom}`;
         }
       >
         {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
-          <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
+          <InfoHint message={t(($) => $.ai.header.staleChatHint)} />
         )}
       </AssistantShellHeader>
 
       {quotaWarning && (
         <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
-          Chat history storage is full. Older chats were pruned and new messages may not be saved. Delete old chats from history to free space.
+          {t(($) => $.ai.provider.quotaWarning)}
         </div>
       )}
 
@@ -3067,22 +3111,20 @@ ${sandboxedCustom}`;
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <OleaflyAssistantMascot />
           <div className="space-y-1">
-            <div className="text-sm font-medium">Connect an AI provider to continue</div>
+            <div className="text-sm font-medium">{t(($) => $.ai.provider.connectTitle)}</div>
             <p className="mx-auto max-w-[18rem] text-xs text-muted-foreground">
-              Bring your own API key (OpenAI, Anthropic, Groq, and more) or run a model locally with
-              Ollama. The assistant can read and edit files, compile your project,
-              and verify the PDF.
+              {t(($) => $.ai.provider.connectBody)}
             </p>
           </div>
           <Button data-tour="ai-connect-provider" onClick={() => openAISettings()}>
             <Sparkles className="size-4" />
-            Connect a provider
+            {t(($) => $.ai.provider.connectButton)}
           </Button>
           <button type="button"
             onClick={() => openAISettings()}
             className="text-[11px] text-muted-foreground hover:text-foreground"
           >
-            Run a local model with Ollama
+            {t(($) => $.ai.provider.runLocal)}
           </button>
         </div>
       )}
@@ -3104,7 +3146,11 @@ ${sandboxedCustom}`;
               <div className="flex min-h-full flex-col items-center justify-center px-1">
                 <AssistantHome
                   before={<OleaflyAssistantMascot />}
-                  subtitle={projectName ? `Working on "${projectName}"` : undefined}
+                  subtitle={
+                    projectName
+                      ? t(($) => $.ai.conversation.projectSubtitle, { project: projectName })
+                      : undefined
+                  }
                   skills={skills}
                   onPickSkill={pickHomeSkill}
                   onOpenSkills={openSkillsSettings}
@@ -3122,7 +3168,7 @@ ${sandboxedCustom}`;
               <ErrorBoundary
                 fallback={
                   <div className="px-1 py-4 text-center text-sm text-muted-foreground">
-                    This conversation failed to render. Start a new chat or reopen it from history.
+                    {t(($) => $.ai.conversation.renderFailed)}
                   </div>
                 }
               >
@@ -3159,7 +3205,7 @@ ${sandboxedCustom}`;
                             <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
                               {msg.checkpointRestored ? (
                                 <span className="text-[10px] text-muted-foreground">
-                                  Project restored to this checkpoint
+                                  {t(($) => $.ai.conversation.checkpointRestored)}
                                 </span>
                               ) : (
                                 <button
@@ -3171,8 +3217,8 @@ ${sandboxedCustom}`;
                                 >
                                   <RotateCcw className="size-3" />
                                   {restoringCheckpoint === msg.id
-                                    ? "Restoring…"
-                                    : "Restore code to before this response"}
+                                    ? t(($) => $.ai.conversation.restoring)
+                                    : t(($) => $.ai.conversation.restoreCheckpoint)}
                                 </button>
                               )}
                             </div>
@@ -3191,15 +3237,14 @@ ${sandboxedCustom}`;
                       <div className="max-w-[85%] text-xs">
                         <div className="flex w-full items-center gap-2 py-1 text-sm text-muted-foreground">
                           <Brain className="ai-shimmer-icon size-3.5 shrink-0" />
-                          <Shimmer text={thinkingText || "Thinking…"} />
+                          <Shimmer text={thinkingText || t(($) => $.ai.chat.reasoning.thinking)} />
                         </div>
                       </div>
                     )}
                   {!streaming &&
                     messages[messages.length - 1]?.role === "user" && (
                       <div className="max-w-[85%] rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                        No response arrived for this message. The stream was
-                        interrupted. Send it again, or start a new chat.
+                        {t(($) => $.ai.conversation.noResponse)}
                       </div>
                     )}
                 </div>
@@ -3242,8 +3287,8 @@ ${sandboxedCustom}`;
               <button
                 type="button"
                 onClick={scrollToBottom}
-                aria-label="Scroll to bottom"
-                title="Scroll to bottom"
+                aria-label={t(($) => $.ai.conversation.scrollToBottom)}
+                title={t(($) => $.ai.conversation.scrollToBottom)}
                 className="absolute bottom-3 right-3 flex size-7 items-center justify-center rounded-full border bg-background/90 text-muted-foreground shadow-md backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
               >
                 <ChevronDown className="size-4" />
@@ -3262,12 +3307,12 @@ ${sandboxedCustom}`;
                       const beingSent = sendingFollowUpId === item.id;
                       const chipText =
                         item.status === "steered"
-                          ? `Steered into the running turn: ${summary}`
+                          ? t(($) => $.ai.followUps.steered, { summary })
                           : beingSent
-                            ? `Sent as the next turn: ${summary}`
+                            ? t(($) => $.ai.followUps.sending, { summary })
                             : awaitingSafePoint
-                              ? `Waiting for a safe point in the run: ${summary}`
-                              : `Queued for the next turn: ${summary}`;
+                              ? t(($) => $.ai.followUps.waiting, { summary })
+                              : t(($) => $.ai.followUps.queued, { summary });
                       return (
                       <div
                         key={item.id}
@@ -3280,7 +3325,7 @@ ${sandboxedCustom}`;
                             type="button"
                             data-testid="agent-follow-up-steer"
                             disabled={awaitingSafePoint || beingSent || !steerableRunId}
-                            title={steerableRunId ? undefined : "Starting the run"}
+                            title={steerableRunId ? undefined : t(($) => $.ai.followUps.startingRun)}
                             className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
                             onClick={() => {
                               const runId = activeRunRequestIdRef.current;
@@ -3313,7 +3358,7 @@ ${sandboxedCustom}`;
                                   });
                                 })
                                 .catch(() =>
-                                  toast.error("The running turn could not be steered."),
+                                  toast.error(i18n.t(($) => $.ai.toasts.steerFailed)),
                                 )
                                 .finally(() => {
                                   steeringFollowUpIdsRef.current.delete(item.id);
@@ -3323,15 +3368,15 @@ ${sandboxedCustom}`;
                                 });
                             }}
                           >
-                            Steer now
+                            {t(($) => $.ai.followUps.steerNow)}
                           </button>
                         )}
                         {item.status === "pending" && (
                           <button
                             type="button"
                             data-testid="agent-follow-up-discard"
-                            aria-label="Discard queued message"
-                            title="Discard queued message"
+                            aria-label={t(($) => $.ai.followUps.discard)}
+                            title={t(($) => $.ai.followUps.discard)}
                             disabled={awaitingSafePoint || beingSent}
                             className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                             onClick={() => {
@@ -3370,7 +3415,7 @@ ${sandboxedCustom}`;
                                 pendingApproval.resolve(true);
                               })
                               .catch(() => {
-                                toast.error("Could not save the project approval rule.");
+                                toast.error(i18n.t(($) => $.ai.toasts.approvalRuleSaveFailed));
                               });
                           }
                         : undefined
@@ -3389,7 +3434,7 @@ ${sandboxedCustom}`;
               <div className="mb-2 flex min-w-0 items-center gap-1.5">
                 <button
                   type="button"
-                  aria-label={`Edit goal: ${goal}`}
+                  aria-label={t(($) => $.ai.goal.editAriaLabel, { goal })}
                   onClick={openGoalEditor}
                   className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
@@ -3398,8 +3443,8 @@ ${sandboxedCustom}`;
                 </button>
                 <button
                   type="button"
-                  aria-label="Clear goal"
-                  title="Clear goal"
+                  aria-label={t(($) => $.ai.goal.clear)}
+                  title={t(($) => $.ai.goal.clear)}
                   onClick={() => clearGoal(projectId)}
                   className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
@@ -3409,7 +3454,7 @@ ${sandboxedCustom}`;
             )}
             {goalEditorOpen && (
               <form
-                aria-label="Set persistent goal"
+                aria-label={t(($) => $.ai.goal.formAriaLabel)}
                 className="mb-2 rounded-lg border bg-card p-2.5 shadow-sm"
                 onSubmit={(event) => {
                   event.preventDefault();
@@ -3417,15 +3462,15 @@ ${sandboxedCustom}`;
                 }}
               >
                 <label htmlFor="ai-chat-goal" className="mb-1.5 block text-xs font-medium">
-                  Goal
+                  {t(($) => $.ai.goal.label)}
                 </label>
                 <Input
                   ref={goalInputRef}
                   id="ai-chat-goal"
-                  aria-label="Goal"
+                  aria-label={t(($) => $.ai.goal.label)}
                   value={goalDraft}
                   onChange={(event) => setGoalDraft(event.target.value)}
-                  placeholder="What should the assistant keep working toward?"
+                  placeholder={t(($) => $.ai.goal.placeholder)}
                   className="h-8 text-xs"
                 />
                 <div className="mt-2 flex justify-end gap-1.5">
@@ -3435,10 +3480,10 @@ ${sandboxedCustom}`;
                     size="sm"
                     onClick={() => setGoalEditorProjectId(null)}
                   >
-                    Cancel
+                    {t(($) => $.common.actions.cancel)}
                   </Button>
                   <Button type="submit" size="sm" disabled={!goalDraft.trim()}>
-                    Save goal
+                    {t(($) => $.ai.goal.save)}
                   </Button>
                 </div>
               </form>
@@ -3582,7 +3627,7 @@ ${sandboxedCustom}`;
                       onClick={() => void recheckModel()}
                       className="shrink-0 rounded px-1 font-medium text-foreground underline-offset-2 hover:underline"
                     >
-                      Check again
+                      {t(($) => $.ai.composer.checkAgain)}
                     </button>
                   )}
                 </p>
@@ -3606,23 +3651,23 @@ ${sandboxedCustom}`;
                     data-tour="ai-prompts"
                     className="ai-composer-prompts inline-flex shrink-0"
                   >
-                    <Tooltip label="Prompts">
+                    <Tooltip label={t(($) => $.ai.composer.prompts)}>
                       <Popover
                         align="left"
-                        ariaLabel="Prompt shortcuts"
+                        ariaLabel={t(($) => $.ai.composer.promptShortcutsAriaLabel)}
                         triggerClassName="ai-composer-prompts-trigger h-7 shrink-0 gap-1 px-2 text-xs font-medium"
                         className="max-h-96 w-80 overflow-y-auto p-1.5"
                         trigger={
                           <>
                             <WalletCards className="ai-composer-prompts-icon hidden size-4 shrink-0" />
-                            <span className="ai-composer-prompts-value">Prompts</span>
+                            <span className="ai-composer-prompts-value">{t(($) => $.ai.composer.prompts)}</span>
                             <ChevronDown className="ai-composer-prompts-chevron size-3.5 shrink-0" />
                           </>
                         }
                       >
-                        {[...PROMPT_CATEGORIES, ...skillPromptCategories].map((category, i) => (
+                        {[...promptCategories(), ...skillPromptCategories].map((category, i) => (
                           <div
-                            key={category.label}
+                            key={category.id}
                             className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
                           >
                             <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
@@ -3632,7 +3677,7 @@ ${sandboxedCustom}`;
                               {category.items.map((item) => (
                                 <button
                                   type="button"
-                                  key={item.label}
+                                  key={item.id}
                                   onClick={() => {
                                     setInput(item.prompt);
                                     setComposerCaret(item.prompt.length);
@@ -3667,16 +3712,20 @@ ${sandboxedCustom}`;
                       side="top"
                       label={
                         activePersona
-                          ? `${activePersona.name} is active and replaces your default instructions.`
-                          : "Choose persona"
+                          ? t(($) => $.ai.composer.personaActiveTooltip, {
+                              name: activePersona.name,
+                            })
+                          : t(($) => $.ai.composer.personaChoose)
                       }
                     >
                       <Popover
                         align="left"
                         ariaLabel={
                           activePersona
-                            ? `Persona. ${activePersona.name} active and replacing default instructions.`
-                            : "Choose persona"
+                            ? t(($) => $.ai.composer.personaActiveAriaLabel, {
+                                name: activePersona.name,
+                              })
+                            : t(($) => $.ai.composer.personaChoose)
                         }
                         triggerClassName="ai-composer-persona-trigger h-7 max-w-40 shrink-0 gap-1.5 px-2 text-xs font-medium"
                         className="max-h-64 w-64 overflow-y-auto p-1.5"
@@ -3697,7 +3746,7 @@ ${sandboxedCustom}`;
                               />
                             )}
                             <span className="ai-composer-persona-value truncate">
-                              {activePersona ? activePersona.name : "Persona"}
+                              {activePersona ? activePersona.name : t(($) => $.ai.composer.persona)}
                             </span>
                             <ChevronDown className="size-3.5 shrink-0" />
                           </>
@@ -3715,7 +3764,7 @@ ${sandboxedCustom}`;
                             className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                           >
                             <Plus className="size-3.5 shrink-0" />
-                            Create a persona in Settings
+                            {t(($) => $.ai.composer.personaCreate)}
                           </button>
                         ) : (
                           <div className="space-y-0.5">
@@ -3726,7 +3775,9 @@ ${sandboxedCustom}`;
                               className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
                             >
                               <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
-                              <span className="min-w-0 flex-1 truncate text-xs font-medium">None</span>
+                              <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                                {t(($) => $.ai.composer.personaNone)}
+                              </span>
                               {activePersonaId === null && (
                                 <Check className="size-3.5 shrink-0 text-emerald-500" />
                               )}
@@ -3756,10 +3807,16 @@ ${sandboxedCustom}`;
                       </Popover>
                     </Tooltip>
                   </span>
-                  <Tooltip label={planMode ? "Plan mode on" : "Plan mode off"}>
+                  <Tooltip
+                    label={
+                      planMode
+                        ? t(($) => $.ai.composer.planModeOn)
+                        : t(($) => $.ai.composer.planModeOff)
+                    }
+                  >
                     <button
                       type="button"
-                      aria-label="Plan mode"
+                      aria-label={t(($) => $.ai.composer.planModeAriaLabel)}
                       aria-pressed={planMode}
                       data-state={planMode ? "on" : "off"}
                       onClick={changePlanMode}
@@ -3772,14 +3829,14 @@ ${sandboxedCustom}`;
                       )}
                     >
                       <Lightbulb className={cn("size-4 shrink-0", planMode && "fill-current")} />
-                      <span className="ai-composer-plan-value">Plan</span>
+                      <span className="ai-composer-plan-value">{t(($) => $.ai.composer.plan)}</span>
                     </button>
                   </Tooltip>
                   {planMode && (
-                    <Tooltip label={PLAN_MODE_HINT} side="top" wide>
+                    <Tooltip label={planModeHint()} side="top" wide>
                       <button
                         type="button"
-                        aria-label="About plan mode"
+                        aria-label={t(($) => $.ai.composer.planModeInfo)}
                         data-testid="ai-plan-mode-info"
                         className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
                       >
@@ -3814,8 +3871,8 @@ ${sandboxedCustom}`;
                   {streaming ? (
                     <button type="button"
                       onClick={stop}
-                      aria-label="Stop"
-                      title="Stop generating"
+                      aria-label={t(($) => $.ai.composer.stop)}
+                      title={t(($) => $.ai.composer.stopTitle)}
                       className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90"
                     >
                       <Square className="size-3.5 fill-current" />
@@ -3824,7 +3881,7 @@ ${sandboxedCustom}`;
                     <button type="button"
                       onClick={() => void send(input)}
                       disabled={!engineLoaded || (!input.trim() && attachments.length === 0)}
-                      aria-label="Send"
+                      aria-label={t(($) => $.ai.composer.send)}
                       className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
                     >
                       <ArrowUp className="size-4" />

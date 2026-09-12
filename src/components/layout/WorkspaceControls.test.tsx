@@ -12,7 +12,9 @@ import {
 } from "@/components/layout/WorkspaceControls";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
-import { useShortcutStore } from "@/store/shortcuts";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { i18n } from "@/i18n";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { ThemeProvider } from "@/lib/theme";
 import { registerRailTabs } from "@/contributions/tabs";
 
@@ -47,9 +49,9 @@ describe("WorkspaceControls", () => {
         <SidebarViews />
       </ThemeProvider>,
     );
-    expect(screen.getByLabelText("Source Tree")).toBeInTheDocument();
-    expect(screen.getByLabelText("Search Project")).toBeInTheDocument();
-    expect(screen.getByLabelText("Source Control")).toBeInTheDocument();
+    expect(screen.getByLabelText(enShell.rail.files)).toBeInTheDocument();
+    expect(screen.getByLabelText(enShell.rail.search)).toBeInTheDocument();
+    expect(screen.getByLabelText(enShell.rail.sourceControl)).toBeInTheDocument();
   });
 
   it("toggles the sidebar from the collapse control", () => {
@@ -58,7 +60,10 @@ describe("WorkspaceControls", () => {
         <SidebarCollapseToggle />
       </ThemeProvider>,
     );
-    fireEvent.click(screen.getByLabelText(/Hide sidebar/));
+    const hideSidebar = i18n.t(($) => $.shell.dock.sidebar.hide, {
+      shortcut: shortcutLabel(useShortcutStore.getState().bindings.toggleSidebar),
+    });
+    fireEvent.click(screen.getByLabelText(hideSidebar));
     expect(useSettingsStore.getState().showTree).toBe(false);
   });
 
@@ -68,7 +73,7 @@ describe("WorkspaceControls", () => {
         <SidebarViews />
       </ThemeProvider>,
     );
-    fireEvent.click(screen.getByLabelText("Search Project"));
+    fireEvent.click(screen.getByLabelText(enShell.rail.search));
     expect(useSettingsStore.getState().railTab).toBe("search");
     expect(useSettingsStore.getState().showTree).toBe(true);
   });
@@ -79,7 +84,7 @@ describe("WorkspaceControls", () => {
         <SidebarViews />
       </ThemeProvider>,
     );
-    fireEvent.click(screen.getByLabelText("Source Tree"));
+    fireEvent.click(screen.getByLabelText(enShell.rail.files));
     expect(useSettingsStore.getState().railTab).toBe("files");
     expect(useSettingsStore.getState().showTree).toBe(true);
   });
@@ -97,7 +102,7 @@ describe("WorkspaceControls", () => {
     fireEvent.click(screen.getByTestId("rail-assistant-toggle"));
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
     expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-label", "Appearance: System");
-    fireEvent.click(screen.getByLabelText("Settings"));
+    fireEvent.click(screen.getByLabelText(enShell.dock.settings));
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
 
@@ -122,7 +127,7 @@ describe("WorkspaceControls", () => {
       </ThemeProvider>,
     );
     const trigger = screen.getByTestId("theme-menu");
-    const settings = screen.getByLabelText("Settings");
+    const settings = screen.getByLabelText(enShell.dock.settings);
     expect(trigger).toHaveAttribute("aria-haspopup", "menu");
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(trigger.className).toContain("h-9");
@@ -184,17 +189,22 @@ describe("WorkspaceControls", () => {
         <WorkspaceDockControls />
       </ThemeProvider>,
     );
+    const bindings = useShortcutStore.getState().bindings;
     expect(screen.getByTestId("rail-terminal-toggle")).toHaveAttribute(
       "aria-label",
-      expect.stringMatching(/^Show terminal \(.+\)$/u),
+      i18n.t(($) => $.shell.dock.terminal.show, {
+        shortcut: shortcutLabel(bindings.toggleTerminal),
+      }),
     );
     expect(screen.getByTestId("rail-browser-toggle")).toHaveAttribute(
       "aria-label",
-      expect.stringMatching(/^Open browser \(.+\)$/u),
+      i18n.t(($) => $.shell.dock.browser.open, {
+        shortcut: shortcutLabel(bindings.toggleBrowser),
+      }),
     );
     expect(screen.getByTestId("rail-assistant-toggle")).toHaveAttribute(
       "aria-label",
-      "Show AI assistant",
+      enShell.dock.assistant.show,
     );
   });
 });

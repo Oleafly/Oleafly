@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
@@ -24,6 +25,9 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import { i18n } from "@/i18n";
+import { describeError } from "@/lib/app-error";
+import { formatList, formatNumber } from "@/lib/intl";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { useFilesStore } from "@/store/files";
 import {
@@ -47,7 +51,7 @@ import {
   type SkillToggleScope,
   type UpdateSkillInput,
 } from "@/lib/skills";
-import { SKILL_PHASE_LABELS, groupSkills } from "@/lib/skill-groups";
+import { groupSkills } from "@/lib/skill-groups";
 import { SkillCatalogList } from "./SkillCatalogList";
 import { SkillShareCard } from "./SkillShareCard";
 
@@ -66,28 +70,44 @@ const EMPTY_FORM: EditorForm = {
 };
 
 function sourceBadge(source: SkillEntry["source"]): string {
-  if (source === "bundled") return "Built in";
-  if (source === "catalog") return "Installed";
-  return "Added";
+  if (source === "bundled") return i18n.t(($) => $.settings.ai.skills.source.bundled);
+  if (source === "catalog") return i18n.t(($) => $.settings.ai.skills.source.catalog);
+  return i18n.t(($) => $.settings.ai.skills.source.added);
 }
 
 function tierLine(skill: SkillEntry): string {
   if (skill.tier === "vendored") {
     const bits = [skill.author, skill.license].filter((value): value is string => Boolean(value));
-    return bits.length > 0 ? `From ${bits.join(", ")}` : "Vendored skill";
+    return bits.length > 0
+      ? i18n.t(($) => $.settings.ai.skills.tier.credits, {
+          credits: formatList(bits, { type: "conjunction", style: "narrow" }),
+        })
+      : i18n.t(($) => $.settings.ai.skills.tier.vendored);
   }
-  if (skill.tier === "native") return "Oleafly workflow";
-  if (skill.tier === "shelf") return skill.license ? `Domain shelf, ${skill.license}` : "Domain shelf skill";
-  return "Your own skill";
+  if (skill.tier === "native") return i18n.t(($) => $.settings.ai.skills.tier.native);
+  if (skill.tier === "shelf")
+    return skill.license
+      ? i18n.t(($) => $.settings.ai.skills.tier.shelfWithLicense, { license: skill.license })
+      : i18n.t(($) => $.settings.ai.skills.tier.shelf);
+  return i18n.t(($) => $.settings.ai.skills.tier.user);
 }
 
 function formatBytes(bytes: number): string {
-  if (!bytes) return "0 B";
-  if (bytes < 1000) return `${bytes} B`;
+  if (!bytes) return i18n.t(($) => $.settings.ai.skills.size.bytes, { value: formatNumber(0) });
+  if (bytes < 1000)
+    return i18n.t(($) => $.settings.ai.skills.size.bytes, { value: formatNumber(bytes) });
   const kb = bytes / 1000;
-  if (kb < 1000) return `${kb.toFixed(kb >= 10 ? 0 : 1)} KB`;
+  if (kb < 1000) {
+    const digits = kb >= 10 ? 0 : 1;
+    return i18n.t(($) => $.settings.ai.skills.size.kilobytes, {
+      value: formatNumber(kb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+    });
+  }
   const mb = kb / 1000;
-  return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
+  const digits = mb >= 10 ? 0 : 1;
+  return i18n.t(($) => $.settings.ai.skills.size.megabytes, {
+    value: formatNumber(mb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+  });
 }
 
 function SkillEditorDialog({
@@ -99,6 +119,7 @@ function SkillEditorDialog({
   onOpenChange: (open: boolean) => void;
   onSubmit: (form: EditorForm) => Promise<string | null>;
 }) {
+  const { t } = useTranslation(["common", "settings"]);
   const [form, setForm] = useState<EditorForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -128,8 +149,8 @@ function SkillEditorDialog({
     if (!next.name || !next.description || (editing && !next.instructions)) {
       setError(
         editing
-          ? "Name, description, and instructions are required."
-          : "Name and description are required.",
+          ? t(($) => $.settings.ai.skills.editor.requiredAll)
+          : t(($) => $.settings.ai.skills.editor.requiredBasics),
       );
       return;
     }
@@ -151,23 +172,27 @@ function SkillEditorDialog({
     <Dialog open={target !== null} onOpenChange={onOpenChange}>
       <DialogContent className="z-[120]" overlayClassName="z-[120]">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit skill" : "Create skill"}</DialogTitle>
+          <DialogTitle>
+            {editing
+              ? t(($) => $.settings.ai.skills.editor.editTitle)
+              : t(($) => $.settings.ai.skills.editor.createTitle)}
+          </DialogTitle>
           <DialogDescription>
             {editing
-              ? "Refine the metadata and instructions stored in SKILL.md."
-              : "Create a SKILL.md draft in your Oleafly skills folder."}
+              ? t(($) => $.settings.ai.skills.editor.editDescription)
+              : t(($) => $.settings.ai.skills.editor.createDescription)}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
             <label htmlFor="skill-name" className="text-xs font-medium text-muted-foreground">
-              Name
+              {t(($) => $.common.labels.name)}
             </label>
             <Input
               id="skill-name"
               value={form.name}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Claim Checker"
+              placeholder={t(($) => $.settings.ai.skills.editor.namePlaceholder)}
             />
           </div>
           <div className="space-y-1">
@@ -175,7 +200,7 @@ function SkillEditorDialog({
               htmlFor="skill-description"
               className="text-xs font-medium text-muted-foreground"
             >
-              Description
+              {t(($) => $.common.labels.description)}
             </label>
             <Input
               id="skill-description"
@@ -183,7 +208,7 @@ function SkillEditorDialog({
               onChange={(event) =>
                 setForm((current) => ({ ...current, description: event.target.value }))
               }
-              placeholder="Check whether each claim has support."
+              placeholder={t(($) => $.settings.ai.skills.editor.descriptionPlaceholder)}
             />
           </div>
           <div className="space-y-1">
@@ -191,7 +216,7 @@ function SkillEditorDialog({
               htmlFor="skill-instructions"
               className="text-xs font-medium text-muted-foreground"
             >
-              Instructions
+              {t(($) => $.settings.ai.skills.editor.instructions)}
             </label>
             <Textarea
               id="skill-instructions"
@@ -200,12 +225,12 @@ function SkillEditorDialog({
                 setForm((current) => ({ ...current, instructions: event.target.value }))
               }
               rows={8}
-              placeholder="List when to use this skill and the steps the assistant should follow."
+              placeholder={t(($) => $.settings.ai.skills.editor.instructionsPlaceholder)}
               className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
             />
             {!editing && !form.instructions.trim() ? (
               <p className="text-xs text-muted-foreground">
-                Leave this blank to create a minimal instruction scaffold.
+                {t(($) => $.settings.ai.skills.editor.instructionsHint)}
               </p>
             ) : null}
           </div>
@@ -214,7 +239,9 @@ function SkillEditorDialog({
         <DialogFooter>
           <Button disabled={busy} onClick={() => void submit()}>
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            {editing ? "Save" : "Create"}
+            {editing
+              ? t(($) => $.common.actions.save)
+              : t(($) => $.settings.ai.skills.editor.submitCreate)}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -223,6 +250,7 @@ function SkillEditorDialog({
 }
 
 export function SkillsTab() {
+  const { t } = useTranslation(["common", "settings"]);
   const projectId = useFilesStore((s) => s.projectId);
   const queryClient = useQueryClient();
   const query = useSkills(projectId);
@@ -271,7 +299,7 @@ export function SkillsTab() {
       else cacheRecord(record);
       return record;
     } catch (error) {
-      setMessage({ ok: false, text: String(error) });
+      setMessage({ ok: false, text: describeError(error) });
       return null;
     } finally {
       setBusyId(null);
@@ -282,11 +310,16 @@ export function SkillsTab() {
     const selected = await pickOpenPath({
       directory: true,
       multiple: false,
-      title: "Add skill folder",
+      title: t(($) => $.settings.ai.skills.addFolderDialogTitle),
     });
     if (!selected || Array.isArray(selected)) return;
     const record = await runRecordMutation("add", () => addSkill(selected));
-    if (record) setMessage({ ok: true, text: `Added ${record.name}.` });
+    if (record) {
+      setMessage({
+        ok: true,
+        text: t(($) => $.settings.ai.skills.messages.added, { name: record.name }),
+      });
+    }
   };
 
   const saveEditor = async (form: EditorForm): Promise<string | null> => {
@@ -303,16 +336,19 @@ export function SkillsTab() {
         const input: UpdateSkillInput = form;
         record = await updateSkill(editor.id, input);
       } else {
-        return "The skill editor is no longer open.";
+        return t(($) => $.settings.ai.skills.messages.editorClosed);
       }
       cacheRecord(record);
       setMessage({
         ok: true,
-        text: editor === "create" ? `Created ${record.name}.` : `Saved ${record.name}.`,
+        text:
+          editor === "create"
+            ? t(($) => $.settings.ai.skills.messages.created, { name: record.name })
+            : t(($) => $.settings.ai.skills.messages.saved, { name: record.name }),
       });
       return null;
     } catch (error) {
-      return String(error);
+      return describeError(error);
     }
   };
 
@@ -327,9 +363,12 @@ export function SkillsTab() {
       queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(projectId), (current) =>
         (current ?? []).filter((skill) => skill.id !== target.id),
       );
-      setMessage({ ok: true, text: `Removed ${target.name}.` });
+      setMessage({
+        ok: true,
+        text: t(($) => $.settings.ai.skills.messages.removed, { name: target.name }),
+      });
     } catch (error) {
-      setMessage({ ok: false, text: String(error) });
+      setMessage({ ok: false, text: describeError(error) });
     } finally {
       setBusyId(null);
     }
@@ -340,7 +379,12 @@ export function SkillsTab() {
     setUpdateTarget(null);
     if (!target) return;
     const record = await runRecordMutation(target.id, () => updateBuiltinSkill(target.id));
-    if (record) setMessage({ ok: true, text: `Updated ${record.name}.` });
+    if (record) {
+      setMessage({
+        ok: true,
+        text: t(($) => $.settings.ai.skills.messages.updated, { name: record.name }),
+      });
+    }
   };
 
   const toggleFiles = (id: string) => {
@@ -353,16 +397,28 @@ export function SkillsTab() {
   };
 
   const groups = groupSkills(skills);
+  const phaseLabels: Record<string, string> = {
+    research: t(($) => $.settings.ai.skills.phases.research),
+    authoring: t(($) => $.settings.ai.skills.phases.authoring),
+    figures: t(($) => $.settings.ai.skills.phases.figures),
+    review: t(($) => $.settings.ai.skills.phases.review),
+    submission: t(($) => $.settings.ai.skills.phases.submission),
+    communication: t(($) => $.settings.ai.skills.phases.communication),
+    tooling: t(($) => $.settings.ai.skills.phases.tooling),
+  };
+  const groupLabels: Record<string, string> = {
+    ...phaseLabels,
+    user: t(($) => $.settings.ai.skills.groups.user),
+    shelf: t(($) => $.settings.ai.skills.groups.shelf),
+  };
 
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-medium">Skills</p>
+          <p className="font-medium">{t(($) => $.settings.ai.skills.title)}</p>
           <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
-            The assistant loads a skill's full instructions only when it decides it needs one, or
-            right away if you type /skill-id in the chat. A skill you turn on here is on in every
-            project until a project overrides it.
+            {t(($) => $.settings.ai.skills.description)}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -372,11 +428,11 @@ export function SkillsTab() {
             ) : (
               <FolderPlus className="size-3.5" />
             )}
-            Add folder
+            {t(($) => $.settings.ai.skills.addFolder)}
           </Button>
           <Button type="button" size="sm" onClick={() => setEditor("create")}>
             <Plus className="size-3.5" />
-            Create skill
+            {t(($) => $.settings.ai.skills.createSkill)}
           </Button>
         </div>
       </div>
@@ -386,25 +442,25 @@ export function SkillsTab() {
       {query.isPending ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-4 text-xs text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" />
-          Loading skills...
+          {t(($) => $.settings.ai.skills.loading)}
         </div>
       ) : query.isError && skills.length === 0 ? (
         <div
           role="alert"
           className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive"
         >
-          Could not load skills. {String(query.error)}
+          {t(($) => $.settings.ai.skills.loadFailed, { message: describeError(query.error) })}
         </div>
       ) : skills.length === 0 ? (
         <div className="rounded-md border px-3 py-4 text-xs text-muted-foreground">
-          No skills found. Add a folder, or create one.
+          {t(($) => $.settings.ai.skills.empty)}
         </div>
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
             <div key={group.key} data-testid={`skills-phase-${group.key}`} className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {group.label}
+                {groupLabels[group.key] ?? group.label}
               </h3>
               <div className="space-y-2">
                 {group.skills.map((skill) => {
@@ -416,7 +472,7 @@ export function SkillsTab() {
                   const metaBits = [
                     tierLine(skill),
                     skill.version ? `v${skill.version}` : null,
-                    skill.phase ? SKILL_PHASE_LABELS[skill.phase] ?? skill.phase : null,
+                    skill.phase ? phaseLabels[skill.phase] ?? skill.phase : null,
                   ].filter((value): value is string => Boolean(value));
                   const isUserSkill = skill.source === "user";
                   const projectOverride = skillProjectOverride(skill);
@@ -436,7 +492,7 @@ export function SkillsTab() {
                             </span>
                             {invalid ? (
                               <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
-                                Invalid
+                                {t(($) => $.settings.ai.skills.invalidBadge)}
                               </span>
                             ) : null}
                           </div>
@@ -446,7 +502,7 @@ export function SkillsTab() {
                             </p>
                           ) : null}
                           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                            {skill.description || "This skill needs a description."}
+                            {skill.description || t(($) => $.settings.ai.skills.missingDescription)}
                           </p>
                           {skill.files.length > 0 ? (
                             <div className="mt-1.5">
@@ -461,7 +517,9 @@ export function SkillsTab() {
                                 ) : (
                                   <ChevronRight className="size-3" />
                                 )}
-                                {skill.files.length} file{skill.files.length === 1 ? "" : "s"}
+                                {t(($) => $.settings.ai.skills.fileCount, {
+                                  count: skill.files.length,
+                                })}
                               </button>
                               {filesExpanded ? (
                                 <ul className="mt-1 space-y-0.5 rounded-md border bg-background p-2">
@@ -483,7 +541,9 @@ export function SkillsTab() {
                           <Switch
                             checked={skill.enabled}
                             disabled={invalid || busy}
-                            aria-label={`Enable ${skill.name}`}
+                            aria-label={t(($) => $.settings.ai.skills.enableAria, {
+                              name: skill.name,
+                            })}
                             onCheckedChange={(enabled) =>
                               void runRecordMutation(
                                 skill.id,
@@ -496,13 +556,15 @@ export function SkillsTab() {
                             <div className="flex flex-col items-end gap-1">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[10px] text-muted-foreground">
-                                  Use in this project
+                                  {t(($) => $.settings.ai.skills.useInProject)}
                                 </span>
                                 <Switch
                                   data-testid={`skill-project-toggle-${skill.id}`}
                                   checked={projectAvailable}
                                   disabled={invalid || busy}
-                                  aria-label={`Use ${skill.name} in this project`}
+                                  aria-label={t(($) => $.settings.ai.skills.useInProjectAria, {
+                                    name: skill.name,
+                                  })}
                                   onCheckedChange={(enabled) =>
                                     void runRecordMutation(
                                       skill.id,
@@ -514,18 +576,22 @@ export function SkillsTab() {
                               </div>
                               {projectOverride === null ? (
                                 <span className="text-[10px] text-muted-foreground/80">
-                                  Inherits device setting
+                                  {t(($) => $.settings.ai.skills.inheritsDevice)}
                                 </span>
                               ) : (
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[10px] text-muted-foreground/80">
-                                    {projectOverride ? "On for this project" : "Off for this project"}
+                                    {projectOverride
+                                      ? t(($) => $.settings.ai.skills.onForProject)
+                                      : t(($) => $.settings.ai.skills.offForProject)}
                                   </span>
                                   <button
                                     type="button"
                                     data-testid={`skill-project-reset-${skill.id}`}
                                     disabled={busy}
-                                    aria-label={`Use the device setting for ${skill.name}`}
+                                    aria-label={t(($) => $.settings.ai.skills.useDeviceSettingAria, {
+                                      name: skill.name,
+                                    })}
                                     onClick={() =>
                                       void runRecordMutation(
                                         skill.id,
@@ -535,7 +601,7 @@ export function SkillsTab() {
                                     }
                                     className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
                                   >
-                                    Use device setting
+                                    {t(($) => $.settings.ai.skills.useDeviceSetting)}
                                   </button>
                                 </div>
                               )}
@@ -564,15 +630,21 @@ export function SkillsTab() {
                             onClick={() => setUpdateTarget(skill)}
                           >
                             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                            Update
+                            {t(($) => $.settings.ai.skills.updateAction)}
                           </Button>
                         ) : null}
                         {isUserSkill ? (
                           <>
-                            <Tooltip label={`Validate ${skill.name}`}>
+                            <Tooltip
+                              label={t(($) => $.settings.ai.skills.validateAria, {
+                                name: skill.name,
+                              })}
+                            >
                               <button
                                 type="button"
-                                aria-label={`Validate ${skill.name}`}
+                                aria-label={t(($) => $.settings.ai.skills.validateAria, {
+                                  name: skill.name,
+                                })}
                                 disabled={busy}
                                 onClick={() =>
                                   void runRecordMutation(skill.id, () => validateSkill(skill.id))
@@ -586,10 +658,14 @@ export function SkillsTab() {
                                 )}
                               </button>
                             </Tooltip>
-                            <Tooltip label={`Edit ${skill.name}`}>
+                            <Tooltip
+                              label={t(($) => $.settings.ai.skills.editAria, { name: skill.name })}
+                            >
                               <button
                                 type="button"
-                                aria-label={`Edit ${skill.name}`}
+                                aria-label={t(($) => $.settings.ai.skills.editAria, {
+                                  name: skill.name,
+                                })}
                                 disabled={busy}
                                 onClick={() => setEditor(skill)}
                                 className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
@@ -600,10 +676,14 @@ export function SkillsTab() {
                           </>
                         ) : null}
                         {skill.removable ? (
-                          <Tooltip label={`Remove ${skill.name}`}>
+                          <Tooltip
+                            label={t(($) => $.settings.ai.skills.removeAria, { name: skill.name })}
+                          >
                             <button
                               type="button"
-                              aria-label={`Remove ${skill.name}`}
+                              aria-label={t(($) => $.settings.ai.skills.removeAria, {
+                                name: skill.name,
+                              })}
                               disabled={busy}
                               onClick={() => setRemoveTarget(skill)}
                               className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
@@ -648,9 +728,11 @@ export function SkillsTab() {
 
       <ConfirmationDialog
         open={removeTarget !== null}
-        title="Remove skill"
-        description={`Remove "${removeTarget?.name ?? ""}" and its folder from Oleafly? This cannot be undone.`}
-        confirmLabel="Remove"
+        title={t(($) => $.settings.ai.skills.removeDialog.title)}
+        description={t(($) => $.settings.ai.skills.removeDialog.description, {
+          name: removeTarget?.name ?? "",
+        })}
+        confirmLabel={t(($) => $.common.actions.remove)}
         destructive
         onConfirm={() => void removeSelected()}
         onCancel={() => setRemoveTarget(null)}
@@ -658,9 +740,11 @@ export function SkillsTab() {
 
       <ConfirmationDialog
         open={updateTarget !== null}
-        title="Update skill"
-        description={`Replace "${updateTarget?.name ?? ""}" with the latest bundled version? Any local edits to its files will be lost.`}
-        confirmLabel="Update"
+        title={t(($) => $.settings.ai.skills.updateDialog.title)}
+        description={t(($) => $.settings.ai.skills.updateDialog.description, {
+          name: updateTarget?.name ?? "",
+        })}
+        confirmLabel={t(($) => $.settings.ai.skills.updateAction)}
         destructive
         onConfirm={() => void confirmUpdate()}
         onCancel={() => setUpdateTarget(null)}

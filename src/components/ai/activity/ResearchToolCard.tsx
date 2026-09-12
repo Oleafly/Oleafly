@@ -14,6 +14,7 @@ import {
   Wrench,
   XCircle,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ToolEntry } from "@/store/chats";
 import {
   projectToolEntry,
@@ -22,6 +23,7 @@ import {
   type ResearchToolStatus,
   type ResearchToolView,
 } from "@/lib/chat-activity";
+import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { usePersistentExpansion } from "./expansion-state";
 import { ToolPicture } from "./ToolPicture";
@@ -58,6 +60,7 @@ function StatusIcon({ status }: { status: ResearchToolStatus }) {
 }
 
 function LiteratureResults({ view, actions }: { view: ResearchToolView; actions?: ResearchChatActions }) {
+  const { t } = useTranslation(["common", "ai"]);
   if (!view.results?.length) return null;
   return (
     <ol className="space-y-2 py-1">
@@ -75,7 +78,9 @@ function LiteratureResults({ view, actions }: { view: ResearchToolView; actions?
                 )}
                 {(result.source || result.doi) && (
                   <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                    {[result.source, result.doi ? `DOI ${result.doi}` : null].filter(Boolean).join(" · ")}
+                    {[result.source, result.doi ? t(($) => $.ai.toolCard.doi, { doi: result.doi }) : null]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 )}
                 {result.abstract && <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">{result.abstract}</p>}
@@ -84,7 +89,7 @@ function LiteratureResults({ view, actions }: { view: ResearchToolView; actions?
                 <button
                   type="button"
                   className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  aria-label={`Open source: ${result.title}`}
+                  aria-label={t(($) => $.ai.toolCard.openSourceTitled, { title: result.title })}
                   onClick={() => actions?.openSource?.({ sourceId: result.id, url: result.url, doi: result.doi })}
                 >
                   <ExternalLink className="size-3.5" />
@@ -115,6 +120,7 @@ export function ResearchToolCard({
   expansionKey?: string;
   live?: boolean;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const view = projectToolEntry(tc);
   const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
   const [full, setFull] = usePersistentExpansion(expansionKey ? `${expansionKey}:full` : undefined, false);
@@ -153,7 +159,9 @@ export function ResearchToolCard({
         <StatusIcon status={view.status} />
         <span className="sr-only">{view.statusLabel}</span>
         {tc.approval && (
-          <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium", tc.approval === "approved" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-destructive/15 text-destructive")}>{tc.approval === "approved" ? "Approved" : "Rejected"}</span>
+          <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium", tc.approval === "approved" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-destructive/15 text-destructive")}>{tc.approval === "approved"
+              ? t(($) => $.ai.toolCard.approved)
+              : t(($) => $.ai.toolCard.rejected)}</span>
         )}
         {view.summary && (
           <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", view.verified === false && "text-destructive")}>{view.summary}</span>
@@ -179,17 +187,17 @@ export function ResearchToolCard({
             <div className="py-1">
               <p className="mb-1 truncate text-[10px] font-medium">{artifactPreview.relativePath}</p>
               {artifactPreview.isBinary ? (
-                <p className="text-[10px] text-muted-foreground">This linked file is binary, so it cannot be previewed here.</p>
+                <p className="text-[10px] text-muted-foreground">{t(($) => $.ai.toolCard.binaryPreview)}</p>
               ) : (
                 <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-muted-foreground">{artifactPreview.content}</pre>
               )}
-              {artifactPreview.truncated && <p className="mt-1 text-[10px] text-muted-foreground">Preview stopped at 256 KiB.</p>}
+              {artifactPreview.truncated && <p className="mt-1 text-[10px] text-muted-foreground">{t(($) => $.ai.toolCard.previewTruncated)}</p>}
             </div>
           )}
-          {artifactError && <p className="py-1 text-[10px] text-destructive">This linked source could not be previewed.</p>}
+          {artifactError && <p className="py-1 text-[10px] text-destructive">{t(($) => $.ai.toolCard.previewFailed)}</p>}
           <div className="flex flex-wrap items-center gap-1">
             {truncated && (
-              <button type="button" className="rounded px-1.5 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setFull((value) => !value)}>{full ? "Show less" : `Show all ${view.output.length.toLocaleString()} characters`}</button>
+              <button type="button" className="rounded px-1.5 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setFull((value) => !value)}>{full ? t(($) => $.common.actions.showLess) : t(($) => $.ai.toolCard.showAll, { characters: formatNumber(view.output.length) })}</button>
             )}
             {canOpenArtifact && (
               <button type="button" disabled={artifactLoading} className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent disabled:opacity-50" onClick={() => {
@@ -199,15 +207,15 @@ export function ResearchToolCard({
                 Promise.resolve(actions.openArtifact(view.artifactTarget)).then((result) => {
                   if (result) setArtifactPreview(result);
                 }).catch(() => setArtifactError(true)).finally(() => setArtifactLoading(false));
-              }}>{view.artifactTarget?.scope === "linked" ? (artifactLoading ? "Loading source" : "Inspect source") : "Open file"}</button>
+              }}>{view.artifactTarget?.scope === "linked" ? (artifactLoading ? t(($) => $.ai.toolCard.loadingSource) : t(($) => $.ai.toolCard.inspectSource)) : t(($) => $.ai.toolCard.openFile)}</button>
             )}
             {canOpenSource && (
-              <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => actions?.openSource?.({ url: view.url, doi: view.doi, page: view.page })}>Open source</button>
+              <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => actions?.openSource?.({ url: view.url, doi: view.doi, page: view.page })}>{t(($) => $.ai.toolCard.openSource)}</button>
             )}
             {canOpenSession && (
               <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => {
                 if (view.threadId) actions?.openSession?.({ threadId: view.threadId });
-              }}>Open task</button>
+              }}>{t(($) => $.ai.toolCard.openTask)}</button>
             )}
           </div>
         </div>

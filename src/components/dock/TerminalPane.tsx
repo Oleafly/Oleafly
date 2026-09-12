@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { i18n } from "@/i18n";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Channel, invoke } from "@tauri-apps/api/core";
@@ -106,6 +108,7 @@ export function TerminalPane({
   autoStart = false,
   onExit,
 }: TerminalPaneProps) {
+  const { t } = useTranslation(["workspace"]);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -226,7 +229,7 @@ export function TerminalPane({
           writeTerminalErrorOnce(
             terminal,
             surfacedErrorsRef.current,
-            "The shell could not accept input",
+            i18n.t(($) => $.workspace.terminal.errors.input),
             error,
             outputWritten,
           );
@@ -266,7 +269,7 @@ export function TerminalPane({
         return;
       }
       if (message.event === "input_error") {
-        writeTerminalErrorOnce(terminal, surfacedErrorsRef.current, "The shell could not accept input", message.message, outputWritten);
+        writeTerminalErrorOnce(terminal, surfacedErrorsRef.current, i18n.t(($) => $.workspace.terminal.errors.input), message.message, outputWritten);
         return;
       }
       sessionExited = true;
@@ -304,7 +307,7 @@ export function TerminalPane({
           (error) => {
             if (!disposed && sessionLive) {
               writeTerminalErrorOnce(terminal, surfacedErrorsRef.current,
-                "The terminal could not resize", error, outputWritten);
+                i18n.t(($) => $.workspace.terminal.errors.resize), error, outputWritten);
             }
           },
         );
@@ -321,7 +324,7 @@ export function TerminalPane({
         pendingInput.length = 0;
         if (disposed || sessionExited) return;
         setBooted(true);
-        writeTerminalError(terminal, "The shell could not start", error, outputWritten);
+        writeTerminalError(terminal, i18n.t(($) => $.workspace.terminal.errors.start), error, outputWritten);
       });
     }, 0);
 
@@ -466,7 +469,7 @@ export function TerminalPane({
           style={{ backgroundColor: paneBackground }}
         >
           <Loader2 className="size-6 animate-spin motion-reduce:animate-none" />
-          <p className="text-xs">Starting the project shell…</p>
+          <p className="text-xs">{t(($) => $.workspace.terminal.starting)}</p>
         </div>
       )}
     </div>

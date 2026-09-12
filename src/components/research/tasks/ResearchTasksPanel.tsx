@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertCircle, Link2, Loader2, Plus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ import {
   mountResearchTaskSubscriptions,
   useResearchTasksStore,
 } from "@/store/research-tasks";
+import { i18n } from "@/i18n";
 import { composerDraftKey, TaskComposer } from "./TaskComposer";
 import { relativeTime } from "./task-status";
 import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
@@ -37,11 +39,11 @@ export interface ResearchTasksPanelProps {
 
 type TaskFilter = "all" | "running" | "review" | "done";
 
-const FILTERS: { id: TaskFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "running", label: "Running" },
-  { id: "review", label: "Review" },
-  { id: "done", label: "Done" },
+const FILTERS: { id: TaskFilter; label: () => string }[] = [
+  { id: "all", label: () => i18n.t(($) => $.researchTools.tasks.panel.filterAll) },
+  { id: "running", label: () => i18n.t(($) => $.researchTools.tasks.panel.filterRunning) },
+  { id: "review", label: () => i18n.t(($) => $.researchTools.tasks.panel.filterReview) },
+  { id: "done", label: () => i18n.t(($) => $.researchTools.tasks.panel.filterDone) },
 ];
 
 function matchesFilter(task: ResearchTask, filter: TaskFilter): boolean {
@@ -63,6 +65,7 @@ export function ResearchTasksPanel({
   onOpenSession,
   onApplied,
 }: ResearchTasksPanelProps) {
+  const { t } = useTranslation(["common", "researchTools"]);
   const tasks = useResearchTasksStore((state) => state.tasks);
   const selectedTaskId = useResearchTasksStore((state) => state.selectedTaskId);
   const events = useResearchTasksStore((state) => state.events);
@@ -239,9 +242,11 @@ export function ResearchTasksPanel({
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div>
-          <h2 className="text-base font-semibold">Open a project to use research tasks</h2>
+          <h2 className="text-base font-semibold">
+            {t(($) => $.researchTools.tasks.panel.noProjectTitle)}
+          </h2>
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
-            Tasks belong to a project and keep their own sessions, dependencies, and review state.
+            {t(($) => $.researchTools.tasks.panel.noProjectBody)}
           </p>
         </div>
       </div>
@@ -255,24 +260,26 @@ export function ResearchTasksPanel({
     >
       <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold">Research tasks</h2>
+          <h2 className="text-base font-semibold">
+            {t(($) => $.researchTools.tasks.panel.title)}
+          </h2>
           <p className="text-xs text-muted-foreground">
-            Run longer work separately, inspect the result, then choose what reaches your project.
+            {t(($) => $.researchTools.tasks.panel.description)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             variant="outline"
-            aria-label="Refresh research tasks"
+            aria-label={t(($) => $.researchTools.tasks.panel.refreshAria)}
             disabled={loading}
             onClick={() => void refresh()}
           >
             <RefreshCw className={loading ? "animate-spin" : ""} />
-            Refresh
+            {t(($) => $.researchTools.tasks.panel.refresh)}
           </Button>
           <Button size="sm" disabled={agents.length === 0} onClick={() => openComposer()}>
-            <Plus /> New task
+            <Plus /> {t(($) => $.researchTools.tasks.panel.newTask)}
           </Button>
         </div>
       </header>
@@ -287,34 +294,40 @@ export function ResearchTasksPanel({
             <p className="min-w-0 break-words">{error}</p>
           </div>
           <Button size="xs" variant="ghost" onClick={clearError}>
-            Dismiss
+            {t(($) => $.researchTools.tasks.panel.dismiss)}
           </Button>
         </div>
       ) : null}
 
       {loading && tasks.length === 0 ? (
         <div role="status" className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading research tasks...
+          <Loader2 className="size-4 animate-spin" />{" "}
+          {t(($) => $.researchTools.tasks.panel.loading)}
         </div>
       ) : tasks.length === 0 ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center">
           <div>
-            <h3 className="text-sm font-semibold">No research tasks yet</h3>
+            <h3 className="text-sm font-semibold">
+              {t(($) => $.researchTools.tasks.panel.emptyTitle)}
+            </h3>
             <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-              Start with a literature review, an evidence audit, an analysis, or a manuscript revision.
+              {t(($) => $.researchTools.tasks.panel.emptyBody)}
             </p>
             <Button className="mt-4" disabled={agents.length === 0} onClick={() => openComposer()}>
-              <Plus /> Create a task
+              <Plus /> {t(($) => $.researchTools.tasks.panel.createTask)}
             </Button>
             {agents.length === 0 ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                Configure an agent before creating a task.
+                {t(($) => $.researchTools.tasks.panel.configureAgent)}
               </p>
             ) : null}
           </div>
         </div>
       ) : (
-        <nav aria-label="Research task list" className="flex min-h-0 flex-1 flex-col">
+        <nav
+          aria-label={t(($) => $.researchTools.tasks.panel.listLabel)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
           <div className="shrink-0 px-3 pt-3">
             <Tabs value={filter} onValueChange={(next) => setFilter(next as TaskFilter)}>
               <TabsList size="sm" className="flex w-full overflow-x-auto">
@@ -325,7 +338,7 @@ export function ResearchTasksPanel({
                     size="sm"
                     className="min-w-0 flex-1 gap-1 px-1.5"
                   >
-                    <span className="min-w-0 truncate">{entry.label}</span>
+                    <span className="min-w-0 truncate">{entry.label()}</span>
                     <Badge
                       variant="quiet"
                       data-testid={`research-task-filter-count-${entry.id}`}
@@ -346,7 +359,7 @@ export function ResearchTasksPanel({
           <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3">
             {visibleTasks.length === 0 ? (
               <li className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-                No tasks in this view.
+                {t(($) => $.researchTools.tasks.panel.emptyFilter)}
               </li>
             ) : null}
             {visibleTasks.map((task) => {
@@ -394,7 +407,9 @@ export function ResearchTasksPanel({
                         {relativeTime(task.updatedAt)}
                       </span>
                       {blocked && task.status === "queued" ? (
-                        <span className="text-[11px] text-muted-foreground">Waiting on a task</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {t(($) => $.researchTools.tasks.panel.waiting)}
+                        </span>
                       ) : null}
                       <Button
                         size="xs"
@@ -402,7 +417,9 @@ export function ResearchTasksPanel({
                         className="ml-auto shrink-0"
                         onClick={() => openTaskDetail(task.id)}
                       >
-                        {task.status === "running" ? "View progress" : "View task"}
+                        {task.status === "running"
+                          ? t(($) => $.researchTools.tasks.panel.viewProgress)
+                          : t(($) => $.researchTools.tasks.panel.viewTask)}
                       </Button>
                     </div>
                   </div>
@@ -474,9 +491,11 @@ export function ResearchTasksPanel({
       <ConfirmationDialog
         open={pendingDelete !== null}
         destructive
-        title="Delete this task?"
-        description={`"${pendingDelete?.title ?? ""}" and its isolated workspace are removed. Files already applied to your project stay.`}
-        confirmLabel="Delete task"
+        title={t(($) => $.researchTools.tasks.panel.deleteTitle)}
+        description={t(($) => $.researchTools.tasks.panel.deleteDescription, {
+          title: pendingDelete?.title ?? "",
+        })}
+        confirmLabel={t(($) => $.researchTools.tasks.panel.deleteConfirm)}
         onConfirm={() => void confirmDelete()}
         onCancel={cancelDelete}
       />

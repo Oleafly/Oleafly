@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Cpu, Download, Loader2, ShieldAlert, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +16,7 @@ import {
   type ImportCompatFinding,
 } from "@oleafly/latex";
 import { notifyError, toast } from "@/lib/toast";
+import { formatList } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
 const LEVEL_DOT: Record<ImportCompatFinding["level"], string> = {
@@ -30,6 +32,7 @@ const LEVEL_DOT: Record<ImportCompatFinding["level"], string> = {
  * known Tectonic gap, and from the compile options menu.
  */
 export function EnginePickerModal() {
+  const { t } = useTranslation(["common", "shell"]);
   const open = useEnginePickerStore((s) => s.open);
   const source = useEnginePickerStore((s) => s.source);
   const findings = useEnginePickerStore((s) => s.findings);
@@ -88,10 +91,13 @@ export function EnginePickerModal() {
       if (selected.projectId !== projectId || selected.engine.id !== "latexmk") return;
       if (shellEscapeConsent) await setShellEscape(true);
       if (useFilesStore.getState().projectId !== projectId) return;
+      const engineName = needsPdflatex
+        ? t(($) => $.shell.enginePicker.engineNames.pdflatexViaLatexmk)
+        : t(($) => $.shell.enginePicker.engineNames.latexmk);
       toast.success(
         afterInstall
-          ? `TinyTeX installed. This project now compiles with ${needsPdflatex ? "pdfLaTeX through latexmk" : "latexmk"}.`
-          : `This project now compiles with ${needsPdflatex ? "pdfLaTeX through latexmk" : "latexmk"}.`,
+          ? t(($) => $.shell.enginePicker.switchedAfterInstall, { engine: engineName })
+          : t(($) => $.shell.enginePicker.switched, { engine: engineName }),
       );
       close();
       if (source === "compile-failure") {
@@ -103,7 +109,7 @@ export function EnginePickerModal() {
       if (current.projectId === projectId) {
         setShellEscapeConsent(current.engine.allow_shell_escape);
       }
-      notifyError("switch compile engine", error, "Could not switch the compile engine.");
+      notifyError("switch compile engine", error, t(($) => $.shell.enginePicker.switchFailed));
     } finally {
       setSwitching(false);
     }
@@ -118,12 +124,16 @@ export function EnginePickerModal() {
       await setShellEscape(allow);
       toast.success(
         allow
-          ? "External commands are allowed for this project on this computer."
-          : "Arbitrary external commands are blocked for this project. TeX Live's own helpers, like EPS conversion, still run.",
+          ? t(($) => $.shell.enginePicker.shellEscapeAllowed)
+          : t(($) => $.shell.enginePicker.shellEscapeBlocked),
       );
     } catch (error) {
       setShellEscapeConsent(previous);
-      notifyError("update external command access", error, "Could not update external command access.");
+      notifyError(
+        "update external command access",
+        error,
+        t(($) => $.shell.enginePicker.shellEscapeFailed),
+      );
     } finally {
       setShellEscapeSaving(false);
     }
@@ -155,7 +165,7 @@ export function EnginePickerModal() {
     <div className="pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t(($) => $.common.actions.close)}
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
@@ -171,13 +181,13 @@ export function EnginePickerModal() {
         <div>
           <h2 id={titleId} className="text-sm font-semibold">
             {source === "compile-failure"
-              ? "This compile needs more than the built-in engine"
-              : "This project needs more than the built-in engine"}
+              ? t(($) => $.shell.enginePicker.titleCompileFailure)
+              : t(($) => $.shell.enginePicker.titleImportScan)}
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {source === "compile-failure"
-              ? "The failure matches a known gap in the bundled Tectonic engine. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup."
-              : "The import scan found features the bundled Tectonic engine does not orchestrate. Pick how this project should compile. The choice is saved in the project, so collaborators get the same setup."}
+              ? t(($) => $.shell.enginePicker.descriptionCompileFailure)
+              : t(($) => $.shell.enginePicker.descriptionImportScan)}
           </p>
         </div>
 
@@ -214,19 +224,19 @@ export function EnginePickerModal() {
               <Cpu className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-sm font-medium">
                 {needsPdflatex
-                  ? "Use pdfLaTeX on my system LaTeX (latexmk)"
-                  : "Use my system LaTeX (latexmk)"}
+                  ? t(($) => $.shell.enginePicker.systemTex.titlePdflatex)
+                  : t(($) => $.shell.enginePicker.systemTex.title)}
               </span>
               {hasSystemTex && (
                 <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                  Recommended
+                  {t(($) => $.shell.enginePicker.recommended)}
                 </span>
               )}
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {hasSystemTex
-                ? "A TeX distribution was found on this machine. System TeX can read local files available to your account, so use it only with projects you trust. Arbitrary external commands stay blocked unless you allow them below. TeX Live still runs the helpers on its own allow list, like EPS conversion."
-                : "No TeX distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) was found on this machine."}
+                ? t(($) => $.shell.enginePicker.systemTex.found)
+                : t(($) => $.shell.enginePicker.systemTex.missing)}
             </p>
             {info?.latexmk && (
               <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
@@ -254,22 +264,19 @@ export function EnginePickerModal() {
                     ) : (
                       <ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-500" />
                     )}
-                    Allow external commands on this computer
+                    {t(($) => $.shell.enginePicker.shellEscape.label)}
                   </span>
                   <span
                     id="engine-shell-escape-warning"
                     className="mt-1 block leading-relaxed text-muted-foreground"
                   >
-                    Required by minted and some PythonTeX documents. LaTeX can run programs with
-                    your user permissions, so enable this only for a project you trust. TeX Live's
-                    own helpers, like EPS conversion, run without it.
+                    {t(($) => $.shell.enginePicker.shellEscape.warning)}
                   </span>
                 </span>
               </label>
               {needsShellEscape && !shellEscapeConsent && (
                 <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                  This project uses features that need arbitrary external commands. They stay
-                  blocked until you allow them.
+                  {t(($) => $.shell.enginePicker.shellEscape.needed)}
                 </p>
               )}
             </div>
@@ -287,10 +294,10 @@ export function EnginePickerModal() {
                   <Check className="size-3.5" />
                 ) : null}
                 {alreadyLatexmk
-                  ? "Already selected"
+                  ? t(($) => $.shell.enginePicker.systemTex.alreadySelected)
                   : needsPdflatex
-                    ? "Switch to pdfLaTeX and recompile"
-                    : "Use system LaTeX"}
+                    ? t(($) => $.shell.enginePicker.systemTex.switchPdflatex)
+                    : t(($) => $.shell.enginePicker.systemTex.use)}
               </Button>
             </div>
           </div>
@@ -300,12 +307,12 @@ export function EnginePickerModal() {
             <div className="rounded-lg border p-3">
               <div className="flex items-center gap-2">
                 <Download className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm font-medium">Download TinyTeX</span>
+                <span className="text-sm font-medium">
+                  {t(($) => $.shell.enginePicker.tinytex.title)}
+                </span>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                Installs a compact TeX Live into your home folder, no admin rights
-                needed. The core download is about 250 MB. Journal templates can
-                pull more packages later, up to roughly 1 GB in total.
+                {t(($) => $.shell.enginePicker.tinytex.description)}
               </p>
               <div className="mt-2">
                 <Button
@@ -318,8 +325,10 @@ export function EnginePickerModal() {
                   {installing
                     ? installPhaseLabel(installPhase, progress)
                     : partialDownloadBytes > 0
-                      ? `Resume download (${Math.round(partialDownloadBytes / 1_000_000)} MB done)`
-                      : "Download and use TinyTeX"}
+                      ? t(($) => $.shell.enginePicker.tinytex.resume, {
+                          megabytes: Math.round(partialDownloadBytes / 1_000_000),
+                        })
+                      : t(($) => $.shell.enginePicker.tinytex.download)}
                 </Button>
               </div>
             </div>
@@ -329,12 +338,17 @@ export function EnginePickerModal() {
           <div className="rounded-lg border p-3">
             <div className="flex items-center gap-2">
               <Zap className="size-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm font-medium">Keep using Tectonic</span>
+              <span className="text-sm font-medium">
+                {t(($) => $.shell.enginePicker.tectonic.title)}
+              </span>
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {fixable.length > 0
-                ? `Zero setup, works offline. ${fixable.map((f) => f.title).join(", ")} ${fixable.length === 1 ? "is" : "are"} expected to keep failing.`
-                : "Zero setup, works offline. Fine for plain LaTeX and most common packages."}
+                ? t(($) => $.shell.enginePicker.tectonic.withFailures, {
+                    count: fixable.length,
+                    features: formatList(fixable.map((f) => f.title)),
+                  })
+                : t(($) => $.shell.enginePicker.tectonic.description)}
             </p>
             <div className="mt-2">
               <Button
@@ -343,7 +357,9 @@ export function EnginePickerModal() {
                 data-testid="engine-picker-keep-tectonic"
                 onClick={() => void keepTectonic()}
               >
-                {alreadyLatexmk ? "Switch back to Tectonic" : "Keep Tectonic"}
+                {alreadyLatexmk
+                  ? t(($) => $.shell.enginePicker.tectonic.switchBack)
+                  : t(($) => $.shell.enginePicker.tectonic.keep)}
               </Button>
             </div>
           </div>

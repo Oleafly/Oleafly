@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,9 +14,7 @@ import {
   claimModelListAutoRefresh,
   clearModelListThrottle,
   deleteModel,
-  describeModelListChange,
   diffModelLists,
-  formatRelativeTime,
   mergeFetchedModels,
   modelListThrottledUntil,
   probeKey,
@@ -33,6 +32,7 @@ import {
   agentRefreshModelMetadata,
 } from "@/lib/tauri";
 import { agentErrorKind } from "@/lib/agent-backend";
+import { formatDate, formatRelativeTime } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { staleTimes } from "@/lib/query";
 
@@ -48,10 +48,27 @@ export interface ModelManagerProps {
 }
 
 const NOTICE_MS = 4000;
-const UNREADABLE_LIST = "The provider returned models Oleafly could not read.";
 const METADATA_STATUS_KEY = ["ai-model-metadata-status"] as const;
 
-type Notice = { text: string; tone: "info" | "error" };
+type Notice =
+  | { kind: "unreadable" }
+  | { kind: "changed"; added: number; removed: number };
+
+type RefreshError = "" | "invalidKey" | "unreachable";
+
+type AddError = "" | "empty" | "spaces" | "duplicate";
+
+function relativeUpdated(then: number, now: number): string {
+  const seconds = Math.floor(Math.max(0, now - then) / 1000);
+  if (seconds < 60) return formatRelativeTime(-seconds, "second");
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return formatRelativeTime(-minutes, "minute");
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return formatRelativeTime(-hours, "hour");
+  const days = Math.floor(hours / 24);
+  if (days < 30) return formatRelativeTime(-days, "day");
+  return formatDate(then);
+}
 
 export function ModelManager({
   providerId,
@@ -63,8 +80,9 @@ export function ModelManager({
   probes,
   discoverable = true,
 }: ModelManagerProps) {
+  const { t } = useTranslation(["common", "settings"]);
   const [newId, setNewId] = useState("");
-  const [addError, setAddError] = useState("");
+  const [addError, setAddError] = useState<AddError>("");
   const [confirmDelete, setConfirmDelete] = useState<StoredModel | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [throttledUntil, setThrottledUntil] = useState(() =>
@@ -72,7 +90,7 @@ export function ModelManager({
   );
   const [now, setNow] = useState(() => Date.now());
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshError, setRefreshError] = useState("");
+  const [refreshError, setRefreshError] = useState<RefreshError>("");
   const modelsRef = useRef(models);
   modelsRef.current = models;
   const applyRef = useRef({ onChange, onRefreshed });
@@ -96,11 +114,11 @@ export function ModelManager({
         const current = modelsRef.current;
         const usable = readableFetchedModels(fetched ?? []);
         if ((fetched?.length ?? 0) > 0 && usable.length === 0) {
-          setNotice({ text: UNREADABLE_LIST, tone: "error" });
+          setNotice({ kind: "unreadable" });
           return;
         }
         const merged = mergeFetchedModels(current, fetched ?? []);
-        setNotice({ text: describeModelListChange(diffModelLists(current, merged)), tone: "info" });
+        setNotice({ kind: "changed", ...diffModelLists(current, merged) });
         const apply = applyRef.current;
         if (apply.onRefreshed) apply.onRefreshed(merged, Date.now());
         else apply.onChange(merged);
@@ -111,9 +129,7 @@ export function ModelManager({
           setThrottledUntil(0);
           return;
         }
-        setRefreshError(
-          agentErrorKind(e) === "auth" ? "Invalid API key." : "Could not reach the provider.",
-        );
+        setRefreshError(agentErrorKind(e) === "auth" ? "invalidKey" : "unreachable");
       } finally {
         setRefreshing(false);
       }
@@ -139,7 +155,7 @@ export function ModelManager({
   }, [throttledUntil]);
 
   useEffect(() => {
-    if (notice?.tone !== "info") return;
+    if (notice?.kind !== "changed") return;
     const timer = window.setTimeout(() => setNotice(null), NOTICE_MS);
     return () => window.clearTimeout(timer);
   }, [notice]);
@@ -152,20 +168,22 @@ export function ModelManager({
   }, [refreshedAt]);
 
   const throttled = throttledUntil > 0;
-  const updatedLabel = refreshedAt ? `Updated ${formatRelativeTime(refreshedAt, now)}` : "";
+  const updatedLabel = refreshedAt
+    ? t(($) => $.settings.ai.models.updated, { time: relativeUpdated(refreshedAt, now) })
+    : "";
 
   function submitNewModel() {
     const trimmed = newId.trim();
     if (!trimmed) {
-      setAddError("Enter a model id.");
+      setAddError("empty");
       return;
     }
     if (/\s/.test(trimmed)) {
-      setAddError("Model ids can't contain spaces.");
+      setAddError("spaces");
       return;
     }
     if (models.some((m) => m.id === trimmed)) {
-      setAddError("That model is already in the list.");
+      setAddError("duplicate");
       return;
     }
     setAddError("");
@@ -177,7 +195,9 @@ export function ModelManager({
     <div className="mt-3 space-y-1.5 border-t pt-3">
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="text-[11px] font-medium text-muted-foreground">Models</span>
+          <span className="text-[11px] font-medium text-muted-foreground">
+            {t(($) => $.settings.ai.models.title)}
+          </span>
           {updatedLabel && (
             <span
               data-testid={`ai-models-updated-${providerId}`}
@@ -189,7 +209,7 @@ export function ModelManager({
         </span>
         <div className="flex items-center gap-1">
           {missingSeeds.length > 0 && (
-            <Tooltip label="Re-add this provider's built-in models">
+            <Tooltip label={t(($) => $.settings.ai.models.restoreTooltip)}>
               <Button
                 size="sm"
                 variant="ghost"
@@ -198,7 +218,7 @@ export function ModelManager({
                 onClick={() => onChange(restoreSeedModels(models, providerId))}
               >
                 <RotateCcw className="size-3" />
-                Restore defaults
+                {t(($) => $.settings.ai.models.restore)}
               </Button>
             </Tooltip>
           )}
@@ -216,21 +236,36 @@ export function ModelManager({
               ) : (
                 <RefreshCw className="size-3" />
               )}
-              Refresh
+              {t(($) => $.settings.ai.models.refresh)}
             </Button>
           )}
         </div>
       </div>
 
-      {refreshError && <p className="text-[11px] text-destructive">{refreshError}</p>}
+      {refreshError && (
+        <p className="text-[11px] text-destructive">
+          {refreshError === "invalidKey"
+            ? t(($) => $.settings.ai.models.invalidKey)
+            : t(($) => $.settings.ai.models.unreachable)}
+        </p>
+      )}
       {notice && (
         <p
           data-testid={`ai-refresh-notice-${providerId}`}
           className={
-            notice.tone === "error" ? "text-[11px] text-destructive" : "text-[11px] text-muted-foreground"
+            notice.kind === "unreadable"
+              ? "text-[11px] text-destructive"
+              : "text-[11px] text-muted-foreground"
           }
         >
-          {notice.text}
+          {notice.kind === "unreadable"
+            ? t(($) => $.settings.ai.models.unreadableList)
+            : notice.added === 0 && notice.removed === 0
+              ? t(($) => $.settings.ai.models.noChanges)
+              : t(($) => $.settings.ai.models.changeSummary, {
+                  added: notice.added,
+                  removed: notice.removed,
+                })}
         </p>
       )}
 
@@ -259,14 +294,14 @@ export function ModelManager({
               </span>
               {m.source === "custom" && (
                 <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  Custom
+                  {t(($) => $.settings.ai.models.custom)}
                 </span>
               )}
-              <Tooltip label="Delete model">
+              <Tooltip label={t(($) => $.settings.ai.models.deleteTooltip)}>
                 <button
                   type="button"
                   data-testid={`ai-model-delete-${m.id}`}
-                  aria-label={`Delete model ${m.name}`}
+                  aria-label={t(($) => $.settings.ai.models.deleteAriaLabel, { model: m.name })}
                   onClick={() => setConfirmDelete(m)}
                   className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
@@ -277,7 +312,9 @@ export function ModelManager({
           );
         })}
         {models.length === 0 && (
-          <p className="px-1.5 py-1 text-[11px] text-muted-foreground">No models yet. Add one below.</p>
+          <p className="px-1.5 py-1 text-[11px] text-muted-foreground">
+            {t(($) => $.settings.ai.models.empty)}
+          </p>
         )}
       </div>
 
@@ -293,7 +330,7 @@ export function ModelManager({
             onKeyDown={(e) => {
               if (e.key === "Enter") submitNewModel();
             }}
-            placeholder="Add a model id"
+            placeholder={t(($) => $.settings.ai.models.addPlaceholder)}
             data-testid={`ai-add-model-id-${providerId}`}
             aria-invalid={Boolean(addError)}
             className="h-8 flex-1 font-mono text-xs aria-[invalid=true]:border-destructive"
@@ -305,21 +342,27 @@ export function ModelManager({
             onClick={submitNewModel}
           >
             <Plus className="size-3.5" />
-            Add
+            {t(($) => $.common.actions.add)}
           </Button>
         </div>
         {addError && (
           <p data-testid={`ai-add-model-error-${providerId}`} className="mt-1 text-[11px] text-destructive">
-            {addError}
+            {addError === "empty"
+              ? t(($) => $.settings.ai.models.addError.empty)
+              : addError === "spaces"
+                ? t(($) => $.settings.ai.models.addError.spaces)
+                : t(($) => $.settings.ai.models.addError.duplicate)}
           </p>
         )}
       </div>
 
       <ConfirmationDialog
         open={confirmDelete !== null}
-        title="Delete model"
-        description={`Remove "${confirmDelete?.name ?? ""}" from this provider's model list? Built-in models can come back through Restore defaults. Custom models can be added again by ID.`}
-        confirmLabel="Delete"
+        title={t(($) => $.settings.ai.models.deleteDialog.title)}
+        description={t(($) => $.settings.ai.models.deleteDialog.description, {
+          model: confirmDelete?.name ?? "",
+        })}
+        confirmLabel={t(($) => $.common.actions.delete)}
         destructive
         onConfirm={() => {
           if (confirmDelete) onChange(deleteModel(models, confirmDelete.id));
@@ -331,13 +374,8 @@ export function ModelManager({
   );
 }
 
-function describeMetadataSource(source: "cdn" | "bundled" | "cache"): string {
-  if (source === "bundled") return ", bundled with the app";
-  if (source === "cache") return ", from the last download";
-  return "";
-}
-
 export function ModelMetadataStatusLine() {
+  const { t } = useTranslation(["common", "settings"]);
   const queryClient = useQueryClient();
   const status = useQuery({
     queryKey: METADATA_STATUS_KEY,
@@ -353,17 +391,21 @@ export function ModelMetadataStatusLine() {
   });
   if (!status.data) return null;
   const generated = new Date(status.data.generatedAt);
-  const dateLabel = Number.isNaN(generated.getTime())
-    ? "unknown date"
-    : generated.toLocaleDateString();
+  const date = Number.isNaN(generated.getTime())
+    ? t(($) => $.settings.ai.models.metadata.unknownDate)
+    : formatDate(generated);
+  const source = status.data.source;
   return (
     <div
       data-testid="ai-model-metadata-status"
       className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground"
     >
       <span>
-        Model data updated {dateLabel}
-        {describeMetadataSource(status.data.source)}
+        {source === "bundled"
+          ? t(($) => $.settings.ai.models.metadata.updatedBundled, { date })
+          : source === "cache"
+            ? t(($) => $.settings.ai.models.metadata.updatedFromCache, { date })
+            : t(($) => $.settings.ai.models.metadata.updated, { date })}
       </span>
       <Button
         size="sm"
@@ -378,10 +420,12 @@ export function ModelMetadataStatusLine() {
         ) : (
           <RefreshCw className="size-3" />
         )}
-        Refresh
+        {t(($) => $.settings.ai.models.refresh)}
       </Button>
       {refresh.isError && (
-        <span className="text-destructive">Could not refresh model data.</span>
+        <span className="text-destructive">
+          {t(($) => $.settings.ai.models.metadata.refreshFailed)}
+        </span>
       )}
     </div>
   );

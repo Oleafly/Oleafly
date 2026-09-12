@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   BookPlus,
   BookOpenText,
@@ -56,6 +57,10 @@ import {
   useReferencesStore,
   type ReferenceQuery,
 } from "@/store/references";
+import {
+  projectIntelligenceFailureText,
+  projectIntelligenceReasonText,
+} from "@/lib/project-intelligence/reason";
 
 type ReferencePanelView = "results" | "citations" | "symbols";
 
@@ -107,12 +112,13 @@ function ReferencesUnavailable({
   state: ProjectIntelligenceState;
   projectId: string | null;
 }) {
+  const { t } = useTranslation(["references"]);
   if (!projectId) {
     return (
       <PanelState
         state="empty"
-        title="No project open"
-        detail="Open a document project to inspect citations, symbols, and cross-file references."
+        title={t(($) => $.references.unavailable.noProject.title)}
+        detail={t(($) => $.references.unavailable.noProject.detail)}
       />
     );
   }
@@ -122,18 +128,18 @@ function ReferencesUnavailable({
       return (
         <PanelState
           state="pending"
-          title="Indexing project intelligence"
-          detail="References and citations will appear when the current project revision is ready."
+          title={t(($) => $.references.unavailable.indexing.title)}
+          detail={t(($) => $.references.unavailable.indexing.detail)}
         />
       );
     case "unsupported":
       return (
         <PanelState
           state="unsupported"
-          title="Project intelligence unavailable"
+          title={t(($) => $.references.unavailable.unsupported.title)}
           detail={
-            state.reason ??
-            "The active project does not use a supported document engine."
+            projectIntelligenceReasonText(state.reason) ??
+            t(($) => $.references.unavailable.unsupported.detail)
           }
         />
       );
@@ -141,10 +147,10 @@ function ReferencesUnavailable({
       return (
         <PanelState
           state="error"
-          title="Analysis service unavailable"
+          title={t(($) => $.references.unavailable.offline.title)}
           detail={
-            state.reason ??
-            "References and citations cannot be checked in this workspace right now."
+            projectIntelligenceReasonText(state.reason) ??
+            t(($) => $.references.unavailable.offline.detail)
           }
         />
       );
@@ -152,11 +158,10 @@ function ReferencesUnavailable({
       return (
         <PanelState
           state="error"
-          title="Project analysis failed"
+          title={t(($) => $.references.unavailable.failed.title)}
           detail={
-            state.failure?.message ??
-            state.reason ??
-            "The latest project revision could not be analyzed. Source files were not changed."
+            projectIntelligenceFailureText(state) ??
+            t(($) => $.references.unavailable.failed.detail)
           }
         />
       );
@@ -164,19 +169,20 @@ function ReferencesUnavailable({
       return (
         <PanelState
           state="pending"
-          title="Waiting for project analysis"
-          detail="The latest project revision has not been indexed yet."
+          title={t(($) => $.references.unavailable.waiting.title)}
+          detail={t(($) => $.references.unavailable.waiting.detail)}
         />
       );
   }
 }
 
-function analysisNotice(state: ProjectIntelligenceState): string | null {
+function useAnalysisNotice(state: ProjectIntelligenceState): string | null {
+  const { t } = useTranslation(["references"]);
   if (state.stale) {
-    return "Updating. Previous-revision citations, symbols, and ranges are hidden.";
+    return t(($) => $.references.notice.stale);
   }
   if (state.status === "partial" || state.data?.status === "partial") {
-    return "Partial results. Malformed or unreadable files may omit some occurrences.";
+    return t(($) => $.references.notice.partial);
   }
   return null;
 }
@@ -194,6 +200,7 @@ function QueryContent({
   filter: string;
   onActivate: (node: IntelligenceTreeNode) => void;
 }) {
+  const { t } = useTranslation(["references"]);
   const current = query ? identitiesMatch(query, state, snapshot) : false;
   const result = useMemo(
     () =>
@@ -211,8 +218,8 @@ function QueryContent({
     return (
       <PanelState
         state="empty"
-        title="No reference query"
-        detail="Place the cursor on a label, citation, command, or environment and press Shift-F12."
+        title={t(($) => $.references.query.none.title)}
+        detail={t(($) => $.references.query.none.detail)}
       />
     );
   }
@@ -220,8 +227,8 @@ function QueryContent({
     return (
       <PanelState
         state="pending"
-        title="Reference results expired"
-        detail="The project changed after this query. Run Find References again to use current source ranges."
+        title={t(($) => $.references.query.expired.title)}
+        detail={t(($) => $.references.query.expired.detail)}
       />
     );
   }
@@ -229,8 +236,8 @@ function QueryContent({
     return (
       <PanelState
         state="empty"
-        title="No locations found"
-        detail="The symbol exists in this revision, but it has no matching definitions or occurrences."
+        title={t(($) => $.references.query.noLocations.title)}
+        detail={t(($) => $.references.query.noLocations.detail)}
       />
     );
   }
@@ -241,12 +248,13 @@ function QueryContent({
       nodes={nodes}
       query={filter}
       onActivate={onActivate}
-      emptyMessage={`No result matches “${filter.trim()}”.`}
+      emptyMessage={t(($) => $.references.filter.noResult, { query: filter.trim() })}
     />
   );
 }
 
 export function ReferencesPanel() {
+  const { t } = useTranslation(["references"]);
   const intelligenceState = useIndexStore((state) => state.intelligenceState);
   const projectId = useFilesStore((state) => state.projectId);
   const projectName = useFilesStore((state) => state.projectName);
@@ -266,7 +274,7 @@ export function ReferencesPanel() {
     intelligenceState,
     projectId,
   );
-  const notice = analysisNotice(intelligenceState);
+  const notice = useAnalysisNotice(intelligenceState);
   const citationNodes = useMemo(
     () => (snapshot ? buildCitationNodes(snapshot) : []),
     [snapshot],
@@ -301,19 +309,19 @@ export function ReferencesPanel() {
   }[] = [
     {
       id: "results",
-      label: "References",
+      label: t(($) => $.references.tabs.results),
       icon: ListRestart,
       count: query ? undefined : 0,
     },
     {
       id: "citations",
-      label: "Citations",
+      label: t(($) => $.references.tabs.citations),
       icon: BookOpenText,
       count: snapshot?.bibliography.entries.length,
     },
     {
       id: "symbols",
-      label: "Symbols",
+      label: t(($) => $.references.tabs.symbols),
       icon: Braces,
       count: snapshot?.definitions.length,
     },
@@ -322,14 +330,14 @@ export function ReferencesPanel() {
   return (
     <>
       <section
-        aria-label="References (Shift-F12)"
+        aria-label={t(($) => $.references.panel.ariaLabel)}
         aria-busy={intelligenceState.status === "running"}
         className="flex h-full min-h-0 flex-col"
       >
         <header className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-2.5">
         <SearchCode aria-hidden className="size-3.5 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75">
-          References
+          {t(($) => $.references.panel.title)}
         </span>
         {view === "citations" && projectId ? (
           <Tooltip label="Clean reference library" side="bottom">
@@ -345,10 +353,10 @@ export function ReferencesPanel() {
           </Tooltip>
         ) : null}
         {view === "citations" && projectId ? (
-          <Tooltip label="Import reference library" side="bottom">
+          <Tooltip label={t(($) => $.references.import.title)} side="bottom">
             <button
               type="button"
-              aria-label="Import references"
+              aria-label={t(($) => $.references.panel.importAriaLabel)}
               onClick={() => setImportOpen(true)}
               className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
             >
@@ -359,7 +367,7 @@ export function ReferencesPanel() {
         {issues > 0 ? (
           <span
             role="status"
-            aria-label={`${issues} reference or citation issues`}
+            aria-label={t(($) => $.references.panel.issues, { count: issues })}
             className="rounded-sm bg-amber-500/12 px-1 font-mono text-[9px] text-amber-700 dark:text-amber-300"
           >
             {issues}
@@ -368,8 +376,8 @@ export function ReferencesPanel() {
         {query ? (
           <button
             type="button"
-            aria-label="Clear reference query"
-            title="Clear reference query"
+            aria-label={t(($) => $.references.panel.clearQuery)}
+            title={t(($) => $.references.panel.clearQuery)}
             onClick={clearQuery}
             className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
           >
@@ -387,7 +395,7 @@ export function ReferencesPanel() {
           }}
         >
           <TabsList
-            aria-label="Reference panel view"
+            aria-label={t(($) => $.references.panel.viewTabs)}
             className="flex h-auto w-full gap-1"
           >
             {tabs.map(({ id, label, icon: Icon, count }) => (
@@ -395,7 +403,9 @@ export function ReferencesPanel() {
                 key={id}
                 value={id}
                 aria-label={
-                  count !== undefined && count > 0 ? `${label}, ${count}` : label
+                  count !== undefined && count > 0
+                    ? t(($) => $.references.panel.tabWithCount, { label, count })
+                    : label
                 }
                 onClick={() => setView(id)}
                 className="min-w-0 flex-1 gap-1.5 px-2 [&_svg]:size-3.5 [&_svg]:shrink-0"
@@ -425,20 +435,26 @@ export function ReferencesPanel() {
             type="search"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            aria-label={`Filter ${view}`}
+            aria-label={
+              view === "results"
+                ? t(($) => $.references.filter.ariaLabelResults)
+                : view === "citations"
+                  ? t(($) => $.references.filter.ariaLabelCitations)
+                  : t(($) => $.references.filter.ariaLabelSymbols)
+            }
             placeholder={
               view === "results"
-                ? "Filter locations…"
+                ? t(($) => $.references.filter.placeholderResults)
                 : view === "citations"
-                  ? "Filter keys, titles, authors…"
-                  : "Filter labels and commands…"
+                  ? t(($) => $.references.filter.placeholderCitations)
+                  : t(($) => $.references.filter.placeholderSymbols)
             }
             className="h-8 pl-7 pr-8 text-xs"
           />
           {filter ? (
             <button
               type="button"
-              aria-label="Clear filter"
+              aria-label={t(($) => $.references.filter.clear)}
               onClick={() => setFilter("")}
               className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
             >
@@ -489,21 +505,21 @@ export function ReferencesPanel() {
           ) : view === "citations" ? (
             citationNodes.length ? (
               <IntelligenceTree
-                label="Project citations"
+                label={t(($) => $.references.trees.citations)}
                 nodes={citationNodes}
                 query={filter}
                 onActivate={navigate}
                 emptyMessage={
                   filter
-                    ? `No citation matches “${filter.trim()}”.`
-                    : "No bibliography entries or citation uses were found."
+                    ? t(($) => $.references.filter.noCitation, { query: filter.trim() })
+                    : t(($) => $.references.trees.noCitations)
                 }
               />
             ) : (
               <PanelState
                 state="empty"
-                title="No citations yet"
-                detail="Import a reference library or add a citation to begin."
+                title={t(($) => $.references.empty.citations.title)}
+                detail={t(($) => $.references.empty.citations.detail)}
                 action={
                   <Button
                     size="sm"
@@ -511,28 +527,28 @@ export function ReferencesPanel() {
                     className="h-8 gap-1.5 rounded-full px-3.5 text-[11px] shadow-sm"
                   >
                     <BookPlus aria-hidden className="size-3.5" />
-                    Import reference library
+                    {t(($) => $.references.import.title)}
                   </Button>
                 }
               />
             )
           ) : symbolNodes.length ? (
             <IntelligenceTree
-              label="Project symbols"
+              label={t(($) => $.references.trees.symbols)}
               nodes={symbolNodes}
               query={filter}
               onActivate={navigate}
               emptyMessage={
                 filter
-                  ? `No symbol matches “${filter.trim()}”.`
-                  : "No project-defined symbols were found."
+                  ? t(($) => $.references.filter.noSymbol, { query: filter.trim() })
+                  : t(($) => $.references.trees.noSymbols)
               }
             />
           ) : (
             <PanelState
               state="empty"
-              title="No symbols yet"
-              detail="Headings, labels, commands, and environments appear here as the project is authored."
+              title={t(($) => $.references.empty.symbols.title)}
+              detail={t(($) => $.references.empty.symbols.detail)}
             />
           )
         ) : (
@@ -551,7 +567,9 @@ export function ReferencesPanel() {
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Quote aria-hidden className="size-3.5 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">Cite Oleafly in this paper</span>
+              <span className="min-w-0 flex-1 truncate">
+                {t(($) => $.references.citeOleafly)}
+              </span>
             </button>
           </div>
         ) : null}

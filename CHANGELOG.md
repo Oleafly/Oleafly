@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The interface is available in Simplified Chinese. Settings > General gets a
+  Language setting (System default, English, 简体中文). Changing it applies
+  right away in every window, including the native menu and dialogs, with no
+  restart. Document content, spellcheck and proofreading settings are
+  unaffected.
 - Tools now opens as a full page, with 22 converters grouped alongside the
   existing research and writing tools. Each converter is also available from
   the command palette. Ad hoc conversions show the result immediately, with

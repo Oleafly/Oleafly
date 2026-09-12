@@ -1,3 +1,4 @@
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { describe, expect, it } from "vitest";
 import {
   ANY_PUBLICATION_YEAR,
@@ -28,7 +29,7 @@ describe("publication year filters", () => {
     expect(publicationYearRange("2025", "2020", 2026)).toMatchObject({
       from: 2025,
       to: 2020,
-      error: "The start year cannot be later than the end year.",
+      error: enCore.literatureSources.yearRangeInvalid,
     });
   });
 });

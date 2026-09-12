@@ -1,10 +1,8 @@
+import { i18n } from "@/i18n";
 import type { McpManagedServer, McpServerConfig } from "@oleafly/backend-port";
 
-const ACCEPTED_JSON_FORMS =
-  'Expected either {"server-name": {...}} or {"mcpServers": {"server-name": {...}}}.';
-
 function structuralError(detail: string): Error {
-  return new Error(`${detail} ${ACCEPTED_JSON_FORMS}`);
+  return new Error(i18n.t(($) => $.core.mcpConfig.structural, { detail }));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -18,7 +16,7 @@ function optionalString(
 ): string | undefined {
   if (!Object.hasOwn(server, field)) return undefined;
   if (typeof server[field] !== "string") {
-    throw new Error(`MCP server '${name}' field '${field}' must be a string.`);
+    throw new Error(i18n.t(($) => $.core.mcpConfig.fieldString, { name, field }));
   }
   return server[field];
 }
@@ -26,13 +24,17 @@ function optionalString(
 function enabledValue(server: Record<string, unknown>, name: string): boolean {
   if (Object.hasOwn(server, "enabled")) {
     if (typeof server.enabled !== "boolean") {
-      throw new Error(`MCP server '${name}' field 'enabled' must be a boolean.`);
+      throw new Error(
+        i18n.t(($) => $.core.mcpConfig.fieldBoolean, { name, field: "enabled" }),
+      );
     }
     return server.enabled;
   }
   if (Object.hasOwn(server, "disabled")) {
     if (typeof server.disabled !== "boolean") {
-      throw new Error(`MCP server '${name}' field 'disabled' must be a boolean.`);
+      throw new Error(
+        i18n.t(($) => $.core.mcpConfig.fieldBoolean, { name, field: "disabled" }),
+      );
     }
     return !server.disabled;
   }
@@ -41,7 +43,7 @@ function enabledValue(server: Record<string, unknown>, name: string): boolean {
 
 function stringValue(server: Record<string, unknown>, name: string, field: string): string {
   if (typeof server[field] !== "string") {
-    throw new Error(`MCP server '${name}' field '${field}' must be a string.`);
+    throw new Error(i18n.t(($) => $.core.mcpConfig.fieldString, { name, field }));
   }
   return server[field];
 }
@@ -54,7 +56,7 @@ function stringArrayValue(
   if (!Object.hasOwn(server, field)) return [];
   const value = server[field];
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
-    throw new Error(`MCP server '${name}' field '${field}' must be an array of strings.`);
+    throw new Error(i18n.t(($) => $.core.mcpConfig.fieldStringArray, { name, field }));
   }
   return value;
 }
@@ -67,9 +69,7 @@ function stringRecordValue(
   if (!Object.hasOwn(server, field)) return {};
   const value = server[field];
   if (!isRecord(value) || Object.values(value).some((entry) => typeof entry !== "string")) {
-    throw new Error(
-      `MCP server '${name}' field '${field}' must be an object of string values.`,
-    );
+    throw new Error(i18n.t(($) => $.core.mcpConfig.fieldStringRecord, { name, field }));
   }
   return value as Record<string, string>;
 }
@@ -79,27 +79,27 @@ export function parseMcpServerJson(source: string): McpServerConfig {
   try {
     parsed = JSON.parse(source);
   } catch {
-    throw structuralError("MCP server JSON is malformed.");
+    throw structuralError(i18n.t(($) => $.core.mcpConfig.jsonMalformed));
   }
   if (!isRecord(parsed)) {
-    throw structuralError("MCP server JSON must be an object.");
+    throw structuralError(i18n.t(($) => $.core.mcpConfig.jsonNotObject));
   }
   const root = parsed;
   let servers: Record<string, unknown> = root;
   if (Object.hasOwn(root, "mcpServers")) {
     if (!isRecord(root.mcpServers)) {
-      throw structuralError("MCP server JSON field 'mcpServers' must be an object.");
+      throw structuralError(i18n.t(($) => $.core.mcpConfig.mcpServersNotObject));
     }
     servers = root.mcpServers;
   }
   const entries = Object.entries(servers);
   if (entries.length !== 1) {
-    throw structuralError("MCP server JSON must contain exactly one server.");
+    throw structuralError(i18n.t(($) => $.core.mcpConfig.exactlyOneServer));
   }
   const [entryName, server] = entries[0];
   const name = entryName.trim();
   if (!isRecord(server)) {
-    throw structuralError(`MCP server '${name}' must be an object.`);
+    throw structuralError(i18n.t(($) => $.core.mcpConfig.serverNotObject, { name }));
   }
   const type = optionalString(server, name, "type");
   const transport = optionalString(server, name, "transport");
@@ -110,10 +110,10 @@ export function parseMcpServerJson(source: string): McpServerConfig {
     type !== "sse" &&
     type !== "streamable-http"
   ) {
-    throw new Error(`MCP server '${name}' has unsupported type '${type}'.`);
+    throw new Error(i18n.t(($) => $.core.mcpConfig.unsupportedType, { name, type }));
   }
   if (transport !== undefined && transport !== "stdio" && transport !== "remote") {
-    throw new Error(`MCP server '${name}' has unsupported transport '${transport}'.`);
+    throw new Error(i18n.t(($) => $.core.mcpConfig.unsupportedTransport, { name, transport }));
   }
   const typeIsRemote = type === "http" || type === "sse" || type === "streamable-http";
   if (
@@ -121,7 +121,7 @@ export function parseMcpServerJson(source: string): McpServerConfig {
     transport !== undefined &&
     ((type === "stdio" && transport !== "stdio") || (typeIsRemote && transport !== "remote"))
   ) {
-    throw new Error(`MCP server '${name}' has conflicting type and transport declarations.`);
+    throw new Error(i18n.t(($) => $.core.mcpConfig.conflictingDeclarations, { name }));
   }
   const enabled = enabledValue(server, name);
   const remote =
@@ -183,8 +183,9 @@ function failureReason(error: unknown): string {
 }
 
 function importCandidateName(candidate: unknown): string {
-  if (!isRecord(candidate) || typeof candidate.name !== "string") return "Unknown server";
-  return candidate.name.trim() || "Unknown server";
+  const fallback = i18n.t(($) => $.core.mcpConfig.unknownServer);
+  if (!isRecord(candidate) || typeof candidate.name !== "string") return fallback;
+  return candidate.name.trim() || fallback;
 }
 
 export async function runMcpServerImport(

@@ -11,9 +11,11 @@ import {
   Settings,
   Sun,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
-  commandsFor,
+  commandKeywords,
   commandLabel,
+  commandsFor,
   type AppContext,
   type CommandContribution,
 } from "@oleafly/registry";
@@ -26,6 +28,7 @@ import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useTheme } from "@/lib/theme";
 import { searchDocs, type ProjectInfo, type SearchHit } from "@/lib/tauri";
 import { projectModifiedLabel } from "@/lib/project-format";
+import { i18n } from "@/i18n";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
@@ -141,12 +144,48 @@ interface SlashEntry {
 }
 
 const BUILT_IN_SLASH: SlashEntry[] = [
-  { keys: ["create", "new"], mode: "create", hint: "open the template gallery" },
-  { keys: ["projects", "p"], mode: "projects", hint: "search your projects" },
-  { keys: ["docs", "search"], mode: "docs", hint: "search inside documents" },
-  { keys: ["refs"], mode: "refs", hint: "open references for this project" },
-  { keys: ["theme"], mode: "theme", hint: "switch the color theme" },
-  { keys: ["settings"], mode: "settings", hint: "open settings" },
+  {
+    keys: ["create", "new"],
+    mode: "create",
+    get hint() {
+      return i18n.t(($) => $.shell.omnibar.slash.create);
+    },
+  },
+  {
+    keys: ["projects", "p"],
+    mode: "projects",
+    get hint() {
+      return i18n.t(($) => $.shell.omnibar.slash.projects);
+    },
+  },
+  {
+    keys: ["docs", "search"],
+    mode: "docs",
+    get hint() {
+      return i18n.t(($) => $.shell.omnibar.slash.docs);
+    },
+  },
+  {
+    keys: ["refs"],
+    mode: "refs",
+    get hint() {
+      return i18n.t(($) => $.shell.omnibar.slash.refs);
+    },
+  },
+  {
+    keys: ["theme"],
+    mode: "theme",
+    get hint() {
+      return i18n.t(($) => $.shell.omnibar.slash.theme);
+    },
+  },
+  {
+    keys: ["settings"],
+    mode: "settings",
+    get hint() {
+      return i18n.t(($) => $.shell.omnibar.slash.settings);
+    },
+  },
 ];
 
 function commandSlashEntries(
@@ -217,6 +256,7 @@ export function SearchOmnibar() {
   const openFile = useFilesStore((s) => s.openFile);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation(["common", "shell"]);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
@@ -317,7 +357,7 @@ export function SearchOmnibar() {
     const all = availableCommands.map((c) => ({
       id: c.id,
       label: commandLabel(c, ctx),
-      kw: `${c.keywords ?? ""} ${c.slash?.join(" ") ?? ""}`,
+      kw: `${commandKeywords(c, ctx)} ${c.slash?.join(" ") ?? ""}`,
       icon: c.icon?.(ctx),
       run: () => c.run(ctx),
     }));
@@ -351,16 +391,16 @@ export function SearchOmnibar() {
 
   const placeholder =
     mode === "projects"
-      ? "Search projects by name, engine, kind, date, or metadata…"
+      ? t(($) => $.shell.omnibar.placeholderProjects)
       : mode === "docs"
-        ? "Search inside documents…"
-        : "Search projects, documents, or type / for commands…";
+        ? t(($) => $.shell.omnibar.placeholderDocuments)
+        : t(($) => $.shell.omnibar.placeholder);
 
   return (
     <Command.Dialog
       open={open}
       onOpenChange={(v) => (v ? setSearchOpen(true) : close())}
-      label="Search"
+      label={t(($) => $.shell.omnibar.label)}
       shouldFilter={false}
       overlayClassName="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
       className="fixed left-1/2 top-[18%] z-50 w-[min(660px,92vw)] -translate-x-1/2"
@@ -382,62 +422,66 @@ export function SearchOmnibar() {
 
         <Command.List className="max-h-[min(60vh,440px)] overflow-auto p-1.5">
           {mode === "create" && (
-            <Group heading="Action">
+            <Group heading={t(($) => $.shell.omnibar.groups.action)}>
               <Row
                 icon={<Plus className="size-4" />}
-                title="Create a new project"
-                hint="Enter"
+                title={t(($) => $.shell.omnibar.createProject)}
+                hint={t(($) => $.shell.keys.enter)}
                 onSelect={() => runAction(() => setNewProjectOpen(true))}
               />
             </Group>
           )}
           {mode === "theme" && (
-            <Group heading="Action">
+            <Group heading={t(($) => $.shell.omnibar.groups.action)}>
               <Row
                 icon={theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-                hint="Enter"
+                title={
+                  theme === "dark"
+                    ? t(($) => $.shell.commands.theme.toLight)
+                    : t(($) => $.shell.commands.theme.toDark)
+                }
+                hint={t(($) => $.shell.keys.enter)}
                 onSelect={() => runAction(toggleTheme)}
               />
             </Group>
           )}
           {mode === "settings" && (
-            <Group heading="Action">
+            <Group heading={t(($) => $.shell.omnibar.groups.action)}>
               <Row
                 icon={<Settings className="size-4" />}
-                title="Open settings"
-                hint="Enter"
+                title={t(($) => $.shell.commands.settings.label)}
+                hint={t(($) => $.shell.keys.enter)}
                 onSelect={() => runAction(() => setSettingsOpen(true))}
               />
             </Group>
           )}
           {mode === "command" && action && (
-            <Group heading="Action">
+            <Group heading={t(($) => $.shell.omnibar.groups.action)}>
               <Row
                 icon={action.icon?.(ctx)}
                 title={commandLabel(action, ctx)}
-                hint="Enter"
+                hint={t(($) => $.shell.keys.enter)}
                 onSelect={() => runAction(() => action.run(ctx))}
               />
             </Group>
           )}
           {mode === "refs" && (
-            <Group heading="References">
+            <Group heading={t(($) => $.shell.omnibar.groups.references)}>
               {projectId ? (
                 <Row
                   icon={<Link2 className="size-4" />}
-                  title="Open references for this project"
-                  hint="Enter"
+                  title={t(($) => $.shell.omnibar.openReferences)}
+                  hint={t(($) => $.shell.keys.enter)}
                   onSelect={() => runAction(() => setRailTab("refs"))}
                 />
               ) : (
-                <Hint>Open a project first to browse its references.</Hint>
+                <Hint>{t(($) => $.shell.omnibar.referencesNeedProject)}</Hint>
               )}
             </Group>
           )}
 
           {generalCommands.length > 0 && (
-            <Group heading="Commands">
+            <Group heading={t(($) => $.shell.commandGroups.commands)}>
               {generalCommands.map((c) => (
                 <Row
                   key={c.id}
@@ -450,7 +494,7 @@ export function SearchOmnibar() {
           )}
 
           {toolCommands.length > 0 && (
-            <Group heading="Tools">
+            <Group heading={t(($) => $.shell.commandGroups.tools)}>
               {toolCommands.map((c) => (
                 <Row
                   key={c.id}
@@ -463,7 +507,7 @@ export function SearchOmnibar() {
           )}
 
           {matchedProjects.length > 0 && (
-            <Group heading="Projects">
+            <Group heading={t(($) => $.shell.commandGroups.project)}>
               {matchedProjects.map((p) => (
                 <Row
                   key={p.id}
@@ -489,7 +533,7 @@ export function SearchOmnibar() {
           )}
 
           {(mode === "all" || mode === "docs") && hits.length > 0 && (
-            <Group heading="Documents">
+            <Group heading={t(($) => $.shell.omnibar.groups.documents)}>
               {hits.map((hit) => {
                 const itemKey = objectKey(hit, "document");
                 return (
@@ -503,7 +547,7 @@ export function SearchOmnibar() {
                     <FileText className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="truncate font-medium">{basename(hit.path)}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {hit.project_name} · {hit.path} : {hit.line}
+                      {`${hit.project_name} · ${hit.path} : ${hit.line}`}
                     </span>
                   </div>
                   <PreviewLine preview={hit.preview} query={trimmed} />
@@ -514,7 +558,7 @@ export function SearchOmnibar() {
           )}
 
           {mode === "help" && slashSuggestions.length > 0 && (
-            <Group heading="Commands">
+            <Group heading={t(($) => $.shell.commandGroups.commands)}>
               {slashSuggestions.map((s) => (
                 <Row
                   key={s.keys[0]}
@@ -537,7 +581,7 @@ export function SearchOmnibar() {
             </Group>
           )}
           {mode === "help" && slashSuggestions.length === 0 && (
-            <Hint>Unknown command. Type / to view available commands.</Hint>
+            <Hint>{t(($) => $.shell.omnibar.unknownCommand)}</Hint>
           )}
           {mode === "all" &&
             !trimmed &&
@@ -550,17 +594,17 @@ export function SearchOmnibar() {
             !loading &&
             hits.length === 0 &&
             matchedProjects.length === 0 &&
-            commands.length === 0 && <Hint>No matches found.</Hint>}
+            commands.length === 0 && <Hint>{t(($) => $.shell.omnibar.noMatches)}</Hint>}
         </Command.List>
 
         <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Kbd className="border bg-background text-foreground">Enter</Kbd>
-            <span>Open</span>
+            <Kbd className="border bg-background text-foreground">{t(($) => $.shell.keys.enter)}</Kbd>
+            <span>{t(($) => $.common.actions.open)}</span>
           </span>
           <span className="flex items-center gap-1">
             <Kbd className="border bg-background text-foreground">/</Kbd>
-            <span>Commands</span>
+            <span>{t(($) => $.shell.commandGroups.commands)}</span>
           </span>
         </div>
       </div>
@@ -601,7 +645,10 @@ function Row({
       <span className="text-muted-foreground">{icon}</span>
       <span className="truncate">{title}</span>
       {starred && (
-        <Bookmark className="size-3.5 shrink-0 fill-current text-amber-500" aria-label="Bookmarked" />
+        <Bookmark
+          className="size-3.5 shrink-0 fill-current text-amber-500"
+          aria-label={i18n.t(($) => $.shell.omnibar.bookmarked)}
+        />
       )}
       {hint && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{hint}</span>}
     </Command.Item>
@@ -613,9 +660,12 @@ function Hint({ children }: { children: ReactNode }) {
 }
 
 function SlashHelp({ entries }: { entries: SlashEntry[] }) {
+  const { t } = useTranslation(["shell"]);
   return (
     <div className="px-2 py-2">
-      <p className="px-1 pb-1.5 text-xs font-medium text-muted-foreground">Try a command</p>
+      <p className="px-1 pb-1.5 text-xs font-medium text-muted-foreground">
+        {t(($) => $.shell.omnibar.tryCommand)}
+      </p>
       {entries.map((s) => (
         <div key={s.keys[0]} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm">
           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">/{s.keys[0]}</code>

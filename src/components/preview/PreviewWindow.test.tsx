@@ -69,6 +69,7 @@ import {
   isPreviewWindowState,
   type PreviewWindowState,
 } from "@/lib/preview-window";
+import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import { PreviewWindow } from "./PreviewWindow";
 
 /**
@@ -195,7 +196,9 @@ describe("detached preview request identity", () => {
     emitProject("beta");
     // The old project's PDF must not linger while the new one is unverified.
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
-    expect(screen.getByText("No verified PDF")).toBeInTheDocument();
+    expect(
+      screen.getByText(enPreview.window.noVerifiedTitle),
+    ).toBeInTheDocument();
 
     emitRefresh(successState("beta", 2, 2));
     await vi.waitFor(() =>
@@ -211,7 +214,9 @@ describe("detached preview request identity", () => {
     emitRefresh(successState("alpha", 1, 1));
     await screen.findByText("1");
 
-    fireEvent.click(screen.getByRole("button", { name: "Reader view" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: enPreview.actions.readerView }),
+    );
     expect(screen.getByTestId("detached-pdf-bytes")).toHaveAttribute(
       "data-screen-reader-mode",
       "true",
@@ -219,7 +224,7 @@ describe("detached preview request identity", () => {
 
     emitProject("beta");
     expect(
-      screen.getByRole("button", { name: "Reader view" }),
+      screen.getByRole("button", { name: enPreview.actions.readerView }),
     ).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -262,7 +267,7 @@ describe("detached preview request identity", () => {
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
 
     emitRefresh(successState("beta", 2, 2));
-    await screen.findByText("PDF unavailable");
+    await screen.findByText(enPreview.window.artifactUnavailableTitle);
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
   });
 
@@ -276,7 +281,9 @@ describe("detached preview request identity", () => {
 
     emitProjectState("alpha", 10);
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
-    expect(screen.getByText("No verified PDF")).toBeInTheDocument();
+    expect(
+      screen.getByText(enPreview.window.noVerifiedTitle),
+    ).toBeInTheDocument();
 
     emitRefresh(successState("alpha", 2, 2));
     await act(async () => {
@@ -284,7 +291,9 @@ describe("detached preview request identity", () => {
       await Promise.resolve();
     });
     expect(mocks.readCompiledPdf).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("No verified PDF")).toBeInTheDocument();
+    expect(
+      screen.getByText(enPreview.window.noVerifiedTitle),
+    ).toBeInTheDocument();
 
     emitRefresh(successState("alpha", 2, 2, 2, 10));
     await screen.findByText("2");
@@ -322,7 +331,7 @@ describe("detached preview request identity", () => {
     expect(mocks.readCompiledPdf).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("detached-pdf-bytes")).toHaveTextContent("1");
     expect(
-      screen.getByText("Stale · non-current preview"),
+      screen.getByText(enPreview.window.staleHeading),
     ).toBeInTheDocument();
   });
 });
@@ -335,9 +344,11 @@ it("navigates by a full spread after layout changes", async () => {
     />,
   );
   await vi.waitFor(() =>
-    expect(screen.getByLabelText("Two-page view")).toBeInTheDocument(),
+    expect(
+      screen.getByLabelText(enPreview.pageLayout.double),
+    ).toBeInTheDocument(),
   );
-  fireEvent.click(screen.getByLabelText("Two-page view"));
-  fireEvent.click(screen.getByLabelText("Next page"));
+  fireEvent.click(screen.getByLabelText(enPreview.pageLayout.double));
+  fireEvent.click(screen.getByLabelText(enPreview.pages.next));
   expect(mocks.gotoPage).toHaveBeenCalledWith(3);
 });

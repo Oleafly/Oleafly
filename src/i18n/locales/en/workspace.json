@@ -1,0 +1,185 @@
+{
+  "files": {
+    "confirmDelete": "Delete {{path}}? This cannot be undone.",
+    "conflict": {
+      "cancelAriaLabel": "Cancel file move",
+      "createBody": "<destination>{{destination}}</destination> already exists. Keep both files using <suggestion>{{suggestion}}</suggestion>. Creating never replaces an existing file.",
+      "dialogAriaLabel": "File move conflict",
+      "keepBoth": "Keep both",
+      "renameBody": "<destination>{{destination}}</destination> already exists. Keep both files using <suggestion>{{suggestion}}</suggestion>, or replace the existing destination. Oleafly will not replace it unless you choose Replace.",
+      "replace": "Replace",
+      "title": "That name is already in use",
+      "unchanged": "The original and destination paths were left unchanged."
+    },
+    "createFailed": "Could not create \"{{path}}\".",
+    "deleteFailed": "Could not delete \"{{path}}\".",
+    "importAriaLabel": "Import into selected folder",
+    "importFiles": "Import file(s)",
+    "importFolder": "Import folder",
+    "importTitle": "Import a file or folder (into the selected folder)",
+    "makeCopy": "Make a copy",
+    "moreActions": "More actions for {{name}}",
+    "moveFailed": "Could not move \"{{path}}\". The original path was left unchanged.",
+    "newEntry": {
+      "fileInFolder": "New file name in folder {{folder}}",
+      "fileInRoot": "New file name in project root",
+      "filePlaceholder": "New file name",
+      "folderInFolder": "New folder name in folder {{folder}}",
+      "folderInRoot": "New folder name in project root",
+      "folderPlaceholder": "New folder name"
+    },
+    "newFile": "New file",
+    "newFileAriaLabel": "New file in selected folder",
+    "newFileTitle": "New file (in the selected folder)",
+    "newFolder": "New folder",
+    "newFolderAriaLabel": "New folder in selected folder",
+    "newFolderTitle": "New folder (in the selected folder)",
+    "renameAriaLabel": "Rename file",
+    "renameFailed": "Could not rename \"{{path}}\". The original path was left unchanged.",
+    "setMain": "Set as main document",
+    "treeAriaLabel": "Source tree"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "ambiguous",
+      "cycle": "cycle",
+      "definitions_one": "{{count}} definition",
+      "definitions_other": "{{count}} definitions",
+      "duplicate": "duplicate",
+      "external": "external",
+      "folded": "folded",
+      "incomplete": "incomplete",
+      "missing": "missing"
+    },
+    "bibEntryIn": "{{type}} entry in {{file}}",
+    "duplicateKey": "Duplicate key.",
+    "duplicateKeyIn": "Duplicate key {{key}} in {{file}}",
+    "folded": {
+      "description": "This branch is folded to keep very large project graphs responsive.",
+      "label": "Open the linked source to continue"
+    },
+    "fromFile": "{{kind}} from {{file}}",
+    "groups": {
+      "bibliography": "Bibliography",
+      "bibtexEntries": "BibTeX entries",
+      "commands": "Commands",
+      "definitions_one": "Definition",
+      "definitions_other": "Definitions",
+      "dependencies": "Links & dependencies",
+      "duplicateCitations": "Duplicate citation keys",
+      "environments": "Environments",
+      "labels": "Labels & anchors",
+      "occurrences": "Occurrences",
+      "sections": "Sections",
+      "unlinked": "Unlinked files",
+      "unresolvedCitations": "Unresolved citations",
+      "unresolvedDuplicate": "Unresolved & duplicate"
+    },
+    "inFile": "{{kind}} in {{file}}",
+    "incompleteEntry": "Incomplete entry.",
+    "kinds": {
+      "anchor": "anchor",
+      "asset": "asset",
+      "bibentry": "bibentry",
+      "bibliography": "bibliography",
+      "citation": "citation",
+      "environment": "environment",
+      "file": "file",
+      "glossary": "glossary",
+      "import": "import",
+      "include": "include",
+      "label": "label",
+      "link": "link",
+      "macro": "macro",
+      "reference": "reference",
+      "section": "section"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Document outline",
+    "empty": "No sections or includes in this document.",
+    "entryCount_one": "{{count}} outline entry",
+    "entryCount_other": "{{count}} outline entries",
+    "title": "Outline"
+  },
+  "panelError": {
+    "message": "The panel layout hit a snag. Your project files are safe on disk.",
+    "reload": "Reload Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "Document structure",
+    "empty": "No supported files are present in the project map.",
+    "filterLabel": "Filter project structure",
+    "filterPlaceholder": "Filter project map…",
+    "itemCount_one": "{{count}} structure item",
+    "itemCount_other": "{{count}} structure items",
+    "noMatch": "No structure matches “{{query}}”.",
+    "notice": {
+      "partial": "Partial map. Unreadable or malformed files remain visible where possible.",
+      "stale": "Updating. Previous-revision structure is hidden until current source ranges are ready."
+    },
+    "title": "Structure",
+    "treeLabel": "Project structure",
+    "unavailable": {
+      "failed": {
+        "detail": "The project could not be analyzed. Your source files were not changed.",
+        "title": "Structure could not be built"
+      },
+      "mapping": {
+        "detail": "Oleafly is indexing headings, linked files, symbols, and bibliography entries.",
+        "title": "Mapping project structure"
+      },
+      "noProject": {
+        "detail": "Open a document project to browse its local and project structure.",
+        "title": "No project open"
+      },
+      "noSource": {
+        "detail": "Open a supported source or bibliography file to see its structure.",
+        "title": "No active source"
+      },
+      "offline": {
+        "detail": "Project analysis is not available for this workspace right now.",
+        "title": "Structure service unavailable"
+      },
+      "unsupported": {
+        "detail": "This file type does not have a project-structure provider.",
+        "title": "Structure is unavailable"
+      },
+      "waiting": {
+        "detail": "The latest project revision has not been indexed yet.",
+        "title": "Waiting for project structure"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Loading assistant",
+    "editor": "Loading editor",
+    "preview": "Loading preview",
+    "terminal": "Loading terminal"
+  },
+  "terminal": {
+    "closeCurrent": "Close current",
+    "closeLeft": "Close all to the left",
+    "closeOthers": "Close others",
+    "closeRight": "Close all to the right",
+    "closeTab": "Close {{title}}",
+    "color": "Color",
+    "errors": {
+      "input": "The shell could not accept input",
+      "resize": "The terminal could not resize",
+      "start": "The shell could not start"
+    },
+    "limitReached": "Close a terminal to open another",
+    "newTerminal": "New terminal",
+    "settings": "Terminal settings",
+    "starting": "Starting the project shell…",
+    "tabs": "Terminals",
+    "titleInput": "Terminal title"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Clear filter",
+    "filterPlaceholder": "Filter…",
+    "noProject": "No project"
+  }
+}

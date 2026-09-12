@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Check, Copy, ExternalLink, Quote } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import {
@@ -18,6 +19,7 @@ const TOKEN_CLASS: Record<BibtexTokenKind, string> = {
 };
 
 export function CiteOleaflyCard({ version }: { readonly version: string }) {
+  const { t } = useTranslation(["common", "settings"]);
   const [copied, setCopied] = useState(false);
   const bibtex = oleaflyBibtex(version);
   const copy = async () => {
@@ -39,13 +41,14 @@ export function CiteOleaflyCard({ version }: { readonly version: string }) {
         <Quote aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
           <h3 id="cite-oleafly-heading" className="text-sm font-semibold">
-            Cite Oleafly in your paper
+            {t(($) => $.settings.cite.title)}
           </h3>
           <p className="mt-1 max-w-[42rem] text-xs leading-relaxed text-muted-foreground">
-            Oleafly is free and open source, and it stays that way when people know it
-            exists. If it helped a paper along, one entry in your bibliography tells the
-            next researcher where the tool came from. Copy it, paste it into your .bib
-            file, and cite the key <code className="font-mono">oleafly</code>.
+            <Trans
+              ns="settings"
+              i18nKey={($) => $.settings.cite.description}
+              components={{ citeKey: <code className="font-mono" /> }}
+            />
           </p>
         </div>
       </div>
@@ -71,14 +74,16 @@ export function CiteOleaflyCard({ version }: { readonly version: string }) {
           className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-accent"
         >
           {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-          {copied ? "Copied" : "Copy BibTeX"}
+          {copied
+            ? t(($) => $.common.actions.copied)
+            : t(($) => $.settings.cite.copyBibtex)}
         </button>
         <button
           type="button"
           onClick={() => void openExternal(OLEAFLY_REPOSITORY_URL)}
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         >
-          The same reference in APA is behind Cite this repository on GitHub
+          {t(($) => $.settings.cite.apa)}
           <ExternalLink className="size-3" />
         </button>
       </div>

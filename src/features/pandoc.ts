@@ -3,6 +3,8 @@ import { open } from "@tauri-apps/plugin-shell";
 import { hasPandoc, downloadPandoc } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
+import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 
 const INSTALL_DOCS = "https://pandoc.org/installing.html";
 
@@ -27,7 +29,11 @@ async function ensurePandocInner(): Promise<boolean> {
     /* fall through and try to download */
   }
 
-  const id = toast.info("Downloading pandoc… 0%", undefined, true);
+  const id = toast.info(
+    i18n.t(($) => $.core.pandoc.downloadingPercent, { progress: 0 }),
+    undefined,
+    true,
+  );
   let unlisten: (() => void) | null = null;
   try {
     unlisten = await listen<{ received: number; total: number | null }>(
@@ -35,21 +41,31 @@ async function ensurePandocInner(): Promise<boolean> {
       (e) => {
         const { received, total } = e.payload;
         const label = total
-          ? `Downloading pandoc… ${Math.round((received / total) * 100)}%`
-          : `Downloading pandoc… ${(received / 1_000_000).toFixed(1)} MB`;
+          ? i18n.t(($) => $.core.pandoc.downloadingPercent, {
+              progress: Math.round((received / total) * 100),
+            })
+          : i18n.t(($) => $.core.pandoc.downloadingSize, {
+              megabytes: formatNumber(received / 1_000_000, {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              }),
+            });
         toast.update(id, label);
       },
     );
     await downloadPandoc();
     toast.dismiss(id);
-    toast.success("pandoc installed");
+    toast.success(i18n.t(($) => $.core.pandoc.installed));
     return true;
   } catch (e) {
     toast.dismiss(id);
     void logError("download pandoc", e);
     toast.error(
-      "Couldn't download pandoc. Install it manually, then try again",
-      { label: "Install guide", onClick: () => void open(INSTALL_DOCS) },
+      i18n.t(($) => $.core.pandoc.downloadFailed),
+      {
+        label: i18n.t(($) => $.core.pandoc.installGuide),
+        onClick: () => void open(INSTALL_DOCS),
+      },
       true,
     );
     return false;

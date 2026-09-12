@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
 import { ShortcutsSection } from "./ShortcutsSection";
@@ -22,13 +23,21 @@ describe("Keyboard Shortcuts reset", () => {
 
     render(<ShortcutsSection />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: enSettings.reset.button }),
+    );
 
     const confirmation = screen.getByRole("alertdialog", {
-      name: /Reset Keyboard Shortcuts settings/u,
+      name: enSettings.reset.confirmTitle.replace(
+        "{{sectionName}}",
+        enSettings.shortcuts.reset.sectionName,
+      ),
     });
     expect(confirmation).toHaveTextContent(
-      "Restore Keyboard Shortcuts preferences to their defaults.",
+      enSettings.reset.confirmDescription.replace(
+        "{{sectionName}}",
+        enSettings.shortcuts.reset.sectionName,
+      ),
     );
     expect(useShortcutStore.getState().bindings.recompile).toEqual({
       key: "r",
@@ -37,7 +46,7 @@ describe("Keyboard Shortcuts reset", () => {
     });
 
     fireEvent.click(
-      within(confirmation).getByRole("button", { name: "Reset to defaults" }),
+      within(confirmation).getByRole("button", { name: enSettings.reset.button }),
     );
 
     expect(useShortcutStore.getState().bindings.recompile).toEqual({

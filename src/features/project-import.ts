@@ -4,7 +4,8 @@ import { ensurePandoc } from "@/features/pandoc";
 import { importArxivEprint, importDocument, type ImportTarget } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
-import { CONVERSION_NOTICE } from "@/features/import-copy";
+import { conversionNotice } from "@/features/import-copy";
+import { i18n } from "@/i18n";
 import { importRoutes, type SourceFormat } from "@oleafly/conversion-registry";
 
 export const IMPORT_FILE_SOURCES = [
@@ -63,9 +64,7 @@ export async function importSelectedFile(
   target?: ImportTarget,
 ): Promise<boolean> {
   const kind = importFileKind(path);
-  if (!kind) {
-    throw new Error("Choose a .zip, .docx, .md, .html, .htm, or .typ file.");
-  }
+  if (!kind) throw new Error(i18n.t(($) => $.core.import.unsupportedFile));
 
   const files = useFilesStore.getState();
   if (kind === "project") {
@@ -81,7 +80,7 @@ export async function importSelectedFile(
   const projectId = await importDocument(path, selectedTarget);
   await files.refreshProjects();
   await files.openProject(projectId);
-  toast.success(CONVERSION_NOTICE);
+  toast.success(conversionNotice());
   return true;
 }
 
@@ -118,5 +117,5 @@ export async function importGitHubRepository(repository: GitHubRepo): Promise<vo
   const files = useFilesStore.getState();
   await files.refreshProjects();
   await files.openProject(projectId);
-  toast.success("Project imported.");
+  toast.success(i18n.t(($) => $.core.project.imported));
 }

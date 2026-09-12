@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, Download, Loader2, TriangleAlert } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { acpError, acpInstall, acpReadiness, acpReadinessLabel, type AcpAgentStatus, type AcpReadiness } from "@/lib/acp";
@@ -51,6 +52,7 @@ export function BridgeInstallCard({
   onInstalled?: () => void;
   onError?: (message: string) => void;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const { installing, install } = useBridgeInstall();
   const readiness = acpReadiness(agent);
   const busy = installing === agent.definition.id;
@@ -82,7 +84,7 @@ export function BridgeInstallCard({
           }}
         >
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-          {busy ? "Installing" : "Install bridge"}
+          {busy ? t(($) => $.ai.acp.installing) : t(($) => $.ai.acp.installBridge)}
         </Button>
       )}
       {agent.signInHint && readiness !== "ready" && (

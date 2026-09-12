@@ -1,3 +1,5 @@
+import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 import type { ModelMetadata, ModelProbe, ModelTrust, StoredModel } from "@/lib/tauri";
 import { getProvider, type AIModel } from "@/lib/ai-providers";
 
@@ -89,8 +91,13 @@ export function diffModelLists(
 }
 
 export function describeModelListChange(change: { added: number; removed: number }): string {
-  if (change.added === 0 && change.removed === 0) return "No changes";
-  return `${change.added} added, ${change.removed} removed`;
+  if (change.added === 0 && change.removed === 0) {
+    return i18n.t(($) => $.core.models.listChange.none);
+  }
+  return i18n.t(($) => $.core.models.listChange.summary, {
+    added: change.added,
+    removed: change.removed,
+  });
 }
 
 export function pickActiveModel(
@@ -211,21 +218,39 @@ export function modelCapabilityChips(metadata: ModelMetadata | undefined): Model
       chips.push({
         id: "context",
         label: context,
-        title: `${metadata.contextWindow.toLocaleString()} token context window`,
+        title: i18n.t(($) => $.core.models.chips.contextTitle, {
+          tokens: formatNumber(metadata.contextWindow),
+        }),
       });
     }
   }
   if (metadata.inputModalities?.includes("image")) {
-    chips.push({ id: "vision", label: "Vision", title: "Accepts images" });
+    chips.push({
+      id: "vision",
+      label: i18n.t(($) => $.core.models.chips.vision.label),
+      title: i18n.t(($) => $.core.models.chips.vision.title),
+    });
   }
   if (metadata.toolCall) {
-    chips.push({ id: "tools", label: "Tools", title: "Can call tools" });
+    chips.push({
+      id: "tools",
+      label: i18n.t(($) => $.core.models.chips.tools.label),
+      title: i18n.t(($) => $.core.models.chips.tools.title),
+    });
   }
   if (metadata.reasoning) {
-    chips.push({ id: "reasoning", label: "Reasoning", title: "Reasoning model" });
+    chips.push({
+      id: "reasoning",
+      label: i18n.t(($) => $.core.models.chips.reasoning.label),
+      title: i18n.t(($) => $.core.models.chips.reasoning.title),
+    });
   }
   if (metadata.status === "deprecated") {
-    chips.push({ id: "deprecated", label: "Deprecated", title: "The provider has deprecated this model" });
+    chips.push({
+      id: "deprecated",
+      label: i18n.t(($) => $.core.models.chips.deprecated.label),
+      title: i18n.t(($) => $.core.models.chips.deprecated.title),
+    });
   }
   return chips;
 }

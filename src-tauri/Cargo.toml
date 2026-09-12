@@ -28,6 +28,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-playwright = { version = "0.4", optional = true }
 tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"
+sys-locale = "0.3"
 # In-app auto-update: checks the GitHub Releases `latest.json`, verifies the
 # minisign signature against the pubkey in tauri.conf.json, and installs. The
 # process plugin provides `relaunch()` to restart into the new version.

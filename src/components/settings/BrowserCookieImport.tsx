@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { describeError } from "@/lib/app-error";
 import {
   detectBrowserCookieSources,
   importBrowserCookies,
@@ -20,6 +22,8 @@ import {
 
 type ImportStage = "closed" | "select" | "confirm";
 
+type ReviewErrorCode = "chooseProfile" | "hostname";
+
 interface ReviewedImport {
   browser: BrowserCookieSourceId;
   browserName: string;
@@ -28,15 +32,9 @@ interface ReviewedImport {
   domain: string | null;
 }
 
-function errorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) return error.message;
-  if (typeof error === "string" && error.trim()) return error;
-  return fallback;
-}
-
 function normalizeDomain(value: string): {
   domain: string | null;
-  error: string | null;
+  error: ReviewErrorCode | null;
 } {
   const domain = value.trim().toLowerCase();
   if (!domain) return { domain: null, error: null };
@@ -49,26 +47,11 @@ function normalizeDomain(value: string): {
         label.length <= 63 &&
         /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u.test(label),
     );
-  return valid
-    ? { domain, error: null }
-    : { domain: null, error: "Enter a hostname such as example.com." };
-}
-
-function sourceStatusLabel(source: BrowserCookieSource): string {
-  if (source.status === "coming_soon") return "Coming soon";
-  if (source.status === "no_cookie_store") return "No cookie store";
-  if (source.status === "not_installed") return "Not installed";
-  return "Available";
-}
-
-function formatSummary(summary: BrowserCookieImportSummary): string {
-  const importedLabel = summary.imported === 1 ? "cookie" : "cookies";
-  const profile = summary.profileName ? `, ${summary.profileName}` : "";
-  const domain = summary.domain ? ` for ${summary.domain}` : "";
-  return `Imported ${summary.imported} ${importedLabel} from ${summary.browserName}${profile}${domain}.`;
+  return valid ? { domain, error: null } : { domain: null, error: "hostname" };
 }
 
 export function BrowserCookieImport() {
+  const { t } = useTranslation(["common", "settings"]);
   const detectionRequest = useRef(0);
   const [stage, setStage] = useState<ImportStage>("closed");
   const [sources, setSources] = useState<BrowserCookieSource[]>([]);
@@ -76,16 +59,64 @@ export function BrowserCookieImport() {
   const [domainDraft, setDomainDraft] = useState("");
   const [detecting, setDetecting] = useState(false);
   const [detectionError, setDetectionError] = useState<string | null>(null);
-  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<ReviewErrorCode | null>(null);
   const [reviewedImport, setReviewedImport] = useState<ReviewedImport | null>(
     null,
   );
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
+  const [summary, setSummary] = useState<BrowserCookieImportSummary | null>(
+    null,
+  );
 
   const selectedSource =
     selectedIndex === "" ? null : (sources[Number(selectedIndex)] ?? null);
+
+  const sourceStatusLabel = (source: BrowserCookieSource): string => {
+    if (source.status === "coming_soon")
+      return t(($) => $.settings.integrations.cookies.status.comingSoon);
+    if (source.status === "no_cookie_store")
+      return t(($) => $.settings.integrations.cookies.status.noCookieStore);
+    if (source.status === "not_installed")
+      return t(($) => $.settings.integrations.cookies.status.notInstalled);
+    return t(($) => $.settings.integrations.cookies.status.available);
+  };
+
+  const summaryLabel = (result: BrowserCookieImportSummary): string => {
+    const count = result.imported;
+    const browser = result.browserName;
+    if (result.profileName && result.domain) {
+      return t(($) => $.settings.integrations.cookies.importedProfileDomain, {
+        count,
+        browser,
+        profile: result.profileName,
+        domain: result.domain,
+      });
+    }
+    if (result.profileName) {
+      return t(($) => $.settings.integrations.cookies.importedProfile, {
+        count,
+        browser,
+        profile: result.profileName,
+      });
+    }
+    if (result.domain) {
+      return t(($) => $.settings.integrations.cookies.importedDomain, {
+        count,
+        browser,
+        domain: result.domain,
+      });
+    }
+    return t(($) => $.settings.integrations.cookies.imported, {
+      count,
+      browser,
+    });
+  };
+
+  const reviewErrorLabel = (code: ReviewErrorCode): string =>
+    code === "hostname"
+      ? t(($) => $.settings.integrations.cookies.errors.hostname)
+      : t(($) => $.settings.integrations.cookies.errors.chooseProfile);
 
   const loadSources = async () => {
     const requestId = ++detectionRequest.current;
@@ -99,9 +130,7 @@ export function BrowserCookieImport() {
     } catch (error) {
       if (detectionRequest.current !== requestId) return;
       setSources([]);
-      setDetectionError(
-        errorMessage(error, "Oleafly could not detect installed browser profiles."),
-      );
+      setDetectionError(describeError(error));
     } finally {
       if (detectionRequest.current === requestId) setDetecting(false);
     }
@@ -131,7 +160,7 @@ export function BrowserCookieImport() {
       selectedSource?.status !== "available" ||
       selectedSource.profile === null
     ) {
-      setReviewError("Choose an available browser profile.");
+      setReviewError("chooseProfile");
       return;
     }
     const validation = normalizeDomain(domainDraft);
@@ -161,36 +190,34 @@ export function BrowserCookieImport() {
         profile: reviewedImport.profile,
         domain: reviewedImport.domain,
       });
-      setSummary(formatSummary(result));
+      setSummary(result);
       setStage("closed");
     } catch (error) {
-      setImportError(
-        errorMessage(error, "Oleafly could not import cookies from this profile."),
-      );
+      setImportError(describeError(error));
     } finally {
       setImporting(false);
     }
   };
-
-  const reviewedScope = reviewedImport?.domain ?? "all domains";
 
   return (
     <>
       <div className="rounded-lg border bg-card p-3">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="text-sm font-medium">Import cookies</div>
+            <div className="text-sm font-medium">
+              {t(($) => $.settings.integrations.cookies.title)}
+            </div>
             <div className="text-xs text-muted-foreground">
-              Use an existing browser sign-in in Oleafly's in-app browser.
+              {t(($) => $.settings.integrations.cookies.description)}
             </div>
           </div>
           <Button type="button" variant="outline" onClick={openImporter}>
-            Import cookies
+            {t(($) => $.settings.integrations.cookies.action)}
           </Button>
         </div>
         {summary ? (
           <p role="status" className="mt-3 text-xs text-muted-foreground">
-            {summary}
+            {summaryLabel(summary)}
           </p>
         ) : null}
       </div>
@@ -204,12 +231,11 @@ export function BrowserCookieImport() {
           overlayClassName="z-[120]"
         >
           <DialogHeader>
-            <DialogTitle>Import browser cookies</DialogTitle>
+            <DialogTitle>
+              {t(($) => $.settings.integrations.cookies.dialogTitle)}
+            </DialogTitle>
             <DialogDescription>
-              Choose one installed browser profile. Oleafly reads it only after
-              you review and confirm the import. Chromium cookies are unlocked
-              locally through macOS Keychain. Oleafly does not send cookie
-              values to an Oleafly service.
+              {t(($) => $.settings.integrations.cookies.dialogDescription)}
             </DialogDescription>
           </DialogHeader>
 
@@ -220,9 +246,9 @@ export function BrowserCookieImport() {
             className="text-sm text-muted-foreground"
           >
             {detecting
-              ? "Looking for installed browser profiles..."
+              ? t(($) => $.settings.integrations.cookies.detecting)
               : !detectionError && sources.length === 0
-                ? "No supported browser profiles were found."
+                ? t(($) => $.settings.integrations.cookies.empty)
                 : null}
           </div>
 
@@ -237,16 +263,20 @@ export function BrowserCookieImport() {
                 size="sm"
                 onClick={() => void loadSources()}
               >
-                Try again
+                {t(($) => $.settings.integrations.cookies.tryAgain)}
               </Button>
             </div>
           ) : null}
 
           {!detecting && !detectionError ? (
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Browser profile</legend>
+              <legend className="text-sm font-medium">
+                {t(($) => $.settings.integrations.cookies.profileLegend)}
+              </legend>
               <RadioGroup
-                aria-label="Browser profiles"
+                aria-label={t(
+                  ($) => $.settings.integrations.cookies.profileGroupLabel,
+                )}
                 value={selectedIndex}
                 onValueChange={(value) => {
                   setSelectedIndex(value);
@@ -300,17 +330,19 @@ export function BrowserCookieImport() {
               className="text-sm font-medium"
               htmlFor="browser-cookie-domain"
             >
-              Target hostname (optional)
+              {t(($) => $.settings.integrations.cookies.hostnameLabel)}
             </label>
             <Input
               id="browser-cookie-domain"
               autoCapitalize="none"
               autoComplete="off"
               spellCheck={false}
-              placeholder="example.com"
+              placeholder={t(
+                ($) => $.settings.integrations.cookies.hostnamePlaceholder,
+              )}
               value={domainDraft}
               disabled={!selectedSource}
-              aria-invalid={reviewError === "Enter a hostname such as example.com."}
+              aria-invalid={reviewError === "hostname"}
               aria-describedby={
                 reviewError
                   ? "browser-cookie-domain-hint browser-cookie-review-error"
@@ -325,8 +357,7 @@ export function BrowserCookieImport() {
               id="browser-cookie-domain-hint"
               className="text-xs text-muted-foreground"
             >
-              Enter a site hostname to import only cookies that site can use.
-              Leave blank to import every eligible cookie in this profile.
+              {t(($) => $.settings.integrations.cookies.hostnameHint)}
             </p>
           </div>
 
@@ -336,7 +367,7 @@ export function BrowserCookieImport() {
               role="alert"
               className="text-sm text-destructive"
             >
-              {reviewError}
+              {reviewErrorLabel(reviewError)}
             </p>
           ) : null}
 
@@ -346,14 +377,14 @@ export function BrowserCookieImport() {
               variant="ghost"
               onClick={closeImporter}
             >
-              Cancel
+              {t(($) => $.common.actions.cancel)}
             </Button>
             <Button
               type="button"
               onClick={reviewImport}
               disabled={detecting || !selectedSource}
             >
-              Review import
+              {t(($) => $.settings.integrations.cookies.review)}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -372,14 +403,20 @@ export function BrowserCookieImport() {
           overlayClassName="z-[120]"
         >
           <DialogHeader>
-            <DialogTitle>Confirm cookie import</DialogTitle>
+            <DialogTitle>
+              {t(($) => $.settings.integrations.cookies.confirmTitle)}
+            </DialogTitle>
             <DialogDescription>
-              You are about to import cookies from the{" "}
-              {reviewedImport?.profileName} profile in{" "}
-              {reviewedImport?.browserName} for {reviewedScope}. Cookie values
-              will be stored in the in-app browser and sent only to their
-              matching websites. Oleafly will ask you to confirm once more in a
-              native dialog before reading the profile.
+              {reviewedImport?.domain
+                ? t(($) => $.settings.integrations.cookies.confirmDomain, {
+                    profile: reviewedImport.profileName,
+                    browser: reviewedImport.browserName,
+                    domain: reviewedImport.domain,
+                  })
+                : t(($) => $.settings.integrations.cookies.confirmAllDomains, {
+                    profile: reviewedImport?.profileName,
+                    browser: reviewedImport?.browserName,
+                  })}
             </DialogDescription>
           </DialogHeader>
 
@@ -400,14 +437,16 @@ export function BrowserCookieImport() {
                 setStage("select");
               }}
             >
-              Back
+              {t(($) => $.common.actions.back)}
             </Button>
             <Button
               type="button"
               disabled={importing}
               onClick={() => void runImport()}
             >
-              {importing ? "Importing cookies..." : "Import cookies"}
+              {importing
+                ? t(($) => $.settings.integrations.cookies.importing)
+                : t(($) => $.settings.integrations.cookies.action)}
             </Button>
           </DialogFooter>
         </DialogContent>

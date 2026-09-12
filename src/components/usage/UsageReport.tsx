@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Download, RefreshCw } from "lucide-react";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
@@ -36,7 +37,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
+import { i18n } from "@/i18n";
 import { getProvider } from "@/lib/ai-providers";
+import {
+  formatCompactNumber,
+  formatDate,
+  formatDateTime,
+  formatList,
+  formatNumber,
+} from "@/lib/intl";
 import { notifyError, toast } from "@/lib/toast";
 import {
   activeQuickRange,
@@ -95,7 +104,7 @@ type FilterOption = {
 const ALL = "__all__";
 const EMPTY_PROJECT_NAMES = new Map<string, string>();
 const PAGE_SIZES = [10, 25, 50, 100];
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 const TICK_STEPS = [1, 2, 3, 7, 14, 30, 60, 90];
 const ACP_AGENT_NAMES: Record<string, string> = {
@@ -141,26 +150,24 @@ function filterFromDraft(draft: DraftFilter, previous: UsageReportFilter): Usage
 }
 
 function formatTokens(value: number): string {
-  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(
-    value,
-  );
+  return formatCompactNumber(value);
 }
 
 function formatExact(value: number): string {
-  return value.toLocaleString();
+  return formatNumber(value);
 }
 
 function formatCost(value: number): string {
-  return new Intl.NumberFormat(undefined, {
+  return formatNumber(value, {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: value < 1 ? 4 : 2,
-  }).format(value);
+  });
 }
 
 function formatUtcDay(value: number | string, withYear = false): string {
   const date = typeof value === "string" ? new Date(`${value}T00:00:00.000Z`) : new Date(value);
-  return date.toLocaleDateString(undefined, {
+  return formatDate(date, {
     timeZone: "UTC",
     month: "short",
     day: "numeric",
@@ -169,7 +176,7 @@ function formatUtcDay(value: number | string, withYear = false): string {
 }
 
 function formatUtcTime(value: number): string {
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(new Date(value), {
     timeZone: "UTC",
     month: "short",
     day: "numeric",
@@ -180,11 +187,22 @@ function formatUtcTime(value: number): string {
 
 function formatRange(startMs: number, endMs: number): string {
   const last = Math.max(startMs, endMs - 1);
-  return `${formatUtcDay(startMs)} to ${formatUtcDay(last, true)} (UTC)`;
+  return i18n.t(($) => $.usage.report.range, {
+    start: formatUtcDay(startMs),
+    end: formatUtcDay(last, true),
+  });
 }
 
-function plural(count: number, noun: string): string {
-  return `${count.toLocaleString()} ${noun}${count === 1 ? "" : "s"}`;
+function records(count: number): string {
+  return i18n.t(($) => $.usage.counts.records, { count, total: formatNumber(count) });
+}
+
+function sessionsCount(count: number): string {
+  return i18n.t(($) => $.usage.counts.sessions, { count, total: formatNumber(count) });
+}
+
+function joinNotes(items: readonly string[]): string {
+  return formatList(items, { style: "narrow" });
 }
 
 function shortIdentifier(value: string): string {
@@ -192,15 +210,15 @@ function shortIdentifier(value: string): string {
 }
 
 function projectLabel(value: string, projectNames: ReadonlyMap<string, string>): string {
-  if (value === "global") return "General";
-  if (value === "Mixed") return "Mixed";
+  if (value === "global") return i18n.t(($) => $.usage.labels.generalProject);
+  if (value === "Mixed") return i18n.t(($) => $.usage.labels.mixed);
   return projectNames.get(value) ?? shortIdentifier(value);
 }
 
 function runtimeLabel(value: string): string {
-  if (value === "built-in") return "Oleafly assistant";
-  if (value === "built-in:helper") return "Helper calls";
-  if (value === "acp") return "CLI agents";
+  if (value === "built-in") return i18n.t(($) => $.usage.labels.runtimeBuiltIn);
+  if (value === "built-in:helper") return i18n.t(($) => $.usage.labels.runtimeHelper);
+  if (value === "acp") return i18n.t(($) => $.usage.labels.runtimeAcp);
   if (value.startsWith("acp:")) {
     const agent = value.slice("acp:".length);
     return ACP_AGENT_NAMES[agent] ?? shortIdentifier(agent);
@@ -213,45 +231,67 @@ function providerLabel(value: string): string {
 }
 
 function billingLabel(value: string): string {
-  const labels: Record<string, string> = {
-    api: "API",
-    subscription: "Plan",
-    local: "Local",
-    unknown: "Unknown",
-    mixed: "Mixed",
-  };
-  return labels[value] ?? value;
+  switch (value) {
+    case "api":
+      return i18n.t(($) => $.usage.billing.api);
+    case "subscription":
+      return i18n.t(($) => $.usage.billing.subscription);
+    case "local":
+      return i18n.t(($) => $.usage.billing.local);
+    case "unknown":
+      return i18n.t(($) => $.usage.billing.unknown);
+    case "mixed":
+      return i18n.t(($) => $.usage.billing.mixed);
+    default:
+      return value;
+  }
 }
 
 function scopeLabel(value: string): string | null {
-  const labels: Record<string, string> = {
-    child: "Subagent",
-    task: "Task",
-    helper: "Helper",
-  };
-  return labels[value] ?? null;
+  switch (value) {
+    case "child":
+      return i18n.t(($) => $.usage.scope.child);
+    case "task":
+      return i18n.t(($) => $.usage.scope.task);
+    case "helper":
+      return i18n.t(($) => $.usage.scope.helper);
+    default:
+      return null;
+  }
 }
 
 function statusLabel(value: string): string {
-  const labels: Record<string, string> = {
-    in_progress: "In progress",
-    completed: "Completed",
-    failed: "Failed",
-    cancelled: "Cancelled",
-    interrupted: "Interrupted",
-  };
-  return labels[value] ?? value.replaceAll("_", " ");
+  switch (value) {
+    case "in_progress":
+      return i18n.t(($) => $.usage.status.in_progress);
+    case "completed":
+      return i18n.t(($) => $.usage.status.completed);
+    case "failed":
+      return i18n.t(($) => $.usage.status.failed);
+    case "cancelled":
+      return i18n.t(($) => $.usage.status.cancelled);
+    case "interrupted":
+      return i18n.t(($) => $.usage.status.interrupted);
+    default:
+      return value.replaceAll("_", " ");
+  }
 }
 
 function measurementLabel(value: string): string {
-  const labels: Record<string, string> = {
-    provider_reported: "Counted by the provider",
-    runtime_reported: "Counted by the agent",
-    estimated: "Estimated locally",
-    unavailable: "Not measured",
-    mixed_or_unavailable: "Partly measured",
-  };
-  return labels[value] ?? value.replaceAll("_", " ");
+  switch (value) {
+    case "provider_reported":
+      return i18n.t(($) => $.usage.measurement.provider_reported);
+    case "runtime_reported":
+      return i18n.t(($) => $.usage.measurement.runtime_reported);
+    case "estimated":
+      return i18n.t(($) => $.usage.measurement.estimated);
+    case "unavailable":
+      return i18n.t(($) => $.usage.measurement.unavailable);
+    case "mixed_or_unavailable":
+      return i18n.t(($) => $.usage.measurement.mixed_or_unavailable);
+    default:
+      return value.replaceAll("_", " ");
+  }
 }
 
 function statusClass(value: string): string {
@@ -283,11 +323,11 @@ function filterOptions(
 }
 
 function tokenCell(value: number | null): string {
-  return value === null ? "Unknown" : formatExact(value);
+  return value === null ? i18n.t(($) => $.usage.labels.unknown) : formatExact(value);
 }
 
 function combinedTokens(input: number | null, output: number | null): string {
-  if (input === null && output === null) return "Unknown";
+  if (input === null && output === null) return i18n.t(($) => $.usage.labels.unknown);
   return formatTokens((input ?? 0) + (output ?? 0));
 }
 
@@ -299,14 +339,27 @@ function costCell(
   if (cost !== null) {
     const note =
       counts.unpricedRecords > 0
-        ? `${counts.unpricedRecords} of ${plural(counts.recordCount, "record")} unpriced`
+        ? i18n.t(($) => $.usage.counts.partlyUnpriced, {
+            count: counts.recordCount,
+            unpriced: formatNumber(counts.unpricedRecords),
+            total: formatNumber(counts.recordCount),
+          })
         : null;
     return { text: formatCost(cost), note };
   }
   if (counts.recordCount > 0 && counts.planRecords === counts.recordCount) {
-    return { text: billingMode === "local" ? "Local" : "Plan", note: "Not billed per token" };
+    return {
+      text:
+        billingMode === "local"
+          ? i18n.t(($) => $.usage.cost.local)
+          : i18n.t(($) => $.usage.cost.plan),
+      note: i18n.t(($) => $.usage.cost.notBilledPerToken),
+    };
   }
-  return { text: "No estimate", note: "No saved price for these records" };
+  return {
+    text: i18n.t(($) => $.usage.cost.noEstimate),
+    note: i18n.t(($) => $.usage.cost.noSavedPrice),
+  };
 }
 
 function Truncated({ value, label, className }: { value: string; label?: string; className?: string }) {
@@ -345,6 +398,7 @@ function tickStep(length: number): number {
 }
 
 function UsageTrend({ report }: { report: UsageReportData }) {
+  const { t } = useTranslation(["usage"]);
   const series = useMemo(() => fillDailySeries(report), [report]);
   const [hover, setHover] = useState<number | null>(null);
   const chart = useMemo(() => {
@@ -393,7 +447,11 @@ function UsageTrend({ report }: { report: UsageReportData }) {
   }, [series]);
 
   if (series.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">No daily activity.</p>;
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        {t(($) => $.usage.trend.empty)}
+      </p>
+    );
   }
 
   const hovered = hover === null ? null : series[hover];
@@ -417,9 +475,9 @@ function UsageTrend({ report }: { report: UsageReportData }) {
           preserveAspectRatio="none"
           className="h-40 w-full overflow-visible"
           role="img"
-          aria-label="Daily input and output token trend"
+          aria-label={t(($) => $.usage.trend.chartLabel)}
         >
-          <title>Daily token use</title>
+          <title>{t(($) => $.usage.trend.chartTitle)}</title>
           {[0.25, 0.5, 0.75].map((fraction) => (
             <line
               key={fraction}
@@ -483,14 +541,16 @@ function UsageTrend({ report }: { report: UsageReportData }) {
           >
             <p className="font-medium">{formatUtcDay(hovered.day, true)}</p>
             {hoveredPoint === null ? (
-              <p className="text-muted-foreground">Token counts unavailable</p>
+              <p className="text-muted-foreground">{t(($) => $.usage.trend.tokensUnavailable)}</p>
             ) : (
               <p className="tabular-nums text-muted-foreground">
-                {formatExact(hovered.inputTotal ?? 0)} in, {formatExact(hovered.outputTotal ?? 0)}{" "}
-                out
+                {t(($) => $.usage.trend.inOut, {
+                  input: formatExact(hovered.inputTotal ?? 0),
+                  output: formatExact(hovered.outputTotal ?? 0),
+                })}
               </p>
             )}
-            <p className="text-muted-foreground">{plural(hovered.recordCount, "record")}</p>
+            <p className="text-muted-foreground">{records(hovered.recordCount)}</p>
           </div>
         )}
       </div>
@@ -515,24 +575,24 @@ function UsageTrend({ report }: { report: UsageReportData }) {
       </div>
       {chart.hasUnknown && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Days with incomplete token counts are left out of the line.
+          {t(($) => $.usage.trend.incompleteDays)}
         </p>
       )}
       <table className="sr-only">
-        <caption>Daily token use</caption>
+        <caption>{t(($) => $.usage.trend.chartTitle)}</caption>
         <thead>
           <tr>
-            <th>Day</th>
-            <th>Input tokens</th>
-            <th>Output tokens</th>
+            <th>{t(($) => $.usage.trend.day)}</th>
+            <th>{t(($) => $.usage.trend.inputTokens)}</th>
+            <th>{t(($) => $.usage.trend.outputTokens)}</th>
           </tr>
         </thead>
         <tbody>
           {series.map((point) => (
             <tr key={point.day}>
               <td>{point.day}</td>
-              <td>{point.inputTotal ?? "Unknown"}</td>
-              <td>{point.outputTotal ?? "Unknown"}</td>
+              <td>{point.inputTotal ?? t(($) => $.usage.labels.unknown)}</td>
+              <td>{point.outputTotal ?? t(($) => $.usage.labels.unknown)}</td>
             </tr>
           ))}
         </tbody>
@@ -542,6 +602,16 @@ function UsageTrend({ report }: { report: UsageReportData }) {
 }
 
 function UsageHeatmap({ report }: { report: UsageReportData }) {
+  const { t } = useTranslation(["usage"]);
+  const weekdays: Record<(typeof WEEKDAY_KEYS)[number], string> = {
+    sun: t(($) => $.usage.heatmap.weekdays.sun),
+    mon: t(($) => $.usage.heatmap.weekdays.mon),
+    tue: t(($) => $.usage.heatmap.weekdays.tue),
+    wed: t(($) => $.usage.heatmap.weekdays.wed),
+    thu: t(($) => $.usage.heatmap.weekdays.thu),
+    fri: t(($) => $.usage.heatmap.weekdays.fri),
+    sat: t(($) => $.usage.heatmap.weekdays.sat),
+  };
   const cells = new Map(report.heatmap.map((cell) => [`${cell.weekday}:${cell.hour}`, cell]));
   const maximum = Math.max(1, ...report.heatmap.map((cell) => cell.tokenTotal ?? 0));
   return (
@@ -550,7 +620,7 @@ function UsageHeatmap({ report }: { report: UsageReportData }) {
         className="grid gap-1"
         style={{ gridTemplateColumns: "2.25rem repeat(24, minmax(0, 1fr))" }}
         role="img"
-        aria-label="Token activity by UTC weekday and hour"
+        aria-label={t(($) => $.usage.heatmap.label)}
       >
         <span />
         {HOURS.map((hour) => (
@@ -558,9 +628,10 @@ function UsageHeatmap({ report }: { report: UsageReportData }) {
             {hour % 6 === 0 ? hour : ""}
           </span>
         ))}
-        {WEEKDAYS.flatMap((weekday, weekdayIndex) => {
+        {WEEKDAY_KEYS.flatMap((weekdayKey, weekdayIndex) => {
+          const weekday = weekdays[weekdayKey];
           const row: ReactNode[] = [
-            <span key={weekday} className="text-[10px] leading-4 text-muted-foreground">
+            <span key={weekdayKey} className="text-[10px] leading-4 text-muted-foreground">
               {weekday}
             </span>,
           ];
@@ -572,19 +643,26 @@ function UsageHeatmap({ report }: { report: UsageReportData }) {
                 : 0.15 + (cell.tokenTotal / maximum) * 0.85;
             const tokenLabel =
               cell === undefined
-                ? "No recorded activity"
+                ? t(($) => $.usage.heatmap.noActivity)
                 : cell.tokenTotal === null
-                  ? "Token count unavailable"
-                  : `${cell.tokenTotal.toLocaleString()} tokens`;
+                  ? t(($) => $.usage.heatmap.tokenUnavailable)
+                  : t(($) => $.usage.counts.tokens, {
+                      count: cell.tokenTotal,
+                      total: formatNumber(cell.tokenTotal),
+                    });
             row.push(
               <span
-                key={`${weekday}:${hour}`}
+                key={`${weekdayKey}:${hour}`}
                 className={cn(
                   "aspect-square rounded-[2px]",
                   cell === undefined ? "bg-muted" : cell.tokenTotal === null ? "bg-muted-foreground/30" : "bg-primary",
                 )}
                 style={intensity > 0 ? { opacity: intensity } : undefined}
-                title={`${weekday} ${hour}:00 UTC: ${tokenLabel}`}
+                title={t(($) => $.usage.heatmap.cell, {
+                  weekday,
+                  hour,
+                  detail: tokenLabel,
+                })}
               />,
             );
           }
@@ -592,9 +670,9 @@ function UsageHeatmap({ report }: { report: UsageReportData }) {
         })}
       </div>
       <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-        <span>Hours in UTC</span>
+        <span>{t(($) => $.usage.heatmap.hoursInUtc)}</span>
         <span className="flex items-center gap-1">
-          Less
+          {t(($) => $.usage.heatmap.less)}
           {[0.15, 0.36, 0.57, 0.78, 1].map((opacity) => (
             <span
               key={opacity}
@@ -602,14 +680,23 @@ function UsageHeatmap({ report }: { report: UsageReportData }) {
               style={{ opacity }}
             />
           ))}
-          More
+          {t(($) => $.usage.heatmap.more)}
         </span>
       </div>
       <ul className="sr-only">
         {report.heatmap.map((cell) => (
           <li key={`${cell.weekday}:${cell.hour}`}>
-            {WEEKDAYS[cell.weekday]} {cell.hour}:00 UTC:{" "}
-            {cell.tokenTotal === null ? "Token count unavailable" : `${cell.tokenTotal} tokens`}
+            {t(($) => $.usage.heatmap.cell, {
+              weekday: weekdays[WEEKDAY_KEYS[cell.weekday]],
+              hour: cell.hour,
+              detail:
+                cell.tokenTotal === null
+                  ? t(($) => $.usage.heatmap.tokenUnavailable)
+                  : t(($) => $.usage.counts.tokens, {
+                      count: cell.tokenTotal,
+                      total: formatNumber(cell.tokenTotal),
+                    }),
+            })}
           </li>
         ))}
       </ul>
@@ -630,19 +717,20 @@ function BreakdownTable({
   onSelect?: (value: string) => void;
   icon?: (value: string) => ReactNode;
 }) {
+  const { t } = useTranslation(["usage"]);
   return (
     <section className="flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card">
       <h3 className="border-b px-3 py-2 text-sm font-medium">{title}</h3>
       {rows.length === 0 ? (
-        <p className="p-3 text-xs text-muted-foreground">No recorded usage.</p>
+        <p className="p-3 text-xs text-muted-foreground">{t(($) => $.usage.breakdown.empty)}</p>
       ) : (
         <Table containerClassName="max-h-64 overflow-x-auto" className="min-w-[24rem]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Name</TableHead>
-              <TableHead numeric>Tokens</TableHead>
-              <TableHead numeric>Cost</TableHead>
-              <TableHead numeric>Sessions</TableHead>
+              <TableHead>{t(($) => $.usage.breakdown.name)}</TableHead>
+              <TableHead numeric>{t(($) => $.usage.breakdown.tokens)}</TableHead>
+              <TableHead numeric>{t(($) => $.usage.breakdown.cost)}</TableHead>
+              <TableHead numeric>{t(($) => $.usage.breakdown.sessions)}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -670,7 +758,13 @@ function BreakdownTable({
                       )}
                     </span>
                   </TableCell>
-                  <TableCell numeric title={`${tokenCell(row.inputTotal)} in, ${tokenCell(row.outputTotal)} out`}>
+                  <TableCell
+                    numeric
+                    title={t(($) => $.usage.trend.inOut, {
+                      input: tokenCell(row.inputTotal),
+                      output: tokenCell(row.outputTotal),
+                    })}
+                  >
                     {combinedTokens(row.inputTotal, row.outputTotal)}
                   </TableCell>
                   <TableCell numeric title={cost.note ?? undefined}>
@@ -703,6 +797,7 @@ function SessionsTable({
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
 }) {
+  const { t } = useTranslation(["usage"]);
   const { items, page, pageSize, total } = report.sessions;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const renderSession = (session: UsageSessionDetail) => {
@@ -743,7 +838,10 @@ function SessionsTable({
             {session.providerId && session.providerId !== "Mixed" && (
               <ProviderLogo providerId={session.providerId} size={14} />
             )}
-            <Truncated value={session.modelId ?? "Unknown"} className="max-w-[10rem]" />
+            <Truncated
+              value={session.modelId ?? t(($) => $.usage.labels.unknown)}
+              className="max-w-[10rem]"
+            />
           </span>
         </TableCell>
         <TableCell className="min-w-[11rem] whitespace-nowrap tabular-nums text-muted-foreground">
@@ -755,7 +853,9 @@ function SessionsTable({
           <Tooltip
             label={[
               cost.note,
-              session.priceVersion ? `Price source: ${session.priceVersion}` : null,
+              session.priceVersion
+                ? t(($) => $.usage.cost.priceSource, { version: session.priceVersion })
+                : null,
               measurementLabel(session.measurement),
             ]
               .filter(Boolean)
@@ -788,34 +888,38 @@ function SessionsTable({
     <section className="overflow-hidden rounded-lg border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <div>
-          <h3 className="text-sm font-medium">Sessions</h3>
+          <h3 className="text-sm font-medium">{t(($) => $.usage.sessions.title)}</h3>
           <p className="text-[11px] text-muted-foreground">
-            Chats, tasks, subagent runs and helper calls, most recent first.
+            {t(($) => $.usage.sessions.subtitle)}
           </p>
         </div>
-        <span className="text-xs text-muted-foreground">{plural(total, "session")}</span>
+        <span className="text-xs text-muted-foreground">{sessionsCount(total)}</span>
       </div>
       {items.length === 0 ? (
         <Empty className="px-6 py-10">
           <EmptyHeader>
-            <EmptyTitle className="text-base">No sessions match these filters</EmptyTitle>
-            <EmptyDescription>Change the date range or remove a filter.</EmptyDescription>
+            <EmptyTitle className="text-base">
+              {t(($) => $.usage.sessions.emptyTitle)}
+            </EmptyTitle>
+            <EmptyDescription>{t(($) => $.usage.sessions.emptyDescription)}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
         <Table containerClassName="max-h-[28rem] overflow-x-auto" className="min-w-[1180px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="min-w-[12rem]">Session</TableHead>
-              <TableHead className="min-w-[12rem]">Project</TableHead>
-              <TableHead className="min-w-[9rem]">Agent</TableHead>
-              <TableHead className="min-w-[11rem]">Model</TableHead>
-              <TableHead className="min-w-[11rem] whitespace-nowrap">Last activity (UTC)</TableHead>
-              <TableHead numeric>Input</TableHead>
-              <TableHead numeric>Output</TableHead>
-              <TableHead numeric>Cost</TableHead>
-              <TableHead>Billing</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="min-w-[12rem]">{t(($) => $.usage.sessions.session)}</TableHead>
+              <TableHead className="min-w-[12rem]">{t(($) => $.usage.sessions.project)}</TableHead>
+              <TableHead className="min-w-[9rem]">{t(($) => $.usage.sessions.agent)}</TableHead>
+              <TableHead className="min-w-[11rem]">{t(($) => $.usage.sessions.model)}</TableHead>
+              <TableHead className="min-w-[11rem] whitespace-nowrap">
+                {t(($) => $.usage.sessions.lastActivity)}
+              </TableHead>
+              <TableHead numeric>{t(($) => $.usage.sessions.input)}</TableHead>
+              <TableHead numeric>{t(($) => $.usage.sessions.output)}</TableHead>
+              <TableHead numeric>{t(($) => $.usage.sessions.cost)}</TableHead>
+              <TableHead>{t(($) => $.usage.sessions.billing)}</TableHead>
+              <TableHead>{t(($) => $.usage.sessions.status)}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>{items.map(renderSession)}</TableBody>
@@ -823,12 +927,15 @@ function SessionsTable({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3 py-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Rows per page</span>
+          <span>{t(($) => $.usage.sessions.rowsPerPage)}</span>
           <Select
             value={String(pageSize)}
             onValueChange={(value) => onPageSizeChange?.(Number(value))}
           >
-            <SelectTrigger className="h-7 w-[4.5rem] text-xs" aria-label="Rows per page">
+            <SelectTrigger
+              className="h-7 w-[4.5rem] text-xs"
+              aria-label={t(($) => $.usage.sessions.rowsPerPage)}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -841,7 +948,9 @@ function SessionsTable({
           </Select>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{`Page ${page + 1} of ${pageCount}`}</span>
+          <span className="text-xs text-muted-foreground">
+            {t(($) => $.usage.sessions.page, { page: page + 1, pageCount })}
+          </span>
           <Button
             type="button"
             variant="outline"
@@ -849,7 +958,7 @@ function SessionsTable({
             disabled={page === 0}
             onClick={() => onPageChange?.(page - 1)}
           >
-            Previous
+            {t(($) => $.usage.sessions.previous)}
           </Button>
           <Button
             type="button"
@@ -858,7 +967,7 @@ function SessionsTable({
             disabled={(page + 1) * pageSize >= total}
             onClick={() => onPageChange?.(page + 1)}
           >
-            Next
+            {t(($) => $.usage.sessions.next)}
           </Button>
         </div>
       </div>
@@ -874,27 +983,50 @@ export function UsageReport({
   onPageChange,
   onPageSizeChange,
 }: UsageReportProps) {
+  const { t } = useTranslation(["usage"]);
   const totals = report.totals;
   const [exporting, setExporting] = useState(false);
   const cost = costCell(totals.costKnownRecords > 0 ? totals.estimatedCostUsd : null, totals);
   const costDetail = [
-    totals.unpricedRecords > 0 ? `${plural(totals.unpricedRecords, "record")} unpriced` : null,
-    totals.planRecords > 0 ? `${plural(totals.planRecords, "record")} on a plan or local` : null,
-  ].filter(Boolean);
+    totals.unpricedRecords > 0
+      ? t(($) => $.usage.counts.unpriced, {
+          count: totals.unpricedRecords,
+          total: formatNumber(totals.unpricedRecords),
+        })
+      : null,
+    totals.planRecords > 0
+      ? t(($) => $.usage.counts.onPlan, {
+          count: totals.planRecords,
+          total: formatNumber(totals.planRecords),
+        })
+      : null,
+  ].filter((entry): entry is string => entry !== null);
+  const cachePercent = formatNumber((totals.cacheRate ?? 0) * 100, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
   const cacheDetail =
     totals.cacheRate === null
-      ? `${plural(totals.cacheUnknownRecords, "record")} without comparable cache data`
-      : `${(totals.cacheRate * 100).toFixed(1)}% of comparable input${
-          totals.cacheUnknownRecords > 0 ? `, ${totals.cacheUnknownRecords} not comparable` : ""
-        }`;
+      ? t(($) => $.usage.counts.cacheUnknown, {
+          count: totals.cacheUnknownRecords,
+          total: formatNumber(totals.cacheUnknownRecords),
+        })
+      : totals.cacheUnknownRecords > 0
+        ? t(($) => $.usage.cache.rateWithUnknown, {
+            percent: cachePercent,
+            unknown: formatNumber(totals.cacheUnknownRecords),
+          })
+        : t(($) => $.usage.cache.rate, { percent: cachePercent });
 
   const exportReport = async () => {
     setExporting(true);
     try {
       const saved = await onExport(report);
-      if (typeof saved === "string") toast.success(`Saved ${saved}`);
+      if (typeof saved === "string") {
+        toast.success(t(($) => $.usage.report.exportSaved, { path: saved }));
+      }
     } catch (error) {
-      notifyError("usage export", error, "The usage report could not be saved.");
+      notifyError("usage export", error, t(($) => $.usage.report.exportFailed));
     } finally {
       setExporting(false);
     }
@@ -906,7 +1038,7 @@ export function UsageReport({
         <div>
           <p className="text-sm font-medium">{formatRange(report.startMs, report.endMs)}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Cost estimates use saved price data, not your provider bill or plan quota.
+            {t(($) => $.usage.report.costDisclaimer)}
           </p>
         </div>
         <Button
@@ -917,43 +1049,74 @@ export function UsageReport({
           onClick={() => void exportReport()}
         >
           <Download aria-hidden="true" />
-          Export CSV
+          {t(($) => $.usage.report.exportCsv)}
         </Button>
       </div>
 
       <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Metric
-          label="Input tokens"
-          value={totals.inputKnownRecords > 0 ? formatExact(totals.inputTotal) : "Unknown"}
+          label={t(($) => $.usage.report.inputTokens)}
+          value={
+            totals.inputKnownRecords > 0
+              ? formatExact(totals.inputTotal)
+              : t(($) => $.usage.labels.unknown)
+          }
           detail={
             totals.inputUnknownRecords > 0
-              ? `${plural(totals.inputUnknownRecords, "record")} without an input count`
-              : "Includes cached input"
+              ? t(($) => $.usage.counts.inputUnknown, {
+                  count: totals.inputUnknownRecords,
+                  total: formatNumber(totals.inputUnknownRecords),
+                })
+              : t(($) => $.usage.report.inputIncludesCache)
           }
         />
         <Metric
-          label="Output tokens"
-          value={totals.outputKnownRecords > 0 ? formatExact(totals.outputTotal) : "Unknown"}
+          label={t(($) => $.usage.report.outputTokens)}
+          value={
+            totals.outputKnownRecords > 0
+              ? formatExact(totals.outputTotal)
+              : t(($) => $.usage.labels.unknown)
+          }
           detail={
             totals.outputUnknownRecords > 0
-              ? `${plural(totals.outputUnknownRecords, "record")} without an output count`
-              : "Includes reasoning tokens"
+              ? t(($) => $.usage.counts.outputUnknown, {
+                  count: totals.outputUnknownRecords,
+                  total: formatNumber(totals.outputUnknownRecords),
+                })
+              : t(($) => $.usage.report.outputIncludesReasoning)
           }
         />
         <Metric
-          label="Cache reads"
-          value={totals.cacheKnownRecords > 0 ? formatExact(totals.cacheReadTotal) : "Unknown"}
+          label={t(($) => $.usage.report.cacheReads)}
+          value={
+            totals.cacheKnownRecords > 0
+              ? formatExact(totals.cacheReadTotal)
+              : t(($) => $.usage.labels.unknown)
+          }
           detail={cacheDetail}
         />
         <Metric
-          label="Cost estimate"
+          label={t(($) => $.usage.report.costEstimate)}
           value={cost.text}
-          detail={costDetail.length > 0 ? costDetail.join(", ") : "All records priced"}
+          detail={
+            costDetail.length > 0
+              ? joinNotes(costDetail)
+              : t(($) => $.usage.report.allRecordsPriced)
+          }
         />
         <Metric
-          label="Sessions"
+          label={t(($) => $.usage.report.sessions)}
           value={formatExact(totals.sessionCount)}
-          detail={`${plural(totals.childRunCount, "child run")}, ${plural(totals.recordCount, "usage record")}`}
+          detail={joinNotes([
+            t(($) => $.usage.counts.childRuns, {
+              count: totals.childRunCount,
+              total: formatNumber(totals.childRunCount),
+            }),
+            t(($) => $.usage.counts.usageRecords, {
+              count: totals.recordCount,
+              total: formatNumber(totals.recordCount),
+            }),
+          ])}
         />
       </dl>
 
@@ -961,42 +1124,49 @@ export function UsageReport({
         <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           {totals.excludedChildRecords > 0 && (
             <p>
-              {plural(totals.excludedChildRecords, "child record")} already counted in a parent
-              total, so not counted twice.
+              {t(($) => $.usage.counts.excludedChildRecords, {
+                count: totals.excludedChildRecords,
+                total: formatNumber(totals.excludedChildRecords),
+              })}
             </p>
           )}
           {totals.unavailableRecords > 0 && (
-            <p>{plural(totals.unavailableRecords, "record")} without measured token counts.</p>
+            <p>
+              {t(($) => $.usage.counts.unmeasured, {
+                count: totals.unavailableRecords,
+                total: formatNumber(totals.unavailableRecords),
+              })}
+            </p>
           )}
         </div>
       )}
 
       <div className="grid gap-4 xl:grid-cols-2">
         <section className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-sm font-medium">Daily tokens</h3>
+          <h3 className="mb-3 text-sm font-medium">{t(($) => $.usage.report.dailyTokens)}</h3>
           <UsageTrend report={report} />
         </section>
         <section className="overflow-x-auto rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-sm font-medium">Activity by hour</h3>
+          <h3 className="mb-3 text-sm font-medium">{t(($) => $.usage.report.activityByHour)}</h3>
           <UsageHeatmap report={report} />
         </section>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <BreakdownTable
-          title="Projects"
+          title={t(($) => $.usage.report.projects)}
           rows={report.byProject}
           labelForKey={(value) => projectLabel(value, projectNames)}
           onSelect={onSelectFilter ? (value) => onSelectFilter("project", value) : undefined}
         />
         <BreakdownTable
-          title="Agents"
+          title={t(($) => $.usage.report.agents)}
           rows={report.byRuntime}
           labelForKey={runtimeLabel}
           onSelect={onSelectFilter ? (value) => onSelectFilter("runtime", value) : undefined}
         />
         <BreakdownTable
-          title="Providers"
+          title={t(($) => $.usage.report.providers)}
           rows={report.byProvider}
           labelForKey={providerLabel}
           icon={(value) =>
@@ -1005,7 +1175,7 @@ export function UsageReport({
           onSelect={onSelectFilter ? (value) => onSelectFilter("provider", value) : undefined}
         />
         <BreakdownTable
-          title="Models"
+          title={t(($) => $.usage.report.models)}
           rows={report.byModel}
           labelForKey={shortIdentifier}
           onSelect={onSelectFilter ? (value) => onSelectFilter("model", value) : undefined}
@@ -1063,6 +1233,13 @@ export function UsageReportDialog({
   initialFilter,
   query = queryUsageReport,
 }: UsageReportDialogProps) {
+  const { t } = useTranslation(["usage"]);
+  const quickRangeLabels: Record<UsageQuickRange, string> = {
+    "7d": t(($) => $.usage.quickRanges.days7),
+    "30d": t(($) => $.usage.quickRanges.days30),
+    "90d": t(($) => $.usage.quickRanges.days90),
+    month: t(($) => $.usage.quickRanges.month),
+  };
   const initial = useMemo(() => createUsageReportFilter(initialFilter), [initialFilter]);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState(initial);
@@ -1137,10 +1314,8 @@ export function UsageReportDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="flex h-[min(90vh,900px)] max-w-6xl flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
-          <DialogTitle>Usage report</DialogTitle>
-          <DialogDescription>
-            Recorded token activity by project, agent, provider, model and session.
-          </DialogDescription>
+          <DialogTitle>{t(($) => $.usage.dialog.title)}</DialogTitle>
+          <DialogDescription>{t(($) => $.usage.dialog.description)}</DialogDescription>
         </DialogHeader>
 
         <form
@@ -1152,9 +1327,11 @@ export function UsageReportDialog({
         >
           <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
             <div className="space-y-1">
-              <span className="block text-[11px] leading-4 text-muted-foreground">From</span>
+              <span className="block text-[11px] leading-4 text-muted-foreground">
+                {t(($) => $.usage.dialog.from)}
+              </span>
               <DatePicker
-                aria-label="From"
+                aria-label={t(($) => $.usage.dialog.from)}
                 value={draft.start}
                 max={draft.end || today}
                 buttonClassName="h-8 w-40 text-xs"
@@ -1162,9 +1339,11 @@ export function UsageReportDialog({
               />
             </div>
             <div className="space-y-1">
-              <span className="block text-[11px] leading-4 text-muted-foreground">Through</span>
+              <span className="block text-[11px] leading-4 text-muted-foreground">
+                {t(($) => $.usage.dialog.through)}
+              </span>
               <DatePicker
-                aria-label="Through"
+                aria-label={t(($) => $.usage.dialog.through)}
                 value={draft.end}
                 min={draft.start}
                 max={today}
@@ -1173,7 +1352,7 @@ export function UsageReportDialog({
               />
             </div>
             <fieldset className="flex h-8 items-center gap-0.5 rounded-md border bg-background p-0.5">
-              <legend className="sr-only">Quick ranges</legend>
+              <legend className="sr-only">{t(($) => $.usage.dialog.quickRangesLegend)}</legend>
               {USAGE_QUICK_RANGES.map((range) => (
                 <Button
                   key={range.id}
@@ -1187,24 +1366,24 @@ export function UsageReportDialog({
                   )}
                   onClick={() => applyQuickRange(range.id)}
                 >
-                  {range.label}
+                  {quickRangeLabels[range.id]}
                 </Button>
               ))}
             </fieldset>
             <span className="flex h-8 items-center text-[11px] text-muted-foreground">
-              Dates and hours are in UTC.
+              {t(($) => $.usage.dialog.utcNote)}
             </span>
             <div className="ml-auto flex h-8 items-center gap-2">
               <Button type="submit" size="sm" className="h-8 px-5">
-                Apply
+                {t(($) => $.usage.dialog.apply)}
               </Button>
-              <Tooltip label="Refresh">
+              <Tooltip label={t(($) => $.usage.dialog.refresh)}>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   className="h-8 w-8 px-0"
-                  aria-label="Refresh usage report"
+                  aria-label={t(($) => $.usage.dialog.refreshLabel)}
                   onClick={() => void reportQuery.refetch()}
                 >
                   <RefreshCw aria-hidden="true" className={cn(reportQuery.isFetching && "motion-safe:animate-spin")} />
@@ -1214,38 +1393,38 @@ export function UsageReportDialog({
           </div>
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
             <FilterSelect
-              label="Project"
+              label={t(($) => $.usage.filters.project)}
               value={draft.project}
               options={choices.project}
-              allLabel="All projects"
+              allLabel={t(($) => $.usage.filters.projectAll)}
               onChange={(value) => setDraftValue("project", value)}
             />
             <FilterSelect
-              label="Agent"
+              label={t(($) => $.usage.filters.agent)}
               value={draft.runtime}
               options={choices.runtime}
-              allLabel="All agents"
+              allLabel={t(($) => $.usage.filters.agentAll)}
               onChange={(value) => setDraftValue("runtime", value)}
             />
             <FilterSelect
-              label="Provider"
+              label={t(($) => $.usage.filters.provider)}
               value={draft.provider}
               options={choices.provider}
-              allLabel="All providers"
+              allLabel={t(($) => $.usage.filters.providerAll)}
               onChange={(value) => setDraftValue("provider", value)}
             />
             <FilterSelect
-              label="Model"
+              label={t(($) => $.usage.filters.model)}
               value={draft.model}
               options={choices.model}
-              allLabel="All models"
+              allLabel={t(($) => $.usage.filters.modelAll)}
               onChange={(value) => setDraftValue("model", value)}
             />
             <FilterSelect
-              label="Session"
+              label={t(($) => $.usage.filters.session)}
               value={draft.session}
               options={choices.session}
-              allLabel="All sessions"
+              allLabel={t(($) => $.usage.filters.sessionAll)}
               onChange={(value) => setDraftValue("session", value)}
             />
           </div>
@@ -1254,17 +1433,17 @@ export function UsageReportDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {reportQuery.isPending && (
             <div role="status" className="grid min-h-56 place-items-center text-sm text-muted-foreground">
-              Loading usage…
+              {t(($) => $.usage.dialog.loading)}
             </div>
           )}
           {reportQuery.isError && (
             <div role="alert" className="grid min-h-56 place-items-center text-center">
               <div>
-                <p className="font-medium">The usage report could not be loaded.</p>
+                <p className="font-medium">{t(($) => $.usage.dialog.loadFailed)}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {reportQuery.error instanceof Error
                     ? reportQuery.error.message
-                    : "Try again in a moment."}
+                    : t(($) => $.usage.dialog.loadFailedHint)}
                 </p>
                 <Button
                   type="button"
@@ -1273,7 +1452,7 @@ export function UsageReportDialog({
                   className="mt-3"
                   onClick={() => void reportQuery.refetch()}
                 >
-                  Try again
+                  {t(($) => $.usage.dialog.tryAgain)}
                 </Button>
               </div>
             </div>
@@ -1284,8 +1463,8 @@ export function UsageReportDialog({
                 <EmptyMedia variant="icon">
                   <BarChart3 className="size-5" />
                 </EmptyMedia>
-                <EmptyTitle>No usage was recorded for these filters.</EmptyTitle>
-                <EmptyDescription>Change the date range or remove a filter.</EmptyDescription>
+                <EmptyTitle>{t(($) => $.usage.dialog.emptyTitle)}</EmptyTitle>
+                <EmptyDescription>{t(($) => $.usage.dialog.emptyDescription)}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}

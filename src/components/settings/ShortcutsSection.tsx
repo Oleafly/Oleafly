@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   bindingFromEvent,
-  reservedShortcutLabel,
+  reservedShortcutAction,
   sameShortcutBinding,
   SHORTCUT_DEFINITIONS,
   shortcutLabel,
@@ -39,22 +40,52 @@ function ShortcutKeys({ binding }: { binding: ShortcutBinding }) {
   );
 }
 
-const BUILT_IN_SHORTCUTS = [
-  { category: "Editor", label: "Ask AI to edit selection", keys: ["Mod", "L"] },
-  { category: "Editor", label: "Bold", keys: ["Mod", "B"] },
-  { category: "Editor", label: "Italic", keys: ["Mod", "I"] },
-  { category: "Editor", label: "Find and replace", keys: ["Mod", "F"] },
-  { category: "Editor", label: "Undo", keys: ["Mod", "Z"] },
-  { category: "Editor", label: "Redo", keys: ["Mod", "Shift", "Z"] },
-  { category: "Editor", label: "Trigger autocomplete", keys: ["Ctrl", "Space"] },
-  { category: "Editor", label: "Slash-command insert menu", keys: ["/"] },
-  { category: "Editor", label: "Indent or accept autocomplete", keys: ["Tab"] },
-  { category: "Code intelligence", label: "Go to definition", keys: ["F12"] },
-  { category: "Code intelligence", label: "Go to definition with pointer", keys: ["Mod", "Click"] },
-  { category: "Code intelligence", label: "Find references", keys: ["Shift", "F12"] },
-  { category: "Code intelligence", label: "Rename symbol project-wide", keys: ["F2"] },
-  { category: "PDF", label: "Jump to source from PDF", keys: ["Mod", "Click"] },
-] as const;
+type BuiltInCategory = "editor" | "codeIntelligence" | "pdf";
+
+type BuiltInShortcutId =
+  | "askAiEditSelection"
+  | "bold"
+  | "italic"
+  | "findAndReplace"
+  | "undo"
+  | "redo"
+  | "triggerAutocomplete"
+  | "slashCommandMenu"
+  | "indentOrAcceptAutocomplete"
+  | "goToDefinition"
+  | "goToDefinitionWithPointer"
+  | "findReferences"
+  | "renameSymbol"
+  | "jumpToSourceFromPdf";
+
+interface BuiltInShortcut {
+  id: BuiltInShortcutId;
+  category: BuiltInCategory;
+  keys: readonly string[];
+}
+
+const BUILT_IN_SHORTCUTS: readonly BuiltInShortcut[] = [
+  { id: "askAiEditSelection", category: "editor", keys: ["Mod", "L"] },
+  { id: "bold", category: "editor", keys: ["Mod", "B"] },
+  { id: "italic", category: "editor", keys: ["Mod", "I"] },
+  { id: "findAndReplace", category: "editor", keys: ["Mod", "F"] },
+  { id: "undo", category: "editor", keys: ["Mod", "Z"] },
+  { id: "redo", category: "editor", keys: ["Mod", "Shift", "Z"] },
+  { id: "triggerAutocomplete", category: "editor", keys: ["Ctrl", "Space"] },
+  { id: "slashCommandMenu", category: "editor", keys: ["/"] },
+  { id: "indentOrAcceptAutocomplete", category: "editor", keys: ["Tab"] },
+  { id: "goToDefinition", category: "codeIntelligence", keys: ["F12"] },
+  { id: "goToDefinitionWithPointer", category: "codeIntelligence", keys: ["Mod", "Click"] },
+  { id: "findReferences", category: "codeIntelligence", keys: ["Shift", "F12"] },
+  { id: "renameSymbol", category: "codeIntelligence", keys: ["F2"] },
+  { id: "jumpToSourceFromPdf", category: "pdf", keys: ["Mod", "Click"] },
+];
+
+const CATEGORY_TEST_IDS: Record<BuiltInCategory, string> = {
+  editor: "shortcuts-tab-editor",
+  codeIntelligence: "shortcuts-tab-code-intelligence",
+  pdf: "shortcuts-tab-pdf",
+};
 
 function BuiltInKeys({ keys }: { keys: readonly string[] }) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -86,6 +117,7 @@ function builtInBinding(keys: readonly string[]): ShortcutBinding | null {
 }
 
 export function ShortcutsSection() {
+  const { t } = useTranslation(["common", "settings"]);
   const bindings = useShortcutStore((state) => state.bindings);
   const setBinding = useShortcutStore((state) => state.setBinding);
   const resetBinding = useShortcutStore((state) => state.resetBinding);
@@ -106,6 +138,8 @@ export function ShortcutsSection() {
     return () => document.removeEventListener("pointerdown", dismiss, true);
   }, [editing]);
 
+  const actionLabel = (id: ShortcutId) => t(($) => $.settings.shortcuts.actions[id].label);
+
   const capture = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     if (!editing) return;
     event.preventDefault();
@@ -117,9 +151,13 @@ export function ShortcutsSection() {
     }
     const next = bindingFromEvent(event.nativeEvent);
     if (!next) return;
-    const reserved = reservedShortcutLabel(next);
+    const reserved = reservedShortcutAction(next);
     if (reserved) {
-      setError(`${reserved} is reserved by the operating system.`);
+      setError(
+        t(($) => $.settings.shortcuts.error.reserved, {
+          shortcut: t(($) => $.settings.shortcuts.reserved[reserved]),
+        }),
+      );
       return;
     }
     const appConflict = SHORTCUT_DEFINITIONS.find(
@@ -129,9 +167,15 @@ export function ShortcutsSection() {
       const binding = builtInBinding(keys);
       return binding ? sameShortcutBinding(binding, next) : false;
     });
-    const conflictLabel = appConflict?.label ?? builtInConflict?.label;
+    let conflictLabel = "";
+    if (appConflict) {
+      conflictLabel = actionLabel(appConflict.id);
+    } else if (builtInConflict) {
+      const id = builtInConflict.id;
+      conflictLabel = t(($) => $.settings.shortcuts.builtIn.labels[id]);
+    }
     if (conflictLabel) {
-      setError(`Already assigned to ${conflictLabel}.`);
+      setError(t(($) => $.settings.shortcuts.error.conflict, { action: conflictLabel }));
       return;
     }
     setBinding(editing, next);
@@ -139,46 +183,53 @@ export function ShortcutsSection() {
     setError("");
   };
 
+  const categories = [...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))];
+
   return (
     <div className="space-y-4">
       <div>
         <p className="text-sm text-muted-foreground">
-          Customize application shortcuts and review editor-native key combinations.
+          {t(($) => $.settings.shortcuts.intro)}
         </p>
       </div>
       <Tabs defaultValue="application" className="space-y-4">
         <TabsList>
           <TabsTrigger value="application" data-testid="shortcuts-tab-application">
-            Application
+            {t(($) => $.settings.shortcuts.tabs.application)}
           </TabsTrigger>
-          {[...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))].map((category) => (
+          {categories.map((category) => (
             <TabsTrigger
               key={category}
               value={category}
-              data-testid={`shortcuts-tab-${category.toLowerCase().replaceAll(" ", "-")}`}
+              data-testid={CATEGORY_TEST_IDS[category]}
             >
-              {category}
+              {t(($) => $.settings.shortcuts.categories[category])}
             </TabsTrigger>
           ))}
         </TabsList>
       <TabsContent value="application">
       <section className="flex flex-col gap-2" aria-labelledby="application-shortcuts">
         <h3 id="application-shortcuts" className="sr-only">
-          Application shortcuts
+          {t(($) => $.settings.shortcuts.application.heading)}
         </h3>
         {SHORTCUT_DEFINITIONS.map((definition) => {
           const active = editing === definition.id;
+          const label = actionLabel(definition.id);
           return (
             <div
               key={definition.id}
               className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium">{definition.label}</p>
-                <p className="text-xs text-muted-foreground">{definition.description}</p>
+                <p className="text-sm font-medium">{label}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t(($) => $.settings.shortcuts.actions[definition.id].description)}
+                </p>
                 {active && error && <p className="mt-1 text-xs text-destructive">{error}</p>}
                 {active && !error && (
-                  <p className="mt-1 text-xs text-primary">Press the new key combination</p>
+                  <p className="mt-1 text-xs text-primary">
+                    {t(($) => $.settings.shortcuts.application.prompt)}
+                  </p>
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -188,8 +239,13 @@ export function ShortcutsSection() {
                   onKeyDown={active ? capture : undefined}
                   aria-label={
                     active
-                      ? `Recording ${definition.label}. Press a shortcut.`
-                      : `Edit ${definition.label}, currently ${shortcutLabel(bindings[definition.id])}`
+                      ? t(($) => $.settings.shortcuts.application.recordAriaLabel, {
+                          action: label,
+                        })
+                      : t(($) => $.settings.shortcuts.application.editAriaLabel, {
+                          action: label,
+                          shortcut: shortcutLabel(bindings[definition.id]),
+                        })
                   }
                   onClick={() => {
                     setEditing(definition.id);
@@ -199,7 +255,7 @@ export function ShortcutsSection() {
                 >
                   {active ? (
                     <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">
-                      Recording
+                      {t(($) => $.settings.shortcuts.application.recording)}
                     </Kbd>
                   ) : (
                     <ShortcutKeys binding={bindings[definition.id]} />
@@ -208,7 +264,9 @@ export function ShortcutsSection() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  aria-label={`Reset ${definition.label}`}
+                  aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
+                    action: label,
+                  })}
                   onClick={() => resetBinding(definition.id)}
                 >
                   <RotateCcw data-icon="inline-start" />
@@ -219,7 +277,7 @@ export function ShortcutsSection() {
         })}
       </section>
       </TabsContent>
-      {[...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))].map((category) => (
+      {categories.map((category) => (
         <TabsContent key={category} value={category}>
         <section className="flex flex-col gap-2" aria-labelledby={`shortcut-category-${category}`}>
           <div>
@@ -227,17 +285,21 @@ export function ShortcutsSection() {
               id={`shortcut-category-${category}`}
               className="sr-only"
             >
-              {category}
+              {t(($) => $.settings.shortcuts.categories[category])}
             </h3>
-            <p className="text-xs text-muted-foreground">Managed by the editor</p>
+            <p className="text-xs text-muted-foreground">
+              {t(($) => $.settings.shortcuts.builtIn.managed)}
+            </p>
           </div>
           {BUILT_IN_SHORTCUTS.filter((shortcut) => shortcut.category === category).map(
             (shortcut) => (
               <div
-                key={shortcut.label}
+                key={shortcut.id}
                 className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
               >
-                <p className="text-sm font-medium">{shortcut.label}</p>
+                <p className="text-sm font-medium">
+                  {t(($) => $.settings.shortcuts.builtIn.labels[shortcut.id])}
+                </p>
                 <BuiltInKeys keys={shortcut.keys} />
               </div>
             ),
@@ -247,7 +309,7 @@ export function ShortcutsSection() {
       ))}
       </Tabs>
       <ResetToDefaults
-        sectionName="Keyboard Shortcuts"
+        sectionName={t(($) => $.settings.shortcuts.reset.sectionName)}
         onReset={resetAll}
       />
     </div>

@@ -4,6 +4,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { SubagentActivity } from "./SubagentActivity";
 import { useAgentTurnsStore } from "@/store/agent-turns";
 import type { AgentEvent } from "@oleafly/ai-core";
+import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
+
+const subagents = enAi.subagents;
 
 const TRANSCRIPT = [
   {
@@ -26,14 +29,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/agent-backend", () => ({
-  agentSubagentsStop: (id: string) => {
-    mocks.stop(id);
-    return Promise.resolve(1);
-  },
-  agentThreadRead: (id: string) => {
-    mocks.read(id);
-    return Promise.resolve(TRANSCRIPT);
-  },
+  agentSubagentsStop: (id: string) => mocks.stop(id),
+  agentThreadRead: (id: string) => mocks.read(id),
 }));
 
 vi.mock("@/lib/acp", () => ({
@@ -50,8 +47,8 @@ describe("SubagentActivity", () => {
   beforeEach(() => {
     cleanup();
     useAgentTurnsStore.getState().reset();
-    mocks.stop.mockClear();
-    mocks.read.mockClear();
+    mocks.stop.mockReset().mockResolvedValue(1);
+    mocks.read.mockReset().mockResolvedValue(TRANSCRIPT);
     mocks.acpEvents.mockReset();
   });
 
@@ -344,5 +341,144 @@ describe("SubagentActivity", () => {
     fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
     await waitFor(() => expect(mocks.read).toHaveBeenCalled());
     expect(screen.queryByRole("button", { name: "Open task" })).toBeNull();
+  });
+
+  it("names a stopped, an updated, and a failed child", () => {
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "a", label: "one", state: "interrupted", detail: null },
+      { kind: "subagentUpdate", id: "b", label: "two", state: "interacted", detail: null },
+      { kind: "subagentUpdate", id: "c", label: "three", state: "error", detail: null },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+
+    expect(screen.getByText(subagents.status.interrupted)).toBeTruthy();
+    expect(screen.getByText(subagents.status.updated)).toBeTruthy();
+    expect(screen.getByText(subagents.status.failed)).toBeTruthy();
+    expect(screen.getByText(subagents.taskFailed)).toBeTruthy();
+    expect(
+      screen.getByText(subagents.count.replace("{{count}}", "3")),
+    ).toBeTruthy();
+  });
+
+  it("says when an ACP child recorded no session to open", () => {
+    seedChat("chat-1", [
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "survey",
+        state: "done",
+        detail: null,
+        runtime: "acp",
+        sessionId: null,
+      },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    expect(screen.getByText(subagents.noSessionInfo)).toBeTruthy();
+  });
+
+  it("reports an ACP transcript that cannot be read", async () => {
+    mocks.acpEvents.mockRejectedValue(new Error("no rollout"));
+    seedChat("chat-1", [
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "survey",
+        state: "done",
+        detail: null,
+        runtime: "acp",
+        sessionId: "acp-session",
+      },
+    ]);
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        projectId="project-1"
+        streaming={false}
+        activeRunId={() => null}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    await waitFor(() => expect(screen.getByText(subagents.transcriptFailed)).toBeTruthy());
+  });
+
+  it("says an ACP child has reported nothing yet, and flags a truncated transcript", async () => {
+    mocks.acpEvents.mockResolvedValue({ hasMore: true, events: [] });
+    seedChat("chat-1", [
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "survey",
+        state: "done",
+        detail: null,
+        runtime: "acp",
+        sessionId: "acp-session",
+      },
+    ]);
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        projectId="project-1"
+        streaming={false}
+        activeRunId={() => null}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    await waitFor(() => expect(screen.getByText(subagents.noTranscriptYet)).toBeTruthy());
+    expect(screen.getByText(subagents.transcriptTruncated)).toBeTruthy();
+  });
+
+  it("says a built-in child recorded no final answer", async () => {
+    mocks.read.mockResolvedValue([
+      {
+        turnId: "agent-1",
+        clientTurnId: null,
+        status: "completed",
+        usage: { input: 1, output: 1 },
+        error: null,
+        stoppedAtCap: false,
+        items: [],
+      },
+    ]);
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "done", detail: null },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    await waitFor(() => expect(screen.getByText(subagents.noFinalAnswer)).toBeTruthy());
+  });
+
+  it("reports a built-in transcript that cannot be read", async () => {
+    mocks.read.mockRejectedValue(new Error("thread missing"));
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "done", detail: null },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    await waitFor(() => expect(screen.getByText(subagents.transcriptFailed)).toBeTruthy());
+  });
+
+  it("reports a stop-all that the backend refused", async () => {
+    const onError = vi.fn();
+    mocks.stop.mockRejectedValue(new Error("run gone"));
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "started", detail: null },
+    ]);
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        streaming={true}
+        activeRunId={() => "run-1"}
+        onError={onError}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("subagent-stop-all"));
+    await waitFor(() => expect(onError).toHaveBeenCalledWith(subagents.stopFailed));
   });
 });

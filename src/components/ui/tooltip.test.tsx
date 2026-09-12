@@ -7,9 +7,9 @@ import { Tooltip } from "./tooltip";
 
 function renderTooltip(describedBy?: string) {
   const view = render(
-    <Tooltip label="Rebuild the PDF">
+    <Tooltip label={"Rebuild the PDF"}>
       <button type="button" aria-describedby={describedBy}>
-        Compile
+        {"Compile"}
       </button>
     </Tooltip>,
   );
@@ -124,7 +124,7 @@ describe("Tooltip", () => {
   it("keeps a description the caller already set and restores it on close", async () => {
     render(
       <p id="compile-help" hidden>
-        Runs the compiler
+        {"Runs the compiler"}
       </p>,
     );
     const { trigger } = renderTooltip("compile-help");
@@ -151,9 +151,9 @@ describe("Tooltip", () => {
 
   it("ignores focus that lands in portalled content below the trigger", async () => {
     render(
-      <Tooltip label="Rebuild the PDF">
-        <button type="button">Compile</button>
-        {createPortal(<input aria-label="Search" />, document.body)}
+      <Tooltip label={"Rebuild the PDF"}>
+        <button type="button">{"Compile"}</button>
+        {createPortal(<input aria-label={"Search"} />, document.body)}
       </Tooltip>,
     );
     const trigger = screen.getByRole("button", { name: "Compile" });

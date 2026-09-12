@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Blank",
+    "diagramsAndFigures": "Diagrams & Figures",
+    "cvsAndResumes": "CVs & Resumes",
+    "journalsAndConferences": "Journals & Conferences",
+    "bibliographies": "Bibliographies",
+    "assignments": "Assignments",
+    "thesesAndReports": "Theses & Reports",
+    "books": "Books",
+    "presentations": "Presentations",
+    "posters": "Posters",
+    "newsletters": "Newsletters",
+    "calendars": "Calendars",
+    "letters": "Letters",
+    "aiGenerated": "AI Generated"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Resume",
+    "diagramsAndFigures": "Diagrams",
+    "journalsAndConferences": "Journals"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "A warm humanist sans-serif used by many modern resume and CV templates."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "A clean, neutral sans-serif that reads well on screen and in print."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "A refined transitional serif, a good match for academic and executive documents."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Academic writing pack",
+      "description": "Research and grant proposals, literature reviews, statements of purpose, letters of recommendation, white papers, and theses."
+    },
+    "beamer-themes": {
+      "label": "Beamer theme collection",
+      "description": "Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla, and Pittsburgh beamer decks."
+    },
+    "business-documents": {
+      "label": "Business documents",
+      "description": "Invoices, memos, meeting minutes, business plans and reports, certificates, and a trifold brochure."
+    },
+    "conference-preprints": {
+      "label": "Conference preprint styles",
+      "description": "NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv, and Interspeech style preprints."
+    },
+    "coursework": {
+      "label": "Coursework pack",
+      "description": "Homework, worksheets, quizzes, rubrics, lecture notes, syllabi, math reference sheets, exams, and pseudocode writeups."
+    },
+    "creative-misc": {
+      "label": "Creative & miscellaneous",
+      "description": "Recipe books, invitations, RPG character sheets, a year calendar, table and TikZ galleries, and field notes."
+    },
+    "cv-collection": {
+      "label": "CV & resume style collection",
+      "description": "ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds, and Jake's-style resumes."
+    },
+    "reports-lab": {
+      "label": "Lab & technical reports",
+      "description": "Lab reports, scientific and technical reports, project and internship reports, and an annual report."
+    },
+    "resume-plus": {
+      "label": "Resume & CV expansion",
+      "description": "Two-column tech resume, minimal resume, long-form academic CV, cover letter, and a Typst CV."
+    },
+    "slides-posters": {
+      "label": "Slides & posters",
+      "description": "Metropolis beamer deck, tikzposter portrait and landscape, and a better-poster layout."
+    },
+    "venue-classes": {
+      "label": "Journal & conference classes",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf, and Typst journal starters."
+    }
+  }
+}

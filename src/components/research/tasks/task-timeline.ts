@@ -1,4 +1,5 @@
 import { coalesceTranscriptEvents } from "@/lib/chat-activity";
+import { i18n } from "@/i18n";
 import type {
   TaskArtifact,
   TaskToolEvent,
@@ -36,7 +37,9 @@ export interface TaskTimeline {
   usage: TaskTimelineUsage;
 }
 
-export const TOOL_FALLBACK_NAME = "Tool call";
+export function toolFallbackName(): string {
+  return i18n.t(($) => $.researchTools.tasks.timeline.toolCall);
+}
 
 const TOOL_STATUSES = new Set<ToolEntry["status"]>(["running", "done", "error"]);
 
@@ -80,7 +83,11 @@ export function buildTaskTimeline(
     const event = entry.event;
     switch (event.kind) {
       case "sessionBound":
-        items.push({ ...base, kind: "milestone", text: "Session connected." });
+        items.push({
+          ...base,
+          kind: "milestone",
+          text: i18n.t(($) => $.researchTools.tasks.timeline.sessionConnected),
+        });
         break;
       case "status":
         items.push({ ...base, kind: "milestone", text: event.message });
@@ -110,7 +117,7 @@ export function buildTaskTimeline(
         if (!existing) {
           const tool: TaskTimelineTool = {
             id: resolved,
-            name: phase === "request" && !looksLikeCallId(name) ? name : TOOL_FALLBACK_NAME,
+            name: phase === "request" && !looksLikeCallId(name) ? name : toolFallbackName(),
             status: status ?? (phase === "request" ? "running" : "done"),
           };
           if (phase === "request" || (phase === "update" && tool.status === "running")) {
@@ -131,7 +138,7 @@ export function buildTaskTimeline(
           if (name && !looksLikeCallId(name)) existing.name = name;
           if (event.detail) existing.input = event.detail;
         } else {
-          if (name && !looksLikeCallId(name) && existing.name === TOOL_FALLBACK_NAME) existing.name = name;
+          if (name && !looksLikeCallId(name) && existing.name === toolFallbackName()) existing.name = name;
           existing.output = event.detail;
         }
         if (status) existing.status = status;

@@ -1,4 +1,5 @@
 import { Fragment, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AtSign,
   Bold,
@@ -52,9 +53,10 @@ import {
 import { shortcut } from "@/lib/utils";
 
 function TypstHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
-      ariaLabel="Heading level"
+      ariaLabel={t(($) => $.editor.toolbar.headingLevel)}
       className="w-fit min-w-0 max-w-56"
       triggerClassName={
         variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"
@@ -68,17 +70,19 @@ function TypstHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
         ) : (
           <>
             <Type className="size-4" />
-            <span className="flex-1 text-left">Heading</span>
+            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.heading)}</span>
             <ChevronDown className="size-3" />
           </>
         )
       }
     >
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">Heading</div>
+      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+        {t(($) => $.editor.toolbar.heading)}
+      </div>
       {TYPST_HEADING_LEVELS.map((level) => (
-        <PopoverItem key={level.label} onClick={() => insertTypstHeading(level)}>
+        <PopoverItem key={level.hLabel} onClick={() => insertTypstHeading(level)}>
           <span className="w-6 shrink-0 text-[10px] font-medium text-muted-foreground">{level.hLabel}</span>
-          <span className={level.className}>{level.label}</span>
+          <span className={level.className}>{level.label()}</span>
         </PopoverItem>
       ))}
     </Popover>
@@ -86,9 +90,10 @@ function TypstHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
 }
 
 function TypstListDropdown({ variant }: { variant: "bar" | "menu" }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
-      ariaLabel="List type"
+      ariaLabel={t(($) => $.editor.toolbar.listType)}
       className="w-fit min-w-0 max-w-56"
       triggerClassName={
         variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"
@@ -102,14 +107,14 @@ function TypstListDropdown({ variant }: { variant: "bar" | "menu" }) {
         ) : (
           <>
             <List className="size-4" />
-            <span className="flex-1 text-left">List</span>
+            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.list)}</span>
             <ChevronDown className="size-3" />
           </>
         )
       }
     >
-      <PopoverItem onClick={insertTypstBulletList}>Bulleted list</PopoverItem>
-      <PopoverItem onClick={insertTypstNumberedList}>Numbered list</PopoverItem>
+      <PopoverItem onClick={insertTypstBulletList}>{t(($) => $.editor.toolbar.bulletedList)}</PopoverItem>
+      <PopoverItem onClick={insertTypstNumberedList}>{t(($) => $.editor.toolbar.numberedList)}</PopoverItem>
     </Popover>
   );
 }
@@ -119,6 +124,7 @@ function TypstListDropdown({ variant }: { variant: "bar" | "menu" }) {
  * this is source-only: every control writes Typst markup at the cursor.
  */
 export function TypstToolbar() {
+  const { t } = useTranslation(["common", "editor"]);
   const controls = useMemo<ToolbarControl[]>(() => {
     return [
       {
@@ -134,20 +140,37 @@ export function TypstToolbar() {
         renderMenu: () => <TypstListDropdown key="list" variant="menu" />,
       },
       dividerControl("divider-1"),
-      btnControl("bold", Bold, "Bold", insertTypstBold, `Bold (${shortcut("⌘B")})`),
-      btnControl("italic", Italic, "Italic", insertTypstItalic, `Italic (${shortcut("⌘I")})`),
-      btnControl("underline", Underline, "Underline", insertTypstUnderline),
-      btnControl("strikethrough", Strikethrough, "Strikethrough", insertTypstStrikethrough),
-      btnControl("code", Code, "Inline code", insertTypstRawInline),
+      btnControl(
+        "bold",
+        Bold,
+        t(($) => $.editor.toolbar.bold),
+        insertTypstBold,
+        t(($) => $.editor.toolbar.boldWithShortcut, { shortcut: shortcut("⌘B") }),
+      ),
+      btnControl(
+        "italic",
+        Italic,
+        t(($) => $.editor.toolbar.italic),
+        insertTypstItalic,
+        t(($) => $.editor.toolbar.italicWithShortcut, { shortcut: shortcut("⌘I") }),
+      ),
+      btnControl("underline", Underline, t(($) => $.editor.toolbar.underline), insertTypstUnderline),
+      btnControl(
+        "strikethrough",
+        Strikethrough,
+        t(($) => $.editor.toolbar.strikethrough),
+        insertTypstStrikethrough,
+      ),
+      btnControl("code", Code, t(($) => $.editor.toolbar.inlineCode), insertTypstRawInline),
       dividerControl("divider-2"),
-      btnControl("math", Sigma, "Math", insertTypstMath),
-      btnControl("link", LinkIcon, "Insert link", insertTypstLink),
-      btnControl("reference", AtSign, "Reference a label", insertTypstReference),
+      btnControl("math", Sigma, t(($) => $.editor.toolbar.math), insertTypstMath),
+      btnControl("link", LinkIcon, t(($) => $.editor.toolbar.insertLink), insertTypstLink),
+      btnControl("reference", AtSign, t(($) => $.editor.toolbar.referenceALabel), insertTypstReference),
       dividerControl("divider-3"),
-      btnControl("image", ImageIcon, "Insert image", insertTypstImage),
-      btnControl("code-block", SquareCode, "Code block", insertTypstCodeBlock),
+      btnControl("image", ImageIcon, t(($) => $.editor.toolbar.insertImage), insertTypstImage),
+      btnControl("code-block", SquareCode, t(($) => $.editor.toolbar.codeBlock), insertTypstCodeBlock),
     ];
-  }, []);
+  }, [t]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
   const visibleCount = fitCount(controls, availableWidth);
@@ -156,10 +179,10 @@ export function TypstToolbar() {
 
   return (
     <div className="flex h-9 items-center gap-0.5 border-b px-2">
-      <IconBtn onClick={editorUndo} title={`Undo (${shortcut("⌘Z")})`}>
+      <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
         <Undo2 className="size-4" />
       </IconBtn>
-      <IconBtn onClick={editorRedo} title={`Redo (${shortcut("⌘⇧Z")})`}>
+      <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
         <Redo2 className="size-4" />
       </IconBtn>
 
@@ -171,7 +194,7 @@ export function TypstToolbar() {
         ))}
         {overflowControls.length > 0 && (
           <Popover
-            ariaLabel="More formatting options"
+            ariaLabel={t(($) => $.editor.toolbar.moreOptions)}
             closeOnClick={false}
             className="max-h-96 w-56 overflow-y-auto p-1"
             trigger={<MoreHorizontal className="size-4" />}
@@ -183,7 +206,7 @@ export function TypstToolbar() {
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
         <ProjectInfoButton surface="source" />
-        <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
+        <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>
           <Search className="size-4" />
         </IconBtn>
       </div>

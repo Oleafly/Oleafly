@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalLinter } from "harper.js";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { binaryInlined as binary } from "harper.js/binaryInlined";
 import {
   ACADEMIC_DISABLED_RULES,
@@ -98,9 +99,9 @@ describe("the academic profile against the installed Harper", () => {
 
   it("names only rules the installed Harper knows", async () => {
     const descriptions = await linter.getLintDescriptions();
-    for (const { rule, reason, example } of ACADEMIC_PROFILE_RULES) {
+    for (const { rule, example } of ACADEMIC_PROFILE_RULES) {
       expect(descriptions[rule], rule).toBeTruthy();
-      expect(reason.trim().length, rule).toBeGreaterThan(0);
+      expect(enSettings.proofreading.profileRules.reasons[rule].trim().length, rule).toBeGreaterThan(0);
       expect(example.trim().length, rule).toBeGreaterThan(0);
     }
   });

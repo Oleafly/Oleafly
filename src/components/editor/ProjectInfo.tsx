@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
 import type { ProofreadingSurface } from "@oleafly/editor";
 import { Popover } from "@/components/ui/popover";
@@ -7,6 +8,7 @@ import {
   type ProjectInfoSnapshot,
 } from "@/components/editor/project-info-data";
 import { EMPTY_DOCUMENT_STATS } from "@/lib/document-stats";
+import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useProofreadingStore } from "@/store/proofreading";
@@ -45,27 +47,43 @@ function StatRow({
         {label}
       </span>
       <span className="shrink-0 font-mono text-xs tabular-nums text-foreground">
-        {typeof value === "number" ? value.toLocaleString() : value}
+        {typeof value === "number" ? formatNumber(value) : value}
       </span>
     </div>
   );
 }
 
 function ProofreadingSection({ surface }: { surface: ProofreadingSurface }) {
+  const { t } = useTranslation(["common", "editor"]);
   const status = useProofreadingStore((state) => state[surface]);
   const spellcheck = useSettingsStore((state) => state.spellcheck);
   const grammar = useSettingsStore((state) => state.harper);
 
   if (!spellcheck && !grammar) {
-    return <StatRow label="Proofreading" value="Off" />;
+    return (
+      <StatRow
+        label={t(($) => $.editor.projectInfo.proofreading)}
+        value={t(($) => $.editor.projectInfo.proofreadingOff)}
+      />
+    );
   }
   if (status.phase === "idle" || status.phase === "loading") {
-    return <StatRow label="Proofreading" value="Checking…" />;
+    return (
+      <StatRow
+        label={t(($) => $.editor.projectInfo.proofreading)}
+        value={t(($) => $.editor.projectInfo.proofreadingChecking)}
+      />
+    );
   }
   if (status.phase !== "ready" && status.phase !== "partial") {
     // too_large / unsupported / error / unavailable all already raise a toast
     // that explains itself; the panel only has to stop claiming a count.
-    return <StatRow label="Proofreading" value="Unavailable" />;
+    return (
+      <StatRow
+        label={t(($) => $.editor.projectInfo.proofreading)}
+        value={t(($) => $.editor.projectInfo.proofreadingUnavailable)}
+      />
+    );
   }
 
   let spelling = 0;
@@ -77,12 +95,16 @@ function ProofreadingSection({ surface }: { surface: ProofreadingSurface }) {
 
   return (
     <>
-      <StatRow label="Issues" value={status.diagnosticCount} />
-      {spellcheck ? <StatRow indent label="Spelling" value={spelling} /> : null}
-      {grammar ? <StatRow indent label="Grammar & style" value={style} /> : null}
+      <StatRow label={t(($) => $.editor.projectInfo.issues)} value={status.diagnosticCount} />
+      {spellcheck ? (
+        <StatRow indent label={t(($) => $.editor.projectInfo.spelling)} value={spelling} />
+      ) : null}
+      {grammar ? (
+        <StatRow indent label={t(($) => $.editor.projectInfo.grammarAndStyle)} value={style} />
+      ) : null}
       {status.truncated ? (
         <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
-          The findings list is truncated; the count above is complete.
+          {t(($) => $.editor.projectInfo.findingsTruncated)}
         </p>
       ) : null}
     </>
@@ -96,48 +118,54 @@ export function ProjectInfoContent({
   snapshot: ProjectInfoSnapshot | null;
   surface: ProofreadingSurface;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   const activePath = useFilesStore((state) => state.activePath);
   const stats = snapshot?.stats ?? EMPTY_DOCUMENT_STATS;
 
   return (
     <>
-      <p className="text-sm font-semibold text-foreground">Project info</p>
+      <p className="text-sm font-semibold text-foreground">{t(($) => $.editor.projectInfo.heading)}</p>
       <p className="mt-0.5 truncate text-xs text-muted-foreground">
         {snapshot
           ? snapshot.fileCount > 1
-            ? `${basename(snapshot.root)} · ${snapshot.fileCount} files`
+            ? t(($) => $.editor.projectInfo.fileSummary, {
+                count: snapshot.fileCount,
+                root: basename(snapshot.root),
+              })
             : basename(snapshot.root)
-          : "Counting…"}
+          : t(($) => $.editor.projectInfo.counting)}
       </p>
 
       {snapshot ? (
         <>
-          <SectionLabel>Document</SectionLabel>
+          <SectionLabel>{t(($) => $.editor.projectInfo.document)}</SectionLabel>
           <div className="divide-y divide-border/60">
-            <StatRow label="Words" value={stats.words} />
-            <StatRow indent label="In text" value={stats.wordsInText} />
-            <StatRow indent label="In headers" value={stats.wordsInHeaders} />
-            <StatRow indent label="Outside text" value={stats.wordsOutsideText} />
-            <StatRow label="Headers" value={stats.headers} />
-            <StatRow label="Figures" value={stats.figures} />
-            <StatRow label="Math inline" value={stats.mathInline} />
-            <StatRow label="Math displayed" value={stats.mathDisplayed} />
-            <StatRow label="Characters" value={stats.characters} />
-            <StatRow label="Lines" value={stats.lines} />
+            <StatRow label={t(($) => $.editor.projectInfo.words)} value={stats.words} />
+            <StatRow indent label={t(($) => $.editor.projectInfo.inText)} value={stats.wordsInText} />
+            <StatRow indent label={t(($) => $.editor.projectInfo.inHeaders)} value={stats.wordsInHeaders} />
+            <StatRow indent label={t(($) => $.editor.projectInfo.outsideText)} value={stats.wordsOutsideText} />
+            <StatRow label={t(($) => $.editor.projectInfo.headers)} value={stats.headers} />
+            <StatRow label={t(($) => $.editor.projectInfo.figures)} value={stats.figures} />
+            <StatRow label={t(($) => $.editor.projectInfo.mathInline)} value={stats.mathInline} />
+            <StatRow label={t(($) => $.editor.projectInfo.mathDisplayed)} value={stats.mathDisplayed} />
+            <StatRow label={t(($) => $.editor.projectInfo.characters)} value={stats.characters} />
+            <StatRow label={t(($) => $.editor.projectInfo.lines)} value={stats.lines} />
             {snapshot.selectionWords !== null ? (
-              <StatRow label="Selection" value={snapshot.selectionWords} />
+              <StatRow label={t(($) => $.editor.projectInfo.selection)} value={snapshot.selectionWords} />
             ) : null}
           </div>
           {snapshot.unreadable.length > 0 ? (
             <p className="pt-2 text-[10px] leading-relaxed text-amber-600 dark:text-amber-400">
-              {snapshot.unreadable.length} included file
-              {snapshot.unreadable.length === 1 ? "" : "s"} could not be read and
-              {snapshot.unreadable.length === 1 ? " is" : " are"} not counted.
+              {t(($) => $.editor.projectInfo.unreadable, {
+                count: snapshot.unreadable.length,
+              })}
             </p>
           ) : null}
 
           <SectionLabel>
-            Proofreading{activePath ? ` · ${basename(activePath)}` : ""}
+            {activePath
+              ? t(($) => $.editor.projectInfo.proofreadingForFile, { name: basename(activePath) })
+              : t(($) => $.editor.projectInfo.proofreading)}
           </SectionLabel>
           <div className="divide-y divide-border/60">
             <ProofreadingSection surface={surface} />
@@ -145,7 +173,7 @@ export function ProjectInfoContent({
         </>
       ) : (
         <div className="py-6 text-center text-xs text-muted-foreground/70">
-          Counting the document…
+          {t(($) => $.editor.projectInfo.countingDocument)}
         </div>
       )}
     </>
@@ -158,6 +186,7 @@ export function ProjectInfoContent({
  * "how big is this and what is wrong with it".
  */
 export function ProjectInfoButton({ surface }: { surface: ProofreadingSurface }) {
+  const { t } = useTranslation(["common", "editor"]);
   const [snapshot, setSnapshot] = useState<ProjectInfoSnapshot | null>(null);
   // Reopening while a previous read is still in flight must not paint that
   // older answer over the newer one.
@@ -186,7 +215,7 @@ export function ProjectInfoButton({ surface }: { surface: ProofreadingSurface })
 
   return (
     <Popover
-      ariaLabel="Project info"
+      ariaLabel={t(($) => $.editor.projectInfo.trigger)}
       align="right"
       // A panel you read, not a menu you pick from: clicking a number to select
       // it must not dismiss the thing you are reading.

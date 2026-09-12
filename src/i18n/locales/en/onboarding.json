@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Getting started",
+    "overview": {
+      "title": "Home",
+      "content": "Your projects and project creation begin here."
+    },
+    "create": {
+      "title": "Create a real project",
+      "content": "Choose New project to see the ways a piece of work can begin."
+    },
+    "kind": {
+      "title": "Three ways to begin",
+      "content": "Start a research project, bring in a manuscript you already have, or work from a prepared template."
+    },
+    "kindTemplate": {
+      "title": "Work from a template",
+      "content": "Choose Use a template to open the gallery. The other two starting points are there whenever you need them."
+    },
+    "gallery": {
+      "title": "Find your starting point",
+      "content": "Browse categories, search by name, and narrow templates by compiler or offline availability."
+    },
+    "template": {
+      "title": "Choose a template",
+      "content": "Select any real template to continue. Its files will become your new project."
+    },
+    "name": {
+      "title": "Name your project",
+      "content": "Enter a project name. Next becomes available when the name is not empty."
+    },
+    "color": {
+      "title": "Choose a cover color",
+      "content": "This color makes the project easy to spot on Home. You can keep the template default."
+    },
+    "createProject": {
+      "title": "Create your project",
+      "content": "Click \"Create project\" to create a project with the selected template."
+    }
+  },
+  "workspace": {
+    "label": "Your workspace",
+    "toolbar": {
+      "title": "Project toolbar",
+      "content": "Project actions and compilation controls live here."
+    },
+    "sidebar": {
+      "title": "Workspace navigation",
+      "content": "Move between files, search, source control, preflight, references, and MCP activity."
+    },
+    "editor": {
+      "title": "Editor",
+      "content": "Write and navigate source with completion, diagnostics, formatting, and code intelligence."
+    },
+    "wysiwygToggle": {
+      "title": "Try WYSIWYG mode",
+      "content": "Switch between raw source and a formatted, Google-Docs-style view of your document."
+    },
+    "compile": {
+      "title": "Compile and recompile",
+      "content": "Build the current project here. The tour never compiles or changes your source."
+    },
+    "logs": {
+      "title": "Build logs",
+      "content": "Open build logs to inspect errors without changing project content. The adjacent status shows the latest compile time."
+    },
+    "preview": {
+      "title": "PDF preview",
+      "content": "The compiled document stays beside your source in split view."
+    },
+    "zoom": {
+      "title": "Your complete PDF toolkit",
+      "content": "Open the outline, search text, jump between pages, choose single or two-page layouts, zoom or fit the page, invert colors, use the accessible reader view, rotate, download, save to the project, go fullscreen, or open the preview in its own window."
+    },
+    "sourceNavigation": {
+      "title": "PDF to source",
+      "content": "Click compiled PDF content to jump directly to the corresponding source."
+    }
+  },
+  "research": {
+    "label": "Research workspace",
+    "open": {
+      "title": "Research workspace",
+      "content": "Open it to hand research tasks to an agent and to link reading folders and datasets you keep elsewhere. This is new and in beta, so please report anything that breaks."
+    },
+    "tasks": {
+      "title": "Queue research tasks",
+      "content": "Describe a piece of work and hand it to an agent. Each task keeps its own conversation, outputs, and review notes."
+    },
+    "folders": {
+      "title": "Link folders you already keep",
+      "content": "Point the workspace at reading folders and datasets outside the project. Nothing is copied or moved."
+    }
+  },
+  "settings": {
+    "label": "Settings",
+    "navigation": {
+      "title": "Settings",
+      "content": "Move between preferences and integrations here."
+    },
+    "general": {
+      "title": "General preferences",
+      "content": "Control editing behavior, offline mode, shortcuts, and tour guides."
+    },
+    "appearance": {
+      "title": "Appearance",
+      "content": "Choose the theme, typography, default workspace layout, and accent color."
+    },
+    "dictionary": {
+      "title": "Dictionary",
+      "content": "Review project-specific and global words ignored by spelling and grammar checks."
+    },
+    "data": {
+      "title": "Data Storage",
+      "content": "Inspect local project storage and manage application data."
+    },
+    "ai": {
+      "title": "AI Assistant",
+      "content": "Configure providers, models, credentials, and the MCP servers the assistant can use."
+    },
+    "compiler": {
+      "title": "Compiler",
+      "content": "Choose and configure the LaTeX engine used to build projects."
+    },
+    "downloads": {
+      "title": "Downloads",
+      "content": "Manage packages and resources available for offline work."
+    },
+    "integrations": {
+      "title": "Integrations",
+      "content": "Connect GitHub, alphaXiv, Zotero, citation search, and Oleafly's local MCP server."
+    },
+    "shortcuts": {
+      "title": "Keyboard Shortcuts",
+      "content": "Review, edit, set, and reset application keyboard shortcuts."
+    },
+    "mcp": {
+      "title": "Assistant MCP",
+      "content": "Choose which MCP servers the assistant can use."
+    },
+    "help": {
+      "title": "Help and About",
+      "content": "Restart the contextual tour, open documentation, view shortcuts, or report a problem."
+    }
+  },
+  "aiSettings": {
+    "label": "AI settings",
+    "tabs": {
+      "title": "AI Assistant settings",
+      "content": "Manage providers and keys, instructions, personas, reusable skills, and MCP servers here."
+    },
+    "providers": {
+      "title": "Connect providers",
+      "content": "Paste a key and it is validated against the provider before saving. Connected providers show a green badge and expand into a model list you can toggle, extend, or restore. Keys stay encrypted on this computer."
+    },
+    "customProvider": {
+      "title": "Bring your own endpoint",
+      "content": "Any OpenAI-compatible base URL works here, including local servers like Ollama or LM Studio."
+    },
+    "openInstructions": {
+      "title": "Instructions",
+      "content": "Click the Instructions tab to continue."
+    },
+    "defaultModel": {
+      "title": "Default model",
+      "content": "New chats start with this model. You can still switch models per conversation from the chat panel."
+    },
+    "instructions": {
+      "title": "Custom instructions",
+      "content": "Your standing style preferences, added to every request the assistant makes."
+    },
+    "openPersonas": {
+      "title": "Personas",
+      "content": "Click the Personas tab to continue."
+    },
+    "personas": {
+      "title": "Create personas",
+      "content": "Named instruction sets with a color, switchable from the chat's Persona menu. Try a copyeditor, a reviewer, or a LaTeX purist."
+    }
+  },
+  "ai": {
+    "label": "AI Assistant",
+    "assistant": {
+      "title": "AI Assistant",
+      "content": "Work with a project-aware assistant without sending anything during this tour."
+    },
+    "runtime": {
+      "title": "Two kinds of agent",
+      "content": "The Oleafly agent runs on the model provider you configure. The CLI agent, in beta, drives a coding agent already installed on this computer."
+    },
+    "connectProvider": {
+      "title": "Connect a provider",
+      "content": "If no provider is configured, start here. The tour never asks for or changes credentials."
+    },
+    "providerModel": {
+      "title": "Provider and model",
+      "content": "Switch models for this conversation. Changes apply to this session only. Your default model is set in Settings. Logos identify each model's provider."
+    },
+    "prompts": {
+      "title": "Prompt shortcuts",
+      "content": "Choose a ready-made prompt to place it in the chat input."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Choose how the assistant should work. An active persona replaces your default instructions until you turn it off."
+    },
+    "input": {
+      "title": "Chat input",
+      "content": "Describe what you need. The assistant can use project context, but this tour never sends a request."
+    },
+    "attachments": {
+      "title": "Attachments",
+      "content": "Attach images, PDFs, and source files when a conversation needs extra context."
+    },
+    "history": {
+      "title": "Conversation history",
+      "content": "Reopen recent and full chat history while keeping each conversation tied to its project state."
+    },
+    "usage": {
+      "title": "Usage",
+      "content": "Configured conversations show run, token, and estimated-cost usage here when available."
+    },
+    "restore": {
+      "title": "Restore project state",
+      "content": "After an AI edit, a checkpoint can restore project files without removing the conversation."
+    }
+  },
+  "diagram": {
+    "label": "Diagram Composer",
+    "composer": {
+      "title": "Diagram Composer",
+      "content": "Build diagrams visually or from TikZ code. The tour does not modify or save your work."
+    },
+    "import": {
+      "title": "Import a TikZ file",
+      "content": "Already have a .tikz or .tex file? Import it to replace this starter drawing. It stays a draft until you choose to save it."
+    },
+    "modes": {
+      "title": "Draw and Code",
+      "content": "Draw mode lets you work directly on the canvas. Code mode shows the generated TikZ and reusable snippets."
+    },
+    "palette": {
+      "title": "Shape palette",
+      "content": "Choose a shape, then click and drag on the canvas to place and size it."
+    },
+    "handles": {
+      "title": "Connect and resize",
+      "content": "A selected shape exposes connection and resize handles for precise structure and sizing."
+    },
+    "inspector": {
+      "title": "Inspector",
+      "content": "Select a shape or connection to adjust its style, text, routing, and stacking order."
+    },
+    "preview": {
+      "title": "Compiled preview",
+      "content": "Compile opens a preview beside the editor with scale and background controls."
+    },
+    "compile": {
+      "title": "Compile",
+      "content": "Compile renders an isolated preview without inserting the diagram into your document."
+    },
+    "saveProject": {
+      "title": "Save as project",
+      "content": "Save a finished diagram as a reusable image project that appears on Home."
+    },
+    "download": {
+      "title": "Download",
+      "content": "Download the compiled diagram as a PNG file without saving it as a project."
+    }
+  }
+}

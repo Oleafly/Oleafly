@@ -42,7 +42,7 @@ vi.mock("@/features/project-import", async (importOriginal) => ({
 
 vi.mock("@oleafly/templates", () => ({
   NewProjectDialog: ({ open }: { open: boolean }) =>
-    open ? <div role="dialog">New project</div> : null,
+    open ? <div role="dialog">{"New project"}</div> : null,
 }));
 
 vi.mock("@/features/template-generate", () => ({
@@ -59,7 +59,7 @@ describe("ProjectImportMenu", () => {
   it("shows the shared import choices", () => {
     render(
       <ProjectImportMenu
-        trigger={() => <button type="button">Open import menu</button>}
+        trigger={() => <button type="button">{"Open import menu"}</button>}
       />,
     );
 
@@ -86,8 +86,8 @@ describe("ProjectImportMenu", () => {
       <ProjectImportMenu
         triggerTooltip="Import"
         trigger={() => (
-          <button type="button" aria-label="Import">
-            Icon
+          <button type="button" aria-label={"Import"}>
+            {"Icon"}
           </button>
         )}
       />,

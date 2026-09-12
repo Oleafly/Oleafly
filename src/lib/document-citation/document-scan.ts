@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import {
   DEFAULT_LITERATURE_SOURCES,
   searchLiterature,
@@ -107,7 +108,7 @@ export async function scanDocumentForCitations(args: {
     phase: "splitting",
     completedParagraphs: 0,
     totalParagraphs: 0,
-    message: "Splitting document into paragraphs…",
+    message: i18n.t(($) => $.core.documentScan.splitting),
   });
 
   const paragraphs = splitIntoParagraphs(args.sourceText, {
@@ -131,7 +132,10 @@ export async function scanDocumentForCitations(args: {
           phase: "paragraph",
           completedParagraphs: i + 1,
           totalParagraphs,
-          message: `Skipped empty query (${i + 1}/${totalParagraphs})`,
+          message: i18n.t(($) => $.core.documentScan.skippedEmpty, {
+            current: i + 1,
+            total: totalParagraphs,
+          }),
         });
         continue;
       }
@@ -140,7 +144,10 @@ export async function scanDocumentForCitations(args: {
         phase: "paragraph",
         completedParagraphs: i,
         totalParagraphs,
-        message: `Processing ${i + 1}/${totalParagraphs} paragraphs…`,
+        message: i18n.t(($) => $.core.documentScan.processing, {
+          current: i + 1,
+          total: totalParagraphs,
+        }),
       });
 
       const response = await search({
@@ -191,7 +198,10 @@ export async function scanDocumentForCitations(args: {
         phase: "paragraph",
         completedParagraphs: i + 1,
         totalParagraphs,
-        message: `Processed ${i + 1}/${totalParagraphs} paragraphs…`,
+        message: i18n.t(($) => $.core.documentScan.processed, {
+          current: i + 1,
+          total: totalParagraphs,
+        }),
       });
     }
 
@@ -199,13 +209,13 @@ export async function scanDocumentForCitations(args: {
       phase: "complete",
       completedParagraphs: totalParagraphs,
       totalParagraphs,
-      message: "Scan complete",
+      message: i18n.t(($) => $.core.documentScan.complete),
     });
 
     return { paragraphs: results, totalParagraphs };
   } catch (err) {
     const message =
-      err instanceof Error ? err.message : "Document scan failed";
+      err instanceof Error ? err.message : i18n.t(($) => $.core.documentScan.failed);
     onProgress?.({
       phase: "error",
       completedParagraphs: results.length,

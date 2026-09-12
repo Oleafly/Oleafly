@@ -22,6 +22,7 @@ import {
   Table2,
   TextCursorInput,
 } from "lucide-react";
+import { i18n } from "@/i18n";
 import type { ConverterToolId } from "@/lib/converter-types";
 import type { HomePage } from "@/store/home-view";
 
@@ -29,7 +30,9 @@ export type ToolId =
   | ConverterToolId
   | "pdf-to-latex"
   | "visual-typst-editor"
+  | "equation"
   | "latex-to-image"
+  | "table"
   | "table-to-latex"
   | "typst-editor"
   | "bibtex"
@@ -39,6 +42,8 @@ export type ToolId =
   | "stats"
   | "generators"
   | "symbols";
+
+export type ToolCategory = "convert" | "validate" | "tables" | "research";
 
 export type ToolDestination =
   | { kind: "page"; page: HomePage }
@@ -383,6 +388,111 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     tone: "cyan",
   },
 ];
+
+export function toolName(id: ToolId): string {
+  switch (id) {
+    case "pdf-to-latex":
+      return i18n.t(($) => $.researchTools.tools.pdfToLatex.name);
+    case "equation":
+      return i18n.t(($) => $.researchTools.tools.equation.name);
+    case "bibtex":
+      return i18n.t(($) => $.researchTools.tools.bibtex.name);
+    case "table":
+      return i18n.t(($) => $.researchTools.tools.table.name);
+    case "literature-search":
+      return i18n.t(($) => $.researchTools.tools.literatureSearch.name);
+    case "lab-search":
+      return i18n.t(($) => $.researchTools.tools.labSearch.name);
+    case "deadlines":
+      return i18n.t(($) => $.researchTools.tools.deadlines.name);
+    default:
+      return toolById(id).name;
+  }
+}
+
+export function toolDescription(id: ToolId): string {
+  switch (id) {
+    case "pdf-to-latex":
+      return i18n.t(($) => $.researchTools.tools.pdfToLatex.description);
+    case "equation":
+      return i18n.t(($) => $.researchTools.tools.equation.description);
+    case "bibtex":
+      return i18n.t(($) => $.researchTools.tools.bibtex.description);
+    case "table":
+      return i18n.t(($) => $.researchTools.tools.table.description);
+    case "literature-search":
+      return i18n.t(($) => $.researchTools.tools.literatureSearch.description);
+    case "lab-search":
+      return i18n.t(($) => $.researchTools.tools.labSearch.description);
+    case "deadlines":
+      return i18n.t(($) => $.researchTools.tools.deadlines.description);
+    default:
+      return toolById(id).description;
+  }
+}
+
+export function toolTags(id: ToolId): string[] {
+  switch (id) {
+    case "pdf-to-latex":
+      return [
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagMath),
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagFigures),
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagClientSide),
+      ];
+    case "equation":
+      return [
+        i18n.t(($) => $.researchTools.tools.equation.tagKatex),
+        i18n.t(($) => $.researchTools.tools.equation.tagModes),
+        i18n.t(($) => $.researchTools.tools.equation.tagCopy),
+      ];
+    case "bibtex":
+      return [
+        i18n.t(($) => $.researchTools.tools.bibtex.tagEntryTypes),
+        i18n.t(($) => $.researchTools.tools.bibtex.tagRequiredFields),
+        i18n.t(($) => $.researchTools.tools.bibtex.tagDuplicateKeys),
+      ];
+    case "table":
+      return [
+        i18n.t(($) => $.researchTools.tools.table.tagVisualEditor),
+        i18n.t(($) => $.researchTools.tools.table.tagBooktabs),
+        i18n.t(($) => $.researchTools.tools.table.tagExport),
+      ];
+    case "literature-search":
+      return [
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagIndexes),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagFromDocument),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagReview),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagSaved),
+      ];
+    case "lab-search":
+      return [
+        i18n.t(($) => $.researchTools.tools.labSearch.tagRecords),
+        i18n.t(($) => $.researchTools.tools.labSearch.tagCountryFilter),
+        i18n.t(($) => $.researchTools.tools.labSearch.tagRor),
+      ];
+    case "deadlines":
+      return [
+        i18n.t(($) => $.researchTools.tools.deadlines.tagCountdown),
+        i18n.t(($) => $.researchTools.tools.deadlines.tagFieldFilters),
+        i18n.t(($) => $.researchTools.tools.deadlines.tagSource),
+      ];
+    default:
+      return [...toolById(id).tags];
+  }
+}
+
+export function toolCategoryLabel(category: ToolCategory): string {
+  switch (category) {
+    case "convert":
+      return i18n.t(($) => $.researchTools.tools.category.convert);
+    case "validate":
+      return i18n.t(($) => $.researchTools.tools.category.validate);
+    case "tables":
+      return i18n.t(($) => $.researchTools.tools.category.tables);
+    case "research":
+      return i18n.t(($) => $.researchTools.tools.category.research);
+  }
+}
 
 export function toolById(id: ToolId): ToolDefinition {
   const tool = TOOL_DEFINITIONS.find((candidate) => candidate.id === id);

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   BookOpenText,
   Braces,
@@ -551,7 +552,7 @@ export function IntelligenceTree({
 export function IntelligenceFilter({
   value,
   onChange,
-  placeholder = "Filter…",
+  placeholder,
   label,
   inputRef,
 }: {
@@ -561,6 +562,7 @@ export function IntelligenceFilter({
   label: string;
   inputRef?: Ref<HTMLInputElement>;
 }) {
+  const { t } = useTranslation(["workspace"]);
   const inputId = useId();
   return (
     <div className="relative block rounded-md focus-within:ring-1 focus-within:ring-ring">
@@ -577,13 +579,13 @@ export function IntelligenceFilter({
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t(($) => $.workspace.tree.filterPlaceholder)}
         className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75 focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring"
       />
       {value ? (
         <button
           type="button"
-          aria-label="Clear filter"
+          aria-label={t(($) => $.workspace.tree.clearFilter)}
           onClick={() => onChange("")}
           className="absolute right-0 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
         >
@@ -601,6 +603,7 @@ export function PanelBreadcrumb({
   project?: string | null;
   path?: string | null;
 }) {
+  const { t } = useTranslation(["workspace"]);
   const segments = path?.split("/").filter(Boolean) ?? [];
   const visibleSegments: readonly { id: string; label: string }[] =
     segments.length > 2
@@ -625,8 +628,10 @@ export function PanelBreadcrumb({
     <nav
       aria-label={
         path
-          ? `${project ? `${project}, ` : ""}${path}`
-          : (project ?? "No project")
+          ? project
+            ? t(($) => $.workspace.tree.breadcrumbWithProject, { project, path })
+            : path
+          : (project ?? t(($) => $.workspace.tree.noProject))
       }
       className="flex min-w-0 items-center gap-1 overflow-hidden text-[10px] text-muted-foreground"
     >

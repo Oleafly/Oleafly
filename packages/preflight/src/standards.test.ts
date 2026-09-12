@@ -108,6 +108,15 @@ function everyExtractionDiagnostic(): Finding[] {
   return [...blind, ...verifyStructure({ root: null, tagged: null }, [2])];
 }
 
+const stub = (id: string) =>
+  ({
+    id,
+    lens: "a11y",
+    severity: "info",
+    title: { key: "rules.compile-failed.title" },
+    detail: { key: "rules.compile-failed.detail" },
+  }) as const;
+
 describe("standards table", () => {
   it("cites at least one standard with a url for every accessibility finding", () => {
     const findings = a11yFindings([...everyA11ySourceFinding(), ...everyA11yOutputFinding()]);
@@ -134,7 +143,7 @@ describe("standards table", () => {
       expect(standardsFor(finding.id).length, finding.id).toBeGreaterThan(0);
       expect(finding.standards, finding.id).toBeDefined();
       expect(finding.severity, finding.id).toBe("info");
-      expect(finding.detail, finding.id).toMatch(/unknown result|will not treat the unavailable structure/);
+      expect(finding.detail.key, finding.id).toBe(`rules.${finding.id}.detail`);
     }
   });
 
@@ -147,10 +156,10 @@ describe("standards table", () => {
       "pdf-reading-order",
       "link-text",
     ]) {
-      expect(annotate({ id, lens: "a11y", severity: "info", title: "t", detail: "d" }, "source-heuristic").machineCheckable, id).toBe(false);
+      expect(annotate(stub(id), "source-heuristic").machineCheckable, id).toBe(false);
     }
     for (const id of ["figure-alt", "pdf-display-doc-title", "pdf-untagged-content", "pdf-link-alt"]) {
-      expect(annotate({ id, lens: "a11y", severity: "info", title: "t", detail: "d" }, "pdf-object-model").machineCheckable, id).toBe(true);
+      expect(annotate(stub(id), "pdf-object-model").machineCheckable, id).toBe(true);
     }
   });
 
@@ -170,7 +179,7 @@ describe("standards table", () => {
   });
 
   it("does not attach standards to findings outside the accessibility lens", () => {
-    const ats = annotate({ id: "layout-table", lens: "ats", severity: "warning", title: "t", detail: "d" }, "source-heuristic");
+    const ats = annotate({ ...stub("layout-table"), lens: "ats" as const, severity: "warning" as const }, "source-heuristic");
     expect(ats.standards).toBeUndefined();
     expect(ats.method).toBe("source-heuristic");
   });
@@ -178,7 +187,7 @@ describe("standards table", () => {
   it("keeps an explicit standards list the caller already attached", () => {
     const refs = standardsFor("no-title");
     const kept = annotate(
-      { id: "pdf-lang-title", lens: "a11y", severity: "warning", title: "t", detail: "d", standards: refs },
+      { ...stub("pdf-lang-title"), severity: "warning" as const, standards: refs },
       "pdf-object-model",
     );
     expect(kept.standards).toBe(refs);
@@ -255,11 +264,13 @@ describe("pdfUaCoverage", () => {
   });
 
   it("states the unchecked rules in the summary line only when there are some", () => {
-    expect(pdfUaCoverageLine(pdfUaCoverage([], EVERYTHING_INSPECTED))).toBe(
-      "PDF/UA-1: 14 of 106 machine-checkable rules verified. Subset check, not a conformance statement.",
-    );
-    expect(pdfUaCoverageLine(pdfUaCoverage([], NOTHING_INSPECTED))).toBe(
-      "PDF/UA-1: 0 of 106 machine-checkable rules verified. Oleafly reads 14 of those rules, and 14 of them could not be checked in this file. Subset check, not a conformance statement.",
-    );
+    expect(pdfUaCoverageLine(pdfUaCoverage([], EVERYTHING_INSPECTED))).toEqual({
+      key: "standards.coverage",
+      params: { passed: 14, total: 106 },
+    });
+    expect(pdfUaCoverageLine(pdfUaCoverage([], NOTHING_INSPECTED))).toEqual({
+      key: "standards.coverageWithBlindSpots",
+      params: { passed: 0, total: 106, covered: 14, unavailable: 14 },
+    });
   });
 });

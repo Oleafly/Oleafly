@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Copy, GitBranch, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -6,6 +7,8 @@ import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { gitLog, type GitCommit } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
+import { i18n } from "@/i18n";
+import { formatDateTime } from "@/lib/intl";
 
 type HistoryActionToken = {
   projectId: string;
@@ -21,10 +24,11 @@ function gitTabIsActive(): boolean {
 
 function commitTitle(message: string): string {
   const firstLine = message.split("\n", 1)[0]?.trim() ?? "";
-  return firstLine || "Untitled commit";
+  return firstLine || i18n.t(($) => $.editor.history.untitledCommit);
 }
 
 export function GitHistoryPanel() {
+  const { t } = useTranslation(["common", "editor"]);
   const open = useSettingsStore((s) => s.versioningOpen && s.versioningTab === "git");
   const closeVersioning = useSettingsStore((s) => s.closeVersioning);
   const projectId = useFilesStore((s) => s.projectId);
@@ -144,7 +148,7 @@ export function GitHistoryPanel() {
       notifyError(
         "restore Git version",
         error,
-        "Could not restore that Git version.",
+        t(($) => $.editor.history.restoreFailed),
       );
     } finally {
       if (isCurrentAction(action)) {
@@ -170,7 +174,7 @@ export function GitHistoryPanel() {
       }, 1500);
     } catch (e) {
       if (!isCurrentAction(action)) return;
-      notifyError("copy commit ID", e, "Could not copy that commit ID.");
+      notifyError("copy commit ID", e, t(($) => $.editor.history.copyIdFailed));
     }
   };
 
@@ -182,9 +186,9 @@ export function GitHistoryPanel() {
           className="flex min-h-44 flex-1 flex-col items-center justify-center text-center"
         >
           <GitBranch className="size-7 text-muted-foreground" />
-          <p className="mt-3 text-sm font-medium">No Git history yet</p>
+          <p className="mt-3 text-sm font-medium">{t(($) => $.editor.history.empty)}</p>
           <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-            Initialize Source Control, then commit when you want a version here.
+            {t(($) => $.editor.history.emptyHint)}
           </p>
         </div>
       ) : (
@@ -216,12 +220,16 @@ export function GitHistoryPanel() {
                     {commitTitle(c.message)}
                   </span>
                   <Tooltip
-                    label={copiedOid === c.oid ? "Commit ID copied" : "Copy full commit ID"}
+                    label={
+                      copiedOid === c.oid
+                        ? t(($) => $.editor.history.commitIdCopied)
+                        : t(($) => $.editor.history.copyCommitId)
+                    }
                     side="top"
                   >
                     <button
                       type="button"
-                      aria-label={`Copy commit ID ${c.short}`}
+                      aria-label={t(($) => $.editor.history.copyCommitIdFor, { id: c.short })}
                       onClick={() => void copyCommitId(c)}
                       className="inline-flex shrink-0 items-center gap-1 rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-foreground/80 hover:border-primary/40 hover:bg-accent hover:text-foreground"
                     >
@@ -235,7 +243,14 @@ export function GitHistoryPanel() {
                   </Tooltip>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {new Date(c.time * 1000).toLocaleString()}
+                  {formatDateTime(c.time * 1000, {
+                    year: "numeric",
+                    month: "numeric",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "numeric",
+                    second: "numeric",
+                  })}
                 </div>
               </div>
               {confirmOid === c.oid ? (
@@ -245,9 +260,9 @@ export function GitHistoryPanel() {
                     size="sm"
                     disabled={busy}
                     onClick={() => void restore(c.oid)}
-                    title="Overwrite all files with this version"
+                    title={t(($) => $.editor.history.overwriteTooltip)}
                   >
-                    Overwrite all
+                    {t(($) => $.editor.history.overwriteAll)}
                   </Button>
                   <Button
                     variant="ghost"
@@ -255,7 +270,7 @@ export function GitHistoryPanel() {
                     disabled={busy}
                     onClick={() => setConfirmOid(null)}
                   >
-                    Cancel
+                    {t(($) => $.common.actions.cancel)}
                   </Button>
                 </div>
               ) : (
@@ -264,10 +279,10 @@ export function GitHistoryPanel() {
                   size="sm"
                   disabled={busy}
                   onClick={() => setConfirmOid(c.oid)}
-                  title="Restore this version (overwrites all files)"
+                  title={t(($) => $.editor.history.restoreTooltip)}
                 >
                   <RotateCcw className="size-3.5" />
-                  Restore
+                  {t(($) => $.editor.history.restore)}
                 </Button>
               )}
             </div>

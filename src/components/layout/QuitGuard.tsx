@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -7,6 +8,7 @@ import { notifyError } from "@/lib/toast";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { registerUpdateInstallGuard } from "@/lib/update-install-guard";
 import { useFilesStore } from "@/store/files";
+import { i18n } from "@/i18n";
 
 const QUIT_FLUSH_TIMEOUT_MS = 5_000;
 
@@ -14,7 +16,7 @@ function flushForQuitWithDeadline(): Promise<void> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
-      reject(new Error("Saving did not finish within 5 seconds."));
+      reject(new Error(i18n.t(($) => $.shell.quitGuard.flushTimeout)));
     }, QUIT_FLUSH_TIMEOUT_MS);
   });
   return Promise.race([useFilesStore.getState().flushForQuit(), deadline]).finally(() => {
@@ -31,6 +33,7 @@ function flushForQuitWithDeadline(): Promise<void> {
  * and quitting anyway with unsaved changes.
  */
 export function QuitGuard() {
+  const { t } = useTranslation(["shell"]);
   const [failure, setFailure] = useState<{ message: string; restart: boolean } | null>(null);
   const flushing = useRef(false);
   const [installing, setInstalling] = useState(false);
@@ -84,16 +87,24 @@ export function QuitGuard() {
     <>
     <Dialog open={installing}>
       <DialogContent closeDisabled onEscapeKeyDown={(event) => event.preventDefault()} onInteractOutside={(event) => event.preventDefault()}>
-        <DialogTitle>Preparing to restart</DialogTitle>
-        <DialogDescription>Saving your files and installing the update. Oleafly will restart when it is ready.</DialogDescription>
+        <DialogTitle>{t(($) => $.shell.quitGuard.installing.title)}</DialogTitle>
+        <DialogDescription>{t(($) => $.shell.quitGuard.installing.description)}</DialogDescription>
       </DialogContent>
     </Dialog>
     <ConfirmationDialog
       open={failure !== null}
-      title="Some files could not be saved"
-      description={`${failure?.message ?? ""} Your unsaved changes are kept open. Stay to fix the problem, or ${failure?.restart ? "restart" : "quit"} anyway and lose them.`}
-      confirmLabel={failure?.restart ? "Restart anyway" : "Quit anyway"}
-      cancelLabel="Stay"
+      title={t(($) => $.shell.quitGuard.failure.title)}
+      description={
+        failure?.restart
+          ? t(($) => $.shell.quitGuard.failure.descriptionRestart, { reason: failure?.message ?? "" })
+          : t(($) => $.shell.quitGuard.failure.descriptionQuit, { reason: failure?.message ?? "" })
+      }
+      confirmLabel={
+        failure?.restart
+          ? t(($) => $.shell.quitGuard.failure.restartAnyway)
+          : t(($) => $.shell.quitGuard.failure.quitAnyway)
+      }
+      cancelLabel={t(($) => $.shell.quitGuard.failure.stay)}
       destructive
       onConfirm={() => {
         const restart = failure?.restart ?? false;
