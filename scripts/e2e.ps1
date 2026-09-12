@@ -290,10 +290,10 @@ try {
     $failures = 0
     $specs = Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts" | Sort-Object Name
     if ($appBinary) {
-      $devOnly = @("24-pdf-selection-browser.spec.ts", "27-markdown-rendering-browser.spec.ts", "56-preview-window-browser.spec.ts")
+      $devOnly = @("24-pdf-selection-browser.spec.ts", "27-markdown-rendering-browser.spec.ts", "56-preview-window-browser.spec.ts", "84-settings-install-browser.spec.ts")
       $specs = $specs | Where-Object {
         if ($_.Name -in $devOnly) {
-          Write-Host "e2e: skipping $($_.Name) in packaged mode (requires the dev-server harness)"
+          Write-Host "e2e: skipping $($_.Name) in packaged mode (dev-server harness; covered by the browser-harness job)"
           $false
         } else { $true }
       }

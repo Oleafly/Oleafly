@@ -388,8 +388,9 @@ else
   fi
   # Browser-harness specs load TSX fixtures through the Vite dev server, so a
   # packaged run cannot serve them. Their subject is Playwright's own
-  # Chromium/WebKit (platform-independent), and the Windows dev-mode lane runs
-  # them — skipping here loses no coverage, and the log says so out loud.
+  # Chromium/WebKit (platform-independent), and scripts/e2e-browser-harness.sh
+  # runs them in their own CI job — skipping here loses no coverage, and the
+  # log says so out loud.
   PACKAGED_UNSERVABLE=(
     "e2e/tests/24-pdf-selection-browser.spec.ts"
     "e2e/tests/27-markdown-rendering-browser.spec.ts"
@@ -403,7 +404,7 @@ else
       for unservable in "${PACKAGED_UNSERVABLE[@]}"; do
         if [ "$spec" = "$unservable" ]; then
           skip_this=1
-          echo "e2e: skipping $(basename "$spec") in packaged mode (dev-server harness; covered by the Windows dev-mode lane)"
+          echo "e2e: skipping $(basename "$spec") in packaged mode (dev-server harness; covered by the browser-harness job)"
         fi
       done
       [ "$skip_this" -eq 1 ] || filtered+=("$spec")

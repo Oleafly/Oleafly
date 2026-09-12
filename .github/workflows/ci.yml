@@ -973,6 +973,57 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  e2e-browser-harness:
+    # The four browser-harness specs drive Playwright's own Chromium against
+    # fixture pages that Vite serves from e2e/, with the Tauri bridge mocked
+    # inside the page. They need no app build, and every packaged shard skips
+    # them, so this lane is where they run now that Windows no longer runs the
+    # suite under `tauri dev`.
+    name: E2E (browser harness, Linux)
+    needs: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the browser-harness specs
+        env:
+          CI: 1
+        run: bash scripts/e2e-browser-harness.sh
+
+      - name: Upload failure artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-test-results-browser-harness
+          path: |
+            test-results/**/error-context.md
+            test-results/**/trace.zip
+            test-results/**/*.log
+          if-no-files-found: ignore
+          retention-days: 3
+
   e2e-build-windows:
     # Builds the Windows e2e app once. Until now every Windows shard ran
     # `pnpm tauri dev`, which compiled the whole app before its first test, so
