@@ -10,6 +10,7 @@ import {
   setSpellHost,
   setBibKeysProvider,
   bibKeysFromSources,
+  closeEnvironmentOnEnter,
   latexListKeymap,
   latexStructureKeymap,
 } from "@oleafly/editor";
@@ -54,6 +55,9 @@ function sourceProofreadingContextKey(
     settings.dictionaryLocale,
     settings.showRegionalism,
     settings.showWordChoice,
+    [...settings.harperDisabledRules].sort((a, b) => Number(a > b) - Number(a < b)),
+    [...settings.harperEnabledRules].sort((a, b) => Number(a > b) - Number(a < b)),
+    dictionary.revision,
     [...dictionary.global].sort((a, b) => Number(a > b) - Number(a < b)),
     projectId
       ? [...(dictionary.ignored[projectId] ?? [])].sort((a, b) => Number(a > b) - Number(a < b))
@@ -167,6 +171,7 @@ const HOST: EditorHost = {
     editorTheme: useSettingsStore((s) => s.editorTheme),
     autocomplete: useSettingsStore((s) => s.editorAutocomplete),
     autoCloseBrackets: useSettingsStore((s) => s.editorAutoCloseBrackets),
+    autoCloseMath: useSettingsStore((s) => s.editorAutoCloseMath),
     nonBlinkingCursor: useSettingsStore((s) => s.editorNonBlinkingCursor),
     ghostCompletion: useSettingsStore((s) => s.editorGhostCompletion),
     stickyScroll: useSettingsStore((s) => s.editorStickyScroll),
@@ -193,7 +198,16 @@ const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
 ];
 
 const EXTRA_KEYMAP: KeyBinding[] = [
-  // List keymap first so its Enter binding is checked before defaults.
+  {
+    key: "Enter",
+    run: (view) => {
+      const settings = useSettingsStore.getState();
+      return settings.editorAutoCloseBrackets &&
+        settings.editorAutoCloseEnvironments
+        ? closeEnvironmentOnEnter(view)
+        : false;
+    },
+  },
   ...latexListKeymap,
   ...latexStructureKeymap,
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },

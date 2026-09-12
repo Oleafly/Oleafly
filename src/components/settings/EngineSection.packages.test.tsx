@@ -29,6 +29,8 @@ beforeEach(() => {
   useEngineStore.setState({
     info: engine,
     installed: [],
+    userInstalled: [],
+    systemInstalled: [],
     busyPkg: null,
     loaded: true,
     installing: false,
@@ -70,9 +72,9 @@ it("searches TeX Live for packages beyond the suggested list", async () => {
 });
 
 it("recognizes installed packages under their TeX Live names and removes the shared package", async () => {
-  mocks.invoke.mockImplementation(async (command: string) => {
+  mocks.invoke.mockImplementation(async (command: string, args?: { userTree?: boolean }) => {
     if (command === "latex_engine_info") return engine;
-    if (command === "tlmgr_installed") return ["pgf", "caption", "tools"];
+    if (command === "tlmgr_installed") return args?.userTree ? [] : ["pgf", "caption", "tools"];
     if (command === "tex_distributions") return [];
     return null;
   });
@@ -81,6 +83,78 @@ it("recognizes installed packages under their TeX Live names and removes the sha
   await screen.findByRole("button", { name: "Remove" });
   fireEvent.click(screen.getByRole("button", { name: "Remove" }));
   await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("tlmgr_remove", { packages: ["pgf"] }));
+});
+
+it("shows where a personal-tree installation landed", async () => {
+  const notice =
+    "[Oleafly] The system TeX tree is not writable, so the packages went into your personal tree at /Users/t/Library/texmf.";
+  mocks.invoke.mockImplementation(async (command: string) => {
+    if (command === "latex_engine_info") return engine;
+    if (command === "tlmgr_installed" || command === "tex_distributions") return [];
+    if (command === "tlmgr_install") return `${notice}\ntlmgr: installing pgf`;
+    return null;
+  });
+  render(<EngineSection />);
+  fireEvent.change(screen.getByPlaceholderText("Filter packages…"), { target: { value: "tikz" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add" }));
+  expect(await screen.findByText(/personal tree at \/Users\/t\/Library\/texmf/)).toBeInTheDocument();
+  expect(mocks.success.mock.calls.map((call) => String(call[0])).join("\n")).toContain(
+    "personal tree at /Users/t/Library/texmf",
+  );
+});
+
+it("lists personal-tree packages and removes them from that tree", async () => {
+  mocks.invoke.mockImplementation(async (command: string, args?: { userTree?: boolean }) => {
+    if (command === "latex_engine_info") return engine;
+    if (command === "tlmgr_installed") return args?.userTree ? ["pgf"] : ["tools"];
+    if (command === "tex_distributions") return [];
+    return null;
+  });
+  render(<EngineSection />);
+  fireEvent.change(screen.getByPlaceholderText("Filter packages…"), { target: { value: "tikz" } });
+  await screen.findByText("in your personal tree");
+  expect(useEngineStore.getState().installed).toEqual(["tools", "pgf"]);
+  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+  await waitFor(() =>
+    expect(mocks.invoke).toHaveBeenCalledWith("tlmgr_remove", {
+      packages: ["pgf"],
+      userTree: true,
+    }),
+  );
+});
+
+it("marks a package installed in both trees and removes the personal copy first", async () => {
+  mocks.invoke.mockImplementation(async (command: string, args?: { userTree?: boolean }) => {
+    if (command === "latex_engine_info") return engine;
+    if (command === "tlmgr_installed") return args?.userTree ? ["pgf"] : ["pgf", "tools"];
+    if (command === "tex_distributions") return [];
+    return null;
+  });
+  render(<EngineSection />);
+  fireEvent.change(screen.getByPlaceholderText("Filter packages…"), { target: { value: "tikz" } });
+  await screen.findByText("in both trees");
+  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+  await waitFor(() =>
+    expect(mocks.invoke).toHaveBeenCalledWith("tlmgr_remove", {
+      packages: ["pgf"],
+      userTree: true,
+    }),
+  );
+
+  mocks.invoke.mockImplementation(async (command: string, args?: { userTree?: boolean }) => {
+    if (command === "latex_engine_info") return engine;
+    if (command === "tlmgr_installed") return args?.userTree ? [] : ["pgf", "tools"];
+    if (command === "tex_distributions") return [];
+    return null;
+  });
+  await act(async () => {
+    await useEngineStore.getState().refreshPackages();
+  });
+  await screen.findByText("in the system tree");
+  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+  await waitFor(() =>
+    expect(mocks.invoke).toHaveBeenCalledWith("tlmgr_remove", { packages: ["pgf"] }),
+  );
 });
 
 it("disables package changes when the detected distribution has no tlmgr", async () => {

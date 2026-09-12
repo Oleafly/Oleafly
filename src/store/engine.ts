@@ -21,6 +21,11 @@ function packageErrorMessage(error: unknown, fallback: string): string {
 
 let packageReadRequest = 0;
 
+async function backendNotices(outcome: string): Promise<string[]> {
+  const compile = await import("@/store/compile");
+  return compile.installerNotices(outcome);
+}
+
 export type InstallPhase = "download" | "extract" | "packages";
 
 interface EngineStore {
@@ -37,6 +42,9 @@ interface EngineStore {
   /** "TinyTeX is still downloading" notice (Recompile during install). */
   installWaitNoticeOpen: boolean;
   installed: string[];
+  userInstalled: string[];
+  systemInstalled: string[];
+  packageNotice: string | null;
   busyPkg: string | null;
   packageError: string | null;
   loaded: boolean;
@@ -60,6 +68,9 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
   compileQueuedDuringInstall: false,
   installWaitNoticeOpen: false,
   installed: [],
+  userInstalled: [],
+  systemInstalled: [],
+  packageNotice: null,
   busyPkg: null,
   packageError: null,
   loaded: false,
@@ -91,17 +102,30 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
     const request = ++packageReadRequest;
     const manager = get().info?.tlmgr;
     if (!manager) {
-      set({ installed: [], packageError: null });
+      set({ installed: [], userInstalled: [], systemInstalled: [], packageError: null });
       return;
     }
     try {
-      const installed = await tlmgrInstalled();
+      const [system, user] = await Promise.all([
+        tlmgrInstalled(),
+        tlmgrInstalled(true).catch(() => [] as string[]),
+      ]);
       if (request === packageReadRequest && get().info?.tlmgr === manager) {
-        set({ installed, packageError: null });
+        set({
+          installed: [...new Set([...system, ...user])],
+          userInstalled: [...new Set(user)],
+          systemInstalled: [...new Set(system)],
+          packageError: null,
+        });
       }
     } catch (error) {
       if (request === packageReadRequest && get().info?.tlmgr === manager) {
-        set({ installed: [], packageError: packageErrorMessage(error, "Could not read the installed packages.") });
+        set({
+          installed: [],
+          userInstalled: [],
+          systemInstalled: [],
+          packageError: packageErrorMessage(error, "Could not read the installed packages."),
+        });
       }
     }
   },
@@ -171,7 +195,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
     try {
       await deleteTinytex();
       toast.success("Removed TinyTeX");
-      set({ installed: [], partialDownloadBytes: 0 });
+      set({ installed: [], userInstalled: [], systemInstalled: [], partialDownloadBytes: 0 });
       void get().refresh();
     } catch (e) {
       void logError("delete tinytex", e);
@@ -182,9 +206,14 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
   addPackage: async (name) => {
     if (!isTauri() || get().busyPkg) return;
     packageReadRequest += 1;
-    set({ busyPkg: name, packageError: null });
+    set({ busyPkg: name, packageError: null, packageNotice: null });
     try {
-      await tlmgrInstall([name]);
+      const outcome = await tlmgrInstall([name]);
+      const notice = outcome ? ((await backendNotices(outcome))[0] ?? null) : null;
+      if (notice) {
+        set({ packageNotice: notice });
+        toast.success(notice);
+      }
       await get().refreshPackages();
     } catch (e) {
       void logError("tlmgr install", e);
@@ -199,9 +228,10 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
   removePackage: async (name) => {
     if (!isTauri() || get().busyPkg) return;
     packageReadRequest += 1;
-    set({ busyPkg: name, packageError: null });
+    const fromUserTree = get().userInstalled.includes(name);
+    set({ busyPkg: name, packageError: null, packageNotice: null });
     try {
-      await tlmgrRemove([name]);
+      await tlmgrRemove([name], fromUserTree);
       await get().refreshPackages();
     } catch (e) {
       void logError("tlmgr remove", e);

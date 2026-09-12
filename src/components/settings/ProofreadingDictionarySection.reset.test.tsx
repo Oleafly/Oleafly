@@ -16,6 +16,8 @@ describe("Dictionary reset", () => {
   it("clears global and project words after confirmation without changing the dictionary locale", () => {
     useDictionary.getState().ignoreGlobal("Oleafly");
     useDictionary.getState().ignore("project-reset-test", "TeXLab");
+    useSettingsStore.getState().setHarperDisabledRules(["AnA"]);
+    useSettingsStore.getState().setHarperEnabledRules(["Hedging"]);
 
     render(<ProofreadingDictionarySection />);
 
@@ -25,7 +27,7 @@ describe("Dictionary reset", () => {
       name: /Reset Dictionary settings/u,
     });
     expect(confirmation).toHaveTextContent(
-      "This permanently removes every ignored word, global and per-project.",
+      "This permanently removes every ignored word, global and per-project, and turns back on every grammar rule you turned off. The academic profile keeps its own rules off.",
     );
     expect(useDictionary.getState()).toMatchObject({
       global: ["Oleafly"],
@@ -37,6 +39,8 @@ describe("Dictionary reset", () => {
     );
 
     expect(useDictionary.getState()).toMatchObject({ global: [], ignored: {} });
+    expect(useSettingsStore.getState().harperDisabledRules).toEqual([]);
+    expect(useSettingsStore.getState().harperEnabledRules).toEqual([]);
     const persisted = JSON.parse(
       localStorage.getItem("oleafly.dictionary") ?? "{}",
     ) as { state?: { global?: string[]; ignored?: Record<string, string[]> } };

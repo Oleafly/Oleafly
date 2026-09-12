@@ -1,5 +1,11 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab } from "../helpers";
+import {
+  createBlankProject,
+  openProject,
+  openRailTab,
+  waitLong,
+  type Page,
+} from "../helpers";
 
 // The native bridge cannot drive a real <input type="file"> file picker, so
 // this exercises the same parse-by-extension + addCitations path the Import
@@ -87,4 +93,50 @@ test("importing EndNote XML and BibTeX both land in the same library, RDF and un
 
   const emptyRdf = await importCitationFile(tauriPage, "empty.rdf", "<rdf:RDF></rdf:RDF>");
   expect((emptyRdf as { error: string }).error).toBe("No references found in that file.");
+});
+
+async function sourceTreePaths(page: Page): Promise<string[]> {
+  return page.evaluate<string[]>(
+    `(() => {
+      const tree = document.querySelector('[aria-label="Source tree"]');
+      if (!tree) return [];
+      return Array.from(tree.querySelectorAll('[role="treeitem"]'))
+        .map((row) => row.dataset.path)
+        .filter((path) => typeof path === "string");
+    })()`,
+  );
+}
+
+test("importing into a project with no bibliography refreshes the tree and the Citations tab", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(180_000);
+  const name = `Citation Refresh ${Date.now()}`;
+  await createBlankProject(tauriPage, name);
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 60_000 });
+  await openRailTab(tauriPage, "Source Tree");
+
+  expect(await sourceTreePaths(tauriPage)).not.toContain("references.bib");
+
+  const result = await importCitationFile(tauriPage, "library.ris", RIS);
+  expect("error" in result ? result.error : undefined).toBeUndefined();
+  expect((result as { imported: number }).imported).toBe(1);
+
+  await waitLong(
+    tauriPage,
+    `(() => {
+      const tree = document.querySelector('[aria-label="Source tree"]');
+      if (!tree) return false;
+      return Array.from(tree.querySelectorAll('[role="treeitem"]'))
+        .some((row) => row.dataset.path === "references.bib");
+    })()`,
+    20_000,
+  );
+
+  await openRailTab(tauriPage, "References & citations (Shift-F12)");
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[aria-label^="Citations, "]')`,
+    30_000,
+  );
 });

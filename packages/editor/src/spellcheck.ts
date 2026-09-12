@@ -17,13 +17,20 @@ import {
   diagnosticCardGutter,
   diagnosticCardTooltip,
   hasProofreadingCard,
+  proofreadingCardFor,
+  type ProofreadingCardAction,
 } from "./diagnostic-card";
 import { markdownSpellcheckRanges, markdownToProse } from "./markdown-mask";
-import type {
-  ProofreadingFormat,
-  ProofreadingDialect,
-  ProofreadingMode,
-  ProofreadingResult,
+import {
+  createGrammarSuppressionKeyer,
+  grammarSuppressionKey,
+  guardProofreadingDiagnostics,
+  isSpellingDiagnosticKind,
+  type ProofreadingDiagnostic,
+  type ProofreadingFormat,
+  type ProofreadingDialect,
+  type ProofreadingMode,
+  type ProofreadingResult,
 } from "./proofreading";
 
 export interface GrammarSuggestion {
@@ -83,9 +90,49 @@ export interface SpellHost {
   lintGrammar?(prose: string, maxLen: number): Promise<GrammarDiag[]>;
 }
 
+export interface ProofreadingActionHost {
+  addToProjectDictionary(projectId: string, word: string): boolean;
+  addToPersonalDictionary(word: string): boolean;
+  ignoreHere(
+    projectId: string | null,
+    path: string,
+    word: string,
+  ): void;
+  isIgnoredHere(
+    projectId: string | null,
+    path: string,
+    word: string,
+  ): boolean;
+  suppressHere(
+    projectId: string | null,
+    path: string,
+    key: string,
+  ): void;
+  isSuppressedHere(
+    projectId: string | null,
+    path: string,
+    key: string,
+  ): boolean;
+  suppressFinding(projectId: string | null, key: string): boolean;
+  isFindingSuppressed(projectId: string | null, key: string): boolean;
+  disableRule(rule: string): void;
+  notify(message: string): void;
+}
+
 let host: SpellHost | null = null;
 export function setSpellHost(h: SpellHost) {
   host = h;
+}
+
+let actionHost: ProofreadingActionHost | null = null;
+export function setProofreadingActionHost(
+  next: ProofreadingActionHost | null,
+): void {
+  actionHost = next;
+}
+
+export function proofreadingActionHost(): ProofreadingActionHost | null {
+  return actionHost;
 }
 
 export function cancelSourceProofreading(path?: string): void {
@@ -286,7 +333,7 @@ function ignoreEntries(
   h: SpellHost,
   projectId: string | null,
   word: string,
-): { label: string; action: Action }[] {
+): ProofreadingCardAction[] {
   return ignoreActions(h, projectId, word).map((action, index) => ({
     label: projectId && index === 0 ? "Ignore" : "Ignore everywhere",
     action,
@@ -295,7 +342,7 @@ function ignoreEntries(
 
 function suggestionEntries(
   suggestions: GrammarSuggestion[],
-): { label: string; action: Action }[] {
+): ProofreadingCardAction[] {
   return suggestionActions(suggestions).map((action, index) => ({
     // The action name is a quoted, elided preview meant for a button strip.
     // Rows have room for the replacement itself.
@@ -304,11 +351,205 @@ function suggestionEntries(
   }));
 }
 
+function elide(word: string, limit = 22): string {
+  return word.length > limit ? `${word.slice(0, limit - 1)}…` : word;
+}
+
+const DICTIONARY_WRITE_FAILED =
+  "That word could not be saved, so it is hidden for now.";
+
+function spellingDismissEntries(
+  h: SpellHost,
+  actions: ProofreadingActionHost,
+  projectId: string | null,
+  path: string,
+  word: string,
+): ProofreadingCardAction[] {
+  const short = elide(word);
+  const entries: ProofreadingCardAction[] = [];
+  if (projectId) {
+    entries.push({
+      label: "Ignore in this project",
+      icon: "project",
+      action: {
+        name: `Ignore “${short}” in this project`,
+        apply: (view, from, to) => {
+          const active = h.getProjectId();
+          if (!active) return;
+          rememberDismissedFindings(view, from, to);
+          if (
+            attemptDismissalWrite(() =>
+              actions.addToProjectDictionary(active, word),
+            ) === "failed"
+          ) {
+            actions.notify(DICTIONARY_WRITE_FAILED);
+          }
+          dismissRange(view, from, to);
+        },
+      },
+    });
+  }
+  entries.push({
+    label: "Ignore everywhere",
+    icon: "everywhere",
+    action: {
+      name: `Ignore “${short}” everywhere`,
+      apply: (view, from, to) => {
+        rememberDismissedFindings(view, from, to);
+        if (
+          attemptDismissalWrite(() =>
+            actions.addToPersonalDictionary(word),
+          ) === "failed"
+        ) {
+          actions.notify(DICTIONARY_WRITE_FAILED);
+        }
+        dismissRange(view, from, to);
+      },
+    },
+  });
+  entries.push({
+    label: "Ignore for now",
+    icon: "now",
+    action: {
+      name: `Ignore “${short}” for now`,
+      apply: (view, from, to) => {
+        rememberDismissedFindings(view, from, to);
+        actions.ignoreHere(
+          h.getProjectId(),
+          h.getActivePath() ?? path,
+          word,
+        );
+        dismissRange(view, from, to);
+      },
+    },
+  });
+  return entries;
+}
+
+function grammarDismissEntries(
+  h: SpellHost,
+  actions: ProofreadingActionHost,
+  rule: string | null,
+  key: string,
+): ProofreadingCardAction[] {
+  const entries: ProofreadingCardAction[] = [
+    {
+      label: "Ignore in this project",
+      icon: "project",
+      action: {
+        name: "Ignore this finding in this project",
+        apply: (view, start, end) => {
+          const active = h.getProjectId();
+          rememberDismissedFindings(view, start, end);
+          if (
+            attemptDismissalWrite(() =>
+              actions.suppressFinding(active, key),
+            ) !== "stored"
+          ) {
+            actions.notify(
+              active
+                ? "This finding could not be saved, so it is hidden for now."
+                : "Open a project to keep this finding hidden.",
+            );
+          }
+          dismissRange(view, start, end);
+        },
+      },
+    },
+  ];
+  if (rule) {
+    entries.push({
+      label: `Turn off rule “${elide(rule, 18)}”`,
+      icon: "rule",
+      action: {
+        name: `Turn off the “${rule}” rule`,
+        apply: (view, start, end) => {
+          rememberDismissedFindings(view, start, end);
+          if (
+            attemptDismissalWrite(() => {
+              actions.disableRule(rule);
+              return true;
+            }) === "failed"
+          ) {
+            actions.notify(
+              "That rule could not be turned off, so this finding is hidden for now.",
+            );
+          }
+          dismissRange(view, start, end);
+        },
+      },
+    });
+  }
+  return entries;
+}
+
 function labelForSuggestion(suggestion: GrammarSuggestion | undefined): string {
   if (!suggestion) return "";
   if (suggestion.kind === 1) return "Remove";
   if (suggestion.kind === 2) return `Add “${suggestion.text}”`;
   return suggestion.text;
+}
+
+function rememberDismissal(
+  actions: ProofreadingActionHost,
+  projectId: string | null,
+  path: string,
+  diagnostic: Diagnostic,
+): void {
+  const card = proofreadingCardFor(diagnostic);
+  if (!card) return;
+  if (isSpellingDiagnosticKind(card.kind)) {
+    if (card.word) actions.ignoreHere(projectId, path, card.word);
+    return;
+  }
+  if (card.suppressionKey) {
+    actions.suppressHere(projectId, path, card.suppressionKey);
+  }
+}
+
+function rememberDismissedFindings(
+  view: Parameters<Action["apply"]>[0],
+  from: number,
+  to: number,
+): void {
+  const actions = actionHost;
+  if (!actions) return;
+  const projectId = host?.getProjectId() ?? null;
+  const path = host?.getActivePath() ?? "";
+  forEachDiagnostic(view.state, (diagnostic, start, end) => {
+    if (!hasProofreadingCard(diagnostic)) return;
+    if (start >= to || end <= from) return;
+    rememberDismissal(actions, projectId, path, diagnostic);
+  });
+}
+
+type DismissalWriteOutcome = "stored" | "rejected" | "failed";
+
+function attemptDismissalWrite(
+  write: () => boolean,
+): DismissalWriteOutcome {
+  try {
+    return write() ? "stored" : "rejected";
+  } catch {
+    return "failed";
+  }
+}
+
+function dismissRange(
+  view: Parameters<Action["apply"]>[0],
+  from: number,
+  to: number,
+): void {
+  const remaining: Diagnostic[] = [];
+  forEachDiagnostic(view.state, (diagnostic, start, end) => {
+    const overlaps =
+      hasProofreadingCard(diagnostic) && start < to && end > from;
+    if (overlaps) return;
+    remaining.push({ ...diagnostic, from: start, to: end });
+  });
+  view.dispatch(setDiagnostics(view.state, remaining));
+  view.dispatch({ effects: refreshLints.of(null) });
+  forceLinting(view);
 }
 
 /**
@@ -321,9 +562,34 @@ function proofreadingDiagnostic(
   word: string,
   suggestions: GrammarSuggestion[],
   diagnostic: Omit<Diagnostic, "actions">,
+  meta: {
+    kind?: string;
+    rule?: string | null;
+    message?: string;
+    path?: string;
+    suppressionKey?: string;
+  } = {},
 ): Diagnostic {
   const suggestionList = suggestionEntries(suggestions);
-  const ignoreList = ignoreEntries(h, projectId, word);
+  const spelling = isSpellingDiagnosticKind(meta.kind);
+  const actions = actionHost;
+  const suppressionKey = meta.suppressionKey ?? "";
+  const ignoreList = !actions
+    ? ignoreEntries(h, projectId, word)
+    : spelling
+      ? spellingDismissEntries(
+          h,
+          actions,
+          projectId,
+          meta.path ?? "",
+          word,
+        )
+      : grammarDismissEntries(
+          h,
+          actions,
+          meta.rule ?? null,
+          suppressionKey,
+        );
   return attachProofreadingCard(
     {
       ...diagnostic,
@@ -332,7 +598,15 @@ function proofreadingDiagnostic(
         ...ignoreList.map((entry) => entry.action),
       ],
     },
-    { word, suggestions: suggestionList, ignores: ignoreList },
+    {
+      word,
+      suggestions: suggestionList,
+      ignores: ignoreList,
+      kind: meta.kind,
+      rule: meta.rule ?? null,
+      suppressionKey: spelling ? null : suppressionKey,
+      ...(spelling ? {} : { message: meta.message ?? diagnostic.message }),
+    },
   );
 }
 
@@ -344,9 +618,11 @@ function presentedProofreadingDiagnostics(
   text: string,
 ): Diagnostic[] {
   const output: Diagnostic[] = [];
-  const presentedDiagnostics =
+  const path = h.getActivePath() ?? "";
+  const presented: readonly ProofreadingDiagnostic[] =
     h.presentDiagnostics?.(result) ?? result.diagnostics;
-  for (const diagnostic of presentedDiagnostics) {
+  const suppressionKey = createGrammarSuppressionKeyer(text);
+  for (const diagnostic of guardProofreadingDiagnostics(presented, text)) {
     const from = Math.max(
       0,
       Math.min(diagnostic.from, view.state.doc.length),
@@ -357,19 +633,46 @@ function presentedProofreadingDiagnostics(
     );
     if (to <= from) continue;
     const word = diagnostic.word || text.slice(from, to);
-    if (
-      h.isSessionIgnored(word) ||
-      h.isWordIgnored(projectId, word)
-    ) {
-      continue;
+    let key = "";
+    if (isSpellingDiagnosticKind(diagnostic.kind)) {
+      if (
+        h.isSessionIgnored(word) ||
+        h.isWordIgnored(projectId, word) ||
+        actionHost?.isIgnoredHere(projectId, path, word)
+      ) {
+        continue;
+      }
+    } else {
+      key = suppressionKey(diagnostic.rule, from);
+      if (
+        actionHost?.isFindingSuppressed(projectId, key) ||
+        actionHost?.isSuppressedHere(projectId, path, key)
+      ) {
+        continue;
+      }
     }
     output.push(
-      proofreadingDiagnostic(h, projectId, word, diagnostic.suggestions, {
-        from,
-        to,
-        severity: "warning",
-        message: diagnostic.message,
-      }),
+      proofreadingDiagnostic(
+        h,
+        projectId,
+        word,
+        from === diagnostic.from && to === diagnostic.to
+          ? diagnostic.suggestions
+          : [],
+        {
+          from,
+          to,
+          severity: "warning",
+          message: diagnostic.message,
+        },
+        {
+          kind: diagnostic.kind,
+          rule: diagnostic.rule ?? null,
+          message: diagnostic.message,
+          path,
+          suppressionKey: key,
+        },
+      ),
     );
   }
   return output;
@@ -506,35 +809,8 @@ function repaintCachedProofreadingPresentation(
 }
 
 function ignoreActions(h: SpellHost, projectId: string | null, word: string): Action[] {
-  const refresh = (
-    view: Parameters<Action["apply"]>[0],
-    from: number,
-    to: number,
-  ) => {
-    // Ignoring is an explicit local decision, so remove its current finding
-    // synchronously. The worker-backed pass below remains authoritative for
-    // every other diagnostic and repopulates from the updated dictionary.
-    const remaining: Diagnostic[] = [];
-    forEachDiagnostic(
-      view.state,
-      (diagnostic, diagnosticFrom, diagnosticTo) => {
-        if (
-          diagnosticFrom !== from ||
-          diagnosticTo !== to
-        ) {
-          remaining.push({
-            ...diagnostic,
-            from: diagnosticFrom,
-            to: diagnosticTo,
-          });
-        }
-      },
-    );
-    view.dispatch(setDiagnostics(view.state, remaining));
-    view.dispatch({ effects: refreshLints.of(null) }); // mark re-lint needed
-    forceLinting(view); // ...then run it now so the warning clears immediately
-  };
-  const short = word.length > 22 ? `${word.slice(0, 21)}…` : word;
+  const refresh = dismissRange;
+  const short = elide(word);
   const actions: Action[] = [];
   if (projectId) {
     actions.push({
@@ -739,7 +1015,7 @@ export function createSpellLinter() {
 }
 
 function suggestionActions(sugs: GrammarSuggestion[]): Action[] {
-  return sugs.slice(0, 4).map<Action>((s) => {
+  return sugs.slice(0, 8).map<Action>((s) => {
     const preview =
       s.text.length > 44 ? `${s.text.slice(0, 43)}…` : s.text;
     return {
@@ -883,12 +1159,24 @@ export function createHarperLinter(includeSpelling = false) {
             if (h.isWordIgnored(projectId, word)) continue;
             // regionalism ("Spanner"), word choice, or any style suggestion.
             out.push(
-              proofreadingDiagnostic(h, projectId, word, d.suggestions, {
-                from,
-                to,
-                severity: "warning",
-                message: d.message,
-              }),
+              proofreadingDiagnostic(
+                h,
+                projectId,
+                word,
+                d.suggestions,
+                {
+                  from,
+                  to,
+                  severity: "warning",
+                  message: d.message,
+                },
+                {
+                  kind: d.kind,
+                  message: d.message,
+                  path,
+                  suppressionKey: grammarSuppressionKey(null, text, from),
+                },
+              ),
             );
           }
           return out;

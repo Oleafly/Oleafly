@@ -267,6 +267,18 @@ function EditorAppearanceTab() {
   const setEditorAutoCloseBrackets = useSettingsStore(
     (state) => state.setEditorAutoCloseBrackets,
   );
+  const editorAutoCloseMath = useSettingsStore(
+    (state) => state.editorAutoCloseMath,
+  );
+  const setEditorAutoCloseMath = useSettingsStore(
+    (state) => state.setEditorAutoCloseMath,
+  );
+  const editorAutoCloseEnvironments = useSettingsStore(
+    (state) => state.editorAutoCloseEnvironments,
+  );
+  const setEditorAutoCloseEnvironments = useSettingsStore(
+    (state) => state.setEditorAutoCloseEnvironments,
+  );
   const editorGhostCompletion = useSettingsStore(
     (state) => state.editorGhostCompletion,
   );
@@ -398,6 +410,18 @@ function EditorAppearanceTab() {
         description="Insert closing brackets and parentheses automatically."
         checked={editorAutoCloseBrackets}
         onChange={setEditorAutoCloseBrackets}
+      />
+      <SettingsToggleRow
+        label="Auto-close math"
+        description="Pair $, \( and \[ as you type."
+        checked={editorAutoCloseMath}
+        onChange={setEditorAutoCloseMath}
+      />
+      <SettingsToggleRow
+        label="Auto-close environments"
+        description="Insert \end when you press Enter after \begin."
+        checked={editorAutoCloseEnvironments}
+        onChange={setEditorAutoCloseEnvironments}
       />
       <SettingsToggleRow
         label="Inline suggestion"

@@ -41,6 +41,7 @@ import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
 import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import { useFilesStore } from "@/store/files";
+import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -336,6 +337,7 @@ export function EditorToolbar({
   const [visionReady, setVisionReady] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const projectKind = useFilesStore((s) => s.projectKind);
+  const activePath = useFilesStore((s) => s.activePath);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const syncTexSupported =
@@ -491,6 +493,14 @@ export function EditorToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        {activePath?.toLowerCase().endsWith(".bib") && (
+          <IconBtn
+            onClick={() => void runCiteOleaflyAction({ path: activePath })}
+            title="Add the Oleafly citation to this file"
+          >
+            <Quote className="size-4" />
+          </IconBtn>
+        )}
         <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />
         {!wysiwyg && (
           <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>

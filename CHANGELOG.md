@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Typing `$`, `\(` or `\[` in the source editor inserts the closing
+  delimiter. Typing `$` again at the end of a formula steps over it, brackets
+  pair inside inline math, and an empty `$$` becomes display math. Completing
+  an environment inserts the matching `\end`, a list starts with `\item`, and
+  figure and table skeletons are offered. Enter at the end of an unclosed
+  `\begin` line closes the environment. Enter on an item continues the list,
+  including description labels and nested lists, and Shift+Enter gives a plain
+  newline. Two toggles in Settings control the math and environment behaviour
+  under the existing auto-close switch.
+- Grammar diagnostics show Harper's own message and rule name. The card lists
+  its actions as icon rows: Ignore in this project, Ignore everywhere, Ignore
+  for now, and Turn off rule for grammar findings. Rules that misfire on
+  academic LaTeX are off by default. Settings lists the disabled rules and the
+  project's suppressions and lets you turn any rule back on.
+- Every accessibility finding in Preflight cites the standard it is measured
+  against: PDF/UA-1, PDF/UA-2, Matterhorn and WCAG 2.2. The compiled PDF is
+  checked for the XMP title, DisplayDocTitle, the Suspects flag, untagged
+  content, link descriptions and a PDF/UA claim the file does not meet. The
+  Accessibility card reports how many machine-checkable PDF/UA-1 rules it
+  verified and says this is a subset check, not a conformance statement.
+  Accessible export preparation is offered only when the LaTeX Project's
+  tagging data says the document class and packages can be tagged.
+- When a compile fails on the built-in engine, the diagnostic names the cause:
+  a class that forces hyperref's pdftex driver, an EPS image, a style file the
+  bundle does not carry, or a package download that failed. The driver and
+  EPS cases offer a switch to pdfLaTeX on system TeX with a recompile, the
+  missing package offers that switch followed by the install, and the failed
+  download offers a retry.
+- The package list in Settings shows packages installed in your personal TeX
+  tree next to the system ones.
+- Settings, Help & About shows a ready-to-copy BibTeX entry for citing Oleafly
+  in a paper, with a copy button. The README carries the same entry in every
+  language, and CITATION.cff is current, so GitHub's Cite this repository
+  button matches.
+
+### Fixed
+
+- Importing a reference library, or inserting a citation into a project
+  without a bibliography, shows the new `.bib` file in the file tree and the
+  Citations panel right away instead of after reopening the project.
+- Bibliography files declared with `\addbibresource` or `\bibliography`
+  resolve the way TeX and Biber resolve them, and a declaration that points at
+  a missing file is reported on that line.
+- A stale bibliography no longer disables the pinned Biber. The compile reruns
+  Biber whenever the engine did not write the `.bbl` itself, and Biber's own
+  messages, including a `.bib` file it could not find, appear in the compile
+  log and the diagnostics.
+- Pasting LaTeX no longer paints a document-wide "Not in dictionary"
+  underline. Readability rules that trip on masked markup are off, findings
+  that cross masked markup are dropped, and Ignore always does something.
+- On a TeX Live one release behind the package repository, package searches
+  read the local database first and say when a remote lookup needs a newer
+  TeX Live. Installs into a system tree you cannot write to fall back to your
+  personal tree, and a failed install shows the installer's own message.
+- The CLI bridge confirmation dialog appears above Settings and shows npm's
+  error text when an install fails.
+- System TeX compiles run with TeX Live's restricted shell escape, so
+  templates that convert EPS figures compile without granting full shell
+  access.
+
 ## [0.4.0] - 2026-09-07
 
 Before updating from 0.3.13, save your work and close any open projects. The

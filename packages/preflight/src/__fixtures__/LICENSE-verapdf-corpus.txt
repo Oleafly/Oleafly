@@ -1,0 +1,31 @@
+veraPDF test corpus files vendored for Preflight's PDF/UA tests
+==============================================================
+
+Files
+  7.1-t10-pass-a.pdf
+  7.1-t10-fail-a.pdf
+
+Source
+  https://github.com/veraPDF/veraPDF-corpus
+  Path in that repository: PDF_UA-1/7.1 General/
+  Commit: 01e40281d48e2f3755006fdf596ca25caaea8634 (branch staging, 2026-08-28)
+  Retrieved: 2026-09-11
+
+SHA-256
+  13c7f8a5b8f2b8635068c7293ee291f9c0603366e2ad8f3f48abf32b4695ac56  7.1-t10-pass-a.pdf
+  b02a1f044d3c2f4f61fd93f053662b9ffbeba033922d2d51fb1baf31571d08aa  7.1-t10-fail-a.pdf
+
+What they test
+  Both files are tagged and declare pdfuaid:part 1 in their XMP metadata.
+  The pass file sets DisplayDocTitle to true in ViewerPreferences. The fail
+  file omits that entry, which is the veraPDF PDF/UA-1 rule 7.1-10 failure
+  case. Preflight uses them to prove that its own DisplayDocTitle and
+  PDF/UA claim checks read real files correctly, not just mocked pdf.js
+  objects.
+
+Licence
+  Creative Commons Attribution 4.0 International (CC BY 4.0)
+  https://creativecommons.org/licenses/by/4.0/
+
+Attribution
+  veraPDF Consortium, veraPDF test corpus. Used unmodified under CC BY 4.0.

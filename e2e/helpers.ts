@@ -971,6 +971,20 @@ export async function waitEditorShowsFile(page: Page, path: string, timeoutMs = 
   }
 }
 
+export async function typeAtCaret(page: Page, text: string) {
+  for (const character of text) {
+    const ok = await page.evaluate<boolean>(
+      `(() => {
+        const content = document.querySelector('.cm-content');
+        if (!content) return false;
+        content.focus();
+        return document.execCommand('insertText', false, ${JSON.stringify(character)});
+      })()`,
+    );
+    if (!ok) throw new Error(`typeAtCaret: editor rejected ${character}`);
+  }
+}
+
 export async function typeInEditorAtStart(page: Page, text: string) {
   const inserted = await page.evaluate<boolean>(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {

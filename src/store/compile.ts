@@ -15,8 +15,10 @@ import { useFilesStore } from "@/store/files";
 import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
 import {
   classifyCompileFailure,
+  importCompatAction,
   importCompatFinding,
   missingLatexFiles,
+  type ImportCompatFinding,
 } from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
@@ -436,7 +438,8 @@ function maybeSuggestMissingPackages(log: string): void {
                 : `Installing ${packages.length} packages. The compile restarts when they finish.`,
             );
             try {
-              await tauri.tlmgrInstallMissing(packages);
+              const outcome = await tauri.tlmgrInstallMissing(packages);
+              for (const notice of installerNotices(outcome)) toast.info(notice);
               const engineStore = await import("@/store/engine");
               await engineStore.useEngineStore.getState().refreshPackages();
               suggestedPackagesByProject.delete(projectId);
@@ -457,10 +460,44 @@ function maybeSuggestMissingPackages(log: string): void {
   })();
 }
 
+const INSTALLER_NOTICE_PREFIX = "[Oleafly] ";
+
+export function installerNotices(outcome: string): string[] {
+  return outcome
+    .split("\n")
+    .filter((line) => line.startsWith(INSTALLER_NOTICE_PREFIX))
+    .map((line) => line.slice(INSTALLER_NOTICE_PREFIX.length).trim())
+    .filter((line) => line.length > 0 && line.length <= 400)
+    .slice(0, 2);
+}
+
+function offerCompileRetry(projectId: string, finding: ImportCompatFinding): void {
+  let retrying = false;
+  toast.error(
+    finding.detail,
+    {
+      label: "Compile again",
+      onClick: () => {
+        if (retrying || useFilesStore.getState().projectId !== projectId) return;
+        retrying = true;
+        void useCompileStore.getState().recompile();
+      },
+    },
+    true,
+  );
+}
+
 function maybePromptEngineGap(log: string, errors: CompileError[]): void {
   const files = useFilesStore.getState();
   if (files.engine.id !== "latex" || !files.projectId) return;
-  let findings = classifyCompileFailure(log);
+  let findings = classifyCompileFailure(log, { bundledEngine: true });
+  const retryable = findings.find(
+    (finding) => importCompatAction(finding.id) === "retry-compile",
+  );
+  if (retryable) {
+    offerCompileRetry(files.projectId, retryable);
+    return;
+  }
   if (findings.length === 0) {
     const classFileError = errors.some(
       (error) =>

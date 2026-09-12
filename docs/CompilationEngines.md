@@ -29,6 +29,13 @@ engine-specific policy.
   project is opened. The same taxonomy (`IMPORT_COMPAT_CATALOG`) drives the
   compile-failure classifier (`classifyCompileFailure`) and the engine-picker
   modal, so every surface describes a gap in the same words.
+- Some findings come only from a failed compile, because nothing in the source
+  predicts them: a class that pins hyperref's `pdftex` driver, an EPS figure
+  the bundled engine cannot place, a `.sty` or `.cls` the bundled TeX bundle
+  does not carry, and a failed bundle download. `importCompatAction` names the
+  one fix each entry offers: switch to pdfLaTeX on system TeX and recompile,
+  switch and then install the package, or just compile again. A failed download
+  is reported on its own, never as a missing package.
 
 ## latexmk (system TeX compatibility)
 
@@ -49,12 +56,19 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   `% !TeX program = xelatex|lualatex|pdflatex` magic comment wins. fontspec /
   polyglossia / unicode-math force XeLaTeX. Everything else uses pdfLaTeX
   (Overleaf's default).
-- TeX shell commands are blocked by default. A user can explicitly allow them
-  for one trusted project on one computer. The setting is never inferred from
-  source, imported, exported, committed to Git, or stored in `project.json`.
-  The local grant is bound to the project directory's filesystem identity, so
-  copies and recreated project IDs require fresh consent. Leaving `latexmk` or
-  deleting the project revokes it.
+- Arbitrary TeX shell commands are blocked by default. A user can explicitly
+  allow them for one trusted project on one computer. The setting is never
+  inferred from source, imported, exported, committed to Git, or stored in
+  `project.json`. The local grant is bound to the project directory's
+  filesystem identity, so copies and recreated project IDs require fresh
+  consent. Leaving `latexmk` or deleting the project revokes it.
+- Without that consent, system TeX runs with restricted shell escape
+  (`-shell-restricted`), not with shell escape switched off entirely. TeX Live
+  then permits only the programs on its own allow list in `texmf.cnf`, such as
+  `repstopdf`, `extractbb`, `kpsewhich`, and `makeindex`. That is what lets an
+  ordinary Overleaf project with EPS figures build on pdfLaTeX, because
+  `epstopdf` can convert them during the run. MiKTeX does not accept that flag,
+  so it keeps `-no-shell-escape`.
 - System TeX is not a filesystem sandbox and may read files available to the
   user's account even while shell commands are blocked. Imported projects stay
   on bundled Tectonic until the user explicitly chooses system TeX.
@@ -80,6 +94,32 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   validates the exact reviewed member count, expanded size, member type and
   path manifest, duplicate-path policy, and confined symlink topology for the
   current platform. No member is written before that preflight succeeds.
+- Package lookups ask the local TeX Live database first and only fall back to
+  the remote repository when the local answer is empty. A local release older
+  than the remote one makes `tlmgr` refuse a remote query outright, and Oleafly
+  names both years in the error instead of showing an empty result.
+- A remote lookup that fails, or answers with something that is not JSON, is
+  reported as a repository failure. It is never reported as a package TeX Live
+  does not carry: that wording sends people back to their template for a file
+  the mirror never answered about.
+- When the system TeX tree is read only, an install retries in the personal
+  tree. Its location comes from the active distribution
+  (`kpsewhich --var-value=TEXMFHOME`), which answers `~/Library/texmf` on
+  MacTeX and `~/texmf` on plain TeX Live, so the path is never guessed. If that
+  tree has no package database yet, `tlmgr init-usertree` creates one first, and
+  a failure there is reported as its own error. The result says where the
+  packages landed.
+- Settings reads both databases. The system list and
+  `tlmgr --usermode list --only-installed` are merged, each row says which tree
+  holds the package, and a removal goes to the tree the package came from.
+- A package operation holds the compile locks while it runs, so the whole flow
+  (search, tree setup, install, re-read) is capped at 15 minutes. Past that it
+  is stopped and the error says so, instead of chaining per-command timeouts
+  into most of an hour.
+- On Windows, TeX Live installs `tlmgr` as `tlmgr.bat`, which `CreateProcessW`
+  cannot start, so those calls go through `cmd.exe /D /V:OFF /C` with the path
+  and every argument quoted. `/D` skips any AutoRun command and `/V:OFF` turns
+  off delayed expansion, so an ambient shell setting cannot change what runs.
 
 ## Why `project.json` matters
 

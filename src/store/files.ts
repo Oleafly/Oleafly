@@ -52,6 +52,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
+import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import {
@@ -173,6 +174,7 @@ async function checkTexPinStatus(
 interface FileState {
   content: string;
   dirty: boolean;
+  edits?: number;
 }
 
 interface FilesStore {
@@ -240,7 +242,9 @@ interface FilesStore {
     action: (generation: number) => Promise<T>,
   ) => Promise<T>;
   recordMutationGeneration: (projectId: string, generation: number) => void;
+  writeProjectFile: (projectId: string, path: string, content: string) => Promise<void>;
   applyExternalWrite: (projectId: string, path: string, content: string) => boolean;
+  applyExternalReload: (projectId: string, path: string, content: string) => boolean;
   applyExternalDelete: (projectId: string, path: string) => boolean;
   applyExternalRename: (projectId: string, from: string, to: string) => boolean;
   applyProjectStateChanged: (event: ProjectStateChanged) => Promise<boolean>;
@@ -302,6 +306,10 @@ function cancelPendingAutosave() {
 
 function writeKey(projectId: string, path: string) {
   return `${projectId}\0${path}`;
+}
+
+function editedSinceLoad(file: FileState | undefined): boolean {
+  return (file?.edits ?? 0) > 0;
 }
 
 function resetMutationGeneration(projectId: string | null = null) {
@@ -1160,7 +1168,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   setContent: (path, content, opts) => {
     set((s) => ({
-      files: { ...s.files, [path]: { content, dirty: true } },
+      files: {
+        ...s.files,
+        [path]: { content, dirty: true, edits: (s.files[path]?.edits ?? 0) + 1 },
+      },
       docVersion: opts?.bumpVersion ? s.docVersion + 1 : s.docVersion,
     }));
     // Debounce a save of THIS file. Track every edited path so the single timer
@@ -1473,6 +1484,70 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
+  writeProjectFile: async (projectId, path, content) => {
+    const baselineRevision = fileReloadRevision;
+    const adoptable = (file: FileState | undefined) =>
+      file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
+    const expectedGeneration = await get().prepareExternalMutation(projectId);
+    const canonicalContent = normalizeTextContent(content);
+    const result = await writeFileContent(
+      projectId,
+      path,
+      canonicalContent,
+      expectedGeneration,
+    );
+    if (Number.isSafeInteger(result?.generation)) {
+      rememberMutationGeneration(projectId, result.generation);
+    }
+    if (get().projectId !== projectId) return;
+    const current = get().files[path];
+    if (adoptable(current)) {
+      pendingSaves.delete(path);
+      set((s) => {
+        if (s.projectId !== projectId || !adoptable(s.files[path])) return {};
+        return {
+          files: {
+            ...s.files,
+            [path]: { content: canonicalContent, dirty: false },
+          },
+          docVersion: s.activePath === path ? s.docVersion + 1 : s.docVersion,
+        };
+      });
+    } else if (current !== undefined && current.content !== canonicalContent) {
+      set((s) => {
+        if (s.projectId !== projectId) return {};
+        const latest = s.files[path];
+        if (!latest || latest.dirty || latest.content === canonicalContent) return {};
+        return { files: { ...s.files, [path]: { ...latest, dirty: true } } };
+      });
+      if (get().files[path]?.dirty && (!pendingSaves.has(path) || autosaveTimer === null)) {
+        pendingSaves.add(path);
+        scheduleAutosave(get);
+      }
+    }
+    await get().refreshTree();
+    notifyProjectFilesChanged(projectId, [path]);
+  },
+
+  applyExternalReload: (projectId, path, content) => {
+    if (get().projectId !== projectId) return false;
+    const current = get().files[path];
+    if (!current || current.dirty || pendingSaves.has(path)) return false;
+    const canonicalContent = normalizeTextContent(content);
+    if (current.content === canonicalContent) return false;
+    void refreshMutationGeneration(projectId).catch(() => {});
+    set((s) => {
+      if (s.projectId !== projectId) return {};
+      const latest = s.files[path];
+      if (!latest || latest.dirty || latest.content !== current.content) return {};
+      return {
+        files: { ...s.files, [path]: { content: canonicalContent, dirty: false } },
+        docVersion: s.activePath === path ? s.docVersion + 1 : s.docVersion,
+      };
+    });
+    return true;
+  },
+
   // Called after an external actor (e.g. the AI assistant) mutates a file on
   // disk, so the in-memory editor buffer stays in sync and the next save does
   // not clobber the edit. Cross-window broadcast is done by the AI host so
@@ -1494,7 +1569,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
             set((s) => ({
               files: {
                 ...s.files,
-                [path]: { content: localContent, dirty: false },
+                [path]: { ...s.files[path], content: localContent, dirty: false },
               },
             }));
             pendingSaves.delete(path);
@@ -1602,7 +1677,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
             set((s) => ({
               files: {
                 ...s.files,
-                [preservedPath]: { content: file.content, dirty: false },
+                [preservedPath]: { ...file, dirty: false },
               },
             }));
             pendingSaves.delete(preservedPath);

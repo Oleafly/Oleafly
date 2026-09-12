@@ -1,4 +1,5 @@
 import {
+  insertCompletionText,
   snippet,
   type Completion,
   type CompletionContext,
@@ -38,6 +39,7 @@ import {
   corpusClassNames,
   corpusPackageNames,
 } from "@/lib/latex-corpus";
+import { isStandardLatexEnvironment } from "@oleafly/editor";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 
@@ -374,6 +376,12 @@ function guardedCompletionApply(
       );
       return;
     }
+    if (additionalEdits.length === 0 && view.state.selection.ranges.length > 1) {
+      view.dispatch(
+        insertCompletionText(view.state, mainEdit.insert, mainEdit.from, mainEdit.to),
+      );
+      return;
+    }
     view.dispatch({
       changes: edits
         .sort((left, right) => left.from - right.from)
@@ -406,10 +414,14 @@ function normalizeCompletion(
   const index = new TextPositionIndex(text);
   const seen = new Set<string>();
   const options: Completion[] = [];
+  const environmentArgument = /\\(?:begin|end)\s*\{[^{}]*$/u.test(
+    text.slice(Math.max(0, position - 300), position),
+  );
   for (const raw of completionItems(value)) {
     if (options.length >= MAX_COMPLETION_ITEMS || !isRecord(raw)) break;
     const label = boundedText(raw.label, 500);
     if (!label) continue;
+    if (environmentArgument && isStandardLatexEnvironment(label)) continue;
     const snippetFormat = raw.insertTextFormat === 2;
     const insertedValue =
       boundedText(raw.insertText, MAX_COMPLETION_TEXT) ?? label;
@@ -464,7 +476,7 @@ function normalizeCompletion(
       detail: completionDetail(raw.detail),
       info: completionDocumentation(raw.documentation),
       boost:
-        typeof raw.sortText === "string"
+        typeof raw.sortText === "string" && !environmentArgument
           ? Math.max(-99, 99 - options.length)
           : undefined,
       apply: guardedCompletionApply(

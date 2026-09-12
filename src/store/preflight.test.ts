@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { runRefsRules } from "@oleafly/preflight";
+import type { RefsContext } from "@oleafly/preflight";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -55,7 +57,7 @@ vi.mock("@/store/compile", async (importOriginal) => {
 
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
-import { usePreflightStore } from "./preflight";
+import { preflightEngineFor, usePreflightStore } from "./preflight";
 
 function symbol(kind: "label" | "bibentry" | "ref", name: string, file: string) {
   return {
@@ -146,6 +148,27 @@ beforeEach(() => {
   mocks.runPreflight.mockReset().mockReturnValue(mocks.report);
 });
 
+describe("preflightEngineFor", () => {
+  it("maps the bundled Tectonic engine to \"bundled\"", () => {
+    expect(preflightEngineFor("latex", undefined)).toBe("bundled");
+  });
+
+  it("uses the pinned latexmk flavor when one is set", () => {
+    expect(preflightEngineFor("latexmk", "pdflatex")).toBe("pdflatex");
+  });
+
+  it("falls back to \"unknown\" for latexmk with no pinned flavor", () => {
+    expect(preflightEngineFor("latexmk", undefined)).toBe("unknown");
+    expect(preflightEngineFor("latexmk", null)).toBe("unknown");
+  });
+
+  it("falls back to \"unknown\" for a non-LaTeX engine", () => {
+    expect(preflightEngineFor("typst", undefined)).toBe("unknown");
+    expect(preflightEngineFor("markdown", undefined)).toBe("unknown");
+    expect(preflightEngineFor("unknown", undefined)).toBe("unknown");
+  });
+});
+
 describe("preflight store", () => {
   it("updates options, toggles the reader, and resets the session", () => {
     const flags = {
@@ -220,6 +243,7 @@ describe("preflight store", () => {
       anonymousReview: false,
       compile: { status: "error", log: "Undefined control sequence" },
       project: { mainFile: "main.tex" },
+      engine: "bundled",
     });
     expect(input.project.files.map((file: { path: string }) => file.path)).toEqual(
       expect.arrayContaining(["main.tex", "chapter.tex", "other.tex", "refs.bib", "figure.png"]),
@@ -242,6 +266,168 @@ describe("preflight store", () => {
       pageText: [],
       running: false,
       error: null,
+    });
+  });
+
+  it("does not call the bibliography loaded when the declared file is missing", async () => {
+    seedProject();
+    useFilesStore.setState((state) => ({
+      files: {
+        ...state.files,
+        "main.tex": {
+          content: "\\documentclass{article}\\addbibresource{references.bib}",
+          dirty: false,
+        },
+      },
+    }));
+
+    await usePreflightStore.getState().run();
+
+    expect(mocks.runPreflight.mock.calls[0][0].refs.bibLoaded).toBe(false);
+  });
+
+  it("accepts a declaration that resolves against the project root", async () => {
+    seedProject();
+    useFilesStore.setState((state) => ({
+      files: {
+        ...state.files,
+        "main.tex": {
+          content: "\\documentclass{article}\\addbibresource{refs.bib}",
+          dirty: false,
+        },
+      },
+    }));
+
+    await usePreflightStore.getState().run();
+
+    expect(mocks.runPreflight.mock.calls[0][0].refs.bibLoaded).toBe(true);
+  });
+
+  it("resolves a nested file's declaration against the project root, not its own directory", async () => {
+    seedProject();
+    useIndexStore.setState((state) => ({
+      texts: {
+        ...state.texts,
+        "document-body/intro.tex": "\\addbibresource{refs.bib}",
+      },
+    }));
+
+    await usePreflightStore.getState().run();
+
+    expect(mocks.runPreflight.mock.calls[0][0].refs.bibLoaded).toBe(true);
+  });
+
+  it("ignores a commented or remote bibliography declaration", async () => {
+    seedProject();
+    useFilesStore.setState((state) => ({
+      files: {
+        ...state.files,
+        "main.tex": {
+          content:
+            "% \\addbibresource{gone.bib}\n\\addbibresource[location=remote]{https://example.org/refs.bib}",
+          dirty: false,
+        },
+      },
+    }));
+
+    await usePreflightStore.getState().run();
+
+    expect(mocks.runPreflight.mock.calls[0][0].refs.bibLoaded).toBe(true);
+  });
+
+  describe("the store and the refs rules agree about a declared bibliography", () => {
+    async function refsContextFor(source: string): Promise<RefsContext> {
+      seedProject();
+      useFilesStore.setState((state) => ({
+        tree: [...state.tree, { path: "other/refs.bib", is_dir: false }],
+        files: { ...state.files, "main.tex": { content: source, dirty: false } },
+      }));
+      await usePreflightStore.getState().run();
+      return mocks.runPreflight.mock.calls[0][0].refs as RefsContext;
+    }
+
+    it("reports the missing file and stays quiet about the citation it cannot check", async () => {
+      const source = "\\addbibresource{missing/refs.bib}\n\\cite{nobody}";
+      const refs = await refsContextFor(source);
+      const ids = runRefsRules(source, refs, { file: "main.tex" }).map((f) => f.id);
+
+      expect(refs.bibLoaded).toBe(false);
+      expect(ids).toContain("refs-bib-missing");
+      expect(ids).not.toContain("refs-undefined-cite");
+    });
+
+    it("reports the unknown citation once the declaration resolves", async () => {
+      const source = "\\addbibresource{other/refs.bib}\n\\cite{nobody}";
+      const refs = await refsContextFor(source);
+      const ids = runRefsRules(source, refs, { file: "main.tex" }).map((f) => f.id);
+
+      expect(refs.bibLoaded).toBe(true);
+      expect(ids).not.toContain("refs-bib-missing");
+      expect(ids).toContain("refs-undefined-cite");
+    });
+
+    async function dottedRefsContextFor(source: string): Promise<RefsContext> {
+      seedProject();
+      useFilesStore.setState((state) => ({
+        tree: [...state.tree, { path: "refs.v1.bib", is_dir: false }],
+        files: { ...state.files, "main.tex": { content: source, dirty: false } },
+      }));
+      await usePreflightStore.getState().run();
+      return mocks.runPreflight.mock.calls[0][0].refs as RefsContext;
+    }
+
+    it("refuses a dotted name an \\addbibresource did not spell in full", async () => {
+      const source = "\\addbibresource{refs.v1}";
+      const refs = await dottedRefsContextFor(source);
+
+      expect(refs.unresolvedBibliographies).toEqual([
+        { file: "main.tex", name: "refs.v1" },
+      ]);
+      expect(refs.bibLoaded).toBe(false);
+      expect(runRefsRules(source, refs, { file: "main.tex" }).map((f) => f.id)).toContain(
+        "refs-bib-missing",
+      );
+    });
+
+    it("accepts the same dotted name from a \\bibliography declaration", async () => {
+      const source = "\\bibliography{refs.v1}";
+      const refs = await dottedRefsContextFor(source);
+
+      expect(refs.unresolvedBibliographies).toEqual([]);
+      expect(refs.bibLoaded).toBe(true);
+      expect(
+        runRefsRules(source, refs, { file: "main.tex" }).map((f) => f.id),
+      ).not.toContain("refs-bib-missing");
+    });
+
+    it("blames only the file whose copy of the same name is missing", async () => {
+      const declaration = "\\addbibresource{local.bib}";
+      seedProject();
+      useFilesStore.setState((state) => ({
+        tree: [
+          ...state.tree,
+          { path: "chapters/good.tex", is_dir: false },
+          { path: "chapters/local.bib", is_dir: false },
+          { path: "appendix/bad.tex", is_dir: false },
+        ],
+      }));
+      useIndexStore.setState((state) => ({
+        texts: {
+          ...state.texts,
+          "chapters/good.tex": declaration,
+          "appendix/bad.tex": declaration,
+        },
+      }));
+
+      await usePreflightStore.getState().run();
+      const refs = mocks.runPreflight.mock.calls[0][0].refs as RefsContext;
+
+      expect(
+        runRefsRules(declaration, refs, { file: "chapters/good.tex" }).map((f) => f.id),
+      ).not.toContain("refs-bib-missing");
+      expect(
+        runRefsRules(declaration, refs, { file: "appendix/bad.tex" }).map((f) => f.id),
+      ).toContain("refs-bib-missing");
     });
   });
 

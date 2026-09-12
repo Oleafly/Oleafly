@@ -81,7 +81,7 @@ describe("ReferencesPanel controls", () => {
     const tablist = screen.getByRole("tablist", { name: "Reference panel view" });
     expect(tablist.className).toContain("rounded-lg");
     expect(tablist.className).toContain("bg-muted");
-    expect(tablist.className).toContain("h-8");
+    expect(tablist.className).toContain("h-auto");
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(3);
@@ -94,9 +94,11 @@ describe("ReferencesPanel controls", () => {
       screen.getByRole("tab", { name: "Citations, 1" }),
     ).toHaveAttribute("aria-selected", "true");
     for (const tab of tabs) {
-      expect(tab.className).toContain("text-xs");
+      expect(tab.className).toContain("text-sm");
       expect(tab.className).toContain("focus-visible:ring-ring");
     }
+    const citations = screen.getByRole("tab", { name: "Citations, 1" });
+    expect(citations.querySelector("[aria-hidden]:last-child")?.textContent).toBe("1");
   });
 
   it("switches the view from the shared tabs", async () => {

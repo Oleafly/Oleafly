@@ -8,6 +8,7 @@ import {
   SearchCode,
   Upload,
   X,
+  Quote,
 } from "lucide-react";
 import {
   useCallback,
@@ -25,6 +26,8 @@ import {
 import { ImportReferenceLibraryDialog } from "@/components/layout/ImportReferenceLibraryDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -368,9 +371,8 @@ export function ReferencesPanel() {
           }}
         >
           <TabsList
-            size="sm"
             aria-label="Reference panel view"
-            className="grid w-full grid-cols-3"
+            className="flex h-auto w-full gap-1"
           >
             {tabs.map(({ id, label, icon: Icon, count }) => (
               <TabsTrigger
@@ -380,17 +382,18 @@ export function ReferencesPanel() {
                   count !== undefined && count > 0 ? `${label}, ${count}` : label
                 }
                 onClick={() => setView(id)}
-                className="min-w-0"
+                className="min-w-0 flex-1 gap-1.5 px-2 [&_svg]:size-3.5 [&_svg]:shrink-0"
               >
                 <Icon aria-hidden />
                 <span className="truncate">{label}</span>
                 {count !== undefined && count > 0 ? (
-                  <span
+                  <Badge
                     aria-hidden
-                    className="font-mono text-[9px] text-muted-foreground"
+                    variant="secondary"
+                    className="h-4 min-w-4 px-1 text-[10px] tabular-nums"
                   >
                     {count}
-                  </span>
+                  </Badge>
                 ) : null}
               </TabsTrigger>
             ))}
@@ -523,10 +526,27 @@ export function ReferencesPanel() {
           />
         )}
         </div>
+        {view === "citations" && projectId ? (
+          <div className="shrink-0 border-t border-sidebar-border/65 px-2 py-1.5">
+            <button
+              type="button"
+              data-testid="cite-oleafly-row"
+              onClick={() => void runCiteOleaflyAction()}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Quote aria-hidden className="size-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">Cite Oleafly in this paper</span>
+            </button>
+          </div>
+        ) : null}
       </section>
       <ImportReferenceLibraryDialog
         open={importOpen}
         onOpenChange={setImportOpen}
+        onImported={() => {
+          setView("citations");
+          setFilter("");
+        }}
       />
     </>
   );

@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Finding } from "@oleafly/preflight";
+import { standardsFor, type Finding } from "@oleafly/preflight";
 import { useFilesStore } from "@/store/files";
 
 const mocks = vi.hoisted(() => ({
@@ -89,5 +89,55 @@ describe("FindingRow", () => {
     render(<FindingRow finding={finding({ from: 1 })} />);
     fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
     expect(screen.queryByRole("button", { name: "Jump to source" })).not.toBeInTheDocument();
+  });
+
+  it("cites the standards behind an accessibility finding, each one linked", () => {
+    render(
+      <FindingRow
+        finding={finding({
+          id: "figure-alt",
+          lens: "a11y",
+          title: "Image without alt text",
+          standards: standardsFor("figure-alt"),
+          machineCheckable: true,
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Image without alt text/ }));
+
+    for (const label of ["PDF/UA-1 7.3", "PDF/UA-2 8.2.5.28.2", "Matterhorn 13-004", "WCAG 2.2 SC 1.1.1"]) {
+      expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", expect.stringContaining("https://"));
+    }
+    expect(screen.getByRole("link", { name: "WCAG 2.2 SC 1.1.1" })).toHaveAttribute(
+      "href",
+      "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1",
+    );
+    expect(screen.queryByText(/Needs your judgment/)).not.toBeInTheDocument();
+  });
+
+  it("collapses repeated citation labels into one chip", () => {
+    render(
+      <FindingRow
+        finding={finding({ id: "link-text", lens: "a11y", standards: standardsFor("link-text") })}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
+    expect(screen.getAllByRole("link", { name: "WCAG 2.2 SC 2.4.4" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "WCAG 2.2 SC 2.4.4" })).toHaveAttribute(
+      "title",
+      expect.stringContaining("PDF11, PDF13"),
+    );
+  });
+
+  it("says so when a finding needs human judgement", () => {
+    render(<FindingRow finding={finding({ id: "color-only", lens: "a11y", machineCheckable: false })} />);
+    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
+    expect(screen.getByText(/Needs your judgment/)).toBeInTheDocument();
+  });
+
+  it("shows no citation line for a finding with no standard behind it", () => {
+    render(<FindingRow finding={finding()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

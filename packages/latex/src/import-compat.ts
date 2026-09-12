@@ -8,6 +8,12 @@
 
 export type ImportCompatLevel = "info" | "warning" | "blocker";
 
+export type ImportCompatAction =
+  | "switch-to-latexmk"
+  | "switch-to-pdflatex"
+  | "install-after-switch"
+  | "retry-compile";
+
 export type ImportCompatFinding = {
   id: string;
   level: ImportCompatLevel;
@@ -25,6 +31,7 @@ export type ImportCompatFinding = {
  */
 export const IMPORT_COMPAT_CATALOG = {
   "biblatex-biber": {
+    action: "switch-to-latexmk",
     level: "warning",
     title: "Bibliography uses biblatex / Biber",
     detail:
@@ -32,6 +39,7 @@ export const IMPORT_COMPAT_CATALOG = {
     latexmkFixes: true,
   },
   minted: {
+    action: "switch-to-latexmk",
     level: "blocker",
     title: "minted needs shell-escape and Pygments",
     detail:
@@ -39,6 +47,7 @@ export const IMPORT_COMPAT_CATALOG = {
     latexmkFixes: true,
   },
   "glossaries-index": {
+    action: "switch-to-latexmk",
     level: "blocker",
     title: "Glossary / index external tool",
     detail:
@@ -46,6 +55,7 @@ export const IMPORT_COMPAT_CATALOG = {
     latexmkFixes: true,
   },
   pythontex: {
+    action: "switch-to-latexmk",
     level: "blocker",
     title: "pythontex",
     detail:
@@ -53,6 +63,7 @@ export const IMPORT_COMPAT_CATALOG = {
     latexmkFixes: true,
   },
   "shell-escape": {
+    action: "switch-to-latexmk",
     level: "warning",
     title: "Shell-escape commands",
     detail:
@@ -60,6 +71,7 @@ export const IMPORT_COMPAT_CATALOG = {
     latexmkFixes: true,
   },
   fontspec: {
+    action: "switch-to-latexmk",
     level: "info",
     title: "Custom fonts (fontspec)",
     detail:
@@ -67,6 +79,7 @@ export const IMPORT_COMPAT_CATALOG = {
     latexmkFixes: false,
   },
   "pdftex-only": {
+    action: "switch-to-pdflatex",
     level: "info",
     title: "pdfTeX-oriented packages",
     detail:
@@ -74,15 +87,54 @@ export const IMPORT_COMPAT_CATALOG = {
     latexmkFixes: true,
   },
   "class-compat": {
+    action: "switch-to-latexmk",
     level: "warning",
     title: "Publisher class hits engine limits",
     detail:
       "The compile errors come from a class or style file, not from your document. Publisher classes often depend on tools or pdfTeX behavior the bundled Tectonic engine does not provide. The latexmk engine compiles with a full TeX distribution, the same way Overleaf does.",
     latexmkFixes: true,
   },
+  "hyperref-pdftex-driver": {
+    action: "switch-to-pdflatex",
+    level: "blocker",
+    title: "hyperref is pinned to the pdfTeX driver",
+    detail:
+      "This class or preamble forces hyperref's pdftex driver, which the built-in engine (XeTeX) cannot use. Switch to pdfLaTeX on system TeX, or drop the pdftex option so hyperref picks the driver itself.",
+    latexmkFixes: true,
+  },
+  "eps-image": {
+    action: "switch-to-pdflatex",
+    level: "blocker",
+    title: "EPS images need a converter",
+    detail:
+      "The built-in engine cannot place EPS images. Convert them to PDF with epstopdf or Inkscape, or switch to pdfLaTeX on system TeX, which converts EPS through Ghostscript.",
+    latexmkFixes: true,
+  },
+  "missing-sty-on-bundled-engine": {
+    action: "install-after-switch",
+    level: "blocker",
+    title: "A package is missing from the built-in bundle",
+    detail:
+      "Something this project loads is not in the built-in TeX bundle. Add the file to the project if it came with your template, or switch to system TeX and install the package from TeX Live.",
+    latexmkFixes: true,
+  },
+  "bundle-fetch-failed": {
+    action: "retry-compile",
+    level: "blocker",
+    title: "The TeX package download failed",
+    detail:
+      "Oleafly could not download TeX packages from its mirror, so the compile never reached your document. Check your connection and compile again. The download picks up where it stopped.",
+    latexmkFixes: false,
+  },
 } as const satisfies Record<
   string,
-  { level: ImportCompatLevel; title: string; detail: string; latexmkFixes: boolean }
+  {
+    action: ImportCompatAction;
+    level: ImportCompatLevel;
+    title: string;
+    detail: string;
+    latexmkFixes: boolean;
+  }
 >;
 
 export type ImportCompatFindingId = keyof typeof IMPORT_COMPAT_CATALOG;
@@ -102,6 +154,16 @@ export function latexmkFixesFinding(id: string): boolean {
   return id in IMPORT_COMPAT_CATALOG
     ? IMPORT_COMPAT_CATALOG[id as ImportCompatFindingId].latexmkFixes
     : false;
+}
+
+export function importCompatAction(id: string): ImportCompatAction {
+  return id in IMPORT_COMPAT_CATALOG
+    ? IMPORT_COMPAT_CATALOG[id as ImportCompatFindingId].action
+    : "switch-to-latexmk";
+}
+
+export function needsPdflatexFinding(id: string): boolean {
+  return importCompatAction(id) === "switch-to-pdflatex";
 }
 
 /** Cap combined TeX size so import scan stays cheap and predictable. */
@@ -259,10 +321,24 @@ const MAX_CLASSIFY_CHARS = 1024 * 1024;
  * compile-failure modal and the import toast tell one consistent story.
  * Plain `includes` scans only — logs are attacker-influenced text.
  */
-export function classifyCompileFailure(logRaw: string): ImportCompatFinding[] {
+export function classifyCompileFailure(
+  logRaw: string,
+  options: { bundledEngine?: boolean } = {},
+): ImportCompatFinding[] {
   const log =
     logRaw.length > MAX_CLASSIFY_CHARS ? logRaw.slice(0, MAX_CLASSIFY_CHARS) : logRaw;
   const findings: ImportCompatFinding[] = [];
+  const bundledEngine = options.bundledEngine !== false;
+
+  const bundleStatus = bundleFetchStatus(log);
+  if (bundleStatus !== null) {
+    return [
+      withDetail(
+        findingFor("bundle-fetch-failed"),
+        bundleStatus > 0 ? `The mirror returned HTTP ${bundleStatus}.` : "",
+      ),
+    ];
+  }
 
   if (
     log.includes("Package minted Error") ||
@@ -321,7 +397,129 @@ export function classifyCompileFailure(logRaw: string): ImportCompatFinding[] {
     findings.push(findingFor("pdftex-only"));
   }
 
+  if (hasWrongDriverOption(log, "pdftex")) {
+    findings.push(findingFor("hyperref-pdftex-driver"));
+  }
+
+  const eps = epsImageFile(log);
+  if (eps !== null) {
+    findings.push(
+      withDetail(
+        findingFor("eps-image"),
+        eps ? `The compile stopped on ${eps}.` : "",
+      ),
+    );
+  }
+
+  if (bundledEngine) {
+    const missing = missingLatexFiles(log);
+    if (missing.length > 0) {
+      findings.push(
+        withDetail(
+          findingFor("missing-sty-on-bundled-engine"),
+          `The compile could not find ${missing.join(", ")}.`,
+        ),
+      );
+    }
+  }
+
   return findings;
+}
+
+function withDetail(finding: ImportCompatFinding, sentence: string): ImportCompatFinding {
+  return sentence ? { ...finding, detail: `${finding.detail} ${sentence}` } : finding;
+}
+
+const BUNDLE_FETCH_MARKERS = [
+  "couldn't get it from the internet",
+  "this bundle isn't cached",
+  "unexpected http response code",
+  "error connecting to",
+  "connecting to",
+  "failed to download",
+];
+
+const BUNDLE_CONTEXT_MARKERS = ["tex-bundles", "bundle"];
+
+function httpStatusIn(text: string): number {
+  const marker = "unexpected http response code ";
+  const at = text.toLowerCase().indexOf(marker);
+  if (at === -1) return 0;
+  const status = Number.parseInt(text.slice(at + marker.length, at + marker.length + 3), 10);
+  return Number.isInteger(status) && status >= 100 && status <= 599 ? status : 0;
+}
+
+function bundleFetchStatus(log: string): number | null {
+  const lines = log.split("\n");
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].toLowerCase();
+    if (!BUNDLE_FETCH_MARKERS.some((marker) => line.includes(marker))) continue;
+    const context = `${(lines[index - 1] ?? "").toLowerCase()}\n${line}`;
+    if (!BUNDLE_CONTEXT_MARKERS.some((marker) => context.includes(marker))) continue;
+    for (const candidate of [lines[index], lines[index + 1] ?? "", lines[index + 2] ?? ""]) {
+      const status = httpStatusIn(candidate);
+      if (status > 0) return status;
+    }
+    return 0;
+  }
+  return null;
+}
+
+function hasWrongDriverOption(log: string, driver: string): boolean {
+  const marker = "Wrong driver option ";
+  let from = 0;
+  while (from < log.length) {
+    const at = log.indexOf(marker, from);
+    if (at === -1) return false;
+    const eol = log.indexOf("\n", at);
+    const line = log.slice(at, eol === -1 ? log.length : eol);
+    if (line.includes(driver)) return true;
+    from = at + marker.length;
+  }
+  return false;
+}
+
+const MAX_QUOTED_NAME = 256;
+
+function failedImageInclusion(log: string): string | null {
+  const marker = 'image inclusion failed for "';
+  let from = 0;
+  while (from < log.length) {
+    const at = log.indexOf(marker, from);
+    if (at === -1) return null;
+    const start = at + marker.length;
+    const end = log.indexOf('"', start);
+    if (end !== -1 && end - start <= MAX_QUOTED_NAME) {
+      const name = log.slice(start, end).trim();
+      if (name.toLowerCase().endsWith(".eps")) return name;
+    }
+    from = start;
+  }
+  return null;
+}
+
+function unconvertedEpsImage(log: string): string | null {
+  for (const quote of ["`", "'", '"']) {
+    const suffix = `-eps-converted-to.pdf${quote === "`" ? "'" : quote} not found`;
+    const at = log.indexOf(suffix);
+    if (at === -1) continue;
+    const opening = log.lastIndexOf(quote, at);
+    if (opening === -1 || at - opening > MAX_QUOTED_NAME) return "";
+    const name = log.slice(opening + 1, at).trim();
+    return name ? `${name}.eps` : "";
+  }
+  return null;
+}
+
+function epsImageFile(log: string): string | null {
+  const included = failedImageInclusion(log);
+  if (included !== null) return included;
+  const unconverted = unconvertedEpsImage(log);
+  if (unconverted !== null) return unconverted;
+  if (log.includes("Shell escape feature is not enabled") && log.includes(".eps")) {
+    return "";
+  }
+  return null;
 }
 
 export function missingLatexFiles(logRaw: string): string[] {

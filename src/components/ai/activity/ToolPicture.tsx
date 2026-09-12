@@ -3,7 +3,7 @@ import { Check, Code2, Copy, FolderDown, Image as ImageIcon } from "lucide-react
 import type { ToolEntry } from "@/store/chats";
 import { TikzSourceView } from "@/components/ai/TikzSourceView";
 import { Tooltip } from "@/components/ui/tooltip";
-import { writeFileContent, writeProjectBytes } from "@/lib/tauri";
+import { writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
@@ -38,8 +38,11 @@ async function saveToolPicture(tc: ToolEntry): Promise<string | null> {
   const existing = files.tree.map((entry) => entry.path);
   if (tc.code) {
     const path = freeFigurePath(existing, "tex");
-    await writeFileContent(projectId, path, tc.code.endsWith("\n") ? tc.code : `${tc.code}\n`);
-    await files.refreshTree();
+    await files.writeProjectFile(
+      projectId,
+      path,
+      tc.code.endsWith("\n") ? tc.code : `${tc.code}\n`,
+    );
     return path;
   }
   if (tc.image) {

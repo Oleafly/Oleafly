@@ -16,7 +16,6 @@ import type {
   ProjectIntelligenceSnapshot,
   ProjectUse,
 } from "@/lib/project-intelligence/types";
-import { writeFileContent } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import type { DefKind, Sym } from "./types";
 
@@ -206,11 +205,16 @@ export async function applyRename(view: EditorView, sym: Sym, newName: string): 
     byFile.set(e.file, arr);
   }
 
+  const unwritten: string[] = [];
+  let editedFiles = 0;
+  let editedCount = 0;
   for (const [file, edits] of byFile) {
     if (file === activePath) {
       // Edit the live editor so the view updates; CM wants ascending, non-overlapping changes.
       const asc = [...edits].sort((a, b) => a.from - b.from);
       view.dispatch({ changes: asc.map((e) => ({ from: e.from, to: e.to, insert: e.newText })) });
+      editedFiles++;
+      editedCount += edits.length;
       continue;
     }
     const base = store.texts[file];
@@ -221,17 +225,27 @@ export async function applyRename(view: EditorView, sym: Sym, newName: string): 
     }
     if (files.files[file] !== undefined) {
       files.setContent(file, text);
+      editedFiles++;
+      editedCount += edits.length;
     } else if (id) {
       try {
-        await writeFileContent(id, file, text);
+        await useFilesStore.getState().writeProjectFile(id, file, text);
+        editedFiles++;
+        editedCount += edits.length;
       } catch {
-        /* leave the file untouched on write failure */
+        unwritten.push(file);
       }
     }
   }
 
   await store.rebuildFromDisk();
+  if (unwritten.length > 0) {
+    toast.error(
+      `Renamed to "${newName}" in ${editedFiles} of ${plan.fileCount} files. Could not write ${unwritten.join(", ")}.`,
+    );
+    return;
+  }
   toast.success(
-    `Renamed to "${newName}" (${plan.edits.length} edit${plan.edits.length > 1 ? "s" : ""} in ${plan.fileCount} file${plan.fileCount > 1 ? "s" : ""})`,
+    `Renamed to "${newName}" (${editedCount} edit${editedCount > 1 ? "s" : ""} in ${editedFiles} file${editedFiles > 1 ? "s" : ""})`,
   );
 }

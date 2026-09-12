@@ -547,8 +547,8 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
 
       <Dialog open={reviewing} onOpenChange={(open) => { if (!open && !busy) setReview(null); }}>
         <DialogContent
-          className="z-[100] max-w-md"
-          overlayClassName="z-[100]"
+          className="z-[120] max-w-md"
+          overlayClassName="z-[120]"
           closeDisabled={!!busy}
           onCloseAutoFocus={(event) => event.preventDefault()}
           onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }}

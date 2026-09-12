@@ -524,6 +524,28 @@ fn valid_command_name(value: &str) -> bool {
         && !value.starts_with('.')
 }
 
+#[cfg(any(windows, test))]
+const WINDOWS_RUNTIME_DIRECTORIES: [(&str, &str); 5] = [
+    ("ProgramFiles", "nodejs"),
+    ("ProgramFiles(x86)", "nodejs"),
+    ("APPDATA", "npm"),
+    ("LOCALAPPDATA", "nvm\\current"),
+    ("LOCALAPPDATA", "Programs\\nodejs"),
+];
+
+#[cfg(any(windows, test))]
+fn windows_runtime_directories(
+    lookup: impl Fn(&str) -> Option<std::ffi::OsString>,
+) -> Vec<PathBuf> {
+    WINDOWS_RUNTIME_DIRECTORIES
+        .iter()
+        .filter_map(|(variable, suffix)| {
+            let root = lookup(variable)?;
+            (!root.is_empty()).then(|| PathBuf::from(root).join(suffix))
+        })
+        .collect()
+}
+
 pub fn discover(name: &str) -> Option<PathBuf> {
     if Path::new(name).is_absolute() {
         return executable_path(PathBuf::from(name));
@@ -549,6 +571,8 @@ pub fn discover(name: &str) -> Option<PathBuf> {
         PathBuf::from("/usr/local/bin"),
         PathBuf::from("/usr/bin"),
     ]);
+    #[cfg(windows)]
+    directories.extend(windows_runtime_directories(|name| std::env::var_os(name)));
     for directory in directories {
         if let Some(path) = executable_path(directory.join(name)) {
             return Some(path);
@@ -1212,6 +1236,108 @@ fn npm_cli() -> Option<PathBuf> {
     .find(|v| v.is_file())
 }
 
+const INSTALL_FAILED: &str =
+    "The installation failed. Check the package, network connection and runtime requirements.";
+const REPORTED_FAILURE_LINES: usize = 5;
+const REPORTED_LINE_CHARS: usize = 200;
+
+const PIPE_HEAD_BYTES: usize = 64 * 1024;
+const PENDING_LINE_BYTES: usize = 8 * 1024;
+
+#[derive(Default)]
+struct PipeCapture {
+    head: String,
+    tail: Vec<String>,
+}
+
+#[derive(Default)]
+struct TrailingLines {
+    lines: std::collections::VecDeque<String>,
+    pending: Vec<u8>,
+}
+
+impl TrailingLines {
+    fn push(&mut self, chunk: &[u8]) {
+        for &byte in chunk {
+            if byte == b'\n' {
+                self.end_line();
+            } else if self.pending.len() < PENDING_LINE_BYTES {
+                self.pending.push(byte);
+            }
+        }
+    }
+
+    fn end_line(&mut self) {
+        let line: String = String::from_utf8_lossy(&self.pending)
+            .trim()
+            .chars()
+            .take(REPORTED_LINE_CHARS)
+            .collect();
+        self.pending.clear();
+        if line.is_empty() {
+            return;
+        }
+        if self.lines.len() == REPORTED_FAILURE_LINES {
+            self.lines.pop_front();
+        }
+        self.lines.push_back(line);
+    }
+
+    fn finish(mut self) -> Vec<String> {
+        self.end_line();
+        self.lines.into()
+    }
+}
+
+#[cfg(test)]
+fn trailing_lines(text: &str) -> Vec<String> {
+    let mut buffer = TrailingLines::default();
+    buffer.push(text.as_bytes());
+    buffer.finish()
+}
+
+fn command_failure_message(stdout: &[String], stderr: &[String]) -> String {
+    let mut lines: Vec<&String> = stdout.iter().chain(stderr.iter()).collect();
+    if lines.is_empty() {
+        return INSTALL_FAILED.into();
+    }
+    lines.drain(..lines.len().saturating_sub(REPORTED_FAILURE_LINES));
+    lines
+        .into_iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn read_bounded_pipe<R>(mut pipe: R) -> tokio::task::JoinHandle<Result<PipeCapture, String>>
+where
+    R: tokio::io::AsyncRead + Unpin + Send + 'static,
+{
+    tokio::spawn(async move {
+        use tokio::io::AsyncReadExt;
+        let mut bytes = Vec::new();
+        let mut trailing = TrailingLines::default();
+        let mut buffer = [0u8; 8192];
+        loop {
+            let count = pipe
+                .read(&mut buffer)
+                .await
+                .map_err(|_| "The installer output could not be read.")?;
+            if count == 0 {
+                break;
+            }
+            let chunk = &buffer[..count];
+            let remaining = PIPE_HEAD_BYTES.saturating_sub(bytes.len());
+            bytes.extend_from_slice(&chunk[..count.min(remaining)]);
+            trailing.push(chunk);
+        }
+        Ok::<_, String>(PipeCapture {
+            head: String::from_utf8_lossy(&bytes).into_owned(),
+            tail: trailing.finish(),
+        })
+    })
+}
+
 async fn bounded_command(
     mut command: tokio::process::Command,
     duration: Duration,
@@ -1219,7 +1345,7 @@ async fn bounded_command(
     command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .kill_on_drop(true);
     crate::proc::isolate_process_tree(&mut command);
     let mut child = command
@@ -1228,27 +1354,18 @@ async fn bounded_command(
     let guard =
         crate::proc::contain_process_tree(child.id().ok_or("The installer has no process ID.")?)
             .map_err(|_| "The installer process could not be contained.")?;
-    let mut output = child
-        .stdout
-        .take()
-        .ok_or("The installer has no output stream.")?;
-    let read = tokio::spawn(async move {
-        use tokio::io::AsyncReadExt;
-        let mut bytes = Vec::new();
-        let mut buffer = [0u8; 8192];
-        loop {
-            let count = output
-                .read(&mut buffer)
-                .await
-                .map_err(|_| "The installer output could not be read.")?;
-            if count == 0 {
-                break;
-            }
-            let remaining = (64 * 1024usize).saturating_sub(bytes.len());
-            bytes.extend_from_slice(&buffer[..count.min(remaining)]);
-        }
-        Ok::<_, String>(String::from_utf8_lossy(&bytes).into_owned())
-    });
+    let read = read_bounded_pipe(
+        child
+            .stdout
+            .take()
+            .ok_or("The installer has no output stream.")?,
+    );
+    let read_errors = read_bounded_pipe(
+        child
+            .stderr
+            .take()
+            .ok_or("The installer has no error stream.")?,
+    );
     let exit = tokio::time::timeout(duration, child.wait()).await;
     drop(guard);
     let success = match exit {
@@ -1256,16 +1373,20 @@ async fn bounded_command(
         _ => {
             let _ = child.kill().await;
             read.abort();
+            read_errors.abort();
             return Err("The installation timed out and was stopped.".into());
         }
     };
     let output = read
         .await
         .map_err(|_| "The installer stopped unexpectedly.")??;
+    let errors = read_errors
+        .await
+        .unwrap_or_else(|_| Ok(PipeCapture::default()))?;
     if !success {
-        return Err("The installation failed. Check the package, network connection and runtime requirements.".into());
+        return Err(command_failure_message(&output.tail, &errors.tail));
     }
-    Ok(output)
+    Ok(output.head)
 }
 
 async fn download(url: &str, limit: usize) -> Result<Vec<u8>, String> {

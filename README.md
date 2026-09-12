@@ -242,4 +242,21 @@ to take part.
 
 If Oleafly makes your writing easier, [give it a ⭐ on GitHub](https://github.com/Oleafly/Oleafly) so the next researcher can find it too.
 
+### Cite Oleafly
+
+If Oleafly helped you write a paper, please cite it. One BibTeX entry in your bibliography tells the next researcher where the tool came from and keeps a free, open-source project visible:
+
+```bibtex
+@software{oleafly,
+  author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
+  title   = {Oleafly: a local-first desktop workspace for research writing},
+  year    = {2026},
+  version = {0.4.0},
+  url     = {https://github.com/Oleafly/Oleafly},
+  license = {AGPL-3.0-or-later}
+}
+```
+
+GitHub's **Cite this repository** button at the top of the repository page offers the same reference in APA and BibTeX, generated from [CITATION.cff](CITATION.cff). The app has a copy button for it under Settings, Help & About.
+
 [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [AGPL-3.0-or-later](LICENSE)

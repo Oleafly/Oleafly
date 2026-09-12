@@ -242,6 +242,12 @@ pub struct TexDistribution {
     pub tlmgr: Option<String>,
 }
 
+pub fn distribution_kind_for_tool(tool: &Path) -> String {
+    tool.parent()
+        .map(|dir| classify_bin_dir(dir).0)
+        .unwrap_or_else(|| "other".into())
+}
+
 pub fn active_latexmk_distribution() -> Option<TexDistribution> {
     let latexmk = find_tex_tool("latexmk")?;
     distribution_for_bin_dir(latexmk.parent()?)

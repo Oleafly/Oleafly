@@ -45,6 +45,7 @@ import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { TERMINAL_LIMIT, TERMINAL_LIMIT_MESSAGE, useTerminalsStore } from "@/store/terminals";
 import { toast } from "@/lib/toast";
+import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { requestThemePreference } from "@/lib/theme";
 import {
   formattingForEngine,
@@ -381,6 +382,16 @@ export function registerPaletteCommands() {
     },
   });
 
+  palette({
+    id: "palette.cite-oleafly",
+    group: "Insert",
+    label: "Cite Oleafly in this paper",
+    icon: () => <Quote className="size-4" />,
+    keywords: "citation bibtex bibliography acknowledge oleafly",
+    order: 395,
+    when: (ctx) => !!ctx.projectId,
+    run: () => void runCiteOleaflyAction(),
+  });
   palette({
     id: "palette.bold",
     group: "Insert",

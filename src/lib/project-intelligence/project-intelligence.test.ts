@@ -308,6 +308,160 @@ describe("Phase 3 project intelligence acceptance", () => {
     });
   });
 
+  it("resolves a bibliography the way the compiler does, from the project root", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{document-body/intro}`,
+        "document-body/intro.tex": String.raw`\addbibresource{references.bib}`,
+      },
+      ["main.tex", "document-body/intro.tex", "references.bib"],
+    );
+
+    const bibliography = value.hierarchy.edges.find(
+      (edge) => edge.kind === "bibliography",
+    );
+    expect(bibliography).toMatchObject({
+      resolution: "resolved",
+      targetFile: "references.bib",
+    });
+    expect(
+      value.diagnostics.filter(
+        (diagnostic) => diagnostic.code === "unresolved-target",
+      ),
+    ).toEqual([]);
+  });
+
+  it("supplies the .bib extension a natbib declaration omits", () => {
+    const value = snapshot(
+      { "main.tex": String.raw`\bibliography{refs,extra}` },
+      ["main.tex", "refs.bib", "extra.bib"],
+    );
+
+    expect(
+      value.hierarchy.edges
+        .filter((edge) => edge.kind === "bibliography")
+        .map((edge) => edge.targetFile),
+    ).toEqual(["refs.bib", "extra.bib"]);
+    expect(value.diagnostics).toEqual([]);
+  });
+
+  it("reports a declared bibliography the project does not contain", () => {
+    const source = String.raw`\addbibresource{missing.bib}`;
+    const value = snapshot({ "main.tex": source }, ["main.tex"]);
+
+    const diagnostic = value.diagnostics.find(
+      (candidate) => candidate.location.file === "main.tex",
+    );
+    expect(diagnostic).toMatchObject({
+      severity: "error",
+      code: "unresolved-target",
+      message: 'Bibliography file "missing.bib" was not found in the project.',
+    });
+    expect(
+      source.slice(
+        diagnostic?.location.range.from,
+        diagnostic?.location.range.to,
+      ),
+    ).toBe("missing.bib");
+  });
+
+  it("reports a dotted \\addbibresource target that names no project file", () => {
+    const value = snapshot({ "main.tex": String.raw`\addbibresource{refs.v1}` }, [
+      "main.tex",
+      "refs.v1.bib",
+    ]);
+
+    expect(
+      value.hierarchy.edges.find((edge) => edge.kind === "bibliography"),
+    ).toMatchObject({ resolution: "unresolved", targetFile: "refs.v1" });
+    expect(value.diagnostics[0]?.message).toBe(
+      'Bibliography file "refs.v1" was not found in the project.',
+    );
+  });
+
+  it("keeps resolving a dotted \\bibliography target against its .bib file", () => {
+    const value = snapshot({ "main.tex": String.raw`\bibliography{refs.v1}` }, [
+      "main.tex",
+      "refs.v1.bib",
+    ]);
+
+    expect(
+      value.hierarchy.edges.find((edge) => edge.kind === "bibliography"),
+    ).toMatchObject({ resolution: "resolved", targetFile: "refs.v1.bib" });
+    expect(value.diagnostics).toEqual([]);
+  });
+
+  it("names the .bib a bare declaration meant when it is missing", () => {
+    const value = snapshot({ "main.tex": String.raw`\bibliography{refs}` }, [
+      "main.tex",
+    ]);
+
+    expect(value.diagnostics[0]?.message).toBe(
+      'Bibliography file "refs.bib" was not found in the project.',
+    );
+  });
+
+  it("leaves a remote bibliography resource alone", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\addbibresource[location=remote]{https://example.org/refs.bib}`,
+      },
+      ["main.tex"],
+    );
+
+    expect(value.diagnostics).toEqual([]);
+  });
+
+  it("takes the root copy for LaTeX when a sibling copy exists as well", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{chapters/one}`,
+        "chapters/one.tex": String.raw`\addbibresource{refs.bib}`,
+      },
+      ["main.tex", "chapters/one.tex", "refs.bib", "chapters/refs.bib"],
+    );
+
+    expect(
+      value.hierarchy.edges.find((edge) => edge.kind === "bibliography"),
+    ).toMatchObject({ resolution: "resolved", targetFile: "refs.bib" });
+    expect(value.diagnostics).toEqual([]);
+  });
+
+  it("takes the sibling copy for Typst when a root copy exists as well", () => {
+    const value = snapshot(
+      {
+        "main.typ": '#include "chapters/one.typ"',
+        "chapters/one.typ": '#bibliography("refs.bib")',
+      },
+      ["main.typ", "chapters/one.typ", "refs.bib", "chapters/refs.bib"],
+    );
+
+    expect(
+      value.hierarchy.edges.find((edge) => edge.kind === "bibliography"),
+    ).toMatchObject({
+      resolution: "resolved",
+      targetFile: "chapters/refs.bib",
+    });
+    expect(value.diagnostics).toEqual([]);
+  });
+
+  it("takes the sibling copy for Markdown when a root copy exists as well", () => {
+    const value = snapshot(
+      {
+        "chapters/one.md": "---\nbibliography: refs.bib\n---\n\n# Intro\n",
+      },
+      ["chapters/one.md", "refs.bib", "chapters/refs.bib"],
+    );
+
+    expect(
+      value.hierarchy.edges.find((edge) => edge.kind === "bibliography"),
+    ).toMatchObject({
+      resolution: "resolved",
+      targetFile: "chapters/refs.bib",
+    });
+    expect(value.diagnostics).toEqual([]);
+  });
+
   it("keeps Markdown anchors file-scoped and resolves Pandoc citation and shortcut-reference forms", () => {
     const article = String.raw`# Intro
 See [local](#intro), [remote](other.md#intro), and [Guide].

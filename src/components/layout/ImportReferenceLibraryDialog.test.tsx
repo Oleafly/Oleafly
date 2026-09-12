@@ -39,8 +39,21 @@ beforeEach(() => {
     imported: 1,
     duplicates: 0,
     errors: [],
+    bibPath: "references.bib",
   });
 });
+
+async function chooseZoteroFile(text = "<rdf:RDF />") {
+  const input = document.querySelector<HTMLInputElement>('input[accept=".rdf"]');
+  const file = {
+    name: "zotero-library.rdf",
+    text: vi.fn().mockResolvedValue(text),
+  } as unknown as File;
+  fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
+  await waitFor(() => {
+    expect(mocks.addCitations).toHaveBeenCalled();
+  });
+}
 
 describe("ImportReferenceLibraryDialog", () => {
   it("explains every supported library format", () => {
@@ -91,7 +104,107 @@ describe("ImportReferenceLibraryDialog", () => {
       );
     });
     expect(mocks.addCitations).toHaveBeenCalledOnce();
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("1 reference imported");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "1 reference added to references.bib.",
+    );
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("names the bibliography and pluralizes the count", async () => {
+    mocks.addCitations.mockResolvedValue({
+      imported: 3,
+      duplicates: 0,
+      errors: [],
+      bibPath: "lib/refs.bib",
+    });
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+
+    await chooseZoteroFile();
+
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        "3 references added to lib/refs.bib.",
+      );
+    });
+  });
+
+  it("reports how many references were already there", async () => {
+    mocks.addCitations.mockResolvedValue({
+      imported: 0,
+      duplicates: 4,
+      errors: [],
+      bibPath: "references.bib",
+    });
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+
+    await chooseZoteroFile();
+
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        "Those 4 references are already in references.bib.",
+      );
+    });
+  });
+
+  it("counts the problems when more than one reference fails", async () => {
+    const onOpenChange = vi.fn();
+    mocks.addCitations.mockResolvedValue({
+      imported: 0,
+      duplicates: 0,
+      errors: ["Could not write references.bib", "The project changed."],
+      bibPath: "references.bib",
+    });
+    render(<ImportReferenceLibraryDialog open onOpenChange={onOpenChange} />);
+
+    await chooseZoteroFile();
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "2 problems during import. Could not write references.bib. The project changed.",
+      );
+    });
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("closes on an import that added nothing but hit no problem", async () => {
+    const onOpenChange = vi.fn();
+    const onImported = vi.fn();
+    mocks.addCitations.mockResolvedValue({
+      imported: 0,
+      duplicates: 2,
+      errors: [],
+      bibPath: "references.bib",
+    });
+    render(
+      <ImportReferenceLibraryDialog
+        open
+        onOpenChange={onOpenChange}
+        onImported={onImported}
+      />,
+    );
+
+    await chooseZoteroFile();
+
+    await waitFor(() => {
+      expect(onImported).toHaveBeenCalledOnce();
+    });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("tells the panel to show the citations after a successful import", async () => {
+    const onImported = vi.fn();
+    render(
+      <ImportReferenceLibraryDialog
+        open
+        onOpenChange={vi.fn()}
+        onImported={onImported}
+      />,
+    );
+
+    await chooseZoteroFile();
+
+    await waitFor(() => {
+      expect(onImported).toHaveBeenCalledOnce();
+    });
   });
 });

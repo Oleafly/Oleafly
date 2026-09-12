@@ -5,14 +5,10 @@ import {
   openProject,
   openSettings,
   replaceEditorSource,
+  typeAtCaret,
   waitLong,
   type Page,
 } from "../helpers";
-
-// Editor preferences (Auto-complete, Auto-close brackets, Non-blinking
-// cursor). Each one must reconfigure the live editor through its compartment,
-// so every assertion here is made against the running CodeMirror instance
-// rather than the settings store alone.
 
 const PROJECT = "Editor Prefs";
 
@@ -66,26 +62,6 @@ async function toggleSetting(page: Page, label: string, on: boolean) {
     10_000,
   );
   await waitLong(page, `!!document.querySelector('.cm-content')`, 10_000);
-}
-
-// Real typing, one character per input event. execCommand drives the DOM input
-// path, which is the only route CodeMirror's input handlers (and therefore
-// bracket closing and the completion popup) observe, and bracket closing only
-// fires when the inserted text is the single bracket character. A dispatched
-// transaction, or one multi-character insert, would bypass both and prove
-// nothing.
-async function typeAtCaret(page: Page, text: string) {
-  for (const character of text) {
-    const ok = await page.evaluate<boolean>(
-      `(() => {
-        const content = document.querySelector('.cm-content');
-        if (!content) return false;
-        content.focus();
-        return document.execCommand('insertText', false, ${JSON.stringify(character)});
-      })()`,
-    );
-    if (!ok) throw new Error(`typeAtCaret: editor rejected ${character}`);
-  }
 }
 
 async function caretToEnd(page: Page) {
@@ -205,6 +181,98 @@ test("the non-blinking cursor stops the cursor animation", async ({
   await expect
     .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
     .toContain("solid");
+});
+
+test("LaTeX math and environment closing follow their own toggles", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  await openPrefsProject(tauriPage);
+  await toggleSetting(tauriPage, "Auto-close brackets", true);
+
+  await toggleSetting(tauriPage, "Auto-close math", true);
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "$");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("$$");
+
+  await toggleSetting(tauriPage, "Auto-close environments", true);
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "\\begin{itemize}");
+  await tauriPage.press(".cm-content", "Escape");
+  await tauriPage.press(".cm-content", "Enter");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\end{itemize}");
+  expect(await editorSource(tauriPage)).toContain("\\item ");
+
+  await toggleSetting(tauriPage, "Auto-close math", false);
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "$x");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("$x");
+  expect(await editorSource(tauriPage)).not.toContain("$$");
+
+  await toggleSetting(tauriPage, "Auto-close environments", false);
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "\\begin{quote}");
+  await tauriPage.press(".cm-content", "Escape");
+  await tauriPage.press(".cm-content", "Enter");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\begin{quote}\n");
+  expect(await editorSource(tauriPage)).not.toContain("\\end{quote}");
+
+  await toggleSetting(tauriPage, "Auto-close brackets", true);
+  await toggleSetting(tauriPage, "Auto-close math", true);
+  await toggleSetting(tauriPage, "Auto-close environments", true);
+});
+
+test("auto-close brackets gates math and environment closing", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  await openPrefsProject(tauriPage);
+  await toggleSetting(tauriPage, "Auto-close math", true);
+  await toggleSetting(tauriPage, "Auto-close environments", true);
+  await toggleSetting(tauriPage, "Auto-close brackets", false);
+
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "$x");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("$x");
+  expect(await editorSource(tauriPage)).not.toContain("$$");
+
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "\\begin{quote}");
+  await tauriPage.press(".cm-content", "Escape");
+  await tauriPage.press(".cm-content", "Enter");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\begin{quote}\n");
+  expect(await editorSource(tauriPage)).not.toContain("\\end{quote}");
+
+  await replaceEditorSource(
+    tauriPage,
+    "\\documentclass{article}\n\\begin{itemize}\n  \\item first",
+  );
+  await caretToEnd(tauriPage);
+  await tauriPage.press(".cm-content", "Escape");
+  await tauriPage.press(".cm-content", "Enter");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\item first\n  \\item ");
+
+  await toggleSetting(tauriPage, "Auto-close brackets", true);
 });
 
 test("editor preferences persist across a reload", async ({ tauriPage }) => {

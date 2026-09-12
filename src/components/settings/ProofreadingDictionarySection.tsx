@@ -1,5 +1,8 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { BookMarked, Plus, Search, Trash2, X } from "lucide-react";
+import { BookMarked, Plus, RotateCcw, Search, Trash2, X,
+  Eye,
+  CircleHelp,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Empty,
@@ -10,8 +13,10 @@ import {
 } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { Switch } from "@/components/ui/switch";
 import {
   Tabs,
   TabsContent,
@@ -23,7 +28,11 @@ import {
   normalizeDictionaryWord,
   useDictionary,
 } from "@/lib/dictionary";
+import {
+  ACADEMIC_PROFILE_RULES,
+} from "@/lib/proofreading/lint-profile";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 
 function AddWord({
   label,
@@ -147,7 +156,207 @@ function WordChips({
 
 type ClearTarget =
   | { type: "global"; label: string }
-  | { type: "project"; id: string; label: string };
+  | { type: "project"; id: string; label: string }
+  | { type: "suppressed"; id: string; label: string };
+
+function HelpTip({ label }: { readonly label: string }) {
+  return (
+    <Tooltip label={<span className="block max-w-72 text-left leading-relaxed">{label}</span>} side="bottom">
+      <button
+        type="button"
+        aria-label={label}
+        className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <CircleHelp aria-hidden className="size-3.5" />
+      </button>
+    </Tooltip>
+  );
+}
+
+const NOTHING_TURNED_OFF = "You have not turned off any rules.";
+
+function ProfileRules() {
+  const enabledRules = useSettingsStore(
+    (state) => state.harperEnabledRules,
+  );
+  const disabledRules = useSettingsStore(
+    (state) => state.harperDisabledRules,
+  );
+  const setHarperEnabledRules = useSettingsStore(
+    (state) => state.setHarperEnabledRules,
+  );
+  const enableHarperRule = useSettingsStore(
+    (state) => state.enableHarperRule,
+  );
+
+  const overrides = useMemo(() => new Set(enabledRules), [enabledRules]);
+  const turnedOff = useMemo(() => new Set(disabledRules), [disabledRules]);
+
+  const toggle = (rule: string, on: boolean) => {
+    if (!on) {
+      setHarperEnabledRules(
+        enabledRules.filter((candidate) => candidate !== rule),
+      );
+      return;
+    }
+    if (turnedOff.has(rule)) enableHarperRule(rule);
+    if (!overrides.has(rule)) {
+      setHarperEnabledRules([...enabledRules, rule]);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <div className="flex items-center gap-1.5">
+          <h5
+            id="proofreading-profile-rules"
+            className="text-xs font-medium text-foreground"
+          >
+            Rules the academic profile keeps off
+          </h5>
+          <HelpTip label="Harper is tuned for chat and email. These rules either push a style papers do not follow, such as spelling out kB and min, or trip over the placeholders that stand in for LaTeX markup, so Oleafly keeps them off. Each one shows what it would flag. Turn it on if you want those findings." />
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Off by default because they get in the way of papers. Turn on any you want.
+        </p>
+      </div>
+      <ul
+        className="m-0 max-h-64 list-none space-y-1 overflow-y-auto p-0"
+        aria-labelledby="proofreading-profile-rules"
+      >
+        {ACADEMIC_PROFILE_RULES.map(({ rule, reason, example }) => (
+          <li
+            key={rule}
+            className="flex items-start justify-between gap-3 rounded-md px-1 py-1.5 hover:bg-accent/50"
+          >
+            <div className="min-w-0">
+              <span className="font-mono text-xs text-foreground">
+                {rule}
+              </span>
+              <p className="text-xs text-muted-foreground">{reason}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                Example: {example}
+              </p>
+            </div>
+            <Switch
+              aria-label={`Turn on ${rule}`}
+              checked={overrides.has(rule) && !turnedOff.has(rule)}
+              onCheckedChange={(value) => toggle(rule, value)}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function TurnedOffFindings({
+  projectId,
+  projectName,
+  suppressedCount,
+  onClearSuppressed,
+}: {
+  projectId: string | null;
+  projectName: string;
+  suppressedCount: number;
+  onClearSuppressed: () => void;
+}) {
+  const disabledRules = useSettingsStore((state) => state.harperDisabledRules);
+  const enableHarperRule = useSettingsStore(
+    (state) => state.enableHarperRule,
+  );
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-background p-3"
+      aria-labelledby="proofreading-turned-off"
+    >
+      <div>
+        <div className="flex items-center gap-1.5">
+          <h4
+            id="proofreading-turned-off"
+            className="text-xs font-medium text-foreground"
+          >
+            Grammar rules and dismissed findings
+          </h4>
+          <HelpTip label="Hover an underlined word or sentence in the editor and a small card shows what Harper found, with actions to fix it or ignore it. Rules you turned off from that card and findings you ignored in this project are listed here, so you can bring any of them back." />
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Rules you turned off and findings you ignored in this project.
+        </p>
+      </div>
+      {disabledRules.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {NOTHING_TURNED_OFF}
+        </p>
+      ) : (
+        <ul
+          className="m-0 flex max-h-40 list-none flex-wrap content-start gap-1.5 overflow-y-auto p-0"
+          aria-label="Grammar rules turned off"
+        >
+          {disabledRules.map((rule) => (
+            <li key={rule}>
+              <Badge
+                variant="quiet"
+                className="gap-1 py-1 pl-2.5 pr-1 font-normal"
+              >
+                <span className="font-mono">{rule}</span>
+                <button
+                  type="button"
+                  onClick={() => enableHarperRule(rule)}
+                  aria-label={`Turn the ${rule} rule back on`}
+                  title={`Turn the “${rule}” rule back on`}
+                  className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <RotateCcw className="size-3" aria-hidden />
+                </button>
+              </Badge>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ProfileRules />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-medium text-foreground">
+              {projectId
+                ? `Dismissed findings in ${projectName}`
+                : "Dismissed findings"}
+            </span>
+            <Badge
+              variant="primaryGhost"
+              className="text-[10px] tabular-nums"
+              data-testid="dictionary-suppressed-count"
+              title={`${suppressedCount.toLocaleString()} dismissed, out of ${DICTIONARY_LIMITS.suppressionsPerProject.toLocaleString()} the project can remember`}
+            >
+              {suppressedCount.toLocaleString()} /{" "}
+              {DICTIONARY_LIMITS.suppressionsPerProject.toLocaleString()}
+            </Badge>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {suppressedCount === 0
+              ? "Nothing is dismissed. When you choose Ignore in this project on a grammar finding, it is listed here."
+              : `${suppressedCount.toLocaleString()} grammar ${suppressedCount === 1 ? "finding is" : "findings are"} hidden in this project because you chose Ignore in this project. Showing them again underlines them once more.`}
+          </p>
+        </div>
+        {suppressedCount > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={onClearSuppressed}
+          >
+            <Eye className="size-3.5" aria-hidden />
+            Show them again
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export function ProofreadingDictionarySection() {
   const global = useDictionary((state) => state.global);
@@ -161,6 +370,14 @@ export function ProofreadingDictionarySection() {
   const clear = useDictionary((state) => state.clear);
   const clearGlobal = useDictionary((state) => state.clearGlobal);
   const clearAll = useDictionary((state) => state.clearAll);
+  const suppressed = useDictionary((state) => state.suppressed);
+  const clearSuppressed = useDictionary((state) => state.clearSuppressed);
+  const setHarperDisabledRules = useSettingsStore(
+    (state) => state.setHarperDisabledRules,
+  );
+  const setHarperEnabledRules = useSettingsStore(
+    (state) => state.setHarperEnabledRules,
+  );
   const activeProjectId = useFilesStore((state) => state.projectId);
   const projects = useFilesStore((state) => state.projects);
   const [query, setQuery] = useState("");
@@ -191,8 +408,19 @@ export function ProofreadingDictionarySection() {
   const confirmClear = () => {
     if (clearTarget?.type === "global") clearGlobal();
     if (clearTarget?.type === "project") clear(clearTarget.id);
+    if (clearTarget?.type === "suppressed") {
+      clearSuppressed(clearTarget.id);
+    }
     setClearTarget(null);
   };
+
+  const activeProjectName =
+    projects.find((project) => project.id === activeProjectId)?.name ??
+    activeProjectId ??
+    "";
+  const suppressedCount = activeProjectId
+    ? (suppressed[activeProjectId]?.length ?? 0)
+    : 0;
 
   return (
     <div className="space-y-4 text-sm">
@@ -344,16 +572,39 @@ export function ProofreadingDictionarySection() {
           )}
         </TabsContent>
       </Tabs>
+      <TurnedOffFindings
+        projectId={activeProjectId}
+        projectName={activeProjectName}
+        suppressedCount={suppressedCount}
+        onClearSuppressed={() =>
+          activeProjectId &&
+          setClearTarget({
+            type: "suppressed",
+            id: activeProjectId,
+            label: `dismissed findings in ${activeProjectName}`,
+          })
+        }
+      />
       <ResetToDefaults
         sectionName="Dictionary"
-        onReset={clearAll}
-        confirmationDescription="This permanently removes every ignored word, global and per-project. Proofreading will flag those words again."
+        onReset={() => {
+          clearAll();
+          setHarperDisabledRules([]);
+          setHarperEnabledRules([]);
+        }}
+        confirmationDescription="This permanently removes every ignored word, global and per-project, and turns back on every grammar rule you turned off. The academic profile keeps its own rules off. Proofreading will flag those words again."
       />
       <ConfirmationDialog
         open={clearTarget !== null}
-        title="Clear ignored words?"
+        title={
+          clearTarget?.type === "suppressed"
+            ? "Show dismissed findings again?"
+            : "Clear ignored words?"
+        }
         description={`This removes all terms from ${clearTarget?.label ?? "this dictionary"}. They will be checked again immediately.`}
-        confirmLabel="Clear words"
+        confirmLabel={
+          clearTarget?.type === "suppressed" ? "Show again" : "Clear words"
+        }
         destructive
         onCancel={() => setClearTarget(null)}
         onConfirm={confirmClear}

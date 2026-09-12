@@ -51,6 +51,7 @@ fn find_latexmk() -> Option<String> {
 const TEX_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 const TLMGR_INFO_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
 const TLMGR_MUTATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+const TLMGR_FLOW_BUDGET: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 const UTILITY_PIPE_DRAIN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 const UTILITY_CLEANUP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 const MAX_UTILITY_OUTPUT_BYTES: usize = 8 * 1024 * 1024;
@@ -138,7 +139,7 @@ struct SpawnedUtility {
 }
 
 async fn spawn_tex_utility(program: &Path, args: &[String]) -> Result<SpawnedUtility, String> {
-    let mut command = tex_utility_command(program, args);
+    let mut command = tex_utility_command(program, args)?;
     let mut child = command
         .spawn()
         .map_err(|e| format!("failed to run {}: {e}", program.display()))?;
@@ -179,13 +180,61 @@ async fn spawn_tex_utility(program: &Path, args: &[String]) -> Result<SpawnedUti
     })
 }
 
-fn tex_utility_command(program: &Path, args: &[String]) -> tokio::process::Command {
+#[cfg(any(windows, test))]
+fn is_command_script(program: &Path) -> bool {
+    program.extension().is_some_and(|extension| {
+        extension.eq_ignore_ascii_case("bat") || extension.eq_ignore_ascii_case("cmd")
+    })
+}
+
+#[cfg(any(windows, test))]
+fn script_command_line(program: &Path, args: &[String]) -> Result<String, String> {
+    let program = program.to_string_lossy().into_owned();
+    for value in std::iter::once(&program).chain(args) {
+        if value.contains('"') || value.contains('%') {
+            return Err(format!(
+                "refusing to pass {value} to a Windows command script"
+            ));
+        }
+    }
+    let mut line = String::from("\"\"");
+    line.push_str(&program);
+    line.push('"');
+    for arg in args {
+        line.push_str(" \"");
+        line.push_str(arg);
+        line.push('"');
+    }
+    line.push('"');
+    Ok(line)
+}
+
+fn tex_utility_command(program: &Path, args: &[String]) -> Result<tokio::process::Command, String> {
     use std::process::Stdio;
 
-    let mut command = tokio::process::Command::new(program);
+    #[cfg(windows)]
+    let mut command = if is_command_script(program) {
+        let line = script_command_line(program, args)?;
+        let mut command = tokio::process::Command::new("cmd.exe");
+        command
+            .raw_arg("/D")
+            .raw_arg("/V:OFF")
+            .raw_arg("/C")
+            .raw_arg(line);
+        command
+    } else {
+        let mut command = tokio::process::Command::new(program);
+        command.args(args);
+        command
+    };
+    #[cfg(not(windows))]
+    let mut command = {
+        let mut command = tokio::process::Command::new(program);
+        command.args(args);
+        command
+    };
     command
         .no_console()
-        .args(args)
         .env("PATH", crate::biber_toolchain::tool_path_env(program))
         .env("NoDefaultCurrentDirectoryInExePath", "1")
         .stdin(Stdio::null())
@@ -193,7 +242,7 @@ fn tex_utility_command(program: &Path, args: &[String]) -> tokio::process::Comma
         .stderr(Stdio::piped())
         .kill_on_drop(true);
     crate::proc::isolate_process_tree(&mut command);
-    command
+    Ok(command)
 }
 
 async fn stop_utility(child: &mut tokio::process::Child, process_id: u32) {
@@ -1387,9 +1436,59 @@ fn tlmgr_path() -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn tlmgr_installed() -> Result<Vec<String>, String> {
+pub async fn tlmgr_installed(user_tree: Option<bool>) -> Result<Vec<String>, String> {
     let tlmgr = tlmgr_path()?;
+    if user_tree == Some(true) {
+        return tlmgr_user_installed_at(&tlmgr).await;
+    }
     tlmgr_installed_at(&tlmgr).await
+}
+
+async fn tlmgr_user_installed_at(tlmgr: &str) -> Result<Vec<String>, String> {
+    let Some(tree) = tlmgr_user_tree(tlmgr).await else {
+        return Ok(Vec::new());
+    };
+    tlmgr_user_installed_in(tlmgr, &tree).await
+}
+
+async fn tlmgr_user_installed_in(tlmgr: &str, tree: &Path) -> Result<Vec<String>, String> {
+    if !user_tree_is_initialised(tree) {
+        return Ok(Vec::new());
+    }
+    let _runtime = acquire_tex_runtime_read()?;
+    let output = run_tex_utility(
+        Path::new(tlmgr),
+        &[
+            "--usermode".into(),
+            "list".into(),
+            "--only-installed".into(),
+        ],
+        TLMGR_INFO_TIMEOUT,
+    )
+    .await?;
+    if !output.success {
+        return Err(utility_error(&output));
+    }
+    Ok(parse_tlmgr_list(&output.stdout))
+}
+
+fn parse_tlmgr_list(stdout: &str) -> Vec<String> {
+    let mut names: Vec<String> = stdout
+        .lines()
+        .map(|line| {
+            let line = line.trim();
+            let line = line.strip_prefix("i ").unwrap_or(line);
+            line.split(':')
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .to_string()
+        })
+        .filter(|name| validate_package_names(std::slice::from_ref(name)).is_ok())
+        .collect();
+    names.sort();
+    names.dedup();
+    names
 }
 
 async fn tlmgr_installed_at(tlmgr: &str) -> Result<Vec<String>, String> {
@@ -1469,7 +1568,7 @@ pub async fn tlmgr_install(
     state: tauri::State<'_, AppState>,
     packages: Vec<String>,
 ) -> Result<String, String> {
-    tlmgr_mutate_synchronized(&state, "install", packages).await
+    tlmgr_mutate_synchronized(&state, "install", packages, false).await
 }
 
 /// Remove TeX packages by name via tlmgr.
@@ -1477,8 +1576,32 @@ pub async fn tlmgr_install(
 pub async fn tlmgr_remove(
     state: tauri::State<'_, AppState>,
     packages: Vec<String>,
+    user_tree: Option<bool>,
 ) -> Result<String, String> {
-    tlmgr_mutate_synchronized(&state, "remove", packages).await
+    tlmgr_mutate_synchronized(&state, "remove", packages, user_tree == Some(true)).await
+}
+
+pub(crate) fn flow_budget_message(budget: std::time::Duration) -> String {
+    let minutes = budget.as_secs() / 60;
+    let span = if minutes >= 1 {
+        format!("{minutes} minutes")
+    } else {
+        format!("{} seconds", budget.as_secs().max(1))
+    };
+    format!("The package operation passed its {span} limit and was stopped, so you can compile again. The TeX Live mirror is probably busy. Try again later, or run tlmgr yourself.")
+}
+
+pub(crate) async fn within_flow_budget<F>(
+    budget: std::time::Duration,
+    work: F,
+) -> Result<String, String>
+where
+    F: std::future::Future<Output = Result<String, String>>,
+{
+    match tokio::time::timeout(budget, work).await {
+        Ok(result) => result,
+        Err(_) => Err(flow_budget_message(budget)),
+    }
 }
 
 /// Names are validated to a safe charset so they cannot be flags/paths. Real
@@ -1502,6 +1625,7 @@ async fn tlmgr_mutate_synchronized(
     state: &AppState,
     action: &str,
     packages: Vec<String>,
+    user_mode: bool,
 ) -> Result<String, String> {
     if packages.is_empty() {
         return Ok(String::new());
@@ -1512,25 +1636,158 @@ async fn tlmgr_mutate_synchronized(
     let _figure_compile = state.figure_compile_lock.lock().await;
     let _runtime = acquire_tex_runtime_write()?;
     let tlmgr = tlmgr_path()?;
-    tlmgr_run_at(&tlmgr, action, packages).await
+    within_flow_budget(TLMGR_FLOW_BUDGET, async {
+        if user_mode {
+            tlmgr_usermode_run_at(&tlmgr, action, packages).await
+        } else {
+            tlmgr_run_at(&tlmgr, action, packages).await
+        }
+    })
+    .await
+}
+
+fn expand_tex_tree_path(value: &str) -> Option<PathBuf> {
+    let value = value.trim();
+    if value.is_empty() {
+        return None;
+    }
+    if let Some(rest) = value.strip_prefix('~') {
+        let rest = rest.trim_start_matches(['/', '\\']);
+        let home = paths::home_dir().ok()?;
+        return Some(if rest.is_empty() {
+            home
+        } else {
+            home.join(rest)
+        });
+    }
+    let path = PathBuf::from(value);
+    path.is_absolute().then_some(path)
+}
+
+async fn kpsewhich_var_value(kpsewhich: &Path, variable: &str) -> Option<PathBuf> {
+    let output = run_tex_utility(
+        kpsewhich,
+        &[format!("--var-value={variable}")],
+        TLMGR_INFO_TIMEOUT,
+    )
+    .await
+    .ok()?;
+    if !output.success {
+        return None;
+    }
+    expand_tex_tree_path(output.stdout.lines().next().unwrap_or_default())
+}
+
+async fn tlmgr_user_tree(tlmgr: &str) -> Option<PathBuf> {
+    if let Some(configured) = std::env::var_os("TEXMFHOME")
+        .and_then(|value| expand_tex_tree_path(&value.to_string_lossy()))
+    {
+        return Some(configured);
+    }
+    if let Some(kpsewhich) = Path::new(tlmgr)
+        .parent()
+        .and_then(|dir| crate::tex_distro::find_tool_in_dir(dir, "kpsewhich"))
+    {
+        if let Some(tree) = kpsewhich_var_value(&kpsewhich, "TEXMFHOME").await {
+            return Some(tree);
+        }
+    }
+    paths::home_dir().ok().map(|home| home.join("texmf"))
+}
+
+fn user_tree_is_initialised(tree: &Path) -> bool {
+    tree.join("tlpkg/texlive.tlpdb").is_file()
+}
+
+fn is_permission_failure(output: &TexUtilityOutput) -> bool {
+    let text = format!("{}\n{}", output.stdout, output.stderr).to_ascii_lowercase();
+    ["permission denied", "cannot write", "not writable"]
+        .iter()
+        .any(|marker| text.contains(marker))
 }
 
 async fn tlmgr_run_at(tlmgr: &str, action: &str, packages: Vec<String>) -> Result<String, String> {
+    let user_tree = if action == "install" {
+        tlmgr_user_tree(tlmgr).await
+    } else {
+        None
+    };
+    tlmgr_run_with_user_tree(tlmgr, action, packages, user_tree).await
+}
+
+async fn tlmgr_usermode_run_at(
+    tlmgr: &str,
+    action: &str,
+    packages: Vec<String>,
+) -> Result<String, String> {
     if packages.is_empty() {
         return Ok(String::new());
     }
     validate_package_names(&packages)?;
-    let mut args = vec![action.to_string(), "--".into()];
+    let mut args = vec!["--usermode".to_string(), action.to_string(), "--".into()];
     args.extend(packages);
     let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
-    let log = format!("{}{}", output.stdout, output.stderr);
     if !output.success {
         return Err(packages::package_command_error(
             &output,
             "TeX Live could not complete the package operation.",
         ));
     }
-    Ok(log)
+    Ok(format!("{}{}", output.stdout, output.stderr))
+}
+
+async fn tlmgr_run_with_user_tree(
+    tlmgr: &str,
+    action: &str,
+    packages: Vec<String>,
+    user_tree: Option<PathBuf>,
+) -> Result<String, String> {
+    if packages.is_empty() {
+        return Ok(String::new());
+    }
+    validate_package_names(&packages)?;
+    let mut args = vec![action.to_string(), "--".into()];
+    args.extend(packages.clone());
+    let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
+    if output.success {
+        return Ok(format!("{}{}", output.stdout, output.stderr));
+    }
+    if action == "install" && is_permission_failure(&output) {
+        if let Some(tree) = user_tree {
+            return tlmgr_install_into_user_tree(tlmgr, &tree, packages).await;
+        }
+    }
+    Err(packages::package_command_error(
+        &output,
+        "TeX Live could not complete the package operation.",
+    ))
+}
+
+async fn tlmgr_install_into_user_tree(
+    tlmgr: &str,
+    tree: &Path,
+    packages: Vec<String>,
+) -> Result<String, String> {
+    if !user_tree_is_initialised(tree) {
+        let init = run_tex_utility(
+            Path::new(tlmgr),
+            &["init-usertree".to_string()],
+            TLMGR_MUTATION_TIMEOUT,
+        )
+        .await?;
+        if !init.success && !user_tree_is_initialised(tree) {
+            let detail = packages::package_command_error(&init, "tlmgr gave no reason.");
+            return Err(format!(
+                "Oleafly could not set up your personal TeX tree at {}. {detail}",
+                tree.display()
+            ));
+        }
+    }
+    let output = tlmgr_usermode_run_at(tlmgr, "install", packages).await?;
+    Ok(format!(
+        "[Oleafly] The system TeX tree is not writable, so the packages went into your personal tree at {}.\n{output}",
+        tree.display()
+    ))
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -2417,5 +2674,307 @@ mod tests {
     fn gigabytes_converts_decimal_gb() {
         assert!((gigabytes(2_000_000_000) - 2.0).abs() < f64::EPSILON);
         assert!((gigabytes(0) - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn a_windows_tlmgr_script_runs_through_the_command_interpreter() {
+        assert!(is_command_script(Path::new(
+            "C:\\texlive\\2025\\bin\\windows\\tlmgr.bat"
+        )));
+        assert!(is_command_script(Path::new("C:\\tools\\TLMGR.CMD")));
+        assert!(!is_command_script(Path::new("C:\\texlive\\bin\\tlmgr.exe")));
+        assert!(!is_command_script(Path::new("/Library/TeX/texbin/tlmgr")));
+
+        let line = script_command_line(
+            Path::new("C:\\Program Files\\texlive\\2025\\bin\\windows\\tlmgr.bat"),
+            &[
+                "search".into(),
+                "--json".into(),
+                "--file".into(),
+                "--".into(),
+                r"(^|/)(tikz\.sty)$".into(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            line,
+            r##"""C:\Program Files\texlive\2025\bin\windows\tlmgr.bat" "search" "--json" "--file" "--" "(^|/)(tikz\.sty)$"""##
+        );
+        assert!(line.starts_with("\"\""));
+        assert!(line.ends_with("\"\""));
+
+        for hostile in [r#"a"b"#, "%PATH%"] {
+            assert!(
+                script_command_line(Path::new("C:\\tex\\tlmgr.bat"), &[hostile.into()]).is_err(),
+                "accepted {hostile}"
+            );
+        }
+        assert!(script_command_line(Path::new("C:\\te%x\\tlmgr.bat"), &[]).is_err());
+    }
+
+    #[test]
+    fn only_a_write_refusal_sends_packages_to_the_personal_tree() {
+        let refused = |stderr: &str| TexUtilityOutput {
+            success: false,
+            stdout: String::new(),
+            stderr: stderr.into(),
+        };
+        for stderr in [
+            "mkdir: /usr/local/texlive/2025/texmf-dist: Permission denied",
+            "tlmgr: cannot write to /usr/local/texlive/2025",
+            "TEXMFROOT is Not Writable",
+        ] {
+            assert!(is_permission_failure(&refused(stderr)), "{stderr}");
+        }
+        assert!(!is_permission_failure(&refused(
+            "tlmgr: package amsmath not present in repository"
+        )));
+    }
+
+    #[cfg(unix)]
+    fn recording_manager(body: &str) -> (tempfile::TempDir, String, PathBuf) {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::tempdir().unwrap();
+        let script = root.path().join("tlmgr");
+        let calls = root.path().join("calls");
+        std::fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\n{body}\n",
+                calls.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let path = script.to_string_lossy().into_owned();
+        (root, path, calls)
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_read_only_tex_tree_falls_back_to_a_prepared_user_tree() {
+        let (root, manager, calls) = recording_manager(
+            "if [ \"$1\" = install ]; then\necho 'tlmgr: Permission denied at /usr/local/texlive' >&2\nexit 1\nfi\nprintf 'Installed\\n'",
+        );
+        let tree = root.path().join("texmf");
+        let message =
+            tlmgr_run_with_user_tree(&manager, "install", vec!["pgf".into()], Some(tree.clone()))
+                .await
+                .unwrap();
+        assert!(message.starts_with("[Oleafly] "), "{message}");
+        assert!(message.contains(&tree.display().to_string()), "{message}");
+        assert!(message.contains("personal tree"), "{message}");
+        let recorded = std::fs::read_to_string(&calls).unwrap();
+        assert_eq!(
+            recorded,
+            "install\n--\npgf\ninit-usertree\n--usermode\ninstall\n--\npgf\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn an_existing_user_tree_is_not_initialised_again() {
+        let (root, manager, calls) = recording_manager(
+            "if [ \"$1\" = install ]; then\necho 'tlmgr: cannot write to /usr/local/texlive' >&2\nexit 1\nfi\nprintf 'Installed\\n'",
+        );
+        let tree = root.path().join("texmf");
+        std::fs::create_dir_all(tree.join("tlpkg")).unwrap();
+        std::fs::write(
+            tree.join("tlpkg/texlive.tlpdb"),
+            b"name 00texlive.installation",
+        )
+        .unwrap();
+        tlmgr_run_with_user_tree(&manager, "install", vec!["pgf".into()], Some(tree))
+            .await
+            .unwrap();
+        let recorded = std::fs::read_to_string(&calls).unwrap();
+        assert!(!recorded.contains("init-usertree"), "{recorded}");
+        assert!(
+            recorded.ends_with("--usermode\ninstall\n--\npgf\n"),
+            "{recorded}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_user_tree_comes_from_the_active_distribution_not_from_a_guess() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::tempdir().unwrap();
+        let answer = root.path().join("Library/texmf");
+        let kpsewhich = root.path().join("kpsewhich");
+        std::fs::write(
+            &kpsewhich,
+            format!("#!/bin/sh\nprintf '%s\\n' '{}'\n", answer.display()),
+        )
+        .unwrap();
+        std::fs::set_permissions(&kpsewhich, std::fs::Permissions::from_mode(0o700)).unwrap();
+        std::fs::write(root.path().join("tlmgr"), "#!/bin/sh\nexit 0\n").unwrap();
+        let tlmgr = root.path().join("tlmgr");
+        std::fs::set_permissions(&tlmgr, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let resolved = tlmgr_user_tree(&tlmgr.to_string_lossy()).await.unwrap();
+        assert_eq!(resolved, answer);
+        assert_ne!(
+            resolved,
+            paths::home_dir().unwrap().join("texmf"),
+            "the guessed tree must not win over kpsewhich"
+        );
+    }
+
+    #[test]
+    fn a_tex_tree_path_is_expanded_from_home_and_never_relative() {
+        let home = paths::home_dir().unwrap();
+        assert_eq!(
+            expand_tex_tree_path("~/Library/texmf"),
+            Some(home.join("Library/texmf"))
+        );
+        assert_eq!(expand_tex_tree_path("~"), Some(home));
+        #[cfg(not(windows))]
+        assert_eq!(
+            expand_tex_tree_path("  /opt/texmf \n"),
+            Some(PathBuf::from("/opt/texmf"))
+        );
+        #[cfg(windows)]
+        assert_eq!(
+            expand_tex_tree_path("  C:\\texmf \n"),
+            Some(PathBuf::from("C:\\texmf"))
+        );
+        #[cfg(windows)]
+        assert_eq!(expand_tex_tree_path("\\texmf"), None);
+        #[cfg(windows)]
+        assert_eq!(expand_tex_tree_path("C:texmf"), None);
+        assert_eq!(expand_tex_tree_path("texmf"), None);
+        assert_eq!(expand_tex_tree_path("   "), None);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_failed_user_tree_setup_is_reported_as_its_own_error() {
+        let (root, manager, _calls) = recording_manager(
+            "if [ \"$1\" = init-usertree ]; then\necho 'tlmgr: cannot create /nope' >&2\nexit 1\nfi\necho 'tlmgr: Permission denied at /usr/local/texlive' >&2\nexit 1",
+        );
+        let tree = root.path().join("Library/texmf");
+        let error =
+            tlmgr_run_with_user_tree(&manager, "install", vec!["pgf".into()], Some(tree.clone()))
+                .await
+                .unwrap_err();
+        assert!(error.contains("personal TeX tree"), "{error}");
+        assert!(error.contains(&tree.display().to_string()), "{error}");
+        assert!(error.contains("cannot create /nope"), "{error}");
+        assert!(
+            !error.contains("Permission denied at /usr/local"),
+            "{error}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_personal_tree_is_listed_and_removed_in_user_mode() {
+        let (root, manager, calls) = recording_manager(
+            "if [ \"$2\" = list ]; then\nprintf '%s\\n' 'i pgf: TikZ and PGF' 'i caption: Customising captions' '' 'i --bad: nope'\nfi",
+        );
+        let tree = root.path().join("texmf");
+        std::fs::create_dir_all(tree.join("tlpkg")).unwrap();
+        std::fs::write(tree.join("tlpkg/texlive.tlpdb"), b"name 00texlive").unwrap();
+        let listed = tlmgr_user_installed_in(&manager, &tree).await.unwrap();
+        assert_eq!(listed, vec!["caption".to_string(), "pgf".into()]);
+        assert!(
+            tlmgr_user_installed_in(&manager, root.path().join("absent").as_path())
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert!(std::fs::read_to_string(&calls)
+            .unwrap()
+            .contains("--usermode\nlist\n--only-installed\n"));
+
+        tlmgr_usermode_run_at(&manager, "remove", vec!["pgf".into()])
+            .await
+            .unwrap();
+        assert!(std::fs::read_to_string(&calls)
+            .unwrap()
+            .ends_with("--usermode\nremove\n--\npgf\n"));
+    }
+
+    #[test]
+    fn an_uninitialised_personal_tree_lists_nothing() {
+        assert_eq!(
+            parse_tlmgr_list("i pgf: TikZ\nbare-name\n  \ni bad name: x\n"),
+            vec!["bare-name".to_string(), "pgf".into()]
+        );
+        assert!(!user_tree_is_initialised(Path::new("/nonexistent/texmf")));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_command_scripts_run_through_a_clean_cmd_shell() {
+        let script = tex_utility_command(
+            Path::new("C:\\texlive\\2025\\bin\\windows\\tlmgr.bat"),
+            &["info".to_string(), "--only-installed".to_string()],
+        )
+        .unwrap();
+        let script = script.as_std();
+        assert_eq!(script.get_program(), std::ffi::OsStr::new("cmd.exe"));
+        let args: Vec<String> = script
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(
+            args,
+            vec![
+                "/D".to_string(),
+                "/V:OFF".into(),
+                "/C".into(),
+                "\"\"C:\\texlive\\2025\\bin\\windows\\tlmgr.bat\" \"info\" \"--only-installed\"\""
+                    .into(),
+            ]
+        );
+
+        let direct = tex_utility_command(
+            Path::new("C:\\texlive\\2025\\bin\\windows\\kpsewhich.exe"),
+            &["--var-value=TEXMFHOME".to_string()],
+        )
+        .unwrap();
+        let direct = direct.as_std();
+        assert_eq!(
+            direct.get_program(),
+            std::ffi::OsStr::new("C:\\texlive\\2025\\bin\\windows\\kpsewhich.exe")
+        );
+        assert_eq!(
+            direct
+                .get_args()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect::<Vec<String>>(),
+            vec!["--var-value=TEXMFHOME".to_string()]
+        );
+        assert!(
+            tex_utility_command(Path::new("C:\\tex\\tlmgr.bat"), &["a\"b".to_string()]).is_err()
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_removal_and_an_unrelated_install_failure_keep_the_system_tree() {
+        let (root, manager, calls) =
+            recording_manager("echo 'tlmgr: Permission denied at /usr/local/texlive' >&2\nexit 1");
+        let tree = root.path().join("texmf");
+        let error =
+            tlmgr_run_with_user_tree(&manager, "remove", vec!["pgf".into()], Some(tree.clone()))
+                .await
+                .unwrap_err();
+        assert!(error.contains("Permission denied"), "{error}");
+        assert!(!std::fs::read_to_string(&calls)
+            .unwrap()
+            .contains("--usermode"));
+
+        let (_other_root, other_manager, other_calls) =
+            recording_manager("echo 'tlmgr: package pgf not present' >&2\nexit 1");
+        let error =
+            tlmgr_run_with_user_tree(&other_manager, "install", vec!["pgf".into()], Some(tree))
+                .await
+                .unwrap_err();
+        assert!(error.contains("not present"), "{error}");
+        assert!(!std::fs::read_to_string(&other_calls)
+            .unwrap()
+            .contains("--usermode"));
     }
 }

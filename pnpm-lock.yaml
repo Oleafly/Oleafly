@@ -218,8 +218,8 @@ importers:
         specifier: 0.8.3
         version: 0.8.3
       harper.js:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.10.0
+        version: 2.10.0
       hunspell-asm:
         specifier: ^4.0.2
         version: 4.0.2(patch_hash=f5634e1c2ed4fdf8fe6c238d5f6d3c9006136c951a3ecfadea19ef30c7092726)
@@ -3898,8 +3898,8 @@ packages:
   hachure-fill@0.5.2:
     resolution: {integrity: sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==}
 
-  harper.js@2.4.0:
-    resolution: {integrity: sha512-tFSoBJ9MfVoIVYBCrUXS0ovJr6uZ9l4HjGmpaEcsm7Ea/OnBf+LPSwgcVJUfHQVktMmuWyYXoV2ejUU1HnXkug==}
+  harper.js@2.10.0:
+    resolution: {integrity: sha512-s6BDuqtRbX8M/5exH1G5M7VzAuv6l0TagbRxMY37OsrT/1kWFjWmqHydWrkYFqTUW+fFhu4Hj2yUxvChp862Pg==}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -9192,7 +9192,7 @@ snapshots:
 
   hachure-fill@0.5.2: {}
 
-  harper.js@2.4.0:
+  harper.js@2.10.0:
     dependencies:
       fflate: 0.8.3
 

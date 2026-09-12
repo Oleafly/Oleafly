@@ -1,11 +1,44 @@
 import { create } from "zustand";
 import { CHECK_IDS, detectSubmissionProfile, maskComments, runPreflight } from "@oleafly/preflight";
-import type { CheckId, ProjectContext, RefsContext, SubmissionProfileId } from "@oleafly/preflight";
+import type { CheckId, PreflightEngine, ProjectContext, RefsContext, SubmissionProfileId } from "@oleafly/preflight";
 import type { PreflightReport } from "@oleafly/preflight";
+import {
+  type BibliographyEngine,
+  bibliographyDeclarations,
+  bibliographyEngineForCommand,
+  resolveBibliographyPath,
+} from "@oleafly/latex";
+import type { DocumentEngineDescriptor, TexFlavor } from "@/lib/tauri";
 import { parseEntry } from "@/lib/citation/bibtex";
 import { useFilesStore } from "@/store/files";
 import { isCompileCheckpointCurrent, useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
+
+export function preflightEngineFor(
+  engine: DocumentEngineDescriptor["id"],
+  flavor: TexFlavor | null | undefined,
+): PreflightEngine {
+  if (engine === "latex") return "bundled";
+  if (engine === "latexmk") return flavor ?? "unknown";
+  return "unknown";
+}
+
+function declaredBibliographies(
+  texts: Readonly<Record<string, string>>,
+): { raw: string; file: string; engine: BibliographyEngine }[] {
+  const declarations: { raw: string; file: string; engine: BibliographyEngine }[] = [];
+  for (const [path, content] of Object.entries(texts)) {
+    if (!/\.(?:tex|ltx)$/i.test(path)) continue;
+    for (const declaration of bibliographyDeclarations(maskComments(content))) {
+      declarations.push({
+        raw: declaration.raw,
+        file: path,
+        engine: bibliographyEngineForCommand(declaration.command),
+      });
+    }
+  }
+  return declarations;
+}
 
 function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): RefsContext {
   // Labels and bib keys come from the shared project index (the single parser);
@@ -14,13 +47,37 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
   const index = useIndexStore.getState().index;
   const definedLabels = index ? index.defs.filter((d) => d.kind === "label").map((d) => d.name) : [];
   const bibKeys = index ? index.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : [];
-  const hasBibFile = Object.keys(files.files).some((p) => p.endsWith(".bib")) || files.tree.some((f) => f.path.endsWith(".bib"));
-  const bibLoaded = bibKeys.length > 0 || hasBibFile;
-
   // Duplicate detection needs DOIs, which the index does not store, so parse the
   // loaded .bib files for those.
   const projectTexts = { ...useIndexStore.getState().texts };
   for (const [path, state] of Object.entries(files.files)) projectTexts[path] = state.content;
+
+  // Project files (for missing-asset checks) must include images too, so use the
+  // full tree rather than the index (which only indexes .tex/.bib).
+  const projectFiles = files.tree.filter((f) => !f.is_dir).map((f) => f.path);
+  const knownPaths = [...new Set([...projectFiles, ...Object.keys(files.files)])];
+  const declared = declaredBibliographies(projectTexts);
+  const unresolvedBibliographies: { file: string; name: string }[] = [];
+  const seenUnresolved = new Set<string>();
+  for (const declaration of declared) {
+    if (
+      resolveBibliographyPath(
+        declaration.raw,
+        declaration.file,
+        knownPaths,
+        declaration.engine,
+      ) !== null
+    ) {
+      continue;
+    }
+    const key = `${declaration.file}\n${declaration.raw}`;
+    if (seenUnresolved.has(key)) continue;
+    seenUnresolved.add(key);
+    unresolvedBibliographies.push({ file: declaration.file, name: declaration.raw });
+  }
+  const bibLoaded = declared.length > 0
+    ? unresolvedBibliographies.length === 0
+    : bibKeys.length > 0 || knownPaths.some((path) => path.endsWith(".bib"));
   const doiToKeys = new Map<string, string[]>();
   const bibEntries: NonNullable<RefsContext["bibEntries"]> = [];
   for (const [path, content] of Object.entries(projectTexts)) {
@@ -36,9 +93,6 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
     .filter(([, keys]) => keys.length > 1)
     .map(([doi, keys]) => ({ doi, keys }));
 
-  // Project files (for missing-asset checks) must include images too, so use the
-  // full tree rather than the index (which only indexes .tex/.bib).
-  const projectFiles = files.tree.filter((f) => !f.is_dir).map((f) => f.path);
   const allCitedKeys: string[] = [];
   const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
   for (const [path, content] of Object.entries(projectTexts)) {
@@ -71,6 +125,7 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
     definedLabels,
     bibLoaded,
     projectFiles,
+    unresolvedBibliographies,
     duplicateDois,
     bibEntries,
     allCitedKeys,
@@ -172,6 +227,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
           : "idle";
       const compile = { status: compileStatus, log: compileStatus === "idle" ? "" : compileState.log } as const;
 
+      const engine = preflightEngineFor(files.engine.id, files.engine.tex_flavor);
       const bytes = outputIsCurrent ? compileState.pdfBytes : null;
       if (bytes) {
         const { extractForPreflight } = await import("@oleafly/preflight/pdf-extract");
@@ -191,6 +247,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
           compile,
           submissionProfile,
           anonymousReview: state.anonymousReview,
+          engine,
         });
         set({ report, pageText: ex.pageText, running: false });
       } else {
@@ -202,6 +259,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
           compile,
           submissionProfile,
           anonymousReview: state.anonymousReview,
+          engine,
         });
         if (stale()) return;
         set({ report, pageText: [], running: false });

@@ -1,4 +1,4 @@
-import { fetchDoiBibtex, fetchArxiv, crossrefSearch, readFileContent, writeFileContent } from "@/lib/tauri";
+import { fetchDoiBibtex, fetchArxiv, crossrefSearch, readFileContent } from "@/lib/tauri";
 import { detectInput } from "@/lib/citation/detect";
 import { parseEntry, generateCiteKey, setKey, stringifyBibEntry } from "@/lib/citation/bibtex";
 import type { ParsedBib } from "@/lib/citation/types";
@@ -7,6 +7,13 @@ import { arxivXmlToBibtex } from "@/lib/citation/arxiv";
 import { findKeyByDoi } from "@/lib/citation/dedup";
 import type { CitationHit } from "@/lib/citation/types";
 import { parseBib } from "@/lib/latex-tools";
+import {
+  type BibliographyEngine,
+  bibliographyDeclarations,
+  bibliographyEngineForCommand,
+  resolveBibliographyPath,
+} from "@oleafly/latex";
+import { maskComments } from "@/lib/index/parse-file";
 import { parseRis } from "@/lib/citation/ris";
 import { parseEndNoteXml } from "@/lib/citation/endnote-xml";
 import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
@@ -144,25 +151,44 @@ function resolveDeclaredBib(reference: string, bibPaths: string[], addExtension:
   return null;
 }
 
+function citationBibliographyDeclarations(
+  profile: string,
+  mainContent: string,
+): { raw: string; engine: BibliographyEngine }[] {
+  if (profile === "latex") {
+    return bibliographyDeclarations(maskComments(mainContent)).map((declaration) => ({
+      raw: declaration.raw,
+      engine: bibliographyEngineForCommand(declaration.command),
+    }));
+  }
+  if (profile === "typst") {
+    const match = /#bibliography\s*\(\s*["']([^"']+)["']/.exec(mainContent);
+    return match ? [{ raw: match[1], engine: "typst" as const }] : [];
+  }
+  if (profile === "markdown") {
+    return markdownBibliographyPaths(mainContent).map((raw) => ({ raw, engine: "markdown" as const }));
+  }
+  return [];
+}
+
 export function selectCitationBibliography(
   profile: string,
   mainContent: string,
   bibPaths: string[],
+  declaringFile = "",
 ): string {
-  let references: string[] = [];
-  let addExtension = false;
-  if (profile === "latex") {
-    const match = /\\(?:bibliography|addbibresource)\s*\{([^}]*)\}/.exec(mainContent);
-    references = match ? [match[1].split(",")[0].trim()] : [];
-    addExtension = true;
-  } else if (profile === "typst") {
-    const match = /#bibliography\s*\(\s*["']([^"']+)["']/.exec(mainContent);
-    references = match ? [match[1]] : [];
-  } else if (profile === "markdown") {
-    references = markdownBibliographyPaths(mainContent);
+  const declarations = citationBibliographyDeclarations(profile, mainContent);
+  for (const declaration of declarations) {
+    const shared = resolveBibliographyPath(
+      declaration.raw,
+      declaringFile,
+      bibPaths,
+      declaration.engine,
+    );
+    if (shared) return shared;
   }
-  for (const reference of references) {
-    const resolved = resolveDeclaredBib(reference, bibPaths, addExtension);
+  for (const declaration of declarations) {
+    const resolved = resolveDeclaredBib(declaration.raw, bibPaths, declaration.engine === "latex");
     if (resolved) return resolved;
   }
   return bibPaths[0] ?? "references.bib";
@@ -171,14 +197,16 @@ export function selectCitationBibliography(
 function pickTargetBib(files: ReturnType<typeof useFilesStore.getState>, source?: string): { path: string; content: string } {
   // Look for \bibliography in the document that actually compiles, which a
   // `% !TEX root` comment in the active file may redirect.
-  const mainContent =
-    source ?? files.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
+  const effectiveMain = resolveEffectiveMainDoc().mainDoc;
+  const declaringFile = source !== undefined ? files.mainDoc : effectiveMain;
+  const mainContent = source ?? files.files[effectiveMain]?.content ?? "";
   const bibPaths = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib")).map((f) => f.path);
 
   const path = selectCitationBibliography(
     files.engine.capabilities.formatting_profile,
     mainContent,
     bibPaths,
+    declaringFile,
   );
   return { path, content: files.files[path]?.content ?? "" };
 }
@@ -216,6 +244,18 @@ async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState
   const content = await read(target.path, true);
 
   return { target, content, main };
+}
+
+export async function bibliographyTargetForProject(): Promise<
+  { path: string; exists: boolean; content: string } | null
+> {
+  const files = useFilesStore.getState();
+  if (!files.projectId) return null;
+  const loaded = await loadCitationFiles(files);
+  const exists = files.tree.some(
+    (entry) => !entry.is_dir && entry.path === loaded.target.path,
+  );
+  return { path: loaded.target.path, exists, content: loaded.content };
 }
 
 export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
@@ -262,7 +302,7 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     }
   } else if (id) {
     try {
-      await writeFileContent(id, target.path, newContent);
+      await useFilesStore.getState().writeProjectFile(id, target.path, newContent);
       assertCitationProject(id);
     } catch (e) {
       return { error: `Could not write ${target.path}: ${e}` };
@@ -282,7 +322,7 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
         files.setContent(mainPath, next);
         await useFilesStore.getState().saveFile(mainPath);
       } else {
-        await writeFileContent(id, mainPath, next);
+        await useFilesStore.getState().writeProjectFile(id, mainPath, next);
       }
     }
   }
@@ -291,7 +331,7 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     return { error: "The project changed during citation import. The citation was not inserted." };
   }
   insertCite(key);
-  void useIndexStore.getState().rebuildFromDisk();
+  await useIndexStore.getState().rebuildFromDisk();
   return { key };
 }
 
@@ -299,6 +339,7 @@ export interface BatchImportResult {
   imported: number;
   duplicates: number;
   errors: string[];
+  bibPath?: string;
 }
 
 // Imports a whole reference library (from Zotero/EndNote/RIS/BibTeX) into the
@@ -338,7 +379,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     newBlocks.push(stringifyBibEntry({ ...entry, key }));
   }
 
-  if (!newBlocks.length) return { imported: 0, duplicates, errors: [] };
+  if (!newBlocks.length) return { imported: 0, duplicates, errors: [], bibPath: target.path };
 
   const newContent = content.trim()
     ? `${content.trimEnd()}\n\n${newBlocks.join("\n\n")}\n`
@@ -355,7 +396,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     }
   } else if (id) {
     try {
-      await writeFileContent(id, target.path, newContent);
+      await useFilesStore.getState().writeProjectFile(id, target.path, newContent);
       assertCitationProject(id);
     } catch (e) {
       errors.push(`Could not write ${target.path}: ${e}`);
@@ -375,7 +416,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
         files.setContent(mainPath, next);
         await useFilesStore.getState().saveFile(mainPath);
       } else {
-        await writeFileContent(id, mainPath, next);
+        await useFilesStore.getState().writeProjectFile(id, mainPath, next);
       }
     }
   }
@@ -383,8 +424,8 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
   if (useFilesStore.getState().projectId !== id) {
     errors.push("The project changed during citation import.");
   }
-  if (!errors.length) void useIndexStore.getState().rebuildFromDisk();
-  return { imported: newBlocks.length, duplicates, errors };
+  if (!errors.length) await useIndexStore.getState().rebuildFromDisk();
+  return { imported: newBlocks.length, duplicates, errors, bibPath: target.path };
 }
 
 export function parseCitationFile(filename: string, text: string): ParsedBib[] | null {

@@ -1,3 +1,5 @@
+import type { BibliographyEngine } from "@oleafly/latex";
+
 export const PROJECT_INTELLIGENCE_PROTOCOL_VERSION = 2 as const;
 
 export type ProjectIntelligenceEngine =
@@ -139,6 +141,7 @@ export interface ProjectEdge {
   readonly targetFile: string | null;
   readonly resolution: ResolutionStatus;
   readonly candidateFiles: readonly string[];
+  readonly bibliographyEngine?: BibliographyEngine;
 }
 
 export interface ProjectHierarchy {

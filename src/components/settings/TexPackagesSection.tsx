@@ -14,8 +14,18 @@ const TAG_BADGE: Record<TaggingStatus, { label: string; className: string } | nu
 };
 
 export function TexPackagesSection() {
-  const { info, installed, busyPkg, packageError, addPackage, removePackage, refreshPackages } =
-    useEngineStore();
+  const {
+    info,
+    installed,
+    userInstalled,
+    systemInstalled,
+    packageNotice,
+    busyPkg,
+    packageError,
+    addPackage,
+    removePackage,
+    refreshPackages,
+  } = useEngineStore();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TexPackage[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -118,6 +128,11 @@ export function TexPackagesSection() {
           )}
         </div>
       )}
+      {packageNotice && (
+        <p role="status" className="mb-2 rounded-md border bg-muted/30 p-2 text-xs">
+          {packageNotice}
+        </p>
+      )}
       <p className="mb-2 text-xs text-muted-foreground">
         {results
           ? `${results.length} TeX Live results${results.length === 200 ? ". Use a more specific search to narrow this list." : "."}`
@@ -134,6 +149,15 @@ export function TexPackagesSection() {
         {rows.map((p) => {
           const packageName = p.texLivePackage ?? p.name;
           const on = installed.includes(packageName);
+          const inUserTree = userInstalled.includes(packageName);
+          const inSystemTree = systemInstalled.includes(packageName);
+          const tree = !on
+            ? null
+            : inUserTree && inSystemTree
+              ? "both trees"
+              : inUserTree
+                ? "your personal tree"
+                : "the system tree";
           const badge = p.tagging ? TAG_BADGE[p.tagging] : null;
           const busy = busyPkg === packageName;
           return (
@@ -142,6 +166,11 @@ export function TexPackagesSection() {
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs">{p.name}</span>
                   {on && <Check className="size-3 text-emerald-500" />}
+                  {tree && (
+                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      in {tree}
+                    </span>
+                  )}
                   {badge && (
                     <span
                       className={cn(
