@@ -4435,7 +4435,10 @@ pub async fn export_document(
     };
     let transaction = AtomicFile::for_export(&dest)?;
     let staged_dest = transaction.staging_path().to_string_lossy().into_owned();
-    let mut args = vec![format!("--to={writer}"), "-o".into(), staged_dest];
+    let mut args = vec![format!("--to={writer}"), "-o".into(), staged_dest.clone()];
+    if crate::conversion::export_needs_standalone(&format) {
+        args.push("--standalone".into());
+    }
     match format.as_str() {
         "pptx" => {
             args.extend(["--slide-level".into(), "2".into()]);
@@ -4457,6 +4460,9 @@ pub async fn export_document(
         crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &root).await?;
     if code != Some(0) {
         return Err(format!("pandoc failed: {}", log.trim()));
+    }
+    if format == "typst" {
+        apply_typst_fixup(Path::new(&staged_dest))?;
     }
     transaction.commit()?;
     drop(worktree);
@@ -4497,14 +4503,8 @@ fn validate_conversion_export(
     format: &str,
     dest: &str,
 ) -> Result<&'static str, String> {
-    let (writer, extension) = match format {
-        "docx" => ("docx", "docx"),
-        "html" => ("html5", "html"),
-        "md" => ("markdown", "md"),
-        "txt" => ("plain", "txt"),
-        "pptx" => ("pptx", "pptx"),
-        "epub" => ("epub", "epub"),
-        _ => return Err(format!("unsupported export format: {format}")),
+    let Some((writer, extension)) = crate::conversion::export_writer(format) else {
+        return Err(format!("unsupported export format: {format}"));
     };
     if !Path::new(dest)
         .extension()
@@ -4526,29 +4526,18 @@ fn validate_conversion_export(
     Ok(writer)
 }
 
+#[cfg(test)]
 fn docx_pandoc_args() -> Vec<String> {
-    vec![
-        "--from=docx".into(),
-        "--to=latex".into(),
-        "--standalone".into(),
-        "--extract-media=assets".into(),
-        "-o".into(),
-        "main.tex".into(),
-        "--".into(),
-        "source.docx".into(),
-    ]
+    crate::conversion::import_plan("docx", "latex")
+        .expect("docx -> latex is a registered import route")
+        .args
 }
 
+#[cfg(test)]
 fn markdown_pandoc_args() -> Vec<String> {
-    vec![
-        "--from=markdown".into(),
-        "--to=latex".into(),
-        "--standalone".into(),
-        "-o".into(),
-        "main.tex".into(),
-        "--".into(),
-        "source.md".into(),
-    ]
+    crate::conversion::import_plan("md", "latex")
+        .expect("md -> latex is a registered import route")
+        .args
 }
 
 fn validate_docx_bytes(bytes: &[u8]) -> Result<(), String> {
@@ -4569,10 +4558,13 @@ fn decode_docx_base64(data: &str) -> Result<Vec<u8>, String> {
 
 async fn create_project_from_pandoc_source(
     name: String,
-    source_name: &str,
+    plan: crate::conversion::ImportPlan,
     bytes: Vec<u8>,
-    args: Vec<String>,
 ) -> Result<String, String> {
+    let source_name = plan.source_name.to_string();
+    let main_doc = plan.main_doc.to_string();
+    let engine = plan.engine.to_string();
+    let args = plan.args;
     let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
         .map_err(|e| e.to_string())?
@@ -4583,7 +4575,7 @@ async fn create_project_from_pandoc_source(
     let reservation = reserve_unique_project_directory(&root, true)?;
     let staging = create_unique_temporary_directory(&root, ".oleafly-document-import")?;
     let result: Result<(), String> = async {
-        atomic_write(&staging.join(source_name), &bytes)
+        atomic_write(&staging.join(&source_name), &bytes)
             .map_err(|e| format!("failed to write {source_name}: {e}"))?;
         let (log, code) =
             crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &staging)
@@ -4591,13 +4583,16 @@ async fn create_project_from_pandoc_source(
         if code != Some(0) {
             return Err(format!("pandoc failed: {}", log.trim()));
         }
-        let _ = std::fs::remove_file(staging.join(source_name));
+        let _ = std::fs::remove_file(staging.join(&source_name));
+        if main_doc.ends_with(".typ") {
+            apply_typst_fixup(&staging.join(&main_doc))?;
+        }
         write_meta_at(
             &staging.join("project.json"),
             &ProjectMeta {
                 name,
-                main_doc: default_main_doc(),
-                engine: default_engine(),
+                main_doc,
+                engine,
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
@@ -4629,18 +4624,32 @@ async fn create_project_from_pandoc_source(
     Ok(project_id)
 }
 
+/// Rewrite a generated Typst file in place, patching pandoc output bugs.
+fn apply_typst_fixup(path: &Path) -> Result<(), String> {
+    let source = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let fixed = crate::conversion::fixup_typst_source(&source);
+    if fixed != source {
+        atomic_write(path, fixed.as_bytes()).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// Create a LaTeX project from an uploaded .docx. The bytes are written inside
 /// the new project dir and pandoc runs there, so no external path is read.
 #[tauri::command]
 pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
     let bytes = decode_docx_base64(&data_base64)?;
-    create_project_from_pandoc_source(name, "source.docx", bytes, docx_pandoc_args()).await
+    let plan =
+        crate::conversion::import_plan("docx", "latex").expect("docx -> latex route is registered");
+    create_project_from_pandoc_source(name, plan, bytes).await
 }
 
-/// Import a user-selected Word or Markdown file as a new LaTeX project.
-/// The extension selects the pandoc reader; both paths publish atomically.
+/// Import a user-selected Word, Markdown, HTML, or Typst file as a new
+/// project. The extension selects the pandoc reader and `target` the project
+/// kind written ("latex", "markdown", or "typst"); both paths publish
+/// atomically.
 #[tauri::command]
-pub async fn import_document(path: String) -> Result<String, String> {
+pub async fn import_document(path: String, target: Option<String>) -> Result<String, String> {
     let source = PathBuf::from(&path);
     if !source.is_file() {
         return Err(format!("import source not found: {path}"));
@@ -4661,18 +4670,17 @@ pub async fn import_document(path: String) -> Result<String, String> {
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| format!("failed to read {path}: {e}"))?;
-
-    match extension.as_str() {
-        "docx" => {
-            validate_docx_bytes(&bytes)?;
-            create_project_from_pandoc_source(name, "source.docx", bytes, docx_pandoc_args()).await
-        }
-        "md" | "markdown" => {
-            create_project_from_pandoc_source(name, "source.md", bytes, markdown_pandoc_args())
-                .await
-        }
-        _ => Err("Choose a .docx, .md, or .markdown file.".into()),
+    let target_kind = target.as_deref().unwrap_or("latex").to_ascii_lowercase();
+    let plan = crate::conversion::import_plan(&extension, &target_kind).ok_or_else(|| {
+        format!(
+            "Converting .{extension} to a {target_kind} project is not supported. \
+             Choose a .docx, .md, .markdown, .html, .htm, or .typ file."
+        )
+    })?;
+    if extension == "docx" {
+        validate_docx_bytes(&bytes)?;
     }
+    create_project_from_pandoc_source(name, plan, bytes).await
 }
 
 /// Whether a usable pandoc is already available (system or our cache).
@@ -8084,7 +8092,19 @@ mod tests {
             engine: "typst".into(),
             ..ProjectMeta::default()
         };
-        assert!(validate_conversion_export(&typst, "docx", "/tmp/out.docx").is_err());
+        assert_eq!(
+            validate_conversion_export(&typst, "docx", "/tmp/out.docx").unwrap(),
+            "docx"
+        );
+        assert_eq!(
+            validate_conversion_export(&typst, "tex", "/tmp/out.tex").unwrap(),
+            "latex"
+        );
+        assert!(validate_conversion_export(&typst, "pptx", "/tmp/out.pptx").is_err());
+        assert_eq!(
+            validate_conversion_export(&latex, "typst", "/tmp/out.typ").unwrap(),
+            "typst"
+        );
         let markdown = ProjectMeta {
             main_doc: "main.md".into(),
             engine: "markdown".into(),

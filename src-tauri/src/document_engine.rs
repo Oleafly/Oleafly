@@ -54,6 +54,10 @@ pub enum ConversionExport {
     Txt,
     Pptx,
     Epub,
+    /// Typst source, via pandoc's typst writer.
+    Typst,
+    /// LaTeX source, via pandoc's latex writer (Typst and Markdown projects).
+    Tex,
 }
 
 impl ConversionExport {
@@ -65,6 +69,8 @@ impl ConversionExport {
             Self::Txt => "txt",
             Self::Pptx => "pptx",
             Self::Epub => "epub",
+            Self::Typst => "typst",
+            Self::Tex => "tex",
         }
     }
 }
@@ -228,6 +234,7 @@ impl DocumentEngine for LatexEngine {
                 ConversionExport::Txt,
                 ConversionExport::Pptx,
                 ConversionExport::Epub,
+                ConversionExport::Typst,
             ],
             template_kinds: &[TemplateKind::Document, TemplateKind::Image],
             compiler_prerequisite: None,
@@ -624,6 +631,7 @@ impl DocumentEngine for LatexmkEngine {
                 ConversionExport::Txt,
                 ConversionExport::Pptx,
                 ConversionExport::Epub,
+                ConversionExport::Typst,
             ],
             template_kinds: &[TemplateKind::Document, TemplateKind::Image],
             compiler_prerequisite: Some(CompilerPrerequisite::SystemTex),
@@ -777,7 +785,13 @@ impl DocumentEngine for TypstEngine {
             formatting_profile: FormattingProfile::Typst,
             source_preflight_profile: SourcePreflightProfile::None,
             features: &[EngineFeature::Citations, EngineFeature::DocumentIndex],
-            conversion_exports: &[],
+            conversion_exports: &[
+                ConversionExport::Tex,
+                ConversionExport::Docx,
+                ConversionExport::Html,
+                ConversionExport::Md,
+                ConversionExport::Txt,
+            ],
             template_kinds: &[TemplateKind::Document],
             compiler_prerequisite: None,
         }
@@ -861,6 +875,8 @@ impl DocumentEngine for MarkdownEngine {
                 ConversionExport::Txt,
                 ConversionExport::Pptx,
                 ConversionExport::Epub,
+                ConversionExport::Typst,
+                ConversionExport::Tex,
             ],
             template_kinds: &[TemplateKind::Document],
             compiler_prerequisite: Some(CompilerPrerequisite::Pandoc),
@@ -3398,7 +3414,7 @@ mod tests {
                     "formatting_profile": "latex",
                     "source_preflight_profile": "latex",
                     "features": ["citations", "document_index"],
-                    "conversion_exports": ["docx", "html", "md", "txt", "pptx", "epub"],
+                    "conversion_exports": ["docx", "html", "md", "txt", "pptx", "epub", "typst"],
                     "template_kinds": ["document", "image"],
                     "compiler_prerequisite": null
                 }
@@ -3485,7 +3501,8 @@ mod tests {
                     ConversionExport::Md,
                     ConversionExport::Txt,
                     ConversionExport::Pptx,
-                    ConversionExport::Epub
+                    ConversionExport::Epub,
+                    ConversionExport::Typst
                 ],
                 template_kinds: &[TemplateKind::Document, TemplateKind::Image],
                 compiler_prerequisite: None,
@@ -3846,7 +3863,13 @@ mod tests {
                 formatting_profile: FormattingProfile::Typst,
                 source_preflight_profile: SourcePreflightProfile::None,
                 features: &[EngineFeature::Citations, EngineFeature::DocumentIndex],
-                conversion_exports: &[],
+                conversion_exports: &[
+                    ConversionExport::Tex,
+                    ConversionExport::Docx,
+                    ConversionExport::Html,
+                    ConversionExport::Md,
+                    ConversionExport::Txt
+                ],
                 template_kinds: &[TemplateKind::Document],
                 compiler_prerequisite: None,
             }
@@ -3937,7 +3960,9 @@ mod tests {
                     ConversionExport::Html,
                     ConversionExport::Txt,
                     ConversionExport::Pptx,
-                    ConversionExport::Epub
+                    ConversionExport::Epub,
+                    ConversionExport::Typst,
+                    ConversionExport::Tex
                 ],
                 template_kinds: &[TemplateKind::Document],
                 compiler_prerequisite: Some(CompilerPrerequisite::Pandoc),

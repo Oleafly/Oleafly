@@ -25,6 +25,7 @@ mod commands;
 mod compile_fingerprint;
 mod config;
 mod connectors;
+mod conversion;
 mod cua_policy;
 mod deadlines;
 mod document_engine;
