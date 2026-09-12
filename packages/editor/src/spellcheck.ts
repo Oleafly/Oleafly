@@ -18,6 +18,7 @@ import {
   diagnosticCardTooltip,
   hasProofreadingCard,
   proofreadingCardFor,
+  type ProofreadingCardAction,
 } from "./diagnostic-card";
 import { markdownSpellcheckRanges, markdownToProse } from "./markdown-mask";
 import {
@@ -332,7 +333,7 @@ function ignoreEntries(
   h: SpellHost,
   projectId: string | null,
   word: string,
-): { label: string; action: Action }[] {
+): ProofreadingCardAction[] {
   return ignoreActions(h, projectId, word).map((action, index) => ({
     label: projectId && index === 0 ? "Ignore" : "Ignore everywhere",
     action,
@@ -341,7 +342,7 @@ function ignoreEntries(
 
 function suggestionEntries(
   suggestions: GrammarSuggestion[],
-): { label: string; action: Action }[] {
+): ProofreadingCardAction[] {
   return suggestionActions(suggestions).map((action, index) => ({
     // The action name is a quoted, elided preview meant for a button strip.
     // Rows have room for the replacement itself.
@@ -363,14 +364,15 @@ function spellingDismissEntries(
   projectId: string | null,
   path: string,
   word: string,
-): { label: string; action: Action }[] {
+): ProofreadingCardAction[] {
   const short = elide(word);
-  const entries: { label: string; action: Action }[] = [];
+  const entries: ProofreadingCardAction[] = [];
   if (projectId) {
     entries.push({
-      label: "Add to project dictionary",
+      label: "Ignore in this project",
+      icon: "project",
       action: {
-        name: `Add “${short}” to the project dictionary`,
+        name: `Ignore “${short}” in this project`,
         apply: (view, from, to) => {
           const active = h.getProjectId();
           if (!active) return;
@@ -388,9 +390,10 @@ function spellingDismissEntries(
     });
   }
   entries.push({
-    label: "Add to my dictionary",
+    label: "Ignore everywhere",
+    icon: "everywhere",
     action: {
-      name: `Add “${short}” to my dictionary`,
+      name: `Ignore “${short}” everywhere`,
       apply: (view, from, to) => {
         rememberDismissedFindings(view, from, to);
         if (
@@ -405,9 +408,10 @@ function spellingDismissEntries(
     },
   });
   entries.push({
-    label: "Ignore here",
+    label: "Ignore for now",
+    icon: "now",
     action: {
-      name: `Ignore “${short}” in this document`,
+      name: `Ignore “${short}” for now`,
       apply: (view, from, to) => {
         rememberDismissedFindings(view, from, to);
         actions.ignoreHere(
@@ -427,12 +431,13 @@ function grammarDismissEntries(
   actions: ProofreadingActionHost,
   rule: string | null,
   key: string,
-): { label: string; action: Action }[] {
-  const entries: { label: string; action: Action }[] = [
+): ProofreadingCardAction[] {
+  const entries: ProofreadingCardAction[] = [
     {
-      label: "Ignore this",
+      label: "Ignore in this project",
+      icon: "project",
       action: {
-        name: "Ignore this finding",
+        name: "Ignore this finding in this project",
         apply: (view, start, end) => {
           const active = h.getProjectId();
           rememberDismissedFindings(view, start, end);
@@ -455,6 +460,7 @@ function grammarDismissEntries(
   if (rule) {
     entries.push({
       label: `Turn off rule “${elide(rule, 18)}”`,
+      icon: "rule",
       action: {
         name: `Turn off the “${rule}” rule`,
         apply: (view, start, end) => {

@@ -10,7 +10,7 @@ import {
   type Completion,
   type CompletionResult,
 } from "@codemirror/autocomplete";
-import { EditorState, Transaction } from "@codemirror/state";
+import { EditorSelection, EditorState, Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -664,4 +664,43 @@ describe("recovery-oriented LaTeX completion", () => {
       view.destroy();
     },
   );
+});
+
+describe("environment completion inside a linked begin and end snippet", () => {
+  function accept(doc: string, cursors: number[], label: string): string {
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.create(
+        cursors.map((at) => EditorSelection.cursor(at)),
+        0,
+      ),
+      extensions: [EditorState.allowMultipleSelections.of(true)],
+    });
+    const view = new EditorView({ state, parent: document.body });
+    const context = new CompletionContext(view.state, cursors[0], false);
+    const result = latexCommandCompletions(context);
+    const chosen = option(result, label);
+    expect(chosen.detail).toBe("standard LaTeX environment");
+    if (typeof chosen.apply !== "function") throw new Error("apply is not a function");
+    chosen.apply(view, chosen, result!.from, cursors[0]);
+    const text = view.state.doc.toString();
+    view.destroy();
+    return text;
+  }
+
+  it("fills both environment names when two linked cursors accept a name", () => {
+    const doc = "\\begin{itemi}\n  \n\\end{itemi}";
+    const first = "\\begin{itemi".length;
+    const second = doc.length - 1;
+    expect(accept(doc, [first, second], "itemize")).toBe(
+      "\\begin{itemize}\n  \n\\end{itemize}",
+    );
+  });
+
+  it("expands the whole environment when a single cursor accepts a name", () => {
+    const text = accept("\\begin{itemi", ["\\begin{itemi".length], "itemize");
+    expect(text).toContain("\\begin{itemize}");
+    expect(text).toContain("\\item");
+    expect(text).toContain("\\end{itemize}");
+  });
 });

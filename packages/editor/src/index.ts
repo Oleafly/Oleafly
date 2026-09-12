@@ -126,3 +126,4 @@ export {
   type GrammarSuggestion,
   type ProofreadingActionHost,
 } from "./spellcheck";
+export { isStandardLatexEnvironment } from "./latex";

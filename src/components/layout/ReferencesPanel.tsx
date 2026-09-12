@@ -25,6 +25,7 @@ import {
 import { ImportReferenceLibraryDialog } from "@/components/layout/ImportReferenceLibraryDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -368,9 +369,8 @@ export function ReferencesPanel() {
           }}
         >
           <TabsList
-            size="sm"
             aria-label="Reference panel view"
-            className="grid w-full grid-cols-3"
+            className="flex h-auto w-full gap-1"
           >
             {tabs.map(({ id, label, icon: Icon, count }) => (
               <TabsTrigger
@@ -380,17 +380,18 @@ export function ReferencesPanel() {
                   count !== undefined && count > 0 ? `${label}, ${count}` : label
                 }
                 onClick={() => setView(id)}
-                className="min-w-0"
+                className="min-w-0 flex-1 gap-1.5 px-2 [&_svg]:size-3.5 [&_svg]:shrink-0"
               >
                 <Icon aria-hidden />
                 <span className="truncate">{label}</span>
                 {count !== undefined && count > 0 ? (
-                  <span
+                  <Badge
                     aria-hidden
-                    className="font-mono text-[9px] text-muted-foreground"
+                    variant="secondary"
+                    className="h-4 min-w-4 px-1 text-[10px] tabular-nums"
                   >
                     {count}
-                  </span>
+                  </Badge>
                 ) : null}
               </TabsTrigger>
             ))}

@@ -18,9 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   including description labels and nested lists, and Shift+Enter gives a plain
   newline. Two toggles in Settings control the math and environment behaviour
   under the existing auto-close switch.
-- Grammar diagnostics show Harper's own message and rule name. Depending on
-  the finding, the card offers Add to project dictionary, Add to my
-  dictionary, Ignore here, Ignore this and Turn off rule. Rules that misfire on
+- Grammar diagnostics show Harper's own message and rule name. The card lists
+  its actions as icon rows: Ignore in this project, Ignore everywhere, Ignore
+  for now, and Turn off rule for grammar findings. Rules that misfire on
   academic LaTeX are off by default. Settings lists the disabled rules and the
   project's suppressions and lets you turn any rule back on.
 - Every accessibility finding in Preflight cites the standard it is measured

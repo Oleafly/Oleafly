@@ -601,9 +601,9 @@ describe("proofreading actions by kind", () => {
       },
     ]);
     expect(footerLabels(cardAt(editor, at))).toEqual([
-      "Add to project dictionary",
-      "Add to my dictionary",
-      "Ignore here",
+      "Ignore in this project",
+      "Ignore everywhere",
+      "Ignore for now",
     ]);
   });
 
@@ -624,7 +624,7 @@ describe("proofreading actions by kind", () => {
       },
     ]);
     expect(footerLabels(cardAt(editor, at))).toEqual([
-      "Ignore this",
+      "Ignore in this project",
       "Turn off rule “RepeatedWords”",
     ]);
   });
@@ -645,7 +645,7 @@ describe("proofreading actions by kind", () => {
         rule: null,
       },
     ]);
-    press(cardAt(editor, at), "Add to project dictionary");
+    press(cardAt(editor, at), "Ignore in this project");
     expect(actions.projectWords).toEqual(["qwertzuiopz"]);
   });
 
@@ -666,7 +666,7 @@ describe("proofreading actions by kind", () => {
         rule: null,
       },
     ]);
-    press(cardAt(editor, 3), "Add to my dictionary");
+    press(cardAt(editor, 3), "Ignore everywhere");
     expect(actions.here).toEqual([`project:main.tex:${"x".repeat(30)}`]);
   });
 
@@ -686,7 +686,7 @@ describe("proofreading actions by kind", () => {
         rule: "RepeatedWords",
       },
     ]);
-    press(cardAt(editor, at), "Ignore this");
+    press(cardAt(editor, at), "Ignore in this project");
     expect(actions.suppressions).toEqual([
       grammarSuppressionKey("RepeatedWords", text, at),
     ]);
@@ -738,7 +738,7 @@ describe("proofreading actions by kind", () => {
         rule: null,
       },
     ]);
-    press(cardAt(editor, at), "Ignore here");
+    press(cardAt(editor, at), "Ignore for now");
     let remaining = 0;
     forEachDiagnostic(editor.state, () => void remaining++);
     expect(remaining).toBe(0);
@@ -768,7 +768,7 @@ describe("proofreading actions by kind", () => {
     const editor = await mountLinted(text, findings, {
       proofread: async () => workerResult(box.findings),
     });
-    press(cardAt(editor, at), "Add to my dictionary");
+    press(cardAt(editor, at), "Ignore everywhere");
     expect(actions.here).toEqual([`project:main.tex:qwertzuiopz`]);
 
     box.findings = [
@@ -813,7 +813,7 @@ describe("proofreading actions by kind", () => {
     const editor = await mountLinted(text, findings, {
       proofread: async () => workerResult(box.findings),
     });
-    press(cardAt(editor, at), "Ignore this");
+    press(cardAt(editor, at), "Ignore in this project");
     expect(actions.notices).toEqual([
       "This finding could not be saved, so it is hidden for now.",
     ]);
@@ -879,7 +879,7 @@ describe("proofreading actions by kind", () => {
     const editor = await mountLinted(text, findings, {
       proofread: async () => workerResult(box.findings),
     });
-    press(cardAt(editor, at), "Add to my dictionary");
+    press(cardAt(editor, at), "Ignore everywhere");
     expect([...actions.here].sort()).toEqual([
       "project:main.tex:qwertzuiopz",
       "project:main.tex:rtzui",
@@ -948,7 +948,7 @@ describe("proofreading actions by kind", () => {
     const editor = await mountLinted(text, findings, {
       proofread: async () => workerResult(box.findings),
     });
-    press(cardAt(editor, at), "Ignore this");
+    press(cardAt(editor, at), "Ignore in this project");
     expect(actions.notices).toEqual([
       "This finding could not be saved, so it is hidden for now.",
     ]);

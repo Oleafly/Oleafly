@@ -5,6 +5,7 @@ import {
   type CompletionContext,
   type CompletionResult,
   type CompletionSource,
+  insertCompletionText,
 } from "@codemirror/autocomplete";
 import {
   completionRequestIsCurrent,
@@ -161,6 +162,7 @@ function guardedApply(
   insert: string,
   asSnippet = false,
   replaceClosingBrace = false,
+  linkedInsert: string | null = null,
 ): NonNullable<Completion["apply"]> {
   return (view, completion, from, to) => {
     const current = currentSourceProjectIntelligence(
@@ -179,14 +181,15 @@ function guardedApply(
       replaceClosingBrace && view.state.sliceDoc(to, to + 1) === "}"
         ? to + 1
         : to;
+    if (linkedInsert !== null && view.state.selection.ranges.length > 1) {
+      view.dispatch(insertCompletionText(view.state, linkedInsert, from, to));
+      return;
+    }
     if (asSnippet) {
       snippet(insert)(view, completion, from, targetTo);
       return;
     }
-    view.dispatch({
-      changes: { from, to: targetTo, insert },
-      selection: { anchor: from + insert.length },
-    });
+    view.dispatch(insertCompletionText(view.state, insert, from, targetTo));
   };
 }
 
@@ -268,6 +271,7 @@ function definitionOptions(
           insertion,
           argumentsSnippet.length > 0 || environmentSkeleton,
           environmentWithArguments || environmentSkeleton,
+          environmentSkeleton ? definition.name : null,
         ),
       };
     });
@@ -424,7 +428,7 @@ function latexCompletion(
             : undefined,
         apply:
           environment[1] === "begin"
-            ? guardedApply(guard, environmentSnippet(name), true, true)
+            ? guardedApply(guard, environmentSnippet(name), true, true, name)
             : guardedApply(guard, name),
       } satisfies Completion));
     return completionResult(

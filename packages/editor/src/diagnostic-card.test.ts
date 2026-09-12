@@ -52,7 +52,11 @@ function mount(diagnostics: Diagnostic[]) {
 
 function spellingDiagnostic(
   suggestions: string[],
-  ignores: { label: string; action: { name: string; apply: () => void } }[] = [],
+  ignores: {
+    label: string;
+    action: { name: string; apply: () => void };
+    icon?: "project" | "everywhere" | "now" | "rule";
+  }[] = [],
 ): Diagnostic {
   return attachProofreadingCard(
     {
@@ -119,7 +123,7 @@ describe("proofreading hover card", () => {
     const everywhere = { name: "e", apply: vi.fn() };
     const editor = mount([
       spellingDiagnostic(["unbounded"], [
-        { label: "Ignore", action: project },
+        { label: "Ignore", action: project, icon: "project" },
         { label: "Ignore everywhere", action: everywhere },
       ]),
     ]);
@@ -131,9 +135,8 @@ describe("proofreading hover card", () => {
       "Ignore",
       "Ignore everywhere",
     ]);
-    expect(footer.querySelectorAll(".cm-proofread-footer-divider")).toHaveLength(
-      1,
-    );
+    expect(entries[0].querySelector("svg.cm-proofread-action-icon")).not.toBeNull();
+    expect(entries[1].querySelector("svg")).toBeNull();
 
     entries[1].dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     expect(everywhere.apply).toHaveBeenCalledOnce();

@@ -7,6 +7,7 @@ import {
   type Completion,
   type CompletionContext,
   type CompletionResult,
+  insertCompletionText,
 } from "@codemirror/autocomplete";
 import {
   isLatexCompletionPosition,
@@ -67,6 +68,13 @@ export const latexMathLanguage = () =>
 
 function labelsInDocument(state: { doc: { toString: () => string } }): string[] {
   return latexCatalog(state).labels;
+}
+
+let standardEnvironmentNames: Set<string> | null = null;
+
+export function isStandardLatexEnvironment(name: string): boolean {
+  standardEnvironmentNames ??= new Set<string>(STANDARD_ENVIRONMENTS);
+  return standardEnvironmentNames.has(name);
 }
 
 export function bibKeysFromSources(sources: Iterable<string>): string[] {
@@ -162,7 +170,9 @@ const LATEX_COMMANDS: Completion[] = [
   cmd("\\align", "aligned math", "\\begin{align}\n  ${1}\n\\end{align}"),
 ];
 
-const STANDARD_ENVIRONMENTS = [
+const STANDARD_ENVIRONMENT_BOOST = 1;
+
+export const STANDARD_ENVIRONMENTS = [
   "document",
   "abstract",
   "itemize",
@@ -648,11 +658,7 @@ function guardedLocalCompletion(
         snippet(template)(view, completion, from, to);
         return;
       }
-      view.dispatch({
-        changes: { from, to, insert: label },
-        selection: { anchor: from + label.length },
-        userEvent: "input.complete",
-      });
+      view.dispatch(insertCompletionText(view.state, label, from, to));
     },
   };
 }
@@ -666,9 +672,14 @@ function guardedEnvironmentCompletion(
     label: name,
     type: "type",
     detail,
+    boost: STANDARD_ENVIRONMENT_BOOST,
     apply: (view, completion, from, to) => {
       if (!completionRequestIsCurrent(guard, view.state)) {
         closeCompletion(view);
+        return;
+      }
+      if (view.state.selection.ranges.length > 1) {
+        view.dispatch(insertCompletionText(view.state, name, from, to));
         return;
       }
       const end = view.state.sliceDoc(to, to + 1) === "}" ? to + 1 : to;
@@ -696,11 +707,7 @@ function guardCompletionForSource(
         typeof originalApply === "string"
           ? originalApply
           : String(option.label);
-      view.dispatch({
-        changes: { from, to, insert },
-        selection: { anchor: from + insert.length },
-        userEvent: "input.complete",
-      });
+      view.dispatch(insertCompletionText(view.state, insert, from, to));
     },
   };
 }
@@ -869,6 +876,7 @@ function structuralArgumentCompletions(
                 label: name,
                 type: "type",
                 detail: "standard LaTeX environment",
+                boost: STANDARD_ENVIRONMENT_BOOST,
               }),
         ),
       ]),

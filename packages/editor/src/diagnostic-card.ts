@@ -27,12 +27,56 @@ import type { Extension } from "@codemirror/state";
 /** How long the pointer must rest before the card appears. */
 const HOVER_TIME = 90;
 
+export type ProofreadingCardIcon = "project" | "everywhere" | "now" | "rule";
+
+export interface ProofreadingCardAction {
+  label: string;
+  action: Action;
+  icon?: ProofreadingCardIcon;
+}
+
+const ICON_PATHS: Record<ProofreadingCardIcon, string[]> = {
+  project: [
+    "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
+  ],
+  everywhere: [
+    "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z",
+    "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20",
+    "M2 12h20",
+  ],
+  now: [
+    "M9.88 9.88a3 3 0 1 0 4.24 4.24",
+    "M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68",
+    "M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61",
+    "M2 2l20 20",
+  ],
+  rule: ["M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z", "m4.9 4.9 14.2 14.2"],
+};
+
+function iconElement(icon: ProofreadingCardIcon): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("cm-proofread-action-icon");
+  for (const d of ICON_PATHS[icon]) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
+
 export interface ProofreadingCard {
   /** The flagged word or phrase, shown in the header. */
   word: string;
   /** Replacements, best first. */
   suggestions: readonly { label: string; action: Action }[];
-  ignores: readonly { label: string; action: Action }[];
+  ignores: readonly ProofreadingCardAction[];
   /** Shown instead of "Did you mean…" when there is no spelling suggestion. */
   message?: string;
   severity?: Diagnostic["severity"];
@@ -162,19 +206,13 @@ function renderCard(
   if (card.ignores.length > 0) {
     const footer = document.createElement("div");
     footer.className = "cm-proofread-footer";
-    card.ignores.forEach((ignore, index) => {
-      if (index > 0) {
-        const divider = document.createElement("span");
-        divider.className = "cm-proofread-footer-divider";
-        divider.textContent = "|";
-        footer.append(divider);
-      }
-      footer.append(
-        button(ignore.label, "cm-proofread-ignore", () =>
-          ignore.action.apply(view, from, to),
-        ),
+    for (const ignore of card.ignores) {
+      const row = button(ignore.label, "cm-proofread-ignore", () =>
+        ignore.action.apply(view, from, to),
       );
-    });
+      if (ignore.icon) row.prepend(iconElement(ignore.icon));
+      footer.append(row);
+    }
     root.append(footer);
   }
 

@@ -99,10 +99,12 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
 - The card names what was found. Spelling says "Not in dictionary" or offers a
   replacement; everything else shows the checker's own message with the rule
   name under it.
-- Dismissing. A misspelling can go to the project dictionary, to the personal
-  dictionary, or be ignored in this document until the app restarts. A grammar
-  finding can be dismissed on its own, which the project remembers by rule
-  plus a digest of the sentence, or its rule can be turned off everywhere.
+- Dismissing. The card lists its actions as rows with an icon each. A
+  misspelling can be ignored in this project (the project dictionary),
+  ignored everywhere (the personal dictionary), or ignored for now, which
+  covers this document until the app restarts. A grammar finding can be
+  ignored in this project, which the project remembers by rule plus a digest
+  of the sentence, or its rule can be turned off everywhere.
   Dismissing clears every finding over the same text, since removing one can
   reveal another underneath. Those cleared findings stay hidden for the rest
   of the session, so the next pass does not bring them back.

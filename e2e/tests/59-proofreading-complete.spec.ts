@@ -815,7 +815,7 @@ Finally, a Qwertzuiopz remains for the spellchecker.
       document.querySelectorAll('[data-e2e-proofreading-card="true"] .cm-proofread-ignore'),
     ).map((entry) => entry.textContent ?? "")`,
   );
-  expect(footer[0]).toBe("Ignore this");
+  expect(footer[0]).toBe("Ignore in this project");
   expect(footer[1]).toContain("Turn off rule");
 
   await tauriPage.evaluate(

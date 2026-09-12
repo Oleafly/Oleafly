@@ -344,7 +344,7 @@ describe("restoring a finding clears the matching session decision", () => {
       expect(diagnosticCardSource(view, at)).not.toBeNull(),
     );
 
-    press(cardAt(view, at), "Ignore this");
+    press(cardAt(view, at), "Ignore in this project");
     await relintWithControl(view, [target, marker], control, true);
     expect(diagnosticCardSource(view, at)).toBeNull();
 
@@ -367,7 +367,7 @@ describe("restoring a finding clears the matching session decision", () => {
     );
 
     ignoreWordHere(PROJECT, PATH, "plurdled");
-    press(cardAt(view, at), "Add to project dictionary");
+    press(cardAt(view, at), "Ignore in this project");
     expect(isWordIgnored(PROJECT, "qwertzuiopz")).toBe(true);
     await relintWithControl(view, [target, other, marker], control, true);
     expect(diagnosticCardSource(view, at)).toBeNull();
@@ -390,7 +390,7 @@ describe("restoring a finding clears the matching session decision", () => {
       expect(diagnosticCardSource(view, at)).not.toBeNull(),
     );
 
-    press(cardAt(view, at), "Add to my dictionary");
+    press(cardAt(view, at), "Ignore everywhere");
     expect(isWordIgnored(null, "qwertzuiopz")).toBe(true);
     await relintWithControl(view, [target, marker], control, true);
     expect(diagnosticCardSource(view, at)).toBeNull();

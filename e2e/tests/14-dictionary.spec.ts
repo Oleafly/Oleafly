@@ -118,16 +118,16 @@ test("misspellings get squiggles; ignore clears them; un-ignore brings them back
   const proofreadingCard = tauriPage.locator(".cm-proofread-card");
   await expect(proofreadingCard).toBeVisible({ timeout: 15_000 });
   const projectIgnore = proofreadingCard.locator(".cm-proofread-ignore").first();
-  await expect(projectIgnore).toHaveText("Add to project dictionary");
+  await expect(projectIgnore).toHaveText("Ignore in this project");
   const spellingFooter = await tauriPage.evaluate<string[]>(
     `Array.from(
       document.querySelectorAll('.cm-proofread-card .cm-proofread-ignore'),
     ).map((entry) => entry.textContent ?? "")`,
   );
   expect(spellingFooter).toEqual([
-    "Add to project dictionary",
-    "Add to my dictionary",
-    "Ignore here",
+    "Ignore in this project",
+    "Ignore everywhere",
+    "Ignore for now",
   ]);
   // The production card intentionally applies on mousedown so CodeMirror
   // cannot reclaim focus and remove the tooltip before a later click. The
@@ -229,7 +229,7 @@ test("a dismissed grammar finding stays dismissed for the project", async ({
       document.querySelectorAll('[data-e2e-proofreading-card="true"] .cm-proofread-ignore'),
     ).map((entry) => entry.textContent ?? "")`,
   );
-  expect(grammarFooter[0]).toBe("Ignore this");
+  expect(grammarFooter[0]).toBe("Ignore in this project");
   expect(grammarFooter[1] ?? "").toContain("Turn off rule");
 
   await tauriPage.evaluate(`(() => {
@@ -237,7 +237,7 @@ test("a dismissed grammar finding stays dismissed for the project", async ({
       .querySelector('[data-e2e-proofreading-card="true"]')
       ?.querySelector('.cm-proofread-ignore');
     if (!(button instanceof HTMLButtonElement)) {
-      throw new Error("Ignore this action is unavailable");
+      throw new Error("Ignore in this project action is unavailable");
     }
     button.dispatchEvent(new MouseEvent("mousedown", {
       bubbles: true,
