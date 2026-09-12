@@ -1,4 +1,11 @@
-import { fetchDoiBibtex, fetchArxiv, crossrefSearch, readFileContent } from "@/lib/tauri";
+import {
+  fetchArxiv,
+  crossrefSearch,
+  fetchDoiBibtex,
+  fetchIsbnBibtex,
+  fetchPmidBibtex,
+  readFileContent,
+} from "@/lib/tauri";
 import { detectInput } from "@/lib/citation/detect";
 import { parseEntry, generateCiteKey, setKey, stringifyBibEntry } from "@/lib/citation/bibtex";
 import type { ParsedBib } from "@/lib/citation/types";
@@ -41,6 +48,12 @@ export async function resolveCitation(
     if (d.kind === "arxiv") {
       const bib = arxivXmlToBibtex(await fetchArxiv(d.value));
       return bib ? { bibtex: bib } : { error: "No arXiv entry found." };
+    }
+    if (d.kind === "isbn") {
+      return { bibtex: (await fetchIsbnBibtex(d.value)).trim() };
+    }
+    if (d.kind === "pmid") {
+      return { bibtex: (await fetchPmidBibtex(d.value)).trim() };
     }
     return { hits: parseCrossrefSearch(await crossrefSearch(d.value)) };
   } catch (e) {

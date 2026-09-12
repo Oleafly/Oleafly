@@ -9,6 +9,7 @@ import {
   Upload,
   X,
   Quote,
+  Sparkles,
 } from "lucide-react";
 import {
   useCallback,
@@ -30,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
+import { CleanLibraryDialog } from "@/components/layout/CleanLibraryDialog";
 import {
   buildCitationNodes,
   buildReferenceResultNodes,
@@ -253,6 +255,7 @@ export function ReferencesPanel() {
   const focusRequest = useReferencesStore((state) => state.focusRequest);
   const clearQuery = useReferencesStore((state) => state.clear);
   const [importOpen, setImportOpen] = useState(false);
+  const [cleanOpen, setCleanOpen] = useState(false);
   const [view, setView] = useState<ReferencePanelView>(
     query ? "results" : "citations",
   );
@@ -328,6 +331,19 @@ export function ReferencesPanel() {
         <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75">
           References
         </span>
+        {view === "citations" && projectId ? (
+          <Tooltip label="Clean reference library" side="bottom">
+            <button
+              type="button"
+              aria-label="Clean reference library"
+              data-testid="clean-library-button"
+              onClick={() => setCleanOpen(true)}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Sparkles aria-hidden className="size-3.5" />
+            </button>
+          </Tooltip>
+        ) : null}
         {view === "citations" && projectId ? (
           <Tooltip label="Import reference library" side="bottom">
             <button
@@ -540,6 +556,7 @@ export function ReferencesPanel() {
           </div>
         ) : null}
       </section>
+      <CleanLibraryDialog open={cleanOpen} onClose={() => setCleanOpen(false)} />
       <ImportReferenceLibraryDialog
         open={importOpen}
         onOpenChange={setImportOpen}

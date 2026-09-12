@@ -1,9 +1,11 @@
 import type { ComponentType } from "react";
 import {
+  BookOpenText,
   Calculator,
   ClipboardClock,
   FileInput,
   LibraryBig,
+  ListChecks,
   School,
   ShieldCheck,
   Table2,
@@ -17,7 +19,10 @@ export type ToolId =
   | "table"
   | "lab-search"
   | "literature-search"
-  | "deadlines";
+  | "deadlines"
+  | "stats"
+  | "generators"
+  | "symbols";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -43,6 +48,9 @@ export const TOOL_CATEGORY_ORDER = [
   "Validate",
   "Tables",
   "Research",
+  "Statistics",
+  "Write",
+  "Reference",
 ] as const;
 
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
@@ -124,6 +132,42 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     page: "deadlines",
     slash: ["conference-deadlines", "deadlines"],
     tone: "amber",
+  },
+  {
+    id: "stats",
+    name: "Statistics Calculators",
+    description:
+      "p-values, sample sizes with the finite-population correction, and t or Wald confidence intervals.",
+    icon: Calculator,
+    tags: ["p-value", "Sample size", "Confidence interval", "Local"],
+    category: "Statistics",
+    page: "stats",
+    slash: ["stats", "statistics", "p-value"],
+    tone: "blue",
+  },
+  {
+    id: "generators",
+    name: "Writing Generators",
+    description:
+      "One-click abstract, summary, paraphrase, and thesis outline drafts handed to the assistant.",
+    icon: ListChecks,
+    tags: ["Abstract", "Summarize", "Paraphrase", "Thesis"],
+    category: "Write",
+    page: "generators",
+    slash: ["generators", "abstract", "paraphrase"],
+    tone: "violet",
+  },
+  {
+    id: "symbols",
+    name: "Symbol Reference",
+    description:
+      "Browse Greek letters, arrows, relations, and operators from the completion corpus and insert them at the cursor.",
+    icon: BookOpenText,
+    tags: ["Greek", "Arrows", "Cheatsheet", "Insert at cursor"],
+    category: "Reference",
+    page: "symbols",
+    slash: ["symbols", "cheatsheet", "greek-letters"],
+    tone: "cyan",
   },
 ];
 

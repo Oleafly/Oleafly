@@ -9,7 +9,10 @@ export type HomePage =
   | "lab-search"
   | "literature-search"
   | "deadlines"
-  | "diagram-composer";
+  | "diagram-composer"
+  | "stats"
+  | "generators"
+  | "symbols";
 
 export const useHomeViewStore = create<{
   page: HomePage;

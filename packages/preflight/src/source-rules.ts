@@ -380,6 +380,25 @@ const uaStandardWithoutTitle: Rule = (text) => {
       "PDF/UA is declared without a document title",
       `This document declares pdfstandard=ua but sets no ${missing}. PDF/UA requires a title in the XMP metadata and a viewer preference that displays it, so the output would claim a standard it does not meet. Load hyperref and set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}.`,
       { from: declaration.from, to: declaration.to },
+
+// Math renders accessibly on the web only as MathML (or images with alt
+// text). When the source contains math, point at the HTML export, which
+// pandoc writes with --mathml, as an accessibility check surface (G11).
+const mathMlExportHint: Rule = (text) => {
+  const hasMath =
+    /\\begin\{(?:equation|align|gather|multline|eqnarray|math|displaymath)\*?\}/.test(
+      text,
+    ) || /(?:^|[^\\$\w])\$[^$]+\$/.test(text) || /\\\[/.test(text);
+  if (!hasMath) return [];
+  return [
+    make(
+      "mathml-export-hint",
+      "a11y",
+      "info",
+      "Export an HTML copy with MathML to check math accessibility",
+      "The document contains math. Screen readers read equations reliably when they are MathML. Use Export as HTML, which pandoc writes with --mathml, and open the file with a screen reader or an accessibility checker before submission.",
+      undefined,
+      "advisory",
     ),
   ];
 };
@@ -432,6 +451,7 @@ const tableHeaderRows: Rule = (text) => {
 const RULES: Rule[] = [
   multiColumn,
   noGlyphToUnicode,
+  mathMlExportHint,
   iconNearContact,
   layoutTable,
   contactInHeader,

@@ -12,12 +12,7 @@ import { Input } from "@/components/ui/input";
 import { getConnectorKey, setConnectorKey } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 
-const KEY_FREE_SOURCES = [
-  "arXiv",
-  "Crossref",
-  "PubMed",
-  "OpenAlex",
-] as const;
+const KEY_FREE_SOURCES = ["arXiv", "Crossref", "PubMed"] as const;
 
 export function CitationSearchIntegrationSection() {
   const [apiKey, setApiKey] = useState("");
@@ -29,6 +24,12 @@ export function CitationSearchIntegrationSection() {
     null,
   );
   const [openAlexBusy, setOpenAlexBusy] = useState(false);
+
+  const [openAlexKey, setOpenAlexKey] = useState("");
+  const [openAlexKeyConnected, setOpenAlexKeyConnected] = useState<
+    boolean | null
+  >(null);
+  const [openAlexKeyBusy, setOpenAlexKeyBusy] = useState(false);
 
   const [serperKey, setSerperKey] = useState("");
   const [serperConnected, setSerperConnected] = useState<boolean | null>(null);
@@ -49,6 +50,13 @@ export function CitationSearchIntegrationSection() {
       })
       .catch(() => {
         if (!cancelled) setOpenAlexConnected(false);
+      });
+    void getConnectorKey("openalex-api-key")
+      .then((key) => {
+        if (!cancelled) setOpenAlexKeyConnected(Boolean(key));
+      })
+      .catch(() => {
+        if (!cancelled) setOpenAlexKeyConnected(false);
       });
     void getConnectorKey("serper")
       .then((key) => {
@@ -104,6 +112,35 @@ export function CitationSearchIntegrationSection() {
       toast.error("Could not save the OpenAlex contact email.");
     } finally {
       setOpenAlexBusy(false);
+    }
+  };
+
+  const saveOpenAlexKey = async () => {
+    const key = openAlexKey.trim();
+    if (!key) return;
+    setOpenAlexKeyBusy(true);
+    try {
+      await setConnectorKey("openalex-api-key", key);
+      setOpenAlexKey("");
+      setOpenAlexKeyConnected(true);
+      toast.success("OpenAlex API key saved");
+    } catch {
+      toast.error("Could not save the OpenAlex API key.");
+    } finally {
+      setOpenAlexKeyBusy(false);
+    }
+  };
+
+  const removeOpenAlexKey = async () => {
+    setOpenAlexKeyBusy(true);
+    try {
+      await setConnectorKey("openalex-api-key", "");
+      setOpenAlexKeyConnected(false);
+      toast.success("OpenAlex API key removed");
+    } catch {
+      toast.error("Could not remove the OpenAlex API key.");
+    } finally {
+      setOpenAlexKeyBusy(false);
     }
   };
 
@@ -244,8 +281,10 @@ export function CitationSearchIntegrationSection() {
               )}
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Optional contact email. OpenAlex uses it for higher rate limits
-              (polite pool). Stored locally.
+              An API key is recommended: OpenAlex made keys mandatory in
+              February 2026, and keyless searches draw from a small shared
+              daily pool. The contact email adds the polite pool on top.
+              Both are stored locally.
             </p>
             <a
               href="https://docs.openalex.org/how-to-use-the-api/rate-limits-and-authentication"
@@ -257,6 +296,18 @@ export function CitationSearchIntegrationSection() {
               <ExternalLink className="size-3" />
             </a>
           </div>
+          {openAlexKeyConnected && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={openAlexKeyBusy}
+              onClick={() => void removeOpenAlexKey()}
+            >
+              {openAlexKeyBusy && <Loader2 className="animate-spin" />}
+              Remove API key
+            </Button>
+          )}
           {openAlexConnected && (
             <Button
               type="button"
@@ -270,6 +321,30 @@ export function CitationSearchIntegrationSection() {
             </Button>
           )}
         </div>
+
+        {!openAlexKeyConnected && (
+          <div className="mt-4 flex max-w-md gap-2">
+            <Input
+              type="password"
+              data-testid="openalex-api-key-input"
+              value={openAlexKey}
+              onChange={(event) => setOpenAlexKey(event.target.value)}
+              placeholder="OpenAlex API key"
+              aria-label="OpenAlex API key"
+              className="h-9"
+            />
+            <Button
+              type="button"
+              size="sm"
+              data-testid="openalex-api-key-save"
+              disabled={openAlexKeyBusy || !openAlexKey.trim()}
+              onClick={() => void saveOpenAlexKey()}
+            >
+              {openAlexKeyBusy && <Loader2 className="animate-spin" />}
+              Save API key
+            </Button>
+          </div>
+        )}
 
         {!openAlexConnected && (
           <div className="mt-4 flex max-w-md gap-2">

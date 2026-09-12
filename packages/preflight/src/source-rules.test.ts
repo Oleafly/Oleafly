@@ -275,6 +275,23 @@ describe("comment masking", () => {
   });
 });
 
+describe("mathml export hint", () => {
+  it("suggests the HTML MathML export for documents with math", () => {
+    const src = "\\documentclass{article}\n\\begin{document}\n\\begin{equation}\n  E = mc^2\n\\end{equation}\n\\end{document}\n";
+    const findings = runSourceRules(src).filter((f) => f.id === "mathml-export-hint");
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.lens).toBe("a11y");
+    expect(findings[0]!.certainty).toBe("advisory");
+    expect(findings[0]!.detail).toContain("--mathml");
+  });
+  it("stays quiet for prose without math", () => {
+    const findings = runSourceRules("\\documentclass{article}\nPlain prose only.\n").filter(
+      (f) => f.id === "mathml-export-hint",
+    );
+    expect(findings).toHaveLength(0);
+  });
+});
+
 describe("finding shape", () => {
   it("gives match-based findings a source range", () => {
     const f = runSourceRules("\\includegraphics{photo.png}").find((x) => x.id === "figure-alt");

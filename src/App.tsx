@@ -118,6 +118,15 @@ const HotkeysModal = lazy(() =>
 const TourGuide = lazy(() =>
   import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide })),
 );
+const StatsToolView = lazy(() =>
+  import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })),
+);
+const GeneratorsToolView = lazy(() =>
+  import("@/components/tools/GeneratorsToolView").then((m) => ({ default: m.GeneratorsToolView })),
+);
+const SymbolsToolView = lazy(() =>
+  import("@/components/tools/SymbolsToolView").then((m) => ({ default: m.SymbolsToolView })),
+);
 const EquationToolView = lazy(() =>
   import("@/components/tools/EquationToolView").then((m) => ({ default: m.EquationToolView })),
 );
@@ -746,6 +755,9 @@ function AppContent() {
           {homePage === "lab-search" && <LabSearchToolView />}
           {homePage === "literature-search" && <LiteratureSearchToolView />}
           {homePage === "deadlines" && <DeadlinesView />}
+          {homePage === "stats" && <StatsToolView />}
+          {homePage === "generators" && <GeneratorsToolView />}
+          {homePage === "symbols" && <SymbolsToolView />}
           {toolsOpen && <LatexToolsView />}
         </Suspense>
         <ExternalToolApprovals />

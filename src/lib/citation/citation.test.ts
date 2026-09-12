@@ -22,6 +22,21 @@ describe("detectInput", () => {
   it("falls back to a title search for free text", () => {
     expect(detectInput("Attention is all you need")).toEqual({ kind: "title", value: "Attention is all you need" });
   });
+  it("detects a hyphenated ISBN-13", () => {
+    expect(detectInput("978-0-262-03561-3")).toEqual({ kind: "isbn", value: "9780262035613" });
+  });
+  it("detects an ISBN-10 ending in X with an isbn: prefix", () => {
+    expect(detectInput("isbn:020163361X")).toEqual({ kind: "isbn", value: "020163361X" });
+  });
+  it("detects a bare PMID", () => {
+    expect(detectInput("32172672")).toEqual({ kind: "pmid", value: "32172672" });
+  });
+  it("detects a PMID with prefix", () => {
+    expect(detectInput("PMID: 33077593")).toEqual({ kind: "pmid", value: "33077593" });
+  });
+  it("does not read short numbers as PMIDs", () => {
+    expect(detectInput("42")).toEqual({ kind: "title", value: "42" });
+  });
 });
 
 describe("parseEntry", () => {
