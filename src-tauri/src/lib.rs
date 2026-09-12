@@ -9,6 +9,7 @@ mod agent_server;
 mod ai_model_metadata;
 mod ai_model_registry;
 mod approvals;
+mod arxiv_import;
 mod assets;
 mod biber_toolchain;
 mod browser;
@@ -507,7 +508,10 @@ pub fn run() {
             latex_engine::compile_tagged,
             citation::fetch_doi_bibtex,
             citation::fetch_arxiv,
+            citation::fetch_isbn_bibtex,
+            citation::fetch_pmid_bibtex,
             citation::crossref_search,
+            arxiv_import::import_arxiv_eprint,
             literature::literature_search,
             literature::literature_arxiv_lookup,
             connectors::get_connector_key,

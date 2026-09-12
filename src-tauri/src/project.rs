@@ -2208,7 +2208,10 @@ fn unique_temporary_path(parent: &Path, prefix: &str) -> Result<PathBuf, String>
     Err("could not create a temporary move path".into())
 }
 
-fn create_unique_temporary_directory(parent: &Path, prefix: &str) -> Result<PathBuf, String> {
+pub(crate) fn create_unique_temporary_directory(
+    parent: &Path,
+    prefix: &str,
+) -> Result<PathBuf, String> {
     for suffix in 0..10_000_u32 {
         let candidate = parent.join(format!("{prefix}-{}-{suffix}", std::process::id()));
         match std::fs::create_dir(&candidate) {
@@ -3472,6 +3475,15 @@ pub async fn import_overleaf_project(name: Option<String>, path: String) -> Resu
 
 fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
     import_overleaf_project_blocking_with(name, path, |_| Ok(()))
+}
+
+/// Import an already-unpacked directory tree as a new project (shared by the
+/// arXiv e-print importer, which stages the unpack itself).
+pub(crate) fn import_project_directory_blocking(
+    name: Option<String>,
+    dir: &str,
+) -> Result<String, String> {
+    import_overleaf_project_blocking_with(name, dir, |_| Ok(()))
 }
 
 fn import_overleaf_project_blocking_with(
