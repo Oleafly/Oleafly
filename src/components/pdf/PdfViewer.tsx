@@ -1,4 +1,5 @@
-import { forwardRef, lazy, Suspense } from "react";
+import { forwardRef, lazy, Suspense, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
 import type {
   PdfViewerHandle,
@@ -30,8 +31,17 @@ const PdfViewerCore = lazy(() =>
   })),
 );
 
-export const PdfViewer = forwardRef<PdfViewerHandle, Omit<PdfViewerProps, "onOpenLink">>(
+export const PdfViewer = forwardRef<PdfViewerHandle, Omit<PdfViewerProps, "onOpenLink" | "t">>(
   function PdfViewer(props, ref) {
+    const { t } = useTranslation(["common", "editor", "preview"]);
+    const packageT = useMemo<NonNullable<PdfViewerProps["t"]>>(
+      () => (key, params) =>
+        (t as unknown as (k: string, p?: Record<string, unknown>) => string)(
+          `preview:package.${key}`,
+          params,
+        ),
+      [t],
+    );
     return (
       <Suspense
         fallback={
@@ -40,13 +50,14 @@ export const PdfViewer = forwardRef<PdfViewerHandle, Omit<PdfViewerProps, "onOpe
             role="status"
             aria-live="polite"
           >
-            Loading PDF viewer…
+            {t(($) => $.editor.preview.loading)}
           </div>
         }
       >
         <PdfViewerCore
           ref={ref}
           {...props}
+          t={packageT}
           onOpenLink={(url) => {
             const safeUrl = safePdfExternalUrl(url);
             if (safeUrl) void openUrl(safeUrl);

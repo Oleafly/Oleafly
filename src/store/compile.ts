@@ -11,7 +11,7 @@ import {
   type CompileResult,
   type LogDiagnostic,
 } from "@/lib/tauri";
-import { useFilesStore } from "@/store/files";
+import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
 import {
   classifyCompileFailure,
@@ -23,6 +23,8 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
+import { formatList } from "@/lib/intl";
 
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { ensurePandoc } from "@/features/pandoc";
@@ -418,11 +420,15 @@ function maybeSuggestMissingPackages(log: string): void {
     if (!info?.tlmgr || useFilesStore.getState().projectId !== projectId || useFilesStore.getState().engine.id !== "latexmk") return;
     if (suggestedPackagesByProject.get(projectId) === signature) return;
     suggestedPackagesByProject.set(projectId, signature);
-    const label = packages.length === 1 ? `Find and install ${packages[0]}` : `Find and install ${packages.length} files`;
-    const summary =
-      packages.length === 1
-        ? `The compile could not find "${packages[0]}". Look for the package that provides it in TeX Live.`
-        : `The compile could not find ${packages.join(", ")}. Look for their packages in TeX Live.`;
+    const label = i18n.t(($) => $.core.missingPackages.action, {
+      count: packages.length,
+      name: packages[0],
+    });
+    const summary = i18n.t(($) => $.core.missingPackages.summary, {
+      count: packages.length,
+      name: packages[0],
+      names: formatList(packages),
+    });
     let installing = false;
     toast.info(
       summary,
@@ -433,9 +439,10 @@ function maybeSuggestMissingPackages(log: string): void {
           installing = true;
           void (async () => {
             toast.info(
-              packages.length === 1
-                ? `Installing ${packages[0]}. The compile restarts when it finishes.`
-                : `Installing ${packages.length} packages. The compile restarts when they finish.`,
+              i18n.t(($) => $.core.missingPackages.installing, {
+                count: packages.length,
+                name: packages[0],
+              }),
             );
             try {
               const outcome = await tauri.tlmgrInstallMissing(packages);
@@ -476,7 +483,7 @@ function offerCompileRetry(projectId: string, finding: ImportCompatFinding): voi
   toast.error(
     finding.detail,
     {
-      label: "Compile again",
+      label: i18n.t(($) => $.core.compile.retry),
       onClick: () => {
         if (retrying || useFilesStore.getState().projectId !== projectId) return;
         retrying = true;
@@ -672,9 +679,9 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       current = get().lastCompileCheckpoint,
     ) => hasCompileCheckpointAdvanced(checkpointAtStart, current);
     if (!files.engineLoaded) {
-      const reason =
-        files.engineError ??
-        "Document engine details are still loading.";
+      const reason = files.engineError
+        ? engineErrorMessage(files.engineError)
+        : i18n.t(($) => $.core.engine.error.stillLoading);
       set({
         status: "unavailable",
         phase: "idle",
@@ -686,7 +693,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       notifyError(
         "compile",
         reason,
-        "Compile is disabled until the document engine is loaded.",
+        i18n.t(($) => $.core.compile.engineNotLoaded),
       );
       abortIntent();
       return undefined;

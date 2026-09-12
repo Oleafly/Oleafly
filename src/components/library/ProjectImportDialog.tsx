@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import {
   ChevronLeft,
@@ -53,6 +54,29 @@ export function ProjectImportDialog({
   onImported?: () => void;
   initialView?: "sources" | "arxiv";
 }) {
+  const { t } = useTranslation(["library"]);
+  const sourceCopy: Record<ProjectImportFileKind, { title: string; description: string }> = {
+    project: {
+      title: t(($) => $.library.import.sources.project.title),
+      description: t(($) => $.library.import.sources.project.description),
+    },
+    word: {
+      title: t(($) => $.library.import.sources.word.title),
+      description: t(($) => $.library.import.sources.word.description),
+    },
+    markdown: {
+      title: t(($) => $.library.import.sources.markdown.title),
+      description: t(($) => $.library.import.sources.markdown.description),
+    },
+    html: {
+      title: t(($) => $.library.import.sources.html.title),
+      description: t(($) => $.library.import.sources.html.description),
+    },
+    typst: {
+      title: t(($) => $.library.import.sources.typst.title),
+      description: t(($) => $.library.import.sources.typst.description),
+    },
+  };
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
   const [view, setView] = useState<"sources" | "github" | "target" | "arxiv">(
@@ -106,7 +130,7 @@ export function ProjectImportDialog({
   }, [open, view, githubStatus, refreshGithub, repositories.length, repositoryAttempt]);
 
   const reportError = (error: unknown) => {
-    const detail = error instanceof Error ? error.message : typeof error === "string" ? error : "The import could not finish. Try again.";
+    const detail = error instanceof Error ? error.message : typeof error === "string" ? error : t(($) => $.library.import.failed);
     setErrorMessage(detail);
     void logError("project import", error);
   };
@@ -119,7 +143,7 @@ export function ProjectImportDialog({
     try {
       const imported = await work();
       if (imported === false) {
-        setErrorMessage("The document converter is unavailable. Check the download message, then try again.");
+        setErrorMessage(t(($) => $.library.import.converterUnavailable));
       } else {
         onImported?.();
         onClose();
@@ -144,7 +168,7 @@ export function ProjectImportDialog({
       if (session !== sessionRef.current || typeof picked !== "string") return;
       selection = picked;
       const fileKind = importFileKind(picked);
-      if (!fileKind) throw new Error("Choose one of the supported document types.");
+      if (!fileKind) throw new Error(t(($) => $.library.import.supportedTypes));
       if (importTargetsForKind(fileKind).length > 1) {
         setPendingPath(picked);
         setView("target");
@@ -193,7 +217,7 @@ export function ProjectImportDialog({
             {view !== "sources" ? (
               <button
                 type="button"
-                aria-label="Back to import sources"
+                aria-label={t(($) => $.library.import.back)}
                 data-testid="project-import-back"
                 disabled={busy}
                 onClick={() => { setView("sources"); setErrorMessage(null); setPendingPath(null); }}
@@ -203,26 +227,26 @@ export function ProjectImportDialog({
               </button>
             ) : null}
             {view === "github"
-              ? "Import from GitHub"
+              ? t(($) => $.library.import.githubTitle)
               : view === "arxiv"
-                ? "Import an arXiv paper"
+                ? t(($) => $.library.import.arxivTitle)
                 : view === "target"
-                  ? "Choose the project type"
-                  : "Import a project"}
+                  ? t(($) => $.library.import.targetTitle)
+                  : t(($) => $.library.import.title)}
           </DialogTitle>
           <DialogDescription>
             {view === "github"
-              ? "Choose a repository to copy into your library."
+              ? t(($) => $.library.import.githubDescription)
               : view === "arxiv"
-                ? "Oleafly downloads the paper's LaTeX source and unpacks it as a project."
+                ? t(($) => $.library.import.arxivDescription)
                 : view === "target"
-                  ? "Choose the format you want to edit. Images or included files stored beside the original may need to be added to the new project."
-                  : "Oleafly copies what you choose into a new project. The original is left alone."}
+                  ? t(($) => $.library.import.targetDescription)
+                  : t(($) => $.library.import.description)}
           </DialogDescription>
         </DialogHeader>
 
         {errorMessage && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
-        {busy && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />Importing your project…</p>}
+        {busy && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />{t(($) => $.library.import.importing)}</p>}
         {view === "target" ? (
           <div className="grid gap-2">
             <p className="break-all text-xs text-muted-foreground">{pendingPath?.split(/[/\\]/).pop()}</p>
@@ -246,7 +270,7 @@ export function ProjectImportDialog({
                     </span>
                     {target.recommended ? (
                       <span className="block text-xs text-muted-foreground">
-                        Recommended for this file type
+                        {t(($) => $.library.import.recommended)}
                       </span>
                     ) : null}
                   </span>
@@ -258,11 +282,11 @@ export function ProjectImportDialog({
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Input
-                aria-label="arXiv id or paper link"
+                aria-label={t(($) => $.library.import.arxivInputLabel)}
                 disabled={busy}
                 data-testid="project-import-arxiv-id"
                 value={arxivId}
-                placeholder="arXiv id or https://arxiv.org/abs/…"
+                placeholder={t(($) => $.library.import.arxivPlaceholder)}
                 onChange={(event) => setArxivId(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void importFromArxiv();
@@ -277,22 +301,23 @@ export function ProjectImportDialog({
                 {busy ? (
                   <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
                 ) : null}
-                Import
+                {t(($) => $.library.import.importAction)}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Source files must be available on arXiv. For papers available only as a PDF, use the PDF import tool.
+              {t(($) => $.library.import.arxivHint)}
             </p>
           </div>
         ) : view === "sources" ? (
           <div className="space-y-4">
             <section className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                On this computer
+                {t(($) => $.library.import.localHeading)}
               </h3>
               <div className="grid gap-2">
                 {IMPORT_FILE_SOURCES.map((source) => {
                   const Icon = SOURCE_ICONS[source.kind];
+                  const copy = sourceCopy[source.kind];
                   return (
                   <button
                     key={source.kind}
@@ -311,10 +336,10 @@ export function ProjectImportDialog({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-foreground">
-                        {source.title}
+                        {copy.title}
                       </span>
                       <span className="block text-xs text-muted-foreground">
-                        {source.description}
+                        {copy.description}
                       </span>
                     </span>
                   </button>
@@ -324,7 +349,7 @@ export function ProjectImportDialog({
 
             <section className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                From the cloud
+                {t(($) => $.library.import.cloudHeading)}
               </h3>
               <button
                 type="button"
@@ -341,9 +366,9 @@ export function ProjectImportDialog({
                   <Sigma aria-hidden="true" className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-foreground">arXiv paper</span>
+                  <span className="block text-sm font-medium text-foreground">{t(($) => $.library.import.arxivPaper)}</span>
                   <span className="block text-xs text-muted-foreground">
-                    Download a paper's LaTeX source by its arXiv id.
+                    {t(($) => $.library.import.arxivCardDescription)}
                   </span>
                 </span>
               </button>
@@ -365,8 +390,8 @@ export function ProjectImportDialog({
                   <span className="block text-sm font-medium text-foreground">GitHub</span>
                   <span className="block text-xs text-muted-foreground">
                     {githubStatus === "connected"
-                      ? "Pick from the repositories you can reach."
-                      : "Connect your account to list repositories."}
+                      ? t(($) => $.library.import.githubConnected)
+                      : t(($) => $.library.import.githubDisconnected)}
                   </span>
                 </span>
                 {busy ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
@@ -378,25 +403,29 @@ export function ProjectImportDialog({
             {githubStatus === "disconnected" ? (
               <div className="space-y-3 rounded-lg border bg-card p-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Connect GitHub in Settings to list your repositories here.
+                  {t(($) => $.library.import.connectPrompt)}
                 </p>
                 <Button type="button" size="sm" onClick={openGithubSettings}>
                   <Github aria-hidden="true" className="size-3.5" />
-                  Connect GitHub
+                  {t(($) => $.library.import.connect)}
                 </Button>
               </div>
             ) : githubStatus === "unknown" || loadingRepositories ? (
               <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
                 <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-                Loading repositories…
+                {t(($) => $.library.import.loadingRepositories)}
               </p>
             ) : repositoryLoadFailed ? (
               <div className="space-y-2 p-3">
-                <p role="alert" className="text-sm text-muted-foreground">The repositories could not be loaded.</p>
-                <Button type="button" variant="outline" size="sm" onClick={() => setRepositoryAttempt((attempt) => attempt + 1)}>Try again</Button>
+                <p role="alert" className="text-sm text-muted-foreground">
+                  {t(($) => $.library.import.repositoriesFailed)}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={() => setRepositoryAttempt((attempt) => attempt + 1)}>{t(($) => $.library.import.tryAgain)}</Button>
               </div>
             ) : repositories.length === 0 ? (
-              <p className="p-3 text-sm text-muted-foreground">No repositories found.</p>
+              <p className="p-3 text-sm text-muted-foreground">
+                {t(($) => $.library.import.noRepositories)}
+              </p>
             ) : (
               repositories.map((repository) => (
                 <div
@@ -413,10 +442,10 @@ export function ProjectImportDialog({
                     <Github aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate text-sm">{repository.full_name}</span>
                     {repository.private ? (
-                      <Tooltip label="Private repository" side="top">
+                      <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
                         <span
                           role="img"
-                          aria-label="Private repository"
+                          aria-label={t(($) => $.library.import.privateRepository)}
                           className="inline-flex shrink-0"
                         >
                           <Lock aria-hidden="true" className="size-3 text-muted-foreground" />
@@ -424,10 +453,12 @@ export function ProjectImportDialog({
                       </Tooltip>
                     ) : null}
                   </button>
-                  <Tooltip label="Open on GitHub" side="top">
+                  <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
                     <button
                       type="button"
-                      aria-label={`Open ${repository.full_name} on GitHub`}
+                      aria-label={t(($) => $.library.import.openRepository, {
+                        name: repository.full_name,
+                      })}
                       onClick={() => {
                         openExternal(repository.html_url).catch((error) => {
                           notifyError("open repository", error);

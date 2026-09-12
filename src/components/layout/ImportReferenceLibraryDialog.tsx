@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
   type BatchImportResult,
 } from "@/features/citation";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 
 function ZoteroLogo() {
   return (
@@ -30,6 +32,8 @@ function ZoteroLogo() {
     </svg>
   );
 }
+
+const ENDNOTE_WORDMARK = "en";
 
 function EndNoteLogo() {
   return (
@@ -49,25 +53,30 @@ function EndNoteLogo() {
         fontWeight="700"
         letterSpacing="-0.8"
       >
-        en
+        {ENDNOTE_WORDMARK}
       </text>
     </svg>
   );
 }
 
 function summarize(result: BatchImportResult): string {
-  const target = result.bibPath || "the bibliography";
+  const target = result.bibPath || i18n.t(($) => $.references.import.defaultTarget);
   if (!result.imported) {
-    if (result.duplicates === 1) return `That reference is already in ${target}.`;
     if (result.duplicates) {
-      return `Those ${result.duplicates} references are already in ${target}.`;
+      return i18n.t(($) => $.references.import.allDuplicates, {
+        count: result.duplicates,
+        target,
+      });
     }
-    return `Nothing new to add to ${target}.`;
+    return i18n.t(($) => $.references.import.nothingNew, { target });
   }
-  const added = `${result.imported} reference${result.imported === 1 ? "" : "s"} added to ${target}`;
   return result.duplicates
-    ? `${added}, ${result.duplicates} already there.`
-    : `${added}.`;
+    ? i18n.t(($) => $.references.import.addedWithDuplicates, {
+        count: result.imported,
+        duplicates: result.duplicates,
+        target,
+      })
+    : i18n.t(($) => $.references.import.added, { count: result.imported, target });
 }
 
 function describeErrors(errors: readonly string[]): string {
@@ -75,8 +84,13 @@ function describeErrors(errors: readonly string[]): string {
     .map((error) => error.trim())
     .filter(Boolean)
     .map((error) => (/[.!?]$/.test(error) ? error : `${error}.`));
-  if (sentences.length <= 1) return sentences[0] ?? "Could not import those references.";
-  return `${sentences.length} problems during import. ${sentences.join(" ")}`;
+  if (sentences.length <= 1) {
+    return sentences[0] ?? i18n.t(($) => $.references.import.failed);
+  }
+  return i18n.t(($) => $.references.import.problems, {
+    count: sentences.length,
+    details: sentences.join(" "),
+  });
 }
 
 interface UploadCardProps {
@@ -144,6 +158,7 @@ export function ImportReferenceLibraryDialog({
   onOpenChange: (open: boolean) => void;
   onImported?: () => void;
 }) {
+  const { t } = useTranslation(["references"]);
   const [busy, setBusy] = useState(false);
 
   const handleUpload = async (file: File) => {
@@ -152,11 +167,11 @@ export function ImportReferenceLibraryDialog({
       const text = await file.text();
       const entries = parseCitationFile(file.name, text);
       if (!entries) {
-        toast.error(`Unrecognized file type: ${file.name}`);
+        toast.error(i18n.t(($) => $.references.import.unrecognized, { name: file.name }));
         return;
       }
       if (!entries.length) {
-        toast.error("No references found in that file.");
+        toast.error(i18n.t(($) => $.references.import.empty));
         return;
       }
       const result = await addCitations(entries);
@@ -168,7 +183,7 @@ export function ImportReferenceLibraryDialog({
       onImported?.();
       onOpenChange(false);
     } catch (error) {
-      notifyError("import references", error, "Could not read that file.");
+      notifyError("import references", error, i18n.t(($) => $.references.import.readFailed));
     } finally {
       setBusy(false);
     }
@@ -178,35 +193,31 @@ export function ImportReferenceLibraryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Import reference library</DialogTitle>
-          <DialogDescription>
-            Add references from a citation manager or bibliography file to
-            this project.
-          </DialogDescription>
+          <DialogTitle>{t(($) => $.references.import.title)}</DialogTitle>
+          <DialogDescription>{t(($) => $.references.import.description)}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <UploadCard
             icon={<ZoteroLogo />}
-            title="Zotero"
-            description="In Zotero, select File → Export Library → Zotero RDF. Then choose the exported file."
+            title={t(($) => $.references.import.zotero.title)}
+            description={t(($) => $.references.import.zotero.description)}
             accept=".rdf"
-            buttonLabel="Choose Zotero RDF file"
+            buttonLabel={t(($) => $.references.import.zotero.button)}
             onFile={handleUpload}
             busy={busy}
           />
           <UploadCard
             icon={<EndNoteLogo />}
-            title="EndNote, RIS, or BibTeX"
-            description="Choose an EndNote XML, RIS, or BibTeX file. Oleafly adds the references to the project bibliography."
+            title={t(($) => $.references.import.endnote.title)}
+            description={t(($) => $.references.import.endnote.description)}
             accept=".xml,.ris,.bib"
-            buttonLabel="Choose XML, RIS, or BibTeX file"
+            buttonLabel={t(($) => $.references.import.endnote.button)}
             onFile={handleUpload}
             busy={busy}
           />
         </div>
         <p className="text-center text-xs text-muted-foreground">
-          References with a DOI that already exists in the bibliography are
-          skipped.
+          {t(($) => $.references.import.duplicateNote)}
         </p>
       </DialogContent>
     </Dialog>

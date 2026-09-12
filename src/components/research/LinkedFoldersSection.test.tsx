@@ -1,6 +1,7 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ResearchRootFileEntry, ResearchWorkspace } from "@/lib/research-workspace";
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let LinkedFoldersSection: typeof import("./LinkedFoldersSection").LinkedFoldersSection;
 let useLinkedRootsStore: typeof import("./linked-roots-store").useLinkedRootsStore;
@@ -74,7 +75,7 @@ function workspace(): ResearchWorkspace {
     updatedAtMs: 1,
     roots: [{
       id: "data-root", canonicalPath: "/study/data", identity: "identity",
-      label: "Study data", role: "data", access: "read_only", createdAtMs: 1,
+      label: enResearchTools.roots.dialog.labelPlaceholder, role: "data", access: "read_only", createdAtMs: 1,
     }],
   };
 }
@@ -115,7 +116,7 @@ describe("LinkedFoldersSection", () => {
     await waitFor(() => expect(page().getByTestId("linked-folders-section")).toBeInTheDocument());
     expect(native.invoke).not.toHaveBeenCalledWith("list_research_root_files", expect.anything());
 
-    fireEvent.click(page().getByRole("button", { name: "Study data" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.dialog.labelPlaceholder }));
     await waitFor(() => expect(page().getByRole("button", { name: "readme.md" })).toBeInTheDocument());
     expect(native.invoke).toHaveBeenCalledWith("list_research_root_files", {
       projectId: "paper", rootId: "data-root", relativePath: "", maxDepth: 0,
@@ -141,12 +142,12 @@ describe("LinkedFoldersSection", () => {
     });
     render(<LinkedFoldersSection />);
     await waitFor(() => expect(page().getByTestId("linked-folders-section")).toBeInTheDocument());
-    fireEvent.click(page().getByRole("button", { name: "Study data" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.dialog.labelPlaceholder }));
     await waitFor(() => expect(page().getByRole("button", { name: "readme.md" })).toBeInTheDocument());
     fireEvent.click(page().getByRole("button", { name: "readme.md" }));
     await waitFor(() => expect(page().getByText("linked source text")).toBeInTheDocument());
     expect(page().getByRole("dialog")).toHaveTextContent("Read only preview");
-    expect(page().getByRole("button", { name: "Copy path" })).toBeInTheDocument();
+    expect(page().getByRole("button", { name: enResearchTools.linked.copyPath })).toBeInTheDocument();
     expect(native.invoke.mock.calls.map(([command]) => command)).not.toContain("read_file_content");
   });
 
@@ -161,7 +162,7 @@ describe("LinkedFoldersSection", () => {
     });
     render(<LinkedFoldersSection />);
     await waitFor(() => expect(page().getByTestId("linked-folders-section")).toBeInTheDocument());
-    fireEvent.click(page().getByRole("button", { name: "Study data" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.dialog.labelPlaceholder }));
     await waitFor(() => expect(page().getByText("Blocked link")).toBeInTheDocument());
     expect(page().queryByRole("button", { name: "outside.csv" })).not.toBeInTheDocument();
   });

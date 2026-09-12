@@ -1,5 +1,6 @@
 import { useToastStore, type ToastAction } from "@/store/toast";
 import { logError } from "@/lib/log";
+import { describeError } from "@/lib/app-error";
 
 export const toast = {
   error: (message: string, action?: ToastAction, sticky?: boolean) =>
@@ -21,10 +22,5 @@ export const toast = {
 // visible feedback).
 export function notifyError(scope: string, e: unknown, message?: string): void {
   void logError(scope, e);
-  if (message) {
-    toast.error(message);
-    return;
-  }
-  const detail = e instanceof Error ? e.message : typeof e === "string" ? e : "";
-  toast.error(detail ? detail : "Something went wrong. See the app log for details.");
+  toast.error(message ?? describeError(e));
 }

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   DiagramComposer as DiagramComposerCore,
   DiagramKitContext,
   type DiagramHost,
+  type DiagramKit,
 } from "@oleafly/diagram";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KIT } from "@/components/diagram/diagram-kit";
@@ -28,6 +30,8 @@ import {
 } from "@/lib/tauri";
 import { completeText } from "@/lib/agent-backend";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { describeError } from "@/lib/app-error";
+import { i18n } from "@/i18n";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { editorTheme } from "@/components/editor/cm/theme";
@@ -87,7 +91,7 @@ function pickTikzFile(): Promise<{ name: string; content: string } | null> {
 async function fixWithAi(code: string, logTail: string): Promise<string> {
   const cfg = await getConfig();
   if (!hasConfiguredProvider(cfg)) {
-    throw new Error("Connect an AI provider in Settings to use Fix with AI.");
+    throw new Error(i18n.t(($) => $.diagram.composer.aiProviderRequired));
   }
   let text: string;
   try {
@@ -97,7 +101,9 @@ async function fixWithAi(code: string, logTail: string): Promise<string> {
       user: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${code}\n\nCOMPILE LOG (tail):\n${logTail}`,
     });
   } catch (e) {
-    throw new Error(`Fix failed: ${e}`);
+    throw new Error(
+      i18n.t(($) => $.diagram.composer.fixFailed, { detail: describeError(e) }),
+    );
   }
   return text
     .replace(/^```[a-zA-Z]*\n?/gm, "")
@@ -149,10 +155,22 @@ const HOST: DiagramHost = {
 
 // Bridges app-specific stores/Tauri/editor into the package's headless composer.
 export function DiagramComposer() {
+  const { t } = useTranslation(["diagram"]);
   const open = useHomeViewStore((s) => s.page === "diagram-composer");
   const goTo = useHomeViewStore((s) => s.goTo);
   const fullscreen = useFullscreen();
   const codeExtensions = useMemo(() => [latexLanguage(), editorTheme()], []);
+  const kit = useMemo<DiagramKit>(
+    () => ({
+      ...KIT,
+      t: (key, params) =>
+        (t as unknown as (k: string, p?: Record<string, unknown>) => string)(
+          `diagram:package.${key}`,
+          params,
+        ),
+    }),
+    [t],
+  );
   const [scratchId, setScratchId] = useState<string | null>(null);
   const activeTourId = useTourStore((s) => s.activeTourId);
   const activeStepIndex = useTourStore((s) => s.activeStepIndex);
@@ -172,7 +190,7 @@ export function DiagramComposer() {
 
   return (
     <ErrorBoundary surface="diagram composer" resetKey={scratchId}>
-      <DiagramKitContext.Provider value={KIT}>
+      <DiagramKitContext.Provider value={kit}>
         <DiagramComposerCore
           open={open}
           projectId={scratchId}

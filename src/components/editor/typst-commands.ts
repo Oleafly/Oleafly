@@ -2,9 +2,10 @@ import {
   insertTemplate,
   wrapSelectionOrPlaceholder,
 } from "@/components/editor/cm/controller";
+import { i18n } from "@/i18n";
 
 export interface TypstHeadingLevel {
-  label: string;
+  label: () => string;
   hLabel: string;
   level: 1 | 2 | 3 | 4 | 5 | 6;
   placeholder: string;
@@ -12,12 +13,12 @@ export interface TypstHeadingLevel {
 }
 
 export const TYPST_HEADING_LEVELS: TypstHeadingLevel[] = [
-  { label: "Title", hLabel: "H1", level: 1, placeholder: "Title", className: "text-base font-bold" },
-  { label: "Section", hLabel: "H2", level: 2, placeholder: "Section", className: "text-base font-bold" },
-  { label: "Subsection", hLabel: "H3", level: 3, placeholder: "Subsection", className: "text-sm font-bold" },
-  { label: "Subsubsection", hLabel: "H4", level: 4, placeholder: "Subsubsection", className: "text-sm font-semibold" },
-  { label: "Minor heading", hLabel: "H5", level: 5, placeholder: "Minor heading", className: "text-xs font-semibold" },
-  { label: "Paragraph heading", hLabel: "H6", level: 6, placeholder: "Paragraph heading", className: "text-xs font-medium" },
+  { label: () => i18n.t(($) => $.editor.headings.title), hLabel: "H1", level: 1, placeholder: "Title", className: "text-base font-bold" },
+  { label: () => i18n.t(($) => $.editor.headings.section), hLabel: "H2", level: 2, placeholder: "Section", className: "text-base font-bold" },
+  { label: () => i18n.t(($) => $.editor.headings.subsection), hLabel: "H3", level: 3, placeholder: "Subsection", className: "text-sm font-bold" },
+  { label: () => i18n.t(($) => $.editor.headings.subsubsection), hLabel: "H4", level: 4, placeholder: "Subsubsection", className: "text-sm font-semibold" },
+  { label: () => i18n.t(($) => $.editor.headings.minor), hLabel: "H5", level: 5, placeholder: "Minor heading", className: "text-xs font-semibold" },
+  { label: () => i18n.t(($) => $.editor.headings.paragraphHeading), hLabel: "H6", level: 6, placeholder: "Paragraph heading", className: "text-xs font-medium" },
 ];
 
 export function insertTypstHeading(level: TypstHeadingLevel) {

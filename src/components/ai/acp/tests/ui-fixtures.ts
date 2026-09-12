@@ -2,6 +2,16 @@ import { JSDOM } from "jsdom";
 import { fireEvent, waitFor, within } from "@testing-library/react";
 import type { AcpAgentStatus, AcpEvent, AcpSession } from "@/lib/acp";
 
+export async function initTestI18n(): Promise<void> {
+  const { i18n, initializeI18n } = await import("@/i18n");
+  if (i18n.isInitialized) return;
+  await initializeI18n({
+    preference: "en",
+    systemLocale: async () => "en",
+    missingKeyMode: "throw",
+  });
+}
+
 export function installUiDom() {
   const options = { url: "https://oleafly.test", pretendToBeVisual: true };
   const dom = new JSDOM("<!doctype html><html><body></body></html>", options);

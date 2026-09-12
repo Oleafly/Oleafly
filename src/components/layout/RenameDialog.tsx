@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useRenameStore } from "@/store/rename";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView } from "@/components/editor/cm/controller";
@@ -7,6 +8,7 @@ import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { Input } from "@/components/ui/input";
 
 export function RenameDialog() {
+  const { t } = useTranslation(["common", "shell"]);
   const sym = useRenameStore((s) => s.sym);
   const close = useRenameStore((s) => s.close);
   const index = useIndexStore((s) => s.index);
@@ -30,7 +32,12 @@ export function RenameDialog() {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[20vh] backdrop-blur-sm">
-      <button type="button" aria-label="Close rename dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
+      <button
+        type="button"
+        aria-label={t(($) => $.shell.renameDialog.close)}
+        className="absolute inset-0"
+        onMouseDown={onBackdropMouseDown}
+      />
       <div
         role="dialog"
         ref={dialogRef}
@@ -40,11 +47,16 @@ export function RenameDialog() {
         className="relative w-[26rem] max-w-[90vw] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl"
       >
         <p id="rename-title" className="text-sm font-semibold">
-          Rename <span className="font-mono">{sym.name}</span>
+          <Trans
+            ns="shell"
+            i18nKey={($) => $.shell.renameDialog.title}
+            values={{ name: sym.name }}
+            components={{ symbol: <span className="font-mono" /> }}
+          />
         </p>
         <Input
           data-modal-initial-focus
-          aria-label="New name"
+          aria-label={t(($) => $.shell.renameDialog.newName)}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
@@ -55,25 +67,33 @@ export function RenameDialog() {
         />
         <p className="mt-2 h-4 text-[11px] text-muted-foreground">
           {plan?.collision ? (
-            <span className="text-red-500">A {sym.kind} named "{name}" already exists.</span>
+            <span className="text-red-500">
+              {t(($) => $.shell.renameDialog.collision, {
+                kind: t(($) => $.shell.renameDialog.symbolKinds[sym.kind]),
+                name,
+              })}
+            </span>
           ) : plan ? (
-            `${plan.edits.length} edit${plan.edits.length > 1 ? "s" : ""} across ${plan.fileCount} file${plan.fileCount > 1 ? "s" : ""}`
+            t(($) => $.shell.renameDialog.planSummary, {
+              count: plan.edits.length,
+              files: plan.fileCount,
+            })
           ) : (
             ""
           )}
         </p>
         <div className="mt-3 flex justify-end gap-2">
           <button type="button" onClick={close} className="rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent">
-            Cancel
+            {t(($) => $.common.actions.cancel)}
           </button>
           <button
             type="button"
-            aria-label="Commit rename"
+            aria-label={t(($) => $.shell.renameDialog.commit)}
             onClick={() => void submit()}
             disabled={!valid}
             className="rounded-md bg-primary px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-50"
           >
-            Rename
+            {t(($) => $.common.actions.rename)}
           </button>
         </div>
       </div>

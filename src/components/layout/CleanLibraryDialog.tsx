@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BookOpenCheck, FileDiff, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,17 +20,28 @@ import { useFilesStore } from "@/store/files";
 import { notifyError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ToolPane, ToolPreviewSurface, ToolSplitView, ToolStatus } from "@/components/tools/ToolWorkspace";
+import { i18n } from "@/i18n";
 
 function ActionRow({ action }: { action: CleanAction }) {
   const text = (() => {
     switch (action.kind) {
       case "renamed-key":
-        return `${action.old} renamed to ${action.new}`;
+        return i18n.t(($) => $.references.cleanLibrary.actionRenamed, {
+          old: action.old,
+          new: action.new,
+        });
       case "removed-duplicate":
-        return `${action.removed} removed as a duplicate of ${action.kept} (matched by ${action.by})`;
+        return i18n.t(($) => $.references.cleanLibrary.actionDuplicate, {
+          removed: action.removed,
+          kept: action.kept,
+          by: action.by,
+        });
       default:
         return action.field
-          ? `${action.key || "Library"}: ${action.field}`
+          ? i18n.t(($) => $.references.cleanLibrary.actionField, {
+              key: action.key || i18n.t(($) => $.references.cleanLibrary.library),
+              field: action.field,
+            })
           : action.key ?? "";
     }
   })();
@@ -80,7 +92,7 @@ function DiffView({ outcome }: { outcome: CleanLibraryOutcome }) {
       data-testid="clean-library-diff"
       className="min-h-0 flex-1 overflow-auto p-4 font-mono text-[11px] leading-5"
     >
-      {truncated ? <p className="mb-2 text-muted-foreground">Preview shows the first 500 lines of each version.</p> : null}
+      {truncated ? <p className="mb-2 text-muted-foreground">{i18n.t(($) => $.references.cleanLibrary.truncated)}</p> : null}
       {rows.map((row, index) => (
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: static diff rows have no identity
@@ -107,6 +119,7 @@ export function CleanLibraryDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation(["references"]);
   const projectId = useFilesStore((s) => s.projectId);
   const files = useFilesStore((s) => s.files);
   const tree = useFilesStore((s) => s.tree);
@@ -153,14 +166,25 @@ export function CleanLibraryDialog({
       const result = apply
         ? await store.runExternalProjectMutation(projectId, async (generation) => {
             const result = await cleanBibtexLibrary(projectId, target, true, outcome?.previewToken, generation);
-            if (!result.projectState) throw new Error("The cleaned files could not be reloaded. Reopen the project before editing.");
+            if (!result.projectState) throw new Error(t(($) => $.references.cleanLibrary.reloadFailed));
             return { ...result, projectState: result.projectState };
           })
         : await cleanBibtexLibrary(projectId, target, false);
       if (request !== requestId.current || useFilesStore.getState().projectId !== projectId) return;
       setOutcome(result);
       if (apply) {
-        toast.success(`Library cleaned. ${result.entriesAfter} of ${result.entriesBefore} entries kept.${result.backupPath ? ` Original files are saved in ${result.backupPath}.` : ""}`);
+        toast.success(
+          result.backupPath
+            ? t(($) => $.references.cleanLibrary.cleanedWithBackup, {
+                kept: result.entriesAfter,
+                total: result.entriesBefore,
+                path: result.backupPath,
+              })
+            : t(($) => $.references.cleanLibrary.cleaned, {
+                kept: result.entriesAfter,
+                total: result.entriesBefore,
+              }),
+        );
         onClose();
       }
     } catch (e) {
@@ -181,60 +205,60 @@ export function CleanLibraryDialog({
           <div className="flex items-center gap-3">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted"><BookOpenCheck aria-hidden className="size-4" /></div>
             <div className="space-y-1">
-              <DialogTitle className="text-sm leading-tight">Clean the reference library</DialogTitle>
-              <DialogDescription className="text-xs">Review citation keys and duplicate entries before changing your files.</DialogDescription>
+              <DialogTitle className="text-sm leading-tight">{t(($) => $.references.cleanLibrary.title)}</DialogTitle>
+              <DialogDescription className="text-xs">{t(($) => $.references.cleanLibrary.description)}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <ToolSplitView storageId="clean-library-review">
-          <ToolPane title="Reference library" badge={outcome ? `${outcome.entriesBefore} entries` : undefined}
-            footer={<p className="text-xs leading-relaxed text-muted-foreground">Preview saves your open files. Applying checks that they still match the preview and backs up the originals.</p>}
+          <ToolPane title={t(($) => $.references.cleanLibrary.library)} badge={outcome ? t(($) => $.references.cleanLibrary.entryCount, { count: outcome.entriesBefore }) : undefined}
+            footer={<p className="text-xs leading-relaxed text-muted-foreground">{t(($) => $.references.cleanLibrary.footer)}</p>}
           >
             <div className="space-y-5 p-5">
-              {bibFiles.length === 0 ? <p className="text-sm text-muted-foreground">This project has no .bib file to clean.</p> : <>
+              {bibFiles.length === 0 ? <p className="text-sm text-muted-foreground">{t(($) => $.references.cleanLibrary.noBib)}</p> : <>
                 {bibFiles.length > 1 && <div className="flex flex-wrap gap-1.5">{bibFiles.map((path) => (
                   <button key={path} type="button" disabled={busy} aria-pressed={path === target} onClick={() => setBibPath(path)} className={cn("max-w-full truncate rounded-full border px-3 py-1.5 font-mono text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", path === target ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}>{path}</button>
                 ))}</div>}
                 <p className="break-all font-mono text-xs text-muted-foreground" data-testid="clean-library-target">{target}</p>
                 {outcome ? <div className="space-y-4">
-                  <p className="text-sm">{outcome.entriesAfter} of {outcome.entriesBefore} entries will remain.</p>
+                  <p className="text-sm">{t(($) => $.references.cleanLibrary.entriesKept, { kept: outcome.entriesAfter, total: outcome.entriesBefore })}</p>
                   <div className="space-y-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Changes and notes</h3>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t(($) => $.references.cleanLibrary.changes)}</h3>
                     <ul className="space-y-3" data-testid="clean-library-actions">
                       {outcome.actions.map((action, index) => (
                         // biome-ignore lint/suspicious/noArrayIndexKey: static preview rows
                         <ActionRow key={index} action={action} />
                       ))}
-                      {outcome.changedFiles.length === 0 && <li className="text-xs text-muted-foreground">No file changes to apply.</li>}
+                      {outcome.changedFiles.length === 0 && <li className="text-xs text-muted-foreground">{t(($) => $.references.cleanLibrary.noChanges)}</li>}
                     </ul>
                   </div>
-                  <p className="break-words text-xs leading-relaxed text-muted-foreground">Files to update: {outcome.changedFiles.join(", ") || "None"}</p>
+                  <p className="break-words text-xs leading-relaxed text-muted-foreground">{t(($) => $.references.cleanLibrary.filesToUpdate, { files: outcome.changedFiles.join(", ") || t(($) => $.references.cleanLibrary.none) })}</p>
                 </div> : <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                  <p>Citation keys are standardized. DOI duplicates are removed only when all their details can be preserved.</p>
-                  <p>Similar titles and conflicting metadata stay in the library for review.</p>
+                  <p>{t(($) => $.references.cleanLibrary.introSafeChanges)}</p>
+                  <p>{t(($) => $.references.cleanLibrary.introReview)}</p>
                 </div>}
               </>}
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
             </div>
           </ToolPane>
-          <ToolPane title="Preview" badge={outcome ? "Changes" : undefined}>
+          <ToolPane title={t(($) => $.references.cleanLibrary.preview)} badge={outcome ? t(($) => $.references.cleanLibrary.changes) : undefined}>
             <ToolPreviewSurface className={outcome ? "min-h-0 p-0 md:p-0" : "items-center justify-center"}>
               {outcome ? <DiffView outcome={outcome} /> : <div className="max-w-xs space-y-2 text-center">
                 <FileDiff aria-hidden className="mx-auto mb-4 size-8 text-muted-foreground/60" />
-                <p className="text-sm font-medium">Review before applying</p>
-                <p className="text-xs leading-relaxed text-muted-foreground">Preview the changes to see which entries and citations will be updated.</p>
+                <p className="text-sm font-medium">{t(($) => $.references.cleanLibrary.reviewTitle)}</p>
+                <p className="text-xs leading-relaxed text-muted-foreground">{t(($) => $.references.cleanLibrary.reviewBody)}</p>
               </div>}
             </ToolPreviewSurface>
           </ToolPane>
         </ToolSplitView>
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-5 py-3">
-          <ToolStatus state={error ? "error" : busy ? "busy" : "ready"}>{error ? "Needs attention" : busy ? "Working…" : outcome ? "Preview ready" : "Ready to preview"}</ToolStatus>
+          <ToolStatus state={error ? "error" : busy ? "busy" : "ready"}>{error ? t(($) => $.references.cleanLibrary.statusAttention) : busy ? t(($) => $.references.cleanLibrary.statusWorking) : outcome ? t(($) => $.references.cleanLibrary.statusPreviewReady) : t(($) => $.references.cleanLibrary.statusReady)}</ToolStatus>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" variant="outline" data-testid="clean-library-dry-run" disabled={busy || !target} onClick={() => void run(false)}>
               {busy && !outcome && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
-              {outcome ? "Refresh preview" : "Preview changes"}
+              {outcome ? t(($) => $.references.cleanLibrary.refreshPreview) : t(($) => $.references.cleanLibrary.previewChanges)}
             </Button>
-            {outcome && <Button type="button" size="sm" data-testid="clean-library-apply" disabled={busy || outcome.changedFiles.length === 0} onClick={() => void run(true)}><Sparkles aria-hidden className="size-3.5" /> Apply and rewrite citations</Button>}
+            {outcome && <Button type="button" size="sm" data-testid="clean-library-apply" disabled={busy || outcome.changedFiles.length === 0} onClick={() => void run(true)}><Sparkles aria-hidden className="size-3.5" /> {t(($) => $.references.cleanLibrary.apply)}</Button>}
           </div>
         </div>
       </DialogContent>

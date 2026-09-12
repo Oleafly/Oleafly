@@ -18,7 +18,10 @@ import { appQueryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
 import { appendAppLog } from "@/lib/tauri";
 import { reapOrphanAgentRuns } from "@/lib/agent-backend";
-import { hydrateFromSnapshot } from "@/lib/initial-state";
+import { getSnapshotConfig, hydrateFromSnapshot } from "@/lib/initial-state";
+import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
+import { readCachedPreference } from "@/i18n";
+import { useSettingsStore } from "@/store/settings";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import "@/styles/globals.css";
@@ -144,7 +147,11 @@ function WindowContent({ view }: { view: WindowView }) {
 async function bootstrap(): Promise<void> {
   const view = currentWindowView();
   if (view === "main") {
-    await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot()]);
+    await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot(), initializeDesktopI18n()]);
+    await syncLocaleFromConfig(getSnapshotConfig()?.ui_locale);
+    useSettingsStore.setState({ uiLocalePreference: readCachedPreference() });
+  } else {
+    await initializeDesktopI18n();
   }
   registerContributions();
   markBootStage("contributions-registered");

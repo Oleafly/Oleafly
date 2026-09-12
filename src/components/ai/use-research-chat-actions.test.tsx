@@ -3,7 +3,8 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 
 const { restore } = await vi.hoisted(async () => {
   vi.resetModules();
-  const { installUiDom } = await import("./acp/tests/ui-fixtures");
+  const { initTestI18n, installUiDom } = await import("./acp/tests/ui-fixtures");
+  await initTestI18n();
   return installUiDom();
 });
 vi.mock("@/lib/browser-window", () => ({ openBrowserWindow: vi.fn() }));

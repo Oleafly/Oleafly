@@ -29,7 +29,16 @@ import {
   ProjectAnalysisCoordinator,
   ProjectIndexShadowCoordinator,
 } from "@/lib/analysis/coordinator";
-import { LANGUAGE_SERVICE_SETUP_FAILURE_REASON } from "@/lib/analysis/language-service-actions";
+import {
+  LANGUAGE_SERVICE_SETUP_FAILURE_ANALYSIS_REASON,
+  LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
+} from "@/lib/analysis/language-service-actions";
+import {
+  analysisReasonEnglishText,
+  analysisReasonError,
+  type AnalysisReason,
+  type LanguageServiceReasonKey,
+} from "@/lib/analysis/reason";
 import { activateInteractiveLanguageService } from "@/lib/analysis/interactive-language-service";
 import { languageServiceContribution } from "@/lib/project-intelligence/language-service-contribution";
 import type { ProjectIntelligenceIdentity } from "@/lib/project-intelligence/types";
@@ -209,6 +218,7 @@ function safeSetupFailure(): AnalysisFailure {
   return {
     name: "LanguageServiceSetupError",
     message: LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
+    reason: LANGUAGE_SERVICE_SETUP_FAILURE_ANALYSIS_REASON,
     retryable: true,
   };
 }
@@ -217,6 +227,7 @@ function safeCleanupFailure(): AnalysisFailure {
   return {
     name: "LanguageServiceCleanupError",
     message: LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
+    reason: LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
     retryable: true,
   };
 }
@@ -228,61 +239,64 @@ function safeLanguageServiceFailure(
   const normalized = normalizeAnalysisFailure(error, retryable);
   const code =
     typeof normalized.code === "string" ? normalized.code : undefined;
-  const messageByCode: Readonly<Record<string, string>> = {
-    duplicate_session:
-      "A previous language-service session is still closing. Retry to reclaim it.",
-    invalid_workspace:
-      "Oleafly could not validate this project workspace. Close and reopen the project, then retry.",
-    sidecar_unavailable:
-      "The pinned language-service executable could not be started.",
-    sidecar_setup_required:
-      "The pinned language service is not installed yet.",
-    manifest_invalid:
-      "The packaged language-service configuration is invalid.",
-    download_failed:
-      "The pinned language-service download could not be completed. Check your connection and try again.",
-    integrity_failure:
-      "The installed language service failed integrity verification and must be set up again.",
-    install_failed:
-      "The language-service installation could not be prepared.",
-    session_limit:
-      "The native language-service session limit was reached. Retry after the previous session closes.",
-    session_not_found:
-      "The native language-service session expired. Retry to start a new session.",
-    session_not_running:
-      "The native language-service process is no longer running. Retry to restart it.",
-    generation_mismatch:
-      "The language-service session was superseded. Retry to synchronize the current project.",
-    backpressure:
-      "The language service was temporarily busy. Retry to resume project analysis.",
-    transport_closed:
-      "The language-service connection closed unexpectedly. Retry to reconnect.",
-    stop_timeout:
-      "The previous language-service process did not stop in time. Retry to recover it.",
-    app_shutting_down:
-      "The language service stopped because Oleafly is closing.",
-    internal:
-      "The native language-service worker could not complete.",
+  const reasonByCode: Readonly<
+    Record<string, LanguageServiceReasonKey>
+  > = {
+    duplicate_session: "duplicateSession",
+    invalid_workspace: "invalidWorkspace",
+    sidecar_unavailable: "sidecarUnavailable",
+    sidecar_setup_required: "sidecarSetupRequired",
+    manifest_invalid: "manifestInvalid",
+    download_failed: "downloadFailed",
+    integrity_failure: "integrityFailure",
+    install_failed: "installFailed",
+    session_limit: "sessionLimit",
+    session_not_found: "sessionNotFound",
+    session_not_running: "sessionNotRunning",
+    generation_mismatch: "generationMismatch",
+    backpressure: "backpressure",
+    transport_closed: "transportClosed",
+    stop_timeout: "stopTimeout",
+    app_shutting_down: "appShuttingDown",
+    internal: "internal",
   };
-  const timeoutMessage =
+  const timeoutKey: LanguageServiceReasonKey | undefined =
     normalized.name === "LanguageServiceTimeoutError"
-      ? "The language server did not respond during initialization. Retry to restart it."
+      ? "initializeTimeout"
       : undefined;
+  const reason: AnalysisReason = {
+    key:
+      (code ? reasonByCode[code] : undefined) ??
+      timeoutKey ??
+      "startFailedRetry",
+  };
   return {
     ...normalized,
-    message:
-      (code ? messageByCode[code] : undefined) ??
-      timeoutMessage ??
-      "The project language service could not be started. Retry to recover it.",
+    reason,
+    message: analysisReasonEnglishText(reason),
   };
 }
 
-export const MARKDOWN_LOCAL_ONLY_REASON =
-  "Markdown analysis is provided by Oleafly's local project index. No language server is configured.";
-export const BIBTEX_LOCAL_ONLY_REASON =
-  "BibTeX analysis is provided by Oleafly's local project index. The file is not opened in the document language server.";
+export const MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON: AnalysisReason = {
+  key: "markdownLocalOnly",
+};
+export const MARKDOWN_LOCAL_ONLY_REASON = analysisReasonEnglishText(
+  MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON,
+);
+export const BIBTEX_LOCAL_ONLY_ANALYSIS_REASON: AnalysisReason = {
+  key: "bibtexLocalOnly",
+};
+export const BIBTEX_LOCAL_ONLY_REASON = analysisReasonEnglishText(
+  BIBTEX_LOCAL_ONLY_ANALYSIS_REASON,
+);
+export const LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON: AnalysisReason = {
+  key: "disposeFailed",
+};
 export const LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON =
-  "Language-service native session cleanup could not be completed.";
+  analysisReasonEnglishText(LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON);
+const IPC_UNAVAILABLE_ANALYSIS_REASON: AnalysisReason = {
+  key: "ipcUnavailable",
+};
 
 const LATEX_DOCUMENT = /\.(?:tex|ltx|latex|sty|cls)$/i;
 const TYPST_DOCUMENT = /\.typ$/i;
@@ -309,10 +323,10 @@ export function languageServiceLanguageIdForPath(
 function localOnlyReason(
   engineId: LanguageServiceEngineId,
   path: string,
-): string | null {
-  if (BIBTEX_DOCUMENT.test(path)) return BIBTEX_LOCAL_ONLY_REASON;
+): AnalysisReason | null {
+  if (BIBTEX_DOCUMENT.test(path)) return BIBTEX_LOCAL_ONLY_ANALYSIS_REASON;
   if (engineId === "markdown" && MARKDOWN_DOCUMENT.test(path)) {
-    return MARKDOWN_LOCAL_ONLY_REASON;
+    return MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON;
   }
   return null;
 }
@@ -701,9 +715,7 @@ export class LanguageServiceController {
     this.publishLocalDocuments(desired);
     this.publishIndex(desired);
     if (engineBecameUnloaded) {
-      this.publishNotRun(
-        "Document engine details are still loading. Language analysis has not run.",
-      );
+      this.publishNotRun({ key: "engineDetailsLoading" });
     }
     this.enqueueReconcile(operation);
   }
@@ -748,7 +760,7 @@ export class LanguageServiceController {
       readiness: "installing",
       capabilities: null,
       failure: null,
-      reason: `Installing the pinned ${kind} language service.`,
+      reason: { key: "installingPinned", params: { kind } },
       restartAttempt: 0,
     });
     const setupOperation = this.work.then(async () => {
@@ -762,7 +774,7 @@ export class LanguageServiceController {
         this.publishSetupRequired(
           kind,
           safeSetupFailure(),
-          LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
+          LANGUAGE_SERVICE_SETUP_FAILURE_ANALYSIS_REASON,
         );
         throw new LanguageServiceSetupActionError();
       }
@@ -774,10 +786,9 @@ export class LanguageServiceController {
         this.operationIsCurrent(operation, desired) &&
         !(error instanceof LanguageServiceSetupActionError)
       ) {
-        this.publishUnavailable(
-          safeSetupFailure(),
-          "Language-service setup could not be synchronized.",
-        );
+        this.publishUnavailable(safeSetupFailure(), {
+          key: "setupCouldNotSynchronize",
+        });
       }
     });
     return setupOperation.catch(() => {
@@ -830,13 +841,12 @@ export class LanguageServiceController {
           if (this.runtime?.cleanupFailed) {
             this.publishUnavailable(
               safeCleanupFailure(),
-              LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
+              LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
             );
           } else {
-            this.publishUnavailable(
-              safeLanguageServiceFailure(error),
-              "Language service could not be synchronized",
-            );
+            this.publishUnavailable(safeLanguageServiceFailure(error), {
+              key: "couldNotSynchronize",
+            });
           }
         }
       });
@@ -854,7 +864,7 @@ export class LanguageServiceController {
           readiness: "stopped",
           capabilities: null,
           failure: null,
-          reason: "Language-service lifecycle owner was unmounted.",
+          reason: { key: "lifecycleOwnerUnmounted" },
           restartAttempt: 0,
         });
       }
@@ -869,7 +879,7 @@ export class LanguageServiceController {
       // or start a replacement; explicit retry authorizes one new attempt.
       this.publishUnavailable(
         safeCleanupFailure(),
-        LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON,
+        LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
       );
       return;
     }
@@ -880,9 +890,7 @@ export class LanguageServiceController {
     if (!desired.snapshot.engineLoaded) {
       await this.teardownRuntime(this.runtime);
       if (!this.operationIsCurrent(operation, desired)) return;
-      this.publishNotRun(
-        "Document engine details are still loading. Language analysis has not run.",
-      );
+      this.publishNotRun({ key: "engineDetailsLoading" });
       this.publishLocalDocuments(desired);
       this.publishIndex(desired);
       return;
@@ -891,11 +899,9 @@ export class LanguageServiceController {
       await this.teardownRuntime(this.runtime);
       if (!this.operationIsCurrent(operation, desired)) return;
       if (desired.snapshot.engineId === "markdown") {
-        this.publishLocalOnly(MARKDOWN_LOCAL_ONLY_REASON);
+        this.publishLocalOnly(MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON);
       } else {
-        this.publishNotRun(
-          "The active document engine has no language-server mapping.",
-        );
+        this.publishNotRun({ key: "noLanguageServerMapping" });
       }
       this.publishLocalDocuments(desired);
       this.publishIndex(desired);
@@ -907,11 +913,13 @@ export class LanguageServiceController {
       this.publishUnavailable(
         {
           name: "LanguageServiceUnavailableError",
-          message:
-            "Native language-service IPC is unavailable in this browser or test runtime.",
+          message: analysisReasonEnglishText(
+            IPC_UNAVAILABLE_ANALYSIS_REASON,
+          ),
+          reason: IPC_UNAVAILABLE_ANALYSIS_REASON,
           retryable: false,
         },
-        "Native language-service IPC is unavailable in this browser or test runtime.",
+        IPC_UNAVAILABLE_ANALYSIS_REASON,
       );
       this.publishLocalDocuments(desired);
       this.publishIndex(desired);
@@ -945,10 +953,9 @@ export class LanguageServiceController {
         profile = getLanguageServiceRuntimeProfile(kind);
       } catch (error) {
         if (!this.operationIsCurrent(operation, desired)) return;
-        this.publishUnavailable(
-          normalizeAnalysisFailure(error, false),
-          "The packaged language-service runtime profile is invalid.",
-        );
+        this.publishUnavailable(normalizeAnalysisFailure(error, false), {
+          key: "runtimeProfileInvalid",
+        });
         return;
       }
       let installStatus: LanguageServiceInstallStatus;
@@ -956,41 +963,60 @@ export class LanguageServiceController {
         installStatus = await this.provisioner.installStatus(kind);
       } catch (error) {
         if (!this.operationIsCurrent(operation, desired)) return;
-        this.publishUnavailable(
-          safeLanguageServiceFailure(error),
-          "Language-service setup status could not be checked.",
-        );
+        this.publishUnavailable(safeLanguageServiceFailure(error), {
+          key: "setupStatusUncheckable",
+        });
         return;
       }
       if (!this.operationIsCurrent(operation, desired)) return;
       if (installStatus.version !== profile.version) {
+        const versionMismatch: AnalysisReason = {
+          key: "versionMismatch",
+          params: {
+            kind,
+            expected: profile.version,
+            reported: installStatus.version,
+          },
+        };
         this.publishSetupRequired(
           kind,
           {
             name: "LanguageServiceVersionMismatchError",
             message: `Expected ${kind} ${profile.version}, but setup reported ${installStatus.version}.`,
+            reason: versionMismatch,
             retryable: true,
           },
-          "The pinned language-service version must be installed.",
+          { key: "pinnedVersionRequired" },
         );
         return;
       }
       if (installStatus.state === "installing") {
-        this.publishInstalling(kind, installStatus.message);
+        this.publishInstalling(
+          kind,
+          installStatus.message === undefined
+            ? undefined
+            : { text: installStatus.message },
+        );
         return;
       }
       if (installStatus.state !== "installed") {
+        const notInstalled: AnalysisReason =
+          installStatus.message === undefined
+            ? {
+                key: "notInstalled",
+                params: { kind, version: installStatus.version },
+              }
+            : { text: installStatus.message };
         this.publishSetupRequired(
           kind,
           {
             name: "LanguageServiceSetupRequiredError",
-            message:
-              installStatus.message ??
-              `${kind} ${installStatus.version} is not installed.`,
+            message: analysisReasonEnglishText(notInstalled),
+            reason: notInstalled,
             code: "sidecar_setup_required",
             retryable: true,
           },
-          "Language-service setup is required before project analysis can run.",
+          { key: "setupRequiredBeforeAnalysis" },
         );
         return;
       }
@@ -1109,13 +1135,13 @@ export class LanguageServiceController {
       readiness: this.restartAttempts > 0 ? "restarting" : "starting",
       capabilities: null,
       failure: null,
-      reason: "Starting and initializing the project language service.",
+      reason: { key: "startingAndInitializing" },
       restartAttempt: this.restartAttempts,
     });
     for (const feature of PROJECT_ANALYSIS_FEATURES) {
       this.store
         .getState()
-        .markFeatureNotRun(feature, "Language service is starting.");
+        .markFeatureNotRun(feature, { key: "starting" });
     }
 
     try {
@@ -1134,13 +1160,12 @@ export class LanguageServiceController {
           this.publishSetupRequired(
             kind,
             safeLanguageServiceFailure(error),
-            "Language-service setup is required before project analysis can run.",
+            { key: "setupRequiredBeforeAnalysis" },
           );
         } else {
-          this.publishUnavailable(
-            safeLanguageServiceFailure(error),
-            "The project language service could not be started.",
-          );
+          this.publishUnavailable(safeLanguageServiceFailure(error), {
+            key: "startFailed",
+          });
         }
       }
       await this.teardownRuntime(runtime);
@@ -1384,8 +1409,7 @@ export class LanguageServiceController {
       this.indexShadow.sync(index, {
         ...(building
           ? {
-              partialReason:
-                "The local project index is still rebuilding.",
+              partialReason: { key: "indexRebuilding" },
             }
           : {}),
       })
@@ -1446,8 +1470,7 @@ export class LanguageServiceController {
       readiness: "syncing",
       capabilities: capabilitiesFor(runtime.client),
       failure: null,
-      reason:
-        "Language service is initialized and synchronizing project documents.",
+      reason: { key: "initializedAndSynchronizing" },
       restartAttempt: this.restartAttempts,
     });
   }
@@ -1485,7 +1508,7 @@ export class LanguageServiceController {
       readiness: "ready",
       capabilities: capabilitiesFor(runtime.client),
       failure: null,
-      reason: "Language service is synchronized and ready.",
+      reason: { key: "synchronizedAndReady" },
       restartAttempt: this.restartAttempts,
     });
     this.scheduleLanguageServiceIntelligence(runtime);
@@ -1649,13 +1672,12 @@ export class LanguageServiceController {
       runtime.intelligenceHandle = null;
     }
     const failure = normalizeAnalysisFailure(
-      event.error ??
-        new Error("The language-service process exited unexpectedly."),
+      event.error ?? analysisReasonError({ key: "processExited" }),
     );
     if (this.restartAttempts >= this.maxRestartAttempts) {
       this.publishUnavailable(
         { ...failure, retryable: false },
-        "The language service repeatedly exited and automatic restart was stopped.",
+        { key: "restartStopped" },
       );
       return;
     }
@@ -1670,7 +1692,7 @@ export class LanguageServiceController {
       readiness: "restarting",
       capabilities: null,
       failure,
-      reason: `Language service exited unexpectedly. Restart ${attempt} is scheduled.`,
+      reason: { key: "exitedRestartScheduled", params: { attempt } },
       restartAttempt: attempt,
     });
     runtime.restartHandle = this.scheduler.setTimeout(() => {
@@ -1771,7 +1793,7 @@ export class LanguageServiceController {
     this.forcedRestartToken = null;
   }
 
-  private publishLocalOnly(reason: string): void {
+  private publishLocalOnly(reason: AnalysisReason): void {
     this.store.getState().setLanguageService({
       kind: null,
       readiness: "local_only",
@@ -1787,28 +1809,27 @@ export class LanguageServiceController {
 
   private publishInstalling(
     kind: LanguageServiceKind,
-    reason?: string,
+    reason?: AnalysisReason,
   ): void {
     this.store.getState().setLanguageService({
       kind,
       readiness: "installing",
       capabilities: null,
       failure: null,
-      reason:
-        reason ?? "The pinned language service is being installed.",
+      reason: reason ?? { key: "beingInstalled" },
       restartAttempt: 0,
     });
     for (const feature of PROJECT_ANALYSIS_FEATURES) {
       this.store
         .getState()
-        .markFeatureNotRun(feature, "Language-service setup is running.");
+        .markFeatureNotRun(feature, { key: "setupRunning" });
     }
   }
 
   private publishSetupRequired(
     kind: LanguageServiceKind,
     failure: AnalysisFailure,
-    reason: string,
+    reason: AnalysisReason,
   ): void {
     this.store.getState().setLanguageService({
       kind,
@@ -1818,14 +1839,17 @@ export class LanguageServiceController {
       reason,
       restartAttempt: 0,
     });
+    const featureReason: AnalysisReason = failure.reason ?? {
+      text: failure.message,
+    };
     for (const feature of PROJECT_ANALYSIS_FEATURES) {
       this.store
         .getState()
-        .markFeatureUnavailable(feature, failure.message, true);
+        .markFeatureUnavailable(feature, featureReason, true);
     }
   }
 
-  private publishNotRun(reason: string): void {
+  private publishNotRun(reason: AnalysisReason): void {
     this.store.getState().setLanguageService({
       kind: null,
       readiness: "not_run",
@@ -1841,7 +1865,7 @@ export class LanguageServiceController {
 
   private publishUnavailable(
     failure: AnalysisFailure,
-    reason: string,
+    reason: AnalysisReason,
   ): void {
     this.store.getState().setLanguageService({
       kind: this.runtime?.kind ?? null,
@@ -1851,10 +1875,13 @@ export class LanguageServiceController {
       reason,
       restartAttempt: this.restartAttempts,
     });
+    const featureReason: AnalysisReason = failure.reason ?? {
+      text: failure.message,
+    };
     for (const feature of PROJECT_ANALYSIS_FEATURES) {
       this.store
         .getState()
-        .markFeatureUnavailable(feature, failure.message, failure.retryable);
+        .markFeatureUnavailable(feature, featureReason, failure.retryable);
     }
   }
 }

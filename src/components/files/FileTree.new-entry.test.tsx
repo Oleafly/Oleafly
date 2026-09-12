@@ -2,6 +2,8 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
+import { i18n } from "@/i18n";
 import { NewEntryInput, RenameEntryInput } from "./FileTree";
 
 const handlers = {
@@ -23,9 +25,9 @@ describe("NewEntryInput accessibility", () => {
     );
 
     const input = screen.getByRole("textbox", {
-      name: "New file name in project root",
+      name: enWorkspace.files.newEntry.fileInRoot,
     });
-    expect(input).toHaveAttribute("placeholder", "New file name");
+    expect(input).toHaveAttribute("placeholder", enWorkspace.files.newEntry.filePlaceholder);
     expect(input).toHaveFocus();
     expect(input).toHaveClass(
       "focus-visible:ring-2",
@@ -47,9 +49,11 @@ describe("NewEntryInput accessibility", () => {
 
     expect(
       screen.getByRole("textbox", {
-        name: "New folder name in folder chapters/drafts",
+        name: i18n.t(($) => $.workspace.files.newEntry.folderInFolder, {
+          folder: "chapters/drafts",
+        }),
       }),
-    ).toHaveAttribute("placeholder", "New folder name");
+    ).toHaveAttribute("placeholder", enWorkspace.files.newEntry.folderPlaceholder);
   });
 
   it("submits only once when Enter removes and blurs the field", () => {
@@ -66,7 +70,7 @@ describe("NewEntryInput accessibility", () => {
       />,
     );
 
-    const input = screen.getByRole("textbox", { name: "New file name in project root" });
+    const input = screen.getByRole("textbox", { name: enWorkspace.files.newEntry.fileInRoot });
     fireEvent.keyDown(input, { key: "Enter" });
     fireEvent.blur(input);
 
@@ -88,7 +92,7 @@ describe("NewEntryInput accessibility", () => {
       />,
     );
 
-    const input = screen.getByRole("textbox", { name: "New file name in project root" });
+    const input = screen.getByRole("textbox", { name: enWorkspace.files.newEntry.fileInRoot });
     fireEvent.keyDown(input, { key: "Escape" });
     fireEvent.blur(input);
 
@@ -110,7 +114,7 @@ describe("RenameEntryInput", () => {
       />,
     );
 
-    const input = screen.getByRole("textbox", { name: "Rename file" });
+    const input = screen.getByRole("textbox", { name: enWorkspace.files.renameAriaLabel });
     fireEvent.keyDown(input, { key: "Enter" });
     fireEvent.blur(input);
 
@@ -130,7 +134,7 @@ describe("RenameEntryInput", () => {
       />,
     );
 
-    const input = screen.getByRole("textbox", { name: "Rename file" });
+    const input = screen.getByRole("textbox", { name: enWorkspace.files.renameAriaLabel });
     fireEvent.keyDown(input, { key: "Escape" });
     fireEvent.blur(input);
 

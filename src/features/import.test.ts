@@ -1,3 +1,4 @@
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { strFromU8, unzipSync, zipSync } from "fflate";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useToastStore } from "@/store/toast";
@@ -196,7 +197,7 @@ describe("ZIP download", () => {
     expect(strFromU8(entries["main.tex"])).toBe(tex);
     expect(Array.from(entries["assets/figure_p1_1.png"])).toEqual([0, 0, 0]);
     expect(useToastStore.getState().toasts).toEqual([
-      expect.objectContaining({ kind: "success", message: "Saved .zip" }),
+      expect.objectContaining({ kind: "success", message: enCore.import.zipSaved }),
     ]);
     expect(mocks.logError).not.toHaveBeenCalled();
   });

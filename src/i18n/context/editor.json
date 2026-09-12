@@ -1,0 +1,166 @@
+{
+  "headings": {
+    "part": "LaTeX \\part sectioning level, the coarsest one",
+    "chapter": "LaTeX \\chapter sectioning level",
+    "section": "Sectioning level, not a UI section",
+    "subsection": "Sectioning level below section",
+    "subsubsection": "Sectioning level below subsection",
+    "paragraph": "LaTeX \\paragraph sectioning level, not a body paragraph",
+    "title": "Top heading level in Typst and Markdown",
+    "minor": "Fifth heading level",
+    "paragraphHeading": "Sixth heading level"
+  },
+  "toolbar": {
+    "code": "Label of the source-code editing mode, the opposite of Visual",
+    "visual": "Label of the rich-text editing mode, the opposite of Code",
+    "canvas": "Label of the diagram drawing mode, replaces Visual for diagram projects",
+    "heading": "Toolbar dropdown that inserts a sectioning command",
+    "list": "Toolbar dropdown that inserts a list",
+    "math": "Inserts a Typst math block",
+    "fraction": "Inserts a LaTeX fraction",
+    "blockquote": "Inserts a quoted block",
+    "linkPlaceholder": "Example URL shown in an empty link field",
+    "imagePlaceholder": "Example image path shown in an empty image field",
+    "apply": "Confirms the value typed in the link or image popover"
+  },
+  "contextMenu": {
+    "itemize": "LaTeX itemize environment, keep the environment name recognisable",
+    "enumerate": "LaTeX enumerate environment, keep the environment name recognisable",
+    "label": "Inserts a \\label command, not a checkpoint label",
+    "figure": "Inserts a figure environment",
+    "table": "Inserts a tabular environment",
+    "align": "Inserts an align environment",
+    "equation": "Inserts an equation environment"
+  },
+  "shell": {
+    "diffIndex": "Git index side of a diff tab, shown in parentheses after the file name",
+    "diffWorkingTree": "Git working tree side of a diff tab, shown in parentheses after the file name"
+  },
+  "log": {
+    "open": "Jumps to the source line of a compile error",
+    "info": "Group heading for informational compile log entries",
+    "typesetting": "Group heading for overfull and underfull box warnings"
+  },
+  "diff": {
+    "stagedHeading": "Compares the staged copy with HEAD",
+    "workingHeading": "Compares the working copy with the Git index",
+    "splitView": "Shows the two versions side by side",
+    "unifiedView": "Shows both versions in one column"
+  },
+  "history": {
+    "restore": "Replaces every project file with this commit's version",
+    "overwriteAll": "Confirms the destructive restore"
+  },
+  "checkpoints": {
+    "justNow": "Relative time for a checkpoint less than a minute old",
+    "fallbackName": "Placeholder name for a checkpoint with no version number yet",
+    "panel": {
+      "sourceOnly": "Badge saying checkpoints capture source files only, not build output",
+      "advanced": "Expands the advanced checkpoint settings"
+    },
+    "entry": {
+      "restore": "Restores the files in this checkpoint over the current ones"
+    },
+    "storeSummary": {
+      "stored": "Bytes the checkpoint store occupies on disk after deduplication",
+      "sourceSize": "Total size of the source files the checkpoints cover",
+      "reclaimable": "Bytes that would be freed by compacting the store"
+    },
+    "catalog": {
+      "lineage": "Identifier tying this store to the project that created it",
+      "pack": "Column header for the pack file name",
+      "size": "Column header for the pack file size",
+      "chunkCount": "Column header for the number of chunks in a pack",
+      "inspect": "Expands the raw checkpoint catalog"
+    },
+    "maintenance": {
+      "reset": "Deletes every checkpoint for the project",
+      "keepLatest": "Deletes every checkpoint except the newest one"
+    }
+  },
+  "table": {
+    "selectSize": "Shown before the user hovers a cell in the table size grid"
+  },
+  "visual": {
+    "suggestionRemove": "Proofreading fix that deletes the flagged text",
+    "suggestionInsert": "Proofreading fix that adds text",
+    "suggestionReplace": "Proofreading fix that swaps the flagged text",
+    "spelling": "Category of a spelling finding",
+    "grammarAndStyle": "Category of a grammar or style finding",
+    "endOfDocument": "Marker printed under the last line of the visual editor"
+  },
+  "inlineAi": {
+    "accept": "Keeps the AI's proposed edit",
+    "reject": "Discards the AI's proposed edit",
+    "retry": "Asks the AI for the edit again",
+    "dismiss": "Closes the error without retrying"
+  },
+  "citations": {
+    "trigger": "Opens a picker that inserts a citation from the project bibliography"
+  },
+  "preview": {
+    "loading": "Shown while the PDF viewer chunk downloads"
+  },
+  "package": {
+    "search": {
+      "find": "Placeholder and accessible name of the search field in the editor find bar",
+      "replace": "Placeholder and accessible name of the replacement field, not the action",
+      "replaceAction": "Button that replaces the current match only",
+      "replaceAllAction": "Short button label next to Replace, replaces every match",
+      "invalid": "Shown in place of a match count when the regular expression does not parse",
+      "matchPosition": "Which match the cursor is on out of the total, for example 3 of 12",
+      "matchCount_one": "Match count shown when the cursor is not on a match; total may read 2000+",
+      "matchCount_other": "Match count shown when the cursor is not on a match; total may read 2000+"
+    },
+    "spellcheck": {
+      "ignore": "Short card button that ignores the flagged word in the current project",
+      "suggestionRemove": "Applies a proofreading fix that deletes the flagged text",
+      "suggestionReplace": "Quoted replacement text offered as a proofreading fix, quotes included",
+      "suggestionAdd": "Applies a proofreading fix that inserts the quoted text"
+    },
+    "latex": {
+      "completion": {
+        "label": "Autocomplete hint marking the entry as a LaTeX cross-reference label",
+        "citation": "Autocomplete hint marking the entry as a bibliography citation key",
+        "environment": "Autocomplete hint for an environment that ships with LaTeX itself",
+        "documentEnvironment": "Autocomplete hint for an environment defined in the open document"
+      },
+      "macro": {
+        "plain": "Autocomplete hint for a macro defined in the document that takes no arguments"
+      },
+      "command": {
+        "title": "Autocomplete hint for the LaTeX command that sets the document title",
+        "author": "Autocomplete hint for the LaTeX command that sets the author",
+        "date": "Autocomplete hint for the LaTeX command that sets the date",
+        "label": "Autocomplete hint for the LaTeX command that defines a cross-reference target",
+        "ref": "Autocomplete hint for the LaTeX command that refers to a label",
+        "cite": "Autocomplete hint for the LaTeX command that cites a bibliography entry",
+        "section": "Autocomplete hint for a sectioning command",
+        "subsection": "Autocomplete hint for a sectioning command",
+        "subsubsection": "Autocomplete hint for a sectioning command",
+        "underline": "Autocomplete hint for the command that underlines text",
+        "footnote": "Autocomplete hint for the command that adds a footnote",
+        "url": "Autocomplete hint for the command that typesets a web address"
+      },
+      "snippet": {
+        "label": "Slash-command hint for inserting a cross-reference target",
+        "bold": "Slash-command hint for inserting bold text",
+        "italic": "Slash-command hint for inserting italic text"
+      }
+    },
+    "wysiwyg": {
+      "block": {
+        "title": "Chip label over a preserved LaTeX block that sets the document title",
+        "date": "Chip label over a preserved LaTeX block that sets the date",
+        "figure": "Chip label over a preserved LaTeX figure block",
+        "table": "Chip label over a preserved LaTeX table block",
+        "author": "Chip label over a preserved LaTeX block listing the authors",
+        "comment": "Chip label over a preserved LaTeX comment line",
+        "editSource": "Opens the exact LaTeX of the block for editing in place"
+      },
+      "inline": {
+        "edit": "Small button that opens the exact inline LaTeX for editing"
+      }
+    }
+  }
+}

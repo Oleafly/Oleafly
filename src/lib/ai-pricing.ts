@@ -1,4 +1,6 @@
 // Approximate public list prices (USD per 1M tokens) for common models.
+import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 
 export interface ModelPrice {
   inputPerMTok: number;
@@ -103,9 +105,17 @@ export function estimateUsd(
   return { usd, price };
 }
 
+function usdAmount(usd: number, digits: number): string {
+  return formatNumber(usd, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
 export function formatUsd(usd: number): string {
-  if (usd <= 0) return "$0";
-  if (usd < 0.01) return `~$${usd.toFixed(4)}`;
-  if (usd < 1) return `~$${usd.toFixed(3)}`;
-  return `~$${usd.toFixed(2)}`;
+  if (usd <= 0) return usdAmount(0, 0);
+  const digits = usd < 0.01 ? 4 : usd < 1 ? 3 : 2;
+  return i18n.t(($) => $.core.aiBudget.approximateCost, { amount: usdAmount(usd, digits) });
 }

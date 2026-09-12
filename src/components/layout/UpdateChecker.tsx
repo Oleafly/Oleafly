@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-shell";
@@ -9,18 +10,19 @@ import { installUpdate, runUpdateCheck } from "@/lib/updater";
 import { logError } from "@/lib/log";
 import { useUpdatesStore } from "@/store/updates";
 import { Progress } from "@/components/ui/progress";
+import { formatRelativeTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
 const RELEASES_URL = "https://github.com/Oleafly/Oleafly/releases";
 
 function relativeTime(t: number): string {
   const s = Math.max(0, Math.round((Date.now() - t) / 1000));
-  if (s < 60) return "just now";
+  if (s < 60) return formatRelativeTime(-s, "second");
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return formatRelativeTime(-m, "minute");
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return formatRelativeTime(-h, "hour");
+  return formatRelativeTime(-Math.floor(h / 24), "day");
 }
 
 type State =
@@ -32,6 +34,7 @@ type State =
   | { kind: "error" };
 
 export function UpdateChecker({ className }: { className?: string }) {
+  const { t } = useTranslation(["shell"]);
   // Snapshot once: in the browser dev server there is no updater at all, so we
   // render an "unsupported" note instead of a misleading "up to date".
   const [supported] = useState(isTauri);
@@ -67,7 +70,7 @@ export function UpdateChecker({ className }: { className?: string }) {
   if (!supported) {
     return (
       <p className={cn("text-xs text-muted-foreground", className)}>
-        Updates are managed by the desktop app.
+        {t(($) => $.shell.updateChecker.unsupported)}
       </p>
     );
   }
@@ -79,7 +82,11 @@ export function UpdateChecker({ className }: { className?: string }) {
           {state.kind === "idle" && lastCheckFailed && (
             <p className="inline-flex items-center gap-1.5 text-xs text-destructive">
               <AlertTriangle className="size-3.5" />
-              Last automatic check failed{lastCheckAt ? ` · ${relativeTime(lastCheckAt)}` : ""}.
+              {lastCheckAt
+                ? t(($) => $.shell.updateChecker.lastCheckFailedAt, {
+                    when: relativeTime(lastCheckAt),
+                  })
+                : t(($) => $.shell.updateChecker.lastCheckFailed)}
             </p>
           )}
           <Button
@@ -89,7 +96,9 @@ export function UpdateChecker({ className }: { className?: string }) {
             disabled={state.kind === "checking"}
           >
             <RefreshCw className={cn("size-3.5", state.kind === "checking" && "animate-spin")} />
-            {state.kind === "checking" ? "Checking…" : "Check for updates"}
+            {state.kind === "checking"
+              ? t(($) => $.shell.updateChecker.checking)
+              : t(($) => $.shell.updateChecker.check)}
           </Button>
         </div>
       )}
@@ -98,14 +107,14 @@ export function UpdateChecker({ className }: { className?: string }) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="size-4" />
-            You're on the latest version
+            {t(($) => $.shell.updateChecker.latest)}
           </span>
           <button
             type="button"
             onClick={releaseNotes}
             className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
           >
-            Release notes
+            {t(($) => $.shell.updateChecker.releaseNotes)}
             <ExternalLink className="size-3" />
           </button>
           <button
@@ -114,7 +123,7 @@ export function UpdateChecker({ className }: { className?: string }) {
             className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
           >
             <RefreshCw className="size-3" />
-            Check again
+            {t(($) => $.shell.updateChecker.checkAgain)}
           </button>
         </div>
       )}
@@ -123,7 +132,7 @@ export function UpdateChecker({ className }: { className?: string }) {
         <div className="rounded-md border bg-muted/30 p-3">
           <div className="flex items-center gap-1.5 text-sm font-medium">
             <ArrowUpCircle className="size-4 text-primary" />
-            Update available · v{state.update.version}
+            {t(($) => $.shell.updateChecker.available, { version: state.update.version })}
           </div>
           {state.update.body?.trim() && (
             <Markdown className="mt-2 max-h-48 overflow-auto rounded bg-background/60 p-2.5 text-xs text-muted-foreground [scrollbar-width:thin]">
@@ -132,14 +141,14 @@ export function UpdateChecker({ className }: { className?: string }) {
           )}
           <div className="mt-3 flex items-center gap-2">
             <Button size="sm" onClick={() => install(state.update)}>
-              Update now
+              {t(($) => $.shell.updateChecker.updateNow)}
             </Button>
             <button
               type="button"
               onClick={releaseNotes}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              Release notes
+              {t(($) => $.shell.updateChecker.releaseNotes)}
               <ExternalLink className="size-3" />
             </button>
           </div>
@@ -149,11 +158,13 @@ export function UpdateChecker({ className }: { className?: string }) {
       {state.kind === "downloading" && (
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">
-            {state.percent >= 100 ? "Installing…" : `Downloading… ${state.percent}%`}
+            {state.percent >= 100
+              ? t(($) => $.shell.updateChecker.installing)
+              : t(($) => $.shell.updateChecker.downloading, { percent: state.percent })}
           </p>
           <Progress value={state.percent} />
           <p className="text-[10px] text-muted-foreground">
-            Oleafly will restart to finish.
+            {t(($) => $.shell.updateChecker.restartNotice)}
           </p>
         </div>
       )}
@@ -162,19 +173,19 @@ export function UpdateChecker({ className }: { className?: string }) {
         <div className="space-y-2">
           <p className="inline-flex items-center gap-1.5 text-xs text-destructive">
             <AlertTriangle className="size-4" />
-            Couldn't check for updates.
+            {t(($) => $.shell.updateChecker.checkFailed)}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={check}>
               <RefreshCw className="size-3.5" />
-              Try again
+              {t(($) => $.shell.updateChecker.tryAgain)}
             </Button>
             <button
               type="button"
               onClick={releaseNotes}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              Download from GitHub
+              {t(($) => $.shell.updateChecker.downloadFromGithub)}
               <ExternalLink className="size-3" />
             </button>
           </div>

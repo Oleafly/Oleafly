@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { check, type DownloadEvent, type Update } from "@tauri-apps/plugin-updater";
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -98,7 +99,7 @@ export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise
   }
   const window = new WebviewWindow(UPDATE_WINDOW_LABEL, {
     url: `index.html?view=update${opts.manual ? "&manual=1" : ""}`,
-    title: "Oleafly Update",
+    title: i18n.t(($) => $.shell.windows.update),
     width: 600,
     height: 520,
     resizable: false,

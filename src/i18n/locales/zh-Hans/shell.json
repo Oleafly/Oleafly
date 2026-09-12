@@ -1,0 +1,843 @@
+{
+  "about": {
+    "close": "关闭关于对话框",
+    "closeBackdrop": "关闭“关于 Oleafly”",
+    "connect": "联系 Oleafly",
+    "links": {
+      "discussions": {
+        "description": "提问并分享想法。",
+        "label": "讨论区"
+      },
+      "docs": {
+        "description": "了解 Oleafly 的方方面面。",
+        "label": "文档"
+      },
+      "issues": {
+        "description": "报告问题或提出功能建议。",
+        "label": "问题反馈"
+      },
+      "social": {
+        "description": "关注版本发布与开发动态。",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "在 GitHub 上加星",
+    "tagline": "为整篇论文打造的开源工作区。写作、编译、校对、管理引用、审阅 PDF、用 Git 跟踪修改，并可使用你选定的 AI 模型。",
+    "version": "版本 {{version}}",
+    "viewSource": "查看源码"
+  },
+  "addCitation": {
+    "added": "已添加 {{cite}}",
+    "adding": "正在添加…",
+    "close": "关闭引用对话框",
+    "confirm": "添加到 .bib 并引用",
+    "entry": "条目",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "标题"
+    },
+    "hint": "粘贴 DOI、arXiv 编号或 URL 可直接获取条目，也可输入标题在 Crossref 中搜索。试一试：",
+    "lookUp": "查找",
+    "lookingUp": "正在查找“{{query}}”…",
+    "matches_other": "在 Crossref 中找到 {{count}} 条匹配结果。请选择一条：",
+    "noResults": "未找到结果。请检查标识符，或尝试其他标题关键词。",
+    "placeholder": "DOI、arXiv 编号、URL 或论文标题…",
+    "privacyNote": "仅会将标识符或标题发送至 doi.org、arXiv 或 Crossref。",
+    "title": "添加引用"
+  },
+  "backendProtocol": {
+    "mismatch": "此窗口与后端基于不同的 Oleafly 版本构建，部分功能可能无法正常使用。重新安装应用即可解决。"
+  },
+  "branding": {
+    "assistantMascot": "Oleafly AI 助手吉祥物"
+  },
+  "browser": {
+    "address": "搜索或输入 URL",
+    "back": "后退",
+    "closeTab": "关闭标签页",
+    "copyUrl": "复制 URL",
+    "forward": "前进",
+    "moreOptions": "更多选项",
+    "newTab": "新建标签页",
+    "openExternal": "在浏览器中打开",
+    "openTabs": "已打开的标签页",
+    "reload": "重新加载",
+    "setHomePage": "设为主页"
+  },
+  "citeOleafly": {
+    "description": "未在此项目中找到参考文献文件，因此未做任何更改。请将下方条目复制到你的参考文献中，或稍后在设置的“帮助与关于”中再次查找。",
+    "openHelp": "打开“帮助与关于”",
+    "title": "在本文中引用 Oleafly"
+  },
+  "commandGroups": {
+    "commands": "命令",
+    "compile": "编译",
+    "editor": "编辑器",
+    "insert": "插入",
+    "project": "项目",
+    "settings": "设置",
+    "tools": "工具"
+  },
+  "commandPalette": {
+    "empty": "未找到结果。",
+    "label": "命令面板",
+    "placeholder": "输入命令或搜索…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / 标题",
+      "label": "添加引用"
+    },
+    "appearance": {
+      "keywords": "主题 外观 模式",
+      "useDark": "使用深色外观",
+      "useLight": "使用浅色外观",
+      "useSystem": "使用系统外观"
+    },
+    "autoCompile": {
+      "disable": "禁用自动编译",
+      "enable": "启用自动编译"
+    },
+    "bold": {
+      "label": "加粗"
+    },
+    "checkpoints": {
+      "label": "检查点"
+    },
+    "citeOleafly": {
+      "keywords": "引用 bibtex 参考文献 致谢 oleafly",
+      "label": "在本文中引用 Oleafly"
+    },
+    "clearCache": {
+      "keywords": "清除 编译 缓存 清理 重新编译 过期 重置 aux",
+      "label": "清除编译缓存并重新编译"
+    },
+    "closeEnvironment": {
+      "keywords": "关闭 结束 环境 begin latex",
+      "label": "关闭 LaTeX 环境"
+    },
+    "createProject": {
+      "keywords": "新建 项目 创建 模板 图库",
+      "label": "新建项目"
+    },
+    "diagramComposer": {
+      "keywords": "图表 图片 tikz 编辑器 绘制 画布",
+      "label": "打开图表编排器"
+    },
+    "documentCitationScan": {
+      "keywords": "引用 文献 扫描 文档 段落 参考文献 查找",
+      "label": "在文档中查找引用"
+    },
+    "equation": {
+      "label": "公式"
+    },
+    "exportPdf": {
+      "label": "导出 PDF…"
+    },
+    "figure": {
+      "label": "图片"
+    },
+    "generateFigure": {
+      "keywords": "图片 图表 绘制 tikz 绘图 曲线图 插图",
+      "label": "使用 AI 生成图片"
+    },
+    "gitHistory": {
+      "label": "Git 历史记录"
+    },
+    "italic": {
+      "label": "斜体"
+    },
+    "label": {
+      "label": "标签"
+    },
+    "list": {
+      "label": "无序列表"
+    },
+    "newProject": {
+      "label": "新建项目…"
+    },
+    "newTerminal": {
+      "keywords": "终端 shell 控制台 新建",
+      "label": "新建终端"
+    },
+    "offline": {
+      "offline": "离线模式（--only-cached）",
+      "online": "在线模式（允许获取宏包）"
+    },
+    "openTool": "打开 {{name}}",
+    "recompile": {
+      "label": "重新编译"
+    },
+    "section": {
+      "label": "章节"
+    },
+    "settings": {
+      "keywords": "设置 偏好设置 选项",
+      "label": "打开设置"
+    },
+    "spellcheck": {
+      "disable": "禁用拼写检查",
+      "enable": "启用拼写检查"
+    },
+    "surroundEnvironment": {
+      "keywords": "包围 环绕 环境 begin end latex",
+      "label": "用环境包围"
+    },
+    "synctex": {
+      "label": "跳转到 PDF（SyncTeX）"
+    },
+    "table": {
+      "label": "表格"
+    },
+    "theme": {
+      "keywords": "主题 深色 浅色 外观 模式",
+      "toDark": "切换到深色主题",
+      "toLight": "切换到浅色主题"
+    },
+    "tools": {
+      "keywords": "工具 latex pdf 公式 bibtex 表格 实验室 搜索 截止日期 画廊",
+      "label": "打开 Oleafly 工具"
+    },
+    "vim": {
+      "disable": "禁用 vim 模式",
+      "enable": "启用 vim 模式"
+    },
+    "wordCount": {
+      "label": "字数统计"
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "关闭",
+      "on": "开启",
+      "title": "自动编译"
+    },
+    "compile": "编译",
+    "compiler": {
+      "auto": "自动 <note>[系统 TeX]</note>",
+      "help": "Tectonic 为内置编译器，无需设置。其余选项运行系统 TeX，可读取你的账户能访问的本地文件，只应在受信任的项目中使用。自动会根据源码选择编译器。pdfLaTeX 与大多数期刊模板兼容。XeLaTeX 和 LuaLaTeX 额外支持系统字体和 Unicode。",
+      "lualatex": "LuaLaTeX <note>[系统 TeX]</note>",
+      "pdflatex": "pdfLaTeX <note>[系统 TeX]</note>",
+      "tectonic": "Tectonic <note>[内置]</note>",
+      "title": "编译器（本项目）",
+      "xelatex": "XeLaTeX <note>[系统 TeX]</note>"
+    },
+    "errors": {
+      "continue": "忽略错误继续编译",
+      "stop": "遇到首个错误即停止",
+      "title": "编译错误处理"
+    },
+    "fromScratch": "从头重新编译",
+    "mode": {
+      "fast": "快速 <note>[草稿]</note>",
+      "normal": "常规",
+      "title": "编译模式"
+    },
+    "options": "编译选项",
+    "recompile": "重新编译",
+    "runTooltip": "{{action}} {{engine}}（{{shortcut}}）",
+    "stop": "停止编译",
+    "syntax": {
+      "check": "在编译前检查语法。",
+      "skip": "不检查语法",
+      "title": "语法检查"
+    },
+    "texRootBroken": "{{file}} 中的 % !TEX root 指向一个不存在的文件（{{target}}）。",
+    "texRootLabel": "TEX 根文件",
+    "texRootName": "根文件：{{name}}",
+    "texRootOverride": "根文件：{{path}}（由 {{file}} 中的 % !TEX root 设置）。"
+  },
+  "datePicker": {
+    "placeholder": "选择日期"
+  },
+  "devMenu": {
+    "inspect": "检查",
+    "refreshApp": "刷新应用"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "隐藏 AI 助手",
+      "show": "显示 AI 助手"
+    },
+    "browser": {
+      "close": "关闭浏览器（{{shortcut}}）",
+      "open": "打开浏览器（{{shortcut}}）"
+    },
+    "settings": "设置",
+    "sidebar": {
+      "hide": "隐藏侧边栏（{{shortcut}}）",
+      "show": "显示侧边栏（{{shortcut}}）"
+    },
+    "terminal": {
+      "hide": "隐藏终端（{{shortcut}}）",
+      "show": "显示终端（{{shortcut}}）"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "此错误与内置 Tectonic 引擎的已知不足相符。请选择此项目的编译方式。所选方案会保存在项目中，协作者也会获得相同的配置。",
+    "descriptionImportScan": "导入扫描发现了一些内置 Tectonic 引擎无法编排处理的特性。请选择此项目的编译方式。所选方案会保存在项目中，协作者也会获得相同的配置。",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "通过 latexmk 运行 pdfLaTeX"
+    },
+    "recommended": "推荐",
+    "shellEscape": {
+      "label": "允许在此电脑上运行外部命令",
+      "needed": "此项目使用的功能需要执行任意外部命令。在你允许之前，这些命令会一直被拦截。",
+      "warning": "minted 和部分 PythonTeX 文档需要此功能。LaTeX 可以在你的用户权限下运行程序，因此请仅对你信任的项目启用。TeX Live 自带的辅助工具（如 EPS 转换）无需它即可运行。"
+    },
+    "shellEscapeAllowed": "此项目在这台电脑上允许运行外部命令。",
+    "shellEscapeBlocked": "此项目的任意外部命令已被阻止。TeX Live 自带的辅助工具（如 EPS 转换）仍会运行。",
+    "shellEscapeFailed": "无法更新外部命令访问权限。",
+    "switchFailed": "无法切换编译引擎。",
+    "switched": "此项目现在使用 {{engine}} 编译。",
+    "switchedAfterInstall": "TinyTeX 已安装。此项目现在使用 {{engine}} 编译。",
+    "systemTex": {
+      "alreadySelected": "已选中",
+      "found": "在这台电脑上找到了 TeX 发行版。系统 TeX 可以读取你账户可访问的本地文件，因此请仅在信任的项目中使用。除非你在下方允许，否则任意外部命令将保持阻止状态。TeX Live 仍会运行其自带允许列表中的辅助工具，如 EPS 转换。",
+      "missing": "这台电脑上未找到 TeX 发行版（MacTeX、TeX Live、MiKTeX、TinyTeX）。",
+      "switchPdflatex": "切换到 pdfLaTeX 并重新编译。",
+      "title": "使用我的系统 LaTeX（latexmk）",
+      "titlePdflatex": "在我的系统 LaTeX 中使用 pdfLaTeX（latexmk）。",
+      "use": "使用系统 LaTeX"
+    },
+    "tectonic": {
+      "description": "无需配置，可离线使用。适合普通 LaTeX 和大多数常用宏包。",
+      "keep": "保留 Tectonic",
+      "switchBack": "切换回 Tectonic。",
+      "title": "继续使用 Tectonic",
+      "withFailures_other": "无需配置，可离线使用。{{features}} 预计仍会失败。"
+    },
+    "tinytex": {
+      "description": "在你的主目录安装一个精简版 TeX Live，无需管理员权限。核心下载约为 250 MB。期刊模板之后可能会拉取更多宏包，总计最多约 1 GB。",
+      "download": "下载并使用 TinyTeX。",
+      "resume": "继续下载（已完成 {{megabytes}} MB）。",
+      "title": "下载 TinyTeX"
+    },
+    "titleCompileFailure": "内置引擎无法满足本次编译的需求。",
+    "titleImportScan": "内置引擎无法满足此项目的需求。"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "复制诊断信息",
+    "description": "Oleafly 遇到了意外错误，无法渲染此界面。你的项目文件仍保留在磁盘上。诊断详情见下方。",
+    "halted": "已停止",
+    "logSaved": "日志已保存到 <path>{{path}}</path>。",
+    "reload": "重新加载 Oleafly",
+    "report": "报告到 GitHub",
+    "runtimeError": "运行时错误",
+    "specimen": {
+      "diagramLabel": "装饰性标本图",
+      "layer": "层 {{current}}/{{total}}",
+      "specimen": "标本：",
+      "transversePlane": "横切面",
+      "veinDensity": "叶脉密度："
+    },
+    "specimenViewer": "样本查看器",
+    "stackTrace": "堆栈跟踪",
+    "surfaceCrashed": "{{surface}}已崩溃。",
+    "surfaces": {
+      "aiAssistant": "AI 助手",
+      "assistantPanel": "助手面板",
+      "chat": "聊天",
+      "diagramComposer": "图表编排器",
+      "editor": "编辑器",
+      "pdfPreview": "PDF 预览",
+      "researchAssistant": "研究助手",
+      "terminalDock": "终端停靠区"
+    },
+    "title": "出错了"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub：{{login}}",
+    "actions": "GitHub 操作",
+    "connect": "连接 GitHub…",
+    "connectedAs": "已连接为 @{{login}}",
+    "copyRepositoryLink": "复制仓库链接",
+    "openInGithub": "在 GitHub 中打开",
+    "pushHint": "推送到 GitHub 即可启用这些功能。",
+    "settings": "GitHub 设置",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "主页",
+    "label": "主页",
+    "title": "返回项目库",
+    "tooltip": "返回项目库。"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "清空日志",
+    "clearLogAriaLabel": "清空 MCP 日志",
+    "live": "运行中",
+    "off": "已停止",
+    "openSettings": "打开 MCP 设置",
+    "serverOff": "MCP 服务器已关闭。",
+    "timeWithDuration": "{{time}} · {{ms}}ms",
+    "toolsTitle": "可通过 MCP 使用的工具",
+    "waiting": "正在等待外部代理…",
+    "waitingHint": "通过 MCP 调用的工具（Claude、Cursor、Grok 等）会实时显示在这里。"
+  },
+  "omnibar": {
+    "bookmarked": "已收藏",
+    "createProject": "新建项目",
+    "groups": {
+      "action": "操作",
+      "documents": "文档",
+      "references": "参考文献"
+    },
+    "label": "搜索",
+    "noMatches": "未找到匹配项。",
+    "openReferences": "打开此项目的参考文献。",
+    "placeholder": "搜索项目、文档，或输入 / 执行命令…",
+    "placeholderDocuments": "在文档中搜索…",
+    "placeholderProjects": "按名称、引擎、类型、日期或元数据搜索项目…",
+    "referencesNeedProject": "请先打开项目，才能浏览其中的参考文献。",
+    "slash": {
+      "create": "打开模板库。",
+      "docs": "在文档中搜索",
+      "projects": "搜索你的项目",
+      "refs": "打开此项目的参考文献。",
+      "settings": "打开设置",
+      "theme": "切换配色主题。"
+    },
+    "tryCommand": "试试命令",
+    "unknownCommand": "未知命令。输入 / 查看可用命令。"
+  },
+  "projectSearch": {
+    "hint": "在本项目的所有文件中搜索。",
+    "noResults": "无结果。",
+    "placeholder": "在项目中查找…",
+    "title": "搜索"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} 未保存的更改仍处于打开状态。你可以留下修复问题，或仍然退出并丢失这些更改。",
+      "descriptionRestart": "{{reason}} 未保存的更改仍处于打开状态。你可以留下修复问题，或仍然重启并丢失这些更改。",
+      "quitAnyway": "仍然退出",
+      "restartAnyway": "仍然重启",
+      "stay": "留下",
+      "title": "部分文件无法保存"
+    },
+    "flushTimeout": "保存未能在 5 秒内完成。",
+    "installing": {
+      "description": "正在保存你的文件并安装更新。准备就绪后，Oleafly 将重启。",
+      "title": "正在准备重启"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}}（beta）",
+    "files": "源码树",
+    "mcp": "MCP 活动",
+    "pendingBadge_other": "{{count}} 项待处理",
+    "preflight": "预检",
+    "references": "参考文献与引用",
+    "research": "研究工作区",
+    "search": "搜索项目",
+    "sourceControl": "源代码管理",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "关闭重命名对话框",
+    "collision": "名为“{{name}}”的{{kind}}已存在。",
+    "commit": "提交重命名",
+    "newName": "新名称",
+    "planFiles_other": "{{count}} 个文件",
+    "planSummary_other": "{{count}} 处修改，涉及 $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "交叉引用",
+      "bibentry": "参考文献条目",
+      "cite": "引用",
+      "environment": "环境",
+      "envuse": "环境使用",
+      "file": "文件",
+      "glossary": "术语表条目",
+      "glossaryuse": "术语表使用",
+      "inputedge": "包含文件",
+      "label": "标签",
+      "macro": "宏",
+      "macrouse": "宏使用",
+      "ref": "交叉引用",
+      "section": "章节",
+      "theorem": "定理"
+    },
+    "title": "重命名 <symbol>{{name}}</symbol>"
+  },
+  "settings": {
+    "close": "关闭设置",
+    "data": {
+      "cloud": {
+        "comingSoon": "即将推出",
+        "description": "无需配置 Git 远程仓库，即可让项目在多台设备间保持同步。每次传输都将采用端到端加密，你的内容在传输过程中始终保持私密。本地项目文件夹仍是唯一可信的数据来源。",
+        "title": "云同步"
+      },
+      "danger": {
+        "closeFailed": "无法安全关闭当前打开的项目。",
+        "confirmDeleteAllAction": "删除所有项目",
+        "confirmDeleteAllDescription": "每个当前项目都会移入回收站，包括其中的文件和 Git 历史。之后你可以逐个恢复项目。",
+        "confirmDeleteAllTitle_other": "要删除全部 {{count}} 个项目吗？",
+        "deleteAll": "删除所有项目",
+        "deleteAllAction": "全部删除",
+        "deleteAllDescription": "将所有项目移入回收站，任何内容都不会被永久删除。",
+        "deleting": "正在删除…",
+        "moveFailed": "无法将项目移入回收站。",
+        "movePartial": "已移动 {{count}} 个项目，但操作未能完成。",
+        "movedCount_other": "已将 {{count}} 个项目移入回收站。",
+        "title": "危险区"
+      },
+      "githubHint": "跨设备备份或同步项目：连接 GitHub，然后在“源代码管理”中使用<push>推送</push> / <pull>拉取</pull>。<setup>设置 GitHub →</setup>",
+      "localFirst": "Oleafly 采用本地优先设计。所有项目都保存在你的磁盘上：",
+      "plainFolders": "每个项目都是一个普通文件夹。Git 历史是可选的，除非你推送到 GitHub，否则不会有任何数据离开你的电脑。",
+      "recycleBin": {
+        "clearAll": "全部清空",
+        "clearFailed": "无法清空回收站。",
+        "clearPartial": "已永久删除 {{count}} 个项目，但无法清空整个回收站。",
+        "clearedCount_other": "已永久删除 {{count}} 个项目。",
+        "clearing": "正在清空…",
+        "confirmClearAction": "清空回收站",
+        "confirmClearDescription": "这会永久删除回收站中的所有项目，包括其文件和 Git 历史。此操作无法撤销。",
+        "confirmClearTitle_other": "清空回收站中的 {{count}} 个项目？",
+        "confirmDeleteAction": "永久删除",
+        "confirmDeleteDescription": "这会从回收站中移除该项目及其文件和 Git 历史。此操作无法撤销。",
+        "confirmDeleteTitle": "永久删除“{{name}}”？",
+        "deleteFailed": "无法永久删除“{{name}}”。",
+        "deleteOne": "永久删除 {{name}}",
+        "deleted": "已永久删除“{{name}}”。",
+        "deletedAt": "已于 {{date}} 删除 · {{size}}",
+        "empty": "回收站为空。",
+        "loading": "正在加载回收站…",
+        "restore": "恢复",
+        "restoreFailed": "无法还原“{{name}}”。",
+        "restored": "已还原“{{name}}”。",
+        "size": "{{size}} · 不会自动清理",
+        "subtitle": "已删除的项目会一直保留在这里，直到你将其移除",
+        "title": "回收站"
+      },
+      "reveal": "在 Finder 中显示项目文件夹",
+      "storage": {
+        "calculating": "正在计算存储用量…",
+        "desktopOnly": "存储详情仅可在桌面应用中查看。",
+        "error": "无法计算存储详情。",
+        "refresh": "刷新存储用量",
+        "stats": {
+          "appData": "应用数据",
+          "appDataDetail": "包含素材和设置。",
+          "buildCache": "编译缓存",
+          "buildCacheDetail": "生成的输出文件。",
+          "files": "文件",
+          "folders_other": "{{count}} 个文件夹",
+          "gitHistory": "Git 历史记录",
+          "gitHistoryDetail": "本地版本。",
+          "images": "图片",
+          "pdfs": "PDF 文件",
+          "projectFiles": "项目文件",
+          "projectFilesDetail": "源码和元数据。",
+          "projects": "项目"
+        },
+        "subtitle": "项目、预览、历史记录和应用数据",
+        "title": "存储占用",
+        "total": "Oleafly 数据文件夹共占用 {{size}}。",
+        "unreadable_other": "已排除 {{count}} 个无法访问的项目。"
+      },
+      "tabs": {
+        "cloud": "云同步",
+        "local": "本地存储"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "显示 Oleafly 工具库以及各个工具（PDF 导入、公式、表格、BibTeX、实验与文献检索、截止日期）及其斜杠命令。仍处于测试阶段，默认关闭。",
+        "label": "LaTeX 工具"
+      },
+      "visualEditor": {
+        "description": "在文档编辑器中显示“可视化/代码”切换开关。默认关闭，因此文档仅在代码编辑器中打开。图表始终保留自己的画布切换开关。",
+        "label": "可视化编辑器"
+      },
+      "warning": "这些功能为实验性功能，仍处于测试阶段。它们尚未经过完整测试，可能会在未来的版本中变化、出错或被移除。仅在你想要尝试开发中的功能时才开启。",
+      "webBrowser": {
+        "description": "显示应用内浏览器（含侧边栏开关和快捷方式），并允许 AI 通过 computer use 操控浏览器。仍处于测试阶段，默认关闭；关闭时不会显示浏览器按钮，AI 也没有浏览器工具。",
+        "label": "网页浏览器"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "校对英语变体",
+        "description": "应用所选的拼写、语法和区域惯例。",
+        "label": "英语变体"
+      },
+      "dictionary": {
+        "ariaLabel": "校对拼写词典",
+        "description": "源码和可视化编辑器拼写检查所使用的离线 Hunspell 词库包。",
+        "label": "拼写词典"
+      },
+      "harper": {
+        "description": "在 LaTeX 与 Markdown 的源码和可视化编辑以及 Typst 源码编辑中检查英语语法和风格，并提供一键修复。",
+        "label": "语法与风格（Harper）"
+      },
+      "offline": {
+        "description": "使用 --only-cached 编译，从不联网获取软件包。",
+        "label": "离线模式"
+      },
+      "proofreadingNote": "校对在本地后台工作进程中运行。Harper 遵循所选的英语方言；拼写检查始终使用所选的 Hunspell 词典包。数学公式、代码、注释、引用语法、元数据和 URL 会被排除。",
+      "regionalism": {
+        "description": "标记与所选英语方言不一致的词语。如果你将这类词语用作产品名或代码名，请关闭此选项。",
+        "label": "地域用语建议"
+      },
+      "spellcheck": {
+        "description": "在源码和可视化编辑中，使用所选的离线 Hunspell 词典为拼写错误的单词添加下划线，并提供替换建议。",
+        "label": "拼写检查"
+      },
+      "wordChoice": {
+        "description": "建议替代用词（例如 “too” 与 “to”）。关闭后仅保留拼写和语法检查。",
+        "label": "用词建议"
+      }
+    },
+    "help": {
+      "community": "社区",
+      "copyInfo": "复制信息",
+      "forksTitle": "GitHub 复刻",
+      "forks_other": "{{count}} 个 GitHub 复刻",
+      "logoAlt": "Oleafly",
+      "project": "开源项目",
+      "resources": {
+        "documentation": "文档",
+        "learn": "学习",
+        "license": "许可证",
+        "reportCrash": "报告崩溃（附上日志）。",
+        "startTour": "开始导览",
+        "whatsNew": "更新内容"
+      },
+      "resourcesTitle": "资源",
+      "starRepo": "在 GitHub 上加星标并探索。",
+      "starsTitle": "GitHub 星标",
+      "stars_other": "{{count}} 个 GitHub 星标",
+      "support": "如果 Oleafly 对你的工作有帮助，请<star>在 GitHub 上为本项目加星</star>。这一下小小的点击能帮助更多研究人员发现它，并支持持续开发。",
+      "supportAriaLabel": "支持 Oleafly",
+      "tagline": "写作、编译、校对、管理引用、审阅 PDF、用 Git 跟踪修改，并使用你选择的 AI 模型。一切尽在一个开源工作区中。",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "AI 助手",
+      "appearance": "外观",
+      "data": "数据存储",
+      "dictionary": "词典",
+      "downloads": "下载",
+      "engine": "引擎",
+      "experimentation": "实验功能",
+      "general": "通用",
+      "help": "帮助与关于",
+      "integrations": "集成",
+      "shortcuts": "键盘快捷键"
+    },
+    "sectionsNav": "设置分区",
+    "title": "设置",
+    "tours": {
+      "confirmDescription": "这将忽略所有剩余导览并关闭导览指南。你可以在通用设置中重新启用它们，从头开始。",
+      "disableConfirm": "禁用导览",
+      "disableTitle": "禁用导览指南？",
+      "dismissAll": "忽略所有导览",
+      "dismissAllConfirm": "全部忽略",
+      "dismissAllTitle": "忽略所有导览？",
+      "enable": "启用导览指南",
+      "enableAll": "启用所有导览指南",
+      "enableOne": "启用 {{name}} 导览",
+      "progress": "导览进度",
+      "progressDetail": "已完成 {{completed}} 个，已忽略 {{dismissed}} 个。",
+      "status": {
+        "completed": "已完成",
+        "dismissed": "已忽略",
+        "pending": "未开始"
+      },
+      "summary": "已完成 {{completed}} · 已忽略 {{dismissed}} · 共 {{total}}"
+    }
+  },
+  "sourceControl": {
+    "aheadBehind": "领先 {{ahead}} 个提交 · 落后 {{behind}} 个提交（相对 origin/{{branch}}）",
+    "changeRepo": "更改仓库",
+    "changes": "更改",
+    "checking": "正在检查源码管理…",
+    "clean": "暂无更改，工作树是干净的。",
+    "commit": "提交",
+    "commitDescription": "提交描述",
+    "commitDescriptionPlaceholder": "描述（可选）",
+    "commitTitle": "提交标题",
+    "committed": "已提交：\"{{subject}}\"",
+    "confirmDiscard": "确认丢弃",
+    "confirmDiscardTitle": "丢弃此文件的所有更改",
+    "credentialRemoved": "已从此 Git 远程仓库中移除保存的凭据。",
+    "credentialWarning": "较旧的 Oleafly 版本在此 Git 远程仓库中保存了凭据。",
+    "discard": "丢弃更改",
+    "discardTitle": "丢弃更改（恢复到上一版本）",
+    "enterTitle": "输入提交标题",
+    "initialize": "初始化仓库",
+    "initialized": "已在分支 {{branch}} 上初始化 Git。",
+    "linkCopied": "GitHub 链接已复制",
+    "notInitialized": "源代码管理尚未初始化。",
+    "notInitializedHint": "Oleafly 不会自动提交到 Git 仓库。",
+    "nothingStaged": "暂存区中没有可提交的内容。",
+    "openFile": "打开文件",
+    "publish": "发布到 GitHub",
+    "published": "已发布到 {{url}}",
+    "pull": "从 origin 拉取",
+    "pullShort": "拉取",
+    "push": "提交并推送到 origin。",
+    "pushShort": "推送",
+    "pushSkippedNoRemote": "⚠ 已跳过推送：下方未设置远程 origin。",
+    "pushSkippedNoToken": "⚠ 已跳过推送：没有 GitHub 令牌（设置 → GitHub）。",
+    "refresh": "刷新",
+    "remote": "远程仓库",
+    "remoteHint": "创建新仓库，或将已有仓库关联为该项目的远程仓库，然后推送。",
+    "removeCredential": "移除已保存的凭据",
+    "stage": "暂存",
+    "stageAll": "全部暂存",
+    "stageFirst": "请先暂存一个文件。",
+    "stageToCommit": "暂存文件以提交。",
+    "staged": "已暂存",
+    "title": "源代码管理",
+    "titleRequired": "必须填写提交标题。",
+    "titleRequiredStatus": "提交前请先输入提交标题。",
+    "unlink": "取消链接",
+    "unlinked": "已取消与 GitHub 的链接。",
+    "unstage": "取消暂存",
+    "unstageAll": "全部取消暂存"
+  },
+  "splash": {
+    "initializing": "正在初始化 Oleafly",
+    "loadingCore": "正在加载 Oleafly Core",
+    "loadingHarness": "正在加载 Oleafly Harness",
+    "loadingParsers": "正在加载 Oleafly Parsers",
+    "starting": "正在启动 Oleafly"
+  },
+  "theme": {
+    "dark": "深色",
+    "light": "浅色",
+    "menuLabel": "外观：{{name}}",
+    "system": "系统",
+    "useDark": "使用深色主题",
+    "useLight": "使用浅色主题",
+    "useSystem": "使用系统主题"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "仍然退出",
+      "description": "{{phase}}。如果此时退出，安装将暂停。已下载的部分会保留，下次打开 Oleafly 时继续安装。",
+      "title": "TinyTeX 仍在安装中"
+    },
+    "wait": {
+      "description": "{{phase}}编译已加入队列，引擎就绪后将自动开始。",
+      "title": "TinyTeX 仍在下载中"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "取消（Esc）",
+    "closeForkDialog": "关闭复刻对话框",
+    "compileFigureFirst": "请先编译图片。",
+    "compilePdfFirst": "PDF 需要先编译。",
+    "export": "导出",
+    "exportComplete": "导出 {{format}} 完成",
+    "exportDocx": "导出为 Word (.docx)",
+    "exportEpub": "导出为 EPUB (.epub)",
+    "exportHtml": "导出为 HTML (.html)",
+    "exportMarkdown": "导出为 Markdown (.md)",
+    "exportPdf": "导出为 PDF",
+    "exportPdfVector": "导出为 PDF（矢量图）",
+    "exportPngRaster": "导出为 PNG（位图）",
+    "exportPagePng": "将页面导出为 PNG（位图）",
+    "exportAs": "导出为 {{format}}",
+    "exportPptx": "导出为 PowerPoint (.pptx)",
+    "exportSourceZip": "导出源码 (.zip)",
+    "exportTxt": "导出为纯文本 (.txt)",
+    "exportZipFailed": "无法导出项目压缩包。",
+    "exporting": "正在导出 .{{format}}…",
+    "fork": "复刻",
+    "forkDescription": "将 <name>{{name}}</name> 及其 Git 历史复制到新项目。检查点初始为空。",
+    "forkFailed": "无法复刻项目。",
+    "forkProject": "复刻项目",
+    "layout": "布局",
+    "layouts": {
+      "aiOnly": "仅 AI",
+      "editorAi": "编辑器 + AI",
+      "editorOnly": "仅编辑器",
+      "editorPreview": "编辑器 + 预览",
+      "editorPreviewAi": "编辑器 + 预览 + AI",
+      "previewAi": "预览 + AI",
+      "previewOnly": "仅预览"
+    },
+    "newProjectName": "新项目名称",
+    "projectName": "项目名称",
+    "projectRenamed": "项目已重命名",
+    "saveName": "保存（Enter）",
+    "saveNameAriaLabel": "保存名称",
+    "untitledProject": "未命名项目",
+    "versioning": "版本管理",
+    "viewFile": "查看文件",
+    "views": {
+      "editor": "源码视图",
+      "pdf": "PDF 视图",
+      "split": "分屏视图"
+    }
+  },
+  "tour": {
+    "chooseColor": "选择你的专属颜色。",
+    "diagramArrow": "指向图表画布的弧形箭头。",
+    "pointer": "导览提示指针",
+    "quitConfirm": "退出导览",
+    "quitDescription": "你的进度不会被保存。之后你可以随时从帮助菜单重新开始任何导览。",
+    "quitTitle": "退出导览？",
+    "setMood": "设置氛围",
+    "showMeAround": "带我四处看看",
+    "skip": "跳过",
+    "step": "第 {{step}} 步",
+    "stepOfTotal": "第 {{step}} 步，共 {{total}} 步",
+    "stepOfTour": "第 {{step}} 步 · {{tour}}",
+    "useAccent": "使用 {{name}} 强调色。",
+    "welcomeArrow": "指向欢迎段落的手绘箭头。",
+    "welcomeBody": "在一个开源工作区里，把论文从初稿一路推进到最终 PDF。写作、编译、校对、管理引用、制作图片、用 Git 审阅每一处修改，并使用你选定的 AI 模型。你的项目始终保存在你自己的电脑上。",
+    "welcomeTitle": "欢迎使用 Oleafly"
+  },
+  "updateChecker": {
+    "available": "有可用更新 · v{{version}}",
+    "check": "检查更新",
+    "checkAgain": "重新检查",
+    "checkFailed": "无法检查更新。",
+    "checking": "正在检查…",
+    "downloadFromGithub": "从 GitHub 下载",
+    "downloading": "正在下载… {{percent}}%",
+    "installing": "正在安装…",
+    "lastCheckFailed": "上次自动检查失败。",
+    "lastCheckFailedAt": "上次自动检查失败 · {{when}}。",
+    "latest": "你已在最新版本。",
+    "releaseNotes": "更新日志",
+    "restartNotice": "Oleafly 将重启以完成更新。",
+    "tryAgain": "重试",
+    "unsupported": "更新由桌面应用管理。",
+    "updateNow": "立即更新"
+  },
+  "updateWindow": {
+    "checking": "正在检查更新…",
+    "currentVersion": "当前版本：v{{version}}",
+    "error": "更新未能完成，请稍后重试。",
+    "later": "稍后",
+    "looking": "正在查找最新版本…",
+    "packageInstall": "当前通过安装包安装，请下载新版本以完成更新。",
+    "ready": "新版本已准备就绪，可以安装。",
+    "upToDate": "你已是最新版本。",
+    "upToDateGeneric": "你正在使用最新版本的 Oleafly。",
+    "upToDateHeadline": "已是最新版本！",
+    "upToDateVersion": "Oleafly v{{version}} 已是最新版本。",
+    "viewRelease": "查看发布说明"
+  },
+  "windowControls": {
+    "group": "窗口控制",
+    "maximize": "最大化",
+    "minimize": "最小化",
+    "restore": "还原"
+  },
+  "windows": {
+    "preview": "预览：{{title}}",
+    "update": "Oleafly 更新"
+  }
+}

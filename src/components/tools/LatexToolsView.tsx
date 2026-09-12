@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, ToolCase } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -6,6 +7,10 @@ import { openTool } from "@/features/open-tool";
 import {
   TOOL_CATEGORY_ORDER,
   TOOL_DEFINITIONS,
+  toolCategoryLabel,
+  toolDescription,
+  toolName,
+  toolTags,
   type ToolDefinition,
 } from "@/lib/tool-catalog";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
@@ -53,6 +58,9 @@ const TOOL_TONES: Record<
 
 function ToolCard({ tool }: { tool: ToolDefinition }) {
   const tone = TOOL_TONES[tool.tone];
+  const name = toolName(tool.id);
+  const description = toolDescription(tool.id);
+  const tags = toolTags(tool.id);
   return (
     <button
       type="button"
@@ -70,16 +78,16 @@ function ToolCard({ tool }: { tool: ToolDefinition }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-base font-semibold">{tool.name}</span>
+          <span className="text-base font-semibold">{name}</span>
           <code className={cn("rounded px-2 py-0.5 text-[10px] font-semibold", tone.slash)}>
-            /{tool.slash[0]}
+            {`/${tool.slash[0]}`}
           </code>
         </span>
         <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
-          {tool.description}
+          {description}
         </span>
         <span className="mt-3 flex flex-wrap gap-1.5">
-          {tool.tags.map((tag) => (
+          {tags.map((tag) => (
             <span
               key={tag}
               className={cn("rounded-full px-2.5 py-1 text-[10px] font-medium", tone.badge)}
@@ -94,12 +102,13 @@ function ToolCard({ tool }: { tool: ToolDefinition }) {
 }
 
 export function LatexToolsView() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const [search, setSearch] = useState("");
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return TOOL_DEFINITIONS;
     return TOOL_DEFINITIONS.filter((tool) =>
-      `${tool.name} ${tool.description} ${tool.tags.join(" ")} ${tool.slash.join(" ")}`
+      `${toolName(tool.id)} ${toolDescription(tool.id)} ${toolTags(tool.id).join(" ")} ${tool.slash.join(" ")}`
         .toLowerCase()
         .includes(query),
     );
@@ -118,8 +127,8 @@ export function LatexToolsView() {
   return (
     <ToolPageShell
       page="tools"
-      title="Oleafly Tools"
-      subtitle="Research, writing, and LaTeX tools without the setup"
+      title={t(($) => $.researchTools.tools.galleryTitle)}
+      subtitle={t(($) => $.researchTools.tools.gallerySubtitle)}
       icon={ToolCase}
       showTheme
       testId="latex-tools-view"
@@ -129,24 +138,26 @@ export function LatexToolsView() {
           <div className="mb-7 flex flex-col gap-4 border-b pb-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                {TOOL_DEFINITIONS.length} tools
+                {t(($) => $.researchTools.tools.toolCount, {
+                  count: TOOL_DEFINITIONS.length,
+                })}
               </p>
               <h1 className="mt-2 text-2xl font-bold tracking-tight">
-                Free tools for research, writing, and LaTeX
+                {t(($) => $.researchTools.tools.heroTitle)}
               </h1>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Convert a document, check BibTeX, find a citation, run a calculation, or look up a
-                LaTeX symbol. No project setup. Copy or save the result, or open it in Oleafly if
-                you want to keep working.
+                {t(($) => $.researchTools.tools.heroBody)}
               </p>
             </div>
             <div className="relative w-full lg:w-96">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                aria-label="Search Oleafly Tools"
+                aria-label={t(($) => $.researchTools.tools.searchAria)}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder={`Search ${TOOL_DEFINITIONS.length} tools or commands`}
+                placeholder={t(($) => $.researchTools.tools.searchPlaceholder, {
+                  total: TOOL_DEFINITIONS.length,
+                })}
                 className="h-10 pl-9 text-sm"
               />
             </div>
@@ -154,18 +165,18 @@ export function LatexToolsView() {
 
           {grouped.length === 0 ? (
             <div className="flex min-h-72 items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
-              No tools match “{search.trim()}”.
+              {t(($) => $.researchTools.tools.noMatches)}
             </div>
           ) : (
             <div className="space-y-8">
               {grouped.map(({ category, tools }) => (
-                <section key={category} aria-labelledby={`tools-${category.toLowerCase()}`}>
+                <section key={category} aria-labelledby={`tools-${category}`}>
                   <div className="mb-3 flex items-center gap-3">
                     <h2
-                      id={`tools-${category.toLowerCase()}`}
+                      id={`tools-${category}`}
                       className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                     >
-                      {category}
+                      {toolCategoryLabel(category)}
                     </h2>
                     <span className="text-xs tabular-nums text-muted-foreground/70">{tools.length}</span>
                   </div>

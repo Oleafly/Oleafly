@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import catalog from "./tagging-status.json";
+import catalog from "./tagging-status.json" with { type: "json" };
 import {
   TAGGING_STATUS_RETRIEVED,
   TAGGING_STATUS_SOURCE,
@@ -99,21 +99,23 @@ describe("taggingGate", () => {
   it("blocks an incompatible class and names it", () => {
     const gate = taggingGate("\\documentclass{IEEEtran}");
     expect(gate.blocked).toBe(true);
-    expect(gate.reason).toContain("IEEEtran");
-    expect(gate.reason).toContain("not compatible with LaTeX tagging yet");
+    expect(gate.reason?.key).toBe("taggingGate.currentlyIncompatible");
+    expect(gate.reason?.params?.name).toBe("IEEEtran");
   });
 
   it("blocks a class the LaTeX Project will not support and points at the successor", () => {
     const gate = taggingGate("\\documentclass{beamer}");
     expect(gate.blocked).toBe(true);
-    expect(gate.reason).toContain("ltx-talk");
+    expect(gate.reason?.key).toBe("taggingGate.noSupportWithNote");
+    expect(String(gate.reason?.params?.note)).toContain("ltx-talk");
   });
 
   it("warns about a partially compatible class without blocking", () => {
     const gate = taggingGate("\\documentclass{acmart}");
     expect(gate.blocked).toBe(false);
     expect(gate.cautioned).toBe(true);
-    expect(gate.reason).toContain("only partly compatible");
+    expect(gate.reason?.key).toMatch(/^taggingGate\.partiallyCompatible/);
+    expect(gate.reason?.params?.name).toBe("acmart");
   });
 
   it("lets a compatible class through and lists the packages that will not tag", () => {
@@ -150,7 +152,7 @@ describe("taggingGate", () => {
     const gate = taggingGate("\\documentclass{some-private-class}");
     expect(gate.blocked).toBe(false);
     expect(gate.cautioned).toBe(true);
-    expect(gate.reason).toContain("has not recorded a tagging status");
+    expect(gate.reason?.key).toBe("taggingGate.unrecorded");
   });
 });
 

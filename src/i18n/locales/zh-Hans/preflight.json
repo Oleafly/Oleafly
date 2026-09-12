@@ -1,0 +1,624 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "双栏布局",
+      "detailTwoColumn": "简历解析器常会按错误顺序线性化双栏内容。对于必须由 ATS 解析的文档，请优先使用单栏布局。",
+      "titleMultiColumn": "多栏布局",
+      "detailMultiColumn": "简历解析器常会按错误顺序线性化各栏内容。面向 ATS 的文档请使用单栏。"
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "请核实双栏的阅读顺序。",
+      "detailTwoColumn": "只要 PDF 标签树保留了预期顺序，多栏排版布局也可以是无障碍的。请编译并确认实际的阅读顺序，而不要仅凭视觉上的分栏就判定为失败。",
+      "titleMultiColumn": "请核实多栏的阅读顺序。",
+      "detailMultiColumn": "分栏本身并不必然导致无障碍问题，但其标签和内容顺序必须保持有意义。请编译并检查实际的阅读顺序。"
+    },
+    "no-glyphtounicode": {
+      "title": "未声明 Unicode 提取映射",
+      "detailEngineNeedsMap": "XeTeX 及基于其构建的内置引擎不会自动生成字形到 Unicode 的映射，因此提取出的文本可能无法阅读。请编译并检查阅读器视图，并优先选择具有完整 Unicode 映射的字体。",
+      "detailAutomatic": "自 LaTeX 2021-06-01 版本起，pdfLaTeX 和 LuaLaTeX 会自动生成此映射，因此无需声明。请编译并确认提取出的阅读文本。在 XeTeX 上，请加载 cmap 或更换引擎。"
+    },
+    "icon-near-contact": {
+      "title": "联系方式旁的图标",
+      "detail": "字体图标（如 \\faPhone 或 \\faEnvelope）会渲染为字形，解析器会将其读作未知字符，屏幕阅读器也无法为其标注，因此旁边的联系方式可能会丢失。请确保邮箱或电话同时以普通可选文本的形式出现。"
+    },
+    "layout-table": {
+      "titleTable": "表格内容可能无法解析为简历字段。",
+      "detailTable": "ATS 工具常常以不可预测的方式展平表格内容。请避免用表格来并排摆放简历文本；真正的研究数据表格会在无障碍检查中单独评估。",
+      "titleTikz": "TikZ 内容需要语义替代方案。",
+      "detailTikz": "TikZ 绘制的是视觉内容，不会以普通文本的形式表达其含义。请为出版输出提供无障碍描述，并避免在面向 ATS 的简历内容中使用 TikZ。"
+    },
+    "contact-in-header": {
+      "title": "联系方式位于页眉",
+      "detail": "一些简历解析器会忽略页眉和页脚。请把邮箱和电话放到文档正文中，这样提取出的文本才会保留它们。"
+    },
+    "figure-alt": {
+      "title": "缺少替代文本的图片",
+      "detail": "这张图片没有描述性的替代文本，屏幕阅读器无法传达其内容。请添加描述，例如 \\includegraphics[alt={A headshot of the author}]{...}。纯装饰性的图片请改为标记为工件。"
+    },
+    "link-text": {
+      "title": "非描述性链接文本",
+      "detail": "像“点击此处”或裸 URL 这样的链接文本，无法让屏幕阅读器用户了解目标位置。请使用能点明目标的文本，例如“我的作品集”。"
+    },
+    "mathml-export-hint": {
+      "title": "导出带 MathML 的 HTML 副本以检查公式无障碍性",
+      "detail": "文档中包含公式。只有当公式为 MathML 时，屏幕阅读器才能可靠地朗读它们。请使用“导出为 HTML”，pandoc 会以 --mathml 写出该文件，并在投稿前用屏幕阅读器或无障碍检查工具打开它。"
+    },
+    "no-lang": {
+      "title": "未设置文档语言",
+      "detail": "此 PDF 未设置语言，屏幕阅读器可能按错误的发音规则朗读。请设置一种语言，例如 \\usepackage[english]{babel}，或使用 hyperref 的 pdflang=en-US。"
+    },
+    "no-title": {
+      "title": "缺少 PDF 标题",
+      "detail": "此 PDF 的元数据中没有标题，而辅助技术和浏览器会用标题来播报文档。请使用 hyperref 设置标题，例如 \\hypersetup{pdftitle={Your Name, CV}}。"
+    },
+    "heading-skip": {
+      "title": "跳过了标题层级",
+      "detail": "此标题比上一个标题深了不止一级，会破坏屏幕阅读器和解析器所依赖的文档大纲。请不要跳过层级，例如依次使用 section、subsection、subsubsection。"
+    },
+    "nonstandard-headings": {
+      "title": "非标准章节标题：“{{heading}}”",
+      "detail": "解析器通过识别 Experience、Education、Skills 等标准标题来归类章节。富有创意的标题可能让该章节无法归类。请考虑使用常规标题。"
+    },
+    "color-only": {
+      "title": "检查颜色并非唯一线索",
+      "detail": "预检发现了带颜色的内容，但无法自动判断其含义。如果颜色用于区分状态或类别，请配合文字、形状、字重或其他可感知的提示一起使用。"
+    },
+    "reading-order-risk": {
+      "title": "可能扰乱阅读顺序的布局",
+      "detail": "边注和环绕图片会将内容置于主文档流之外，解析器和屏幕阅读器可能因此按错误顺序读取。编译后请在下方预览中检查阅读顺序。"
+    },
+    "ua-standard-without-title": {
+      "title": "已声明 PDF/UA 但缺少文档标题",
+      "detailBoth": "此文档声明了 pdfstandard=ua，但未设置 pdftitle，也未设置 pdfdisplaydoctitle=true。PDF/UA 要求 XMP 元数据中包含标题，并要求查看器首选项设为显示该标题，因此输出会声称符合实际并未达到的标准。请加载 hyperref 并设置 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。",
+      "detailTitle": "此文档声明了 pdfstandard=ua，但未设置 pdftitle。PDF/UA 要求 XMP 元数据中包含标题，并要求查看器首选项设为显示该标题，因此输出会声称符合实际并未达到的标准。请加载 hyperref 并设置 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。",
+      "detailDisplay": "此文档声明了 pdfstandard=ua，但未设置 pdfdisplaydoctitle=true。PDF/UA 要求 XMP 元数据中包含标题，并要求查看器首选项设为显示该标题，因此输出会声称符合实际并未达到的标准。请加载 hyperref 并设置 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。"
+    },
+    "ua-standard-on-tectonic": {
+      "title": "内置引擎无法生成声明的 PDF/UA 输出",
+      "detail": "此文档声明了 pdfstandard=ua，但内置引擎无法写入标签树，因此生成的 PDF 会带有并不符合实际的 PDF/UA 声明。请使用 TeX Live 2025 或更新版本中的 pdfLaTeX 或 LuaLaTeX 编译，或移除 pdfstandard 键。"
+    },
+    "table-header-rows": {
+      "title": "表格首行未标记为表头",
+      "detail": "该表格的首行以横线与其他行分隔，看起来像表头，但 LaTeX 默认将每个单元格都标记为数据单元格。屏幕阅读器因此无法将数值与其所在列对应起来。请声明表头行，例如 \\DocumentMetadata{tagging-setup={table/header-rows={1}}}。"
+    },
+    "pdf-reading-order": {
+      "title": "输出中分栏内容被横向串读",
+      "detail": "在此页面上，两栏的文字落在相同的行上，解析器会直接横向读取而得到错乱的文本，屏幕阅读器也会按错误顺序朗读。需要被解析的内容请使用单栏排版。请参见下方的阅读视图。"
+    },
+    "pdf-garbled": {
+      "title": "输出中存在乱码或未映射的文字",
+      "detail": "提取的文本中含有未能映射到 Unicode 的字符，复制粘贴和解析器看到的都是乱码，屏幕阅读器也无法朗读。这通常意味着缺少字形到 Unicode 的映射，或字体未以文本形式嵌入。"
+    },
+    "pdf-selectable": {
+      "title": "页面没有可选择的文本",
+      "detail": "此页面几乎没有可提取的文本，解析器和屏幕阅读器将看不到任何内容。该页面很可能被渲染为图片，或使用了未以文本形式嵌入的字体。请确保内容是真实、可选择的文本。"
+    },
+    "output-clipped-content": {
+      "title": "文本超出页面范围",
+      "detail": "可选中的文本位于此页面的媒体框之外，在打印和出版方处理时可能被裁剪或丢失。请检查过宽的公式、表格、URL 和定位放置的内容。"
+    },
+    "output-small-text": {
+      "title": "检测到过小的文本",
+      "detail_other": "{{count}} 处文本的字号低于约 7 pt。小字号在打印和正常缩放下都难以阅读。请确认出版方是否允许，并增大并非必须这么小的标注或脚注。"
+    },
+    "pdf-no-bookmarks": {
+      "title": "较长的 PDF 没有书签",
+      "detail": "长文档应提供层级书签大纲，方便键盘用户和辅助技术用户在各章节间导航，而无需逐页顺序阅读。这是 WCAG 的最佳实践，而非 PDF/UA 的要求。请加载 hyperref 或 bookmark 来生成书签大纲。"
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "无法检查 PDF 元数据",
+      "detail": "预检无法读取 PDF 元数据，因此无法验证文档标题或语言。此结果属于未知，并不能证明这些字段缺失。请重新编译并再次运行检查。"
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF 缺少语言和标题",
+      "titleLang": "PDF 缺少语言",
+      "titleTitle": "PDF 缺少标题",
+      "detail": "辅助技术和浏览器会使用 PDF 目录中的语言和标题来正确朗读文档。请通过 hyperref 设置，例如 \\hypersetup{pdftitle={Your Name, CV}, pdflang=en-US}。"
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "无法检查 PDF 标签状态",
+      "detail": "预检无法读取 PDF 的 MarkInfo 字典。这是一个未知结果，不能证明任何一方，因此预检不会仅凭这项检查就将输出判定为已加标签或未加标签。"
+    },
+    "compile-failed": {
+      "title": "最近一次编译失败",
+      "detail": "提交的输出必须来自成功的构建。请修复第一个编译器错误，重新编译，然后再次运行预检。"
+    },
+    "compile-overfull-box": {
+      "title_other": "输出中有 {{count}} 行内容溢出",
+      "detail": "编译器报告有内容超出了文本框，最多超出 {{width}} pt。请检查这些位置是否有被截断的文字、公式、表格或链接。"
+    },
+    "compile-missing-glyph": {
+      "title_other": "有 {{count}} 个字形缺失",
+      "detail": "所选字体无法渲染全部字符。缺失的字形会悄然从 PDF 中消失，包括姓名、公式和引用中的符号。"
+    },
+    "compile-unresolved-references": {
+      "title": "编译输出中存在未解析的引用",
+      "detail": "编译后仍有至少一个引用或交叉引用未解析。提交的 PDF 中可能出现 [?] 或 ??。请检查日志，并完成所需的参考文献和 LaTeX 编译轮次。"
+    },
+    "compile-rerun-required": {
+      "title": "需要再进行一轮编译",
+      "detail": "最新日志显示标签、引用或目录尚未稳定。请在导出前重新编译，直到重编译警告消失。"
+    },
+    "compile-duplicate-destination": {
+      "title": "PDF 目标位置重复",
+      "detail": "两个锚点共享同一目标位置，链接或书签可能因此跳转到错误的位置。这通常由标签重复或页码重新编号引起。"
+    },
+    "compile-mixed-page-sizes": {
+      "title": "一个 PDF 中存在多种页面尺寸",
+      "detail_other": "此 PDF 包含 {{count}} 种页面尺寸（{{sizes}}）。混杂的媒体框通常意味着错误引入的页面或图片，可能导致出版方的生产检查不通过。"
+    },
+    "output-tagpdf-warning": {
+      "title_other": "标签处理报告了 {{count}} 个问题",
+      "detail": "标签处理代码在日志中写入了以下警告：{{warnings}} 每条警告都对应结构树与内容不一致的位置。请在源文件中修复，然后重新编译。"
+    },
+    "output-tagging-status": {
+      "title_other": "标签状态报告标记了 {{count}} 项",
+      "detail": "LaTeX 在构建结束时写入了自带的标签状态报告。",
+      "partClass": "{{name}} 类的状态为 {{status}}。",
+      "partBlocking": "与标签处理不兼容：{{files}}。",
+      "partUnproven": "没有记录判定结果：{{files}}。",
+      "partPartial": "仅部分内容带标签：{{files}}。",
+      "partAdvice": "无法生成标签的内容会让整个章节脱离结构树，因此请尽量替换这类内容。"
+    },
+    "pdf-structure-single-pass": {
+      "title": "标签树看起来像首轮编译的结果",
+      "detail": "此 PDF 被标记为带标签，但结构树几乎为空，这正是单轮编译的产物。带标签的输出需要两轮编译。请重新编译并再次检查。"
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "此 PDF 声明符合 PDF/UA-{{part}}，但实际并未达到",
+      "detail": "XMP 元数据声明了 pdfuaid:part {{part}}，但文件本身无法支持这一声明。",
+      "partNoXmpTitle": "XMP 元数据中没有文档标题。",
+      "partNoDisplayDocTitle": "DisplayDocTitle 未设置为 true。",
+      "partNotTagged": "该文件未带标签。",
+      "partAdvice": "任何信任这一声明的工具都会在此 PDF 并不符合标准时将其报告为符合，因此请补齐差距或去掉声明。使用 hyperref 时，请设置 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}，并在启用标签的情况下编译。"
+    },
+    "pdf-xmp-title": {
+      "title": "标题仅存在于 Info 字典中",
+      "detail": "文档标题设置在 Info 字典中，但未在 XMP 元数据中设置为 dc:title，而 PDF/UA 正是从后者读取标题。加载 hyperref 并指定 pdftitle 可同时写入两处。"
+    },
+    "pdf-display-doc-title": {
+      "title": "阅读器将显示文件名而非标题",
+      "detail": "ViewerPreferences 中没有设为 true 的 DisplayDocTitle 条目，因此 PDF 阅读器会在其窗口中显示并向辅助技术播报文件名。可用 hyperref 设置，例如 \\hypersetup{pdfdisplaydoctitle=true}。"
+    },
+    "pdf-suspects": {
+      "title": "该 PDF 将自身标签标注为不可靠",
+      "detail": "MarkInfo 将 Suspects 设为 true，这是生成器在提示标签树可能与可见内容不一致。请使用较新的引擎重新编译，并检查日志中的标签警告。"
+    },
+    "pdf-link-alt": {
+      "title_other": "{{count}} 个链接注释缺少描述",
+      "detail": "没有 Contents 条目的链接注释，会让屏幕阅读器在列出页面上的链接时无内容可播报。请在链接文本中描述链接目标，并让 hyperref 将该文本带入注释。"
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}}% 的文本位于标签树之外",
+      "detail": "在 {{total}} 段文本中，有 {{untagged}} 段未与标签树中的任何内容关联，因此屏幕阅读器会跳过它们。工件不计入其中。真实内容必须加标签，装饰性内容必须标记为工件（artifact），例如 \\includegraphics[artifact]{...}。"
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "无法完整检查 PDF 结构",
+      "detail_other": "无法提取页面 {{pages}} 的无障碍结构树。预检不会把结构不可用当作该 PDF 未加标签的证据。"
+    },
+    "pdf-untagged-output": {
+      "title": "此 PDF 未加标签",
+      "detail": "编译得到的 PDF 不含结构树，屏幕阅读器无法获得标题、列表、表格或阅读顺序，文件也无法满足 PDF/UA-1 第 7.1 条。带标签的输出需要 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX，并配合 \\DocumentMetadata{tagging=on}。内置引擎无法生成标签。在此期间，上方的源码和输出检查仍然适用。"
+    },
+    "pdf-structure-missing": {
+      "title": "带标签的 PDF 缺少可读取的结构树",
+      "detail": "该 PDF 声明自身已加标签，但预检未找到可供导航的文档结构。屏幕阅读器可能无法获得标题、列表、表格或阅读顺序。生成标签需要两轮编译，请再次编译并复查后再作定论。"
+    },
+    "output-figure-alt": {
+      "title": "带标签的图片缺少替代文本",
+      "detail": "此图片已加标签但没有替代文本，屏幕阅读器无法对其加以描述。请在源码中添加描述，例如 \\includegraphics[alt={...}]{...}。装饰性图片请改用 [artifact] 标记。"
+    },
+    "output-formula-alt": {
+      "title": "公式缺少替代文本",
+      "detail": "在 PDF/UA-1 下，公式对应的 Formula 标签需要 Alt 或 ActualText。请在源码中添加其中之一，例如使用 \\tagpdfsetup 或为公式设置 alt 键。在 PDF/UA-2 下，你可以改用 LuaLaTeX 并配合 \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}} 编译，从而关联 MathML。"
+    },
+    "output-table-headers": {
+      "title": "带标签的表格缺少表头单元格",
+      "detail": "此表格没有表头（TH）单元格，屏幕阅读器无法将数据与列标题或行标题关联。请标记表头行，例如 \\DocumentMetadata{tagging-setup={table/header-rows={1}}}。"
+    },
+    "output-heading-skip": {
+      "title": "标签树中跳过了标题层级",
+      "detail": "带标签的标题跳跃超过一级（例如从 H1 直接到 H3），破坏了屏幕阅读器赖以导航的大纲。请不要跳过标题层级。"
+    },
+    "ats-no-name": {
+      "title": "解析器无法识别你的姓名",
+      "detail": "提取的文本中未发现合理的人名。请将姓名以纯文本形式放在文档开头附近，不要放在页眉、图形或定位文本框内。"
+    },
+    "ats-no-email": {
+      "title": "解析器无法找到你的电子邮箱",
+      "detail": "提取的文本中未找到电子邮箱地址，而这正是解析器最依赖的字段。如果你的邮箱旁边有图标或位于页眉中，它可能不是可选择文本。请将其以纯文本形式放在正文中。"
+    },
+    "ats-no-phone": {
+      "title": "解析器无法找到电话号码",
+      "detail": "提取的文本中未找到电话号码。如果号码存在但藏在图标后或页眉中，请将其作为可选择的纯文本添加到正文中。"
+    },
+    "ats-no-experience": {
+      "title": "解析器未检测到工作经历（Work Experience）部分",
+      "detail": "未找到标准的 Experience 标题，因此解析器可能无法将你的各段职务归入工作经历。请使用 Experience 或 Work Experience 等常规标题，并确保它是可选择的真实文本。"
+    },
+    "ats-long-resume": {
+      "title_other": "简历长达 {{count}} 页",
+      "detail": "许多招聘流程期望一到两页，不过资深、学术和政府类 CV 可以更长。请确认这一篇幅符合职位和文档类型的要求。"
+    },
+    "refs-incomplete-metadata": {
+      "title_other": "{{count}} 条参考文献条目的元数据不完整。",
+      "detail": "不完整的记录可能在出版商样式下生成残缺或指代不明的参考文献。{{examples}}。",
+      "detailTruncated": "不完整的记录可能在出版商样式下生成残缺或指代不明的参考文献。{{examples}}；…"
+    },
+    "refs-malformed-doi": {
+      "title_other": "{{count}} 个 DOI 值疑似格式有误。",
+      "detail": "请检查 {{keys}} 的 DOI 字段。只应保存 DOI 标识符（例如 10.1000/example），而非描述性文字。"
+    },
+    "refs-duplicate-title": {
+      "title_other": "{{count}} 组参考文献疑似重复。",
+      "detail": "这些键的标题规范化后相同：{{groups}}。请合并真正的重复条目，以保持引用样式和元数据一致。"
+    },
+    "refs-uncited-entries": {
+      "title_other": "{{count}} 条参考文献条目未被引用。",
+      "detail": "未使用的条目会给投稿元数据带来干扰，也让重复条目更难管理。请检查 {{keys}}。",
+      "detailTruncated": "未使用的条目会给投稿元数据带来干扰，也让重复条目更难管理。请检查 {{keys}}，…"
+    },
+    "refs-project-duplicate-label": {
+      "title_other": "{{count}} 个标签在多个文件中被定义。",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_other": "{{count}} 个图片、表格或公式标签从未被引用。",
+      "detail": "请确认每个带编号的结果都在稿件中有所讨论：{{labels}}。",
+      "detailTruncated": "请确认每个带编号的结果都在稿件中有所讨论：{{labels}}，…"
+    },
+    "refs-undefined-cite": {
+      "title": "引用“{{key}}”不在任何 .bib 文件中",
+      "detail": "在已加载的参考文献库中未找到此引用键，因此它会在 PDF 中渲染为 [?]。请检查键名，或将该条目添加到你的 .bib 文件（“添加引用”功能可以帮你获取）。"
+    },
+    "refs-undefined-ref": {
+      "title": "指向“{{label}}”的交叉引用没有匹配的 \\label",
+      "detail": "此交叉引用指向的标签未定义，因此会在 PDF 中渲染为 ??。请检查标签名，或补上缺失的 \\label。"
+    },
+    "refs-duplicate-label": {
+      "title": "标签“{{label}}”重复",
+      "detail": "同一标签被定义了多次，指向它的引用会产生歧义。请确保每个标签唯一。"
+    },
+    "refs-missing-asset": {
+      "titleImage": "未找到图片：{{file}}",
+      "detailImage": "此 \\includegraphics 指向的文件不在项目中，因此该图片会缺失。请检查文件名和路径。",
+      "titleInclude": "未找到被引入的文件：{{file}}",
+      "detailInclude": "此 \\input 或 \\include 指向的文件不在项目中。请检查文件名和路径。"
+    },
+    "refs-bib-missing": {
+      "title": "未找到参考文献文件：{{file}}",
+      "detail": "此 \\bibliography 或 \\addbibresource 指向的文件不在项目中，因此所有引用都会渲染为 [?]。请检查文件名，或导入参考文献库以创建它。"
+    },
+    "refs-duplicate-bib": {
+      "title": "重复的参考文献条目：{{keys}}",
+      "detail": "这些条目的 DOI 均为 {{doi}}，实为同一文献的不同键。请保留一条并引用它，否则参考文献会将其列出两次。"
+    },
+    "submission-path-case": {
+      "title": "文件名大小写不匹配：{{target}}",
+      "detailFigure": "此图片仅能在大小写不敏感的文件系统上解析。项目中已有“{{match}}”，请在提交到基于 Linux 的构建系统前与其大小写完全保持一致。",
+      "detailInclude": "此被引入的文件仅能在大小写不敏感的文件系统上解析。项目中已有“{{match}}”，请在提交到基于 Linux 的构建系统前与其大小写完全保持一致。"
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "缺少图片：{{target}}",
+      "titleInclude": "缺少被包含的文件：{{target}}",
+      "detail": "项目中没有任何文件能解析来自 {{file}} 的这一引用。即使本地缓存目前能让文档编译通过，全新的投稿构建仍会失败。"
+    },
+    "submission-missing-caption": {
+      "titleFigure": "图片缺少题注",
+      "titleTable": "表格缺少题注",
+      "detail": "用于发表的图片和表格应带有编号和描述性题注，以便被引用并能独立理解。"
+    },
+    "submission-label-before-caption": {
+      "title": "标签出现在题注之前",
+      "detail": "请将标签放在题注之后，否则 LaTeX 可能将它绑定到前一个计数器，导致图片或表格编号错误。"
+    },
+    "privacy-sensitive-file": {
+      "title": "包含敏感文件：{{file}}",
+      "detail": "在导出、同步或发布源码包之前，请从项目中移除凭据和私钥文件。"
+    },
+    "privacy-credential": {
+      "title": "{{file}} 中可能存在凭据",
+      "detail": "项目中包含形似 API 令牌、云访问密钥或私钥的文本。请先吊销已暴露的凭据，再将其从项目和 Git 历史中移除。"
+    },
+    "privacy-internal-comment": {
+      "title": "{{file}} 中仍留有内部备注",
+      "detail": "源码注释在 PDF 中不可见，但在会议、期刊或预印本的源码包中可能被公开。请检查并移除私密的编辑备注。"
+    },
+    "privacy-draft-artifact": {
+      "title": "草稿标记仍处于启用状态",
+      "detail": "源码启用了草稿、TODO、修订跟踪、水印或标签调试输出。请禁用相关设置，并在投稿前目视检查最终的 PDF。"
+    },
+    "privacy-blind-author": {
+      "title": "盲审源码中仍留有作者身份信息",
+      "detail": "源码中包含非匿名的作者、所属机构、电子邮箱、地址或致谢字段。请使用该会议或期刊的匿名评审模式替换可识别身份的内容。"
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "致谢可能暴露作者身份",
+      "detail": "致谢通常会透露机构、资助项目、合作者或设施信息。除非会议或期刊明确允许，否则请将其从盲审稿件中移除。"
+    },
+    "privacy-pdf-author": {
+      "title": "PDF 元数据包含作者信息",
+      "detail": "PDF 的作者字段为“{{author}}”。上传盲审 PDF 前，请清除作者元数据。"
+    },
+    "submission-nonportable-filename": {
+      "title": "文件名不可移植：{{file}}",
+      "detail": "此配置仅允许字母、数字、下划线、加号、减号、点号、逗号、等号和目录分隔符。请重命名该文件并更新其引用。"
+    },
+    "submission-absolute-path": {
+      "title": "{{file}} 中存在特定于本机的路径",
+      "detail": "绝对本地路径在出版方的构建服务器上并不存在。请将依赖项移入项目内，并使用相对路径引用。"
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} 需要执行外部命令",
+      "detail": "许多出版方和文库的构建系统会禁用 shell escape。请预先生成输出，或确认目标会议或期刊支持此软件包和命令。"
+    },
+    "submission-generated-file": {
+      "title": "包含生成的构建文件：{{file}}",
+      "detail": "生成的辅助文件会让源码包显得杂乱，还可能保留过时的状态。除非所选会议或期刊明确要求包含该文件，否则请将其排除。"
+    },
+    "submission-document-class": {
+      "title": "{{profile}} 文档类未启用",
+      "detail": "此配置需要 {{expected}}，但项目使用的是 {{actual}}。请从该会议或期刊当前的官方模板开始。",
+      "detailNoClass": "此配置方案要求使用 {{expected}}，但未检测到任何文档类。请从目标期刊或会议的当前官方模板开始。"
+    },
+    "submission-no-abstract": {
+      "title": "未检测到摘要",
+      "detail": "此出版配置方案要求在标准 abstract 环境中提供摘要。请添加摘要，或确认目标期刊或会议不需要摘要。"
+    },
+    "submission-no-keywords": {
+      "title": "未检测到投稿关键词",
+      "detail": "{{profile}} 配置方案要求通过其标准模板命令或环境提供关键词。"
+    },
+    "submission-figure-format": {
+      "title": "不支持的图片格式：{{file}}",
+      "detail": "{{profile}} 在其支持的 TeX 工作流中接受 {{formats}} 格式的图片文件。请在上传前转换此图片。"
+    },
+    "submission-placeholder": {
+      "title": "稿件中仍存在草稿占位内容",
+      "detail": "源码中包含 TODO、TBD、FIXME、占位文本或问号标记。请在生成最终投稿文件前逐一检查。"
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} 低于要求的版本",
+      "detail": "{{profile}} 要求 PDF {{minimum}} 或更高版本。请更新编译器的 PDF 设置并重新生成文件。"
+    },
+    "submission-bookmarks": {
+      "title": "不允许使用 PDF 书签",
+      "detail": "{{profile}} 不接受 PDF 书签。请在此投稿配置方案中移除文档大纲。"
+    },
+    "submission-links": {
+      "title": "不允许使用 PDF 链接",
+      "detail": "{{profile}} 不接受链接注释。请为提交的 PDF 禁用生成的超链接。"
+    },
+    "submission-attachments": {
+      "title": "PDF 包含嵌入的附件",
+      "detail": "{{profile}} 不接受 PDF 附件和文件包。请在投稿前移除所有嵌入的文件。"
+    },
+    "submission-security": {
+      "title": "已启用 PDF 安全限制",
+      "detail": "{{profile}} 要求 PDF 不含密码或权限限制。"
+    },
+    "submission-unembedded-font": {
+      "title_other": "{{count}} 个字体未嵌入",
+      "detail": "{{profile}} 要求所有字体均嵌入或子集化，以确保文本和数学公式可靠渲染。请修复 {{fonts}}。"
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "部分字体的嵌入状态无法验证",
+      "detail": "预检无法确认 {{fonts}} 的嵌入状态。请使用目标期刊或会议的官方 PDF 检查工具进行确认。"
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "无障碍",
+    "both": "ATS + 无障碍",
+    "refs": "参考文献",
+    "compile": "编译",
+    "submission": "投稿",
+    "privacy": "隐私"
+  },
+  "severity": {
+    "error": "错误",
+    "warning": "警告",
+    "info": "提示"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "编译",
+    "a11y": "无障碍",
+    "refs": "引用",
+    "submission": "提交",
+    "privacy": "隐私"
+  },
+  "checks": {
+    "compile": {
+      "label": "编译与排版",
+      "who": "适用于所有最终文档。",
+      "info": "编译错误、未解析的引用、缺失字形和页面排版问题。",
+      "detail": "检查最新的编译器日志和 PDF，排查编译失败、未解析的引用、缺失字形、内容溢出或裁切、过时的重跑警告以及页面尺寸混杂等问题。"
+    },
+    "submission": {
+      "label": "提交就绪度",
+      "who": "适用于会议、期刊、预印本和学位论文。",
+      "info": "出版配置规则，以及不应随源码包分发的文件。",
+      "detail": "将出版配置应用于完整项目：官方文档类、可移植的源码路径、图片格式、摘要与关键词、PDF 限制、题注，以及整洁的源码打包。"
+    },
+    "ats": {
+      "label": "ATS 就绪度",
+      "who": "适用于简历和履历。",
+      "info": "简历解析器能够提取的联系方式和各个板块。",
+      "detail": "模拟申请人跟踪系统（Workday、Taleo、Greenhouse）从你的 PDF 中提取的内容，并标记会干扰提取的排版与格式。与科研论文无关。"
+    },
+    "a11y": {
+      "label": "无障碍",
+      "who": "适用于科研、政府机构和已发布的 PDF。",
+      "info": "标记、替代文本、文档语言和标题、阅读器设置、结构、链接以及阅读顺序。",
+      "detail": "依据 PDF/UA-1（ISO 14289-1）中可机器检测的部分和 WCAG 2.2 PDF 技术要求检查编译后的 PDF：标记、替代文本、文档语言和标题、阅读器设置、标题与表格结构、链接描述、阅读顺序，以及可选中的文本。源码检查会在你编译前标记可能的问题。"
+    },
+    "refs": {
+      "label": "参考文献与资源",
+      "who": "适用于科研论文和多文件文档。",
+      "info": "损坏的引用、重复标签、不完整的参考文献条目以及缺失的资源。",
+      "detail": "找出未定义的引用与交叉引用、重复标签、缺失的图片或被包含的文件，避免它们在投稿时导致 PDF 出错。"
+    },
+    "privacy": {
+      "label": "隐私与盲审",
+      "who": "适用于共享源码或匿名投稿之前。",
+      "info": "机密信息、草稿备注、敏感文件，以及盲审中的身份泄露。",
+      "detail": "查找匿名评审投稿中的凭据、私钥、内部注释、草稿标记、敏感项目文件、作者元数据以及身份泄露。"
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "通用出版",
+      "description": "可移植源码、干净的输出、完整的元数据，以及常见的发表风险。"
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "可在 arXiv 区分大小写的投稿系统中重新构建的可移植源码。"
+    },
+    "ieee": {
+      "label": "IEEE 会议 / 期刊",
+      "description": "IEEEtran 源码，以及针对 IEEE Xplore 发表而检查的 PDF 限制。"
+    },
+    "acm": {
+      "label": "ACM 会议 / 期刊",
+      "description": "ACM acmart 源码结构，以及可直接发表的研究元数据。"
+    },
+    "journal": {
+      "label": "其他期刊",
+      "description": "不针对特定出版商的期刊检查。投稿前请补充该期刊的确切限制。"
+    },
+    "thesis": {
+      "label": "学位论文",
+      "description": "长文档结构、导航、参考文献和可移植源码检查。"
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "工作经历",
+      "education": "教育背景",
+      "skills": "技能",
+      "projects": "项目",
+      "summary": "个人简介"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1：已验证 {{passed}}/{{total}} 条可机器检查的规则。这只是子集检查，不构成合规声明。",
+    "coverageWithBlindSpots": "PDF/UA-1：已验证 {{passed}}/{{total}} 条可机器检查的规则。其中 Oleafly 能检查 {{covered}} 条，有 {{unavailable}} 条无法在此文件中检查。这只是子集检查，不构成合规声明。"
+  },
+  "taggingGate": {
+    "noSupport": "{{name}} 文档类无法生成带标签的输出，LaTeX Project 也未预期它会支持。",
+    "noSupportWithNote": "{{name}} 文档类无法生成带标签的输出，LaTeX Project 也未预期它会支持。{{note}}",
+    "currentlyIncompatible": "{{name}} 文档类目前尚不兼容 LaTeX 标签功能，因此准备此源码也无法生成无障碍 PDF。",
+    "currentlyIncompatibleWithNote": "{{name}} 文档类目前尚不兼容 LaTeX 标签功能，因此准备此源码也无法生成无障碍 PDF。{{note}}",
+    "partiallyCompatible": "{{name}} 文档类仅部分兼容标签功能，结构树中可能会出现缺失。",
+    "partiallyCompatibleWithNote": "{{name}} 文档类仅部分兼容标签功能，结构树中可能会出现缺失。{{note}}",
+    "unrecorded": "LaTeX Project 尚未记录 {{name}} 文档类的标签支持状态，因此结果未经证实。请编译并检查输出。"
+  },
+  "prep": {
+    "metadataUpdated": "已将所需的标签键添加到你的 \\DocumentMetadata 中。",
+    "metadataAdded": "已将 \\DocumentMetadata 添加为第一行（必需，必须位于 \\documentclass 之前）。",
+    "headerRows": "已将 table/header-rows 设置为 1，使每个表格的第一行被标记为表头单元格。如果表格的表头深度不同，请更改此数字。",
+    "unicodeMath": "已添加 \\usepackage{unicode-math}，此引擎的数学公式标签功能需要它。",
+    "altPlaceholders_other": "已为 {{count}} 张图片添加替代文本占位符。请将 TODO 文本替换为实际描述。",
+    "titleRequired": "PDF/UA 需要一个可由阅读器显示的文档标题。请加载 hyperref 并设置 \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}。",
+    "incompatiblePackages_other": "以下宏包与标签功能不兼容：{{packages}}。来自这些宏包的内容可能未加标签就进入 PDF。请尽可能替换这些宏包。",
+    "cautionPackages": "这些宏包仅部分添加标签，或没有记录的标签判定结果：{{packages}}。请编译并检查结构树是否存在缺失。",
+    "compileLua": "请使用 TeX Live 2025 或更新版本中的 LuaLaTeX 编译准备好的源码，然后重新检查输出。",
+    "compileAny": "请使用 TeX Live 2025 或更新版本中的 pdfLaTeX 或 LuaLaTeX 编译准备好的源码，然后重新检查输出。无障碍数学公式需要 LuaLaTeX。内置引擎无法生成标签。"
+  },
+  "gate": {
+    "incompatiblePackages_other": "这些宏包与标签功能不兼容：{{packages}}。来自这些宏包的内容可能未加标签就进入 PDF。",
+    "incompatiblePackagesTruncated": "这些宏包与标签功能不兼容：{{packages}} 以及另外 {{more}} 个。来自这些宏包的内容可能未加标签就进入 PDF。",
+    "partialPackages": "这些宏包仅部分添加标签：{{packages}}。",
+    "partialPackagesTruncated": "这些宏包仅部分添加标签：{{packages}} 以及另外 {{more}} 个。",
+    "unknownPackages": "未记录 {{packages}} 的标签判定结果。",
+    "unknownPackagesTruncated": "未记录 {{packages}} 以及另外 {{more}} 个宏包的标签判定结果。",
+    "cautionAdvice": "请编译并检查结构树是否存在缺失。"
+  },
+  "panel": {
+    "title": "预检",
+    "readerDisabled": "请先编译并运行输出检查。",
+    "readerEnabled": "打开从 PDF 中提取的文本。",
+    "readerButton": "显示读者看到的内容",
+    "aboutLabel": "关于预检",
+    "aboutTitle": "预检检查的内容",
+    "aboutIntro": "预检会读取项目源码、编译器日志和当前 PDF。请只开启适合本文档的检查。",
+    "aboutFooter": "已验证的结果来自直接观察，建议性的结果仍需要你自行判断。无异常的报告有助于审阅，但不能证明稿件被接收或具备无障碍性。所有检查均在本地运行。",
+    "enableCheck": "启用 {{check}}",
+    "runCheck": "运行 {{check}}",
+    "rerunCheck": "重新运行 {{check}}",
+    "run": "运行",
+    "rerun": "重新运行",
+    "collapse": "折叠",
+    "expand": "展开",
+    "publicationProfile": "出版配置",
+    "anonymousReview": "匿名评审",
+    "anonymousReviewHint": "同时检查作者字段、致谢和 PDF 元数据。",
+    "anonymousReviewToggle": "检查匿名评审的身份信息。",
+    "engineUnsupported": "尚未实现 {{engine}} 源码检查。此检查仅使用编译后的 PDF，不会将缺少源码支持报告为失败。",
+    "runToSeeResults": "运行此检查即可查看结果。",
+    "analyzing": "正在分析…",
+    "runEnabled_other": "运行 {{count}} 项已启用的检查",
+    "rerunEnabled_other": "重新运行 {{count}} 项已启用的检查",
+    "failed": "预检失败：{{error}}",
+    "standardsCaveat": "Oleafly 会读取 PDF/UA 和 WCAG 中能够在文件本身内检查的部分。它无法判断替代文本是否有意义、阅读顺序是否合理，或颜色对比度是否足够，这些都需要人工判断。如需正式的一致性声明，请使用 veraPDF 或 PAC 2024 进行验证。",
+    "pdfRequired": "需要 PDF。请编译项目后重新运行。此检查尚未评估。",
+    "compileFirst": "请先编译项目。预检需要当前的编译器日志或 PDF 来评估构建质量。",
+    "partialCoverage": "源码检查已完成。请编译项目并再次运行，以完成 PDF 层面的检查。",
+    "unsupportedCoverage": "未评估。尚未实现该引擎的源码检查。",
+    "groupSource": "项目与源码",
+    "groupOutput": "编译输出",
+    "fixAll_other": "使用 AI 修复全部 {{count}} 项",
+    "noProblems": "未发现问题。"
+  },
+  "finding": {
+    "review": "需复核",
+    "manual": "需人工",
+    "page": "第 {{page}} 页",
+    "needsJudgment": "需要你的判断。仅凭文件本身，任何工具都无法判定这一项。",
+    "jumpToSource": "跳转到源码",
+    "fixWithAi": "用 AI 修复"
+  },
+  "score": {
+    "notEvaluated": "{{label}} 未评估",
+    "readiness": "{{label}} 就绪度为 {{score}}，满分 100 分",
+    "notScored": "未评分"
+  },
+  "reader": {
+    "title": "读者所见",
+    "description": "按阅读顺序从当前 PDF 提取的文本。这接近屏幕阅读器或自动化解析器接收到的内容。",
+    "pagesNav": "PDF 页面",
+    "page": "第 {{page}} 页",
+    "empty": "空白",
+    "extractedFrom": "从第 {{page}} 页提取的文本",
+    "pageOf": "第 {{page}} 页，共 {{total}} 页",
+    "noText": "此页面未找到可选择的文本。"
+  },
+  "atsCard": {
+    "title": "解析器提取的内容",
+    "notFound": "未找到",
+    "links_other": "{{count}} 个链接",
+    "detected": "{{section}}：已检测到",
+    "requiredMissing": "{{section}}：未检测到必需章节。",
+    "optionalMissing": "{{section}}：未检测到可选章节。",
+    "detectedTitle": "已检测到 {{section}} 章节",
+    "requiredMissingTitle": "应有 {{section}} 章节，但未检测到",
+    "optionalMissingTitle": "{{section}} 为可选章节，未检测到",
+    "optionalSuffix": "（可选）"
+  },
+  "prepExport": {
+    "title": "无障碍导出",
+    "intro": "为本文档准备面向 PDF/UA-2 的带标签输出。Oleafly 会添加 \\DocumentMetadata（设置 pdfstandard=ua-2 和 tagging=on），并加入它可填充的替代文本与表格设置。请使用 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 编译结果，然后重新检查。无障碍数学公式需要 LuaLaTeX。内置引擎无法生成标签。",
+    "activeFileFallback": "Oleafly 无法加载主文档，因此检查了你正在编辑的文件。请打开主文档，查看构建实际加载的文档类和宏包。",
+    "prepare": "准备无障碍导出",
+    "unavailable": "此文档类不支持准备工作。请切换到标签代码支持的文档类，然后重新运行检查。兼容性数据来自 LaTeX Project，检索于 {{retrieved}}。",
+    "unavailableUndated": "此文档类不支持准备工作。请切换到标签代码支持的文档类，然后重新运行检查。兼容性数据来自 LaTeX Project。",
+    "applied": "已应用",
+    "apply": "应用到文档",
+    "copied": "已复制",
+    "copy": "复制源码",
+    "compileTagged": "编译带标签版本并验证",
+    "compileTaggedWarning": "系统 LuaLaTeX 可以读取本地文件。请仅对可信项目运行。",
+    "noEngine": "要在应用内生成带标签的 PDF，请在设置的“LaTeX 引擎”中启用一个引擎。也可以使用你自己的 TeX Live 2025 或更新版本中的 pdfLaTeX 或 LuaLaTeX 编译准备好的源码。"
+  }
+}

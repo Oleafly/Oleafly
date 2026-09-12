@@ -14,6 +14,7 @@ import {
 import { cn } from "./cn";
 import { modalCoordinator, visibleFocusable } from "./modal-coordinator";
 import type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
+import type { TemplatesMessageKey, TemplatesTranslator } from "./messages";
 
 // Preferred category order (anything else falls to the end, alphabetically).
 const CATEGORY_ORDER = [
@@ -31,50 +32,74 @@ const CATEGORY_ORDER = [
   "Calendars",
   "Letters",
 ];
-const CATEGORY_LABELS: Record<string, string> = {
-  "CVs & Resumes": "Resume",
-  "Diagrams & Figures": "Diagrams",
-  "Journals & Conferences": "Journals",
+const CATEGORY_KEYS: Record<string, { label: TemplatesMessageKey; full?: TemplatesMessageKey }> = {
+  All: { label: "category.all" },
+  "AI Generated": { label: "category.aiGenerated" },
+  Blank: { label: "category.blank" },
+  "Diagrams & Figures": { label: "category.diagrams", full: "category.diagramsFull" },
+  "CVs & Resumes": { label: "category.resume", full: "category.resumeFull" },
+  "Journals & Conferences": { label: "category.journals", full: "category.journalsFull" },
+  Bibliographies: { label: "category.bibliographies" },
+  Assignments: { label: "category.assignments" },
+  "Theses & Reports": { label: "category.theses" },
+  Books: { label: "category.books" },
+  Presentations: { label: "category.presentations" },
+  Posters: { label: "category.posters" },
+  Newsletters: { label: "category.newsletters" },
+  Calendars: { label: "category.calendars" },
+  Letters: { label: "category.letters" },
+  Other: { label: "category.other" },
 };
+
+function categoryLabel(category: string, t: TemplatesTranslator): string {
+  const entry = CATEGORY_KEYS[category];
+  return entry ? t(entry.label) : category;
+}
+
+function categoryFullName(category: string, t: TemplatesTranslator): string | undefined {
+  const full = CATEGORY_KEYS[category]?.full;
+  return full ? t(full) : undefined;
+}
 
 // Aspirational, template-specific placeholders for the project-name field, keyed
 // by template id first, then falling back by category. A small, editable map.
-const NAME_HINT_BY_ID: Record<string, string> = {
-  blank: "Untitled",
-  "ats-resume": "Jane Doe Resume",
-  resume: "Alex Chen Resume",
-  "modern-resume": "Morgan Lee Resume",
-  "sidebar-resume": "Jordan Rivera CV",
-  ieee: "Attention Is All You Need",
-  acm: "A Scalable Approach to Consensus",
-  elsevier: "On the Dynamics of Complex Networks",
-  "article-academic": "A Minimalist Study of X",
-  thesis: "Toward Reliable Distributed Systems",
-  book: "The Pragmatic Universe",
-  beamer: "Q3 Product Review",
-  poster: "Deep Learning for Protein Folding",
-  newsletter: "The Weekly Ledger",
-  assignment: "Algorithms Assignment 3",
-  calendar: "January 2026 Calendar",
-  bibliography: "My References",
-  letter: "Cover Letter to Acme",
+const NAME_HINT_BY_ID: Record<string, TemplatesMessageKey> = {
+  blank: "nameHint.blank",
+  "ats-resume": "nameHint.atsResume",
+  resume: "nameHint.resume",
+  "modern-resume": "nameHint.modernResume",
+  "sidebar-resume": "nameHint.sidebarResume",
+  ieee: "nameHint.ieee",
+  acm: "nameHint.acm",
+  elsevier: "nameHint.elsevier",
+  "article-academic": "nameHint.articleAcademic",
+  thesis: "nameHint.thesis",
+  book: "nameHint.book",
+  beamer: "nameHint.beamer",
+  poster: "nameHint.poster",
+  newsletter: "nameHint.newsletter",
+  assignment: "nameHint.assignment",
+  calendar: "nameHint.calendar",
+  bibliography: "nameHint.bibliography",
+  letter: "nameHint.letter",
 };
-const NAME_HINT_BY_CATEGORY: Record<string, string> = {
-  "CVs & Resumes": "Firstname Lastname Resume",
-  "Journals & Conferences": "Your Paper Title",
-  Presentations: "Your Talk Title",
-  Books: "Your Book Title",
-  "Theses & Reports": "Your Thesis Title",
-  Posters: "Your Poster Title",
-  Letters: "Your Letter",
-  Newsletters: "Your Newsletter",
-  Assignments: "Your Assignment",
-  Calendars: "Your Calendar",
-  Bibliographies: "Your Bibliography",
+const NAME_HINT_BY_CATEGORY: Record<string, TemplatesMessageKey> = {
+  "CVs & Resumes": "nameHint.categoryResume",
+  "Journals & Conferences": "nameHint.categoryJournals",
+  Presentations: "nameHint.categoryPresentations",
+  Books: "nameHint.categoryBooks",
+  "Theses & Reports": "nameHint.categoryTheses",
+  Posters: "nameHint.categoryPosters",
+  Letters: "nameHint.categoryLetters",
+  Newsletters: "nameHint.categoryNewsletters",
+  Assignments: "nameHint.categoryAssignments",
+  Calendars: "nameHint.categoryCalendars",
+  Bibliographies: "nameHint.categoryBibliographies",
 };
-function nameHint(t: TemplateInfo | null): string {
-  if (!t) return "My Project";
-  return NAME_HINT_BY_ID[t.id] ?? NAME_HINT_BY_CATEGORY[t.category] ?? "My Project";
+function nameHint(template: TemplateInfo | null, t: TemplatesTranslator): string {
+  if (!template) return t("nameHint.default");
+  const key = NAME_HINT_BY_ID[template.id] ?? NAME_HINT_BY_CATEGORY[template.category];
+  return key ? t(key) : t("nameHint.default");
 }
 
 // "All" first, then AI Generated, then the curated order, then anything new
@@ -97,8 +122,8 @@ export function orderedCategories(
   ];
 }
 
-export function compilerLabel(template: TemplateInfo): string {
-  if (template.document_engine === "unknown") return "Unknown compiler";
+export function compilerLabel(template: TemplateInfo, t: TemplatesTranslator): string {
+  if (template.document_engine === "unknown") return t("compiler.unknown");
   if (template.document_engine === "typst") return "Typst";
   if (template.document_engine === "markdown") return "Pandoc";
   return template.engine === "luatex" ? "LuaLaTeX" : "Tectonic";
@@ -141,18 +166,28 @@ function useTemplatePreview(t: TemplateInfo, host: TemplatesHost): string | null
   return uri;
 }
 
-function Preview({ t, host, className }: { t: TemplateInfo; host: TemplatesHost; className?: string }) {
-  const uri = useTemplatePreview(t, host);
+function Preview({
+  template,
+  host,
+  className,
+  t,
+}: {
+  template: TemplateInfo;
+  host: TemplatesHost;
+  className?: string;
+  t: TemplatesTranslator;
+}) {
+  const uri = useTemplatePreview(template, host);
   if (uri) {
     // Diagram/figure previews are a standalone cropped image, not a document
     // page, and rarely share the card's portrait aspect ratio. Cropping them
     // like a page thumbnail (object-cover) can clip content off the bottom;
     // show the whole figure instead.
-    const isFigure = t.category === "Diagrams & Figures";
+    const isFigure = template.category === "Diagrams & Figures";
     return (
       <img
         src={uri}
-        alt={`${t.name} preview`}
+        alt={t("dialog.previewAlt", { name: template.name })}
         className={cn(
           "h-full w-full bg-white",
           isFigure ? "object-contain p-3" : "object-cover object-top",
@@ -165,9 +200,15 @@ function Preview({ t, host, className }: { t: TemplateInfo; host: TemplatesHost;
   // No rendered thumbnail (e.g. Markdown previews need Pandoc at build time):
   // fall back to an intentional, engine-branded placeholder tinted by the
   // template's accent color, rather than a generic gray file icon.
-  const tint = /^#[0-9a-fA-F]{6}$/.test(t.default_color ?? "") ? (t.default_color as string) : null;
+  const tint = /^#[0-9a-fA-F]{6}$/.test(template.default_color ?? "")
+    ? (template.default_color as string)
+    : null;
   const Icon =
-    t.document_engine === "markdown" ? Hash : t.document_engine === "typst" ? Sparkles : FileText;
+    template.document_engine === "markdown"
+      ? Hash
+      : template.document_engine === "typst"
+        ? Sparkles
+        : FileText;
   return (
     <div
       className={cn("flex h-full w-full flex-col items-center justify-center gap-2 bg-white", className)}
@@ -185,26 +226,32 @@ function Preview({ t, host, className }: { t: TemplateInfo; host: TemplatesHost;
         className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
         style={{ color: tint ?? "#737373", backgroundColor: tint ? `${tint}14` : "#f5f5f5" }}
       >
-        {compilerLabel(t)}
+        {compilerLabel(template, t)}
       </span>
       <span className="line-clamp-2 px-3 text-center text-[10px] font-medium text-neutral-500">
-        {t.name}
+        {template.name}
       </span>
     </div>
   );
 }
 
-function AtsBadge({ profile }: { profile: TemplateInfo["ats_profile"] }) {
+function AtsBadge({
+  profile,
+  t,
+}: {
+  profile: TemplateInfo["ats_profile"];
+  t: TemplatesTranslator;
+}) {
   if (profile === "friendly")
     return (
       <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-        ATS-friendly
+        {t("dialog.atsFriendly")}
       </span>
     );
   if (profile === "design-forward")
     return (
       <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-500">
-        Design-forward
+        {t("dialog.designForward")}
       </span>
     );
   return null;
@@ -245,7 +292,7 @@ export function NewProjectDialog({
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
 }) {
-  const { Button, Input, Tooltip, Select } = kit;
+  const { Button, Input, Tooltip, Select, t } = kit;
   const [step, setStep] = useState<1 | 2>(1);
   const createChordRef = useRef<{ enabled: boolean; submit: () => Promise<void> }>({
     enabled: false,
@@ -415,10 +462,10 @@ export function NewProjectDialog({
     // Fetch any fonts/packages the template needs, showing live progress, before
     // handing off to creation (which stages them into the project).
     if (!selected.assets_ready) {
-      setSetup({ active: true, label: "Setting up your template..." });
+      setSetup({ active: true, label: t("setup.preparing") });
       try {
         await host.ensureAssets(selected.id, (label, index, total) => {
-          setSetup({ active: true, label: `Downloading ${label} (${index} of ${total})` });
+          setSetup({ active: true, label: t("setup.downloading", { label, index, total }) });
         });
       } catch (err) {
         host.logError("download template assets", err);
@@ -466,7 +513,7 @@ export function NewProjectDialog({
       >
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h2 id="new-project-title" className="text-base font-semibold">
-            {step === 1 ? "Choose a template" : "Name your project"}
+            {step === 1 ? t("dialog.chooseTemplate") : t("dialog.nameProject")}
           </h2>
           <div className="flex items-center gap-2">
             {step === 1 && importControl}
@@ -478,7 +525,7 @@ export function NewProjectDialog({
                 data-tour-hide
                 onClick={onImportProject}
               >
-                <FolderInput className="size-3.5" /> Import
+                <FolderInput className="size-3.5" /> {t("dialog.import")}
               </Button>
             )}
             {step === 1 && onGenerateWithAi && (
@@ -489,11 +536,11 @@ export function NewProjectDialog({
                 data-tour-hide
                 onClick={onGenerateWithAi}
               >
-                <Sparkles className="size-3.5" /> Generate a template with AI
+                <Sparkles className="size-3.5" /> {t("dialog.generateWithAi")}
               </Button>
             )}
             {allowClose ? (
-              <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label="Close">
+              <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label={t("dialog.close")}>
                 <X className="size-4" />
               </Button>
             ) : null}
@@ -507,7 +554,7 @@ export function NewProjectDialog({
                 <button
                   key={c}
                   type="button"
-                  title={CATEGORY_LABELS[c] ? c : undefined}
+                  title={categoryFullName(c, t)}
                   onClick={() => setCategory(c)}
                   className={cn(
                     "mb-0.5 flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors",
@@ -518,7 +565,7 @@ export function NewProjectDialog({
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
                     {c === "AI Generated" && <Sparkles className="size-3.5 shrink-0 text-primary" />}
-                    <span className="truncate">{CATEGORY_LABELS[c] ?? c}</span>
+                    <span className="truncate">{categoryLabel(c, t)}</span>
                   </span>
                   <span
                     className={cn(
@@ -541,7 +588,7 @@ export function NewProjectDialog({
                   className="mt-auto w-full justify-start gap-2 text-muted-foreground"
                 >
                   <Download className="size-3.5" />
-                  Get more templates
+                  {t("dialog.getMoreTemplates")}
                 </Button>
               )}
             </nav>
@@ -554,24 +601,24 @@ export function NewProjectDialog({
                     ref={searchRef}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search templates"
+                    placeholder={t("dialog.searchPlaceholder")}
                     className="h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
                 <Select
-                  aria-label="Document engine"
+                  aria-label={t("dialog.engineLabel")}
                   data-testid="template-engine-filter"
                   value={engine}
                   onValueChange={(v) => setEngine(v as typeof engine)}
                   className="w-[132px] text-xs"
                   options={[
-                    { value: "all", label: "All engines" },
-                    { value: "latex", label: "LaTeX" },
-                    { value: "typst", label: "Typst" },
-                    { value: "markdown", label: "Markdown" },
+                    { value: "all", label: t("dialog.engineAll") },
+                    { value: "latex", label: t("dialog.engineLatex") },
+                    { value: "typst", label: t("dialog.engineTypst") },
+                    { value: "markdown", label: t("dialog.engineMarkdown") },
                   ]}
                 />
-                <Tooltip label="Show only resume templates that Applicant Tracking Systems can parse reliably: single-column, standard fonts, and selectable text (no words baked into graphics).">
+                <Tooltip label={t("dialog.atsTooltip")}>
                   <button
                     type="button"
                     onClick={() => setAtsOnly((v) => !v)}
@@ -582,10 +629,10 @@ export function NewProjectDialog({
                         : "border-border text-muted-foreground hover:bg-accent",
                     )}
                   >
-                    <Check className={cn("size-3", !atsOnly && "opacity-0")} /> ATS-friendly
+                    <Check className={cn("size-3", !atsOnly && "opacity-0")} /> {t("dialog.atsFriendly")}
                   </button>
                 </Tooltip>
-                <Tooltip label="Show only templates that compile with no downloads: their fonts and packages are already bundled, so they build without an internet connection.">
+                <Tooltip label={t("dialog.offlineTooltip")}>
                   <button
                     type="button"
                     data-testid="template-offline-filter"
@@ -597,7 +644,7 @@ export function NewProjectDialog({
                         : "border-border text-muted-foreground hover:bg-accent",
                     )}
                   >
-                    <Check className={cn("size-3", !offlineOnly && "opacity-0")} /> Offline
+                    <Check className={cn("size-3", !offlineOnly && "opacity-0")} /> {t("dialog.offlineFilter")}
                   </button>
                 </Tooltip>
               </div>
@@ -612,11 +659,10 @@ export function NewProjectDialog({
                       <Sparkles className="size-6" />
                     </span>
                     <p className="text-base font-semibold text-foreground">
-                      No templates match your filters
+                      {t("dialog.emptyTitle")}
                     </p>
                     <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-                      Try a different search, or generate a brand-new template tailored to what you
-                      need.
+                      {t("dialog.emptyBody")}
                     </p>
                     {onGenerateWithAi && (
                       <Button
@@ -625,53 +671,53 @@ export function NewProjectDialog({
                         data-tour-hide
                         onClick={onGenerateWithAi}
                       >
-                        <Sparkles className="size-4" /> Generate a template with AI
+                        <Sparkles className="size-4" /> {t("dialog.generateWithAi")}
                       </Button>
                     )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4">
-                    {filtered.map((t) => (
+                    {filtered.map((entry) => (
                       <button
-                        key={t.id}
+                        key={entry.id}
                         type="button"
                         data-tour="project-template-card"
-                        data-testid={`template-card-${t.id}`}
-                        onClick={() => choose(t)}
-                        title={t.description}
+                        data-testid={`template-card-${entry.id}`}
+                        onClick={() => choose(entry)}
+                        title={entry.description}
                         className="group flex flex-col text-left focus:outline-none"
                       >
                         <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm ring-1 ring-transparent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-primary/50 group-focus-visible:ring-primary">
-                          <Preview t={t} host={host} />
-                          {(t.category || "") === "AI Generated" && (
+                          <Preview template={entry} host={host} t={t} />
+                          {(entry.category || "") === "AI Generated" && (
                             <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
-                              <Sparkles className="size-2.5" /> AI
+                              <Sparkles className="size-2.5" /> {t("dialog.aiBadge")}
                             </span>
                           )}
-                          {!t.assets_ready && (
+                          {!entry.assets_ready && (
                             <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
-                              <Download className="size-2.5" /> Setup
+                              <Download className="size-2.5" /> {t("dialog.setupBadge")}
                             </span>
                           )}
                         </div>
                         <div className="mt-2 flex items-center gap-1.5 px-0.5">
                           <span className="truncate text-xs font-medium leading-tight text-foreground">
-                            {t.name}
+                            {entry.name}
                           </span>
-                          {t.ats_profile === "friendly" && (
+                          {entry.ats_profile === "friendly" && (
                             <span
                               className="size-1.5 shrink-0 rounded-full bg-emerald-500"
-                              title="ATS-friendly"
+                              title={t("dialog.atsFriendly")}
                             />
                           )}
                         </div>
                         <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
                           <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                            {compilerLabel(t)}
+                            {compilerLabel(entry, t)}
                           </span>
-                          {!t.assets_ready && (
+                          {!entry.assets_ready && (
                             <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400">
-                              needs setup
+                              {t("dialog.needsSetup")}
                             </span>
                           )}
                         </div>
@@ -687,16 +733,16 @@ export function NewProjectDialog({
             <div className="flex min-h-0 flex-1">
               <div className="hidden w-64 shrink-0 flex-col gap-3 border-r p-5 sm:flex">
                 <div className="aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm">
-                  <Preview t={selected} host={host} />
+                  <Preview template={selected} host={host} t={t} />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">{selected.name}</div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{selected.category}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{categoryLabel(selected.category, t)}</div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
-                  <AtsBadge profile={selected.ats_profile} />
+                  <AtsBadge profile={selected.ats_profile} t={t} />
                   <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {compilerLabel(selected)}
+                    {compilerLabel(selected, t)}
                   </span>
                 </div>
                 {selected.license && (
@@ -712,7 +758,7 @@ export function NewProjectDialog({
                   htmlFor="new-project-name"
                   className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 >
-                  Project name
+                  {t("dialog.projectName")}
                 </label>
                 <Input
                   id="new-project-name"
@@ -725,12 +771,12 @@ export function NewProjectDialog({
                       void submit();
                     }
                   }}
-                  placeholder={nameHint(selected)}
+                  placeholder={nameHint(selected, t)}
                   className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
                 />
 
                 <p className="mb-1.5 mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Cover color
+                  {t("dialog.coverColor")}
                 </p>
                 <div
                   className="flex flex-wrap items-center gap-2"
@@ -765,10 +811,7 @@ export function NewProjectDialog({
                 {!selected.assets_ready && (
                   <div className="mt-5 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
                     <Sparkles className="mt-0.5 size-3.5 shrink-0" />
-                    <span>
-                      This template needs a one-time setup download (fonts and packages). We will
-                      fetch it in the background right after you create the project.
-                    </span>
+                    <span>{t("dialog.setupNotice")}</span>
                   </div>
                 )}
 
@@ -779,7 +822,7 @@ export function NewProjectDialog({
                     onClick={() => setStep(1)}
                     disabled={working}
                   >
-                    <ArrowLeft className="size-4" /> Back
+                    <ArrowLeft className="size-4" /> {t("dialog.back")}
                   </Button>
                   <Button
                     data-testid="create-project"
@@ -791,8 +834,8 @@ export function NewProjectDialog({
                     {setup.active
                       ? setup.label
                       : busy
-                        ? "Setting up..."
-                        : "Create project"}
+                        ? t("dialog.creating")
+                        : t("dialog.create")}
                     {!working && <ArrowRight className="size-4" />}
                     {!working && (
                       <span className="inline-flex items-center gap-1">

@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { ComposerCommand } from "./composer-command-registry";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +53,7 @@ export function filterSlashCommands(
 
 export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProps>(
   ({ commands, query, onSelect, onClose, onActiveCommandChange }, ref) => {
+    const { t } = useTranslation(["common", "ai"]);
     const filteredCommands = useMemo(
       () => filterSlashCommands(commands, query),
       [commands, query],
@@ -119,7 +121,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
       <div
         id="ai-slash-command-menu"
         role="listbox"
-        aria-label="Slash commands"
+        aria-label={t(($) => $.ai.composer.slashMenuAriaLabel)}
         className="absolute bottom-full left-0 z-50 mb-2 max-h-72 w-full overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
       >
         {filteredCommands.map((command, index) => {

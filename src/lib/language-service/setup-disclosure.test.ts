@@ -1,4 +1,4 @@
-import languageServerManifest from "../../../scripts/language-servers/manifest.json";
+import languageServerManifest from "../../../scripts/language-servers/manifest.json" with { type: "json" };
 import { describe, expect, it } from "vitest";
 import {
   getLanguageServiceSetupDisclosure,

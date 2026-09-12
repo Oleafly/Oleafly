@@ -10,7 +10,8 @@ import {
 } from "@oleafly/latex";
 import type { DocumentEngineDescriptor, TexFlavor } from "@/lib/tauri";
 import { parseEntry } from "@/lib/citation/bibtex";
-import { useFilesStore } from "@/store/files";
+import { i18n } from "@/i18n";
+import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { isCompileCheckpointCurrent, useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
 
@@ -204,7 +205,12 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
     try {
       const files = useFilesStore.getState();
       if (!files.engineLoaded) {
-        set({ running: false, error: files.engineError ?? "Document engine details are still loading." });
+        set({
+          running: false,
+          error: files.engineError
+            ? engineErrorMessage(files.engineError)
+            : i18n.t(($) => $.core.engine.error.stillLoading),
+        });
         return;
       }
       // Lint the document currently in the editor so source offsets line up with

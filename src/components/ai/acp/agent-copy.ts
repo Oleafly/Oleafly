@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { acpReadiness, type AcpAgentStatus, type AcpReadiness } from "@/lib/acp";
 
 export function cliLabel(agent: AcpAgentStatus): string {
@@ -14,22 +15,35 @@ export function readinessDetail(
   switch (readiness) {
     case "ready":
       return agent.managed
-        ? `Bridge ${agent.installedVersion ?? agent.definition.version} installed by Oleafly.`
-        : "Bridge found on PATH.";
+        ? i18n.t(($) => $.ai.acp.readiness.managedBridge, {
+            version: agent.installedVersion ?? agent.definition.version,
+          })
+        : i18n.t(($) => $.ai.acp.readiness.bridgeOnPath);
     case "bridge-missing":
       return cli?.path
-        ? `${cliLabel(agent)} found at ${cli.path}. Install the ACP bridge ${agent.definition.version} to connect.`
-        : `Install the ACP bridge ${agent.definition.version} to connect this agent.`;
+        ? i18n.t(($) => $.ai.acp.readiness.bridgeMissingWithCli, {
+            cli: cliLabel(agent),
+            path: cli.path,
+            version: agent.definition.version,
+          })
+        : i18n.t(($) => $.ai.acp.readiness.bridgeMissing, {
+            version: agent.definition.version,
+          });
     case "cli-missing":
       return cli
-        ? `${cli.displayName} is not on your PATH. Install it, then run ${cli.signInCommand}.`
-        : "This agent's command line tool was not found.";
+        ? i18n.t(($) => $.ai.acp.readiness.cliMissing, {
+            cli: cli.displayName,
+            command: cli.signInCommand,
+          })
+        : i18n.t(($) => $.ai.acp.readiness.cliNotFound);
     default:
-      return agent.reason ?? "This agent cannot run on this computer.";
+      return agent.reason ?? i18n.t(($) => $.ai.acp.readiness.unavailable);
   }
 }
 
 export function bridgeSourceLabel(agent: AcpAgentStatus): string {
-  if (!agent.installed) return "Not installed";
-  return agent.managed ? "Managed by Oleafly" : "On PATH";
+  if (!agent.installed) return i18n.t(($) => $.ai.acp.bridgeSource.notInstalled);
+  return agent.managed
+    ? i18n.t(($) => $.ai.acp.bridgeSource.managed)
+    : i18n.t(($) => $.ai.acp.bridgeSource.onPath);
 }

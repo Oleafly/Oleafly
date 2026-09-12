@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const { restore } = await vi.hoisted(async () => {
   vi.resetModules();
-  const { installUiDom } = await import("./tests/ui-fixtures");
+  const { initTestI18n, installUiDom } = await import("./tests/ui-fixtures");
+  await initTestI18n();
   return installUiDom();
 });
 vi.mock("@/lib/acp", async (original) => ({

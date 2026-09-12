@@ -4,6 +4,7 @@ import {
   latexInlineVerbatimSpan,
 } from "./latex-lexical";
 import { validateXparseArgumentSpecification } from "./latex-xparse";
+import { editorMessage, type EditorMessageKey } from "./messages";
 
 interface OpenToken {
   from: number;
@@ -168,6 +169,38 @@ function definitionGroup(
   };
 }
 
+type DefinitionGroupKind =
+  | "environmentName"
+  | "commandName"
+  | "argumentSpecification"
+  | "argumentCount"
+  | "defaultArgument"
+  | "beginBody"
+  | "replacementBody"
+  | "endBody";
+
+const BRACED_GROUP_KEYS: Record<DefinitionGroupKind, EditorMessageKey> = {
+  environmentName: "latex.lint.bracedEnvironmentName",
+  commandName: "latex.lint.bracedCommandName",
+  argumentSpecification: "latex.lint.bracedArgumentSpecification",
+  argumentCount: "latex.lint.bracedArgumentCount",
+  defaultArgument: "latex.lint.bracedDefaultArgument",
+  beginBody: "latex.lint.bracedBeginBody",
+  replacementBody: "latex.lint.bracedReplacementBody",
+  endBody: "latex.lint.bracedEndBody",
+};
+
+const UNCLOSED_GROUP_KEYS: Record<DefinitionGroupKind, EditorMessageKey> = {
+  environmentName: "latex.lint.unclosedEnvironmentName",
+  commandName: "latex.lint.unclosedCommandName",
+  argumentSpecification: "latex.lint.unclosedArgumentSpecification",
+  argumentCount: "latex.lint.unclosedArgumentCount",
+  defaultArgument: "latex.lint.unclosedDefaultArgument",
+  beginBody: "latex.lint.unclosedBeginBody",
+  replacementBody: "latex.lint.unclosedReplacementBody",
+  endBody: "latex.lint.unclosedEndBody",
+};
+
 function diagnostic(
   from: number,
   to: number,
@@ -179,7 +212,7 @@ function diagnostic(
     to: Math.max(from + 1, to),
     severity,
     message,
-    source: "LaTeX syntax",
+    source: editorMessage("latex.lint.source"),
   };
 }
 
@@ -195,7 +228,7 @@ function validateRequiredDefinitionGroup(
   text: string,
   start: number,
   command: string,
-  description: string,
+  kind: DefinitionGroupKind,
   diagnostics: Diagnostic[],
 ): DefinitionGroup | null {
   const from = skipWhitespace(text, start);
@@ -206,7 +239,7 @@ function validateRequiredDefinitionGroup(
         markerFrom,
         Math.min(text.length, markerFrom + 1),
         "error",
-        `\\${command} requires a braced ${description}`,
+        editorMessage(BRACED_GROUP_KEYS[kind], { command }),
       ),
     );
     return null;
@@ -219,7 +252,7 @@ function validateRequiredDefinitionGroup(
         markerFrom,
         Math.min(text.length, markerFrom + 1),
         "error",
-        `Unclosed ${description} for \\${command}`,
+        editorMessage(UNCLOSED_GROUP_KEYS[kind], { command }),
       ),
     );
   }
@@ -230,7 +263,7 @@ function validateOptionalDefinitionGroup(
   text: string,
   start: number,
   command: string,
-  description: string,
+  kind: DefinitionGroupKind,
   diagnostics: Diagnostic[],
 ): DefinitionGroup | null | undefined {
   const from = skipWhitespace(text, start);
@@ -243,7 +276,7 @@ function validateOptionalDefinitionGroup(
         markerFrom,
         Math.min(text.length, markerFrom + 1),
         "error",
-        `Unclosed ${description} for \\${command}`,
+        editorMessage(UNCLOSED_GROUP_KEYS[kind], { command }),
       ),
     );
     return null;
@@ -285,7 +318,7 @@ function validateDefinition(
           cursor,
           cursor + 1,
           "error",
-          `Incomplete command name argument to \\${command}`,
+          editorMessage("latex.lint.incompleteCommandName", { command }),
         ),
       );
       return;
@@ -302,8 +335,8 @@ function validateDefinition(
       cursor,
       command,
       classicEnvironment || xparseEnvironment
-        ? "environment name"
-        : "command name",
+        ? "environmentName"
+        : "commandName",
       diagnostics,
     );
     if (!name) return;
@@ -316,7 +349,7 @@ function validateDefinition(
           name.from + 1,
           name.to - 1,
           "error",
-          `\\${command} requires a single control-sequence name`,
+          editorMessage("latex.lint.requiresControlSequence", { command }),
         ),
       );
     }
@@ -329,7 +362,7 @@ function validateDefinition(
           name.from,
           name.to,
           "error",
-          `\\${command} environment name cannot be empty`,
+          editorMessage("latex.lint.emptyEnvironmentName", { command }),
         ),
       );
     }
@@ -341,7 +374,7 @@ function validateDefinition(
       text,
       cursor,
       command,
-      "argument specification",
+      "argumentSpecification",
       diagnostics,
     );
     if (!specification) return;
@@ -363,7 +396,7 @@ function validateDefinition(
       text,
       cursor,
       command,
-      "argument count",
+      "argumentCount",
       diagnostics,
     );
     if (count === null) return;
@@ -374,7 +407,7 @@ function validateDefinition(
             count.from + 1,
             count.to - 1,
             "error",
-            `\\${command} argument count must be a digit from 0 to 9`,
+            editorMessage("latex.lint.argumentCountDigit", { command }),
           ),
         );
       }
@@ -383,7 +416,7 @@ function validateDefinition(
         text,
         cursor,
         command,
-        "default argument",
+        "defaultArgument",
         diagnostics,
       );
       if (defaultValue === null) return;
@@ -396,8 +429,8 @@ function validateDefinition(
     cursor,
     command,
     classicEnvironment || xparseEnvironment
-      ? "begin body"
-      : "replacement body",
+      ? "beginBody"
+      : "replacementBody",
     diagnostics,
   );
   if (!firstBody) return;
@@ -406,7 +439,7 @@ function validateDefinition(
     text,
     firstBody.to,
     command,
-    "end body",
+    "endBody",
     diagnostics,
   );
 }
@@ -447,7 +480,7 @@ export function lintLatexText(text: string): Diagnostic[] {
             cursor,
             cursor + 1,
             "error",
-            "Closing brace has no matching opening brace",
+            editorMessage("latex.lint.unmatchedClosingBrace"),
           ),
         );
       }
@@ -473,7 +506,10 @@ export function lintLatexText(text: string): Diagnostic[] {
             cursor,
             cursor + width,
             "error",
-            `Mismatched math delimiter: expected ${matchingMathClose(top.delimiter)}, got ${delimiter}`,
+            editorMessage("latex.lint.mismatchedMathDelimiter", {
+              expected: matchingMathClose(top.delimiter),
+              found: delimiter,
+            }),
           ),
         );
       }
@@ -524,7 +560,7 @@ export function lintLatexText(text: string): Diagnostic[] {
           cursor,
           cursor + 1,
           "error",
-          "Incomplete command at end of file",
+          editorMessage("latex.lint.incompleteCommandAtEof"),
         ),
       );
       break;
@@ -554,7 +590,7 @@ export function lintLatexText(text: string): Diagnostic[] {
             cursor,
             commandEnd,
             "error",
-            `\\${command} has an invalid inline-verbatim argument`,
+            editorMessage("latex.lint.invalidVerbatimArgument", { command }),
           ),
         );
         cursor = commandEnd;
@@ -566,7 +602,7 @@ export function lintLatexText(text: string): Diagnostic[] {
             cursor,
             Math.min(text.length, commandEnd + 1),
             "error",
-            `Unclosed \\${command} command`,
+            editorMessage("latex.lint.unclosedCommand", { command }),
           ),
         );
       }
@@ -594,7 +630,7 @@ export function lintLatexText(text: string): Diagnostic[] {
             argument.unclosedOptionalFrom,
             argument.unclosedOptionalFrom + 1,
             "error",
-            `Unclosed optional argument to \\${command}`,
+            editorMessage("latex.lint.unclosedOptionalArgument", { command }),
           ),
         );
       } else if (text[argument.start] !== "{") {
@@ -603,7 +639,7 @@ export function lintLatexText(text: string): Diagnostic[] {
             cursor,
             commandEnd,
             "error",
-            `\\${command} requires a braced argument`,
+            editorMessage("latex.lint.requiresBracedArgument", { command }),
           ),
         );
       } else {
@@ -617,7 +653,7 @@ export function lintLatexText(text: string): Diagnostic[] {
               argument.start,
               argumentEnd + 1,
               "error",
-              `\\${command} argument cannot be empty`,
+              editorMessage("latex.lint.emptyArgument", { command }),
             ),
           );
         }
@@ -641,7 +677,7 @@ export function lintLatexText(text: string): Diagnostic[] {
           cursor,
           commandEnd,
           "error",
-          `\\${command} requires a braced argument`,
+          editorMessage("latex.lint.requiresBracedArgument", { command }),
         ),
       );
       cursor = commandEnd;
@@ -654,7 +690,7 @@ export function lintLatexText(text: string): Diagnostic[] {
           cursor,
           Math.min(text.length, argumentStart + 1),
           "error",
-          `Unclosed argument to \\${command}`,
+          editorMessage("latex.lint.unclosedArgument", { command }),
         ),
       );
       cursor = argumentStart + 1;
@@ -669,7 +705,7 @@ export function lintLatexText(text: string): Diagnostic[] {
           argumentStart,
           argumentEnd + 1,
           "error",
-          `\\${command} argument cannot be empty`,
+          editorMessage("latex.lint.emptyArgument", { command }),
         ),
       );
       cursor = argumentEnd + 1;
@@ -684,7 +720,7 @@ export function lintLatexText(text: string): Diagnostic[] {
             argumentStart + 1,
             argumentEnd,
             "warning",
-            `Duplicate label “${argument}” (first defined earlier in this file)`,
+            editorMessage("latex.lint.duplicateLabel", { label: argument }),
           ),
         );
       } else {
@@ -704,7 +740,9 @@ export function lintLatexText(text: string): Diagnostic[] {
               cursor,
               argumentEnd + 1,
               "error",
-              `Unclosed environment \\begin{${argument}}`,
+              editorMessage("latex.lint.unclosedEnvironment", {
+                environment: `\\begin{${argument}}`,
+              }),
             ),
           );
           cursor = text.length;
@@ -745,7 +783,10 @@ export function lintLatexText(text: string): Diagnostic[] {
           cursor,
           argumentEnd + 1,
           "error",
-          `\\end{${argument}} has no matching \\begin{${argument}}`,
+          editorMessage("latex.lint.endWithoutBegin", {
+            end: `\\end{${argument}}`,
+            begin: `\\begin{${argument}}`,
+          }),
         ),
       );
     } else {
@@ -754,7 +795,10 @@ export function lintLatexText(text: string): Diagnostic[] {
           cursor,
           argumentEnd + 1,
           "error",
-          `Mismatched environment: expected \\end{${top?.name ?? argument}}, got \\end{${argument}}`,
+          editorMessage("latex.lint.mismatchedEnvironment", {
+            expected: `\\end{${top?.name ?? argument}}`,
+            found: `\\end{${argument}}`,
+          }),
         ),
       );
       for (
@@ -768,7 +812,9 @@ export function lintLatexText(text: string): Diagnostic[] {
             skipped.from,
             skipped.to,
             "error",
-            `Unclosed environment \\begin{${skipped.name}}`,
+            editorMessage("latex.lint.unclosedEnvironment", {
+              environment: `\\begin{${skipped.name}}`,
+            }),
           ),
         );
       }
@@ -783,7 +829,7 @@ export function lintLatexText(text: string): Diagnostic[] {
         open.from,
         open.to,
         "error",
-        "Opening brace is not closed",
+        editorMessage("latex.lint.unclosedOpeningBrace"),
       ),
     );
   }
@@ -793,7 +839,10 @@ export function lintLatexText(text: string): Diagnostic[] {
         open.from,
         open.to,
         "error",
-        `Unclosed math delimiter ${open.delimiter}. Expected ${matchingMathClose(open.delimiter)}`,
+        editorMessage("latex.lint.unclosedMathDelimiter", {
+          delimiter: open.delimiter,
+          expected: matchingMathClose(open.delimiter),
+        }),
       ),
     );
   }
@@ -803,7 +852,9 @@ export function lintLatexText(text: string): Diagnostic[] {
         open.from,
         open.to,
         "error",
-        `Unclosed environment \\begin{${open.name}}`,
+        editorMessage("latex.lint.unclosedEnvironment", {
+          environment: `\\begin{${open.name}}`,
+        }),
       ),
     );
   }

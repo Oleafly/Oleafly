@@ -11,10 +11,9 @@ import { useFilesStore } from "@/store/files";
 import { useImportStore } from "@/store/import";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { ensurePandoc } from "@/features/pandoc";
-import { CONVERSION_NOTICE } from "@/features/import-copy";
+import { conversionNotice } from "@/features/import-copy";
+import { i18n } from "@/i18n";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
-
-const ZIP_EXPORT_ERROR_MESSAGE = "Could not save ZIP archive.";
 
 type ZipDownloadSnapshot = Pick<
   ReturnType<typeof useImportStore.getState>,
@@ -80,7 +79,7 @@ function isZipArchive(bytes: Uint8Array): boolean {
 }
 
 function reportZipExportFailure(error: unknown): void {
-  notifyError("ZIP export", error, ZIP_EXPORT_ERROR_MESSAGE);
+  notifyError("ZIP export", error, i18n.t(($) => $.core.import.zipSaveFailed));
 }
 
 export function createZipDownloader(
@@ -93,7 +92,9 @@ export function createZipDownloader(
 
       const destination = await dependencies.pickDestination({
         defaultPath: `${baseName(fileName)}.zip`,
-        filters: [{ name: "Zip archive", extensions: ["zip"] }],
+        filters: [
+          { name: i18n.t(($) => $.core.dialog.filters.zipArchive), extensions: ["zip"] },
+        ],
       });
       if (!destination) return "cancelled";
 
@@ -108,7 +109,7 @@ export function createZipDownloader(
         destination,
         bytesToBase64(archive),
       );
-      toast.success("Saved .zip");
+      toast.success(i18n.t(($) => $.core.import.zipSaved));
       return "saved";
     } catch (error) {
       reportZipExportFailure(error);
@@ -133,13 +134,13 @@ export async function handlePickedFile(file: File): Promise<void> {
       const id = await createProjectFromDocx(baseName(file.name), bytesToBase64(bytes));
       await useFilesStore.getState().refreshProjects();
       await useFilesStore.getState().openProject(id);
-      toast.success(CONVERSION_NOTICE);
+      toast.success(conversionNotice());
     } else if (lower.endsWith(".pdf")) {
       await useImportStore
         .getState()
         .openWithPdf(new Uint8Array(await file.arrayBuffer()), file.name);
     } else {
-      toast.error("Pick a .pdf or .docx file");
+      toast.error(i18n.t(($) => $.core.import.pickPdfOrDocx));
     }
   } catch (e) {
     logError("import", e);
@@ -162,7 +163,7 @@ export async function createProjectFromConversion(): Promise<void> {
     await useFilesStore.getState().refreshProjects();
     close();
     await useFilesStore.getState().openProject(id);
-    toast.success("Project created from PDF. Review before trusting the reconstruction.");
+    toast.success(i18n.t(($) => $.core.import.pdfProjectCreated));
   } catch (e) {
     logError("import", e);
     toast.error(String(e));
@@ -178,7 +179,7 @@ export async function downloadTex(): Promise<void> {
   });
   if (!dest) return;
   await writeBytesFile(dest, bytesToBase64(new TextEncoder().encode(result.tex)));
-  toast.success("Saved .tex");
+  toast.success(i18n.t(($) => $.core.import.texSaved));
 }
 
 export function downloadZip(): Promise<ZipDownloadOutcome> {
@@ -213,9 +214,11 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
 export async function downloadFigure(fig: ExtractedFigure): Promise<void> {
   const dest = await pickSavePath({
     defaultPath: fig.name,
-    filters: [{ name: "PNG image", extensions: ["png"] }],
+    filters: [
+      { name: i18n.t(($) => $.core.dialog.filters.pngImage), extensions: ["png"] },
+    ],
   });
   if (!dest) return;
   await writeBytesFile(dest, dataUrlToBase64(fig.pngDataUrl));
-  toast.success(`Saved ${fig.name}`);
+  toast.success(i18n.t(($) => $.core.import.figureSaved, { name: fig.name }));
 }

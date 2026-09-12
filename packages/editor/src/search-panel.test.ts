@@ -5,6 +5,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { openSearchPanel } from "@codemirror/search";
 import { vscodeSearch } from "./search-panel";
+import { englishEditorMessage } from "./test-messages";
 
 let view: EditorView | null = null;
 
@@ -23,7 +24,7 @@ function setup(doc: string): EditorView {
       doc,
       extensions: [
         EditorState.allowMultipleSelections.of(true),
-        vscodeSearch(),
+        vscodeSearch(englishEditorMessage),
       ],
     }),
   });

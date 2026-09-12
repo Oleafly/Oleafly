@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { create } from "zustand";
 import { trimToWordCharacters } from "@/lib/proofreading/word-edges";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
@@ -79,12 +80,12 @@ function reportDictionaryOutcome(
 ): DictionaryWriteOutcome {
   if (outcome === "unsupported_word") {
     notice(
-      `That is too long to save as a word, so it is hidden in this document instead. A word can be up to ${DICTIONARY_LIMITS.wordCharacters} characters.`,
+      i18n.t(($) => $.core.dictionary.wordTooLong, {
+        max: DICTIONARY_LIMITS.wordCharacters,
+      }),
     );
   } else if (outcome === "limit_reached") {
-    notice(
-      "Your dictionary is full, so that word is hidden in this document instead. Remove one in Settings to save it.",
-    );
+    notice(i18n.t(($) => $.core.dictionary.full));
   }
   return outcome;
 }

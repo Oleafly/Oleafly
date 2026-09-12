@@ -1,0 +1,124 @@
+{
+  "about": {
+    "links": {
+      "social": {
+        "label": "The project's account handle on X. Keep it verbatim."
+      }
+    }
+  },
+  "addCitation": {
+    "entry": "Heading over the generated BibTeX entry, not a diary entry",
+    "examples": {
+      "title": "Chip label for searching by paper title"
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Radio option: automatic compiling is turned off",
+      "on": "Radio option: automatic compiling is turned on"
+    },
+    "mode": {
+      "normal": "Radio option for the full compile, as opposed to the fast draft mode"
+    },
+    "texRootLabel": "Short badge for the LaTeX magic comment % !TEX root. Keep TEX verbatim."
+  },
+  "dock": {
+    "settings": "Toolbar button that opens the settings dialog"
+  },
+  "enginePicker": {
+    "recommended": "Badge on the option the app suggests"
+  },
+  "errorBoundary": {
+    "specimen": {
+      "diagramLabel": "Screen-reader name for the decorative botanical diagram on the crash screen",
+      "layer": "Decorative caption on the crash-screen diagram, shown in capitals",
+      "specimen": "Decorative field label on the crash-screen diagram, shown in capitals",
+      "transversePlane": "Decorative caption on the crash-screen diagram, shown in capitals",
+      "veinDensity": "Decorative field label on the crash-screen diagram, shown in capitals"
+    },
+    "surfaces": {
+      "aiAssistant": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\"",
+      "assistantPanel": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\"",
+      "chat": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\"",
+      "diagramComposer": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\"",
+      "editor": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\"",
+      "pdfPreview": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\"",
+      "researchAssistant": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\"",
+      "terminalDock": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\""
+    }
+  },
+  "githubMenu": {
+    "tooltip": "Tooltip on the GitHub icon button. Keep the product name verbatim."
+  },
+  "home": {
+    "label": "Button text that returns to the project library"
+  },
+  "keys": {
+    "enter": "Name printed on the Enter keycap",
+    "esc": "Name printed on the Escape keycap, lowercase to match the key"
+  },
+  "mcpActivity": {
+    "live": "Badge: the local MCP server is running",
+    "off": "Badge: the local MCP server is stopped"
+  },
+  "omnibar": {
+    "groups": {
+      "action": "Heading over a single thing the search bar can do right now"
+    }
+  },
+  "renameDialog": {
+    "symbolKinds": {
+      "atuse": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "bibentry": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "cite": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "environment": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "envuse": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "file": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "glossary": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "glossaryuse": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "inputedge": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "label": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "macro": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "macrouse": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "ref": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "section": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
+      "theorem": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\""
+    }
+  },
+  "settings": {
+    "help": {
+      "project": "Heading over the link to the source repository, not a user project"
+    },
+    "tours": {
+      "status": {
+        "completed": "A tour the user finished",
+        "dismissed": "A tour the user closed without finishing",
+        "pending": "A tour the user has not started"
+      }
+    }
+  },
+  "sourceControl": {
+    "changes": "Heading over files that are modified but not staged",
+    "commit": "Button that records the staged changes",
+    "pullShort": "Short button text for fetching commits from the remote",
+    "pushShort": "Short button text for sending commits to the remote",
+    "remote": "Heading over the Git remote repository settings",
+    "stage": "Add one file to the next commit",
+    "staged": "Heading over files that will go into the next commit",
+    "unstage": "Remove one file from the next commit"
+  },
+  "theme": {
+    "dark": "Dark appearance option",
+    "light": "Light appearance option",
+    "system": "Follow the operating system appearance"
+  },
+  "toolbar": {
+    "export": "Toolbar button that saves the project in another format",
+    "fork": "Button that confirms copying the project into a new one",
+    "layout": "Toolbar button that rearranges the editor, preview, and assistant panes",
+    "untitledProject": "Fallback shown when a project has no name yet"
+  },
+  "updateWindow": {
+    "later": "Button that postpones installing an update"
+  }
+}

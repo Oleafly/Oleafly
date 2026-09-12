@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import {
   Check,
   GitBranch,
@@ -52,6 +53,7 @@ export function PublishToGitHubDialog({
   projectName: string;
   onPublished: (remoteUrl: string) => void;
 }) {
+  const { t } = useTranslation(["common", "library"]);
   const status = useGithubStore((s) => s.status);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
@@ -185,7 +187,7 @@ export function PublishToGitHubDialog({
     const action = beginAction(projectId);
     if (!action || !isCurrentAction(action)) return;
     const name = slug(repoName.trim() || projectName || "oleafly-project");
-    if (!name) return note(action, false, "Enter a repository name.");
+    if (!name) return note(action, false, t(($) => $.library.github.nameRequired));
     setBusy(true);
     try {
       const repo = await githubCreateRepo(name, isPrivate);
@@ -196,7 +198,7 @@ export function PublishToGitHubDialog({
       await gitSetRemote(action.projectId, repo.clone_url);
       await gitPush(action.projectId);
       if (!isCurrentAction(action)) return;
-      note(action, true, `Published to ${repo.full_name}.`);
+      note(action, true, t(($) => $.library.github.published, { repository: repo.full_name }));
       onPublished(repo.clone_url);
       scheduleClose(action);
     } catch (e) {
@@ -224,13 +226,16 @@ export function PublishToGitHubDialog({
         note(
           action,
           false,
-          `Linked to ${remoteUrl}, but push needs a pull first: ${e}`,
+          t(($) => $.library.github.pushNeedsPull, {
+            remote: remoteUrl,
+            detail: String(e),
+          }),
         );
         onPublished(remoteUrl);
         return;
       }
       if (!isCurrentAction(action)) return;
-      note(action, true, `Linked and pushed to ${remoteUrl}.`);
+      note(action, true, t(($) => $.library.github.linked, { remote: remoteUrl }));
       onPublished(remoteUrl);
       scheduleClose(action);
     } catch (e) {
@@ -249,7 +254,12 @@ export function PublishToGitHubDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <button type="button" aria-label="Close publish dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
+      <button
+        type="button"
+        aria-label={t(($) => $.library.github.closeDialog)}
+        className="absolute inset-0"
+        onMouseDown={onBackdropMouseDown}
+      />
       <div
         ref={dialogRef}
         role="dialog"
@@ -261,7 +271,9 @@ export function PublishToGitHubDialog({
         <div className="flex h-12 shrink-0 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <Github className="size-4" />
-            <h2 id="publish-github-title" className="text-sm font-semibold">Publish to GitHub</h2>
+            <h2 id="publish-github-title" className="text-sm font-semibold">
+              {t(($) => $.library.github.title)}
+            </h2>
           </div>
           <Button variant="ghost" size="icon" className="size-7" onClick={onClose}>
             <X className="size-4" />
@@ -271,7 +283,7 @@ export function PublishToGitHubDialog({
         {status !== "connected" ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
             <p className="text-sm text-muted-foreground">
-              Connect GitHub to publish this project.
+              {t(($) => $.library.github.connectPrompt)}
             </p>
             <Button
               onClick={() => {
@@ -281,7 +293,7 @@ export function PublishToGitHubDialog({
               }}
             >
               <Github className="size-4" />
-              Connect to GitHub
+              {t(($) => $.library.github.connect)}
             </Button>
           </div>
         ) : (
@@ -293,8 +305,10 @@ export function PublishToGitHubDialog({
             >
               <div className="flex justify-center px-4 py-2">
                 <TabsList>
-                  <TabsTrigger value="new">Create new repository</TabsTrigger>
-                  <TabsTrigger value="existing">Link existing</TabsTrigger>
+                  <TabsTrigger value="new">{t(($) => $.library.github.tabNew)}</TabsTrigger>
+                  <TabsTrigger value="existing">
+                    {t(($) => $.library.github.tabExisting)}
+                  </TabsTrigger>
                 </TabsList>
               </div>
             </Tabs>
@@ -305,13 +319,13 @@ export function PublishToGitHubDialog({
                   <div className="space-y-3">
                     <label htmlFor="publish-repository-name" className="block space-y-1.5">
                       <span className="text-xs font-medium text-muted-foreground">
-                        Repository name
+                        {t(($) => $.library.github.repositoryName)}
                       </span>
                       <Input
                         id="publish-repository-name"
                         value={repoName}
                         onChange={(e) => setRepoName(e.target.value)}
-                        aria-label="Repository name"
+                        aria-label={t(($) => $.library.github.repositoryName)}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
                       />
                     </label>
@@ -319,9 +333,9 @@ export function PublishToGitHubDialog({
                       <span className="flex items-center gap-2">
                         <Lock className="size-4 text-muted-foreground" />
                         <span className="text-xs">
-                          Private
+                          {t(($) => $.library.github.private)}
                           <span className="ml-1 text-muted-foreground">
-                            (recommended)
+                            {t(($) => $.library.github.privateHint)}
                           </span>
                         </span>
                       </span>
@@ -342,7 +356,7 @@ export function PublishToGitHubDialog({
                     ) : (
                       <Github className="size-4" />
                     )}
-                    Create and push
+                    {t(($) => $.library.github.createAndPush)}
                   </Button>
                 </div>
               ) : (
@@ -352,19 +366,19 @@ export function PublishToGitHubDialog({
                     <Input
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search your repositories…"
-                      aria-label="Search repositories"
+                      placeholder={t(($) => $.library.github.searchPlaceholder)}
+                      aria-label={t(($) => $.library.github.searchRepositories)}
                       className="h-10 flex-1 rounded-none border-0 bg-transparent px-0 text-xs shadow-none outline-none focus-visible:ring-0"
                     />
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto rounded-md border">
                     {loadingRepos ? (
                       <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
-                        <Loader2 className="size-4 animate-spin" /> Loading…
+                        <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
                       </div>
                     ) : filtered.length === 0 ? (
                       <div className="p-6 text-center text-xs text-muted-foreground">
-                        No repositories found.
+                        {t(($) => $.library.github.noRepositories)}
                       </div>
                     ) : (
                       filtered.map((r) => (
@@ -391,7 +405,7 @@ export function PublishToGitHubDialog({
                       ))
                     )}
                   </div>
-                  <Tooltip label="Sets origin and pushes the current branch">
+                  <Tooltip label={t(($) => $.library.github.linkHint)}>
                     <Button
                       className="w-full"
                       disabled={visibleBusy || !selected}
@@ -402,7 +416,7 @@ export function PublishToGitHubDialog({
                       ) : (
                         <GitBranch className="size-4" />
                       )}
-                      Link and push
+                      {t(($) => $.library.github.linkAndPush)}
                     </Button>
                   </Tooltip>
                 </div>

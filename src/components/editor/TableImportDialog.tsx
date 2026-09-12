@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Copy, FileSpreadsheet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +40,7 @@ function contextMatches(context: TableImportContext): boolean {
 }
 
 export function TableImportDialog() {
+  const { t } = useTranslation(["editor"]);
   const open = useTableImportStore((state) => state.open);
   const setOpen = useTableImportStore((state) => state.setOpen);
   const engine = useFilesStore((state) => state.engine);
@@ -71,7 +73,7 @@ export function TableImportDialog() {
     const tableTarget = tableContext?.target ?? target;
     const trimmedLabel = label.trim();
     if (tableTarget === "latex" && trimmedLabel && !hasValidTableLabel(trimmedLabel)) {
-      setError("Use letters, numbers, colons, periods, hyphens, or underscores in a table label.");
+      setError(t(($) => $.editor.tableImport.invalidLabel));
       return null;
     }
     return emitTable(rows, {
@@ -98,31 +100,31 @@ export function TableImportDialog() {
         multiple: false,
         filters: [
           {
-            name: "Spreadsheet",
+            name: t(($) => $.editor.tableImport.spreadsheetFilter),
             extensions: ["csv", "tsv", "xlsx", "xls"],
           },
         ],
-        title: "Import a spreadsheet as a table",
+        title: t(($) => $.editor.tableImport.title),
       });
       if (typeof selection !== "string") return;
       if (!contextMatches(context)) {
-        throw new Error("the active document changed while the file picker was open. Choose the table again.");
+        throw new Error(t(($) => $.editor.tableImport.activeChangedPicker));
       }
       const parsed = await readTableRows(selection);
       if (parsed.length === 0) {
-        throw new Error("that file has no rows");
+        throw new Error(t(($) => $.editor.tableImport.noRows));
       }
       if (request === selectionRequest.current && contextMatches(context)) {
         setRows(parsed);
         setFileName(selection.split(/[/\\]/).pop() ?? selection);
         setTableContext(context);
       } else if (request === selectionRequest.current) {
-        throw new Error("the active document changed while the table was loading. Choose the table again.");
+        throw new Error(t(($) => $.editor.tableImport.activeChangedLoading));
       }
     } catch (e) {
       if (request === selectionRequest.current) {
         notifyError("import table", e);
-        setError(e instanceof Error ? e.message : "Could not read that table.");
+        setError(e instanceof Error ? e.message : t(($) => $.editor.tableImport.readFailed));
         setRows([]);
         setFileName(null);
       }
@@ -137,7 +139,7 @@ export function TableImportDialog() {
   const insert = () => {
     if (rows.length === 0) return;
     if (!tableContext || !contextMatches(tableContext)) {
-      setError("The active document changed. Choose the table again before inserting it.");
+      setError(t(($) => $.editor.tableImport.activeChangedInsert));
       return;
     }
     const tableSource = source();
@@ -146,8 +148,8 @@ export function TableImportDialog() {
     insertAtCursor(`\n${tableSource}\n`);
     toast.success(
       tableContext.target === "typst"
-        ? "Typst table inserted at the cursor."
-        : "LaTeX table inserted at the cursor. booktabs is required for its rules.",
+        ? t(($) => $.editor.tableImport.insertedTypst)
+        : t(($) => $.editor.tableImport.insertedLatex),
     );
   };
 
@@ -158,10 +160,10 @@ export function TableImportDialog() {
     setError(null);
     try {
       await navigator.clipboard.writeText(tableSource);
-      toast.success("Table source copied to the clipboard.");
+      toast.success(t(($) => $.editor.tableImport.copied));
     } catch (e) {
       notifyError("copy table source", e);
-      setError("The table was not copied. Check clipboard access and try again.");
+      setError(t(($) => $.editor.tableImport.copyFailed));
     }
   };
 
@@ -176,41 +178,41 @@ export function TableImportDialog() {
               <FileSpreadsheet aria-hidden className="size-4" />
             </div>
             <div className="space-y-1">
-              <DialogTitle className="text-sm leading-tight">Import a spreadsheet as a table</DialogTitle>
-              <DialogDescription className="text-xs">Choose a file, check the preview, then insert it into your document.</DialogDescription>
+              <DialogTitle className="text-sm leading-tight">{t(($) => $.editor.tableImport.title)}</DialogTitle>
+              <DialogDescription className="text-xs">{t(($) => $.editor.tableImport.description)}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <ToolSplitView>
           <ToolPane
-            title="Spreadsheet"
+            title={t(($) => $.editor.tableImport.spreadsheetPane)}
             badge={target === "typst" ? "Typst" : "LaTeX"}
-            footer={<p className="text-xs leading-relaxed text-muted-foreground">{target === "typst" ? "Special characters are escaped in the table source." : "The generated LaTeX table uses booktabs for its horizontal rules."}</p>}
+            footer={<p className="text-xs leading-relaxed text-muted-foreground">{target === "typst" ? t(($) => $.editor.tableImport.footerTypst) : t(($) => $.editor.tableImport.footerLatex)}</p>}
           >
             <div className="space-y-5 p-5">
               <div className="space-y-2">
                 <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void chooseFile()}>
                   {busy ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <FileSpreadsheet aria-hidden className="size-3.5" />}
-                  {fileName ? "Choose another file" : "Choose CSV, TSV, or XLSX"}
+                  {fileName ? t(($) => $.editor.tableImport.chooseAnother) : t(($) => $.editor.tableImport.chooseFile)}
                 </Button>
-                {fileName && <p className="break-all text-xs text-muted-foreground" data-testid="table-import-file">{fileName} · {rows.length} rows · {columnCount} columns</p>}
+                {fileName && <p className="break-all text-xs text-muted-foreground" data-testid="table-import-file">{t(($) => $.editor.tableImport.selectedSummary, { file: fileName, rows: rows.length, columns: columnCount })}</p>}
               </div>
               <div className="flex items-center justify-between gap-3">
-                <label htmlFor="table-import-header" className="text-sm">First row is a header</label>
-                <Switch id="table-import-header" checked={header} onCheckedChange={setHeader} aria-label="First row is a header" />
+                <label htmlFor="table-import-header" className="text-sm">{t(($) => $.editor.tableImport.firstRowHeader)}</label>
+                <Switch id="table-import-header" checked={header} onCheckedChange={setHeader} aria-label={t(($) => $.editor.tableImport.firstRowHeader)} />
               </div>
               <div className="grid gap-2">
-                <label htmlFor="table-import-caption" className="text-xs text-muted-foreground">Caption (optional)</label>
-                <Input id="table-import-caption" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Results across all runs" />
+                <label htmlFor="table-import-caption" className="text-xs text-muted-foreground">{t(($) => $.editor.tableImport.captionLabel)}</label>
+                <Input id="table-import-caption" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder={t(($) => $.editor.tableImport.captionPlaceholder)} />
               </div>
               {target === "latex" && <div className="grid gap-2">
-                <label htmlFor="table-import-label" className="text-xs text-muted-foreground">Label (optional)</label>
-                <Input id="table-import-label" value={label} onChange={(event) => { setLabel(event.target.value); setError(null); }} placeholder="tab:results" />
+                <label htmlFor="table-import-label" className="text-xs text-muted-foreground">{t(($) => $.editor.tableImport.labelLabel)}</label>
+                <Input id="table-import-label" value={label} onChange={(event) => { setLabel(event.target.value); setError(null); }} placeholder={t(($) => $.editor.tableImport.labelPlaceholder)} />
               </div>}
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
             </div>
           </ToolPane>
-          <ToolPane title="Preview" badge={rows.length ? `${rows.length} rows` : undefined}>
+          <ToolPane title={t(($) => $.editor.tableImport.preview)} badge={rows.length ? t(($) => $.editor.tableImport.rowCount, { count: rows.length }) : undefined}>
             <ToolPreviewSurface className="justify-center">
               {rows.length ? <div className="space-y-3">
                 <div className="overflow-auto">
@@ -230,18 +232,18 @@ export function TableImportDialog() {
                   </table>
                 </div>
                 {caption.trim() && <p className="text-center text-xs text-muted-foreground">{caption.trim()}</p>}
-                {(rows.length > PREVIEW_ROWS || columnCount > PREVIEW_COLUMNS) && <p className="text-xs text-muted-foreground">Preview shows the first {Math.min(rows.length, PREVIEW_ROWS)} rows and {Math.min(columnCount, PREVIEW_COLUMNS)} columns. The full table will be inserted.</p>}
+                {(rows.length > PREVIEW_ROWS || columnCount > PREVIEW_COLUMNS) && <p className="text-xs text-muted-foreground">{t(($) => $.editor.tableImport.previewSummary, { rows: Math.min(rows.length, PREVIEW_ROWS), columns: Math.min(columnCount, PREVIEW_COLUMNS) })}</p>}
               </div> : <div className="mx-auto max-w-xs space-y-2 text-center">
                 <FileSpreadsheet aria-hidden className="mx-auto mb-4 size-8 text-muted-foreground/60" />
-                <p className="text-sm font-medium">Your table will appear here</p>
-                <p className="text-xs leading-relaxed text-muted-foreground">Choose a spreadsheet to preview its rows and column headings.</p>
+                <p className="text-sm font-medium">{t(($) => $.editor.tableImport.emptyTitle)}</p>
+                <p className="text-xs leading-relaxed text-muted-foreground">{t(($) => $.editor.tableImport.emptyBody)}</p>
               </div>}
             </ToolPreviewSurface>
           </ToolPane>
         </ToolSplitView>
         <div className="flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3">
-          <Button type="button" variant="outline" size="sm" disabled={busy || rows.length === 0} onClick={() => void copy()}><Copy aria-hidden className="size-3.5" /> Copy source</Button>
-          <Button type="button" size="sm" disabled={busy || rows.length === 0} data-testid="table-import-insert" onClick={insert}>Insert at cursor</Button>
+          <Button type="button" variant="outline" size="sm" disabled={busy || rows.length === 0} onClick={() => void copy()}><Copy aria-hidden className="size-3.5" /> {t(($) => $.editor.tableImport.copySource)}</Button>
+          <Button type="button" size="sm" disabled={busy || rows.length === 0} data-testid="table-import-insert" onClick={insert}>{t(($) => $.editor.tableImport.insertAtCursor)}</Button>
         </div>
       </DialogContent>
     </Dialog>

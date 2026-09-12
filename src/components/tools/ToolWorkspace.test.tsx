@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import {
   ToolPane,
   ToolPreviewSurface,
@@ -34,21 +36,21 @@ describe("ToolSplitView", () => {
     installMatchMedia(true);
     render(
       <ToolSplitView storageId="test-tool">
-        <div>Input</div>
-        <div>Output</div>
+        <div>{enResearchTools.bibtex.inputHeading}</div>
+        <div>{enResearchTools.table.output}</div>
       </ToolSplitView>,
     );
-    expect(screen.getByText("Input")).toBeVisible();
-    expect(screen.getByText("Output")).toBeVisible();
-    expect(screen.getByRole("separator", { name: "Resize tool panels" })).toBeVisible();
+    expect(screen.getByText(enResearchTools.bibtex.inputHeading)).toBeVisible();
+    expect(screen.getByText(enResearchTools.table.output)).toBeVisible();
+    expect(screen.getByRole("separator", { name: enResearchTools.tools.resizePanels })).toBeVisible();
   });
 
   it("stacks panes without a drag handle on narrow screens", () => {
     installMatchMedia(false);
     render(
       <ToolSplitView>
-        <div>Input</div>
-        <div>Output</div>
+        <div>{enResearchTools.bibtex.inputHeading}</div>
+        <div>{enResearchTools.table.output}</div>
       </ToolSplitView>,
     );
     expect(screen.queryByRole("separator")).not.toBeInTheDocument();
@@ -57,7 +59,7 @@ describe("ToolSplitView", () => {
 
   it("stacks an incomplete split even on desktop", () => {
     installMatchMedia(true);
-    render(<ToolSplitView><div>Only pane</div></ToolSplitView>);
+    render(<ToolSplitView><div>{enResearchTools.tools.noMatches}</div></ToolSplitView>);
     expect(screen.getByTestId("tool-split-view")).toHaveClass("grid");
   });
 
@@ -65,35 +67,35 @@ describe("ToolSplitView", () => {
     const onChange = vi.fn();
     render(
       <ToolPane
-        title="Output"
-        badge="Ready"
-        actions={<button type="button">Action</button>}
-        footer={<span>Footer</span>}
+        title={enResearchTools.table.output}
+        badge={enResearchTools.equation.statusRendered}
+        actions={<button type="button">{enCommon.actions.apply}</button>}
+        footer={<span>{enResearchTools.tools.gallerySubtitle}</span>}
         className="custom-pane"
       >
-        <ToolPreviewSurface className="custom-preview">Preview</ToolPreviewSurface>
-        <ToolStatus state="ready">Ready state</ToolStatus>
-        <ToolStatus state="busy">Busy state</ToolStatus>
-        <ToolStatus state="error">Error state</ToolStatus>
+        <ToolPreviewSurface className="custom-preview">{enResearchTools.equation.previewHeading}</ToolPreviewSurface>
+        <ToolStatus state="ready">{enResearchTools.equation.statusRendered}</ToolStatus>
+        <ToolStatus state="busy">{enCommon.state.loading}</ToolStatus>
+        <ToolStatus state="error">{enResearchTools.equation.statusError}</ToolStatus>
         <ToolSegmentedControl
-          label="Output mode"
+          label={enResearchTools.equation.exportOptions}
           value="first"
           onChange={onChange}
           options={[
-            { value: "first", label: "First", testId: "first-mode" },
-            { value: "second", label: "Second" },
+            { value: "first", label: enResearchTools.equation.inline, testId: "first-mode" },
+            { value: "second", label: enResearchTools.equation.display },
           ]}
         />
       </ToolPane>,
     );
-    expect(screen.getByRole("region", { name: "Output" })).toHaveClass("custom-pane");
-    expect(screen.getByText("Preview")).toHaveClass("custom-preview");
-    expect(screen.getByText("Footer")).toBeVisible();
-    expect(screen.getByText("Ready state").firstElementChild).toHaveClass("bg-emerald-500");
-    expect(screen.getByText("Busy state").firstElementChild).toHaveClass("bg-amber-500");
-    expect(screen.getByText("Error state").firstElementChild).toHaveClass("bg-destructive");
+    expect(screen.getByRole("region", { name: enResearchTools.table.output })).toHaveClass("custom-pane");
+    expect(screen.getByText(enResearchTools.equation.previewHeading)).toHaveClass("custom-preview");
+    expect(screen.getByText(enResearchTools.tools.gallerySubtitle)).toBeVisible();
+    expect(screen.getAllByText(enResearchTools.equation.statusRendered).at(-1)?.firstElementChild).toHaveClass("bg-emerald-500");
+    expect(screen.getByText(enCommon.state.loading).firstElementChild).toHaveClass("bg-amber-500");
+    expect(screen.getByText(enResearchTools.equation.statusError).firstElementChild).toHaveClass("bg-destructive");
     expect(screen.getByTestId("first-mode")).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(screen.getByRole("button", { name: "Second" }));
+    fireEvent.click(screen.getByRole("button", { name: enResearchTools.equation.display }));
     expect(onChange).toHaveBeenCalledWith("second");
   });
 });

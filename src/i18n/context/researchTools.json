@@ -1,0 +1,135 @@
+{
+  "roots": {
+    "card": {
+      "defaultLabel": "Fallback name for a linked folder whose path has no final segment",
+      "blockedLink": "Marks a symlink the app refuses to follow, not a broken hyperlink"
+    },
+    "health": {
+      "available": "The linked folder can be read right now",
+      "missing": "The linked folder is no longer at its recorded path",
+      "unreadable": "The linked folder exists but cannot be read"
+    }
+  },
+  "linked": {
+    "readOnly": "Badge saying Oleafly only reads the linked folder and never writes to it",
+    "blockedLink": "Marks a symlink the app refuses to follow, not a broken hyperlink"
+  },
+  "outputs": {
+    "review": "Button that opens the review tab for a finished task"
+  },
+  "tasks": {
+    "status": {
+      "queued": "A research task that has not started yet",
+      "running": "A research task that is executing now",
+      "cancelled": "A research task the user stopped before it finished"
+    },
+    "relative": {
+      "justNow": "Timestamp for an event less than a minute old",
+      "minutes": "Compact timestamp, m abbreviates minutes",
+      "hours": "Compact timestamp, h abbreviates hours",
+      "days": "Compact timestamp, d abbreviates days"
+    },
+    "panel": {
+      "filterAll": "Task list filter showing every task",
+      "filterRunning": "Task list filter showing running and queued tasks",
+      "filterReview": "Task list filter showing tasks waiting for review",
+      "filterDone": "Task list filter showing finished, failed and cancelled tasks",
+      "dismiss": "Closes an error banner without retrying"
+    },
+    "composer": {
+      "unavailable": "Marks an agent the user cannot pick right now",
+      "dependencyStatus": "Shows a dependency task's status in parentheses after its title"
+    },
+    "detail": {
+      "waiting": "Button label while a start request is still in flight",
+      "start": "Starts the research task now",
+      "preview": "Loads the diff for one changed file",
+      "changedSince": "The file changed in the project after the task started",
+      "changeAdded": "A file the task created, shown lowercase and capitalized by CSS",
+      "changeModified": "A file the task edited, shown lowercase and capitalized by CSS",
+      "changeDeleted": "A file the task removed, shown lowercase and capitalized by CSS",
+      "unknownTokens": "Shown instead of a token count the runtime did not report",
+      "isolationWorktree": "The task ran in a separate Git worktree",
+      "isolationStaged": "The task ran in a copied staging folder"
+    }
+  },
+  "tools": {
+    "back": "Returns from a tool page to the project library",
+    "category": {
+      "converters": "Tools that convert one document format into another",
+      "references": "Citation and bibliography tools",
+      "write": "Writing tools, used as a verb"
+    }
+  },
+  "generators": {
+    "source": "Uppercase heading above the source controls",
+    "instructions": "Uppercase heading above optional writing instructions",
+    "taskFooter": "Explains that Generate opens the assistant and sends the visible prompt"
+  },
+  "symbols": {
+    "categoryAll": "Shows symbols from every category",
+    "statusUnavailable": "The bundled symbol reference failed to load",
+    "visibleLimit": "Explains that only the first part of a large result set is rendered"
+  },
+  "converter": {
+    "source": "Badge for editable source text, not a research citation source",
+    "bundle": "Badge for an archive containing multiple converted files",
+    "runsOnDevice": "Privacy note saying the conversion is local",
+    "downloadsFromArxiv": "Network disclosure for the arXiv ID workflow"
+  },
+  "references": {
+    "fieldContainerTitle": "Generic journal, book or proceedings container title",
+    "reference": "A full bibliography entry, contrasted with an in-text citation",
+    "inText": "A short citation placed inside prose",
+    "localEditing": "Badge saying edits and formatting happen on this device",
+    "styleCount": "Number of citation styles available for comparison"
+  },
+  "stats": {
+    "tabInterval": "Short tab label for the confidence interval calculator",
+    "openPopulation": "An effectively unlimited population for sample size planning",
+    "finitePopulation": "A population with a specified total size",
+    "wilsonHalfWidth": "Half-width of a Wilson score interval",
+    "criticalValue": "Label for the critical t or z value used in the interval"
+  },
+  "equation": {
+    "inline": "Renders the equation inside a line of text",
+    "display": "Renders the equation on its own centered line",
+    "sourceHeading": "Uppercase heading over the LaTeX input pane",
+    "examples": "Uppercase heading over the example equation buttons",
+    "previewHeading": "Uppercase heading over the rendered equation pane"
+  },
+  "bibtex": {
+    "looksGood": "Shown when a BibTeX entry has no findings",
+    "examples": "Uppercase heading over the sample .bib buttons"
+  },
+  "table": {
+    "alignLeft": "Column alignment option",
+    "alignCenter": "Column alignment option",
+    "alignRight": "Column alignment option",
+    "preview": "Heading over the rendered table preview"
+  },
+  "review": {
+    "friendly": "Review tone that leads with strengths",
+    "fire": "Review tone that stresses the paper's claims"
+  },
+  "labSearch": {
+    "works": "Number of publications an institution has",
+    "citations": "Number of times an institution's work was cited",
+    "search": "Submits the institution search"
+  },
+  "literature": {
+    "openSource": "Lowercase tagline meaning the indexes are openly available",
+    "available": "The citation database can be searched now",
+    "paused": "The citation database is temporarily unavailable",
+    "pausedTag": "Lowercase tag on a disabled source chip",
+    "openAccess": "Badge on a record whose full text is freely available",
+    "filters": "Opens the year and open access filters",
+    "search": "Submits the literature search"
+  },
+  "citationScan": {
+    "for": "Uppercase heading over the argument for citing a paper",
+    "against": "Uppercase heading over the argument against citing a paper",
+    "forAgainst": "Toggle that reveals the for and against reasoning",
+    "query": "Shows the search query derived from a paragraph"
+  }
+}

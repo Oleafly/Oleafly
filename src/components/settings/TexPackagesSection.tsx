@@ -1,19 +1,23 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, Loader2, X } from "lucide-react";
 import { LATEX_PACKAGES, type TaggingStatus } from "@/lib/latex-packages";
 import { tlmgrSearch, type TexPackage } from "@/lib/tauri";
-import { useEngineStore } from "@/store/engine";
+import { packageErrorMessage, useEngineStore } from "@/store/engine";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { describeError } from "@/lib/app-error";
+import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
-const TAG_BADGE: Record<TaggingStatus, { label: string; className: string } | null> = {
+const TAG_BADGE: Record<TaggingStatus, { tone: "caution" | "breaks"; className: string } | null> = {
   ok: null,
-  caution: { label: "tagging: caution", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  breaks: { label: "breaks tagging", className: "bg-red-500/10 text-red-600 dark:text-red-400" },
+  caution: { tone: "caution", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  breaks: { tone: "breaks", className: "bg-red-500/10 text-red-600 dark:text-red-400" },
 };
 
 export function TexPackagesSection() {
+  const { t } = useTranslation(["common", "settings"]);
   const {
     info,
     installed,
@@ -53,10 +57,7 @@ export function TexPackagesSection() {
       const packages = await tlmgrSearch(query.trim());
       if (request === requestId.current) setResults(packages);
     } catch (error) {
-      if (request === requestId.current) {
-        const detail = error instanceof Error ? error.message : typeof error === "string" ? error : "";
-        setSearchError(detail || "Could not search TeX Live. Try again.");
-      }
+      if (request === requestId.current) setSearchError(describeError(error));
     } finally {
       if (request === requestId.current) setSearching(false);
     }
@@ -73,12 +74,14 @@ export function TexPackagesSection() {
     );
 
   return (
-    <section aria-label="LaTeX packages">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Packages</h3>
+    <section aria-label={t(($) => $.settings.engine.packages.ariaLabel)}>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {t(($) => $.settings.engine.packages.heading)}
+      </h3>
       <p className="mb-2 text-xs text-muted-foreground">
         {available
-          ? "These packages are for projects using latexmk (system TeX). Tectonic uses its own package bundle."
-          : "Package management requires TeX Live or TinyTeX. For MiKTeX, use MiKTeX Console."}
+          ? t(($) => $.settings.engine.packages.intro.available)
+          : t(($) => $.settings.engine.packages.intro.unavailable)}
       </p>
       <form
         className="mb-2 flex gap-2"
@@ -96,8 +99,8 @@ export function TexPackagesSection() {
             setSearchError(null);
             setSearching(false);
           }}
-          placeholder="Filter packages…"
-          aria-label="Find LaTeX packages"
+          placeholder={t(($) => $.settings.engine.packages.filterPlaceholder)}
+          aria-label={t(($) => $.settings.engine.packages.filterAriaLabel)}
           maxLength={128}
           className="min-w-0 flex-1"
         />
@@ -107,13 +110,15 @@ export function TexPackagesSection() {
           size="sm"
           disabled={!available || searching || !!busyPkg || normalized.length < 2}
         >
-          {searching ? "Searching…" : "Search TeX Live"}
+          {searching
+            ? t(($) => $.settings.engine.packages.searching)
+            : t(($) => $.settings.engine.packages.search)}
         </Button>
       </form>
       {(searchError || packageError) && (
         <div role="alert" className="mb-2 rounded-md border border-destructive/30 p-2 text-xs">
           <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words font-sans">
-            {searchError || packageError}
+            {searchError || (packageError && packageErrorMessage(packageError))}
           </pre>
           {packageError && (
             <Button
@@ -123,7 +128,7 @@ export function TexPackagesSection() {
               disabled={!!busyPkg || searching}
               onClick={() => void refreshPackages()}
             >
-              Refresh installed packages
+              {t(($) => $.settings.engine.packages.refreshInstalled)}
             </Button>
           )}
         </div>
@@ -134,16 +139,20 @@ export function TexPackagesSection() {
         </p>
       )}
       <p className="mb-2 text-xs text-muted-foreground">
-        {results
-          ? `${results.length} TeX Live results${results.length === 200 ? ". Use a more specific search to narrow this list." : "."}`
-          : "Suggested packages. Search TeX Live for more."}
+        {!results
+          ? t(($) => $.settings.engine.packages.suggested)
+          : results.length === 200
+            ? t(($) => $.settings.engine.packages.resultsCapped, {
+                total: formatNumber(results.length),
+              })
+            : t(($) => $.settings.engine.packages.results, { count: results.length })}
       </p>
       <div className="max-h-72 overflow-auto rounded-md border">
         {rows.length === 0 && (
           <p className="p-3 text-xs text-muted-foreground">
             {results
-              ? "No packages found. Try another name or keyword."
-              : "No suggested packages match. Search TeX Live to check the full catalog."}
+              ? t(($) => $.settings.engine.packages.emptySearch)
+              : t(($) => $.settings.engine.packages.emptySuggested)}
           </p>
         )}
         {rows.map((p) => {
@@ -154,10 +163,10 @@ export function TexPackagesSection() {
           const tree = !on
             ? null
             : inUserTree && inSystemTree
-              ? "both trees"
+              ? t(($) => $.settings.engine.packages.tree.both)
               : inUserTree
-                ? "your personal tree"
-                : "the system tree";
+                ? t(($) => $.settings.engine.packages.tree.user)
+                : t(($) => $.settings.engine.packages.tree.system);
           const badge = p.tagging ? TAG_BADGE[p.tagging] : null;
           const busy = busyPkg === packageName;
           return (
@@ -168,7 +177,7 @@ export function TexPackagesSection() {
                   {on && <Check className="size-3 text-emerald-500" />}
                   {tree && (
                     <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                      in {tree}
+                      {tree}
                     </span>
                   )}
                   {badge && (
@@ -179,14 +188,14 @@ export function TexPackagesSection() {
                       )}
                     >
                       {p.tagging === "breaks" && <AlertTriangle className="size-2.5" />}
-                      {badge.label}
+                      {t(($) => $.settings.engine.packages.badge[badge.tone])}
                     </span>
                   )}
                 </div>
                 <p className="truncate text-[11px] text-muted-foreground">{p.description}</p>
                 {packageName !== p.name && (
                   <p className="text-[11px] text-muted-foreground">
-                    Included in {packageName}. Removing it also removes the other files in that package.
+                    {t(($) => $.settings.engine.packages.includedIn, { package: packageName })}
                   </p>
                 )}
               </div>
@@ -200,7 +209,7 @@ export function TexPackagesSection() {
                 className="inline-flex w-16 items-center justify-center gap-1 rounded border border-input px-2 py-1 text-xs hover:bg-accent disabled:opacity-40"
               >
                 {busy ? <Loader2 className="size-3 animate-spin" /> : on ? <X className="size-3" /> : null}
-                {busy ? "" : on ? "Remove" : "Add"}
+                {busy ? "" : on ? t(($) => $.common.actions.remove) : t(($) => $.common.actions.add)}
               </button>
             </div>
           );

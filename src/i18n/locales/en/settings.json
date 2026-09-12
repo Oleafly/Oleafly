@@ -1,0 +1,1402 @@
+{
+  "ai": {
+    "agents": {
+      "bridgeTitle": "ACP bridge",
+      "bridgeUnresolved": "No bridge executable resolved yet.",
+      "checkInstalled": "Check installed agents",
+      "checkingInstalled": "Checking installed agents",
+      "cliNotOnPath": "{{command}} was not found on your PATH.",
+      "cliTitle": "Command line tool",
+      "copySignInCommand": "Copy sign-in command",
+      "custom": {
+        "description": "Paste an agent definition to register an agent Oleafly does not ship.",
+        "hint": "Paste an agent definition with a pinned npm or uv package, a verified binary, or an installed executable. Keep passwords and API keys out of this JSON.",
+        "label": "Register a custom agent",
+        "submit": "Register definition",
+        "title": "Add a custom agent",
+        "useExample": "Use example"
+      },
+      "install": {
+        "confirm": "Install",
+        "description": "Oleafly downloads this pinned package into its own agent folder. The agent then runs with your CLI account when you start a conversation.",
+        "installing": "Installing",
+        "location": "Oleafly agents folder, {{id}}/{{version}}",
+        "locationLabel": "Installs to",
+        "packageLabel": "Package",
+        "title": "Install {{name}} bridge {{version}}"
+      },
+      "installBridge": "Install bridge",
+      "intro": "Connect a local agent through ACP. Each agent manages its own models, tools and sign-in, and API provider settings stay separate. Use the official CLI account for sign-in: Oleafly does not import account tokens or estimate subscription quotas.",
+      "notice": {
+        "installed": "{{name}} is installed. Sign in through its CLI before starting a conversation.",
+        "registered": "{{name}} is registered. Registration does not install or launch it.",
+        "removed": "Agent definition removed. Installed files and saved conversations remain available.",
+        "terminalOpen": "The project terminal is open. Run the sign-in command shown for your agent, then reconnect the conversation."
+      },
+      "openSignInTerminal": "Open sign-in terminal",
+      "openTerminal": "Open terminal",
+      "registry": {
+        "description": "Search the ACP registry for agents published by other teams.",
+        "hideDistribution": "Hide distribution",
+        "register": "Register agent",
+        "registered": "Registered",
+        "reviewHint": "Registry entries describe software from its publishers. Review the distribution before registering or installing it.",
+        "search": "Search",
+        "searchLabel": "Find an ACP agent",
+        "searchPlaceholder": "Search the ACP registry",
+        "searching": "Searching",
+        "showDistribution": "Show distribution",
+        "title": "Find more agents"
+      },
+      "sectionLabel": "ACP agents",
+      "updateBridge": "Update bridge"
+    },
+    "approvals": {
+      "file": {
+        "description": "The Custom approval mode reads this file. It lives at ~/.oleafly/approvals.toml and applies to every project on this device.",
+        "discard": "Discard changes",
+        "emptyFile": "The file is empty so far.",
+        "help": {
+          "comments": "Comments starting with # are kept when you save here, but an \"Always in this project\" choice on an approval card rewrites the file without them.",
+          "modes": "The first table, <modesTable>[\"$approval_modes\"]</modesTable>, sets the approval mode per project: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> or <custom>\"custom\"</custom>. A project that is not listed uses Approve for me.",
+          "openProject": "The open project, {{name}}, has the id <projectId>{{id}}</projectId>.",
+          "projectIds": "Project ids are the folder names under ~/.oleafly/projects.",
+          "rules": "Then one table per project id, holding a rule per tool: <allow>\"allow\"</allow> runs the tool without asking, and <deny>\"deny\"</deny> refuses it. Deny rules are honoured in every mode; allow rules take effect in Custom mode, and for run_command they also skip the prompt in the other modes.",
+          "toolNames": "Tool names you can use: <names>{{names}}</names> and any MCP tool by its full name from the Tools list."
+        },
+        "helpToggle": "How the file works",
+        "insertExample": "Insert an example",
+        "reload": "Reload",
+        "saved": "Saved. The rules apply to the next tool call.",
+        "saving": "Saving",
+        "title": "Approval rules file"
+      },
+      "project": {
+        "allowed": "Always allowed",
+        "denied": "Always denied",
+        "description": "Saved rules for {{name}}. They apply when the approval mode is Custom. Remove a rule to use the standard risk policy for that tool.",
+        "empty": "No saved rules yet. Use \"Always in this project\" on an approval prompt to add one.",
+        "removeRule": "Remove rule for {{tool}}",
+        "thisProject": "this project",
+        "title": "Tool approvals"
+      }
+    },
+    "budget": {
+      "clear": "Clear budget",
+      "inputLabel": "AI budget in US dollars",
+      "inputPlaceholder": "No budget",
+      "limit": "Runs pause once the budget is reached.",
+      "save": "Save budget",
+      "spent": "Estimated spend so far: {{amount}}. Runs pause once the budget is reached.",
+      "title": "AI budget"
+    },
+    "customProvider": {
+      "addDescription": "Connect any OpenAI-compatible endpoint by its base URL.",
+      "addTitle": "Add custom provider",
+      "baseUrlLabel": "Base URL",
+      "baseUrlNote": "Your saved API key will be sent to this new address.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "Change the name or base URL.",
+      "editTitle": "Edit custom provider",
+      "errors": {
+        "addFailed": "Could not add that provider.",
+        "baseUrlHost": "The URL is missing a host.",
+        "baseUrlInvalid": "Enter a full URL, e.g. https://api.example.com/v1 or http://localhost:1234/v1.",
+        "baseUrlProtocol": "Use https://, or http:// for a local server.",
+        "baseUrlRequired": "Base URL is required.",
+        "idFormat": "Use lowercase letters, digits, and dashes only, e.g. acme.",
+        "idRequired": "ID is required.",
+        "nameRequired": "Name is required.",
+        "saveFailed": "Could not save that provider."
+      },
+      "idLabel": "ID",
+      "idPlaceholder": "acme",
+      "keyLabel": "API key (optional)",
+      "keyLabelKeepSaved": "API key (leave blank to keep the saved key)",
+      "keyPlaceholder": "Leave blank if none is required",
+      "keyPlaceholderStored": "Saved key stays unless you enter a new one",
+      "namePlaceholder": "Acme",
+      "submitAdd": "Add provider"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Agent capabilities",
+      "customDescription": "Added to every AI request as your personal style and preferences. The assistant follows these on top of its built-in behavior. They can't override its tools or safety rules.",
+      "customPlaceholder": "e.g. Always write in British English. Keep explanations short. Prefer the enumitem package for lists.",
+      "customTitle": "Custom instructions",
+      "defaultModelDescription": "Used whenever you start a new chat. You can still switch models for an individual conversation from the chat panel.",
+      "defaultModelTitle": "Default chat model",
+      "pdfCaptureDescription": "Lets the agent rasterize compiled pages (verify_pdf_pages) for vision layout checks. Disable if you prefer not to send page images to your provider.",
+      "pdfCaptureLabel": "Allow PDF page capture for AI",
+      "save": "Save instructions",
+      "saved": "Saved",
+      "toolsHint": "Ask it things like \"fix the LaTeX errors\", \"add a Publications section\", or \"recompile and check the PDF\".",
+      "toolsTitle": "The assistant currently supports these tools"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "That model is already in the list.",
+        "empty": "Enter a model id.",
+        "spaces": "Model ids can't contain spaces."
+      },
+      "addPlaceholder": "Add a model id",
+      "changeSummary": "{{added}} added, {{removed}} removed",
+      "custom": "Custom",
+      "deleteAriaLabel": "Delete model {{model}}",
+      "deleteDialog": {
+        "description": "Remove \"{{model}}\" from this provider's model list? Built-in models can come back through Restore defaults. Custom models can be added again by ID.",
+        "title": "Delete model"
+      },
+      "deleteTooltip": "Delete model",
+      "empty": "No models yet. Add one below.",
+      "invalidKey": "Invalid API key.",
+      "metadata": {
+        "refreshFailed": "Could not refresh model data.",
+        "unknownDate": "unknown date",
+        "updated": "Model data updated {{date}}",
+        "updatedBundled": "Model data updated {{date}}, bundled with the app",
+        "updatedFromCache": "Model data updated {{date}}, from the last download"
+      },
+      "noChanges": "No changes",
+      "refresh": "Refresh",
+      "restore": "Restore defaults",
+      "restoreTooltip": "Re-add this provider's built-in models",
+      "title": "Models",
+      "unreachable": "Could not reach the provider.",
+      "unreadableList": "The provider returned models Oleafly could not read.",
+      "updated": "Updated {{time}}"
+    },
+    "personas": {
+      "addStarter": "Add persona",
+      "addStarterFailed": "Could not add {{name}}. {{error}}",
+      "addStarterNamed": "Add {{name}} persona",
+      "colors": {
+        "forest": "Forest",
+        "grape": "Grape",
+        "ocean": "Ocean",
+        "slate": "Slate",
+        "sunset": "Sunset"
+      },
+      "create": "Create persona",
+      "delete": "Delete persona",
+      "deleteDescription": "Delete \"{{name}}\"? Its prompt is removed permanently, and any chat using it falls back to your default instructions.",
+      "deleteNamed": "Delete persona {{name}}",
+      "description": "Reusable instructions for how the assistant should work. Choose one in chat for a task. While selected, it replaces your default instructions.",
+      "edit": "Edit persona",
+      "editNamed": "Edit persona {{name}}",
+      "empty": "No personas added yet.",
+      "form": {
+        "color": "Color",
+        "create": "Create",
+        "createTitle": "Create persona",
+        "description": "Set reusable instructions for how the assistant should work.",
+        "editTitle": "Edit persona",
+        "instructions": "Instructions",
+        "instructionsPlaceholder": "Review my writing for clarity and list the most important issues first.",
+        "namePlaceholder": "Terse Editor",
+        "required": "Name and prompt are required.",
+        "saveFailed": "Could not save that persona."
+      },
+      "starters": {
+        "criticalReviewer": "Find weaknesses in arguments, methods, evidence, and presentation.",
+        "documentEditor": "Fix prose, structure, citations, and LaTeX with focused, safe changes.",
+        "figure": "Generate publication-quality figures and diagrams as LaTeX TikZ or PGFPlots.",
+        "researchWriter": "Draft and structure scholarly text without inventing evidence or citations."
+      },
+      "suggestedDescription": "Start with one of these, then edit its instructions to fit your workflow.",
+      "suggestedTitle": "Suggested personas",
+      "title": "Personas"
+    },
+    "providers": {
+      "addCustom": "Add custom provider",
+      "badge": {
+        "connected": "Connected",
+        "notRunning": "Not running",
+        "running": "Running"
+      },
+      "blurbs": {
+        "anthropic": "Claude models - strong at code and writing.",
+        "custom": "Custom provider.",
+        "deepseek": "DeepSeek V4 models.",
+        "google": "Gemini models from Google AI Studio.",
+        "groq": "Very fast open-model inference.",
+        "mistral": "Mistral & Codestral models.",
+        "ollama": "Runs models on your machine. No key needed - install Ollama and pull a model.",
+        "openai": "GPT models. The default choice.",
+        "openrouter": "One key, access models from many labs.",
+        "perplexity": "Sonar models with live web grounding.",
+        "xai": "Grok models from xAI.",
+        "zai": "GLM models via a Z.AI GLM Coding Plan subscription."
+      },
+      "deleteKeyAriaLabel": "Delete {{provider}} key",
+      "deleteKeyTooltip": "Delete key",
+      "docs": "Docs",
+      "editAriaLabel": "Edit {{provider}}",
+      "editTooltip": "Edit name or endpoint",
+      "getKey": "Get key",
+      "intro": "Connect any providers you use below. Keys are stored locally only. Saving one sets it as the default. You can switch between configured providers and models from the dropdown in the chat panel.",
+      "keyPlaceholder": "Paste your API key here",
+      "modelLabel": "Model",
+      "ollama": {
+        "active": "Active",
+        "changeHost": "Change host (advanced)",
+        "check": "Check for Ollama",
+        "checking": "Checking…",
+        "disconnect": "Disconnect",
+        "hideHost": "Hide host",
+        "installedHint": "Ollama is installed here. Starting it takes a moment.",
+        "modelPlaceholder": "Choose a model to use",
+        "noModels": "Ollama is running but no models are installed. Run <pull>ollama pull llama3.2</pull>, then Re-check.",
+        "noneResponding": "No Ollama responding at <host>{{host}}</host>.",
+        "notChecked": "Not checked yet",
+        "notDetected": "Not detected",
+        "recheck": "Re-check",
+        "runningModels_one": "Running · {{count}} model",
+        "runningModels_other": "Running · {{count}} models",
+        "setupSteps": "1. Install from <download>ollama.com <icon></icon></download> · 2. It starts automatically (or run <serve>ollama serve</serve>) · 3. Pull a model, e.g. <pull>ollama pull llama3.2</pull> · 4. Re-check.",
+        "start": "Start Ollama"
+      },
+      "removeAriaLabel": "Remove {{provider}}",
+      "removeDialog": {
+        "description": "Remove \"{{provider}}\"? Its saved key and model list are deleted with it.",
+        "title": "Remove custom provider"
+      },
+      "removeTooltip": "Remove custom provider",
+      "replaceKey": "Replace key",
+      "status": {
+        "error": "Error: {{message}}",
+        "errorFallback": "Could not validate the key.",
+        "valid": "Key valid. Models are ready below.",
+        "validating": "Checking key..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Loading agents…",
+      "errors": {
+        "invalidKey": "Invalid API key.",
+        "keyNotKept": "The base URL was saved but the key was not. Enter the key again.",
+        "providerGone": "That provider no longer exists.",
+        "providerIdInUse": "That provider ID is already in use."
+      },
+      "messages": {
+        "keyRemoved": "{{provider}} key removed.",
+        "keyRemovedAccessDisabled": "{{provider}} key removed. AI access is disabled.",
+        "keySavedAddModels": "{{provider}} key saved. Add models manually below.",
+        "keySavedCheckedOnUse": "{{provider}} key saved. It is checked on first use.",
+        "ollamaConnected": "Ollama connected · {{model}}",
+        "preferencesReset": "AI Assistant preferences restored to their defaults.",
+        "providerAdded": "{{provider}} added.",
+        "providerConnected": "{{provider}} connected.",
+        "providerUpdated": "{{provider}} updated.",
+        "providerUpdatedWithoutModels": "{{provider}} updated. Its model list could not be refreshed."
+      },
+      "reset": {
+        "confirmWithProject": "Restore AI Assistant preferences to their defaults, including model availability, enabled skills, and this project's budget. The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged.",
+        "confirmWithoutProject": "Restore AI Assistant preferences to their defaults, including model availability and enabled skills. The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged.",
+        "sectionName": "AI Assistant"
+      },
+      "tabs": {
+        "agents": "CLI agents",
+        "instructions": "Instructions",
+        "mcp": "MCP",
+        "personas": "Personas",
+        "providers": "Providers and keys",
+        "skills": "Skills"
+      }
+    },
+    "skills": {
+      "addFolder": "Add folder",
+      "addFolderDialogTitle": "Add skill folder",
+      "catalog": {
+        "description": "Extra skills for specific research domains. Install one to add it to your list above.",
+        "empty": "The catalog has no extra skills to install.",
+        "install": "Install",
+        "loading": "Loading the catalog...",
+        "messages": {
+          "installed": "Installed {{name}}.",
+          "removed": "Removed {{name}}."
+        },
+        "progress": {
+          "downloading": "Downloading...",
+          "downloadingPercent": "Downloading {{percent}}%",
+          "extracting": "Unpacking...",
+          "extractingPercent": "Unpacking {{percent}}%",
+          "failed": "The install failed.",
+          "finishing": "Finishing the install..."
+        },
+        "refresh": "Refresh",
+        "source": {
+          "bundled": "Built-in catalog",
+          "bundledOffline": "Built-in catalog, could not reach the network",
+          "cached": "Cached catalog from cdn.oleafly.com, last fetched {{when}}",
+          "cachedOffline": "Cached catalog from cdn.oleafly.com, last fetched {{when}}, could not reach the network",
+          "cachedUnknown": "Cached catalog from cdn.oleafly.com, last fetched at an unknown time",
+          "cachedUnknownOffline": "Cached catalog from cdn.oleafly.com, last fetched at an unknown time, could not reach the network",
+          "remote": "Catalog from cdn.oleafly.com, fetched {{when}}",
+          "remoteUnknown": "Catalog from cdn.oleafly.com, fetched at an unknown time"
+        },
+        "title": "Domain shelf",
+        "uninstall": "Uninstall",
+        "update": "Update"
+      },
+      "createSkill": "Create skill",
+      "description": "The assistant loads a skill's full instructions only when it decides it needs one, or right away if you type /skill-id in the chat. A skill you turn on here is on in every project until a project overrides it.",
+      "editAria": "Edit {{name}}",
+      "editor": {
+        "createDescription": "Create a SKILL.md draft in your Oleafly skills folder.",
+        "createTitle": "Create skill",
+        "descriptionPlaceholder": "Check whether each claim has support.",
+        "editDescription": "Refine the metadata and instructions stored in SKILL.md.",
+        "editTitle": "Edit skill",
+        "instructions": "Instructions",
+        "instructionsHint": "Leave this blank to create a minimal instruction scaffold.",
+        "instructionsPlaceholder": "List when to use this skill and the steps the assistant should follow.",
+        "namePlaceholder": "Claim Checker",
+        "requiredAll": "Name, description, and instructions are required.",
+        "requiredBasics": "Name and description are required.",
+        "submitCreate": "Create"
+      },
+      "empty": "No skills found. Add a folder, or create one.",
+      "enableAria": "Enable {{name}}",
+      "fileCount_one": "{{count}} file",
+      "fileCount_other": "{{count}} files",
+      "groups": {
+        "shelf": "Domain shelf",
+        "user": "Your skills"
+      },
+      "inheritsDevice": "Inherits device setting",
+      "invalidBadge": "Invalid",
+      "loadFailed": "Could not load skills. {{message}}",
+      "loading": "Loading skills...",
+      "messages": {
+        "added": "Added {{name}}.",
+        "created": "Created {{name}}.",
+        "editorClosed": "The skill editor is no longer open.",
+        "removed": "Removed {{name}}.",
+        "saved": "Saved {{name}}.",
+        "updated": "Updated {{name}}."
+      },
+      "missingDescription": "This skill needs a description.",
+      "offForProject": "Off for this project",
+      "onForProject": "On for this project",
+      "phases": {
+        "authoring": "Authoring",
+        "communication": "Communication",
+        "figures": "Figures",
+        "research": "Research",
+        "review": "Review",
+        "submission": "Submission",
+        "tooling": "Tooling"
+      },
+      "removeAria": "Remove {{name}}",
+      "removeDialog": {
+        "description": "Remove \"{{name}}\" and its folder from Oleafly? This cannot be undone.",
+        "title": "Remove skill"
+      },
+      "share": {
+        "description": "Link your skills into the folders other coding agents on this computer already read, so you write a skill once and every agent can use it.",
+        "emptyBody": "No other agent folders were found on this computer.",
+        "status": {
+          "linked": "{{linked}} of {{total}} linked",
+          "undetected": "Not found on this device",
+          "unsupported": "Not supported on this system"
+        },
+        "summary": {
+          "checking": "Checking agent folders",
+          "linked_one": "{{linked}} of {{count}} agent linked",
+          "linked_other": "{{linked}} of {{count}} agents linked",
+          "none": "No other agent folders were found"
+        },
+        "title": "Share skills with other agents on this computer"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "Added",
+        "bundled": "Built in",
+        "catalog": "Installed"
+      },
+      "tier": {
+        "credits": "From {{credits}}",
+        "native": "Oleafly workflow",
+        "shelf": "Domain shelf skill",
+        "shelfWithLicense": "Domain shelf, {{license}}",
+        "user": "Your own skill",
+        "vendored": "Vendored skill"
+      },
+      "title": "Skills",
+      "updateAction": "Update",
+      "updateDialog": {
+        "description": "Replace \"{{name}}\" with the latest bundled version? Any local edits to its files will be lost.",
+        "title": "Update skill"
+      },
+      "useDeviceSetting": "Use device setting",
+      "useDeviceSettingAria": "Use the device setting for {{name}}",
+      "useInProject": "Use in this project",
+      "useInProjectAria": "Use {{name}} in this project",
+      "validateAria": "Validate {{name}}"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Used for buttons, selections, and the editor cursor.",
+        "label": "Accent color",
+        "swatchAriaLabel": "{{name}} accent"
+      },
+      "bgPattern": {
+        "description": "Pick the pattern behind the project shelf.",
+        "dots": "Dots",
+        "grid": "Grid",
+        "label": "Background pattern"
+      },
+      "dock": {
+        "bottom": "Bottom",
+        "description": "Choose where the home screen dock sits.",
+        "label": "Dock placement",
+        "left": "Left",
+        "right": "Right"
+      },
+      "font": {
+        "description": "Uses the system fallback when a font is not installed.",
+        "label": "App font"
+      },
+      "fontSize": {
+        "description": "Scale text across menus, panels, and buttons.",
+        "label": "App font size"
+      },
+      "theme": {
+        "description": "System follows the operating system and changes when it does.",
+        "label": "Appearance"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "Browser home page",
+        "description": "Choose the page that opens with the browser dock.",
+        "label": "Home page"
+      },
+      "searchEngine": {
+        "description": "Choose the search engine used for text searches.",
+        "label": "Default search engine"
+      }
+    },
+    "customTheme": {
+      "cleared": "Theme customization cleared.",
+      "customCss": {
+        "description": "Optional declarations apply only inside the app. Rules, imports, and URLs are blocked.",
+        "label": "Scoped CSS declarations"
+      },
+      "darkRestored": "Dark tokens restored.",
+      "description": "Change app color tokens for each mode. Changes are saved locally and take effect straight away.",
+      "exportTheme": "Export theme",
+      "fileTooLarge": "Theme file is larger than 128 KiB.",
+      "importFileAriaLabel": "Import theme file",
+      "importTheme": "Import theme",
+      "imported": "Theme imported and applied.",
+      "importedSkippedMore_one": "Theme imported and applied. Skipped {{count}} token Oleafly does not use: {{tokens}}, and more.",
+      "importedSkippedMore_other": "Theme imported and applied. Skipped {{count}} tokens Oleafly does not use: {{tokens}}, and more.",
+      "importedSkipped_one": "Theme imported and applied. Skipped {{count}} token Oleafly does not use: {{tokens}}.",
+      "importedSkipped_other": "Theme imported and applied. Skipped {{count}} tokens Oleafly does not use: {{tokens}}.",
+      "lightRestored": "Light tokens restored.",
+      "modeDark": "Dark mode",
+      "modeFieldsetAriaLabel": "Theme mode to edit",
+      "modeLight": "Light mode",
+      "pickColorDark": "Pick {{token}} color for dark mode",
+      "pickColorLight": "Pick {{token}} color for light mode",
+      "radius": {
+        "description": "Use a value such as 8px, 0.5rem, or 1em. Leave it blank for the default.",
+        "label": "Corner radius"
+      },
+      "resetAll": "Reset all",
+      "resetMode": "Reset this mode",
+      "title": "Theme customization",
+      "tokenInputDark": "{{token}} token for dark mode",
+      "tokenInputLight": "{{token}} token for light mode",
+      "tokens": {
+        "accent": "Accent",
+        "accentForeground": "Accent text",
+        "background": "Background",
+        "border": "Border",
+        "card": "Panel",
+        "cardForeground": "Panel text",
+        "destructive": "Danger",
+        "destructiveForeground": "Danger text",
+        "foreground": "Text",
+        "input": "Input border",
+        "muted": "Muted",
+        "mutedForeground": "Muted text",
+        "popover": "Popover",
+        "popoverForeground": "Popover text",
+        "primary": "Primary",
+        "primaryForeground": "Primary text",
+        "ring": "Focus ring",
+        "secondary": "Secondary",
+        "secondaryForeground": "Secondary text",
+        "sidebar": "Sidebar",
+        "sidebarAccent": "Sidebar accent",
+        "sidebarAccentForeground": "Sidebar accent text",
+        "sidebarBorder": "Sidebar border",
+        "sidebarForeground": "Sidebar text"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Insert closing brackets and parentheses automatically.",
+        "label": "Auto-close brackets"
+      },
+      "autoCloseEnvironments": {
+        "description": "Insert \\end when you press Enter after \\begin.",
+        "label": "Auto-close environments"
+      },
+      "autoCloseMath": {
+        "description": "Pair $, \\( and \\[ as you type.",
+        "label": "Auto-close math"
+      },
+      "autocomplete": {
+        "description": "Show code completions as you type. Ctrl+Space still opens them when this is off.",
+        "label": "Auto-complete"
+      },
+      "font": {
+        "description": "Choose the monospace font used for source files.",
+        "label": "Editor font"
+      },
+      "fontSize": {
+        "description": "Set the source editor's text size.",
+        "label": "Editor font size"
+      },
+      "ghostCompletion": {
+        "description": "Show the likely completion after the cursor. Press Tab to accept it.",
+        "label": "Inline suggestion"
+      },
+      "nonBlinkingCursor": {
+        "description": "Keep the editor cursor solid.",
+        "label": "Non-blinking cursor"
+      },
+      "stickyScroll": {
+        "description": "Keep the current LaTeX sections and environments at the top while you scroll.",
+        "label": "Sticky scroll"
+      },
+      "theme": {
+        "description": "Set source syntax colors separately from the app theme.",
+        "label": "Editor theme"
+      },
+      "vim": {
+        "description": "Use Vim keybindings in the source editor.",
+        "label": "Vim mode"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Add hidden file pattern",
+        "description": "Choose which generated files and folders stay out of the project tree.",
+        "inputAriaLabel": "File name or pattern to hide",
+        "placeholder": "Add a file name or pattern",
+        "removeAriaLabel": "Remove {{pattern}} from hidden files",
+        "title": "Hide files from file tree"
+      },
+      "homeView": {
+        "description": "Choose how projects are arranged in the library.",
+        "grid": "Grid",
+        "label": "Default home view",
+        "list": "List"
+      },
+      "openIn": {
+        "description": "Choose the layout used when a project opens.",
+        "label": "Open projects in"
+      },
+      "showTree": {
+        "description": "Open the source file tree whenever you enter a project.",
+        "label": "Show file tree on open"
+      }
+    },
+    "fontSizeOption": "{{size}}px",
+    "preview": {
+      "darkMode": {
+        "description": "Invert PDF colors by default. You can still switch colors from the preview toolbar.",
+        "label": "PDF dark mode"
+      },
+      "hoverPreview": {
+        "description": "Show the last compiled page when you hover over a project in the library.",
+        "label": "Preview PDF on hover"
+      },
+      "zoomShortcuts": {
+        "description": "Use Cmd/Ctrl +, -, and 0 to zoom the PDF instead of the app window.",
+        "label": "PDF zoom shortcuts"
+      }
+    },
+    "sectionName": "Appearance",
+    "tabs": {
+      "app": "App",
+      "browser": "Browser",
+      "editor": "Editor",
+      "files": "Project",
+      "pdf": "PDF Preview",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Terminal color theme",
+        "description": "Choose the terminal's ANSI color palette.",
+        "label": "Color theme",
+        "optionDark": "{{name}} · dark",
+        "optionLight": "{{name}} · light"
+      },
+      "colors": {
+        "background": "Background",
+        "backgroundAriaLabel": "Terminal background color",
+        "cursor": "Cursor",
+        "cursorAriaLabel": "Terminal cursor color",
+        "description": "Adjust the base colors while keeping the selected ANSI palette.",
+        "followingAppTheme": "Following the app theme: dark palette in dark mode, light palette in light mode. Pick a specific palette above to customize these.",
+        "foreground": "Text",
+        "foregroundAriaLabel": "Terminal foreground color",
+        "label": "Terminal colors"
+      },
+      "cursorBlink": {
+        "description": "Make the terminal cursor blink.",
+        "label": "Blink cursor"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Terminal cursor style",
+        "bar": "Bar",
+        "block": "Block",
+        "description": "Choose the shape of the terminal cursor.",
+        "label": "Cursor style",
+        "underline": "Underline"
+      },
+      "font": {
+        "ariaLabel": "Terminal font family",
+        "description": "Choose the monospace font used by the terminal.",
+        "label": "Terminal font"
+      },
+      "fontSize": {
+        "description": "Set the text size in the terminal.",
+        "label": "Terminal font size"
+      },
+      "fontWeight": {
+        "description": "Set the weight for regular terminal text.",
+        "label": "Regular font weight"
+      },
+      "fontWeightBold": {
+        "description": "Set the weight for bold terminal text.",
+        "label": "Bold font weight"
+      },
+      "startWithProject": {
+        "description": "Start the shell when a project opens rather than the first time you show the terminal.",
+        "label": "Start shell with project"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly saves it in the background and only when the source changed.",
+      "label": "Save a checkpoint after each successful compile"
+    },
+    "config": {
+      "loadFailed": "Couldn't load checkpoint settings.",
+      "saveFailed": "Couldn't save checkpoint settings."
+    },
+    "description": "A checkpoint records the source files a successful compile used.",
+    "notifyOnFailure": {
+      "description": "Oleafly tells you when a checkpoint cannot be saved, including storage problems or files it could not capture.",
+      "label": "Show a notice when a checkpoint cannot be saved"
+    },
+    "title": "Checkpoints"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "Remove API key",
+      "removeEmail": "Remove email",
+      "removeKey": "Remove key",
+      "saveApiKey": "Save API key",
+      "saveEmail": "Save email",
+      "saveKey": "Save key"
+    },
+    "connected": "Connected",
+    "description": "Manage credentials used by scholarly search sources.",
+    "keyFree": {
+      "description": "These sources are available without an API key.",
+      "title": "Sources without credentials"
+    },
+    "openAlex": {
+      "docsLink": "OpenAlex rate limits",
+      "emailLabel": "OpenAlex contact email",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "Could not remove the OpenAlex contact email.",
+      "emailRemoved": "OpenAlex contact email removed",
+      "emailSaveFailed": "Could not save the OpenAlex contact email.",
+      "emailSaved": "OpenAlex contact email saved",
+      "hint": "An API key is recommended. OpenAlex requires keys for regular access, while keyless searches share a small daily pool. A contact email also enables the polite pool. Both stay on this device.",
+      "keyLabel": "OpenAlex API key",
+      "keyRemoveFailed": "Could not remove the OpenAlex API key.",
+      "keyRemoved": "OpenAlex API key removed",
+      "keySaveFailed": "Could not save the OpenAlex API key.",
+      "keySaved": "OpenAlex API key saved"
+    },
+    "semanticScholar": {
+      "docsLink": "Semantic Scholar API information",
+      "hint": "An API key is optional. Anonymous searches use Semantic Scholar’s public limits.",
+      "keyLabel": "Semantic Scholar API key",
+      "keyRemoveFailed": "Could not remove the Semantic Scholar API key.",
+      "keyRemoved": "Semantic Scholar API key removed",
+      "keySaveFailed": "Could not save the Semantic Scholar API key.",
+      "keySaved": "Semantic Scholar API key saved"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "Optional. Enables the Google Scholar source in Citation Search via Serper. Without a key, that source is skipped when selected.",
+      "keyLabel": "Serper API key",
+      "keyRemoveFailed": "Could not remove the Serper API key.",
+      "keyRemoved": "Serper API key removed",
+      "keySaveFailed": "Could not save the Serper API key.",
+      "keySaved": "Serper API key saved"
+    },
+    "title": "Citation Search"
+  },
+  "cite": {
+    "apa": "The same reference in APA is behind Cite this repository on GitHub",
+    "copyBibtex": "Copy BibTeX",
+    "description": "Oleafly is free and open source, and it stays that way when people know it exists. If it helped a paper along, one entry in your bibliography tells the next researcher where the tool came from. Copy it, paste it into your .bib file, and cite the key <citeKey>oleafly</citeKey>.",
+    "title": "Cite Oleafly in your paper"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "All downloaded",
+      "download": "Download",
+      "downloadAll": "Download all"
+    },
+    "aiTemplates": {
+      "deleteDescription": "Delete \"{{name}}\" from your library? Projects already created from it keep their own copy and are not affected.",
+      "deleteTitle": "Delete AI generated template",
+      "deleted": "Deleted \"{{name}}\" from your library",
+      "empty": "No AI generated templates yet. Create one from the template gallery.",
+      "fallbackDescription": "AI generated template",
+      "toggle": "Manage AI generated templates"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "A warm humanist sans-serif used by many modern resume and CV templates.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "A clean, neutral sans-serif that reads well on screen and in print.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "A refined transitional serif, a good match for academic and executive documents.",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "No downloadable fonts.",
+      "engineNote": "The LuaLaTeX engine (for tagged, accessible PDFs) is managed in the LaTeX Engine section.",
+      "heading": "Fonts",
+      "tooltip": "Some templates use premium open-source fonts. To keep Oleafly small, those fonts are downloaded on demand: when you create such a template, the fonts are fetched and copied into the project so it stays self-contained and compiles offline. You can also pre-download them here, or remove them to free space."
+    },
+    "packProgress": "{{index}} of {{total}}",
+    "progress": "{{label}} ({{index}} of {{total}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Fonts",
+      "templates": "Templates"
+    },
+    "templates": {
+      "empty": "No downloadable template packs.",
+      "heading": "Templates",
+      "tooltip": "Extra template packs are downloaded on demand so Oleafly stays small. Download a pack here to use its templates offline, or remove them later to free space."
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "For trusted projects only. Runs a local TeX distribution that can read files available to your account. Supports full package sets and multi-pass workflows. Host command execution remains a separate per-project permission.",
+        "name": "latexmk (system TeX)"
+      },
+      "tectonic": {
+        "detail": "Ships with Oleafly. Fast, offline, zero setup. Covers plain LaTeX and most common packages.",
+        "name": "Tectonic (built in)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Default compile engine",
+      "tooltip": "Applies to new projects. Each project pins its own engine in project.json, so collaborators opening the same project compile it the same way regardless of this setting."
+    },
+    "distributions": {
+      "empty": "No TeX distribution detected on this machine.",
+      "heading": "Manage TeX distributions",
+      "rowTooltip": "Bundled with {{tools}}. Oleafly runs its TeX tools from {{binDir}}.",
+      "rowTooltipNoTools": "No latexmk or tlmgr was found in this install. Oleafly runs its TeX tools from {{binDir}}.",
+      "tooltip": "Everything the latexmk engine can use on this machine. TinyTeX installs into your home folder with no admin rights. System installs (MacTeX, TeX Live, MiKTeX) are detected automatically."
+    },
+    "latexmkMissing": "no latexmk found",
+    "markdown": {
+      "downloading": "Downloading…",
+      "heading": "Markdown compiler",
+      "install": "Install pandoc",
+      "repair": "Repair Pandoc",
+      "note": "Choosing a different PDF backend for Markdown, or a system pandoc over the managed one, is not available yet.",
+      "status": {
+        "checking": "Checking for pandoc…",
+        "installing": "Fetching a pinned pandoc release. This takes a moment on first use.",
+        "missing": "Not found on this Mac. Oleafly downloads a compatible pandoc (2.19 or newer) into its own folder; nothing else on your system changes.",
+        "ready": "Detected. Markdown projects convert to LaTeX with pandoc, then compile with the bundled Tectonic."
+      },
+      "tectonicDetail": "Typesets the LaTeX that pandoc produces. Ships with Oleafly; nothing to configure.",
+      "tooltip": "Markdown projects are converted with pandoc (Pandoc Markdown: tables, footnotes, citations, math) into LaTeX, then typeset to PDF by the bundled Tectonic. Pandoc is downloaded on demand the first time it is needed."
+    },
+    "packages": {
+      "ariaLabel": "LaTeX packages",
+      "badge": {
+        "breaks": "breaks tagging",
+        "caution": "tagging: caution"
+      },
+      "emptySearch": "No packages found. Try another name or keyword.",
+      "emptySuggested": "No suggested packages match. Search TeX Live to check the full catalog.",
+      "error": {
+        "install": "Could not install {{name}}.",
+        "read": "Could not read the installed packages.",
+        "remove": "Could not remove {{name}}.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "Find LaTeX packages",
+      "filterPlaceholder": "Filter packages…",
+      "heading": "Packages",
+      "includedIn": "Included in {{package}}. Removing it also removes the other files in that package.",
+      "intro": {
+        "available": "These packages are for projects using latexmk (system TeX). Tectonic uses its own package bundle.",
+        "unavailable": "Package management requires TeX Live or TinyTeX. For MiKTeX, use MiKTeX Console."
+      },
+      "refreshInstalled": "Refresh installed packages",
+      "resultsCapped": "{{total}} TeX Live results. Use a more specific search to narrow this list.",
+      "results_one": "{{count}} TeX Live result.",
+      "results_other": "{{count}} TeX Live results.",
+      "search": "Search TeX Live",
+      "searching": "Searching…",
+      "suggested": "Suggested packages. Search TeX Live for more.",
+      "tree": {
+        "both": "in both trees",
+        "system": "in the system tree",
+        "user": "in your personal tree"
+      }
+    },
+    "sectionName": "Engines",
+    "tagging": {
+      "heading": "Tagged / accessible export",
+      "hint": {
+        "none": "Install TinyTeX under “Manage TeX distributions” above to enable tagged export.",
+        "system": "Detected on your system. Nothing to install.",
+        "tinytex": "Provided by TinyTeX (managed above)."
+      },
+      "status": {
+        "none": "No tagging engine installed",
+        "system": "Using a system LuaLaTeX / TeX Live",
+        "tinytex": "TinyTeX installed"
+      },
+      "tooltip": "The default engine (Tectonic) is fast and offline but cannot produce tagged, Section 508 / PDF-UA PDFs. That needs system LuaLaTeX, which can read local files available to your account and should be used only with trusted projects. Oleafly can use an existing distribution or managed TinyTeX."
+    },
+    "tinytex": {
+      "detail": "A compact TeX Live in your home folder. The core download is about 250 MB. Journal templates can add packages later, up to about 1 GB in total. Installing ahead of time makes system LaTeX available when you explicitly choose it.",
+      "download": "Download TinyTeX (~250 MB)",
+      "resume": "Resume download ({{size}} MB done)"
+    },
+    "typst": {
+      "detail": "Ships with Oleafly. Fast, offline, zero setup. Compiles Typst documents to PDF.",
+      "heading": "Typst compiler",
+      "name": "Typst (built in)",
+      "note": "Typst projects always use the bundled compiler. Choosing a compiler version, and system Typst, are not available yet.",
+      "tooltip": "Typst ships inside Oleafly, so there is nothing to install or configure. Every Typst project compiles with the bundled compiler."
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "Connected",
+      "disconnect": "Disconnect",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "Connect",
+      "toggle": "Advanced: use a personal access token",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "New and opened projects get a Git repository so the Git panel can track changes. Oleafly never commits on its own.",
+      "label": "Initialise Git for every project"
+    },
+    "config": {
+      "loadFailed": "Couldn't load Git settings.",
+      "saveFailed": "Couldn't save Git settings."
+    },
+    "connect": "Connect GitHub",
+    "description": "Back up projects, sync across devices, and push/pull from the Git panel.",
+    "device": {
+      "openGithub": "Open GitHub",
+      "opened": "We opened <verificationLink>{{url}}</verificationLink> in your browser. Paste the code there to authorize Oleafly.",
+      "timedOut": "GitHub sign-in timed out. Try again.",
+      "title": "Enter this code on GitHub",
+      "waiting": "Waiting for authorization…"
+    },
+    "hint": {
+      "oauth": "Signs you in with a one-time code in your browser.",
+      "token": "OAuth sign-in isn't configured in this build yet, so paste a token instead."
+    },
+    "notice": {
+      "connected": "Connected as @{{login}}",
+      "disconnected": "Disconnected."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Connect",
+      "disconnect": "Disconnect"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "To get a key: sign in at <siteLink>alphaxiv.org</siteLink>, open your <keyLink>API key page</keyLink>, generate a key (it starts with <keyPrefix>axv1_</keyPrefix>), and paste it below.",
+      "apiKeyLabel": "alphaXiv API key",
+      "description": "Literature search and paper analysis tools for the assistant."
+    },
+    "cookies": {
+      "action": "Import cookies",
+      "confirmAllDomains": "You are about to import cookies from the {{profile}} profile in {{browser}} for all domains. Cookie values will be stored in the in-app browser and sent only to their matching websites. Oleafly will ask you to confirm once more in a native dialog before reading the profile.",
+      "confirmDomain": "You are about to import cookies from the {{profile}} profile in {{browser}} for {{domain}}. Cookie values will be stored in the in-app browser and sent only to their matching websites. Oleafly will ask you to confirm once more in a native dialog before reading the profile.",
+      "confirmTitle": "Confirm cookie import",
+      "description": "Use an existing browser sign-in in Oleafly's in-app browser.",
+      "detecting": "Looking for installed browser profiles...",
+      "dialogDescription": "Choose one installed browser profile. Oleafly reads it only after you review and confirm the import. Chromium cookies are unlocked locally through macOS Keychain. Oleafly does not send cookie values to an Oleafly service.",
+      "dialogTitle": "Import browser cookies",
+      "empty": "No supported browser profiles were found.",
+      "errors": {
+        "chooseProfile": "Choose an available browser profile.",
+        "hostname": "Enter a hostname such as example.com."
+      },
+      "hostnameHint": "Enter a site hostname to import only cookies that site can use. Leave blank to import every eligible cookie in this profile.",
+      "hostnameLabel": "Target hostname (optional)",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_one": "Imported {{count}} cookie from {{browser}} for {{domain}}.",
+      "importedDomain_other": "Imported {{count}} cookies from {{browser}} for {{domain}}.",
+      "importedProfileDomain_one": "Imported {{count}} cookie from {{browser}}, {{profile}} for {{domain}}.",
+      "importedProfileDomain_other": "Imported {{count}} cookies from {{browser}}, {{profile}} for {{domain}}.",
+      "importedProfile_one": "Imported {{count}} cookie from {{browser}}, {{profile}}.",
+      "importedProfile_other": "Imported {{count}} cookies from {{browser}}, {{profile}}.",
+      "imported_one": "Imported {{count}} cookie from {{browser}}.",
+      "imported_other": "Imported {{count}} cookies from {{browser}}.",
+      "importing": "Importing cookies...",
+      "profileGroupLabel": "Browser profiles",
+      "profileLegend": "Browser profile",
+      "review": "Review import",
+      "status": {
+        "available": "Available",
+        "comingSoon": "Coming soon",
+        "noCookieStore": "No cookie store",
+        "notInstalled": "Not installed"
+      },
+      "title": "Import cookies",
+      "tryAgain": "Try again"
+    },
+    "zotero": {
+      "apiKeyHint": "To get a key: sign in at <siteLink>zotero.org</siteLink>, open your <keyLink>API key page</keyLink> to create a key, and copy your numeric user ID from the same page.",
+      "apiKeyLabel": "Zotero API key",
+      "description": "Import citations and references from your Zotero library.",
+      "userIdLabel": "Zotero user ID",
+      "userIdPlaceholder": "User ID"
+    }
+  },
+  "language": {
+    "ariaLabel": "Interface language",
+    "description": "Choose the interface language. System default follows your operating system.",
+    "label": "Language",
+    "note": "Changing the interface language does not change document language or proofreading settings.",
+    "system": "System default"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "Import {{name}} from {{source}}",
+      "description": "Choose servers from the tools installed on this computer.",
+      "detecting": "Looking for MCP servers...",
+      "duplicateOverwritten": "Already exists. It will be overwritten.",
+      "duplicateSkipped": "Already exists. It will be skipped.",
+      "duplicates": {
+        "legend": "When names match",
+        "overwrite": {
+          "description": "Replace it with the selected server.",
+          "label": "Overwrite existing"
+        },
+        "skip": {
+          "description": "Keep the server already saved in Oleafly.",
+          "label": "Skip existing"
+        }
+      },
+      "emptyState": "No MCP server configurations were found.",
+      "importing": "Importing...",
+      "keys": {
+        "environment": "Environment: {{names}}",
+        "headers": "Headers: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Import selected",
+      "summary": {
+        "commandFallback": "Local command",
+        "remote": "Remote server: {{origin}}.",
+        "remoteUnknown": "Remote server.",
+        "stdio_one": "Local command: {{command}}. {{count}} argument.",
+        "stdio_other": "Local command: {{command}}. {{count}} arguments."
+      },
+      "title": "Import MCP servers"
+    },
+    "registry": {
+      "argumentsLine": "Arguments: {{args}}",
+      "description": "Search public server metadata. Nothing is installed or started here. Review the command or URL before you add it.",
+      "emptyQuery": "Enter a server name to search the official MCP registry.",
+      "environmentLine": "Environment: {{names}}",
+      "loadMore": "Load more",
+      "noResults": "No matching registry entries were returned.",
+      "review": "Review before adding",
+      "searchLabel": "Search the official MCP registry",
+      "searchPlaceholder": "Search server names",
+      "title": "Official MCP registry",
+      "unsupportedEntry": "This entry does not list a package or remote transport Oleafly can review.",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Connect your apps"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor, and other MCP clients can read, edit, and compile the open project, with your approval for every change.",
+      "enable": {
+        "ariaLabel": "Enable MCP server",
+        "description": "Listens only on this computer while Oleafly is open.",
+        "label": "Enable MCP server"
+      },
+      "footer": "The server only listens on this computer (127.0.0.1) and requires the token above. Under the first two policies, deleting files always asks for your confirmation in Oleafly. claude.ai in the browser cannot reach a local server. Use Claude Desktop instead.",
+      "policy": {
+        "ask": {
+          "description": "Writes, renames, and deletes show an approval card in Oleafly with a diff before anything is applied.",
+          "label": "Confirm every change"
+        },
+        "autoWrites": {
+          "description": "Writes and renames apply immediately. Deletes still show an approval card.",
+          "label": "Auto-approve edits, confirm deletes"
+        },
+        "legend": "Approval policy",
+        "trust": {
+          "description": "File changes do not prompt. Shell commands and computer control always require approval. Your MCP client remains an additional gate.",
+          "label": "Trust this connection"
+        }
+      },
+      "port": {
+        "ariaLabel": "Automatically selected MCP server port",
+        "label": "Port",
+        "restartAriaLabel": "Restart MCP server and select an available port",
+        "restartTooltip": "Restart the MCP server. Oleafly reuses this port if it is available, or selects another free port."
+      },
+      "readOnly": {
+        "ariaLabel": "Read-only mode",
+        "description": "External apps can read and compile but never modify files.",
+        "label": "Read-only"
+      },
+      "status": {
+        "restartedAt": "Restarted at {{url}}",
+        "runningAt": "Running at {{url}}"
+      },
+      "title": "Oleafly MCP server",
+      "token": {
+        "copyUrl": "Copy URL",
+        "enableToView": "Enable the server to view the token.",
+        "help": "Reveal or copy the bearer token, copy the server URL, or regenerate the token for connected MCP clients.",
+        "hide": "Hide",
+        "label": "Bearer token",
+        "regenerate": "Regenerate",
+        "regenerateWarning": "Existing clients will need the new token.",
+        "reveal": "Reveal"
+      }
+    },
+    "servers": {
+      "addServer": "Add server",
+      "browseRegistry": "Browse registry",
+      "card": {
+        "editLabel": "Edit {{name}}",
+        "enableLabel": "Enable {{name}}",
+        "noTools": "No tools reported.",
+        "removeLabel": "Remove {{name}}",
+        "toolCount_one": "{{count}} tool",
+        "toolCount_other": "{{count}} tools",
+        "toolsLabel": "Tools from {{name}}",
+        "validate": "Validate",
+        "validateLabel": "Validate {{name}}"
+      },
+      "description": "Connect the AI Assistant to local commands or remote MCP endpoints. Oleafly checks each enabled server when this page opens, every minute, and on demand. It also shows the tools each server provides.",
+      "editor": {
+        "addAndValidate": "Add and validate",
+        "argsHint": "Enter one argument per line.",
+        "argsLabel": "Arguments",
+        "commandLabel": "Command",
+        "description": "Enabled servers are checked before their settings are saved.",
+        "formView": "Form",
+        "jsonHint": "Paste one server keyed by name, or a block wrapped in mcpServers.",
+        "jsonLabel": "Full configuration",
+        "jsonView": "JSON",
+        "nameLabel": "Server name",
+        "pairs": {
+          "addHeader": "Add header",
+          "addVariable": "Add variable",
+          "environmentKeyLabel": "Environment key {{index}}",
+          "environmentTitle": "Environment variables",
+          "environmentValueLabel": "Environment value {{index}}",
+          "headerKeyLabel": "Header key {{index}}",
+          "headerValueLabel": "Header value {{index}}",
+          "headersTitle": "Request headers",
+          "removeHeaderLabel": "Remove header {{index}}",
+          "removeVariableLabel": "Remove variable {{index}}",
+          "storedValuePlaceholder": "Stored value",
+          "valuePlaceholder": "Value"
+        },
+        "saveAndValidate": "Save and validate",
+        "saveChanges": "Save changes",
+        "titleAdd": "Add MCP server",
+        "titleEdit": "Edit MCP server",
+        "transportLegend": "Transport",
+        "transportRemote": "Remote URL",
+        "transportStdio": "Local command",
+        "urlLabel": "Remote URL",
+        "viewSwitchLabel": "Configuration editor"
+      },
+      "empty": {
+        "description": "Add a server to give the assistant new tools, or import the ones you already use in another editor.",
+        "title": "No servers added"
+      },
+      "hideRegistry": "Hide registry",
+      "importButton": "Import from other tools",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "Imported {{imported}}, skipped {{skipped}}, failed {{failed}}.",
+      "live": {
+        "checking": "Checking {{name}}.",
+        "connected_one": "{{name}} connected. {{count}} tool available.",
+        "connected_other": "{{name}} connected. {{count}} tools available.",
+        "disabled": "{{name}} is disabled.",
+        "disabledLastCheckFailed": "{{name}} is disabled. Last check failed.",
+        "disabledLastCheckFound_one": "{{name}} is disabled. Last check found {{count}} tool.",
+        "disabledLastCheckFound_other": "{{name}} is disabled. Last check found {{count}} tools.",
+        "failed": "{{name}} validation failed."
+      },
+      "loading": "Loading servers...",
+      "remove": {
+        "confirm": "Remove server",
+        "description": "This removes {{name}} from Oleafly. You can add it again later.",
+        "descriptionFallback": "This removes the server from Oleafly. You can add it again later.",
+        "title": "Remove server?"
+      },
+      "status": {
+        "checking": "Checking...",
+        "connected": "Connected",
+        "disabled": "Disabled",
+        "error": "Error"
+      },
+      "title": "Assistant MCP servers"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Add a globally ignored word",
+      "placeholder": "Add a word or term",
+      "projectAriaLabel": "Add a word ignored in {{project}}",
+      "submitAriaLabel": "Add ignored word"
+    },
+    "clear": {
+      "confirm": "Clear words",
+      "descriptionFallback": "This removes all terms from this dictionary. They will be checked again immediately.",
+      "descriptionGlobal": "This removes all terms from the global dictionary. They will be checked again immediately.",
+      "descriptionProject": "This removes all terms from {{project}}. They will be checked again immediately.",
+      "descriptionSuppressed": "This removes all terms from dismissed findings in {{project}}. They will be checked again immediately.",
+      "suppressedConfirm": "Show again",
+      "suppressedTitle": "Show dismissed findings again?",
+      "title": "Clear ignored words?"
+    },
+    "dismissed": {
+      "countTitle": "{{dismissed}} dismissed, out of {{limit}} the project can remember",
+      "hidden_one": "{{count}} grammar finding is hidden in this project because you chose Ignore in this project. Showing them again underlines them once more.",
+      "hidden_other": "{{count}} grammar findings are hidden in this project because you chose Ignore in this project. Showing them again underlines them once more.",
+      "none": "Nothing is dismissed. When you choose Ignore in this project on a grammar finding, it is listed here.",
+      "showAgain": "Show them again",
+      "title": "Dismissed findings",
+      "titleInProject": "Dismissed findings in {{project}}"
+    },
+    "global": {
+      "emptyDescription": "Words you add here are skipped by the proofreader across every project.",
+      "scope": "Applies to every project"
+    },
+    "intro": "Add words to your personal spellcheck dictionary. These words are stored in local settings and ignored across projects. Matching is Unicode-normalized and case-insensitive.",
+    "profileRules": {
+      "description": "Off by default because they get in the way of papers. Turn on any you want.",
+      "example": "Example: {{example}}",
+      "help": "Harper is tuned for chat and email. These rules either push a style papers do not follow, such as spelling out kB and min, or trip over the placeholders that stand in for LaTeX markup, so Oleafly keeps them off. Each one shows what it would flag. Turn it on if you want those findings.",
+      "reasons": {
+        "AvoidContractions": "Asks you to write out every contraction.",
+        "BoringWords": "Asks for a livelier word.",
+        "CompoundNouns": "Joins a compound noun that was written as two words.",
+        "Dashes": "Replaces a typed -- or --- with the proper dash character.",
+        "DiscourseMarkers": "Flags a sentence that opens with a marker such as however and leaves out the comma after it.",
+        "EllipsisLength": "Fixes an ellipsis that is not three dots.",
+        "ExpandAlgorithm": "Wants algo spelled out.",
+        "ExpandArgument": "Wants arg spelled out.",
+        "ExpandCoordinate": "Wants coord spelled out.",
+        "ExpandMemoryShorthands": "Wants KB and MB spelled out.",
+        "ExpandParameter": "Wants param spelled out.",
+        "ExpandStandardInputAndOutput": "Wants stdin and stdout spelled out.",
+        "ExpandTimeShorthands": "Wants min and sec spelled out.",
+        "ExplainLikeImFive": "Expands an initialism into its full words.",
+        "FillerWords": "Flags words it counts as filler.",
+        "Hedging": "Flags hedging phrases such as I would argue that and to a certain degree.",
+        "LongSentences": "Flags any sentence past its length limit.",
+        "MergeWords": "Joins a word that a stray space split in two, such as to gether.",
+        "MoreAdjective": "Prefers the comparative form over more plus an adjective.",
+        "NoFrenchSpaces": "Removes the space before punctuation that French typography uses.",
+        "NoOxfordComma": "Removes the serial comma.",
+        "NumericRangeEnDash": "Wants an en dash between the ends of a number range.",
+        "OxfordComma": "Requires the serial comma.",
+        "SentenceCapitalization": "Capitalizes the first word of a sentence, including one that starts after masked markup.",
+        "Spaces": "Collapses repeated spaces, which the prose mask leaves wherever markup was blanked out.",
+        "SplitWords": "Splits a word that should be two, such as alot.",
+        "TransposedSpace": "Moves a space that sits on the wrong side of punctuation, which masking often produces."
+      },
+      "title": "Rules the academic profile keeps off",
+      "toggleAriaLabel": "Turn on {{rule}}"
+    },
+    "projects": {
+      "empty": "Open a project to add project-specific terms.",
+      "emptyDescription": "Words added for this project are skipped by the proofreader only here.",
+      "terms_one": "{{used}} / {{limit}} term",
+      "terms_other": "{{used}} / {{limit}} terms"
+    },
+    "reset": {
+      "confirmationDescription": "This permanently removes every ignored word, global and per-project, and turns back on every grammar rule you turned off. The academic profile keeps its own rules off. Proofreading will flag those words again.",
+      "sectionName": "Dictionary"
+    },
+    "search": {
+      "ariaLabel": "Search ignored words",
+      "placeholder": "Search dictionary"
+    },
+    "tabs": {
+      "global": "Global",
+      "projects": "Projects"
+    },
+    "turnedOff": {
+      "description": "Rules you turned off and findings you ignored in this project.",
+      "help": "Hover an underlined word or sentence in the editor and a small card shows what Harper found, with actions to fix it or ignore it. Rules you turned off from that card and findings you ignored in this project are listed here, so you can bring any of them back.",
+      "listAriaLabel": "Grammar rules turned off",
+      "none": "You have not turned off any rules.",
+      "restoreAriaLabel": "Turn the {{rule}} rule back on",
+      "restoreTitle": "Turn the “{{rule}}” rule back on",
+      "title": "Grammar rules and dismissed findings"
+    },
+    "words": {
+      "emptyCompact": "Nothing ignored yet.",
+      "emptyTitle": "Nothing ignored yet",
+      "listAriaLabel": "Ignored words",
+      "noMatches": "No ignored words match this search.",
+      "removeAriaLabel": "Stop ignoring {{word}}",
+      "removeTitle": "Stop ignoring “{{word}}”"
+    }
+  },
+  "reset": {
+    "button": "Reset to defaults",
+    "confirmDescription": "Restore {{sectionName}} preferences to their defaults. Other settings will stay unchanged.",
+    "confirmTitle": "Reset {{sectionName}} settings?",
+    "description": "Restore {{sectionName}} preferences to their defaults.",
+    "label": "Reset settings"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Search and run Oleafly commands.",
+        "label": "Command palette"
+      },
+      "forwardSync": {
+        "description": "Jump from the editor cursor to the compiled PDF.",
+        "label": "Go to PDF"
+      },
+      "recompile": {
+        "description": "Compile the current project and reveal its PDF.",
+        "label": "Recompile"
+      },
+      "searchDocuments": {
+        "description": "Search across projects and documents.",
+        "label": "Search all documents"
+      },
+      "shortcutReference": {
+        "description": "Open the project shortcut reference.",
+        "label": "Shortcut reference"
+      },
+      "toggleBrowser": {
+        "description": "Show or hide the project browser.",
+        "label": "Toggle browser"
+      },
+      "toggleSidebar": {
+        "description": "Show or hide the project sidebar.",
+        "label": "Toggle sidebar"
+      },
+      "toggleTerminal": {
+        "description": "Show or hide the project terminal.",
+        "label": "Toggle terminal"
+      }
+    },
+    "application": {
+      "editAriaLabel": "Edit {{action}}, currently {{shortcut}}",
+      "heading": "Application shortcuts",
+      "prompt": "Press the new key combination",
+      "recordAriaLabel": "Recording {{action}}. Press a shortcut.",
+      "recording": "Recording",
+      "resetAriaLabel": "Reset {{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "Ask AI to edit selection",
+        "bold": "Bold",
+        "findAndReplace": "Find and replace",
+        "findReferences": "Find references",
+        "goToDefinition": "Go to definition",
+        "goToDefinitionWithPointer": "Go to definition with pointer",
+        "indentOrAcceptAutocomplete": "Indent or accept autocomplete",
+        "italic": "Italic",
+        "jumpToSourceFromPdf": "Jump to source from PDF",
+        "redo": "Redo",
+        "renameSymbol": "Rename symbol project-wide",
+        "slashCommandMenu": "Slash-command insert menu",
+        "triggerAutocomplete": "Trigger autocomplete",
+        "undo": "Undo"
+      },
+      "managed": "Managed by the editor"
+    },
+    "categories": {
+      "codeIntelligence": "Code intelligence",
+      "editor": "Editor",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "Already assigned to {{action}}.",
+      "reserved": "{{shortcut}} is reserved by the operating system."
+    },
+    "intro": "Customize application shortcuts and review editor-native key combinations.",
+    "reserved": {
+      "closeWindow": "Close window",
+      "copy": "Copy",
+      "cut": "Cut",
+      "paste": "Paste",
+      "quit": "Quit",
+      "save": "Save",
+      "selectAll": "Select all",
+      "systemSearch": "System search",
+      "windowSwitching": "Window switching"
+    },
+    "reset": {
+      "sectionName": "Keyboard Shortcuts"
+    },
+    "tabs": {
+      "application": "Application"
+    }
+  }
+}

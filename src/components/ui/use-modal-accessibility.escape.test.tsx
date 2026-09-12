@@ -8,8 +8,8 @@ function Dialog({ onClose }: { onClose: () => void }) {
   const { dialogRef } = useModalAccessibility<HTMLDivElement>(true, onClose);
   return (
     <div role="dialog" ref={dialogRef} tabIndex={-1}>
-      <input aria-label="Inner editor" data-modal-escape-inner="" />
-      <button type="button">Other</button>
+      <input aria-label={"Inner editor"} data-modal-escape-inner="" />
+      <button type="button">{"Other"}</button>
     </div>
   );
 }

@@ -63,7 +63,16 @@
     "macOS": {
       "hardenedRuntime": true,
       "entitlements": "entitlements.plist",
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "files": {
+        "Resources/zh-Hans.lproj/InfoPlist.strings": "./infoplist/zh-Hans.lproj/InfoPlist.strings"
+      }
+    },
+    "windows": {
+      "nsis": {
+        "languages": ["English", "SimpChinese"],
+        "displayLanguageSelector": true
+      }
     }
   },
   "plugins": {

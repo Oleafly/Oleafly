@@ -3,12 +3,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultFilter } from "cmdk";
 import {
+  commandGroup,
+  commandKeywords,
   commandLabel,
   commandsFor,
   registry,
   type AppContext,
   type CommandContribution,
 } from "@oleafly/registry";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ engine: null, engineLoaded: false, activePath: null }) },
@@ -30,11 +33,13 @@ import { registerPaletteCommands } from "./commands";
 const ctx: AppContext = { projectId: null, projectKind: null, theme: "dark" };
 
 function settingsCommands(): CommandContribution[] {
-  return commandsFor("palette", ctx).filter((command) => command.group === "Settings");
+  return commandsFor("palette", ctx).filter(
+    (command) => commandGroup(command, ctx) === enShell.commandGroups.settings,
+  );
 }
 
 function searchText(command: CommandContribution): string {
-  return `${commandLabel(command, ctx)} ${command.keywords ?? ""}`;
+  return `${commandLabel(command, ctx)} ${commandKeywords(command, ctx)}`;
 }
 
 beforeEach(() => {
@@ -52,10 +57,10 @@ describe("appearance palette commands", () => {
       .slice(0, 4)
       .map((command) => commandLabel(command, ctx));
     expect(labels).toEqual([
-      "Switch to light theme",
-      "Use system appearance",
-      "Use light appearance",
-      "Use dark appearance",
+      enShell.commands.theme.toLight,
+      enShell.commands.appearance.useSystem,
+      enShell.commands.appearance.useLight,
+      enShell.commands.appearance.useDark,
     ]);
   });
 

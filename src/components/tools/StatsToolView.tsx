@@ -1,4 +1,5 @@
 import { useId, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Calculator, Copy } from "lucide-react";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import {
@@ -20,13 +21,14 @@ import {
   type StatsSampleSizeResult,
 } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 
 type Tab = "p-value" | "sample-size" | "confidence-interval";
 
 const CALCULATORS = [
-  { value: "p-value", label: "p-value", testId: "stats-tab-p-value" },
-  { value: "sample-size", label: "Sample size", testId: "stats-tab-sample-size" },
-  { value: "confidence-interval", label: "Interval", testId: "stats-tab-confidence-interval" },
+  { value: "p-value", testId: "stats-tab-p-value" },
+  { value: "sample-size", testId: "stats-tab-sample-size" },
+  { value: "confidence-interval", testId: "stats-tab-confidence-interval" },
 ] as const;
 
 function NumberField({ label, value, onChange, placeholder }: {
@@ -61,6 +63,7 @@ function ResultLine({ label, value }: { label: string; value: string }) {
 }
 
 function useCalculation<Result>(name: string) {
+  const { t } = useTranslation(["researchTools"]);
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +87,7 @@ function useCalculation<Result>(name: string) {
       if (id === request.current) {
         notifyError(name, caught);
         setResult(null);
-        setError(caught instanceof Error ? caught.message : "Check the values and try again.");
+        setError(caught instanceof Error ? caught.message : t(($) => $.researchTools.stats.checkValues));
       }
     } finally {
       if (id === request.current) setBusy(false);
@@ -101,11 +104,20 @@ function CalculatorControls({ tab, onTabChange, onCompute, busy, testId }: {
   busy: boolean;
   testId: string;
 }) {
+  const { t } = useTranslation(["researchTools"]);
+  const options = CALCULATORS.map((option) => ({
+    ...option,
+    label: option.value === "p-value"
+      ? t(($) => $.researchTools.stats.tabPValue)
+      : option.value === "sample-size"
+        ? t(($) => $.researchTools.stats.tabSampleSize)
+        : t(($) => $.researchTools.stats.tabInterval),
+  }));
   return (
     <div className="flex max-w-full items-center gap-2">
-      <ToolSegmentedControl label="Calculator" value={tab} options={CALCULATORS} onChange={onTabChange} />
+      <ToolSegmentedControl label={t(($) => $.researchTools.stats.calculator)} value={tab} options={options} onChange={onTabChange} />
       <Button type="button" size="sm" disabled={busy} data-testid={testId} onClick={onCompute} className="shrink-0">
-        {busy ? "Computing" : "Compute"}
+        {busy ? t(($) => $.researchTools.stats.computing) : t(($) => $.researchTools.stats.compute)}
       </Button>
     </div>
   );
@@ -118,39 +130,43 @@ function ResultSurface({ testId, busy, error, empty, children }: {
   empty: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation(["researchTools"]);
   return (
     <ToolPreviewSurface className="items-center justify-center text-center">
       <div data-testid={testId} className="w-full max-w-md">
-        {busy ? <ToolStatus state="busy">Computing locally…</ToolStatus>
-          : error ? <div className="space-y-2"><ToolStatus state="error">Couldn&apos;t calculate this result</ToolStatus><p className="text-sm text-muted-foreground">{error}</p></div>
-          : children || <div className="space-y-3"><ToolStatus state="ready">Ready for local calculation</ToolStatus><p className="text-sm leading-6 text-muted-foreground">{empty}</p></div>}
+        {busy ? <ToolStatus state="busy">{t(($) => $.researchTools.stats.computingLocally)}</ToolStatus>
+          : error ? <div className="space-y-2"><ToolStatus state="error">{t(($) => $.researchTools.stats.calculationFailed)}</ToolStatus><p className="text-sm text-muted-foreground">{error}</p></div>
+          : children || <div className="space-y-3"><ToolStatus state="ready">{t(($) => $.researchTools.stats.ready)}</ToolStatus><p className="text-sm leading-6 text-muted-foreground">{empty}</p></div>}
       </div>
     </ToolPreviewSurface>
   );
 }
 
 function Examples({ children }: { children: ReactNode }) {
-  return <div><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Examples</div><div className="flex flex-wrap gap-2">{children}</div></div>;
+  const { t } = useTranslation(["researchTools"]);
+  return <div><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t(($) => $.researchTools.stats.examples)}</div><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
 
 async function copyResult(lines: string[]) {
   try {
     await navigator.clipboard.writeText(lines.join("\n"));
-    toast.success("Copied result");
+    toast.success(i18n.t(($) => $.researchTools.stats.resultCopied));
   } catch (caught) {
-    toast.error(caught instanceof Error ? caught.message : "Couldn't copy result");
+    toast.error(caught instanceof Error ? caught.message : i18n.t(($) => $.researchTools.stats.copyFailed));
   }
 }
 
 function CopyResultButton({ lines }: { lines: string[] }) {
+  const { t } = useTranslation(["researchTools"]);
   return (
     <Button variant="outline" size="sm" onClick={() => void copyResult(lines)}>
-      <Copy className="size-3.5" /> Copy result
+      <Copy className="size-3.5" /> {t(($) => $.researchTools.stats.copyResult)}
     </Button>
   );
 }
 
 function PValueCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: Tab) => void }) {
+  const { t } = useTranslation(["researchTools"]);
   const [test, setTest] = useState("t-two");
   const [statistic, setStatistic] = useState("2.34");
   const [df, setDf] = useState("28");
@@ -163,20 +179,94 @@ function PValueCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: T
     invalidate(); setTest(nextTest); setStatistic(nextStatistic); setDf(nextDf);
   };
   const p = result?.p;
-  const verdict = p === undefined ? null : p < 0.001 ? "p < .001" : p < 0.01 ? "p < .01" : p < 0.05 ? "p < .05" : p < 0.1 ? "p < .10" : "Not significant";
+  const verdict = p === undefined
+    ? null
+    : p < 0.001
+      ? "p < .001"
+      : p < 0.01
+        ? "p < .01"
+        : p < 0.05
+          ? "p < .05"
+          : p < 0.1
+            ? "p < .10"
+            : t(($) => $.researchTools.stats.notSignificant);
+  const testLabel = test === "t-two"
+    ? t(($) => $.researchTools.stats.testTTwo, { df })
+    : test === "t-one"
+      ? t(($) => $.researchTools.stats.testTOne, { df })
+      : test === "z-two"
+        ? t(($) => $.researchTools.stats.testZTwo)
+        : test === "z-one"
+          ? t(($) => $.researchTools.stats.testZOne)
+          : t(($) => $.researchTools.stats.testChi, { df });
+  const backendTestLabel = test === "t-two"
+    ? `Two-tailed t-test (${Number.parseFloat(df)} df)`
+    : test === "t-one"
+      ? `One-tailed t-test, upper tail (${Number.parseFloat(df)} df)`
+      : test === "z-two"
+        ? "Two-tailed z-test"
+        : test === "z-one"
+          ? "One-tailed z-test (upper tail)"
+          : `Chi-square, upper tail (${Number.parseFloat(df)} df)`;
+  const resultTestLabel = result && result.label !== backendTestLabel ? result.label : testLabel;
+  const copyLines = result
+    ? [
+        t(($) => $.researchTools.stats.pValueTitle),
+        t(($) => $.researchTools.stats.copyTest, { value: resultTestLabel }),
+        t(($) => $.researchTools.stats.copyStatistic, { value: statistic }),
+        ...(test.startsWith("t") || test === "chi"
+          ? [t(($) => $.researchTools.stats.copyDegreesFreedom, { value: df })]
+          : []),
+        t(($) => $.researchTools.stats.copyPValue, { value: result.p.toPrecision(4) }),
+      ]
+    : [];
 
   return (
     <ToolSplitView storageId="statistics-p-value">
-      <ToolPane title="Calculator" actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-p-run" />} footer={<Examples><Button variant="outline" size="sm" onClick={() => setExample("t-two", "2.34", "28")}>t-test</Button><Button variant="outline" size="sm" onClick={() => setExample("z-two", "1.96")}>z-test</Button></Examples>}>
+      <ToolPane
+        title={t(($) => $.researchTools.stats.calculator)}
+        actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-p-run" />}
+        footer={(
+          <Examples>
+            <Button variant="outline" size="sm" onClick={() => setExample("t-two", "2.34", "28")}>{t(($) => $.researchTools.stats.exampleTTest)}</Button>
+            <Button variant="outline" size="sm" onClick={() => setExample("z-two", "1.96")}>{t(($) => $.researchTools.stats.exampleZTest)}</Button>
+          </Examples>
+        )}
+      >
         <div className="mx-auto w-full max-w-md space-y-5 p-5 md:p-6">
-          <label className="grid gap-1.5 text-sm"><span className="text-xs font-medium text-muted-foreground">Test</span><select value={test} onChange={(event) => { invalidate(); setTest(event.target.value); }} data-testid="stats-p-test" className="h-10 rounded-lg border bg-background/70 px-3 text-sm"><option value="t-two">t-test, two-tailed</option><option value="t-one">t-test, upper tail</option><option value="z-two">z-test, two-tailed</option><option value="z-one">z-test, upper tail</option><option value="chi">chi-square, upper tail</option></select></label>
-          <NumberField label="Statistic" value={statistic} onChange={(value) => { invalidate(); setStatistic(value); }} placeholder="2.34" />
-          {(test.startsWith("t") || test === "chi") && <NumberField label="Degrees of freedom" value={df} onChange={(value) => { invalidate(); setDf(value); }} placeholder="28" />}
+          <label className="grid gap-1.5 text-sm">
+            <span className="text-xs font-medium text-muted-foreground">{t(($) => $.researchTools.stats.test)}</span>
+            <select value={test} onChange={(event) => { invalidate(); setTest(event.target.value); }} data-testid="stats-p-test" className="h-10 rounded-lg border bg-background/70 px-3 text-sm">
+              <option value="t-two">{t(($) => $.researchTools.stats.testTTwoOption)}</option>
+              <option value="t-one">{t(($) => $.researchTools.stats.testTOneOption)}</option>
+              <option value="z-two">{t(($) => $.researchTools.stats.testZTwoOption)}</option>
+              <option value="z-one">{t(($) => $.researchTools.stats.testZOneOption)}</option>
+              <option value="chi">{t(($) => $.researchTools.stats.testChiOption)}</option>
+            </select>
+          </label>
+          <NumberField label={t(($) => $.researchTools.stats.statistic)} value={statistic} onChange={(value) => { invalidate(); setStatistic(value); }} placeholder={t(($) => $.researchTools.stats.statisticPlaceholder)} />
+          {(test.startsWith("t") || test === "chi") && (
+            <NumberField label={t(($) => $.researchTools.stats.degreesFreedom)} value={df} onChange={(value) => { invalidate(); setDf(value); }} placeholder={t(($) => $.researchTools.stats.dfPlaceholder)} />
+          )}
         </div>
       </ToolPane>
-      <ToolPane title="Result" badge={result ? "Computed" : undefined} actions={busy ? <ToolStatus state="busy">Working</ToolStatus> : result ? <CopyResultButton lines={["p-value", `Test: ${result.label}`, `Statistic: ${statistic}`, ...(test.startsWith("t") || test === "chi" ? [`Degrees of freedom: ${df}`] : []), `p-value: ${result.p.toPrecision(4)}`]} /> : undefined}>
-        <ResultSurface testId="stats-p-result" busy={busy} error={error} empty="Enter a test statistic, then compute its p-value.">
-          {result ? <div className="space-y-5"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{result.label}</p><p className="font-mono text-4xl tracking-tight text-foreground">p = {result.p.toPrecision(4)}</p><p className="text-sm text-muted-foreground">{verdict}</p></div> : null}
+      <ToolPane
+        title={t(($) => $.researchTools.stats.result)}
+        badge={result ? t(($) => $.researchTools.stats.computed) : undefined}
+        actions={busy
+          ? <ToolStatus state="busy">{t(($) => $.researchTools.stats.working)}</ToolStatus>
+          : result
+            ? <CopyResultButton lines={copyLines} />
+            : undefined}
+      >
+        <ResultSurface testId="stats-p-result" busy={busy} error={error} empty={t(($) => $.researchTools.stats.pValueEmpty)}>
+          {result ? (
+            <div className="space-y-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{resultTestLabel}</p>
+              <p className="font-mono text-4xl tracking-tight text-foreground">{t(($) => $.researchTools.stats.pValueDisplay, { value: result.p.toPrecision(4) })}</p>
+              <p className="text-sm text-muted-foreground">{verdict}</p>
+            </div>
+          ) : null}
         </ResultSurface>
       </ToolPane>
     </ToolSplitView>
@@ -184,6 +274,7 @@ function PValueCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: T
 }
 
 function SampleSizeCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: Tab) => void }) {
+  const { t } = useTranslation(["researchTools"]);
   const [proportion, setProportion] = useState("50");
   const [margin, setMargin] = useState("5");
   const [confidence, setConfidence] = useState("95");
@@ -191,20 +282,61 @@ function SampleSizeCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (ta
   const { result, busy, error, invalidate, run } = useCalculation<StatsSampleSizeResult>("sample size");
   const calculate = () => run(() => statsSampleSize(Number.parseFloat(proportion), Number.parseFloat(margin), Number.parseFloat(confidence), population.trim() ? Number.parseFloat(population) : undefined));
   const setExample = (nextPopulation: string) => { invalidate(); setProportion("50"); setMargin("5"); setConfidence("95"); setPopulation(nextPopulation); };
+  const copyLines = result
+    ? [
+        t(($) => $.researchTools.stats.sampleSizeTitle),
+        t(($) => $.researchTools.stats.copyExpectedProportion, { value: proportion }),
+        t(($) => $.researchTools.stats.copyMargin, { value: margin }),
+        t(($) => $.researchTools.stats.copyConfidence, { value: confidence }),
+        ...(population.trim()
+          ? [t(($) => $.researchTools.stats.copyPopulationSize, { value: population })]
+          : []),
+        t(($) => $.researchTools.stats.copyCriticalZ, { value: result.z.toFixed(3) }),
+        t(($) => $.researchTools.stats.copyOpenSample, { value: result.infinitePopulation }),
+        ...(result.finitePopulation
+          ? [t(($) => $.researchTools.stats.copyFiniteSample, { value: result.finitePopulation })]
+          : []),
+      ]
+    : [];
 
   return (
     <ToolSplitView storageId="statistics-sample-size">
-      <ToolPane title="Calculator" actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-n-run" />} footer={<Examples><Button variant="outline" size="sm" onClick={() => setExample("")}>Open population</Button><Button variant="outline" size="sm" onClick={() => setExample("1000")}>Population of 1,000</Button></Examples>}>
+      <ToolPane
+        title={t(($) => $.researchTools.stats.calculator)}
+        actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-n-run" />}
+        footer={(
+          <Examples>
+            <Button variant="outline" size="sm" onClick={() => setExample("")}>{t(($) => $.researchTools.stats.openPopulation)}</Button>
+            <Button variant="outline" size="sm" onClick={() => setExample("1000")}>{t(($) => $.researchTools.stats.populationExample)}</Button>
+          </Examples>
+        )}
+      >
         <div className="mx-auto w-full max-w-md space-y-5 p-5 md:p-6">
-          <NumberField label="Expected proportion (%)" value={proportion} onChange={(value) => { invalidate(); setProportion(value); }} placeholder="50" />
-          <NumberField label="Margin of error (%)" value={margin} onChange={(value) => { invalidate(); setMargin(value); }} placeholder="5" />
-          <NumberField label="Confidence (%)" value={confidence} onChange={(value) => { invalidate(); setConfidence(value); }} placeholder="95" />
-          <NumberField label="Population size (optional)" value={population} onChange={(value) => { invalidate(); setPopulation(value); }} placeholder="1000" />
+          <NumberField label={t(($) => $.researchTools.stats.expectedProportion)} value={proportion} onChange={(value) => { invalidate(); setProportion(value); }} placeholder={t(($) => $.researchTools.stats.proportionPlaceholder)} />
+          <NumberField label={t(($) => $.researchTools.stats.marginOfErrorPercent)} value={margin} onChange={(value) => { invalidate(); setMargin(value); }} placeholder={t(($) => $.researchTools.stats.marginPlaceholder)} />
+          <NumberField label={t(($) => $.researchTools.stats.confidencePercent)} value={confidence} onChange={(value) => { invalidate(); setConfidence(value); }} placeholder={t(($) => $.researchTools.stats.confidencePlaceholder)} />
+          <NumberField label={t(($) => $.researchTools.stats.populationSizeOptional)} value={population} onChange={(value) => { invalidate(); setPopulation(value); }} placeholder={t(($) => $.researchTools.stats.populationPlaceholder)} />
         </div>
       </ToolPane>
-      <ToolPane title="Result" badge={result ? "Computed" : undefined} actions={busy ? <ToolStatus state="busy">Working</ToolStatus> : result ? <CopyResultButton lines={["Sample size", `Expected proportion: ${proportion}%`, `Margin of error: ${margin}%`, `Confidence: ${confidence}%`, ...(population.trim() ? [`Population size: ${population}`] : []), `Critical z: ${result.z.toFixed(3)}`, `Open population sample: ${result.infinitePopulation}`, ...(result.finitePopulation ? [`Finite population sample: ${result.finitePopulation}`] : [])]} /> : undefined}>
-        <ResultSurface testId="stats-n-result" busy={busy} error={error} empty="Enter an expected proportion and margin of error to estimate a sample size.">
-          {result ? <div className="w-full text-left"><p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recommended sample</p><p className="mb-6 font-mono text-4xl tracking-tight text-foreground">{result.finitePopulation ?? result.infinitePopulation}</p><ResultLine label="Critical z" value={result.z.toFixed(3)} /><ResultLine label="Open population" value={String(result.infinitePopulation)} />{result.finitePopulation ? <ResultLine label="Finite population" value={String(result.finitePopulation)} /> : null}</div> : null}
+      <ToolPane
+        title={t(($) => $.researchTools.stats.result)}
+        badge={result ? t(($) => $.researchTools.stats.computed) : undefined}
+        actions={busy
+          ? <ToolStatus state="busy">{t(($) => $.researchTools.stats.working)}</ToolStatus>
+          : result
+            ? <CopyResultButton lines={copyLines} />
+            : undefined}
+      >
+        <ResultSurface testId="stats-n-result" busy={busy} error={error} empty={t(($) => $.researchTools.stats.sampleSizeEmpty)}>
+          {result ? (
+            <div className="w-full text-left">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t(($) => $.researchTools.stats.recommendedSample)}</p>
+              <p className="mb-6 font-mono text-4xl tracking-tight text-foreground">{result.finitePopulation ?? result.infinitePopulation}</p>
+              <ResultLine label={t(($) => $.researchTools.stats.criticalZ)} value={result.z.toFixed(3)} />
+              <ResultLine label={t(($) => $.researchTools.stats.openPopulation)} value={String(result.infinitePopulation)} />
+              {result.finitePopulation ? <ResultLine label={t(($) => $.researchTools.stats.finitePopulation)} value={String(result.finitePopulation)} /> : null}
+            </div>
+          ) : null}
         </ResultSurface>
       </ToolPane>
     </ToolSplitView>
@@ -212,6 +344,7 @@ function SampleSizeCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (ta
 }
 
 function ConfidenceIntervalCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: Tab) => void }) {
+  const { t } = useTranslation(["researchTools"]);
   const [mode, setMode] = useState<"mean" | "proportion">("mean");
   const [mean, setMean] = useState("100");
   const [sd, setSd] = useState("15");
@@ -222,20 +355,97 @@ function ConfidenceIntervalCalculator({ tab, onTabChange }: { tab: Tab; onTabCha
   const calculate = () => run(() => statsConfidenceInterval(mode, Number.parseFloat(confidence), { mean: mode === "mean" ? Number.parseFloat(mean) : undefined, sd: mode === "mean" ? Number.parseFloat(sd) : undefined, n: Number.parseFloat(n), successes: mode === "proportion" ? Number.parseFloat(successes) : undefined }));
   const setMeanExample = () => { invalidate(); setMode("mean"); setMean("100"); setSd("15"); setN("9"); setConfidence("95"); };
   const setProportionExample = () => { invalidate(); setMode("proportion"); setSuccesses("0"); setN("10"); setConfidence("95"); };
+  const intervalMethod = mode === "mean"
+    ? t(($) => $.researchTools.stats.meanIntervalMethod)
+    : t(($) => $.researchTools.stats.proportionIntervalMethod);
+  const marginLabel = mode === "proportion"
+    ? t(($) => $.researchTools.stats.wilsonHalfWidth)
+    : t(($) => $.researchTools.stats.marginOfError);
+  const copyLines = result
+    ? [
+        t(($) => $.researchTools.stats.confidenceIntervalTitle),
+        t(($) => $.researchTools.stats.copyMethod, { value: intervalMethod }),
+        t(($) => $.researchTools.stats.copyConfidence, { value: confidence }),
+        ...(mode === "mean"
+          ? [
+              t(($) => $.researchTools.stats.copySampleMean, { value: mean }),
+              t(($) => $.researchTools.stats.copySampleSd, { value: sd }),
+            ]
+          : [t(($) => $.researchTools.stats.copySuccesses, { value: successes })]),
+        t(($) => $.researchTools.stats.copySampleSize, { value: n }),
+        t(($) => $.researchTools.stats.copyPointEstimate, { value: result.pointEstimate.toPrecision(4) }),
+        t(($) => $.researchTools.stats.copyInterval, {
+          lower: result.lower.toPrecision(4),
+          upper: result.upper.toPrecision(4),
+        }),
+        t(($) => $.researchTools.stats.copyStandardError, { value: result.standardError.toPrecision(4) }),
+        t(($) => $.researchTools.stats.copyMarginValue, {
+          label: marginLabel,
+          value: result.marginOfError.toPrecision(4),
+        }),
+        t(($) => $.researchTools.stats.copyCritical, {
+          label: result.criticalLabel,
+          value: result.criticalValue.toFixed(4),
+        }),
+      ]
+    : [];
 
   return (
     <ToolSplitView storageId="statistics-confidence-interval">
-      <ToolPane title="Calculator" actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-ci-run" />} footer={<Examples><Button variant="outline" size="sm" onClick={setMeanExample}>Mean</Button><Button variant="outline" size="sm" onClick={setProportionExample}>0 of 10</Button></Examples>}>
+      <ToolPane
+        title={t(($) => $.researchTools.stats.calculator)}
+        actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-ci-run" />}
+        footer={(
+          <Examples>
+            <Button variant="outline" size="sm" onClick={setMeanExample}>{t(($) => $.researchTools.stats.mean)}</Button>
+            <Button variant="outline" size="sm" onClick={setProportionExample}>{t(($) => $.researchTools.stats.zeroOfTen)}</Button>
+          </Examples>
+        )}
+      >
         <div className="mx-auto w-full max-w-md space-y-5 p-5 md:p-6">
-          <div data-testid="stats-ci-mode"><ToolSegmentedControl label="Estimate type" value={mode} options={[{ value: "mean", label: "Mean", testId: "stats-ci-mode-mean" }, { value: "proportion", label: "Proportion", testId: "stats-ci-mode-proportion" }]} onChange={(value) => { invalidate(); setMode(value); }} /></div>
-          {mode === "mean" ? <><NumberField label="Sample mean" value={mean} onChange={(value) => { invalidate(); setMean(value); }} placeholder="100" /><NumberField label="Sample standard deviation" value={sd} onChange={(value) => { invalidate(); setSd(value); }} placeholder="15" /></> : <NumberField label="Successes" value={successes} onChange={(value) => { invalidate(); setSuccesses(value); }} placeholder="81" />}
-          <NumberField label="Sample size" value={n} onChange={(value) => { invalidate(); setN(value); }} placeholder="9" />
-          <NumberField label="Confidence (%)" value={confidence} onChange={(value) => { invalidate(); setConfidence(value); }} placeholder="95" />
+          <div data-testid="stats-ci-mode">
+            <ToolSegmentedControl
+              label={t(($) => $.researchTools.stats.estimateType)}
+              value={mode}
+              options={[
+                { value: "mean", label: t(($) => $.researchTools.stats.mean), testId: "stats-ci-mode-mean" },
+                { value: "proportion", label: t(($) => $.researchTools.stats.proportion), testId: "stats-ci-mode-proportion" },
+              ]}
+              onChange={(value) => { invalidate(); setMode(value); }}
+            />
+          </div>
+          {mode === "mean" ? (
+            <>
+              <NumberField label={t(($) => $.researchTools.stats.sampleMean)} value={mean} onChange={(value) => { invalidate(); setMean(value); }} placeholder={t(($) => $.researchTools.stats.meanPlaceholder)} />
+              <NumberField label={t(($) => $.researchTools.stats.sampleSd)} value={sd} onChange={(value) => { invalidate(); setSd(value); }} placeholder={t(($) => $.researchTools.stats.sdPlaceholder)} />
+            </>
+          ) : (
+            <NumberField label={t(($) => $.researchTools.stats.successes)} value={successes} onChange={(value) => { invalidate(); setSuccesses(value); }} placeholder={t(($) => $.researchTools.stats.successesPlaceholder)} />
+          )}
+          <NumberField label={t(($) => $.researchTools.stats.sampleSizeTitle)} value={n} onChange={(value) => { invalidate(); setN(value); }} placeholder={t(($) => $.researchTools.stats.sampleSizePlaceholder)} />
+          <NumberField label={t(($) => $.researchTools.stats.confidencePercent)} value={confidence} onChange={(value) => { invalidate(); setConfidence(value); }} placeholder={t(($) => $.researchTools.stats.confidencePlaceholder)} />
         </div>
       </ToolPane>
-      <ToolPane title="Result" badge={result ? "Computed" : undefined} actions={busy ? <ToolStatus state="busy">Working</ToolStatus> : result ? <CopyResultButton lines={["Confidence interval", `Method: ${result.intervalMethod}`, `Confidence: ${confidence}%`, ...(mode === "mean" ? [`Sample mean: ${mean}`, `Sample standard deviation: ${sd}`] : [`Successes: ${successes}`]), `Sample size: ${n}`, `Point estimate: ${result.pointEstimate.toPrecision(4)}`, `Interval: [${result.lower.toPrecision(4)}, ${result.upper.toPrecision(4)}]`, `Standard error: ${result.standardError.toPrecision(4)}`, `${result.intervalMethod.startsWith("Wilson") ? "Wilson half-width" : "Margin of error"}: ${result.marginOfError.toPrecision(4)}`, `Critical ${result.criticalLabel}: ${result.criticalValue.toFixed(4)}`]} /> : undefined}>
-        <ResultSurface testId="stats-ci-result" busy={busy} error={error} empty="Means use t intervals. Proportions use Wilson score intervals.">
-          {result ? <div className="w-full text-left"><p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{result.intervalMethod}</p><p className="mb-6 font-mono text-2xl tracking-tight text-foreground">[{result.lower.toPrecision(4)}, {result.upper.toPrecision(4)}]</p><ResultLine label="Point estimate" value={result.pointEstimate.toPrecision(4)} /><ResultLine label="Standard error" value={result.standardError.toPrecision(4)} /><ResultLine label={result.intervalMethod.startsWith("Wilson") ? "Wilson half-width" : "Margin of error"} value={result.marginOfError.toPrecision(4)} /><ResultLine label={`Critical ${result.criticalLabel}`} value={result.criticalValue.toFixed(4)} /></div> : null}
+      <ToolPane
+        title={t(($) => $.researchTools.stats.result)}
+        badge={result ? t(($) => $.researchTools.stats.computed) : undefined}
+        actions={busy
+          ? <ToolStatus state="busy">{t(($) => $.researchTools.stats.working)}</ToolStatus>
+          : result
+            ? <CopyResultButton lines={copyLines} />
+            : undefined}
+      >
+        <ResultSurface testId="stats-ci-result" busy={busy} error={error} empty={t(($) => $.researchTools.stats.intervalEmpty)}>
+          {result ? (
+            <div className="w-full text-left">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{intervalMethod}</p>
+              <p className="mb-6 font-mono text-2xl tracking-tight text-foreground">{t(($) => $.researchTools.stats.intervalDisplay, { lower: result.lower.toPrecision(4), upper: result.upper.toPrecision(4) })}</p>
+              <ResultLine label={t(($) => $.researchTools.stats.pointEstimate)} value={result.pointEstimate.toPrecision(4)} />
+              <ResultLine label={t(($) => $.researchTools.stats.standardError)} value={result.standardError.toPrecision(4)} />
+              <ResultLine label={marginLabel} value={result.marginOfError.toPrecision(4)} />
+              <ResultLine label={t(($) => $.researchTools.stats.criticalValue, { label: result.criticalLabel })} value={result.criticalValue.toFixed(4)} />
+            </div>
+          ) : null}
         </ResultSurface>
       </ToolPane>
     </ToolSplitView>
@@ -243,11 +453,20 @@ function ConfidenceIntervalCalculator({ tab, onTabChange }: { tab: Tab; onTabCha
 }
 
 export function StatsToolView() {
+  const { t } = useTranslation(["researchTools"]);
   const activePage = useHomeViewStore((s) => s.page);
   const [tab, setTab] = useState<Tab>("p-value");
   if (activePage !== "stats") return null;
   return (
-    <ToolPageShell page="stats" title="Statistics Calculators" subtitle="p-values, sample sizes, and confidence intervals, computed locally" icon={Calculator} status={<ToolStatus state="ready">Local calculation</ToolStatus>} showTheme testId="stats-tool-view">
+    <ToolPageShell
+      page="stats"
+      title={t(($) => $.researchTools.stats.title)}
+      subtitle={t(($) => $.researchTools.stats.subtitle)}
+      icon={Calculator}
+      status={<ToolStatus state="ready">{t(($) => $.researchTools.stats.localCalculation)}</ToolStatus>}
+      showTheme
+      testId="stats-tool-view"
+    >
       {tab === "p-value" && <PValueCalculator tab={tab} onTabChange={setTab} />}
       {tab === "sample-size" && <SampleSizeCalculator tab={tab} onTabChange={setTab} />}
       {tab === "confidence-interval" && <ConfidenceIntervalCalculator tab={tab} onTabChange={setTab} />}

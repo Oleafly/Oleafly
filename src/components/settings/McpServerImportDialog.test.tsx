@@ -5,6 +5,9 @@ import { StrictMode, useState } from "react";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { i18n } from "@/i18n";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { McpImportedServer, McpImportSourceTool } from "@/lib/tauri";
 import {
   McpServerImportDialog,
@@ -14,6 +17,7 @@ import {
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 const mockInvoke = vi.mocked(invoke);
+const OPEN_IMPORT = "Open import";
 let requestedSources: McpImportSourceTool[];
 type SourceResult = McpImportedServer[] | Error | Promise<McpImportedServer[]>;
 let sourceResults: Partial<Record<McpImportSourceTool, SourceResult>>;
@@ -77,10 +81,14 @@ describe("McpServerImportDialog", () => {
     );
 
     expect(
-      await screen.findByText("No MCP server configurations were found."),
+      await screen.findByText(enSettings.mcp.import.emptyState),
     ).toBeInTheDocument();
-    expect(screen.queryByText("When names match")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Import selected" })).toBeDisabled();
+    expect(
+      screen.queryByText(enSettings.mcp.import.duplicates.legend),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: enSettings.mcp.import.submit }),
+    ).toBeDisabled();
   });
 
   it("scans each source once when an open dialog mounts in app StrictMode", async () => {
@@ -89,7 +97,7 @@ describe("McpServerImportDialog", () => {
       return (
         <>
           <button type="button" onClick={() => setOpen(true)}>
-            Open import
+            {OPEN_IMPORT}
           </button>
           {open ? (
             <McpServerImportDialog
@@ -109,7 +117,7 @@ describe("McpServerImportDialog", () => {
         <Harness />
       </StrictMode>,
     );
-    await user.click(screen.getByRole("button", { name: "Open import" }));
+    await user.click(screen.getByRole("button", { name: OPEN_IMPORT }));
 
     await waitFor(() => {
       expect(requestedSources).toEqual([
@@ -167,15 +175,33 @@ describe("McpServerImportDialog", () => {
     expect(screen.queryByRole("group", { name: "Codex" })).not.toBeInTheDocument();
     expect(within(localGroup).getByRole("checkbox", { name: /Local files/ })).toBeChecked();
     expect(within(remoteGroup).getByRole("checkbox", { name: /Research API/ })).toBeChecked();
-    expect(within(localGroup).getByText("Local command: npx. 3 arguments.")).toBeInTheDocument();
     expect(
-      within(remoteGroup).getByText("Remote server: https://mcp.example.test."),
+      within(localGroup).getByText(
+        i18n.t(($) => $.settings.mcp.import.summary.stdio, { command: "npx", count: 3 }),
+      ),
     ).toBeInTheDocument();
-    expect(within(localGroup).getByText("Environment: API_TOKEN, LOG_LEVEL")).toBeInTheDocument();
     expect(
-      within(remoteGroup).getByText("Headers: Authorization, X-Workspace"),
+      within(remoteGroup).getByText(
+        i18n.t(($) => $.settings.mcp.import.summary.remote, {
+          origin: "https://mcp.example.test",
+        }),
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Already exists. It will be skipped.")).toBeInTheDocument();
+    expect(
+      within(localGroup).getByText(
+        i18n.t(($) => $.settings.mcp.import.keys.environment, {
+          names: "API_TOKEN, LOG_LEVEL",
+        }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(remoteGroup).getByText(
+        i18n.t(($) => $.settings.mcp.import.keys.headers, {
+          names: "Authorization, X-Workspace",
+        }),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(enSettings.mcp.import.duplicateSkipped)).toBeInTheDocument();
 
     const renderedText = document.body.textContent ?? "";
     for (const secret of [
@@ -218,7 +244,10 @@ describe("McpServerImportDialog", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Claude Code: Invalid Claude Code MCP config at line 7: expected a server object.",
+      i18n.t(($) => $.settings.mcp.import.sourceError, {
+        source: "Claude Code",
+        message: "Invalid Claude Code MCP config at line 7: expected a server object.",
+      }),
     );
     expect(screen.getByRole("group", { name: "Windsurf" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /Working server/ })).toBeChecked();
@@ -274,10 +303,12 @@ describe("McpServerImportDialog", () => {
     render(<Harness />);
     const localCheckbox = await screen.findByRole("checkbox", { name: /Local files/ });
     await user.click(localCheckbox);
-    await user.click(screen.getByRole("radio", { name: "Overwrite existing" }));
+    await user.click(
+      screen.getByRole("radio", { name: enSettings.mcp.import.duplicates.overwrite.label }),
+    );
 
-    expect(screen.getByText("Already exists. It will be overwritten.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Import selected" }));
+    expect(screen.getByText(enSettings.mcp.import.duplicateOverwritten)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: enSettings.mcp.import.submit }));
 
     expect(submitted).toEqual([
       {
@@ -294,14 +325,16 @@ describe("McpServerImportDialog", () => {
         ],
       },
     ]);
-    expect(screen.getByRole("button", { name: "Importing..." })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: enSettings.mcp.import.importing })).toBeDisabled();
+    expect(screen.getByRole("button", { name: enCommon.actions.cancel })).toBeDisabled();
     expect(closeEvents).toEqual([]);
 
     await act(async () => importFinished.resolve());
 
     await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Import MCP servers" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("dialog", { name: enSettings.mcp.import.title }),
+      ).not.toBeInTheDocument();
     });
     expect(closeEvents).toEqual(["closed"]);
   });
@@ -335,14 +368,16 @@ describe("McpServerImportDialog", () => {
 
     const user = userEvent.setup();
     await screen.findByRole("checkbox", { name: /Broken save/ });
-    await user.click(screen.getByRole("button", { name: "Import selected" }));
+    await user.click(screen.getByRole("button", { name: enSettings.mcp.import.submit }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Could not save imported MCP servers.",
     );
-    expect(screen.getByRole("dialog", { name: "Import MCP servers" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Import selected" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+    expect(
+      screen.getByRole("dialog", { name: enSettings.mcp.import.title }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enSettings.mcp.import.submit })).toBeEnabled();
+    expect(screen.getByRole("button", { name: enCommon.actions.cancel })).toBeEnabled();
     expect(closeEvents).toEqual([]);
   });
 
@@ -362,7 +397,7 @@ describe("McpServerImportDialog", () => {
     const user = userEvent.setup();
     await waitFor(() => expect(requestedSources).toHaveLength(5));
 
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: enCommon.actions.cancel }));
     rerender(<McpServerImportDialog {...props} open={false} />);
 
     sourceResults = {
@@ -382,7 +417,9 @@ describe("McpServerImportDialog", () => {
     expect(
       await screen.findByRole("checkbox", { name: /Current candidate/ }),
     ).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Skip existing" })).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: enSettings.mcp.import.duplicates.skip.label }),
+    ).toBeChecked();
 
     await act(async () => {
       staleResult.resolve([

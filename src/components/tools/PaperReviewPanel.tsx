@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Flame,
@@ -78,6 +79,7 @@ function ReviewMarkdown({ text }: { text: string }) {
  * Dedicated Friendly / Fire paper review surface (OpenLeaf Review tab parity).
  */
 export function PaperReviewPanel() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const offline = useSettingsStore((state) => state.offline);
   const activePath = useFilesStore((state) => state.activePath);
   const mainDoc = useFilesStore((state) => state.mainDoc);
@@ -219,7 +221,7 @@ export function PaperReviewPanel() {
               disabled={reviewing}
             >
               <HandHeart className="size-3.5" />
-              Friendly
+              {t(($) => $.researchTools.review.friendly)}
             </Button>
             <Button
               type="button"
@@ -233,7 +235,7 @@ export function PaperReviewPanel() {
               disabled={reviewing}
             >
               <Flame className="size-3.5" />
-              Fire
+              {t(($) => $.researchTools.review.fire)}
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -246,7 +248,7 @@ export function PaperReviewPanel() {
                 onClick={cancel}
               >
                 <Square className="size-3.5" />
-                Cancel
+                {t(($) => $.common.actions.cancel)}
               </Button>
             ) : null}
             {text && !reviewing ? (
@@ -258,7 +260,7 @@ export function PaperReviewPanel() {
                 onClick={clear}
               >
                 <Trash2 className="size-3.5" />
-                Clear
+                {t(($) => $.common.actions.clear)}
               </Button>
             ) : null}
             <Button
@@ -271,7 +273,9 @@ export function PaperReviewPanel() {
               {reviewing ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : null}
-              {reviewing ? "Reviewing…" : "Review paper"}
+              {reviewing
+                ? t(($) => $.researchTools.review.reviewing)
+                : t(($) => $.researchTools.review.runReview)}
             </Button>
           </div>
         </div>
@@ -279,19 +283,18 @@ export function PaperReviewPanel() {
         {offline && (
           <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-            Offline mode is on. Paper review needs a configured AI provider.
+            {t(($) => $.researchTools.review.offline)}
           </div>
         )}
         {providerReady === false && !offline && (
           <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-            Configure an AI provider in Settings before reviewing.
+            {t(($) => $.researchTools.review.needsProvider)}
           </div>
         )}
         {!sourceText.trim() && (
           <p className="text-sm text-muted-foreground">
-            Open a LaTeX project (or use Find citations in document from the
-            editor) so there is paper text to review.
+            {t(($) => $.researchTools.review.noSource)}
           </p>
         )}
         {error && (
@@ -313,15 +316,15 @@ export function PaperReviewPanel() {
           {!text && !reviewing ? (
             <p className="text-muted-foreground not-prose text-sm">
               {mode === "friendly"
-                ? "Friendly mode is a constructive mentor: strengths first, then specific suggestions."
-                : "Fire mode is Reviewer #2: rigorous, claim-stressing, technically precise."}
+                ? t(($) => $.researchTools.review.friendlyHint)
+                : t(($) => $.researchTools.review.fireHint)}
             </p>
           ) : (
             <ReviewMarkdown text={text} />
           )}
           {reviewing && !text ? (
             <p className="text-muted-foreground not-prose text-sm">
-              Reviewing your paper…
+              {t(($) => $.researchTools.review.inProgress)}
             </p>
           ) : null}
         </div>

@@ -1,11 +1,14 @@
+import { message } from "./messages";
 import type { Finding, PdfFacts } from "./types";
 import { extractEmail, extractPhoneNumber } from "./contact";
 import {
   ATS_SECTION_DEFINITIONS,
   matchResumeSectionHeading,
+  type AtsSectionDefinition,
 } from "./resume-sections";
 
 export interface ParsedSection {
+  id: AtsSectionDefinition["id"];
   name: string;
   present: boolean;
   required: boolean;
@@ -42,6 +45,7 @@ export function simulateAtsParse(text: string): AtsParse {
   const matchedSections = new Set(lines.map(matchResumeSectionHeading).filter(Boolean));
 
   const sections = ATS_SECTION_DEFINITIONS.map((section) => ({
+    id: section.id,
     name: section.name,
     present: matchedSections.has(section.id),
     required: section.required,
@@ -68,9 +72,8 @@ export function atsParseFindings(parse: AtsParse, pdf?: PdfFacts): Finding[] {
       id: "ats-no-name",
       lens: "ats",
       severity: "error",
-      title: "A parser could not identify your name",
-      detail:
-        "No plausible person name was found in the extracted text. Keep your name as plain text near the start of the document, outside page headers, graphics, and positioned text boxes.",
+      title: message("rules.ats-no-name.title"),
+      detail: message("rules.ats-no-name.detail"),
       certainty: "verified",
     });
   }
@@ -80,9 +83,8 @@ export function atsParseFindings(parse: AtsParse, pdf?: PdfFacts): Finding[] {
       id: "ats-no-email",
       lens: "ats",
       severity: "error",
-      title: "A parser could not find your email",
-      detail:
-        "No email address was found in the extracted text, which is the field a parser most relies on. If your email sits next to an icon or inside a header, it may not be selectable text. Put it in the body as plain text.",
+      title: message("rules.ats-no-email.title"),
+      detail: message("rules.ats-no-email.detail"),
     });
   }
   if (!parse.phone) {
@@ -90,9 +92,8 @@ export function atsParseFindings(parse: AtsParse, pdf?: PdfFacts): Finding[] {
       id: "ats-no-phone",
       lens: "ats",
       severity: "info",
-      title: "A parser could not find a phone number",
-      detail:
-        "No phone number was found in the extracted text. If it is present but hidden behind an icon or in a header, add it as plain selectable text in the body.",
+      title: message("rules.ats-no-phone.title"),
+      detail: message("rules.ats-no-phone.detail"),
     });
   }
   if (!has("Experience")) {
@@ -100,9 +101,8 @@ export function atsParseFindings(parse: AtsParse, pdf?: PdfFacts): Finding[] {
       id: "ats-no-experience",
       lens: "ats",
       severity: "warning",
-      title: "A parser did not detect a Work Experience section",
-      detail:
-        "No standard Experience heading was found, so a parser may not group your roles into work history. Use a conventional heading like Experience or Work Experience as real, selectable text.",
+      title: message("rules.ats-no-experience.title"),
+      detail: message("rules.ats-no-experience.detail"),
     });
   }
 
@@ -111,9 +111,8 @@ export function atsParseFindings(parse: AtsParse, pdf?: PdfFacts): Finding[] {
       id: "ats-long-resume",
       lens: "ats",
       severity: "info",
-      title: `Resume is ${pdf.pageCount} pages long`,
-      detail:
-        "Many hiring workflows expect one or two pages, although senior, academic, and government CVs can be longer. Confirm that this length fits the role and document type.",
+      title: message("rules.ats-long-resume.title", { count: pdf.pageCount }),
+      detail: message("rules.ats-long-resume.detail"),
       certainty: "advisory",
     });
   }

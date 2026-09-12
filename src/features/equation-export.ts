@@ -10,6 +10,7 @@ import { writeBytesFile } from "@/lib/tauri";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 
 type Convert = (tex: string, display: boolean) => string;
 
@@ -146,23 +147,26 @@ async function saveBytes(defaultName: string, filters: { name: string; extension
   const dest = await pickSavePath({ defaultPath: defaultName, filters });
   if (!dest) return;
   await writeBytesFile(dest, bytesToBase64(bytes));
-  toast.success(`${kind} saved`, { label: "Show in folder", onClick: () => void import("@/lib/tauri").then((m) => m.revealInDir(dest)) }, true);
+  toast.success(i18n.t(($) => $.editor.equationExport.saved, { kind }), {
+    label: i18n.t(($) => $.editor.equationExport.showInFolder),
+    onClick: () => void import("@/lib/tauri").then((m) => m.revealInDir(dest)),
+  }, true);
 }
 
 /** Save the equation under the cursor (or selection) as an SVG file. */
 export async function saveEquationAsSvg(): Promise<void> {
   const equation = equationAtCursor();
   if (!equation) {
-    toast.info("Put the caret inside an equation, or select one, first.");
+    toast.info(i18n.t(($) => $.editor.equationExport.noEquation));
     return;
   }
   try {
     const svg = await equationToSvgDocument(equation.tex, equation.display);
     await saveBytes(
       "equation.svg",
-      [{ name: "SVG image", extensions: ["svg"] }],
+      [{ name: i18n.t(($) => $.editor.equationExport.svgImage), extensions: ["svg"] }],
       new TextEncoder().encode(svg),
-      "Equation SVG",
+      i18n.t(($) => $.editor.equationExport.svgKind),
     );
   } catch (e) {
     notifyError("export equation svg", e);
@@ -173,7 +177,7 @@ export async function saveEquationAsSvg(): Promise<void> {
 export async function saveEquationAsPng(scale = 3, background: string | null = "#ffffff"): Promise<void> {
   const equation = equationAtCursor();
   if (!equation) {
-    toast.info("Put the caret inside an equation, or select one, first.");
+    toast.info(i18n.t(($) => $.editor.equationExport.noEquation));
     return;
   }
   try {
@@ -181,9 +185,9 @@ export async function saveEquationAsPng(scale = 3, background: string | null = "
     const bytes = await svgDocumentToPngBytes(svg, scale, background);
     await saveBytes(
       "equation.png",
-      [{ name: "PNG image", extensions: ["png"] }],
+      [{ name: i18n.t(($) => $.editor.equationExport.pngImage), extensions: ["png"] }],
       bytes,
-      "Equation PNG",
+      i18n.t(($) => $.editor.equationExport.pngKind),
     );
   } catch (e) {
     notifyError("export equation png", e);

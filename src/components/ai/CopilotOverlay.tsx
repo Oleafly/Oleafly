@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { PanelBottomClose, GripVertical } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { ResearchAssistant } from "@/components/ai/ResearchAssistant";
 import { useSettingsStore } from "@/store/settings";
 import { clampRect, type Rect } from "@/lib/overlay-rect";
@@ -22,6 +23,7 @@ function loadRect(): Rect {
 }
 
 export function CopilotOverlay() {
+  const { t } = useTranslation(["common", "ai"]);
   const floating = useSettingsStore((s) => s.chatFloating);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
   const setFloating = useSettingsStore((s) => s.setChatFloating);
@@ -93,7 +95,7 @@ export function CopilotOverlay() {
   return createPortal(
     <div
       role="dialog"
-      aria-label="AI assistant"
+      aria-label={t(($) => $.ai.shell.overlayTitle)}
       data-testid="copilot-overlay"
       className="fixed z-[70] flex flex-col overflow-hidden rounded-xl border bg-background shadow-2xl"
       style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
@@ -104,11 +106,11 @@ export function CopilotOverlay() {
         className="flex h-8 cursor-move items-center justify-between border-b bg-muted/40 px-2"
       >
         <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <GripVertical className="size-3.5" /> AI assistant
+          <GripVertical className="size-3.5" /> {t(($) => $.ai.shell.overlayTitle)}
         </span>
         <button
           type="button"
-          aria-label="Dock chat back to the sidebar"
+          aria-label={t(($) => $.ai.shell.dockAriaLabel)}
           data-testid="copilot-overlay-dock"
           onClick={() => setFloating(false)}
           className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"

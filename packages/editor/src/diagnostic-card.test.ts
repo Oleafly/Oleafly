@@ -10,6 +10,9 @@ import {
   diagnosticCardGutter,
   diagnosticCardSource,
 } from "./diagnostic-card";
+import { installEnglishEditorMessages } from "./test-messages";
+
+installEnglishEditorMessages();
 
 // CodeMirror's delayed lint hover asks the DOM Range for layout rectangles.
 // jsdom intentionally has no layout engine, so provide the smallest safe

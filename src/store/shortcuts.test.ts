@@ -141,10 +141,10 @@ describe("shortcut bindings", () => {
       shift: true,
     });
     expect(
-      SHORTCUT_DEFINITIONS.filter(({ id }) =>
+      SHORTCUT_DEFINITIONS.map(({ id }) => id).filter((id) =>
         ["toggleTerminal", "toggleBrowser"].includes(id),
-      ).map(({ label }) => label),
-    ).toEqual(["Toggle terminal", "Toggle browser"]);
+      ),
+    ).toEqual(["toggleTerminal", "toggleBrowser"]);
   });
 
   it("persists edits and restores individual and global defaults", async () => {
@@ -200,23 +200,21 @@ describe("shortcut bindings", () => {
   });
 
   it("rejects operating-system chords that would shadow core editing", async () => {
-    const { reservedShortcutLabel } = await import("@/store/shortcuts");
-    expect(reservedShortcutLabel({ key: "a", mod: true })).toBe("Select all");
-    expect(reservedShortcutLabel({ key: "v", mod: true })).toBe("Paste");
-    expect(reservedShortcutLabel({ key: "s", mod: true })).toBe("Save");
-    expect(reservedShortcutLabel({ key: "k", mod: true })).toBeNull();
-    expect(reservedShortcutLabel({ key: "s", mod: true, shift: true })).toBeNull();
+    const { reservedShortcutAction } = await import("@/store/shortcuts");
+    expect(reservedShortcutAction({ key: "a", mod: true })).toBe("selectAll");
+    expect(reservedShortcutAction({ key: "v", mod: true })).toBe("paste");
+    expect(reservedShortcutAction({ key: "s", mod: true })).toBe("save");
+    expect(reservedShortcutAction({ key: "k", mod: true })).toBeNull();
+    expect(reservedShortcutAction({ key: "s", mod: true, shift: true })).toBeNull();
   });
 
   it("reserves the macOS window switching shortcut", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "MacIntel" });
     try {
-      const { reservedShortcutLabel } = await import("@/store/shortcuts");
-      expect(reservedShortcutLabel({ key: "`", mod: true })).toBe(
-        "Window switching",
-      );
-      expect(reservedShortcutLabel({ key: "`", ctrl: true })).toBeNull();
+      const { reservedShortcutAction } = await import("@/store/shortcuts");
+      expect(reservedShortcutAction({ key: "`", mod: true })).toBe("windowSwitching");
+      expect(reservedShortcutAction({ key: "`", ctrl: true })).toBeNull();
     } finally {
       vi.stubGlobal("navigator", originalNavigator);
     }

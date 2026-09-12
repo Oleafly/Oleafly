@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { languageForPath } from "@oleafly/editor";
 import {
   Check,
@@ -41,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import { i18n } from "@/i18n";
 
 type InputMode = "text" | "file";
 
@@ -73,6 +75,7 @@ function FileDrop({
   label: string;
   onChange: (file: File | null) => void;
 }) {
+  const { t } = useTranslation(["researchTools"]);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   return (
@@ -103,13 +106,15 @@ function FileDrop({
           <span>
             <span className="block text-sm font-semibold text-foreground">{file.name}</span>
             <span className="mt-1 block text-xs text-muted-foreground">
-              {(file.size / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 })} KB · Click to replace
+              {t(($) => $.researchTools.converter.fileDetails, {
+                size: (file.size / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 }),
+              })}
             </span>
           </span>
         ) : (
           <span>
-            <span className="block text-sm font-semibold text-foreground">Drop {label.toLowerCase()} here</span>
-            <span className="mt-1 block text-xs text-muted-foreground">or click to choose a file</span>
+            <span className="block text-sm font-semibold text-foreground">{t(($) => $.researchTools.converter.dropHere, { label })}</span>
+            <span className="mt-1 block text-xs text-muted-foreground">{t(($) => $.researchTools.converter.chooseFile)}</span>
           </span>
         )}
       </button>
@@ -126,7 +131,7 @@ function FileDrop({
       />
       {file && (
         <Button variant="ghost" size="sm" className="mt-2 self-center" onClick={() => onChange(null)}>
-          Remove file
+          {t(($) => $.researchTools.converter.removeFile)}
         </Button>
       )}
     </div>
@@ -149,7 +154,12 @@ async function saveOutput(output: ConverterOutput): Promise<void> {
   const extension = fileName.split(".").pop() || "txt";
   const destination = await pickSavePath({
     defaultPath: fileName,
-    filters: [{ name: hasBundle ? "Source bundle" : "Converted file", extensions: [extension] }],
+    filters: [{
+      name: hasBundle
+        ? i18n.t(($) => $.researchTools.converter.sourceBundle)
+        : i18n.t(($) => $.researchTools.converter.convertedFile),
+      extensions: [extension],
+    }],
   });
   if (!destination) return;
   let dataBase64: string;
@@ -161,7 +171,7 @@ async function saveOutput(output: ConverterOutput): Promise<void> {
     dataBase64 = bytesToBase64(new TextEncoder().encode(output.text ?? ""));
   }
   await writeBytesFile(destination, dataBase64);
-  toast.success(`Saved ${fileName}`);
+  toast.success(i18n.t(($) => $.researchTools.converter.saved, { fileName }));
 }
 
 function openLocalModelSettings(): void {
@@ -171,6 +181,7 @@ function openLocalModelSettings(): void {
 }
 
 function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
+  const { t } = useTranslation(["researchTools"]);
   const definition = AD_HOC_CONVERTERS[id];
   const catalogTool = toolById(id);
   const editorTheme = useSettingsStore((state) => state.editorTheme);
@@ -197,6 +208,32 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     [outputSourceName],
   );
   const canConvert = useFile ? Boolean(file) : Boolean(text.trim());
+  const progressLabel = (() => {
+    const page = /^Transcribing page (\d+) of (\d+)$/.exec(progress);
+    if (page) {
+      return t(($) => $.researchTools.converter.progressTranscribingPage, {
+        page: Number(page[1]),
+        total: Number(page[2]),
+      });
+    }
+    const labels: Record<string, string> = {
+      Ready: t(($) => $.researchTools.converter.progressReady),
+      Converting: t(($) => $.researchTools.converter.progressConverting),
+      Converted: t(($) => $.researchTools.converter.progressConverted),
+      "Needs attention": t(($) => $.researchTools.converter.progressNeedsAttention),
+      Cancelled: t(($) => $.researchTools.converter.progressCancelled),
+      "Reading pages": t(($) => $.researchTools.converter.progressReadingPages),
+      "Converting document structure": t(($) => $.researchTools.converter.progressDocumentStructure),
+      "Rendering the Mermaid diagram": t(($) => $.researchTools.converter.progressMermaid),
+      "Reading the first sheet": t(($) => $.researchTools.converter.progressFirstSheet),
+      "Running the local vision model": t(($) => $.researchTools.converter.progressVisionModel),
+      "Reading the equation with the local vision model": t(($) => $.researchTools.converter.progressReadingEquation),
+      "Converting the equation with the local model": t(($) => $.researchTools.converter.progressConvertingEquation),
+      "Unpacking the saved source": t(($) => $.researchTools.converter.progressUnpackingSource),
+      "Downloading the e-print source": t(($) => $.researchTools.converter.progressDownloadingSource),
+    };
+    return labels[progress] ?? progress;
+  })();
 
   useEffect(
     () => () => {
@@ -270,9 +307,9 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     if (!output?.text) return;
     try {
       await navigator.clipboard.writeText(output.text);
-      toast.success(`Copied ${definition.outputLabel}`);
+      toast.success(t(($) => $.researchTools.converter.copied, { label: definition.outputLabel }));
     } catch {
-      toast.error("Oleafly couldn't copy the converted source.");
+      toast.error(t(($) => $.researchTools.converter.copyFailed));
     }
   };
 
@@ -285,7 +322,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       toast.error(
         caught instanceof Error
           ? caught.message
-          : "Oleafly couldn't save the converted file.",
+          : t(($) => $.researchTools.converter.saveFailed),
       );
     }
   };
@@ -297,7 +334,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       const projectName = stem(file?.name ?? "")
         || (id === "arxiv-to-latex" && text.trim()
           ? `arXiv ${text.trim()}`
-          : `${definition.title} result`);
+          : t(($) => $.researchTools.converter.resultName, { title: definition.title }));
       const projectId = await createProjectFromAdHoc({
         name: projectName,
         target: definition.projectTarget,
@@ -310,10 +347,10 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       });
       await useFilesStore.getState().refreshProjects();
       await useFilesStore.getState().openProject(projectId);
-      toast.success("Project created from the conversion.");
+      toast.success(t(($) => $.researchTools.converter.projectCreated));
     } catch (caught) {
       void logError(`create project from ${id}`, caught);
-      toast.error(caught instanceof Error ? caught.message : "Oleafly couldn't create the project.");
+      toast.error(caught instanceof Error ? caught.message : t(($) => $.researchTools.converter.projectFailed));
     } finally {
       setProjectBusy(false);
     }
@@ -329,17 +366,17 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       testId="converter-tool-view"
       status={
         <ToolStatus state={busy ? "busy" : error ? "error" : "ready"}>
-          {progress}
+          {progressLabel}
         </ToolStatus>
       }
       actions={
         busy ? (
           <Button variant="outline" size="sm" onClick={cancel} data-testid="converter-cancel">
-            <X /> Cancel
+            <X /> {t(($) => $.researchTools.converter.cancel)}
           </Button>
         ) : (
           <Button size="sm" disabled={!canConvert} onClick={() => void convert()} data-testid="converter-run">
-            <Check /> Convert
+            <Check /> {t(($) => $.researchTools.converter.convert)}
           </Button>
         )
       }
@@ -347,7 +384,11 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       <ToolSplitView storageId={`converter-${id}`}>
         <ToolPane
           title={definition.inputLabel}
-          badge={useFile ? "File" : definition.inputKind === "arxiv" ? "arXiv ID" : "Text"}
+          badge={useFile
+            ? t(($) => $.researchTools.converter.file)
+            : definition.inputKind === "arxiv"
+              ? t(($) => $.researchTools.converter.arxivId)
+              : t(($) => $.researchTools.converter.text)}
           actions={
             <div className="flex items-center gap-2">
               {definition.example && !useFile && (
@@ -359,11 +400,11 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                     setText(definition.example ?? "");
                   }}
                 >
-                  Load example
+                  {t(($) => $.researchTools.converter.loadExample)}
                 </Button>
               )}
               <Button variant="ghost" size="xs" onClick={clear}>
-                <RotateCcw /> Clear
+                <RotateCcw /> {t(($) => $.researchTools.converter.clear)}
               </Button>
             </div>
           }
@@ -372,11 +413,11 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
               <span>{definition.inputHint}</span>
               {id === "arxiv-to-latex" && !useFile ? (
                 <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
-                  <CloudDownload className="size-3.5" /> Downloads from arXiv
+                  <CloudDownload className="size-3.5" /> {t(($) => $.researchTools.converter.downloadsFromArxiv)}
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-emerald-600 dark:text-emerald-400">
-                  <ShieldCheck className="size-3.5" /> Runs on this device
+                  <ShieldCheck className="size-3.5" /> {t(($) => $.researchTools.converter.runsOnDevice)}
                 </span>
               )}
             </div>
@@ -385,17 +426,17 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
           {allowsModes && (
             <div className="flex shrink-0 items-center border-b px-4 py-2.5">
               <ToolSegmentedControl
-                label="Input type"
+                label={t(($) => $.researchTools.converter.inputType)}
                 value={mode}
                 options={
                   definition.inputKind === "arxiv"
                     ? [
-                        { value: "text", label: "arXiv ID", testId: "converter-mode-text" },
-                        { value: "file", label: "Saved archive", testId: "converter-mode-file" },
+                        { value: "text", label: t(($) => $.researchTools.converter.arxivId), testId: "converter-mode-text" },
+                        { value: "file", label: t(($) => $.researchTools.converter.savedArchive), testId: "converter-mode-file" },
                       ]
                     : [
-                        { value: "text", label: "Type equation", testId: "converter-mode-text" },
-                        { value: "file", label: "Equation image", testId: "converter-mode-file" },
+                        { value: "text", label: t(($) => $.researchTools.converter.typeEquation), testId: "converter-mode-text" },
+                        { value: "file", label: t(($) => $.researchTools.converter.equationImage), testId: "converter-mode-file" },
                       ]
                 }
                 onChange={(next) => {
@@ -419,7 +460,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             <div className="flex min-h-64 flex-1 items-center justify-center p-6">
               <div className="w-full max-w-md space-y-3">
                 <label htmlFor="arxiv-converter-id" className="text-sm font-medium">
-                  arXiv ID
+                  {t(($) => $.researchTools.converter.arxivId)}
                 </label>
                 <Input
                   id="arxiv-converter-id"
@@ -428,11 +469,11 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                     resetConversion();
                     setText(event.target.value);
                   }}
-                  placeholder="1706.03762"
+                  placeholder={t(($) => $.researchTools.converter.arxivPlaceholder)}
                   data-testid="converter-text-input"
                 />
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Looking up an ID needs a network connection. A saved source archive works fully offline.
+                  {t(($) => $.researchTools.converter.arxivNetworkHint)}
                 </p>
               </div>
             </div>
@@ -445,7 +486,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
               }}
               language={sourceLanguage}
               themeId={editorTheme}
-              placeholder="Paste or type source here"
+              placeholder={t(($) => $.researchTools.converter.sourcePlaceholder)}
               testId="converter-text-input"
               className="min-h-72 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
             />
@@ -454,22 +495,30 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
 
         <ToolPane
           title={definition.outputLabel}
-          badge={output ? (output.kind === "binary" ? "File" : output.kind === "bundle" ? "Bundle" : "Source") : undefined}
+          badge={output
+            ? output.kind === "binary"
+              ? t(($) => $.researchTools.converter.file)
+              : output.kind === "bundle"
+                ? t(($) => $.researchTools.converter.bundle)
+                : t(($) => $.researchTools.converter.source)
+            : undefined}
           actions={
             output ? (
               <div className="flex flex-wrap items-center gap-1">
                 {output.text && (
                   <Button variant="ghost" size="xs" onClick={() => void copy()}>
-                    <Copy /> Copy
+                    <Copy /> {t(($) => $.researchTools.converter.copy)}
                   </Button>
                 )}
                 <Button variant="outline" size="xs" onClick={() => void save()}>
                   {output.kind === "bundle" || output.files.length > 0 ? <FileArchive /> : <Download />}
-                  {output.kind === "bundle" || output.files.length > 0 ? "Save ZIP" : "Save"}
+                  {output.kind === "bundle" || output.files.length > 0
+                    ? t(($) => $.researchTools.converter.saveZip)
+                    : t(($) => $.researchTools.converter.save)}
                 </Button>
                 {definition.projectTarget && output.text && (
                   <Button size="xs" disabled={projectBusy} onClick={() => void createProject()}>
-                    {projectBusy ? <Loader2 className="animate-spin" /> : <FolderPlus />} Create project
+                    {projectBusy ? <Loader2 className="animate-spin" /> : <FolderPlus />} {t(($) => $.researchTools.converter.createProject)}
                   </Button>
                 )}
               </div>
@@ -485,11 +534,11 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                 <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
                   <FileText className="size-5" />
                 </div>
-                <h2 className="mt-4 text-sm font-semibold">This conversion needs attention</h2>
+                <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{error}</p>
                 {/ollama|local model|vision model/i.test(error) && (
                   <Button variant="outline" size="sm" className="mt-4" onClick={openLocalModelSettings}>
-                    <Settings /> Open AI settings
+                    <Settings /> {t(($) => $.researchTools.converter.openAiSettings)}
                   </Button>
                 )}
               </div>
@@ -500,8 +549,8 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                 <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <FileText className="size-6" />
                 </div>
-                <h2 className="mt-4 text-sm font-semibold">{output.fileName} is ready</h2>
-                <p className="mt-2 text-xs text-muted-foreground">Save the Word document when you are ready.</p>
+                <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.fileReady, { fileName: output.fileName })}</h2>
+                <p className="mt-2 text-xs text-muted-foreground">{t(($) => $.researchTools.converter.saveWordHint)}</p>
               </div>
             </div>
           ) : output?.text !== null && output ? (
@@ -520,7 +569,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                 <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-muted">
                   <FileText className="size-4" />
                 </div>
-                Your converted result will appear here.
+                {t(($) => $.researchTools.converter.resultPlaceholder)}
               </div>
             </div>
           )}

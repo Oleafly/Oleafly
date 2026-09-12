@@ -350,7 +350,7 @@ test("the five specialized converter cards open and run their production workflo
     "application/pdf",
     fixture("text-layer.pdf"),
   );
-  await expect(tauriPage.getByTestId("import-stats")).toContainText("1 pages", {
+  await expect(tauriPage.getByTestId("import-stats")).toContainText("1 page", {
     timeout: 120_000,
   });
   await tauriPage.getByTestId("import-view-source").click();

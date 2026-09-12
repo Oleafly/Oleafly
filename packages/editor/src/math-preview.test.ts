@@ -9,6 +9,9 @@ import {
   type WidgetType,
 } from "@codemirror/view";
 import { liveMathPreview } from "./math-preview";
+import { installEnglishEditorMessages } from "./test-messages";
+
+installEnglishEditorMessages();
 
 let view: EditorView | null = null;
 

@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { approvalsReadRaw, approvalsWriteRaw } from "@/lib/tauri";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { createAppQueryClient } from "@/lib/query";
 import { useFilesStore } from "@/store/files";
 import { ApprovalsFileEditor, approvalsExample } from "./ApprovalsFileEditor";
@@ -42,8 +43,9 @@ describe("ApprovalsFileEditor", () => {
 
     await waitFor(() => expect(editorText()).toContain("$approval_modes"));
     expect(screen.getByTestId("approvals-file-save")).toBeDisabled();
-    fireEvent.click(screen.getByText("How the file works"));
+    fireEvent.click(screen.getByText(enSettings.ai.approvals.file.helpToggle));
     expect(screen.getByText("proj-1", { selector: "code" })).toBeInTheDocument();
+    expect(screen.getByText('"custom"', { selector: "code" })).toBeInTheDocument();
   });
 
   it("inserts an example for the open project and saves it through the backend", async () => {
@@ -58,7 +60,9 @@ describe("ApprovalsFileEditor", () => {
     const saved = mockWrite.mock.calls[0][0];
     expect(saved).toContain(approvalsExample("proj-1"));
     await waitFor(() =>
-      expect(screen.getByTestId("approvals-file-message").textContent).toContain("Saved"),
+      expect(screen.getByTestId("approvals-file-message").textContent).toContain(
+        enSettings.ai.approvals.file.saved,
+      ),
     );
   });
 

@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { Bot, File, Folder } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { DelegationTarget } from "@/lib/agent-mentions";
 import { mentionInsertText, normalizeMentionPath } from "@/lib/composer-tokens";
 import { cn } from "@/lib/utils";
@@ -135,6 +136,7 @@ export function filterAgentTargets(
 
 export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
   ({ entries, agents = [], onSelect, onClose, onActiveEntryChange }, ref) => {
+    const { t } = useTranslation(["common", "ai"]);
     const items = useMemo<MentionItem[]>(
       () => [
         ...agents.map((target) => ({ kind: "agent" as const, key: agentMentionKey(target), target })),
@@ -215,7 +217,11 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
       <div
         id="ai-mention-menu"
         role="listbox"
-        aria-label={agents.length > 0 ? "Agents and project files" : "Project files"}
+        aria-label={
+          agents.length > 0
+            ? t(($) => $.ai.composer.mentionMenuAgentsAndFiles)
+            : t(($) => $.ai.composer.mentionMenuFiles)
+        }
         className="absolute bottom-full left-0 z-50 mb-2 max-h-72 w-full overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
       >
         {items.map((item, index) => {
@@ -226,7 +232,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
               <div key={item.key}>
                 {showHeadings && index === 0 && (
                   <p className="px-2.5 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Delegate to an agent
+                    {t(($) => $.ai.composer.mentionHeadingAgents)}
                   </p>
                 )}
                 <button
@@ -257,7 +263,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
             <div key={item.key}>
               {showHeadings && index === agents.length && (
                 <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Project files
+                  {t(($) => $.ai.composer.mentionHeadingFiles)}
                 </p>
               )}
               <button

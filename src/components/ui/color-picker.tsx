@@ -1,5 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ColorInput } from "@/components/ui/color-input";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ export function ColorPicker({
   allowTransparent?: boolean;
   ariaLabel: string;
 }) {
+  const { t } = useTranslation(["core"]);
   const [open, setOpen] = useState(false);
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -51,7 +53,7 @@ export function ColorPicker({
                 onClick={() => onChange("")}
                 className="justify-start"
               >
-                Transparent
+                {t(($) => $.core.ui.transparent)}
               </Button>
             </PopoverPrimitive.Close>
           )}

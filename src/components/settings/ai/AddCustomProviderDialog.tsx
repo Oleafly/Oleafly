@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
+import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
@@ -45,25 +47,27 @@ function validate(form: AddCustomProviderInput, editing: CustomProviderEditTarge
   const errors: FieldErrors = {};
   const id = form.id.trim();
   if (!editing) {
-    if (!id) errors.id = "ID is required.";
+    if (!id) errors.id = i18n.t(($) => $.settings.ai.customProvider.errors.idRequired);
     else if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) {
-      errors.id = "Use lowercase letters, digits, and dashes only, e.g. acme.";
+      errors.id = i18n.t(($) => $.settings.ai.customProvider.errors.idFormat);
     }
   }
-  if (!form.name.trim()) errors.name = "Name is required.";
+  if (!form.name.trim()) {
+    errors.name = i18n.t(($) => $.settings.ai.customProvider.errors.nameRequired);
+  }
   const baseURL = form.baseURL.trim();
   if (!baseURL) {
-    errors.baseURL = "Base URL is required.";
+    errors.baseURL = i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlRequired);
   } else {
     try {
       const parsed = new URL(baseURL);
       if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-        errors.baseURL = "Use https://, or http:// for a local server.";
+        errors.baseURL = i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlProtocol);
       } else if (!parsed.hostname) {
-        errors.baseURL = "The URL is missing a host.";
+        errors.baseURL = i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlHost);
       }
     } catch {
-      errors.baseURL = "Enter a full URL, e.g. https://api.example.com/v1 or http://localhost:1234/v1.";
+      errors.baseURL = i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlInvalid);
     }
   }
   return errors;
@@ -83,6 +87,7 @@ export function AddCustomProviderDialog({
   onSubmit,
   editing = null,
 }: AddCustomProviderDialogProps) {
+  const { t } = useTranslation(["common", "settings"]);
   const [form, setForm] = useState<AddCustomProviderInput>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -133,7 +138,12 @@ export function AddCustomProviderDialog({
         apiKey: form.apiKey.trim(),
       });
       if (!res.ok) {
-        setError(res.message ?? (editing ? "Could not save that provider." : "Could not add that provider."));
+        setError(
+          res.message ??
+            (editing
+              ? t(($) => $.settings.ai.customProvider.errors.saveFailed)
+              : t(($) => $.settings.ai.customProvider.errors.addFailed)),
+        );
         return;
       }
       handleOpenChange(false);
@@ -142,11 +152,10 @@ export function AddCustomProviderDialog({
     }
   };
 
-  const keyLabel = editing
-    ? editing.hasStoredKey
-      ? "API key (leave blank to keep the saved key)"
-      : "API key (optional)"
-    : "API key (optional)";
+  const keyLabel =
+    editing?.hasStoredKey
+      ? t(($) => $.settings.ai.customProvider.keyLabelKeepSaved)
+      : t(($) => $.settings.ai.customProvider.keyLabel);
   const showKeyResendNote = baseURLWillResendKey(form, editing);
 
   return (
@@ -162,17 +171,21 @@ export function AddCustomProviderDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit custom provider" : "Add custom provider"}</DialogTitle>
+          <DialogTitle>
+            {editing
+              ? t(($) => $.settings.ai.customProvider.editTitle)
+              : t(($) => $.settings.ai.customProvider.addTitle)}
+          </DialogTitle>
           <DialogDescription>
             {editing
-              ? "Change the name or base URL."
-              : "Connect any OpenAI-compatible endpoint by its base URL."}
+              ? t(($) => $.settings.ai.customProvider.editDescription)
+              : t(($) => $.settings.ai.customProvider.addDescription)}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
             <label htmlFor="custom-provider-id" className="text-xs font-medium text-muted-foreground">
-              ID
+              {t(($) => $.settings.ai.customProvider.idLabel)}
             </label>
             <Input
               id="custom-provider-id"
@@ -180,7 +193,7 @@ export function AddCustomProviderDialog({
               value={form.id}
               disabled={Boolean(editing)}
               onChange={(e) => setField("id")(e.target.value)}
-              placeholder="acme"
+              placeholder={t(($) => $.settings.ai.customProvider.idPlaceholder)}
               aria-invalid={Boolean(fieldErrors.id)}
               className="h-10 font-mono text-sm aria-[invalid=true]:border-destructive"
             />
@@ -192,14 +205,14 @@ export function AddCustomProviderDialog({
           </div>
           <div className="space-y-1">
             <label htmlFor="custom-provider-name" className="text-xs font-medium text-muted-foreground">
-              Name
+              {t(($) => $.common.labels.name)}
             </label>
             <Input
               id="custom-provider-name"
               data-testid="custom-provider-name"
               value={form.name}
               onChange={(e) => setField("name")(e.target.value)}
-              placeholder="Acme"
+              placeholder={t(($) => $.settings.ai.customProvider.namePlaceholder)}
               aria-invalid={Boolean(fieldErrors.name)}
               className="h-10 aria-[invalid=true]:border-destructive"
             />
@@ -211,14 +224,14 @@ export function AddCustomProviderDialog({
           </div>
           <div className="space-y-1">
             <label htmlFor="custom-provider-baseurl" className="text-xs font-medium text-muted-foreground">
-              Base URL
+              {t(($) => $.settings.ai.customProvider.baseUrlLabel)}
             </label>
             <Input
               id="custom-provider-baseurl"
               data-testid="custom-provider-baseurl"
               value={form.baseURL}
               onChange={(e) => setField("baseURL")(e.target.value)}
-              placeholder="https://api.example.com/v1"
+              placeholder={t(($) => $.settings.ai.customProvider.baseUrlPlaceholder)}
               aria-invalid={Boolean(fieldErrors.baseURL)}
               className="h-10 font-mono text-sm aria-[invalid=true]:border-destructive"
             />
@@ -229,7 +242,7 @@ export function AddCustomProviderDialog({
             )}
             {!fieldErrors.baseURL && showKeyResendNote && (
               <p data-testid="custom-provider-baseurl-note" className="text-xs text-muted-foreground">
-                Your saved API key will be sent to this new address.
+                {t(($) => $.settings.ai.customProvider.baseUrlNote)}
               </p>
             )}
           </div>
@@ -243,7 +256,11 @@ export function AddCustomProviderDialog({
               type="password"
               value={form.apiKey}
               onChange={(e) => setField("apiKey")(e.target.value)}
-              placeholder={editing?.hasStoredKey ? "Saved key stays unless you enter a new one" : "Leave blank if none is required"}
+              placeholder={
+                editing?.hasStoredKey
+                  ? t(($) => $.settings.ai.customProvider.keyPlaceholderStored)
+                  : t(($) => $.settings.ai.customProvider.keyPlaceholder)
+              }
               aria-invalid={Boolean(fieldErrors.apiKey)}
               className="h-10 font-mono text-sm aria-[invalid=true]:border-destructive"
             />
@@ -262,8 +279,10 @@ export function AddCustomProviderDialog({
             onClick={() => void submit()}
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            {editing ? "Save" : "Add provider"}
-            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
+            {editing
+              ? t(($) => $.common.actions.save)
+              : t(($) => $.settings.ai.customProvider.submitAdd)}
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">{"↵"}</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -255,7 +255,11 @@ fi
 # tours key. Argument: the spec path about to run ("" for non-spec runs).
 boot_seed_for() {
   local spec="${1:-}"
-  local flags='"oleafly.shortcuts":null,"oleafly.visualEditor":"1","oleafly.latexTools":"1","oleafly.webBrowser":"1","oleafly.openInTree":"0","oleafly:compile:mode":"normal","oleafly.appFontSize":"16","oleafly.appFont":"","oleafly.assistant-runtime.v1":"{\"state\":{\"runtime\":\"built-in\"},\"version\":0}"'
+  local locale="en"
+  case "$spec" in
+    *97-locale-zh-hans*) locale="zh-Hans" ;;
+  esac
+  local flags='"oleafly.locale":"'"$locale"'","oleafly.shortcuts":null,"oleafly.visualEditor":"1","oleafly.latexTools":"1","oleafly.webBrowser":"1","oleafly.openInTree":"0","oleafly:compile:mode":"normal","oleafly.appFontSize":"16","oleafly.appFont":"","oleafly.assistant-runtime.v1":"{\"state\":{\"runtime\":\"built-in\"},\"version\":0}"'
   case "$spec" in
     *00-tours*) printf '{%s}' "$flags" ;;
     *) printf '{%s,"oleafly.tours":"{\\"state\\":{\\"schemaVersion\\":1,\\"enabled\\":false,\\"tours\\":{}},\\"version\\":1}"}' "$flags" ;;
@@ -271,7 +275,11 @@ configure_checkpoints_for_spec() {
   case "$specs" in
     *66-checkpoints*|*24-synctex-inverse*) enabled=true ;;
   esac
-  CHECKPOINTS_ENABLED="$enabled" CONFIG_PATH="$DATA_DIR/config.json" node -e '
+  local ui_locale="en"
+  case "$specs" in
+    *97-locale-zh-hans*) ui_locale="zh-Hans" ;;
+  esac
+  CHECKPOINTS_ENABLED="$enabled" UI_LOCALE="$ui_locale" CONFIG_PATH="$DATA_DIR/config.json" node -e '
     const fs = require("node:fs");
     const path = process.env.CONFIG_PATH;
     let config = {};
@@ -281,6 +289,7 @@ configure_checkpoints_for_spec() {
       config = {};
     }
     config.checkpoints_enabled = process.env.CHECKPOINTS_ENABLED === "true";
+    config.ui_locale = process.env.UI_LOCALE || "en";
     fs.mkdirSync(require("node:path").dirname(path), { recursive: true });
     fs.writeFileSync(path, JSON.stringify(config, null, 2));
   '
@@ -322,15 +331,40 @@ stop_app() {
 }
 
 has_spec=0
+SELECTED_SPECS=()
+COMMON_PLAYWRIGHT_ARGS=()
 for arg in "$@"; do
   case "$arg" in
-    *.spec.ts|*.spec.ts:*) has_spec=1 ;;
+    *.spec.ts|*.spec.ts:*)
+      has_spec=1
+      SELECTED_SPECS+=("$arg")
+      ;;
+    *) COMMON_PLAYWRIGHT_ARGS+=("$arg") ;;
   esac
 done
 
 if [ "$has_spec" -eq 1 ]; then
-  CHECKPOINT_HINTS="$*"
-  start_app "$1"
+  # A locale spec needs a different native config and pre-boot localStorage
+  # seed from the English suite. Playwright can accept several spec paths in a
+  # single invocation, but one already-running app cannot boot in two locales.
+  # Match the full-suite behavior and give every explicitly selected spec its
+  # own app process so multi-spec commands remain hermetic.
+  if [ "${#SELECTED_SPECS[@]}" -gt 1 ]; then
+    selection_status=0
+    for spec in "${SELECTED_SPECS[@]}"; do
+      CHECKPOINT_HINTS="$spec"
+      wait_for_port_free
+      start_app "$spec"
+      if ! run_playwright "$(basename "$spec")" "${COMMON_PLAYWRIGHT_ARGS[@]}" "$spec"; then
+        selection_status=1
+      fi
+      stop_app
+    done
+    rm -f "$SKIPPED_LIST"
+    exit "$selection_status"
+  fi
+  CHECKPOINT_HINTS="${SELECTED_SPECS[0]}"
+  start_app "${SELECTED_SPECS[0]}"
   run_playwright "requested spec selection" "$@"
 else
   suite_status=0

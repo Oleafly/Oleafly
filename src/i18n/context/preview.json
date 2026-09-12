@@ -1,0 +1,71 @@
+{
+  "toolbar": {
+    "logs": "Tab that switches the preview pane to the compiler log output",
+    "failed": "Compile result badge, shown instead of an elapsed time when the build failed",
+    "duration": "Elapsed compile time in seconds, shown next to the compile result icon"
+  },
+  "pages": {
+    "ofTotal": "Follows a page-number input field: [3] of 12",
+    "number": "Accessible name of the page-number input field"
+  },
+  "zoom": {
+    "reset": "Sets the zoom back to 100 percent, it does not reset the document"
+  },
+  "outline": {
+    "open": "Toolbar button that opens the PDF bookmark tree, not a document format",
+    "externalBadge": "Badge on an outline entry whose target is a web address, not an internal page"
+  },
+  "viewer": {
+    "retry": "Reloads the PDF in the viewer, it does not recompile the project",
+    "retainedFailureDetail": "Stands in for a missing viewer diagnostic, so it has no final period and is followed by another sentence"
+  },
+  "actions": {
+    "readerView": "Turns on a text-first rendering of the PDF for screen readers",
+    "invert": "Inverts the rendered colors of the PDF, a dark mode for the document",
+    "retryCompile": "Starts a new compile after a failed one"
+  },
+  "stale": {
+    "badge": "Short badge over the document meaning the PDF is older than the editor content",
+    "explanation": "Fallback sentence interpolated into stale.tooltip"
+  },
+  "save": {
+    "namePlaceholder": "Example file name shown in an empty input, keep a plausible name for the locale",
+    "title": "Heading of the dialog that writes the PDF into the project folder"
+  },
+  "download": {
+    "pngFilter": "File type name shown in the operating system save dialog"
+  },
+  "startup": {
+    "status": {
+      "done": "One-word status of a startup step that finished",
+      "running": "One-word status of a startup step in progress",
+      "queued": "One-word status of a startup step that has not begun",
+      "skipped": "One-word status of a startup step that does not apply",
+      "failed": "One-word status of a startup step that errored"
+    },
+    "doneCount": "Compact counter in the startup panel, for example 2/3 done",
+    "metaRunning": "Count of startup steps currently running",
+    "metaQueued": "Count of startup steps waiting to start",
+    "metaFailed": "Count of startup steps that failed",
+    "orPress": "Follows a Compile now button, the tag wraps the keyboard shortcut",
+    "language": {
+      "ready": "Detail line meaning the language service has finished starting"
+    }
+  },
+  "window": {
+    "staleUnknownRevision": "Stands in for a project revision number that is not known",
+    "staleCompileFailedDetail": "Stands in for a missing compiler message, so it has no final period and is followed by another sentence",
+    "fitWidth": "Zooms the page so its width fills the window",
+    "fitHeight": "Zooms the page so its height fills the window",
+    "invert": "Inverts the rendered colors of the PDF, a dark mode for the document"
+  },
+  "package": {
+    "outline": {
+      "untitled": "Stands in for a PDF bookmark that carries no title text",
+      "noDestination": "Tooltip on a PDF bookmark that points nowhere, so it cannot be opened"
+    },
+    "status": {
+      "loading": "Progress message while the compiled PDF is being opened in the viewer"
+    }
+  }
+}

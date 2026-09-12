@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   BookOpen,
   Check,
@@ -38,7 +39,7 @@ import {
 } from "@/components/layout/WorkspaceControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
-import { useFilesStore } from "@/store/files";
+import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
@@ -53,6 +54,7 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac } from "@/lib/utils";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { i18n } from "@/i18n";
 
 type DocFormat = DocumentExportFormat;
 
@@ -82,19 +84,79 @@ function classifyDoc(source: string): "presentation" | "book" | "doc" {
 }
 
 export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof Columns2 }[] = [
-  { preset: "editor-preview-ai", label: "Editor + Preview + AI", icon: Columns2 },
-  { preset: "editor-preview", label: "Editor + Preview", icon: Columns2 },
-  { preset: "editor-ai", label: "Editor + AI", icon: Columns2 },
-  { preset: "preview-ai", label: "Preview + AI", icon: Columns2 },
-  { preset: "editor-only", label: "Editor Only", icon: Maximize },
-  { preset: "preview-only", label: "Preview Only", icon: Columns2 },
-  { preset: "ai-only", label: "AI Only", icon: Sparkles },
+  {
+    preset: "editor-preview-ai",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.layouts.editorPreviewAi);
+    },
+    icon: Columns2,
+  },
+  {
+    preset: "editor-preview",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.layouts.editorPreview);
+    },
+    icon: Columns2,
+  },
+  {
+    preset: "editor-ai",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.layouts.editorAi);
+    },
+    icon: Columns2,
+  },
+  {
+    preset: "preview-ai",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.layouts.previewAi);
+    },
+    icon: Columns2,
+  },
+  {
+    preset: "editor-only",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.layouts.editorOnly);
+    },
+    icon: Maximize,
+  },
+  {
+    preset: "preview-only",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.layouts.previewOnly);
+    },
+    icon: Columns2,
+  },
+  {
+    preset: "ai-only",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.layouts.aiOnly);
+    },
+    icon: Sparkles,
+  },
 ];
 
 const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] = [
-  { mode: "editor", label: "Source View", icon: SquarePen },
-  { mode: "split", label: "Split View", icon: Columns2 },
-  { mode: "pdf", label: "PDF View", icon: FileText },
+  {
+    mode: "editor",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.views.editor);
+    },
+    icon: SquarePen,
+  },
+  {
+    mode: "split",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.views.split);
+    },
+    icon: Columns2,
+  },
+  {
+    mode: "pdf",
+    get label() {
+      return i18n.t(($) => $.shell.toolbar.views.pdf);
+    },
+    icon: FileText,
+  },
 ];
 
 // A layout preset is defined only by the editor/preview/AI panes, never the
@@ -119,14 +181,15 @@ function Divider() {
 }
 
 export function ProjectHistoryActions() {
+  const { t } = useTranslation(["shell"]);
   const openVersioning = useSettingsStore((state) => state.openVersioning);
 
   return (
-    <Tooltip label="Versioning">
+    <Tooltip label={t(($) => $.shell.toolbar.versioning)}>
       <Button
         variant="ghost"
         size="icon"
-        aria-label="Versioning"
+        aria-label={t(($) => $.shell.toolbar.versioning)}
         className="text-muted-foreground hover:text-foreground"
         onClick={() => openVersioning()}
       >
@@ -143,6 +206,7 @@ function ViewModeSwitch({
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
 }) {
+  useTranslation();
   return (
     <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
       {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => {
@@ -171,6 +235,7 @@ function ViewModeSwitch({
 }
 
 export function TopToolbar() {
+  const { t } = useTranslation(["common", "shell"]);
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
   const projects = useFilesStore((s) => s.projects);
@@ -226,7 +291,7 @@ export function TopToolbar() {
     if (!name || name === projectName) return;
     try {
       await renameProject(name);
-      toast.success("Project renamed");
+      toast.success(i18n.t(($) => $.shell.toolbar.projectRenamed));
     } catch (e) {
       notifyError("rename project", e);
     }
@@ -283,7 +348,7 @@ export function TopToolbar() {
       setForkName("");
       void openProject(newId);
     } catch (e) {
-      notifyError("fork project", e, "Couldn't fork the project.");
+      notifyError("fork project", e, i18n.t(($) => $.shell.toolbar.forkFailed));
     } finally {
       setForkBusy(false);
     }
@@ -314,7 +379,7 @@ export function TopToolbar() {
           <span ref={titleEditRef} className="flex min-w-0 items-center gap-1">
             <Input
               ref={titleInputRef}
-              aria-label="Project name"
+              aria-label={t(($) => $.shell.toolbar.projectName)}
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -328,21 +393,21 @@ export function TopToolbar() {
               }}
               className="h-6 w-[280px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
             />
-            <Tooltip label="Save (Enter)">
+            <Tooltip label={t(($) => $.shell.toolbar.saveName)}>
               <button
                 type="button"
                 onClick={() => void commitTitle()}
-                aria-label="Save name"
+                aria-label={t(($) => $.shell.toolbar.saveNameAriaLabel)}
                 className="flex size-6 items-center justify-center rounded text-emerald-600 hover:bg-accent dark:text-emerald-400"
               >
                 <Check className="size-3.5" />
               </button>
             </Tooltip>
-            <Tooltip label="Cancel (Esc)">
+            <Tooltip label={t(($) => $.shell.toolbar.cancelRename)}>
               <button
                 type="button"
                 onClick={() => setEditingTitle(false)}
-                aria-label="Cancel"
+                aria-label={t(($) => $.common.actions.cancel)}
                 className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <X className="size-3.5" />
@@ -350,7 +415,11 @@ export function TopToolbar() {
             </Tooltip>
           </span>
         ) : (
-          <Tooltip label={projectName || "project"} side="bottom" className="min-w-0">
+          <Tooltip
+            label={projectName || t(($) => $.shell.toolbar.untitledProject)}
+            side="bottom"
+            className="min-w-0"
+          >
             <button
                 data-testid="project-title"
               type="button"
@@ -362,7 +431,9 @@ export function TopToolbar() {
                 className="size-2 shrink-0 rounded-full"
                 style={{ backgroundColor: coverColor }}
               />
-              <span className="min-w-0 max-w-[calc(50vw-260px)] truncate">{projectName || "project"}</span>
+              <span className="min-w-0 max-w-[calc(50vw-260px)] truncate">
+                {projectName || t(($) => $.shell.toolbar.untitledProject)}
+              </span>
             </button>
           </Tooltip>
         )}
@@ -382,18 +453,25 @@ export function TopToolbar() {
 
         <CompileControls />
 
-        {engineError && <span className="max-w-48 truncate text-xs text-destructive" title={engineError}>{engineError}</span>}
+        {engineError && (
+          <span
+            className="max-w-48 truncate text-xs text-destructive"
+            title={engineErrorMessage(engineError)}
+          >
+            {engineErrorMessage(engineError)}
+          </span>
+        )}
 
         <Divider />
 
         <DropdownMenu open={dlOpen} onOpenChange={setExportMenuOpen}>
-          <Tooltip label="Export">
+          <Tooltip label={t(($) => $.shell.toolbar.export)}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-muted-foreground hover:text-foreground"
-                aria-label="Export"
+                aria-label={t(($) => $.shell.toolbar.export)}
               >
                 <Download className="size-4" />
               </Button>
@@ -402,27 +480,31 @@ export function TopToolbar() {
           <DropdownMenuContent align="end" className="w-60">
                 <DropdownMenuItem onSelect={() => void doDownloadZip()}>
                   <FileArchive className="size-4 text-muted-foreground" />
-                  Export source (.zip)
+                  {t(($) => $.shell.toolbar.exportSourceZip)}
                 </DropdownMenuItem>
                 {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
                   <FileText className="size-4 text-muted-foreground" />
-                  Export as PDF {isSingleFigureProject ? "(vector image)" : ""}
+                  {isSingleFigureProject
+                    ? t(($) => $.shell.toolbar.exportPdfVector)
+                    : t(($) => $.shell.toolbar.exportPdf)}
                 </DropdownMenuItem>}
                 {isSingleFigureProject && (
                   <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
                     <ImagePlay className="size-4 text-muted-foreground" />
-                    Export as PNG (raster image)
+                    {t(($) => $.shell.toolbar.exportPngRaster)}
                   </DropdownMenuItem>
                 )}
                 {!isSingleFigureProject && engine.capabilities.produces_pdf && (
                   <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
                     <ImagePlay className="size-4 text-muted-foreground" />
-                    Export page as PNG (raster image)
+                    {t(($) => $.shell.toolbar.exportPagePng)}
                   </DropdownMenuItem>
                 )}
                 {!pdfBytes && (
                   <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
-                    {isSingleFigureProject ? "Compile the figure first" : "PDF requires a compile first"}
+                    {isSingleFigureProject
+                      ? t(($) => $.shell.toolbar.compileFigureFirst)
+                      : t(($) => $.shell.toolbar.compilePdfFirst)}
                   </p>
                 )}
                 {!isSingleFigureProject && engine.capabilities.conversion_exports.length > 0 && (
@@ -437,12 +519,12 @@ export function TopToolbar() {
                           onSelect={() => void doExportFormat(formatForTarget(route.target))}
                         >
                           <FileType className="size-4 text-muted-foreground" />
-                          Export as {route.label}
+                          {t(($) => $.shell.toolbar.exportAs, { format: route.label })}
                         </DropdownMenuItem>
                       ))}
                     {engine.capabilities.conversion_exports.includes("txt") && <DropdownMenuItem onSelect={() => void doExportFormat("txt")}>
                       <FileType className="size-4 text-muted-foreground" />
-                      Export as Plain text (.txt)
+                      {t(($) => $.shell.toolbar.exportTxt)}
                     </DropdownMenuItem>}
                   </>
                 )}
@@ -451,7 +533,7 @@ export function TopToolbar() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => void doExportFormat("pptx")}>
                       <Presentation className="size-4 text-muted-foreground" />
-                      Export as PowerPoint (.pptx)
+                      {t(($) => $.shell.toolbar.exportPptx)}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -460,13 +542,13 @@ export function TopToolbar() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => void doExportFormat("epub")}>
                       <BookOpen className="size-4 text-muted-foreground" />
-                      Export as EPUB (.epub)
+                      {t(($) => $.shell.toolbar.exportEpub)}
                     </DropdownMenuItem>
                   </>
                 )}
                 {exporting && (
                   <p className="px-2 py-1 text-[10px] text-muted-foreground">
-                    {`Exporting .${exporting}…`}
+                    {t(($) => $.shell.toolbar.exporting, { format: exporting })}
                   </p>
                 )}
           </DropdownMenuContent>
@@ -474,7 +556,7 @@ export function TopToolbar() {
 
         <Divider />
 
-        <Tooltip label="Fork project">
+        <Tooltip label={t(($) => $.shell.toolbar.forkProject)}>
           <Button
             variant="ghost"
             size="icon"
@@ -491,13 +573,13 @@ export function TopToolbar() {
         <Divider />
 
         <DropdownMenu>
-          <Tooltip label="Layout">
+          <Tooltip label={t(($) => $.shell.toolbar.layout)}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-muted-foreground hover:text-foreground"
-                aria-label="Layout"
+                aria-label={t(($) => $.shell.toolbar.layout)}
               >
                 <LayoutGrid className="size-4" />
               </Button>
@@ -525,7 +607,12 @@ export function TopToolbar() {
 
     {forkOpen && (
       <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-        <button type="button" aria-label="Close fork dialog" className="absolute inset-0" onMouseDown={onForkBackdropMouseDown} />
+        <button
+          type="button"
+          aria-label={t(($) => $.shell.toolbar.closeForkDialog)}
+          className="absolute inset-0"
+          onMouseDown={onForkBackdropMouseDown}
+        />
         <div
           ref={forkDialogRef}
           role="dialog"
@@ -535,13 +622,20 @@ export function TopToolbar() {
           className="relative w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
         >
           <div className="mb-4 flex items-center justify-between">
-            <h2 id="toolbar-fork-title" className="text-base font-semibold">Fork project</h2>
+            <h2 id="toolbar-fork-title" className="text-base font-semibold">
+              {t(($) => $.shell.toolbar.forkProject)}
+            </h2>
             <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
               <X className="size-4" />
             </Button>
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Copies <span className="font-medium text-foreground">{projectName}</span> and its Git history into a new project. Checkpoints start empty.
+            <Trans
+              ns="shell"
+              i18nKey={($) => $.shell.toolbar.forkDescription}
+              values={{ name: projectName }}
+              components={{ name: <span className="font-medium text-foreground" /> }}
+            />
           </p>
           <div className="flex items-center gap-2">
             <Input
@@ -549,12 +643,12 @@ export function TopToolbar() {
               value={forkName}
               onChange={(e) => setForkName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !forkBusy) void submitFork(); }}
-              placeholder="New project name"
+              placeholder={t(($) => $.shell.toolbar.newProjectName)}
               className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
             />
             <Button onClick={() => void submitFork()} disabled={forkBusy}>
               {forkBusy ? <Loader2 className="size-4 animate-spin" /> : <GitFork className="size-4" />}
-              Fork
+              {t(($) => $.shell.toolbar.fork)}
             </Button>
           </div>
         </div>

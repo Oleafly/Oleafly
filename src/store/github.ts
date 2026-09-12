@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/app-error";
 import { create } from "zustand";
 import {
   clearGithubToken,
@@ -65,7 +66,7 @@ export const useGithubStore = create<GithubState>((set) => ({
       const user = await saveGithubToken(token);
       set({ status: "connected", user, loading: false });
     } catch (e) {
-      set({ loading: false, error: e instanceof Error ? e.message : String(e) });
+      set({ loading: false, error: describeError(e) });
       throw e;
     }
   },

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" 
 }
 
 export function TableGeneratorPanel() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const editorTheme = useSettingsStore((s) => s.editorTheme);
   const [rows, setRows] = useState(3);
   const [cols, setCols] = useState(3);
@@ -46,7 +48,7 @@ export function TableGeneratorPanel() {
       <div className="flex h-full min-w-0 flex-col overflow-y-auto p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <label htmlFor="table-rows">Rows</label>
+            <label htmlFor="table-rows">{t(($) => $.researchTools.table.rows)}</label>
             <Input
               id="table-rows"
               type="number"
@@ -58,7 +60,7 @@ export function TableGeneratorPanel() {
             />
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <label htmlFor="table-cols">Columns</label>
+            <label htmlFor="table-cols">{t(($) => $.researchTools.table.columns)}</label>
             <Input
               id="table-cols"
               type="number"
@@ -75,7 +77,7 @@ export function TableGeneratorPanel() {
               checked={booktabs}
               onCheckedChange={(v) => setBooktabs(v === true)}
             />
-            <label htmlFor="table-booktabs">booktabs rules</label>
+            <label htmlFor="table-booktabs">{t(($) => $.researchTools.table.booktabs)}</label>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Checkbox
@@ -83,7 +85,7 @@ export function TableGeneratorPanel() {
               checked={headerRow}
               onCheckedChange={(v) => setHeaderRow(v === true)}
             />
-            <label htmlFor="table-header-row">first row is header</label>
+            <label htmlFor="table-header-row">{t(($) => $.researchTools.table.headerRow)}</label>
           </div>
         </div>
         <div className="mt-4 overflow-x-auto">
@@ -95,7 +97,9 @@ export function TableGeneratorPanel() {
                   <th key={`align-${c}-${a}`} className="p-1">
                     <select
                       value={a}
-                      aria-label={`Column ${c + 1} alignment`}
+                      aria-label={t(($) => $.researchTools.table.columnAlignment, {
+                        column: c + 1,
+                      })}
                       onChange={(e) =>
                         setAligns((prev) =>
                           prev.map((x, i) => (i === c ? (e.target.value as TableAlign) : x)),
@@ -103,9 +107,9 @@ export function TableGeneratorPanel() {
                       }
                       className="rounded-md border border-input bg-background px-1.5 py-1 text-xs"
                     >
-                      <option value="l">left</option>
-                      <option value="c">center</option>
-                      <option value="r">right</option>
+                      <option value="l">{t(($) => $.researchTools.table.alignLeft)}</option>
+                      <option value="c">{t(($) => $.researchTools.table.alignCenter)}</option>
+                      <option value="r">{t(($) => $.researchTools.table.alignRight)}</option>
                     </select>
                   </th>
                 ))}
@@ -120,7 +124,10 @@ export function TableGeneratorPanel() {
                     <td key={`cell-${ri}-${ci}`} className="p-1">
                       <Input
                         value={v}
-                        aria-label={`Row ${ri + 1} column ${ci + 1}`}
+                        aria-label={t(($) => $.researchTools.table.cellAria, {
+                          row: ri + 1,
+                          column: ci + 1,
+                        })}
                         onChange={(e) =>
                           setCells((prev) =>
                             prev.map((row, i) =>
@@ -140,14 +147,14 @@ export function TableGeneratorPanel() {
         <Input
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="Caption (optional)"
-          aria-label="Table caption"
+          placeholder={t(($) => $.researchTools.table.captionPlaceholder)}
+          aria-label={t(($) => $.researchTools.table.captionAria)}
           className="mt-4 max-w-sm"
         />
       </div>
       <div className="flex h-full min-w-0 flex-col overflow-y-auto">
         <div className="border-b px-4 py-2 text-xs font-medium text-muted-foreground">
-          Preview
+          {t(($) => $.researchTools.table.preview)}
         </div>
         <div className="overflow-x-auto p-4">
           {caption && (
@@ -190,16 +197,16 @@ export function TableGeneratorPanel() {
           </table>
         </div>
         <div className="flex items-center justify-between border-y px-4 py-2 text-xs font-medium text-muted-foreground">
-          <span>LaTeX output</span>
+          <span>{t(($) => $.researchTools.table.output)}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
               void navigator.clipboard.writeText(code);
-              toast.success("Copied LaTeX source");
+              toast.success(t(($) => $.researchTools.table.copiedSource));
             }}
           >
-            Copy
+            {t(($) => $.common.actions.copy)}
           </Button>
         </div>
         <pre
@@ -214,7 +221,11 @@ export function TableGeneratorPanel() {
         </pre>
         {booktabs && (
           <p className="border-t px-4 py-2 text-xs text-muted-foreground">
-            Requires <code>\usepackage{"{booktabs}"}</code> in your preamble.
+            <Trans
+              ns="researchTools"
+              i18nKey={($) => $.researchTools.table.booktabsHint}
+              components={{ code: <code /> }}
+            />
           </p>
         )}
       </div>

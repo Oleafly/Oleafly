@@ -1,4 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { toolRisk, type ToolRisk } from "@oleafly/ai-tools";
+import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 export type AiToolGroup =
@@ -13,9 +15,9 @@ export type AiToolGroup =
 
 export interface AiToolInfo {
   name: string;
-  desc: string;
+  desc: () => string;
   group: AiToolGroup;
-  note?: string;
+  note?: () => string;
 }
 
 export const AI_TOOL_GROUPS: AiToolGroup[] = [
@@ -29,99 +31,127 @@ export const AI_TOOL_GROUPS: AiToolGroup[] = [
   "System",
 ];
 
+export function aiToolGroupLabel(group: AiToolGroup): string {
+  switch (group) {
+    case "Files":
+      return i18n.t(($) => $.ai.tools.groups.files);
+    case "Build and PDF":
+      return i18n.t(($) => $.ai.tools.groups.buildAndPdf);
+    case "Research":
+      return i18n.t(($) => $.ai.tools.groups.research);
+    case "Figures":
+      return i18n.t(($) => $.ai.tools.groups.figures);
+    case "Plan and memory":
+      return i18n.t(($) => $.ai.tools.groups.planAndMemory);
+    case "Skills":
+      return i18n.t(($) => $.ai.tools.groups.skills);
+    case "Agents":
+      return i18n.t(($) => $.ai.tools.groups.agents);
+    default:
+      return i18n.t(($) => $.ai.tools.groups.system);
+  }
+}
+
+const latexOnly = () => i18n.t(($) => $.ai.tools.notes.latexOnly);
+const alphaxivKey = () => i18n.t(($) => $.ai.tools.notes.alphaxivKey);
+
 export const AI_TOOLS: AiToolInfo[] = [
-  { name: "read_file", group: "Files", desc: "Read a project file, a slice at a time for long ones." },
-  { name: "write_file", group: "Files", desc: "Write a whole file, replacing what was there." },
-  { name: "replace_in_file", group: "Files", desc: "Find an exact passage in a file and replace it." },
-  { name: "create_file", group: "Files", desc: "Create a new file or folder in the project." },
-  { name: "rename_file", group: "Files", desc: "Rename or move a file or folder." },
-  { name: "delete_file", group: "Files", desc: "Delete a file or folder." },
-  { name: "list_files", group: "Files", desc: "List every file and folder in the project." },
-  { name: "search_project", group: "Files", desc: "Search the project's text and get file and line hits." },
+  { name: "read_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.readFile) },
+  { name: "write_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.writeFile) },
+  { name: "replace_in_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.replaceInFile) },
+  { name: "create_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.createFile) },
+  { name: "rename_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.renameFile) },
+  { name: "delete_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.deleteFile) },
+  { name: "list_files", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.listFiles) },
+  { name: "search_project", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.searchProject) },
   {
     name: "project_map",
     group: "Files",
-    desc: "Read the document's outline: sections, labels, citation keys, macros, inputs, and anything unresolved.",
-    note: "LaTeX projects only",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.projectMap),
+    note: latexOnly,
   },
-  { name: "show_location", group: "Files", desc: "Open a file at a line in the editor and move the PDF preview to that spot." },
-  { name: "compile", group: "Build and PDF", desc: "Compile the project with its engine and report errors." },
-  { name: "get_log", group: "Build and PDF", desc: "Read the last compile log." },
-  { name: "get_pdf_text", group: "Build and PDF", desc: "Read the text of the compiled PDF page by page." },
+  { name: "show_location", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.showLocation) },
+  { name: "compile", group: "Build and PDF", desc: () => i18n.t(($) => $.ai.tools.catalog.compile) },
+  { name: "get_log", group: "Build and PDF", desc: () => i18n.t(($) => $.ai.tools.catalog.getLog) },
+  { name: "get_pdf_text", group: "Build and PDF", desc: () => i18n.t(($) => $.ai.tools.catalog.getPdfText) },
   {
     name: "verify_pdf_pages",
     group: "Build and PDF",
-    desc: "Render compiled pages as images so a vision model can check the layout.",
-    note: "Needs the PDF page capture setting",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.verifyPdfPages),
+    note: () => i18n.t(($) => $.ai.tools.notes.pdfCaptureSetting),
   },
-  { name: "set_main_doc", group: "Build and PDF", desc: "Change which file the project compiles from." },
-  { name: "literature_search", group: "Research", desc: "Search OpenAlex for papers by keyword, no key needed." },
-  { name: "verify_citation", group: "Research", desc: "Turn a DOI or a title into verified BibTeX through doi.org or Crossref." },
-  { name: "project_library_search", group: "Research", desc: "Search the project's own text and notes by keyword." },
+  { name: "set_main_doc", group: "Build and PDF", desc: () => i18n.t(($) => $.ai.tools.catalog.setMainDoc) },
+  { name: "literature_search", group: "Research", desc: () => i18n.t(($) => $.ai.tools.catalog.literatureSearch) },
+  { name: "verify_citation", group: "Research", desc: () => i18n.t(($) => $.ai.tools.catalog.verifyCitation) },
+  {
+    name: "project_library_search",
+    group: "Research",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.projectLibrarySearch),
+  },
   {
     name: "alphaxiv_search",
     group: "Research",
-    desc: "Search arXiv papers through alphaXiv.",
-    note: "Needs an alphaXiv key in Integrations",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.alphaxivSearch),
+    note: alphaxivKey,
   },
   {
     name: "alphaxiv_paper_content",
     group: "Research",
-    desc: "Fetch the full text of an arXiv paper through alphaXiv.",
-    note: "Needs an alphaXiv key in Integrations",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.alphaxivPaperContent),
+    note: alphaxivKey,
   },
   {
     name: "preview_figure",
     group: "Figures",
-    desc: "Compile a TikZ or PGFPlots figure on its own and show the result in the chat.",
-    note: "LaTeX projects only",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.previewFigure),
+    note: latexOnly,
   },
   {
     name: "insert_figure",
     group: "Figures",
-    desc: "Insert the finished figure at the cursor with a caption and label, and save a PNG under figures/.",
-    note: "LaTeX projects only",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.insertFigure),
+    note: latexOnly,
   },
-  { name: "load_image", group: "Figures", desc: "Look at an image that is already in the project." },
-  { name: "update_todos", group: "Plan and memory", desc: "Write or update the step by step plan shown in the chat." },
-  { name: "get_todos", group: "Plan and memory", desc: "Read the current plan." },
-  { name: "remember_note", group: "Plan and memory", desc: "Save a project note that later chats will see." },
-  { name: "forget_note", group: "Plan and memory", desc: "Remove a saved project note." },
-  { name: "list_notes", group: "Plan and memory", desc: "List the saved project notes." },
-  { name: "load_skill", group: "Skills", desc: "Load the full instructions of one skill before following it." },
-  { name: "read_skill_file", group: "Skills", desc: "Read a reference file or script that ships with a skill." },
-  { name: "spawn_agent", group: "Agents", desc: "Start a helper agent with its own task and tools." },
-  { name: "send_message", group: "Agents", desc: "Send a message to a running helper agent." },
-  { name: "followup_task", group: "Agents", desc: "Give a helper agent another task after it finishes." },
-  { name: "wait_agent", group: "Agents", desc: "Wait for a helper agent to finish and read its result." },
-  { name: "interrupt_agent", group: "Agents", desc: "Stop what a helper agent is doing." },
-  { name: "list_agents", group: "Agents", desc: "List the helper agents and their state." },
-  { name: "close_agent", group: "Agents", desc: "Close a helper agent." },
+  { name: "load_image", group: "Figures", desc: () => i18n.t(($) => $.ai.tools.catalog.loadImage) },
+  { name: "update_todos", group: "Plan and memory", desc: () => i18n.t(($) => $.ai.tools.catalog.updateTodos) },
+  { name: "get_todos", group: "Plan and memory", desc: () => i18n.t(($) => $.ai.tools.catalog.getTodos) },
+  { name: "remember_note", group: "Plan and memory", desc: () => i18n.t(($) => $.ai.tools.catalog.rememberNote) },
+  { name: "forget_note", group: "Plan and memory", desc: () => i18n.t(($) => $.ai.tools.catalog.forgetNote) },
+  { name: "list_notes", group: "Plan and memory", desc: () => i18n.t(($) => $.ai.tools.catalog.listNotes) },
+  { name: "load_skill", group: "Skills", desc: () => i18n.t(($) => $.ai.tools.catalog.loadSkill) },
+  { name: "read_skill_file", group: "Skills", desc: () => i18n.t(($) => $.ai.tools.catalog.readSkillFile) },
+  { name: "spawn_agent", group: "Agents", desc: () => i18n.t(($) => $.ai.tools.catalog.spawnAgent) },
+  { name: "send_message", group: "Agents", desc: () => i18n.t(($) => $.ai.tools.catalog.sendMessage) },
+  { name: "followup_task", group: "Agents", desc: () => i18n.t(($) => $.ai.tools.catalog.followupTask) },
+  { name: "wait_agent", group: "Agents", desc: () => i18n.t(($) => $.ai.tools.catalog.waitAgent) },
+  { name: "interrupt_agent", group: "Agents", desc: () => i18n.t(($) => $.ai.tools.catalog.interruptAgent) },
+  { name: "list_agents", group: "Agents", desc: () => i18n.t(($) => $.ai.tools.catalog.listAgents) },
+  { name: "close_agent", group: "Agents", desc: () => i18n.t(($) => $.ai.tools.catalog.closeAgent) },
   {
     name: "run_command",
     group: "System",
-    desc: "Run a shell command in the project folder, with a two minute limit.",
-    note: "Approved in the chat, one command at a time",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.runCommand),
+    note: () => i18n.t(($) => $.ai.tools.notes.chatApproval),
   },
   {
     name: "computer_use",
     group: "System",
-    desc: "Open a web page in the assistant's browser window.",
-    note: "Needs the web browser setting",
+    desc: () => i18n.t(($) => $.ai.tools.catalog.computerUse),
+    note: () => i18n.t(($) => $.ai.tools.notes.browserSetting),
   },
-  { name: "toggle_theme", group: "System", desc: "Switch between light and dark mode." },
+  { name: "toggle_theme", group: "System", desc: () => i18n.t(($) => $.ai.tools.catalog.toggleTheme) },
 ];
 
 export function approvalLabel(risk: ToolRisk): string {
   switch (risk) {
     case "read":
-      return "Never";
+      return i18n.t(($) => $.ai.tools.approval.never);
     case "shell":
-      return "Every time, in the chat";
+      return i18n.t(($) => $.ai.tools.approval.everyTime);
     case "network":
-      return "Only in Ask for approval mode";
+      return i18n.t(($) => $.ai.tools.approval.askModeOnly);
     default:
-      return "Yes, unless allowed for the project";
+      return i18n.t(($) => $.ai.tools.approval.unlessAllowed);
   }
 }
 
@@ -133,19 +163,20 @@ const RISK_CLASS: Record<ToolRisk, string> = {
 };
 
 export function AiToolsTable({ className }: { className?: string }) {
+  const { t } = useTranslation(["common", "ai"]);
   return (
     <div className={cn("overflow-x-auto rounded-md border", className)} data-testid="ai-tools-table">
       <table className="w-full border-collapse text-left text-[11px]">
         <thead className="bg-muted/60 text-[10px] uppercase tracking-wide text-muted-foreground">
           <tr>
             <th scope="col" className="px-3 py-2 font-medium">
-              Tool
+              {t(($) => $.ai.tools.table.tool)}
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
-              What it does
+              {t(($) => $.ai.tools.table.whatItDoes)}
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
-              Asks first
+              {t(($) => $.ai.tools.table.asksFirst)}
             </th>
           </tr>
         </thead>
@@ -160,7 +191,7 @@ export function AiToolsTable({ className }: { className?: string }) {
                   colSpan={3}
                   className="border-t bg-muted/30 px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
                 >
-                  {group}
+                  {aiToolGroupLabel(group)}
                 </th>
               </tr>
               {tools.map((tool) => {
@@ -173,9 +204,9 @@ export function AiToolsTable({ className }: { className?: string }) {
                       </code>
                     </td>
                     <td className="px-3 py-2 text-foreground">
-                      {tool.desc}
+                      {tool.desc()}
                       {tool.note && (
-                        <span className="mt-0.5 block text-[10px] text-muted-foreground">{tool.note}</span>
+                        <span className="mt-0.5 block text-[10px] text-muted-foreground">{tool.note()}</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2">
@@ -201,6 +232,7 @@ export function AiToolsGrid({
   columns?: 1 | 2;
   className?: string;
 }) {
+  useTranslation(["common", "ai"]);
   return (
     <div
       className={cn(
@@ -214,7 +246,7 @@ export function AiToolsGrid({
           <code className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">
             {t.name}
           </code>
-          <span className="text-muted-foreground">{t.desc}</span>
+          <span className="text-muted-foreground">{t.desc()}</span>
         </div>
       ))}
     </div>

@@ -26,7 +26,7 @@ describe("prepareAccessibleSource: DocumentMetadata", () => {
 
   it("records the change", () => {
     const { changes } = prepareAccessibleSource(DOC);
-    expect(changes.some((c) => /DocumentMetadata/i.test(c.summary))).toBe(true);
+    expect(changes.some((c) => c.summary.key === "prep.metadataAdded")).toBe(true);
   });
 });
 
@@ -56,7 +56,7 @@ describe("prepareAccessibleSource: tables", () => {
   it("declares the header row when the document has a table", () => {
     const { output, changes } = prepareAccessibleSource(WITH_TABLE);
     expect(output).toMatch(/tagging-setup=\{table\/header-rows=\{1\}\}/);
-    expect(changes.some((c) => /header-rows/.test(c.summary))).toBe(true);
+    expect(changes.some((c) => c.summary.key === "prep.headerRows")).toBe(true);
   });
 
   it("does not declare header rows for a document with no table", () => {
@@ -76,33 +76,33 @@ describe("prepareAccessibleSource: tables", () => {
     const { output, changes } = prepareAccessibleSource(src);
     expect(output).toMatch(/header-rows=\{2\}/);
     expect(output).not.toMatch(/header-rows=\{1\}/);
-    expect(changes.some((c) => /Set table\/header-rows to 1/.test(c.summary))).toBe(false);
+    expect(changes.some((c) => c.summary.key === "prep.headerRows")).toBe(false);
   });
 
   it("merges header rows into a tagging-setup that is already there for something else", () => {
     const src = `\\DocumentMetadata{lang=en-US,tagging-setup={math/setup=mathml-SE}}\n${WITH_TABLE}`;
     const { output, changes } = prepareAccessibleSource(src);
     expect(output).toMatch(/tagging-setup=\{math\/setup=mathml-SE,table\/header-rows=\{1\}\}/);
-    expect(changes.some((c) => /Set table\/header-rows to 1/.test(c.summary))).toBe(true);
+    expect(changes.some((c) => c.summary.key === "prep.headerRows")).toBe(true);
     expect(prepareAccessibleSource(output).output).toBe(output);
   });
 
   it("reports the header-rows change only when it really set one", () => {
     const noTable = prepareAccessibleSource(DOC);
-    expect(noTable.changes.some((c) => /header-rows/.test(c.summary))).toBe(false);
+    expect(noTable.changes.some((c) => c.summary.key === "prep.headerRows")).toBe(false);
   });
 });
 
 describe("prepareAccessibleSource: document title", () => {
   it("asks for a title the reader will display", () => {
     const { changes } = prepareAccessibleSource(DOC);
-    expect(changes.some((c) => c.kind === "warn" && /pdfdisplaydoctitle/.test(c.summary))).toBe(true);
+    expect(changes.some((c) => c.summary.key === "prep.titleRequired")).toBe(true);
   });
 
   it("stays quiet when the source already sets both", () => {
     const src = "\\documentclass{article}\\hypersetup{pdftitle={A paper},pdfdisplaydoctitle=true}\\begin{document}x\\end{document}";
     const { changes } = prepareAccessibleSource(src);
-    expect(changes.some((c) => /pdfdisplaydoctitle/.test(c.summary))).toBe(false);
+    expect(changes.some((c) => c.summary.key === "prep.titleRequired")).toBe(false);
   });
 });
 
@@ -124,39 +124,43 @@ describe("prepareAccessibleSource: incompatible packages", () => {
     const src = "\\documentclass{article}\\usepackage{listings}\n\\begin{document}x\\end{document}";
     const { output, changes } = prepareAccessibleSource(src);
     expect(output).toMatch(/\\usepackage\{listings\}/);
-    expect(changes.some((c) => c.kind === "warn" && /listings/i.test(c.summary))).toBe(true);
+    expect(
+      changes.some(
+        (c) =>
+          c.summary.key === "prep.incompatiblePackages" &&
+          String(c.summary.params?.packages).includes("listings"),
+      ),
+    ).toBe(true);
   });
 
   it("names every package the LaTeX Project lists as incompatible", () => {
     const src = "\\documentclass{article}\\usepackage{float,minted}\\usepackage{amsmath}\n\\begin{document}x\\end{document}";
     const warning = prepareAccessibleSource(src).changes.find(
-      (c) => c.kind === "warn" && /not compatible with tagging/.test(c.summary),
+      (c) => c.summary.key === "prep.incompatiblePackages",
     );
-    expect(warning?.summary).toContain("float");
-    expect(warning?.summary).toContain("minted");
-    expect(warning?.summary).not.toContain("amsmath");
+    expect(warning?.summary.params?.packages).toBe("float, minted");
   });
 
   it("blocks enumitem here too, the same way the gate does", () => {
     const src = "\\documentclass{article}\\usepackage{enumitem}\n\\begin{document}x\\end{document}";
     const warning = prepareAccessibleSource(src).changes.find(
-      (c) => c.kind === "warn" && /not compatible with tagging/.test(c.summary),
+      (c) => c.summary.key === "prep.incompatiblePackages",
     );
-    expect(warning?.summary).toContain("enumitem");
+    expect(warning?.summary.params?.packages).toBe("enumitem");
   });
 
   it("cautions about packages that only partly tag", () => {
     const src = "\\documentclass{article}\\usepackage{amsmath}\n\\begin{document}x\\end{document}";
     const caution = prepareAccessibleSource(src).changes.find(
-      (c) => c.kind === "warn" && /only partly tag/.test(c.summary),
+      (c) => c.summary.key === "prep.cautionPackages",
     );
-    expect(caution?.summary).toContain("amsmath");
+    expect(caution?.summary.params?.packages).toBe("amsmath");
   });
 
   it("ignores a package that is only mentioned in a comment", () => {
     const src = "\\documentclass{article}\n% \\usepackage{float}\n\\begin{document}x\\end{document}";
     const warning = prepareAccessibleSource(src).changes.find(
-      (c) => c.kind === "warn" && /not compatible with tagging/.test(c.summary),
+      (c) => c.summary.key === "prep.incompatiblePackages",
     );
     expect(warning).toBeUndefined();
   });
@@ -165,16 +169,14 @@ describe("prepareAccessibleSource: incompatible packages", () => {
 describe("prepareAccessibleSource: engine guidance", () => {
   it("names both tagging engines when the engine is unknown", () => {
     const { changes } = prepareAccessibleSource(DOC);
-    const info = changes.find((c) => c.kind === "info" && /TeX Live 2025/.test(c.summary));
-    expect(info?.summary).toContain("pdfLaTeX or LuaLaTeX");
-    expect(info?.summary).toContain("bundled engine cannot produce tags");
+    expect(changes.some((c) => c.summary.key === "prep.compileAny")).toBe(true);
+    expect(changes.some((c) => c.summary.key === "prep.compileLua")).toBe(false);
   });
 
   it("keeps the guidance short when LuaLaTeX is already selected", () => {
     const { changes } = prepareAccessibleSource(DOC, { engine: "lualatex" });
-    const info = changes.find((c) => c.kind === "info" && /TeX Live 2025/.test(c.summary));
-    expect(info?.summary).toContain("LuaLaTeX");
-    expect(info?.summary).not.toContain("pdfLaTeX or LuaLaTeX");
+    expect(changes.some((c) => c.summary.key === "prep.compileLua")).toBe(true);
+    expect(changes.some((c) => c.summary.key === "prep.compileAny")).toBe(false);
   });
 });
 

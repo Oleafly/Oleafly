@@ -288,7 +288,7 @@ test("list view exposes favorites and the compiled PDF preview", async ({
 
   await tauriPage.click('[aria-label="Preview E2E Doc"]');
   const previewDialog = tauriPage.getByRole("dialog");
-  await expect(previewDialog).toContainText("PDF preview — E2E Doc");
+  await expect(previewDialog).toContainText("PDF preview: E2E Doc");
   await expect(previewDialog.locator(".pdf-canvas").first()).toBeVisible({
     timeout: 30_000,
   });

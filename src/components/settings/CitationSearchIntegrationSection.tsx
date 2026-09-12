@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Check,
   ExternalLink,
@@ -15,6 +16,7 @@ import { toast } from "@/lib/toast";
 const KEY_FREE_SOURCES = ["arXiv", "Crossref", "PubMed"] as const;
 
 export function CitationSearchIntegrationSection() {
+  const { t } = useTranslation(["common", "settings"]);
   const [apiKey, setApiKey] = useState("");
   const [connected, setConnected] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -78,9 +80,9 @@ export function CitationSearchIntegrationSection() {
       await setConnectorKey("semantic-scholar", nextKey);
       setApiKey("");
       setConnected(true);
-      toast.success("Semantic Scholar API key saved");
+      toast.success(t(($) => $.settings.citations.semanticScholar.keySaved));
     } catch {
-      toast.error("Could not save the Semantic Scholar API key.");
+      toast.error(t(($) => $.settings.citations.semanticScholar.keySaveFailed));
     } finally {
       setBusy(false);
     }
@@ -91,9 +93,9 @@ export function CitationSearchIntegrationSection() {
     try {
       await setConnectorKey("semantic-scholar", "");
       setConnected(false);
-      toast.success("Semantic Scholar API key removed");
+      toast.success(t(($) => $.settings.citations.semanticScholar.keyRemoved));
     } catch {
-      toast.error("Could not remove the Semantic Scholar API key.");
+      toast.error(t(($) => $.settings.citations.semanticScholar.keyRemoveFailed));
     } finally {
       setBusy(false);
     }
@@ -107,9 +109,9 @@ export function CitationSearchIntegrationSection() {
       await setConnectorKey("openalex-email", email);
       setOpenAlexEmail("");
       setOpenAlexConnected(true);
-      toast.success("OpenAlex contact email saved");
+      toast.success(t(($) => $.settings.citations.openAlex.emailSaved));
     } catch {
-      toast.error("Could not save the OpenAlex contact email.");
+      toast.error(t(($) => $.settings.citations.openAlex.emailSaveFailed));
     } finally {
       setOpenAlexBusy(false);
     }
@@ -123,9 +125,9 @@ export function CitationSearchIntegrationSection() {
       await setConnectorKey("openalex-api-key", key);
       setOpenAlexKey("");
       setOpenAlexKeyConnected(true);
-      toast.success("OpenAlex API key saved");
+      toast.success(t(($) => $.settings.citations.openAlex.keySaved));
     } catch {
-      toast.error("Could not save the OpenAlex API key.");
+      toast.error(t(($) => $.settings.citations.openAlex.keySaveFailed));
     } finally {
       setOpenAlexKeyBusy(false);
     }
@@ -136,9 +138,9 @@ export function CitationSearchIntegrationSection() {
     try {
       await setConnectorKey("openalex-api-key", "");
       setOpenAlexKeyConnected(false);
-      toast.success("OpenAlex API key removed");
+      toast.success(t(($) => $.settings.citations.openAlex.keyRemoved));
     } catch {
-      toast.error("Could not remove the OpenAlex API key.");
+      toast.error(t(($) => $.settings.citations.openAlex.keyRemoveFailed));
     } finally {
       setOpenAlexKeyBusy(false);
     }
@@ -149,9 +151,9 @@ export function CitationSearchIntegrationSection() {
     try {
       await setConnectorKey("openalex-email", "");
       setOpenAlexConnected(false);
-      toast.success("OpenAlex contact email removed");
+      toast.success(t(($) => $.settings.citations.openAlex.emailRemoved));
     } catch {
-      toast.error("Could not remove the OpenAlex contact email.");
+      toast.error(t(($) => $.settings.citations.openAlex.emailRemoveFailed));
     } finally {
       setOpenAlexBusy(false);
     }
@@ -165,9 +167,9 @@ export function CitationSearchIntegrationSection() {
       await setConnectorKey("serper", nextKey);
       setSerperKey("");
       setSerperConnected(true);
-      toast.success("Serper API key saved");
+      toast.success(t(($) => $.settings.citations.serper.keySaved));
     } catch {
-      toast.error("Could not save the Serper API key.");
+      toast.error(t(($) => $.settings.citations.serper.keySaveFailed));
     } finally {
       setSerperBusy(false);
     }
@@ -178,9 +180,9 @@ export function CitationSearchIntegrationSection() {
     try {
       await setConnectorKey("serper", "");
       setSerperConnected(false);
-      toast.success("Serper API key removed");
+      toast.success(t(($) => $.settings.citations.serper.keyRemoved));
     } catch {
-      toast.error("Could not remove the Serper API key.");
+      toast.error(t(($) => $.settings.citations.serper.keyRemoveFailed));
     } finally {
       setSerperBusy(false);
     }
@@ -196,9 +198,11 @@ export function CitationSearchIntegrationSection() {
           <LibraryBig className="size-5" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold">Citation Search</h3>
+          <h3 className="text-sm font-semibold">
+            {t(($) => $.settings.citations.title)}
+          </h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Manage credentials used by scholarly search sources.
+            {t(($) => $.settings.citations.description)}
           </p>
         </div>
       </div>
@@ -208,17 +212,16 @@ export function CitationSearchIntegrationSection() {
           <div className="max-w-md">
             <div className="flex items-center gap-2">
               <KeyRound className="size-4 text-blue-600 dark:text-blue-300" />
-              <h4 className="text-sm font-medium">Semantic Scholar</h4>
+              <h4 className="text-sm font-medium">{"Semantic Scholar"}</h4>
               {connected && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
                   <Check className="size-3" />
-                  Connected
+                  {t(($) => $.settings.citations.connected)}
                 </span>
               )}
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              An API key is optional. Anonymous searches use Semantic
-              Scholar’s public limits.
+              {t(($) => $.settings.citations.semanticScholar.hint)}
             </p>
             <a
               href="https://www.semanticscholar.org/product/api"
@@ -226,7 +229,7 @@ export function CitationSearchIntegrationSection() {
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              Semantic Scholar API information
+              {t(($) => $.settings.citations.semanticScholar.docsLink)}
               <ExternalLink className="size-3" />
             </a>
           </div>
@@ -239,7 +242,7 @@ export function CitationSearchIntegrationSection() {
               onClick={() => void remove()}
             >
               {busy && <Loader2 className="animate-spin" />}
-              Remove key
+              {t(($) => $.settings.citations.actions.removeKey)}
             </Button>
           )}
         </div>
@@ -250,8 +253,8 @@ export function CitationSearchIntegrationSection() {
               type="password"
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
-              placeholder="Semantic Scholar API key"
-              aria-label="Semantic Scholar API key"
+              placeholder={t(($) => $.settings.citations.semanticScholar.keyLabel)}
+              aria-label={t(($) => $.settings.citations.semanticScholar.keyLabel)}
               className="h-9"
             />
             <Button
@@ -261,7 +264,7 @@ export function CitationSearchIntegrationSection() {
               onClick={() => void save()}
             >
               {busy && <Loader2 className="animate-spin" />}
-              Save key
+              {t(($) => $.settings.citations.actions.saveKey)}
             </Button>
           </div>
         )}
@@ -272,19 +275,16 @@ export function CitationSearchIntegrationSection() {
           <div className="max-w-md">
             <div className="flex items-center gap-2">
               <Mail className="size-4 text-blue-600 dark:text-blue-300" />
-              <h4 className="text-sm font-medium">OpenAlex</h4>
+              <h4 className="text-sm font-medium">{"OpenAlex"}</h4>
               {openAlexConnected && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
                   <Check className="size-3" />
-                  Connected
+                  {t(($) => $.settings.citations.connected)}
                 </span>
               )}
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              An API key is recommended: OpenAlex made keys mandatory in
-              February 2026, and keyless searches draw from a small shared
-              daily pool. The contact email adds the polite pool on top.
-              Both are stored locally.
+              {t(($) => $.settings.citations.openAlex.hint)}
             </p>
             <a
               href="https://docs.openalex.org/how-to-use-the-api/rate-limits-and-authentication"
@@ -292,7 +292,7 @@ export function CitationSearchIntegrationSection() {
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              OpenAlex rate limits
+              {t(($) => $.settings.citations.openAlex.docsLink)}
               <ExternalLink className="size-3" />
             </a>
           </div>
@@ -305,7 +305,7 @@ export function CitationSearchIntegrationSection() {
               onClick={() => void removeOpenAlexKey()}
             >
               {openAlexKeyBusy && <Loader2 className="animate-spin" />}
-              Remove API key
+              {t(($) => $.settings.citations.actions.removeApiKey)}
             </Button>
           )}
           {openAlexConnected && (
@@ -317,7 +317,7 @@ export function CitationSearchIntegrationSection() {
               onClick={() => void removeOpenAlexEmail()}
             >
               {openAlexBusy && <Loader2 className="animate-spin" />}
-              Remove email
+              {t(($) => $.settings.citations.actions.removeEmail)}
             </Button>
           )}
         </div>
@@ -329,8 +329,8 @@ export function CitationSearchIntegrationSection() {
               data-testid="openalex-api-key-input"
               value={openAlexKey}
               onChange={(event) => setOpenAlexKey(event.target.value)}
-              placeholder="OpenAlex API key"
-              aria-label="OpenAlex API key"
+              placeholder={t(($) => $.settings.citations.openAlex.keyLabel)}
+              aria-label={t(($) => $.settings.citations.openAlex.keyLabel)}
               className="h-9"
             />
             <Button
@@ -341,7 +341,7 @@ export function CitationSearchIntegrationSection() {
               onClick={() => void saveOpenAlexKey()}
             >
               {openAlexKeyBusy && <Loader2 className="animate-spin" />}
-              Save API key
+              {t(($) => $.settings.citations.actions.saveApiKey)}
             </Button>
           </div>
         )}
@@ -353,8 +353,8 @@ export function CitationSearchIntegrationSection() {
               data-testid="openalex-email-input"
               value={openAlexEmail}
               onChange={(event) => setOpenAlexEmail(event.target.value)}
-              placeholder="you@example.com"
-              aria-label="OpenAlex contact email"
+              placeholder={t(($) => $.settings.citations.openAlex.emailPlaceholder)}
+              aria-label={t(($) => $.settings.citations.openAlex.emailLabel)}
               className="h-9"
             />
             <Button
@@ -365,7 +365,7 @@ export function CitationSearchIntegrationSection() {
               onClick={() => void saveOpenAlexEmail()}
             >
               {openAlexBusy && <Loader2 className="animate-spin" />}
-              Save email
+              {t(($) => $.settings.citations.actions.saveEmail)}
             </Button>
           </div>
         )}
@@ -376,17 +376,16 @@ export function CitationSearchIntegrationSection() {
           <div className="max-w-md">
             <div className="flex items-center gap-2">
               <KeyRound className="size-4 text-emerald-600 dark:text-emerald-300" />
-              <h4 className="text-sm font-medium">Google Scholar (Serper)</h4>
+              <h4 className="text-sm font-medium">{"Google Scholar (Serper)"}</h4>
               {serperConnected && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
                   <Check className="size-3" />
-                  Connected
+                  {t(($) => $.settings.citations.connected)}
                 </span>
               )}
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Optional. Enables the Google Scholar source in Citation Search
-              via Serper. Without a key, that source is skipped when selected.
+              {t(($) => $.settings.citations.serper.hint)}
             </p>
             <a
               href="https://serper.dev"
@@ -394,7 +393,7 @@ export function CitationSearchIntegrationSection() {
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              Serper API
+              {t(($) => $.settings.citations.serper.docsLink)}
               <ExternalLink className="size-3" />
             </a>
           </div>
@@ -407,7 +406,7 @@ export function CitationSearchIntegrationSection() {
               onClick={() => void removeSerper()}
             >
               {serperBusy && <Loader2 className="animate-spin" />}
-              Remove key
+              {t(($) => $.settings.citations.actions.removeKey)}
             </Button>
           )}
         </div>
@@ -418,8 +417,8 @@ export function CitationSearchIntegrationSection() {
               data-testid="serper-api-key-input"
               value={serperKey}
               onChange={(event) => setSerperKey(event.target.value)}
-              placeholder="Serper API key"
-              aria-label="Serper API key"
+              placeholder={t(($) => $.settings.citations.serper.keyLabel)}
+              aria-label={t(($) => $.settings.citations.serper.keyLabel)}
               className="h-9"
             />
             <Button
@@ -430,16 +429,18 @@ export function CitationSearchIntegrationSection() {
               onClick={() => void saveSerper()}
             >
               {serperBusy && <Loader2 className="animate-spin" />}
-              Save key
+              {t(($) => $.settings.citations.actions.saveKey)}
             </Button>
           </div>
         )}
       </section>
 
       <section className="rounded-lg border bg-background p-4">
-        <h4 className="text-sm font-medium">Sources without credentials</h4>
+        <h4 className="text-sm font-medium">
+          {t(($) => $.settings.citations.keyFree.title)}
+        </h4>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          These sources are available without an API key.
+          {t(($) => $.settings.citations.keyFree.description)}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {KEY_FREE_SOURCES.map((source) => (

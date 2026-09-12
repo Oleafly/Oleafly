@@ -34,7 +34,7 @@ describe("project analysis store", () => {
     expect(snapshot.features.diagnostics).toMatchObject({
       status: "not_run",
       data: null,
-      reason: "No project is active",
+      reason: { key: "noProject" },
     });
     expect(snapshot.projectIndex.status).toBe("not_run");
   });
@@ -277,17 +277,23 @@ describe("project analysis store", () => {
     const store = activatedStore();
     store
       .getState()
-      .markFeatureUnsupported("semanticTokens", "not advertised");
+      .markFeatureUnsupported("semanticTokens", {
+        key: "featureNotAdvertised",
+        params: { feature: "semanticTokens" },
+      });
     expect(
       store.getState().snapshot.features.semanticTokens,
     ).toMatchObject({
       status: "unsupported",
       data: null,
-      reason: "not advertised",
+      reason: {
+        key: "featureNotAdvertised",
+        params: { feature: "semanticTokens" },
+      },
     });
     store
       .getState()
-      .markFeatureUnavailable("hover", "server missing", false);
+      .markFeatureUnavailable("hover", { text: "server missing" }, false);
     expect(store.getState().snapshot.features.hover).toMatchObject({
       status: "unavailable",
       retryable: false,
@@ -302,7 +308,7 @@ describe("project analysis store", () => {
           "diagnostics",
           partialRequest,
           [{ message: "recovered" }],
-          "parser recovered around malformed source",
+          { text: "parser recovered around malformed source" },
         ),
     ).toBe(true);
     expect(store.getState().snapshot.features.diagnostics.status).toBe(

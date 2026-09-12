@@ -149,7 +149,7 @@ describe("applyRename", () => {
     await applyRename(view, SYMBOL, "fig:new");
 
     expect(mocks.toastError).toHaveBeenCalledWith(
-      'Renamed to "fig:new" in 0 of 2 files. Could not write chapters/intro.tex, chapters/method.tex.',
+      'Renamed to "fig:new" in 0 of 2 files. Could not write chapters/intro.tex and chapters/method.tex.',
     );
   });
 

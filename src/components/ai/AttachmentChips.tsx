@@ -1,4 +1,5 @@
 import { X, FileText } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface PendingAttachment {
   id: string;
@@ -15,6 +16,7 @@ export function AttachmentChips({
   items: PendingAttachment[];
   onRemove: (id: string) => void;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   if (items.length === 0) return null;
   return (
     <div className="mb-2 flex flex-wrap gap-2">
@@ -32,7 +34,7 @@ export function AttachmentChips({
           <button
             type="button"
             onClick={() => onRemove(a.id)}
-            aria-label={`Remove ${a.name}`}
+            aria-label={t(($) => $.ai.attachments.remove, { name: a.name })}
             className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <X className="size-3" />

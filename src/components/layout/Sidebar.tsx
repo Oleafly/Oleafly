@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { FileText, Loader2, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
@@ -31,6 +32,7 @@ function basename(p: string) {
 }
 
 export function ProjectSearch() {
+  const { t } = useTranslation(["shell"]);
   const projectId = useFilesStore((s) => s.projectId);
   const openFile = useFilesStore((s) => s.openFile);
   const [q, setQ] = useState("");
@@ -67,7 +69,7 @@ export function ProjectSearch() {
       <div className="flex h-9 items-center gap-2 border-b border-sidebar-border px-3">
         <Search className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          Search
+          {t(($) => $.shell.projectSearch.title)}
         </span>
       </div>
       <div className="border-b border-sidebar-border p-2">
@@ -75,7 +77,7 @@ export function ProjectSearch() {
           ref={searchInputRef}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Find in project…"
+          placeholder={t(($) => $.shell.projectSearch.placeholder)}
           className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
@@ -90,7 +92,7 @@ export function ProjectSearch() {
               <FileText className="size-3.5 shrink-0 text-muted-foreground" />
               <span className="truncate font-medium">{basename(hit.path)}</span>
               <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
-                :{hit.line}
+                {`:${hit.line}`}
               </span>
             </div>
             <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
@@ -100,12 +102,12 @@ export function ProjectSearch() {
         ))}
         {q.trim() && !loading && hits.length === 0 && (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">
-            No results.
+            {t(($) => $.shell.projectSearch.noResults)}
           </p>
         )}
         {!q.trim() && (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">
-            Search across this project's files.
+            {t(($) => $.shell.projectSearch.hint)}
           </p>
         )}
       </div>

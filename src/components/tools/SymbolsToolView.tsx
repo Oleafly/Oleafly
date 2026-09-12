@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BookOpenText, Copy, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,6 +126,7 @@ function canInsertInOpenLatexEditor(): boolean {
 }
 
 export function SymbolsToolView() {
+  const { t } = useTranslation(["researchTools"]);
   const activePage = useHomeViewStore((state) => state.page);
   const goTo = useHomeViewStore((state) => state.goTo);
   const projectId = useFilesStore((state) => state.projectId);
@@ -166,6 +168,14 @@ export function SymbolsToolView() {
     && formattingProfile === "latex"
     && (getEditorView() || isWysiwygActive()),
   );
+  const categoryLabels: Record<SymbolFilter, string> = {
+    All: t(($) => $.researchTools.symbols.categoryAll),
+    Greek: t(($) => $.researchTools.symbols.categoryGreek),
+    Arrows: t(($) => $.researchTools.symbols.categoryArrows),
+    Relations: t(($) => $.researchTools.symbols.categoryRelations),
+    Operators: t(($) => $.researchTools.symbols.categoryOperators),
+    Miscellaneous: t(($) => $.researchTools.symbols.categoryMiscellaneous),
+  };
 
   useEffect(() => {
     if (visible.length > 0 && !visible.some((entry) => entry.command === selectedCommand)) {
@@ -185,9 +195,9 @@ export function SymbolsToolView() {
     if (!selected) return;
     try {
       await navigator.clipboard.writeText(selected.command);
-      toast.success("Command copied.");
+      toast.success(t(($) => $.researchTools.symbols.commandCopied));
     } catch {
-      toast.error("Oleafly could not copy the command. Try again.");
+      toast.error(t(($) => $.researchTools.symbols.copyFailed));
     }
   };
 
@@ -195,7 +205,7 @@ export function SymbolsToolView() {
     if (!selected) return;
     if (!canInsertInOpenLatexEditor()) return;
     insertAtCursor(selected.command.endsWith("{}") ? selected.command : `${selected.command} `);
-    toast.success(`Inserted ${selected.command} in the open editor.`);
+    toast.success(t(($) => $.researchTools.symbols.inserted, { command: selected.command }));
     goTo("library");
   };
 
@@ -213,16 +223,16 @@ export function SymbolsToolView() {
   };
 
   const status = entries === null
-    ? <ToolStatus state="busy">Loading symbols</ToolStatus>
+    ? <ToolStatus state="busy">{t(($) => $.researchTools.symbols.statusLoading)}</ToolStatus>
     : loadFailed
-      ? <ToolStatus state="error">Reference unavailable</ToolStatus>
-      : <ToolStatus state="ready">{entries.length} symbols</ToolStatus>;
+      ? <ToolStatus state="error">{t(($) => $.researchTools.symbols.statusUnavailable)}</ToolStatus>
+      : <ToolStatus state="ready">{t(($) => $.researchTools.symbols.symbolCount, { count: entries.length })}</ToolStatus>;
 
   return (
     <ToolPageShell
       page="symbols"
-      title="Symbols"
-      subtitle="Browse LaTeX commands and symbols"
+      title={t(($) => $.researchTools.symbols.title)}
+      subtitle={t(($) => $.researchTools.symbols.subtitle)}
       icon={BookOpenText}
       showTheme
       status={status}
@@ -230,21 +240,21 @@ export function SymbolsToolView() {
     >
       <ToolSplitView storageId="symbol-reference">
         <ToolPane
-          title="Library"
+          title={t(($) => $.researchTools.symbols.library)}
           badge={filtered ? `${filtered.length}` : undefined}
           footer={(
             <div className="space-y-2">
               <ToolSegmentedControl
-                label="Symbol category"
+                label={t(($) => $.researchTools.symbols.categoryLabel)}
                 value={category}
                 options={[
-                  { value: "All", label: "All", testId: "symbols-category-all" },
-                  ...CATEGORY_ORDER.map((value) => ({ value, label: value, testId: `symbols-category-${value.toLowerCase()}` })),
+                  { value: "All", label: categoryLabels.All, testId: "symbols-category-all" },
+                  ...CATEGORY_ORDER.map((value) => ({ value, label: categoryLabels[value], testId: `symbols-category-${value.toLowerCase()}` })),
                 ]}
                 onChange={setCategory}
               />
               {filtered && filtered.length > MAX_VISIBLE_SYMBOLS ? (
-                <p className="text-xs text-muted-foreground">Showing the first {MAX_VISIBLE_SYMBOLS}. Search to narrow the list.</p>
+                <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.symbols.visibleLimit, { count: MAX_VISIBLE_SYMBOLS })}</p>
               ) : null}
             </div>
           )}
@@ -255,26 +265,26 @@ export function SymbolsToolView() {
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search a command, glyph, or description"
-                aria-label="Search symbols"
+                placeholder={t(($) => $.researchTools.symbols.searchPlaceholder)}
+                aria-label={t(($) => $.researchTools.symbols.searchAria)}
                 data-testid="symbols-search"
                 className="pl-8"
               />
             </div>
           </div>
           {entries === null ? (
-            <div className="p-4 text-sm text-muted-foreground">Loading the symbol reference…</div>
+            <div className="p-4 text-sm text-muted-foreground">{t(($) => $.researchTools.symbols.loadingReference)}</div>
           ) : loadFailed ? (
             <div className="space-y-3 p-4 text-sm text-muted-foreground">
-              <p>The symbol reference could not load.</p>
-              <Button variant="outline" size="sm" onClick={retry}>Try again</Button>
+              <p>{t(($) => $.researchTools.symbols.loadFailed)}</p>
+              <Button variant="outline" size="sm" onClick={retry}>{t(($) => $.researchTools.symbols.tryAgain)}</Button>
             </div>
           ) : visible.length === 0 ? (
-            <div className="p-4 text-sm text-muted-foreground">No symbols match this search.</div>
+            <div className="p-4 text-sm text-muted-foreground">{t(($) => $.researchTools.symbols.noMatches)}</div>
           ) : (
             <div
               role="listbox"
-              aria-label="Symbol results"
+              aria-label={t(($) => $.researchTools.symbols.resultsAria)}
               data-testid="symbols-grid"
               className="grid grid-cols-3 gap-2 p-4 sm:grid-cols-4"
             >
@@ -321,21 +331,21 @@ export function SymbolsToolView() {
         </ToolPane>
 
         <ToolPane
-          title="Preview"
-          badge={selected?.category}
+          title={t(($) => $.researchTools.symbols.preview)}
+          badge={selected ? categoryLabels[selected.category] : undefined}
           actions={selected ? (
             <Button variant="outline" size="sm" onClick={() => void copyCommand()}>
-              <Copy className="size-4" /> Copy command
+              <Copy className="size-4" /> {t(($) => $.researchTools.symbols.copyCommand)}
             </Button>
           ) : undefined}
           footer={selected ? (
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">
                 {insertionAvailable
-                  ? "Insert into the open LaTeX document."
-                  : "Copy the command into your LaTeX document."}
+                  ? t(($) => $.researchTools.symbols.insertHint)
+                  : t(($) => $.researchTools.symbols.copyHint)}
               </p>
-              <Button size="sm" onClick={insertCommand} disabled={!insertionAvailable}>Insert in editor</Button>
+              <Button size="sm" onClick={insertCommand} disabled={!insertionAvailable}>{t(($) => $.researchTools.symbols.insertInEditor)}</Button>
             </div>
           ) : undefined}
         >
@@ -344,12 +354,12 @@ export function SymbolsToolView() {
               <div className="flex max-w-lg flex-col items-center gap-4">
                 <span className="font-serif text-7xl leading-none" aria-hidden="true">{selected.glyph}</span>
                 <code data-testid="symbols-command" className="rounded-md border bg-background px-3 py-2 font-mono text-sm">{selected.command}</code>
-                <p className="text-sm text-muted-foreground">{selected.note || "No description is available for this command."}</p>
+                <p className="text-sm text-muted-foreground">{selected.note || t(($) => $.researchTools.symbols.noDescription)}</p>
               </div>
             ) : entries === null ? (
-              <p className="text-sm text-muted-foreground">Loading a symbol to preview.</p>
+              <p className="text-sm text-muted-foreground">{t(($) => $.researchTools.symbols.loadingPreview)}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">Choose a symbol from the library.</p>
+              <p className="text-sm text-muted-foreground">{t(($) => $.researchTools.symbols.chooseSymbol)}</p>
             )}
           </ToolPreviewSurface>
         </ToolPane>

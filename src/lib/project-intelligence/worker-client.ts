@@ -10,8 +10,10 @@ import {
   PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
   type BibliographyEntryDetail,
   type ProjectIntelligenceIdentity,
+  type ProjectIntelligenceReasonKey,
   type ProjectIntelligenceSnapshot,
 } from "./types";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 
 export type ProjectIntelligenceAnalyzeInput = Omit<
   AnalyzeProjectIntelligenceRequest,
@@ -48,15 +50,26 @@ interface PendingRequest {
   readonly timeout: ReturnType<typeof setTimeout>;
 }
 
+export type ProjectIntelligenceWorkerReasonKey = Exclude<
+  ProjectIntelligenceReasonKey,
+  "partialFiles"
+>;
+
 export class ProjectIntelligenceWorkerError extends Error {
   readonly code: string;
   readonly retryable: boolean;
+  readonly reasonKey?: ProjectIntelligenceWorkerReasonKey;
 
-  constructor(message: string, code: string, retryable: boolean) {
-    super(message);
+  constructor(
+    reason: ProjectIntelligenceWorkerReasonKey | { message: string },
+    code: string,
+    retryable: boolean,
+  ) {
+    super(typeof reason === "string" ? enCore.intelligence[reason] : reason.message);
     this.name = "ProjectIntelligenceWorkerError";
     this.code = code;
     this.retryable = retryable;
+    if (typeof reason === "string") this.reasonKey = reason;
   }
 }
 
@@ -102,7 +115,7 @@ export class ProjectIntelligenceWorkerClient {
     return this.dispatch(request, "result").then((response) => {
       if (response.type !== "result") {
         throw new ProjectIntelligenceWorkerError(
-          "Project-intelligence worker returned an unexpected response.",
+          "unexpectedResponse",
           "protocol_error",
           true,
         );
@@ -145,7 +158,7 @@ export class ProjectIntelligenceWorkerClient {
     }
     this.rejectPending(
       new ProjectIntelligenceWorkerError(
-        "Project-intelligence worker was disposed.",
+        "disposedDuringRequest",
         "disposed",
         false,
       ),
@@ -159,7 +172,7 @@ export class ProjectIntelligenceWorkerClient {
     if (this.disposed) {
       return Promise.reject(
         new ProjectIntelligenceWorkerError(
-          "Project-intelligence worker is disposed.",
+          "disposed",
           "disposed",
           false,
         ),
@@ -171,7 +184,7 @@ export class ProjectIntelligenceWorkerClient {
     } catch {
       return Promise.reject(
         new ProjectIntelligenceWorkerError(
-          "Project-intelligence worker is unavailable.",
+          "workerUnavailable",
           "worker_unavailable",
           true,
         ),
@@ -182,14 +195,14 @@ export class ProjectIntelligenceWorkerClient {
         if (!this.pending.delete(request.requestId)) return;
         reject(
           new ProjectIntelligenceWorkerError(
-            "Project intelligence timed out.",
+            "timedOut",
             "timeout",
             true,
           ),
         );
         this.failWorker(
           new ProjectIntelligenceWorkerError(
-            "Project-intelligence worker was restarted after a timeout.",
+            "workerRestarted",
             "worker_restarted",
             true,
           ),
@@ -209,7 +222,7 @@ export class ProjectIntelligenceWorkerClient {
         this.pending.delete(request.requestId);
         reject(
           new ProjectIntelligenceWorkerError(
-            "Could not send project analysis to the worker.",
+            "couldNotSend",
             "post_message_failed",
             true,
           ),
@@ -227,7 +240,7 @@ export class ProjectIntelligenceWorkerClient {
     const fatal = () =>
       this.failWorker(
         new ProjectIntelligenceWorkerError(
-          "Project-intelligence worker failed.",
+          "workerFailed",
           "worker_failed",
           true,
         ),
@@ -242,7 +255,7 @@ export class ProjectIntelligenceWorkerClient {
     if (!isProjectIntelligenceWorkerResponse(event.data)) {
       this.failWorker(
         new ProjectIntelligenceWorkerError(
-          "Project-intelligence worker returned a malformed response.",
+          "malformedResponse",
           "protocol_error",
           true,
         ),
@@ -259,7 +272,7 @@ export class ProjectIntelligenceWorkerClient {
     ) {
       this.failWorker(
         new ProjectIntelligenceWorkerError(
-          "Project-intelligence response identity did not match its request.",
+          "identityMismatch",
           "protocol_error",
           true,
         ),
@@ -269,7 +282,7 @@ export class ProjectIntelligenceWorkerClient {
     if (event.data.type !== "error" && event.data.type !== pending.expect) {
       this.failWorker(
         new ProjectIntelligenceWorkerError(
-          "Project-intelligence response type did not match its request.",
+          "typeMismatch",
           "protocol_error",
           true,
         ),
@@ -281,7 +294,7 @@ export class ProjectIntelligenceWorkerClient {
     if (event.data.type === "error") {
       pending.reject(
         new ProjectIntelligenceWorkerError(
-          event.data.error.message,
+          { message: event.data.error.message },
           event.data.error.code,
           event.data.error.retryable,
         ),
@@ -297,7 +310,7 @@ export class ProjectIntelligenceWorkerClient {
     ) {
       this.failWorker(
         new ProjectIntelligenceWorkerError(
-          "Project-intelligence snapshot identity was malformed.",
+          "malformedSnapshotIdentity",
           "protocol_error",
           true,
         ),

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { CheckCircle2, FileText, Wrench, XCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
@@ -60,17 +61,18 @@ export function ToolConfirm({
   sessionAutoApprove?: boolean;
   embedded?: boolean;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const canSession = isAutoApprovable(req.tool) && !!onApproveSession;
   const commandApproval = req.tool === "run_command";
   const mcpApproval = mcpApprovalDetails(req);
   const networkApproval = toolRisk(req.tool) === "network";
   const approvalLabel = commandApproval
-    ? "Confirm command"
+    ? t(($) => $.ai.approval.confirm.command)
     : mcpApproval
-      ? "Confirm external tool action"
+      ? t(($) => $.ai.approval.confirm.externalTool)
       : networkApproval
-      ? "Confirm internet access"
-      : "Confirm AI edit";
+      ? t(($) => $.ai.approval.confirm.internet)
+      : t(($) => $.ai.approval.confirm.edit);
   const filePath = req.diff?.path ?? req.path;
   const changeLine = req.diff ? firstChangedLine(req.diff.oldText, req.diff.newText) : null;
 
@@ -101,16 +103,16 @@ export function ToolConfirm({
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-sm font-semibold leading-snug text-foreground">
             {commandApproval
-              ? "The assistant wants to run this command"
+              ? t(($) => $.ai.approval.headline.command)
               : mcpApproval
-                ? "The assistant wants to use an external tool"
+                ? t(($) => $.ai.approval.headline.externalTool)
                 : networkApproval
-                ? "The assistant wants to access the internet"
-              : "The assistant wants to change your files"}
+                ? t(($) => $.ai.approval.headline.internet)
+              : t(($) => $.ai.approval.headline.edit)}
           </p>
           {mcpApproval && (
             <p className="text-[11px] leading-snug text-muted-foreground">
-              This sends the arguments below to the configured MCP server.
+              {t(($) => $.ai.approval.mcpNote)}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -128,13 +130,13 @@ export function ToolConfirm({
             )}
             {changeLine != null && (
               <span className="rounded-md px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
-                line {changeLine}
+                {t(($) => $.ai.approval.line, { line: changeLine })}
               </span>
             )}
           </div>
           {sessionAutoApprove && (
             <p className="text-[11px] leading-snug text-[#9B72CB] dark:text-[#c4a5e8]">
-              Session auto-approve is on for writes (deletes still need a click).
+              {t(($) => $.ai.approval.sessionAutoApprove)}
             </p>
           )}
         </div>
@@ -143,14 +145,16 @@ export function ToolConfirm({
       {commandApproval && (
         <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
           <div className="space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground">Command</p>
+            <p className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.commandLabel)}</p>
             <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
               {req.command ?? req.summary}
             </pre>
           </div>
           {req.cwd && (
             <div className="space-y-1">
-              <p className="text-[11px] font-medium text-muted-foreground">Working directory</p>
+              <p className="text-[11px] font-medium text-muted-foreground">
+                {t(($) => $.ai.approval.workingDirectory)}
+              </p>
               <code className="block overflow-x-auto whitespace-pre rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
                 {req.cwd}
               </code>
@@ -162,17 +166,17 @@ export function ToolConfirm({
       {mcpApproval && (
         <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1.5 text-xs">
-            <span className="text-[11px] font-medium text-muted-foreground">MCP server</span>
+            <span className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.mcpServer)}</span>
             <code className="min-w-0 break-words font-mono text-foreground">
               {mcpApproval.server}
             </code>
-            <span className="text-[11px] font-medium text-muted-foreground">Tool</span>
+            <span className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.toolLabel)}</span>
             <code className="min-w-0 break-words font-mono text-foreground">
               {mcpApproval.tool}
             </code>
           </div>
           <div className="space-y-1 border-t border-border/60 pt-2">
-            <p className="text-[11px] font-medium text-muted-foreground">Arguments</p>
+            <p className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.arguments)}</p>
             <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
               {mcpApproval.argumentsPreview}
             </pre>
@@ -184,7 +188,7 @@ export function ToolConfirm({
         <div className="flex justify-center overflow-hidden rounded-lg border bg-white p-2">
           <img
             src={req.image}
-            alt="Figure preview"
+            alt={t(($) => $.ai.approval.figureAlt)}
             className="max-h-64 max-w-full object-contain"
           />
         </div>
@@ -199,7 +203,7 @@ export function ToolConfirm({
             </span>
             {changeLine != null && (
               <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
-                first change · L{changeLine}
+                {t(($) => $.ai.approval.firstChange, { line: changeLine })}
               </span>
             )}
           </div>
@@ -219,24 +223,24 @@ export function ToolConfirm({
           type="button"
           variant="ghost"
           size="sm"
-          aria-label="Reject"
+          aria-label={t(($) => $.ai.approval.reject)}
           data-testid="tool-confirm-reject"
           onClick={onReject}
           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
-          <XCircle className="size-3.5" /> Reject
+          <XCircle className="size-3.5" /> {t(($) => $.ai.approval.reject)}
         </Button>
         {isAutoApprovable(req.tool) && onApproveProject && (
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            aria-label="Always allow in this project"
+            aria-label={t(($) => $.ai.approval.alwaysInProjectAriaLabel)}
             data-testid="tool-confirm-approve-project"
             onClick={onApproveProject}
             className="text-muted-foreground hover:text-foreground"
           >
-            <CheckCircle2 className="size-3.5" /> Always in this project
+            <CheckCircle2 className="size-3.5" /> {t(($) => $.ai.approval.alwaysInProject)}
           </Button>
         )}
         {canSession && (
@@ -244,22 +248,22 @@ export function ToolConfirm({
             type="button"
             variant="ghost"
             size="sm"
-            aria-label="Always allow"
+            aria-label={t(($) => $.ai.approval.alwaysAllow)}
             data-testid="tool-confirm-approve-session"
             onClick={onApproveSession}
             className="border-0 bg-emerald-600 text-white shadow-sm hover:bg-emerald-600/90 hover:text-white"
           >
-            <CheckCircle2 className="size-3.5" /> Always allow
+            <CheckCircle2 className="size-3.5" /> {t(($) => $.ai.approval.alwaysAllow)}
           </Button>
         )}
         <Button
           type="button"
           size="sm"
-          aria-label="Approve"
+          aria-label={t(($) => $.ai.approval.approve)}
           data-testid="tool-confirm-approve"
           onClick={onApprove}
         >
-          <CheckCircle2 className="size-3.5" /> Approve
+          <CheckCircle2 className="size-3.5" /> {t(($) => $.ai.approval.approve)}
         </Button>
       </div>
     </div>

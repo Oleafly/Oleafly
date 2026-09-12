@@ -29,11 +29,14 @@ const limits = {
   // suspense delay that broke e2e specs asserting a panel appears within five
   // seconds. The editor math subpath split stayed, so the entry is 3.45 MB
   // rather than the 3.96 MB it was before that.
-  largestJavaScript: 3_550_000,
+  // +420 KB for the interface localization runtime and the English catalogs,
+  // which stay in the entry so every key has its fallback before first paint.
+  // The merged entry measures 3.80 MB; keep about 100 KB of build-tool drift.
+  largestJavaScript: 3_900_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 3_550_000,
+  entryJavaScript: 3_900_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -79,11 +82,10 @@ const limits = {
   // Raised to 14 MB after the Markdown project editing and terminal prompt
   // work on main (13.14 MB there) plus the skills settings tab, catalog,
   // sharing card and slash invocation: combined graph measures 13.17 MB.
-  // +1 MB for the citation workspace. Citation.js, citeproc, and the five
-  // additional CSL style definitions live in one 980 KB on-demand chunk
-  // (201 KB gzip). It is fetched only after a reference tool opens and leaves
-  // the 3.37 MB startup entry unchanged.
-  totalJavaScript: 17_200_000,
+  // The citation workspace adds Citation.js, citeproc, and five CSL styles in
+  // an on-demand chunk. Localization adds the runtime, English catalogs, and
+  // one lazy zh-Hans chunk. Keep the combined graph below this ceiling.
+  totalJavaScript: 18_600_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

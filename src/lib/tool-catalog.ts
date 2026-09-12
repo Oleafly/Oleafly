@@ -26,6 +26,7 @@ import {
   TextCursorInput,
 } from "lucide-react";
 import { ArxivIcon } from "@/components/icons/ArxivIcon";
+import { i18n } from "@/i18n";
 import type { ConverterToolId } from "@/lib/converter-types";
 import type { ReferenceToolId } from "@/lib/reference-tools";
 import type { HomePage } from "@/store/home-view";
@@ -35,7 +36,9 @@ export type ToolId =
   | ReferenceToolId
   | "pdf-to-latex"
   | "visual-typst-editor"
+  | "equation"
   | "latex-to-image"
+  | "table"
   | "table-to-latex"
   | "typst-editor"
   | "bibtex"
@@ -45,6 +48,14 @@ export type ToolId =
   | "stats"
   | "generators"
   | "symbols";
+
+export type ToolCategory =
+  | "converters"
+  | "validate"
+  | "research"
+  | "references"
+  | "statistics"
+  | "write";
 
 export type ToolDestination =
   | { kind: "page"; page: HomePage }
@@ -58,19 +69,19 @@ export interface ToolDefinition {
   description: string;
   icon: ComponentType<{ className?: string }>;
   tags: readonly string[];
-  category: string;
+  category: ToolCategory;
   destination: ToolDestination;
   slash: readonly [string, ...string[]];
   tone: "rose" | "violet" | "emerald" | "cyan" | "blue" | "sky" | "amber";
 }
 
 export const TOOL_CATEGORY_ORDER = [
-  "Converters",
-  "Validate",
-  "Research",
-  "References",
-  "Statistics",
-  "Write",
+  "converters",
+  "validate",
+  "research",
+  "references",
+  "statistics",
+  "write",
 ] as const;
 
 function converter(
@@ -81,7 +92,7 @@ function converter(
   const { converter: converterId, ...tool } = definition;
   return {
     ...tool,
-    category: "Converters",
+    category: "converters",
     destination: { kind: "converter", converter: converterId },
   };
 }
@@ -94,7 +105,7 @@ function reference(
   const { tool: referenceTool, ...definitionWithoutTool } = definition;
   return {
     ...definitionWithoutTool,
-    category: "References",
+    category: "references",
     destination: { kind: "reference", tool: referenceTool },
   };
 }
@@ -116,7 +127,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Reconstruct a PDF as LaTeX and keep its extracted figures together.",
     icon: FileInput,
     tags: ["Text layer", "Figures", "Local"],
-    category: "Converters",
+    category: "converters",
     destination: { kind: "page", page: "pdf-import" },
     slash: ["pdf-to-latex", "pdf-import"],
     tone: "rose",
@@ -127,7 +138,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Start a Typst document in Oleafly's project editor and live preview.",
     icon: TextCursorInput,
     tags: ["Project editor", "Live preview", "Local"],
-    category: "Converters",
+    category: "converters",
     destination: { kind: "typst-project", mode: "visual" },
     slash: ["visual-typst-editor", "typst-visual"],
     tone: "sky",
@@ -198,7 +209,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Render a LaTeX equation and export a crisp PNG or SVG.",
     icon: FileOutput,
     tags: ["PNG", "SVG", "Live preview"],
-    category: "Converters",
+    category: "converters",
     destination: { kind: "page", page: "equation" },
     slash: ["latex-to-image", "latex-preview"],
     tone: "violet",
@@ -289,7 +300,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Build a LaTeX table in a visual row-and-column editor.",
     icon: Table2,
     tags: ["Visual editor", "booktabs", "Local"],
-    category: "Converters",
+    category: "converters",
     destination: { kind: "page", page: "table" },
     slash: ["table-to-latex", "latex-table", "table-generator"],
     tone: "cyan",
@@ -300,7 +311,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Start a Typst project with source editing, live preview, and PDF export.",
     icon: Braces,
     tags: ["Project editor", "PDF export", "Local"],
-    category: "Converters",
+    category: "converters",
     destination: { kind: "typst-project", mode: "source" },
     slash: ["typst-editor", "new-typst"],
     tone: "sky",
@@ -331,7 +342,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Validate .bib files for syntax errors and missing required fields.",
     icon: ShieldCheck,
     tags: ["12 entry types", "Required fields", "Duplicate keys"],
-    category: "Validate",
+    category: "validate",
     destination: { kind: "page", page: "bibtex" },
     slash: ["bibtex-validator", "bibtex"],
     tone: "emerald",
@@ -342,7 +353,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Find relevant papers across scholarly indexes, scan a draft, and export BibTeX.",
     icon: Sparkles,
     tags: ["Semantic search", "Document scan", "BibTeX export"],
-    category: "References",
+    category: "references",
     destination: { kind: "page", page: "literature-search" },
     slash: ["find-citations", "citations-search", "citation-search", "literature-search"],
     tone: "amber",
@@ -353,7 +364,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Find research institutions worldwide through the OpenAlex directory.",
     icon: School,
     tags: ["Institution records", "Country filter", "ROR links"],
-    category: "Research",
+    category: "research",
     destination: { kind: "page", page: "lab-search" },
     slash: ["lab-search", "institution-search"],
     tone: "sky",
@@ -364,7 +375,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "View countdowns and filters for computer science conference deadlines.",
     icon: ClipboardClock,
     tags: ["Live countdown", "Field filters", "Conference calendar"],
-    category: "Research",
+    category: "research",
     destination: { kind: "page", page: "deadlines" },
     slash: ["conference-deadlines", "deadlines"],
     tone: "amber",
@@ -455,7 +466,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Calculate p-values, sample sizes, and confidence intervals locally.",
     icon: Calculator,
     tags: ["p-value", "Sample size", "Confidence interval"],
-    category: "Statistics",
+    category: "statistics",
     destination: { kind: "page", page: "stats" },
     slash: ["stats", "statistics", "p-value"],
     tone: "blue",
@@ -466,7 +477,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Draft an abstract, summary, paraphrase, or thesis outline with the assistant.",
     icon: ListChecks,
     tags: ["Abstract", "Summarize", "Paraphrase", "Thesis"],
-    category: "Write",
+    category: "write",
     destination: { kind: "page", page: "generators" },
     slash: ["generators", "abstract", "paraphrase"],
     tone: "violet",
@@ -477,12 +488,121 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Browse LaTeX symbols and insert one at the current cursor.",
     icon: BookOpenText,
     tags: ["Greek", "Arrows", "Cheatsheet", "Insert at cursor"],
-    category: "References",
+    category: "references",
     destination: { kind: "page", page: "symbols" },
     slash: ["symbols", "cheatsheet", "greek-letters"],
     tone: "cyan",
   },
 ];
+
+export function toolName(id: ToolId): string {
+  switch (id) {
+    case "pdf-to-latex":
+      return i18n.t(($) => $.researchTools.tools.pdfToLatex.name);
+    case "equation":
+      return i18n.t(($) => $.researchTools.tools.equation.name);
+    case "bibtex":
+      return i18n.t(($) => $.researchTools.tools.bibtex.name);
+    case "table":
+      return i18n.t(($) => $.researchTools.tools.table.name);
+    case "literature-search":
+      return i18n.t(($) => $.researchTools.tools.literatureSearch.name);
+    case "lab-search":
+      return i18n.t(($) => $.researchTools.tools.labSearch.name);
+    case "deadlines":
+      return i18n.t(($) => $.researchTools.tools.deadlines.name);
+    default:
+      return toolById(id).name;
+  }
+}
+
+export function toolDescription(id: ToolId): string {
+  switch (id) {
+    case "pdf-to-latex":
+      return i18n.t(($) => $.researchTools.tools.pdfToLatex.description);
+    case "equation":
+      return i18n.t(($) => $.researchTools.tools.equation.description);
+    case "bibtex":
+      return i18n.t(($) => $.researchTools.tools.bibtex.description);
+    case "table":
+      return i18n.t(($) => $.researchTools.tools.table.description);
+    case "literature-search":
+      return i18n.t(($) => $.researchTools.tools.literatureSearch.description);
+    case "lab-search":
+      return i18n.t(($) => $.researchTools.tools.labSearch.description);
+    case "deadlines":
+      return i18n.t(($) => $.researchTools.tools.deadlines.description);
+    default:
+      return toolById(id).description;
+  }
+}
+
+export function toolTags(id: ToolId): string[] {
+  switch (id) {
+    case "pdf-to-latex":
+      return [
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagMath),
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagFigures),
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagClientSide),
+      ];
+    case "equation":
+      return [
+        i18n.t(($) => $.researchTools.tools.equation.tagKatex),
+        i18n.t(($) => $.researchTools.tools.equation.tagModes),
+        i18n.t(($) => $.researchTools.tools.equation.tagCopy),
+      ];
+    case "bibtex":
+      return [
+        i18n.t(($) => $.researchTools.tools.bibtex.tagEntryTypes),
+        i18n.t(($) => $.researchTools.tools.bibtex.tagRequiredFields),
+        i18n.t(($) => $.researchTools.tools.bibtex.tagDuplicateKeys),
+      ];
+    case "table":
+      return [
+        i18n.t(($) => $.researchTools.tools.table.tagVisualEditor),
+        i18n.t(($) => $.researchTools.tools.table.tagBooktabs),
+        i18n.t(($) => $.researchTools.tools.table.tagExport),
+      ];
+    case "literature-search":
+      return [
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagIndexes),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagFromDocument),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagReview),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagSaved),
+      ];
+    case "lab-search":
+      return [
+        i18n.t(($) => $.researchTools.tools.labSearch.tagRecords),
+        i18n.t(($) => $.researchTools.tools.labSearch.tagCountryFilter),
+        i18n.t(($) => $.researchTools.tools.labSearch.tagRor),
+      ];
+    case "deadlines":
+      return [
+        i18n.t(($) => $.researchTools.tools.deadlines.tagCountdown),
+        i18n.t(($) => $.researchTools.tools.deadlines.tagFieldFilters),
+        i18n.t(($) => $.researchTools.tools.deadlines.tagSource),
+      ];
+    default:
+      return [...toolById(id).tags];
+  }
+}
+
+export function toolCategoryLabel(category: ToolCategory): string {
+  switch (category) {
+    case "converters":
+      return i18n.t(($) => $.researchTools.tools.category.converters);
+    case "validate":
+      return i18n.t(($) => $.researchTools.tools.category.validate);
+    case "research":
+      return i18n.t(($) => $.researchTools.tools.category.research);
+    case "references":
+      return i18n.t(($) => $.researchTools.tools.category.references);
+    case "statistics":
+      return i18n.t(($) => $.researchTools.tools.category.statistics);
+    case "write":
+      return i18n.t(($) => $.researchTools.tools.category.write);
+  }
+}
 
 export function toolById(id: ToolId): ToolDefinition {
   const tool = TOOL_DEFINITIONS.find((candidate) => candidate.id === id);

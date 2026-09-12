@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AtSign,
   BookOpen,
@@ -15,6 +16,7 @@ import { LeafLogo } from "@/components/layout/LeafLogo";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { appVersion } from "@/lib/tauri";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { i18n } from "@/i18n";
 
 const REPO = "https://github.com/Oleafly/Oleafly";
 const DISCUSSIONS = `${REPO}/discussions`;
@@ -24,32 +26,33 @@ const X_URL = "https://x.com/OleaflyHQ";
 
 const COMMUNITY_LINKS = [
   {
-    label: "Discussions",
-    description: "Ask questions and share ideas",
+    label: () => i18n.t(($) => $.shell.about.links.discussions.label),
+    description: () => i18n.t(($) => $.shell.about.links.discussions.description),
     url: DISCUSSIONS,
     icon: MessageCircle,
   },
   {
-    label: "Issues",
-    description: "Report a bug or request a feature",
+    label: () => i18n.t(($) => $.shell.about.links.issues.label),
+    description: () => i18n.t(($) => $.shell.about.links.issues.description),
     url: ISSUES,
     icon: Bug,
   },
   {
-    label: "@OleaflyHQ",
-    description: "Follow releases and development",
+    label: () => i18n.t(($) => $.shell.about.links.social.label),
+    description: () => i18n.t(($) => $.shell.about.links.social.description),
     url: X_URL,
     icon: AtSign,
   },
   {
-    label: "Documentation",
-    description: "Learn every part of Oleafly",
+    label: () => i18n.t(($) => $.shell.about.links.docs.label),
+    description: () => i18n.t(($) => $.shell.about.links.docs.description),
     url: DOCS,
     icon: BookOpen,
   },
 ] as const;
 
 export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation(["shell"]);
   const [version, setVersion] = useState("");
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(isOpen, onClose);
 
@@ -65,7 +68,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 p-4 backdrop-blur-md">
       <button
         type="button"
-        aria-label="Close About Oleafly"
+        aria-label={t(($) => $.shell.about.closeBackdrop)}
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
@@ -82,7 +85,7 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
           data-modal-initial-focus
           onClick={onClose}
           className="absolute right-4 top-4 z-10 flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          aria-label="Close About dialog"
+          aria-label={t(($) => $.shell.about.close)}
         >
           <X className="size-4" />
         </button>
@@ -100,22 +103,20 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <h2 id="about-title" className="text-xl font-semibold">Oleafly</h2>
                 {version && (
-                  <span className="text-xs text-muted-foreground">Version {version}</span>
+                  <span className="text-xs text-muted-foreground">{t(($) => $.shell.about.version, { version })}</span>
                 )}
               </div>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                The open-source workspace for the whole paper. Write, compile, proofread,
-                manage citations, review PDFs, track changes in Git, and work with the AI
-                models you choose.
+                {t(($) => $.shell.about.tagline)}
               </p>
             </div>
           </div>
           <div className="relative mt-4 flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={ext(REPO)}>
-              <Star className="size-4" /> Star on GitHub
+              <Star className="size-4" /> {t(($) => $.shell.about.star)}
             </Button>
             <Button variant="secondary" size="sm" onClick={ext(REPO)}>
-              <Github className="size-4" /> View source
+              <Github className="size-4" /> {t(($) => $.shell.about.viewSource)}
             </Button>
             <UpdateChecker className="ml-auto" />
           </div>
@@ -123,12 +124,12 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
 
         <section className="border-t px-4 py-4">
           <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Connect with Oleafly
+            {t(($) => $.shell.about.connect)}
           </p>
           <div className="grid gap-1 sm:grid-cols-2">
             {COMMUNITY_LINKS.map(({ label, description, url, icon: Icon }) => (
               <button
-                key={label}
+                key={url}
                 type="button"
                 onClick={ext(url)}
                 className="group flex min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-accent"
@@ -137,9 +138,9 @@ export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: 
                   <Icon className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{label}</span>
+                  <span className="block text-sm font-medium">{label()}</span>
                   <span className="block truncate text-[11px] text-muted-foreground">
-                    {description}
+                    {description()}
                   </span>
                 </span>
                 <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />

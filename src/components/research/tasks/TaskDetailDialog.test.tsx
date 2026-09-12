@@ -6,6 +6,8 @@ import type {
   TaskFilePreview,
   TaskRuntimeEvent,
 } from "@/lib/research-tasks";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let TaskDetailDialog: typeof import("./TaskDetailDialog").TaskDetailDialog;
 let act: typeof import("@testing-library/react").act;
@@ -185,7 +187,7 @@ describe("TaskDetailDialog", () => {
     const detail = dialog.querySelector('article[aria-labelledby="research-task-detail-title"]');
     expect(detail).not.toBeNull();
     expect(within(detail as HTMLElement).getByRole("heading", { name: current.title })).toBeInTheDocument();
-    expect(within(detail as HTMLElement).getByText("Review needed")).toBeInTheDocument();
+    expect(within(detail as HTMLElement).getByText(enResearchTools.tasks.status.awaitingReview)).toBeInTheDocument();
   });
 
   it("rejects a file preview that completes after the selected task changes", async () => {
@@ -209,7 +211,7 @@ describe("TaskDetailDialog", () => {
     const onCancel = vi.fn(async () => {});
     render(<TaskDetailDialog {...props(task("review"), onCancel)} />);
 
-    fireEvent.click(page().getByRole("button", { name: "Discard changes" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.discardChanges }));
 
     await waitFor(() => expect(onCancel).toHaveBeenCalledOnce());
   });
@@ -232,12 +234,12 @@ describe("TaskDetailDialog", () => {
     fireEvent.click(page().getByRole("button", { name: "Apply 1 selected" }));
     expect(input.onApply).toHaveBeenCalledWith(["main.tex"]);
 
-    fireEvent.click(page().getByRole("button", { name: "Select all" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.selectAll }));
     expect(page().getByRole("button", { name: "Apply 2 selected" })).toBeDisabled();
     fireEvent.click(page().getByRole("button", { name: "Preview" }));
     await page().findByText("before -> references.bib");
     expect(page().getByRole("button", { name: "Apply 2 selected" })).toBeEnabled();
-    fireEvent.click(page().getByRole("button", { name: "Clear selection" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.clearSelection }));
     expect(page().getByRole("button", { name: "Apply 0 selected" })).toBeDisabled();
     expect(previewMocks.file.mock.calls).toEqual([[current.id, "main.tex"], [current.id, "references.bib"]]);
   });
@@ -276,12 +278,12 @@ describe("TaskDetailDialog", () => {
     current.result.changedFiles = [];
     const input = props(current);
     const view = render(<TaskDetailDialog {...input} />);
-    expect(page().getByText("No project files changed.")).toBeInTheDocument();
-    fireEvent.click(page().getByRole("button", { name: "Mark reviewed" }));
+    expect(page().getByText(enResearchTools.tasks.detail.noFilesChanged)).toBeInTheDocument();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.markReviewed }));
     expect(input.onAccept).toHaveBeenCalledOnce();
     expect(input.onApply).not.toHaveBeenCalled();
     view.rerender(<TaskDetailDialog {...input} task={{ ...current, status: "completed" }} />);
-    expect(page().queryByRole("button", { name: "Mark reviewed" })).not.toBeInTheDocument();
+    expect(page().queryByRole("button", { name: enResearchTools.tasks.detail.markReviewed })).not.toBeInTheDocument();
   });
 
   it("shows dependency blockers and schedules a queued task without claiming it is running", () => {
@@ -292,30 +294,30 @@ describe("TaskDetailDialog", () => {
 
     expect(page().getByText("Task dependency")).toBeInTheDocument();
     expect(page().getByText("Unavailable")).toBeInTheDocument();
-    fireEvent.click(page().getByRole("button", { name: "Start when ready" }));
-    fireEvent.click(page().getByRole("button", { name: "Edit" }));
-    fireEvent.click(page().getByRole("button", { name: "Cancel" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.startWhenReady }));
+    fireEvent.click(page().getByRole("button", { name: enCommon.actions.edit }));
+    fireEvent.click(page().getByRole("button", { name: enCommon.actions.cancel }));
     expect(input.onStart).toHaveBeenCalledOnce();
     expect(input.onEdit).toHaveBeenCalledOnce();
     expect(input.onCancel).toHaveBeenCalledOnce();
     view.rerender(<TaskDetailDialog {...input} task={{ ...current, startRequested: true }} />);
-    expect(page().getByRole("button", { name: "Waiting" })).toBeDisabled();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.detail.waiting })).toBeDisabled();
   });
 
   it("prevents repeated cancellation and permits retry after a failed run", () => {
     const current = { ...task("running"), status: "running" as const };
     const input = props(current);
     const view = render(<TaskDetailDialog {...input} />);
-    fireEvent.click(page().getByRole("button", { name: "Stop task" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.stopTask }));
     expect(input.onCancel).toHaveBeenCalledOnce();
     view.rerender(<TaskDetailDialog {...input} task={{ ...current, cancelRequested: true }} />);
-    expect(page().getByRole("button", { name: "Stopping..." })).toBeDisabled();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.detail.stopping })).toBeDisabled();
     view.rerender(<TaskDetailDialog {...input} task={{ ...current, status: "failed", error: "The agent disconnected" }} />);
     expect(page().getByRole("alert")).toHaveTextContent("The agent disconnected");
-    fireEvent.click(page().getByRole("button", { name: "Retry" }));
+    fireEvent.click(page().getByRole("button", { name: enCommon.actions.retry }));
     expect(input.onRetry).toHaveBeenCalledOnce();
     view.rerender(<TaskDetailDialog {...input} busy task={{ ...current, status: "cancelled" }} />);
-    expect(page().getByRole("button", { name: "Retry" })).toBeDisabled();
+    expect(page().getByRole("button", { name: enCommon.actions.retry })).toBeDisabled();
   });
 
   it("renders the transcript as a timeline with paired tool calls and folded usage", () => {
@@ -336,12 +338,12 @@ describe("TaskDetailDialog", () => {
       events: payloads.map((event, index) => ({ taskId: current.id, executionGeneration: 1, sequence: index + 1, event, createdAt: index })),
     };
     const view = render(<TaskDetailDialog {...input} />);
-    openTab("Activity");
-    expect(page().getByText("Session connected.")).toBeInTheDocument();
+    openTab(enResearchTools.tasks.detail.tabActivity);
+    expect(page().getByText(enResearchTools.tasks.timeline.sessionConnected)).toBeInTheDocument();
     expect(page().getByText("Reading sources")).toBeInTheDocument();
     expect(page().getByText("Partial result")).toBeInTheDocument();
     expect(page().queryByText("Compare the source measurements")).toBeNull();
-    fireEvent.click(page().getByRole("button", { name: "Reported reasoning" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.reasoning }));
     expect(page().getByText("Compare the source measurements")).toBeInTheDocument();
 
     const card = page().getByTestId("research-tool-card");
@@ -351,12 +353,12 @@ describe("TaskDetailDialog", () => {
     expect(page().getByText("Input 75k, output 1.7k")).toBeInTheDocument();
     expect(page().getByRole("button", { name: "Saved Evidence report" })).toBeInTheDocument();
 
-    fireEvent.click(page().getByRole("button", { name: "Open session" }));
-    fireEvent.click(page().getByRole("button", { name: "Load more activity" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.openSession }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.loadMore }));
     expect(input.onOpenSession).toHaveBeenCalledWith(cliTask);
     expect(input.onLoadMoreEvents).toHaveBeenCalledOnce();
     view.rerender(<TaskDetailDialog {...input} eventsLoading />);
-    expect(page().getByRole("button", { name: "Load more activity" })).toBeDisabled();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.detail.loadMore })).toBeDisabled();
     expect(page().getByRole("status")).toHaveTextContent("Loading activity");
   });
 
@@ -381,7 +383,7 @@ describe("TaskDetailDialog", () => {
       })),
     };
     render(<TaskDetailDialog {...input} />);
-    openTab("Activity");
+    openTab(enResearchTools.tasks.detail.tabActivity);
 
     const card = page().getByTestId("research-tool-card");
     expect(card).toHaveAttribute("data-research-status", "interrupted");
@@ -403,7 +405,7 @@ describe("TaskDetailDialog", () => {
       ].map((event, index) => ({ taskId: current.id, executionGeneration: 1, sequence: index + 1, event, createdAt: index })),
     };
     render(<TaskDetailDialog {...input} />);
-    openTab("Activity");
+    openTab(enResearchTools.tasks.detail.tabActivity);
     expect(page().queryByText(/A paper/)).toBeNull();
     fireEvent.click(page().getByRole("button", { name: /Search literature/ }));
     expect(page().getByText("A paper")).toBeInTheDocument();
@@ -432,7 +434,7 @@ describe("TaskDetailDialog", () => {
         ]}
       />,
     );
-    openTab("Activity");
+    openTab(enResearchTools.tasks.detail.tabActivity);
     fireEvent.click(page().getByRole("button", { name: "Saved Evidence report" }));
     await waitFor(() => expect(page().getByText("Saved evidence")).toBeInTheDocument());
     expect(previewMocks.artifact).toHaveBeenCalledWith(current.id, artifact.path);
@@ -451,7 +453,7 @@ describe("TaskDetailDialog", () => {
     };
     previewMocks.artifact.mockResolvedValue({ artifact, content });
     render(<TaskDetailDialog {...props(current)} />);
-    openTab("Output");
+    openTab(enResearchTools.tasks.detail.tabOutput);
     fireEvent.click(page().getByRole("button", { name: "Evidence artifactreport.bin" }));
     await waitFor(() => expect(page().getByText("Evidence artifact", { selector: "p" })).toBeInTheDocument());
     if (kind === "text") expect(page().getByText("Evidence from the saved task")).toBeInTheDocument();
@@ -487,12 +489,12 @@ describe("TaskDetailDialog", () => {
     const view = render(<TaskDetailDialog {...input} />);
     fireEvent.click(page().getByRole("checkbox", { name: "Apply main.tex" }));
     fireEvent.click(page().getByRole("button", { name: "Preview" }));
-    await page().findByRole("button", { name: "Refresh preview" });
+    await page().findByRole("button", { name: enResearchTools.tasks.detail.refreshPreview });
 
     const refreshed = JSON.parse(JSON.stringify(current)) as ResearchTask;
     view.rerender(<TaskDetailDialog {...input} task={refreshed} tasks={[refreshed]} />);
 
-    expect(page().getByRole("button", { name: "Refresh preview" })).toBeInTheDocument();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.detail.refreshPreview })).toBeInTheDocument();
     expect(page().getByRole("checkbox", { name: "Apply main.tex" })).not.toBeChecked();
   });
 

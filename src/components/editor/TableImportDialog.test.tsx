@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { useTableImportStore } from "@/store/table-import";
 
 interface FilesState {
@@ -116,7 +117,12 @@ describe("TableImportDialog", () => {
     render(<TableImportDialog />);
     expect(screen.queryByLabelText("Label (optional)")).not.toBeInTheDocument();
     await choose();
-    expect(screen.getByTestId("table-import-file")).toHaveTextContent("results.xlsx · 2 rows · 2 columns");
+    expect(screen.getByTestId("table-import-file")).toHaveTextContent(
+      enEditor.tableImport.selectedSummary
+        .replace("{{file}}", "results.xlsx")
+        .replace("{{rows}}", "2")
+        .replace("{{columns}}", "2"),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
     expect(mocks.insert.mock.calls[0][0]).toContain("#table(");
     expect(mocks.insert.mock.calls[0][0]).not.toContain("\\begin{tabular}");
@@ -130,7 +136,11 @@ describe("TableImportDialog", () => {
     render(<TableImportDialog />);
     fireEvent.click(screen.getByRole("button", { name: /Choose CSV/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      failure === "picker" ? "File picker unavailable" : failure === "reader" ? "Could not read that table" : "that file has no rows",
+      failure === "picker"
+        ? "File picker unavailable"
+        : failure === "reader"
+          ? enEditor.tableImport.readFailed
+          : enEditor.tableImport.noRows,
     );
     expect(screen.getByRole("button", { name: "Insert at cursor" })).toBeDisabled();
     await choose();

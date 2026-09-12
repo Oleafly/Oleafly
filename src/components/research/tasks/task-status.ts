@@ -6,16 +6,25 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
+import { i18n } from "@/i18n";
 import type { ResearchTaskStatus } from "@/lib/research-tasks";
 
-export const STATUS_LABELS: Record<ResearchTaskStatus, string> = {
-  queued: "Queued",
-  running: "Running",
-  awaiting_review: "Review needed",
-  completed: "Completed",
-  failed: "Failed",
-  cancelled: "Cancelled",
-};
+export function statusLabel(status: ResearchTaskStatus): string {
+  switch (status) {
+    case "queued":
+      return i18n.t(($) => $.researchTools.tasks.status.queued);
+    case "running":
+      return i18n.t(($) => $.researchTools.tasks.status.running);
+    case "awaiting_review":
+      return i18n.t(($) => $.researchTools.tasks.status.awaitingReview);
+    case "completed":
+      return i18n.t(($) => $.researchTools.tasks.status.completed);
+    case "failed":
+      return i18n.t(($) => $.researchTools.tasks.status.failed);
+    case "cancelled":
+      return i18n.t(($) => $.researchTools.tasks.status.cancelled);
+  }
+}
 
 export const STATUS_ICONS: Record<ResearchTaskStatus, typeof CircleDashed> = {
   queued: CircleDashed,
@@ -54,10 +63,10 @@ export function statusDotClass(status: ResearchTaskStatus): string {
 
 export function relativeTime(value: number): string {
   const seconds = Math.max(0, Math.round((Date.now() - value) / 1000));
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return i18n.t(($) => $.researchTools.tasks.relative.justNow);
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return i18n.t(($) => $.researchTools.tasks.relative.minutes, { minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
+  if (hours < 24) return i18n.t(($) => $.researchTools.tasks.relative.hours, { hours });
+  return i18n.t(($) => $.researchTools.tasks.relative.days, { days: Math.round(hours / 24) });
 }

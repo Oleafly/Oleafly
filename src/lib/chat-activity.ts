@@ -1,3 +1,5 @@
+import { i18n } from "@/i18n";
+
 export type ResearchToolStatus =
   | "running"
   | "completed"
@@ -103,29 +105,58 @@ export type ResearchToolView = {
   diagnostics?: string[];
 };
 
-const LABELS: Record<string, string> = {
-  run_command: "Run command",
-  literature_search: "Search literature",
-  alphaxiv_search: "Search papers",
-  alphaxiv_paper_content: "Read paper",
-  verify_citation: "Check citation",
-  project_library_search: "Search project sources",
-  read_file: "Read file",
-  read_linked_file: "Read linked file",
-  read_research_root_file: "Read linked file",
-  list_files: "List project files",
-  search_project: "Search project",
-  project_map: "Map project",
-  compile: "Compile document",
-  get_log: "Read compile log",
-  read_pdf_text: "Read compiled PDF",
-  verify_pdf_pages: "Check PDF pages",
-  preview_figure: "Preview figure",
-  insert_figure: "Insert figure",
-  spawn_agent: "Start delegated task",
-  wait_agent: "Wait for delegated task",
-  send_message: "Update delegated task",
+const LABEL_KEYS: Record<string, keyof typeof LABEL_LOOKUP> = {
+  run_command: "runCommand",
+  literature_search: "literatureSearch",
+  alphaxiv_search: "alphaxivSearch",
+  alphaxiv_paper_content: "alphaxivPaperContent",
+  verify_citation: "verifyCitation",
+  project_library_search: "projectLibrarySearch",
+  read_file: "readFile",
+  read_linked_file: "readLinkedFile",
+  read_research_root_file: "readResearchRootFile",
+  list_files: "listFiles",
+  search_project: "searchProject",
+  project_map: "projectMap",
+  compile: "compile",
+  get_log: "getLog",
+  read_pdf_text: "readPdfText",
+  verify_pdf_pages: "verifyPdfPages",
+  preview_figure: "previewFigure",
+  insert_figure: "insertFigure",
+  spawn_agent: "spawnAgent",
+  wait_agent: "waitAgent",
+  send_message: "sendMessage",
 };
+
+const LABEL_LOOKUP = {
+  runCommand: () => i18n.t(($) => $.core.toolActivity.labels.runCommand),
+  literatureSearch: () => i18n.t(($) => $.core.toolActivity.labels.literatureSearch),
+  alphaxivSearch: () => i18n.t(($) => $.core.toolActivity.labels.alphaxivSearch),
+  alphaxivPaperContent: () => i18n.t(($) => $.core.toolActivity.labels.alphaxivPaperContent),
+  verifyCitation: () => i18n.t(($) => $.core.toolActivity.labels.verifyCitation),
+  projectLibrarySearch: () => i18n.t(($) => $.core.toolActivity.labels.projectLibrarySearch),
+  readFile: () => i18n.t(($) => $.core.toolActivity.labels.readFile),
+  readLinkedFile: () => i18n.t(($) => $.core.toolActivity.labels.readLinkedFile),
+  readResearchRootFile: () => i18n.t(($) => $.core.toolActivity.labels.readResearchRootFile),
+  listFiles: () => i18n.t(($) => $.core.toolActivity.labels.listFiles),
+  searchProject: () => i18n.t(($) => $.core.toolActivity.labels.searchProject),
+  projectMap: () => i18n.t(($) => $.core.toolActivity.labels.projectMap),
+  compile: () => i18n.t(($) => $.core.toolActivity.labels.compile),
+  getLog: () => i18n.t(($) => $.core.toolActivity.labels.getLog),
+  readPdfText: () => i18n.t(($) => $.core.toolActivity.labels.readPdfText),
+  verifyPdfPages: () => i18n.t(($) => $.core.toolActivity.labels.verifyPdfPages),
+  previewFigure: () => i18n.t(($) => $.core.toolActivity.labels.previewFigure),
+  insertFigure: () => i18n.t(($) => $.core.toolActivity.labels.insertFigure),
+  spawnAgent: () => i18n.t(($) => $.core.toolActivity.labels.spawnAgent),
+  waitAgent: () => i18n.t(($) => $.core.toolActivity.labels.waitAgent),
+  sendMessage: () => i18n.t(($) => $.core.toolActivity.labels.sendMessage),
+};
+
+function toolLabel(name: string): string | undefined {
+  const key = LABEL_KEYS[name];
+  return key ? LABEL_LOOKUP[key]() : undefined;
+}
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -203,16 +234,18 @@ function explicitStatus(entry: ToolActivityEntry, value: unknown): ResearchToolS
 
 function statusLabel(status: ResearchToolStatus, value: unknown): string {
   const data = record(value);
-  if (status === "running") return "Running";
-  if (status === "declined") return "Declined";
-  if (status === "interrupted") return "Interrupted";
-  if (status === "cancelled") return "Stopped";
+  if (status === "running") return i18n.t(($) => $.core.toolActivity.status.running);
+  if (status === "declined") return i18n.t(($) => $.core.toolActivity.status.declined);
+  if (status === "interrupted") return i18n.t(($) => $.core.toolActivity.status.interrupted);
+  if (status === "cancelled") return i18n.t(($) => $.core.toolActivity.status.cancelled);
   if (status === "failed") {
-    if (data?.timed_out === true) return "Timed out";
+    if (data?.timed_out === true) return i18n.t(($) => $.core.toolActivity.status.timedOut);
     const exitCode = numberValue(data?.exit_code);
-    return exitCode === undefined ? "Failed" : `Failed with exit code ${exitCode}`;
+    return exitCode === undefined
+      ? i18n.t(($) => $.core.toolActivity.status.failed)
+      : i18n.t(($) => $.core.toolActivity.status.failedWithCode, { code: exitCode });
   }
-  return "Done";
+  return i18n.t(($) => $.core.toolActivity.status.done);
 }
 
 export function stripAnsi(value: string): string {
@@ -378,11 +411,12 @@ export function coalesceTranscriptEvents<T extends TranscriptTextEvent>(
   return merged;
 }
 
-export const SKILLS_BUDGET_NOTICE =
-  "Codex could not list all of its skills. It keeps a 2% context budget for skill descriptions, so trim the skills folder or ask for a skill by name.";
+export function skillsBudgetNotice(): string {
+  return i18n.t(($) => $.core.toolActivity.skillsBudgetNotice);
+}
 
-const AGENT_NOTICES: { prefix: string; text: string }[] = [
-  { prefix: "warning: exceeded skills context budget", text: SKILLS_BUDGET_NOTICE },
+const AGENT_NOTICES: { prefix: string; text: () => string }[] = [
+  { prefix: "warning: exceeded skills context budget", text: skillsBudgetNotice },
 ];
 
 export interface AgentNoticeSplit {
@@ -401,7 +435,8 @@ export function splitAgentNotices(value: string): AgentNoticeSplit {
     if (!matched) break;
     const lineEnd = body.indexOf("\n");
     rest = lineEnd === -1 ? "" : body.slice(lineEnd + 1);
-    if (!notices.includes(matched.text)) notices.push(matched.text);
+    const text = matched.text();
+    if (!notices.includes(text)) notices.push(text);
   }
   return notices.length === 0 ? { notices, text: value } : { notices, text: rest.replace(/^\s+/, "") };
 }
@@ -443,16 +478,31 @@ export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
   const errors = diagnosticMessages(data?.errors);
   const diagnostics = [...errors, ...diagnosticMessages(data?.diagnostics)];
   let summary: string | undefined;
-  if (kind === "literature" && status === "completed") summary = `${results.length} ${results.length === 1 ? "paper" : "papers"}`;
-  if (kind === "citation" && verified === true) summary = "Verified by the citation service";
-  if (kind === "citation" && verified === false) summary = stringValue(data?.reason) ?? "No matching record found";
-  if (kind === "compile" && status === "completed") summary = diagnostics.length ? `${diagnostics.length} diagnostics` : "Compiled successfully";
-  if (kind === "compile" && status === "failed") summary = diagnostics.length ? `${diagnostics.length} diagnostics` : "Compilation failed";
+  if (kind === "literature" && status === "completed") {
+    summary = i18n.t(($) => $.core.toolActivity.summary.papers, { count: results.length });
+  }
+  if (kind === "citation" && verified === true) {
+    summary = i18n.t(($) => $.core.toolActivity.summary.citationVerified);
+  }
+  if (kind === "citation" && verified === false) {
+    summary =
+      stringValue(data?.reason) ?? i18n.t(($) => $.core.toolActivity.summary.citationUnverified);
+  }
+  if (kind === "compile" && status === "completed") {
+    summary = diagnostics.length
+      ? i18n.t(($) => $.core.toolActivity.summary.diagnostics, { count: diagnostics.length })
+      : i18n.t(($) => $.core.toolActivity.summary.compileSucceeded);
+  }
+  if (kind === "compile" && status === "failed") {
+    summary = diagnostics.length
+      ? i18n.t(($) => $.core.toolActivity.summary.diagnostics, { count: diagnostics.length })
+      : i18n.t(($) => $.core.toolActivity.summary.compileFailed);
+  }
   if (kind === "source" && path) summary = path;
   return {
     kind,
     name,
-    label: LABELS[name] ?? entry.name.replaceAll("_", " "),
+    label: toolLabel(name) ?? entry.name.replaceAll("_", " "),
     status,
     statusLabel: statusLabel(status, value),
     output: readableOutput(entry.output, value),

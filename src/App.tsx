@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
 import {
   Fragment,
@@ -215,6 +216,7 @@ const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
 function AppContent() {
+  const { t } = useTranslation(["workspace"]);
   const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
@@ -803,14 +805,14 @@ function AppContent() {
             resetKey={projectId}
             fallback={
               <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-sm text-muted-foreground">
-                <p>The panel layout hit a snag. Your project files are safe on disk.</p>
+                <p>{t(($) => $.workspace.panelError.message)}</p>
                 <button
                   type="button"
                   onClick={() => window.location.reload()}
                   className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
                 >
                   <RefreshCw className="size-4" />
-                  Reload Oleafly
+                  {t(($) => $.workspace.panelError.reload)}
                 </button>
               </div>
             }
@@ -860,7 +862,7 @@ function AppContent() {
                             className="min-h-0 min-w-0"
                           >
                             <ErrorBoundary surface="editor" resetKey={projectId}>
-                              <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
+                              <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.editor)} />}>
                                 <Editor />
                               </Suspense>
                             </ErrorBoundary>
@@ -877,7 +879,7 @@ function AppContent() {
                             className="min-h-0 min-w-0"
                           >
                             <ErrorBoundary surface="PDF preview" resetKey={projectId}>
-                              <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
+                              <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.preview)} />}>
                                 <PreviewPane />
                               </Suspense>
                             </ErrorBoundary>
@@ -906,7 +908,7 @@ function AppContent() {
                     className="min-h-0 min-w-0 border-l"
                   >
                     <ErrorBoundary surface="AI assistant" resetKey={projectId}>
-                      <Suspense fallback={<SurfaceLoading label="Loading assistant" />}>
+                      <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.assistant)} />}>
                         <ChatPanel />
                       </Suspense>
                     </ErrorBoundary>
@@ -953,7 +955,7 @@ function AppContent() {
                   )}
                 >
                   <ErrorBoundary surface="terminal dock" resetKey={projectId}>
-                    <Suspense fallback={<SurfaceLoading label="Loading terminal" />}>
+                    <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.terminal)} />}>
                       <TerminalDock
                         projectId={projectId}
                         projectName={projectName}

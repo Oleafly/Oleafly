@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowRight,
   Bookmark,
@@ -33,21 +34,6 @@ import {
 
 type Phase = "prompt" | "loading" | "result";
 type View = "preview" | "code";
-
-const EXAMPLES = [
-  "A two-column workshop paper with an abstract and numbered sections",
-  "A one-page ATS-friendly software engineer resume",
-  "A formal cover letter with a sender address block",
-  "A two-column company newsletter with a masthead",
-  "A conference research poster with a title band",
-];
-
-const STEPS = [
-  "Understanding your description",
-  "Choosing a document class & layout",
-  "Drafting sections and styles",
-  "Rendering a live preview",
-];
 
 const ENGINE_LABELS: Record<ParsedTemplate["engine"], string> = {
   xetex: "TECTONIC",
@@ -86,6 +72,20 @@ export function TemplateGenerateModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation(["common", "library"]);
+  const examples = [
+    t(($) => $.library.generate.examples.workshopPaper),
+    t(($) => $.library.generate.examples.resume),
+    t(($) => $.library.generate.examples.coverLetter),
+    t(($) => $.library.generate.examples.newsletter),
+    t(($) => $.library.generate.examples.poster),
+  ];
+  const steps = [
+    t(($) => $.library.generate.steps.understanding),
+    t(($) => $.library.generate.steps.layout),
+    t(($) => $.library.generate.steps.drafting),
+    t(($) => $.library.generate.steps.rendering),
+  ];
   const [phase, setPhase] = useState<Phase>("prompt");
   const [description, setDescription] = useState("");
   const [runPrompt, setRunPrompt] = useState("");
@@ -173,7 +173,7 @@ export function TemplateGenerateModal({
     setError(null);
     if (!(await generateTemplateAvailable())) {
       if (live()) {
-        setError("Connect an AI provider in Settings, AI Assistant, before generating templates.");
+        setError(t(($) => $.library.generate.noProvider));
       }
       return;
     }
@@ -219,10 +219,7 @@ export function TemplateGenerateModal({
       clearStepTimers();
       setPhase("prompt");
       const raw = e instanceof Error ? e.message : String(e);
-      const hint = friendlyHint(raw)?.replaceAll(
-        "from the model menu above",
-        "in Settings, AI Assistant",
-      );
+      const hint = friendlyHint(raw, undefined, "settings");
       setError(hint ?? raw);
     }
   };
@@ -233,10 +230,10 @@ export function TemplateGenerateModal({
     try {
       await deleteGeneratedTemplate(parsed.slug);
       setSaved(false);
-      toast.success(`Removed "${parsed.name}" from your library`);
+      toast.success(t(($) => $.library.generate.removedToast, { name: parsed.name }));
       onSaved();
     } catch (e) {
-      notifyError("remove the template", e, "Couldn't remove the template.");
+      notifyError("remove the template", e, t(($) => $.library.generate.removeFailed));
     } finally {
       setSaving(false);
     }
@@ -249,11 +246,11 @@ export function TemplateGenerateModal({
     try {
       await saveGeneratedTemplate(parsed, previewPng);
       setSaved(true);
-      toast.success(`Saved "${parsed.name}" to your library`);
+      toast.success(t(($) => $.library.generate.savedToast, { name: parsed.name }));
       onSaved();
       return true;
     } catch (e) {
-      notifyError("save the template", e, "Couldn't save the template.");
+      notifyError("save the template", e, t(($) => $.library.generate.saveFailed));
       return false;
     } finally {
       setSaving(false);
@@ -282,14 +279,20 @@ export function TemplateGenerateModal({
         </span>
         <div>
           <h2 id="generate-template-title" className="text-base font-semibold leading-tight">
-            Generate a template with AI
+            {t(($) => $.library.generate.title)}
           </h2>
           <p className="text-xs text-muted-foreground">
-            Describe a document and preview it before you use it
+            {t(($) => $.library.generate.subtitle)}
           </p>
         </div>
       </div>
-      <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label="Close">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        onClick={onClose}
+        aria-label={t(($) => $.common.actions.close)}
+      >
         <X className="size-4" />
       </Button>
     </div>
@@ -323,7 +326,7 @@ export function TemplateGenerateModal({
                     void generate(description);
                   }
                 }}
-                placeholder="Describe the document, e.g. a two-column workshop paper with an abstract and numbered sections"
+                placeholder={t(($) => $.library.generate.promptPlaceholder)}
                 rows={6}
                 className="min-h-32 w-full resize-none border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
               />
@@ -346,7 +349,7 @@ export function TemplateGenerateModal({
                   onClick={() => void generate(description)}
                 >
                   <Wand2 className="size-4" />
-                  Generate
+                  {t(($) => $.library.generate.run)}
                   <span className="inline-flex items-center gap-1">
                     <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[10px] text-primary-foreground">
                       {modKey}
@@ -366,9 +369,11 @@ export function TemplateGenerateModal({
             )}
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Try one of these</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                {t(($) => $.library.generate.examplesTitle)}
+              </p>
               <div className="mt-2.5 flex flex-wrap gap-2.5">
-                {EXAMPLES.map((example) => (
+                {examples.map((example) => (
                   <button
                     key={example}
                     type="button"
@@ -391,10 +396,11 @@ export function TemplateGenerateModal({
                 <Sparkles className="size-4" />
               </span>
               <p>
-                AI drafts a starting layout: engine, document class, sections and styles. You'll
-                get a live preview to review first. Choosing{" "}
-                <span className="font-semibold text-foreground">Use this template</span>{" "}
-                automatically saves it to your library so you can reuse it later.
+                <Trans
+                  ns="library"
+                  i18nKey={($) => $.library.generate.note}
+                  components={{ useTemplate: <span className="font-semibold text-foreground" /> }}
+                />
               </p>
             </div>
           </div>
@@ -408,13 +414,13 @@ export function TemplateGenerateModal({
             <div className="flex min-w-0 flex-1 flex-col justify-center gap-5 pr-4">
               <p className="flex items-center gap-2.5 text-lg font-medium">
                 <Loader2 className="size-5 animate-spin text-primary" />
-                <span className="ai-shimmer !text-lg">Generating your template...</span>
+                <span className="ai-shimmer !text-lg">{t(($) => $.library.generate.loading)}</span>
               </p>
               <div className="rounded-xl border px-4 py-3 text-sm italic text-muted-foreground">
-                "{runPrompt}"
+                {t(($) => $.library.generate.quotedPrompt, { prompt: runPrompt })}
               </div>
               <ol className="flex flex-col gap-3.5">
-                {STEPS.map((label, i) => {
+                {steps.map((label, i) => {
                   const done = i < loadingStep || (loadingStep >= 3 && i < 3);
                   const active = i === loadingStep;
                   return (
@@ -462,7 +468,7 @@ export function TemplateGenerateModal({
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    Preview
+                    {t(($) => $.library.generate.viewPreview)}
                   </button>
                   <button
                     type="button"
@@ -475,7 +481,7 @@ export function TemplateGenerateModal({
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    Source
+                    {t(($) => $.library.generate.viewSource)}
                   </button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-hidden">
@@ -487,7 +493,7 @@ export function TemplateGenerateModal({
                     <div className="flex h-full items-start justify-center overflow-auto rounded-xl bg-zinc-200 p-6">
                       <img
                         src={previewPng}
-                        alt="Compiled preview of the generated template"
+                        alt={t(($) => $.library.generate.previewAlt)}
                         className="max-w-full rounded-sm bg-white shadow-md"
                       />
                     </div>
@@ -496,8 +502,8 @@ export function TemplateGenerateModal({
                       <SkeletonPage dim />
                       <p className="absolute inset-x-0 bottom-4 mx-auto w-fit rounded-full bg-black/70 px-3.5 py-1.5 text-xs text-white backdrop-blur-sm">
                         {parsed.engine === "xetex"
-                          ? "This draft failed to compile"
-                          : "Live preview isn't available for this engine yet"}
+                          ? t(($) => $.library.generate.compileFailed)
+                          : t(($) => $.library.generate.previewUnsupported)}
                       </p>
                     </div>
                   )}
@@ -507,7 +513,7 @@ export function TemplateGenerateModal({
               <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto pr-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
-                    <Sparkles className="size-3.5" /> AI Generated
+                    <Sparkles className="size-3.5" /> {t(($) => $.library.generate.badge)}
                   </span>
                   <span className="rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {ENGINE_LABELS[parsed.engine]}
@@ -516,8 +522,7 @@ export function TemplateGenerateModal({
                 <h3 className="text-2xl font-semibold leading-tight">{parsed.name}</h3>
                 {parsed.engine === "xetex" && !previewPng && (
                   <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
-                    This draft did not compile cleanly. Regenerate for a better starting point, or
-                    create the project and fix the source in the editor.
+                    {t(($) => $.library.generate.compileWarning)}
                   </div>
                 )}
                 {editingDescription ? (
@@ -533,12 +538,14 @@ export function TemplateGenerateModal({
                   />
                 ) : (
                   <p className="text-base leading-relaxed text-muted-foreground">
-                    {parsed.description || "No description yet."}
+                    {parsed.description || t(($) => $.library.generate.noDescription)}
                   </p>
                 )}
                 {parsed.tags.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Includes</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {t(($) => $.library.generate.includes)}
+                    </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {parsed.tags.map((tag) => (
                         <span
@@ -553,11 +560,15 @@ export function TemplateGenerateModal({
                 )}
                 <div className="grid grid-cols-2 gap-4 rounded-xl border p-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Category</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t(($) => $.library.generate.category)}
+                    </p>
                     <p className="mt-0.5 text-base font-medium">{parsed.category}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Engine</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t(($) => $.library.generate.engine)}
+                    </p>
                     <p className="mt-0.5 text-base font-medium">{ENGINE_LABELS[parsed.engine]}</p>
                   </div>
                 </div>
@@ -567,7 +578,7 @@ export function TemplateGenerateModal({
                   className="flex w-fit items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Pencil className="size-3.5" />
-                  Edit description
+                  {t(($) => $.library.generate.editDescription)}
                 </button>
               </div>
             </div>
@@ -579,7 +590,7 @@ export function TemplateGenerateModal({
                 onClick={() => void generate(runPrompt || description)}
               >
                 <RefreshCw className="size-4" />
-                Regenerate
+                {t(($) => $.library.generate.regenerate)}
               </Button>
               <div className="flex items-center gap-3">
                 {saved ? (
@@ -591,8 +602,10 @@ export function TemplateGenerateModal({
                   >
                     <Check className="size-4 text-emerald-500 group-hover:hidden" />
                     <BookmarkX className="hidden size-4 text-destructive group-hover:block" />
-                    <span className="group-hover:hidden">Saved</span>
-                    <span className="hidden group-hover:inline">Unsave</span>
+                    <span className="group-hover:hidden">{t(($) => $.library.generate.saved)}</span>
+                    <span className="hidden group-hover:inline">
+                      {t(($) => $.library.generate.unsave)}
+                    </span>
                   </Button>
                 ) : (
                   <Button
@@ -602,11 +615,11 @@ export function TemplateGenerateModal({
                     onClick={() => void save()}
                   >
                     {saving ? <Loader2 className="size-4 animate-spin" /> : <Bookmark className="size-4" />}
-                    Save template
+                    {t(($) => $.library.generate.save)}
                   </Button>
                 )}
                 <Button disabled={using || saving} onClick={() => void applyTemplate()}>
-                  Use this template
+                  {t(($) => $.library.generate.use)}
                   <ArrowRight className="size-4" />
                 </Button>
               </div>

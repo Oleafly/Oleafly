@@ -355,7 +355,7 @@ describe("Phase 3 project intelligence acceptance", () => {
     expect(diagnostic).toMatchObject({
       severity: "error",
       code: "unresolved-target",
-      message: 'Bibliography file "missing.bib" was not found in the project.',
+      message: { key: "bibliographyFileMissing", params: { file: "missing.bib" } },
     });
     expect(
       source.slice(
@@ -374,9 +374,10 @@ describe("Phase 3 project intelligence acceptance", () => {
     expect(
       value.hierarchy.edges.find((edge) => edge.kind === "bibliography"),
     ).toMatchObject({ resolution: "unresolved", targetFile: "refs.v1" });
-    expect(value.diagnostics[0]?.message).toBe(
-      'Bibliography file "refs.v1" was not found in the project.',
-    );
+    expect(value.diagnostics[0]?.message).toEqual({
+      key: "bibliographyFileMissing",
+      params: { file: "refs.v1" },
+    });
   });
 
   it("keeps resolving a dotted \\bibliography target against its .bib file", () => {
@@ -396,9 +397,10 @@ describe("Phase 3 project intelligence acceptance", () => {
       "main.tex",
     ]);
 
-    expect(value.diagnostics[0]?.message).toBe(
-      'Bibliography file "refs.bib" was not found in the project.',
-    );
+    expect(value.diagnostics[0]?.message).toEqual({
+      key: "bibliographyFileMissing",
+      params: { file: "refs.bib" },
+    });
   });
 
   it("leaves a remote bibliography resource alone", () => {
@@ -964,7 +966,7 @@ ta}`;
     const unreadable = unreadableFileIntelligence(
       "missing.tex",
       1,
-      "Permission denied.",
+      { key: "fileUnreadable" },
     ) as FileAnalysis;
     const value = assembleProjectIntelligence({
       identity: {

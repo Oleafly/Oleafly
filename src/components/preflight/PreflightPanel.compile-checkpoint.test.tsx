@@ -7,6 +7,7 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { usePreflightStore } from "@/store/preflight";
+import enPreflight from "@/i18n/locales/en/preflight.json" with { type: "json" };
 import { PreflightPanel } from "./PreflightPanel";
 
 const paper =
@@ -111,8 +112,8 @@ describe("Preflight document suggestion checkpoint", () => {
           id: "reference-source",
           lens: "refs",
           severity: "warning",
-          title: "Undefined citation",
-          detail: "The bibliography key is missing.",
+          title: { key: "rules.refs-undefined-cite.title", params: { key: "smith21" } },
+          detail: { key: "rules.refs-undefined-cite.detail" },
           file: "main.tex",
           from: 4,
           to: 8,
@@ -121,8 +122,8 @@ describe("Preflight document suggestion checkpoint", () => {
           id: "pdf-reference-output",
           lens: "refs",
           severity: "error",
-          title: "Reference rendered as a placeholder",
-          detail: "The current PDF contains an unresolved marker.",
+          title: { key: "rules.refs-undefined-ref.title", params: { label: "fig:one" } },
+          detail: { key: "rules.refs-undefined-ref.detail" },
           page: 1,
         },
       ],
@@ -162,9 +163,15 @@ describe("Preflight document suggestion checkpoint", () => {
 
     expect(screen.getByText("Project & source")).toBeInTheDocument();
     expect(screen.getByText("Compiled output")).toBeInTheDocument();
-    expect(screen.getByText("Undefined citation")).toBeInTheDocument();
     expect(
-      screen.getByText("Reference rendered as a placeholder"),
+      screen.getByText(
+        enPreflight.rules["refs-undefined-cite"].title.replace("{{key}}", "smith21"),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        enPreflight.rules["refs-undefined-ref"].title.replace("{{label}}", "fig:one"),
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText(/Compile the project first/)).toBeInTheDocument();
     expect(screen.getAllByText(/PDF required/)).toHaveLength(2);

@@ -7,6 +7,7 @@ import {
   resolveBibliographyPath,
 } from "@oleafly/latex";
 import { maskComments } from "./mask";
+import { message } from "./messages";
 import type { Finding } from "./types";
 
 export interface RefsContext {
@@ -85,8 +86,13 @@ function bibliographyQuality(ctx: RefsContext): Finding[] {
       id: "refs-incomplete-metadata",
       lens: "refs",
       severity: "warning",
-      title: `${incomplete.length} bibliography entr${incomplete.length === 1 ? "y has" : "ies have"} incomplete metadata`,
-      detail: `Incomplete records can produce broken or ambiguous references in publisher styles. ${examples}${incomplete.length > 5 ? "; …" : "."}`,
+      title: message("rules.refs-incomplete-metadata.title", { count: incomplete.length }),
+      detail: message(
+        incomplete.length > 5
+          ? "rules.refs-incomplete-metadata.detailTruncated"
+          : "rules.refs-incomplete-metadata.detail",
+        { examples },
+      ),
       certainty: "verified",
     });
   }
@@ -102,8 +108,10 @@ function bibliographyQuality(ctx: RefsContext): Finding[] {
       id: "refs-malformed-doi",
       lens: "refs",
       severity: "warning",
-      title: `${malformedDois.length} DOI value${malformedDois.length === 1 ? " looks" : "s look"} malformed`,
-      detail: `Review the DOI fields for ${malformedDois.slice(0, 8).map((entry) => entry.key).join(", ")}. Store only the DOI identifier, for example 10.1000/example, rather than descriptive text.`,
+      title: message("rules.refs-malformed-doi.title", { count: malformedDois.length }),
+      detail: message("rules.refs-malformed-doi.detail", {
+        keys: malformedDois.slice(0, 8).map((entry) => entry.key).join(", "),
+      }),
       certainty: "verified",
     });
   }
@@ -120,8 +128,10 @@ function bibliographyQuality(ctx: RefsContext): Finding[] {
       id: "refs-duplicate-title",
       lens: "refs",
       severity: "warning",
-      title: `${duplicateTitles.length} possible duplicate reference${duplicateTitles.length === 1 ? "" : " groups"}`,
-      detail: `These keys have the same normalized title: ${duplicateTitles.slice(0, 5).map((keys) => keys.join(" / ")).join("; ")}. Merge true duplicates so citation style and metadata stay consistent.`,
+      title: message("rules.refs-duplicate-title.title", { count: duplicateTitles.length }),
+      detail: message("rules.refs-duplicate-title.detail", {
+        groups: duplicateTitles.slice(0, 5).map((keys) => keys.join(" / ")).join("; "),
+      }),
       certainty: "verified",
     });
   }
@@ -134,8 +144,13 @@ function bibliographyQuality(ctx: RefsContext): Finding[] {
         id: "refs-uncited-entries",
         lens: "refs",
         severity: "info",
-        title: `${uncited.length} uncited bibliography entr${uncited.length === 1 ? "y" : "ies"}`,
-        detail: `Unused entries add noise to submission metadata and make duplicate management harder. Review ${uncited.slice(0, 8).map((entry) => entry.key).join(", ")}${uncited.length > 8 ? ", …" : "."}`,
+        title: message("rules.refs-uncited-entries.title", { count: uncited.length }),
+        detail: message(
+          uncited.length > 8
+            ? "rules.refs-uncited-entries.detailTruncated"
+            : "rules.refs-uncited-entries.detail",
+          { keys: uncited.slice(0, 8).map((entry) => entry.key).join(", ") },
+        ),
         certainty: "verified",
       });
     }
@@ -151,11 +166,13 @@ function projectLabelQuality(ctx: RefsContext): Finding[] {
       id: "refs-project-duplicate-label",
       lens: "refs",
       severity: "error",
-      title: `${duplicates.length} label${duplicates.length === 1 ? " is" : "s are"} defined in multiple files`,
-      detail: duplicates
-        .slice(0, 6)
-        .map((item) => `${item.label} (${item.files.join(", ")})`)
-        .join("; "),
+      title: message("rules.refs-project-duplicate-label.title", { count: duplicates.length }),
+      detail: message("rules.refs-project-duplicate-label.detail", {
+        labels: duplicates
+          .slice(0, 6)
+          .map((item) => `${item.label} (${item.files.join(", ")})`)
+          .join("; "),
+      }),
       certainty: "verified",
     });
   }
@@ -165,8 +182,13 @@ function projectLabelQuality(ctx: RefsContext): Finding[] {
       id: "refs-unreferenced-floats",
       lens: "refs",
       severity: "info",
-      title: `${unreferenced.length} figure, table, or equation label${unreferenced.length === 1 ? " is" : "s are"} never referenced`,
-      detail: `Confirm that each numbered result is discussed in the manuscript: ${unreferenced.slice(0, 8).map((item) => item.label).join(", ")}${unreferenced.length > 8 ? ", …" : "."}`,
+      title: message("rules.refs-unreferenced-floats.title", { count: unreferenced.length }),
+      detail: message(
+        unreferenced.length > 8
+          ? "rules.refs-unreferenced-floats.detailTruncated"
+          : "rules.refs-unreferenced-floats.detail",
+        { labels: unreferenced.slice(0, 8).map((item) => item.label).join(", ") },
+      ),
       certainty: "advisory",
     });
   }
@@ -244,9 +266,8 @@ export function runRefsRules(
             id: "refs-undefined-cite",
             lens: "refs",
             severity: "error",
-            title: `Citation "${key}" is not in any .bib`,
-            detail:
-              "This citation key was not found in the loaded bibliography, so it will render as [?] in the PDF. Check the key, or add the entry to your .bib (Add citation can fetch it).",
+            title: message("rules.refs-undefined-cite.title", { key }),
+            detail: message("rules.refs-undefined-cite.detail"),
             from,
             to,
           });
@@ -266,9 +287,8 @@ export function runRefsRules(
           id: "refs-undefined-ref",
           lens: "refs",
           severity: "error",
-          title: `Reference to "${label}" has no matching \\label`,
-          detail:
-            "This cross-reference points to a label that is not defined, so it will render as ?? in the PDF. Check the label name, or add the missing \\label.",
+          title: message("rules.refs-undefined-ref.title", { label }),
+          detail: message("rules.refs-undefined-ref.detail"),
           from,
           to,
         });
@@ -285,8 +305,8 @@ export function runRefsRules(
         id: "refs-duplicate-label",
         lens: "refs",
         severity: "warning",
-        title: `Duplicate label "${key}"`,
-        detail: "The same label is defined more than once, so references to it are ambiguous. Make each label unique.",
+        title: message("rules.refs-duplicate-label.title", { label: key }),
+        detail: message("rules.refs-duplicate-label.detail"),
         from: m.index,
         to: m.index + m[0].length,
       });
@@ -302,8 +322,8 @@ export function runRefsRules(
         id: "refs-missing-asset",
         lens: "refs",
         severity: "error",
-        title: `Image not found: ${m[1].trim()}`,
-        detail: "This \\includegraphics points to a file that is not in the project, so the figure will be missing. Check the filename and path.",
+        title: message("rules.refs-missing-asset.titleImage", { file: m[1].trim() }),
+        detail: message("rules.refs-missing-asset.detailImage"),
         from: m.index,
         to: m.index + m[0].length,
       });
@@ -317,8 +337,8 @@ export function runRefsRules(
         id: "refs-missing-asset",
         lens: "refs",
         severity: "error",
-        title: `Included file not found: ${m[1].trim()}`,
-        detail: "This \\input or \\include points to a file that is not in the project. Check the filename and path.",
+        title: message("rules.refs-missing-asset.titleInclude", { file: m[1].trim() }),
+        detail: message("rules.refs-missing-asset.detailInclude"),
         from: m.index,
         to: m.index + m[0].length,
       });
@@ -333,9 +353,10 @@ export function runRefsRules(
       lens: "refs",
       severity: "error",
       certainty: "verified",
-      title: `Bibliography file not found: ${bibliographyDisplayName(declaration.raw, engine)}`,
-      detail:
-        "This \\bibliography or \\addbibresource points to a file that is not in the project, so every citation will render as [?]. Check the filename, or import a reference library to create it.",
+      title: message("rules.refs-bib-missing.title", {
+        file: bibliographyDisplayName(declaration.raw, engine),
+      }),
+      detail: message("rules.refs-bib-missing.detail"),
       from: declaration.from,
       to: declaration.to,
     });
@@ -346,8 +367,8 @@ export function runRefsRules(
       id: "refs-duplicate-bib",
       lens: "refs",
       severity: "warning",
-      title: `Duplicate bibliography entries: ${dup.keys.join(", ")}`,
-      detail: `These entries share the DOI ${dup.doi}, so they are the same reference under different keys. Keep one and cite it, or your bibliography will list it twice.`,
+      title: message("rules.refs-duplicate-bib.title", { keys: dup.keys.join(", ") }),
+      detail: message("rules.refs-duplicate-bib.detail", { doi: dup.doi }),
     });
   }
 

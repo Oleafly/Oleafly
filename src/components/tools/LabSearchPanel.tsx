@@ -5,6 +5,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Building2,
@@ -25,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 import { useSettingsStore } from "@/store/settings";
 
 interface Institution {
@@ -46,43 +49,45 @@ interface InstitutionSearchResult {
   total: number;
 }
 
-const COUNTRIES = [
-  ["all", "All countries"],
-  ["US", "United States"],
-  ["GB", "United Kingdom"],
-  ["DE", "Germany"],
-  ["FR", "France"],
-  ["CN", "China"],
-  ["JP", "Japan"],
-  ["IN", "India"],
-  ["CA", "Canada"],
-  ["AU", "Australia"],
-  ["CH", "Switzerland"],
-  ["NL", "Netherlands"],
-  ["KR", "South Korea"],
-  ["SG", "Singapore"],
-  ["BR", "Brazil"],
-] as const;
+const COUNTRY_LABELS: Record<string, () => string> = {
+  all: () => i18n.t(($) => $.researchTools.labSearch.country.all),
+  US: () => i18n.t(($) => $.researchTools.labSearch.country.us),
+  GB: () => i18n.t(($) => $.researchTools.labSearch.country.gb),
+  DE: () => i18n.t(($) => $.researchTools.labSearch.country.de),
+  FR: () => i18n.t(($) => $.researchTools.labSearch.country.fr),
+  CN: () => i18n.t(($) => $.researchTools.labSearch.country.cn),
+  JP: () => i18n.t(($) => $.researchTools.labSearch.country.jp),
+  IN: () => i18n.t(($) => $.researchTools.labSearch.country.in),
+  CA: () => i18n.t(($) => $.researchTools.labSearch.country.ca),
+  AU: () => i18n.t(($) => $.researchTools.labSearch.country.au),
+  CH: () => i18n.t(($) => $.researchTools.labSearch.country.ch),
+  NL: () => i18n.t(($) => $.researchTools.labSearch.country.nl),
+  KR: () => i18n.t(($) => $.researchTools.labSearch.country.kr),
+  SG: () => i18n.t(($) => $.researchTools.labSearch.country.sg),
+  BR: () => i18n.t(($) => $.researchTools.labSearch.country.br),
+};
+
+const COUNTRY_CODES = Object.keys(COUNTRY_LABELS);
 
 const SUGGESTIONS = [
   {
-    domain: "Artificial intelligence",
+    domain: () => i18n.t(($) => $.researchTools.labSearch.suggestion.artificialIntelligence),
     query: "MIT Computer Science and Artificial Intelligence Laboratory",
   },
   {
-    domain: "Genomics",
+    domain: () => i18n.t(($) => $.researchTools.labSearch.suggestion.genomics),
     query: "Broad Institute",
   },
   {
-    domain: "Robotics",
+    domain: () => i18n.t(($) => $.researchTools.labSearch.suggestion.robotics),
     query: "Max Planck Institute for Intelligent Systems",
   },
   {
-    domain: "Quantum research",
+    domain: () => i18n.t(($) => $.researchTools.labSearch.suggestion.quantumResearch),
     query: "RIKEN Center for Quantum Computing",
   },
   {
-    domain: "Ocean science",
+    domain: () => i18n.t(($) => $.researchTools.labSearch.suggestion.oceanScience),
     query: "Woods Hole Oceanographic Institution",
   },
 ] as const;
@@ -172,7 +177,7 @@ function formatCount(value: number): string {
 }
 
 function formatType(value: string | null): string {
-  if (!value) return "Research institution";
+  if (!value) return i18n.t(($) => $.researchTools.labSearch.defaultType);
   return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
@@ -236,10 +241,7 @@ export function countryFlag(code: string): string {
 }
 
 function countryLabel(code: string): string {
-  return (
-    COUNTRIES.find(([countryCode]) => countryCode === code)?.[1] ??
-    code
-  );
+  return COUNTRY_LABELS[code]?.() ?? code;
 }
 
 function institutionLocation(institution: Institution): string {
@@ -254,7 +256,9 @@ function institutionLocation(institution: Institution): string {
     (part, index, values): part is string =>
       Boolean(part) && values.indexOf(part) === index,
   );
-  return parts.join(", ") || "Location not listed";
+  return (
+    parts.join(", ") || i18n.t(($) => $.researchTools.labSearch.noLocation)
+  );
 }
 
 function InstitutionCard({
@@ -262,6 +266,7 @@ function InstitutionCard({
 }: {
   institution: Institution;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   const openAlexUrl = safeInstitutionUrl(institution.id);
   const visualStyle = institutionStyle(institution.type);
   return (
@@ -305,7 +310,7 @@ function InstitutionCard({
       <dl className="mt-4 grid grid-cols-2 divide-x border-y py-3">
         <div className="px-3 first:pl-0">
           <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-            Works
+            {t(($) => $.researchTools.labSearch.works)}
           </dt>
           <dd className="mt-1 text-lg font-semibold tabular-nums text-blue-700 dark:text-blue-300">
             {formatCount(institution.worksCount)}
@@ -313,7 +318,7 @@ function InstitutionCard({
         </div>
         <div className="px-3">
           <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-            Citations
+            {t(($) => $.researchTools.labSearch.citations)}
           </dt>
           <dd className="mt-1 text-lg font-semibold tabular-nums text-violet-700 dark:text-violet-300">
             {formatCount(institution.citedByCount)}
@@ -335,7 +340,7 @@ function InstitutionCard({
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Globe2 /> Website
+              <Globe2 /> {t(($) => $.researchTools.labSearch.website)}
               <ExternalLink className="opacity-60" />
             </a>
           </Button>
@@ -347,7 +352,7 @@ function InstitutionCard({
               target="_blank"
               rel="noopener noreferrer"
             >
-              ROR record
+              {t(($) => $.researchTools.labSearch.rorRecord)}
               <ExternalLink className="opacity-60" />
             </a>
           </Button>
@@ -359,7 +364,7 @@ function InstitutionCard({
               target="_blank"
               rel="noopener noreferrer"
             >
-              OpenAlex
+              {t(($) => $.researchTools.labSearch.openAlex)}
               <ExternalLink className="opacity-60" />
             </a>
           </Button>
@@ -370,11 +375,12 @@ function InstitutionCard({
 }
 
 function LabSearchSkeleton() {
+  const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div
       className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6"
       role="status"
-      aria-label="Searching institutions"
+      aria-label={t(($) => $.researchTools.labSearch.loadingAria)}
     >
       <div className="mb-4 h-4 w-48 animate-pulse rounded bg-muted" />
       <div className="grid gap-4 md:grid-cols-2">
@@ -407,28 +413,31 @@ function EmptyLabSearch({
   noResults: boolean;
   onTry: (query: string) => void;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="mx-auto grid min-h-[24rem] max-w-4xl place-items-center px-6 py-10">
       <div className="w-full border-y border-border/70 py-9">
         <div className="grid gap-8 sm:grid-cols-[1fr_1.15fr] sm:items-start">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              {noResults ? "No matching institutions" : "Getting started"}
+              {noResults
+                ? t(($) => $.researchTools.labSearch.noResultsEyebrow)
+                : t(($) => $.researchTools.labSearch.gettingStarted)}
             </p>
             <h2 className="mt-2.5 text-2xl font-semibold tracking-tight">
               {noResults
-                ? "No institutions match the current search."
-                : "Search by institution name, acronym, or location."}
+                ? t(($) => $.researchTools.labSearch.noResultsHeading)
+                : t(($) => $.researchTools.labSearch.startHeading)}
             </h2>
             <p className="mt-3 text-base leading-relaxed text-muted-foreground">
               {noResults
-                ? "Try a shorter name, remove the country filter, or search for the institution's parent organization."
-                : "Lab Search returns universities, hospitals, government institutes, companies, and independent research organizations listed by OpenAlex."}
+                ? t(($) => $.researchTools.labSearch.noResultsBody)
+                : t(($) => $.researchTools.labSearch.startBody)}
             </p>
           </div>
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Institution examples
+              {t(($) => $.researchTools.labSearch.examples)}
             </p>
             <div className="flex flex-col items-start gap-1">
               {SUGGESTIONS.map((suggestion, index) => (
@@ -439,11 +448,11 @@ function EmptyLabSearch({
                   className="group flex w-full items-center gap-3 border-b border-border/60 py-2.5 text-left text-sm text-muted-foreground transition-colors last:border-b-0 hover:text-foreground"
                 >
                   <span className="font-mono text-[11px] text-muted-foreground/60">
-                    0{index + 1}
+                    {`0${index + 1}`}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
-                      {suggestion.domain}
+                      {suggestion.domain()}
                     </span>
                     <span className="mt-0.5 block text-foreground/85">
                       {suggestion.query}
@@ -461,6 +470,7 @@ function EmptyLabSearch({
 }
 
 export function LabSearchPanel() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const offline = useSettingsStore((state) => state.offline);
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
@@ -483,9 +493,7 @@ export function LabSearchPanel() {
       const searchTerm = nextQuery.trim();
       if (!searchTerm) return;
       if (offline) {
-        setError(
-          "Offline mode is enabled. Lab Search requires network access.",
-        );
+        setError(i18n.t(($) => $.researchTools.labSearch.offline));
         return;
       }
 
@@ -506,11 +514,13 @@ export function LabSearchPanel() {
         if (!response.ok) {
           if (response.status === 429) {
             throw new Error(
-              "OpenAlex is receiving too many requests. Wait a moment and try again.",
+              i18n.t(($) => $.researchTools.labSearch.errorRateLimited),
             );
           }
           throw new Error(
-            `OpenAlex could not complete the search. HTTP ${response.status}.`,
+            i18n.t(($) => $.researchTools.labSearch.errorHttp, {
+              status: response.status,
+            }),
           );
         }
         const parsed = parseInstitutionSearchResult(await response.json());
@@ -527,10 +537,10 @@ export function LabSearchPanel() {
         if (abortRef.current !== controller) return;
         setError(
           searchError instanceof TypeError
-            ? "Could not reach OpenAlex. Check your connection and try again."
+            ? i18n.t(($) => $.researchTools.labSearch.errorNetwork)
             : searchError instanceof Error
               ? searchError.message
-              : "OpenAlex could not complete the search.",
+              : i18n.t(($) => $.researchTools.labSearch.errorUnknown),
         );
       } finally {
         if (abortRef.current === controller) {
@@ -568,20 +578,18 @@ export function LabSearchPanel() {
         <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-6">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              Lab Search
+              {t(($) => $.researchTools.labSearch.eyebrow)}
             </p>
             <span className="h-4 w-px bg-border" />
             <span className="text-[11px] text-muted-foreground">
-              OpenAlex institution directory
+              {t(($) => $.researchTools.labSearch.directory)}
             </span>
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-            Find research institutions worldwide
+            {t(($) => $.researchTools.labSearch.heading)}
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Search institutional records and compare publication and citation
-            counts. Open a website, ROR record, or OpenAlex profile for more
-            detail.
+            {t(($) => $.researchTools.labSearch.intro)}
           </p>
 
           <form
@@ -592,8 +600,8 @@ export function LabSearchPanel() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by institution name, acronym, or location"
-              aria-label="Search research institutions"
+              placeholder={t(($) => $.researchTools.labSearch.searchPlaceholder)}
+              aria-label={t(($) => $.researchTools.labSearch.searchAria)}
               className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
             />
             <Button
@@ -607,23 +615,25 @@ export function LabSearchPanel() {
                 <Search />
               )}
               <span className="hidden sm:inline">
-                {busy ? "Searching" : "Search"}
+                {busy
+                  ? t(($) => $.researchTools.labSearch.searching)
+                  : t(($) => $.researchTools.labSearch.search)}
               </span>
             </Button>
           </form>
 
           <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Country
+              {t(($) => $.researchTools.labSearch.countryLabel)}
               <Select value={country} onValueChange={chooseCountry}>
                 <SelectTrigger
                   className="h-9 w-48 bg-background text-sm font-normal normal-case tracking-normal"
-                  aria-label="Country filter"
+                  aria-label={t(($) => $.researchTools.labSearch.countryAria)}
                 >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {COUNTRIES.map(([code, label]) => (
+                  {COUNTRY_CODES.map((code) => (
                     <SelectItem key={code} value={code}>
                       <span className="inline-flex items-center gap-2">
                         {code !== "all" && (
@@ -631,7 +641,7 @@ export function LabSearchPanel() {
                             {countryFlag(code)}
                           </span>
                         )}
-                        {label}
+                        {countryLabel(code)}
                       </span>
                     </SelectItem>
                   ))}
@@ -640,14 +650,14 @@ export function LabSearchPanel() {
             </div>
             <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary sm:self-auto">
               <Check className="size-3.5" />
-              OpenAlex
+              {t(($) => $.researchTools.labSearch.openAlex)}
             </div>
           </div>
 
           {offline && (
             <div className="mt-3 flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              Offline mode is enabled. Lab Search requires network access.
+              {t(($) => $.researchTools.labSearch.offline)}
             </div>
           )}
           {error && (
@@ -673,11 +683,21 @@ export function LabSearchPanel() {
               aria-live="polite"
             >
               <p className="text-sm font-medium">
-                {results.length} institutions shown
+                {t(($) => $.researchTools.labSearch.resultCount, {
+                  count: results.length,
+                })}
               </p>
               <p className="text-xs text-muted-foreground">
-                {total.toLocaleString()} matches for “{submittedQuery}”
-                {country !== "all" ? ` in ${countryLabel(country)}` : ""}
+                {country === "all"
+                  ? t(($) => $.researchTools.labSearch.matches, {
+                      total: formatNumber(total),
+                      query: submittedQuery,
+                    })
+                  : t(($) => $.researchTools.labSearch.matchesInCountry, {
+                      total: formatNumber(total),
+                      query: submittedQuery,
+                      country: countryLabel(country),
+                    })}
               </p>
             </div>
             <div className="grid gap-4 py-4 md:grid-cols-2">
@@ -690,7 +710,7 @@ export function LabSearchPanel() {
             </div>
             <div className="flex items-center gap-2 border-t py-4 text-xs text-muted-foreground">
               <Landmark className="size-3.5 text-primary" />
-              Publication and citation counts are supplied by OpenAlex.
+              {t(($) => $.researchTools.labSearch.attribution)}
             </div>
           </div>
         )}

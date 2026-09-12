@@ -8,6 +8,7 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { editorMessage } from "./messages";
 
 /**
  * The hover card shown for every editor diagnostic.
@@ -69,6 +70,27 @@ function iconElement(icon: ProofreadingCardIcon): SVGSVGElement {
     svg.append(path);
   }
   return svg;
+}
+
+const SLOT = "\u0000";
+
+function appendEmphasized(
+  target: HTMLElement,
+  template: string,
+  value: string,
+): void {
+  const strong = document.createElement("strong");
+  strong.textContent = value;
+  const slot = template.indexOf(SLOT);
+  if (slot < 0) {
+    target.append(template, strong);
+    return;
+  }
+  target.append(
+    template.slice(0, slot),
+    strong,
+    template.slice(slot + SLOT.length),
+  );
 }
 
 export interface ProofreadingCard {
@@ -164,18 +186,20 @@ function renderCard(
   headerText.className = "cm-proofread-header-text";
   const spelling = isSpellingDiagnosticKind(card.kind);
   if (spelling && card.word && card.suggestions.length > 0) {
-    headerText.append("Did you mean ");
-    const strong = document.createElement("strong");
-    strong.textContent = card.suggestions[0].label;
-    headerText.append(strong, "?");
+    appendEmphasized(
+      headerText,
+      editorMessage("spellcheck.didYouMean", { suggestion: SLOT }),
+      card.suggestions[0].label,
+    );
   } else if (!spelling || card.message) {
     headerText.classList.add("is-message");
     headerText.textContent = card.message ?? "";
   } else {
-    headerText.append("Not in dictionary: ");
-    const strong = document.createElement("strong");
-    strong.textContent = card.word;
-    headerText.append(strong);
+    appendEmphasized(
+      headerText,
+      editorMessage("spellcheck.notInDictionary", { word: SLOT }),
+      card.word,
+    );
   }
   header.append(dot, headerText);
   root.append(header);

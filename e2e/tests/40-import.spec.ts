@@ -52,8 +52,8 @@ test("PDF converts locally in the converter view", async ({ tauriPage }) => {
   const stats = await tauriPage.evaluate<string>(
     `document.querySelector('[data-testid="import-stats"]')?.textContent ?? ""`,
   );
-  expect(stats).toContain("1 pages");
-  expect(stats).toContain("1 figures");
+  expect(stats).toContain("1 page");
+  expect(stats).toContain("1 figure");
   await expect(tauriPage.locator('[data-testid="import-figure-figure_p1_1.png"]')).toBeVisible();
 });
 

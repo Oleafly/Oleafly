@@ -4,24 +4,47 @@ import { ensurePandoc } from "@/features/pandoc";
 import { importArxivEprint, importDocument, type ImportTarget } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
-import { CONVERSION_NOTICE } from "@/features/import-copy";
+import { conversionNotice } from "@/features/import-copy";
+import { i18n } from "@/i18n";
 import { importRoutes, type SourceFormat } from "@oleafly/conversion-registry";
 
 export const IMPORT_FILE_SOURCES = [
-  { kind: "project", title: "Existing project", extensions: ["zip"], description: "A .zip archive of a project folder." },
-  { kind: "word", title: "Word document", extensions: ["docx"], description: "Convert .docx to LaTeX, Markdown, or Typst." },
-  { kind: "markdown", title: "Markdown document", extensions: ["md", "markdown"], description: "Convert Markdown to LaTeX or Typst." },
-  { kind: "html", title: "HTML page", extensions: ["html", "htm"], description: "Convert HTML to LaTeX, Markdown, or Typst." },
-  { kind: "typst", title: "Typst document", extensions: ["typ"], description: "Convert Typst to LaTeX or Markdown." },
+  { kind: "project", extensions: ["zip"] },
+  { kind: "word", extensions: ["docx"] },
+  { kind: "markdown", extensions: ["md", "markdown"] },
+  { kind: "html", extensions: ["html", "htm"] },
+  { kind: "typst", extensions: ["typ"] },
 ] as const;
 
 export function importPickerOptions(kind: ProjectImportFileKind) {
   const source = IMPORT_FILE_SOURCES.find((item) => item.kind === kind);
-  if (!source) throw new Error("Choose one of the supported document types.");
+  if (!source) throw new Error(i18n.t(($) => $.core.import.supportedDocumentTypes));
+  const copy = {
+    project: {
+      filter: i18n.t(($) => $.library.import.picker.projectFilter),
+      title: i18n.t(($) => $.library.import.picker.projectTitle),
+    },
+    word: {
+      filter: i18n.t(($) => $.library.import.picker.wordFilter),
+      title: i18n.t(($) => $.library.import.picker.wordTitle),
+    },
+    markdown: {
+      filter: i18n.t(($) => $.library.import.picker.markdownFilter),
+      title: i18n.t(($) => $.library.import.picker.markdownTitle),
+    },
+    html: {
+      filter: i18n.t(($) => $.library.import.picker.htmlFilter),
+      title: i18n.t(($) => $.library.import.picker.htmlTitle),
+    },
+    typst: {
+      filter: i18n.t(($) => $.library.import.picker.typstFilter),
+      title: i18n.t(($) => $.library.import.picker.typstTitle),
+    },
+  }[kind];
   return {
     multiple: false as const,
-    filters: [{ name: source.title, extensions: [...source.extensions] }],
-    title: `Import ${source.title.toLowerCase()}`,
+    filters: [{ name: copy.filter, extensions: [...source.extensions] }],
+    title: copy.title,
   };
 }
 
@@ -48,7 +71,11 @@ export function importTargetsForKind(
 ): { target: ImportTarget; label: string; recommended?: boolean }[] {
   if (kind === "project") return [];
   const source: SourceFormat = kind === "word" ? "docx" : kind;
-  const labels = { latex: "LaTeX project", markdown: "Markdown project", typst: "Typst project" };
+  const labels = {
+    latex: i18n.t(($) => $.library.import.targets.latex),
+    markdown: i18n.t(($) => $.library.import.targets.markdown),
+    typst: i18n.t(($) => $.library.import.targets.typst),
+  };
   return importRoutes().filter((route) => route.source === source && route.pandoc)
     .flatMap((route) => {
       const target = route.target;
@@ -63,9 +90,7 @@ export async function importSelectedFile(
   target?: ImportTarget,
 ): Promise<boolean> {
   const kind = importFileKind(path);
-  if (!kind) {
-    throw new Error("Choose a .zip, .docx, .md, .html, .htm, or .typ file.");
-  }
+  if (!kind) throw new Error(i18n.t(($) => $.core.import.unsupportedFile));
 
   const files = useFilesStore.getState();
   if (kind === "project") {
@@ -75,13 +100,13 @@ export async function importSelectedFile(
 
   const selectedTarget = target ?? "latex";
   if (!importTargetsForKind(kind).some((option) => option.target === selectedTarget)) {
-    throw new Error("Choose one of the project types offered for this file.");
+    throw new Error(i18n.t(($) => $.core.import.chooseOfferedProjectType));
   }
   if (!(await ensurePandoc())) return false;
   const projectId = await importDocument(path, selectedTarget);
   await files.refreshProjects();
   await files.openProject(projectId);
-  toast.success(CONVERSION_NOTICE);
+  toast.success(conversionNotice());
   return true;
 }
 
@@ -94,11 +119,11 @@ export function normalizeArxivImportId(input: string): string {
       if (url.hostname !== "arxiv.org" && url.hostname !== "www.arxiv.org" && url.hostname !== "export.arxiv.org") throw new Error();
       id = url.pathname.replace(/^\/(?:abs|pdf|src|e-print)\//, "").replace(/\.pdf$/, "");
     } catch {
-      throw new Error("Paste an arXiv paper link or an id such as 2301.01234.");
+      throw new Error(i18n.t(($) => $.core.import.invalidArxivId));
     }
   }
   if (!/^(?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[a-z]{2})?\/\d{7})(?:v[1-9]\d*)?$/i.test(id)) {
-    throw new Error("Paste an arXiv paper link or an id such as 2301.01234.");
+    throw new Error(i18n.t(($) => $.core.import.invalidArxivId));
   }
   return id;
 }
@@ -109,7 +134,7 @@ export async function importArxivPaper(arxivId: string): Promise<boolean> {
   const files = useFilesStore.getState();
   await files.refreshProjects();
   await files.openProject(projectId);
-  toast.success("arXiv source imported. Compile the project to check the result.");
+  toast.success(i18n.t(($) => $.core.import.arxivImported));
   return true;
 }
 
@@ -118,5 +143,5 @@ export async function importGitHubRepository(repository: GitHubRepo): Promise<vo
   const files = useFilesStore.getState();
   await files.refreshProjects();
   await files.openProject(projectId);
-  toast.success("Project imported.");
+  toast.success(i18n.t(($) => $.core.project.imported));
 }

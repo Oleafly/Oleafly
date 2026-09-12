@@ -25,9 +25,10 @@ vi.mock("@/components/library/ProjectImportMenu", () => ({
   }) => trigger(false),
 }));
 vi.mock("@/components/library/Book", () => ({
-  Book: () => <div>Project card</div>,
+  Book: () => <div>{"Project card"}</div>,
   BOOK_COLOR_OPTIONS: ["#287fd1"],
   DEFAULT_BOOK_COLOR: "#287fd1",
+  useBookColorLabels: () => ({}),
 }));
 vi.mock("@/lib/tauri", () => ({
   appendAppLog: vi.fn(async () => {}),
@@ -40,6 +41,7 @@ vi.mock("@/lib/pdf-image", () => ({
   pdfPageToPng: vi.fn(async () => "data:image/png;base64,preview"),
 }));
 
+import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { Library } from "./Library";
 import { useFavoritesStore } from "@/store/favorites";
 import { useFilesStore } from "@/store/files";
@@ -327,7 +329,7 @@ describe("Library bookmark filters", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "PDF preview — Research paper",
+        name: enLibrary.projects.preview.title.replace("{{name}}", "Research paper"),
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toHaveClass("max-w-[54rem]");

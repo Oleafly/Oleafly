@@ -1,0 +1,739 @@
+{
+  "runtime": {
+    "ariaLabel": "Assistant runtime",
+    "builtIn": "Oleafly Agent",
+    "cli": "CLI Agent"
+  },
+  "shell": {
+    "float": "Float the assistant",
+    "floatAriaLabel": "Float the assistant over the app",
+    "overlayTitle": "AI assistant",
+    "dockAriaLabel": "Dock chat back to the sidebar",
+    "floatingNotice": "The assistant is floating over the app.",
+    "dockBack": "Dock it back",
+    "loadingAgents": "Loading agents…",
+    "openProjectForCli": "Open a project to work with a CLI agent."
+  },
+  "minimap": {
+    "ariaLabel": "Conversation turns",
+    "jumpTo": "Jump to: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "Ask for approval",
+        "description": "Ask before file edits, internet access, and commands."
+      },
+      "approveForMe": {
+        "label": "Approve for me",
+        "description": "Ask only before actions classified as risky."
+      },
+      "fullAccess": {
+        "label": "Full access",
+        "description": "Run tool actions without asking for approval."
+      },
+      "custom": {
+        "label": "Custom (approvals.toml)",
+        "description": "Use the rules in approvals.toml. Edit them under Settings, AI Assistant."
+      }
+    },
+    "selectorAriaLabel": "Approval mode. {{mode}}",
+    "editProjectRules": "Edit project rules",
+    "confirm": {
+      "command": "Confirm command",
+      "externalTool": "Confirm external tool action",
+      "internet": "Confirm internet access",
+      "edit": "Confirm AI edit"
+    },
+    "headline": {
+      "command": "The assistant wants to run this command",
+      "externalTool": "The assistant wants to use an external tool",
+      "internet": "The assistant wants to access the internet",
+      "edit": "The assistant wants to change your files"
+    },
+    "mcpNote": "This sends the arguments below to the configured MCP server.",
+    "line": "line {{line}}",
+    "sessionAutoApprove": "Session auto-approve is on for writes (deletes still need a click).",
+    "commandLabel": "Command",
+    "workingDirectory": "Working directory",
+    "mcpServer": "MCP server",
+    "toolLabel": "Tool",
+    "arguments": "Arguments",
+    "figureAlt": "Figure preview",
+    "firstChange": "first change · L{{line}}",
+    "reject": "Reject",
+    "alwaysInProject": "Always in this project",
+    "alwaysInProjectAriaLabel": "Always allow in this project",
+    "alwaysAllow": "Always allow",
+    "approve": "Approve",
+    "external": {
+      "title": "External agent request (MCP)",
+      "moreWaiting_one": "{{count}} more waiting",
+      "moreWaiting_other": "{{count}} more waiting"
+    }
+  },
+  "attachments": {
+    "remove": "Remove {{name}}"
+  },
+  "chat": {
+    "pill": {
+      "plan": "PLAN",
+      "step": "STEP {{current}}/{{total}}",
+      "review": "REVIEW"
+    },
+    "plan": {
+      "detailsAriaLabel": "Plan details",
+      "headingPlan": "Plan",
+      "headingChanges": "Changes",
+      "approve": "Approve plan",
+      "revise": "Revise",
+      "statusAwaiting": "Awaiting approval",
+      "statusApproved": "Approved"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "completed",
+        "inProgress": "in progress",
+        "pending": "pending",
+        "cancelled": "cancelled"
+      }
+    },
+    "fileChanges": {
+      "changed": "Changed",
+      "committed": "Committed {{commit}}"
+    },
+    "runSummary": {
+      "plan": "Plan",
+      "stepsDone": "{{done}}/{{total}} done",
+      "filesChanged_one": "{{count}} file changed",
+      "filesChanged_other": "{{count}} files changed"
+    },
+    "copyMessage": "Copy message",
+    "exploration": {
+      "explored": "Explored",
+      "exploredItems": "Explored {{items}}",
+      "files_one": "a file",
+      "files_other": "{{count}} files",
+      "searches_one": "a search",
+      "searches_other": "{{count}} searches",
+      "lists_one": "a list",
+      "lists_other": "{{count}} lists"
+    },
+    "reasoning": {
+      "thinking": "Thinking…",
+      "thoughtFor": "Thought for {{seconds}}s",
+      "label": "Reasoning"
+    },
+    "subagent": {
+      "finished": "Finished",
+      "failed": "Failed",
+      "stopped": "Stopped",
+      "usingTool": "Using {{tool}}",
+      "working": "Working on it",
+      "errorBody": "The agent could not complete this task.",
+      "stoppedBody": "The task was stopped before it answered.",
+      "openTask": "Open task"
+    },
+    "workedSteps": {
+      "duration": "Worked for {{seconds}}s",
+      "steps_one": "Worked through {{count}} step",
+      "steps_other": "Worked through {{count}} steps"
+    },
+    "steered": "Steered",
+    "toolOutputError": "Error: {{message}}",
+    "errorHints": {
+      "invalidKey": "Your API key looks invalid or expired. Update it in Settings → AI Assistant, or switch providers {{where}}.",
+      "outOfCredits": "Your AI provider is out of credits or quota. Top up the account, or switch to another provider (or local Ollama) {{where}}.",
+      "overloaded": "The provider's servers are overloaded right now (this was already retried). Wait a minute and try again, or switch to a sibling model {{where}}.",
+      "rateLimited": "The provider is rate-limiting requests. Wait a moment and retry, or switch providers {{where}}.",
+      "retiredModel": "The provider retired or restricted this model. Pick a newer model {{where}} (Settings → AI Assistant lists what your key can use).",
+      "unreachable": "Couldn't reach the AI provider. Check your connection, or if you're using Ollama, make sure it's running (Settings → AI Assistant → Check for Ollama).",
+      "where": {
+        "inSettings": "in Settings, AI Assistant",
+        "modelMenu": "from the model menu above"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "Add context",
+    "mentionMenuAgentsAndFiles": "Agents and project files",
+    "mentionMenuFiles": "Project files",
+    "mentionHeadingAgents": "Delegate to an agent",
+    "mentionHeadingFiles": "Project files",
+    "slashMenuAriaLabel": "Slash commands",
+    "placeholderEngineUnavailable": "Document engine unavailable. AI editing disabled",
+    "placeholderDefault": "Ask AI to help with your document…",
+    "planRevisionPlaceholder": "Describe what to change in the plan",
+    "prompts": "Prompts",
+    "promptShortcutsAriaLabel": "Prompt shortcuts",
+    "persona": "Persona",
+    "personaActiveTooltip": "{{name}} is active and replaces your default instructions.",
+    "personaChoose": "Choose persona",
+    "personaActiveAriaLabel": "Persona. {{name}} active and replacing default instructions.",
+    "personaCreate": "Create a persona in Settings",
+    "personaNone": "None",
+    "planModeOn": "Plan mode on",
+    "planModeOff": "Plan mode off",
+    "planModeAriaLabel": "Plan mode",
+    "plan": "Plan",
+    "planModeInfo": "About plan mode",
+    "planModeHint": "Plan mode: the assistant proposes a plan before editing. Turn Plan off to give the assistant direct access to all tools.",
+    "stop": "Stop",
+    "stopTitle": "Stop generating",
+    "send": "Send",
+    "checkAgain": "Check again"
+  },
+  "commands": {
+    "groups": {
+      "skills": "Skills"
+    },
+    "archive": {
+      "label": "Archive",
+      "description": "Archive this chat"
+    },
+    "forkChat": {
+      "label": "Fork chat",
+      "description": "Create a new chat from this conversation"
+    },
+    "goal": {
+      "label": "Goal",
+      "description": "Set what the assistant should keep working toward"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "View connected MCP servers and their status"
+    },
+    "model": {
+      "label": "Model",
+      "description": "Choose the model for this chat"
+    },
+    "planMode": {
+      "enableLabel": "Enable Plan Mode",
+      "disableLabel": "Disable Plan Mode",
+      "description": "Turn structured planning on or off"
+    },
+    "recordSkill": {
+      "label": "Record a skill",
+      "description": "Save this chat's approach as an editable draft"
+    },
+    "files": {
+      "label": "Files",
+      "description": "Attach files to your next message"
+    },
+    "browser": {
+      "label": "Attach browser",
+      "description": "Open the browser beside your document"
+    }
+  },
+  "models": {
+    "ariaLabel": "AI model",
+    "placeholder": "Select a model",
+    "triggerTooltip": "{{model}}. Switch provider or model",
+    "searchLabel": "Search models",
+    "searchPlaceholder": "Search models…",
+    "emptyTitle": "No models found",
+    "emptyHint": "Try a different search.",
+    "trust": {
+      "verified": "Verified",
+      "untested": "Untested",
+      "blocked": "Blocked"
+    },
+    "trustTitle": {
+      "verified": "Oleafly has run the assistant on this model",
+      "untested": "Not tried with the assistant yet. It is checked on first use",
+      "blocked": "The assistant cannot run on this model"
+    },
+    "chatOnlyHint": "Chat only, this model cannot use tools",
+    "checkingHint": "Checking this model",
+    "blockedWithReason": "This model is blocked for the assistant: {{reason}}",
+    "blocked": "This model is blocked for the assistant.",
+    "probeFailedWithDetail": "Could not check this model. {{detail}}",
+    "probeFailed": "Could not check this model."
+  },
+  "history": {
+    "title": "Chat history",
+    "closeBackdrop": "Close chat history",
+    "searchLabel": "Search chats",
+    "searchPlaceholder": "Search titles and messages",
+    "emptyProject": "No saved chats for this project yet.",
+    "emptySearch": "No chats match that search.",
+    "untitled": "New chat",
+    "staleTitle": "This chat was started from an older version of the project",
+    "staleBadge": "older version",
+    "messages_one": "{{count}} msg",
+    "messages_other": "{{count}} msgs",
+    "tokens": "~{{amount}} tok",
+    "deleteAriaLabel": "Delete {{title}}",
+    "deleteFallbackTitle": "chat",
+    "deleteTitle": "Delete chat",
+    "relative": {
+      "justNow": "just now",
+      "minutes": "{{count}}m ago",
+      "hours": "{{count}}h ago",
+      "days": "{{count}}d ago"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "Never",
+      "everyTime": "Every time, in the chat",
+      "askModeOnly": "Only in Ask for approval mode",
+      "unlessAllowed": "Yes, unless allowed for the project"
+    },
+    "catalog": {
+      "readFile": "Read a project file, a slice at a time for long ones.",
+      "writeFile": "Write a whole file, replacing what was there.",
+      "replaceInFile": "Find an exact passage in a file and replace it.",
+      "createFile": "Create a new file or folder in the project.",
+      "renameFile": "Rename or move a file or folder.",
+      "deleteFile": "Delete a file or folder.",
+      "listFiles": "List every file and folder in the project.",
+      "searchProject": "Search the project's text and get file and line hits.",
+      "projectMap": "Read the document's outline: sections, labels, citation keys, macros, inputs, and anything unresolved.",
+      "showLocation": "Open a file at a line in the editor and move the PDF preview to that spot.",
+      "compile": "Compile the project with its engine and report errors.",
+      "getLog": "Read the last compile log.",
+      "getPdfText": "Read the text of the compiled PDF page by page.",
+      "verifyPdfPages": "Render compiled pages as images so a vision model can check the layout.",
+      "setMainDoc": "Change which file the project compiles from.",
+      "literatureSearch": "Search OpenAlex for papers by keyword, no key needed.",
+      "verifyCitation": "Turn a DOI or a title into verified BibTeX through doi.org or Crossref.",
+      "projectLibrarySearch": "Search the project's own text and notes by keyword.",
+      "alphaxivSearch": "Search arXiv papers through alphaXiv.",
+      "alphaxivPaperContent": "Fetch the full text of an arXiv paper through alphaXiv.",
+      "previewFigure": "Compile a TikZ or PGFPlots figure on its own and show the result in the chat.",
+      "insertFigure": "Insert the finished figure at the cursor with a caption and label, and save a PNG under figures/.",
+      "loadImage": "Look at an image that is already in the project.",
+      "updateTodos": "Write or update the step by step plan shown in the chat.",
+      "getTodos": "Read the current plan.",
+      "rememberNote": "Save a project note that later chats will see.",
+      "forgetNote": "Remove a saved project note.",
+      "listNotes": "List the saved project notes.",
+      "loadSkill": "Load the full instructions of one skill before following it.",
+      "readSkillFile": "Read a reference file or script that ships with a skill.",
+      "spawnAgent": "Start a helper agent with its own task and tools.",
+      "sendMessage": "Send a message to a running helper agent.",
+      "followupTask": "Give a helper agent another task after it finishes.",
+      "waitAgent": "Wait for a helper agent to finish and read its result.",
+      "interruptAgent": "Stop what a helper agent is doing.",
+      "listAgents": "List the helper agents and their state.",
+      "closeAgent": "Close a helper agent.",
+      "runCommand": "Run a shell command in the project folder, with a two minute limit.",
+      "computerUse": "Open a web page in the assistant's browser window.",
+      "toggleTheme": "Switch between light and dark mode."
+    },
+    "disableAll": "Disable all",
+    "emptyContext": "No tools are available in this context.",
+    "enableAll": "Enable all",
+    "enableTool": "Enable {{name}}",
+    "enabledCount": "{{enabled}} of {{total}} enabled",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "Agents",
+      "buildAndPdf": "Build and PDF",
+      "figures": "Figures",
+      "files": "Files",
+      "planAndMemory": "Plan and memory",
+      "research": "Research",
+      "skills": "Skills",
+      "system": "System"
+    },
+    "managerAriaLabel": "Manage agent tools",
+    "managerHeading": "Tools",
+    "managerTooltip": "Tools",
+    "noDescription": "No description provided.",
+    "notes": {
+      "latexOnly": "LaTeX projects only",
+      "pdfCaptureSetting": "Needs the PDF page capture setting",
+      "alphaxivKey": "Needs an alphaXiv key in Integrations",
+      "chatApproval": "Approved in the chat, one command at a time",
+      "browserSetting": "Needs the web browser setting"
+    },
+    "sourceGroups": {
+      "figure": "Figure",
+      "mcp": "MCP",
+      "project": "Project tools",
+      "skills": "Skills"
+    },
+    "table": {
+      "tool": "Tool",
+      "whatItDoes": "What it does",
+      "asksFirst": "Asks first"
+    }
+  },
+  "toolCard": {
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "binaryPreview": "This linked file is binary, so it cannot be previewed here.",
+    "previewTruncated": "Preview stopped at 256 KiB.",
+    "previewFailed": "This linked source could not be previewed.",
+    "showAll": "Show all {{characters}} characters",
+    "loadingSource": "Loading source",
+    "inspectSource": "Inspect source",
+    "openFile": "Open file",
+    "openSource": "Open source",
+    "openSourceTitled": "Open source: {{title}}",
+    "openTask": "Open task",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "Rendered figure preview",
+    "toolImageAlt": "Image from the tool",
+    "showFigure": "Show the rendered figure",
+    "showTikz": "Show the TikZ source",
+    "figureTab": "Figure",
+    "tikzTab": "TikZ",
+    "saving": "Saving",
+    "saveToProject": "Save to project",
+    "copyCode": "Copy code",
+    "saved": "Saved {{path}}",
+    "saveNeedsProject": "Open a project to save this figure.",
+    "saveFailed": "The figure could not be saved."
+  },
+  "transcript": {
+    "dialogTitle": "Delegated task transcript",
+    "dialogDescription": "Everything the delegated agent read, ran, and answered while it worked on this task.",
+    "loading": "Loading transcript",
+    "failed": "The transcript could not be loaded.",
+    "empty": "This task did not record a transcript."
+  },
+  "subagents": {
+    "working": "Subagents working",
+    "count": "Subagents ({{count}})",
+    "stopAll": "Stop all",
+    "stopFailed": "The subagents could not be stopped.",
+    "updates": "{{count}} updates",
+    "openTask": "Open task",
+    "awaitingPermission": "A delegated agent is waiting for permission.",
+    "taskFailed": "A delegated task failed. Open it to read the error.",
+    "transcriptTruncated": "This transcript is longer than the section shown here.",
+    "noTranscriptYet": "This task has not reported any transcript activity yet.",
+    "noSessionInfo": "This task did not record enough session information to open its transcript.",
+    "loadingTranscript": "Loading transcript…",
+    "transcriptFailed": "The transcript could not be loaded.",
+    "stillWorking": "This subagent is still working. Its full transcript opens when it finishes.",
+    "noFinalAnswer": "This agent did not record a final answer.",
+    "latest": "Latest: {{text}}",
+    "workingDetail": "working",
+    "status": {
+      "active": "working",
+      "awaiting": "needs permission",
+      "updated": "updated",
+      "interrupted": "stopped",
+      "completed": "done",
+      "failed": "failed"
+    }
+  },
+  "acp": {
+    "newConversation": "New conversation",
+    "savedConversations": "Saved conversations",
+    "untitledConversation": "Untitled conversation",
+    "agentSetup": "Agent setup",
+    "usageReport": "Usage report",
+    "permission": {
+      "ariaLabel": "Agent permission",
+      "namedHeadline": "{{agent}} needs permission",
+      "headline": "The agent needs permission",
+      "expired": "This request expired. Ask the agent to try again.",
+      "dismiss": "Dismiss"
+    },
+    "readiness": {
+      "managedBridge": "Bridge {{version}} installed by Oleafly.",
+      "bridgeOnPath": "Bridge found on PATH.",
+      "bridgeMissingWithCli": "{{cli}} found at {{path}}. Install the ACP bridge {{version}} to connect.",
+      "bridgeMissing": "Install the ACP bridge {{version}} to connect this agent.",
+      "cliMissing": "{{cli}} is not on your PATH. Install it, then run {{command}}.",
+      "cliNotFound": "This agent's command line tool was not found.",
+      "unavailable": "This agent cannot run on this computer."
+    },
+    "bridgeSource": {
+      "notInstalled": "Not installed",
+      "managed": "Managed by Oleafly",
+      "onPath": "On PATH"
+    },
+    "installing": "Installing",
+    "installBridge": "Install bridge",
+    "assistantAriaLabel": "CLI agent assistant",
+    "loadEarlier": "Load earlier activity",
+    "starting": "Starting {{agent}}",
+    "startingFallback": "the agent",
+    "startingHint": "The agent's command line tool is launching. This takes a few seconds the first time.",
+    "readySubtitle": "{{agent}} is ready in this project",
+    "projectSubtitle": "Working on \"{{project}}\"",
+    "signInFallback": "Sign in using this agent's CLI, then reconnect.",
+    "reconnectAfterSignIn": "Reconnect after sign-in",
+    "reconnect": "Reconnect to conversation",
+    "resumeTask": "Open the research task to resume this work.",
+    "delegatedConversation": "This conversation belongs to a delegated agent run.",
+    "noResume": "This agent cannot resume saved conversations. Start a new conversation when you are ready.",
+    "imageTooLarge": "Choose an image smaller than 480 KiB. You can attach up to four images.",
+    "imageReadFailed": "The image could not be read.",
+    "removeImage": "Remove {{name}}",
+    "composerAriaLabel": "Message CLI agent",
+    "composerPlaceholderReady": "Ask the agent to work on this project",
+    "composerPlaceholderIdle": "Start or reconnect a conversation to send a message",
+    "attachImage": "Attach image",
+    "startConversation": "Start a conversation with {{agent}}",
+    "startConversationFallback": "an agent",
+    "agentModel": "Agent model",
+    "modelManaged": "Model managed by the agent",
+    "stop": "Stop",
+    "stopTitle": "Stop the agent",
+    "send": "Send",
+    "connecting": "Connecting",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "connecting",
+      "authRequired": "auth required",
+      "ready": "ready",
+      "running": "running",
+      "cancelling": "cancelling",
+      "cancelled": "cancelled",
+      "disconnected": "disconnected",
+      "failed": "failed"
+    },
+    "roster": {
+      "bridgeMissing": "install the bridge in Agent setup",
+      "cliMissing": "CLI not found on this computer",
+      "unavailable": "not available on this computer",
+      "comingSoon": "coming soon"
+    },
+    "messageTooLarge": "This message and its images are too large. Shorten the message or remove an image.",
+    "terminalCommand": "The agent is running a terminal command.",
+    "agentToolFallback": "Agent tool",
+    "agentReported": "The agent reported: {{detail}}",
+    "imageAttachmentName": "Image {{index}}",
+    "agentImage": "[The agent returned an image.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "CLI agent",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "not installed",
+    "cliDetail": "CLI agent · uses its own account",
+    "builtInDetail": "{{provider}} · Oleafly agent"
+  },
+  "home": {
+    "heading": "What would you like to do today?",
+    "headingAccent": "do today?",
+    "skillCategories": "Skill categories",
+    "skillLockedTitle": "{{name}} is turned off for this project",
+    "recentChats": "Recent chats",
+    "recentStaleTitle": "Started from an older version of the project",
+    "recentUntitled": "New chat",
+    "recentStaleBadge": "Older version",
+    "recentMessages_one": "{{count}} msg",
+    "recentMessages_other": "{{count}} msgs",
+    "showAllHistory": "Show all history ({{count}})"
+  },
+  "research": {
+    "noSourceLink": "This result does not include a source link.",
+    "sourceOpenFailed": "The source could not be opened.",
+    "noProjectPath": "This result does not contain a project file path.",
+    "resultOpenFailed": "The result file could not be opened."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "Write & edit",
+      "citationsAndLiterature": "Citations & literature",
+      "review": "Review",
+      "figuresAndTables": "Figures & tables"
+    },
+    "improveWriting": {
+      "label": "Improve writing",
+      "description": "Polish clarity, tone and flow"
+    },
+    "fixGrammar": {
+      "label": "Fix grammar",
+      "description": "Correct grammar and punctuation"
+    },
+    "fixLatexErrors": {
+      "label": "Fix LaTeX errors",
+      "description": "Repair broken code and compile errors"
+    },
+    "writeEquation": {
+      "label": "Write equation",
+      "description": "Natural language to LaTeX math"
+    },
+    "draftSection": {
+      "label": "Draft a section",
+      "description": "Write a new section in your style"
+    },
+    "paraphrase": {
+      "label": "Paraphrase",
+      "description": "Reword while keeping meaning"
+    },
+    "shorten": {
+      "label": "Shorten",
+      "description": "Make text more concise"
+    },
+    "expand": {
+      "label": "Expand",
+      "description": "Elaborate with detail"
+    },
+    "journalFormat": {
+      "label": "Journal format",
+      "description": "Reformat for a target venue"
+    },
+    "writeAbstract": {
+      "label": "Write abstract",
+      "description": "Draft an abstract from the paper"
+    },
+    "generateTitle": {
+      "label": "Generate title",
+      "description": "Compelling paper titles"
+    },
+    "keywords": {
+      "label": "Keywords",
+      "description": "Extract searchable keywords"
+    },
+    "continueWriting": {
+      "label": "Continue writing",
+      "description": "Pick up where you left off"
+    },
+    "citationSearch": {
+      "label": "Citation search",
+      "description": "Search alphaXiv and OpenAlex for papers"
+    },
+    "literatureReview": {
+      "label": "Literature review",
+      "description": "Survey related work with real sources"
+    },
+    "citeClaim": {
+      "label": "Cite this claim",
+      "description": "Find and add a verified reference"
+    },
+    "myLibrary": {
+      "label": "My library",
+      "description": "Search your imported references"
+    },
+    "labSearch": {
+      "label": "Lab search",
+      "description": "Find research labs and institutions"
+    },
+    "friendlyReview": {
+      "label": "Friendly review",
+      "description": "Constructive mentor-style feedback on this paper"
+    },
+    "fireReview": {
+      "label": "Fire review",
+      "description": "Strict Reviewer #2 stress-test of claims and methods"
+    },
+    "academicPresentation": {
+      "label": "Academic presentation",
+      "description": "A Beamer slide deck from your paper"
+    },
+    "academicPoster": {
+      "label": "Academic poster",
+      "description": "A conference poster from your paper"
+    },
+    "generateTable": {
+      "label": "Generate table",
+      "description": "Draft a LaTeX table in chat"
+    },
+    "tikzFigure": {
+      "label": "TikZ figure",
+      "description": "Draft TikZ code in chat"
+    }
+  },
+  "turn": {
+    "thinking": "Thinking…",
+    "continuing": "Continuing…",
+    "reasoning": "Reasoning…",
+    "runningTool": "Running {{name}}…",
+    "processingResult": "Processing result…",
+    "summarizing": "Summarizing earlier conversation…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "The agent session could not be opened.",
+    "approvalModeSaveFailed": "Could not save the approval mode.",
+    "skillDraftSaved": "Draft skill saved. Review it before enabling.",
+    "skillDraftFailed": "Could not save the skill draft. {{error}}",
+    "chatArchived": "Chat archived.",
+    "chatArchiveFailed": "Could not archive this chat.",
+    "chatForked": "Chat forked.",
+    "chatForkFailed": "Could not fork this chat.",
+    "engineNotLoaded": "Document engine details are not loaded. AI editing is disabled for safety.",
+    "skillsLoadFailed": "Could not load enabled skills. Try again.",
+    "approvalModeLoadFailed": "Could not load the approval mode.",
+    "approvalRulesLoadFailed": "Could not load the project approval rules.",
+    "restored": "Restored project files. The conversation was kept.",
+    "restoreFailed": "Could not restore: {{error}}",
+    "steerFailed": "The running turn could not be steered.",
+    "approvalRuleSaveFailed": "Could not save the project approval rule.",
+    "attachmentTooLarge": "{{name}} is too large (max 10 MB).",
+    "attachmentReadFailed": "Couldn't read {{name}}.",
+    "tooManyTools": "{{enabled}} tools are enabled, but a run supports up to {{max}}. Disable at least {{excess}} in Tools and try again."
+  },
+  "header": {
+    "mcpTooltip": "Configure assistant MCP servers",
+    "mcpAriaLabel": "Assistant MCP settings",
+    "settings": "Assistant settings",
+    "usageAriaLabel": "View AI usage",
+    "usageReport": "Usage report",
+    "newChat": "New chat",
+    "chatHistory": "Chat history",
+    "staleChatHint": "This chat started from an older version of the project. File contents may differ from what the AI saw."
+  },
+  "usage": {
+    "lastRun": "Last run",
+    "steps": "Steps",
+    "input": "Input",
+    "output": "Output",
+    "thisChat": "This chat",
+    "runs": "Runs",
+    "tokens": "Tokens",
+    "cacheNote": "Cache usage and cost estimates are in the usage report.",
+    "summaryRunWithTokens_one": "Last run: {{count}} step, {{tokens}} reported tokens",
+    "summaryRunWithTokens_other": "Last run: {{count}} steps, {{tokens}} reported tokens",
+    "summaryRunNoTokens_one": "Last run: {{count}} step, token total unavailable",
+    "summaryRunNoTokens_other": "Last run: {{count}} steps, token total unavailable",
+    "summaryChat": "This chat: {{steps}} steps, {{tokens}} tokens",
+    "summaryFallback": "AI usage"
+  },
+  "provider": {
+    "connectTitle": "Connect an AI provider to continue",
+    "connectBody": "Bring your own API key (OpenAI, Anthropic, Groq, and more) or run a model locally with Ollama. The assistant can read and edit files, compile your project, and verify the PDF.",
+    "connectButton": "Connect a provider",
+    "runLocal": "Run a local model with Ollama",
+    "quotaWarning": "Chat history storage is full. Older chats were pruned and new messages may not be saved. Delete old chats from history to free space."
+  },
+  "conversation": {
+    "renderFailed": "This conversation failed to render. Start a new chat or reopen it from history.",
+    "checkpointRestored": "Project restored to this checkpoint",
+    "restoring": "Restoring…",
+    "restoreCheckpoint": "Restore code to before this response",
+    "restoreConfirm": "Restore project files to before this response? This also discards code changes made by later AI responses. The conversation will stay here.",
+    "noResponse": "No response arrived for this message. The stream was interrupted. Send it again, or start a new chat.",
+    "scrollToBottom": "Scroll to bottom",
+    "projectSubtitle": "Working on \"{{project}}\"",
+    "noOutput": "The model returned no output. Check Settings → AI Assistant."
+  },
+  "followUps": {
+    "steered": "Steered into the running turn: {{summary}}",
+    "sending": "Sent as the next turn: {{summary}}",
+    "waiting": "Waiting for a safe point in the run: {{summary}}",
+    "queued": "Queued for the next turn: {{summary}}",
+    "steerNow": "Steer now",
+    "startingRun": "Starting the run",
+    "discard": "Discard queued message"
+  },
+  "goal": {
+    "editAriaLabel": "Edit goal: {{goal}}",
+    "clear": "Clear goal",
+    "formAriaLabel": "Set persistent goal",
+    "label": "Goal",
+    "placeholder": "What should the assistant keep working toward?",
+    "save": "Save goal"
+  },
+  "suggestions": {
+    "literatureSweep": "Sweep the literature for this project",
+    "relatedWork": "Draft the related work section",
+    "verifyClaims": "Check every claim against its source",
+    "reviewManuscript": "Review it like a referee",
+    "latexBuild": "Fix any source errors in my document",
+    "preSubmission": "Get it ready to submit",
+    "slides": "Turn this paper into a talk",
+    "recompile": "Recompile and check for errors"
+  }
+}

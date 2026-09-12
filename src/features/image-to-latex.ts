@@ -5,6 +5,7 @@ import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
 import { logError } from "@/lib/log";
 import { getConfig } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 
 export async function imageToLatexAvailable(): Promise<boolean> {
   try {
@@ -29,7 +30,7 @@ export async function imageToLatex(file: File): Promise<void> {
     r.onerror = () => reject(new Error("could not read image"));
     r.readAsDataURL(file);
   });
-  toast.info("Transcribing image ...");
+  toast.info(i18n.t(($) => $.core.imageToLatex.transcribing));
   try {
     const { text } = await completeViaBackend({
       system: TRANSCRIBE_SYSTEM,
@@ -49,9 +50,9 @@ export async function imageToLatex(file: File): Promise<void> {
       .trim();
     if (!snippet) throw new Error("empty transcription");
     insertAtCursor(snippet);
-    toast.success("Inserted LaTeX from image");
+    toast.success(i18n.t(($) => $.core.imageToLatex.inserted));
   } catch (e) {
     logError("image-to-latex", e);
-    toast.error(`Image to LaTeX failed: ${e}`);
+    toast.error(i18n.t(($) => $.core.imageToLatex.failed, { detail: String(e) }));
   }
 }

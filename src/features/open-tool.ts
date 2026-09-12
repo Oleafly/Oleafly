@@ -4,6 +4,7 @@ import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import { i18n } from "@/i18n";
 
 const OVERLAY_PAGES: ReadonlySet<HomePage> = new Set(["generators", "symbols"]);
 
@@ -41,7 +42,9 @@ export async function openTool(tool: ToolDefinition): Promise<void> {
       return;
     case "typst-project":
       try {
-        await useFilesStore.getState().createTypstProject("Untitled Typst document");
+        await useFilesStore
+          .getState()
+          .createTypstProject(i18n.t(($) => $.researchTools.tools.typstDefaultName));
         // Opening the new project restores its persisted layout. Apply the
         // tool's requested mode afterwards so project initialization cannot
         // silently replace it with the default split view.
@@ -50,7 +53,7 @@ export async function openTool(tool: ToolDefinition): Promise<void> {
           .setViewMode(tool.destination.mode === "visual" ? "split" : "editor");
       } catch (error) {
         void logError("open typst editor", error);
-        toast.error("Oleafly couldn't start the Typst document.");
+        toast.error(i18n.t(($) => $.researchTools.tools.typstStartFailed));
       }
   }
 }

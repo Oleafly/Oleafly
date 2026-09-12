@@ -3032,7 +3032,7 @@ fn rename_project_blocking(project_id: String, name: String) -> Result<ProjectMe
     with_project_metadata(&project_id, || {
         let trimmed = name.trim();
         if trimmed.is_empty() {
-            return Err("Project name cannot be empty".into());
+            return Err(crate::app_error::AppError::new("project.name_empty").into());
         }
         let mut meta = read_meta(&project_id)?;
         meta.name = trimmed.to_string();

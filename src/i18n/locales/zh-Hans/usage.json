@@ -1,0 +1,175 @@
+{
+  "dialog": {
+    "title": "用量报告",
+    "description": "按项目、代理、提供商、模型和会话记录的 token 活动。",
+    "from": "开始日期",
+    "through": "结束日期",
+    "quickRangesLegend": "快捷范围",
+    "utcNote": "日期和小时均为 UTC 时间。",
+    "apply": "应用",
+    "refresh": "刷新",
+    "refreshLabel": "刷新用量报告",
+    "loading": "正在加载用量…",
+    "loadFailed": "无法加载用量报告。",
+    "loadFailedHint": "请稍后重试。",
+    "tryAgain": "重试",
+    "emptyTitle": "这些筛选条件下没有记录到任何用量",
+    "emptyDescription": "请更改日期范围或移除筛选条件。"
+  },
+  "quickRanges": {
+    "days7": "7 天",
+    "days30": "30 天",
+    "days90": "90 天",
+    "month": "本月"
+  },
+  "filters": {
+    "project": "项目",
+    "projectAll": "所有项目",
+    "agent": "代理",
+    "agentAll": "所有代理",
+    "provider": "提供商",
+    "providerAll": "所有提供商",
+    "model": "模型",
+    "modelAll": "所有模型",
+    "session": "会话",
+    "sessionAll": "所有会话"
+  },
+  "report": {
+    "range": "{{start}} 至 {{end}}（UTC）",
+    "costDisclaimer": "费用估算基于已保存的价格数据，并非你的提供商账单或套餐额度。",
+    "exportCsv": "导出 CSV",
+    "exportSaved": "已保存至 {{path}}",
+    "exportFailed": "无法保存用量报告。",
+    "inputTokens": "输入 token",
+    "inputIncludesCache": "含缓存输入",
+    "outputTokens": "输出 token",
+    "outputIncludesReasoning": "含推理 token",
+    "cacheReads": "缓存读取",
+    "costEstimate": "费用估算",
+    "allRecordsPriced": "所有记录均已计价",
+    "sessions": "会话",
+    "dailyTokens": "每日 token",
+    "activityByHour": "按小时活动",
+    "projects": "项目",
+    "agents": "代理",
+    "providers": "提供商",
+    "models": "模型"
+  },
+  "counts": {
+    "records_other": "{{total}} 条记录",
+    "sessions_other": "{{total}} 个会话",
+    "tokens_other": "{{total}} 个 token",
+    "inputUnknown_other": "{{total}} 条记录缺少输入计数",
+    "outputUnknown_other": "{{total}} 条记录缺少输出计数",
+    "cacheUnknown_other": "{{total}} 条记录缺少可比较的缓存数据",
+    "unpriced_other": "{{total}} 条记录未计价",
+    "partlyUnpriced_other": "{{total}} 条记录中有 {{unpriced}} 条未计价",
+    "onPlan_other": "{{total}} 条记录为套餐内或本地",
+    "childRuns_other": "{{total}} 次子运行",
+    "usageRecords_other": "{{total}} 条用量记录",
+    "excludedChildRecords_other": "{{total}} 条子记录已计入父级总数，因此不会重复计数。",
+    "unmeasured_other": "{{total}} 条记录没有实测 token 数。"
+  },
+  "cache": {
+    "rate": "占可比较输入的 {{percent}}%",
+    "rateWithUnknown": "占可比较输入的 {{percent}}%，{{unknown}} 不可比较"
+  },
+  "cost": {
+    "local": "本地",
+    "plan": "订阅",
+    "notBilledPerToken": "不按 token 计费。",
+    "noEstimate": "无估算",
+    "noSavedPrice": "这些记录没有已保存的价格。",
+    "priceSource": "价格来源：{{version}}"
+  },
+  "trend": {
+    "chartLabel": "每日输入与输出 token 趋势",
+    "chartTitle": "每日 token 用量",
+    "empty": "暂无每日活动",
+    "tokensUnavailable": "token 数量不可用",
+    "inOut": "输入 {{input}}，输出 {{output}}",
+    "incompleteDays": "token 计数不完整的天数未计入折线。",
+    "day": "日期",
+    "inputTokens": "输入 token",
+    "outputTokens": "输出 token"
+  },
+  "heatmap": {
+    "label": "按 UTC 星期与小时统计的 token 活动",
+    "cell": "{{weekday}} {{hour}}:00 UTC：{{detail}}",
+    "noActivity": "暂无活动记录",
+    "tokenUnavailable": "token 数量不可用",
+    "hoursInUtc": "小时（UTC）",
+    "less": "少",
+    "more": "多",
+    "weekdays": {
+      "sun": "周日",
+      "mon": "周一",
+      "tue": "周二",
+      "wed": "周三",
+      "thu": "周四",
+      "fri": "周五",
+      "sat": "周六"
+    }
+  },
+  "breakdown": {
+    "empty": "暂无使用记录",
+    "name": "名称",
+    "tokens": "Token 数",
+    "cost": "费用",
+    "sessions": "会话数"
+  },
+  "sessions": {
+    "title": "会话",
+    "subtitle": "聊天、任务、子代理运行和辅助调用，最新的排在最前",
+    "emptyTitle": "没有符合筛选条件的会话",
+    "emptyDescription": "请更改日期范围或移除筛选条件。",
+    "session": "会话",
+    "project": "项目",
+    "agent": "代理",
+    "model": "模型",
+    "lastActivity": "最近活动（UTC）",
+    "input": "输入",
+    "output": "输出",
+    "cost": "费用",
+    "billing": "计费",
+    "status": "状态",
+    "rowsPerPage": "每页行数",
+    "page": "第 {{page}} 页，共 {{pageCount}} 页",
+    "previous": "上一页",
+    "next": "下一页"
+  },
+  "labels": {
+    "unknown": "未知",
+    "mixed": "混合",
+    "generalProject": "常规",
+    "runtimeBuiltIn": "Oleafly 助手",
+    "runtimeHelper": "辅助调用",
+    "runtimeAcp": "CLI 代理"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "订阅",
+    "local": "本地",
+    "unknown": "未知",
+    "mixed": "混合"
+  },
+  "scope": {
+    "child": "子代理",
+    "task": "任务",
+    "helper": "辅助"
+  },
+  "status": {
+    "in_progress": "进行中",
+    "completed": "已完成",
+    "failed": "失败",
+    "cancelled": "已取消",
+    "interrupted": "已中断"
+  },
+  "measurement": {
+    "provider_reported": "由提供商统计。",
+    "runtime_reported": "由代理统计。",
+    "estimated": "本地估算",
+    "unavailable": "未计量",
+    "mixed_or_unavailable": "部分计量"
+  }
+}

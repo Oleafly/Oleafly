@@ -50,7 +50,7 @@ describe("verifyStructure: figures", () => {
     const findings = verifyStructure(doc(root));
     expect(ids(findings)).toEqual(["output-formula-alt"]);
     expect(findings[0].severity).toBe("warning");
-    expect(findings[0].detail).toContain("MathML");
+    expect(findings[0].detail.key).toBe("rules.output-formula-alt.detail");
   });
   it("accepts a Formula that carries alt text", () => {
     const root = node("Document", [node("Formula", [], { alt: "E equals m c squared" }), node("P")]);
@@ -124,7 +124,7 @@ describe("verifyStructure: PDF/UA catalog facts", () => {
       ua: ua({ links: [{ hasContents: true }, { hasContents: false }, { hasContents: false }] }),
     });
     expect(ids(findings)).toEqual(["pdf-link-alt"]);
-    expect(findings[0].title).toContain("2 link annotations");
+    expect(findings[0].title).toEqual({ key: "rules.pdf-link-alt.title", params: { count: 2 } });
   });
 
   it("reports real content that sits outside the tag tree", () => {
@@ -134,7 +134,10 @@ describe("verifyStructure: PDF/UA catalog facts", () => {
       ua: ua({ taggedTextRuns: 80, untaggedTextRuns: 20 }),
     });
     expect(ids(findings)).toEqual(["pdf-untagged-content"]);
-    expect(findings[0].title).toContain("20%");
+    expect(findings[0].title).toEqual({
+      key: "rules.pdf-untagged-content.title",
+      params: { percent: 20 },
+    });
   });
 
   it("tolerates a few untagged runs", () => {
@@ -186,9 +189,12 @@ describe("verifyStructure: PDF/UA claims", () => {
     });
     const claim = findings.find((finding) => finding.id === "pdf-ua-claim-mismatch");
     expect(claim?.severity).toBe("error");
-    expect(claim?.title).toBe("This PDF claims PDF/UA-1 but does not meet it");
-    expect(claim?.detail).toContain("DisplayDocTitle is not set to true");
-    expect(claim?.detail).toContain("no document title in the XMP metadata");
+    expect(claim?.title).toEqual({ key: "rules.pdf-ua-claim-mismatch.title", params: { part: 1 } });
+    expect(claim?.detailParts?.map((part) => part.key)).toEqual([
+      "rules.pdf-ua-claim-mismatch.partNoXmpTitle",
+      "rules.pdf-ua-claim-mismatch.partNoDisplayDocTitle",
+      "rules.pdf-ua-claim-mismatch.partAdvice",
+    ]);
   });
 
   it("accepts a claim the file actually backs up", () => {
@@ -219,13 +225,17 @@ describe("verifyStructure: PDF/UA claims", () => {
       ua: ua({ uaPart: 1, displayDocTitle: null, xmpTitle: null, infoTitle: "Only info" }),
     });
     const claim = findings.find((finding) => finding.id === "pdf-ua-claim-mismatch");
-    expect(claim?.detail).toContain("no document title in the XMP metadata");
-    expect(claim?.detail).not.toContain("DisplayDocTitle");
+    expect(claim?.detailParts?.map((part) => part.key)).toEqual([
+      "rules.pdf-ua-claim-mismatch.partNoXmpTitle",
+      "rules.pdf-ua-claim-mismatch.partAdvice",
+    ]);
   });
 
   it("adds the claim mismatch to an untagged file without a wall of other failures", () => {
     const findings = verifyStructure({ root: null, tagged: false, ua: ua({ uaPart: 1, displayDocTitle: false }) });
     expect(ids(findings)).toEqual(["pdf-untagged-output", "pdf-ua-claim-mismatch"]);
-    expect(findings[1].detail).toContain("the file is not tagged");
+    expect(findings[1].detailParts?.map((part) => part.key)).toContain(
+      "rules.pdf-ua-claim-mismatch.partNotTagged",
+    );
   });
 });

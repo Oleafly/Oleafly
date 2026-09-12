@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, Palette, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { i18n } from "@/i18n";
 import { cssColorToHex, readCssVariable } from "@/lib/css-color";
 import { useTheme, type Theme } from "@/lib/theme";
 import {
@@ -20,31 +22,42 @@ import {
   type ThemeTokenName,
 } from "@/lib/theme-customization";
 
-const TOKEN_LABELS: Record<ThemeTokenName, string> = {
-  background: "Background",
-  foreground: "Text",
-  card: "Panel",
-  "card-foreground": "Panel text",
-  popover: "Popover",
-  "popover-foreground": "Popover text",
-  primary: "Primary",
-  "primary-foreground": "Primary text",
-  secondary: "Secondary",
-  "secondary-foreground": "Secondary text",
-  muted: "Muted",
-  "muted-foreground": "Muted text",
-  accent: "Accent",
-  "accent-foreground": "Accent text",
-  destructive: "Danger",
-  "destructive-foreground": "Danger text",
-  border: "Border",
-  input: "Input border",
-  ring: "Focus ring",
-  sidebar: "Sidebar",
-  "sidebar-foreground": "Sidebar text",
-  "sidebar-border": "Sidebar border",
-  "sidebar-accent": "Sidebar accent",
-  "sidebar-accent-foreground": "Sidebar accent text",
+const TOKEN_LABELS: Record<ThemeTokenName, () => string> = {
+  background: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.background),
+  foreground: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.foreground),
+  card: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.card),
+  "card-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.cardForeground),
+  popover: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.popover),
+  "popover-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.popoverForeground),
+  primary: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.primary),
+  "primary-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.primaryForeground),
+  secondary: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.secondary),
+  "secondary-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.secondaryForeground),
+  muted: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.muted),
+  "muted-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.mutedForeground),
+  accent: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.accent),
+  "accent-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.accentForeground),
+  destructive: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.destructive),
+  "destructive-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.destructiveForeground),
+  border: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.border),
+  input: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.input),
+  ring: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.ring),
+  sidebar: () => i18n.t(($) => $.settings.appearance.customTheme.tokens.sidebar),
+  "sidebar-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.sidebarForeground),
+  "sidebar-border": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.sidebarBorder),
+  "sidebar-accent": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.sidebarAccent),
+  "sidebar-accent-foreground": () =>
+    i18n.t(($) => $.settings.appearance.customTheme.tokens.sidebarAccentForeground),
 };
 
 function downloadTheme(customization: ThemeCustomizationState) {
@@ -58,6 +71,7 @@ function downloadTheme(customization: ThemeCustomizationState) {
 }
 
 export function ThemeCustomization() {
+  const { t } = useTranslation(["common", "settings"]);
   const { theme } = useTheme();
   const [customization, setCustomization] = useState<ThemeCustomizationState>(() => readThemeCustomization());
   const [editMode, setEditMode] = useState<Theme>(theme);
@@ -89,7 +103,12 @@ export function ThemeCustomization() {
 
   const resetMode = () => {
     setTokenDrafts((current) => ({ ...current, [editMode]: {} }));
-    save({ ...customization, [editMode]: {} }, `${editMode === "light" ? "Light" : "Dark"} tokens restored.`);
+    save(
+      { ...customization, [editMode]: {} },
+      editMode === "light"
+        ? t(($) => $.settings.appearance.customTheme.lightRestored)
+        : t(($) => $.settings.appearance.customTheme.darkRestored),
+    );
   };
 
   const resetAll = () => {
@@ -99,22 +118,31 @@ export function ThemeCustomization() {
     setRadiusDraft(null);
     setCustomCssDraft(null);
     applyThemeCustomization(theme, restored);
-    setMessage("Theme customization cleared.");
+    setMessage(t(($) => $.settings.appearance.customTheme.cleared));
   };
 
   const importTheme = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > MAX_THEME_IMPORT_BYTES) {
-      setMessage("Theme file is larger than 128 KiB.");
+      setMessage(t(($) => $.settings.appearance.customTheme.fileTooLarge));
       return;
     }
     try {
       const { customization: imported, skippedTokens } = parseThemeCustomizationImport(await file.text());
-      const skippedNote =
-        skippedTokens.length > 0
-          ? ` Skipped ${skippedTokens.length} ${skippedTokens.length === 1 ? "token" : "tokens"} Oleafly does not use: ${skippedTokens.slice(0, 6).join(", ")}${skippedTokens.length > 6 ? ", and more" : ""}.`
-          : "";
-      save(imported, `Theme imported and applied.${skippedNote}`);
+      const shownTokens = skippedTokens.slice(0, 6).join(", ");
+      const notice =
+        skippedTokens.length === 0
+          ? t(($) => $.settings.appearance.customTheme.imported)
+          : skippedTokens.length > 6
+            ? t(($) => $.settings.appearance.customTheme.importedSkippedMore, {
+                count: skippedTokens.length,
+                tokens: shownTokens,
+              })
+            : t(($) => $.settings.appearance.customTheme.importedSkipped, {
+                count: skippedTokens.length,
+                tokens: shownTokens,
+              });
+      save(imported, notice);
       setTokenDrafts({ light: {}, dark: {} });
       setRadiusDraft(null);
       setCustomCssDraft(null);
@@ -135,10 +163,13 @@ export function ThemeCustomization() {
     <CollapsibleSection
       id="theme-customization"
       icon={Palette}
-      title="Theme customization"
-      description="Change app color tokens for each mode. Changes are saved locally and take effect straight away."
+      title={t(($) => $.settings.appearance.customTheme.title)}
+      description={t(($) => $.settings.appearance.customTheme.description)}
     >
-      <fieldset className="flex flex-wrap items-center gap-2" aria-label="Theme mode to edit">
+      <fieldset
+        className="flex flex-wrap items-center gap-2"
+        aria-label={t(($) => $.settings.appearance.customTheme.modeFieldsetAriaLabel)}
+      >
         {(["light", "dark"] as const).map((mode) => (
           <Button
             key={mode}
@@ -148,35 +179,54 @@ export function ThemeCustomization() {
             aria-pressed={editMode === mode}
             onClick={() => setEditMode(mode)}
           >
-            {mode === "light" ? "Light mode" : "Dark mode"}
+            {mode === "light"
+              ? t(($) => $.settings.appearance.customTheme.modeLight)
+              : t(($) => $.settings.appearance.customTheme.modeDark)}
           </Button>
         ))}
         <Button type="button" size="xs" variant="ghost" onClick={resetMode}>
           <RotateCcw aria-hidden />
-          Reset this mode
+          {t(($) => $.settings.appearance.customTheme.resetMode)}
         </Button>
       </fieldset>
 
       <div className="grid gap-2 sm:grid-cols-2">
         {THEME_TOKEN_NAMES.map((token) => {
           const current = effectiveColor(token);
+          const tokenLabel = TOKEN_LABELS[token]();
           return (
             <div
               key={token}
               className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.4fr)] items-center gap-2 text-xs"
             >
-              <span className="truncate text-muted-foreground" title={token}>{TOKEN_LABELS[token]}</span>
+              <span className="truncate text-muted-foreground" title={token}>{tokenLabel}</span>
               <ColorPicker
-                ariaLabel={`Pick ${TOKEN_LABELS[token]} color for ${editMode} mode`}
+                ariaLabel={
+                  editMode === "light"
+                    ? t(($) => $.settings.appearance.customTheme.pickColorLight, {
+                        token: tokenLabel,
+                      })
+                    : t(($) => $.settings.appearance.customTheme.pickColorDark, {
+                        token: tokenLabel,
+                      })
+                }
                 value={cssColorToHex(current) ?? current}
                 onChange={(value) => updateToken(token, value, true)}
               />
               <Input
-                aria-label={`${TOKEN_LABELS[token]} token for ${editMode} mode`}
+                aria-label={
+                  editMode === "light"
+                    ? t(($) => $.settings.appearance.customTheme.tokenInputLight, {
+                        token: tokenLabel,
+                      })
+                    : t(($) => $.settings.appearance.customTheme.tokenInputDark, {
+                        token: tokenLabel,
+                      })
+                }
                 value={tokenDrafts[editMode][token] ?? tokens[token] ?? ""}
                 onChange={(event) => updateToken(token, event.target.value)}
                 onBlur={(event) => updateToken(token, event.target.value, true)}
-                placeholder="Default"
+                placeholder={t(($) => $.common.state.default)}
                 className="h-8 font-mono text-[11px]"
               />
             </div>
@@ -185,10 +235,14 @@ export function ThemeCustomization() {
       </div>
 
       <div className="space-y-1 text-xs">
-        <span className="font-medium">Corner radius</span>
-        <span className="block text-muted-foreground">Use a value such as 8px, 0.5rem, or 1em. Leave it blank for the default.</span>
+        <span className="font-medium">
+          {t(($) => $.settings.appearance.customTheme.radius.label)}
+        </span>
+        <span className="block text-muted-foreground">
+          {t(($) => $.settings.appearance.customTheme.radius.description)}
+        </span>
         <Input
-          aria-label="Corner radius"
+          aria-label={t(($) => $.settings.appearance.customTheme.radius.label)}
           value={radiusDraft ?? customization.radius ?? ""}
           onChange={(event) => {
             setRadiusDraft(event.target.value);
@@ -206,16 +260,20 @@ export function ThemeCustomization() {
               setMessage(error instanceof Error ? error.message : String(error));
             }
           }}
-          placeholder="0.625rem"
+          placeholder={"0.625rem"}
           className="h-8 max-w-44 font-mono text-[11px]"
         />
       </div>
 
       <div className="space-y-1 text-xs">
-        <span className="font-medium">Scoped CSS declarations</span>
-        <span className="block text-muted-foreground">Optional declarations apply only inside the app. Rules, imports, and URLs are blocked.</span>
+        <span className="font-medium">
+          {t(($) => $.settings.appearance.customTheme.customCss.label)}
+        </span>
+        <span className="block text-muted-foreground">
+          {t(($) => $.settings.appearance.customTheme.customCss.description)}
+        </span>
         <Textarea
-          aria-label="Scoped CSS declarations"
+          aria-label={t(($) => $.settings.appearance.customTheme.customCss.label)}
           value={customCssDraft ?? customization.customCss ?? ""}
           onChange={(event) => {
             setCustomCssDraft(event.target.value);
@@ -233,7 +291,7 @@ export function ThemeCustomization() {
               setMessage(error instanceof Error ? error.message : String(error));
             }
           }}
-          placeholder="color: #202020; --oleafly-note: #f6d365"
+          placeholder={"color: #202020; --oleafly-note: #f6d365"}
           className="min-h-20 font-mono text-[11px]"
         />
       </div>
@@ -241,22 +299,22 @@ export function ThemeCustomization() {
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="xs" variant="outline" onClick={() => downloadTheme(customization)}>
           <Download aria-hidden />
-          Export theme
+          {t(($) => $.settings.appearance.customTheme.exportTheme)}
         </Button>
         <Button type="button" size="xs" variant="outline" onClick={() => importInput.current?.click()}>
           <Upload aria-hidden />
-          Import theme
+          {t(($) => $.settings.appearance.customTheme.importTheme)}
         </Button>
         <Button type="button" size="xs" variant="ghost" onClick={resetAll}>
           <RotateCcw aria-hidden />
-          Reset all
+          {t(($) => $.settings.appearance.customTheme.resetAll)}
         </Button>
         <input
           ref={importInput}
           className="sr-only"
           type="file"
           accept="application/json,.json"
-          aria-label="Import theme file"
+          aria-label={t(($) => $.settings.appearance.customTheme.importFileAriaLabel)}
           onChange={(event) => void importTheme(event.currentTarget.files?.[0])}
         />
       </div>

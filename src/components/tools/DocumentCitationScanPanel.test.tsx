@@ -53,6 +53,7 @@ import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useLiteratureLibraryStore } from "@/store/literature";
 import { clearDocumentScanCache } from "@/lib/document-citation";
 import type { LiteratureRecord } from "@/lib/literature-search";
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 const sampleRecord: LiteratureRecord = {
   id: "s2:paper-1",
@@ -145,7 +146,7 @@ describe("DocumentCitationScanPanel", () => {
     render(<DocumentCitationScanPanel />);
     const button = screen.getByTestId("document-citation-scan");
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent("Find citations");
+    expect(button).toHaveTextContent(enResearchTools.citationScan.findCitations);
     // Disabled until provider check finishes
     await waitFor(() => expect(button).not.toBeDisabled());
   });
@@ -242,7 +243,7 @@ describe("DocumentCitationScanPanel", () => {
     fireEvent.click(screen.getByTestId("document-citation-add-bib"));
 
     expect(toastError).toHaveBeenCalledWith(
-      "Open a project to append to a bibliography file",
+      enResearchTools.citationScan.openProjectTooltip,
     );
     expect(addCitation).not.toHaveBeenCalled();
     expect(toastSuccess).not.toHaveBeenCalled();

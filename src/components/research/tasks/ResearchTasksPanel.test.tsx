@@ -26,6 +26,8 @@ vi.mock("@/components/ui/markdown", () => ({
 
 import * as api from "@/lib/research-tasks";
 import { useResearchTasksStore } from "@/store/research-tasks";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let ResearchTasksPanel: typeof import("./ResearchTasksPanel").ResearchTasksPanel;
 let act: typeof import("@testing-library/react").act;
@@ -78,11 +80,11 @@ function openTask(title: string) {
 }
 
 function closeDetail() {
-  fireEvent.click(within(page().getByRole("dialog")).getByRole("button", { name: "Close" }));
+  fireEvent.click(within(page().getByRole("dialog")).getByRole("button", { name: enCommon.actions.close }));
 }
 
 function openActivity() {
-  fireEvent.mouseDown(page().getByRole("tab", { name: "Activity" }), { button: 0 });
+  fireEvent.mouseDown(page().getByRole("tab", { name: enResearchTools.tasks.detail.tabActivity }), { button: 0 });
 }
 
 function choose(label: string, option: string) {
@@ -141,12 +143,12 @@ afterEach(() => cleanup());
 describe("ResearchTasksPanel lifecycle", () => {
   it("requires a project and disables task creation without a configured agent", async () => {
     const view = render(<ResearchTasksPanel projectId={null} agents={[]} />);
-    expect(page().getByRole("heading", { name: "Open a project to use research tasks" })).toBeInTheDocument();
+    expect(page().getByRole("heading", { name: enResearchTools.tasks.panel.noProjectTitle })).toBeInTheDocument();
     expect(api.listResearchTasks).not.toHaveBeenCalled();
     view.rerender(<ResearchTasksPanel projectId="paper" agents={[]} />);
-    await page().findByRole("heading", { name: "No research tasks yet" });
-    expect(page().getByRole("button", { name: "New task" })).toBeDisabled();
-    expect(page().getByRole("button", { name: "Create a task" })).toBeDisabled();
+    await page().findByRole("heading", { name: enResearchTools.tasks.panel.emptyTitle });
+    expect(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask })).toBeDisabled();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.panel.createTask })).toBeDisabled();
   });
 
   it("loads tasks, selects the newest task and switches to another task's activity", async () => {
@@ -212,10 +214,10 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(await page().findByRole("alert")).toHaveTextContent("The project changed since this task started");
     expect(onApplied).not.toHaveBeenCalled();
     fireEvent.click(page().getByRole("button", { name: "Dismiss" }));
-    fireEvent.click(page().getByRole("button", { name: "Discard changes" }));
-    fireEvent.click(await page().findByRole("button", { name: "Retry" }));
-    fireEvent.click(await page().findByRole("button", { name: "Start" }));
-    await page().findByRole("button", { name: "Stop task" });
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.discardChanges }));
+    fireEvent.click(await page().findByRole("button", { name: enCommon.actions.retry }));
+    fireEvent.click(await page().findByRole("button", { name: enResearchTools.tasks.detail.start }));
+    await page().findByRole("button", { name: enResearchTools.tasks.detail.stopTask });
     expect(page().queryByText(`Result ${current.id}`)).not.toBeInTheDocument();
     expect(page().queryByText("before -> main.tex")).not.toBeInTheDocument();
     expect(api.cancelResearchTask).toHaveBeenCalledWith(current.id);
@@ -229,17 +231,17 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.startResearchTask).mockResolvedValue({ ...current, startRequested: true });
     const view = render(<ResearchTasksPanel projectId="paper" agents={agents} />);
     await page().findByRole("button", { name: new RegExp(current.title) });
-    expect(page().getByText("Waiting on a task")).toBeInTheDocument();
+    expect(page().getByText(enResearchTools.tasks.panel.waiting)).toBeInTheDocument();
     openTask(current.title);
-    fireEvent.click(page().getByRole("button", { name: "Start when ready" }));
-    expect(await page().findByRole("button", { name: "Waiting" })).toBeDisabled();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.startWhenReady }));
+    expect(await page().findByRole("button", { name: enResearchTools.tasks.detail.waiting })).toBeDisabled();
     const running = { ...current, status: "running" as const, executionGeneration: 1 };
     act(() => changedTask?.(running));
-    await page().findByRole("button", { name: "Stop task" });
+    await page().findByRole("button", { name: enResearchTools.tasks.detail.stopTask });
     act(() => changedEvent?.({ taskId: current.id, executionGeneration: 1, sequence: 1, createdAt: 1, event: { kind: "text", text: "Native task progress" } }));
     expect(page().getByText("Native task progress")).toBeInTheDocument();
     act(() => changedTask?.({ ...running, cancelRequested: true }));
-    expect(page().getByRole("button", { name: "Stopping..." })).toBeDisabled();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.detail.stopping })).toBeDisabled();
     view.unmount();
     expect(unlistenTasks).toHaveBeenCalledOnce();
     expect(unlistenEvents).toHaveBeenCalledOnce();
@@ -250,7 +252,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.listResearchTasks).mockResolvedValueOnce([task("recovered")]);
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
     expect(await page().findByRole("alert")).toHaveTextContent("Task storage could not be read");
-    fireEvent.click(page().getByRole("button", { name: "Refresh research tasks" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.refreshAria }));
     await page().findByRole("button", { name: /Task recovered/ });
     expect(page().queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -263,21 +265,21 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.createResearchTask).mockReturnValue(pending.promise);
     const view = render(<ResearchTasksPanel projectId="first" agents={agents} />);
     await page().findByRole("button", { name: new RegExp(first.title) });
-    fireEvent.click(page().getByRole("button", { name: "New task" }));
-    choose("Start from", "Analysis");
-    fireEvent.click(page().getByRole("button", { name: "Create task" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     expect(api.createResearchTask).toHaveBeenCalledOnce();
     view.rerender(<ResearchTasksPanel projectId="second" agents={agents} />);
     await page().findByRole("button", { name: new RegExp(second.title) });
     if (returnToOriginal) {
       view.rerender(<ResearchTasksPanel projectId="first" agents={agents} />);
-      await page().findByRole("heading", { name: "New research task" });
+      await page().findByRole("heading", { name: enResearchTools.tasks.composer.newTitle });
       await waitFor(() => expect(useResearchTasksStore.getState().selectedTaskId).toBe(first.id));
     }
     await act(async () => pending.resolve(task("created-in-first", "first")));
     const selected = returnToOriginal ? first : second;
     if (returnToOriginal) {
-      expect(page().getByRole("heading", { name: "New research task" })).toBeInTheDocument();
+      expect(page().getByRole("heading", { name: enResearchTools.tasks.composer.newTitle })).toBeInTheDocument();
     } else {
       expect(card(selected.title)).toBeInTheDocument();
     }
@@ -293,16 +295,16 @@ describe("ResearchTasksPanel lifecycle", () => {
     const view = render(<ResearchTasksPanel projectId="first" agents={agents} />);
     await page().findByRole("button", { name: new RegExp(first.title) });
     openTask(first.title);
-    fireEvent.click(page().getByRole("button", { name: "Edit" }));
-    fireEvent.click(page().getByRole("button", { name: "Save task" }));
+    fireEvent.click(page().getByRole("button", { name: enCommon.actions.edit }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
     expect(api.editResearchTask).toHaveBeenCalledOnce();
     view.rerender(<ResearchTasksPanel projectId="second" agents={agents} />);
     await page().findByRole("button", { name: new RegExp(second.title) });
-    fireEvent.click(page().getByRole("button", { name: "New task" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
     await act(async () => pending.resolve({ ...first, title: "Updated first task" }));
 
-    expect(page().getByRole("heading", { name: "New research task" })).toBeInTheDocument();
-    expect(page().getByLabelText("Title")).toHaveValue("");
+    expect(page().getByRole("heading", { name: enResearchTools.tasks.composer.newTitle })).toBeInTheDocument();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("");
     expect(useResearchTasksStore.getState().tasks).toEqual([second]);
   });
 
@@ -312,19 +314,19 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.createResearchTask).mockResolvedValue(created);
     vi.mocked(api.editResearchTask).mockResolvedValue(edited);
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
-    await page().findByRole("heading", { name: "No research tasks yet" });
-    fireEvent.click(page().getByRole("button", { name: "Create a task" }));
-    choose("Start from", "Analysis");
-    fireEvent.click(page().getByRole("button", { name: "Create task" }));
+    await page().findByRole("heading", { name: enResearchTools.tasks.panel.emptyTitle });
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.createTask }));
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     await page().findByRole("heading", { name: created.title });
     expect(page().getByRole("dialog")).toHaveAttribute("data-testid", "research-task-detail");
     expect(api.createResearchTask).toHaveBeenCalledWith(expect.objectContaining({ projectId: "paper", runtimeId: "builtin", agentId: "provider", modelId: "model", skillIds: expect.arrayContaining(["statistical-analysis"]) }));
-    fireEvent.click(page().getByRole("button", { name: "Edit" }));
-    expect(page().getByLabelText("Title")).toHaveValue(created.title);
+    fireEvent.click(page().getByRole("button", { name: enCommon.actions.edit }));
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue(created.title);
     const user = userEvent.setup({ document });
-    await user.clear(page().getByLabelText("Title"));
-    await user.type(page().getByLabelText("Title"), edited.title);
-    fireEvent.click(page().getByRole("button", { name: "Save task" }));
+    await user.clear(page().getByLabelText(enResearchTools.tasks.composer.titleLabel));
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), edited.title);
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
     await page().findByRole("heading", { name: edited.title });
     expect(api.editResearchTask).toHaveBeenCalledWith(created.id, expect.objectContaining({ title: edited.title }));
   });
@@ -339,28 +341,28 @@ describe("ResearchTasksPanel lifecycle", () => {
     await page().findByRole("button", { name: new RegExp(existing.title) });
     const user = userEvent.setup({ document });
     if (operation === "create") {
-      await user.click(page().getByRole("button", { name: "New task" }));
-      choose("Start from", "Analysis");
-      await user.click(page().getByRole("button", { name: "Create task" }));
+      await user.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+      choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+      await user.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     } else {
       openTask(existing.title);
-      await user.click(page().getByRole("button", { name: "Edit" }));
-      await user.click(page().getByRole("button", { name: "Save task" }));
+      await user.click(page().getByRole("button", { name: enCommon.actions.edit }));
+      await user.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
     }
-    expect(page().getByRole("button", { name: "Saving..." })).toBeDisabled();
-    await user.click(page().getByRole("button", { name: "Cancel" }));
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.saving })).toBeDisabled();
+    await user.click(page().getByRole("button", { name: enCommon.actions.cancel }));
     if (operation === "edit") closeDetail();
-    await user.click(page().getByRole("button", { name: "New task" }));
-    await user.type(page().getByLabelText("Title"), "A separate draft");
-    await user.type(page().getByLabelText("Instructions"), "Keep this new work");
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), "A separate draft");
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.promptLabel), "Keep this new work");
 
     await act(async () => pending.resolve(operation === "create"
       ? { ...existing, id: "created", title: "Created task" }
       : { ...existing, title: "Saved task" }));
 
-    expect(page().getByRole("heading", { name: "New research task" })).toBeInTheDocument();
-    expect(page().getByLabelText("Title")).toHaveValue("A separate draft");
-    expect(page().getByLabelText("Instructions")).toHaveValue("Keep this new work");
+    expect(page().getByRole("heading", { name: enResearchTools.tasks.composer.newTitle })).toBeInTheDocument();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("A separate draft");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("Keep this new work");
     expect(useResearchTasksStore.getState().selectedTaskId).toBe(existing.id);
   });
 
@@ -374,20 +376,20 @@ describe("ResearchTasksPanel lifecycle", () => {
     await page().findByRole("button", { name: new RegExp(first.title) });
     const user = userEvent.setup({ document });
     openTask(first.title);
-    await user.click(page().getByRole("button", { name: "Edit" }));
-    await user.click(page().getByRole("button", { name: "Save task" }));
-    await user.click(page().getByRole("button", { name: "Cancel" }));
+    await user.click(page().getByRole("button", { name: enCommon.actions.edit }));
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
+    await user.click(page().getByRole("button", { name: enCommon.actions.cancel }));
     closeDetail();
     openTask("Task second");
-    await user.click(page().getByRole("button", { name: "Edit" }));
-    await user.clear(page().getByLabelText("Title"));
-    await user.type(page().getByLabelText("Title"), "Second task draft");
+    await user.click(page().getByRole("button", { name: enCommon.actions.edit }));
+    await user.clear(page().getByLabelText(enResearchTools.tasks.composer.titleLabel));
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), "Second task draft");
 
     await act(async () => pending.resolve({ ...first, title: "First task saved" }));
 
-    expect(page().getByRole("heading", { name: "Edit task" })).toBeInTheDocument();
-    expect(page().getByLabelText("Title")).toHaveValue("Second task draft");
-    expect(page().getByLabelText("Instructions")).toHaveValue(second.prompt);
+    expect(page().getByRole("heading", { name: enResearchTools.tasks.composer.editTitle })).toBeInTheDocument();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("Second task draft");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue(second.prompt);
   });
 
   it("keeps the newer submission locked when an older submission settles", async () => {
@@ -395,25 +397,25 @@ describe("ResearchTasksPanel lifecycle", () => {
     const second = deferred<ResearchTask>();
     vi.mocked(api.createResearchTask).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
-    await page().findByRole("heading", { name: "No research tasks yet" });
+    await page().findByRole("heading", { name: enResearchTools.tasks.panel.emptyTitle });
     const user = userEvent.setup({ document });
-    await user.click(page().getByRole("button", { name: "New task" }));
-    choose("Start from", "Analysis");
-    await user.click(page().getByRole("button", { name: "Create task" }));
-    await user.click(page().getByRole("button", { name: "Cancel" }));
-    await user.click(page().getByRole("button", { name: "New task" }));
-    choose("Start from", "Literature review");
-    await user.click(page().getByRole("button", { name: "Create task" }));
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
+    await user.click(page().getByRole("button", { name: enCommon.actions.cancel }));
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+    choose(enResearchTools.tasks.composer.starterLabel, "Literature review");
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     expect(api.createResearchTask).toHaveBeenCalledTimes(2);
 
     await act(async () => first.resolve(task("first", "paper", "queued")));
 
-    expect(page().getByRole("button", { name: "Saving..." })).toBeDisabled();
-    expect(page().getByLabelText("Title")).toBeDisabled();
-    expect(page().getByLabelText("Title")).toHaveValue("Review the literature");
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.saving })).toBeDisabled();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toBeDisabled();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue(enResearchTools.tasks.starter.literatureReview.title);
     await act(async () => second.resolve(task("second", "paper", "queued")));
     expect(page().getByRole("heading", { name: "Task second" })).toBeInTheDocument();
-    expect(page().queryByRole("heading", { name: "New research task" })).not.toBeInTheDocument();
+    expect(page().queryByRole("heading", { name: enResearchTools.tasks.composer.newTitle })).not.toBeInTheDocument();
   });
 
   it("locks the submitted form and preserves its values when saving fails", async () => {
@@ -425,29 +427,29 @@ describe("ResearchTasksPanel lifecycle", () => {
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
     await page().findByRole("button", { name: new RegExp(dependency.title) });
     const user = userEvent.setup({ document });
-    await user.click(page().getByRole("button", { name: "New task" }));
-    choose("Start from", "Analysis");
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
     await user.click(page().getByRole("checkbox", { name: /Task dependency/ }));
-    const instructions = (page().getByLabelText("Instructions") as HTMLTextAreaElement).value;
-    await user.click(page().getByRole("button", { name: "Create task" }));
+    const instructions = (page().getByLabelText(enResearchTools.tasks.composer.promptLabel) as HTMLTextAreaElement).value;
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
 
-    for (const label of ["Start from", "Title", "Instructions", "Agent and model"]) {
+    for (const label of [enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.composer.titleLabel, enResearchTools.tasks.composer.promptLabel, enResearchTools.tasks.composer.agentLabel]) {
       expect(page().getByLabelText(label)).toBeDisabled();
     }
     expect(page().getByRole("checkbox", { name: /Task dependency/ })).toBeDisabled();
-    expect(page().getByRole("button", { name: "Cancel" })).toBeEnabled();
-    await user.type(page().getByLabelText("Title"), " changes during save");
+    expect(page().getByRole("button", { name: enCommon.actions.cancel })).toBeEnabled();
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), " changes during save");
     await user.click(page().getByRole("checkbox", { name: /Task dependency/ }));
     await act(async () => pending.reject(new Error("Task could not be saved")));
 
     expect(await page().findByRole("alert")).toHaveTextContent("Task could not be saved");
-    expect(page().getByLabelText("Title")).toHaveValue("Run the analysis");
-    expect(page().getByLabelText("Instructions")).toHaveValue(instructions);
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue(enResearchTools.tasks.starter.analysis.title);
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue(instructions);
     expect(page().getByRole("checkbox", { name: /Task dependency/ })).toBeChecked();
-    expect(page().getByRole("button", { name: "Create task" })).toBeEnabled();
-    await user.clear(page().getByLabelText("Title"));
-    await user.type(page().getByLabelText("Title"), "Revised analysis");
-    await user.click(page().getByRole("button", { name: "Create task" }));
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeEnabled();
+    await user.clear(page().getByLabelText(enResearchTools.tasks.composer.titleLabel));
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), "Revised analysis");
+    await user.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     await page().findByRole("heading", { name: "Revised analysis" });
     expect(api.createResearchTask).toHaveBeenLastCalledWith(expect.objectContaining({ title: "Revised analysis", prompt: instructions, dependencyIds: [dependency.id], skillIds: ["statistical-analysis"] }));
   });
@@ -462,8 +464,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     render(<ResearchTasksPanel projectId="paper" agents={agents} onApplied={onApplied} />);
     await page().findByRole("button", { name: new RegExp(current.title) });
     openTask(current.title);
-    fireEvent.click(await page().findByRole("button", { name: "Mark reviewed" }));
-    await waitFor(() => expect(page().queryByRole("button", { name: "Mark reviewed" })).not.toBeInTheDocument());
+    fireEvent.click(await page().findByRole("button", { name: enResearchTools.tasks.detail.markReviewed }));
+    await waitFor(() => expect(page().queryByRole("button", { name: enResearchTools.tasks.detail.markReviewed })).not.toBeInTheDocument());
     expect(api.acceptResearchTaskResult).toHaveBeenCalledWith(current.id);
     expect(api.applyResearchTask).not.toHaveBeenCalled();
     expect(onApplied).not.toHaveBeenCalled();
@@ -496,8 +498,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     await page().findByRole("button", { name: /Task running/ });
 
     expect(page().queryByRole("dialog")).not.toBeInTheDocument();
-    expect(page().getByRole("button", { name: "View progress" })).toBeInTheDocument();
-    fireEvent.click(page().getByRole("button", { name: "View task" }));
+    expect(page().getByRole("button", { name: enResearchTools.tasks.panel.viewProgress })).toBeInTheDocument();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.viewTask }));
 
     const dialog = page().getByRole("dialog");
     expect(within(dialog).getByRole("heading", { name: review.title })).toBeInTheDocument();
@@ -507,7 +509,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     closeDetail();
     expect(page().queryByRole("dialog")).not.toBeInTheDocument();
     expect(useResearchTasksStore.getState().selectedTaskId).toBe(review.id);
-    fireEvent.click(page().getByRole("button", { name: "View task" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.viewTask }));
     expect(within(page().getByRole("dialog")).getByRole("heading", { name: review.title })).toBeInTheDocument();
   });
 
@@ -520,7 +522,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     await page().findByRole("button", { name: /Task running/ });
     expect(page().getAllByRole("listitem")).toHaveLength(3);
 
-    const list = () => within(page().getByRole("navigation", { name: "Research task list" }));
+    const list = () => within(page().getByRole("navigation", { name: enResearchTools.tasks.panel.listLabel }));
 
     expect(page().getByRole("tab", { name: /^All/ })).toHaveTextContent("All3");
     expect(page().getByRole("tab", { name: /^Running/ })).toHaveTextContent("Running1");
@@ -562,11 +564,11 @@ describe("ResearchTasksPanel lifecycle", () => {
 
     fireEvent.click(page().getByRole("button", { name: `Delete ${first.title}` }));
     expect(page().getByRole("alertdialog")).toHaveTextContent(first.title);
-    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: "Delete task" }));
+    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: enResearchTools.tasks.panel.deleteConfirm }));
     await waitFor(() => expect(api.deleteResearchTask).toHaveBeenCalledWith(first.id));
     await waitFor(() => expect(useResearchTasksStore.getState().tasks).toEqual([second]));
     expect(
-      within(page().getByRole("navigation", { name: "Research task list" }))
+      within(page().getByRole("navigation", { name: enResearchTools.tasks.panel.listLabel }))
         .queryByRole("button", { name: /Task first/ }),
     ).not.toBeInTheDocument();
   });
@@ -579,7 +581,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     await page().findByRole("button", { name: new RegExp(current.title) });
     openTask(current.title);
     fireEvent.click(page().getByRole("button", { name: `Delete ${current.title}` }));
-    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: "Delete task" }));
+    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: enResearchTools.tasks.panel.deleteConfirm }));
     expect(await page().findByRole("alert")).toHaveTextContent("Another task waits for this one");
     expect(card(current.title)).toBeInTheDocument();
   });

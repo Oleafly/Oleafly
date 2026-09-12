@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { FileText, Loader2, Settings2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
@@ -41,6 +42,7 @@ function DirtyDot({ path }: { path: string }) {
 }
 
 function PdfFileView({ projectId, path }: { projectId: string; path: string }) {
+  const { t } = useTranslation(["common", "editor"]);
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -54,13 +56,20 @@ function PdfFileView({ projectId, path }: { projectId: string; path: string }) {
     return () => { cancelled = true; };
   }, [projectId, path]);
 
-  if (err) return <div className="p-6 text-sm text-destructive">Failed to load PDF: {err}</div>;
-  if (!bytes) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  if (err) {
+    return (
+      <div className="p-6 text-sm text-destructive">
+        {t(($) => $.editor.shell.pdfLoadFailed, { detail: err })}
+      </div>
+    );
+  }
+  if (!bytes) return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
   return <PdfViewer data={bytes} scale={1} />;
 }
 
 // data: URLs, not blob:, because the CSP only allows img-src data:.
 function ImageFileView({ projectId, path }: { projectId: string; path: string }) {
+  const { t } = useTranslation(["common", "editor"]);
   const [src, setSrc] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -74,8 +83,14 @@ function ImageFileView({ projectId, path }: { projectId: string; path: string })
     return () => { cancelled = true; };
   }, [projectId, path]);
 
-  if (err) return <div className="p-6 text-sm text-destructive">Failed to load image: {err}</div>;
-  if (!src) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  if (err) {
+    return (
+      <div className="p-6 text-sm text-destructive">
+        {t(($) => $.editor.shell.imageLoadFailed, { detail: err })}
+      </div>
+    );
+  }
+  if (!src) return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
   return (
     <div className="flex h-full items-center justify-center overflow-auto p-4">
       <img src={src} alt={basename(path)} className="max-h-full max-w-full object-contain" />
@@ -86,6 +101,7 @@ function ImageFileView({ projectId, path }: { projectId: string; path: string })
 const DiagramMainFileView = lazy(() => import("./DiagramMainFileView"));
 
 export function Editor() {
+  const { t } = useTranslation(["common", "editor"]);
   const interactionRoot = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => registerEditorMutationOwner({
     projectId: () => useFilesStore.getState().projectId,
@@ -210,7 +226,9 @@ export function Editor() {
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 no-scrollbar">
         {tabs.length === 0 && (
-          <span className="px-2 text-xs text-muted-foreground">No file open</span>
+          <span className="px-2 text-xs text-muted-foreground">
+            {t(($) => $.editor.shell.noFileOpenTab)}
+          </span>
         )}
         {tabs.map((tab) =>
           tab.kind === "file" ? (
@@ -233,7 +251,7 @@ export function Editor() {
               </button>
               <button
                 type="button"
-                aria-label={`Close ${basename(tab.id)}`}
+                aria-label={t(($) => $.editor.shell.closeFile, { name: basename(tab.id) })}
                 onClick={(e) => {
                   e.stopPropagation();
                   closeTab(tab.id);
@@ -260,12 +278,14 @@ export function Editor() {
               >
                 {basename(tab.d.path)}
                 <span className="text-muted-foreground">
-                  ({tab.d.side === "staged" ? "Index" : "Working Tree"})
+                  {tab.d.side === "staged"
+                    ? t(($) => $.editor.shell.diffIndex)
+                    : t(($) => $.editor.shell.diffWorkingTree)}
                 </span>
               </button>
               <button
                 type="button"
-                aria-label={`Close diff ${basename(tab.d.path)}`}
+                aria-label={t(($) => $.editor.shell.closeDiffTab, { name: basename(tab.d.path) })}
                 onClick={(e) => {
                   e.stopPropagation();
                   closeDiff(tab.id);
@@ -279,10 +299,10 @@ export function Editor() {
         )}
         </div>
         <div className="flex shrink-0 items-center border-l border-border pl-1 pr-2">
-          <Tooltip label="Editor settings" side="bottom">
+          <Tooltip label={t(($) => $.editor.shell.editorSettings)} side="bottom">
             <button
               type="button"
-              aria-label="Editor settings"
+              aria-label={t(($) => $.editor.shell.editorSettings)}
               onClick={() => useSettingsStore.getState().openSettingsAt("appearance", "editor")}
               className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
@@ -301,7 +321,7 @@ export function Editor() {
         <ErrorBoundary
           fallback={
             <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              The diff view crashed. Close this tab and try again.
+              {t(($) => $.editor.shell.diffCrashed)}
             </div>
           }
         >
@@ -334,7 +354,7 @@ export function Editor() {
               <Suspense
                 fallback={
                   <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin" /> Loading…
+                    <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
                   </div>
                 }
               >
@@ -363,7 +383,7 @@ export function Editor() {
             >
               <FileText className="mb-3 size-10 opacity-30" />
               <p className="text-sm">{basename(activePath)}</p>
-              <p className="text-xs">Binary file. No preview available.</p>
+              <p className="text-xs">{t(($) => $.editor.shell.binaryFile)}</p>
             </div>
           ) : isTypstFile ? (
             <div className="min-h-0 flex-1 overflow-hidden">
@@ -385,7 +405,7 @@ export function Editor() {
                 <Suspense
                   fallback={
                     <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="size-4 animate-spin" /> Loading…
+                      <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
                     </div>
                   }
                 >
@@ -411,8 +431,8 @@ export function Editor() {
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center text-center text-muted-foreground">
           <FileText className="mb-3 size-10 opacity-30" />
-          <p className="text-sm">No file open.</p>
-          <p className="text-xs">Pick a file from the tree to start editing.</p>
+          <p className="text-sm">{t(($) => $.editor.shell.noFileOpen)}</p>
+          <p className="text-xs">{t(($) => $.editor.shell.noFileOpenHint)}</p>
         </div>
       )}
     </div>

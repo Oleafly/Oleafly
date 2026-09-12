@@ -173,6 +173,12 @@ pub struct AppConfig {
     pub mcp_servers: Vec<McpServerConfig>,
     #[serde(default = "default_true")]
     pub skills_share_with_agents: bool,
+    #[serde(default = "default_ui_locale")]
+    pub ui_locale: String,
+}
+
+fn default_ui_locale() -> String {
+    "system".into()
 }
 
 fn default_mcp_port() -> u16 {
@@ -217,6 +223,7 @@ impl Default for AppConfig {
             mcp_token: String::new(),
             mcp_servers: Vec::new(),
             skills_share_with_agents: true,
+            ui_locale: default_ui_locale(),
         }
     }
 }

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -42,6 +43,7 @@ import { goToSyncTex } from "@/features/synctex";
 import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import { useFilesStore } from "@/store/files";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
+import { i18n } from "@/i18n";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -82,8 +84,8 @@ function withProjectSymbol(
     if (visualAction?.()) return;
     toast.info(
       visualAction
-        ? "Select a citation or reference in Visual mode first."
-        : "Rename is available in Source mode.",
+        ? i18n.t(($) => $.editor.toolbar.selectCitationFirst)
+        : i18n.t(($) => $.editor.toolbar.renameSourceOnly),
     );
     return;
   }
@@ -130,7 +132,7 @@ export function IconBtn({
 export function WysiwygModeSwitch({
   wysiwyg,
   onToggle,
-  secondLabel = "Visual",
+  secondLabel,
   "data-tour": dataTour,
 }: {
   wysiwyg: boolean;
@@ -138,6 +140,7 @@ export function WysiwygModeSwitch({
   secondLabel?: string;
   "data-tour"?: string;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <div
       data-tour={dataTour}
@@ -146,26 +149,26 @@ export function WysiwygModeSwitch({
       <button
         type="button"
         onClick={() => wysiwyg && onToggle()}
-        aria-label="Switch to source view"
+        aria-label={t(($) => $.editor.toolbar.switchToSource)}
         aria-pressed={!wysiwyg}
         className={cn(
           "rounded-full px-2.5 py-1 transition-colors",
           !wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
         )}
       >
-        Code
+        {t(($) => $.editor.toolbar.code)}
       </button>
       <button
         type="button"
         onClick={() => !wysiwyg && onToggle()}
-        aria-label="Switch to WYSIWYG view"
+        aria-label={t(($) => $.editor.toolbar.switchToVisual)}
         aria-pressed={wysiwyg}
         className={cn(
           "rounded-full px-2.5 py-1 transition-colors",
           wysiwyg ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
         )}
       >
-        {secondLabel}
+        {secondLabel ?? t(($) => $.editor.toolbar.visual)}
       </button>
     </div>
   );
@@ -222,9 +225,10 @@ export function dividerControl(id: string): ToolbarControl {
 }
 
 function HeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
-      ariaLabel="Heading level"
+      ariaLabel={t(($) => $.editor.toolbar.headingLevel)}
       className="w-fit min-w-0 max-w-56"
       triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
       trigger={
@@ -236,17 +240,19 @@ function HeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
         ) : (
           <>
             <Type className="size-4" />
-            <span className="flex-1 text-left">Heading</span>
+            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.heading)}</span>
             <ChevronDown className="size-3" />
           </>
         )
       }
     >
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">Heading</div>
+      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+        {t(($) => $.editor.toolbar.heading)}
+      </div>
       {HEADING_LEVELS.map((level) => (
-        <PopoverItem key={level.label} onClick={() => insertHeading(level)}>
+        <PopoverItem key={level.hLabel} onClick={() => insertHeading(level)}>
           <span className="w-6 shrink-0 text-[10px] font-medium text-muted-foreground">{level.hLabel}</span>
-          <span className={level.className}>{level.label}</span>
+          <span className={level.className}>{level.label()}</span>
         </PopoverItem>
       ))}
     </Popover>
@@ -254,9 +260,10 @@ function HeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
 }
 
 function ListDropdown({ variant }: { variant: "bar" | "menu" }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
-      ariaLabel="Insert list"
+      ariaLabel={t(($) => $.editor.toolbar.insertList)}
       triggerClassName={variant === "menu" ? "w-full justify-start gap-2 px-2 font-normal" : undefined}
       trigger={
         variant === "bar" ? (
@@ -264,25 +271,26 @@ function ListDropdown({ variant }: { variant: "bar" | "menu" }) {
         ) : (
           <>
             <List className="size-4" />
-            <span className="flex-1 text-left">List</span>
+            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.list)}</span>
           </>
         )
       }
     >
       <PopoverItem onClick={insertItemize}>
-        <List className="size-4" /> Bulleted list
+        <List className="size-4" /> {t(($) => $.editor.toolbar.bulletedList)}
       </PopoverItem>
       <PopoverItem onClick={insertEnumerate}>
-        <ListOrdered className="size-4" /> Numbered list
+        <ListOrdered className="size-4" /> {t(($) => $.editor.toolbar.numberedList)}
       </PopoverItem>
     </Popover>
   );
 }
 
 function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
-      ariaLabel="Code intelligence"
+      ariaLabel={t(($) => $.editor.toolbar.codeIntelligence)}
       triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
       trigger={
         variant === "bar" ? (
@@ -293,32 +301,34 @@ function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
         ) : (
           <>
             <Braces className="size-4" />
-            <span className="flex-1 text-left">Code</span>
+            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.code)}</span>
             <ChevronDown className="size-3" />
           </>
         )
       }
     >
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">Code</div>
+      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+        {t(($) => $.editor.toolbar.code)}
+      </div>
       <PopoverItem
         onClick={() =>
           withProjectSymbol(goToDefinition, goToWysiwygDefinition)
         }
       >
-        <ArrowRightToLine className="size-4" /> Go to definition
-        <span className="ml-auto text-[10px] text-muted-foreground">F12</span>
+        <ArrowRightToLine className="size-4" /> {t(($) => $.editor.toolbar.goToDefinition)}
+        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("F12")}</span>
       </PopoverItem>
       <PopoverItem
         onClick={() =>
           withProjectSymbol(findReferences, findWysiwygReferences)
         }
       >
-        <SearchCode className="size-4" /> Find references
-        <span className="ml-auto text-[10px] text-muted-foreground">⇧F12</span>
+        <SearchCode className="size-4" /> {t(($) => $.editor.toolbar.findReferences)}
+        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("⇧F12")}</span>
       </PopoverItem>
       <PopoverItem onClick={() => withProjectSymbol(startRename)}>
-        <Pencil className="size-4" /> Rename symbol
-        <span className="ml-auto text-[10px] text-muted-foreground">F2</span>
+        <Pencil className="size-4" /> {t(($) => $.editor.toolbar.renameSymbol)}
+        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("F2")}</span>
       </PopoverItem>
     </Popover>
   );
@@ -334,6 +344,7 @@ export function EditorToolbar({
   onToggleWysiwyg: () => void;
   showVisualToggle?: boolean;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   const [visionReady, setVisionReady] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const projectKind = useFilesStore((s) => s.projectKind);
@@ -355,12 +366,24 @@ export function EditorToolbar({
         renderMenu: () => <HeadingDropdown key="heading" variant="menu" />,
       },
       dividerControl("divider-1"),
-      btnControl("bold", Bold, "Bold", insertBold, `Bold (${shortcut("⌘B")})`),
-      btnControl("italic", Italic, "Italic", insertItalic, `Italic (${shortcut("⌘I")})`),
-      btnControl("underline", Underline, "Underline", insertUnderline),
+      btnControl(
+        "bold",
+        Bold,
+        t(($) => $.editor.toolbar.bold),
+        insertBold,
+        t(($) => $.editor.toolbar.boldWithShortcut, { shortcut: shortcut("⌘B") }),
+      ),
+      btnControl(
+        "italic",
+        Italic,
+        t(($) => $.editor.toolbar.italic),
+        insertItalic,
+        t(($) => $.editor.toolbar.italicWithShortcut, { shortcut: shortcut("⌘I") }),
+      ),
+      btnControl("underline", Underline, t(($) => $.editor.toolbar.underline), insertUnderline),
       dividerControl("divider-2"),
-      btnControl("code", Code, "Inline code", insertCode),
-      btnControl("link", LinkIcon, "Insert link", insertLink),
+      btnControl("code", Code, t(($) => $.editor.toolbar.inlineCode), insertCode),
+      btnControl("link", LinkIcon, t(($) => $.editor.toolbar.insertLink), insertLink),
       {
         id: "cite",
         width: ICON_BUTTON_WIDTH,
@@ -369,11 +392,11 @@ export function EditorToolbar({
           <ProjectCitationPicker key="cite" variant="menu" />
         ),
       },
-      btnControl("ref", Tag, "Insert cross-reference", insertRef),
-      btnControl("footnote", Asterisk, "Insert footnote", insertFootnote),
-      btnControl("blockquote", Quote, "Insert blockquote", insertBlockquote),
+      btnControl("ref", Tag, t(($) => $.editor.toolbar.insertCrossReference), insertRef),
+      btnControl("footnote", Asterisk, t(($) => $.editor.toolbar.insertFootnote), insertFootnote),
+      btnControl("blockquote", Quote, t(($) => $.editor.toolbar.insertBlockquote), insertBlockquote),
       dividerControl("divider-3"),
-      btnControl("figure", ImageIcon, "Insert figure", insertFigure),
+      btnControl("figure", ImageIcon, t(($) => $.editor.toolbar.insertFigure), insertFigure),
       {
         id: "table",
         width: ICON_BUTTON_WIDTH,
@@ -387,7 +410,10 @@ export function EditorToolbar({
         id: "image-to-latex",
         width: ICON_BUTTON_WIDTH,
         render: () => (
-          <IconBtn onClick={() => imageInputRef.current?.click()} title="Image to LaTeX (transcribe with AI)">
+          <IconBtn
+            onClick={() => imageInputRef.current?.click()}
+            title={t(($) => $.editor.toolbar.imageToLatexTooltip)}
+          >
             <ImagePlus data-testid="image-to-latex" className="size-4" />
           </IconBtn>
         ),
@@ -395,7 +421,7 @@ export function EditorToolbar({
           <MenuRow
             key="image-to-latex"
             icon={<ImagePlus className="size-4" />}
-            label="Image to LaTeX"
+            label={t(($) => $.editor.toolbar.imageToLatex)}
             onClick={() => imageInputRef.current?.click()}
           />
         ),
@@ -410,9 +436,27 @@ export function EditorToolbar({
         render: () => <ListDropdown variant="bar" />,
         renderMenu: () => <ListDropdown key="list" variant="menu" />,
       },
-      btnControl("align", Rows3, "Align environment", insertAlign, "Insert align environment"),
-      btnControl("equation", Sigma, "Equation environment", insertEquation, "Insert equation environment"),
-      btnControl("fraction", Divide, "Fraction", insertFraction, "Insert fraction"),
+      btnControl(
+        "align",
+        Rows3,
+        t(($) => $.editor.toolbar.alignEnvironment),
+        insertAlign,
+        t(($) => $.editor.toolbar.insertAlignEnvironment),
+      ),
+      btnControl(
+        "equation",
+        Sigma,
+        t(($) => $.editor.toolbar.equationEnvironment),
+        insertEquation,
+        t(($) => $.editor.toolbar.insertEquationEnvironment),
+      ),
+      btnControl(
+        "fraction",
+        Divide,
+        t(($) => $.editor.toolbar.fraction),
+        insertFraction,
+        t(($) => $.editor.toolbar.insertFraction),
+      ),
       dividerControl("divider-5"),
       {
         id: "symbols",
@@ -431,7 +475,7 @@ export function EditorToolbar({
     }
 
     return list;
-  }, [visionReady, wysiwyg]);
+  }, [t, visionReady, wysiwyg]);
 
   const { containerRef, availableWidth } = useAvailableWidth();
   const visibleCount = fitCount(controls, availableWidth);
@@ -445,17 +489,21 @@ export function EditorToolbar({
           <WysiwygModeSwitch
             wysiwyg={wysiwyg}
             onToggle={onToggleWysiwyg}
-            secondLabel={projectKind === "diagram" ? "Canvas" : "Visual"}
+            secondLabel={
+              projectKind === "diagram"
+                ? t(($) => $.editor.toolbar.canvas)
+                : t(($) => $.editor.toolbar.visual)
+            }
             data-tour="wysiwyg-toggle"
           />
           <Divider />
         </>
       )}
 
-      <IconBtn onClick={editorUndo} title={`Undo (${shortcut("⌘Z")})`}>
+      <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
         <Undo2 className="size-4" />
       </IconBtn>
-      <IconBtn onClick={editorRedo} title={`Redo (${shortcut("⌘⇧Z")})`}>
+      <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
         <Redo2 className="size-4" />
       </IconBtn>
 
@@ -482,7 +530,7 @@ export function EditorToolbar({
         ))}
         {overflowControls.length > 0 && (
           <Popover
-            ariaLabel="More formatting options"
+            ariaLabel={t(($) => $.editor.toolbar.moreOptions)}
             closeOnClick={false}
             className="max-h-96 w-56 overflow-y-auto p-1"
             trigger={<MoreHorizontal className="size-4" />}
@@ -496,21 +544,21 @@ export function EditorToolbar({
         {activePath?.toLowerCase().endsWith(".bib") && (
           <IconBtn
             onClick={() => void runCiteOleaflyAction({ path: activePath })}
-            title="Add the Oleafly citation to this file"
+            title={t(($) => $.editor.toolbar.citeOleafly)}
           >
             <Quote className="size-4" />
           </IconBtn>
         )}
         <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />
         {!wysiwyg && (
-          <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
+          <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>
             <Search className="size-4" />
           </IconBtn>
         )}
         {!wysiwyg && syncTexSupported && (
           <>
             <Divider />
-            <IconBtn onClick={goToSyncTex} title="Go to PDF (SyncTeX)">
+            <IconBtn onClick={goToSyncTex} title={t(($) => $.editor.toolbar.goToPdf)}>
               <ArrowRight className="size-4" />
             </IconBtn>
           </>

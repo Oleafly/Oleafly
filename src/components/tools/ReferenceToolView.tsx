@@ -1,4 +1,5 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   Check,
@@ -43,6 +44,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import { i18n } from "@/i18n";
 
 type OutputMode = "reference" | "in-text" | "bibtex";
 type BibliographyInputMode = "fields" | "bibtex";
@@ -129,13 +131,6 @@ const EXPECTED_KIND: Partial<Record<ReferenceToolId, "doi" | "arxiv" | "isbn" | 
   "pubmed-to-bibtex": "pmid",
 };
 
-const KIND_LABEL = {
-  doi: "DOI",
-  arxiv: "arXiv ID or URL",
-  isbn: "ISBN-10 or ISBN-13",
-  pmid: "PMID or PubMed URL",
-} as const;
-
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
@@ -149,13 +144,13 @@ async function saveBibtex(bibtex: string): Promise<void> {
   try {
     const destination = await pickSavePath({
       defaultPath: "references.bib",
-      filters: [{ name: "BibTeX bibliography", extensions: ["bib"] }],
+      filters: [{ name: i18n.t(($) => $.researchTools.references.bibtexBibliography), extensions: ["bib"] }],
     });
     if (!destination) return;
     await writeBytesFile(destination, bytesToBase64(new TextEncoder().encode(bibtex)));
-    toast.success("Saved references.bib");
+    toast.success(i18n.t(($) => $.researchTools.references.savedBibliography));
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : "Oleafly couldn't save this bibliography.");
+    toast.error(error instanceof Error ? error.message : i18n.t(($) => $.researchTools.references.saveFailed));
   }
 }
 
@@ -163,9 +158,9 @@ async function copyText(text: string, label: string): Promise<void> {
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    toast.success(`Copied ${label}`);
+    toast.success(i18n.t(($) => $.researchTools.references.copied, { label }));
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : `Oleafly couldn't copy ${label}.`);
+    toast.error(error instanceof Error ? error.message : i18n.t(($) => $.researchTools.references.copyFailed, { label }));
   }
 }
 
@@ -182,7 +177,7 @@ function Field({
   placeholder?: string;
   className?: string;
 }) {
-  const id = `reference-${label.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}`;
+  const id = useId();
   return (
     <label htmlFor={id} className={cn("grid gap-1.5 text-xs font-medium text-muted-foreground", className)}>
       {label}
@@ -204,39 +199,40 @@ function ReferenceFields({
   form: ReferenceFormData;
   onChange: (form: ReferenceFormData) => void;
 }) {
+  const { t } = useTranslation(["researchTools"]);
   const update = <Key extends keyof ReferenceFormData>(key: Key, value: ReferenceFormData[Key]) =>
     onChange({ ...form, [key]: value });
   const containerLabel = form.type === "article"
-    ? "Journal"
+    ? t(($) => $.researchTools.references.fieldJournal)
     : form.type === "inproceedings"
-      ? "Conference or proceedings"
+      ? t(($) => $.researchTools.references.fieldConference)
       : form.type === "incollection"
-        ? "Book title"
-        : "Container title";
+        ? t(($) => $.researchTools.references.fieldBookTitle)
+        : t(($) => $.researchTools.references.fieldContainerTitle);
   return (
     <div className="grid gap-3 p-4 sm:grid-cols-2">
       <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
-        Reference type
+        {t(($) => $.researchTools.references.referenceType)}
         <select
           value={form.type}
           onChange={(event) => update("type", event.target.value as ReferenceFormData["type"])}
           className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <option value="article">Journal article</option>
-          <option value="book">Book</option>
-          <option value="incollection">Book chapter</option>
-          <option value="inproceedings">Conference paper</option>
-          <option value="misc">Webpage or other</option>
+          <option value="article">{t(($) => $.researchTools.references.typeArticle)}</option>
+          <option value="book">{t(($) => $.researchTools.references.typeBook)}</option>
+          <option value="incollection">{t(($) => $.researchTools.references.typeChapter)}</option>
+          <option value="inproceedings">{t(($) => $.researchTools.references.typeConference)}</option>
+          <option value="misc">{t(($) => $.researchTools.references.typeOther)}</option>
         </select>
       </label>
-      <Field label="Year" value={form.year} placeholder="2026" onChange={(value) => update("year", value)} />
-      <Field label="Title" value={form.title} onChange={(value) => update("title", value)} className="sm:col-span-2" />
+      <Field label={t(($) => $.researchTools.references.fieldYear)} value={form.year} placeholder={t(($) => $.researchTools.references.yearPlaceholder)} onChange={(value) => update("year", value)} />
+      <Field label={t(($) => $.researchTools.references.fieldTitle)} value={form.title} onChange={(value) => update("title", value)} className="sm:col-span-2" />
       <label className="grid gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-2">
-        Authors
+        {t(($) => $.researchTools.references.fieldAuthors)}
         <textarea
           value={form.authors}
           onChange={(event) => update("authors", event.target.value)}
-          placeholder="Separate authors with semicolons"
+          placeholder={t(($) => $.researchTools.references.authorsPlaceholder)}
           rows={2}
           className="min-h-16 resize-y rounded-md border border-input bg-background px-3 py-2 text-sm font-normal text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
@@ -245,20 +241,21 @@ function ReferenceFields({
         <Field label={containerLabel} value={form.container} onChange={(value) => update("container", value)} className="sm:col-span-2" />
       )}
       {(form.type === "book" || form.type === "incollection" || form.type === "inproceedings") && (
-        <Field label="Publisher" value={form.publisher} onChange={(value) => update("publisher", value)} />
+        <Field label={t(($) => $.researchTools.references.fieldPublisher)} value={form.publisher} onChange={(value) => update("publisher", value)} />
       )}
-      <Field label="Volume" value={form.volume} onChange={(value) => update("volume", value)} />
-      <Field label="Issue" value={form.issue} onChange={(value) => update("issue", value)} />
-      <Field label="Pages" value={form.pages} placeholder="101--115" onChange={(value) => update("pages", value)} />
-      <Field label="DOI" value={form.doi} onChange={(value) => update("doi", value)} />
-      <Field label="ISBN" value={form.isbn} onChange={(value) => update("isbn", value)} />
-      <Field label="PMID" value={form.pmid} onChange={(value) => update("pmid", value)} />
-      <Field label="URL" value={form.url} onChange={(value) => update("url", value)} className="sm:col-span-2" />
+      <Field label={t(($) => $.researchTools.references.fieldVolume)} value={form.volume} onChange={(value) => update("volume", value)} />
+      <Field label={t(($) => $.researchTools.references.fieldIssue)} value={form.issue} onChange={(value) => update("issue", value)} />
+      <Field label={t(($) => $.researchTools.references.fieldPages)} value={form.pages} placeholder={t(($) => $.researchTools.references.pagesPlaceholder)} onChange={(value) => update("pages", value)} />
+      <Field label={t(($) => $.researchTools.references.fieldDoi)} value={form.doi} onChange={(value) => update("doi", value)} />
+      <Field label={t(($) => $.researchTools.references.fieldIsbn)} value={form.isbn} onChange={(value) => update("isbn", value)} />
+      <Field label={t(($) => $.researchTools.references.fieldPmid)} value={form.pmid} onChange={(value) => update("pmid", value)} />
+      <Field label={t(($) => $.researchTools.references.fieldUrl)} value={form.url} onChange={(value) => update("url", value)} className="sm:col-span-2" />
     </div>
   );
 }
 
 function ValidationSummary({ bibtex }: { bibtex: string }) {
+  const { t } = useTranslation(["researchTools"]);
   const inspection = useMemo(() => inspectBibtex(bibtex), [bibtex]);
   const errors = [
     ...inspection.errors,
@@ -275,8 +272,8 @@ function ValidationSummary({ bibtex }: { bibtex: string }) {
       <div className="flex items-center gap-2 font-medium">
         {errors.length ? <AlertCircle className="size-3.5 text-destructive" /> : <Check className="size-3.5 text-emerald-500" />}
         {errors.length
-          ? `${errors.length} issue${errors.length === 1 ? "" : "s"} to fix`
-          : `${inspection.entries} valid entr${inspection.entries === 1 ? "y" : "ies"}`}
+          ? t(($) => $.researchTools.references.issuesToFix, { count: errors.length })
+          : t(($) => $.researchTools.references.validEntries, { count: inspection.entries })}
       </div>
       {[...errors, ...warnings].slice(0, 4).map((message) => (
         <p key={message} className={cn("mt-1", errors.includes(message) ? "text-destructive" : "text-amber-700 dark:text-amber-300")}>
@@ -288,11 +285,12 @@ function ValidationSummary({ bibtex }: { bibtex: string }) {
 }
 
 function SearchResults({ hits, onSelect }: { hits: CitationHit[]; onSelect: (hit: CitationHit) => void }) {
+  const { t } = useTranslation(["researchTools"]);
   if (!hits.length) return null;
   return (
     <div className="border-b p-3" data-testid="reference-search-results">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Select the matching work
+        {t(($) => $.researchTools.references.selectMatchingWork)}
       </p>
       <div className="grid max-h-52 gap-2 overflow-y-auto">
         {hits.map((hit) => (
@@ -328,6 +326,7 @@ function ReferenceOutput({
   setMode: (mode: OutputMode) => void;
   formattingError: string | null;
 }) {
+  const { t } = useTranslation(["researchTools"]);
   const editorTheme = useSettingsStore((state) => state.editorTheme);
   const deferredBibtex = useDeferredValue(bibtex);
   const rendered = useMemo(() => {
@@ -342,27 +341,27 @@ function ReferenceOutput({
     } catch (caught) {
       return {
         formatted: { bibliography: "", inText: "", entries: 0 },
-        error: caught instanceof Error ? caught.message : "Oleafly couldn't format this BibTeX.",
+        error: caught instanceof Error ? caught.message : t(($) => $.researchTools.references.formatFailed),
       };
     }
-  }, [deferredBibtex, formattingError, style]);
+  }, [deferredBibtex, formattingError, style, t]);
   const { formatted } = rendered;
   const output = mode === "reference" ? formatted.bibliography : mode === "in-text" ? formatted.inText : bibtex;
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
         <ToolSegmentedControl
-          label="Citation output"
+          label={t(($) => $.researchTools.references.citationOutput)}
           value={mode}
           onChange={setMode}
           options={[
-            { value: "reference", label: "Reference" },
-            { value: "in-text", label: "In-text" },
+            { value: "reference", label: t(($) => $.researchTools.references.reference) },
+            { value: "in-text", label: t(($) => $.researchTools.references.inText) },
             { value: "bibtex", label: "BibTeX" },
           ]}
         />
         <select
-          aria-label="Citation style"
+          aria-label={t(($) => $.researchTools.references.citationStyle)}
           value={style}
           onChange={(event) => setStyle(event.target.value as CitationStyleId)}
           className="ml-auto h-8 rounded-md border border-input bg-background px-2 text-xs font-medium"
@@ -373,7 +372,7 @@ function ReferenceOutput({
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">
         {rendered.error ? (
           <div className="m-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
-            <p className="font-medium">This reference needs attention</p>
+            <p className="font-medium">{t(($) => $.researchTools.references.referenceNeedsAttention)}</p>
             <p className="mt-1 text-xs leading-relaxed">{rendered.error}</p>
           </div>
         ) : mode === "bibtex" ? (
@@ -389,19 +388,19 @@ function ReferenceOutput({
         ) : (
           <div className="m-4 min-h-48 rounded-xl border bg-card p-6 shadow-sm">
             <p className="whitespace-pre-wrap font-serif text-[15px] leading-7" data-testid="formatted-citation-output">
-              {output || "Add enough reference details to see the formatted result."}
+              {output || t(($) => $.researchTools.references.outputPlaceholder)}
             </p>
           </div>
         )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3">
-        <span className="text-xs text-muted-foreground">{formatted.entries} {formatted.entries === 1 ? "reference" : "references"}</span>
+        <span className="text-xs text-muted-foreground">{t(($) => $.researchTools.references.referenceCount, { count: formatted.entries })}</span>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={!output} onClick={() => void copyText(output, mode === "bibtex" ? "BibTeX" : "citation")}>
-            <Copy className="size-3.5" /> Copy
+          <Button variant="outline" size="sm" disabled={!output} onClick={() => void copyText(output, mode === "bibtex" ? "BibTeX" : t(($) => $.researchTools.references.citation))}>
+            <Copy className="size-3.5" /> {t(($) => $.researchTools.references.copy)}
           </Button>
           <Button size="sm" disabled={!bibtex.trim()} onClick={() => void saveBibtex(bibtex)}>
-            <Download className="size-3.5" /> Save .bib
+            <Download className="size-3.5" /> {t(($) => $.researchTools.references.saveBib)}
           </Button>
         </div>
       </div>
@@ -415,6 +414,7 @@ type StyleResult = (typeof CITATION_STYLES)[number] & ReturnType<typeof formatCi
 };
 
 function StyleComparison({ bibtex, formattingError }: { bibtex: string; formattingError: string | null }) {
+  const { t } = useTranslation(["researchTools"]);
   const deferredBibtex = useDeferredValue(bibtex);
   const [rendered, setRendered] = useState<{
     styles: StyleResult[];
@@ -440,7 +440,7 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
           bibliography: "",
           inText: "",
           entries: 0,
-          error: caught instanceof Error ? caught.message : "Oleafly couldn't format this style.",
+          error: caught instanceof Error ? caught.message : t(($) => $.researchTools.references.styleFormatFailed),
         };
       }
       index += 1;
@@ -455,7 +455,7 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
     return () => {
       window.clearTimeout(timer);
     };
-  }, [deferredBibtex, formattingError]);
+  }, [deferredBibtex, formattingError, t]);
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
       {rendered.error ? (
@@ -466,7 +466,7 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
         <div className="grid gap-3">
           {rendered.pending && (
             <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
-              <Loader2 className="size-3.5 animate-spin" /> Formatting styles locally…
+              <Loader2 className="size-3.5 animate-spin" /> {t(($) => $.researchTools.references.formattingStyles)}
             </p>
           )}
           {rendered.styles.map((style) => (
@@ -476,8 +476,8 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
                   <h3 className="text-sm font-semibold">{style.label}</h3>
                   <p className="text-[11px] text-muted-foreground">{style.fullName}</p>
                 </div>
-                <Button variant="ghost" size="sm" disabled={!style.bibliography} onClick={() => void copyText(style.bibliography, `${style.label} citation`)}>
-                  <Copy className="size-3.5" /> Copy
+                <Button variant="ghost" size="sm" disabled={!style.bibliography} onClick={() => void copyText(style.bibliography, t(($) => $.researchTools.references.styleCitation, { style: style.label }))}>
+                  <Copy className="size-3.5" /> {t(($) => $.researchTools.references.copy)}
                 </Button>
               </div>
               {style.error ? (
@@ -485,7 +485,7 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
               ) : (
                 <>
                   <p className="mt-3 whitespace-pre-wrap font-serif text-sm leading-6">{style.bibliography}</p>
-                  <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">In text: {style.inText}</p>
+                  <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">{t(($) => $.researchTools.references.inTextValue, { value: style.inText })}</p>
                 </>
               )}
             </article>
@@ -497,7 +497,58 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
 }
 
 function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
-  const content = TOOL_CONTENT[id];
+  const { t } = useTranslation(["researchTools"]);
+  const contentCopy: Record<ReferenceToolId, Omit<(typeof TOOL_CONTENT)[ReferenceToolId], "queryExample">> = {
+    "arxiv-citation-generator": {
+      title: t(($) => $.researchTools.references.tools.arxiv.title),
+      subtitle: t(($) => $.researchTools.references.tools.arxiv.subtitle),
+      queryLabel: t(($) => $.researchTools.references.tools.arxiv.queryLabel),
+      queryPlaceholder: t(($) => $.researchTools.references.tools.arxiv.queryPlaceholder),
+    },
+    "bibliography-generator": {
+      title: t(($) => $.researchTools.references.tools.bibliography.title),
+      subtitle: t(($) => $.researchTools.references.tools.bibliography.subtitle),
+      queryLabel: t(($) => $.researchTools.references.tools.bibliography.queryLabel),
+      queryPlaceholder: "",
+    },
+    "citation-generator": {
+      title: t(($) => $.researchTools.references.tools.citation.title),
+      subtitle: t(($) => $.researchTools.references.tools.citation.subtitle),
+      queryLabel: t(($) => $.researchTools.references.tools.citation.queryLabel),
+      queryPlaceholder: t(($) => $.researchTools.references.tools.citation.queryPlaceholder),
+    },
+    "citation-styles": {
+      title: t(($) => $.researchTools.references.tools.styles.title),
+      subtitle: t(($) => $.researchTools.references.tools.styles.subtitle),
+      queryLabel: t(($) => $.researchTools.references.tools.styles.queryLabel),
+      queryPlaceholder: "",
+    },
+    "doi-to-bibtex": {
+      title: t(($) => $.researchTools.references.tools.doi.title),
+      subtitle: t(($) => $.researchTools.references.tools.doi.subtitle),
+      queryLabel: "DOI",
+      queryPlaceholder: t(($) => $.researchTools.references.tools.doi.queryPlaceholder),
+    },
+    "isbn-to-bibtex": {
+      title: t(($) => $.researchTools.references.tools.isbn.title),
+      subtitle: t(($) => $.researchTools.references.tools.isbn.subtitle),
+      queryLabel: t(($) => $.researchTools.references.tools.isbn.queryLabel),
+      queryPlaceholder: t(($) => $.researchTools.references.tools.isbn.queryPlaceholder),
+    },
+    "pubmed-to-bibtex": {
+      title: t(($) => $.researchTools.references.tools.pubmed.title),
+      subtitle: t(($) => $.researchTools.references.tools.pubmed.subtitle),
+      queryLabel: t(($) => $.researchTools.references.tools.pubmed.queryLabel),
+      queryPlaceholder: t(($) => $.researchTools.references.tools.pubmed.queryPlaceholder),
+    },
+    "url-to-bibtex": {
+      title: t(($) => $.researchTools.references.tools.url.title),
+      subtitle: t(($) => $.researchTools.references.tools.url.subtitle),
+      queryLabel: t(($) => $.researchTools.references.tools.url.queryLabel),
+      queryPlaceholder: t(($) => $.researchTools.references.tools.url.queryPlaceholder),
+    },
+  };
+  const content = { ...contentCopy[id], queryExample: TOOL_CONTENT[id].queryExample };
   const catalog = toolById(id);
   const bibliographyMode = id === "bibliography-generator";
   const compareMode = id === "citation-styles";
@@ -518,6 +569,12 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
   const [hits, setHits] = useState<CitationHit[]>([]);
   const requestId = useRef(0);
   const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const kindLabel = {
+    doi: "DOI",
+    arxiv: t(($) => $.researchTools.references.tools.arxiv.queryLabel),
+    isbn: t(($) => $.researchTools.references.tools.isbn.queryLabel),
+    pmid: t(($) => $.researchTools.references.tools.pubmed.queryLabel),
+  } as const;
 
   useEffect(() => () => {
     requestId.current += 1;
@@ -543,34 +600,34 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
     setForm(next);
     setBibtex(formToBibtex(next));
     setError(null);
-    setMessage("Formatting locally as you type");
+    setMessage(t(($) => $.researchTools.references.formattingLocally));
   };
 
   const runLookup = async () => {
     const input = query.trim();
     if (!input) {
-      setError(`Enter ${content.queryLabel.toLowerCase()} first.`);
+      setError(t(($) => $.researchTools.references.enterFirst, { label: content.queryLabel }));
       return;
     }
     if (id === "citation-generator" && input.startsWith("@")) {
-      applyBibtex(input, "BibTeX loaded locally");
+      applyBibtex(input, t(($) => $.researchTools.references.bibtexLoaded));
       return;
     }
     const target = detectCitationTarget(input);
     const expected = EXPECTED_KIND[id];
     if (expected && target.kind !== expected) {
-      setError(`Enter a valid ${KIND_LABEL[expected]}.`);
+      setError(t(($) => $.researchTools.references.enterValid, { label: kindLabel[expected] }));
       return;
     }
     if (id === "url-to-bibtex") {
       if (target.kind === "title") {
-        setError("Enter a complete http or https web address.");
+        setError(t(($) => $.researchTools.references.enterWebAddress));
         return;
       }
       if (target.kind === "url") {
         applyBibtex(
           webpageBibtex(target.value),
-          "Built a private, editable webpage entry locally. Add the page title and author below.",
+          t(($) => $.researchTools.references.webpageBuilt),
         );
         return;
       }
@@ -589,15 +646,15 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
       return;
     }
     if (result.bibtex) {
-      applyBibtex(result.bibtex, "Metadata retrieved. Review the fields before exporting.");
+      applyBibtex(result.bibtex, t(($) => $.researchTools.references.metadataRetrieved));
       return;
     }
     if (result.hits?.length) {
       setHits(result.hits);
-      setMessage(`${result.hits.length} possible matches found`);
+      setMessage(t(($) => $.researchTools.references.possibleMatches, { count: result.hits.length }));
       return;
     }
-    setError("No matching reference was found. You can still enter the details manually.");
+    setError(t(($) => $.researchTools.references.noMatch));
   };
 
   const selectHit = async (hit: CitationHit) => {
@@ -607,10 +664,10 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
     try {
       const result = await bibtexForHit(hit);
       if (currentRequest !== requestId.current) return;
-      applyBibtex(result, "Reference selected. Review the fields before exporting.");
+      applyBibtex(result, t(($) => $.researchTools.references.referenceSelected));
     } catch (caught) {
       if (currentRequest === requestId.current) {
-        setError(caught instanceof Error ? caught.message : "Oleafly couldn't build this reference.");
+        setError(caught instanceof Error ? caught.message : t(($) => $.researchTools.references.buildFailed));
       }
     } finally {
       if (currentRequest === requestId.current) setBusy(false);
@@ -619,7 +676,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
 
   const addToBibliography = () => {
     if (!form.title.trim()) {
-      setError("Add a title before adding this reference.");
+      setError(t(($) => $.researchTools.references.addTitleFirst));
       return;
     }
     const keys = new Set(inspection.findings.map((finding) => finding.key));
@@ -627,7 +684,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
     setBibtex((current) => `${current.trim()}${current.trim() ? "\n\n" : ""}${entry}`);
     setForm(EMPTY_REFERENCE);
     setError(null);
-    setMessage("Reference added to the bibliography");
+    setMessage(t(($) => $.researchTools.references.referenceAdded));
   };
 
   const reset = () => {
@@ -643,7 +700,11 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
   };
 
   const statusState = error ? "error" : busy ? "busy" : "ready";
-  const statusText = error ? "Needs attention" : busy ? "Looking up metadata" : "Local formatter ready";
+  const statusText = error
+    ? t(($) => $.researchTools.references.statusNeedsAttention)
+    : busy
+      ? t(($) => $.researchTools.references.statusLookingUp)
+      : t(($) => $.researchTools.references.statusReady);
 
   return (
     <ToolPageShell
@@ -657,11 +718,17 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
     >
       <ToolSplitView storageId={`reference-${id}`}>
         <ToolPane
-          title={bibliographyMode ? "Build bibliography" : compareMode ? "BibTeX input" : "Reference details"}
-          badge={bibliographyMode ? `${inspection.entries} entries` : "Local editing"}
+          title={bibliographyMode
+            ? t(($) => $.researchTools.references.buildBibliography)
+            : compareMode
+              ? t(($) => $.researchTools.references.bibtexInput)
+              : t(($) => $.researchTools.references.referenceDetails)}
+          badge={bibliographyMode
+            ? t(($) => $.researchTools.references.entryCount, { count: inspection.entries })
+            : t(($) => $.researchTools.references.localEditing)}
           actions={
             <Button variant="ghost" size="sm" onClick={reset}>
-              <RotateCcw className="size-3.5" /> Reset example
+              <RotateCcw className="size-3.5" /> {t(($) => $.researchTools.references.resetExample)}
             </Button>
           }
         >
@@ -669,12 +736,12 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
             <>
               <div className="flex items-center border-b px-4 py-2">
                 <ToolSegmentedControl
-                  label="Bibliography input"
+                  label={t(($) => $.researchTools.references.bibliographyInput)}
                   value={bibliographyInputMode}
                   onChange={setBibliographyInputMode}
                   options={[
-                    { value: "fields", label: "Add reference" },
-                    { value: "bibtex", label: "Edit BibTeX" },
+                    { value: "fields", label: t(($) => $.researchTools.references.addReference) },
+                    { value: "bibtex", label: t(($) => $.researchTools.references.editBibtex) },
                   ]}
                 />
               </div>
@@ -682,7 +749,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   <ReferenceFields form={form} onChange={setForm} />
                   <div className="flex justify-end border-t px-4 py-3">
-                    <Button onClick={addToBibliography}><Plus className="size-4" /> Add to bibliography</Button>
+                    <Button onClick={addToBibliography}><Plus className="size-4" /> {t(($) => $.researchTools.references.addToBibliography)}</Button>
                   </div>
                 </div>
               ) : (
@@ -691,7 +758,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
                   onChange={(value) => { setBibtex(value); setError(null); }}
                   language={bibtexLanguage}
                   themeId={editorTheme}
-                  placeholder="Paste one or more BibTeX entries…"
+                  placeholder={t(($) => $.researchTools.references.bibliographyPlaceholder)}
                   testId="bibliography-bibtex-input"
                   className="min-h-64 flex-1 overflow-auto text-xs [&_.cm-editor]:h-full"
                 />
@@ -703,7 +770,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
               onChange={(value) => { setBibtex(value); setError(null); }}
               language={bibtexLanguage}
               themeId={editorTheme}
-              placeholder="Paste one BibTeX entry to compare styles…"
+              placeholder={t(($) => $.researchTools.references.comparePlaceholder)}
               testId="citation-styles-bibtex-input"
               className="min-h-64 flex-1 overflow-auto text-xs [&_.cm-editor]:h-full"
             />
@@ -734,11 +801,13 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
                   />
                   <Button onClick={() => void runLookup()} disabled={busy} data-testid="reference-lookup-button">
                     {busy ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                    {id === "url-to-bibtex" ? "Build" : "Look up"}
+                    {id === "url-to-bibtex"
+                      ? t(($) => $.researchTools.references.build)
+                      : t(($) => $.researchTools.references.lookUp)}
                   </Button>
                 </div>
                 <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                  Formatting and manual editing stay on this device. Metadata lookup uses the relevant public catalog and needs a connection.
+                  {t(($) => $.researchTools.references.privacyHint)}
                 </p>
                 {message && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300" role="status">{message}</p>}
                 {error && <p className="mt-2 text-xs text-destructive" role="alert">{error}</p>}
@@ -757,12 +826,16 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
           )}
         </ToolPane>
         <ToolPane
-          title={compareMode ? "Style comparison" : "Citation output"}
-          badge={compareMode ? "8 styles" : CITATION_STYLES.find((candidate) => candidate.id === style)?.label}
+          title={compareMode
+            ? t(($) => $.researchTools.references.styleComparison)
+            : t(($) => $.researchTools.references.citationOutput)}
+          badge={compareMode
+            ? t(($) => $.researchTools.references.styleCount, { count: CITATION_STYLES.length })
+            : CITATION_STYLES.find((candidate) => candidate.id === style)?.label}
           actions={compareMode ? (
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" disabled={!bibtex} onClick={() => void copyText(bibtex, "BibTeX")}><Copy className="size-3.5" /> Copy BibTeX</Button>
-              <Button variant="ghost" size="sm" disabled={!bibtex} onClick={() => void saveBibtex(bibtex)}><Download className="size-3.5" /> Save</Button>
+              <Button variant="ghost" size="sm" disabled={!bibtex} onClick={() => void copyText(bibtex, "BibTeX")}><Copy className="size-3.5" /> {t(($) => $.researchTools.references.copyBibtex)}</Button>
+              <Button variant="ghost" size="sm" disabled={!bibtex} onClick={() => void saveBibtex(bibtex)}><Download className="size-3.5" /> {t(($) => $.researchTools.references.save)}</Button>
             </div>
           ) : undefined}
         >

@@ -5,6 +5,7 @@ import {
   type ComponentType,
 } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export interface LanguageServiceRuntimeModule {
   LanguageServiceRuntime: ComponentType;
@@ -24,23 +25,21 @@ export interface LanguageServiceRuntimeUnavailableProps {
 export function LanguageServiceRuntimeUnavailable({
   reload = () => window.location.reload(),
 }: LanguageServiceRuntimeUnavailableProps = {}) {
+  const { t } = useTranslation(["common", "intelligence"]);
   useEffect(() => {
     const toastId = "language-service-runtime-unavailable";
-    toast.error(
-      "Language analysis is unavailable because its runtime could not load.",
-      {
-        id: toastId,
-        duration: Number.POSITIVE_INFINITY,
-        action: {
-          label: "Reload Oleafly",
-          onClick: reload,
-        },
+    toast.error(t(($) => $.intelligence.languageService.runtimeUnavailable), {
+      id: toastId,
+      duration: Number.POSITIVE_INFINITY,
+      action: {
+        label: t(($) => $.intelligence.languageService.reloadApp),
+        onClick: reload,
       },
-    );
+    });
     return () => {
       toast.dismiss(toastId);
     };
-  }, [reload]);
+  }, [reload, t]);
   return null;
 }
 

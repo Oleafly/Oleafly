@@ -1,4 +1,5 @@
 import { Children, useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ export function ToolSplitView({
   className?: string;
   storageId?: string;
 }) {
+  const { t } = useTranslation(["researchTools"]);
   const panes = Children.toArray(children);
   const desktop = useDesktopSplit();
 
@@ -56,7 +58,7 @@ export function ToolSplitView({
       </Panel>
       <PanelResizeHandle
         id={storageId ? `${storageId}-handle` : undefined}
-        aria-label="Resize tool panels"
+        aria-label={t(($) => $.researchTools.tools.resizePanels)}
         data-testid="tool-split-resize-handle"
         className="group relative flex w-2 shrink-0 cursor-col-resize items-center justify-center border-x border-border/70 bg-background transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >

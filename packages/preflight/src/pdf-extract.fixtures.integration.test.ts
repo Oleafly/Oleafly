@@ -69,7 +69,9 @@ describe("real PDF/UA-1 files from the veraPDF corpus", () => {
     expect(ids).toContain("pdf-ua-claim-mismatch");
     const claim = findings.find((finding) => finding.id === "pdf-ua-claim-mismatch");
     expect(claim?.severity).toBe("error");
-    expect(claim?.detail).toContain("DisplayDocTitle is not set to true");
+    expect(claim?.detailParts?.map((part) => part.key)).toContain(
+      "rules.pdf-ua-claim-mismatch.partNoDisplayDocTitle",
+    );
     expect(claim?.standards?.some((ref) => ref.verapdfRule === "5-1")).toBe(true);
   });
 

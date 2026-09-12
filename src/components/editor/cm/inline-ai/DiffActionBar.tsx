@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, MessageSquareShare, RotateCcw, X } from "lucide-react";
 import { AiChrome } from "@/components/ai/AiChrome";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -49,6 +50,7 @@ export function DiffActionBar({
   onRetry: () => void;
   onOpenInAgent?: () => void;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <AiChrome
       borderVariant="animated"
@@ -60,16 +62,26 @@ export function DiffActionBar({
           child in its own span, so a `first:` variant on the button would match
           every one of them and no separator would ever render. */}
       <div className="flex items-center divide-x divide-primary/20 overflow-hidden rounded-md bg-primary/10">
-        <DiffAction icon={Check} label="Accept" keyShortcut="Enter" onClick={onAccept} />
-        <DiffAction icon={X} label="Reject" keyShortcut="Escape" onClick={onReject} />
-        <DiffAction icon={RotateCcw} label="Retry" onClick={onRetry} />
+        <DiffAction
+          icon={Check}
+          label={t(($) => $.editor.inlineAi.accept)}
+          keyShortcut="Enter"
+          onClick={onAccept}
+        />
+        <DiffAction
+          icon={X}
+          label={t(($) => $.editor.inlineAi.reject)}
+          keyShortcut="Escape"
+          onClick={onReject}
+        />
+        <DiffAction icon={RotateCcw} label={t(($) => $.editor.inlineAi.retry)} onClick={onRetry} />
       </div>
       {onOpenInAgent && (
-        <Tooltip label="Continue in the AI assistant with full project tools">
+        <Tooltip label={t(($) => $.editor.inlineAi.openInAgent)}>
           <button
             type="button"
             onClick={onOpenInAgent}
-            aria-label="Continue in the AI assistant with full project tools"
+            aria-label={t(($) => $.editor.inlineAi.openInAgent)}
             className="inline-flex size-7 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/15 focus-visible:bg-primary/15 focus-visible:outline-none"
           >
             <MessageSquareShare className="size-4" />
@@ -89,6 +101,7 @@ export function DiffErrorBar({
   onRetry: () => void;
   onDismiss: () => void;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     // Primary border, labelled buttons: the animated outline and the icon-only
     // group are reserved for the diff decision, where the choice is the whole
@@ -100,7 +113,9 @@ export function DiffErrorBar({
     >
       <p className="flex items-start gap-1.5 text-xs text-destructive">
         <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-        <span className="min-w-0 flex-1 break-words">Couldn't generate the edit. {message}</span>
+        <span className="min-w-0 flex-1 break-words">
+          {t(($) => $.editor.inlineAi.generateFailed, { message })}
+        </span>
       </p>
       <div className="mt-2 flex items-center gap-1">
         <button
@@ -108,14 +123,14 @@ export function DiffErrorBar({
           onClick={onRetry}
           className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
-          <RotateCcw className="size-3.5" /> Retry
+          <RotateCcw className="size-3.5" /> {t(($) => $.editor.inlineAi.retry)}
         </button>
         <button
           type="button"
           onClick={onDismiss}
           className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          Dismiss
+          {t(($) => $.editor.inlineAi.dismiss)}
         </button>
       </div>
     </AiChrome>

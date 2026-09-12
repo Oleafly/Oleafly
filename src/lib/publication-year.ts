@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 export const MIN_PUBLICATION_YEAR = 1800;
 export const ANY_PUBLICATION_YEAR = "any";
 
@@ -60,7 +61,7 @@ export function publicationYearRange(
     normalizedTo,
     error:
       from != null && to != null && from > to
-        ? "The start year cannot be later than the end year."
+        ? i18n.t(($) => $.core.literatureSources.yearRangeInvalid)
         : null,
   };
 }

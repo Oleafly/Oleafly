@@ -6,8 +6,8 @@ const f = (lens: Finding["lens"], severity: Finding["severity"]): Finding => ({
   id: "x",
   lens,
   severity,
-  title: "t",
-  detail: "d",
+  title: { key: "rules.compile-failed.title" },
+  detail: { key: "rules.compile-failed.detail" },
 });
 
 describe("computeScores", () => {

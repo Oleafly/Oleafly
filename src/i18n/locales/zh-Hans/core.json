@@ -1,0 +1,570 @@
+{
+  "accents": {
+    "blue": "蓝色",
+    "green": "绿色",
+    "orange": "橙色",
+    "purple": "紫色",
+    "rose": "玫瑰色",
+    "teal": "青绿色"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "需要安装 Bridge",
+      "cliMissing": "未找到 CLI",
+      "ready": "就绪",
+      "unavailable": "不可用"
+    },
+    "requestFailed": "无法完成 ACP 请求。"
+  },
+  "aiBudget": {
+    "approximateCost": "约 {{amount}}",
+    "blocked": "本项目已达到 {{budget}} 的 AI 预算。请在设置中提高或清除预算以继续。",
+    "warned": "本项目的 AI 预算为 {{budget}}，已使用 {{spent}}。"
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "此操作已切换到 Oleafly 助手。"
+  },
+  "bibtex": {
+    "duplicateDoi": "DOI 与以下条目重复：{{keys}}",
+    "duplicateKey": "重复的引用键",
+    "invalidYear": "年份“{{year}}”不是四位数字",
+    "missingField": "缺少必填字段：{{fields}}",
+    "missingKey": "类型为 @{{type}} 的条目缺少引用键",
+    "unknownType": "未知条目类型 @{{type}}",
+    "unreadableFields": "无法读取“{{entry}}”的字段",
+    "unterminatedEntry": "条目在第 {{position}} 个字符附近未终止",
+    "unusualField": "@{{type}} 中的不常见字段：{{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} 在引用导入期间发生了更改。请重试。",
+    "noArxivEntry": "未找到 arXiv 条目。",
+    "noReferences": "该文件中未找到参考文献。",
+    "offline": "引用查询需要网络。请在设置中关闭离线模式。",
+    "parseFailed": "无法解析该引用。",
+    "projectChanged": "引用导入期间项目发生了更改。",
+    "projectChangedNotInserted": "引用导入期间项目发生了更改。引用未插入。",
+    "projectChangedRetry": "引用导入期间项目发生了更改。请在原项目中重试。",
+    "readFailed": "无法读取 {{path}}：{{detail}}",
+    "unrecognizedFile": "无法识别的文件类型：{{name}}",
+    "writeFailed": "无法写入 {{path}}：{{detail}}"
+  },
+  "citeOleafly": {
+    "added": "已将 Oleafly 条目添加到 {{path}}。使用 {{markup}} 引用它。",
+    "failed": "无法添加 Oleafly 引用。请改为在设置的“帮助与关于”中复制。",
+    "present": "{{path}} 已包含 Oleafly 条目。使用 {{markup}} 引用它。",
+    "undo": "撤销"
+  },
+  "compatibility": {
+    "biblatexBiber": "此项目使用 biblatex/Biber 管理参考文献。",
+    "blockerFinding_other": "{{title}}（+{{more}} 项）",
+    "chooseEngine": "选择引擎…",
+    "importNotes_other": "{{count}} 条导入说明：{{title}}（+{{more}} 项）"
+  },
+  "compile": {
+    "engineNotLoaded": "文档引擎加载完成前，编译处于禁用状态。",
+    "noOfflineMode": "{{engine}} 未提供离线编译模式，将正常编译。",
+    "retry": "重新编译"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "将所有开发项目移入回收站，不会永久删除任何内容。",
+        "title": "清除项目"
+      },
+      "replayFirstRun": {
+        "description": "重置所有引导教程，关闭当前项目，并返回欢迎流程。",
+        "title": "重播首次运行"
+      },
+      "resetAndSeed": {
+        "description": "将当前项目移入回收站，然后从本地缓存复制全部 {{count}} 个固定的真实样例。",
+        "title": "重置并填充"
+      },
+      "resetUiState": {
+        "description": "清除 Oleafly 的本地设置和已保存的界面状态，但不会删除项目。",
+        "title": "重置界面状态"
+      },
+      "seedCorpus": {
+        "action": "填充语料库",
+        "description": "从 ~/Codespace/Oleafly/oleafly-seed 复制 {{count}} 个研究项目。涵盖 LaTeX 和 Typst 的论文、学位论文、图书、演讲、海报和图片，每一个都经过验证，可使用内置引擎编译。已有样例会保留。",
+        "title": "填充研究语料库"
+      }
+    },
+    "closeProjectFailed": "无法安全关闭当前打开的项目。",
+    "confirm": {
+      "clearProjects": {
+        "action": "清除项目",
+        "description": "隔离开发库中的所有项目都会移入其回收站，你的正式 Oleafly 库不会受影响。",
+        "title": "清除所有开发项目？"
+      },
+      "fallbackTitle": "确认开发操作",
+      "resetAndSeed": {
+        "action": "重置并填充",
+        "description": "所有当前开发项目都会移入回收站，随后 Oleafly 会从本地 oleafly-seed 缓存复制 {{count}} 个研究样例。",
+        "title": "重置并填充开发库？"
+      },
+      "resetBrowser": {
+        "action": "重置界面状态",
+        "description": "这将清除该开发源下的 Oleafly 设置、引导教程和其他浏览器状态，然后重新加载应用。项目文件仍保留在磁盘上。",
+        "title": "重置开发界面状态？"
+      }
+    },
+    "debugOnly": {
+      "description": "这些控件仅在 Vite 开发构建中加载。如果哨兵值出现在任何构建产物中，生产构建将拒绝加载此模块。",
+      "title": "仅限调试构建"
+    },
+    "library": {
+      "checking": "正在检查库路径…",
+      "label": "开发库",
+      "locked": "项目控件已锁定，因为当前不是 .oleafly-dev 沙盒。"
+    },
+    "nav": "开发者",
+    "projectsRecycled_other": "已将 {{count}} 个项目移入回收站。",
+    "replayFailed": "无法重置首次使用引导教程。",
+    "resetAndSeedSummary": "已将 {{removed}} 个项目移入回收站，并初始化了研究语料库：新建 {{created}} 个，已存在 {{skipped}} 个。",
+    "resetFailed": "无法重置开发沙盒。",
+    "sandboxOnly": "研究测试数据只能复制到 .oleafly-dev 沙盒中。",
+    "seedFailed": "无法初始化研究语料库。",
+    "seedFailures_other": "{{summary}} {{count}} 个测试数据处理失败。第一个失败项：{{name}}：{{message}}",
+    "seedSummary": "已初始化研究语料库：新建 {{created}} 个，已存在 {{skipped}} 个。",
+    "unknownSeedError": "未知的初始化错误。"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "PNG 图像",
+      "zipArchive": "Zip 压缩包"
+    }
+  },
+  "dictionary": {
+    "full": "你的词典已满，该词已改为在此文档中隐藏。请在设置中删除一个词条，之后即可保存该词。",
+    "wordTooLong": "该内容过长，无法作为词条保存，因此改为在此文档中隐藏。词条最长为 {{max}} 个字符。"
+  },
+  "documentScan": {
+    "complete": "扫描完成",
+    "failed": "文档扫描失败",
+    "processed": "已处理 {{current}}/{{total}} 段…",
+    "processing": "正在处理 {{current}}/{{total}} 段…",
+    "skippedEmpty": "已跳过空查询（{{current}}/{{total}}）。",
+    "splitting": "正在将文档拆分为段落…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "无法加载文档引擎详情，引擎专属操作已禁用。",
+      "renameReloadFailed": "重命名主文档后无法加载文档引擎详情。",
+      "stillLoading": "文档引擎详情仍在加载。"
+    }
+  },
+  "export": {
+    "pdfFailed": "无法保存 PDF。",
+    "pdfFailedDetail": "无法保存 PDF：{{detail}}",
+    "pngFailed": "无法保存 PNG。",
+    "pngFailedDetail": "无法保存 PNG：{{detail}}",
+    "revealFailed": "文件已保存，但 Oleafly 无法打开其所在文件夹（权限被拒绝）。请检查你在保存对话框中选择的位置。",
+    "saved": "{{kind}} 已保存 · {{fileName}}",
+    "showInFolder": "在文件夹中显示"
+  },
+  "externalChange": {
+    "deletionRestored": "外部删除与未保存的编辑发生冲突。你的本地编辑已恢复。",
+    "localEditKept": "你有未保存的更改时，“{{path}}” 收到了外部编辑。已保留你的本地编辑。",
+    "persistExternalFailed": "无法保存 “{{path}}” 的最新外部更新。",
+    "preserveLocalFailed": "无法保留你对 “{{path}}” 的本地更新。",
+    "reloadFailed": "项目设置已更新，但部分已更改的文件无法重新加载。",
+    "restoreLocalFailed": "无法恢复你对 “{{path}}” 的未保存更新。"
+  },
+  "fonts": {
+    "systemDefault": "系统默认",
+    "terminalDefault": "终端默认"
+  },
+  "imageToLatex": {
+    "failed": "图片转 LaTeX 失败：{{detail}}",
+    "inserted": "已插入由图片转换的 LaTeX。",
+    "transcribing": "正在转录图片…"
+  },
+  "import": {
+    "arxivImported": "arXiv 源码已导入。请编译项目并检查结果。",
+    "chooseOfferedProjectType": "请选择此文件支持的项目类型。",
+    "invalidArxivId": "请粘贴 arXiv 论文链接或类似 2301.01234 的编号。",
+    "supportedDocumentTypes": "请选择支持的文档类型。",
+    "conversionNotice": "我们已将你的内容转换为 LaTeX。你可能需要调整样式，尤其是表格、图片和引用。",
+    "figureSaved": "已保存 {{name}}",
+    "pdfProjectCreated": "已从 PDF 创建项目。请先检查，再信任重建结果。",
+    "pickPdfOrDocx": "请选择 .pdf 或 .docx 文件",
+    "texSaved": "已保存 .tex",
+    "unsupportedFile": "请选择 .zip、.docx、.md 或 .markdown 文件。",
+    "zipSaveFailed": "无法保存 ZIP 压缩包。",
+    "zipSaved": "已保存 .zip"
+  },
+  "inlineAi": {
+    "concise": "精简",
+    "expand": "扩写",
+    "fixSource": "修复源码",
+    "grammar": "修正语法",
+    "improve": "润色",
+    "translate": "翻译"
+  },
+  "intelligence": {
+    "analysisFailed": "当前版本的项目分析失败。",
+    "analyzing": "项目智能正在分析当前版本。",
+    "couldNotSend": "无法将项目分析发送到工作线程。",
+    "disposed": "项目智能工作线程已释放。",
+    "disposedDuringRequest": "项目智能工作线程已被释放。",
+    "failed": "项目智能分析失败",
+    "identityMismatch": "项目智能响应的标识与其请求不匹配。",
+    "malformedResponse": "项目智能工作线程返回了格式错误的响应。",
+    "malformedSnapshotIdentity": "项目智能快照标识格式错误。",
+    "noProject": "当前没有活动的项目。",
+    "partialFiles_other": "{{count}} 个文件生成了可恢复的部分分析。",
+    "retainedStale": "项目内容已更改。当前版本分析运行期间，保留的分析结果已过期。",
+    "sourceGraphRefreshing": "项目文件已更改，正在刷新源码图。",
+    "sourceSnapshotsLoading": "项目文件已更改，正在为当前分析加载源码快照。",
+    "staleSnapshot": "项目智能工作线程中没有此快照的分析结果。",
+    "stopped": "项目智能已停止。",
+    "timedOut": "项目智能超时。",
+    "typeMismatch": "项目智能响应类型与其请求不匹配。",
+    "unexpectedResponse": "项目智能工作线程返回了意外的响应。",
+    "workerFailed": "项目智能工作线程失败",
+    "workerRestarted": "项目智能工作线程在超时后已重启。",
+    "workerUnavailable": "项目智能工作线程不可用。"
+  },
+  "latexPackages": {
+    "algorithm2e": "算法排版",
+    "amsmath": "高级数学排版",
+    "amssymb": "扩展数学符号",
+    "amsthm": "定理与证明环境。",
+    "array": "扩展的 array 与 tabular 环境。",
+    "authblk": "作者与单位信息块。",
+    "babel": "多语言支持与文档语言。",
+    "biblatex": "高级参考文献支持",
+    "bookmark": "改进的 PDF 书签",
+    "booktabs": "专业表格线条",
+    "caption": "题注自定义",
+    "cleveref": "智能交叉引用（在 hyperref 之后加载）。",
+    "csquotes": "上下文相关引号（biblatex 需要）。",
+    "enumitem": "列表自定义",
+    "fancyhdr": "自定义页眉与页脚。",
+    "float": "改进的浮动体放置",
+    "fontspec": "OpenType 字体选择（Xe/LuaLaTeX）。",
+    "geometry": "页面布局自定义",
+    "graphicx": "插入图形与图像。",
+    "hyperref": "超链接、书签与 PDF 元数据。",
+    "inputenc": "输入编码（在 Xe/LuaLaTeX 上不需要）。",
+    "lineno": "为审阅版添加行号。",
+    "lipsum": "占位文本（lorem ipsum）。",
+    "listings": "代码清单（其内容不会添加标签）。",
+    "mathtools": "amsmath 的超集，附带修复与工具。",
+    "microtype": "微排版优化",
+    "minted": "Pygments 高亮的代码清单",
+    "multirow": "跨行表格单元格",
+    "natbib": "作者年份式与数字式引用。",
+    "parskip": "段落间距",
+    "pdfpages": "插入其他 PDF 的整页内容。",
+    "setspace": "行距控制",
+    "siunitx": "SI 单位与数字格式化。",
+    "subcaption": "子图与子表",
+    "subfig": "较旧的子图排版宏包。",
+    "tabularx": "自动宽度表格",
+    "threeparttable": "支持在表格下方添加注释。",
+    "tikz": "可编程矢量图形（需手动填写替代文本）。",
+    "titlesec": "章节标题格式",
+    "todonotes": "用于草稿的边注待办注释。",
+    "unicode-math": "适用于 Xe/LuaLaTeX 的 Unicode 数学支持（标记数学内容所需）。",
+    "url": "URL 排版",
+    "wrapfig": "支持文字环绕排版的图片。",
+    "xcolor": "颜色支持"
+  },
+  "literatureSources": {
+    "arxiv": "收录超过 240 万篇预印本，涵盖物理学、数学、计算机科学、定量生物学及相关领域。",
+    "crossref": "DOI 注册机构，提供超过 1.5 亿项研究成果的元数据。",
+    "googleScholar": "通过 Serper 获取 Google Scholar 搜索结果。需要在“设置 → 集成 → 引用搜索”中配置 Serper API 密钥。",
+    "openalex": "涵盖学术成果、作者、来源、机构、主题、出版商和资助机构的开放目录。",
+    "pubmed": "收录生物医学与生命科学文献的超过 4000 万条引用和摘要，包含 MEDLINE。",
+    "semanticScholar": "提供引文图谱、高影响力引用数据和 TLDR 摘要的学术索引。",
+    "uspto": "美国专利授权与已公开申请，可用于现有技术检索和应用研究。PatentsView 迁移期间搜索暂停。",
+    "usptoPaused": "USPTO 在 Open Data Portal 迁移期间暂时停止了 PatentsView 搜索 API。",
+    "yearRangeInvalid": "起始年份不能晚于结束年份。"
+  },
+  "mcp": {
+    "openProjectSummary": "打开项目 {{id}}。",
+    "useToolSummary": "使用 {{server}} MCP 服务器中的 {{tool}}。"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "MCP 服务器“{{name}}”的类型与传输声明存在冲突。",
+    "exactlyOneServer": "MCP 服务器 JSON 必须恰好包含一个服务器。",
+    "fieldBoolean": "MCP 服务器“{{name}}”的字段“{{field}}”必须为布尔值。",
+    "fieldString": "MCP 服务器“{{name}}”的字段“{{field}}”必须为字符串。",
+    "fieldStringArray": "MCP 服务器“{{name}}”的字段“{{field}}”必须为字符串数组。",
+    "fieldStringRecord": "MCP 服务器“{{name}}”的字段“{{field}}”必须为字符串值组成的对象。",
+    "jsonMalformed": "MCP 服务器 JSON 格式有误。",
+    "jsonNotObject": "MCP 服务器 JSON 必须是一个对象。",
+    "mcpServersNotObject": "MCP 服务器 JSON 的字段“mcpServers”必须为对象。",
+    "serverNotObject": "MCP 服务器“{{name}}”必须为对象。",
+    "structural": "{{detail}} 应为 {\"server-name\": {...}} 或 {\"mcpServers\": {\"server-name\": {...}}}。",
+    "unknownServer": "未知服务器",
+    "unsupportedTransport": "MCP 服务器“{{name}}”使用了不受支持的传输方式“{{transport}}”。",
+    "unsupportedType": "MCP 服务器“{{name}}”的类型“{{type}}”不受支持。"
+  },
+  "mermaid": {
+    "diagram": "图表",
+    "renderFailed": "无法渲染图表。",
+    "rendering": "正在渲染图表"
+  },
+  "missingPackages": {
+    "action_other": "查找并安装 {{count}} 个文件",
+    "installing_other": "正在安装 {{count}} 个宏包。安装完成后将重新编译。",
+    "summary_other": "编译时找不到 {{names}}。请在 TeX Live 中查找对应的宏包。"
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "{{tokens}} token 上下文窗口",
+      "deprecated": {
+        "label": "已弃用",
+        "title": "提供商已弃用此模型"
+      },
+      "reasoning": {
+        "label": "推理",
+        "title": "推理模型"
+      },
+      "tools": {
+        "label": "工具",
+        "title": "可调用工具"
+      },
+      "vision": {
+        "label": "视觉",
+        "title": "支持图片"
+      }
+    },
+    "listChange": {
+      "none": "无更改",
+      "summary": "已添加 {{added}} 个，已移除 {{removed}} 个"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "项目引用分析不可用。",
+    "analysisUpdating": "正在更新项目引用。",
+    "definitionsFor": "{{name}} 的定义",
+    "edits_other": "{{count}} 处编辑",
+    "files_other": "{{count}} 个文件",
+    "nameExists": "“{{name}}”已存在",
+    "noDefinition": "未找到“{{name}}”的定义。",
+    "noReferences": "没有对“{{name}}”的引用。",
+    "notRenamable": "无法重命名此符号。",
+    "nothingToRename": "没有可重命名的对象",
+    "referencesFor": "对 {{name}} 的引用",
+    "renamePartial": "已在 {{total}} 个文件中的 {{edited}} 个文件里重命名为“{{name}}”。未能写入 {{files}}。",
+    "renamed": "已重命名为“{{name}}”（$t(core:navigation.edits, {\"count\": {{edits}} })，$t(core:navigation.files, {\"count\": {{files}} })）。"
+  },
+  "pandoc": {
+    "downloadFailed": "无法下载 pandoc。请手动安装后重试。",
+    "downloadingPercent": "正在下载 pandoc… {{progress}}%",
+    "downloadingSize": "正在下载 pandoc… {{megabytes}} MB",
+    "installGuide": "安装指南",
+    "installed": "已安装 Pandoc"
+  },
+  "project": {
+    "copyFailed": "无法复制“{{path}}”。",
+    "dateUnavailable": "不可用",
+    "importFailed": "无法导入。详情请查看应用日志。",
+    "imported": "项目已导入",
+    "openFailed": "无法打开项目。详情请查看应用日志。",
+    "restoringUnsavedFiles": "项目更新移除了包含未保存编辑的文件。Oleafly 已保留你的编辑，正在恢复这些文件。",
+    "saveBlockedClose": "由于一个或多个文件无法保存，项目保持打开状态。",
+    "saveBlockedSwitch": "由于一个或多个文件无法保存，项目保持打开状态。",
+    "updatedDaysAgo_other": "更新于 {{count}} 天前",
+    "updatedOn": "更新于 {{date}}",
+    "updatedToday": "今天更新",
+    "updatedYesterday": "昨天更新"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "分析失败：{{message}}",
+    "beginIsHere": "{{command}} 在这里",
+    "beginWithoutEnd": "{{command}} 没有匹配的 \\end。",
+    "bibliographyFileMissing": "未在项目中找到参考文献文件“{{file}}”。",
+    "citationHasManyDefinitions_other": "引用“{{name}}”有 {{count}} 个可能的定义。",
+    "citationKeyDuplicated_other": "引用键“{{name}}”被定义了 {{count}} 次。",
+    "citationUnresolved": "无法解析引用“{{name}}”。",
+    "definedHere": "{{kind}}“{{name}}”在此处定义。",
+    "duplicateTargetDefined_other": "{{kind}}目标“{{name}}”被定义了 {{count}} 次。",
+    "endWithoutBegin": "{{command}} 没有匹配的 \\begin。",
+    "entryMissingFieldList": "参考文献条目“{{key}}”没有字段列表。",
+    "expectedEndBefore": "期望 {{expected}} 出现在 {{found}} 之前。",
+    "fieldIncompleteValue": "字段“{{name}}”的值不完整。",
+    "fieldMissingEquals": "字段“{{name}}”缺少“=”。",
+    "fieldRepeated": "字段“{{name}}”在参考文献条目“{{key}}”中重复。",
+    "fileNotLoaded": "尚未加载源码文件以进行当前项目分析。",
+    "fileUnreadable": "无法读取该文件。",
+    "incompleteEntry": "不完整的 @{{type}} 条目",
+    "invalidYear": "年份“{{year}}”不是四位数的 BibTeX 年份。",
+    "kinds": {
+      "anchor": "锚点",
+      "asset": "资源",
+      "bibentry": "参考文献条目",
+      "bibliography": "参考文献",
+      "environment": "环境",
+      "file": "文件",
+      "glossary": "术语表条目",
+      "import": "导入",
+      "include": "包含文件",
+      "label": "标签",
+      "link": "链接",
+      "macro": "宏",
+      "section": "章节"
+    },
+    "malformedDirective": "BibTeX 指令或条目类型格式错误。",
+    "missingCitationKey": "@{{type}} 缺少引用键。",
+    "missingRequiredField": "{{entry}} 缺少必填字段 {{fields}}。",
+    "possibleTarget": "可能的目标：{{file}}",
+    "projectFileUnreadable": "无法读取项目文件。",
+    "referenceHasManyDefinitions_other": "交叉引用“{{name}}”有 {{count}} 个可能的定义。",
+    "referenceUnresolved": "无法解析交叉引用“{{name}}”。",
+    "targetMatchesManyFiles_other": "{{kind}}目标“{{target}}”匹配 {{count}} 个项目文件。",
+    "targetUnresolved": "无法解析 {{kind}} 目标“{{target}}”。",
+    "typeDelimiterExpected": "@{{type}} 之后必须是左花括号或左圆括号。",
+    "unclosedDelimiter": "分隔符“{{char}}”未用“{{expected}}”闭合。",
+    "unclosedDirective": "@{{type}} 指令未闭合。",
+    "unclosedEntry": "@{{type}} 条目未闭合。",
+    "unclosedEntryNamed": "参考文献条目“{{key}}”未闭合。",
+    "unclosedFence": "围栏代码块未闭合。",
+    "unclosedFrontMatter": "YAML front matter 未闭合。",
+    "unclosedString": "字符串字面量未闭合。",
+    "unclosedTypstComment": "Typst 块注释未闭合。",
+    "unexpectedClosingDelimiter": "出现意外的闭合定界符“{{char}}”。",
+    "unknownEntryType": "未知的参考文献条目类型 @{{type}}。",
+    "unparsableField": "无法解析 @{{type}} 字段。",
+    "unparsableFieldNamed": "无法解析“{{key}}”中的字段。"
+  },
+  "proofreading": {
+    "cancelled": "校对已取消",
+    "couldNotStart": "离线校对无法启动。",
+    "disposed": "离线校对已释放。",
+    "invalidResponse": "离线校对返回了无效响应。",
+    "outOfRangeDiagnostic": "离线校对返回了超出范围的诊断。",
+    "postFailed": "无法将文档发送至离线校对。",
+    "restarted": "离线校对已重启",
+    "restartedAfterTimeout": "离线校对超时后已重启。",
+    "staleResponse": "离线校对返回了过期响应。",
+    "stopped": "离线校对意外停止。",
+    "superseded": "更新的校对请求已取代此请求。",
+    "timedOut": "离线校对超时，将在下次编辑时重启。"
+  },
+  "skillGroups": {
+    "shelf": "领域技能库",
+    "user": "你的技能"
+  },
+  "tagged": {
+    "compileFailed": "标记编译失败。请检查引擎并重试。",
+    "compiled": "标记 PDF 已编译。请在下方查看无障碍评估结果。",
+    "compiledWithErrors": "标记编译完成，但存在错误。请查看日志。",
+    "engineRequired": "请先在设置的 LaTeX 引擎中启用标记引擎。"
+  },
+  "terminal": {
+    "defaultTitle": "终端 {{index}}"
+  },
+  "tex": {
+    "distributionGap": "此项目已固定使用 {{pinned}}。当前的 {{local}} 缺少其中的 {{count}} 个软件包，在重新使用该发行版之前，编译可能会失败。",
+    "distributionSkew": "此项目已固定使用 {{pinned}}，而本机使用 {{local}} 编译。输出结果可能略有差异。",
+    "installPinned_other": "安装全部 {{count}} 个软件包",
+    "installingPinned_other": "正在安装 {{count}} 个已固定的软件包…",
+    "pinnedPackagesFailed": "部分已固定的软件包无法安装。请查看设置 → LaTeX 引擎。",
+    "pinnedPackagesInstalled": "已安装固定的 LaTeX 软件包。",
+    "pinnedPackagesMissing_other": "此项目固定了 {{count}} 个未在本机安装的 LaTeX 软件包。"
+  },
+  "theme": {
+    "cssForbiddenSyntax": "自定义 CSS 不能使用 at 规则、URL 或选择器。",
+    "cssNotSimple": "自定义 CSS 必须仅包含简单的属性声明。",
+    "cssNotText": "自定义 CSS 必须是文本。",
+    "cssPropertyNotAllowed": "自定义 CSS 不允许使用该属性：{{property}}。",
+    "cssTooLarge": "自定义 CSS 超过 64 KiB。",
+    "cssTooManyDeclarations": "自定义 CSS 最多可包含 64 条声明。",
+    "cssUnsafeValue": "自定义 CSS 包含不安全的值。",
+    "customizationNotObject": "主题自定义配置必须是对象。",
+    "dark": {
+      "notObject": "深色 CSS 变量必须是对象。",
+      "tooManyEntries": "深色 CSS 变量超过 {{max}} 条。"
+    },
+    "fileMissingCssVars": "主题文件必须包含 cssVars，且带 light 和 dark 条目。",
+    "fileMissingModes": "主题文件必须包含 light 和 dark 的 CSS 变量。",
+    "fileNotJson": "主题文件不是有效的 JSON。",
+    "fileNotObject": "主题文件内容必须是对象。",
+    "fileNotText": "主题文件必须是文本。",
+    "fileTooLarge": "主题文件超过 128 KiB。",
+    "invalidColor": "主题令牌 {{token}} 的颜色值无效。",
+    "invalidRadius": "圆角半径必须使用 px、rem、em 或百分比。",
+    "light": {
+      "notObject": "浅色 CSS 变量必须是对象。",
+      "tooManyEntries": "浅色 CSS 变量超过 {{max}} 条。"
+    },
+    "tokens": {
+      "notObject": "主题令牌必须是对象。",
+      "tooManyEntries": "主题令牌超过 {{max}} 条。"
+    },
+    "unknownProperty": "未知",
+    "unsupportedToken": "不支持的主题令牌：{{token}}。",
+    "unsupportedVersion": "此主题文件使用了不支持的版本。"
+  },
+  "themes": {
+    "matchApp": "跟随应用主题"
+  },
+  "tinytex": {
+    "installFailed": "无法安装 TinyTeX。",
+    "installGuide": "安装指南",
+    "installed": "TinyTeX 已安装",
+    "phase": {
+      "addingPackages": "正在添加宏包…",
+      "downloading": "正在下载…",
+      "downloadingPercent": "正在下载… {{progress}}%",
+      "installing": "正在安装…",
+      "unpacking": "正在解压…"
+    },
+    "removeFailed": "无法移除 TinyTeX。",
+    "removed": "已移除 TinyTeX"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "阅读论文",
+      "alphaxivSearch": "搜索论文",
+      "compile": "编译文档",
+      "getLog": "读取编译日志",
+      "insertFigure": "插入图片",
+      "listFiles": "列出项目文件",
+      "literatureSearch": "搜索文献",
+      "previewFigure": "预览图片",
+      "projectLibrarySearch": "搜索项目文献",
+      "projectMap": "梳理项目结构",
+      "readFile": "读取文件",
+      "readLinkedFile": "读取关联文件",
+      "readPdfText": "读取编译后的 PDF",
+      "readResearchRootFile": "读取关联文件",
+      "runCommand": "运行命令",
+      "searchProject": "搜索项目",
+      "sendMessage": "更新委派任务。",
+      "spawnAgent": "启动委派任务",
+      "verifyCitation": "验证引用",
+      "verifyPdfPages": "检查 PDF 页面",
+      "waitAgent": "等待委派任务。"
+    },
+    "skillsBudgetNotice": "Codex 无法列出全部技能。它会为技能描述保留 2% 的上下文预算，请精简技能文件夹，或直接按名称请求某个技能。",
+    "status": {
+      "cancelled": "已停止",
+      "declined": "已拒绝",
+      "done": "已完成",
+      "failed": "失败",
+      "failedWithCode": "失败，退出代码为 {{code}}。",
+      "interrupted": "已中断",
+      "running": "运行中",
+      "timedOut": "已超时"
+    },
+    "summary": {
+      "citationUnverified": "未找到匹配的记录。",
+      "citationVerified": "已通过引用服务验证。",
+      "compileFailed": "编译失败",
+      "compileSucceeded": "编译成功",
+      "diagnostics_other": "{{count}} 条诊断信息",
+      "papers_other": "{{count}} 篇论文"
+    }
+  },
+  "ui": {
+    "transparent": "透明"
+  },
+  "update": {
+    "projectChangedWhileSaving": "保存时项目发生了变化。请重试更新。"
+  }
+}

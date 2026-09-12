@@ -20,6 +20,9 @@ import {
   setBibKeysProvider,
   slashCompletions,
 } from "./latex";
+import { installEnglishEditorMessages } from "./test-messages";
+
+installEnglishEditorMessages();
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
   Object.defineProperty(Range.prototype, "getClientRects", {

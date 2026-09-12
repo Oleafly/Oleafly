@@ -1,9 +1,12 @@
 import { create } from "zustand";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { i18n } from "@/i18n";
 import { toast } from "@/lib/toast";
 import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
 
-export const HANDOFF_RUNTIME_SWITCH_MESSAGE = "Switched to the Oleafly assistant for this action.";
+export function handoffRuntimeSwitchMessage(): string {
+  return i18n.t(($) => $.core.assistant.handoffRuntimeSwitch);
+}
 
 interface AgentHandoffState {
   pendingPrompt: string | null;
@@ -19,7 +22,7 @@ export const useAgentHandoffStore = create<AgentHandoffState>((set, get) => ({
   pendingImages: [],
   handoff: (prompt, opts) => {
     if (useAssistantRuntimeStore.getState().switchToBuiltInForHandoff()) {
-      toast.infoUnique("assistant-handoff-runtime", HANDOFF_RUNTIME_SWITCH_MESSAGE);
+      toast.infoUnique("assistant-handoff-runtime", handoffRuntimeSwitchMessage());
     }
     set({
       pendingPrompt: prompt,
