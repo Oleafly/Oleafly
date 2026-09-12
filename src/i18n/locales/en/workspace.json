@@ -22,10 +22,10 @@
     "moveFailed": "Could not move \"{{path}}\". The original path was left unchanged.",
     "newEntry": {
       "fileInFolder": "New file name in folder {{folder}}",
-      "fileInRoot": "New file name in the project root",
+      "fileInRoot": "New file name in project root",
       "filePlaceholder": "New file name",
       "folderInFolder": "New folder name in folder {{folder}}",
-      "folderInRoot": "New folder name in the project root",
+      "folderInRoot": "New folder name in project root",
       "folderPlaceholder": "New folder name"
     },
     "newFile": "New file",

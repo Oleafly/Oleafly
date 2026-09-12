@@ -172,21 +172,21 @@ const INITIAL_PDF_OUTLINE_STATE: PdfOutlineState = {
   items: [],
 };
 
-type StartupStageStatus =
+export type StartupStageStatus =
   | "pending"
   | "running"
   | "complete"
   | "skipped"
   | "error";
 
-interface DocumentStartupStage {
+export interface DocumentStartupStage {
   id: "language-service" | "analysis" | "compile" | "render";
   label: string;
   detail: string;
   status: StartupStageStatus;
 }
 
-interface DocumentStartupState {
+export interface DocumentStartupState {
   projectActive: boolean;
   projectLoading: boolean;
   engineLoaded: boolean;
@@ -559,7 +559,7 @@ function mergedLanguageStartupStage(
   return merge("complete", analysis.detail);
 }
 
-function documentStartupStages(
+export function documentStartupStages(
   state: DocumentStartupState,
 ): DocumentStartupStage[] {
   return [
@@ -569,7 +569,7 @@ function documentStartupStages(
   ];
 }
 
-function checkpointIdentity(
+export function checkpointIdentity(
   checkpoint: CompileSuccessCheckpoint | null,
   bytes: Uint8Array,
 ): string {
@@ -593,7 +593,7 @@ function checkpointIdentity(
   });
 }
 
-function previewWindowState(
+export function previewWindowState(
   status: ReturnType<typeof useCompileStore.getState>["status"],
   identity: ReturnType<
     typeof useCompileStore.getState
@@ -2386,7 +2386,7 @@ export function PreviewPane() {
 
 type OutlineItem = PdfOutlineState["items"][number];
 
-function PdfOutlineItems({
+export function PdfOutlineItems({
   items,
   onActivate,
   depth = 0,
@@ -2431,7 +2431,7 @@ function PdfOutlineItems({
   );
 }
 
-function PdfStateMessage({
+export function PdfStateMessage({
   kind,
   title,
   detail,
@@ -2541,7 +2541,7 @@ function StartupStageIcon({
   );
 }
 
-function DocumentStartupProgress({
+export function DocumentStartupProgress({
   stages,
   compact = false,
   onCompile,

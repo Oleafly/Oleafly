@@ -280,7 +280,7 @@ function describe(
   };
 }
 
-const projectHover = hoverTooltip((view, position) => {
+export function projectHoverCard(view: EditorView, position: number) {
   const current = currentSymbol(view, position);
   if (!current) return null;
   const info = describe(current.snapshot, current.symbol);
@@ -345,7 +345,9 @@ const projectHover = hoverTooltip((view, position) => {
       return { dom };
     },
   };
-});
+}
+
+const projectHover = hoverTooltip(projectHoverCard);
 
 const theme = EditorView.baseTheme({
   ".cm-cmd-link": {

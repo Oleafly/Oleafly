@@ -132,6 +132,10 @@ pub async fn gh_check_device_token(
         .await
         .map_err(|e| format!("invalid response: {e}"))?;
 
+    token_poll_from_body(&body)
+}
+
+fn token_poll_from_body(body: &serde_json::Value) -> Result<TokenPoll, String> {
     if let Some(t) = body.get("access_token").and_then(|v| v.as_str()) {
         return Ok(TokenPoll {
             status: "token".into(),
@@ -284,6 +288,19 @@ pub fn gh_clear_token() -> Result<(), String> {
     })
 }
 
+fn repositories_unavailable(status: reqwest::StatusCode) -> String {
+    crate::app_error::AppError::new("github.repositories_unavailable")
+        .detail(status)
+        .into()
+}
+
+fn create_repo_failed(status: reqwest::StatusCode, detail: &str) -> String {
+    crate::app_error::AppError::new("github.create_repo_failed")
+        .param("status", status)
+        .detail(detail)
+        .into()
+}
+
 /// List the authenticated user's repositories (most recently updated first).
 #[tauri::command]
 pub async fn gh_list_repos() -> Result<Vec<GitHubRepo>, String> {
@@ -295,11 +312,7 @@ pub async fn gh_list_repos() -> Result<Vec<GitHubRepo>, String> {
         .await
         .map_err(|e| format!("network error: {e}"))?;
     if !resp.status().is_success() {
-        return Err(
-            crate::app_error::AppError::new("github.repositories_unavailable")
-                .detail(resp.status())
-                .into(),
-        );
+        return Err(repositories_unavailable(resp.status()));
     }
     resp.json::<Vec<GitHubRepo>>()
         .await
@@ -321,10 +334,7 @@ pub async fn gh_create_repo(name: String, private: bool) -> Result<GitHubRepo, S
         let status = resp.status();
         let detail = resp.text().await.unwrap_or_default();
         let detail: String = detail.chars().take(200).collect();
-        return Err(crate::app_error::AppError::new("github.create_repo_failed")
-            .param("status", status)
-            .detail(detail)
-            .into());
+        return Err(create_repo_failed(status, &detail));
     }
     resp.json::<GitHubRepo>()
         .await
@@ -483,11 +493,17 @@ pub async fn gh_import_repo(full_name: String) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        download_repository_archive, fetch_public_repo_stats, http_client,
-        validated_repository_name, GitHubRepoStats, GitHubRepoStatsResponse,
-        REPOSITORY_IMPORT_MAX_BYTES,
+        create_repo_failed, download_repository_archive, fetch_public_repo_stats, http_client,
+        repositories_unavailable, token_poll_from_body, validated_repository_name, GitHubRepoStats,
+        GitHubRepoStatsResponse, REPOSITORY_IMPORT_MAX_BYTES,
     };
+    use crate::app_error::PREFIX;
     use std::io::{Read, Write};
+
+    fn envelope(error: &str) -> serde_json::Value {
+        assert!(error.starts_with(PREFIX), "not an error envelope: {error}");
+        serde_json::from_str(&error[PREFIX.len()..]).unwrap()
+    }
 
     fn response(status: &str, body: &[u8]) -> Vec<u8> {
         let mut value = format!(
@@ -528,6 +544,69 @@ mod tests {
             }
         });
         format!("http://{address}")
+    }
+
+    #[test]
+    fn a_token_poll_reports_progress_without_an_error_envelope() {
+        let granted =
+            token_poll_from_body(&serde_json::json!({ "access_token": "gho_token" })).unwrap();
+        assert_eq!(granted.status, "token");
+        assert_eq!(granted.token.as_deref(), Some("gho_token"));
+
+        let pending =
+            token_poll_from_body(&serde_json::json!({ "error": "authorization_pending" })).unwrap();
+        assert_eq!(pending.status, "pending");
+        assert!(pending.token.is_none());
+
+        let slow_down =
+            token_poll_from_body(&serde_json::json!({ "error": "slow_down", "interval": 9 }))
+                .unwrap();
+        assert_eq!(slow_down.status, "slow_down");
+        assert_eq!(slow_down.interval, Some(9));
+
+        let default_interval =
+            token_poll_from_body(&serde_json::json!({ "error": "slow_down" })).unwrap();
+        assert_eq!(default_interval.interval, Some(5));
+
+        let empty = token_poll_from_body(&serde_json::json!({})).unwrap();
+        assert_eq!(empty.status, "pending");
+    }
+
+    #[test]
+    fn a_failed_token_poll_carries_a_localizable_code() {
+        let expired = token_poll_from_body(&serde_json::json!({ "error": "expired_token" }))
+            .err()
+            .unwrap();
+        assert_eq!(envelope(&expired)["code"], "github.sign_in_expired");
+
+        let denied = token_poll_from_body(&serde_json::json!({ "error": "access_denied" }))
+            .err()
+            .unwrap();
+        assert_eq!(envelope(&denied)["code"], "github.sign_in_cancelled");
+
+        let other = token_poll_from_body(&serde_json::json!({ "error": "unsupported_grant_type" }))
+            .err()
+            .unwrap();
+        let json = envelope(&other);
+        assert_eq!(json["code"], "github.sign_in_failed");
+        assert_eq!(json["detail"], "unsupported_grant_type");
+    }
+
+    #[test]
+    fn repository_failures_carry_their_status_in_the_envelope() {
+        let listing = repositories_unavailable(reqwest::StatusCode::FORBIDDEN);
+        let json = envelope(&listing);
+        assert_eq!(json["code"], "github.repositories_unavailable");
+        assert_eq!(json["detail"], "403 Forbidden");
+
+        let creation = create_repo_failed(
+            reqwest::StatusCode::UNPROCESSABLE_ENTITY,
+            "name already exists",
+        );
+        let json = envelope(&creation);
+        assert_eq!(json["code"], "github.create_repo_failed");
+        assert_eq!(json["params"]["status"], "422 Unprocessable Entity");
+        assert_eq!(json["detail"], "name already exists");
     }
 
     #[test]

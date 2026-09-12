@@ -408,6 +408,7 @@ let useAssistantOutputsStore: typeof import("@/store/assistant-outputs").useAssi
 let usePlanModeStore: typeof import("@/store/plan-mode").usePlanModeStore;
 let usePlanApprovalStore: typeof import("@/store/plan-approval").usePlanApprovalStore;
 let planModeHint: typeof import("./ChatCore").planModeHint;
+let blockedModelMessage: typeof import("./ChatCore").blockedModelMessage;
 let PLAN_MODE_PLANNING_PROMPT: typeof import("./ChatCore").PLAN_MODE_PLANNING_PROMPT;
 let PLAN_MODE_REVISION_LINE: typeof import("./ChatCore").PLAN_MODE_REVISION_LINE;
 let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
@@ -478,8 +479,13 @@ beforeAll(async () => {
   ({ act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react"));
   ({ QueryClientProvider } = await import("@tanstack/react-query"));
   ({ createAppQueryClient } = await import("@/lib/query"));
-  ({ ChatCore, planModeHint, PLAN_MODE_PLANNING_PROMPT, PLAN_MODE_REVISION_LINE } =
-    await import("./ChatCore"));
+  ({
+    ChatCore,
+    blockedModelMessage,
+    planModeHint,
+    PLAN_MODE_PLANNING_PROMPT,
+    PLAN_MODE_REVISION_LINE,
+  } = await import("./ChatCore"));
   ({ ChatPanel } = await import("./ChatPanel"));
   ({ CopilotOverlay } = await import("./CopilotOverlay"));
   ({ resetProviderConfigCache } = await import("./provider-config"));
@@ -500,7 +506,7 @@ beforeAll(async () => {
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
   // Load the lazy dialog before timing interactions with its trigger.
   await import("@/components/usage/UsageReport");
-});
+}, 60_000);
 
 afterEach(() => cleanup());
 
@@ -3933,4 +3939,185 @@ describe("ChatCore model re-check", () => {
     await waitFor(() => expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent("blocked"));
     expect(rendered.queryByTestId("ai-model-recheck")).toBeNull();
   });
+});
+
+describe("ChatCore failure notices", () => {
+  it("names a blocked model with and without a reason", () => {
+    expect(blockedModelMessage("  breaks the loop  ")).toBe(
+      enAi.models.blockedWithReason.replace("{{reason}}", "breaks the loop"),
+    );
+    expect(blockedModelMessage("   ")).toBe(enAi.models.blocked);
+  });
+
+  it("reports an archive the backend refused", async () => {
+    mocks.agentThreadArchive.mockRejectedValue(new Error("thread gone"));
+    await renderChat();
+    const chatId = useChatsStore.getState().activeId;
+    if (!chatId) throw new Error("active chat missing");
+    act(() => {
+      useAgentTurnsStore.setState({ threadByChat: { [chatId]: "thread-source" } });
+    });
+
+    changeComposer("/archive");
+    pressComposerKey("Enter");
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.chatArchiveFailed),
+    );
+  });
+
+  it("reports a fork the backend refused", async () => {
+    mocks.agentThreadFork.mockRejectedValue(new Error("thread gone"));
+    const chatId = useChatsStore.getState().activeId;
+    if (!chatId) throw new Error("active chat missing");
+    useChatsStore.getState().saveMessages(chatId, [
+      { id: "user-1", role: "user", content: "Review this proof" },
+    ]);
+    await renderChat();
+    act(() => {
+      useAgentTurnsStore.setState({ threadByChat: { [chatId]: "thread-source" } });
+    });
+
+    changeComposer("/fork");
+    pressComposerKey("Enter");
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.chatForkFailed),
+    );
+  });
+
+  it("refuses to send while the document engine is unavailable", async () => {
+    useFilesStore.setState({ engineLoaded: false });
+    const rendered = await renderChat();
+
+    expect(
+      rendered.getByPlaceholderText(enAi.composer.placeholderEngineUnavailable),
+    ).toBeTruthy();
+    changeComposer("Fix the preamble");
+    pressComposerKey("Enter");
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.engineNotLoaded),
+    );
+    expect(mocks.runs).toHaveLength(0);
+  });
+
+  it("refuses an attachment that is larger than the cap", async () => {
+    const rendered = await renderChat();
+    const input = rendered.container.querySelector('input[type="file"]');
+    if (!(input instanceof HTMLInputElement)) throw new Error("attachment input missing");
+    const file = new File(["x"], "huge.pdf", { type: "application/pdf" });
+    Object.defineProperty(file, "size", { value: 20 * 1024 * 1024 });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        enAi.toasts.attachmentTooLarge.replace("{{name}}", "huge.pdf"),
+      ),
+    );
+  });
+
+  it("reports skills that could not be loaded before the send", async () => {
+    mocks.skillsLoaded = false;
+    mocks.refetchSkills.mockRejectedValue(new Error("skills db locked"));
+    const rendered = await renderChat();
+
+    submit(rendered, "Review the prompt");
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.skillsLoadFailed),
+    );
+    expect(mocks.runs).toHaveLength(0);
+  });
+
+  it("reports a skills refetch that came back empty", async () => {
+    mocks.skillsLoaded = false;
+    mocks.refetchSkills.mockResolvedValue({ data: undefined, error: null });
+    const rendered = await renderChat();
+
+    submit(rendered, "Review the prompt");
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.skillsLoadFailed),
+    );
+    expect(mocks.runs).toHaveLength(0);
+  });
+
+  it("reports an approval mode that could not be read", async () => {
+    const rendered = await renderChat();
+    mocks.approvalsModeGet.mockRejectedValue(new Error("approvals db locked"));
+    useApprovalModeStore.setState({ modes: {}, loaded: {}, persisted: {} });
+
+    submit(rendered, "Rewrite the abstract");
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.approvalModeLoadFailed),
+    );
+    expect(mocks.runs).toHaveLength(0);
+  });
+
+  it("says nothing arrived when a user message has no reply", async () => {
+    const chatId = useChatsStore.getState().activeId;
+    if (!chatId) throw new Error("active chat missing");
+    useChatsStore.getState().saveMessages(chatId, [
+      { id: "user-1", role: "user", content: "Review this proof" },
+    ]);
+    const rendered = await renderChat();
+
+    expect(rendered.getByText(enAi.conversation.noResponse)).toBeTruthy();
+  });
+});
+
+describe("ChatCore failure notices, continued", () => {
+  it("reports a steer the backend refused", async () => {
+    mocks.agentSteer.mockRejectedValue(new Error("run gone"));
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    submit(rendered, "Use this now");
+
+    fireEvent.click(rendered.getAllByRole("button", { name: "Steer now" })[0]);
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.steerFailed),
+    );
+    await act(async () => finishRun(0, "Done"));
+  });
+
+  it("reports a skill draft that could not be written", async () => {
+    mocks.createSkill.mockRejectedValue(new Error("skills dir read only"));
+    seedCompletedChat();
+    await renderChat();
+
+    changeComposer("/record");
+    pressComposerKey("Enter");
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        enAi.toasts.skillDraftFailed.replace(
+          "{{error}}",
+          "Error: skills dir read only",
+        ),
+      ),
+    );
+  });
+
+  it("reports a project approval rule that could not be saved", async () => {
+    mocks.approvalsSet.mockRejectedValue(new Error("approvals db locked"));
+    const { rendered, result } = await beginApprovalCall("custom");
+
+    await waitFor(() =>
+      expect(rendered.getByTestId("tool-confirm-approve-project")).toBeTruthy(),
+    );
+    fireEvent.click(rendered.getByTestId("tool-confirm-approve-project"));
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enAi.toasts.approvalRuleSaveFailed),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Reject" }));
+    await expect(result).resolves.toEqual({ approved: false });
+    await act(async () => finishRun(0, "Not changed"));
+  });
+
 });

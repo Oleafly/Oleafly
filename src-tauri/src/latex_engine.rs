@@ -2962,6 +2962,56 @@ mod tests {
         );
     }
 
+    fn error_envelope(error: &str) -> serde_json::Value {
+        assert!(
+            error.starts_with(crate::app_error::PREFIX),
+            "not an error envelope: {error}"
+        );
+        serde_json::from_str(&error[crate::app_error::PREFIX.len()..]).unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_tinytex_tree_without_binaries_names_the_one_it_wanted() {
+        let root = tempfile::tempdir().unwrap();
+
+        let installed = validate_tinytex_executables(root.path())
+            .await
+            .err()
+            .unwrap();
+        let json = error_envelope(&installed);
+        assert_eq!(json["code"], "tex.no_host_binary");
+        assert_eq!(json["params"]["name"], "lualatex");
+
+        let staged = prepare_staged_tinytex(root.path()).await.err().unwrap();
+        assert_eq!(error_envelope(&staged)["params"]["name"], "lualatex");
+
+        let tool = validate_tinytex_tool(&root.path().join("bin").join("lualatex"), "latexmk")
+            .await
+            .unwrap_err();
+        let json = error_envelope(&tool);
+        assert_eq!(json["code"], "tex.no_host_binary");
+        assert_eq!(json["params"]["name"], "latexmk");
+    }
+
+    #[test]
+    fn a_stopped_package_operation_reports_the_budget_it_passed() {
+        let minutes = flow_budget_message(std::time::Duration::from_secs(180));
+        let json = error_envelope(&minutes);
+        assert_eq!(json["code"], "tex.package_operation_timeout");
+        assert_eq!(json["params"]["span"], "3 minutes");
+
+        assert_eq!(
+            error_envelope(&flow_budget_message(std::time::Duration::from_secs(45)))["params"]
+                ["span"],
+            "45 seconds"
+        );
+        assert_eq!(
+            error_envelope(&flow_budget_message(std::time::Duration::from_millis(10)))["params"]
+                ["span"],
+            "1 seconds"
+        );
+    }
+
     #[cfg(unix)]
     #[tokio::test]
     async fn a_removal_and_an_unrelated_install_failure_keep_the_system_tree() {

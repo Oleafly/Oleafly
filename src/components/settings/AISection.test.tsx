@@ -906,3 +906,190 @@ describe("AISection custom provider editing", () => {
     expect(openai.find((m) => m.id === "gpt-4o-mini")?.trust).toBe("verified");
   });
 });
+
+const aiSection = enSettings.ai.section;
+
+async function readySection() {
+  renderSection();
+  await waitFor(() => expect(captured.providersTab).not.toBeNull());
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: enSettings.reset.button })).toBeEnabled(),
+  );
+}
+
+describe("AISection provider messages", () => {
+  beforeEach(() => {
+    resetHarness();
+  });
+
+  it("confirms the Ollama model it activated", async () => {
+    await readySection();
+
+    await act(async () => {
+      await captured.providersTab?.applyOllamaModel("llama3.2");
+    });
+
+    expect(
+      screen.getByText(
+        aiSection.messages.ollamaConnected.replace("{{model}}", "llama3.2"),
+      ),
+    ).toBeInTheDocument();
+    expect(lastConfigWrite().ai_provider).toBe("ollama");
+  });
+
+  it("reports a rejected key for a known provider", async () => {
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "get_config") return configFixture;
+      if (command === "set_config") return undefined;
+      if (command === "agent_list_models") throw new Error("[auth] 401");
+      if (command === "mcp_servers_list") return [];
+      if (command === "skills_list") return skillsFixture;
+      return undefined;
+    });
+    await readySection();
+
+    act(() => captured.providersTab?.setKeys((keys) => ({ ...keys, openai: "sk-bad" })));
+    await waitFor(() => expect(captured.providersTab?.keys.openai).toBe("sk-bad"));
+    await act(async () => {
+      await captured.providersTab?.validateAndSave("openai");
+    });
+
+    expect(captured.providersTab?.status.openai).toBe("error");
+    expect(captured.providersTab?.errorMsg.openai).toBe(aiSection.errors.invalidKey);
+  });
+
+  it("saves a custom provider key that no model list confirms", async () => {
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "get_config") return configFixture;
+      if (command === "set_config") return undefined;
+      if (command === "agent_list_models") throw new Error("[network] refused");
+      if (command === "mcp_servers_list") return [];
+      if (command === "skills_list") return skillsFixture;
+      return undefined;
+    });
+    await readySection();
+
+    act(() =>
+      captured.providersTab?.setKeys((keys) => ({ ...keys, "local-lab": "sk-lab" })),
+    );
+    await waitFor(() => expect(captured.providersTab?.keys["local-lab"]).toBe("sk-lab"));
+    await act(async () => {
+      await captured.providersTab?.validateAndSave("local-lab");
+    });
+
+    expect(
+      screen.getByText(
+        aiSection.messages.keySavedAddModels.replace("{{provider}}", "Local Lab"),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("refuses a custom provider id that is already taken", async () => {
+    await readySection();
+
+    let result: { ok: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "local-lab",
+        name: "Another Lab",
+        baseURL: "http://127.0.0.1:9100/v1",
+        apiKey: "",
+      });
+    });
+
+    expect(result).toEqual({ ok: false, message: aiSection.errors.providerIdInUse });
+  });
+
+  it("announces a newly added custom provider", async () => {
+    await readySection();
+
+    let result: { ok: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "second-lab",
+        name: "Second Lab",
+        baseURL: "http://127.0.0.1:9100/v1",
+        apiKey: "sk-second",
+      });
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(
+      screen.getByText(
+        aiSection.messages.providerAdded.replace("{{provider}}", "Second Lab"),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("reports a custom provider that disappeared before the edit landed", async () => {
+    await readySection();
+
+    act(() => captured.providersTab?.onEditCustomProvider("local-lab"));
+    let result: { ok: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "gone-lab",
+        name: "Gone Lab",
+        baseURL: "http://127.0.0.1:9100/v1",
+        apiKey: "",
+      });
+    });
+
+    expect(result).toEqual({ ok: false, message: aiSection.errors.providerGone });
+  });
+
+  it("says a custom provider was updated without a model list", async () => {
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "get_config") return configFixture;
+      if (command === "set_config") return undefined;
+      if (command === "agent_list_models") throw new Error("[network] refused");
+      if (command === "mcp_servers_list") return [];
+      if (command === "skills_list") return skillsFixture;
+      return undefined;
+    });
+    await readySection();
+
+    act(() => captured.providersTab?.onEditCustomProvider("local-lab"));
+    let result: { ok: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "local-lab",
+        name: "Local Lab",
+        baseURL: "http://127.0.0.1:9500/v1",
+        apiKey: "",
+      });
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(
+      screen.getByText(
+        aiSection.messages.providerUpdatedWithoutModels.replace(
+          "{{provider}}",
+          "Local Lab",
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says which provider lost its key, and when access stopped with it", async () => {
+    await readySection();
+
+    await act(async () => {
+      await captured.providersTab?.deleteKey("anthropic");
+    });
+    expect(
+      screen.getByText(
+        aiSection.messages.keyRemovedAccessDisabled.replace("{{provider}}", "Anthropic"),
+      ),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      await captured.providersTab?.deleteKey("openai");
+    });
+    expect(
+      screen.getByText(
+        aiSection.messages.keyRemoved.replace("{{provider}}", "OpenAI"),
+      ),
+    ).toBeInTheDocument();
+  });
+});

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import {
   coalesceTranscriptEvents,
   createResearchArtifactAction,
@@ -281,5 +282,236 @@ describe("coalesceTranscriptEvents", () => {
     expect(first.event.text).toBe("a");
     expect(merged).toHaveLength(1);
     expect(merged[0]).not.toBe(first);
+  });
+});
+
+const activity = enCore.toolActivity;
+
+const NAMED_TOOLS: Array<[string, string]> = [
+  ["run_command", activity.labels.runCommand],
+  ["literature_search", activity.labels.literatureSearch],
+  ["alphaxiv_search", activity.labels.alphaxivSearch],
+  ["alphaxiv_paper_content", activity.labels.alphaxivPaperContent],
+  ["verify_citation", activity.labels.verifyCitation],
+  ["project_library_search", activity.labels.projectLibrarySearch],
+  ["read_file", activity.labels.readFile],
+  ["read_linked_file", activity.labels.readLinkedFile],
+  ["read_research_root_file", activity.labels.readResearchRootFile],
+  ["list_files", activity.labels.listFiles],
+  ["search_project", activity.labels.searchProject],
+  ["project_map", activity.labels.projectMap],
+  ["compile", activity.labels.compile],
+  ["get_log", activity.labels.getLog],
+  ["read_pdf_text", activity.labels.readPdfText],
+  ["verify_pdf_pages", activity.labels.verifyPdfPages],
+  ["preview_figure", activity.labels.previewFigure],
+  ["insert_figure", activity.labels.insertFigure],
+  ["spawn_agent", activity.labels.spawnAgent],
+  ["wait_agent", activity.labels.waitAgent],
+  ["send_message", activity.labels.sendMessage],
+];
+
+describe("tool labels", () => {
+  it("names every tool the catalog covers", () => {
+    for (const [name, label] of NAMED_TOOLS) {
+      expect(projectToolEntry({ name, status: "done" }).label).toBe(label);
+    }
+  });
+
+  it("falls back to the readable tool name", () => {
+    expect(projectToolEntry({ name: "custom_tool", status: "done" }).label).toBe(
+      "custom tool",
+    );
+  });
+});
+
+describe("tool status labels", () => {
+  const statusOf = (entry: Parameters<typeof projectToolEntry>[0]) =>
+    projectToolEntry(entry).statusLabel;
+
+  it("names every terminal and transient state", () => {
+    expect(statusOf({ name: "compile", status: "running" })).toBe(activity.status.running);
+    expect(statusOf({ name: "compile", status: "done", approval: "rejected" })).toBe(
+      activity.status.declined,
+    );
+    expect(statusOf({ name: "compile", status: "done", interrupted: true })).toBe(
+      activity.status.interrupted,
+    );
+    expect(
+      statusOf({
+        name: "compile",
+        status: "done",
+        output: JSON.stringify({ cancelled: true }),
+      }),
+    ).toBe(activity.status.cancelled);
+    expect(
+      statusOf({
+        name: "run_command",
+        status: "done",
+        output: JSON.stringify({ timed_out: true }),
+      }),
+    ).toBe(activity.status.timedOut);
+    expect(
+      statusOf({
+        name: "run_command",
+        status: "done",
+        output: JSON.stringify({ exit_code: 2 }),
+      }),
+    ).toBe(activity.status.failedWithCode.replace("{{code}}", "2"));
+    expect(statusOf({ name: "run_command", status: "error" })).toBe(
+      activity.status.failed,
+    );
+    expect(statusOf({ name: "compile", status: "done" })).toBe(activity.status.done);
+  });
+});
+
+describe("tool summaries", () => {
+  it("counts the papers a literature search returned", () => {
+    const view = projectToolEntry({
+      name: "literature_search",
+      status: "done",
+      output: JSON.stringify({
+        results: [
+          {
+            title: "A paper",
+            authorships: [{ author: { display_name: "Ada" } }],
+            publication_year: 2026,
+            doi: "https://doi.org/10.1/abc",
+            primary_location: {
+              landing_page_url: "https://example.org/a",
+              source: { display_name: "Journal" },
+            },
+            abstract_inverted_index: { Hello: [1], world: [0] },
+          },
+        ],
+      }),
+    });
+
+    expect(view.summary).toBe(activity.summary.papers_one.replace("{{count}}", "1"));
+    expect(view.results?.[0].authors).toEqual(["Ada"]);
+    expect(view.results?.[0].doi).toBe("10.1/abc");
+    expect(view.results?.[0].abstract).toBe("world Hello");
+  });
+
+  it("reports a verified and an unverified citation", () => {
+    expect(
+      projectToolEntry({
+        name: "verify_citation",
+        status: "done",
+        output: JSON.stringify({ verified: true }),
+      }).summary,
+    ).toBe(activity.summary.citationVerified);
+    expect(
+      projectToolEntry({
+        name: "verify_citation",
+        status: "done",
+        output: JSON.stringify({ verified: false }),
+      }).summary,
+    ).toBe(activity.summary.citationUnverified);
+    expect(
+      projectToolEntry({
+        name: "verify_citation",
+        status: "done",
+        output: JSON.stringify({ verified: false, reason: "Retracted" }),
+      }).summary,
+    ).toBe("Retracted");
+  });
+
+  it("reports a compile result with and without diagnostics", () => {
+    expect(
+      projectToolEntry({ name: "compile", status: "done", output: "{}" }).summary,
+    ).toBe(activity.summary.compileSucceeded);
+    expect(
+      projectToolEntry({
+        name: "compile",
+        status: "done",
+        output: JSON.stringify({ errors: ["Undefined control sequence"] }),
+      }).summary,
+    ).toBe(activity.summary.diagnostics_one.replace("{{count}}", "1"));
+    expect(
+      projectToolEntry({ name: "compile", status: "error", output: "{}" }).summary,
+    ).toBe(activity.summary.compileFailed);
+    expect(
+      projectToolEntry({
+        name: "compile",
+        status: "error",
+        output: JSON.stringify({ diagnostics: [{ message: "a" }, { text: "b" }] }),
+      }).summary,
+    ).toBe(activity.summary.diagnostics_other.replace("{{count}}", "2"));
+  });
+
+  it("uses the path as the summary of a source read", () => {
+    const view = projectToolEntry({
+      name: "read_file",
+      status: "done",
+      output: JSON.stringify({ path: "chapters/intro.tex", line: 12 }),
+    });
+    expect(view.summary).toBe("chapters/intro.tex");
+    expect(view.kind).toBe("source");
+    expect(view.line).toBe(12);
+  });
+
+  it("classifies a delegation tool", () => {
+    expect(projectToolEntry({ name: "spawn_agent", status: "done" }).kind).toBe(
+      "delegation",
+    );
+  });
+});
+
+describe("readable tool output", () => {
+  const outputOf = (output: string) =>
+    projectToolEntry({ name: "run_command", status: "done", output }).output;
+
+  it("prefers the most specific readable field", () => {
+    expect(outputOf("plain text")).toBe("plain text");
+    expect(outputOf(JSON.stringify({ output: "from output" }))).toBe("from output");
+    expect(outputOf(JSON.stringify({ content: "from content" }))).toBe("from content");
+    expect(outputOf(JSON.stringify({ log: "from log" }))).toBe("from log");
+    expect(outputOf(JSON.stringify({ log_tail: "from tail" }))).toBe("from tail");
+    expect(outputOf(JSON.stringify({ error: "from error" }))).toBe("from error");
+    expect(outputOf(JSON.stringify({ other: 1 }))).toContain("other");
+    expect(projectToolEntry({ name: "run_command", status: "done" }).output).toBe("");
+  });
+});
+
+describe("createResearchArtifactAction", () => {
+  const ports = () => ({
+    openProject: vi.fn().mockResolvedValue(undefined),
+    inspectLinked: vi.fn().mockResolvedValue(undefined),
+  });
+
+  it("does nothing without an open project", async () => {
+    const p = ports();
+    await createResearchArtifactAction(null, p)({ scope: "project", path: "a.tex" });
+    expect(p.openProject).not.toHaveBeenCalled();
+    expect(p.inspectLinked).not.toHaveBeenCalled();
+  });
+
+  it("routes a linked artifact to the linked inspector", async () => {
+    const p = ports();
+    const target = {
+      scope: "linked" as const,
+      rootId: "references",
+      relativePath: "a.pdf",
+    };
+    await createResearchArtifactAction("proj", p)(target);
+    expect(p.inspectLinked).toHaveBeenCalledWith("proj", target);
+  });
+
+  it("ignores an artifact belonging to a different project", async () => {
+    const p = ports();
+    await createResearchArtifactAction("proj", p)({
+      scope: "project",
+      projectId: "other",
+      path: "a.tex",
+    });
+    expect(p.openProject).not.toHaveBeenCalled();
+  });
+
+  it("opens an artifact in the open project", async () => {
+    const p = ports();
+    const target = { scope: "project" as const, projectId: "proj", path: "a.tex" };
+    await createResearchArtifactAction("proj", p)(target);
+    expect(p.openProject).toHaveBeenCalledWith("proj", target);
   });
 });

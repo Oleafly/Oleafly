@@ -114,12 +114,16 @@ function Set-CheckpointsForSpec {
       $script:checkpointHints -match "24-synctex-inverse") {
     $enabled = "true"
   }
+  $script:uiLocale = "en"
+  if ($script:checkpointHints -match "97-locale-zh-hans") {
+    $script:uiLocale = "zh-Hans"
+  }
   $writer = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp-checkpoints.js"
   if (-not (Test-Path -LiteralPath $writer)) {
     $nodeScript = @'
 const fs = require("node:fs");
 const path = require("node:path");
-const [target, enabled] = process.argv.slice(2);
+const [target, enabled, locale] = process.argv.slice(2);
 let config = {};
 try {
   config = JSON.parse(fs.readFileSync(target, "utf8"));
@@ -127,13 +131,14 @@ try {
   config = {};
 }
 config.checkpoints_enabled = enabled === "true";
+config.ui_locale = locale || "en";
 fs.mkdirSync(path.dirname(target), { recursive: true });
 fs.writeFileSync(target, JSON.stringify(config, null, 2));
 '@
     Set-Content -LiteralPath $writer -Value $nodeScript -Encoding ASCII
   }
   $configPath = Join-Path $script:dataDir "config.json"
-  & node $writer $configPath $enabled
+  & node $writer $configPath $enabled $script:uiLocale
   if ($LASTEXITCODE -ne 0) {
     throw "e2e: could not write checkpoints_enabled into $configPath"
   }
@@ -151,6 +156,7 @@ function Start-App([string]$label) {
   $env:OLEAFLY_DATA_DIR = $script:dataDir
   if ($script:appBinary) {
     $seed = @{
+      "oleafly.locale" = $script:uiLocale
       "oleafly.shortcuts" = $null
       "oleafly.visualEditor" = "1"
       "oleafly.latexTools" = "1"

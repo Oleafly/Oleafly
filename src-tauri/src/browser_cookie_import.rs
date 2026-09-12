@@ -368,14 +368,13 @@ fn validate_supported_import(
     Ok(())
 }
 
-async fn confirm_native_cookie_import<R: Runtime>(
-    app: tauri::AppHandle<R>,
+fn cookie_import_prompt(
     browser: BrowserCookieSourceId,
     profile: &str,
     domain: Option<&str>,
-) -> Result<(), CookieImportError> {
+) -> String {
     let browser_name = browser.name();
-    let message = match domain {
+    match domain {
         Some(hostname) => crate::i18n::t_with(
             "dialog.cookieImport.messageHost",
             &[
@@ -388,10 +387,18 @@ async fn confirm_native_cookie_import<R: Runtime>(
             "dialog.cookieImport.messageAll",
             &[("browser", browser_name), ("profile", profile)],
         ),
-    };
+    }
+}
+
+async fn confirm_native_cookie_import<R: Runtime>(
+    app: tauri::AppHandle<R>,
+    browser: BrowserCookieSourceId,
+    profile: &str,
+    domain: Option<&str>,
+) -> Result<(), CookieImportError> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
     app.dialog()
-        .message(message)
+        .message(cookie_import_prompt(browser, profile, domain))
         .title(crate::i18n::t("dialog.cookieImport.title"))
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::OkCancelCustom(
@@ -1428,8 +1435,8 @@ mod tests {
     use zeroize::Zeroizing;
 
     use super::{
-        decrypt_chromium_cookie_value, detect_browser_cookie_sources_at, domain_matches,
-        ensure_cookie_limits, normalize_import_domain, read_chromium_cookie_store,
+        cookie_import_prompt, decrypt_chromium_cookie_value, detect_browser_cookie_sources_at,
+        domain_matches, ensure_cookie_limits, normalize_import_domain, read_chromium_cookie_store,
         read_firefox_cookie_store, resolve_cookie_store_at, runtime_cookie,
         validate_import_request, BrowserCookieImportSummary, BrowserCookieSourceId,
         CookieImportError, CookieSourceStatus, HostPlatform, SafeStoragePasswordProvider,
@@ -2393,5 +2400,42 @@ mod tests {
             CookieImportError::CookieApplyFailed.to_string(),
             "Oleafly could not finish adding cookies to the browser session. Some cookies may already have been imported. You can safely try again."
         );
+    }
+
+    #[test]
+    fn the_confirmation_prompt_names_the_browser_profile_and_scope() {
+        let scoped = cookie_import_prompt(
+            BrowserCookieSourceId::Chrome,
+            "Profile 1",
+            Some("overleaf.com"),
+        );
+        assert_eq!(
+            scoped,
+            crate::i18n::t_with(
+                "dialog.cookieImport.messageHost",
+                &[
+                    ("hostname", "overleaf.com"),
+                    ("browser", "Google Chrome"),
+                    ("profile", "Profile 1"),
+                ],
+            )
+        );
+        assert!(scoped.contains("overleaf.com"), "{scoped}");
+        assert!(scoped.contains("Google Chrome"), "{scoped}");
+        assert!(scoped.contains("Profile 1"), "{scoped}");
+        assert!(!scoped.contains("{{"), "{scoped}");
+
+        let everything = cookie_import_prompt(BrowserCookieSourceId::Firefox, "default", None);
+        assert_eq!(
+            everything,
+            crate::i18n::t_with(
+                "dialog.cookieImport.messageAll",
+                &[("browser", "Firefox"), ("profile", "default")],
+            )
+        );
+        assert!(!everything.contains("overleaf.com"), "{everything}");
+        assert!(everything.contains("Firefox"), "{everything}");
+        assert!(!everything.contains("{{"), "{everything}");
+        assert_ne!(scoped, everything);
     }
 }
