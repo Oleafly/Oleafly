@@ -165,9 +165,9 @@ metadata:
 });
 
 test("quoted scalars keep their escapes", () => {
-  const quoted = `---
+  const quoted = String.raw`---
 name: quoted
-description: "Trigger when the user says \\"deck\\" or \\"slides\\"."
+description: "Trigger when the user says \"deck\" or \"slides\"."
 license: 'Zotero library type: ''user'' or ''group'''
 ---
 

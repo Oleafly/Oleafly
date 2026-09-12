@@ -240,7 +240,7 @@ const EXTRA_KEYMAP: KeyBinding[] = [
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },
 ];
 
-export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
+export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean }>) {
   useEffect(
     () =>
       useSettingsStore.subscribe((settings, previous) => {

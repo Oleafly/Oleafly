@@ -40,7 +40,10 @@ const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "
 type FieldErrors = Partial<Record<"id" | "name" | "baseURL" | "apiKey", string>>;
 
 export function normalizeBaseURL(url: string): string {
-  return url.trim().replace(/\/+$/, "");
+  const trimmed = url.trim();
+  let end = trimmed.length;
+  while (end > 0 && trimmed[end - 1] === "/") end -= 1;
+  return trimmed.slice(0, end);
 }
 
 function validate(form: AddCustomProviderInput, editing: CustomProviderEditTarget | null): FieldErrors {
@@ -86,7 +89,7 @@ export function AddCustomProviderDialog({
   onOpenChange,
   onSubmit,
   editing = null,
-}: AddCustomProviderDialogProps) {
+}: Readonly<AddCustomProviderDialogProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [form, setForm] = useState<AddCustomProviderInput>(EMPTY);
   const [busy, setBusy] = useState(false);

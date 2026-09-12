@@ -55,19 +55,16 @@ export function ProofreadingNotifications({
     (status.phase === "too_large" ||
       status.phase === "unsupported" ||
       status.phase === "partial");
-  const notificationMessage =
-    status.message ??
-    (status.phase === "error"
-      ? t(($) => $.editor.proofreading.error)
-      : status.phase === "unavailable"
-        ? t(($) => $.editor.proofreading.unavailable)
-        : status.phase === "too_large"
-          ? t(($) => $.editor.proofreading.tooLarge)
-          : status.phase === "unsupported"
-            ? t(($) => $.editor.proofreading.unsupported)
-            : t(($) => $.editor.proofreading.partial, {
-                count: status.diagnosticCount,
-              }));
+  const phaseMessage = (): string => {
+    if (status.phase === "error") return t(($) => $.editor.proofreading.error);
+    if (status.phase === "unavailable") return t(($) => $.editor.proofreading.unavailable);
+    if (status.phase === "too_large") return t(($) => $.editor.proofreading.tooLarge);
+    if (status.phase === "unsupported") return t(($) => $.editor.proofreading.unsupported);
+    return t(($) => $.editor.proofreading.partial, {
+      count: status.diagnosticCount,
+    });
+  };
+  const notificationMessage = status.message ?? phaseMessage();
 
   useEffect(() => {
     const toastId = `proofreading:${surface}`;

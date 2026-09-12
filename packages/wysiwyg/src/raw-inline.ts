@@ -155,7 +155,7 @@ export const RawInline = Node.create({
           },
           { once: true },
         );
-        dom.insertBefore(input, edit);
+        edit.before(input);
         input.focus({ preventScroll: true });
         input.select();
       };

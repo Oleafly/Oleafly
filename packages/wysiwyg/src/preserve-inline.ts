@@ -32,7 +32,7 @@ export function normalizePreservedRanges(
 
   const disjoint: NormalizedInlineRange[] = [];
   for (const range of normalized) {
-    const previous = disjoint[disjoint.length - 1];
+    const previous = disjoint.at(-1);
     if (previous && range.from < previous.to) continue;
     disjoint.push(range);
   }
@@ -59,6 +59,35 @@ export function protectInlineSources(
   return { protectedContent, tokenPrefix, sources };
 }
 
+function expandTextNode(
+  child: JSONContent,
+  token: RegExp,
+  sources: readonly string[],
+): JSONContent[] {
+  const text = child.text ?? "";
+  const parts: JSONContent[] = [];
+  let cursor = 0;
+  let matched = false;
+  for (const match of text.matchAll(token)) {
+    if (match.index === undefined) continue;
+    const sourceIndex = Number(match[1]);
+    const preserved = sources[sourceIndex];
+    if (preserved === undefined) continue;
+    matched = true;
+    if (match.index > cursor) {
+      parts.push({ ...child, text: text.slice(cursor, match.index) });
+    }
+    parts.push({
+      type: "rawInline",
+      attrs: { source: preserved },
+    });
+    cursor = match.index + match[0].length;
+  }
+  if (!matched) return [child];
+  if (cursor < text.length) parts.push({ ...child, text: text.slice(cursor) });
+  return parts;
+}
+
 export function restoreInlineSources(
   node: JSONContent,
   tokenPrefix: string,
@@ -68,7 +97,7 @@ export function restoreInlineSources(
     (node.type === "rawInline" || node.type === "rawBlock") &&
     typeof node.attrs?.source === "string"
   ) {
-    const token = new RegExp(`${tokenPrefix}(\\d+)X`, "gu");
+    const token = new RegExp(String.raw`${tokenPrefix}(\d+)X`, "gu");
     return {
       ...node,
       attrs: {
@@ -83,39 +112,14 @@ export function restoreInlineSources(
   if (node.type === "text" && node.text) return node;
   if (!node.content) return node;
 
-  const token = new RegExp(`${tokenPrefix}(\\d+)X`, "gu");
+  const token = new RegExp(String.raw`${tokenPrefix}(\d+)X`, "gu");
   const content: JSONContent[] = [];
   for (const child of node.content) {
     if (child.type !== "text" || !child.text) {
       content.push(restoreInlineSources(child, tokenPrefix, sources));
       continue;
     }
-
-    let cursor = 0;
-    let matched = false;
-    for (const match of child.text.matchAll(token)) {
-      if (match.index === undefined) continue;
-      const sourceIndex = Number(match[1]);
-      const preserved = sources[sourceIndex];
-      if (preserved === undefined) continue;
-      matched = true;
-      if (match.index > cursor) {
-        content.push({
-          ...child,
-          text: child.text.slice(cursor, match.index),
-        });
-      }
-      content.push({
-        type: "rawInline",
-        attrs: { source: preserved },
-      });
-      cursor = match.index + match[0].length;
-    }
-    if (!matched) {
-      content.push(child);
-    } else if (cursor < child.text.length) {
-      content.push({ ...child, text: child.text.slice(cursor) });
-    }
+    content.push(...expandTextNode(child, token, sources));
   }
   return { ...node, content };
 }

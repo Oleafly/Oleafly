@@ -42,6 +42,27 @@ pub(super) fn relative_path(value: &str, allow_empty: bool) -> Result<PathBuf, S
     Ok(path.to_path_buf())
 }
 
+fn queue_child_directory(
+    dir: &Dir,
+    name: &std::ffi::OsStr,
+    child_path: PathBuf,
+    depth: usize,
+    max_depth: usize,
+    pending: &mut Vec<(Dir, PathBuf, usize)>,
+) -> bool {
+    let Ok(child_dir) = dir.open_dir_nofollow(Path::new(name)) else {
+        return false;
+    };
+    if depth < max_depth.min(5) {
+        pending.push((child_dir, child_path, depth + 1));
+        return false;
+    }
+    child_dir
+        .entries()
+        .map(|mut children| children.next().is_some())
+        .unwrap_or(true)
+}
+
 fn open_root(path: &Path) -> Result<Dir, String> {
     let metadata = std::fs::symlink_metadata(path)
         .map_err(|_| "The session folder is unavailable.".to_string())?;
@@ -155,6 +176,26 @@ impl FileScope {
         }))
     }
 
+    fn visible_entry(
+        &self,
+        dir: &Dir,
+        name: &std::ffi::OsStr,
+        child_path: &Path,
+    ) -> Result<Option<cap_std::fs::Metadata>, String> {
+        let metadata = dir
+            .symlink_metadata(Path::new(name))
+            .map_err(|_| "A folder entry could not be inspected.".to_string())?;
+        if metadata.is_symlink() || (!metadata.is_dir() && !metadata.is_file()) {
+            return Ok(None);
+        }
+        let visible = if metadata.is_dir() {
+            self.can_traverse(child_path)
+        } else {
+            self.can_read(child_path)
+        };
+        Ok(visible.then_some(metadata))
+    }
+
     pub(super) fn list(
         &self,
         path: &str,
@@ -191,36 +232,23 @@ impl FileScope {
                     continue;
                 }
                 let child_path = relative.join(&name);
-                let metadata = dir
-                    .symlink_metadata(Path::new(&name))
-                    .map_err(|_| "A folder entry could not be inspected.".to_string())?;
-                if metadata.is_symlink() || (!metadata.is_dir() && !metadata.is_file()) {
+                let Some(metadata) = self.visible_entry(&dir, &name, &child_path)? else {
                     continue;
-                }
-                let visible = if metadata.is_dir() {
-                    self.can_traverse(&child_path)
-                } else {
-                    self.can_read(&child_path)
                 };
-                if !visible {
-                    continue;
-                }
                 entries.push(json!({
                     "path": child_path.to_string_lossy().replace('\\', "/"),
                     "is_directory": metadata.is_dir(),
                     "bytes": metadata.len(),
                 }));
                 if metadata.is_dir() {
-                    if let Ok(child_dir) = dir.open_dir_nofollow(Path::new(&name)) {
-                        if depth < max_depth.min(5) {
-                            pending.push((child_dir, child_path, depth + 1));
-                        } else {
-                            truncated |= child_dir
-                                .entries()
-                                .map(|mut children| children.next().is_some())
-                                .unwrap_or(true);
-                        }
-                    }
+                    truncated |= queue_child_directory(
+                        &dir,
+                        &name,
+                        child_path,
+                        depth,
+                        max_depth,
+                        &mut pending,
+                    );
                 }
             }
         }

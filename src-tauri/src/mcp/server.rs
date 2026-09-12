@@ -116,14 +116,14 @@ fn lock_pending(state: &McpState) -> std::sync::MutexGuard<'_, HashMap<u64, Pend
     state
         .pending
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn lock_renderer_lease(state: &McpState) -> std::sync::MutexGuard<'_, Option<RendererLease>> {
     state
         .renderer_lease
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn next_nonzero_sequence(sequence: &AtomicU64, label: &str) -> Result<u64, String> {

@@ -41,13 +41,18 @@ export function ProjectBudget() {
 
   if (!projectId) return null;
   const cost = usage.data?.cost_usd ?? null;
+  const costDigits = (value: number) => {
+    if (value < 0.01) return 4;
+    if (value < 1) return 3;
+    return 2;
+  };
   const spent =
     cost === null
       ? null
       : formatNumber(cost, {
           style: "currency",
           currency: "USD",
-          maximumFractionDigits: cost < 0.01 ? 4 : cost < 1 ? 3 : 2,
+          maximumFractionDigits: costDigits(cost),
         });
 
   return (

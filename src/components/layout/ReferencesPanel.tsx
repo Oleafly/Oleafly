@@ -106,10 +106,10 @@ function resolveQuery(
 function ReferencesUnavailable({
   state,
   projectId,
-}: {
+}: Readonly<{
   state: ProjectIntelligenceState;
   projectId: string | null;
-}) {
+}>) {
   const { t } = useTranslation(["references"]);
   if (!projectId) {
     return (
@@ -191,13 +191,13 @@ function QueryContent({
   snapshot,
   filter,
   onActivate,
-}: {
+}: Readonly<{
   query: ReferenceQuery | null;
   state: ProjectIntelligenceState;
   snapshot: ProjectIntelligenceSnapshot;
   filter: string;
   onActivate: (node: IntelligenceTreeNode) => void;
-}) {
+}>) {
   const { t } = useTranslation(["references"]);
   const current = query ? identitiesMatch(query, state, snapshot) : false;
   const result = useMemo(
@@ -324,6 +324,116 @@ export function ReferencesPanel() {
     },
   ];
 
+  const filterAriaLabel = (): string => {
+    if (view === "results") return t(($) => $.references.filter.ariaLabelResults);
+    if (view === "citations") return t(($) => $.references.filter.ariaLabelCitations);
+    return t(($) => $.references.filter.ariaLabelSymbols);
+  };
+  const filterPlaceholder = (): string => {
+    if (view === "results") return t(($) => $.references.filter.placeholderResults);
+    if (view === "citations") return t(($) => $.references.filter.placeholderCitations);
+    return t(($) => $.references.filter.placeholderSymbols);
+  };
+
+  const renderPanelBody = () => {
+    if (!snapshot) {
+      return (
+        <ReferencesUnavailable
+          state={intelligenceState}
+          projectId={projectId}
+        />
+      );
+    }
+    if (view === "results") {
+      return (
+        <QueryContent
+          query={query}
+          state={intelligenceState}
+          snapshot={snapshot}
+          filter={filter}
+          onActivate={navigate}
+        />
+      );
+    }
+    if (view === "citations") {
+      return citationNodes.length ? (
+        <IntelligenceTree
+          label={t(($) => $.references.trees.citations)}
+          nodes={citationNodes}
+          query={filter}
+          onActivate={navigate}
+          emptyMessage={
+            filter
+              ? t(($) => $.references.filter.noCitation, { query: filter.trim() })
+              : t(($) => $.references.trees.noCitations)
+          }
+        />
+      ) : (
+        <PanelState
+          state="empty"
+          title={t(($) => $.references.empty.citations.title)}
+          detail={t(($) => $.references.empty.citations.detail)}
+          action={
+            <Button
+              size="sm"
+              onClick={() => setImportOpen(true)}
+              className="h-8 gap-1.5 rounded-full px-3.5 text-[11px] shadow-sm"
+            >
+              <BookPlus aria-hidden className="size-3.5" />
+              {t(($) => $.references.import.title)}
+            </Button>
+          }
+        />
+      );
+    }
+    return symbolNodes.length ? (
+      <IntelligenceTree
+        label={t(($) => $.references.trees.symbols)}
+        nodes={symbolNodes}
+        query={filter}
+        onActivate={navigate}
+        emptyMessage={
+          filter
+            ? t(($) => $.references.filter.noSymbol, { query: filter.trim() })
+            : t(($) => $.references.trees.noSymbols)
+        }
+      />
+    ) : (
+      <PanelState
+        state="empty"
+        title={t(($) => $.references.empty.symbols.title)}
+        detail={t(($) => $.references.empty.symbols.detail)}
+      />
+    );
+  };
+
+  const renderPanelBreadcrumbRow = () => (
+    <div className="mt-1.5 flex min-w-0 items-center gap-2 px-0.5">
+      <PanelBreadcrumb
+        project={projectName || undefined}
+        path={activePath}
+      />
+      {view === "results" && query ? (
+        <Tooltip label={query.title} side="bottom">
+          <span className="ml-auto max-w-[48%] shrink truncate text-[9px] font-medium text-sidebar-foreground/75">
+            {query.title}
+          </span>
+        </Tooltip>
+      ) : null}
+      {notice ? (
+        <Tooltip label={notice} side="bottom">
+          <span
+            className={`flex shrink-0 items-center text-amber-600 dark:text-amber-400 ${
+              view === "results" && query ? "" : "ml-auto"
+            }`}
+          >
+            <Info aria-hidden className="size-3.5" />
+          </span>
+        </Tooltip>
+      ) : null}
+    </div>
+  );
+
   return (
     <>
       <section
@@ -349,13 +459,12 @@ export function ReferencesPanel() {
           </Tooltip>
         ) : null}
         {issues > 0 ? (
-          <span
-            role="status"
+          <output
             aria-label={t(($) => $.references.panel.issues, { count: issues })}
             className="rounded-sm bg-amber-500/12 px-1 font-mono text-[9px] text-amber-700 dark:text-amber-300"
           >
             {issues}
-          </span>
+          </output>
         ) : null}
         {query ? (
           <button
@@ -419,20 +528,8 @@ export function ReferencesPanel() {
             type="search"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            aria-label={
-              view === "results"
-                ? t(($) => $.references.filter.ariaLabelResults)
-                : view === "citations"
-                  ? t(($) => $.references.filter.ariaLabelCitations)
-                  : t(($) => $.references.filter.ariaLabelSymbols)
-            }
-            placeholder={
-              view === "results"
-                ? t(($) => $.references.filter.placeholderResults)
-                : view === "citations"
-                  ? t(($) => $.references.filter.placeholderCitations)
-                  : t(($) => $.references.filter.placeholderSymbols)
-            }
+            aria-label={filterAriaLabel()}
+            placeholder={filterPlaceholder()}
             className="h-8 pl-7 pr-8 text-xs"
           />
           {filter ? (
@@ -446,30 +543,7 @@ export function ReferencesPanel() {
             </button>
           ) : null}
         </div>
-        <div className="mt-1.5 flex min-w-0 items-center gap-2 px-0.5">
-          <PanelBreadcrumb
-            project={projectName || undefined}
-            path={activePath}
-          />
-          {view === "results" && query ? (
-            <Tooltip label={query.title} side="bottom">
-              <span className="ml-auto max-w-[48%] shrink truncate text-[9px] font-medium text-sidebar-foreground/75">
-                {query.title}
-              </span>
-            </Tooltip>
-          ) : null}
-          {notice ? (
-            <Tooltip label={notice} side="bottom">
-              <span
-                className={`flex shrink-0 items-center text-amber-600 dark:text-amber-400 ${
-                  view === "results" && query ? "" : "ml-auto"
-                }`}
-              >
-                <Info aria-hidden className="size-3.5" />
-              </span>
-            </Tooltip>
-          ) : null}
-        </div>
+        {renderPanelBreadcrumbRow()}
       </div>
 
       {notice ? (
@@ -477,70 +551,7 @@ export function ReferencesPanel() {
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
-        {snapshot ? (
-          view === "results" ? (
-            <QueryContent
-              query={query}
-              state={intelligenceState}
-              snapshot={snapshot}
-              filter={filter}
-              onActivate={navigate}
-            />
-          ) : view === "citations" ? (
-            citationNodes.length ? (
-              <IntelligenceTree
-                label={t(($) => $.references.trees.citations)}
-                nodes={citationNodes}
-                query={filter}
-                onActivate={navigate}
-                emptyMessage={
-                  filter
-                    ? t(($) => $.references.filter.noCitation, { query: filter.trim() })
-                    : t(($) => $.references.trees.noCitations)
-                }
-              />
-            ) : (
-              <PanelState
-                state="empty"
-                title={t(($) => $.references.empty.citations.title)}
-                detail={t(($) => $.references.empty.citations.detail)}
-                action={
-                  <Button
-                    size="sm"
-                    onClick={() => setImportOpen(true)}
-                    className="h-8 gap-1.5 rounded-full px-3.5 text-[11px] shadow-sm"
-                  >
-                    <BookPlus aria-hidden className="size-3.5" />
-                    {t(($) => $.references.import.title)}
-                  </Button>
-                }
-              />
-            )
-          ) : symbolNodes.length ? (
-            <IntelligenceTree
-              label={t(($) => $.references.trees.symbols)}
-              nodes={symbolNodes}
-              query={filter}
-              onActivate={navigate}
-              emptyMessage={
-                filter
-                  ? t(($) => $.references.filter.noSymbol, { query: filter.trim() })
-                  : t(($) => $.references.trees.noSymbols)
-              }
-            />
-          ) : (
-            <PanelState
-              state="empty"
-              title={t(($) => $.references.empty.symbols.title)}
-              detail={t(($) => $.references.empty.symbols.detail)}
-            />
-          )
-        ) : (
-          <ReferencesUnavailable
-            state={intelligenceState}
-            projectId={projectId}
-          />
-        )}
+        {renderPanelBody()}
         </div>
         {view === "citations" && projectId ? (
           <div className="shrink-0 border-t border-sidebar-border/65 px-2 py-1.5">

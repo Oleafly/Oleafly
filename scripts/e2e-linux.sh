@@ -20,7 +20,7 @@ IMAGE="oleafly-linux-e2e"
 # genuinely architecture-specific will still differ. Override to match CI
 # exactly at the cost of emulation:  PLATFORM=linux/amd64 ./scripts/e2e-linux.sh
 PLATFORM="${PLATFORM:-}"
-if [ -z "$PLATFORM" ]; then
+if [[ -z "$PLATFORM" ]]; then
   case "$(uname -m)" in
     arm64|aarch64) PLATFORM=linux/arm64 ;;
     *) PLATFORM=linux/amd64 ;;
@@ -35,14 +35,14 @@ esac
 # Interactive flags only when there is a terminal, so the script also works
 # from a pipe, a CI step, or a background job.
 TTY_FLAGS=(-i)
-[ -t 0 ] && [ -t 1 ] && TTY_FLAGS=(-i -t)
+[[ -t 0 ]] && [[ -t 1 ]] && TTY_FLAGS=(-i -t)
 
 docker image inspect "$IMAGE" >/dev/null 2>&1 || {
   echo "==> building $IMAGE ($PLATFORM); first time takes a few minutes"
   docker build --platform "$PLATFORM" -t "$IMAGE" -f "$ROOT/scripts/linux-e2e.Dockerfile" "$ROOT"
 }
 
-if [ "${1:-}" = "--shell" ]; then
+if [[ "${1:-}" = "--shell" ]]; then
   exec docker run --rm "${TTY_FLAGS[@]}" --platform "$PLATFORM" \
     -v "$ROOT:/work" -v oleafly-linux-cargo:/opt/target \
     "$IMAGE" bash

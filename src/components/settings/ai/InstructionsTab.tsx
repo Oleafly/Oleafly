@@ -33,7 +33,7 @@ export function InstructionsTab({
   sysPromptSaved,
   saveSystemPrompt,
   setMsg,
-}: InstructionsTabProps) {
+}: Readonly<InstructionsTabProps>) {
   const { t } = useTranslation(["settings"]);
   const [toolsOpen, setToolsOpen] = useState(false);
   // Providers the user has actually connected (saved key, or a custom

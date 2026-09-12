@@ -10,12 +10,12 @@ export function ReadOnlyLatex({
   gutter = false,
   className,
   testId,
-}: {
+}: Readonly<{
   source: string;
   gutter?: boolean;
   className?: string;
   testId?: string;
-}) {
+}>) {
   const editorThemeId = useSettingsStore((s) => s.editorTheme);
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);

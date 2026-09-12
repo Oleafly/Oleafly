@@ -106,7 +106,7 @@ function uriForProjectPath(
 ): string {
   const root = workspaceRoot
     .replaceAll("\\", "/")
-    .replace(/\/+$/u, "");
+    .replace(/(?<!\/)\/+$/u, "");
   const relative = path
     .replaceAll("\\", "/")
     .replace(/^\/+/u, "");
@@ -182,7 +182,7 @@ function latexDefinition(
   if (macro) {
     return { kind: "macro", name: macro[1] };
   }
-  const namedMacro = /^define\s+\\([A-Za-z@]+)$/iu.exec(symbol.name);
+  const namedMacro = /^define\s+\\([a-z@]+)$/iu.exec(symbol.name);
   if (namedMacro) {
     return { kind: "macro", name: namedMacro[1] };
   }

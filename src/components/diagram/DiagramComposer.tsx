@@ -97,7 +97,7 @@ async function fixWithAi(code: string, logTail: string): Promise<string> {
   try {
     text = await completeText({
       system:
-        "You fix LaTeX/TikZ figure code so it compiles under Tectonic (XeLaTeX) in a standalone document with tikz + shapes.geometric, arrows.meta, positioning, calc, backgrounds loaded. Return ONLY the corrected figure body: the \\begin{tikzpicture}...\\end{tikzpicture} plus any \\definecolor lines. No preamble, no \\documentclass, no explanation, no markdown code fences. Never use em dashes.",
+        String.raw`You fix LaTeX/TikZ figure code so it compiles under Tectonic (XeLaTeX) in a standalone document with tikz + shapes.geometric, arrows.meta, positioning, calc, backgrounds loaded. Return ONLY the corrected figure body: the \begin{tikzpicture}...\end{tikzpicture} plus any \definecolor lines. No preamble, no \documentclass, no explanation, no markdown code fences. Never use em dashes.`,
       user: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${code}\n\nCOMPILE LOG (tail):\n${logTail}`,
     });
   } catch (e) {

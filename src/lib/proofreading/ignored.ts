@@ -106,7 +106,7 @@ function forget(
   matches: (value: string) => boolean,
 ): void {
   for (const [scope, values] of store) {
-    for (const value of [...values]) {
+    for (const value of values) {
       if (matches(value)) values.delete(value);
     }
     if (values.size === 0) store.delete(scope);
@@ -142,7 +142,7 @@ export function clearWordsIgnoredHere(
   if (path === undefined) {
     const prefix = `${projectId ?? ""}\u0000`;
     for (const store of [ignoredHere, suppressedHere]) {
-      for (const scope of [...store.keys()]) {
+      for (const scope of store.keys()) {
         if (scope.startsWith(prefix)) store.delete(scope);
       }
     }

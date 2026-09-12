@@ -83,10 +83,11 @@ test("go-to-definition on a \\ref jumps to its \\label", async ({ tauriPage }) =
 });
 
 test("Shift+F12 opens the references panel with the usage", async ({ tauriPage }) => {
+  let landed = false;
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:e2eintro", 2);
     await editorKey(tauriPage, "F12", { shift: true });
-    const landed = await tauriPage
+    landed = await tauriPage
       .waitForFunction(
         `document.body.innerText.includes('sec:e2eintro') && !!document.querySelector('[aria-label="References (Shift-F12)"]')`,
         5_000,
@@ -96,6 +97,7 @@ test("Shift+F12 opens the references panel with the usage", async ({ tauriPage }
     if (landed) break;
     if (attempt >= 3) throw new Error("references never listed");
   }
+  expect(landed).toBe(true);
 });
 
 test("F2 opens the rename-symbol dialog and cancel leaves the doc untouched", async ({

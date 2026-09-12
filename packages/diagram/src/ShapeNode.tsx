@@ -63,6 +63,31 @@ const RESIZE_CONTROLS: Array<{
   { position: "bottom-right", variant: ResizeControlVariant.Handle, cursor: "nwse-resize", cursorClass: "diagram-resize-nwse" },
 ];
 
+function shapePolygon(shape: ShapeData["shape"]): string | null {
+  if (shape === "diamond") return "50,0 100,50 50,100 0,50";
+  if (shape === "parallelogram") return "22,0 100,0 78,100 0,100";
+  return null;
+}
+
+function shapeRadius(d: ShapeData): string {
+  if (d.shape === "circle" || d.shape === "ellipse") return "50%";
+  if (d.radius != null) return `${d.radius}px`;
+  if (d.shape === "roundrect") return "6px";
+  return "0";
+}
+
+function shapeDashArray(strokeStyle: ShapeData["strokeStyle"]): string | undefined {
+  if (strokeStyle === "dashed") return "6,4";
+  if (strokeStyle === "dotted") return "1.5,4";
+  return undefined;
+}
+
+function shapeFontFamily(fontFamily: ShapeData["fontFamily"]): string {
+  if (fontFamily === "sans") return "'Latin Modern Sans', 'Helvetica Neue', Arial, sans-serif";
+  if (fontFamily === "mono") return "'Latin Modern Mono', 'SFMono-Regular', Consolas, monospace";
+  return "'Latin Modern Roman', 'CMU Serif', Georgia, 'Times New Roman', serif";
+}
+
 export function ShapeNode({ id, data, selected }: NodeProps) {
   const d = data as ShapeData;
   const edit = useDiagramEdit();
@@ -82,28 +107,10 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
   }, [editing, d.label]);
 
   const hasBorder = !!d.stroke;
-  const polygon =
-    d.shape === "diamond"
-      ? "50,0 100,50 50,100 0,50"
-      : d.shape === "parallelogram"
-        ? "22,0 100,0 78,100 0,100"
-        : null;
-  const round =
-    d.shape === "circle" || d.shape === "ellipse"
-      ? "50%"
-      : d.radius != null
-        ? `${d.radius}px`
-        : d.shape === "roundrect"
-          ? "6px"
-          : "0";
-  const dashArray =
-    d.strokeStyle === "dashed" ? "6,4" : d.strokeStyle === "dotted" ? "1.5,4" : undefined;
-  const fontFamily =
-    d.fontFamily === "sans"
-      ? "'Latin Modern Sans', 'Helvetica Neue', Arial, sans-serif"
-      : d.fontFamily === "mono"
-        ? "'Latin Modern Mono', 'SFMono-Regular', Consolas, monospace"
-        : "'Latin Modern Roman', 'CMU Serif', Georgia, 'Times New Roman', serif";
+  const polygon = shapePolygon(d.shape);
+  const round = shapeRadius(d);
+  const dashArray = shapeDashArray(d.strokeStyle);
+  const fontFamily = shapeFontFamily(d.fontFamily);
 
   const style: CSSProperties = {
     position: "relative",

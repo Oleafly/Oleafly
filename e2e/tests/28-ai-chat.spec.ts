@@ -21,6 +21,7 @@ const TOKEN = process.env.E2E_AI_TOKEN;
 const PROVIDER = process.env.E2E_AI_PROVIDER || "Z.AI";
 
 test("connect an AI provider through the settings UI", async ({ tauriPage }) => {
+  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run");
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -91,6 +92,7 @@ test("connect an AI provider through the settings UI", async ({ tauriPage }) => 
 });
 
 test("choose the GLM-4.6 model in settings and persist it", async ({ tauriPage }) => {
+  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run");
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -169,6 +171,7 @@ async function pickModel(tauriPage: Parameters<typeof ensureAiConnected>[0], lab
 }
 
 test("a real conversation round-trip", async ({ tauriPage }) => {
+  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run");
   test.setTimeout(180_000);
   await openProject(tauriPage, "E2E Doc");
@@ -198,6 +201,7 @@ test("a real conversation round-trip", async ({ tauriPage }) => {
 });
 
 test("the assistant can use a real project tool", async ({ tauriPage }) => {
+  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run");
   test.setTimeout(240_000);
   await openProject(tauriPage, "E2E Doc");

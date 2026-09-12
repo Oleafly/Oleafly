@@ -13,7 +13,7 @@ export function mentionedAgents(text: string, targets: readonly DelegationTarget
   const byId = new Map(targets.map((target) => [target.id, target]));
   const found = new Map<string, DelegationTarget>();
   for (const match of text.matchAll(/(?:^|\s)@([^\s@]+)/gu)) {
-    const id = match[1].replace(/[,.!?;]+$/u, "");
+    const id = match[1].replace(/(?<![,.!?;])[,.!?;]+$/u, "");
     const target = byId.get(id);
     if (target) found.set(id, target);
   }

@@ -406,12 +406,12 @@ fn parse_box(line: &str, page: i32) -> Option<Node> {
 fn tag_for_file(doc: &Doc, file: &str) -> Option<i32> {
     let want = Path::new(file)
         .file_name()
-        .and_then(|s| s.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .unwrap_or(file);
     if let Some((t, _)) = doc
         .inputs
         .iter()
-        .find(|(_, p)| Path::new(p).file_name().and_then(|s| s.to_str()) == Some(want))
+        .find(|(_, p)| Path::new(p).file_name().and_then(std::ffi::OsStr::to_str) == Some(want))
     {
         return Some(*t);
     }
@@ -477,8 +477,8 @@ fn inverse(doc: &Doc, page: i32, x: f64, y: f64) -> Option<SynctexHit> {
         .and_then(|p| {
             Path::new(p)
                 .file_name()
-                .and_then(|s| s.to_str())
-                .map(|s| s.to_string())
+                .and_then(std::ffi::OsStr::to_str)
+                .map(str::to_string)
         })
         .unwrap_or_default();
     Some(SynctexHit {

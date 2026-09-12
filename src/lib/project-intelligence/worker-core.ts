@@ -168,6 +168,146 @@ function snapshotItemCount(
   );
 }
 
+type CacheMap = Map<string, CachedFile>;
+type AnalyzeUpsert = AnalyzeProjectIntelligenceRequest["upserts"][number];
+
+function applyUnreadableFiles(
+  cache: CacheMap,
+  unreadable: AnalyzeProjectIntelligenceRequest["unreadable"],
+): void {
+  for (const entry of unreadable) {
+    const analysis = unreadableFileIntelligence(
+      entry.file,
+      entry.sourceRevision,
+      entry.message,
+    );
+    if (!analysis) continue;
+    cache.set(entry.file, {
+      text: null,
+      hash: "",
+      characterCount: 0,
+      sourceRevision: entry.sourceRevision,
+      analysis,
+    });
+  }
+}
+
+function upsertValidationError(
+  upsert: AnalyzeUpsert,
+  prior: CachedFile | undefined,
+): string | null {
+  if (prior && upsert.sourceRevision < prior.sourceRevision) {
+    return `Source revision moved backwards for ${upsert.file}.`;
+  }
+  if (
+    upsert.sourceRevision === prior?.sourceRevision &&
+    prior?.text !== upsert.text
+  ) {
+    return `Source revision ${upsert.sourceRevision} was reused for changed content in ${upsert.file}.`;
+  }
+  return null;
+}
+
+function reuseCachedUpsert(
+  cache: CacheMap,
+  upsert: AnalyzeUpsert,
+  prior: CachedFile,
+): void {
+  cache.set(upsert.file, {
+    ...prior,
+    sourceRevision: upsert.sourceRevision,
+    analysis:
+      prior.analysis.sourceRevision === upsert.sourceRevision
+        ? prior.analysis
+        : {
+            ...prior.analysis,
+            sourceRevision: upsert.sourceRevision,
+          },
+  });
+}
+
+function parseUpsert(cache: CacheMap, upsert: AnalyzeUpsert): boolean {
+  try {
+    const analysis = analyzeProjectFile(
+      upsert.file,
+      upsert.text,
+      upsert.sourceRevision,
+    );
+    cache.set(upsert.file, {
+      text: upsert.text,
+      hash: sourceHash(upsert.text),
+      characterCount: upsert.text.length,
+      sourceRevision: upsert.sourceRevision,
+      analysis,
+    });
+    return true;
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "The source parser failed.";
+    const analysis = unreadableFileIntelligence(
+      upsert.file,
+      upsert.sourceRevision,
+      { key: "analysisFailed", params: { message } },
+    );
+    if (analysis) {
+      cache.set(upsert.file, {
+        text: upsert.text,
+        hash: sourceHash(upsert.text),
+        characterCount: upsert.text.length,
+        sourceRevision: upsert.sourceRevision,
+        analysis,
+      });
+    }
+    return false;
+  }
+}
+
+function applyUpserts(
+  cache: CacheMap,
+  upserts: readonly AnalyzeUpsert[],
+): { parsedFileCount: number; reusedFileCount: number; error: string | null } {
+  let parsedFileCount = 0;
+  let reusedFileCount = 0;
+  for (const upsert of upserts) {
+    const prior = cache.get(upsert.file);
+    const error = upsertValidationError(upsert, prior);
+    if (error) return { parsedFileCount, reusedFileCount, error };
+    if (prior?.text === upsert.text) {
+      reusedFileCount++;
+      reuseCachedUpsert(cache, upsert, prior);
+      continue;
+    }
+    if (parseUpsert(cache, upsert)) parsedFileCount++;
+  }
+  return { parsedFileCount, reusedFileCount, error: null };
+}
+
+function pruneCacheToKnown(
+  cache: CacheMap,
+  knownFiles: readonly string[],
+): void {
+  const known = new Set(knownFiles);
+  for (const file of cache.keys()) {
+    if (!known.has(file)) cache.delete(file);
+  }
+  for (const file of known) {
+    if (!engineForPath(file) || cache.has(file)) continue;
+    const analysis = unreadableFileIntelligence(file, 0, {
+      key: "fileNotLoaded",
+    });
+    if (!analysis) continue;
+    cache.set(file, {
+      text: null,
+      hash: "",
+      characterCount: 0,
+      sourceRevision: 0,
+      analysis,
+    });
+  }
+}
+
 export function createProjectIntelligenceWorker(
   scope: ProjectIntelligenceWorkerScope,
 ): (data: unknown) => void {
@@ -210,115 +350,15 @@ export function createProjectIntelligenceWorker(
     }
 
     const startedAt = performance.now();
-    let parsedFileCount = 0;
-    let reusedFileCount = 0;
     for (const file of request.removals) cache.delete(file);
-    for (const unreadable of request.unreadable) {
-      const analysis = unreadableFileIntelligence(
-        unreadable.file,
-        unreadable.sourceRevision,
-        unreadable.message,
-      );
-      if (!analysis) continue;
-      cache.set(unreadable.file, {
-        text: null,
-        hash: "",
-        characterCount: 0,
-        sourceRevision: unreadable.sourceRevision,
-        analysis,
-      });
+    applyUnreadableFiles(cache, request.unreadable);
+    const applied = applyUpserts(cache, request.upserts);
+    if (applied.error) {
+      return errorResponse(request, "invalid_request", applied.error, false);
     }
-    for (const upsert of request.upserts) {
-      const prior = cache.get(upsert.file);
-      if (prior && upsert.sourceRevision < prior.sourceRevision) {
-        return errorResponse(
-          request,
-          "invalid_request",
-          `Source revision moved backwards for ${upsert.file}.`,
-          false,
-        );
-      }
-      if (
-        prior &&
-        upsert.sourceRevision === prior.sourceRevision &&
-        prior.text !== upsert.text
-      ) {
-        return errorResponse(
-          request,
-          "invalid_request",
-          `Source revision ${upsert.sourceRevision} was reused for changed content in ${upsert.file}.`,
-          false,
-        );
-      }
-      if (prior?.text === upsert.text) {
-        reusedFileCount++;
-        cache.set(upsert.file, {
-          ...prior,
-          sourceRevision: upsert.sourceRevision,
-          analysis:
-            prior.analysis.sourceRevision === upsert.sourceRevision
-              ? prior.analysis
-              : {
-                  ...prior.analysis,
-                  sourceRevision: upsert.sourceRevision,
-                },
-        });
-        continue;
-      }
-      try {
-        const analysis = analyzeProjectFile(
-          upsert.file,
-          upsert.text,
-          upsert.sourceRevision,
-        );
-        parsedFileCount++;
-        cache.set(upsert.file, {
-          text: upsert.text,
-          hash: sourceHash(upsert.text),
-          characterCount: upsert.text.length,
-          sourceRevision: upsert.sourceRevision,
-          analysis,
-        });
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "The source parser failed.";
-        const analysis = unreadableFileIntelligence(
-          upsert.file,
-          upsert.sourceRevision,
-          { key: "analysisFailed", params: { message } },
-        );
-        if (analysis) {
-          cache.set(upsert.file, {
-            text: upsert.text,
-            hash: sourceHash(upsert.text),
-            characterCount: upsert.text.length,
-            sourceRevision: upsert.sourceRevision,
-            analysis,
-          });
-        }
-      }
-    }
+    const { parsedFileCount, reusedFileCount } = applied;
 
-    const known = new Set(request.knownFiles);
-    for (const file of [...cache.keys()]) {
-      if (!known.has(file)) cache.delete(file);
-    }
-    for (const file of known) {
-      if (!engineForPath(file) || cache.has(file)) continue;
-      const analysis = unreadableFileIntelligence(file, 0, {
-        key: "fileNotLoaded",
-      });
-      if (!analysis) continue;
-      cache.set(file, {
-        text: null,
-        hash: "",
-        characterCount: 0,
-        sourceRevision: 0,
-        analysis,
-      });
-    }
+    pruneCacheToKnown(cache, request.knownFiles);
     const sourceFiles = [...cache.values()];
     const characterCount = sourceFiles.reduce(
       (sum, file) => sum + file.characterCount,

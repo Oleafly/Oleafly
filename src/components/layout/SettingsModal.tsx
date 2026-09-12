@@ -278,7 +278,7 @@ export function SettingsModal() {
     ? [
         ...NAV.slice(0, -1),
         developerSettings.DEVELOPER_NAV_ITEM,
-        NAV[NAV.length - 1],
+        ...NAV.slice(-1),
       ]
     : NAV;
   const settingsInitialSection = useSettingsStore((s) => s.settingsInitialSection);
@@ -295,7 +295,7 @@ export function SettingsModal() {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     let active = true;
-    void import("@/developer/DeveloperSettings").then((module) => {
+    import("@/developer/DeveloperSettings").then((module) => {
       if (active) setDeveloperSettings(module);
     });
     return () => {
@@ -309,7 +309,7 @@ export function SettingsModal() {
       ? (settingsInitialSection as Section)
       : "general";
     setSection(next);
-    void libraryRoot().then(setLibRoot).catch(() => {});
+    libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
 
   useEffect(() => {
@@ -318,7 +318,7 @@ export function SettingsModal() {
     let cancelled = false;
     setStorageLoading(true);
     setStorageError("");
-    void Promise.all([libraryStorageSummary(), listRecycledProjects()])
+    Promise.all([libraryStorageSummary(), listRecycledProjects()])
       .then(([summary, recycled]) => {
         if (!cancelled) {
           setStorageSummary(summary);
@@ -441,6 +441,726 @@ export function SettingsModal() {
 
   if (!open) return null;
 
+  const renderStorageSummary = () => {
+    if (storageError) {
+      return (
+        <p role="alert" className="px-4 py-5 text-sm text-destructive">
+          {storageError}
+        </p>
+      );
+    }
+    if (storageLoading && !storageSummary) {
+      return (
+        <output
+          className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
+        >
+          <RefreshCw
+            aria-hidden
+            className="size-4 animate-spin motion-reduce:animate-none"
+          />
+          {t(($) => $.shell.settings.data.storage.calculating)}
+        </output>
+      );
+    }
+    if (storageSummary) {
+      return (
+        <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
+          {[
+            {
+              id: "projects",
+              label: t(($) => $.shell.settings.data.storage.stats.projects),
+              value: formatNumber(storageSummary.project_count),
+              detail: formatBytes(storageSummary.projects_bytes),
+            },
+            {
+              id: "files",
+              label: t(($) => $.shell.settings.data.storage.stats.files),
+              value: formatNumber(storageSummary.file_count),
+              detail: t(($) => $.shell.settings.data.storage.stats.folders, {
+                count: storageSummary.directory_count,
+              }),
+            },
+            {
+              id: "images",
+              label: t(($) => $.shell.settings.data.storage.stats.images),
+              value: formatNumber(storageSummary.image_count),
+              detail: formatBytes(storageSummary.image_bytes),
+            },
+            {
+              id: "pdfs",
+              label: t(($) => $.shell.settings.data.storage.stats.pdfs),
+              value: formatNumber(storageSummary.pdf_count),
+              detail: formatBytes(storageSummary.pdf_bytes),
+            },
+            {
+              id: "sources",
+              label: t(($) => $.shell.settings.data.storage.stats.projectFiles),
+              value: formatBytes(storageSummary.source_bytes),
+              detail: t(($) => $.shell.settings.data.storage.stats.projectFilesDetail),
+            },
+            {
+              id: "git",
+              label: t(($) => $.shell.settings.data.storage.stats.gitHistory),
+              value: formatBytes(storageSummary.git_bytes),
+              detail: t(($) => $.shell.settings.data.storage.stats.gitHistoryDetail),
+            },
+            {
+              id: "build",
+              label: t(($) => $.shell.settings.data.storage.stats.buildCache),
+              value: formatBytes(storageSummary.build_bytes),
+              detail: t(($) => $.shell.settings.data.storage.stats.buildCacheDetail),
+            },
+            {
+              id: "appData",
+              label: t(($) => $.shell.settings.data.storage.stats.appData),
+              value: formatBytes(storageSummary.app_data_bytes),
+              detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
+            },
+          ].map((item) => (
+            <div key={item.id} className="min-w-0 bg-card px-3 py-3">
+              <dt className="text-muted-foreground">{item.label}</dt>
+              <dd className="mt-1 truncate text-sm font-semibold text-foreground">
+                {item.value}
+              </dd>
+              <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                {item.detail}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      );
+    }
+    return (
+      <p className="px-4 py-5 text-sm text-muted-foreground">
+        {t(($) => $.shell.settings.data.storage.desktopOnly)}
+      </p>
+    );
+  };
+
+  const renderRecycleBin = () => {
+    if (storageLoading && !storageSummary) {
+      return (
+        <output
+          className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
+        >
+          <RefreshCw
+            aria-hidden
+            className="size-4 animate-spin motion-reduce:animate-none"
+          />
+          {t(($) => $.shell.settings.data.recycleBin.loading)}
+        </output>
+      );
+    }
+    if (recycledProjects.length === 0) {
+      return (
+        <p className="px-4 py-5 text-sm text-muted-foreground">
+          {t(($) => $.shell.settings.data.recycleBin.empty)}
+        </p>
+      );
+    }
+    return (
+      <ul className="divide-y">
+        {recycledProjects.map((project) => {
+          const busy = recycleActionId === project.id;
+          return (
+            <li
+              key={project.id}
+              className="flex items-center justify-between gap-3 px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {project.name}
+                </p>
+                <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                  {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
+                    date: formatDateTime(project.deleted_at * 1000),
+                    size: formatBytes(project.size_bytes),
+                  })}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={recycleActionId !== null || clearingRecycleBin}
+                  onClick={() => void restoreProject(project)}
+                >
+                  <RotateCcw
+                    aria-hidden
+                    className={cn(
+                      "size-3.5",
+                      busy && "animate-spin motion-reduce:animate-none",
+                    )}
+                  />
+                  {t(($) => $.shell.settings.data.recycleBin.restore)}
+                </Button>
+                <Tooltip
+                  label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
+                    name: project.name,
+                  })}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-muted-foreground hover:text-destructive"
+                    disabled={recycleActionId !== null || clearingRecycleBin}
+                    aria-label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
+                      name: project.name,
+                    })}
+                    onClick={() => setPermanentDeleteTarget(project)}
+                  >
+                    <Trash2 aria-hidden className="size-3.5" />
+                  </Button>
+                </Tooltip>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
+
+  const renderExperimentationSection = () => (
+    section === "experimentation" && (
+      <div className="space-y-2">
+        <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-foreground">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+          <span>{t(($) => $.shell.settings.experimentation.warning)}</span>
+        </div>
+        <SettingsToggleRow
+          label={t(($) => $.shell.settings.experimentation.visualEditor.label)}
+          description={t(($) => $.shell.settings.experimentation.visualEditor.description)}
+          checked={visualEditor}
+          onChange={setVisualEditor}
+        />
+        <SettingsToggleRow
+          label={t(($) => $.shell.settings.experimentation.latexTools.label)}
+          description={t(($) => $.shell.settings.experimentation.latexTools.description)}
+          checked={latexTools}
+          onChange={setLatexTools}
+        />
+        <SettingsToggleRow
+          label={t(($) => $.shell.settings.experimentation.webBrowser.label)}
+          description={t(($) => $.shell.settings.experimentation.webBrowser.description)}
+          checked={webBrowser}
+          onChange={setWebBrowser}
+        />
+        <ResetToDefaults
+          sectionName={t(($) => $.shell.settings.nav.experimentation)}
+          onReset={resetExperimentationPreferences}
+        />
+      </div>
+    )
+  );
+
+  const renderSettingsBody = () => (
+    <div className="flex-1 overflow-auto p-5">
+      {section === "appearance" && <AppearanceSection />}
+
+      {renderGeneralSection()}
+
+      {section === "dictionary" && <DictionarySection />}
+
+      {renderDataSection()}
+
+      {section === "ai" && <AISection />}
+
+      {section === "engine" && <EngineSection />}
+      {section === "downloads" && <DownloadsSection />}
+
+      {section === "integrations" && <IntegrationsSection />}
+
+      {section === "shortcuts" && <ShortcutsSection />}
+
+      {renderExperimentationSection()}
+
+      {section === "developer" && developerSettings ? (
+        <developerSettings.DeveloperSettings />
+      ) : null}
+
+      {section === "help" && <HelpSection />}
+    </div>
+  );
+
+  const renderStorageUsageCard = () => (
+    <section
+      aria-labelledby="storage-usage-title"
+      className="overflow-hidden rounded-xl border bg-card/60"
+    >
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Database aria-hidden className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <h3 id="storage-usage-title" className="font-medium">
+              {t(($) => $.shell.settings.data.storage.title)}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {storageSummary
+                ? t(($) => $.shell.settings.data.storage.total, {
+                    size: formatBytes(storageSummary.total_bytes),
+                  })
+                : t(($) => $.shell.settings.data.storage.subtitle)}
+            </p>
+          </div>
+        </div>
+        <Tooltip label={t(($) => $.shell.settings.data.storage.refresh)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            disabled={storageLoading || !isTauri()}
+            aria-label={t(($) => $.shell.settings.data.storage.refresh)}
+            onClick={() => setStorageRefreshKey((value) => value + 1)}
+          >
+            <RefreshCw
+              aria-hidden
+              className={cn(
+                "size-4",
+                storageLoading &&
+                  "animate-spin motion-reduce:animate-none",
+              )}
+            />
+          </Button>
+        </Tooltip>
+      </div>
+      {renderStorageSummary()}
+      {storageSummary && storageSummary.unreadable_entries > 0 ? (
+        <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
+          {t(($) => $.shell.settings.data.storage.unreadable, {
+            count: storageSummary.unreadable_entries,
+          })}
+        </p>
+      ) : null}
+    </section>
+  );
+
+  const renderDataSection = () => (
+    section === "data" && (
+      <Tabs defaultValue="local" className="space-y-4 text-sm">
+        <TabsList>
+          <TabsTrigger value="local" data-testid="data-tab-local">
+            {t(($) => $.shell.settings.data.tabs.local)}
+          </TabsTrigger>
+          <TabsTrigger value="cloud" data-testid="data-tab-cloud">
+            {t(($) => $.shell.settings.data.tabs.cloud)}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="local" className="space-y-3">
+        <p className="text-muted-foreground">
+          {t(($) => $.shell.settings.data.localFirst)}
+        </p>
+        <div className="flex items-center gap-2">
+          <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
+            {libRoot || "~/.oleafly/projects"}
+          </code>
+          {import.meta.env.DEV && isTauri() && libRoot ? (
+            <Tooltip label={t(($) => $.shell.settings.data.reveal)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label={t(($) => $.shell.settings.data.reveal)}
+                onClick={() => void openExternal(libRoot)}
+              >
+                <FolderOpen className="size-4" />
+              </Button>
+            </Tooltip>
+          ) : null}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.shell.settings.data.plainFolders)}
+        </p>
+        {renderStorageUsageCard()}
+        <CheckpointToggles />
+        <section
+          aria-labelledby="recycle-bin-title"
+          className="overflow-hidden rounded-xl border bg-card/60"
+        >
+          <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Trash2 aria-hidden className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <h3 id="recycle-bin-title" className="font-medium">
+                  {t(($) => $.shell.settings.data.recycleBin.title)}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {storageSummary
+                    ? t(($) => $.shell.settings.data.recycleBin.size, {
+                        size: formatBytes(storageSummary.recycle_bin_bytes),
+                      })
+                    : t(($) => $.shell.settings.data.recycleBin.subtitle)}
+                </p>
+              </div>
+            </div>
+            {recycledProjects.length > 0 ? (
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  {formatNumber(recycledProjects.length)}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  disabled={recycleActionId !== null || clearingRecycleBin}
+                  onClick={() => setConfirmClearRecycleBin(true)}
+                >
+                  <Trash2 aria-hidden className="size-3.5" />
+                  {clearingRecycleBin
+                    ? t(($) => $.shell.settings.data.recycleBin.clearing)
+                    : t(($) => $.shell.settings.data.recycleBin.clearAll)}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+          {renderRecycleBin()}
+        </section>
+        {githubStatus === "disconnected" ? (
+        <div className="flex items-start gap-2 rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">
+          <Github className="mt-0.5 size-4 shrink-0" />
+          <span>
+            <Trans
+              ns="shell"
+              i18nKey={($) => $.shell.settings.data.githubHint}
+              components={{
+                push: <strong className="font-medium text-foreground" />,
+                pull: <strong className="font-medium text-foreground" />,
+                setup: (
+                  <button
+                    type="button"
+                    onClick={() => setSection("integrations")}
+                    className="font-medium text-primary hover:underline"
+                  />
+                ),
+              }}
+            />
+          </span>
+        </div>
+        ) : null}
+        <section
+          aria-labelledby="data-danger-zone-title"
+          className="overflow-hidden rounded-xl border border-destructive/40"
+        >
+          <div className="border-b border-destructive/25 px-4 py-3">
+            <h3
+              id="data-danger-zone-title"
+              className="font-medium text-destructive"
+            >
+              {t(($) => $.shell.settings.data.danger.title)}
+            </h3>
+          </div>
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                {t(($) => $.shell.settings.data.danger.deleteAll)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {t(($) => $.shell.settings.data.danger.deleteAllDescription)}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="shrink-0"
+              disabled={projects.length === 0 || deletingAllProjects}
+              onClick={() => setConfirmDeleteAllProjects(true)}
+            >
+              <Trash2 aria-hidden className="size-3.5" />
+              {deletingAllProjects
+                ? t(($) => $.shell.settings.data.danger.deleting)
+                : t(($) => $.shell.settings.data.danger.deleteAllAction)}
+            </Button>
+          </div>
+        </section>
+        </TabsContent>
+        <TabsContent value="cloud">
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex max-w-xl flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span className="relative size-6 shrink-0 text-primary" aria-hidden>
+                <Cloud className="absolute left-0 top-0 size-5" />
+                <RefreshCw className="absolute bottom-0 right-0 size-3 rounded-full bg-card stroke-[2.5]" />
+              </span>
+              <h3 className="font-semibold text-foreground">
+                {t(($) => $.shell.settings.data.cloud.title)}
+              </h3>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t(($) => $.shell.settings.data.cloud.comingSoon)}
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t(($) => $.shell.settings.data.cloud.description)}
+            </p>
+          </div>
+        </div>
+        </TabsContent>
+      </Tabs>
+    )
+  );
+
+  const renderGeneralSection = () => (
+    section === "general" && (
+      <div className="space-y-2 [&>[role=switch]]:bg-card">
+        <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+          <div>
+            <div className="text-sm font-medium">{t(($) => $.settings.language.label)}</div>
+            <div className="text-xs text-muted-foreground">
+              {t(($) => $.settings.language.description)}
+            </div>
+          </div>
+          <Select
+            value={uiLocalePreference}
+            onValueChange={(value) => {
+              if (isLocalePreference(value)) setUiLocalePreference(value);
+            }}
+          >
+            <SelectTrigger
+              aria-label={t(($) => $.settings.language.ariaLabel)}
+              className="w-[176px]"
+              data-testid="settings-language"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              <SelectItem value="system">{t(($) => $.settings.language.system)}</SelectItem>
+              {SUPPORTED_LOCALES.map((locale) => (
+                <SelectItem key={locale} value={locale}>
+                  {LOCALE_INFO[locale].nativeName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {t(($) => $.settings.language.note)}
+        </div>
+        <SettingsToggleRow
+          label={t(($) => $.shell.settings.general.spellcheck.label)}
+          description={t(($) => $.shell.settings.general.spellcheck.description)}
+          checked={spellcheck}
+          onChange={toggleSpellcheck}
+        />
+        <SettingsToggleRow
+          label={t(($) => $.shell.settings.general.harper.label)}
+          description={t(($) => $.shell.settings.general.harper.description)}
+          checked={harper}
+          onChange={setHarper}
+        />
+        {harper && (
+          <>
+            <div
+              data-testid="settings-row-grammar-dialect"
+              className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+            >
+              <div>
+                <div className="text-sm font-medium">
+                  {t(($) => $.shell.settings.general.dialect.label)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {t(($) => $.shell.settings.general.dialect.description)}
+                </div>
+              </div>
+              <Select
+                value={grammarDialect}
+                onValueChange={(value) =>
+                  setGrammarDialect(value as GrammarDialect)
+                }
+              >
+                <SelectTrigger
+                  aria-label={t(($) => $.shell.settings.general.dialect.ariaLabel)}
+                  className="w-[176px]"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  {GRAMMAR_DIALECTS.map((dialect) => (
+                    <SelectItem key={dialect.id} value={dialect.id}>
+                      {dialect.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <SettingsToggleRow
+              label={t(($) => $.shell.settings.general.regionalism.label)}
+              description={t(($) => $.shell.settings.general.regionalism.description)}
+              checked={showRegionalism}
+              onChange={setShowRegionalism}
+            />
+            <SettingsToggleRow
+              label={t(($) => $.shell.settings.general.wordChoice.label)}
+              description={t(($) => $.shell.settings.general.wordChoice.description)}
+              checked={showWordChoice}
+              onChange={setShowWordChoice}
+            />
+          </>
+        )}
+        {spellcheck && (
+          <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+            <div>
+              <div className="text-sm font-medium">
+                {t(($) => $.shell.settings.general.dictionary.label)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {t(($) => $.shell.settings.general.dictionary.description)}
+              </div>
+            </div>
+            <Select
+              value={dictionaryLocale}
+              onValueChange={(value) =>
+                setDictionaryLocale(value as DictionaryLocale)
+              }
+            >
+              <SelectTrigger
+                aria-label={t(($) => $.shell.settings.general.dictionary.ariaLabel)}
+                className="w-[176px]"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {DICTIONARY_LOCALES.map((locale) => (
+                  <SelectItem key={locale.id} value={locale.id}>
+                    {locale.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {t(($) => $.shell.settings.general.proofreadingNote)}
+        </div>
+        <SettingsToggleRow
+          label={t(($) => $.shell.settings.general.offline.label)}
+          description={t(($) => $.shell.settings.general.offline.description)}
+          checked={offline}
+          onChange={setOffline}
+        />
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <div className="flex items-center gap-2 p-3">
+            <button
+              type="button"
+              aria-expanded={tourGuidesOpen}
+              aria-controls="tour-guides-panel"
+              onClick={() => setTourGuidesOpen((value) => !value)}
+              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            >
+              <ChevronRight
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground transition-transform",
+                  tourGuidesOpen && "rotate-90",
+                )}
+                aria-hidden
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">
+                  {t(($) => $.shell.settings.tours.enable)}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {t(($) => $.shell.settings.tours.summary, {
+                    completed: completedTours,
+                    dismissed: dismissedTours,
+                    total: TOUR_IDS.length,
+                  })}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={toursEnabled}
+              aria-label={t(($) => $.shell.settings.tours.enableAll)}
+              onClick={() => {
+                if (toursEnabled) {
+                  setTourConfirmation("disable");
+                  return;
+                }
+                useTourStore.getState().resetAll();
+                setOpen(false);
+                window.requestAnimationFrame(() =>
+                  startTour(projectId ? "workspace" : "home"),
+                );
+              }}
+              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <SettingsSwitchIndicator checked={toursEnabled} />
+            </button>
+          </div>
+          {tourGuidesOpen && (
+            <div id="tour-guides-panel" className="space-y-2 border-t p-3">
+              {TOUR_IDS.map((id) => {
+                const status = tours[id].status;
+                const checked = status === "pending";
+                return (
+                  <div
+                    key={id}
+                    className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {resolveTourText(tourRegistry[id].label)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t(($) => $.shell.settings.tours.status[status])}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={checked}
+                      aria-label={t(($) => $.shell.settings.tours.enableOne, {
+                        name: resolveTourText(tourRegistry[id].label),
+                      })}
+                      onClick={() =>
+                        useTourStore.getState().setTourEnabled(id, !checked)
+                      }
+                      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <SettingsSwitchIndicator checked={checked} />
+                    </button>
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between gap-3 border-t pt-3">
+                <div>
+                  <p className="text-sm font-medium">
+                    {t(($) => $.shell.settings.tours.progress)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t(($) => $.shell.settings.tours.progressDetail, {
+                      completed: completedTours,
+                      dismissed: dismissedTours,
+                    })}
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!toursEnabled && dismissedTours === TOUR_IDS.length}
+                  onClick={() => setTourConfirmation("dismiss-all")}
+                >
+                  {t(($) => $.shell.settings.tours.dismissAll)}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+        <ResetToDefaults
+          sectionName={t(($) => $.shell.settings.nav.general)}
+          onReset={resetGeneralPreferences}
+        />
+      </div>
+    )
+  );
+
   return (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
@@ -524,686 +1244,7 @@ export function SettingsModal() {
               <X className="size-4" />
             </Button>
           </div>
-          <div className="flex-1 overflow-auto p-5">
-            {section === "appearance" && <AppearanceSection />}
-
-            {section === "general" && (
-              <div className="space-y-2 [&>[role=switch]]:bg-card">
-                <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-                  <div>
-                    <div className="text-sm font-medium">{t(($) => $.settings.language.label)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {t(($) => $.settings.language.description)}
-                    </div>
-                  </div>
-                  <Select
-                    value={uiLocalePreference}
-                    onValueChange={(value) => {
-                      if (isLocalePreference(value)) setUiLocalePreference(value);
-                    }}
-                  >
-                    <SelectTrigger
-                      aria-label={t(($) => $.settings.language.ariaLabel)}
-                      className="w-[176px]"
-                      data-testid="settings-language"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      <SelectItem value="system">{t(($) => $.settings.language.system)}</SelectItem>
-                      {SUPPORTED_LOCALES.map((locale) => (
-                        <SelectItem key={locale} value={locale}>
-                          {LOCALE_INFO[locale].nativeName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                  {t(($) => $.settings.language.note)}
-                </div>
-                <SettingsToggleRow
-                  label={t(($) => $.shell.settings.general.spellcheck.label)}
-                  description={t(($) => $.shell.settings.general.spellcheck.description)}
-                  checked={spellcheck}
-                  onChange={toggleSpellcheck}
-                />
-                <SettingsToggleRow
-                  label={t(($) => $.shell.settings.general.harper.label)}
-                  description={t(($) => $.shell.settings.general.harper.description)}
-                  checked={harper}
-                  onChange={setHarper}
-                />
-                {harper && (
-                  <>
-                    <div
-                      data-testid="settings-row-grammar-dialect"
-                      className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-                    >
-                      <div>
-                        <div className="text-sm font-medium">
-                          {t(($) => $.shell.settings.general.dialect.label)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {t(($) => $.shell.settings.general.dialect.description)}
-                        </div>
-                      </div>
-                      <Select
-                        value={grammarDialect}
-                        onValueChange={(value) =>
-                          setGrammarDialect(value as GrammarDialect)
-                        }
-                      >
-                        <SelectTrigger
-                          aria-label={t(($) => $.shell.settings.general.dialect.ariaLabel)}
-                          className="w-[176px]"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[100]">
-                          {GRAMMAR_DIALECTS.map((dialect) => (
-                            <SelectItem key={dialect.id} value={dialect.id}>
-                              {dialect.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <SettingsToggleRow
-                      label={t(($) => $.shell.settings.general.regionalism.label)}
-                      description={t(($) => $.shell.settings.general.regionalism.description)}
-                      checked={showRegionalism}
-                      onChange={setShowRegionalism}
-                    />
-                    <SettingsToggleRow
-                      label={t(($) => $.shell.settings.general.wordChoice.label)}
-                      description={t(($) => $.shell.settings.general.wordChoice.description)}
-                      checked={showWordChoice}
-                      onChange={setShowWordChoice}
-                    />
-                  </>
-                )}
-                {spellcheck && (
-                  <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-                    <div>
-                      <div className="text-sm font-medium">
-                        {t(($) => $.shell.settings.general.dictionary.label)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {t(($) => $.shell.settings.general.dictionary.description)}
-                      </div>
-                    </div>
-                    <Select
-                      value={dictionaryLocale}
-                      onValueChange={(value) =>
-                        setDictionaryLocale(value as DictionaryLocale)
-                      }
-                    >
-                      <SelectTrigger
-                        aria-label={t(($) => $.shell.settings.general.dictionary.ariaLabel)}
-                        className="w-[176px]"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="z-[100]">
-                        {DICTIONARY_LOCALES.map((locale) => (
-                          <SelectItem key={locale.id} value={locale.id}>
-                            {locale.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                  {t(($) => $.shell.settings.general.proofreadingNote)}
-                </div>
-                <SettingsToggleRow
-                  label={t(($) => $.shell.settings.general.offline.label)}
-                  description={t(($) => $.shell.settings.general.offline.description)}
-                  checked={offline}
-                  onChange={setOffline}
-                />
-                <div className="overflow-hidden rounded-lg border bg-card">
-                  <div className="flex items-center gap-2 p-3">
-                    <button
-                      type="button"
-                      aria-expanded={tourGuidesOpen}
-                      aria-controls="tour-guides-panel"
-                      onClick={() => setTourGuidesOpen((value) => !value)}
-                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                    >
-                      <ChevronRight
-                        className={cn(
-                          "size-4 shrink-0 text-muted-foreground transition-transform",
-                          tourGuidesOpen && "rotate-90",
-                        )}
-                        aria-hidden
-                      />
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium">
-                          {t(($) => $.shell.settings.tours.enable)}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {t(($) => $.shell.settings.tours.summary, {
-                            completed: completedTours,
-                            dismissed: dismissedTours,
-                            total: TOUR_IDS.length,
-                          })}
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={toursEnabled}
-                      aria-label={t(($) => $.shell.settings.tours.enableAll)}
-                      onClick={() => {
-                        if (toursEnabled) {
-                          setTourConfirmation("disable");
-                          return;
-                        }
-                        useTourStore.getState().resetAll();
-                        setOpen(false);
-                        window.requestAnimationFrame(() =>
-                          startTour(projectId ? "workspace" : "home"),
-                        );
-                      }}
-                      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <SettingsSwitchIndicator checked={toursEnabled} />
-                    </button>
-                  </div>
-                  {tourGuidesOpen && (
-                    <div id="tour-guides-panel" className="space-y-2 border-t p-3">
-                      {TOUR_IDS.map((id) => {
-                        const status = tours[id].status;
-                        const checked = status === "pending";
-                        return (
-                          <div
-                            key={id}
-                            className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium">
-                                {resolveTourText(tourRegistry[id].label)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {t(($) => $.shell.settings.tours.status[status])}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={checked}
-                              aria-label={t(($) => $.shell.settings.tours.enableOne, {
-                                name: resolveTourText(tourRegistry[id].label),
-                              })}
-                              onClick={() =>
-                                useTourStore.getState().setTourEnabled(id, !checked)
-                              }
-                              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                              <SettingsSwitchIndicator checked={checked} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                      <div className="flex items-center justify-between gap-3 border-t pt-3">
-                        <div>
-                          <p className="text-sm font-medium">
-                            {t(($) => $.shell.settings.tours.progress)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {t(($) => $.shell.settings.tours.progressDetail, {
-                              completed: completedTours,
-                              dismissed: dismissedTours,
-                            })}
-                          </p>
-                        </div>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={!toursEnabled && dismissedTours === TOUR_IDS.length}
-                          onClick={() => setTourConfirmation("dismiss-all")}
-                        >
-                          {t(($) => $.shell.settings.tours.dismissAll)}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <ResetToDefaults
-                  sectionName={t(($) => $.shell.settings.nav.general)}
-                  onReset={resetGeneralPreferences}
-                />
-              </div>
-            )}
-
-            {section === "dictionary" && <DictionarySection />}
-
-            {section === "data" && (
-              <Tabs defaultValue="local" className="space-y-4 text-sm">
-                <TabsList>
-                  <TabsTrigger value="local" data-testid="data-tab-local">
-                    {t(($) => $.shell.settings.data.tabs.local)}
-                  </TabsTrigger>
-                  <TabsTrigger value="cloud" data-testid="data-tab-cloud">
-                    {t(($) => $.shell.settings.data.tabs.cloud)}
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="local" className="space-y-3">
-                <p className="text-muted-foreground">
-                  {t(($) => $.shell.settings.data.localFirst)}
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
-                    {libRoot || "~/.oleafly/projects"}
-                  </code>
-                  {import.meta.env.DEV && isTauri() && libRoot ? (
-                    <Tooltip label={t(($) => $.shell.settings.data.reveal)}>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        aria-label={t(($) => $.shell.settings.data.reveal)}
-                        onClick={() => void openExternal(libRoot)}
-                      >
-                        <FolderOpen className="size-4" />
-                      </Button>
-                    </Tooltip>
-                  ) : null}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t(($) => $.shell.settings.data.plainFolders)}
-                </p>
-                <section
-                  aria-labelledby="storage-usage-title"
-                  className="overflow-hidden rounded-xl border bg-card/60"
-                >
-                  <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Database aria-hidden className="size-4" />
-                      </span>
-                      <div className="min-w-0">
-                        <h3 id="storage-usage-title" className="font-medium">
-                          {t(($) => $.shell.settings.data.storage.title)}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {storageSummary
-                            ? t(($) => $.shell.settings.data.storage.total, {
-                                size: formatBytes(storageSummary.total_bytes),
-                              })
-                            : t(($) => $.shell.settings.data.storage.subtitle)}
-                        </p>
-                      </div>
-                    </div>
-                    <Tooltip label={t(($) => $.shell.settings.data.storage.refresh)}>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 shrink-0"
-                        disabled={storageLoading || !isTauri()}
-                        aria-label={t(($) => $.shell.settings.data.storage.refresh)}
-                        onClick={() => setStorageRefreshKey((value) => value + 1)}
-                      >
-                        <RefreshCw
-                          aria-hidden
-                          className={cn(
-                            "size-4",
-                            storageLoading &&
-                              "animate-spin motion-reduce:animate-none",
-                          )}
-                        />
-                      </Button>
-                    </Tooltip>
-                  </div>
-                  {storageError ? (
-                    <p role="alert" className="px-4 py-5 text-sm text-destructive">
-                      {storageError}
-                    </p>
-                  ) : storageLoading && !storageSummary ? (
-                    <div
-                      role="status"
-                      className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
-                    >
-                      <RefreshCw
-                        aria-hidden
-                        className="size-4 animate-spin motion-reduce:animate-none"
-                      />
-                      {t(($) => $.shell.settings.data.storage.calculating)}
-                    </div>
-                  ) : storageSummary ? (
-                    <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
-                      {[
-                        {
-                          id: "projects",
-                          label: t(($) => $.shell.settings.data.storage.stats.projects),
-                          value: formatNumber(storageSummary.project_count),
-                          detail: formatBytes(storageSummary.projects_bytes),
-                        },
-                        {
-                          id: "files",
-                          label: t(($) => $.shell.settings.data.storage.stats.files),
-                          value: formatNumber(storageSummary.file_count),
-                          detail: t(($) => $.shell.settings.data.storage.stats.folders, {
-                            count: storageSummary.directory_count,
-                          }),
-                        },
-                        {
-                          id: "images",
-                          label: t(($) => $.shell.settings.data.storage.stats.images),
-                          value: formatNumber(storageSummary.image_count),
-                          detail: formatBytes(storageSummary.image_bytes),
-                        },
-                        {
-                          id: "pdfs",
-                          label: t(($) => $.shell.settings.data.storage.stats.pdfs),
-                          value: formatNumber(storageSummary.pdf_count),
-                          detail: formatBytes(storageSummary.pdf_bytes),
-                        },
-                        {
-                          id: "sources",
-                          label: t(($) => $.shell.settings.data.storage.stats.projectFiles),
-                          value: formatBytes(storageSummary.source_bytes),
-                          detail: t(($) => $.shell.settings.data.storage.stats.projectFilesDetail),
-                        },
-                        {
-                          id: "git",
-                          label: t(($) => $.shell.settings.data.storage.stats.gitHistory),
-                          value: formatBytes(storageSummary.git_bytes),
-                          detail: t(($) => $.shell.settings.data.storage.stats.gitHistoryDetail),
-                        },
-                        {
-                          id: "build",
-                          label: t(($) => $.shell.settings.data.storage.stats.buildCache),
-                          value: formatBytes(storageSummary.build_bytes),
-                          detail: t(($) => $.shell.settings.data.storage.stats.buildCacheDetail),
-                        },
-                        {
-                          id: "appData",
-                          label: t(($) => $.shell.settings.data.storage.stats.appData),
-                          value: formatBytes(storageSummary.app_data_bytes),
-                          detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
-                        },
-                      ].map((item) => (
-                        <div key={item.id} className="min-w-0 bg-card px-3 py-3">
-                          <dt className="text-muted-foreground">{item.label}</dt>
-                          <dd className="mt-1 truncate text-sm font-semibold text-foreground">
-                            {item.value}
-                          </dd>
-                          <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                            {item.detail}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  ) : (
-                    <p className="px-4 py-5 text-sm text-muted-foreground">
-                      {t(($) => $.shell.settings.data.storage.desktopOnly)}
-                    </p>
-                  )}
-                  {storageSummary && storageSummary.unreadable_entries > 0 ? (
-                    <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
-                      {t(($) => $.shell.settings.data.storage.unreadable, {
-                        count: storageSummary.unreadable_entries,
-                      })}
-                    </p>
-                  ) : null}
-                </section>
-                <CheckpointToggles />
-                <section
-                  aria-labelledby="recycle-bin-title"
-                  className="overflow-hidden rounded-xl border bg-card/60"
-                >
-                  <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Trash2 aria-hidden className="size-4" />
-                      </span>
-                      <div className="min-w-0">
-                        <h3 id="recycle-bin-title" className="font-medium">
-                          {t(($) => $.shell.settings.data.recycleBin.title)}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {storageSummary
-                            ? t(($) => $.shell.settings.data.recycleBin.size, {
-                                size: formatBytes(storageSummary.recycle_bin_bytes),
-                              })
-                            : t(($) => $.shell.settings.data.recycleBin.subtitle)}
-                        </p>
-                      </div>
-                    </div>
-                    {recycledProjects.length > 0 ? (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                          {formatNumber(recycledProjects.length)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-destructive"
-                          disabled={recycleActionId !== null || clearingRecycleBin}
-                          onClick={() => setConfirmClearRecycleBin(true)}
-                        >
-                          <Trash2 aria-hidden className="size-3.5" />
-                          {clearingRecycleBin
-                            ? t(($) => $.shell.settings.data.recycleBin.clearing)
-                            : t(($) => $.shell.settings.data.recycleBin.clearAll)}
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                  {storageLoading && !storageSummary ? (
-                    <div
-                      role="status"
-                      className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
-                    >
-                      <RefreshCw
-                        aria-hidden
-                        className="size-4 animate-spin motion-reduce:animate-none"
-                      />
-                      {t(($) => $.shell.settings.data.recycleBin.loading)}
-                    </div>
-                  ) : recycledProjects.length === 0 ? (
-                    <p className="px-4 py-5 text-sm text-muted-foreground">
-                      {t(($) => $.shell.settings.data.recycleBin.empty)}
-                    </p>
-                  ) : (
-                    <ul className="divide-y">
-                      {recycledProjects.map((project) => {
-                        const busy = recycleActionId === project.id;
-                        return (
-                          <li
-                            key={project.id}
-                            className="flex items-center justify-between gap-3 px-4 py-3"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">
-                                {project.name}
-                              </p>
-                              <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                                {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
-                                  date: formatDateTime(project.deleted_at * 1000),
-                                  size: formatBytes(project.size_bytes),
-                                })}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                disabled={recycleActionId !== null || clearingRecycleBin}
-                                onClick={() => void restoreProject(project)}
-                              >
-                                <RotateCcw
-                                  aria-hidden
-                                  className={cn(
-                                    "size-3.5",
-                                    busy && "animate-spin motion-reduce:animate-none",
-                                  )}
-                                />
-                                {t(($) => $.shell.settings.data.recycleBin.restore)}
-                              </Button>
-                              <Tooltip
-                                label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
-                                  name: project.name,
-                                })}
-                              >
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-8 text-muted-foreground hover:text-destructive"
-                                  disabled={recycleActionId !== null || clearingRecycleBin}
-                                  aria-label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
-                                    name: project.name,
-                                  })}
-                                  onClick={() => setPermanentDeleteTarget(project)}
-                                >
-                                  <Trash2 aria-hidden className="size-3.5" />
-                                </Button>
-                              </Tooltip>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </section>
-                {githubStatus === "disconnected" ? (
-                <div className="flex items-start gap-2 rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">
-                  <Github className="mt-0.5 size-4 shrink-0" />
-                  <span>
-                    <Trans
-                      ns="shell"
-                      i18nKey={($) => $.shell.settings.data.githubHint}
-                      components={{
-                        push: <strong className="font-medium text-foreground" />,
-                        pull: <strong className="font-medium text-foreground" />,
-                        setup: (
-                          <button
-                            type="button"
-                            onClick={() => setSection("integrations")}
-                            className="font-medium text-primary hover:underline"
-                          />
-                        ),
-                      }}
-                    />
-                  </span>
-                </div>
-                ) : null}
-                <section
-                  aria-labelledby="data-danger-zone-title"
-                  className="overflow-hidden rounded-xl border border-destructive/40"
-                >
-                  <div className="border-b border-destructive/25 px-4 py-3">
-                    <h3
-                      id="data-danger-zone-title"
-                      className="font-medium text-destructive"
-                    >
-                      {t(($) => $.shell.settings.data.danger.title)}
-                    </h3>
-                  </div>
-                  <div className="flex items-center justify-between gap-4 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        {t(($) => $.shell.settings.data.danger.deleteAll)}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {t(($) => $.shell.settings.data.danger.deleteAllDescription)}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="shrink-0"
-                      disabled={projects.length === 0 || deletingAllProjects}
-                      onClick={() => setConfirmDeleteAllProjects(true)}
-                    >
-                      <Trash2 aria-hidden className="size-3.5" />
-                      {deletingAllProjects
-                        ? t(($) => $.shell.settings.data.danger.deleting)
-                        : t(($) => $.shell.settings.data.danger.deleteAllAction)}
-                    </Button>
-                  </div>
-                </section>
-                </TabsContent>
-                <TabsContent value="cloud">
-                <div className="rounded-xl border bg-card p-5">
-                  <div className="flex max-w-xl flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="relative size-6 shrink-0 text-primary" aria-hidden>
-                        <Cloud className="absolute left-0 top-0 size-5" />
-                        <RefreshCw className="absolute bottom-0 right-0 size-3 rounded-full bg-card stroke-[2.5]" />
-                      </span>
-                      <h3 className="font-semibold text-foreground">
-                        {t(($) => $.shell.settings.data.cloud.title)}
-                      </h3>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {t(($) => $.shell.settings.data.cloud.comingSoon)}
-                      </span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {t(($) => $.shell.settings.data.cloud.description)}
-                    </p>
-                  </div>
-                </div>
-                </TabsContent>
-              </Tabs>
-            )}
-
-            {section === "ai" && <AISection />}
-
-            {section === "engine" && <EngineSection />}
-            {section === "downloads" && <DownloadsSection />}
-
-            {section === "integrations" && <IntegrationsSection />}
-
-            {section === "shortcuts" && <ShortcutsSection />}
-
-            {section === "experimentation" && (
-              <div className="space-y-2">
-                <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-foreground">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <span>{t(($) => $.shell.settings.experimentation.warning)}</span>
-                </div>
-                <SettingsToggleRow
-                  label={t(($) => $.shell.settings.experimentation.visualEditor.label)}
-                  description={t(($) => $.shell.settings.experimentation.visualEditor.description)}
-                  checked={visualEditor}
-                  onChange={setVisualEditor}
-                />
-                <SettingsToggleRow
-                  label={t(($) => $.shell.settings.experimentation.latexTools.label)}
-                  description={t(($) => $.shell.settings.experimentation.latexTools.description)}
-                  checked={latexTools}
-                  onChange={setLatexTools}
-                />
-                <SettingsToggleRow
-                  label={t(($) => $.shell.settings.experimentation.webBrowser.label)}
-                  description={t(($) => $.shell.settings.experimentation.webBrowser.description)}
-                  checked={webBrowser}
-                  onChange={setWebBrowser}
-                />
-                <ResetToDefaults
-                  sectionName={t(($) => $.shell.settings.nav.experimentation)}
-                  onReset={resetExperimentationPreferences}
-                />
-              </div>
-            )}
-
-            {section === "developer" && developerSettings ? (
-              <developerSettings.DeveloperSettings />
-            ) : null}
-
-            {section === "help" && <HelpSection />}
-          </div>
+          {renderSettingsBody()}
         </div>
       </div>
       <ConfirmationDialog
@@ -1285,11 +1326,11 @@ function HelpSection() {
   const [copied, setCopied] = useState(false);
   const [repoStats, setRepoStats] = useState<GitHubRepoStats | null>(null);
   useEffect(() => {
-    void appVersion().then(setVersion).catch(() => setVersion(""));
+    appVersion().then(setVersion).catch(() => setVersion(""));
   }, []);
   useEffect(() => {
     let active = true;
-    void githubGetPublicRepoStats("Oleafly/Oleafly")
+    githubGetPublicRepoStats("Oleafly/Oleafly")
       .then((stats) => {
         if (active) setRepoStats(stats);
       })

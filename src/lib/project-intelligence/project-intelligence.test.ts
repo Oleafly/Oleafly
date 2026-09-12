@@ -464,6 +464,43 @@ describe("Phase 3 project intelligence acceptance", () => {
     expect(value.diagnostics).toEqual([]);
   });
 
+  it("reads a Markdown bibliography declaration that keeps a trailing carriage return", () => {
+    const value = snapshot(
+      {
+        "paper.md": "---\nbibliography: refs.bib  \r\n---\n\n# Intro\n",
+      },
+      ["paper.md", "refs.bib"],
+    );
+
+    expect(
+      value.hierarchy.edges.find((edge) => edge.kind === "bibliography"),
+    ).toMatchObject({ resolution: "resolved", targetFile: "refs.bib" });
+  });
+
+  it("reads an inline Markdown bibliography list and skips a declaration broken by a carriage return", () => {
+    const listed = snapshot(
+      {
+        "paper.md": "---\nbibliography: [a.bib, b.bib]\n---\n\n# Intro\n",
+      },
+      ["paper.md", "a.bib", "b.bib"],
+    );
+    expect(
+      listed.hierarchy.edges
+        .filter((edge) => edge.kind === "bibliography")
+        .map((edge) => edge.targetFile),
+    ).toEqual(["a.bib", "b.bib"]);
+
+    const broken = snapshot(
+      {
+        "paper.md": "---\nbibliography: re\rfs.bib\n---\n\n# Intro\n",
+      },
+      ["paper.md", "refs.bib"],
+    );
+    expect(
+      broken.hierarchy.edges.filter((edge) => edge.kind === "bibliography"),
+    ).toEqual([]);
+  });
+
   it("keeps Markdown anchors file-scoped and resolves Pandoc citation and shortcut-reference forms", () => {
     const article = String.raw`# Intro
 See [local](#intro), [remote](other.md#intro), and [Guide].

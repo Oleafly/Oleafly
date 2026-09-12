@@ -104,7 +104,7 @@ async function copySkillTree(srcDir, destDir, excludeRegexes, maxFileBytes) {
   let fileCount = 0;
   let byteCount = 0;
   for (const filePath of files) {
-    const rel = relative(srcDir, filePath).split("\\").join("/");
+    const rel = relative(srcDir, filePath).replaceAll("\\", "/");
     if (isExcluded(rel, excludeRegexes)) continue;
     const st = await stat(filePath);
     if (st.size > maxFileBytes) continue;
@@ -195,7 +195,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
+try {
+  await main();
+} catch (err) {
   console.error(err.message ?? err);
   process.exit(1);
-});
+}

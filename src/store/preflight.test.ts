@@ -268,38 +268,34 @@ describe("preflight store", () => {
     });
   });
 
-  it("does not call the bibliography loaded when the declared file is missing", async () => {
+  it.each([
+    [
+      "does not call the bibliography loaded when the declared file is missing",
+      "\\documentclass{article}\\addbibresource{references.bib}",
+      false,
+    ],
+    [
+      "accepts a declaration that resolves against the project root",
+      "\\documentclass{article}\\addbibresource{refs.bib}",
+      true,
+    ],
+    [
+      "ignores a commented or remote bibliography declaration",
+      "% \\addbibresource{gone.bib}\n\\addbibresource[location=remote]{https://example.org/refs.bib}",
+      true,
+    ],
+  ])("%s", async (_name, content, bibLoaded) => {
     seedProject();
     useFilesStore.setState((state) => ({
       files: {
         ...state.files,
-        "main.tex": {
-          content: "\\documentclass{article}\\addbibresource{references.bib}",
-          dirty: false,
-        },
+        "main.tex": { content, dirty: false },
       },
     }));
 
     await usePreflightStore.getState().run();
 
-    expect(mocks.runPreflight.mock.calls[0][0].refs.bibLoaded).toBe(false);
-  });
-
-  it("accepts a declaration that resolves against the project root", async () => {
-    seedProject();
-    useFilesStore.setState((state) => ({
-      files: {
-        ...state.files,
-        "main.tex": {
-          content: "\\documentclass{article}\\addbibresource{refs.bib}",
-          dirty: false,
-        },
-      },
-    }));
-
-    await usePreflightStore.getState().run();
-
-    expect(mocks.runPreflight.mock.calls[0][0].refs.bibLoaded).toBe(true);
+    expect(mocks.runPreflight.mock.calls[0][0].refs.bibLoaded).toBe(bibLoaded);
   });
 
   it("resolves a nested file's declaration against the project root, not its own directory", async () => {
@@ -308,24 +304,6 @@ describe("preflight store", () => {
       texts: {
         ...state.texts,
         "document-body/intro.tex": "\\addbibresource{refs.bib}",
-      },
-    }));
-
-    await usePreflightStore.getState().run();
-
-    expect(mocks.runPreflight.mock.calls[0][0].refs.bibLoaded).toBe(true);
-  });
-
-  it("ignores a commented or remote bibliography declaration", async () => {
-    seedProject();
-    useFilesStore.setState((state) => ({
-      files: {
-        ...state.files,
-        "main.tex": {
-          content:
-            "% \\addbibresource{gone.bib}\n\\addbibresource[location=remote]{https://example.org/refs.bib}",
-          dirty: false,
-        },
       },
     }));
 

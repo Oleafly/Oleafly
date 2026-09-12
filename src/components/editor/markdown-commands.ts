@@ -237,7 +237,10 @@ export function insertMarkdownTable(rows: number, cols: number) {
   ) {
     return;
   }
-  const header = `| ${Array.from({ length: columns }, (_unused, index) => `Column ${index + 1}`).join(" | ")} |`;
+  const headerCells = Array.from({ length: columns }, (_unused, index) => `Column ${index + 1}`).join(
+    " | ",
+  );
+  const header = `| ${headerCells} |`;
   const rule = `| ${Array.from({ length: columns }, () => "---").join(" | ")} |`;
   const body = Array.from(
     { length: Math.max(1, rows) },

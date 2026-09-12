@@ -18,10 +18,10 @@ import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/edito
 export default function DiagramMainFileView({
   projectId,
   path,
-}: {
+}: Readonly<{
   projectId: string;
   path: string;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor", "diagram"]);
   const [model, setModel] = useState<DiagramModel | null>(null);
   const [notDrawable, setNotDrawable] = useState(false);

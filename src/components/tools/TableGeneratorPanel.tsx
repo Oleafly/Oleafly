@@ -8,7 +8,9 @@ import { toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 
 function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" {
-  return align === "l" ? "left" : align === "r" ? "right" : "center";
+  if (align === "l") return "left";
+  if (align === "r") return "right";
+  return "center";
 }
 
 export function TableGeneratorPanel() {
@@ -37,10 +39,20 @@ export function TableGeneratorPanel() {
     setAligns((prev) => Array.from({ length: cols }, (_, i) => prev[i] ?? "c"));
   }, [rows, cols]);
 
+  const updateCell = (rowIndex: number, columnIndex: number, value: string) => {
+    setCells((prev) =>
+      prev.map((row, i) =>
+        i === rowIndex ? row.map((cell, j) => (j === columnIndex ? value : cell)) : row,
+      ),
+    );
+  };
+
   const code = useMemo(
     () => buildLatexTable(cells, aligns, { booktabs, headerRow, caption }),
     [cells, aligns, booktabs, headerRow, caption],
   );
+
+  const previewHeader = cells[0] ?? [];
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -127,13 +139,7 @@ export function TableGeneratorPanel() {
                           row: ri + 1,
                           column: ci + 1,
                         })}
-                        onChange={(e) =>
-                          setCells((prev) =>
-                            prev.map((row, i) =>
-                              i === ri ? row.map((cell, j) => (j === ci ? e.target.value : cell)) : row,
-                            ),
-                          )
-                        }
+                        onChange={(e) => updateCell(ri, ci, e.target.value)}
                         className="h-8 w-28 text-xs"
                       />
                     </td>
@@ -163,10 +169,10 @@ export function TableGeneratorPanel() {
             {headerRow && (
               <thead>
                 <tr className="border-b-2 border-foreground">
-                  {cells[0]?.map((v, ci) => (
+                  {previewHeader.map((v, ci) => (
                     <th
-                      // biome-ignore lint/suspicious/noArrayIndexKey: columns are positionally stable within a render
-                      key={`preview-head-${ci}`}
+                      // biome-ignore lint/suspicious/noArrayIndexKey: a preview column's coordinate is its stable identity while resizing this positional grid
+                      key={`preview-head-${ci}-${previewHeader.length}`}
                       className="px-3 py-1.5 font-semibold"
                       style={{ textAlign: alignToCss(aligns[ci]) }}
                     >

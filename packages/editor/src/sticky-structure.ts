@@ -57,6 +57,37 @@ interface OpenScope {
  * recomputing it per scroll frame would be far too much work for a list that
  * only changes when the text does.
  */
+type CloseScope = (scope: OpenScope, endLine: number) => void;
+
+function closeEnvironmentScope(
+  open: OpenScope[],
+  env: string,
+  lineNumber: number,
+  close: CloseScope,
+): void {
+  for (let i = open.length - 1; i >= 0; i--) {
+    if (open[i].env !== env) continue;
+    // Anything still open inside this environment ends with it.
+    for (let j = open.length - 1; j > i; j--) close(open[j], lineNumber - 1);
+    close(open[i], lineNumber);
+    open.length = i;
+    break;
+  }
+}
+
+function closeHeadingScopes(
+  open: OpenScope[],
+  level: number,
+  lineNumber: number,
+  close: CloseScope,
+): void {
+  let top = open.at(-1);
+  while (top?.env === null && top.level >= level) {
+    close(open.pop()!, lineNumber - 1);
+    top = open.at(-1);
+  }
+}
+
 export function stickyScopes(doc: Text): StickyScope[] {
   if (doc.lines > STICKY_MAX_LINES) return [];
 
@@ -75,20 +106,10 @@ export function stickyScopes(doc: Text): StickyScope[] {
     lineNumber++;
     // Strip a trailing comment so commented-out structure cannot open a scope
     // that never closes.
-    const line = text.replace(/(^|[^\\])%.*$/, "$1");
+    const line = text.replace(/(^|[^\\])%[^\n]*/, "$1");
 
     const end = END_RE.exec(line);
-    if (end) {
-      const env = end[1].trim();
-      for (let i = open.length - 1; i >= 0; i--) {
-        if (open[i].env !== env) continue;
-        // Anything still open inside this environment ends with it.
-        for (let j = open.length - 1; j > i; j--) close(open[j], lineNumber - 1);
-        close(open[i], lineNumber);
-        open.length = i;
-        break;
-      }
-    }
+    if (end) closeEnvironmentScope(open, end[1].trim(), lineNumber, close);
 
     const begin = BEGIN_RE.exec(line);
     if (begin) {
@@ -107,13 +128,7 @@ export function stickyScopes(doc: Text): StickyScope[] {
       // \subsection leaves its parent \section open. Environments survive,
       // because a section boundary inside an unbalanced environment is a
       // malformed document, not a close.
-      while (
-        open.length &&
-        open[open.length - 1].env === null &&
-        open[open.length - 1].level >= level
-      ) {
-        close(open.pop()!, lineNumber - 1);
-      }
+      closeHeadingScopes(open, level, lineNumber, close);
       open.push({ line: lineNumber, level, env: null });
     }
   }

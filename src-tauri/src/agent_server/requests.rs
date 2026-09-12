@@ -113,7 +113,7 @@ fn lock(
 ) -> std::sync::MutexGuard<'_, HashMap<String, PendingEntry>> {
     pending
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn next_request_id() -> String {

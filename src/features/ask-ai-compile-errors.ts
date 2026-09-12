@@ -11,12 +11,11 @@ export async function askAiAboutCompileErrors() {
     .filter((error) => error.kind === "error")
     .slice(0, 8)
     .map((error) => {
-      const location = error.file
-        ? `${error.file}${error.line != null ? `:${error.line}` : ""}`
-        : error.line != null
-          ? `line ${error.line}`
-          : "";
-      return `- ${location ? `${location}: ` : ""}${error.message}`;
+      const lineSuffix = error.line != null ? `:${error.line}` : "";
+      const lineOnly = error.line != null ? `line ${error.line}` : "";
+      const location = error.file ? `${error.file}${lineSuffix}` : lineOnly;
+      const prefix = location ? `${location}: ` : "";
+      return `- ${prefix}${error.message}`;
     });
   const prompt = [
     "Fix the current document compilation failure.",

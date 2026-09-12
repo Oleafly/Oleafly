@@ -73,20 +73,26 @@ function hasOpenLatexArgument(before: string): boolean {
   return false;
 }
 
+function skipArgumentBackward(text: string, from: number): number | null {
+  const close = text[from - 1];
+  const open = close === "]" ? "[" : "{";
+  let depth = 1;
+  let cursor = from - 1;
+  while (cursor > 0 && depth > 0) {
+    cursor--;
+    if (text[cursor] === close) depth++;
+    else if (text[cursor] === open) depth--;
+  }
+  if (depth !== 0) return null;
+  return trimWhitespaceBackward(text, cursor);
+}
+
 function hasLatexCommandPrefix(text: string): boolean {
   let cursor = trimWhitespaceBackward(text, text.length);
   while (cursor > 0 && (text[cursor - 1] === "]" || text[cursor - 1] === "}")) {
-    const close = text[cursor - 1];
-    const open = close === "]" ? "[" : "{";
-    let depth = 1;
-    cursor--;
-    while (cursor > 0 && depth > 0) {
-      cursor--;
-      if (text[cursor] === close) depth++;
-      else if (text[cursor] === open) depth--;
-    }
-    if (depth !== 0) return false;
-    cursor = trimWhitespaceBackward(text, cursor);
+    const skipped = skipArgumentBackward(text, cursor);
+    if (skipped === null) return false;
+    cursor = skipped;
   }
   if (cursor > 0 && text[cursor - 1] === "*") cursor--;
   const commandEnd = cursor;

@@ -148,18 +148,21 @@ export function ThemeSegmentedControl({
       {THEME_PREFERENCES.map((value) => {
         const Icon = THEME_ICONS[value];
         const active = preference === value;
+        const themeToggleLabel = () => {
+          if (value === "system") {
+            return t(($) => $.shell.theme.useSystem);
+          }
+          if (value === "light") {
+            return t(($) => $.shell.theme.useLight);
+          }
+          return t(($) => $.shell.theme.useDark);
+        };
         return (
           <button
             type="button"
             key={value}
             data-testid={testIdPrefix ? `${testIdPrefix}-${value}` : undefined}
-            aria-label={
-              value === "system"
-                ? t(($) => $.shell.theme.useSystem)
-                : value === "light"
-                  ? t(($) => $.shell.theme.useLight)
-                  : t(($) => $.shell.theme.useDark)
-            }
+            aria-label={themeToggleLabel()}
             aria-pressed={active}
             onClick={() => onChange(value)}
             className={cn(

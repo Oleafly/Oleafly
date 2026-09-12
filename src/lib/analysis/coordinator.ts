@@ -635,31 +635,39 @@ export class ProjectAnalysisCoordinator {
     }
   }
 
+  private handleStatusEvent(
+    event: Extract<LanguageServiceClientEvent, { type: "status" }>,
+  ): void {
+    const actions = this.store.getState();
+    if (
+      actions.snapshot.identity.languageServiceGeneration !== event.generation
+    ) {
+      actions.invalidateLanguageService(event.generation);
+    }
+    if (event.state === "ready") {
+      this.syncCapabilities();
+      return;
+    }
+    if (
+      event.state !== "error" &&
+      event.state !== "exited" &&
+      event.state !== "stopped"
+    ) {
+      return;
+    }
+    const unavailableReason: AnalysisReason = event.error
+      ? { text: event.error.message }
+      : { key: "languageServiceUnavailable" };
+    for (const feature of PROJECT_ANALYSIS_FEATURES) {
+      this.store
+        .getState()
+        .markFeatureUnavailable(feature, unavailableReason);
+    }
+  }
+
   private handleClientEvent(event: LanguageServiceClientEvent): void {
     if (event.type === "status") {
-      const actions = this.store.getState();
-      if (
-        actions.snapshot.identity.languageServiceGeneration !==
-        event.generation
-      ) {
-        actions.invalidateLanguageService(event.generation);
-      }
-      if (event.state === "ready") {
-        this.syncCapabilities();
-      } else if (
-        event.state === "error" ||
-        event.state === "exited" ||
-        event.state === "stopped"
-      ) {
-        const unavailableReason: AnalysisReason = event.error
-          ? { text: event.error.message }
-          : { key: "languageServiceUnavailable" };
-        for (const feature of PROJECT_ANALYSIS_FEATURES) {
-          this.store
-            .getState()
-            .markFeatureUnavailable(feature, unavailableReason);
-        }
-      }
+      this.handleStatusEvent(event);
       return;
     }
 
@@ -698,12 +706,11 @@ export class ProjectAnalysisCoordinator {
     }
     const pending = this.pendingDiagnostics.get(event.params.uri);
     if (
-      !pending ||
-      pending.diagnosticEpoch !== event.diagnosticEpoch ||
-      pending.request.projectRevision !== request.projectRevision ||
-      pending.request.languageServiceGeneration !==
+      pending?.diagnosticEpoch !== event.diagnosticEpoch ||
+      pending?.request.projectRevision !== request.projectRevision ||
+      pending?.request.languageServiceGeneration !==
         request.languageServiceGeneration ||
-      pending.request.documentVersion !== request.documentVersion
+      pending?.request.documentVersion !== request.documentVersion
     ) {
       return;
     }

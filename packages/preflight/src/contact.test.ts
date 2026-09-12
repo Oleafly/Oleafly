@@ -39,6 +39,15 @@ describe("phone extraction", () => {
     expect(parse.phone).toBeNull();
   });
 
+  it.each([
+    "415-555-2671 x42",
+    "415-555-2671 ext 42",
+    "415-555-2671 ext. 42",
+    "415-555-2671 extension 42",
+  ])("keeps a number that carries an extension: %s", (input) => {
+    expect(extractPhoneNumber(input)).toBe(input);
+  });
+
   it("does not treat an invalid tel date range as a contact token", () => {
     expect(containsContactToken("\\faPhone \\href{tel:2020-2024}")).toBe(false);
     expect(containsContactToken("\\faPhone \\href{tel:+33 1 42 68 53 00}")).toBe(

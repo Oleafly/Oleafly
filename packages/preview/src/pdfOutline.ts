@@ -40,12 +40,8 @@ function normalizeItems(
       typeof item.dest === "string" || Array.isArray(item.dest)
         ? item.dest
         : null;
-    const disabledReason =
-      rawUrl && !externalUrl
-        ? t("outline.blockedScheme")
-        : !externalUrl && !destination
-          ? t("outline.noDestination")
-          : undefined;
+    const noDestination = !externalUrl && !destination ? t("outline.noDestination") : undefined;
+    const disabledReason = rawUrl && !externalUrl ? t("outline.blockedScheme") : noDestination;
     targets.set(id, { destination, externalUrl });
     return {
       id,

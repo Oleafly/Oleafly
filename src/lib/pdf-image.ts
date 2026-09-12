@@ -10,12 +10,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 let mainThreadInstall: Promise<void> | null = null;
 
 async function forceMainThreadWorker(): Promise<void> {
-  if (!mainThreadInstall) {
-    mainThreadInstall = installMainThreadPdfWorker().catch((error) => {
-      mainThreadInstall = null;
-      throw error;
-    });
-  }
+  mainThreadInstall ??= installMainThreadPdfWorker().catch((error) => {
+    mainThreadInstall = null;
+    throw error;
+  });
   await mainThreadInstall;
 }
 

@@ -206,7 +206,8 @@ export function SkillCatalogList() {
         <p className="text-xs text-muted-foreground">
           {t(($) => $.settings.ai.skills.catalog.loading)}
         </p>
-      ) : shelfEntries.length === 0 ? (
+      ) : null}
+      {!loading && (shelfEntries.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           {t(($) => $.settings.ai.skills.catalog.empty)}
         </p>
@@ -279,7 +280,7 @@ export function SkillCatalogList() {
             );
           })}
         </div>
-      )}
+      ))}
 
       {catalog ? <p className="text-[11px] text-muted-foreground">{sourceLine}</p> : null}
 

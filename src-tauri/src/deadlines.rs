@@ -264,8 +264,12 @@ pub async fn refresh_deadlines() -> Result<(), String> {
     let json = normalize(&body, generated_at)?;
     let cache = deadlines_cache_path()?;
     let tmp = cache.with_extension("json.part");
-    std::fs::write(&tmp, &json).map_err(|e| e.to_string())?;
-    std::fs::rename(&tmp, &cache).map_err(|e| e.to_string())?;
+    tokio::fs::write(&tmp, &json)
+        .await
+        .map_err(|e| e.to_string())?;
+    tokio::fs::rename(&tmp, &cache)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 

@@ -14,10 +14,10 @@ const AssistantShellContext = createContext<AssistantShellValue | null>(null);
 export function AssistantShellProvider({
   leading,
   children,
-}: {
+}: Readonly<{
   leading: ReactNode;
   children: ReactNode;
-}) {
+}>) {
   const value = useMemo(() => ({ leading }), [leading]);
   return <AssistantShellContext.Provider value={value}>{children}</AssistantShellContext.Provider>;
 }
@@ -32,10 +32,10 @@ export function AssistantShellHeader({
   children,
   className,
   ...rest
-}: HTMLAttributes<HTMLDivElement> & {
+}: Readonly<HTMLAttributes<HTMLDivElement> & {
   leading?: ReactNode;
   actions?: ReactNode;
-}) {
+}>) {
   return (
     <div
       className={cn("flex h-9 shrink-0 items-center gap-1.5 border-b px-2", className)}
@@ -48,7 +48,7 @@ export function AssistantShellHeader({
   );
 }
 
-export function AssistantFloatButton({ disabled }: { disabled?: boolean }) {
+export function AssistantFloatButton({ disabled }: Readonly<{ disabled?: boolean }>) {
   const { t } = useTranslation(["common", "ai"]);
   const chatFloating = useSettingsStore((state) => state.chatFloating);
   const setChatFloating = useSettingsStore((state) => state.setChatFloating);

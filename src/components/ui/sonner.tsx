@@ -3,6 +3,12 @@ import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { useToastStore, type Toast } from "@/store/toast";
 
+function sonnerFor(kind: Toast["kind"]) {
+  if (kind === "error") return sonnerToast.error;
+  if (kind === "success") return sonnerToast.success;
+  return sonnerToast.info;
+}
+
 export function Toaster() {
   const toasts = useToastStore((s) => s.toasts);
   const seenRef = useRef(new Map<number, Toast>());
@@ -26,12 +32,7 @@ export function Toaster() {
     for (const [id, t] of current) {
       const prev = seenRef.current.get(id);
       if (prev === t) continue;
-      const show =
-        t.kind === "error"
-          ? sonnerToast.error
-          : t.kind === "success"
-            ? sonnerToast.success
-            : sonnerToast.info;
+      const show = sonnerFor(t.kind);
       show(t.message, {
         id,
         duration: t.sticky ? Number.POSITIVE_INFINITY : 5000,

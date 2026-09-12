@@ -20,7 +20,7 @@ function appendText(current: string, value: string, endOfLine = false): string {
   const normalized = value.replace(/\s+/gu, " ").trim();
   if (!normalized) return endOfLine && current ? `${current}\n` : current;
   const separator =
-    !current || /[\s\n]$/u.test(current) || /^[,.;:!?%)}\]]/u.test(normalized)
+    !current || /\s$/u.test(current) || /^[,.;:!?%)}\]]/u.test(normalized)
       ? ""
       : " ";
   return `${current}${separator}${normalized}${endOfLine ? "\n" : ""}`;

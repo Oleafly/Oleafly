@@ -45,7 +45,6 @@ export function finishHomeTourAfterProjectCreation(
   return "preserved" as const;
 }
 
-export function missingTargetFallback(kind: TourStepKind): "advance" | "dismiss" {
-  void kind;
+export function missingTargetFallback(_kind: TourStepKind): "advance" | "dismiss" {
   return "advance";
 }

@@ -16,7 +16,7 @@ function optionalString(
 ): string | undefined {
   if (!Object.hasOwn(server, field)) return undefined;
   if (typeof server[field] !== "string") {
-    throw new Error(i18n.t(($) => $.core.mcpConfig.fieldString, { name, field }));
+    throw new TypeError(i18n.t(($) => $.core.mcpConfig.fieldString, { name, field }));
   }
   return server[field];
 }
@@ -24,7 +24,7 @@ function optionalString(
 function enabledValue(server: Record<string, unknown>, name: string): boolean {
   if (Object.hasOwn(server, "enabled")) {
     if (typeof server.enabled !== "boolean") {
-      throw new Error(
+      throw new TypeError(
         i18n.t(($) => $.core.mcpConfig.fieldBoolean, { name, field: "enabled" }),
       );
     }
@@ -32,7 +32,7 @@ function enabledValue(server: Record<string, unknown>, name: string): boolean {
   }
   if (Object.hasOwn(server, "disabled")) {
     if (typeof server.disabled !== "boolean") {
-      throw new Error(
+      throw new TypeError(
         i18n.t(($) => $.core.mcpConfig.fieldBoolean, { name, field: "disabled" }),
       );
     }
@@ -43,7 +43,7 @@ function enabledValue(server: Record<string, unknown>, name: string): boolean {
 
 function stringValue(server: Record<string, unknown>, name: string, field: string): string {
   if (typeof server[field] !== "string") {
-    throw new Error(i18n.t(($) => $.core.mcpConfig.fieldString, { name, field }));
+    throw new TypeError(i18n.t(($) => $.core.mcpConfig.fieldString, { name, field }));
   }
   return server[field];
 }
@@ -72,6 +72,33 @@ function stringRecordValue(
     throw new Error(i18n.t(($) => $.core.mcpConfig.fieldStringRecord, { name, field }));
   }
   return value as Record<string, string>;
+}
+
+function assertTypeAndTransport(
+  name: string,
+  type: string | undefined,
+  transport: string | undefined,
+): void {
+  if (
+    type !== undefined &&
+    type !== "stdio" &&
+    type !== "http" &&
+    type !== "sse" &&
+    type !== "streamable-http"
+  ) {
+    throw new Error(i18n.t(($) => $.core.mcpConfig.unsupportedType, { name, type }));
+  }
+  if (transport !== undefined && transport !== "stdio" && transport !== "remote") {
+    throw new Error(i18n.t(($) => $.core.mcpConfig.unsupportedTransport, { name, transport }));
+  }
+  const typeIsRemote = type === "http" || type === "sse" || type === "streamable-http";
+  if (
+    type !== undefined &&
+    transport !== undefined &&
+    ((type === "stdio" && transport !== "stdio") || (typeIsRemote && transport !== "remote"))
+  ) {
+    throw new Error(i18n.t(($) => $.core.mcpConfig.conflictingDeclarations, { name }));
+  }
 }
 
 export function parseMcpServerJson(source: string): McpServerConfig {
@@ -103,26 +130,8 @@ export function parseMcpServerJson(source: string): McpServerConfig {
   }
   const type = optionalString(server, name, "type");
   const transport = optionalString(server, name, "transport");
-  if (
-    type !== undefined &&
-    type !== "stdio" &&
-    type !== "http" &&
-    type !== "sse" &&
-    type !== "streamable-http"
-  ) {
-    throw new Error(i18n.t(($) => $.core.mcpConfig.unsupportedType, { name, type }));
-  }
-  if (transport !== undefined && transport !== "stdio" && transport !== "remote") {
-    throw new Error(i18n.t(($) => $.core.mcpConfig.unsupportedTransport, { name, transport }));
-  }
+  assertTypeAndTransport(name, type, transport);
   const typeIsRemote = type === "http" || type === "sse" || type === "streamable-http";
-  if (
-    type !== undefined &&
-    transport !== undefined &&
-    ((type === "stdio" && transport !== "stdio") || (typeIsRemote && transport !== "remote"))
-  ) {
-    throw new Error(i18n.t(($) => $.core.mcpConfig.conflictingDeclarations, { name }));
-  }
   const enabled = enabledValue(server, name);
   const remote =
     transport === "remote" ||

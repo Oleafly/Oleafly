@@ -244,6 +244,25 @@ describe("bibliographyDeclarations", () => {
   it("finds nothing in a document with no bibliography", () => {
     expect(bibliographyDeclarations("\\cite{a}")).toEqual([]);
   });
+
+  it("tolerates whitespace around the star and the option list", () => {
+    const starred = "\\bibliography*  {refs}";
+    expect(bibliographyDeclarations(starred)).toEqual([
+      { raw: "refs", from: 0, to: starred.length, command: "bibliography" },
+    ]);
+
+    const spaced = "\\addbibresource  [prefix=a]  {extra.bib}";
+    expect(bibliographyDeclarations(spaced)).toEqual([
+      { raw: "extra.bib", from: 0, to: spaced.length, command: "addbibresource" },
+    ]);
+
+    const tight = "\\addbibresource[prefix=a]{extra.bib}";
+    expect(bibliographyDeclarations(tight)).toEqual([
+      { raw: "extra.bib", from: 0, to: tight.length, command: "addbibresource" },
+    ]);
+
+    expect(bibliographyDeclarations("\\bibliography  refs}")).toEqual([]);
+  });
 });
 
 describe("bibliographyDisplayName", () => {

@@ -150,10 +150,10 @@ async function copyBibtex(value: string) {
 function SourceBadge({
   source,
   compact = false,
-}: {
+}: Readonly<{
   source: LiteratureSource;
   compact?: boolean;
-}) {
+}>) {
   const definition = SOURCE_LABEL.get(source);
   return (
     <span
@@ -223,10 +223,10 @@ function SourceInformation() {
 function SourceSelector({
   selected,
   onToggle,
-}: {
+}: Readonly<{
   selected: LiteratureSource[];
   onToggle: (source: LiteratureSource) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -285,8 +285,19 @@ function SourceSelector({
   );
 }
 
-function SourceRunSummary({ runs }: { runs: LiteratureSourceRun[] }) {
+function SourceRunSummary({ runs }: Readonly<{ runs: LiteratureSourceRun[] }>) {
   const { t } = useTranslation(["common", "researchTools"]);
+  const runSummaryLabel = (run: LiteratureSourceRun) =>
+    run.total != null
+      ? t(($) => $.researchTools.literature.runSummaryIndexed, {
+          results: run.count,
+          indexed: formatCount(run.total),
+          duration: run.durationMs,
+        })
+      : t(($) => $.researchTools.literature.runSummary, {
+          results: run.count,
+          duration: run.durationMs,
+        });
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       {runs.map((run) => {
@@ -294,20 +305,7 @@ function SourceRunSummary({ runs }: { runs: LiteratureSourceRun[] }) {
         return (
           <Tooltip
             key={run.source}
-            label={
-              run.status === "error"
-                ? sourceError(run)
-                : run.total != null
-                  ? t(($) => $.researchTools.literature.runSummaryIndexed, {
-                      results: run.count,
-                      indexed: formatCount(run.total),
-                      duration: run.durationMs,
-                    })
-                  : t(($) => $.researchTools.literature.runSummary, {
-                      results: run.count,
-                      duration: run.durationMs,
-                    })
-            }
+            label={run.status === "error" ? sourceError(run) : runSummaryLabel(run)}
             wide
           >
             <span
@@ -339,13 +337,13 @@ function ResultRow({
   onSave,
   onRemove,
   bibtex,
-}: {
+}: Readonly<{
   record: LiteratureRecord;
   saved: boolean;
   onSave?: () => void;
   onRemove?: () => void;
   bibtex?: string;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const copyRecordBibtex = () =>
     void copyBibtex(bibtex ?? bibtexForLiteratureRecord(record));
@@ -469,9 +467,8 @@ function ResultRow({
 function ResultSkeleton() {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
-    <div
-      className="space-y-0"
-      role="status"
+    <output
+      className="block space-y-0"
       aria-label={t(($) => $.researchTools.literature.loadingAria)}
     >
       {[0, 1, 2, 3].map((index) => (
@@ -485,17 +482,17 @@ function ResultSkeleton() {
           <div className="mt-4 h-6 w-40 rounded bg-muted" />
         </div>
       ))}
-    </div>
+    </output>
   );
 }
 
 function EmptySearch({
   onTry,
   noResults,
-}: {
+}: Readonly<{
   onTry: (query: string) => void;
   noResults: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="mx-auto grid min-h-[23rem] max-w-4xl place-items-center px-6 py-10">
@@ -555,10 +552,10 @@ function EmptySearch({
 function SavedLibrary({
   saved,
   onRemove,
-}: {
+}: Readonly<{
   saved: SavedLiteratureCitation[];
   onRemove: (id: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   if (saved.length === 0) {
     return (
@@ -606,13 +603,13 @@ function PublicationYearSelect({
   onValueChange,
   minimum,
   maximum,
-}: {
+}: Readonly<{
   id: string;
   value: string;
   onValueChange: (value: string) => void;
   minimum?: number;
   maximum?: number;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
     <Select value={value} onValueChange={onValueChange}>
@@ -753,6 +750,356 @@ export function LiteratureSearchPanel() {
     settings.setSettingsOpen(true);
   };
 
+  const searchControls = () => (
+    <>
+      <form
+        onSubmit={submit}
+        className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm focus-within:ring-1 focus-within:ring-ring"
+      >
+        <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t(($) => $.researchTools.literature.queryPlaceholder)}
+          aria-label={t(($) => $.researchTools.literature.queryAria)}
+          className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
+        />
+        <Button
+          type="submit"
+          className="h-11 shrink-0 px-5 text-sm [&_svg]:size-5"
+          disabled={
+            loading ||
+            !query.trim() ||
+            selectedSources.length === 0 ||
+            offline
+          }
+        >
+          {loading ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Search />
+          )}
+          <span className="hidden sm:inline">
+            {loading
+              ? t(($) => $.researchTools.literature.searching)
+              : t(($) => $.researchTools.literature.search)}
+          </span>
+        </Button>
+      </form>
+
+      <div className="mt-4 flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
+        <SourceSelector
+          selected={selectedSources}
+          onToggle={toggleSource}
+        />
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            variant={filtersOpen ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+          >
+            <SlidersHorizontal />
+            {t(($) => $.researchTools.literature.filters)}
+            {(yearFrom !== ANY_PUBLICATION_YEAR ||
+              yearTo !== ANY_PUBLICATION_YEAR ||
+              openAccessOnly) && (
+              <span className="size-1.5 rounded-full bg-primary" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={openSourceSettings}
+          >
+            <KeyRound />
+            {t(($) => $.researchTools.literature.sourceSetup)}
+          </Button>
+        </div>
+      </div>
+
+      {filtersOpen && (
+        <div className="mt-3 space-y-3 rounded-md border bg-background/80 p-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <label
+              htmlFor="literature-year-from"
+              className="grid gap-1.5 text-xs font-medium text-muted-foreground"
+            >
+              {t(($) => $.researchTools.literature.yearFrom)}
+              <PublicationYearSelect
+                id="literature-year-from"
+                value={yearFrom}
+                onValueChange={setYearFrom}
+                maximum={
+                  yearTo === ANY_PUBLICATION_YEAR
+                    ? undefined
+                    : Number(yearTo)
+                }
+              />
+            </label>
+            <label
+              htmlFor="literature-year-to"
+              className="grid gap-1.5 text-xs font-medium text-muted-foreground"
+            >
+              {t(($) => $.researchTools.literature.yearTo)}
+              <PublicationYearSelect
+                id="literature-year-to"
+                value={yearTo}
+                onValueChange={setYearTo}
+                minimum={
+                  yearFrom === ANY_PUBLICATION_YEAR
+                    ? undefined
+                    : Number(yearFrom)
+                }
+              />
+            </label>
+            <label
+              htmlFor="literature-result-limit"
+              className="grid gap-1.5 text-xs font-medium text-muted-foreground"
+            >
+              {t(($) => $.researchTools.literature.resultsPerSource)}
+              <Select value={limit} onValueChange={setLimit}>
+                <SelectTrigger
+                  id="literature-result-limit"
+                  className="h-9 w-32 text-sm"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="8">
+                    {t(($) => $.researchTools.literature.resultOption, { results: 8 })}
+                  </SelectItem>
+                  <SelectItem value="12">
+                    {t(($) => $.researchTools.literature.resultOption, { results: 12 })}
+                  </SelectItem>
+                  <SelectItem value="20">
+                    {t(($) => $.researchTools.literature.resultOption, { results: 20 })}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <label
+              htmlFor="literature-open-access"
+              className="mb-0.5 flex h-9 items-center gap-2.5 rounded-md border px-3 text-xs font-medium text-muted-foreground"
+            >
+              <Switch
+                id="literature-open-access"
+                checked={openAccessOnly}
+                onCheckedChange={setOpenAccessOnly}
+                aria-label={t(($) => $.researchTools.literature.openAccessOnly)}
+              />
+              {t(($) => $.researchTools.literature.openAccessOnly)}
+            </label>
+          </div>
+        </div>
+      )}
+
+      {offline && (
+        <div className="mt-3 flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          {t(($) => $.researchTools.literature.offline)}
+        </div>
+      )}
+      {error && (
+        <div className="mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          {error}
+        </div>
+      )}
+    </>
+  );
+
+  const documentTabs = () => (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <Tabs
+        value={tab}
+        onValueChange={setTab}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <div className="shrink-0 border-b bg-background">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6">
+            <TabsList className="h-12 rounded-none bg-transparent p-0">
+              <TabsTrigger
+                value="search"
+                className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                {t(($) => $.researchTools.literature.tabSuggestions)}
+              </TabsTrigger>
+              <TabsTrigger
+                value="saved"
+                className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                {t(($) => $.researchTools.literature.tabMyCitations)}
+                {saved.length > 0 && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
+                    {saved.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
+        <TabsContent
+          value="search"
+          className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DocumentCitationScanPanel />
+        </TabsContent>
+        <TabsContent
+          value="saved"
+          className="m-0 min-h-0 flex-1 overflow-y-auto"
+        >
+          <SavedLibrary saved={saved} onRemove={removeCitation} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
+  const searchResultTabs = () => (
+    <Tabs
+      value={tab}
+      onValueChange={setTab}
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <div className="shrink-0 border-b bg-background">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6">
+          <TabsList className="h-12 rounded-none bg-transparent p-0">
+            <TabsTrigger
+              value="search"
+              className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              {t(($) => $.researchTools.literature.tabSearch)}
+              {response && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
+                  {response.results.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="saved"
+              className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              {t(($) => $.researchTools.literature.tabMyCitations)}
+              {saved.length > 0 && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
+                  {saved.length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+          {response && !loading && (
+            <div className="hidden min-w-0 items-center gap-3 md:flex">
+              <SourceRunSummary runs={response.runs} />
+              <Tooltip label={t(($) => $.researchTools.literature.refreshTooltip)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={t(($) => $.researchTools.literature.refreshAria)}
+                  onClick={() => void runSearch(undefined, true)}
+                >
+                  <RefreshCw className="size-4" />
+                </Button>
+              </Tooltip>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <TabsContent
+        value="search"
+        className="m-0 min-h-0 flex-1 overflow-y-auto"
+      >
+        {loading ? (
+          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+            <ResultSkeleton />
+          </div>
+        ) : null}
+        {!loading && !response ? (
+          <EmptySearch
+            noResults={false}
+            onTry={(suggestion) => {
+              setQuery(suggestion);
+              void runSearch(suggestion);
+            }}
+          />
+        ) : null}
+        {!loading && response && (response.results.length === 0 ? (
+          <div>
+            {sourceErrors.length > 0 && (
+              <div className="mx-auto mt-5 flex max-w-3xl items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  {sourceErrors.map(sourceError).join(" ")}
+                </span>
+              </div>
+            )}
+            <EmptySearch
+              noResults
+              onTry={(suggestion) => {
+                setQuery(suggestion);
+                void runSearch(suggestion);
+              }}
+            />
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-6xl px-4 py-2 sm:px-6">
+            <div className="flex flex-col gap-2 border-b border-border/70 px-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                <Trans
+                  ns="researchTools"
+                  i18nKey={($) => $.researchTools.literature.resultsFor}
+                  values={{ results: response.results.length, query }}
+                  components={{ strong: <span className="font-medium text-foreground" /> }}
+                />
+              </p>
+              <div className="flex items-center gap-3 md:hidden">
+                <SourceRunSummary runs={response.runs} />
+              </div>
+            </div>
+            {sourceErrors.length > 0 && (
+              <div className="mx-2 mt-3 flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  {sourceErrors.map(sourceError).join(" ")}
+                </span>
+              </div>
+            )}
+            {response.results.map((record) => {
+              const id = literatureIdentity(record);
+              const isSaved = savedIds.has(id);
+              return (
+                <ResultRow
+                  key={id}
+                  record={record}
+                  saved={isSaved}
+                  onSave={() => {
+                    saveCitation(record);
+                    toast.success(
+                      isSaved
+                        ? t(($) => $.researchTools.literature.toastUpdated)
+                        : t(($) => $.researchTools.literature.toastSaved),
+                    );
+                  }}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </TabsContent>
+
+      <TabsContent
+        value="saved"
+        className="m-0 min-h-0 flex-1 overflow-y-auto"
+      >
+        <SavedLibrary saved={saved} onRemove={removeCitation} />
+      </TabsContent>
+    </Tabs>
+  );
+
   return (
     <div
       data-testid="literature-search-panel"
@@ -819,355 +1166,13 @@ export function LiteratureSearchPanel() {
             </Button>
           </div>
 
-          {mode === "search" && (
-            <>
-              <form
-                onSubmit={submit}
-                className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm focus-within:ring-1 focus-within:ring-ring"
-              >
-                <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder={t(($) => $.researchTools.literature.queryPlaceholder)}
-                  aria-label={t(($) => $.researchTools.literature.queryAria)}
-                  className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
-                />
-                <Button
-                  type="submit"
-                  className="h-11 shrink-0 px-5 text-sm [&_svg]:size-5"
-                  disabled={
-                    loading ||
-                    !query.trim() ||
-                    selectedSources.length === 0 ||
-                    offline
-                  }
-                >
-                  {loading ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Search />
-                  )}
-                  <span className="hidden sm:inline">
-                    {loading
-                      ? t(($) => $.researchTools.literature.searching)
-                      : t(($) => $.researchTools.literature.search)}
-                  </span>
-                </Button>
-              </form>
-
-              <div className="mt-4 flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
-                <SourceSelector
-                  selected={selectedSources}
-                  onToggle={toggleSource}
-                />
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    type="button"
-                    variant={filtersOpen ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setFiltersOpen((open) => !open)}
-                    aria-expanded={filtersOpen}
-                  >
-                    <SlidersHorizontal />
-                    {t(($) => $.researchTools.literature.filters)}
-                    {(yearFrom !== ANY_PUBLICATION_YEAR ||
-                      yearTo !== ANY_PUBLICATION_YEAR ||
-                      openAccessOnly) && (
-                      <span className="size-1.5 rounded-full bg-primary" />
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={openSourceSettings}
-                  >
-                    <KeyRound />
-                    {t(($) => $.researchTools.literature.sourceSetup)}
-                  </Button>
-                </div>
-              </div>
-
-              {filtersOpen && (
-                <div className="mt-3 space-y-3 rounded-md border bg-background/80 p-3">
-                  <div className="flex flex-wrap items-end gap-3">
-                    <label
-                      htmlFor="literature-year-from"
-                      className="grid gap-1.5 text-xs font-medium text-muted-foreground"
-                    >
-                      {t(($) => $.researchTools.literature.yearFrom)}
-                      <PublicationYearSelect
-                        id="literature-year-from"
-                        value={yearFrom}
-                        onValueChange={setYearFrom}
-                        maximum={
-                          yearTo === ANY_PUBLICATION_YEAR
-                            ? undefined
-                            : Number(yearTo)
-                        }
-                      />
-                    </label>
-                    <label
-                      htmlFor="literature-year-to"
-                      className="grid gap-1.5 text-xs font-medium text-muted-foreground"
-                    >
-                      {t(($) => $.researchTools.literature.yearTo)}
-                      <PublicationYearSelect
-                        id="literature-year-to"
-                        value={yearTo}
-                        onValueChange={setYearTo}
-                        minimum={
-                          yearFrom === ANY_PUBLICATION_YEAR
-                            ? undefined
-                            : Number(yearFrom)
-                        }
-                      />
-                    </label>
-                    <label
-                      htmlFor="literature-result-limit"
-                      className="grid gap-1.5 text-xs font-medium text-muted-foreground"
-                    >
-                      {t(($) => $.researchTools.literature.resultsPerSource)}
-                      <Select value={limit} onValueChange={setLimit}>
-                        <SelectTrigger
-                          id="literature-result-limit"
-                          className="h-9 w-32 text-sm"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="8">
-                            {t(($) => $.researchTools.literature.resultOption, { results: 8 })}
-                          </SelectItem>
-                          <SelectItem value="12">
-                            {t(($) => $.researchTools.literature.resultOption, { results: 12 })}
-                          </SelectItem>
-                          <SelectItem value="20">
-                            {t(($) => $.researchTools.literature.resultOption, { results: 20 })}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </label>
-                    <label
-                      htmlFor="literature-open-access"
-                      className="mb-0.5 flex h-9 items-center gap-2.5 rounded-md border px-3 text-xs font-medium text-muted-foreground"
-                    >
-                      <Switch
-                        id="literature-open-access"
-                        checked={openAccessOnly}
-                        onCheckedChange={setOpenAccessOnly}
-                        aria-label={t(($) => $.researchTools.literature.openAccessOnly)}
-                      />
-                      {t(($) => $.researchTools.literature.openAccessOnly)}
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {offline && (
-                <div className="mt-3 flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                  {t(($) => $.researchTools.literature.offline)}
-                </div>
-              )}
-              {error && (
-                <div className="mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                  {error}
-                </div>
-              )}
-            </>
-          )}
+          {mode === "search" && searchControls()}
         </div>
       </section>
 
-      {mode === "document" ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Tabs
-            value={tab}
-            onValueChange={setTab}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <div className="shrink-0 border-b bg-background">
-              <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6">
-                <TabsList className="h-12 rounded-none bg-transparent p-0">
-                  <TabsTrigger
-                    value="search"
-                    className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-                  >
-                    {t(($) => $.researchTools.literature.tabSuggestions)}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="saved"
-                    className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-                  >
-                    {t(($) => $.researchTools.literature.tabMyCitations)}
-                    {saved.length > 0 && (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
-                        {saved.length}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </div>
-            <TabsContent
-              value="search"
-              className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden"
-            >
-              <DocumentCitationScanPanel />
-            </TabsContent>
-            <TabsContent
-              value="saved"
-              className="m-0 min-h-0 flex-1 overflow-y-auto"
-            >
-              <SavedLibrary saved={saved} onRemove={removeCitation} />
-            </TabsContent>
-          </Tabs>
-        </div>
-      ) : mode === "review" ? (
-        <PaperReviewPanel />
-      ) : (
-        <Tabs
-          value={tab}
-          onValueChange={setTab}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <div className="shrink-0 border-b bg-background">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6">
-              <TabsList className="h-12 rounded-none bg-transparent p-0">
-                <TabsTrigger
-                  value="search"
-                  className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-                >
-                  {t(($) => $.researchTools.literature.tabSearch)}
-                  {response && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
-                      {response.results.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="saved"
-                  className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-                >
-                  {t(($) => $.researchTools.literature.tabMyCitations)}
-                  {saved.length > 0 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
-                      {saved.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-              {response && !loading && (
-                <div className="hidden min-w-0 items-center gap-3 md:flex">
-                  <SourceRunSummary runs={response.runs} />
-                  <Tooltip label={t(($) => $.researchTools.literature.refreshTooltip)}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      aria-label={t(($) => $.researchTools.literature.refreshAria)}
-                      onClick={() => void runSearch(undefined, true)}
-                    >
-                      <RefreshCw className="size-4" />
-                    </Button>
-                  </Tooltip>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <TabsContent
-            value="search"
-            className="m-0 min-h-0 flex-1 overflow-y-auto"
-          >
-            {loading ? (
-              <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-                <ResultSkeleton />
-              </div>
-            ) : !response ? (
-              <EmptySearch
-                noResults={false}
-                onTry={(suggestion) => {
-                  setQuery(suggestion);
-                  void runSearch(suggestion);
-                }}
-              />
-            ) : response.results.length === 0 ? (
-              <div>
-                {sourceErrors.length > 0 && (
-                  <div className="mx-auto mt-5 flex max-w-3xl items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                    <span>
-                      {sourceErrors.map(sourceError).join(" ")}
-                    </span>
-                  </div>
-                )}
-                <EmptySearch
-                  noResults
-                  onTry={(suggestion) => {
-                    setQuery(suggestion);
-                    void runSearch(suggestion);
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="mx-auto w-full max-w-6xl px-4 py-2 sm:px-6">
-                <div className="flex flex-col gap-2 border-b border-border/70 px-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    <Trans
-                      ns="researchTools"
-                      i18nKey={($) => $.researchTools.literature.resultsFor}
-                      values={{ results: response.results.length, query }}
-                      components={{ strong: <span className="font-medium text-foreground" /> }}
-                    />
-                  </p>
-                  <div className="flex items-center gap-3 md:hidden">
-                    <SourceRunSummary runs={response.runs} />
-                  </div>
-                </div>
-                {sourceErrors.length > 0 && (
-                  <div className="mx-2 mt-3 flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                    <span>
-                      {sourceErrors.map(sourceError).join(" ")}
-                    </span>
-                  </div>
-                )}
-                {response.results.map((record) => {
-                  const id = literatureIdentity(record);
-                  const isSaved = savedIds.has(id);
-                  return (
-                    <ResultRow
-                      key={id}
-                      record={record}
-                      saved={isSaved}
-                      onSave={() => {
-                        saveCitation(record);
-                        toast.success(
-                          isSaved
-                            ? t(($) => $.researchTools.literature.toastUpdated)
-                            : t(($) => $.researchTools.literature.toastSaved),
-                        );
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent
-            value="saved"
-            className="m-0 min-h-0 flex-1 overflow-y-auto"
-          >
-            <SavedLibrary saved={saved} onRemove={removeCitation} />
-          </TabsContent>
-        </Tabs>
-      )}
+      {mode === "document" ? documentTabs() : null}
+      {mode !== "document" && mode === "review" ? <PaperReviewPanel /> : null}
+      {mode !== "document" && mode !== "review" && searchResultTabs()}
     </div>
   );
 }

@@ -152,81 +152,110 @@ interface StructureScan {
  * offsets aligned, so the spans produced here address the same coordinates the
  * mask's word ranges do.
  */
-function scanStructure(text: string): StructureScan {
-  const headerArgs: Span[] = [];
-  const outsideArgs: Span[] = [];
-  let headers = 0;
-  let figures = 0;
-  let displayMathEnvs = 0;
+function environmentStep(
+  text: string,
+  i: number,
+  cursor: number,
+  name: string,
+  scan: StructureScan,
+): number {
+  const open = skipSpace(text, cursor);
+  if (text[open] !== "{") return i + 1;
+  const close = groupEnd(text, open);
+  if (close < 0) return i + 1;
+  const env = text.slice(open + 1, close - 1).trim();
+  if (name === "begin") {
+    if (FIGURE_ENVS.has(env)) scan.figures++;
+    if (DISPLAY_MATH_ENVS.has(env)) scan.displayMathEnvs++;
+  }
+  return close;
+}
 
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-
-    if (ch === "%" && (i === 0 || text[i - 1] !== "\\")) {
-      const lineEnd = text.indexOf("\n", i);
-      i = lineEnd < 0 ? text.length : lineEnd;
-      continue;
-    }
-    if (ch !== "\\") continue;
-
-    const name = /^[a-zA-Z]+/.exec(text.slice(i + 1, i + 32))?.[0];
-    if (!name) {
-      i++; // An escaped character (\\, \{, \%) — never the start of a command.
-      continue;
-    }
-    let cursor = i + 1 + name.length;
-
-    if (name === "begin" || name === "end") {
-      const open = skipSpace(text, cursor);
-      if (text[open] !== "{") continue;
-      const close = groupEnd(text, open);
-      if (close < 0) continue;
-      const env = text.slice(open + 1, close - 1).trim();
-      if (name === "begin") {
-        if (FIGURE_ENVS.has(env)) figures++;
-        if (DISPLAY_MATH_ENVS.has(env)) displayMathEnvs++;
-      }
-      i = close - 1;
-      continue;
-    }
-
-    const starred = text[cursor] === "*";
-    if (starred) cursor++;
-    const heading = HEADING_CMDS.has(name);
-    const outside = OUTSIDE_TEXT_CMDS.has(name);
-    if (!heading && !outside) continue;
-
-    // \captionof{figure}{prose} names its float type first; the prose is the
-    // second group. Every other command here takes prose in its first group.
-    let groupsToSkip = name === "captionof" ? 1 : 0;
-    for (;;) {
-      const open = skipSpace(text, cursor);
-      if (text[open] !== "{" && text[open] !== "[") break;
-      const close = groupEnd(text, open);
-      if (close < 0) break;
-      // Optional arguments hold short-form titles, which are prose too, but
-      // they duplicate the main argument; skipping them avoids counting the
-      // same heading twice.
-      if (text[open] === "[") {
-        cursor = close;
-        continue;
-      }
-      if (groupsToSkip > 0) {
-        groupsToSkip--;
-        cursor = close;
-        continue;
-      }
-      (heading ? headerArgs : outsideArgs).push({ from: open + 1, to: close - 1 });
-      if (heading) headers++;
+function proseArgumentStep(
+  text: string,
+  start: number,
+  name: string,
+  heading: boolean,
+  scan: StructureScan,
+): number {
+  // \captionof{figure}{prose} names its float type first; the prose is the
+  // second group. Every other command here takes prose in its first group.
+  let groupsToSkip = name === "captionof" ? 1 : 0;
+  let cursor = start;
+  for (;;) {
+    const open = skipSpace(text, cursor);
+    if (text[open] !== "{" && text[open] !== "[") break;
+    const close = groupEnd(text, open);
+    if (close < 0) break;
+    // Optional arguments hold short-form titles, which are prose too, but
+    // they duplicate the main argument; skipping them avoids counting the
+    // same heading twice.
+    if (text[open] === "[") {
       cursor = close;
-      break;
+      continue;
     }
-    i = cursor - 1;
+    if (groupsToSkip > 0) {
+      groupsToSkip--;
+      cursor = close;
+      continue;
+    }
+    if (heading) {
+      scan.headerArgs.push({ from: open + 1, to: close - 1 });
+      scan.headers++;
+    } else {
+      scan.outsideArgs.push({ from: open + 1, to: close - 1 });
+    }
+    cursor = close;
+    break;
+  }
+  return cursor;
+}
+
+function scanStructureStep(
+  text: string,
+  i: number,
+  scan: StructureScan,
+): number {
+  const ch = text[i];
+
+  if (ch === "%" && (i === 0 || text[i - 1] !== "\\")) {
+    const lineEnd = text.indexOf("\n", i);
+    return (lineEnd < 0 ? text.length : lineEnd) + 1;
+  }
+  if (ch !== "\\") return i + 1;
+
+  const name = /^[a-zA-Z]+/.exec(text.slice(i + 1, i + 32))?.[0];
+  // An escaped character (\\, \{, \%) — never the start of a command.
+  if (!name) return i + 2;
+  const cursor = i + 1 + name.length;
+
+  if (name === "begin" || name === "end") {
+    return environmentStep(text, i, cursor, name, scan);
   }
 
-  headerArgs.sort((a, b) => a.from - b.from);
-  outsideArgs.sort((a, b) => a.from - b.from);
-  return { headerArgs, outsideArgs, headers, figures, displayMathEnvs };
+  const afterStar = text[cursor] === "*" ? cursor + 1 : cursor;
+  const heading = HEADING_CMDS.has(name);
+  const outside = OUTSIDE_TEXT_CMDS.has(name);
+  if (!heading && !outside) return i + 1;
+
+  return proseArgumentStep(text, afterStar, name, heading, scan);
+}
+
+function scanStructure(text: string): StructureScan {
+  const scan: StructureScan = {
+    headerArgs: [],
+    outsideArgs: [],
+    headers: 0,
+    figures: 0,
+    displayMathEnvs: 0,
+  };
+
+  let i = 0;
+  while (i < text.length) i = scanStructureStep(text, i, scan);
+
+  scan.headerArgs.sort((a, b) => a.from - b.from);
+  scan.outsideArgs.sort((a, b) => a.from - b.from);
+  return scan;
 }
 
 /**

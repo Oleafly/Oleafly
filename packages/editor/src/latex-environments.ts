@@ -18,7 +18,7 @@ const BEGIN_ON_LINE = /\\begin\s*\{([^{}]*)\}/gu;
 
 const ENVIRONMENT_EDGE = /\\(begin|end)\s*\{([^{}]*)\}/gu;
 
-const OPEN_BEGIN = "\\begin{";
+const OPEN_BEGIN = String.raw`\begin{`;
 
 const TRAILING_ARGUMENTS = /^(?:\s*(?:\[[^\]]*\]|\{[^{}]*\}))*\s*$/u;
 
@@ -148,18 +148,16 @@ export const closeEnvironmentOnEnter: Command = (view) => {
   );
   if (closingsAhead(after, begin.name) >= openDepth) return false;
 
-  const content = state.sliceDoc(headFrom, range.head).replace(/\s+$/u, "");
+  const content = state.sliceDoc(headFrom, range.head).trimEnd();
   const from = headFrom + content.length;
   const columns = indentColumns(state, lineHead);
   const outer = indentString(state, columns);
   const inner = indentString(state, columns + getIndentUnit(state));
   const base = environmentBase(begin.name);
-  const marker = !ITEM_ENVIRONMENTS.has(base)
-    ? ""
-    : base === "description"
-      ? "\\item[] "
-      : "\\item ";
-  const caret = base === "description" ? "\\item[".length : marker.length;
+  const itemMarker =
+    base === "description" ? String.raw`\item[] ` : String.raw`\item `;
+  const marker = ITEM_ENVIRONMENTS.has(base) ? itemMarker : "";
+  const caret = base === "description" ? String.raw`\item[`.length : marker.length;
   view.dispatch({
     changes: {
       from,

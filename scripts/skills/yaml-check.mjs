@@ -2,7 +2,7 @@ import { runCommand } from "./exec.mjs";
 
 const PY_PROBE = "import yaml";
 
-const PY_CHECK = `
+const PY_CHECK = String.raw`
 import json, sys, yaml
 
 paths = json.load(sys.stdin)
@@ -14,7 +14,7 @@ for path in paths:
     except OSError as error:
         failures.append([path, "could not read: %s" % error])
         continue
-    lines = text.replace("\\r\\n", "\\n").split("\\n")
+    lines = text.replace("\r\n", "\n").split("\n")
     if not lines or lines[0] != "---":
         failures.append([path, "missing opening --- marker"])
         continue
@@ -29,9 +29,9 @@ for path in paths:
         failures.append([path, "missing closing --- marker"])
         continue
     try:
-        value = yaml.safe_load("\\n".join(block))
+        value = yaml.safe_load("\n".join(block))
     except Exception as error:
-        failures.append([path, str(error).replace("\\n", " ")])
+        failures.append([path, str(error).replace("\n", " ")])
         continue
     if not isinstance(value, dict):
         failures.append([path, "front matter is not a YAML mapping"])

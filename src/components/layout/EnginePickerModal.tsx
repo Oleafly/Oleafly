@@ -161,6 +161,111 @@ export function EnginePickerModal() {
     close();
   };
 
+  const tinytexActionLabel = () => {
+    if (installing) {
+      return installPhaseLabel(installPhase, progress);
+    }
+    if (partialDownloadBytes > 0) {
+      return t(($) => $.shell.enginePicker.tinytex.resume, {
+        megabytes: Math.round(partialDownloadBytes / 1_000_000),
+      });
+    }
+    return t(($) => $.shell.enginePicker.tinytex.download);
+  };
+
+  const systemTexActionLabel = () => {
+    if (alreadyLatexmk) {
+      return t(($) => $.shell.enginePicker.systemTex.alreadySelected);
+    }
+    if (needsPdflatex) {
+      return t(($) => $.shell.enginePicker.systemTex.switchPdflatex);
+    }
+    return t(($) => $.shell.enginePicker.systemTex.use);
+  };
+
+  const renderSystemTexOption = () => (
+    <div
+      className={cn(
+        "rounded-lg border p-3",
+        hasSystemTex && "border-primary/60",
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <Cpu className="size-4 shrink-0 text-muted-foreground" />
+        <span className="text-sm font-medium">
+          {needsPdflatex
+            ? t(($) => $.shell.enginePicker.systemTex.titlePdflatex)
+            : t(($) => $.shell.enginePicker.systemTex.title)}
+        </span>
+        {hasSystemTex && (
+          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+            {t(($) => $.shell.enginePicker.recommended)}
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+        {hasSystemTex
+          ? t(($) => $.shell.enginePicker.systemTex.found)
+          : t(($) => $.shell.enginePicker.systemTex.missing)}
+      </p>
+      {info?.latexmk && (
+        <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
+          {info.latexmk}
+        </p>
+      )}
+      <div className="mt-3 border-t pt-3">
+        <label
+          htmlFor="engine-shell-escape"
+          className="flex min-h-11 cursor-pointer items-start gap-2.5"
+        >
+          <Checkbox
+            id="engine-shell-escape"
+            data-testid="engine-picker-shell-escape"
+            checked={shellEscapeConsent}
+            disabled={switching || shellEscapeSaving}
+            aria-describedby="engine-shell-escape-warning"
+            onCheckedChange={(checked) => void updateShellEscape(checked === true)}
+            className="mt-0.5"
+          />
+          <span className="min-w-0 text-xs">
+            <span className="flex items-center gap-1.5 font-medium">
+              {shellEscapeSaving ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-500" />
+              )}
+              {t(($) => $.shell.enginePicker.shellEscape.label)}
+            </span>
+            <span
+              id="engine-shell-escape-warning"
+              className="mt-1 block leading-relaxed text-muted-foreground"
+            >
+              {t(($) => $.shell.enginePicker.shellEscape.warning)}
+            </span>
+          </span>
+        </label>
+        {needsShellEscape && !shellEscapeConsent && (
+          <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+            {t(($) => $.shell.enginePicker.shellEscape.needed)}
+          </p>
+        )}
+      </div>
+      <div className="mt-2">
+        <Button
+          size="sm"
+          data-testid="engine-picker-use-system"
+          disabled={!hasSystemTex || switching || alreadyLatexmk}
+          onClick={() => void pinLatexmk(false)}
+          data-modal-initial-focus={hasSystemTex || undefined}
+        >
+          {switching ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          {!switching && alreadyLatexmk ? <Check className="size-3.5" /> : null}
+          {systemTexActionLabel()}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <button
@@ -214,93 +319,7 @@ export function EnginePickerModal() {
 
         <div className="flex flex-col gap-2">
           {/* Option 1: system TeX via latexmk */}
-          <div
-            className={cn(
-              "rounded-lg border p-3",
-              hasSystemTex && "border-primary/60",
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <Cpu className="size-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm font-medium">
-                {needsPdflatex
-                  ? t(($) => $.shell.enginePicker.systemTex.titlePdflatex)
-                  : t(($) => $.shell.enginePicker.systemTex.title)}
-              </span>
-              {hasSystemTex && (
-                <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                  {t(($) => $.shell.enginePicker.recommended)}
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              {hasSystemTex
-                ? t(($) => $.shell.enginePicker.systemTex.found)
-                : t(($) => $.shell.enginePicker.systemTex.missing)}
-            </p>
-            {info?.latexmk && (
-              <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
-                {info.latexmk}
-              </p>
-            )}
-            <div className="mt-3 border-t pt-3">
-              <label
-                htmlFor="engine-shell-escape"
-                className="flex min-h-11 cursor-pointer items-start gap-2.5"
-              >
-                <Checkbox
-                  id="engine-shell-escape"
-                  data-testid="engine-picker-shell-escape"
-                  checked={shellEscapeConsent}
-                  disabled={switching || shellEscapeSaving}
-                  aria-describedby="engine-shell-escape-warning"
-                  onCheckedChange={(checked) => void updateShellEscape(checked === true)}
-                  className="mt-0.5"
-                />
-                <span className="min-w-0 text-xs">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    {shellEscapeSaving ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-500" />
-                    )}
-                    {t(($) => $.shell.enginePicker.shellEscape.label)}
-                  </span>
-                  <span
-                    id="engine-shell-escape-warning"
-                    className="mt-1 block leading-relaxed text-muted-foreground"
-                  >
-                    {t(($) => $.shell.enginePicker.shellEscape.warning)}
-                  </span>
-                </span>
-              </label>
-              {needsShellEscape && !shellEscapeConsent && (
-                <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                  {t(($) => $.shell.enginePicker.shellEscape.needed)}
-                </p>
-              )}
-            </div>
-            <div className="mt-2">
-              <Button
-                size="sm"
-                data-testid="engine-picker-use-system"
-                disabled={!hasSystemTex || switching || alreadyLatexmk}
-                onClick={() => void pinLatexmk(false)}
-                data-modal-initial-focus={hasSystemTex || undefined}
-              >
-                {switching ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : alreadyLatexmk ? (
-                  <Check className="size-3.5" />
-                ) : null}
-                {alreadyLatexmk
-                  ? t(($) => $.shell.enginePicker.systemTex.alreadySelected)
-                  : needsPdflatex
-                    ? t(($) => $.shell.enginePicker.systemTex.switchPdflatex)
-                    : t(($) => $.shell.enginePicker.systemTex.use)}
-              </Button>
-            </div>
-          </div>
+          {renderSystemTexOption()}
 
           {/* Option 2: on-demand TinyTeX (hidden when a system TeX already covers it) */}
           {!hasSystemTex && (
@@ -322,13 +341,7 @@ export function EnginePickerModal() {
                   onClick={() => void installThenPin()}
                 >
                   {installing ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                  {installing
-                    ? installPhaseLabel(installPhase, progress)
-                    : partialDownloadBytes > 0
-                      ? t(($) => $.shell.enginePicker.tinytex.resume, {
-                          megabytes: Math.round(partialDownloadBytes / 1_000_000),
-                        })
-                      : t(($) => $.shell.enginePicker.tinytex.download)}
+                  {tinytexActionLabel()}
                 </Button>
               </div>
             </div>

@@ -55,7 +55,7 @@ const example = JSON.stringify(
   2,
 );
 
-function CopyValue({ value, label }: { value: string; label: string }) {
+function CopyValue({ value, label }: Readonly<{ value: string; label: string }>) {
   const { t } = useTranslation(["common"]);
   const [copied, setCopied] = useState(false);
   return (
@@ -84,10 +84,10 @@ function CopyValue({ value, label }: { value: string; label: string }) {
 function DetailRow({
   title,
   children,
-}: {
+}: Readonly<{
   title: string;
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <div className="space-y-1 rounded-md border bg-muted/30 p-2.5">
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -104,13 +104,13 @@ function Section({
   description,
   icon: Icon,
   children,
-}: {
+}: Readonly<{
   id: string;
   title: string;
   description: string;
   icon: typeof Search;
   children: React.ReactNode;
-}) {
+}>) {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-lg border bg-card">
@@ -142,12 +142,12 @@ function RegistryResult({
   registered,
   busy,
   onRegister,
-}: {
+}: Readonly<{
   entry: AcpRegistryEntry;
   registered: boolean;
   busy: boolean;
   onRegister: (definition: AcpDefinition) => void;
-}) {
+}>) {
   const { t } = useTranslation(["settings"]);
   const [shown, setShown] = useState(false);
   return (
@@ -201,14 +201,14 @@ function AgentCard({
   onInstall,
   onRemove,
   onOpenTerminal,
-}: {
+}: Readonly<{
   agent: AcpAgentStatus;
   projectId?: string | null;
   busy: string | null;
   onInstall: (definition: AcpDefinition, opener: HTMLButtonElement) => void;
   onRemove: (agentId: string) => void;
   onOpenTerminal: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const [open, setOpen] = useState(false);
   const readiness = acpReadiness(agent);
@@ -332,7 +332,7 @@ function AgentCard({
   );
 }
 
-export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
+export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null }>) {
   const { t } = useTranslation(["common", "settings"]);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const [busy, setBusy] = useState<string | null>(null);
@@ -354,7 +354,7 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
     void useAcpSessionsStore
       .getState()
       .refreshCatalog(true)
-      .catch((value: unknown) => setError(acpError(value)));
+      .catch((error_: unknown) => setError(acpError(error_)));
   }, []);
 
   const action = async (key: string, work: () => Promise<void>) => {
@@ -363,8 +363,8 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
     setNotice(null);
     try {
       await work();
-    } catch (value) {
-      setError(acpError(value));
+    } catch (error_) {
+      setError(acpError(error_));
     } finally {
       setBusy(null);
     }
@@ -434,9 +434,9 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
         </p>
       )}
       {notice && (
-        <p role="status" className="rounded-md border p-2 text-xs">
+        <output className="block rounded-md border p-2 text-xs">
           {notice}
-        </p>
+        </output>
       )}
 
       <div className="space-y-2.5" data-testid="acp-agent-list">

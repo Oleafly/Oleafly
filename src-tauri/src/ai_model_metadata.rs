@@ -289,7 +289,7 @@ impl MetadataService {
     fn lock(&self) -> MutexGuard<'_, ServiceState> {
         self.state
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     pub(crate) fn snapshot(&self) -> Arc<MetadataSnapshot> {

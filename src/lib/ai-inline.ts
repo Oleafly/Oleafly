@@ -20,6 +20,15 @@ export const PRESETS: { id: string; label: string; instruction: string }[] = [
   { id: "translate", get label() { return i18n.t(($) => $.core.inlineAi.translate); }, instruction: "Translate the selected text to English." },
 ];
 
+function markupRule(profile: string): string {
+  if (profile === "none") return "Do not introduce markup or engine-specific commands.";
+  if (profile === "typst") return "Preserve valid Typst markup and scripting syntax.";
+  if (profile === "markdown") {
+    return "Preserve valid Pandoc Markdown syntax and YAML front matter.";
+  }
+  return "Preserve LaTeX validity: balanced braces and environments.";
+}
+
 const systemFor = (engine: InlineEditArgs["engine"]) => {
   const profile = engine?.capabilities.formatting_profile ?? "none";
   return [
@@ -28,20 +37,25 @@ const systemFor = (engine: InlineEditArgs["engine"]) => {
     : `You edit a fragment of a ${engine?.label ?? "technical"} document.`,
   "Return ONLY the replacement for the selected text.",
   "No code fences, no commentary, no explanation.",
-  profile === "none"
-    ? "Do not introduce markup or engine-specific commands."
-    : profile === "typst"
-    ? "Preserve valid Typst markup and scripting syntax."
-    : profile === "markdown"
-    ? "Preserve valid Pandoc Markdown syntax and YAML front matter."
-    : "Preserve LaTeX validity: balanced braces and environments.",
+  markupRule(profile),
 ].join(" ");
 };
 
+const FENCE = "```";
+
+function fenceBodyStart(text: string): number {
+  let index = FENCE.length;
+  while (index < text.length && /[a-zA-Z]/u.test(text[index] ?? "")) index++;
+  return text[index] === "\n" ? index + 1 : index;
+}
+
 function stripFence(s: string): string {
   const t = s.trim();
-  const m = t.match(/^```[a-zA-Z]*\n?([\s\S]*?)\n?```$/);
-  return (m ? m[1] : t).trim();
+  if (!t.startsWith(FENCE) || !t.endsWith(FENCE)) return t;
+  const start = fenceBodyStart(t);
+  const end = t.length - FENCE.length;
+  if (start > end) return t;
+  return t.slice(start, end).trim();
 }
 
 export async function runInlineCompletion(args: InlineEditArgs): Promise<string> {

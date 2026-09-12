@@ -77,11 +77,11 @@ function timestamp(value: number): string {
 function isErrorMilestone(text: string, error: string | null): boolean {
   const value = text.trim();
   if (!value) return false;
-  if (error && value === error.trim()) return true;
+  if (value === error?.trim()) return true;
   return /^error\b/i.test(value);
 }
 
-function ReasoningRow({ text }: { text: string }) {
+function ReasoningRow({ text }: Readonly<{ text: string }>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const [open, setOpen] = useState(false);
   return (
@@ -102,17 +102,30 @@ function ReasoningRow({ text }: { text: string }) {
   );
 }
 
+function autoTabFor(task: ResearchTask): string {
+  if (task.status === "awaiting_review") return "review";
+  if (task.status === "queued" || task.status === "running") return "activity";
+  if (task.result) return "output";
+  return "activity";
+}
+
+function timelineDotTone(kind: TaskTimelineItem["kind"]): string {
+  if (kind === "message") return "bg-primary";
+  if (kind === "tool") return "bg-foreground/40";
+  return "bg-muted-foreground/40";
+}
+
 function TimelineDot({
   item,
   live,
   tall,
   failing,
-}: {
+}: Readonly<{
   item: TaskTimelineItem;
   live: boolean;
   tall: boolean;
   failing: boolean;
-}) {
+}>) {
   const label = timestamp(item.createdAt);
   const cell = cn("flex items-center justify-center", tall ? "h-9" : "h-6");
   const dot = failing ? (
@@ -124,11 +137,7 @@ function TimelineDot({
         "size-2 rounded-full",
         live
           ? "animate-pulse bg-primary motion-reduce:animate-none"
-          : item.kind === "message"
-            ? "bg-primary"
-            : item.kind === "tool"
-              ? "bg-foreground/40"
-              : "bg-muted-foreground/40",
+          : timelineDotTone(item.kind),
       )}
     />
   );
@@ -162,17 +171,16 @@ export function TaskDetailDialog({
   onOpenSession,
   error,
   onDismissError,
-}: TaskDetailDialogProps) {
+}: Readonly<TaskDetailDialogProps>) {
   const { t, i18n: instance } = useTranslation(["common", "researchTools"]);
   const language = instance.language;
   const tokenCount = (value: number | null): string =>
     value === null ? t(($) => $.researchTools.tasks.detail.unknownTokens) : formatCompactCount(value);
-  const changeKindLabel = (kind: "added" | "modified" | "deleted"): string =>
-    kind === "added"
-      ? t(($) => $.researchTools.tasks.detail.changeAdded)
-      : kind === "modified"
-        ? t(($) => $.researchTools.tasks.detail.changeModified)
-        : t(($) => $.researchTools.tasks.detail.changeDeleted);
+  const changeKindLabel = (kind: "added" | "modified" | "deleted"): string => {
+    if (kind === "added") return t(($) => $.researchTools.tasks.detail.changeAdded);
+    if (kind === "modified") return t(($) => $.researchTools.tasks.detail.changeModified);
+    return t(($) => $.researchTools.tasks.detail.changeDeleted);
+  };
   const taskRunKey = `${task.id}:${task.executionGeneration}`;
   const activeTaskRun = useRef(taskRunKey);
   activeTaskRun.current = taskRunKey;
@@ -200,15 +208,7 @@ export function TaskDetailDialog({
     if (initialTab) setChosenTab(initialTab);
   }, [initialTab]);
 
-  const autoTab =
-    task.status === "awaiting_review"
-      ? "review"
-      : task.status === "queued" || task.status === "running"
-        ? "activity"
-        : task.result
-          ? "output"
-          : "activity";
-  const tab = chosenTab ?? autoTab;
+  const tab = chosenTab ?? autoTabFor(task);
   const timelineCount = timeline.items.length;
 
   useEffect(() => {
@@ -218,6 +218,12 @@ export function TaskDetailDialog({
     if (!container || !nearBottom.current) return;
     container.scrollTop = container.scrollHeight;
   }, [open, tab, running, timelineCount]);
+
+  const toggleChangedPath = (path: string, checked: boolean) => {
+    setSelectedPaths((current) =>
+      checked ? [...current, path] : current.filter((candidate) => candidate !== path),
+    );
+  };
 
   const previewFile = async (path: string) => {
     const requestRunKey = taskRunKey;
@@ -231,9 +237,9 @@ export function TaskDetailDialog({
       if (preview.baseIsCurrent === false) {
         setSelectedPaths((current) => current.filter((candidate) => candidate !== path));
       }
-    } catch (failure) {
+    } catch (error_) {
       if (activeTaskRun.current !== requestRunKey) return;
-      setPreviewError(failure instanceof Error ? failure.message : String(failure));
+      setPreviewError(error_ instanceof Error ? error_.message : String(error_));
     } finally {
       if (activeTaskRun.current === requestRunKey) setPreviewingPath(null);
     }
@@ -247,9 +253,9 @@ export function TaskDetailDialog({
       const preview = await previewResearchTaskArtifact(task.id, artifact.path);
       if (activeTaskRun.current !== requestRunKey) return;
       setArtifactPreview(preview);
-    } catch (failure) {
+    } catch (error_) {
       if (activeTaskRun.current !== requestRunKey) return;
-      setPreviewError(failure instanceof Error ? failure.message : String(failure));
+      setPreviewError(error_ instanceof Error ? error_.message : String(error_));
     } finally {
       if (activeTaskRun.current === requestRunKey) setPreviewingPath(null);
     }
@@ -276,6 +282,366 @@ export function TaskDetailDialog({
     setChosenTab("output");
     void previewArtifact(artifact);
   };
+
+  const startButtonLabel = () => {
+    if (task.startRequested) return t(($) => $.researchTools.tasks.detail.waiting);
+    if (blocked) return t(($) => $.researchTools.tasks.detail.startWhenReady);
+    return t(($) => $.researchTools.tasks.detail.start);
+  };
+
+  const previewButtonLabel = (path: string, hasPreview: boolean) => {
+    if (previewingPath === path) return t(($) => $.researchTools.tasks.detail.loading);
+    if (hasPreview) return t(($) => $.researchTools.tasks.detail.refreshPreview);
+    return t(($) => $.researchTools.tasks.detail.preview);
+  };
+
+  const artifactBinaryPreview = (preview: TaskArtifactPreview) =>
+    preview.content.base64 && preview.content.mediaType ? (
+      <img
+        className="mt-2 max-h-72 max-w-full rounded border object-contain"
+        alt={preview.artifact.label}
+        src={`data:${preview.content.mediaType};base64,${preview.content.base64}`}
+      />
+    ) : (
+      <p className="mt-2 text-xs text-muted-foreground">
+        {t(($) => $.researchTools.tasks.detail.binaryArtifact, {
+          size: preview.content.size ?? 0,
+        })}
+      </p>
+    );
+
+  const reviewEmptyState = () =>
+    task.status === "awaiting_review" ? (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+        <p className="text-sm text-muted-foreground">
+          {t(($) => $.researchTools.tasks.detail.noFilesChanged)}
+        </p>
+        <Button disabled={busy} onClick={() => void onAccept().catch(() => {})}>
+          {t(($) => $.researchTools.tasks.detail.markReviewed)}
+        </Button>
+      </div>
+    ) : (
+      <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+        {t(($) => $.researchTools.tasks.detail.nothingToReview)}
+      </p>
+    );
+
+  const headerActions = () => (
+  <div className="flex flex-wrap justify-end gap-2">
+    {task.status === "queued" ? (
+      <>
+        <Button size="sm" variant="outline" disabled={busy} onClick={onEdit}>
+          {t(($) => $.common.actions.edit)}
+        </Button>
+        <Button
+          size="sm"
+          disabled={busy || task.startRequested}
+          onClick={() => void onStart().catch(() => {})}
+        >
+          {startButtonLabel()}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy}
+          onClick={() => void onCancel().catch(() => {})}
+        >
+          {t(($) => $.common.actions.cancel)}
+        </Button>
+      </>
+    ) : null}
+    {running ? (
+      <Button
+        size="sm"
+        variant="destructive"
+        disabled={busy || task.cancelRequested}
+        onClick={() => void onCancel().catch(() => {})}
+      >
+        {task.cancelRequested
+          ? t(($) => $.researchTools.tasks.detail.stopping)
+          : t(($) => $.researchTools.tasks.detail.stopTask)}
+      </Button>
+    ) : null}
+    {task.status === "failed" || task.status === "cancelled" ? (
+      <Button size="sm" disabled={busy} onClick={() => void onRetry().catch(() => {})}>
+        {t(($) => $.common.actions.retry)}
+      </Button>
+    ) : null}
+    {task.runtimeId === "acp" && task.nativeSessionId && onOpenSession ? (
+      <Button size="sm" variant="outline" onClick={() => onOpenSession(task)}>
+        {t(($) => $.researchTools.tasks.detail.openSession)}
+        <ExternalLink />
+      </Button>
+    ) : null}
+    {!running ? (
+      <Button
+        size="sm"
+        variant="ghost"
+        aria-label={t(($) => $.researchTools.tasks.detail.deleteAria, {
+          title: task.title,
+        })}
+        disabled={busy}
+        onClick={onDelete}
+      >
+        <Trash2 /> {t(($) => $.common.actions.delete)}
+      </Button>
+    ) : null}
+  </div>
+  );
+
+  const sourceRevisionNote = () => (
+    <>
+  {task.sourceRevision ? (
+    <section className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+      <p className="break-all">
+        <Trans
+          ns="researchTools"
+          i18nKey={($) => $.researchTools.tasks.detail.sourceRevision}
+          values={{
+            isolation:
+              task.isolation?.kind === "git_worktree"
+                ? t(($) => $.researchTools.tasks.detail.isolationWorktree)
+                : t(($) => $.researchTools.tasks.detail.isolationStaged),
+            revision: task.sourceRevision.slice(0, 28),
+          }}
+          components={{ revision: <span className="font-mono" /> }}
+        />
+      </p>
+      <p className="mt-1">
+        {t(($) => $.researchTools.tasks.detail.originalUnchanged)}
+      </p>
+    </section>
+  ) : null}
+    </>
+  );
+
+  const changedFilesSection = () => (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h5 className="flex items-center gap-2 text-sm font-medium">
+          <FileDiff className="size-4" />
+          {t(($) => $.researchTools.tasks.detail.fileChanges)}
+        </h5>
+        <button
+          type="button"
+          className="text-xs text-primary hover:underline"
+          onClick={() =>
+            setSelectedPaths(
+              selectedPaths.length === changedFiles.length
+                ? []
+                : changedFiles
+                    .map((change) => change.path)
+                    .filter((path) => !driftedPaths.includes(path)),
+            )
+          }
+        >
+          {selectedPaths.length === changedFiles.length
+            ? t(($) => $.researchTools.tasks.detail.clearSelection)
+            : t(($) => $.researchTools.tasks.detail.selectAll)}
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {t(($) => $.researchTools.tasks.detail.previewBeforeApply)}
+      </p>
+      {driftedPaths.length > 0 ? (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs"
+        >
+          <AlertTriangle aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+          <span className="min-w-0 break-words">
+            {driftedPaths.length === 1
+              ? t(($) => $.researchTools.tasks.detail.driftedOne, {
+                  path: driftedPaths[0],
+                })
+              : t(($) => $.researchTools.tasks.detail.driftedMany, {
+                  fileCount: driftedPaths.length,
+                })}
+          </span>
+        </p>
+      ) : null}
+      <div className="divide-y rounded-md border">
+        {changedFiles.map((change) => {
+          const preview = filePreviews[`${taskRunKey}:${change.path}`];
+          const drifted = preview?.baseIsCurrent === false;
+          return (
+            <div key={change.path} className="p-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+                <Checkbox
+                  aria-label={t(($) => $.researchTools.tasks.detail.applyAria, {
+                    path: change.path,
+                  })}
+                  checked={selectedPaths.includes(change.path)}
+                  disabled={task.status !== "awaiting_review" || busy || drifted}
+                  onCheckedChange={(checked) =>
+                    toggleChangedPath(change.path, checked === true)
+                  }
+                />
+                <Tooltip label={change.path} className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-1 truncate font-mono text-xs">
+                    {change.path}
+                  </span>
+                </Tooltip>
+                {drifted ? (
+                  <Badge
+                    variant="outline"
+                    className="shrink-0 gap-1 border-amber-500/50"
+                  >
+                    <AlertTriangle aria-hidden="true" className="size-3" />
+                    {t(($) => $.researchTools.tasks.detail.changedSince)}
+                  </Badge>
+                ) : null}
+                <span className="text-xs capitalize text-muted-foreground">
+                  {changeKindLabel(change.kind)}
+                </span>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={previewingPath === change.path}
+                  onClick={() => void previewFile(change.path)}
+                >
+                  {previewButtonLabel(change.path, Boolean(preview))}
+                </Button>
+              </div>
+              {preview ? (
+                <div className="mt-3 overflow-hidden rounded-md border">
+                  {preview.before.text !== null || preview.after.text !== null ? (
+                    <InlineDiffPreview
+                      path={preview.path}
+                      oldText={preview.before.text ?? ""}
+                      newText={preview.after.text ?? ""}
+                    />
+                  ) : (
+                    <div className="grid grid-cols-2 divide-x text-xs text-muted-foreground">
+                      <div className="p-3">
+                        {preview.before.exists
+                          ? t(($) => $.researchTools.tasks.detail.beforeBytes, {
+                              size: preview.before.size,
+                            })
+                          : t(($) => $.researchTools.tasks.detail.beforeAbsent)}
+                      </div>
+                      <div className="p-3">
+                        {preview.after.exists
+                          ? t(($) => $.researchTools.tasks.detail.afterBytes, {
+                              size: preview.after.size,
+                            })
+                          : t(($) => $.researchTools.tasks.detail.afterAbsent)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      {previewError ? (
+        <p role="alert" className="break-words text-xs text-destructive">
+          {previewError}
+        </p>
+      ) : null}
+      {task.status === "awaiting_review" ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => void onCancel().catch(() => {})}
+          >
+            {t(($) => $.researchTools.tasks.detail.discardChanges)}
+          </Button>
+          <Button
+            disabled={
+              busy ||
+              selectedPaths.length === 0 ||
+              selectedPaths.some((path) => !filePreviews[`${taskRunKey}:${path}`])
+            }
+            onClick={() => void onApply(selectedPaths).catch(() => {})}
+          >
+            {busy
+              ? t(($) => $.researchTools.tasks.detail.applying)
+              : t(($) => $.researchTools.tasks.detail.applySelected, {
+                  selected: selectedPaths.length,
+                })}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const reviewTab = () => (
+    <>
+      {sourceRevisionNote()}
+      {changedFiles.length > 0 ? changedFilesSection() : reviewEmptyState()}
+    </>
+  );
+
+  const outputTab = () => (
+    <>
+      {task.result ? (
+        <section aria-labelledby="research-task-result" className="space-y-3">
+          <div className="min-w-0">
+            <h4 id="research-task-result" className="text-sm font-medium">
+              {t(($) => $.researchTools.tasks.detail.result)}
+            </h4>
+            <div className="mt-1 min-w-0 break-words text-sm text-muted-foreground">
+              <Markdown className="min-w-0 break-words">
+                {task.result.summary || t(($) => $.researchTools.tasks.detail.noSummary)}
+              </Markdown>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+          {t(($) => $.researchTools.tasks.detail.noResult)}
+        </p>
+      )}
+
+      {artifacts.length > 0 ? (
+        <div className="space-y-2">
+          <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t(($) => $.researchTools.tasks.detail.artifacts)}
+          </h5>
+          {artifacts.map((artifact) => (
+            <button
+              key={`${artifact.path}:${artifact.label}`}
+              type="button"
+              disabled={previewingPath === artifact.path}
+              onClick={() => void previewArtifact(artifact)}
+              className="flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-70"
+            >
+              <span className="min-w-0 truncate">
+                {previewingPath === artifact.path
+                  ? t(($) => $.researchTools.tasks.detail.loading)
+                  : artifact.label}
+              </span>
+              <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+                {artifact.path}
+              </span>
+            </button>
+          ))}
+          {artifactPreview ? (
+            <div className="min-w-0 rounded-md border bg-muted/30 p-3">
+              <p className="truncate text-sm font-medium">
+                {artifactPreview.artifact.label}
+              </p>
+              {artifactPreview.content.text !== null ? (
+                <pre className="mt-2 max-h-80 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all text-xs">
+                  {artifactPreview.content.text}
+                </pre>
+              ) : (
+                artifactBinaryPreview(artifactPreview)
+              )}
+            </div>
+          ) : null}
+          {previewError ? (
+            <p role="alert" className="break-words text-xs text-destructive">
+              {previewError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -304,70 +670,7 @@ export function TaskDetailDialog({
                   </span>
                 </div>
               </div>
-              <div className="flex flex-wrap justify-end gap-2">
-                {task.status === "queued" ? (
-                  <>
-                    <Button size="sm" variant="outline" disabled={busy} onClick={onEdit}>
-                      {t(($) => $.common.actions.edit)}
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={busy || task.startRequested}
-                      onClick={() => void onStart().catch(() => {})}
-                    >
-                      {task.startRequested
-                        ? t(($) => $.researchTools.tasks.detail.waiting)
-                        : blocked
-                          ? t(($) => $.researchTools.tasks.detail.startWhenReady)
-                          : t(($) => $.researchTools.tasks.detail.start)}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy}
-                      onClick={() => void onCancel().catch(() => {})}
-                    >
-                      {t(($) => $.common.actions.cancel)}
-                    </Button>
-                  </>
-                ) : null}
-                {running ? (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={busy || task.cancelRequested}
-                    onClick={() => void onCancel().catch(() => {})}
-                  >
-                    {task.cancelRequested
-                      ? t(($) => $.researchTools.tasks.detail.stopping)
-                      : t(($) => $.researchTools.tasks.detail.stopTask)}
-                  </Button>
-                ) : null}
-                {task.status === "failed" || task.status === "cancelled" ? (
-                  <Button size="sm" disabled={busy} onClick={() => void onRetry().catch(() => {})}>
-                    {t(($) => $.common.actions.retry)}
-                  </Button>
-                ) : null}
-                {task.runtimeId === "acp" && task.nativeSessionId && onOpenSession ? (
-                  <Button size="sm" variant="outline" onClick={() => onOpenSession(task)}>
-                    {t(($) => $.researchTools.tasks.detail.openSession)}
-                    <ExternalLink />
-                  </Button>
-                ) : null}
-                {!running ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={t(($) => $.researchTools.tasks.detail.deleteAria, {
-                      title: task.title,
-                    })}
-                    disabled={busy}
-                    onClick={onDelete}
-                  >
-                    <Trash2 /> {t(($) => $.common.actions.delete)}
-                  </Button>
-                ) : null}
-              </div>
+              {headerActions()}
             </div>
             <DialogDescription className="max-h-24 overflow-y-auto whitespace-pre-wrap break-words text-sm text-muted-foreground">
               {task.prompt}
@@ -530,286 +833,20 @@ export function TaskDetailDialog({
                   </div>
                 )}
                 {eventsLoading ? (
-                  <p role="status" className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <output className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="size-3 animate-spin" />{" "}
                     {t(($) => $.researchTools.tasks.detail.loadingActivity)}
-                  </p>
+                  </output>
                 ) : null}
               </section>
             </TabsContent>
 
             <TabsContent value="review" className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
-              {task.sourceRevision ? (
-                <section className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
-                  <p className="break-all">
-                    <Trans
-                      ns="researchTools"
-                      i18nKey={($) => $.researchTools.tasks.detail.sourceRevision}
-                      values={{
-                        isolation:
-                          task.isolation?.kind === "git_worktree"
-                            ? t(($) => $.researchTools.tasks.detail.isolationWorktree)
-                            : t(($) => $.researchTools.tasks.detail.isolationStaged),
-                        revision: task.sourceRevision.slice(0, 28),
-                      }}
-                      components={{ revision: <span className="font-mono" /> }}
-                    />
-                  </p>
-                  <p className="mt-1">
-                    {t(($) => $.researchTools.tasks.detail.originalUnchanged)}
-                  </p>
-                </section>
-              ) : null}
-
-              {changedFiles.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h5 className="flex items-center gap-2 text-sm font-medium">
-                      <FileDiff className="size-4" />
-                      {t(($) => $.researchTools.tasks.detail.fileChanges)}
-                    </h5>
-                    <button
-                      type="button"
-                      className="text-xs text-primary hover:underline"
-                      onClick={() =>
-                        setSelectedPaths(
-                          selectedPaths.length === changedFiles.length
-                            ? []
-                            : changedFiles
-                                .map((change) => change.path)
-                                .filter((path) => !driftedPaths.includes(path)),
-                        )
-                      }
-                    >
-                      {selectedPaths.length === changedFiles.length
-                        ? t(($) => $.researchTools.tasks.detail.clearSelection)
-                        : t(($) => $.researchTools.tasks.detail.selectAll)}
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t(($) => $.researchTools.tasks.detail.previewBeforeApply)}
-                  </p>
-                  {driftedPaths.length > 0 ? (
-                    <p
-                      role="alert"
-                      className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs"
-                    >
-                      <AlertTriangle aria-hidden="true" className="mt-px size-3.5 shrink-0" />
-                      <span className="min-w-0 break-words">
-                        {driftedPaths.length === 1
-                          ? t(($) => $.researchTools.tasks.detail.driftedOne, {
-                              path: driftedPaths[0],
-                            })
-                          : t(($) => $.researchTools.tasks.detail.driftedMany, {
-                              fileCount: driftedPaths.length,
-                            })}
-                      </span>
-                    </p>
-                  ) : null}
-                  <div className="divide-y rounded-md border">
-                    {changedFiles.map((change) => {
-                      const preview = filePreviews[`${taskRunKey}:${change.path}`];
-                      const drifted = preview?.baseIsCurrent === false;
-                      return (
-                        <div key={change.path} className="p-3">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-                            <Checkbox
-                              aria-label={t(($) => $.researchTools.tasks.detail.applyAria, {
-                                path: change.path,
-                              })}
-                              checked={selectedPaths.includes(change.path)}
-                              disabled={task.status !== "awaiting_review" || busy || drifted}
-                              onCheckedChange={(checked) =>
-                                setSelectedPaths((current) =>
-                                  checked === true
-                                    ? [...current, change.path]
-                                    : current.filter((path) => path !== change.path),
-                                )
-                              }
-                            />
-                            <Tooltip label={change.path} className="min-w-0 flex-1">
-                              <span className="min-w-0 flex-1 truncate font-mono text-xs">
-                                {change.path}
-                              </span>
-                            </Tooltip>
-                            {drifted ? (
-                              <Badge
-                                variant="outline"
-                                className="shrink-0 gap-1 border-amber-500/50"
-                              >
-                                <AlertTriangle aria-hidden="true" className="size-3" />
-                                {t(($) => $.researchTools.tasks.detail.changedSince)}
-                              </Badge>
-                            ) : null}
-                            <span className="text-xs capitalize text-muted-foreground">
-                              {changeKindLabel(change.kind)}
-                            </span>
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              disabled={previewingPath === change.path}
-                              onClick={() => void previewFile(change.path)}
-                            >
-                              {previewingPath === change.path
-                                ? t(($) => $.researchTools.tasks.detail.loading)
-                                : preview
-                                  ? t(($) => $.researchTools.tasks.detail.refreshPreview)
-                                  : t(($) => $.researchTools.tasks.detail.preview)}
-                            </Button>
-                          </div>
-                          {preview ? (
-                            <div className="mt-3 overflow-hidden rounded-md border">
-                              {preview.before.text !== null || preview.after.text !== null ? (
-                                <InlineDiffPreview
-                                  path={preview.path}
-                                  oldText={preview.before.text ?? ""}
-                                  newText={preview.after.text ?? ""}
-                                />
-                              ) : (
-                                <div className="grid grid-cols-2 divide-x text-xs text-muted-foreground">
-                                  <div className="p-3">
-                                    {preview.before.exists
-                                      ? t(($) => $.researchTools.tasks.detail.beforeBytes, {
-                                          size: preview.before.size,
-                                        })
-                                      : t(($) => $.researchTools.tasks.detail.beforeAbsent)}
-                                  </div>
-                                  <div className="p-3">
-                                    {preview.after.exists
-                                      ? t(($) => $.researchTools.tasks.detail.afterBytes, {
-                                          size: preview.after.size,
-                                        })
-                                      : t(($) => $.researchTools.tasks.detail.afterAbsent)}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {previewError ? (
-                    <p role="alert" className="break-words text-xs text-destructive">
-                      {previewError}
-                    </p>
-                  ) : null}
-                  {task.status === "awaiting_review" ? (
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <Button
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => void onCancel().catch(() => {})}
-                      >
-                        {t(($) => $.researchTools.tasks.detail.discardChanges)}
-                      </Button>
-                      <Button
-                        disabled={
-                          busy ||
-                          selectedPaths.length === 0 ||
-                          selectedPaths.some((path) => !filePreviews[`${taskRunKey}:${path}`])
-                        }
-                        onClick={() => void onApply(selectedPaths).catch(() => {})}
-                      >
-                        {busy
-                          ? t(($) => $.researchTools.tasks.detail.applying)
-                          : t(($) => $.researchTools.tasks.detail.applySelected, {
-                              selected: selectedPaths.length,
-                            })}
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : task.status === "awaiting_review" ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-                  <p className="text-sm text-muted-foreground">
-                    {t(($) => $.researchTools.tasks.detail.noFilesChanged)}
-                  </p>
-                  <Button disabled={busy} onClick={() => void onAccept().catch(() => {})}>
-                    {t(($) => $.researchTools.tasks.detail.markReviewed)}
-                  </Button>
-                </div>
-              ) : (
-                <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                  {t(($) => $.researchTools.tasks.detail.nothingToReview)}
-                </p>
-              )}
+              {reviewTab()}
             </TabsContent>
 
             <TabsContent value="output" className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
-              {task.result ? (
-                <section aria-labelledby="research-task-result" className="space-y-3">
-                  <div className="min-w-0">
-                    <h4 id="research-task-result" className="text-sm font-medium">
-                      {t(($) => $.researchTools.tasks.detail.result)}
-                    </h4>
-                    <div className="mt-1 min-w-0 break-words text-sm text-muted-foreground">
-                      <Markdown className="min-w-0 break-words">
-                        {task.result.summary || t(($) => $.researchTools.tasks.detail.noSummary)}
-                      </Markdown>
-                    </div>
-                  </div>
-                </section>
-              ) : (
-                <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                  {t(($) => $.researchTools.tasks.detail.noResult)}
-                </p>
-              )}
-
-              {artifacts.length > 0 ? (
-                <div className="space-y-2">
-                  <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {t(($) => $.researchTools.tasks.detail.artifacts)}
-                  </h5>
-                  {artifacts.map((artifact) => (
-                    <button
-                      key={`${artifact.path}:${artifact.label}`}
-                      type="button"
-                      disabled={previewingPath === artifact.path}
-                      onClick={() => void previewArtifact(artifact)}
-                      className="flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-70"
-                    >
-                      <span className="min-w-0 truncate">
-                        {previewingPath === artifact.path
-                          ? t(($) => $.researchTools.tasks.detail.loading)
-                          : artifact.label}
-                      </span>
-                      <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
-                        {artifact.path}
-                      </span>
-                    </button>
-                  ))}
-                  {artifactPreview ? (
-                    <div className="min-w-0 rounded-md border bg-muted/30 p-3">
-                      <p className="truncate text-sm font-medium">
-                        {artifactPreview.artifact.label}
-                      </p>
-                      {artifactPreview.content.text !== null ? (
-                        <pre className="mt-2 max-h-80 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all text-xs">
-                          {artifactPreview.content.text}
-                        </pre>
-                      ) : artifactPreview.content.base64 && artifactPreview.content.mediaType ? (
-                        <img
-                          className="mt-2 max-h-72 max-w-full rounded border object-contain"
-                          alt={artifactPreview.artifact.label}
-                          src={`data:${artifactPreview.content.mediaType};base64,${artifactPreview.content.base64}`}
-                        />
-                      ) : (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {t(($) => $.researchTools.tasks.detail.binaryArtifact, {
-                            size: artifactPreview.content.size ?? 0,
-                          })}
-                        </p>
-                      )}
-                    </div>
-                  ) : null}
-                  {previewError ? (
-                    <p role="alert" className="break-words text-xs text-destructive">
-                      {previewError}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
+              {outputTab()}
             </TabsContent>
           </Tabs>
 

@@ -22,12 +22,12 @@ export function DelegatedPermissions({
   parentSessionId,
   subagents,
   onError,
-}: {
+}: Readonly<{
   projectId: string | null;
   parentSessionId: string | null | undefined;
   subagents: readonly SubagentEntry[] | undefined;
   onError?: (message: string) => void;
-}) {
+}>) {
   const children = useMemo(() => delegatedAcpSessions(subagents), [subagents]);
   const listening = children.length > 0;
   const permissionsBySession = useAcpSessionsStore((state) =>

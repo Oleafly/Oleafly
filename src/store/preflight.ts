@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import { CHECK_IDS, detectSubmissionProfile, maskComments, runPreflight } from "@oleafly/preflight";
-import type { CheckId, PreflightEngine, ProjectContext, RefsContext, SubmissionProfileId } from "@oleafly/preflight";
-import type { PreflightReport } from "@oleafly/preflight";
+import type {
+  CheckId,
+  PreflightEngine,
+  PreflightReport,
+  ProjectContext,
+  RefsContext,
+  SubmissionProfileId,
+} from "@oleafly/preflight";
 import {
   type BibliographyEngine,
   bibliographyDeclarations,
@@ -41,68 +47,70 @@ function declaredBibliographies(
   return declarations;
 }
 
-function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): RefsContext {
-  // Labels and bib keys come from the shared project index (the single parser);
-  // runRefsRules also re-scans the active source for its own labels, so a just-
-  // typed label resolves even before the debounced index catches up.
-  const index = useIndexStore.getState().index;
-  const definedLabels = index ? index.defs.filter((d) => d.kind === "label").map((d) => d.name) : [];
-  const bibKeys = index ? index.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : [];
-  // Duplicate detection needs DOIs, which the index does not store, so parse the
-  // loaded .bib files for those.
-  const projectTexts = { ...useIndexStore.getState().texts };
-  for (const [path, state] of Object.entries(files.files)) projectTexts[path] = state.content;
+type DeclaredBibliography = { raw: string; file: string; engine: BibliographyEngine };
 
-  // Project files (for missing-asset checks) must include images too, so use the
-  // full tree rather than the index (which only indexes .tex/.bib).
-  const projectFiles = files.tree.filter((f) => !f.is_dir).map((f) => f.path);
-  const knownPaths = [...new Set([...projectFiles, ...Object.keys(files.files)])];
-  const declared = declaredBibliographies(projectTexts);
-  const unresolvedBibliographies: { file: string; name: string }[] = [];
-  const seenUnresolved = new Set<string>();
+function unresolvedBibliographiesFor(
+  declared: readonly DeclaredBibliography[],
+  knownPaths: readonly string[],
+): { file: string; name: string }[] {
+  const unresolved: { file: string; name: string }[] = [];
+  const seen = new Set<string>();
   for (const declaration of declared) {
-    if (
-      resolveBibliographyPath(
-        declaration.raw,
-        declaration.file,
-        knownPaths,
-        declaration.engine,
-      ) !== null
-    ) {
-      continue;
-    }
+    const resolved = resolveBibliographyPath(
+      declaration.raw,
+      declaration.file,
+      knownPaths,
+      declaration.engine,
+    );
+    if (resolved !== null) continue;
     const key = `${declaration.file}\n${declaration.raw}`;
-    if (seenUnresolved.has(key)) continue;
-    seenUnresolved.add(key);
-    unresolvedBibliographies.push({ file: declaration.file, name: declaration.raw });
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unresolved.push({ file: declaration.file, name: declaration.raw });
   }
-  const bibLoaded = declared.length > 0
-    ? unresolvedBibliographies.length === 0
-    : bibKeys.length > 0 || knownPaths.some((path) => path.endsWith(".bib"));
+  return unresolved;
+}
+
+function collectBibEntries(texts: Readonly<Record<string, string>>): {
+  bibEntries: NonNullable<RefsContext["bibEntries"]>;
+  duplicateDois: { doi: string; keys: string[] }[];
+} {
   const doiToKeys = new Map<string, string[]>();
   const bibEntries: NonNullable<RefsContext["bibEntries"]> = [];
-  for (const [path, content] of Object.entries(projectTexts)) {
+  for (const [path, content] of Object.entries(texts)) {
     if (!path.endsWith(".bib")) continue;
     for (const chunk of content.split(/(?=@\w+\s*\{)/)) {
       const p = parseEntry(chunk.trim());
-      const doi = p?.fields.doi?.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "");
-      if (p) bibEntries.push(p);
-      if (p && doi) doiToKeys.set(doi, [...(doiToKeys.get(doi) ?? []), p.key]);
+      if (!p) continue;
+      bibEntries.push(p);
+      const doi = p.fields.doi?.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "");
+      if (doi) doiToKeys.set(doi, [...(doiToKeys.get(doi) ?? []), p.key]);
     }
   }
   const duplicateDois = [...doiToKeys.entries()]
     .filter(([, keys]) => keys.length > 1)
     .map(([doi, keys]) => ({ doi, keys }));
+  return { bibEntries, duplicateDois };
+}
 
+const CITE_COMMAND =
+  /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
+
+function collectCitedKeys(texts: Readonly<Record<string, string>>): string[] {
   const allCitedKeys: string[] = [];
-  const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
-  for (const [path, content] of Object.entries(projectTexts)) {
+  for (const [path, content] of Object.entries(texts)) {
     if (!/\.(?:tex|ltx)$/i.test(path)) continue;
-    for (const match of maskComments(content).matchAll(cite)) {
+    for (const match of maskComments(content).matchAll(CITE_COMMAND)) {
       allCitedKeys.push(...match[1].split(",").map((key) => key.trim()).filter(Boolean));
     }
   }
-  const currentBibKeys = [...new Set([...bibKeys, ...bibEntries.map((entry) => entry.key)])];
+  return allCitedKeys;
+}
+
+function collectLabelFacts(index: ReturnType<typeof useIndexStore.getState>["index"]): {
+  duplicateLabels: { label: string; files: string[] }[];
+  unreferencedLabels: { label: string; file: string }[];
+} {
   const labelFiles = new Map<string, Set<string>>();
   const referencedLabels = new Set(index?.uses.filter((use) => use.kind === "ref").map((use) => use.name) ?? []);
   for (const definition of index?.defs.filter((definition) => definition.kind === "label") ?? []) {
@@ -121,6 +129,34 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
         !referencedLabels.has(definition.name),
     )
     .map((definition) => ({ label: definition.name, file: definition.file }));
+  return { duplicateLabels, unreferencedLabels };
+}
+
+function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): RefsContext {
+  // Labels and bib keys come from the shared project index (the single parser);
+  // runRefsRules also re-scans the active source for its own labels, so a just-
+  // typed label resolves even before the debounced index catches up.
+  const index = useIndexStore.getState().index;
+  const definedLabels = index ? index.defs.filter((d) => d.kind === "label").map((d) => d.name) : [];
+  const bibKeys = index ? index.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : [];
+  // Duplicate detection needs DOIs, which the index does not store, so parse the
+  // loaded .bib files for those.
+  const projectTexts = { ...useIndexStore.getState().texts };
+  for (const [path, state] of Object.entries(files.files)) projectTexts[path] = state.content;
+
+  // Project files (for missing-asset checks) must include images too, so use the
+  // full tree rather than the index (which only indexes .tex/.bib).
+  const projectFiles = files.tree.filter((f) => !f.is_dir).map((f) => f.path);
+  const knownPaths = [...new Set([...projectFiles, ...Object.keys(files.files)])];
+  const declared = declaredBibliographies(projectTexts);
+  const unresolvedBibliographies = unresolvedBibliographiesFor(declared, knownPaths);
+  const bibLoaded = declared.length > 0
+    ? unresolvedBibliographies.length === 0
+    : bibKeys.length > 0 || knownPaths.some((path) => path.endsWith(".bib"));
+  const { bibEntries, duplicateDois } = collectBibEntries(projectTexts);
+  const allCitedKeys = collectCitedKeys(projectTexts);
+  const currentBibKeys = [...new Set([...bibKeys, ...bibEntries.map((entry) => entry.key)])];
+  const { duplicateLabels, unreferencedLabels } = collectLabelFacts(index);
   return {
     bibKeys: currentBibKeys,
     definedLabels,
@@ -143,6 +179,28 @@ function buildProjectContext(files: ReturnType<typeof useFilesStore.getState>): 
   return {
     mainFile: files.mainDoc,
     files: [...paths].map((path) => ({ path, ...(texts[path] !== undefined ? { content: texts[path] } : {}) })),
+  };
+}
+
+function engineNotLoadedMessage(files: ReturnType<typeof useFilesStore.getState>): string {
+  if (files.engineError) return engineErrorMessage(files.engineError);
+  return i18n.t(($) => $.core.engine.error.stillLoading);
+}
+
+function compileInputFor(compileState: ReturnType<typeof useCompileStore.getState>): {
+  outputIsCurrent: boolean;
+  compile: { readonly status: "success" | "idle" | "error" | "unavailable"; readonly log: string };
+} {
+  const outputIsCurrent = isCompileCheckpointCurrent(compileState.lastCompileCheckpoint);
+  const settledStatus =
+    compileState.status === "success" && outputIsCurrent ? "success" : "idle";
+  const compileStatus =
+    compileState.status === "error" || compileState.status === "unavailable"
+      ? compileState.status
+      : settledStatus;
+  return {
+    outputIsCurrent,
+    compile: { status: compileStatus, log: compileStatus === "idle" ? "" : compileState.log } as const,
   };
 }
 
@@ -205,12 +263,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
     try {
       const files = useFilesStore.getState();
       if (!files.engineLoaded) {
-        set({
-          running: false,
-          error: files.engineError
-            ? engineErrorMessage(files.engineError)
-            : i18n.t(($) => $.core.engine.error.stillLoading),
-        });
+        set({ running: false, error: engineNotLoadedMessage(files) });
         return;
       }
       // Lint the document currently in the editor so source offsets line up with
@@ -224,52 +277,42 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
       const profileSource = files.files[files.mainDoc]?.content ?? project.files.find((file) => file.path === files.mainDoc)?.content ?? source;
       const submissionProfile = state.submissionProfile ?? detectSubmissionProfile(profileSource);
       const compileState = useCompileStore.getState();
-      const outputIsCurrent = isCompileCheckpointCurrent(compileState.lastCompileCheckpoint);
-      const compileStatus =
-        compileState.status === "error" || compileState.status === "unavailable"
-          ? compileState.status
-          : compileState.status === "success" && outputIsCurrent
-            ? "success"
-          : "idle";
-      const compile = { status: compileStatus, log: compileStatus === "idle" ? "" : compileState.log } as const;
+      const { outputIsCurrent, compile } = compileInputFor(compileState);
 
       const engine = preflightEngineFor(files.engine.id, files.engine.tex_flavor);
       const bytes = outputIsCurrent ? compileState.pdfBytes : null;
-      if (bytes) {
+      const common = {
+        source,
+        sourceProfile: files.engine.capabilities.source_preflight_profile,
+        refs,
+        project,
+        compile,
+        submissionProfile,
+        anonymousReview: state.anonymousReview,
+        engine,
+      };
+      const produce = async (): Promise<{ report: PreflightReport; pageText: string[] } | null> => {
+        if (!bytes) {
+          const report = runPreflight(common);
+          if (stale()) return null;
+          return { report, pageText: [] };
+        }
         const { extractForPreflight } = await import("@oleafly/preflight/pdf-extract");
         const ex = await extractForPreflight(bytes);
-        if (stale()) return; // project switched during PDF extraction
+        if (stale()) return null; // project switched during PDF extraction
         const report = runPreflight({
-          source,
-          sourceProfile: files.engine.capabilities.source_preflight_profile,
+          ...common,
           pages: ex.pages,
           meta: { lang: ex.lang, title: ex.title, tagged: ex.tagged },
           extraction: ex.extraction,
           readerText: ex.pageText.join("\n"),
           struct: ex.struct,
-          refs,
           facts: ex.facts,
-          project,
-          compile,
-          submissionProfile,
-          anonymousReview: state.anonymousReview,
-          engine,
         });
-        set({ report, pageText: ex.pageText, running: false });
-      } else {
-        const report = runPreflight({
-          source,
-          sourceProfile: files.engine.capabilities.source_preflight_profile,
-          refs,
-          project,
-          compile,
-          submissionProfile,
-          anonymousReview: state.anonymousReview,
-          engine,
-        });
-        if (stale()) return;
-        set({ report, pageText: [], running: false });
-      }
+        return { report, pageText: ex.pageText };
+      };
+      const produced = await produce();
+      if (produced) set({ report: produced.report, pageText: produced.pageText, running: false });
     } catch (e) {
       if (!stale()) set({ running: false, error: String(e) });
       void import("@/lib/log").then(({ logError }) => logError("preflight", e));

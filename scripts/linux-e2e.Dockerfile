@@ -22,19 +22,26 @@ ENV PATH=/opt/cargo/bin:$PATH
 # fights the host's macOS artifacts over the same directory.
 ENV CARGO_TARGET_DIR=/opt/target
 
+# One layer holds the whole toolchain: the system dependency list, Node 22 (the
+# repo's engines field wants >=22.13 <25) with pnpm via corepack, and a pinned,
+# checksum-verified rustup-init rather than a pipe from sh.rustup.rs into a
+# shell, so the build cannot execute an artifact it has not authenticated.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      libwebkit2gtk-4.1-dev \
+      build-essential \
+      ca-certificates \
+      curl \
+      file \
+      git \
       libappindicator3-dev \
       librsvg2-dev \
-      patchelf \
+      libwebkit2gtk-4.1-dev \
       libxdo-dev \
-      build-essential \
+      patchelf \
+      wget \
       xvfb \
-      curl wget file git ca-certificates xz-utils \
-    && rm -rf /var/lib/apt/lists/*
-
-# Node 22 (the repo's engines field wants >=22.13 <25) and pnpm via corepack.
-RUN ARCH="$(dpkg --print-architecture)" \
+      xz-utils \
+    && rm -rf /var/lib/apt/lists/* \
+    && ARCH="$(dpkg --print-architecture)" \
     && case "$ARCH" in \
          arm64) NODE_ARCH=arm64 ;; \
          amd64) NODE_ARCH=x64 ;; \
@@ -50,11 +57,7 @@ RUN ARCH="$(dpkg --print-architecture)" \
     && echo "${NODE_SHA}  /tmp/node.tar.xz" | sha256sum -c - \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
     && rm /tmp/node.tar.xz \
-    && corepack enable
-
-# rustup-init is pinned and checksum-verified rather than piped from sh.rustup.rs
-# into a shell, so the build cannot execute an artifact it has not authenticated.
-RUN ARCH="$(dpkg --print-architecture)" \
+    && corepack enable \
     && case "$ARCH" in \
          arm64) RUST_TARGET=aarch64-unknown-linux-gnu; \
                 RUSTUP_SHA=9732d6c5e2a098d3521fca8145d826ae0aaa067ef2385ead08e6feac88fa5792 ;; \

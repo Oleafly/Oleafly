@@ -42,6 +42,24 @@ describe("runInlineCompletion", () => {
     expect(out).toBe("\\textbf{hi}");
   });
 
+  it.each([
+    ["```\n\\textbf{hi}\n```", "\\textbf{hi}"],
+    ["```latex\n\\textbf{hi}\n```", "\\textbf{hi}"],
+    ["```tex\nline one\nline two\n```", "line one\nline two"],
+    ["  ```typst\n#emph[hi]\n```  ", "#emph[hi]"],
+    ["```js const x = 1```", "const x = 1"],
+    ["```\n```", ""],
+    ["``````", ""],
+    ["```", "```"],
+    ["`````", "`````"],
+    ["Here you go:\n```\nx\n```", "Here you go:\n```\nx\n```"],
+    ["no fence at all", "no fence at all"],
+  ])("unwraps %j to %j", async (raw, expected) => {
+    streamText.mockResolvedValue(raw);
+    const out = await runInlineCompletion({ instruction: "x", selection: "hi" });
+    expect(out).toBe(expected);
+  });
+
   it("passes the instruction, selection and context into the prompt", async () => {
     streamText.mockResolvedValue("");
     await runInlineCompletion({

@@ -1,7 +1,7 @@
 import { figureBlock, PREAMBLE, SECTION_CMD } from "./assemble";
 import { orderByColumns } from "./columns";
 import { escapeLatex, restoreUrlsInTex } from "./escape";
-import { classifyHeadings } from "./headings";
+import { classifyHeadings, type HeadingLevel } from "./headings";
 import { buildLines, buildParas, type Para } from "./lines";
 import { isDisplayMathLine, mathifyText, stripMathDelimiters } from "./math";
 import { renderLineText } from "./styles";
@@ -13,6 +13,69 @@ import type {
   PageInput,
   ReportNote,
 } from "./types";
+
+interface BodyCounts {
+  headings: number;
+  paragraphs: number;
+  equations: number;
+}
+
+function collectPageNotes(selected: PageInput[], lo: number, notes: ReportNote[]): void {
+  selected.forEach((p, i) => {
+    if (p.items.length === 0) {
+      notes.push({ page: lo + i, kind: "no-text-layer", detail: "no selectable text on this page" });
+    }
+    for (const name of p.figureNames) {
+      notes.push({ page: lo + i, kind: "figure-extracted", detail: name });
+    }
+  });
+}
+
+function findTitle(
+  allParas: { para: Para; page: number }[],
+  headings: Map<Para, HeadingLevel>,
+): Para | null {
+  for (const { para, page } of allParas) {
+    if (page === 0 && headings.get(para) === 1) return para;
+  }
+  return null;
+}
+
+function renderParaBody(
+  para: Para,
+  level: HeadingLevel | undefined,
+  hasTitle: boolean,
+  counts: BodyCounts,
+): string {
+  if (level) {
+    // the title consumed level 1, so remaining levels shift up
+    const eff = (hasTitle ? Math.max(1, level - 1) : level) as HeadingLevel;
+    counts.headings++;
+    return `${SECTION_CMD[eff]}{${escapeLatex(para.text)}}`;
+  }
+  if (para.lines.length === 1 && isDisplayMathLine(para.text)) {
+    const { text } = mathifyText(escapeLatex(para.text));
+    counts.equations++;
+    return String.raw`\[ ${stripMathDelimiters(text)} \]`;
+  }
+  const rendered = para.lines.map((l) => {
+    const raw = renderLineText(l, escapeLatex);
+    const withMath = mathifyText(raw);
+    counts.equations += withMath.inlineCount;
+    return restoreUrlsInTex(withMath.text);
+  });
+  counts.paragraphs++;
+  return rendered.join("\n");
+}
+
+function pushFigures(body: string[], names: string[], emitted: Set<string>): void {
+  for (const name of names) {
+    if (!emitted.has(name)) {
+      body.push(figureBlock(name));
+      emitted.add(name);
+    }
+  }
+}
 
 export function convertPages(pages: PageInput[], options: ConvertOptions = {}): ConvertResult {
   const [lo, hi] = options.pageRange ?? [1, pages.length];
@@ -27,14 +90,7 @@ export function convertPages(pages: PageInput[], options: ConvertOptions = {}): 
     selected.map((p) => p.height),
   );
 
-  selected.forEach((p, i) => {
-    if (p.items.length === 0) {
-      notes.push({ page: lo + i, kind: "no-text-layer", detail: "no selectable text on this page" });
-    }
-    for (const name of p.figureNames) {
-      notes.push({ page: lo + i, kind: "figure-extracted", detail: name });
-    }
-  });
+  collectPageNotes(selected, lo, notes);
   const likelyScanned = selected.length > 0 && selected.every((p) => p.items.length === 0);
 
   const allParas: { para: Para; page: number }[] = [];
@@ -44,17 +100,9 @@ export function convertPages(pages: PageInput[], options: ConvertOptions = {}): 
   const paras = allParas.map((e) => e.para);
   const headings = classifyHeadings(paras, options.headingSensitivity ?? 0.5);
 
-  let title: Para | null = null;
-  for (const { para, page } of allParas) {
-    if (page === 0 && headings.get(para) === 1) {
-      title = para;
-      break;
-    }
-  }
+  const title = findTitle(allParas, headings);
 
-  let headingCount = 0;
-  let paragraphCount = 0;
-  let equationCount = 0;
+  const counts: BodyCounts = { headings: 0, paragraphs: 0, equations: 0 };
   const body: string[] = [];
   const emittedFigures = new Set<string>();
 
@@ -63,49 +111,20 @@ export function convertPages(pages: PageInput[], options: ConvertOptions = {}): 
 
   for (const { para, page } of allParas) {
     if (para === title) continue;
-    const lvl = headings.get(para);
-    if (lvl) {
-      // the title consumed level 1, so remaining levels shift up
-      const eff = (title ? Math.max(1, lvl - 1) : lvl) as 1 | 2 | 3;
-      body.push(`${SECTION_CMD[eff]}{${escapeLatex(para.text)}}`);
-      headingCount++;
-    } else if (para.lines.length === 1 && isDisplayMathLine(para.text)) {
-      const { text } = mathifyText(escapeLatex(para.text));
-      body.push(`\\[ ${stripMathDelimiters(text)} \\]`);
-      equationCount++;
-    } else {
-      const rendered = para.lines.map((l) => {
-        const raw = renderLineText(l, escapeLatex);
-        const withMath = mathifyText(raw);
-        equationCount += withMath.inlineCount;
-        return restoreUrlsInTex(withMath.text);
-      });
-      body.push(rendered.join("\n"));
-      paragraphCount++;
-    }
+    body.push(renderParaBody(para, headings.get(para), title !== null, counts));
     if (lastParaOfPage.get(page) === para) {
-      for (const name of selected[page].figureNames) {
-        if (!emittedFigures.has(name)) {
-          body.push(figureBlock(name));
-          emittedFigures.add(name);
-        }
-      }
+      pushFigures(body, selected[page].figureNames, emittedFigures);
     }
   }
   selected.forEach((p) => {
-    for (const name of p.figureNames) {
-      if (!emittedFigures.has(name)) {
-        body.push(figureBlock(name));
-        emittedFigures.add(name);
-      }
-    }
+    pushFigures(body, p.figureNames, emittedFigures);
   });
 
   const report: ConversionReport = {
     pages: selected.length,
-    headings: headingCount,
-    paragraphs: paragraphCount,
-    equations: equationCount,
+    headings: counts.headings,
+    paragraphs: counts.paragraphs,
+    equations: counts.equations,
     figures: emittedFigures.size,
     likelyScanned,
     notes,
@@ -114,15 +133,15 @@ export function convertPages(pages: PageInput[], options: ConvertOptions = {}): 
   const tex = [
     PREAMBLE,
     "",
-    `\\title{${title ? escapeLatex(title.text) : ""}}`,
-    "\\author{}",
-    "\\date{}",
-    "\\begin{document}",
-    ...(title ? ["\\maketitle"] : []),
+    String.raw`\title{${title ? escapeLatex(title.text) : ""}}`,
+    String.raw`\author{}`,
+    String.raw`\date{}`,
+    String.raw`\begin{document}`,
+    ...(title ? [String.raw`\maketitle`] : []),
     "",
     body.join("\n\n"),
     "",
-    "\\end{document}",
+    String.raw`\end{document}`,
     "",
   ].join("\n");
 

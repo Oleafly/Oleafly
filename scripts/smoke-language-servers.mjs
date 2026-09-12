@@ -219,7 +219,7 @@ class MessageReader {
   }
 
   flush() {
-    for (const waiter of [...this.waiters]) {
+    for (const waiter of this.waiters.slice()) {
       const index = this.messages.findIndex((message) => waiter.predicate(message));
       if (index < 0) continue;
       const [message] = this.messages.splice(index, 1);
@@ -268,11 +268,11 @@ function diagnosticDocument(serverId, epoch) {
   const lines =
     serverId === "texlab"
       ? [
-          "\\documentclass{article}",
-          "\\begin{document}",
+          String.raw`\documentclass{article}`,
+          String.raw`\begin{document}`,
           ...filler,
           `} % rapid-epoch-${epoch}`,
-          "\\end{document}",
+          String.raw`\end{document}`,
         ]
       : [
           '#set document(title: "Oleafly diagnostic smoke")',
@@ -305,7 +305,6 @@ function maxDiagnosticLine(params) {
 function matchesDocument(params, document) {
   const lineMatches =
     Array.isArray(params?.diagnostics) &&
-    params.diagnostics.length > 0 &&
     params.diagnostics.some(
       (diagnostic) =>
         diagnostic?.range?.start?.line === document.fingerprintLine ||

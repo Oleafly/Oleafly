@@ -28,7 +28,8 @@ export function loadSeedSources(slug: string): Record<string, string> {
   const paths: string[] = [];
   walk(root, paths);
   const sources: Record<string, string> = {};
-  for (const full of paths.sort(byCodePoint)) {
+  paths.sort(byCodePoint);
+  for (const full of paths) {
     const relative = path.relative(root, full).split(path.sep).join("/");
     if (!isProjectIntelligencePath(relative)) continue;
     // The editor and project-source bridge normalize line endings before

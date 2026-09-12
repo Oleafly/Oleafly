@@ -80,6 +80,12 @@ function cautionNoticeFor(
   return more > 0 ? message(`${base}Truncated`, { packages, more }) : message(base, { packages });
 }
 
+function classSeverityFor(gate: ReturnType<typeof taggingGate>): "block" | "caution" | null {
+  if (gate.blocked) return "block";
+  if (gate.cautioned) return "caution";
+  return null;
+}
+
 export function prepGate(source: string): PrepGate {
   const gate = taggingGate(source);
   const blocking = gate.incompatiblePackages.map((entry) => entry.name);
@@ -92,7 +98,7 @@ export function prepGate(source: string): PrepGate {
   return {
     offer: !gate.blocked,
     classNotice: gate.blocked || gate.cautioned ? gate.reason : null,
-    classSeverity: gate.blocked ? "block" : gate.cautioned ? "caution" : null,
+    classSeverity: classSeverityFor(gate),
     packageNotice: packageNoticeFor(blocking),
     cautionNotices: cautions.length > 0 ? [...cautions, message("gate.cautionAdvice")] : [],
     source: gate.source,

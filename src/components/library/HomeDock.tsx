@@ -29,7 +29,7 @@ function DockButton({
   testId,
   tour,
   tooltipSide,
-}: {
+}: Readonly<{
   label: string;
   icon: ReactNode;
   onClick: () => void;
@@ -38,7 +38,7 @@ function DockButton({
   testId?: string;
   tour?: string;
   tooltipSide: "top" | "left" | "right";
-}) {
+}>) {
   return (
     <Tooltip label={label} side={tooltipSide}>
       <Button
@@ -74,7 +74,8 @@ export function HomeDock() {
   const page = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
   const horizontal = dockPlacement === "bottom";
-  const tooltipSide = horizontal ? "top" : dockPlacement === "right" ? "left" : "right";
+  const verticalTooltipSide = dockPlacement === "right" ? "left" : "right";
+  const tooltipSide = horizontal ? "top" : verticalTooltipSide;
 
   const items = (
     <>

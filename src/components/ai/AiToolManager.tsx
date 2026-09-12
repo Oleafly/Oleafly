@@ -42,10 +42,10 @@ function groupHeading(group: AvailableToolGroup): string {
 export function AiToolManager({
   groups,
   onOpen,
-}: {
+}: Readonly<{
   groups: readonly AvailableToolGroup[];
   onOpen?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const enabledByName = useAiToolSettingsStore((state) => state.enabledByName);
   const setToolEnabled = useAiToolSettingsStore((state) => state.setToolEnabled);

@@ -213,7 +213,7 @@ fn browser_page_load_payload(
 fn with_windows<T>(f: impl FnOnce(&mut Vec<BrowserWindowState>) -> T) -> T {
     let mut guard = WINDOWS
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     f(&mut guard)
 }
 
@@ -1026,7 +1026,7 @@ mod tests {
         fn acquire() -> Self {
             let lock = REGISTRY_LOCK
                 .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             with_windows(|windows| windows.clear());
             Self { _lock: lock }
         }

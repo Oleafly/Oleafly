@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Mail, MapPin, Minus, Phone, User, X } from "lucide-react";
 import type { AtsParse } from "@oleafly/preflight";
@@ -36,6 +36,26 @@ export const AtsCard = memo(function AtsCard({ parse }: { parse: AtsParse }) {
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         {parse.sections.map((s) => {
           const section = tp(`preflight:ats.sections.${s.id}`);
+          let ariaLabel: string;
+          let sectionTitle: string;
+          let tone: string;
+          let icon: ReactNode;
+          if (s.present) {
+            ariaLabel = tp("preflight:atsCard.detected", { section });
+            sectionTitle = tp("preflight:atsCard.detectedTitle", { section });
+            tone = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+            icon = <Check className="size-3" />;
+          } else if (s.required) {
+            ariaLabel = tp("preflight:atsCard.requiredMissing", { section });
+            sectionTitle = tp("preflight:atsCard.requiredMissingTitle", { section });
+            tone = "bg-red-500/10 text-red-600 dark:text-red-400";
+            icon = <X className="size-3" />;
+          } else {
+            ariaLabel = tp("preflight:atsCard.optionalMissing", { section });
+            sectionTitle = tp("preflight:atsCard.optionalMissingTitle", { section });
+            tone = "bg-muted text-muted-foreground";
+            icon = <Minus className="size-3" />;
+          }
           return (
             <span
               key={s.name}
@@ -43,36 +63,14 @@ export const AtsCard = memo(function AtsCard({ parse }: { parse: AtsParse }) {
               data-testid={`ats-section-${s.name.toLocaleLowerCase("en-US")}`}
               data-present={s.present ? "true" : "false"}
               data-required={s.required ? "true" : "false"}
-              aria-label={
-                s.present
-                  ? tp("preflight:atsCard.detected", { section })
-                  : s.required
-                    ? tp("preflight:atsCard.requiredMissing", { section })
-                    : tp("preflight:atsCard.optionalMissing", { section })
-              }
-              title={
-                s.present
-                  ? tp("preflight:atsCard.detectedTitle", { section })
-                  : s.required
-                    ? tp("preflight:atsCard.requiredMissingTitle", { section })
-                    : tp("preflight:atsCard.optionalMissingTitle", { section })
-              }
+              aria-label={ariaLabel}
+              title={sectionTitle}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
-                s.present
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : s.required
-                    ? "bg-red-500/10 text-red-600 dark:text-red-400"
-                    : "bg-muted text-muted-foreground",
+                tone,
               )}
             >
-              {s.present ? (
-                <Check className="size-3" />
-              ) : s.required ? (
-                <X className="size-3" />
-              ) : (
-                <Minus className="size-3" />
-              )}
+              {icon}
               {section}
               {!s.required && <span className="sr-only">{t(($) => $.preflight.atsCard.optionalSuffix)}</span>}
             </span>

@@ -29,19 +29,18 @@ const WysiwygEditor = lazy(() =>
 );
 
 function basename(p: string) {
-  const parts = p.split("/");
-  return parts[parts.length - 1];
+  return p.slice(p.lastIndexOf("/") + 1);
 }
 
 // Subscribes to just this file's `dirty` boolean, not the `files` map (which
 // is rebuilt on every edit), so the tab bar doesn't re-render on each keystroke.
-function DirtyDot({ path }: { path: string }) {
+function DirtyDot({ path }: Readonly<{ path: string }>) {
   const dirty = useFilesStore((s) => s.files[path]?.dirty ?? false);
   if (!dirty) return null;
   return <span className="size-1.5 rounded-full bg-primary" />;
 }
 
-function PdfFileView({ projectId, path }: { projectId: string; path: string }) {
+function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -68,7 +67,7 @@ function PdfFileView({ projectId, path }: { projectId: string; path: string }) {
 }
 
 // data: URLs, not blob:, because the CSP only allows img-src data:.
-function ImageFileView({ projectId, path }: { projectId: string; path: string }) {
+function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [src, setSrc] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -214,6 +213,155 @@ export function Editor() {
     return () => setWysiwygVisibilityController(null);
   }, [setWysiwyg]);
 
+  const renderFileArea = () => {
+    if (isDiagramMainFile && wysiwyg && projectId && activePath) {
+      return (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
+              </div>
+            }
+          >
+            <DiagramMainFileView projectId={projectId} path={activePath} />
+          </Suspense>
+        </div>
+      );
+    }
+    if (isDiagramMainFile) {
+      return (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <EditorContextMenu>
+            <CodeMirrorEditor />
+          </EditorContextMenu>
+          <SelectionActionMenu />
+        </div>
+      );
+    }
+    if (isPdfFile && projectId && activePath) {
+      return (
+        <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
+          <PdfFileView projectId={projectId} path={activePath} />
+        </div>
+      );
+    }
+    if (isImageFile && projectId && activePath) {
+      return (
+        <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
+          <ImageFileView projectId={projectId} path={activePath} />
+        </div>
+      );
+    }
+    if (isOpaqueFile && activePath) {
+      return (
+        <div
+          data-testid="binary-file-notice"
+          className="flex flex-1 flex-col items-center justify-center text-center text-muted-foreground"
+        >
+          <FileText className="mb-3 size-10 opacity-30" />
+          <p className="text-sm">{basename(activePath)}</p>
+          <p className="text-xs">{t(($) => $.editor.shell.binaryFile)}</p>
+        </div>
+      );
+    }
+    if (isTypstFile) {
+      return (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <EditorContextMenu>
+            <CodeMirrorEditor />
+          </EditorContextMenu>
+          <SelectionActionMenu />
+        </div>
+      );
+    }
+    return (
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          aria-hidden={!wysiwyg}
+          inert={!wysiwyg ? true : undefined}
+          className={cn(
+            "absolute inset-0",
+            !wysiwyg && "invisible pointer-events-none select-none",
+          )}
+        >
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
+              </div>
+            }
+          >
+            <WysiwygEditor wysiwyg={wysiwyg} />
+          </Suspense>
+        </div>
+        <div
+          aria-hidden={wysiwyg}
+          inert={wysiwyg ? true : undefined}
+          className={cn(
+            "absolute inset-0",
+            wysiwyg && "invisible pointer-events-none select-none",
+          )}
+        >
+          <EditorContextMenu>
+            <CodeMirrorEditor active={!wysiwyg} />
+          </EditorContextMenu>
+          <SelectionActionMenu />
+        </div>
+      </div>
+    );
+  };
+
+  const renderBody = () => {
+    if (diffFocused) {
+      return (
+        <ErrorBoundary
+          fallback={
+            <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+              {t(($) => $.editor.shell.diffCrashed)}
+            </div>
+          }
+        >
+          <DiffView />
+        </ErrorBoundary>
+      );
+    }
+    if (!hasOpenFile) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center text-center text-muted-foreground">
+          <FileText className="mb-3 size-10 opacity-30" />
+          <p className="text-sm">{t(($) => $.editor.shell.noFileOpen)}</p>
+          <p className="text-xs">{t(($) => $.editor.shell.noFileOpenHint)}</p>
+        </div>
+      );
+    }
+    return (
+      <>
+        {showLatexToolbar && (
+          <div className="shrink-0">
+            <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
+          </div>
+        )}
+        {showMarkdownToolbar && (
+          <div className="shrink-0">
+            <MarkdownToolbar
+              wysiwyg={wysiwyg}
+              onToggleWysiwyg={toggleWysiwyg}
+              showVisualToggle={visualEnabled}
+              showProjectInfo={markdownIsEngineSource}
+            />
+          </div>
+        )}
+        {showTypstToolbar && (
+          <div className="shrink-0">
+            <TypstToolbar />
+          </div>
+        )}
+        {renderFileArea()}
+      </>
+    );
+  };
+
   return (
     <div
       ref={interactionRoot}
@@ -317,124 +465,7 @@ export function Editor() {
           surface={wysiwyg ? "visual" : "source"}
         />
       ) : null}
-      {diffFocused ? (
-        <ErrorBoundary
-          fallback={
-            <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              {t(($) => $.editor.shell.diffCrashed)}
-            </div>
-          }
-        >
-          <DiffView />
-        </ErrorBoundary>
-      ) : hasOpenFile ? (
-        <>
-          {showLatexToolbar && (
-            <div className="shrink-0">
-              <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
-            </div>
-          )}
-          {showMarkdownToolbar && (
-            <div className="shrink-0">
-              <MarkdownToolbar
-                wysiwyg={wysiwyg}
-                onToggleWysiwyg={toggleWysiwyg}
-                showVisualToggle={visualEnabled}
-                showProjectInfo={markdownIsEngineSource}
-              />
-            </div>
-          )}
-          {showTypstToolbar && (
-            <div className="shrink-0">
-              <TypstToolbar />
-            </div>
-          )}
-          {isDiagramMainFile && wysiwyg && projectId && activePath ? (
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-                  </div>
-                }
-              >
-                <DiagramMainFileView projectId={projectId} path={activePath} />
-              </Suspense>
-            </div>
-          ) : isDiagramMainFile ? (
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <EditorContextMenu>
-                <CodeMirrorEditor />
-              </EditorContextMenu>
-              <SelectionActionMenu />
-            </div>
-          ) : isPdfFile && projectId && activePath ? (
-            <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
-              <PdfFileView projectId={projectId} path={activePath} />
-            </div>
-          ) : isImageFile && projectId && activePath ? (
-            <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
-              <ImageFileView projectId={projectId} path={activePath} />
-            </div>
-          ) : isOpaqueFile && activePath ? (
-            <div
-              data-testid="binary-file-notice"
-              className="flex flex-1 flex-col items-center justify-center text-center text-muted-foreground"
-            >
-              <FileText className="mb-3 size-10 opacity-30" />
-              <p className="text-sm">{basename(activePath)}</p>
-              <p className="text-xs">{t(($) => $.editor.shell.binaryFile)}</p>
-            </div>
-          ) : isTypstFile ? (
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <EditorContextMenu>
-                <CodeMirrorEditor />
-              </EditorContextMenu>
-              <SelectionActionMenu />
-            </div>
-          ) : (
-            <div className="relative min-h-0 flex-1 overflow-hidden">
-              <div
-                aria-hidden={!wysiwyg}
-                inert={!wysiwyg ? true : undefined}
-                className={cn(
-                  "absolute inset-0",
-                  !wysiwyg && "invisible pointer-events-none select-none",
-                )}
-              >
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-                    </div>
-                  }
-                >
-                  <WysiwygEditor wysiwyg={wysiwyg} />
-                </Suspense>
-              </div>
-              <div
-                aria-hidden={wysiwyg}
-                inert={wysiwyg ? true : undefined}
-                className={cn(
-                  "absolute inset-0",
-                  wysiwyg && "invisible pointer-events-none select-none",
-                )}
-              >
-                <EditorContextMenu>
-                  <CodeMirrorEditor active={!wysiwyg} />
-                </EditorContextMenu>
-                <SelectionActionMenu />
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="flex flex-1 flex-col items-center justify-center text-center text-muted-foreground">
-          <FileText className="mb-3 size-10 opacity-30" />
-          <p className="text-sm">{t(($) => $.editor.shell.noFileOpen)}</p>
-          <p className="text-xs">{t(($) => $.editor.shell.noFileOpenHint)}</p>
-        </div>
-      )}
+      {renderBody()}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  appendHandoffPrompt,
   buildAiToolInventory,
   buildToolContinuation,
   drainPendingImages,
@@ -171,5 +172,26 @@ describe("persona instructions", () => {
     expect(
       resolveResponseInstructions(personas, "missing-persona", "Keep responses brief."),
     ).toBe("");
+  });
+});
+
+describe("handoff prompt append", () => {
+  it("returns the handoff prompt when the composer is empty or blank", () => {
+    expect(appendHandoffPrompt("", "Summarize the results")).toBe("Summarize the results");
+    expect(appendHandoffPrompt("   \n\t ", "Summarize the results")).toBe("Summarize the results");
+  });
+
+  it("keeps the draft and strips only its trailing whitespace run", () => {
+    expect(appendHandoffPrompt("Draft text   \n\t\u00a0", "Next")).toBe("Draft text\n\nNext");
+    expect(appendHandoffPrompt("  Leading kept", "Next")).toBe("  Leading kept\n\nNext");
+    expect(appendHandoffPrompt("No trailing", "Next")).toBe("No trailing\n\nNext");
+  });
+
+  it("matches the trailing-whitespace regex it replaced", () => {
+    for (const draft of ["a ", "a\n\n\n", "a\u2028\u3000", "a b  ", " ", "a"]) {
+      expect(appendHandoffPrompt(draft, "P")).toBe(
+        draft.trim() ? `${draft.replace(/\s+$/u, "")}\n\nP` : "P",
+      );
+    }
   });
 });

@@ -13,8 +13,12 @@ const fallbackValues = new Map<string, string>();
 
 const fallbackStorage: StateStorage = {
   getItem: (key) => fallbackValues.get(key) ?? null,
-  setItem: (key, value) => void fallbackValues.set(key, value),
-  removeItem: (key) => void fallbackValues.delete(key),
+  setItem: (key, value) => {
+    fallbackValues.set(key, value);
+  },
+  removeItem: (key) => {
+    fallbackValues.delete(key);
+  },
 };
 
 function browserStorage(): StateStorage {

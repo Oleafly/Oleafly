@@ -444,6 +444,9 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
 
   setLanguageService: (update) => {
     const current = get().snapshot;
+    const clonedCapabilities = update.capabilities
+      ? { ...update.capabilities }
+      : null;
     set({
       snapshot: {
         ...current,
@@ -453,9 +456,7 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
           capabilities:
             update.capabilities === undefined
               ? current.languageService.capabilities
-              : update.capabilities
-                ? { ...update.capabilities }
-                : null,
+              : clonedCapabilities,
         },
         updatedAt: Date.now(),
       },

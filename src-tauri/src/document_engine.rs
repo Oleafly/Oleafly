@@ -1930,7 +1930,8 @@ async fn prepare_compile_artifacts(
         clear_pythontex_code_artifact(&spec.artifacts.output_dir, crate::paths::ENTRY_STEM)?;
     }
     if let EngineInput::Generated { path, content } = &spec.input {
-        std::fs::write(path, content)
+        tokio::fs::write(path, content)
+            .await
             .map_err(|error| format!("failed to write engine entry {}: {error}", path.display()))?;
     }
     Ok(retained)
@@ -2416,7 +2417,7 @@ fn is_luatex_invocation(path: &Path, args: &[String]) -> bool {
     args.iter().any(|argument| argument == "-lualatex")
         || path
             .file_stem()
-            .and_then(|name| name.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .is_some_and(|name| {
                 matches!(
                     name.to_ascii_lowercase().as_str(),

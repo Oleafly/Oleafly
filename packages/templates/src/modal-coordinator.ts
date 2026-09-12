@@ -19,7 +19,7 @@ export function visibleFocusable(elements: HTMLElement[]): HTMLElement[] {
 }
 
 export class ModalCoordinator {
-  private stack: ModalRegistration[] = [];
+  private readonly stack: ModalRegistration[] = [];
 
   add(opener: HTMLElement | null, logicalOverlay: HTMLElement | null = null): symbol {
     const id = Symbol("modal");

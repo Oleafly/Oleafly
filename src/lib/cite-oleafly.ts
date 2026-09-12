@@ -56,5 +56,5 @@ export function oleaflyBibtex(version: string): string {
 }
 
 export function bibtexHasOleaflyEntry(bibtex: string): boolean {
-  return new RegExp(`@\\w+\\s*\\{\\s*${OLEAFLY_CITATION_KEY}\\s*,`, "iu").test(bibtex);
+  return new RegExp(String.raw`@\w+\s*\{\s*${OLEAFLY_CITATION_KEY}\s*,`, "iu").test(bibtex);
 }

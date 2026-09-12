@@ -88,12 +88,12 @@ function collectAgents(records: TurnRecord[]): AgentState[] {
 function avatarHue(id: string): number {
   let hash = 0;
   for (const char of id) {
-    hash = (hash * 31 + char.charCodeAt(0)) % 360;
+    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 360;
   }
   return hash;
 }
 
-function StatusIcon({ status }: { status: AgentDisplayStatus }) {
+function StatusIcon({ status }: Readonly<{ status: AgentDisplayStatus }>) {
   if (status === "active") return <Loader2 className="size-3 shrink-0 animate-spin" />;
   if (status === "awaiting")
     return <ShieldAlert className="size-3 shrink-0 text-amber-500" />;
@@ -147,14 +147,14 @@ export function SubagentActivity({
   onError,
   onOpenSession,
   projectId,
-}: {
+}: Readonly<{
   chatId: string;
   streaming: boolean;
   activeRunId: () => string | null;
   onError?: (message: string) => void;
   onOpenSession?: (sessionId: string, runtime?: "built-in" | "acp" | null) => void;
   projectId?: string | null;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   // A stable empty array keeps the selector's output referentially equal
   // for chats without records (a fresh [] would re-render on every touch).

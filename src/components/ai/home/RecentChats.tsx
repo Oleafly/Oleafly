@@ -12,14 +12,14 @@ export function RecentChats({
   defaultOpen = false,
   onOpen,
   onShowAll,
-}: {
+}: Readonly<{
   chats: readonly StoredChat[];
   currentHead: string | null;
   limit?: number;
   defaultOpen?: boolean;
   onOpen: (chat: StoredChat) => void;
   onShowAll: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   if (chats.length === 0) return null;
   const formatter = new Intl.DateTimeFormat(currentLocale(), {

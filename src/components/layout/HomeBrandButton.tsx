@@ -6,10 +6,10 @@ import { Tooltip } from "@/components/ui/tooltip";
 export function HomeBrandButton({
   onClick,
   className,
-}: {
+}: Readonly<{
   onClick: () => void;
   className?: string;
-}) {
+}>) {
   const { t } = useTranslation(["shell"]);
   return (
     <Tooltip

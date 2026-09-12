@@ -202,7 +202,7 @@ function safeUrl(value: unknown): string | null {
 }
 
 function yearFrom(value: unknown): number | null {
-  const match = String(value ?? "").match(/\b(18|19|20|21)\d{2}\b/);
+  const match = /\b(18|19|20|21)\d{2}\b/.exec(String((value ?? "") as string | number | boolean));
   return match ? Number(match[0]) : null;
 }
 
@@ -411,7 +411,7 @@ export function parseGoogleScholarLiterature(raw: string): ParsedSource {
     const url = safeUrl(item.link);
     let arxivId: string | null = null;
     if (url) {
-      const match = url.match(/arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/i);
+      const match = /arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/i.exec(url);
       if (match) {
         arxivId = match[1].replace(/\.pdf$/i, "").replace(/v\d+$/i, "");
       }
@@ -498,19 +498,19 @@ export function parsePubMedLiterature(raw: string): ParsedSource {
 }
 
 function xmlTag(block: string, tag: string): string | null {
-  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   return text(
     new RegExp(
-      `<${escaped}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escaped}>`,
+      String.raw`<${escaped}(?:\s[^>]*)?>([\s\S]*?)<\/${escaped}>`,
       "i",
     ).exec(block)?.[1],
   );
 }
 
 function xmlAttribute(tag: string, name: string): string | null {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   const match = new RegExp(
-    `\\b${escaped}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`,
+    String.raw`\b${escaped}\s*=\s*(?:"([^"]*)"|'([^']*)')`,
     "i",
   ).exec(tag);
   return text(match?.[1] ?? match?.[2]);

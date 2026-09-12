@@ -41,10 +41,28 @@ async function commitAll(page: import("../helpers").Page, message: string) {
   await page.fill('[data-testid="commit-title"]', message);
   const commit = page.locator('[data-testid="commit-button"]');
   await expect(commit).toBeEnabled({ timeout: 5_000 });
+  await page.evaluate(
+    `(() => {
+      window.__sourceControlNotices = [];
+      const record = () => {
+        const text = document.querySelector('[data-testid="source-control-status"]')?.textContent ?? "";
+        if (text && !window.__sourceControlNotices.includes(text)) window.__sourceControlNotices.push(text);
+      };
+      window.__sourceControlObserver?.disconnect();
+      window.__sourceControlObserver = new MutationObserver(record);
+      window.__sourceControlObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+      record();
+      return true;
+    })()`,
+  );
   await commit.click();
   try {
     await page.waitForFunction(
-      `(document.querySelector('[data-testid="source-control-status"]')?.textContent ?? "").includes(${JSON.stringify(`Committed: "${message}"`)})`,
+      `(() => {
+        const expected = ${JSON.stringify(`Committed: "${message}"`)};
+        const live = document.querySelector('[data-testid="source-control-status"]')?.textContent ?? "";
+        return live.includes(expected) || (window.__sourceControlNotices ?? []).some((text) => text.includes(expected));
+      })()`,
       15_000,
     );
   } catch (error) {
@@ -59,6 +77,7 @@ async function commitAll(page: import("../helpers").Page, message: string) {
           buttonDisabled: button ? button.disabled : null,
           buttonText: button ? button.textContent : null,
           status: status ? status.textContent : null,
+          notices: window.__sourceControlNotices ?? null,
           actions: actions ? actions.innerText.slice(0, 600) : null,
         });
       })()`,

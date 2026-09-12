@@ -3,9 +3,9 @@ const ALPHAXIV_ICON =
 
 export function AlphaXivBrandIcon({
   className,
-}: {
+}: Readonly<{
   className?: string;
-}) {
+}>) {
   return (
     <img
       src={ALPHAXIV_ICON}
@@ -16,7 +16,7 @@ export function AlphaXivBrandIcon({
   );
 }
 
-export function ZoteroBrandIcon({ className }: { className?: string }) {
+export function ZoteroBrandIcon({ className }: Readonly<{ className?: string }>) {
   return (
     <svg
       aria-hidden="true"

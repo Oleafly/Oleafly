@@ -74,6 +74,30 @@ function setPressed(button: HTMLButtonElement, pressed: boolean): void {
   button.setAttribute("aria-pressed", String(pressed));
 }
 
+function countSearchMatches(
+  view: EditorView,
+  query: SearchQuery,
+): { total: number; cur: number } | null {
+  const sel = view.state.selection.main;
+  let total = 0;
+  let cur = 0;
+  try {
+    const it = query.getCursor(view.state) as Iterator<{
+      from: number;
+      to: number;
+    }>;
+    let r = it.next();
+    while (!r.done && total < 2000) {
+      total++;
+      if (r.value.from === sel.from && r.value.to === sel.to) cur = total;
+      r = it.next();
+    }
+  } catch {
+    return null;
+  }
+  return { total, cur };
+}
+
 function createSearchPanel(view: EditorView, t: EditorTranslator): Panel {
   const q0 = getSearchQuery(view.state);
   let caseSensitive = q0.caseSensitive;
@@ -242,28 +266,23 @@ function createSearchPanel(view: EditorView, t: EditorTranslator): Panel {
       count.textContent = q.search && !q.valid ? t("search.invalid") : "";
       return;
     }
-    const sel = view.state.selection.main;
-    let total = 0;
-    let cur = 0;
-    try {
-      const it = q.getCursor(view.state) as Iterator<{ from: number; to: number }>;
-      let r = it.next();
-      while (!r.done && total < 2000) {
-        total++;
-        if (r.value.from === sel.from && r.value.to === sel.to) cur = total;
-        r = it.next();
-      }
-    } catch {
+    const tally = countSearchMatches(view, q);
+    if (!tally) {
       count.textContent = "";
       return;
     }
+    const { total, cur } = tally;
     const capped = total >= 2000 ? "2000+" : String(total);
-    count.textContent =
-      total === 0
-        ? t("search.noResults")
-        : cur > 0
-          ? t("search.matchPosition", { current: cur, total: capped })
-          : t("search.matchCount", { count: total, total: capped });
+    if (total === 0) {
+      count.textContent = t("search.noResults");
+    } else if (cur > 0) {
+      count.textContent = t("search.matchPosition", {
+        current: cur,
+        total: capped,
+      });
+    } else {
+      count.textContent = t("search.matchCount", { count: total, total: capped });
+    }
   }
 
   findInput.addEventListener("input", commit);

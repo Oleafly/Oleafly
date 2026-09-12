@@ -139,6 +139,48 @@ pub struct Connection {
     stderr: StderrTail,
 }
 
+async fn pump_agent_frames(
+    stdout: tokio::process::ChildStdout,
+    pending: Pending,
+    incoming: mpsc::Sender<Incoming>,
+    stop: watch::Sender<bool>,
+) {
+    let mut reader = BufReader::new(stdout);
+    while let Ok(Some(value)) = read_frame(&mut reader).await {
+        if value.get("method").is_none() {
+            if let Some(id) = value["id"].as_u64() {
+                let sender = pending.lock().ok().and_then(|mut map| map.remove(&id));
+                if let Some(sender) = sender {
+                    let (barrier, processed) = oneshot::channel();
+                    if incoming.send(Incoming::Barrier(barrier)).await.is_err()
+                        || processed.await.is_err()
+                    {
+                        break;
+                    }
+                    let response = if value.get("error").is_some() {
+                        Err(RpcError {
+                            code: value["error"]["code"].as_i64().unwrap_or(-32603),
+                            message: rpc_error_message(&value["error"]),
+                        })
+                    } else if let Some(result) = value.get("result") {
+                        Ok(result.clone())
+                    } else {
+                        Err(RpcError::local("The agent returned an invalid response."))
+                    };
+                    let _ = sender.send(response);
+                }
+            }
+        } else if incoming.send(Incoming::Message(value)).await.is_err() {
+            break;
+        }
+    }
+    let (barrier, processed) = oneshot::channel();
+    if incoming.send(Incoming::Barrier(barrier)).await.is_ok() {
+        let _ = processed.await;
+    }
+    let _ = stop.send(true);
+}
+
 pub async fn read_frame<R: AsyncBufRead + Unpin>(
     reader: &mut R,
 ) -> Result<Option<Value>, RpcError> {
@@ -216,59 +258,12 @@ impl Connection {
         let (stop, mut stop_rx) = watch::channel(false);
         let (closed_tx, closed) = watch::channel(false);
         let pending: Pending = Arc::new(Mutex::new(HashMap::new()));
-        let reader_pending = pending.clone();
-        let reader_incoming = incoming_tx.clone();
-        let reader_stop = stop.clone();
-        let mut reader = tokio::spawn(async move {
-            let mut reader = BufReader::new(stdout);
-            while let Ok(Some(value)) = read_frame(&mut reader).await {
-                if value.get("method").is_none() {
-                    if let Some(id) = value["id"].as_u64() {
-                        let sender = reader_pending
-                            .lock()
-                            .ok()
-                            .and_then(|mut map| map.remove(&id));
-                        if let Some(sender) = sender {
-                            let (barrier, processed) = oneshot::channel();
-                            if reader_incoming
-                                .send(Incoming::Barrier(barrier))
-                                .await
-                                .is_err()
-                                || processed.await.is_err()
-                            {
-                                break;
-                            }
-                            let response = if value.get("error").is_some() {
-                                Err(RpcError {
-                                    code: value["error"]["code"].as_i64().unwrap_or(-32603),
-                                    message: rpc_error_message(&value["error"]),
-                                })
-                            } else if let Some(result) = value.get("result") {
-                                Ok(result.clone())
-                            } else {
-                                Err(RpcError::local("The agent returned an invalid response."))
-                            };
-                            let _ = sender.send(response);
-                        }
-                    }
-                } else if reader_incoming
-                    .send(Incoming::Message(value))
-                    .await
-                    .is_err()
-                {
-                    break;
-                }
-            }
-            let (barrier, processed) = oneshot::channel();
-            if reader_incoming
-                .send(Incoming::Barrier(barrier))
-                .await
-                .is_ok()
-            {
-                let _ = processed.await;
-            }
-            let _ = reader_stop.send(true);
-        });
+        let mut reader = tokio::spawn(pump_agent_frames(
+            stdout,
+            pending.clone(),
+            incoming_tx.clone(),
+            stop.clone(),
+        ));
         let writer_stop = stop.clone();
         let writer = tokio::spawn(async move {
             while let Some(value) = outgoing_rx.recv().await {

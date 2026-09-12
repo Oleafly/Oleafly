@@ -62,14 +62,15 @@ export function SkillShareCard() {
   };
 
   const linkedCount = targets.filter((target) => target.detected && target.linked > 0).length;
-  const summary = loading
-    ? t(($) => $.settings.ai.skills.share.summary.checking)
-    : targets.length === 0
-      ? t(($) => $.settings.ai.skills.share.summary.none)
-      : t(($) => $.settings.ai.skills.share.summary.linked, {
-          linked: formatNumber(linkedCount),
-          count: targets.length,
-        });
+  const summaryFor = (): string => {
+    if (loading) return t(($) => $.settings.ai.skills.share.summary.checking);
+    if (targets.length === 0) return t(($) => $.settings.ai.skills.share.summary.none);
+    return t(($) => $.settings.ai.skills.share.summary.linked, {
+      linked: formatNumber(linkedCount),
+      count: targets.length,
+    });
+  };
+  const summary = summaryFor();
 
   return (
     <CollapsibleSection

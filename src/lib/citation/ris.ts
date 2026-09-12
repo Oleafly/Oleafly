@@ -55,33 +55,37 @@ function first(fields: Map<string, string[]>, ...tags: string[]): string {
   return "";
 }
 
+function risEntryFields(fields: Map<string, string[]>): Record<string, string> {
+  const authors = (fields.get("AU") ?? fields.get("A1") ?? []).map(toBibName);
+  const title = first(fields, "TI", "T1");
+  const year = (/\d{4}/.exec(first(fields, "PY", "Y1")) ?? [])[0] ?? "";
+  const journal = first(fields, "T2", "JO", "JF");
+  const volume = first(fields, "VL");
+  const issue = first(fields, "IS");
+  const startPage = first(fields, "SP");
+  const endPage = first(fields, "EP");
+  const doi = first(fields, "DO", "DOI");
+  const url = first(fields, "UR");
+  const publisher = first(fields, "PB");
+
+  const entryFields: Record<string, string> = { title, author: authors.join(" and "), year };
+  if (journal) entryFields.journal = journal;
+  if (volume) entryFields.volume = volume;
+  if (issue) entryFields.number = issue;
+  if (startPage) entryFields.pages = endPage ? `${startPage}--${endPage}` : startPage;
+  if (doi) entryFields.doi = doi;
+  if (url) entryFields.url = url;
+  if (publisher) entryFields.publisher = publisher;
+  return entryFields;
+}
+
 export function parseRis(text: string): ParsedBib[] {
   const keys = new Set<string>();
   const entries: ParsedBib[] = [];
   for (const { fields } of parseRisRecords(text)) {
     const typeCode = first(fields, "TY").toUpperCase();
     const type = RIS_TYPE_MAP[typeCode] ?? "misc";
-    const authors = (fields.get("AU") ?? fields.get("A1") ?? []).map(toBibName);
-    const title = first(fields, "TI", "T1");
-    const year = (first(fields, "PY", "Y1").match(/\d{4}/) ?? [])[0] ?? "";
-    const journal = first(fields, "T2", "JO", "JF");
-    const volume = first(fields, "VL");
-    const issue = first(fields, "IS");
-    const startPage = first(fields, "SP");
-    const endPage = first(fields, "EP");
-    const doi = first(fields, "DO", "DOI");
-    const url = first(fields, "UR");
-    const publisher = first(fields, "PB");
-
-    const entryFields: Record<string, string> = { title, author: authors.join(" and "), year };
-    if (journal) entryFields.journal = journal;
-    if (volume) entryFields.volume = volume;
-    if (issue) entryFields.number = issue;
-    if (startPage) entryFields.pages = endPage ? `${startPage}--${endPage}` : startPage;
-    if (doi) entryFields.doi = doi;
-    if (url) entryFields.url = url;
-    if (publisher) entryFields.publisher = publisher;
-
+    const entryFields = risEntryFields(fields);
     const key = generateCiteKey(entryFields, keys);
     keys.add(key);
     entries.push({ type, key, fields: entryFields });

@@ -15,8 +15,8 @@ export function diffWords(oldText: string, newText: string): WordDiffToken[] {
   const out: WordDiffToken[] = [];
   const push = (kind: WordDiffToken["kind"], text: string) => {
     if (!text) return;
-    const last = out[out.length - 1];
-    if (last && last.kind === kind) last.text += text;
+    const last = out.at(-1);
+    if (last?.kind === kind) last.text += text;
     else out.push({ kind, text });
   };
 

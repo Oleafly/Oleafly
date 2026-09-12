@@ -94,6 +94,136 @@ where
     }
 }
 
+fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        use tauri::{Emitter, Manager};
+        if window.state::<updater::UpdateState>().installing() {
+            api.prevent_close();
+            return;
+        }
+        // Secondary windows (PDF preview) hold no editor buffers and
+        // must close freely; the quit gates guard the main window only.
+        if window.label() != "main" {
+            return;
+        }
+        // Dirty-buffer flush comes first: confirming the TinyTeX
+        // dialog exits immediately, so reaching it before the flush
+        // could discard unsaved edits. `confirm_quit_flush` re-enters
+        // the TinyTeX gate itself once the flush is done.
+        if !quit_gate::flush_confirmed() {
+            api.prevent_close();
+            let _ = window.emit("quit-flush-requested", false);
+        } else if latex_engine::install_in_progress() && !latex_engine::quit_confirmed() {
+            api.prevent_close();
+            let _ = window.emit("tinytex-quit-blocked", ());
+        }
+    }
+}
+
+fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    acp::attach(app.handle()).map_err(std::io::Error::other)?;
+    agent::usage::attach_acp_usage(app.handle()).map_err(std::io::Error::other)?;
+    agent::task_runtime::register_task_runtimes(app.handle()).map_err(std::io::Error::other)?;
+    {
+        use tauri::Manager;
+        let handle = app.handle().clone();
+        handle
+            .state::<research_tasks::ResearchTaskState>()
+            .attach_app(handle.clone());
+        tauri::async_runtime::spawn(async move {
+            let tasks = handle.state::<research_tasks::ResearchTaskState>();
+            if let Err(error) = tasks.recover(handle.state::<AppState>().inner()).await {
+                let _ = crate::project::append_app_log(format!(
+                    "Research task recovery failed: {error}"
+                ));
+            }
+        });
+    }
+    crate::stall_trace::mark_ui_thread();
+    crate::stall_trace::start_watchdog();
+    if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
+        use tauri::Manager;
+        if let Some(window) = app.get_webview_window("main") {
+            #[cfg(target_os = "windows")]
+            {
+                let _ = window.set_decorations(false);
+            }
+            let _ = window.maximize();
+        }
+    }
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    {
+        use tauri::Manager;
+        if let Some(window) = app.get_webview_window("main") {
+            #[cfg(target_os = "macos")]
+            let _ = window_vibrancy::apply_vibrancy(
+                &window,
+                window_vibrancy::NSVisualEffectMaterial::UnderWindowBackground,
+                Some(window_vibrancy::NSVisualEffectState::Active),
+                None,
+            );
+            #[cfg(target_os = "windows")]
+            let _ = window_vibrancy::apply_acrylic(&window, Some((18, 18, 18, 125)));
+        }
+    }
+    // The bridge returns eval results through a plugin command, so grant
+    // its permission at runtime here; a static capabilities/ entry would
+    // break normal builds, where the plugin (and its permission) doesn't exist.
+    #[cfg(feature = "e2e-testing")]
+    {
+        use tauri::Manager;
+        app.add_capability(
+            tauri::ipc::CapabilityBuilder::new("e2e-playwright")
+                .window("main")
+                .permission("playwright:default"),
+        )?;
+        // CI-parity window sizing: CI runner displays are smaller than
+        // developer monitors, which pushes toolbar controls into the
+        // overflow menu and exercises entirely different interaction
+        // paths. OLEAFLY_E2E_WINDOW=WxH reproduces that locally.
+        if let Ok(spec) = std::env::var("OLEAFLY_E2E_WINDOW") {
+            if let Some((w, h)) = spec.split_once('x') {
+                if let (Ok(w), Ok(h)) = (w.parse::<f64>(), h.parse::<f64>()) {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.set_size(tauri::LogicalSize::new(w, h));
+                    }
+                }
+            }
+        }
+    }
+
+    // Permanent deletion publishes a durable Checkpoints cleanup job
+    // before the recycled worktree disappears. Retry abandoned jobs
+    // off the UI thread, and never make a cleanup fault block startup.
+    tauri::async_runtime::spawn_blocking(|| {
+        if let Err(error) = crate::storage::retry_pending_checkpoint_cleanup() {
+            eprintln!("Checkpoints cleanup retry failed: {error}");
+            let _ = crate::project::append_app_log(format!(
+                "Checkpoints cleanup retry failed: {error}"
+            ));
+        }
+    });
+
+    // Start the MCP server on boot when the user has enabled it. Failure to
+    // bind must not prevent the app from starting; Settings shows the state.
+    let handle = app.handle().clone();
+    tauri::async_runtime::spawn(async move {
+        if let Ok(cfg) = crate::config::read_config() {
+            if cfg.mcp_enabled {
+                if let Err(e) = crate::mcp::start_configured(handle, cfg.mcp_port).await {
+                    eprintln!("mcp: autostart failed: {e}");
+                }
+            } else if let Err(e) = crate::mcp::server::remove_discovery_file() {
+                eprintln!("mcp: disabled-startup discovery cleanup failed: {e}");
+                let _ = crate::project::append_app_log(format!(
+                    "MCP disabled-startup discovery cleanup failed: {e}"
+                ));
+            }
+        }
+    });
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if research_mcp::stdio_bridge_requested() {
@@ -170,135 +300,8 @@ pub fn run() {
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                use tauri::{Emitter, Manager};
-                if window.state::<updater::UpdateState>().installing() {
-                    api.prevent_close();
-                    return;
-                }
-                // Secondary windows (PDF preview) hold no editor buffers and
-                // must close freely; the quit gates guard the main window only.
-                if window.label() != "main" {
-                    return;
-                }
-                // Dirty-buffer flush comes first: confirming the TinyTeX
-                // dialog exits immediately, so reaching it before the flush
-                // could discard unsaved edits. `confirm_quit_flush` re-enters
-                // the TinyTeX gate itself once the flush is done.
-                if !quit_gate::flush_confirmed() {
-                    api.prevent_close();
-                    let _ = window.emit("quit-flush-requested", false);
-                } else if latex_engine::install_in_progress() && !latex_engine::quit_confirmed() {
-                    api.prevent_close();
-                    let _ = window.emit("tinytex-quit-blocked", ());
-                }
-            }
-        })
-        .setup(|app| {
-            acp::attach(app.handle()).map_err(std::io::Error::other)?;
-            agent::usage::attach_acp_usage(app.handle()).map_err(std::io::Error::other)?;
-            agent::task_runtime::register_task_runtimes(app.handle())
-                .map_err(std::io::Error::other)?;
-            {
-                use tauri::Manager;
-                let handle = app.handle().clone();
-                handle
-                    .state::<research_tasks::ResearchTaskState>()
-                    .attach_app(handle.clone());
-                tauri::async_runtime::spawn(async move {
-                    let tasks = handle.state::<research_tasks::ResearchTaskState>();
-                    if let Err(error) = tasks.recover(handle.state::<AppState>().inner()).await {
-                        let _ = crate::project::append_app_log(format!(
-                            "Research task recovery failed: {error}"
-                        ));
-                    }
-                });
-            }
-            crate::stall_trace::mark_ui_thread();
-            crate::stall_trace::start_watchdog();
-            if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
-                use tauri::Manager;
-                if let Some(window) = app.get_webview_window("main") {
-                    #[cfg(target_os = "windows")]
-                    {
-                        let _ = window.set_decorations(false);
-                    }
-                    let _ = window.maximize();
-                }
-            }
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
-            {
-                use tauri::Manager;
-                if let Some(window) = app.get_webview_window("main") {
-                    #[cfg(target_os = "macos")]
-                    let _ = window_vibrancy::apply_vibrancy(
-                        &window,
-                        window_vibrancy::NSVisualEffectMaterial::UnderWindowBackground,
-                        Some(window_vibrancy::NSVisualEffectState::Active),
-                        None,
-                    );
-                    #[cfg(target_os = "windows")]
-                    let _ = window_vibrancy::apply_acrylic(&window, Some((18, 18, 18, 125)));
-                }
-            }
-            // The bridge returns eval results through a plugin command, so grant
-            // its permission at runtime here; a static capabilities/ entry would
-            // break normal builds, where the plugin (and its permission) doesn't exist.
-            #[cfg(feature = "e2e-testing")]
-            {
-                use tauri::Manager;
-                app.add_capability(
-                    tauri::ipc::CapabilityBuilder::new("e2e-playwright")
-                        .window("main")
-                        .permission("playwright:default"),
-                )?;
-                // CI-parity window sizing: CI runner displays are smaller than
-                // developer monitors, which pushes toolbar controls into the
-                // overflow menu and exercises entirely different interaction
-                // paths. OLEAFLY_E2E_WINDOW=WxH reproduces that locally.
-                if let Ok(spec) = std::env::var("OLEAFLY_E2E_WINDOW") {
-                    if let Some((w, h)) = spec.split_once('x') {
-                        if let (Ok(w), Ok(h)) = (w.parse::<f64>(), h.parse::<f64>()) {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.set_size(tauri::LogicalSize::new(w, h));
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Permanent deletion publishes a durable Checkpoints cleanup job
-            // before the recycled worktree disappears. Retry abandoned jobs
-            // off the UI thread, and never make a cleanup fault block startup.
-            tauri::async_runtime::spawn_blocking(|| {
-                if let Err(error) = crate::storage::retry_pending_checkpoint_cleanup() {
-                    eprintln!("Checkpoints cleanup retry failed: {error}");
-                    let _ = crate::project::append_app_log(format!(
-                        "Checkpoints cleanup retry failed: {error}"
-                    ));
-                }
-            });
-
-            // Start the MCP server on boot when the user has enabled it. Failure to
-            // bind must not prevent the app from starting; Settings shows the state.
-            let handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                if let Ok(cfg) = crate::config::read_config() {
-                    if cfg.mcp_enabled {
-                        if let Err(e) = crate::mcp::start_configured(handle, cfg.mcp_port).await {
-                            eprintln!("mcp: autostart failed: {e}");
-                        }
-                    } else if let Err(e) = crate::mcp::server::remove_discovery_file() {
-                        eprintln!("mcp: disabled-startup discovery cleanup failed: {e}");
-                        let _ = crate::project::append_app_log(format!(
-                            "MCP disabled-startup discovery cleanup failed: {e}"
-                        ));
-                    }
-                }
-            });
-            Ok(())
-        })
+        .on_window_event(on_window_event)
+        .setup(setup_app)
         .invoke_handler(traced_commands(tauri::generate_handler![
             research_tasks::research_task_list,
             research_tasks::research_task_create,

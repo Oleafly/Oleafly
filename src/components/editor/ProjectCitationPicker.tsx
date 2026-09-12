@@ -32,16 +32,16 @@ import {
 import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reason";
 
 function citationSource(key: string, format: string): string {
-  return format === "markdown" ? `[@${key}]` : `\\cite{${key}}`;
+  return format === "markdown" ? `[@${key}]` : String.raw`\cite{${key}}`;
 }
 
 function CitationRow({
   completion,
   onInsert,
-}: {
+}: Readonly<{
   completion: CitationCompletion;
   onInsert: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <PopoverItem onClick={onInsert}>
@@ -74,9 +74,9 @@ function CitationRow({
 
 export function ProjectCitationPicker({
   variant,
-}: {
+}: Readonly<{
   variant: "bar" | "menu";
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -145,17 +145,21 @@ export function ProjectCitationPicker({
     insertAtCursor(citationSource(entry.key, formattingProfile));
   };
 
-  const status =
+  let status: "pending" | "error" | "ready";
+  if (
     intelligenceState.status === "running" ||
     intelligenceState.status === "not_run" ||
     intelligenceState.stale
-      ? "pending"
-      : intelligenceState.status === "error" ||
-          intelligenceState.status === "unavailable"
-        ? "error"
-        : current
-          ? "ready"
-          : "pending";
+  ) {
+    status = "pending";
+  } else if (
+    intelligenceState.status === "error" ||
+    intelligenceState.status === "unavailable"
+  ) {
+    status = "error";
+  } else {
+    status = current ? "ready" : "pending";
+  }
 
   return (
     <Popover
@@ -191,23 +195,17 @@ export function ProjectCitationPicker({
 
       {intelligenceState.status === "partial" ||
       current?.snapshot.status === "partial" ? (
-        <div
-          role="status"
-          className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] text-amber-800 dark:text-amber-200"
-        >
+        <output className="block border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] text-amber-800 dark:text-amber-200">
           {t(($) => $.editor.citations.partialCatalog)}
-        </div>
+        </output>
       ) : null}
 
       <div className="max-h-72 overflow-y-auto p-1">
         {status === "pending" && (
-          <div
-            role="status"
-            className="flex items-center gap-2 px-2 py-4 text-xs text-muted-foreground"
-          >
+          <output className="flex items-center gap-2 px-2 py-4 text-xs text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
             {t(($) => $.editor.citations.updatingList)}
-          </div>
+          </output>
         )}
         {status === "error" && (
           <div

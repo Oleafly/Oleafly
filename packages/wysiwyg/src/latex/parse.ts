@@ -54,7 +54,7 @@ export interface ParseLatexBodyOptions {
 
 function macroArgContent(node: Macro, index: number): LatexNode[] {
   const arg = node.args?.[index];
-  return arg && arg.type === "argument" ? arg.content : [];
+  return arg?.type === "argument" ? arg.content : [];
 }
 
 function astToText(nodes: LatexNode[]): string {
@@ -70,8 +70,8 @@ function astToText(nodes: LatexNode[]): string {
 function mergeAdjacentText(nodes: JSONContent[]): JSONContent[] {
   const out: JSONContent[] = [];
   for (const node of nodes) {
-    const prev = out[out.length - 1];
-    if (prev && prev.type === "text" && node.type === "text" && JSON.stringify(prev.marks ?? []) === JSON.stringify(node.marks ?? [])) {
+    const prev = out.at(-1);
+    if (prev?.type === "text" && node.type === "text" && JSON.stringify(prev.marks ?? []) === JSON.stringify(node.marks ?? [])) {
       prev.text = (prev.text ?? "") + (node.text ?? "");
       continue;
     }
@@ -80,33 +80,60 @@ function mergeAdjacentText(nodes: JSONContent[]): JSONContent[] {
   return out;
 }
 
+function markedTextNode(text: string, marks: JSONContent["marks"]): JSONContent {
+  return { type: "text", text, ...(marks?.length ? { marks } : {}) };
+}
+
+function markMacroArgumentIndex(node: Macro): number {
+  return node.args && node.args.length > 1 ? node.args.length - 1 : 0;
+}
+
+function inlineMacroToJSON(node: Macro, marks: JSONContent["marks"] = []): JSONContent[] | null {
+  if (node.content === "href") {
+    const href = astToText(macroArgContent(node, 1));
+    const text = astToText(macroArgContent(node, 2));
+    return [{ type: "text", text, marks: [...(marks ?? []), { type: "link", attrs: { href } }] }];
+  }
+  if (node.content in MARK_MACRO) {
+    const inner = macroArgContent(node, markMacroArgumentIndex(node));
+    return inlineNodesToJSON(inner, [...(marks ?? []), { type: MARK_MACRO[node.content] }]);
+  }
+  if (node.content in ESCAPED_CHAR_MACRO) {
+    return [markedTextNode(ESCAPED_CHAR_MACRO[node.content], marks)];
+  }
+  return null;
+}
+
+function inlineNodeToJSON(node: LatexNode, marks: JSONContent["marks"] = []): JSONContent[] | null {
+  if (node.type === "string") return [markedTextNode(node.content, marks)];
+  if (node.type === "whitespace") return [markedTextNode(" ", marks)];
+  if (node.type === "macro") return inlineMacroToJSON(node, marks);
+  return null;
+}
+
+function rawInlineRun(nodes: LatexNode[], start: number): { source: string; next: number } {
+  let end = start;
+  let source = printRawNode(nodes[end]);
+  while (end + 1 < nodes.length && nodes[end + 1].type === "group") {
+    end++;
+    source += printRawNode(nodes[end]);
+  }
+  return { source, next: end + 1 };
+}
+
 function inlineNodesToJSON(nodes: LatexNode[], marks: JSONContent["marks"] = []): JSONContent[] {
   const out: JSONContent[] = [];
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    if (node.type === "string") {
-      out.push({ type: "text", text: node.content, ...(marks.length ? { marks } : {}) });
-    } else if (node.type === "whitespace") {
-      out.push({ type: "text", text: " ", ...(marks.length ? { marks } : {}) });
-    } else if (node.type === "macro" && node.content === "href") {
-      const href = astToText(macroArgContent(node, 1));
-      const text = astToText(macroArgContent(node, 2));
-      out.push({ type: "text", text, marks: [...marks, { type: "link", attrs: { href } }] });
-    } else if (node.type === "macro" && node.content in MARK_MACRO) {
-      const inner = macroArgContent(node, node.args && node.args.length > 1 ? node.args.length - 1 : 0);
-      out.push(...inlineNodesToJSON(inner, [...marks, { type: MARK_MACRO[node.content] }]));
-    } else if (node.type === "macro" && node.content in ESCAPED_CHAR_MACRO) {
-      out.push({ type: "text", text: ESCAPED_CHAR_MACRO[node.content], ...(marks.length ? { marks } : {}) });
-    } else {
-      let end = i;
-      let source = printRawNode(nodes[end]);
-      while (end + 1 < nodes.length && nodes[end + 1].type === "group") {
-        end++;
-        source += printRawNode(nodes[end]);
-      }
-      i = end;
-      out.push({ type: "rawInline", attrs: { source } });
+  let i = 0;
+  while (i < nodes.length) {
+    const mapped = inlineNodeToJSON(nodes[i], marks);
+    if (mapped) {
+      out.push(...mapped);
+      i++;
+      continue;
     }
+    const run = rawInlineRun(nodes, i);
+    out.push({ type: "rawInline", attrs: { source: run.source } });
+    i = run.next;
   }
   return mergeAdjacentText(out);
 }
@@ -124,7 +151,7 @@ function itemsOf(env: Environment): LatexNode[][] {
       current = [];
       items.push(current);
       const lastArg = node.args?.[node.args.length - 1];
-      if (lastArg && lastArg.type === "argument") {
+      if (lastArg?.type === "argument") {
         const start = lastArg.content.findIndex((n) => n.type !== "whitespace");
         if (start !== -1) current.push(...lastArg.content.slice(start));
       }
@@ -146,6 +173,24 @@ function environmentToJSON(env: Environment): JSONContent | null {
         type: "listItem",
         content: [{ type: "paragraph", content: inlineNodesToJSON(itemNodes) }],
       })),
+    };
+  }
+  return null;
+}
+
+function macroBlock(node: Macro): JSONContent | null {
+  if (node.content in HEADING_LEVEL) {
+    const titleNodes = macroArgContent(node, (node.args?.length ?? 1) - 1);
+    return {
+      type: "heading",
+      attrs: { level: HEADING_LEVEL[node.content] },
+      content: [{ type: "text", text: astToText(titleNodes) }],
+    };
+  }
+  if (BLOCK_MACROS.has(node.content)) {
+    return {
+      type: "rawBlock",
+      attrs: { source: printRawNode(node) },
     };
   }
   return null;
@@ -190,22 +235,10 @@ export function parseLatexBody(
       continue;
     }
     if (node.type === "macro") {
-      if (node.content in HEADING_LEVEL) {
+      const block = macroBlock(node);
+      if (block) {
         flushParagraph();
-        const titleNodes = macroArgContent(node, (node.args?.length ?? 1) - 1);
-        content.push({
-          type: "heading",
-          attrs: { level: HEADING_LEVEL[node.content] },
-          content: [{ type: "text", text: astToText(titleNodes) }],
-        });
-        continue;
-      }
-      if (BLOCK_MACROS.has(node.content)) {
-        flushParagraph();
-        content.push({
-          type: "rawBlock",
-          attrs: { source: printRawNode(node) },
-        });
+        content.push(block);
         continue;
       }
       paragraphBuffer.push(node);
@@ -213,12 +246,9 @@ export function parseLatexBody(
     }
     if (node.type === "environment") {
       flushParagraph();
-      const mapped = environmentToJSON(node);
-      if (mapped) {
-        content.push(mapped);
-        continue;
-      }
-      content.push({ type: "rawBlock", attrs: { source: printRawNode(node) } });
+      content.push(
+        environmentToJSON(node) ?? { type: "rawBlock", attrs: { source: printRawNode(node) } },
+      );
       continue;
     }
     paragraphBuffer.push(node);

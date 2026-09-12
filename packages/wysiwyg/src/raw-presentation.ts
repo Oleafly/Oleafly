@@ -53,28 +53,42 @@ function readableLatex(source: string): string {
     return ` OLEAFLYESCAPED${index}X `;
   };
   const text = stripComments(source.slice(0, PREVIEW_SOURCE_LIMIT))
-    .replace(/\{\\L\}/gu, "Ł")
+    .replaceAll(String.raw`{\L}`, "Ł")
     .replace(/\\([%$&#_{}])/gu, (_match, value: string) => protect(value))
     .replace(/\\thanks\s*\{[^{}]*\}/gu, " ")
     .replace(/\\footnotemark(?:\[[^\]]*\])?/gu, " ")
     .replace(/\\L(?![A-Za-z])/gu, "Ł")
-    .replace(/\\ /gu, " ")
-    .replace(/\\\\/gu, " · ")
+    .replaceAll(String.raw`\ `, " ")
+    .replaceAll(String.raw`\\`, " · ")
     .replace(/\\(?:quad|qquad|enspace|hfill)\b/gu, " ")
     .replace(/\\and\b/gu, " · ")
     .replace(/\\(?:begin|end)\{[^}]+\}/gu, " ")
     .replace(/\\[A-Za-z@]+\*?(?:\s*\[[^\]]*\])?/gu, " ")
     .replace(/[{}]/gu, " ")
-    .replace(/~/gu, " ")
+    .replaceAll("~", " ")
     .replace(/OLEAFLYESCAPED(\d+)X/gu, (_match, index: string) => escaped[Number(index)] ?? "")
     .replace(/[{}]/gu, " ")
     .replace(/\\+/gu, " ")
-    .replace(/\s*·\s*/gu, " · ")
+    .replaceAll("·", " · ")
     .replace(/\s+/gu, " ")
     .trim();
 
   if (text.length <= PREVIEW_TEXT_LIMIT) return text;
   return `${text.slice(0, PREVIEW_TEXT_LIMIT - 1).trimEnd()}…`;
+}
+
+function blockLabel(
+  source: string,
+  environment: string | null,
+  command: string | null,
+  name: string,
+): string {
+  const labelKey = BLOCK_LABEL_KEYS[name];
+  if (labelKey) return wysiwygMessage(labelKey);
+  if (source.trimStart().startsWith("%")) return wysiwygMessage("block.comment");
+  if (environment) return wysiwygMessage("block.environment", { environment });
+  if (command) return wysiwygMessage("block.command", { command });
+  return wysiwygMessage("block.latexSource");
 }
 
 export function rawBlockPresentation(source: string): {
@@ -84,16 +98,7 @@ export function rawBlockPresentation(source: string): {
   const environment = environmentName(source);
   const command = commandName(source);
   const name = environment ?? command ?? "";
-  const labelKey = BLOCK_LABEL_KEYS[name];
-  const label = labelKey
-    ? wysiwygMessage(labelKey)
-    : source.trimStart().startsWith("%")
-      ? wysiwygMessage("block.comment")
-      : environment
-        ? wysiwygMessage("block.environment", { environment })
-        : command
-          ? wysiwygMessage("block.command", { command })
-          : wysiwygMessage("block.latexSource");
+  const label = blockLabel(source, environment, command, name);
 
   if (name === "maketitle") {
     return {
@@ -104,13 +109,12 @@ export function rawBlockPresentation(source: string): {
 
   if (["figure", "figure*", "table", "table*", "tabular", "tabular*"].includes(name)) {
     const caption = /\\caption(?:\[[^\]]*\])?\s*\{([^{}]*)\}/u.exec(source)?.[1];
+    const preserved = name.startsWith("figure")
+      ? wysiwygMessage("block.figurePreserved")
+      : wysiwygMessage("block.tablePreserved");
     return {
       label,
-      preview: caption
-        ? readableLatex(caption)
-        : name.startsWith("figure")
-          ? wysiwygMessage("block.figurePreserved")
-          : wysiwygMessage("block.tablePreserved"),
+      preview: caption ? readableLatex(caption) : preserved,
     };
   }
 
@@ -134,21 +138,17 @@ export function compactRawInlineSource(source: string): string {
   const escapedCharacter = /^\\([%$&#_{}])$/u.exec(normalized);
   if (escapedCharacter) return escapedCharacter[1];
 
-  const citation =
-    /^\\(?:[A-Za-z]*cite[A-Za-z]*|cite)\*?\s*(?:\[[^\]]*\]\s*)*\{\s*([^{}]+?)\s*\}$/u.exec(
-      normalized,
-    );
-  if (citation) {
-    return citation[1]
+  const macro = /^\\([A-Za-z]+)\*?\s*(?:\[[^\]]*\]\s*)*\{([^{}]+)\}$/u.exec(normalized);
+  if (macro?.[1].includes("cite")) {
+    return macro[2]
       .split(",")
       .map((key) => `@${key.trim()}`)
       .join(", ");
   }
 
-  const reference =
-    /^\\(?:auto|page|eq|name|v|V|c|C)?ref\*?\s*(?:\[[^\]]*\]\s*)?\{\s*([^{}]+?)\s*\}$/u.exec(
-      normalized,
-    );
+  const reference = /^\\(?:auto|page|eq|name|v|V|c|C)?ref\*?\s*(?:\[[^\]]*\]\s*)?\{([^{}]+)\}$/u.exec(
+    normalized,
+  );
   if (reference) return `§ ${reference[1].trim()}`;
 
   const label = /^\\label\{([^{}]+)\}$/u.exec(normalized);
@@ -165,14 +165,14 @@ export function isRawMathSource(source: string): boolean {
   const trimmed = source.trim();
   if (
     (trimmed.startsWith("$$") && trimmed.endsWith("$$")) ||
-    (trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) ||
-    (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"))
+    (trimmed.startsWith(String.raw`\(`) && trimmed.endsWith(String.raw`\)`)) ||
+    (trimmed.startsWith(String.raw`\[`) && trimmed.endsWith(String.raw`\]`))
   ) {
     return trimmed.length >= 4;
   }
   if (
     trimmed.length < 3 ||
-    trimmed[0] !== "$" ||
+    !trimmed.startsWith("$") ||
     trimmed.at(-1) !== "$"
   ) {
     return false;

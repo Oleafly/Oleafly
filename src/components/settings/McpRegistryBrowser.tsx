@@ -16,7 +16,7 @@ type McpRegistryBrowserProps = {
   onReview: (config: McpServerConfig) => void;
 };
 
-function ReviewCard({ review, onReview }: { review: McpRegistryReview; onReview: (config: McpServerConfig) => void }) {
+function ReviewCard({ review, onReview }: Readonly<{ review: McpRegistryReview; onReview: (config: McpServerConfig) => void }>) {
   const { t } = useTranslation(["common", "settings"]);
   const config = review.config;
   return (
@@ -28,8 +28,9 @@ function ReviewCard({ review, onReview }: { review: McpRegistryReview; onReview:
       {review.arguments.length > 0 ? <p className="break-all text-muted-foreground">{t(($) => $.settings.mcp.registry.argumentsLine, { args: review.arguments.join(" ") })}</p> : null}
       {review.environmentVariableNames.length > 0 ? <p className="break-words text-muted-foreground">{t(($) => $.settings.mcp.registry.environmentLine, { names: review.environmentVariableNames.join(", ") })}</p> : null}
       {review.unsupportedReason ? (
-        <p role="status" className="text-destructive">{review.unsupportedReason}</p>
-      ) : config ? (
+        <output className="block text-destructive">{review.unsupportedReason}</output>
+      ) : null}
+      {!review.unsupportedReason && config ? (
         <Button type="button" size="xs" variant="outline" onClick={() => onReview(config)}>
           {t(($) => $.settings.mcp.registry.review)}
           <ChevronRight aria-hidden />
@@ -39,7 +40,7 @@ function ReviewCard({ review, onReview }: { review: McpRegistryReview; onReview:
   );
 }
 
-export function McpRegistryBrowser({ onReview }: McpRegistryBrowserProps) {
+export function McpRegistryBrowser({ onReview }: Readonly<McpRegistryBrowserProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<McpRegistrySearchResult | null>(null);
@@ -83,7 +84,7 @@ export function McpRegistryBrowser({ onReview }: McpRegistryBrowserProps) {
         </Button>
       </form>
       {error ? <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p> : null}
-      {result && result.servers.length === 0 ? <p role="status" className="text-xs text-muted-foreground">{t(($) => $.settings.mcp.registry.noResults)}</p> : null}
+      {result?.servers.length === 0 ? <output className="block text-xs text-muted-foreground">{t(($) => $.settings.mcp.registry.noResults)}</output> : null}
       {result?.warnings.length ? (
         <ul role="status" className="m-0 list-none space-y-1 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
           {result.warnings.map((warning) => <li key={warning}>{warning}</li>)}

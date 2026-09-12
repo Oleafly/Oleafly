@@ -197,7 +197,7 @@ impl NativeCompiler {
         .await?;
         let output = build.build_directory().join(format!("{OUTPUT_STEM}.pdf"));
         if command.produced_output.is_file() && command.produced_output != output {
-            std::fs::rename(&command.produced_output, &output)?;
+            tokio::fs::rename(&command.produced_output, &output).await?;
         }
         let output = output.is_file().then_some(output);
         let errors = parse_errors(build.engine(), &log);

@@ -107,16 +107,83 @@ export function UpdateWindow() {
     }
   };
 
-  const title =
-    phase === "checking"
-      ? t(($) => $.shell.updateWindow.checking)
-      : phase === "upToDate"
-        ? t(($) => $.shell.updateWindow.upToDate)
-        : update
-          ? t(($) => $.shell.updateChecker.available, { version: update.version })
-          : "Oleafly";
+  const windowTitle = () => {
+    if (phase === "checking") {
+      return t(($) => $.shell.updateWindow.checking);
+    }
+    if (phase === "upToDate") {
+      return t(($) => $.shell.updateWindow.upToDate);
+    }
+    if (update) {
+      return t(($) => $.shell.updateChecker.available, { version: update.version });
+    }
+    return "Oleafly";
+  };
+  const title = windowTitle();
 
   const notes = update?.body?.trim();
+
+  const renderFooter = () => {
+    if (phase === "downloading") {
+      return (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            {percent >= 100
+              ? t(($) => $.shell.updateChecker.installing)
+              : t(($) => $.shell.updateChecker.downloading, { percent })}
+          </p>
+          <Progress value={percent} />
+          <p className="text-[10px] text-muted-foreground">
+            {t(($) => $.shell.updateChecker.restartNotice)}
+          </p>
+        </div>
+      );
+    }
+    if (phase === "available" && !selfInstallable) {
+      return (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] text-muted-foreground">
+            {t(($) => $.shell.updateWindow.packageInstall)}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={close}>
+              {t(($) => $.shell.updateWindow.later)}
+            </Button>
+            <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>
+              {t(($) => $.shell.updateWindow.viewRelease)}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    if (phase === "available") {
+      return (
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={close}>
+            {t(($) => $.shell.updateWindow.later)}
+          </Button>
+          <Button size="sm" onClick={install}>
+            {t(($) => $.shell.updateChecker.updateNow)}
+          </Button>
+        </div>
+      );
+    }
+    if (phase === "upToDate" || phase === "error") {
+      return (
+        <div className="flex items-center justify-end gap-2">
+          {phase === "error" && (
+            <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>
+              {t(($) => $.shell.updateWindow.viewRelease)}
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={close}>
+            {t(($) => $.common.actions.close)}
+          </Button>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="flex h-screen flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground">
@@ -186,53 +253,7 @@ export function UpdateWindow() {
       </div>
 
       <div className="border-t px-5 py-3">
-        {phase === "downloading" ? (
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground">
-              {percent >= 100
-                ? t(($) => $.shell.updateChecker.installing)
-                : t(($) => $.shell.updateChecker.downloading, { percent })}
-            </p>
-            <Progress value={percent} />
-            <p className="text-[10px] text-muted-foreground">
-              {t(($) => $.shell.updateChecker.restartNotice)}
-            </p>
-          </div>
-        ) : phase === "available" && !selfInstallable ? (
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] text-muted-foreground">
-              {t(($) => $.shell.updateWindow.packageInstall)}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={close}>
-                {t(($) => $.shell.updateWindow.later)}
-              </Button>
-              <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>
-                {t(($) => $.shell.updateWindow.viewRelease)}
-              </Button>
-            </div>
-          </div>
-        ) : phase === "available" ? (
-          <div className="flex items-center justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={close}>
-              {t(($) => $.shell.updateWindow.later)}
-            </Button>
-            <Button size="sm" onClick={install}>
-              {t(($) => $.shell.updateChecker.updateNow)}
-            </Button>
-          </div>
-        ) : phase === "upToDate" || phase === "error" ? (
-          <div className="flex items-center justify-end gap-2">
-            {phase === "error" && (
-              <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>
-                {t(($) => $.shell.updateWindow.viewRelease)}
-              </Button>
-            )}
-            <Button variant="secondary" size="sm" onClick={close}>
-              {t(($) => $.common.actions.close)}
-            </Button>
-          </div>
-        ) : null}
+        {renderFooter()}
       </div>
     </div>
   );

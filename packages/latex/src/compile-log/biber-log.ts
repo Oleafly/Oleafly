@@ -10,7 +10,7 @@ import { type LogDiagnostic, MAX_COMPILE_LOG_BYTES } from "./types";
 
 const bibFileInfo = /^INFO - Found BibTeX data source '(.*)'$/;
 const lineError = /^ERROR - BibTeX subsystem.*, line (\d+), (.*)$/;
-const missingEntryWarning = /^WARN - (I didn't find a database entry for '.*'.*)$/;
+const missingEntryWarning = /^WARN - (I didn't find a database entry for '[^']*'.*)$/;
 const lineWarning = /^WARN - (.* entry '(.*)' .*)$/;
 
 /**
@@ -20,28 +20,28 @@ const lineWarning = /^WARN - (.* entry '(.*)' .*)$/;
 export function parseBiberLog(log: string): LogDiagnostic[] {
   const out: LogDiagnostic[] = [];
   const bibFileStack: string[] = [];
-  const currentBib = () => bibFileStack[bibFileStack.length - 1] ?? null;
+  const currentBib = () => bibFileStack.at(-1) ?? null;
 
   try {
     for (const line of log.slice(0, MAX_COMPILE_LOG_BYTES).split("\n")) {
-      let result = line.match(bibFileInfo);
+      let result = bibFileInfo.exec(line);
       if (result) {
         bibFileStack.push(result[1]);
       }
 
-      result = line.match(lineError);
+      result = lineError.exec(line);
       if (result) {
         out.push({
           severity: "error",
           category: "biber",
           file: currentBib(),
-          line: parseInt(result[1], 10),
+          line: Number.parseInt(result[1], 10),
           message: result[2],
         });
         continue;
       }
 
-      result = line.match(missingEntryWarning);
+      result = missingEntryWarning.exec(line);
       if (result) {
         out.push({
           severity: "warning",
@@ -52,7 +52,7 @@ export function parseBiberLog(log: string): LogDiagnostic[] {
         });
       }
 
-      result = line.match(lineWarning);
+      result = lineWarning.exec(line);
       if (result) {
         out.push({
           severity: "warning",

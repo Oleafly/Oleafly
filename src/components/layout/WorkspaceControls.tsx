@@ -48,12 +48,12 @@ function ViewButton({
   ctx,
   active,
   onSelect,
-}: {
+}: Readonly<{
   tab: RailTabContribution;
   ctx: AppContext;
   active: boolean;
   onSelect: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["shell"]);
   const badge = tab.useBadge?.() ?? 0;
   const Icon = tab.icon;
@@ -76,13 +76,12 @@ function ViewButton({
           <BetaBadge className="pointer-events-none absolute -right-5 -top-1 border-background bg-primary px-1 text-[8px] leading-[13px] text-primary-foreground" />
         ) : null}
         {badge > 0 && (
-          <span
-            role="status"
+          <output
             aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}
             className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white ring-1 ring-background"
           >
             {badge > 99 ? "99+" : badge}
-          </span>
+          </output>
         )}
       </button>
     </Tooltip>

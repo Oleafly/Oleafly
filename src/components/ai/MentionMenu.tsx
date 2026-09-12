@@ -146,7 +146,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
     );
     const [activeKey, setActiveKey] = useState<string | null>(null);
     const selectedIndex = activeKey ? items.findIndex((item) => item.key === activeKey) : 0;
-    const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    const activeIndex = Math.max(selectedIndex, 0);
     const activeItem = items[activeIndex] ?? null;
     const activeItemKey = activeItem?.key ?? null;
 

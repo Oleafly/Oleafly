@@ -88,7 +88,7 @@ export function ResearchWorkspacePanel() {
           <Settings2 className="size-4" />
         </Button>
       </div>
-      {configError && <p role="status" className="px-3 pt-2 text-xs text-destructive">{configError}</p>}
+      {configError && <output className="block px-3 pt-2 text-xs text-destructive">{configError}</output>}
       <Tabs defaultValue="tasks" className="flex min-h-0 flex-1 flex-col">
         <TabsList className="mx-3 mt-2 grid shrink-0 grid-cols-2">
           <TabsTrigger value="tasks" data-tour="research-tasks">

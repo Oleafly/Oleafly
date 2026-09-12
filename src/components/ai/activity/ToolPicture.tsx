@@ -57,7 +57,7 @@ async function saveToolPicture(tc: ToolEntry): Promise<string | null> {
   return null;
 }
 
-export function ToolPicture({ tc }: { tc: ToolEntry }) {
+export function ToolPicture({ tc }: Readonly<{ tc: ToolEntry }>) {
   const { t } = useTranslation(["common", "ai"]);
   const [view, setView] = useState<"image" | "code">("image");
   const [copied, setCopied] = useState(false);

@@ -117,3 +117,30 @@ describe("parseFile: comments", () => {
     expect(use("50\\% done \\ref{r}", "ref", "r")).toBeDefined();
   });
 });
+
+describe("parseFile: input targets", () => {
+  const target = (text: string, name: string, path = "main.tex") =>
+    use(text, "inputedge", name, path)?.target;
+
+  it("adds .tex when the last segment has no extension", () => {
+    expect(target("\\input{sections/intro}", "sections/intro")).toBe(
+      "sections/intro.tex",
+    );
+  });
+  it("keeps an existing extension", () => {
+    expect(target("\\input{sections/intro.tex}", "sections/intro.tex")).toBe(
+      "sections/intro.tex",
+    );
+  });
+  it("keeps every extension after the first dot in the last segment", () => {
+    expect(target("\\input{a.b.c}", "a.b.c")).toBe("a.b.c");
+  });
+  it("treats a dotted directory with a bare file name as extensionless", () => {
+    expect(target("\\input{v1.0/intro}", "v1.0/intro")).toBe(
+      "v1.0/intro.tex",
+    );
+  });
+  it("treats a trailing dot as no extension", () => {
+    expect(target("\\input{intro.}", "intro.")).toBe("intro..tex");
+  });
+});

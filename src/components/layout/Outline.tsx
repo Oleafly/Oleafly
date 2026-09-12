@@ -35,11 +35,11 @@ function StructureUnavailable({
   state,
   projectId,
   activePath,
-}: {
+}: Readonly<{
   state: ProjectIntelligenceState;
   projectId: string | null;
   activePath: string | null;
-}) {
+}>) {
   const { t } = useTranslation(["workspace"]);
   if (!projectId) {
     return (
@@ -132,11 +132,11 @@ export function Outline({
   defaultCollapsed = false,
   collapsed: controlledCollapsed,
   onCollapsedChange,
-}: {
+}: Readonly<{
   readonly defaultCollapsed?: boolean;
   readonly collapsed?: boolean;
   readonly onCollapsedChange?: (next: boolean) => void;
-} = {}) {
+}> = {}) {
   const { t } = useTranslation(["workspace"]);
   const intelligenceState = useIndexStore((state) => state.intelligenceState);
   const activePath = useFilesStore((state) => state.activePath);
@@ -204,13 +204,12 @@ export function Outline({
             </span>
           ) : null}
           {snapshot ? (
-            <span
-              role="status"
+            <output
               aria-label={t(($) => $.workspace.structure.itemCount, { count: nodeCount })}
               className="ml-auto shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
             >
               {nodeCount}
-            </span>
+            </output>
           ) : null}
         </button>
       </div>

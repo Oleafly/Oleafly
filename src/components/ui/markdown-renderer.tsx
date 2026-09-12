@@ -167,11 +167,11 @@ const SettledMarkdownBlock = memo(function SettledMarkdownBlock({
   source,
   inverted,
   cache = true,
-}: {
+}: Readonly<{
   source: string;
   inverted: boolean;
   cache?: boolean;
-}) {
+}>) {
   return (
     <MarkdownDocument inverted={inverted} cache={cache}>
       {source}
@@ -184,12 +184,12 @@ export default function MarkdownRenderer({
   className,
   inverted = false,
   streaming = false,
-}: {
+}: Readonly<{
   children: string;
   className?: string;
   inverted?: boolean;
   streaming?: boolean;
-}) {
+}>) {
   const streamingState = useRef<StreamingMarkdownState | null>(null);
   const livePartition = streaming
     ? updateStreamingMarkdown(streamingState.current, children)

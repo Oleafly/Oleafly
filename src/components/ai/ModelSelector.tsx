@@ -92,10 +92,10 @@ export function ModelTrustBadge({
 export function ModelCapabilityChips({
   metadata,
   className,
-}: {
+}: Readonly<{
   metadata: ModelMetadata | undefined;
   className?: string;
-}) {
+}>) {
   const chips = modelCapabilityChips(metadata);
   if (chips.length === 0) return null;
   return (
@@ -131,7 +131,7 @@ export function ModelSelector({
   contentClassName,
   open: controlledOpen,
   onOpenChange,
-}: {
+}: Readonly<{
   providerId: string;
   modelId: string;
   groups: ModelSelectorGroup[];
@@ -142,7 +142,7 @@ export function ModelSelector({
   contentClassName?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;

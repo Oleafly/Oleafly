@@ -230,11 +230,11 @@ function OutlineItems({
   items,
   onActivate,
   depth = 0,
-}: {
+}: Readonly<{
   items: PdfOutlineItem[];
   onActivate: (id: string) => void;
   depth?: number;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   return (
     <ul className={cn(depth > 0 && "ml-3 border-l pl-1")}>
@@ -272,12 +272,12 @@ function PreviewMessage({
   detail,
   loading = false,
   onRetry,
-}: {
+}: Readonly<{
   title: string;
   detail: string;
   loading?: boolean;
   onRetry?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   return (
     <div
@@ -319,7 +319,7 @@ export interface PreviewWindowProps {
 export function PreviewWindow({
   harnessBytes,
   disableNativeBridge = false,
-}: PreviewWindowProps = {}) {
+}: Readonly<PreviewWindowProps> = {}) {
   const { t } = useTranslation(["common", "preview"]);
   const [initialContext] = useState(readInitialPreviewContext);
   const harnessDocument = harnessBytes
@@ -538,9 +538,9 @@ export function PreviewWindow({
     );
     return () => {
       ++artifactLoadGenerationRef.current;
-      void refreshListener.then((unlisten) => unlisten());
-      void projectListener.then((unlisten) => unlisten());
-      void projectStateListener.then((unlisten) => unlisten());
+      refreshListener.then((unlisten) => unlisten());
+      projectListener.then((unlisten) => unlisten());
+      projectStateListener.then((unlisten) => unlisten());
     };
   }, [acceptCompileState, disableNativeBridge, retargetProject]);
 
@@ -570,7 +570,7 @@ export function PreviewWindow({
     const expectedStateKey = previewStateKey(compileState);
     setArtifactLoading(true);
     setArtifactFailure(null);
-    void (async () => {
+    (async () => {
       try {
         const bytes = new Uint8Array(
           await readCompiledPdf(checkpoint.projectId),
@@ -770,7 +770,7 @@ export function PreviewWindow({
       .then(projectTitleFromWindowTitle)
       .catch(() => null);
     const apply = () => {
-      void projectTitle
+      projectTitle
         .then((title) =>
           active && title !== null
             ? getCurrentWindow().setTitle(previewWindowTitle(title))
@@ -914,23 +914,50 @@ export function PreviewWindow({
     previewDocument !== null &&
     !displayedIsCurrent &&
     !disableNativeBridge;
+  const searchCounterLabel = (): string => {
+    if (searchState.status === "searching") {
+      return `${searchState.scannedPages}/${searchState.totalPages}`;
+    }
+    if (searchInput.trim()) return `${searchState.current}/${searchState.total}`;
+    return "0/0";
+  };
+  const placeholderTitle = (): string => {
+    if (compileState?.status === "compiling") return t(($) => $.preview.window.compilingTitle);
+    if (compileState?.status === "error") return t(($) => $.preview.window.compileFailedTitle);
+    if (compileState?.status === "unavailable") {
+      return t(($) => $.preview.window.compileUnavailableTitle);
+    }
+    if (artifactFailure) return t(($) => $.preview.window.artifactUnavailableTitle);
+    return t(($) => $.preview.window.noVerifiedTitle);
+  };
+  const pdfLoadTitle = (): string => {
+    if (pdfLoadState.status === "loading") return t(($) => $.preview.window.loadingTitle);
+    if (pdfLoadState.status === "invalid") return t(($) => $.preview.viewer.invalidTitle);
+    if (pdfLoadState.status === "empty") return t(($) => $.preview.viewer.emptyTitle);
+    if (pdfLoadState.status === "unavailable") {
+      return t(($) => $.preview.viewer.unavailableTitle);
+    }
+    return t(($) => $.preview.viewer.loadFailedTitle);
+  };
+
+  const staleCompileExplanation = () => {
+    if (compileState?.status === "compiling") {
+      return t(($) => $.preview.window.staleCompiling, {
+        revision:
+          previewDocument?.checkpoint?.projectRevision ??
+          t(($) => $.preview.window.staleUnknownRevision),
+      });
+    }
+    if (compileState?.status === "error" || compileState?.status === "unavailable") {
+      return t(($) => $.preview.window.staleCompileFailed, {
+        detail:
+          compileState.message ?? t(($) => $.preview.window.staleCompileFailedDetail),
+      });
+    }
+    return t(($) => $.preview.window.staleIdentity);
+  };
   const staleExplanation =
-    retainedLoadFailure ??
-    artifactFailure ??
-    (compileState?.status === "compiling"
-      ? t(($) => $.preview.window.staleCompiling, {
-          revision:
-            previewDocument?.checkpoint?.projectRevision ??
-            t(($) => $.preview.window.staleUnknownRevision),
-        })
-      : compileState?.status === "error" ||
-          compileState?.status === "unavailable"
-        ? t(($) => $.preview.window.staleCompileFailed, {
-            detail:
-              compileState.message ??
-              t(($) => $.preview.window.staleCompileFailedDetail),
-          })
-        : t(($) => $.preview.window.staleIdentity));
+    retainedLoadFailure ?? artifactFailure ?? staleCompileExplanation();
 
   const rotateClockwise = () => {
     if (!previewDocument) return;
@@ -943,6 +970,376 @@ export function PreviewWindow({
       (current) => ((current + 90) % 360) as PdfRotation,
     );
   };
+
+  const renderPreviewScrollArea = () => (
+    <section
+      ref={scrollBoxRef}
+      data-testid="detached-preview-scroll"
+      data-pdf-scroll-root
+      aria-label={t(($) => $.preview.viewer.scrollArea)}
+      className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      style={
+        inverted && !screenReaderMode
+          ? { filter: "invert(1) hue-rotate(180deg)" }
+          : undefined
+      }
+    >
+      {previewDocument ? (
+        <ErrorBoundary
+          resetKey={`${previewDocument.identity}:${viewerReload}`}
+          fallback={
+            <div className="flex h-full items-center justify-center">
+              <PreviewMessage
+                title={t(($) => $.preview.viewer.crashedTitle)}
+                detail={t(($) => $.preview.window.crashedDetail)}
+                onRetry={retryViewer}
+              />
+            </div>
+          }
+        >
+          <PdfViewer
+            key={`${previewDocument.identity}:${viewerReload}`}
+            ref={pdfRef}
+            data={previewDocument.bytes}
+            documentIdentity={previewDocument.identity}
+            password={pdfPassword || undefined}
+            rotation={rotation}
+            scale={scale}
+            layout={layout}
+            screenReaderMode={screenReaderMode}
+            searchQuery={searchOpen ? deferredSearch : ""}
+            onLoadStateChange={handlePdfLoadState}
+            onSearchStateChange={setSearchState}
+            onOutlineStateChange={setOutlineState}
+            onPageChange={(current, total) => {
+              setPage(current);
+              setNumPages(total);
+            }}
+          />
+        </ErrorBoundary>
+      ) : (
+        <div className="flex h-full items-center justify-center">
+          <PreviewMessage
+            loading={
+              artifactLoading || compileState?.status === "compiling"
+            }
+            title={placeholderTitle()}
+            detail={
+              artifactFailure ??
+              compileState?.message ??
+              (compileState?.status === "compiling"
+                ? t(($) => $.preview.window.compilingDetail)
+                : t(($) => $.preview.window.noVerifiedDetail))
+            }
+            onRetry={
+              artifactFailure
+                ? () => setArtifactRetry((value) => value + 1)
+                : undefined
+            }
+          />
+        </div>
+      )}
+    </section>
+  );
+
+  const renderViewerOverlay = () => (
+    previewDocument &&
+      pdfLoadState.documentIdentity === previewDocument.identity &&
+      pdfLoadState.status !== "ready" &&
+      pdfLoadState.status !== "idle" && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-sidebar/90 p-6 backdrop-blur-[1px]">
+          {pdfLoadState.status === "password_required" ? (
+            <form
+              className="w-full max-w-xs space-y-3 text-center"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitPassword();
+              }}
+            >
+              <LockKeyhole className="mx-auto size-8 text-muted-foreground" />
+              <div>
+                <h2 className="text-sm font-semibold">
+                  {t(($) => $.preview.password.title)}
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {pdfLoadState.message}
+                </p>
+              </div>
+              <Input
+                autoFocus
+                type="password"
+                autoComplete="off"
+                value={passwordDraft}
+                onChange={(event) =>
+                  setPasswordDraft(event.target.value)
+                }
+                aria-label={t(($) => $.preview.password.label)}
+                placeholder={t(($) => $.preview.password.placeholder)}
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!passwordDraft}
+              >
+                {t(($) => $.preview.password.submit)}
+              </Button>
+            </form>
+          ) : (
+            <PreviewMessage
+              loading={pdfLoadState.status === "loading"}
+              title={pdfLoadTitle()}
+              detail={
+                pdfLoadState.status === "loading" &&
+                pdfLoadState.progress !== undefined
+                  ? `${Math.round(pdfLoadState.progress * 100)}%`
+                  : pdfLoadState.message ??
+                    t(($) => $.preview.viewer.loadFailedDetail)
+              }
+              onRetry={
+                pdfLoadState.status === "loading"
+                  ? undefined
+                  : retryViewer
+              }
+            />
+          )}
+        </div>
+      )
+  );
+
+  const renderStaleNotice = () => (
+    (displayedIsStale || retainedLoadFailure || artifactFailure) &&
+      previewDocument && (
+        <output
+          className="flex shrink-0 items-start gap-2 border-b border-amber-500/40 bg-amber-500/15 px-3 py-2 text-amber-950 dark:text-amber-100"
+          aria-live="polite"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0 text-xs">
+            <p className="font-semibold uppercase tracking-wide">
+              {t(($) => $.preview.window.staleHeading)}
+            </p>
+            <p>{staleExplanation}</p>
+          </div>
+          {artifactFailure && (
+            <Button
+              size="xs"
+              variant="ghost"
+              className="ml-auto shrink-0"
+              onClick={() => setArtifactRetry((value) => value + 1)}
+            >
+              {t(($) => $.common.actions.retry)}
+            </Button>
+          )}
+        </output>
+      )
+  );
+
+  const renderPreviewToolbarRight = () => (
+    <div className="ml-auto flex items-center gap-1">
+      <Button
+        variant={fitMode === "width" ? "secondary" : "ghost"}
+        size="xs"
+        disabled={!previewDocument}
+        onClick={() => fitPreview("width")}
+        aria-pressed={fitMode === "width"}
+      >
+        {t(($) => $.preview.window.fitWidth)}
+      </Button>
+      <Button
+        variant={fitMode === "height" ? "secondary" : "ghost"}
+        size="xs"
+        disabled={!previewDocument}
+        onClick={() => fitPreview("height")}
+        aria-pressed={fitMode === "height"}
+      >
+        {t(($) => $.preview.window.fitHeight)}
+      </Button>
+      <Tooltip label={t(($) => $.preview.zoom.out)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          disabled={scale <= MIN_PREVIEW_SCALE}
+          onClick={() =>
+            userZoom(() =>
+              setScale((current) =>
+                Math.max(MIN_PREVIEW_SCALE, current - 0.2),
+              ),
+            )
+          }
+          aria-label={t(($) => $.preview.zoom.out)}
+        >
+          <Minus className="size-3.5" />
+        </Button>
+      </Tooltip>
+      <span
+        data-testid="detached-preview-zoom"
+        className="w-10 text-center text-xs tabular-nums text-muted-foreground"
+      >
+        {t(($) => $.preview.zoom.percent, { percent: Math.round(scale * 100) })}
+      </span>
+      <Tooltip label={t(($) => $.preview.zoom.in)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          disabled={scale >= MAX_PREVIEW_SCALE}
+          onClick={() =>
+            userZoom(() =>
+              setScale((current) =>
+                Math.min(MAX_PREVIEW_SCALE, current + 0.2),
+              ),
+            )
+          }
+          aria-label={t(($) => $.preview.zoom.in)}
+        >
+          <Plus className="size-3.5" />
+        </Button>
+      </Tooltip>
+      <Tooltip label={t(($) => $.preview.actions.rotate)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          disabled={!previewDocument}
+          onClick={rotateClockwise}
+          aria-label={t(($) => $.preview.window.rotateLabel)}
+        >
+          <RotateCw className="size-3.5" />
+        </Button>
+      </Tooltip>
+      <Tooltip
+        label={
+          inverted
+            ? t(($) => $.preview.actions.restoreColors)
+            : t(($) => $.preview.window.invert)
+        }
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("size-7", inverted && "bg-accent")}
+          disabled={!previewDocument}
+          onClick={() => setInverted(!inverted)}
+          aria-label={t(($) => $.preview.window.invertLabel)}
+          aria-pressed={inverted}
+        >
+          <Contrast className="size-3.5" />
+        </Button>
+      </Tooltip>
+      <Tooltip
+        label={
+          screenReaderMode
+            ? t(($) => $.preview.actions.exitReaderView)
+            : t(($) => $.preview.actions.readerView)
+        }
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("size-7", screenReaderMode && "bg-accent")}
+          disabled={!previewDocument}
+          onClick={() => setScreenReaderMode(!screenReaderMode)}
+          aria-label={t(($) => $.preview.actions.readerView)}
+          aria-pressed={screenReaderMode}
+        >
+          <Accessibility className="size-3.5" />
+        </Button>
+      </Tooltip>
+      <Tooltip label={t(($) => $.preview.actions.downloadDisplayedPdf)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          disabled={!previewDocument || exporting}
+          onClick={() => void downloadDisplayedPdf()}
+          aria-label={t(($) => $.preview.actions.downloadDisplayedPdf)}
+        >
+          {exporting ? (
+            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+          ) : (
+            <Download className="size-3.5" />
+          )}
+        </Button>
+      </Tooltip>
+    </div>
+  );
+
+  const renderPreviewSearchBar = () => (
+    searchOpen && previewDocument && (
+      <search
+        id="detached-pdf-search"
+        aria-label={t(($) => $.preview.search.panel)}
+        className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
+      >
+        <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
+        <Input
+          ref={searchInputRef}
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter" &&
+              searchState.status === "success"
+            ) {
+              if (event.shiftKey) {
+                pdfRef.current?.findPrevious();
+              } else {
+                pdfRef.current?.findNext();
+              }
+            }
+          }}
+          placeholder={t(($) => $.preview.search.placeholder)}
+          aria-label={t(($) => $.preview.search.input)}
+          className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
+        />
+        <span
+          className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"
+          aria-live="polite"
+        >
+          {searchCounterLabel()}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          disabled={
+            searchState.status !== "success" ||
+            searchState.total === 0
+          }
+          onClick={() => pdfRef.current?.findPrevious()}
+          aria-label={t(($) => $.preview.search.previous)}
+        >
+          <ChevronLeft className="size-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          disabled={
+            searchState.status !== "success" ||
+            searchState.total === 0
+          }
+          onClick={() => pdfRef.current?.findNext()}
+          aria-label={t(($) => $.preview.search.next)}
+        >
+          <ChevronRight className="size-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          onClick={() => {
+            setSearchOpen(false);
+            setSearchInput("");
+          }}
+          aria-label={t(($) => $.preview.search.close)}
+        >
+          <X className="size-3.5" />
+        </Button>
+      </search>
+    )
+  );
 
   return (
     <div
@@ -1048,7 +1445,7 @@ export function PreviewWindow({
                 value={pageInput}
                 onChange={(event) =>
                   setPageInput(
-                    event.target.value.replace(/[^0-9]/gu, ""),
+                    event.target.value.replace(/\D/gu, ""),
                   )
                 }
                 onKeyDown={(event) => {
@@ -1083,162 +1480,10 @@ export function PreviewWindow({
           </>
         )}
 
-        <div className="ml-auto flex items-center gap-1">
-          <Button
-            variant={fitMode === "width" ? "secondary" : "ghost"}
-            size="xs"
-            disabled={!previewDocument}
-            onClick={() => fitPreview("width")}
-            aria-pressed={fitMode === "width"}
-          >
-            {t(($) => $.preview.window.fitWidth)}
-          </Button>
-          <Button
-            variant={fitMode === "height" ? "secondary" : "ghost"}
-            size="xs"
-            disabled={!previewDocument}
-            onClick={() => fitPreview("height")}
-            aria-pressed={fitMode === "height"}
-          >
-            {t(($) => $.preview.window.fitHeight)}
-          </Button>
-          <Tooltip label={t(($) => $.preview.zoom.out)}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={scale <= MIN_PREVIEW_SCALE}
-              onClick={() =>
-                userZoom(() =>
-                  setScale((current) =>
-                    Math.max(MIN_PREVIEW_SCALE, current - 0.2),
-                  ),
-                )
-              }
-              aria-label={t(($) => $.preview.zoom.out)}
-            >
-              <Minus className="size-3.5" />
-            </Button>
-          </Tooltip>
-          <span
-            data-testid="detached-preview-zoom"
-            className="w-10 text-center text-xs tabular-nums text-muted-foreground"
-          >
-            {t(($) => $.preview.zoom.percent, { percent: Math.round(scale * 100) })}
-          </span>
-          <Tooltip label={t(($) => $.preview.zoom.in)}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={scale >= MAX_PREVIEW_SCALE}
-              onClick={() =>
-                userZoom(() =>
-                  setScale((current) =>
-                    Math.min(MAX_PREVIEW_SCALE, current + 0.2),
-                  ),
-                )
-              }
-              aria-label={t(($) => $.preview.zoom.in)}
-            >
-              <Plus className="size-3.5" />
-            </Button>
-          </Tooltip>
-          <Tooltip label={t(($) => $.preview.actions.rotate)}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={!previewDocument}
-              onClick={rotateClockwise}
-              aria-label={t(($) => $.preview.window.rotateLabel)}
-            >
-              <RotateCw className="size-3.5" />
-            </Button>
-          </Tooltip>
-          <Tooltip
-            label={
-              inverted
-                ? t(($) => $.preview.actions.restoreColors)
-                : t(($) => $.preview.window.invert)
-            }
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("size-7", inverted && "bg-accent")}
-              disabled={!previewDocument}
-              onClick={() => setInverted(!inverted)}
-              aria-label={t(($) => $.preview.window.invertLabel)}
-              aria-pressed={inverted}
-            >
-              <Contrast className="size-3.5" />
-            </Button>
-          </Tooltip>
-          <Tooltip
-            label={
-              screenReaderMode
-                ? t(($) => $.preview.actions.exitReaderView)
-                : t(($) => $.preview.actions.readerView)
-            }
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("size-7", screenReaderMode && "bg-accent")}
-              disabled={!previewDocument}
-              onClick={() => setScreenReaderMode(!screenReaderMode)}
-              aria-label={t(($) => $.preview.actions.readerView)}
-              aria-pressed={screenReaderMode}
-            >
-              <Accessibility className="size-3.5" />
-            </Button>
-          </Tooltip>
-          <Tooltip label={t(($) => $.preview.actions.downloadDisplayedPdf)}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={!previewDocument || exporting}
-              onClick={() => void downloadDisplayedPdf()}
-              aria-label={t(($) => $.preview.actions.downloadDisplayedPdf)}
-            >
-              {exporting ? (
-                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-              ) : (
-                <Download className="size-3.5" />
-              )}
-            </Button>
-          </Tooltip>
-        </div>
+        {renderPreviewToolbarRight()}
       </div>
 
-      {(displayedIsStale || retainedLoadFailure || artifactFailure) &&
-        previewDocument && (
-          <div
-            className="flex shrink-0 items-start gap-2 border-b border-amber-500/40 bg-amber-500/15 px-3 py-2 text-amber-950 dark:text-amber-100"
-            role="status"
-            aria-live="polite"
-          >
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-            <div className="min-w-0 text-xs">
-              <p className="font-semibold uppercase tracking-wide">
-                {t(($) => $.preview.window.staleHeading)}
-              </p>
-              <p>{staleExplanation}</p>
-            </div>
-            {artifactFailure && (
-              <Button
-                size="xs"
-                variant="ghost"
-                className="ml-auto shrink-0"
-                onClick={() => setArtifactRetry((value) => value + 1)}
-              >
-                {t(($) => $.common.actions.retry)}
-              </Button>
-            )}
-          </div>
-        )}
+      {renderStaleNotice()}
 
       <div className="relative min-h-0 flex-1 overflow-hidden bg-sidebar">
         {/* Kept mounted while a document is loaded so closing animates too. */}
@@ -1273,14 +1518,14 @@ export function PreviewWindow({
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-2">
               {outlineState.status === "loading" ? (
-                <p
+                <output
                   className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground"
-                  role="status"
                 >
                   <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
                   {t(($) => $.preview.outline.loading)}
-                </p>
-              ) : outlineState.items.length ? (
+                </output>
+              ) : null}
+              {outlineState.status !== "loading" && (outlineState.items.length ? (
                 <OutlineItems
                   items={outlineState.items}
                   onActivate={(id) => {
@@ -1292,239 +1537,16 @@ export function PreviewWindow({
                 <p className="px-2 py-3 text-xs text-muted-foreground">
                   {outlineState.message ?? t(($) => $.preview.outline.empty)}
                 </p>
-              )}
+              ))}
             </div>
           </aside>
         )}
 
-        {searchOpen && previewDocument && (
-          <search
-            id="detached-pdf-search"
-            aria-label={t(($) => $.preview.search.panel)}
-            className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
-          >
-            <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Enter" &&
-                  searchState.status === "success"
-                ) {
-                  if (event.shiftKey) {
-                    pdfRef.current?.findPrevious();
-                  } else {
-                    pdfRef.current?.findNext();
-                  }
-                }
-              }}
-              placeholder={t(($) => $.preview.search.placeholder)}
-              aria-label={t(($) => $.preview.search.input)}
-              className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
-            />
-            <span
-              className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"
-              aria-live="polite"
-            >
-              {searchState.status === "searching"
-                ? `${searchState.scannedPages}/${searchState.totalPages}`
-                : searchInput.trim()
-                  ? `${searchState.current}/${searchState.total}`
-                  : "0/0"}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={
-                searchState.status !== "success" ||
-                searchState.total === 0
-              }
-              onClick={() => pdfRef.current?.findPrevious()}
-              aria-label={t(($) => $.preview.search.previous)}
-            >
-              <ChevronLeft className="size-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              disabled={
-                searchState.status !== "success" ||
-                searchState.total === 0
-              }
-              onClick={() => pdfRef.current?.findNext()}
-              aria-label={t(($) => $.preview.search.next)}
-            >
-              <ChevronRight className="size-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              onClick={() => {
-                setSearchOpen(false);
-                setSearchInput("");
-              }}
-              aria-label={t(($) => $.preview.search.close)}
-            >
-              <X className="size-3.5" />
-            </Button>
-          </search>
-        )}
+        {renderPreviewSearchBar()}
 
-        <section
-          ref={scrollBoxRef}
-          data-testid="detached-preview-scroll"
-          data-pdf-scroll-root
-          aria-label={t(($) => $.preview.viewer.scrollArea)}
-          className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          style={
-            inverted && !screenReaderMode
-              ? { filter: "invert(1) hue-rotate(180deg)" }
-              : undefined
-          }
-        >
-          {previewDocument ? (
-            <ErrorBoundary
-              resetKey={`${previewDocument.identity}:${viewerReload}`}
-              fallback={
-                <div className="flex h-full items-center justify-center">
-                  <PreviewMessage
-                    title={t(($) => $.preview.viewer.crashedTitle)}
-                    detail={t(($) => $.preview.window.crashedDetail)}
-                    onRetry={retryViewer}
-                  />
-                </div>
-              }
-            >
-              <PdfViewer
-                key={`${previewDocument.identity}:${viewerReload}`}
-                ref={pdfRef}
-                data={previewDocument.bytes}
-                documentIdentity={previewDocument.identity}
-                password={pdfPassword || undefined}
-                rotation={rotation}
-                scale={scale}
-                layout={layout}
-                screenReaderMode={screenReaderMode}
-                searchQuery={searchOpen ? deferredSearch : ""}
-                onLoadStateChange={handlePdfLoadState}
-                onSearchStateChange={setSearchState}
-                onOutlineStateChange={setOutlineState}
-                onPageChange={(current, total) => {
-                  setPage(current);
-                  setNumPages(total);
-                }}
-              />
-            </ErrorBoundary>
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <PreviewMessage
-                loading={
-                  artifactLoading || compileState?.status === "compiling"
-                }
-                title={
-                  compileState?.status === "compiling"
-                    ? t(($) => $.preview.window.compilingTitle)
-                    : compileState?.status === "error"
-                      ? t(($) => $.preview.window.compileFailedTitle)
-                      : compileState?.status === "unavailable"
-                        ? t(($) => $.preview.window.compileUnavailableTitle)
-                        : artifactFailure
-                          ? t(($) => $.preview.window.artifactUnavailableTitle)
-                          : t(($) => $.preview.window.noVerifiedTitle)
-                }
-                detail={
-                  artifactFailure ??
-                  compileState?.message ??
-                  (compileState?.status === "compiling"
-                    ? t(($) => $.preview.window.compilingDetail)
-                    : t(($) => $.preview.window.noVerifiedDetail))
-                }
-                onRetry={
-                  artifactFailure
-                    ? () => setArtifactRetry((value) => value + 1)
-                    : undefined
-                }
-              />
-            </div>
-          )}
-        </section>
+        {renderPreviewScrollArea()}
 
-        {previewDocument &&
-          pdfLoadState.documentIdentity === previewDocument.identity &&
-          pdfLoadState.status !== "ready" &&
-          pdfLoadState.status !== "idle" && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-sidebar/90 p-6 backdrop-blur-[1px]">
-              {pdfLoadState.status === "password_required" ? (
-                <form
-                  className="w-full max-w-xs space-y-3 text-center"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    submitPassword();
-                  }}
-                >
-                  <LockKeyhole className="mx-auto size-8 text-muted-foreground" />
-                  <div>
-                    <h2 className="text-sm font-semibold">
-                      {t(($) => $.preview.password.title)}
-                    </h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {pdfLoadState.message}
-                    </p>
-                  </div>
-                  <Input
-                    autoFocus
-                    type="password"
-                    autoComplete="off"
-                    value={passwordDraft}
-                    onChange={(event) =>
-                      setPasswordDraft(event.target.value)
-                    }
-                    aria-label={t(($) => $.preview.password.label)}
-                    placeholder={t(($) => $.preview.password.placeholder)}
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={!passwordDraft}
-                  >
-                    {t(($) => $.preview.password.submit)}
-                  </Button>
-                </form>
-              ) : (
-                <PreviewMessage
-                  loading={pdfLoadState.status === "loading"}
-                  title={
-                    pdfLoadState.status === "loading"
-                      ? t(($) => $.preview.window.loadingTitle)
-                      : pdfLoadState.status === "invalid"
-                        ? t(($) => $.preview.viewer.invalidTitle)
-                        : pdfLoadState.status === "empty"
-                          ? t(($) => $.preview.viewer.emptyTitle)
-                          : pdfLoadState.status === "unavailable"
-                            ? t(($) => $.preview.viewer.unavailableTitle)
-                            : t(($) => $.preview.viewer.loadFailedTitle)
-                  }
-                  detail={
-                    pdfLoadState.status === "loading" &&
-                    pdfLoadState.progress !== undefined
-                      ? `${Math.round(pdfLoadState.progress * 100)}%`
-                      : pdfLoadState.message ??
-                        t(($) => $.preview.viewer.loadFailedDetail)
-                  }
-                  onRetry={
-                    pdfLoadState.status === "loading"
-                      ? undefined
-                      : retryViewer
-                  }
-                />
-              )}
-            </div>
-          )}
+        {renderViewerOverlay()}
       </div>
 
       <div className="sr-only" aria-live="polite">

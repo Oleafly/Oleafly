@@ -221,12 +221,16 @@ export function createFeaturePlaceholders(
   ) as ProjectAnalysisFeatureSlots;
 }
 
-export function createProjectAnalysisSnapshot(
-  identity: ProjectAnalysisIdentity = {
+function emptyProjectAnalysisIdentity(): ProjectAnalysisIdentity {
+  return {
     projectId: null,
     projectRevision: 0,
     languageServiceGeneration: 0,
-  },
+  };
+}
+
+export function createProjectAnalysisSnapshot(
+  identity: ProjectAnalysisIdentity = emptyProjectAnalysisIdentity(),
   now = Date.now(),
 ): ProjectAnalysisSnapshot {
   const reason = identity.projectId

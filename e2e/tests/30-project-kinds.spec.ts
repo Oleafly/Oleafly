@@ -72,6 +72,7 @@ for (const id of [...TEX_TEMPLATES, ...OTHER_TEMPLATES]) {
 
 for (const id of NETWORK_TEMPLATES) {
   test(`template ${id}: create (with asset download) and compile with zero errors`, async ({ tauriPage }) => {
+    // Ignored on purpose on offline runners, because the font pack is downloaded.
     test.skip(process.env.E2E_SKIP_NETWORK === "1", "needs network for the font pack");
     test.setTimeout(300_000);
     await createFromTemplate(tauriPage, id, `E2E T ${id} ${RUN}`);

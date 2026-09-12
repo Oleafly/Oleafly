@@ -90,7 +90,7 @@ function pageMatches(
   if (!text || !segments.length) return [];
 
   const results: PdfSearchMatch[] = [];
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
   const matcher = new RegExp(escaped, "giu");
   for (const match of text.matchAll(matcher)) {
     const index = match.index;

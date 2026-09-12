@@ -61,7 +61,7 @@ function isTextAttachment(mediaType: string, name: string): boolean {
 function decodeDataUrl(dataUrl: string): string | null {
   const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
   try {
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const bytes = Uint8Array.from(atob(base64), (c) => c.codePointAt(0) ?? 0);
     return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   } catch {
     return null;

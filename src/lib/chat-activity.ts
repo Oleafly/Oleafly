@@ -249,8 +249,8 @@ function statusLabel(status: ResearchToolStatus, value: unknown): string {
 }
 
 export function stripAnsi(value: string): string {
-  const escapeSequence = String.fromCharCode(27);
-  return value.replace(new RegExp(`${escapeSequence}\\[[0-?]*[ -/]*[@-~]`, "g"), "");
+  const escapeSequence = String.fromCodePoint(27);
+  return value.replace(new RegExp(String.raw`${escapeSequence}\[[0-?]*[ -/]*[@-~]`, "g"), "");
 }
 
 function readableOutput(raw: string | undefined, value: unknown): string {
@@ -277,10 +277,8 @@ function abstractFromIndex(value: unknown): string | undefined {
       if (typeof position === "number") words.push({ word, position });
     }
   }
-  return words
-    .sort((left, right) => left.position - right.position)
-    .map((entry) => entry.word)
-    .join(" ") || undefined;
+  words.sort((left, right) => left.position - right.position);
+  return words.map((entry) => entry.word).join(" ") || undefined;
 }
 
 function literatureResult(value: unknown): LiteratureResultView | null {
@@ -344,7 +342,7 @@ function kindFor(name: string): ResearchToolView["kind"] {
 }
 
 function normalizedToolName(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|(?<!_)_+$/g, "");
 }
 
 function artifactTarget(
@@ -453,17 +451,60 @@ export function createResearchArtifactAction(
   };
 }
 
+function compileSummary(
+  status: ResearchToolStatus,
+  diagnostics: readonly string[],
+): string {
+  if (diagnostics.length) {
+    return i18n.t(($) => $.core.toolActivity.summary.diagnostics, {
+      count: diagnostics.length,
+    });
+  }
+  if (status === "completed") {
+    return i18n.t(($) => $.core.toolActivity.summary.compileSucceeded);
+  }
+  return i18n.t(($) => $.core.toolActivity.summary.compileFailed);
+}
+
+function toolSummary(context: {
+  kind: ResearchToolView["kind"];
+  status: ResearchToolStatus;
+  reason: string | undefined;
+  resultCount: number;
+  verified: boolean | undefined;
+  diagnostics: readonly string[];
+  path: string | undefined;
+}): string | undefined {
+  const { kind, status, verified, diagnostics } = context;
+  if (kind === "literature" && status === "completed") {
+    return i18n.t(($) => $.core.toolActivity.summary.papers, {
+      count: context.resultCount,
+    });
+  }
+  if (kind === "citation" && verified === true) {
+    return i18n.t(($) => $.core.toolActivity.summary.citationVerified);
+  }
+  if (kind === "citation" && verified === false) {
+    return (
+      context.reason ??
+      i18n.t(($) => $.core.toolActivity.summary.citationUnverified)
+    );
+  }
+  if (kind === "compile" && (status === "completed" || status === "failed")) {
+    return compileSummary(status, diagnostics);
+  }
+  if (kind === "source" && context.path) return context.path;
+  return undefined;
+}
+
 export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
   const value = parseOutput(entry.output);
   const data = record(value);
   const status = explicitStatus(entry, value);
   const name = normalizedToolName(entry.name);
   const kind = kindFor(name);
-  const rawResults = Array.isArray(data?.results)
-    ? data.results
-    : Array.isArray(data?.works)
-      ? data.works
-      : [];
+  const fallbackResults = Array.isArray(data?.works) ? data.works : [];
+  const rawResults = Array.isArray(data?.results) ? data.results : fallbackResults;
   const results = rawResults
     .map(literatureResult)
     .filter((result): result is LiteratureResultView => result !== null);
@@ -477,28 +518,15 @@ export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
   const verified = typeof data?.verified === "boolean" ? data.verified : undefined;
   const errors = diagnosticMessages(data?.errors);
   const diagnostics = [...errors, ...diagnosticMessages(data?.diagnostics)];
-  let summary: string | undefined;
-  if (kind === "literature" && status === "completed") {
-    summary = i18n.t(($) => $.core.toolActivity.summary.papers, { count: results.length });
-  }
-  if (kind === "citation" && verified === true) {
-    summary = i18n.t(($) => $.core.toolActivity.summary.citationVerified);
-  }
-  if (kind === "citation" && verified === false) {
-    summary =
-      stringValue(data?.reason) ?? i18n.t(($) => $.core.toolActivity.summary.citationUnverified);
-  }
-  if (kind === "compile" && status === "completed") {
-    summary = diagnostics.length
-      ? i18n.t(($) => $.core.toolActivity.summary.diagnostics, { count: diagnostics.length })
-      : i18n.t(($) => $.core.toolActivity.summary.compileSucceeded);
-  }
-  if (kind === "compile" && status === "failed") {
-    summary = diagnostics.length
-      ? i18n.t(($) => $.core.toolActivity.summary.diagnostics, { count: diagnostics.length })
-      : i18n.t(($) => $.core.toolActivity.summary.compileFailed);
-  }
-  if (kind === "source" && path) summary = path;
+  const summary = toolSummary({
+    kind,
+    status,
+    reason: stringValue(data?.reason),
+    resultCount: results.length,
+    verified,
+    diagnostics,
+    path,
+  });
   return {
     kind,
     name,

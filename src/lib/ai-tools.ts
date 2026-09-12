@@ -5,15 +5,6 @@ import {
   agentExecAuthorize,
   agentExecCwd,
   agentExecRegisterExternal,
-} from "@/lib/tauri";
-import {
-  createOleaflyTools as createOleaflyToolsCore,
-  createFigureTools as createFigureToolsCore,
-  type AiToolsHost,
-  type ProjectIndexView,
-  type ConfirmFn,
-} from "@oleafly/ai-tools";
-import {
   readFileContent,
   writeFileContent,
   createFile,
@@ -27,6 +18,13 @@ import {
   writeProjectBytes,
   projectMutationGeneration,
 } from "@/lib/tauri";
+import {
+  createOleaflyTools as createOleaflyToolsCore,
+  createFigureTools as createFigureToolsCore,
+  type AiToolsHost,
+  type ProjectIndexView,
+  type ConfirmFn,
+} from "@oleafly/ai-tools";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
@@ -84,7 +82,7 @@ const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
   const expectedGeneration = await files.prepareExternalMutation(projectId);
   const current = await currentDiskContent(projectId, path);
   if (!mutationAllowed(projectId, allowed)) return false;
-  const documentEnd = current.lastIndexOf("\\end{document}");
+  const documentEnd = current.lastIndexOf(String.raw`\end{document}`);
   const at = documentEnd >= 0 ? documentEnd : current.length;
   const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
   const result = await writeFileContent(projectId, path, next, expectedGeneration);
@@ -189,6 +187,38 @@ async function forwardSyncTexToRevealedLine(): Promise<void> {
   await forwardFromCursor();
 }
 
+async function revealPdfTarget(
+  page: number | undefined,
+  state: {
+    wantsPage: boolean;
+    syncTexReady: boolean;
+    editorRevealed: boolean;
+    switched: boolean;
+  },
+  notes: string[],
+): Promise<boolean> {
+  if (state.wantsPage) {
+    const pdfRevealed = await showPdfPage(
+      page as number,
+      state.switched ? 1500 : 0,
+    );
+    if (!pdfRevealed) {
+      notes.push(
+        "The PDF preview is not showing a document, so its page did not change.",
+      );
+    }
+    return pdfRevealed;
+  }
+  if (state.editorRevealed && state.syncTexReady) {
+    try {
+      await forwardSyncTexToRevealedLine();
+    } catch {
+      notes.push("The PDF preview stayed where it was.");
+    }
+  }
+  return false;
+}
+
 const revealLocationHost = async (target: {
   path?: string;
   line?: number;
@@ -213,17 +243,11 @@ const revealLocationHost = async (target: {
     if (!editorRevealed) notes.push(`Could not open ${target.path} in the editor.`);
   }
 
-  let pdfRevealed = false;
-  if (wantsPage) {
-    pdfRevealed = await showPdfPage(target.page as number, switched ? 1500 : 0);
-    if (!pdfRevealed) notes.push("The PDF preview is not showing a document, so its page did not change.");
-  } else if (editorRevealed && syncTexReady) {
-    try {
-      await forwardSyncTexToRevealedLine();
-    } catch {
-      notes.push("The PDF preview stayed where it was.");
-    }
-  }
+  const pdfRevealed = await revealPdfTarget(
+    target.page,
+    { wantsPage, syncTexReady, editorRevealed, switched },
+    notes,
+  );
 
   return {
     revealed: editorRevealed || pdfRevealed,

@@ -40,7 +40,7 @@ export function EquationToolView() {
   if (activePage !== "equation") return null;
 
   const rendered = renderEquation(input, display);
-  const wrapped = display ? `\\[ ${input} \\]` : `$${input}$`;
+  const wrapped = display ? String.raw`\[ ${input} \]` : `$${input}$`;
 
   const buildSvgMarkup = () =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${previewTheme === "dark" ? "#111111" : "#ffffff"};color:${previewTheme === "dark" ? "#ffffff" : "#000000"};font-size:28px;padding:24px;box-sizing:border-box;">${rendered.html}</div></foreignObject></svg>`;

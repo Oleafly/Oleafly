@@ -270,7 +270,7 @@ class ProofreadingWorkerClient {
       "worker_restarted",
       true,
     );
-    for (const pending of [...this.pending.values()]) {
+    for (const pending of this.pending.values()) {
       this.rejectRequest(pending.request.requestId, restartError);
       useProofreadingStore
         .getState()
@@ -301,7 +301,7 @@ class ProofreadingWorkerClient {
       "disposed",
       false,
     );
-    for (const requestId of [...this.pending.keys()]) {
+    for (const requestId of this.pending.keys()) {
       this.rejectRequest(requestId, error);
     }
     this.retained.clear();
@@ -426,12 +426,11 @@ class ProofreadingWorkerClient {
   }): ProofreadingResult | null {
     const retained = this.retained.get(input.surface);
     if (
-      !retained ||
-      retained.cacheKey !== input.cacheKey ||
-      retained.projectId !== input.projectId ||
-      retained.path !== input.path ||
-      retained.text !== input.text ||
-      retained.mode !== input.mode
+      retained?.cacheKey !== input.cacheKey ||
+      retained?.projectId !== input.projectId ||
+      retained?.path !== input.path ||
+      retained?.text !== input.text ||
+      retained?.mode !== input.mode
     ) {
       return null;
     }

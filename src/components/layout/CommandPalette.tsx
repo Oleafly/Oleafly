@@ -181,13 +181,13 @@ function PaletteItem({
   hint,
   searchValue,
   onSelect,
-}: {
+}: Readonly<{
   icon: ReactNode;
   label: string;
   hint?: string;
   searchValue: string;
   onSelect: () => void;
-}) {
+}>) {
   return (
     <Command.Item
       value={searchValue}

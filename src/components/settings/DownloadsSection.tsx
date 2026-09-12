@@ -278,6 +278,16 @@ export function DownloadsSection() {
         ) : (
           components.map((c) => {
             const busy = busyId === c.id || (busyId === ALL && !c.installed);
+            const rowDetail = () => {
+              if (busy && progress) {
+                return progress;
+              }
+              if (isFontPackId(c.id)) {
+                return t(($) => $.settings.downloads.fontPacks[c.id as FontPackId].description);
+              }
+              return c.description;
+            };
+
             return (
               <div
                 key={c.id}
@@ -296,11 +306,7 @@ export function DownloadsSection() {
                     )}
                   </div>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    {busy && progress
-                      ? progress
-                      : isFontPackId(c.id)
-                        ? t(($) => $.settings.downloads.fontPacks[c.id as FontPackId].description)
-                        : c.description}
+                    {rowDetail()}
                     {!busy && c.license?.spdx ? ` · ${c.license.spdx}` : ""}
                   </p>
                 </div>

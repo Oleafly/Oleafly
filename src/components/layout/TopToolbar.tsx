@@ -199,10 +199,10 @@ export function ProjectHistoryActions() {
 function ViewModeSwitch({
   viewMode,
   setViewMode,
-}: {
+}: Readonly<{
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
-}) {
+}>) {
   useTranslation();
   return (
     <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">

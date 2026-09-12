@@ -3,7 +3,11 @@ use super::{
     protocol::{Connection, Incoming},
     redact::Redactor,
     store::Store,
-    types::*,
+    types::{
+        new_id, now_ms, AcpEvent, AgentDefinition, AgentStatus, Capabilities, EventPage,
+        ImagePrompt, PermissionRequest, SessionControls, SessionRecord, SessionSnapshot,
+        SessionStatus, StartSession, UsageCounters,
+    },
 };
 use serde_json::{json, Value};
 use std::{
@@ -483,7 +487,8 @@ impl AcpRuntime {
         }
         let task_temp = if allowed_paths.is_some() {
             let path = self.root.join("task-temp").join(new_id());
-            std::fs::create_dir_all(&path)
+            tokio::fs::create_dir_all(&path)
+                .await
                 .map_err(|_| "The task temporary directory could not be created.")?;
             Some(TaskTemp(path))
         } else {
@@ -1041,7 +1046,7 @@ impl AcpRuntime {
     async fn release_live(&self, session: &Arc<LiveSession>) {
         if session.connection.is_closed() {
             if let Some(temporary) = &session.task_temp {
-                let _ = std::fs::remove_dir_all(&temporary.0);
+                let _ = tokio::fs::remove_dir_all(&temporary.0).await;
             }
         }
         let Ok(record) = self.copy_record(session) else {

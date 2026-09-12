@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StoreApi } from "zustand";
 import { listen } from "@tauri-apps/api/event";
 import {
   cancelCompile,
@@ -517,6 +517,528 @@ function maybePromptEngineGap(log: string, errors: CompileError[]): void {
   useEnginePickerStore.getState().openPicker("compile-failure", findings);
 }
 
+type CompileSet = StoreApi<CompileState>["setState"];
+type CompileGet = StoreApi<CompileState>["getState"];
+type CheckpointAdvanced = (current?: CompileSuccessCheckpoint | null) => boolean;
+
+interface CompileGateContext {
+  readonly set: CompileSet;
+  readonly get: CompileGet;
+  readonly files: ReturnType<typeof useFilesStore.getState>;
+  readonly capturedProjectId: string | null;
+  readonly mainDoc: string;
+  readonly intent: number;
+  readonly matchesProjectAndMain: () => boolean;
+  readonly checkpointAdvanced: CheckpointAdvanced;
+  readonly abortIntent: () => void;
+}
+
+function gateAttemptIdentity(ctx: CompileGateContext): CompileRequestIdentity | null {
+  return ctx.capturedProjectId
+    ? identityForGeneration(ctx.capturedProjectId, ctx.mainDoc, ctx.intent)
+    : null;
+}
+
+function setCompileUnavailable(ctx: CompileGateContext, failureReason: string): void {
+  ctx.set({
+    status: "unavailable",
+    phase: "idle",
+    failureReason,
+    lastAttemptIdentity: gateAttemptIdentity(ctx),
+  });
+}
+
+function compileIdentityGate(ctx: CompileGateContext): boolean {
+  if (ctx.matchesProjectAndMain() && !ctx.checkpointAdvanced()) return true;
+  ctx.abortIntent();
+  return false;
+}
+
+function engineLoadedGate(ctx: CompileGateContext): boolean {
+  if (ctx.files.engineLoaded) return true;
+  const reason = ctx.files.engineError
+    ? engineErrorMessage(ctx.files.engineError)
+    : i18n.t(($) => $.core.engine.error.stillLoading);
+  setCompileUnavailable(ctx, reason);
+  notifyError(
+    "compile",
+    reason,
+    i18n.t(($) => $.core.compile.engineNotLoaded),
+  );
+  ctx.abortIntent();
+  return false;
+}
+
+async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean> {
+  if (ctx.files.engine.capabilities.compiler_prerequisite !== "pandoc") return true;
+  try {
+    if (!(await ensurePandoc())) {
+      setCompileUnavailable(
+        ctx,
+        "Pandoc is required for this document engine and is not available.",
+      );
+      ctx.abortIntent();
+      return false;
+    }
+  } catch (e) {
+    setCompileUnavailable(ctx, `Pandoc setup failed: ${String(e)}`);
+    notifyError("Pandoc setup", e);
+    ctx.abortIntent();
+    return false;
+  }
+  return compileIdentityGate(ctx);
+}
+
+async function systemTexPrerequisiteGate(ctx: CompileGateContext): Promise<boolean> {
+  if (ctx.files.engine.capabilities.compiler_prerequisite !== "system_tex") return true;
+  // A TinyTeX install may be in flight: queue this compile behind it
+  // instead of failing with "latexmk not found". The engine store runs
+  // the queued compile the moment the install lands.
+  const engineModule = await import("@/store/engine");
+  const engineStore = engineModule.useEngineStore.getState();
+  if (engineStore.installing) {
+    engineStore.queueCompileAfterInstall();
+    setCompileUnavailable(
+      ctx,
+      "TinyTeX is still downloading. This compile starts automatically when it finishes.",
+    );
+    ctx.abortIntent();
+    return false;
+  }
+  return compileIdentityGate(ctx);
+}
+
+async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> {
+  try {
+    await ctx.files.saveActive();
+  } catch (e) {
+    ctx.set({
+      status: "error",
+      phase: "idle",
+      failureReason: `The document could not be saved before compiling: ${String(e)}`,
+      lastAttemptIdentity: gateAttemptIdentity(ctx),
+    });
+    ctx.abortIntent();
+    notifyError("save before compile", e);
+    return false;
+  }
+  return compileIdentityGate(ctx);
+}
+
+function syntaxCheckLog(mainDoc: string, syntaxErrors: readonly CompileError[]): string {
+  return `Syntax check found ${syntaxErrors.length} error${
+    syntaxErrors.length === 1 ? "" : "s"
+  } in ${mainDoc}; the compiler was not run.\n${syntaxErrors
+    .map((error) => `${mainDoc}:${error.line ?? 0}: ${error.message}`)
+    .join("\n")}\n`;
+}
+
+async function syntaxCheckGate(ctx: CompileGateContext, projectId: string): Promise<boolean> {
+  if (!ctx.get().checkSyntaxBeforeCompile) return true;
+  // Runs after the save so it reads exactly the source the compiler would.
+  let syntaxErrors: CompileError[] = [];
+  try {
+    syntaxErrors = await mainDocumentSyntaxErrors(projectId, ctx.mainDoc);
+  } catch {
+    // The checker is an optimization, never a gate of its own: if the
+    // source cannot be read here, let the compiler report the real problem.
+    syntaxErrors = [];
+  }
+  if (!compileIdentityGate(ctx)) return false;
+  if (syntaxErrors.length === 0) return true;
+  ctx.set({
+    status: "error",
+    phase: "idle",
+    errors: syntaxErrors,
+    failureReason:
+      "Syntax check found errors. Fix them, or turn off “Check syntax before compile”.",
+    log: syntaxCheckLog(ctx.mainDoc, syntaxErrors),
+    lastAttemptIdentity: identityForGeneration(projectId, ctx.mainDoc, ctx.intent),
+  });
+  ctx.abortIntent();
+  return false;
+}
+
+async function clearBuildDirGate(
+  ctx: CompileGateContext,
+  projectId: string,
+  fromScratch: boolean | undefined,
+): Promise<boolean> {
+  if (!fromScratch) return true;
+  try {
+    await clearBuildDir(projectId);
+  } catch (error) {
+    notifyError("clear build directory", error);
+    ctx.abortIntent();
+    return false;
+  }
+  return compileIdentityGate(ctx);
+}
+
+async function runCompileGates(
+  ctx: CompileGateContext,
+  options: { fromScratch?: boolean } | undefined,
+): Promise<string | null> {
+  if (!engineLoadedGate(ctx)) return null;
+  if (!(await pandocPrerequisiteGate(ctx))) return null;
+  if (!(await systemTexPrerequisiteGate(ctx))) return null;
+  if (!compileIdentityGate(ctx)) return null;
+  const projectId = ctx.capturedProjectId;
+  if (!projectId) {
+    ctx.abortIntent();
+    return null;
+  }
+  ctx.set({
+    status: "compiling",
+    phase: "saving",
+    errors: [],
+    diagnostics: null,
+    failureReason: null,
+    lastAttemptIdentity: identityForGeneration(projectId, ctx.mainDoc, ctx.intent),
+  });
+  if (!(await saveBeforeCompileGate(ctx))) return null;
+  if (!(await syntaxCheckGate(ctx, projectId))) return null;
+  if (!(await clearBuildDirGate(ctx, projectId, options?.fromScratch))) return null;
+  return projectId;
+}
+
+async function captureSnapshotIfCurrent(
+  projectId: string,
+  requestIdentity: CompileRequestIdentity,
+): Promise<{ snapshot: CompileSourceSnapshot | null } | null> {
+  if (!isCompileRequestIdentityCurrent(requestIdentity)) return null;
+  const snapshot = await captureCompileSourceSnapshot(projectId);
+  if (!isCompileRequestIdentityCurrent(requestIdentity)) return null;
+  return { snapshot };
+}
+
+function beginBuildingPhase(
+  set: CompileSet,
+  args: {
+    readonly identityStale: () => boolean;
+    readonly checkpointAtStart: CompileSuccessCheckpoint | null;
+    readonly requestIdentity: CompileRequestIdentity;
+    readonly notice: string | null | undefined;
+  },
+): boolean {
+  let started = false;
+  set((state) => {
+    if (
+      args.identityStale() ||
+      hasCompileCheckpointAdvanced(args.checkpointAtStart, state.lastCompileCheckpoint)
+    ) {
+      return state;
+    }
+    started = true;
+    return {
+      status: "compiling",
+      phase: "building",
+      log: args.notice ? `${args.notice}\n` : "",
+      errors: [],
+      diagnostics: null,
+      lastAttemptIdentity: args.requestIdentity,
+      failureReason: null,
+    };
+  });
+  return started;
+}
+
+interface CompileLogPump {
+  readonly push: (chunk: string) => void;
+  readonly flush: () => void;
+  readonly dispose: () => void;
+}
+
+function createCompileLogPump(
+  set: CompileSet,
+  get: CompileGet,
+  gates: {
+    readonly identityStale: () => boolean;
+    readonly checkpointAdvanced: CheckpointAdvanced;
+    readonly checkpointAtStart: CompileSuccessCheckpoint | null;
+  },
+): CompileLogPump {
+  let pendingLog = "";
+  let pendingPhase: CompilePhase | null = null;
+  let logFrame: number | null = null;
+  const flush = (): void => {
+    if (logFrame !== null) {
+      cancelAnimationFrame(logFrame);
+      logFrame = null;
+    }
+    const chunk = pendingLog;
+    const phase = pendingPhase;
+    pendingLog = "";
+    pendingPhase = null;
+    if (!chunk) return;
+    set((state) => {
+      if (
+        gates.identityStale() ||
+        hasCompileCheckpointAdvanced(gates.checkpointAtStart, state.lastCompileCheckpoint)
+      ) {
+        return state;
+      }
+      return {
+        log: state.log + chunk,
+        phase: phase ?? state.phase,
+      };
+    });
+  };
+  return {
+    push: (chunk) => {
+      if (gates.identityStale() || gates.checkpointAdvanced()) return;
+      pendingLog += chunk;
+      pendingPhase = phaseFromLogChunk(chunk, pendingPhase ?? get().phase);
+      logFrame ??= requestAnimationFrame(() => {
+        logFrame = null;
+        flush();
+      });
+    },
+    flush,
+    dispose: () => {
+      if (logFrame !== null) cancelAnimationFrame(logFrame);
+      pendingLog = "";
+      pendingPhase = null;
+    },
+  };
+}
+
+function applyStoppedCompile(set: CompileSet, identityStale: () => boolean): void {
+  // A stop is not a failed document: keep the preview and the previous
+  // log rather than reporting an error the source did not cause.
+  rerunQueued = false;
+  set((state) =>
+    identityStale()
+      ? state
+      : {
+          status: state.lastCompileCheckpoint ? "success" : "idle",
+          phase: "idle",
+          failureReason: null,
+          log: `${state.log}\nCompile stopped.\n`,
+        },
+  );
+}
+
+interface CompileApplyContext {
+  readonly set: CompileSet;
+  readonly get: CompileGet;
+  readonly projectId: string;
+  readonly mainDoc: string;
+  readonly requestIdentity: CompileRequestIdentity;
+  readonly checkpointAtStart: CompileSuccessCheckpoint | null;
+  readonly identityStale: () => boolean;
+  readonly checkpointAdvanced: CheckpointAdvanced;
+  readonly offlineNoticePrefix: string;
+  readonly compiledSourceSnapshot: CompileSourceSnapshot | null;
+}
+
+function successfulOutputRevision(result: CompileResult): number | null {
+  return result.ok &&
+    Number.isSafeInteger(result.output_revision) &&
+    (result.output_revision ?? 0) > 0
+    ? result.output_revision
+    : null;
+}
+
+function compileResultSuperseded(
+  ctx: CompileApplyContext,
+  result: CompileResult,
+  currentCheckpoint: CompileSuccessCheckpoint | null,
+): boolean {
+  if (ctx.identityStale()) return true;
+  if (!ctx.checkpointAdvanced(currentCheckpoint)) return false;
+  const resultRevision = successfulOutputRevision(result);
+  if (resultRevision === null) return true;
+  return currentCheckpoint !== null && resultRevision <= currentCheckpoint.outputRevision;
+}
+
+function verifiedCompileOutput(
+  result: CompileResult,
+  bytes: Uint8Array | null,
+): {
+  verifiedBytes: Uint8Array | null;
+  verifiedOutputId: string | null;
+  outputIdentityError: string;
+} {
+  const verifiedOutputId =
+    bytes && result.output_id && fingerprintCompileOutput(bytes) === result.output_id
+      ? result.output_id
+      : null;
+  const verifiedBytes = verifiedOutputId ? bytes : null;
+  const outputIdentityError =
+    result.has_pdf && !verifiedBytes
+      ? "\nCompiled PDF changed before it could be verified. Keeping the prior preview."
+      : "";
+  return { verifiedBytes, verifiedOutputId, outputIdentityError };
+}
+
+function compileSuccessCheckpointFor(
+  ctx: CompileApplyContext,
+  result: CompileResult,
+  verified: {
+    readonly verifiedBytes: Uint8Array | null;
+    readonly verifiedOutputId: string | null;
+  },
+): CompileSuccessCheckpoint | null {
+  const successfulRevision = verified.verifiedBytes ? successfulOutputRevision(result) : null;
+  if (successfulRevision === null || !verified.verifiedOutputId) return null;
+  return createCompileSuccessCheckpoint({
+    projectId: ctx.projectId,
+    mainDocument: ctx.mainDoc,
+    projectRevision: ctx.requestIdentity.projectRevision,
+    requestGeneration: ctx.requestIdentity.requestGeneration,
+    outputKind: "standard",
+    producerId: currentCompileProducerId(),
+    outputRevision: successfulRevision,
+    outputId: verified.verifiedOutputId,
+    previousCompletedAt: ctx.get().lastCompiledAt,
+  });
+}
+
+async function applyCompileResult(
+  ctx: CompileApplyContext,
+  result: CompileResult,
+): Promise<CompileResult> {
+  const currentCheckpoint = ctx.get().lastCompileCheckpoint;
+  if (compileResultSuperseded(ctx, result, currentCheckpoint)) return result;
+  // Wrap the IPC ArrayBuffer as a view (no copy of the payload bytes). Read
+  // whenever a PDF exists, even on error: Tectonic's continue-on-errors mode
+  // still produces a best-effort PDF, and we want to keep showing it.
+  const buf = result.has_pdf ? await readCompiledPdf(ctx.projectId) : null;
+  const bytes = buf ? new Uint8Array(buf) : null;
+  if (ctx.identityStale()) return result;
+  const verified = verifiedCompileOutput(result, bytes);
+  const checkpoint = compileSuccessCheckpointFor(ctx, result, verified);
+  let applied = false;
+  ctx.set((state) => {
+    if (
+      ctx.identityStale() ||
+      !canApplyLocalCompileOutcome(
+        checkpoint,
+        state.lastCompileCheckpoint,
+        ctx.checkpointAtStart,
+      )
+    ) {
+      return state;
+    }
+    applied = true;
+    return {
+      status: checkpoint ? "success" : "error",
+      phase: "idle",
+      pdfBytes: verified.verifiedBytes ?? state.pdfBytes,
+      failureReason: checkpoint
+        ? null
+        : verified.outputIdentityError.trim() ||
+          "Compilation did not produce a valid current PDF.",
+      errors: result.errors,
+      diagnostics: result.diagnostics ?? null,
+      log: `${ctx.offlineNoticePrefix}${result.log}${verified.outputIdentityError}`,
+      lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
+      lastCompileCheckpoint: checkpoint ?? state.lastCompileCheckpoint,
+      compiledSources: checkpoint ? ctx.compiledSourceSnapshot : state.compiledSources,
+      compileTimeMs: checkpoint ? (result.compile_time_ms ?? 0) : state.compileTimeMs,
+    };
+  });
+  if (!applied) return result;
+  // A failed Tectonic compile whose log matches a known engine gap
+  // (minted, missing index run, shell-escape refusal, unresolved Biber)
+  // gets the engine-picker modal instead of leaving the user to decode
+  // the log. latexmk projects already have the full toolchain.
+  if (!checkpoint) {
+    maybePromptEngineGap(result.log, result.errors);
+    maybeSuggestMissingPackages(result.log);
+  }
+  // Tell detached windows (PDF preview, other OS windows) to reload.
+  void import("@/lib/preview-window")
+    .then((module) =>
+      module.refreshPreviewWindow({
+        identity: ctx.requestIdentity,
+        status: checkpoint ? "success" : "error",
+        checkpoint,
+        message: checkpoint
+          ? undefined
+          : "Compilation did not produce a valid current PDF.",
+      }),
+    )
+    .catch(() => {});
+  if (checkpoint) {
+    notifyCompileSucceeded(checkpoint);
+  }
+  return result;
+}
+
+function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
+  ctx.set((state) => {
+    if (
+      ctx.identityStale() ||
+      hasCompileCheckpointAdvanced(ctx.checkpointAtStart, state.lastCompileCheckpoint)
+    ) {
+      return state;
+    }
+    return {
+      status: "error",
+      phase: "idle",
+      log: `${ctx.offlineNoticePrefix}Compile failed: ${String(e)}`,
+      failureReason: `Compile failed: ${String(e)}`,
+    };
+  });
+  void import("@/lib/preview-window")
+    .then((module) =>
+      module.refreshPreviewWindow({
+        identity: ctx.requestIdentity,
+        status: "error",
+        checkpoint: null,
+        message: `Compile failed: ${String(e)}`,
+      }),
+    )
+    .catch(() => {});
+  void import("@/lib/log").then(({ logError }) => logError("compile", e));
+}
+
+function clearOrphanedCompilingState(
+  set: CompileSet,
+  requestIdentity: CompileRequestIdentity,
+  checkpointAtStart: CompileSuccessCheckpoint | null,
+): void {
+  // A same-project main-document switch does not run the project-reset
+  // effect. Clear only this attempt's orphaned "compiling" indicator;
+  // never replace a success checkpoint that arrived while it was active.
+  set((state) => {
+    if (
+      state.status !== "compiling" ||
+      state.lastAttemptIdentity?.requestGeneration !== requestIdentity.requestGeneration ||
+      hasCompileCheckpointAdvanced(checkpointAtStart, state.lastCompileCheckpoint)
+    ) {
+      return state;
+    }
+    return {
+      status: "idle",
+      phase: "idle",
+      failureReason: "The compile was superseded by a newer project revision.",
+    };
+  });
+}
+
+function finishCompileAttempt(args: {
+  readonly set: CompileSet;
+  readonly get: CompileGet;
+  readonly intent: number;
+  readonly requestIdentity: CompileRequestIdentity;
+  readonly checkpointAtStart: CompileSuccessCheckpoint | null;
+  readonly identityStale: () => boolean;
+  readonly releaseIntent: () => void;
+}): void {
+  const ownsIntent = activeCompileIntent === args.intent;
+  if (ownsIntent && args.identityStale()) {
+    clearOrphanedCompilingState(args.set, args.requestIdentity, args.checkpointAtStart);
+  }
+  args.releaseIntent();
+  if (ownsIntent && rerunQueued) {
+    rerunQueued = false;
+    if (!args.identityStale()) void args.get().recompile();
+  }
+}
+
 export const useCompileStore = create<CompileState>((set, get) => ({
   status: "idle",
   phase: "idle",
@@ -678,194 +1200,30 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     const checkpointAdvanced = (
       current = get().lastCompileCheckpoint,
     ) => hasCompileCheckpointAdvanced(checkpointAtStart, current);
-    if (!files.engineLoaded) {
-      const reason = files.engineError
-        ? engineErrorMessage(files.engineError)
-        : i18n.t(($) => $.core.engine.error.stillLoading);
-      set({
-        status: "unavailable",
-        phase: "idle",
-        failureReason: reason,
-        lastAttemptIdentity: capturedProjectId
-          ? identityForGeneration(capturedProjectId, mainDoc, intent)
-          : null,
-      });
-      notifyError(
-        "compile",
-        reason,
-        i18n.t(($) => $.core.compile.engineNotLoaded),
-      );
-      abortIntent();
-      return undefined;
-    }
-    if (files.engine.capabilities.compiler_prerequisite === "pandoc") {
-      try {
-        if (!(await ensurePandoc())) {
-          set({
-            status: "unavailable",
-            phase: "idle",
-            failureReason:
-              "Pandoc is required for this document engine and is not available.",
-            lastAttemptIdentity: capturedProjectId
-              ? identityForGeneration(capturedProjectId, mainDoc, intent)
-              : null,
-          });
-          abortIntent();
-          return undefined;
-        }
-      } catch (e) {
-        set({
-          status: "unavailable",
-          phase: "idle",
-          failureReason: `Pandoc setup failed: ${String(e)}`,
-          lastAttemptIdentity: capturedProjectId
-            ? identityForGeneration(capturedProjectId, mainDoc, intent)
-            : null,
-        });
-        notifyError("Pandoc setup", e);
-        abortIntent();
-        return undefined;
-      }
-      if (!matchesProjectAndMain() || checkpointAdvanced()) {
-        abortIntent();
-        return undefined;
-      }
-    }
-    if (files.engine.capabilities.compiler_prerequisite === "system_tex") {
-      // A TinyTeX install may be in flight: queue this compile behind it
-      // instead of failing with "latexmk not found". The engine store runs
-      // the queued compile the moment the install lands.
-      const engineModule = await import("@/store/engine");
-      const engineStore = engineModule.useEngineStore.getState();
-      if (engineStore.installing) {
-        engineStore.queueCompileAfterInstall();
-        set({
-          status: "unavailable",
-          phase: "idle",
-          failureReason:
-            "TinyTeX is still downloading. This compile starts automatically when it finishes.",
-          lastAttemptIdentity: capturedProjectId
-            ? identityForGeneration(capturedProjectId, mainDoc, intent)
-            : null,
-        });
-        abortIntent();
-        return undefined;
-      }
-      if (!matchesProjectAndMain() || checkpointAdvanced()) {
-        abortIntent();
-        return undefined;
-      }
-    }
-    if (!matchesProjectAndMain() || checkpointAdvanced()) {
-      abortIntent();
-      return undefined;
-    }
-    if (!capturedProjectId) {
-      abortIntent();
-      return undefined;
-    }
-    const savingIdentity = identityForGeneration(
-      capturedProjectId,
-      mainDoc,
-      intent,
+
+    const projectId = await runCompileGates(
+      {
+        set,
+        get,
+        files,
+        capturedProjectId,
+        mainDoc,
+        intent,
+        matchesProjectAndMain,
+        checkpointAdvanced,
+        abortIntent,
+      },
+      options,
     );
-    set({
-      status: "compiling",
-      phase: "saving",
-      errors: [],
-      diagnostics: null,
-      failureReason: null,
-      lastAttemptIdentity: savingIdentity,
-    });
-    try {
-      await files.saveActive();
-    } catch (e) {
-      set({
-        status: "error",
-        phase: "idle",
-        failureReason: `The document could not be saved before compiling: ${String(e)}`,
-        lastAttemptIdentity: capturedProjectId
-          ? identityForGeneration(capturedProjectId, mainDoc, intent)
-          : null,
-      });
-      abortIntent();
-      notifyError("save before compile", e);
-      return undefined;
-    }
-    if (!matchesProjectAndMain() || checkpointAdvanced()) {
-      abortIntent();
-      return undefined;
-    }
+    if (projectId === null) return undefined;
 
-    if (get().checkSyntaxBeforeCompile) {
-      // Runs after the save so it reads exactly the source the compiler would.
-      let syntaxErrors: CompileError[] = [];
-      try {
-        syntaxErrors = await mainDocumentSyntaxErrors(
-          capturedProjectId,
-          mainDoc,
-        );
-      } catch {
-        // The checker is an optimization, never a gate of its own: if the
-        // source cannot be read here, let the compiler report the real problem.
-        syntaxErrors = [];
-      }
-      if (!matchesProjectAndMain() || checkpointAdvanced()) {
-        abortIntent();
-        return undefined;
-      }
-      if (syntaxErrors.length > 0) {
-        set({
-          status: "error",
-          phase: "idle",
-          errors: syntaxErrors,
-          failureReason:
-            "Syntax check found errors. Fix them, or turn off “Check syntax before compile”.",
-          log: `Syntax check found ${syntaxErrors.length} error${
-            syntaxErrors.length === 1 ? "" : "s"
-          } in ${mainDoc}; the compiler was not run.\n${syntaxErrors
-            .map((error) => `${mainDoc}:${error.line ?? 0}: ${error.message}`)
-            .join("\n")}\n`,
-          lastAttemptIdentity: identityForGeneration(
-            capturedProjectId,
-            mainDoc,
-            intent,
-          ),
-        });
-        abortIntent();
-        return undefined;
-      }
-    }
-
-    if (options?.fromScratch) {
-      try {
-        await clearBuildDir(capturedProjectId);
-      } catch (error) {
-        notifyError("clear build directory", error);
-        abortIntent();
-        return undefined;
-      }
-      if (!matchesProjectAndMain() || checkpointAdvanced()) {
-        abortIntent();
-        return undefined;
-      }
-    }
-
-    const projectId = capturedProjectId;
     const requestIdentity = identityForGeneration(
       projectId,
       mainDoc,
       intent,
     );
-    if (
-      !isCompileRequestIdentityCurrent(requestIdentity)
-    ) {
-      abortIntent();
-      return undefined;
-    }
-    const compiledSourceSnapshot =
-      await captureCompileSourceSnapshot(projectId);
-    if (!isCompileRequestIdentityCurrent(requestIdentity)) {
+    const captured = await captureSnapshotIfCurrent(projectId, requestIdentity);
+    if (captured === null) {
       abortIntent();
       return undefined;
     }
@@ -873,6 +1231,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       files.engine,
       useSettingsStore.getState().offline,
     );
+    const offlineNoticePrefix = offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "";
     const seq = ++compileSeq;
     // True once this compile's result is no longer the one the UI should show
     // (project switched, or a newer compile started).
@@ -880,27 +1239,11 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       return seq !== compileSeq || !isCompileOutputStillWanted(requestIdentity);
     };
 
-    let started = false;
-    set((state) => {
-      if (
-        identityStale() ||
-        hasCompileCheckpointAdvanced(
-          checkpointAtStart,
-          state.lastCompileCheckpoint,
-        )
-      ) {
-        return state;
-      }
-      started = true;
-      return {
-        status: "compiling",
-        phase: "building",
-        log: offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "",
-        errors: [],
-        diagnostics: null,
-        lastAttemptIdentity: requestIdentity,
-        failureReason: null,
-      };
+    const started = beginBuildingPhase(set, {
+      identityStale,
+      checkpointAtStart,
+      requestIdentity,
+      notice: offlinePolicy.notice,
     });
     if (!started) {
       abortIntent();
@@ -916,49 +1259,26 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       )
       .catch(() => {});
     let unlisten = () => {};
-    let pendingLog = "";
-    let pendingPhase: CompilePhase | null = null;
-    let logFrame: number | null = null;
-    const flushPendingLog = () => {
-      if (logFrame !== null) {
-        cancelAnimationFrame(logFrame);
-        logFrame = null;
-      }
-      const chunk = pendingLog;
-      const phase = pendingPhase;
-      pendingLog = "";
-      pendingPhase = null;
-      if (!chunk) return;
-      set((state) => {
-        if (
-          identityStale() ||
-          hasCompileCheckpointAdvanced(
-            checkpointAtStart,
-            state.lastCompileCheckpoint,
-          )
-        ) {
-          return state;
-        }
-        return {
-          log: state.log + chunk,
-          phase: phase ?? state.phase,
-        };
-      });
+    const logPump = createCompileLogPump(set, get, {
+      identityStale,
+      checkpointAdvanced,
+      checkpointAtStart,
+    });
+    const applyContext: CompileApplyContext = {
+      set,
+      get,
+      projectId,
+      mainDoc,
+      requestIdentity,
+      checkpointAtStart,
+      identityStale,
+      checkpointAdvanced,
+      offlineNoticePrefix,
+      compiledSourceSnapshot: captured.snapshot,
     };
     try {
       unlisten = await listen<string>("compile:log", (e) => {
-        if (identityStale() || checkpointAdvanced()) return;
-        pendingLog += e.payload;
-        pendingPhase = phaseFromLogChunk(
-          e.payload,
-          pendingPhase ?? get().phase,
-        );
-        if (logFrame === null) {
-          logFrame = requestAnimationFrame(() => {
-            logFrame = null;
-            flushPendingLog();
-          });
-        }
+        logPump.push(e.payload);
       });
       if (identityStale() || checkpointAdvanced()) return undefined;
       const result = await compileProject(
@@ -968,204 +1288,27 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         get().compileMode === "fast",
         get().stopOnFirstError,
       );
-      flushPendingLog();
+      logPump.flush();
       if (result.stopped) {
-        // A stop is not a failed document: keep the preview and the previous
-        // log rather than reporting an error the source did not cause.
-        rerunQueued = false;
-        set((state) =>
-          identityStale()
-            ? state
-            : {
-                status: state.lastCompileCheckpoint ? "success" : "idle",
-                phase: "idle",
-                failureReason: null,
-                log: `${state.log}\nCompile stopped.\n`,
-              },
-        );
+        applyStoppedCompile(set, identityStale);
         return result;
       }
-      const resultRevision =
-        result.ok &&
-        Number.isSafeInteger(result.output_revision) &&
-        (result.output_revision ?? 0) > 0
-          ? result.output_revision
-          : null;
-      const currentCheckpoint = get().lastCompileCheckpoint;
-      if (
-        identityStale() ||
-        (checkpointAdvanced(currentCheckpoint) &&
-          (resultRevision === null ||
-            (currentCheckpoint !== null &&
-              resultRevision <= currentCheckpoint.outputRevision)))
-      ) {
-        return result;
-      }
-      // Wrap the IPC ArrayBuffer as a view (no copy of the payload bytes). Read
-      // whenever a PDF exists, even on error: Tectonic's continue-on-errors mode
-      // still produces a best-effort PDF, and we want to keep showing it.
-      const buf = result.has_pdf ? await readCompiledPdf(projectId) : null;
-      const bytes = buf ? new Uint8Array(buf) : null;
-      if (identityStale()) return result;
-      const verifiedOutputId =
-        bytes &&
-        result.output_id &&
-        fingerprintCompileOutput(bytes) === result.output_id
-          ? result.output_id
-          : null;
-      const verifiedBytes = verifiedOutputId ? bytes : null;
-      const outputIdentityError =
-        result.has_pdf && !verifiedBytes
-          ? "\nCompiled PDF changed before it could be verified. Keeping the prior preview."
-          : "";
-      const successfulRevision =
-        result.ok &&
-        verifiedBytes &&
-        Number.isSafeInteger(result.output_revision) &&
-        (result.output_revision ?? 0) > 0
-          ? result.output_revision
-          : null;
-      const checkpoint =
-        successfulRevision !== null && verifiedOutputId
-          ? createCompileSuccessCheckpoint({
-              projectId,
-              mainDocument: mainDoc,
-              projectRevision: requestIdentity.projectRevision,
-              requestGeneration: requestIdentity.requestGeneration,
-              outputKind: "standard",
-              producerId: currentCompileProducerId(),
-              outputRevision: successfulRevision,
-              outputId: verifiedOutputId,
-              previousCompletedAt: get().lastCompiledAt,
-            })
-          : null;
-      let applied = false;
-      set((state) => {
-        if (
-          identityStale() ||
-          !canApplyLocalCompileOutcome(
-            checkpoint,
-            state.lastCompileCheckpoint,
-            checkpointAtStart,
-          )
-        ) {
-          return state;
-        }
-        applied = true;
-        return {
-          status: checkpoint ? "success" : "error",
-          phase: "idle",
-          pdfBytes: verifiedBytes ?? state.pdfBytes,
-          failureReason: checkpoint
-            ? null
-            : outputIdentityError.trim() ||
-              "Compilation did not produce a valid current PDF.",
-          errors: result.errors,
-          diagnostics: result.diagnostics ?? null,
-          log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}${result.log}${outputIdentityError}`,
-          lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
-          lastCompileCheckpoint:
-            checkpoint ?? state.lastCompileCheckpoint,
-          compiledSources: checkpoint
-            ? compiledSourceSnapshot
-            : state.compiledSources,
-          compileTimeMs: checkpoint
-            ? (result.compile_time_ms ?? 0)
-            : state.compileTimeMs,
-        };
-      });
-      if (!applied) return result;
-      // A failed Tectonic compile whose log matches a known engine gap
-      // (minted, missing index run, shell-escape refusal, unresolved Biber)
-      // gets the engine-picker modal instead of leaving the user to decode
-      // the log. latexmk projects already have the full toolchain.
-      if (!checkpoint) {
-        maybePromptEngineGap(result.log, result.errors);
-        maybeSuggestMissingPackages(result.log);
-      }
-      // Tell detached windows (PDF preview, other OS windows) to reload.
-      void import("@/lib/preview-window")
-        .then((module) =>
-          module.refreshPreviewWindow({
-            identity: requestIdentity,
-            status: checkpoint ? "success" : "error",
-            checkpoint,
-            message: checkpoint
-              ? undefined
-              : "Compilation did not produce a valid current PDF.",
-          }),
-        )
-        .catch(() => {});
-      if (checkpoint) {
-        notifyCompileSucceeded(checkpoint);
-      }
-      return result;
-
+      return await applyCompileResult(applyContext, result);
     } catch (e) {
-      set((state) => {
-        if (
-          identityStale() ||
-          hasCompileCheckpointAdvanced(
-            checkpointAtStart,
-            state.lastCompileCheckpoint,
-          )
-        ) {
-          return state;
-        }
-        return {
-          status: "error",
-          phase: "idle",
-          log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}Compile failed: ${String(e)}`,
-          failureReason: `Compile failed: ${String(e)}`,
-        };
-      });
-      void import("@/lib/preview-window")
-        .then((module) =>
-          module.refreshPreviewWindow({
-            identity: requestIdentity,
-            status: "error",
-            checkpoint: null,
-            message: `Compile failed: ${String(e)}`,
-          }),
-        )
-        .catch(() => {});
-      void import("@/lib/log").then(({ logError }) => logError("compile", e));
+      handleCompileException(applyContext, e);
       return undefined;
     } finally {
-      if (logFrame !== null) cancelAnimationFrame(logFrame);
-      pendingLog = "";
-      pendingPhase = null;
+      logPump.dispose();
       unlisten();
-      const ownsIntent = activeCompileIntent === intent;
-      if (ownsIntent && identityStale()) {
-        // A same-project main-document switch does not run the project-reset
-        // effect. Clear only this attempt's orphaned "compiling" indicator;
-        // never replace a success checkpoint that arrived while it was active.
-        set((state) => {
-          if (
-            state.status !== "compiling" ||
-            state.lastAttemptIdentity?.requestGeneration !==
-              requestIdentity.requestGeneration ||
-            hasCompileCheckpointAdvanced(
-              checkpointAtStart,
-              state.lastCompileCheckpoint,
-            )
-          ) {
-            return state;
-          }
-          return {
-            status: "idle",
-            phase: "idle",
-            failureReason:
-              "The compile was superseded by a newer project revision.",
-          };
-        });
-      }
-      releaseIntent();
-      if (ownsIntent && rerunQueued) {
-        rerunQueued = false;
-        if (!identityStale()) void get().recompile();
-      }
+      finishCompileAttempt({
+        set,
+        get,
+        intent,
+        requestIdentity,
+        checkpointAtStart,
+        identityStale,
+        releaseIntent,
+      });
     }
   },
 }));

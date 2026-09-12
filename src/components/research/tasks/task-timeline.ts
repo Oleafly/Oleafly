@@ -59,101 +59,160 @@ function toolPhase(event: TaskToolEvent, name: string, matched: string | null): 
   return matched || looksLikeCallId(name) ? "result" : "request";
 }
 
+interface TimelineState {
+  items: TaskTimelineItem[];
+  byCall: Map<string, TaskTimelineTool>;
+  unresolved: string[];
+}
+
+function hasRealName(name: string): boolean {
+  return Boolean(name) && !looksLikeCallId(name);
+}
+
+function resolveCall(unresolved: string[], id: string) {
+  const position = unresolved.indexOf(id);
+  if (position >= 0) unresolved.splice(position, 1);
+}
+
+function untaggedCallId(
+  phase: TaskToolPhase,
+  matched: string | null,
+  unresolved: readonly string[],
+  fallback: string,
+): string {
+  if (phase === "request") return fallback;
+  return matched ?? unresolved[0] ?? fallback;
+}
+
+function createTool(
+  event: TaskToolEvent,
+  name: string,
+  phase: TaskToolPhase,
+  id: string,
+  status: ToolEntry["status"] | undefined,
+): TaskTimelineTool {
+  const tool: TaskTimelineTool = {
+    id,
+    name: phase === "request" && !looksLikeCallId(name) ? name : toolFallbackName(),
+    status: status ?? (phase === "request" ? "running" : "done"),
+  };
+  if (phase === "request" || (phase === "update" && tool.status === "running")) {
+    if (event.detail) tool.input = event.detail;
+    if (tool.status !== "running") tool.output = event.detail;
+  } else {
+    tool.output = event.detail;
+  }
+  return tool;
+}
+
+function isRunningUpdate(phase: TaskToolPhase, status: ToolEntry["status"] | undefined): boolean {
+  return phase === "update" && (status === undefined || status === "running");
+}
+
+function updateTool(
+  existing: TaskTimelineTool,
+  event: TaskToolEvent,
+  name: string,
+  phase: TaskToolPhase,
+  status: ToolEntry["status"] | undefined,
+) {
+  if (phase === "request") {
+    if (hasRealName(name)) existing.name = name;
+    existing.input = event.detail;
+  } else if (isRunningUpdate(phase, status)) {
+    if (hasRealName(name)) existing.name = name;
+    if (event.detail) existing.input = event.detail;
+  } else {
+    if (hasRealName(name) && existing.name === toolFallbackName()) existing.name = name;
+    existing.output = event.detail;
+  }
+  if (status) existing.status = status;
+}
+
+function applyToolEvent(state: TimelineState, base: TimelineBase, event: TaskToolEvent) {
+  const name = event.name.trim();
+  const matched = name && state.unresolved.includes(name) ? name : null;
+  const phase = toolPhase(event, name, matched);
+  const resolved =
+    event.callId ?? untaggedCallId(phase, matched, state.unresolved, base.key);
+  const status = toolStatus(event.status) ?? (phase === "result" ? "done" : undefined);
+  const existing = state.byCall.get(resolved);
+  if (!existing) {
+    const tool = createTool(event, name, phase, resolved, status);
+    state.byCall.set(resolved, tool);
+    state.items.push({ ...base, kind: "tool", tool });
+    if (tool.status === "running") state.unresolved.push(resolved);
+    return;
+  }
+  updateTool(existing, event, name, phase, status);
+  if (existing.status !== "running") resolveCall(state.unresolved, resolved);
+}
+
+function appendEntry(
+  state: TimelineState,
+  usage: TaskTimelineUsage,
+  base: TimelineBase,
+  event: TaskTranscriptEvent["event"],
+) {
+  switch (event.kind) {
+    case "sessionBound":
+      state.items.push({
+        ...base,
+        kind: "milestone",
+        text: i18n.t(($) => $.researchTools.tasks.timeline.sessionConnected),
+      });
+      break;
+    case "status":
+      state.items.push({ ...base, kind: "milestone", text: event.message });
+      break;
+    case "text":
+      if (event.text.trim()) state.items.push({ ...base, kind: "message", text: event.text });
+      break;
+    case "reasoning":
+      if (event.text.trim()) state.items.push({ ...base, kind: "reasoning", text: event.text });
+      break;
+    case "artifact":
+      state.items.push({ ...base, kind: "artifact", artifact: event.artifact });
+      break;
+    case "usage":
+      if (event.inputTokens !== null) usage.inputTokens = event.inputTokens;
+      if (event.outputTokens !== null) usage.outputTokens = event.outputTokens;
+      break;
+    case "tool":
+      applyToolEvent(state, base, event);
+      break;
+  }
+}
+
+function markInterrupted(state: TimelineState) {
+  for (const id of state.unresolved) {
+    const tool = state.byCall.get(id);
+    if (tool?.status === "running") tool.interrupted = true;
+  }
+}
+
 export function buildTaskTimeline(
   events: readonly TaskTranscriptEvent[],
   running = true,
 ): TaskTimeline {
   const merged = coalesceTranscriptEvents(events);
-  const items: TaskTimelineItem[] = [];
-  const byCall = new Map<string, TaskTimelineTool>();
+  const state: TimelineState = { items: [], byCall: new Map(), unresolved: [] };
   const usage: TaskTimelineUsage = { inputTokens: null, outputTokens: null };
-  const unresolved: string[] = [];
-
-  const resolve = (id: string) => {
-    const position = unresolved.indexOf(id);
-    if (position >= 0) unresolved.splice(position, 1);
-  };
 
   for (const entry of merged) {
-    const base = {
-      key: `${entry.executionGeneration}:${entry.sequence}`,
-      sequence: entry.sequence,
-      createdAt: entry.createdAt,
-    };
-    const event = entry.event;
-    switch (event.kind) {
-      case "sessionBound":
-        items.push({
-          ...base,
-          kind: "milestone",
-          text: i18n.t(($) => $.researchTools.tasks.timeline.sessionConnected),
-        });
-        break;
-      case "status":
-        items.push({ ...base, kind: "milestone", text: event.message });
-        break;
-      case "text":
-        if (event.text.trim()) items.push({ ...base, kind: "message", text: event.text });
-        break;
-      case "reasoning":
-        if (event.text.trim()) items.push({ ...base, kind: "reasoning", text: event.text });
-        break;
-      case "artifact":
-        items.push({ ...base, kind: "artifact", artifact: event.artifact });
-        break;
-      case "usage":
-        if (event.inputTokens !== null) usage.inputTokens = event.inputTokens;
-        if (event.outputTokens !== null) usage.outputTokens = event.outputTokens;
-        break;
-      case "tool": {
-        const name = event.name.trim();
-        const matched = name && unresolved.includes(name) ? name : null;
-        const phase = toolPhase(event, name, matched);
-        const resolved =
-          event.callId ??
-          (phase === "request" ? base.key : (matched ?? unresolved[0] ?? base.key));
-        const status = toolStatus(event.status) ?? (phase === "result" ? "done" : undefined);
-        const existing = byCall.get(resolved);
-        if (!existing) {
-          const tool: TaskTimelineTool = {
-            id: resolved,
-            name: phase === "request" && !looksLikeCallId(name) ? name : toolFallbackName(),
-            status: status ?? (phase === "request" ? "running" : "done"),
-          };
-          if (phase === "request" || (phase === "update" && tool.status === "running")) {
-            if (event.detail) tool.input = event.detail;
-            if (tool.status !== "running") tool.output = event.detail;
-          } else {
-            tool.output = event.detail;
-          }
-          byCall.set(resolved, tool);
-          items.push({ ...base, kind: "tool", tool });
-          if (tool.status === "running") unresolved.push(resolved);
-          break;
-        }
-        if (phase === "request") {
-          if (name && !looksLikeCallId(name)) existing.name = name;
-          existing.input = event.detail;
-        } else if (phase === "update" && (status === undefined || status === "running")) {
-          if (name && !looksLikeCallId(name)) existing.name = name;
-          if (event.detail) existing.input = event.detail;
-        } else {
-          if (name && !looksLikeCallId(name) && existing.name === toolFallbackName()) existing.name = name;
-          existing.output = event.detail;
-        }
-        if (status) existing.status = status;
-        if (existing.status !== "running") resolve(resolved);
-        break;
-      }
-    }
+    appendEntry(
+      state,
+      usage,
+      {
+        key: `${entry.executionGeneration}:${entry.sequence}`,
+        sequence: entry.sequence,
+        createdAt: entry.createdAt,
+      },
+      entry.event,
+    );
   }
 
-  if (!running) {
-    for (const id of unresolved) {
-      const tool = byCall.get(id);
-      if (tool && tool.status === "running") tool.interrupted = true;
-    }
-  }
+  if (!running) markInterrupted(state);
 
-  return { items, usage };
+  return { items: state.items, usage };
 }

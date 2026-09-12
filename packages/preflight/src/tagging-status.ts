@@ -117,13 +117,16 @@ function commandArguments(source: string, commands: readonly string[]): string[]
 }
 
 export function documentClassOf(source: string): string | null {
-  const name = commandArguments(source, ["\\documentclass"])[0]?.trim();
-  return name ? name : null;
+  const name = commandArguments(source, [String.raw`\documentclass`])[0]?.trim();
+  return name || null;
 }
 
 export function loadedPackagesOf(source: string): string[] {
   const names = new Set<string>();
-  for (const value of commandArguments(source, ["\\usepackage", "\\RequirePackage"])) {
+  for (const value of commandArguments(source, [
+    String.raw`\usepackage`,
+    String.raw`\RequirePackage`,
+  ])) {
     for (const raw of value.split(",")) {
       const name = raw.trim();
       if (name) names.add(name);

@@ -41,10 +41,10 @@ const NAMED_ZONES: Record<string, number> = {
 
 /** "yyyy-mm-dd hh:mm:ss" in a "UTC±N" / named zone to an absolute instant. */
 export function deadlineInstant(at: string, timezone: string): Date {
-  const m = at.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/.exec(at.trim());
   if (!m) return new Date(Number.NaN);
   const tz = timezone.trim();
-  const offsetHours = NAMED_ZONES[tz] ?? Number(tz.match(/^UTC([+-]\d+)$/)?.[1] ?? 0);
+  const offsetHours = NAMED_ZONES[tz] ?? Number(/^UTC([+-]\d+)$/.exec(tz)?.[1] ?? 0);
   const utc = Date.UTC(
     Number(m[1]),
     Number(m[2]) - 1,

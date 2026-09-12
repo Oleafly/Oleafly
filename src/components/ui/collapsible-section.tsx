@@ -14,7 +14,7 @@ export function CollapsibleSection({
   className,
   headingLevel: Heading = "h3",
   children,
-}: {
+}: Readonly<{
   id: string;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -26,7 +26,7 @@ export function CollapsibleSection({
   className?: string;
   headingLevel?: "h2" | "h3" | "h4";
   children: React.ReactNode;
-}) {
+}>) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
   const open = controlledOpen ?? uncontrolledOpen;
   const contentId = `${id}-content`;

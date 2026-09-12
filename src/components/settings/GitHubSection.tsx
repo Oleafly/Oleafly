@@ -30,7 +30,7 @@ export function GitHubSection() {
     { ok: boolean; kind: "connected"; login: string } | { ok: boolean; kind: "disconnected" } | null
   >(null);
 
-  const [config, setConfigState] = useState<AppConfig | null>(null);
+  const [configState, setConfigState] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<"load" | "save" | null>(null);
   const configRequest = useRef(0);
   const configWrites = useRef<Promise<void>>(Promise.resolve());
@@ -53,8 +53,8 @@ export function GitHubSection() {
   }, []);
 
   const writeGitAutoInit = (value: boolean) => {
-    if (!config) return;
-    setConfigState({ ...config, git_auto_init: value });
+    if (!configState) return;
+    setConfigState({ ...configState, git_auto_init: value });
     setConfigError(null);
     configWrites.current = configWrites.current
       .then(() => getConfig())
@@ -96,6 +96,25 @@ export function GitHubSection() {
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+  // Poll loop runs in JS: cancellable, and each Rust call is async + short
+  // so it never freezes the webview.
+  const pollDeviceToken = async (
+    dc: Awaited<ReturnType<typeof requestDeviceCode>>,
+    cancelled: () => boolean,
+  ): Promise<string | null> => {
+    let wait = Math.max(dc.interval, 5) * 1000;
+    const deadline = Date.now() + 16 * 60 * 1000;
+    while (Date.now() < deadline && !cancelled()) {
+      await sleep(wait);
+      if (cancelled()) return null;
+      const res = await checkDeviceToken(GITHUB_OAUTH_CLIENT_ID, dc.device_code);
+      if (cancelled()) return null;
+      if (res.status === "token") return res.token;
+      if (res.status === "slow_down") wait = res.interval * 1000;
+    }
+    return null;
+  };
+
   const connectDeviceFlow = async () => {
     if (!GITHUB_OAUTH_CLIENT_ID) {
       // No OAuth app configured yet - direct the user to the PAT route.
@@ -113,22 +132,7 @@ export function GitHubSection() {
       setFlow(dc);
       void open(dc.verification_uri);
 
-      // Poll loop runs in JS: cancellable, and each Rust call is async + short
-      // so it never freezes the webview.
-      let wait = Math.max(dc.interval, 5) * 1000;
-      const deadline = Date.now() + 16 * 60 * 1000;
-      let token: string | null = null;
-      while (Date.now() < deadline && !cancelled()) {
-        await sleep(wait);
-        if (cancelled()) return;
-        const res = await checkDeviceToken(GITHUB_OAUTH_CLIENT_ID, dc.device_code);
-        if (cancelled()) return;
-        if (res.status === "token") {
-          token = res.token;
-          break;
-        }
-        if (res.status === "slow_down") wait = res.interval * 1000;
-      }
+      const token = await pollDeviceToken(dc, cancelled);
       if (cancelled()) return;
 
       if (!token) {
@@ -184,6 +188,115 @@ export function GitHubSection() {
     setMsg({ ok: true, kind: "disconnected" });
   };
 
+  const renderGitHubConnectForm = () => (
+    <>
+      <Button
+        disabled={busy || ghLoading}
+        onClick={() => void connectDeviceFlow()}
+      >
+        {busy || ghLoading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Github className="size-4" />
+        )}
+        {t(($) => $.settings.github.connect)}
+      </Button>
+      {flowError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+          {flowError}
+        </div>
+      )}
+      <button type="button"
+        onClick={() => setShowAdvanced((v) => !v)}
+        className="flex items-center gap-1 pt-1 text-[11px] text-muted-foreground hover:text-foreground"
+      >
+        {showAdvanced ? (
+          <ChevronDown className="size-3" />
+        ) : (
+          <ChevronRight className="size-3" />
+        )}
+        {t(($) => $.settings.github.advanced.toggle)}
+      </button>
+      {showAdvanced && (
+        <div className="flex gap-2 pt-1">
+          <Input
+            type="password"
+            value={pat}
+            onChange={(e) => setPat(e.target.value)}
+            placeholder={t(($) => $.settings.github.advanced.tokenPlaceholder)}
+            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+          />
+          <Button
+            size="sm"
+            disabled={busy || !pat.trim()}
+            onClick={() => void connectPat()}
+          >
+            {t(($) => $.settings.github.advanced.connect)}
+          </Button>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {GITHUB_OAUTH_CLIENT_ID
+          ? t(($) => $.settings.github.hint.oauth)
+          : t(($) => $.settings.github.hint.token)}
+      </p>
+    </>
+  );
+
+  const renderGitHubDeviceFlow = () => {
+    if (!flow) return null;
+    return (
+    <div className="space-y-3 rounded-lg border bg-background p-4">
+      <div>
+        <div className="text-sm font-semibold">
+          {t(($) => $.settings.github.device.title)}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          <Trans
+            ns="settings"
+            i18nKey={($) => $.settings.github.device.opened}
+            values={{ url: flow.verification_uri }}
+            components={{
+              verificationLink: (
+                <button type="button"
+                  onClick={() => void open(flow.verification_uri)}
+                  className="font-medium text-primary hover:underline dark:text-primary"
+                />
+              ),
+            }}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-center gap-2 rounded-md border bg-muted/40 py-4">
+        <code className="select-all font-mono text-2xl font-semibold tracking-[0.25em]">
+          {flow.user_code}
+        </code>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-1"
+          onClick={() => copyCode(flow.user_code)}
+        >
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={() => void open(flow.verification_uri)}>
+          {t(($) => $.settings.github.device.openGithub)}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={cancelFlow}>
+          {t(($) => $.common.actions.cancel)}
+        </Button>
+        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin" />
+          {t(($) => $.settings.github.device.waiting)}
+        </span>
+      </div>
+    </div>
+    );
+  };
+
   return (
     <div className="space-y-2 text-sm">
       <div>
@@ -196,7 +309,7 @@ export function GitHubSection() {
         <SettingsToggleRow
           label={t(($) => $.settings.github.autoInit.label)}
           description={t(($) => $.settings.github.autoInit.description)}
-          checked={gitAutoInitEnabled(config)}
+          checked={gitAutoInitEnabled(configState)}
           onChange={writeGitAutoInit}
         />
         {configError ? (
@@ -207,7 +320,7 @@ export function GitHubSection() {
           </p>
         ) : null}
       </div>
-      {connected ? (
+      {connected && (
         <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
           {ghUser?.avatar_url ? (
             <img
@@ -240,109 +353,12 @@ export function GitHubSection() {
             {t(($) => $.settings.github.account.disconnect)}
           </Button>
         </div>
-      ) : flow ? (
-        <div className="space-y-3 rounded-lg border bg-background p-4">
-          <div>
-            <div className="text-sm font-semibold">
-              {t(($) => $.settings.github.device.title)}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              <Trans
-                ns="settings"
-                i18nKey={($) => $.settings.github.device.opened}
-                values={{ url: flow.verification_uri }}
-                components={{
-                  verificationLink: (
-                    <button type="button"
-                      onClick={() => void open(flow.verification_uri)}
-                      className="font-medium text-primary hover:underline dark:text-primary"
-                    />
-                  ),
-                }}
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-center gap-2 rounded-md border bg-muted/40 py-4">
-            <code className="select-all font-mono text-2xl font-semibold tracking-[0.25em]">
-              {flow.user_code}
-            </code>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ml-1"
-              onClick={() => copyCode(flow.user_code)}
-            >
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => void open(flow.verification_uri)}>
-              {t(($) => $.settings.github.device.openGithub)}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={cancelFlow}>
-              {t(($) => $.common.actions.cancel)}
-            </Button>
-            <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" />
-              {t(($) => $.settings.github.device.waiting)}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <>
-          <Button
-            disabled={busy || ghLoading}
-            onClick={() => void connectDeviceFlow()}
-          >
-            {busy || ghLoading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Github className="size-4" />
-            )}
-            {t(($) => $.settings.github.connect)}
-          </Button>
-          {flowError && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-              {flowError}
-            </div>
-          )}
-          <button type="button"
-            onClick={() => setShowAdvanced((v) => !v)}
-            className="flex items-center gap-1 pt-1 text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            {showAdvanced ? (
-              <ChevronDown className="size-3" />
-            ) : (
-              <ChevronRight className="size-3" />
-            )}
-            {t(($) => $.settings.github.advanced.toggle)}
-          </button>
-          {showAdvanced && (
-            <div className="flex gap-2 pt-1">
-              <Input
-                type="password"
-                value={pat}
-                onChange={(e) => setPat(e.target.value)}
-                placeholder={t(($) => $.settings.github.advanced.tokenPlaceholder)}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
-              />
-              <Button
-                size="sm"
-                disabled={busy || !pat.trim()}
-                onClick={() => void connectPat()}
-              >
-                {t(($) => $.settings.github.advanced.connect)}
-              </Button>
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {GITHUB_OAUTH_CLIENT_ID
-              ? t(($) => $.settings.github.hint.oauth)
-              : t(($) => $.settings.github.hint.token)}
-          </p>
-        </>
       )}
+      {!connected && (flow ? (
+        renderGitHubDeviceFlow()
+      ) : (
+        renderGitHubConnectForm()
+      ))}
 
       {msg && (
         <div

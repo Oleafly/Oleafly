@@ -32,12 +32,12 @@ export function ApprovalModeSelector({
   onChange,
   onOpenProjectRules,
   disabled = false,
-}: {
+}: Readonly<{
   mode: ApprovalMode;
   onChange: (mode: ApprovalMode) => void;
   onOpenProjectRules: () => void;
   disabled?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const labels: Record<ApprovalModeKey, string> = {
     askForApproval: t(($) => $.ai.approval.modes.askForApproval.label),

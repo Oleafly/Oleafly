@@ -143,9 +143,8 @@ function AppAppearanceTab() {
                 <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]">
                   {option.id === "dots" ? (
                     <DotPattern width={10} height={10} radius={0.75} />
-                  ) : option.id === "grid" ? (
-                    <GridPattern width={10} height={10} />
                   ) : null}
+                  {option.id === "grid" ? <GridPattern width={10} height={10} /> : null}
                 </div>
                 {option.label}
               </button>
@@ -471,6 +470,17 @@ function EditorAppearanceTab() {
 
 function TerminalAppearanceTab() {
   const { t } = useTranslation(["common", "settings"]);
+  const terminalThemeLabel = (theme: (typeof TERMINAL_COLOR_THEMES)[keyof typeof TERMINAL_COLOR_THEMES]) => {
+    if (theme.appearance === "system") return theme.name;
+    if (theme.appearance === "light") {
+      return t(($) => $.settings.appearance.terminal.colorTheme.optionLight, {
+        name: theme.name,
+      });
+    }
+    return t(($) => $.settings.appearance.terminal.colorTheme.optionDark, {
+      name: theme.name,
+    });
+  };
   const terminalFontSize = useSettingsStore((state) => state.terminalFontSize);
   const setTerminalFontSize = useSettingsStore(
     (state) => state.setTerminalFontSize,
@@ -725,15 +735,7 @@ function TerminalAppearanceTab() {
           <SelectContent className="z-[100]">
             {Object.values(TERMINAL_COLOR_THEMES).map((theme) => (
               <SelectItem key={theme.id} value={theme.id}>
-                {theme.appearance === "system"
-                  ? theme.name
-                  : theme.appearance === "light"
-                    ? t(($) => $.settings.appearance.terminal.colorTheme.optionLight, {
-                        name: theme.name,
-                      })
-                    : t(($) => $.settings.appearance.terminal.colorTheme.optionDark, {
-                        name: theme.name,
-                      })}
+                {terminalThemeLabel(theme)}
               </SelectItem>
             ))}
           </SelectContent>

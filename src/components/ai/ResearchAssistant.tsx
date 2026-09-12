@@ -24,6 +24,23 @@ export function ResearchAssistant() {
   const runtime = useAssistantRuntimeStore(selectActiveRuntime);
   const projectId = useFilesStore((state) => state.projectId);
 
+  const cliAssistant = () =>
+    projectId ? (
+      <Suspense
+        fallback={
+          <p className="p-4 text-sm text-muted-foreground">
+            {t(($) => $.ai.shell.loadingAgents)}
+          </p>
+        }
+      >
+        <AcpWorkspaceAssistant projectId={projectId} />
+      </Suspense>
+    ) : (
+      <p className="p-5 text-sm text-muted-foreground">
+        {t(($) => $.ai.shell.openProjectForCli)}
+      </p>
+    );
+
   return (
     <AssistantShellProvider leading={runtimeSwitch}>
       <div className="flex h-full min-h-0 flex-col bg-sidebar" data-testid="research-assistant">
@@ -38,21 +55,7 @@ export function ResearchAssistant() {
           <ErrorBoundary surface="research assistant">
             {runtime === "built-in" ? (
               <ChatCore />
-            ) : projectId ? (
-              <Suspense
-                fallback={
-                  <p className="p-4 text-sm text-muted-foreground">
-                    {t(($) => $.ai.shell.loadingAgents)}
-                  </p>
-                }
-              >
-                <AcpWorkspaceAssistant projectId={projectId} />
-              </Suspense>
-            ) : (
-              <p className="p-5 text-sm text-muted-foreground">
-                {t(($) => $.ai.shell.openProjectForCli)}
-              </p>
-            )}
+            ) : cliAssistant()}
           </ErrorBoundary>
         </div>
       </div>

@@ -1,12 +1,12 @@
 export function decodeXmlEntities(s: string): string {
   return s
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&apos;", "'")
     // Decode &amp; last so &amp;lt; -> &lt; (not <).
-    .replace(/&amp;/g, "&");
+    .replaceAll("&amp;", "&");
 }
 
 // So remote metadata compiles as literal text rather than LaTeX commands.
@@ -14,11 +14,11 @@ export function escapeLatex(s: string): string {
   return s.replace(/[\\&%$#_{}~^]/g, (c) => {
     switch (c) {
       case "\\":
-        return "\\textbackslash{}";
+        return String.raw`\textbackslash{}`;
       case "~":
-        return "\\textasciitilde{}";
+        return String.raw`\textasciitilde{}`;
       case "^":
-        return "\\textasciicircum{}";
+        return String.raw`\textasciicircum{}`;
       default:
         return `\\${c}`;
     }

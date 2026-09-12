@@ -1,4 +1,4 @@
-import type { PdfExtractionStatus, PdfFacts, PositionedText, PreflightEngine, PreflightReport, ProjectContext } from "./types";
+import type { CheckCoverage, Coverage, PdfExtractionStatus, PdfFacts, PositionedText, PreflightEngine, PreflightReport, ProjectContext } from "./types";
 import type { StructDoc } from "./structure";
 import { runSourceRules } from "./source-rules";
 import { runPdfRules } from "./pdf-rules";
@@ -74,6 +74,45 @@ function latexProjectSources(project: ProjectContext | undefined, fallback: stri
     : [{ path: project.mainFile, content: fallback }];
 }
 
+type LatexSource = { path: string | undefined; content: string };
+
+function submissionCoverage(isLatex: boolean, hasProject: boolean, hasFacts: boolean): Coverage {
+  if (!isLatex) return "unsupported";
+  if (!hasProject) return "not_run";
+  return hasFacts ? "evaluated" : "partial";
+}
+
+function privacyCoverage(isLatex: boolean, hasProject: boolean, factsPending: boolean): Coverage {
+  if (!isLatex) return "unsupported";
+  if (!hasProject) return "not_run";
+  return factsPending ? "partial" : "evaluated";
+}
+
+function projectRefsFindings(
+  latexSources: readonly LatexSource[],
+  refs: RefsContext,
+): PreflightReport["findings"] {
+  return latexSources.flatMap((file, index) =>
+    runRefsRules(file.content, refs, {
+      includeProjectQuality: index === 0,
+      ...(file.path ? { file: file.path } : {}),
+    }).map((finding) => ({
+      ...finding,
+      ...(file.path && finding.from !== undefined ? { file: file.path } : {}),
+    })),
+  );
+}
+
+function structureOnlyFindings(
+  struct: StructDoc | undefined,
+  extraction: PdfExtractionStatus | undefined,
+  meta: PreflightInput["meta"],
+): PreflightReport["findings"] {
+  if (struct) return verifyStructure(struct, extraction?.structureFailedPages);
+  if (meta?.tagged === false) return verifyStructure({ root: null, tagged: false });
+  return [];
+}
+
 export function runPreflight({
   source,
   sourceProfile = "latex",
@@ -90,62 +129,35 @@ export function runPreflight({
   anonymousReview = false,
   engine = "unknown",
 }: PreflightInput): PreflightReport {
+  const isLatex = sourceProfile === "latex";
   const atsParse = readerText !== undefined ? simulateAtsParse(readerText) : undefined;
-  const latexSources = sourceProfile === "latex" ? latexProjectSources(project, source) : [];
+  const latexSources = isLatex ? latexProjectSources(project, source) : [];
   const sourceFindings = latexSources.flatMap((file) =>
     runSourceRules(file.content, { engine }).map((finding) => ({ ...finding, ...(file.path ? { file: file.path } : {}) })),
   );
-  const refsFindings =
-    sourceProfile === "latex" && refs
-      ? latexSources.flatMap((file, index) =>
-          runRefsRules(file.content, refs, {
-            includeProjectQuality: index === 0,
-            ...(file.path ? { file: file.path } : {}),
-          }).map((finding) => ({
-            ...finding,
-            ...(file.path && finding.from !== undefined ? { file: file.path } : {}),
-          })),
-        )
-      : [];
+  const refsFindings = isLatex && refs ? projectRefsFindings(latexSources, refs) : [];
 
   const findings = dedupeUntaggedFinding([
     ...sourceFindings,
     ...(pages ? runPdfRules(pages, meta, extraction, facts, submissionProfile) : []),
-    ...(struct
-      ? verifyStructure(struct, extraction?.structureFailedPages)
-      : meta?.tagged === false
-        ? verifyStructure({ root: null, tagged: false })
-        : []),
+    ...structureOnlyFindings(struct, extraction, meta),
     ...(atsParse ? atsParseFindings(atsParse, facts) : []),
     ...refsFindings,
     ...runCompileRules(compile, facts),
-    ...(sourceProfile === "latex" && project
+    ...(isLatex && project
       ? runSubmissionRules({ project, profileId: submissionProfile, pdf: facts, anonymousReview })
       : []),
   ]);
 
   const scores = computeScores(findings);
-  const coverage = {
-    ats: pages && readerText !== undefined ? "evaluated" as const : "not_run" as const,
-    compile: compile?.status === "success" || compile?.status === "error" || facts ? "evaluated" as const : "not_run" as const,
-    a11y: pages ? "evaluated" as const : "not_run" as const,
-    refs: sourceProfile === "latex" && refs ? "evaluated" as const : "unsupported" as const,
-    submission:
-      sourceProfile !== "latex"
-        ? "unsupported" as const
-        : project
-          ? facts
-            ? "evaluated" as const
-            : "partial" as const
-          : "not_run" as const,
-    privacy:
-      sourceProfile !== "latex"
-        ? "unsupported" as const
-        : project
-          ? anonymousReview && !facts
-            ? "partial" as const
-            : "evaluated" as const
-          : "not_run" as const,
+  const compileRan = compile?.status === "success" || compile?.status === "error" || Boolean(facts);
+  const coverage: CheckCoverage = {
+    ats: pages && readerText !== undefined ? "evaluated" : "not_run",
+    compile: compileRan ? "evaluated" : "not_run",
+    a11y: pages ? "evaluated" : "not_run",
+    refs: isLatex && refs ? "evaluated" : "unsupported",
+    submission: submissionCoverage(isLatex, Boolean(project), Boolean(facts)),
+    privacy: privacyCoverage(isLatex, Boolean(project), anonymousReview && !facts),
   };
   const scoreOrNull = (id: keyof typeof coverage) =>
     coverage[id] === "not_run" || coverage[id] === "unsupported" ? null : scores[id];

@@ -20,13 +20,13 @@ describe("maskLatex", () => {
       "\\begin{equation}E = mc^2\\end{equation}\ntext",
       "accented café naïve résumé",
     ];
-    for (const s of samples) expect(maskLatex(s).length).toBe(s.length);
+    for (const s of samples) expect(maskLatex(s)).toHaveLength(s.length);
   });
 
   it("never blanks newlines (line numbers stay aligned)", () => {
     const s = "line one\n\\cite{x}\nline three";
     const masked = maskLatex(s);
-    expect(masked.split("\n").length).toBe(s.split("\n").length);
+    expect(masked.split("\n")).toHaveLength(s.split("\n").length);
   });
 
   describe("removes non-prose (false positives)", () => {
@@ -187,7 +187,7 @@ describe("maskToProse (Harper input)", () => {
 
   it("map length matches prose length", () => {
     const { prose, map } = maskToProse("one \\cmd{x} two\n\\begin{equation}z\\end{equation} three");
-    expect(map.length).toBe(prose.length);
+    expect(map).toHaveLength(prose.length);
   });
 });
 

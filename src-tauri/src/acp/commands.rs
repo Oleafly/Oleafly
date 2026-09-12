@@ -1,4 +1,8 @@
-use super::{catalog::RegistryEntry, types::*, AcpRuntime};
+use super::{catalog::RegistryEntry, AcpRuntime};
+use super::{
+    AgentDefinition, AgentStatus, EventPage, ImagePrompt, SessionRecord, SessionSnapshot,
+    StartSession,
+};
 use std::sync::Arc;
 use tauri::{AppHandle, State, WebviewWindow};
 

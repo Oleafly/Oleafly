@@ -62,7 +62,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
     const selectedIndex = activeCommandId
       ? filteredCommands.findIndex((command) => command.id === activeCommandId)
       : 0;
-    const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    const activeIndex = Math.max(selectedIndex, 0);
     const activeCommand = filteredCommands[activeIndex] ?? null;
 
     useEffect(() => {

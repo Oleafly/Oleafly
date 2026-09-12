@@ -36,7 +36,7 @@ const DEFAULT_CLOSURE_CAP = 64;
  * null when the document is unavailable. May also reject; loaders treat a
  * rejection like a null.
  */
-export type CorpusTransport = (relativePath: string) => Promise<unknown | null>;
+export type CorpusTransport = (relativePath: string) => Promise<unknown>;
 
 /**
  * Base URL for the corpus shipped under `public/latex-intelligence`. Mirrors
@@ -80,7 +80,7 @@ export function setCorpusTransport(transport: CorpusTransport | null): void {
 
 // Async so a transport that throws synchronously still surfaces as a
 // rejection, which every loader below catches and caches as null.
-async function requestCorpus(relativePath: string): Promise<unknown | null> {
+async function requestCorpus(relativePath: string): Promise<unknown> {
   return activeTransport(relativePath);
 }
 

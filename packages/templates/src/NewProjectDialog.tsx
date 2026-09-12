@@ -166,17 +166,55 @@ function useTemplatePreview(t: TemplateInfo, host: TemplatesHost): string | null
   return uri;
 }
 
+interface TemplateFilters {
+  category: string;
+  atsOnly: boolean;
+  offlineOnly: boolean;
+  engine: string;
+  q: string;
+}
+
+function matchesTemplateFilters(t: TemplateInfo, filters: TemplateFilters): boolean {
+  if (filters.category !== "All" && (t.category || "Other") !== filters.category) return false;
+  if (filters.atsOnly && t.ats_profile !== "friendly") return false;
+  if (filters.offlineOnly && !t.assets_ready) return false;
+  if (filters.engine !== "all" && t.document_engine !== filters.engine) return false;
+  if (
+    filters.q &&
+    !`${t.name} ${t.description} ${t.category}`.toLowerCase().includes(filters.q)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function trapDialogTab(event: KeyboardEvent, elements: HTMLElement[]): void {
+  if (!elements.length) return;
+  const first = elements[0];
+  const last = elements.at(-1)!;
+  const wrap = wrappedModalFocus(document.activeElement, first, last, event.shiftKey);
+  if (!wrap) return;
+  event.preventDefault();
+  (wrap === "first" ? first : last).focus({ preventScroll: true });
+}
+
+function engineIcon(engine: TemplateInfo["document_engine"]) {
+  if (engine === "markdown") return Hash;
+  if (engine === "typst") return Sparkles;
+  return FileText;
+}
+
 function Preview({
   template,
   host,
   className,
   t,
-}: {
+}: Readonly<{
   template: TemplateInfo;
   host: TemplatesHost;
   className?: string;
   t: TemplatesTranslator;
-}) {
+}>) {
   const uri = useTemplatePreview(template, host);
   if (uri) {
     // Diagram/figure previews are a standalone cropped image, not a document
@@ -203,12 +241,7 @@ function Preview({
   const tint = /^#[0-9a-fA-F]{6}$/.test(template.default_color ?? "")
     ? (template.default_color as string)
     : null;
-  const Icon =
-    template.document_engine === "markdown"
-      ? Hash
-      : template.document_engine === "typst"
-        ? Sparkles
-        : FileText;
+  const Icon = engineIcon(template.document_engine);
   return (
     <div
       className={cn("flex h-full w-full flex-col items-center justify-center gap-2 bg-white", className)}
@@ -238,10 +271,10 @@ function Preview({
 function AtsBadge({
   profile,
   t,
-}: {
+}: Readonly<{
   profile: TemplateInfo["ats_profile"];
   t: TemplatesTranslator;
-}) {
+}>) {
   if (profile === "friendly")
     return (
       <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
@@ -273,7 +306,7 @@ export function NewProjectDialog({
   defaultColor,
   allowEnterSubmit = true,
   allowClose = true,
-}: {
+}: Readonly<{
   open: boolean;
   templates: TemplateInfo[];
   busy?: boolean;
@@ -291,7 +324,7 @@ export function NewProjectDialog({
   defaultColor: string;
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
-}) {
+}>) {
   const { Button, Input, Tooltip, Select, t } = kit;
   const [step, setStep] = useState<1 | 2>(1);
   const createChordRef = useRef<{ enabled: boolean; submit: () => Promise<void> }>({
@@ -381,19 +414,7 @@ export function NewProjectDialog({
         event.stopPropagation();
         if (allowCloseRef.current) onCloseRef.current();
       }
-      if (event.key === "Tab") {
-        const elements = focusable();
-        if (!elements.length) return;
-        const first = elements[0];
-        const last = elements[elements.length - 1];
-        const wrap = wrappedModalFocus(document.activeElement, first, last, event.shiftKey);
-        if (wrap) {
-          event.preventDefault();
-          (wrap === "first" ? first : last).focus({
-            preventScroll: true,
-          });
-        }
-      }
+      if (event.key === "Tab") trapDialogTab(event, focusable());
     };
     const onFocus = (event: FocusEvent) => {
       if (!isTopmost() || dialogRef.current?.contains(event.target as Node)) return;
@@ -431,14 +452,9 @@ export function NewProjectDialog({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return templates.filter((t) => {
-      if (category !== "All" && (t.category || "Other") !== category) return false;
-      if (atsOnly && t.ats_profile !== "friendly") return false;
-      if (offlineOnly && !t.assets_ready) return false;
-      if (engine !== "all" && t.document_engine !== engine) return false;
-      if (q && !`${t.name} ${t.description} ${t.category}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
+    return templates.filter((t) =>
+      matchesTemplateFilters(t, { category, atsOnly, offlineOnly, engine, q }),
+    );
   }, [templates, search, category, atsOnly, offlineOnly, engine]);
 
   const selected = useMemo(
@@ -478,10 +494,316 @@ export function NewProjectDialog({
   };
 
   const working = busy || setup.active;
+  const createLabel = busy ? t("dialog.creating") : t("dialog.create");
   createChordRef.current = {
     enabled: step === 2 && !working && Boolean(name.trim()),
     submit,
   };
+
+  const renderTemplatePickerStep = () => (
+    <div className="flex min-h-0 flex-1">
+      <nav className="flex w-44 shrink-0 flex-col overflow-y-auto border-r p-2">
+        {categories.map((c) => (
+          <button
+            key={c}
+            type="button"
+            title={categoryFullName(c, t)}
+            onClick={() => setCategory(c)}
+            className={cn(
+              "mb-0.5 flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors",
+              category === c
+                ? "bg-accent font-medium text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              {c === "AI Generated" && <Sparkles className="size-3.5 shrink-0 text-primary" />}
+              <span className="truncate">{categoryLabel(c, t)}</span>
+            </span>
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                category === c
+                  ? "bg-accent-foreground/15 text-accent-foreground"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {categoryCounts.get(c) ?? 0}
+            </span>
+          </button>
+        ))}
+        {onOpenTemplateDownloads && (
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="open-template-downloads"
+            onClick={onOpenTemplateDownloads}
+            className="mt-auto w-full justify-start gap-2 text-muted-foreground"
+          >
+            <Download className="size-3.5" />
+            {t("dialog.getMoreTemplates")}
+          </Button>
+        )}
+      </nav>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-2 border-b px-4 py-2.5">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={searchRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("dialog.searchPlaceholder")}
+              className="h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <Select
+            aria-label={t("dialog.engineLabel")}
+            data-testid="template-engine-filter"
+            value={engine}
+            onValueChange={(v) => setEngine(v as typeof engine)}
+            className="w-[132px] text-xs"
+            options={[
+              { value: "all", label: t("dialog.engineAll") },
+              { value: "latex", label: t("dialog.engineLatex") },
+              { value: "typst", label: t("dialog.engineTypst") },
+              { value: "markdown", label: t("dialog.engineMarkdown") },
+            ]}
+          />
+          <Tooltip label={t("dialog.atsTooltip")}>
+            <button
+              type="button"
+              onClick={() => setAtsOnly((v) => !v)}
+              className={cn(
+                "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                atsOnly
+                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  : "border-border text-muted-foreground hover:bg-accent",
+              )}
+            >
+              <Check className={cn("size-3", !atsOnly && "opacity-0")} /> {t("dialog.atsFriendly")}
+            </button>
+          </Tooltip>
+          <Tooltip label={t("dialog.offlineTooltip")}>
+            <button
+              type="button"
+              data-testid="template-offline-filter"
+              onClick={() => setOfflineOnly((v) => !v)}
+              className={cn(
+                "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                offlineOnly
+                  ? "border-sky-500/40 bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                  : "border-border text-muted-foreground hover:bg-accent",
+              )}
+            >
+              <Check className={cn("size-3", !offlineOnly && "opacity-0")} /> {t("dialog.offlineFilter")}
+            </button>
+          </Tooltip>
+        </div>
+
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
+          data-tour="project-template-list"
+        >
+          {filtered.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+              <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Sparkles className="size-6" />
+              </span>
+              <p className="text-base font-semibold text-foreground">
+                {t("dialog.emptyTitle")}
+              </p>
+              <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+                {t("dialog.emptyBody")}
+              </p>
+              {onGenerateWithAi && (
+                <Button
+                  className="mt-1"
+                  data-testid="generate-template-empty-state"
+                  data-tour-hide
+                  onClick={onGenerateWithAi}
+                >
+                  <Sparkles className="size-4" /> {t("dialog.generateWithAi")}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4">
+              {filtered.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  data-tour="project-template-card"
+                  data-testid={`template-card-${entry.id}`}
+                  onClick={() => choose(entry)}
+                  title={entry.description}
+                  className="group flex flex-col text-left focus:outline-none"
+                >
+                  <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm ring-1 ring-transparent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-primary/50 group-focus-visible:ring-primary">
+                    <Preview template={entry} host={host} t={t} />
+                    {(entry.category || "") === "AI Generated" && (
+                      <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
+                        <Sparkles className="size-2.5" /> {t("dialog.aiBadge")}
+                      </span>
+                    )}
+                    {!entry.assets_ready && (
+                      <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
+                        <Download className="size-2.5" /> {t("dialog.setupBadge")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5 px-0.5">
+                    <span className="truncate text-xs font-medium leading-tight text-foreground">
+                      {entry.name}
+                    </span>
+                    {entry.ats_profile === "friendly" && (
+                      <span
+                        className="size-1.5 shrink-0 rounded-full bg-emerald-500"
+                        title={t("dialog.atsFriendly")}
+                      />
+                    )}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
+                    <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                      {compilerLabel(entry, t)}
+                    </span>
+                    {!entry.assets_ready && (
+                      <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400">
+                        {t("dialog.needsSetup")}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderProjectDetailsStep = () => (
+    selected && (
+      <div className="flex min-h-0 flex-1">
+        <div className="hidden w-64 shrink-0 flex-col gap-3 border-r p-5 sm:flex">
+          <div className="aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm">
+            <Preview template={selected} host={host} t={t} />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">{selected.name}</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">{categoryLabel(selected.category, t)}</div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
+            <AtsBadge profile={selected.ats_profile} t={t} />
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {compilerLabel(selected, t)}
+            </span>
+          </div>
+          {selected.license && (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {selected.license.spdx}
+              {selected.license.author ? ` · ${selected.license.author}` : ""}
+            </p>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col p-6">
+          <label
+            htmlFor="new-project-name"
+            className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            {t("dialog.projectName")}
+          </label>
+          <Input
+            id="new-project-name"
+            data-tour="project-name"
+            ref={nameRef}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (allowEnterSubmit && e.key === "Enter" && name.trim() && !working) {
+                void submit();
+              }
+            }}
+            placeholder={nameHint(selected, t)}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+          />
+
+          <p className="mb-1.5 mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("dialog.coverColor")}
+          </p>
+          <div
+            className="flex flex-wrap items-center gap-2"
+            data-tour="project-cover-color"
+          >
+            {colorOptions.map((c) => {
+              const active = color === c.hex;
+              return (
+                <Tooltip key={c.hex} label={c.name}>
+                  <button
+                    type="button"
+                    onClick={() => setColor(c.hex)}
+                    aria-label={c.name}
+                    aria-pressed={active}
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-full transition-transform hover:scale-110",
+                      active && "scale-110 ring-1 ring-primary ring-offset-2 ring-offset-background",
+                    )}
+                    style={{ background: c.hex }}
+                  >
+                    {active && (
+                      <span className="flex size-4 items-center justify-center rounded-full bg-black/65 text-white shadow-sm">
+                        <Check className="size-3 stroke-[3]" />
+                      </span>
+                    )}
+                  </button>
+                </Tooltip>
+              );
+            })}
+          </div>
+
+          {!selected.assets_ready && (
+            <div className="mt-5 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+              <Sparkles className="mt-0.5 size-3.5 shrink-0" />
+              <span>{t("dialog.setupNotice")}</span>
+            </div>
+          )}
+
+          <div className="mt-auto flex items-center justify-end gap-2 pt-6">
+            <Button
+              data-tour="project-dialog-back"
+              variant="ghost"
+              onClick={() => setStep(1)}
+              disabled={working}
+            >
+              <ArrowLeft className="size-4" /> {t("dialog.back")}
+            </Button>
+            <Button
+              data-testid="create-project"
+              data-tour="create-project"
+              className="bg-primary text-white hover:bg-primary"
+              onClick={() => void submit()}
+              disabled={working || !name.trim()}
+            >
+              {setup.active ? setup.label : createLabel}
+              {!working && <ArrowRight className="size-4" />}
+              {!working && (
+                <span className="inline-flex items-center gap-1">
+                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                    {/Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl"}
+                  </kbd>
+                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                    {"\u21B5"}
+                  </kbd>
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  );
 
   return (
     <div
@@ -548,310 +870,9 @@ export function NewProjectDialog({
         </div>
 
         {step === 1 ? (
-          <div className="flex min-h-0 flex-1">
-            <nav className="flex w-44 shrink-0 flex-col overflow-y-auto border-r p-2">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  title={categoryFullName(c, t)}
-                  onClick={() => setCategory(c)}
-                  className={cn(
-                    "mb-0.5 flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors",
-                    category === c
-                      ? "bg-accent font-medium text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                  )}
-                >
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    {c === "AI Generated" && <Sparkles className="size-3.5 shrink-0 text-primary" />}
-                    <span className="truncate">{categoryLabel(c, t)}</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
-                      category === c
-                        ? "bg-accent-foreground/15 text-accent-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {categoryCounts.get(c) ?? 0}
-                  </span>
-                </button>
-              ))}
-              {onOpenTemplateDownloads && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  data-testid="open-template-downloads"
-                  onClick={onOpenTemplateDownloads}
-                  className="mt-auto w-full justify-start gap-2 text-muted-foreground"
-                >
-                  <Download className="size-3.5" />
-                  {t("dialog.getMoreTemplates")}
-                </Button>
-              )}
-            </nav>
-
-            <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex items-center gap-2 border-b px-4 py-2.5">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    ref={searchRef}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t("dialog.searchPlaceholder")}
-                    className="h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
-                <Select
-                  aria-label={t("dialog.engineLabel")}
-                  data-testid="template-engine-filter"
-                  value={engine}
-                  onValueChange={(v) => setEngine(v as typeof engine)}
-                  className="w-[132px] text-xs"
-                  options={[
-                    { value: "all", label: t("dialog.engineAll") },
-                    { value: "latex", label: t("dialog.engineLatex") },
-                    { value: "typst", label: t("dialog.engineTypst") },
-                    { value: "markdown", label: t("dialog.engineMarkdown") },
-                  ]}
-                />
-                <Tooltip label={t("dialog.atsTooltip")}>
-                  <button
-                    type="button"
-                    onClick={() => setAtsOnly((v) => !v)}
-                    className={cn(
-                      "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                      atsOnly
-                        ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                        : "border-border text-muted-foreground hover:bg-accent",
-                    )}
-                  >
-                    <Check className={cn("size-3", !atsOnly && "opacity-0")} /> {t("dialog.atsFriendly")}
-                  </button>
-                </Tooltip>
-                <Tooltip label={t("dialog.offlineTooltip")}>
-                  <button
-                    type="button"
-                    data-testid="template-offline-filter"
-                    onClick={() => setOfflineOnly((v) => !v)}
-                    className={cn(
-                      "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                      offlineOnly
-                        ? "border-sky-500/40 bg-sky-500/15 text-sky-600 dark:text-sky-400"
-                        : "border-border text-muted-foreground hover:bg-accent",
-                    )}
-                  >
-                    <Check className={cn("size-3", !offlineOnly && "opacity-0")} /> {t("dialog.offlineFilter")}
-                  </button>
-                </Tooltip>
-              </div>
-
-              <div
-                className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
-                data-tour="project-template-list"
-              >
-                {filtered.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                    <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      <Sparkles className="size-6" />
-                    </span>
-                    <p className="text-base font-semibold text-foreground">
-                      {t("dialog.emptyTitle")}
-                    </p>
-                    <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-                      {t("dialog.emptyBody")}
-                    </p>
-                    {onGenerateWithAi && (
-                      <Button
-                        className="mt-1"
-                        data-testid="generate-template-empty-state"
-                        data-tour-hide
-                        onClick={onGenerateWithAi}
-                      >
-                        <Sparkles className="size-4" /> {t("dialog.generateWithAi")}
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4">
-                    {filtered.map((entry) => (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        data-tour="project-template-card"
-                        data-testid={`template-card-${entry.id}`}
-                        onClick={() => choose(entry)}
-                        title={entry.description}
-                        className="group flex flex-col text-left focus:outline-none"
-                      >
-                        <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm ring-1 ring-transparent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-primary/50 group-focus-visible:ring-primary">
-                          <Preview template={entry} host={host} t={t} />
-                          {(entry.category || "") === "AI Generated" && (
-                            <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
-                              <Sparkles className="size-2.5" /> {t("dialog.aiBadge")}
-                            </span>
-                          )}
-                          {!entry.assets_ready && (
-                            <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
-                              <Download className="size-2.5" /> {t("dialog.setupBadge")}
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-2 flex items-center gap-1.5 px-0.5">
-                          <span className="truncate text-xs font-medium leading-tight text-foreground">
-                            {entry.name}
-                          </span>
-                          {entry.ats_profile === "friendly" && (
-                            <span
-                              className="size-1.5 shrink-0 rounded-full bg-emerald-500"
-                              title={t("dialog.atsFriendly")}
-                            />
-                          )}
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
-                          <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                            {compilerLabel(entry, t)}
-                          </span>
-                          {!entry.assets_ready && (
-                            <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400">
-                              {t("dialog.needsSetup")}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          renderTemplatePickerStep()
         ) : (
-          selected && (
-            <div className="flex min-h-0 flex-1">
-              <div className="hidden w-64 shrink-0 flex-col gap-3 border-r p-5 sm:flex">
-                <div className="aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm">
-                  <Preview template={selected} host={host} t={t} />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold">{selected.name}</div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{categoryLabel(selected.category, t)}</div>
-                </div>
-                <div className="flex flex-wrap items-center gap-1">
-                  <AtsBadge profile={selected.ats_profile} t={t} />
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {compilerLabel(selected, t)}
-                  </span>
-                </div>
-                {selected.license && (
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    {selected.license.spdx}
-                    {selected.license.author ? ` · ${selected.license.author}` : ""}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex min-w-0 flex-1 flex-col p-6">
-                <label
-                  htmlFor="new-project-name"
-                  className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  {t("dialog.projectName")}
-                </label>
-                <Input
-                  id="new-project-name"
-                  data-tour="project-name"
-                  ref={nameRef}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (allowEnterSubmit && e.key === "Enter" && name.trim() && !working) {
-                      void submit();
-                    }
-                  }}
-                  placeholder={nameHint(selected, t)}
-                  className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
-                />
-
-                <p className="mb-1.5 mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("dialog.coverColor")}
-                </p>
-                <div
-                  className="flex flex-wrap items-center gap-2"
-                  data-tour="project-cover-color"
-                >
-                  {colorOptions.map((c) => {
-                    const active = color === c.hex;
-                    return (
-                      <Tooltip key={c.hex} label={c.name}>
-                        <button
-                          type="button"
-                          onClick={() => setColor(c.hex)}
-                          aria-label={c.name}
-                          aria-pressed={active}
-                          className={cn(
-                            "flex size-7 items-center justify-center rounded-full transition-transform hover:scale-110",
-                            active && "scale-110 ring-1 ring-primary ring-offset-2 ring-offset-background",
-                          )}
-                          style={{ background: c.hex }}
-                        >
-                          {active && (
-                            <span className="flex size-4 items-center justify-center rounded-full bg-black/65 text-white shadow-sm">
-                              <Check className="size-3 stroke-[3]" />
-                            </span>
-                          )}
-                        </button>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
-
-                {!selected.assets_ready && (
-                  <div className="mt-5 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-                    <Sparkles className="mt-0.5 size-3.5 shrink-0" />
-                    <span>{t("dialog.setupNotice")}</span>
-                  </div>
-                )}
-
-                <div className="mt-auto flex items-center justify-end gap-2 pt-6">
-                  <Button
-                    data-tour="project-dialog-back"
-                    variant="ghost"
-                    onClick={() => setStep(1)}
-                    disabled={working}
-                  >
-                    <ArrowLeft className="size-4" /> {t("dialog.back")}
-                  </Button>
-                  <Button
-                    data-testid="create-project"
-                    data-tour="create-project"
-                    className="bg-primary text-white hover:bg-primary"
-                    onClick={() => void submit()}
-                    disabled={working || !name.trim()}
-                  >
-                    {setup.active
-                      ? setup.label
-                      : busy
-                        ? t("dialog.creating")
-                        : t("dialog.create")}
-                    {!working && <ArrowRight className="size-4" />}
-                    {!working && (
-                      <span className="inline-flex items-center gap-1">
-                        <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
-                          {/Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl"}
-                        </kbd>
-                        <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
-                          {"\u21B5"}
-                        </kbd>
-                      </span>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )
+          renderProjectDetailsStep()
         )}
       </div>
     </div>

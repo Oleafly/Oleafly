@@ -58,8 +58,8 @@ export function buildLines(items: TextItem[]): Line[] {
 export function buildParas(lines: Line[]): Para[] {
   const paras: Para[] = [];
   for (const line of lines) {
-    const prev = paras[paras.length - 1];
-    const last = prev?.lines[prev.lines.length - 1];
+    const prev = paras.at(-1);
+    const last = prev?.lines.at(-1);
     const gapOk = last ? last.y - line.y <= line.fontSize * 1.8 : false;
     const sizeOk = last ? Math.abs(last.fontSize - line.fontSize) < 0.5 : false;
     if (prev && gapOk && sizeOk) prev.lines.push(line);

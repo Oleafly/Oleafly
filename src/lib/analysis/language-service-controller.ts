@@ -182,9 +182,9 @@ interface ActiveRuntime {
   protocolReady: boolean;
   failed: boolean;
   cleanupFailed: boolean;
-  restartHandle: unknown | null;
-  stableHandle: unknown | null;
-  intelligenceHandle: unknown | null;
+  restartHandle: unknown;
+  stableHandle: unknown;
+  intelligenceHandle: unknown;
   intelligenceIdentityKey: string | null;
   deactivateInteractive: (() => void) | null;
 }
@@ -331,6 +331,28 @@ function localOnlyReason(
   return null;
 }
 
+interface SyncContext {
+  readonly operation: number;
+  readonly desired: DesiredProject;
+  readonly targetRevision: number;
+  readonly targetTexts: ReadonlyMap<string, string>;
+}
+
+interface WantedDocument {
+  path: string;
+  uri: string;
+  text: string;
+  languageId: "latex" | "typst";
+}
+
+interface SnapshotDelta {
+  projectChanged: boolean;
+  revisionChanged: boolean;
+  lifecycleChanged: boolean;
+  engineBecameUnloaded: boolean;
+  effectiveTexts: ReadonlyMap<string, string>;
+}
+
 function effectiveProjectTexts(
   snapshot: LanguageServiceProjectSnapshot,
 ): Map<string, string> {
@@ -386,6 +408,53 @@ function sameProjectTree(
   return remaining.size === 0;
 }
 
+function snapshotDelta(
+  previous: LastObservedProject | null,
+  snapshot: LanguageServiceProjectSnapshot,
+): SnapshotDelta {
+  const projectChanged = previous?.projectId !== snapshot.projectId;
+  const treeChanged =
+    projectChanged ||
+    !previous ||
+    (previous.tree !== snapshot.tree &&
+      !sameProjectTree(previous.tree, snapshot.tree));
+  const textInputsChanged =
+    projectChanged ||
+    previous.tree !== snapshot.tree ||
+    previous.files !== snapshot.files ||
+    previous.indexTexts !== snapshot.indexTexts;
+  const computedEffectiveTexts =
+    !textInputsChanged && previous
+      ? previous.effectiveTexts
+      : effectiveProjectTexts(snapshot);
+  const contentsChanged =
+    projectChanged ||
+    !previous ||
+    !sameTexts(previous.effectiveTexts, computedEffectiveTexts);
+  const effectiveTexts =
+    previous && !contentsChanged
+      ? previous.effectiveTexts
+      : computedEffectiveTexts;
+  const revisionChanged =
+    projectChanged ||
+    previous?.engineId !== snapshot.engineId ||
+    previous?.mainDoc !== snapshot.mainDoc ||
+    treeChanged ||
+    contentsChanged;
+  return {
+    projectChanged,
+    revisionChanged,
+    lifecycleChanged:
+      revisionChanged ||
+      previous?.engineLoaded !== snapshot.engineLoaded,
+    engineBecameUnloaded:
+      !projectChanged &&
+      previous?.engineLoaded === true &&
+      !snapshot.engineLoaded,
+    effectiveTexts,
+  };
+}
+
 function encodePathSegments(path: string): string {
   return path
     .split("/")
@@ -401,8 +470,8 @@ export function fileUriForProjectPath(
   workspaceRoot: string,
   path = "",
 ): string {
-  const normalizedRoot = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
-  const normalizedPath = path.replace(/\\/g, "/").replace(/^\/+/, "");
+  const normalizedRoot = workspaceRoot.replaceAll("\\", "/").replace(/(?<!\/)\/+$/, "");
+  const normalizedPath = path.replaceAll("\\", "/").replace(/^\/+/, "");
   const absolute = normalizedPath
     ? `${normalizedRoot}/${normalizedPath}`
     : normalizedRoot;
@@ -521,7 +590,7 @@ export class LanguageServiceController {
         building: boolean;
       }
     | null = null;
-  private localDocuments = new Map<
+  private readonly localDocuments = new Map<
     string,
     { uri: string; text: string; version: number }
   >();
@@ -557,74 +626,35 @@ export class LanguageServiceController {
     this.indexShadow = new ProjectIndexShadowCoordinator(this.store);
   }
 
-  update(snapshot: LanguageServiceProjectSnapshot): void {
-    if (this.disposed) return;
-
-    if (!snapshot.projectId) {
-      if (
-        this.hasObservedSnapshot &&
-        this.lastObserved === null &&
-        this.desired === null &&
-        this.runtime === null
-      ) {
-        return;
-      }
-      const operation = ++this.operationToken;
-      this.detachRuntime(this.runtime);
-      this.cancelRestart();
-      this.desired = null;
-      this.lastObserved = null;
-      this.hasObservedSnapshot = true;
-      this.projectRevision = 0;
-      this.restartAttempts = 0;
-      this.localDocuments.clear();
-      this.lastIndex = null;
-      this.store.getState().reset();
-      this.enqueueReconcile(operation);
+  private clearProject(): void {
+    if (
+      this.hasObservedSnapshot &&
+      this.lastObserved === null &&
+      this.desired === null &&
+      this.runtime === null
+    ) {
       return;
     }
+    const operation = ++this.operationToken;
+    this.detachRuntime(this.runtime);
+    this.cancelRestart();
+    this.desired = null;
+    this.lastObserved = null;
+    this.hasObservedSnapshot = true;
+    this.projectRevision = 0;
+    this.restartAttempts = 0;
+    this.localDocuments.clear();
+    this.lastIndex = null;
+    this.store.getState().reset();
+    this.enqueueReconcile(operation);
+  }
 
-    const previous = this.lastObserved;
-    const projectChanged =
-      previous?.projectId !== snapshot.projectId;
-    const treeChanged =
-      projectChanged ||
-      !previous ||
-      (previous.tree !== snapshot.tree &&
-        !sameProjectTree(previous.tree, snapshot.tree));
-    const textInputsChanged =
-      projectChanged ||
-      previous.tree !== snapshot.tree ||
-      previous.files !== snapshot.files ||
-      previous.indexTexts !== snapshot.indexTexts;
-    const computedEffectiveTexts =
-      !textInputsChanged && previous
-        ? previous.effectiveTexts
-        : effectiveProjectTexts(snapshot);
-    const contentsChanged =
-      projectChanged ||
-      !previous ||
-      !sameTexts(previous.effectiveTexts, computedEffectiveTexts);
-    const effectiveTexts =
-      previous && !contentsChanged
-        ? previous.effectiveTexts
-        : computedEffectiveTexts;
-    const revisionChanged =
-      projectChanged ||
-      !previous ||
-      previous.engineId !== snapshot.engineId ||
-      previous.mainDoc !== snapshot.mainDoc ||
-      treeChanged ||
-      contentsChanged;
-    const lifecycleChanged =
-      revisionChanged ||
-      previous?.engineLoaded !== snapshot.engineLoaded;
-    const engineBecameUnloaded =
-      !projectChanged &&
-      previous?.engineLoaded === true &&
-      !snapshot.engineLoaded;
-
-    if (projectChanged) {
+  private applyRevisionTransition(
+    delta: SnapshotDelta,
+    previous: LastObservedProject | null,
+    snapshot: LanguageServiceProjectSnapshot,
+  ): void {
+    if (delta.projectChanged) {
       this.detachRuntime(this.runtime);
       this.cancelRestart();
       this.projectRevision = 1;
@@ -636,18 +666,35 @@ export class LanguageServiceController {
         projectRevision: this.projectRevision,
         languageServiceGeneration: 0,
       });
-    } else if (revisionChanged) {
-      this.projectRevision += 1;
-      this.store.getState().setProjectRevision(this.projectRevision);
-      if (
-        languageServiceKindForEngine(previous?.engineId ?? "unknown") !==
-        languageServiceKindForEngine(snapshot.engineId)
-      ) {
-        this.detachRuntime(this.runtime);
-        this.cancelRestart();
-        this.restartAttempts = 0;
-      }
+      return;
     }
+    if (!delta.revisionChanged) return;
+    this.projectRevision += 1;
+    this.store.getState().setProjectRevision(this.projectRevision);
+    if (
+      languageServiceKindForEngine(previous?.engineId ?? "unknown") !==
+      languageServiceKindForEngine(snapshot.engineId)
+    ) {
+      this.detachRuntime(this.runtime);
+      this.cancelRestart();
+      this.restartAttempts = 0;
+    }
+  }
+
+  update(snapshot: LanguageServiceProjectSnapshot): void {
+    if (this.disposed) return;
+
+    if (!snapshot.projectId) {
+      this.clearProject();
+      return;
+    }
+
+    const previous = this.lastObserved;
+    const delta = snapshotDelta(previous, snapshot);
+    const { effectiveTexts, revisionChanged, lifecycleChanged } = delta;
+    const engineBecameUnloaded = delta.engineBecameUnloaded;
+
+    this.applyRevisionTransition(delta, previous, snapshot);
     if (engineBecameUnloaded) {
       this.detachRuntime(this.runtime);
       this.cancelRestart();
@@ -852,89 +899,82 @@ export class LanguageServiceController {
       });
   }
 
-  private async reconcile(operation: number): Promise<void> {
-    const desired = this.desired;
+  private async reconcileWithoutProject(operation: number): Promise<void> {
+    await this.teardownRuntime(this.runtime);
     if (operation !== this.operationToken) return;
-    if (this.disposed || !desired) {
-      await this.teardownRuntime(this.runtime);
-      if (operation !== this.operationToken) return;
-      if (this.disposed) {
-        this.store.getState().setLanguageService({
-          kind: null,
-          readiness: "stopped",
-          capabilities: null,
-          failure: null,
-          reason: { key: "lifecycleOwnerUnmounted" },
-          restartAttempt: 0,
-        });
-      }
-      return;
+    if (this.disposed) {
+      this.store.getState().setLanguageService({
+        kind: null,
+        readiness: "stopped",
+        capabilities: null,
+        failure: null,
+        reason: { key: "lifecycleOwnerUnmounted" },
+        restartAttempt: 0,
+      });
     }
-    if (
-      this.runtime?.cleanupFailed &&
-      this.forcedRestartToken !== this.runtime.token
-    ) {
-      // The failed runtime retains the only client that can retry its native
-      // session cleanup. Ordinary snapshot updates must not spin on teardown
-      // or start a replacement; explicit retry authorizes one new attempt.
-      this.publishUnavailable(
-        safeCleanupFailure(),
-        LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
-      );
-      return;
-    }
+  }
 
-    const kind = languageServiceKindForEngine(
-      desired.snapshot.engineId,
+  private async publishEngineLoading(
+    desired: DesiredProject,
+    operation: number,
+  ): Promise<void> {
+    await this.teardownRuntime(this.runtime);
+    if (!this.operationIsCurrent(operation, desired)) return;
+    this.publishNotRun({ key: "engineDetailsLoading" });
+    this.publishLocalDocuments(desired);
+    this.publishIndex(desired);
+  }
+
+  private async publishNoLanguageServer(
+    desired: DesiredProject,
+    operation: number,
+  ): Promise<void> {
+    await this.teardownRuntime(this.runtime);
+    if (!this.operationIsCurrent(operation, desired)) return;
+    if (desired.snapshot.engineId === "markdown") {
+      this.publishLocalOnly(MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON);
+    } else {
+      this.publishNotRun({ key: "noLanguageServerMapping" });
+    }
+    this.publishLocalDocuments(desired);
+    this.publishIndex(desired);
+  }
+
+  private async publishIpcUnavailable(
+    desired: DesiredProject,
+    operation: number,
+  ): Promise<void> {
+    await this.teardownRuntime(this.runtime);
+    if (!this.operationIsCurrent(operation, desired)) return;
+    this.publishUnavailable(
+      {
+        name: "LanguageServiceUnavailableError",
+        message: analysisReasonEnglishText(
+          IPC_UNAVAILABLE_ANALYSIS_REASON,
+        ),
+        reason: IPC_UNAVAILABLE_ANALYSIS_REASON,
+        retryable: false,
+      },
+      IPC_UNAVAILABLE_ANALYSIS_REASON,
     );
-    if (!desired.snapshot.engineLoaded) {
-      await this.teardownRuntime(this.runtime);
-      if (!this.operationIsCurrent(operation, desired)) return;
-      this.publishNotRun({ key: "engineDetailsLoading" });
-      this.publishLocalDocuments(desired);
-      this.publishIndex(desired);
-      return;
-    }
-    if (!kind) {
-      await this.teardownRuntime(this.runtime);
-      if (!this.operationIsCurrent(operation, desired)) return;
-      if (desired.snapshot.engineId === "markdown") {
-        this.publishLocalOnly(MARKDOWN_LOCAL_ONLY_ANALYSIS_REASON);
-      } else {
-        this.publishNotRun({ key: "noLanguageServerMapping" });
-      }
-      this.publishLocalDocuments(desired);
-      this.publishIndex(desired);
-      return;
-    }
-    if (!this.isAvailable()) {
-      await this.teardownRuntime(this.runtime);
-      if (!this.operationIsCurrent(operation, desired)) return;
-      this.publishUnavailable(
-        {
-          name: "LanguageServiceUnavailableError",
-          message: analysisReasonEnglishText(
-            IPC_UNAVAILABLE_ANALYSIS_REASON,
-          ),
-          reason: IPC_UNAVAILABLE_ANALYSIS_REASON,
-          retryable: false,
-        },
-        IPC_UNAVAILABLE_ANALYSIS_REASON,
-      );
-      this.publishLocalDocuments(desired);
-      this.publishIndex(desired);
-      return;
-    }
+    this.publishLocalDocuments(desired);
+    this.publishIndex(desired);
+  }
 
+  private async teardownStaleRuntime(
+    desired: DesiredProject,
+    kind: LanguageServiceKind,
+    key: string,
+    operation: number,
+  ): Promise<boolean> {
     if (
       this.runtime &&
       (this.runtime.projectId !== desired.projectId ||
         this.runtime.kind !== kind)
     ) {
       await this.teardownRuntime(this.runtime);
-      if (!this.operationIsCurrent(operation, desired)) return;
+      if (!this.operationIsCurrent(operation, desired)) return false;
     }
-    const key = `${desired.projectId}\0${kind}`;
     if (
       this.runtime &&
       (this.runtime.key !== key ||
@@ -942,98 +982,132 @@ export class LanguageServiceController {
     ) {
       this.forcedRestartToken = null;
       await this.teardownRuntime(this.runtime);
-      if (!this.operationIsCurrent(operation, desired)) return;
+      if (!this.operationIsCurrent(operation, desired)) return false;
     }
-    const startingNewRuntime = !this.runtime;
-    if (startingNewRuntime) {
-      let profile: ReturnType<
-        typeof getLanguageServiceRuntimeProfile
-      >;
-      try {
-        profile = getLanguageServiceRuntimeProfile(kind);
-      } catch (error) {
-        if (!this.operationIsCurrent(operation, desired)) return;
-        this.publishUnavailable(normalizeAnalysisFailure(error, false), {
-          key: "runtimeProfileInvalid",
-        });
-        return;
-      }
-      let installStatus: LanguageServiceInstallStatus;
-      try {
-        installStatus = await this.provisioner.installStatus(kind);
-      } catch (error) {
-        if (!this.operationIsCurrent(operation, desired)) return;
-        this.publishUnavailable(safeLanguageServiceFailure(error), {
-          key: "setupStatusUncheckable",
-        });
-        return;
-      }
-      if (!this.operationIsCurrent(operation, desired)) return;
-      if (installStatus.version !== profile.version) {
-        const versionMismatch: AnalysisReason = {
-          key: "versionMismatch",
-          params: {
-            kind,
-            expected: profile.version,
-            reported: installStatus.version,
-          },
-        };
-        this.publishSetupRequired(
+    return true;
+  }
+
+  private async resolveRuntimeStart(
+    desired: DesiredProject,
+    kind: LanguageServiceKind,
+    operation: number,
+  ): Promise<{
+    profile: ReturnType<typeof getLanguageServiceRuntimeProfile>;
+    installStatus: LanguageServiceInstallStatus;
+  } | null> {
+    let profile: ReturnType<typeof getLanguageServiceRuntimeProfile>;
+    try {
+      profile = getLanguageServiceRuntimeProfile(kind);
+    } catch (error) {
+      if (!this.operationIsCurrent(operation, desired)) return null;
+      this.publishUnavailable(normalizeAnalysisFailure(error, false), {
+        key: "runtimeProfileInvalid",
+      });
+      return null;
+    }
+    let installStatus: LanguageServiceInstallStatus;
+    try {
+      installStatus = await this.provisioner.installStatus(kind);
+    } catch (error) {
+      if (!this.operationIsCurrent(operation, desired)) return null;
+      this.publishUnavailable(safeLanguageServiceFailure(error), {
+        key: "setupStatusUncheckable",
+      });
+      return null;
+    }
+    if (!this.operationIsCurrent(operation, desired)) return null;
+    return { profile, installStatus };
+  }
+
+  private installBlocksStart(
+    kind: LanguageServiceKind,
+    profile: ReturnType<typeof getLanguageServiceRuntimeProfile>,
+    installStatus: LanguageServiceInstallStatus,
+  ): boolean {
+    if (installStatus.version !== profile.version) {
+      const versionMismatch: AnalysisReason = {
+        key: "versionMismatch",
+        params: {
           kind,
-          {
-            name: "LanguageServiceVersionMismatchError",
-            message: `Expected ${kind} ${profile.version}, but setup reported ${installStatus.version}.`,
-            reason: versionMismatch,
-            retryable: true,
-          },
-          { key: "pinnedVersionRequired" },
-        );
-        return;
-      }
-      if (installStatus.state === "installing") {
-        this.publishInstalling(
-          kind,
-          installStatus.message === undefined
-            ? undefined
-            : { text: installStatus.message },
-        );
-        return;
-      }
-      if (installStatus.state !== "installed") {
-        const notInstalled: AnalysisReason =
-          installStatus.message === undefined
-            ? {
-                key: "notInstalled",
-                params: { kind, version: installStatus.version },
-              }
-            : { text: installStatus.message };
-        this.publishSetupRequired(
-          kind,
-          {
-            name: "LanguageServiceSetupRequiredError",
-            message: analysisReasonEnglishText(notInstalled),
-            reason: notInstalled,
-            code: "sidecar_setup_required",
-            retryable: true,
-          },
-          { key: "setupRequiredBeforeAnalysis" },
-        );
-        return;
-      }
-      await this.startRuntime(
-        desired,
+          expected: profile.version,
+          reported: installStatus.version,
+        },
+      };
+      this.publishSetupRequired(
         kind,
-        key,
-        profile,
-        operation,
+        {
+          name: "LanguageServiceVersionMismatchError",
+          message: `Expected ${kind} ${profile.version}, but setup reported ${installStatus.version}.`,
+          reason: versionMismatch,
+          retryable: true,
+        },
+        { key: "pinnedVersionRequired" },
       );
-      if (!this.operationIsCurrent(operation, desired)) return;
-      if (this.runtime?.ready) {
-        this.publishLocalDocuments(desired);
-        this.publishIndex(desired);
-      }
+      return true;
+    }
+    if (installStatus.state === "installing") {
+      this.publishInstalling(
+        kind,
+        installStatus.message === undefined
+          ? undefined
+          : { text: installStatus.message },
+      );
+      return true;
+    }
+    if (installStatus.state !== "installed") {
+      const notInstalled: AnalysisReason =
+        installStatus.message === undefined
+          ? {
+              key: "notInstalled",
+              params: { kind, version: installStatus.version },
+            }
+          : { text: installStatus.message };
+      this.publishSetupRequired(
+        kind,
+        {
+          name: "LanguageServiceSetupRequiredError",
+          message: analysisReasonEnglishText(notInstalled),
+          reason: notInstalled,
+          code: "sidecar_setup_required",
+          retryable: true,
+        },
+        { key: "setupRequiredBeforeAnalysis" },
+      );
+      return true;
+    }
+    return false;
+  }
+
+  private async startNewRuntime(
+    desired: DesiredProject,
+    kind: LanguageServiceKind,
+    key: string,
+    operation: number,
+  ): Promise<void> {
+    const resolved = await this.resolveRuntimeStart(desired, kind, operation);
+    if (!resolved) return;
+    if (this.installBlocksStart(kind, resolved.profile, resolved.installStatus)) {
       return;
     }
+    await this.startRuntime(
+      desired,
+      kind,
+      key,
+      resolved.profile,
+      operation,
+    );
+    if (!this.operationIsCurrent(operation, desired)) return;
+    if (this.runtime?.ready) {
+      this.publishLocalDocuments(desired);
+      this.publishIndex(desired);
+    }
+  }
+
+  private async syncExistingRuntime(
+    desired: DesiredProject,
+    key: string,
+    operation: number,
+  ): Promise<void> {
     const current = this.runtime;
     const latest = this.desired;
     if (
@@ -1090,6 +1164,58 @@ export class LanguageServiceController {
     this.markRuntimeReady(current);
     this.publishLocalDocuments(latest);
     this.publishIndex(latest);
+  }
+
+  private async reconcile(operation: number): Promise<void> {
+    const desired = this.desired;
+    if (operation !== this.operationToken) return;
+    if (this.disposed || !desired) {
+      await this.reconcileWithoutProject(operation);
+      return;
+    }
+    if (
+      this.runtime?.cleanupFailed &&
+      this.forcedRestartToken !== this.runtime.token
+    ) {
+      // The failed runtime retains the only client that can retry its native
+      // session cleanup. Ordinary snapshot updates must not spin on teardown
+      // or start a replacement; explicit retry authorizes one new attempt.
+      this.publishUnavailable(
+        safeCleanupFailure(),
+        LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
+      );
+      return;
+    }
+
+    const kind = languageServiceKindForEngine(
+      desired.snapshot.engineId,
+    );
+    if (!desired.snapshot.engineLoaded) {
+      await this.publishEngineLoading(desired, operation);
+      return;
+    }
+    if (!kind) {
+      await this.publishNoLanguageServer(desired, operation);
+      return;
+    }
+    if (!this.isAvailable()) {
+      await this.publishIpcUnavailable(desired, operation);
+      return;
+    }
+
+    const key = `${desired.projectId}\0${kind}`;
+    const proceed = await this.teardownStaleRuntime(
+      desired,
+      kind,
+      key,
+      operation,
+    );
+    if (!proceed) return;
+    if (!this.runtime) {
+      await this.startNewRuntime(desired, kind, key, operation);
+      return;
+    }
+    await this.syncExistingRuntime(desired, key, operation);
   }
 
   private async startRuntime(
@@ -1219,40 +1345,42 @@ export class LanguageServiceController {
     this.markRuntimeReady(runtime);
   }
 
-  private async syncDocuments(
+  private syncTargetIsCurrent(
     runtime: ActiveRuntime,
-    desired: DesiredProject,
-    operation: number,
-  ): Promise<boolean> {
-    const targetRevision = desired.revision;
-    const targetTexts = desired.effectiveTexts;
-    if (
-      !runtime.root ||
-      !this.synchronizationTargetIsCurrent(
-        runtime,
-        operation,
-        desired,
-        targetRevision,
-        targetTexts,
-      )
-    ) {
-      return false;
-    }
-    const wanted = new Map<
-      string,
-      { path: string; uri: string; text: string; languageId: "latex" | "typst" }
-    >();
-    const synchronizedUris = new Set<string>();
+    context: SyncContext,
+  ): boolean {
+    return this.synchronizationTargetIsCurrent(
+      runtime,
+      context.operation,
+      context.desired,
+      context.targetRevision,
+      context.targetTexts,
+    );
+  }
+
+  private wantedSyncDocuments(
+    runtime: ActiveRuntime,
+    root: string,
+    targetTexts: ReadonlyMap<string, string>,
+  ): Map<string, WantedDocument> {
+    const wanted = new Map<string, WantedDocument>();
     for (const [path, text] of targetTexts) {
       const languageId = languageServiceLanguageIdForPath(
         runtime.kind,
         path,
       );
       if (!languageId) continue;
-      const uri = fileUriForProjectPath(runtime.root, path);
+      const uri = fileUriForProjectPath(root, path);
       wanted.set(uri, { path, uri, text, languageId });
     }
+    return wanted;
+  }
 
+  private async closeRemovedDocuments(
+    runtime: ActiveRuntime,
+    wanted: ReadonlyMap<string, WantedDocument>,
+    context: SyncContext,
+  ): Promise<boolean> {
     for (const uri of runtime.documents.keys()) {
       if (wanted.has(uri)) continue;
       if (runtime.client.state === "ready") {
@@ -1260,86 +1388,127 @@ export class LanguageServiceController {
       }
       runtime.documents.delete(uri);
       runtime.coordinator?.untrackDocument(uri);
-      if (
-        !this.synchronizationTargetIsCurrent(
-          runtime,
-          operation,
-          desired,
-          targetRevision,
-          targetTexts,
-        )
-      ) {
-        return false;
-      }
+      if (!this.syncTargetIsCurrent(runtime, context)) return false;
     }
+    return true;
+  }
 
+  private async openSyncDocument(
+    runtime: ActiveRuntime,
+    document: WantedDocument,
+    context: SyncContext,
+    synchronizedUris: Set<string>,
+  ): Promise<void> {
+    const version = 1;
+    runtime.coordinator?.trackDocument(document.uri, version);
+    await runtime.client.openDocument(
+      {
+        uri: document.uri,
+        languageId: document.languageId,
+        version,
+        text: document.text,
+      },
+      context.targetRevision,
+    );
+    runtime.documents.set(document.uri, {
+      path: document.path,
+      uri: document.uri,
+      text: document.text,
+      version,
+    });
+    synchronizedUris.add(document.uri);
+  }
+
+  private async replaceSyncDocument(
+    runtime: ActiveRuntime,
+    tracked: { path: string; uri: string; text: string; version: number },
+    document: WantedDocument,
+    context: SyncContext,
+    synchronizedUris: Set<string>,
+  ): Promise<void> {
+    const expectedVersion = tracked.version + 1;
+    runtime.coordinator?.trackDocument(
+      document.uri,
+      expectedVersion,
+    );
+    const version = await runtime.client.replaceDocument(
+      document.uri,
+      document.text,
+      context.targetRevision,
+    );
+    if (version !== expectedVersion) {
+      throw new Error(
+        "Language-service document version did not advance as expected",
+      );
+    }
+    runtime.documents.set(document.uri, {
+      ...tracked,
+      text: document.text,
+      version,
+    });
+    synchronizedUris.add(document.uri);
+  }
+
+  private async syncWantedDocuments(
+    runtime: ActiveRuntime,
+    wanted: ReadonlyMap<string, WantedDocument>,
+    synchronizedUris: Set<string>,
+    context: SyncContext,
+  ): Promise<boolean> {
     for (const document of wanted.values()) {
       const tracked = runtime.documents.get(document.uri);
       if (!tracked) {
-        const version = 1;
-        runtime.coordinator?.trackDocument(document.uri, version);
-        await runtime.client.openDocument(
-          {
-            uri: document.uri,
-            languageId: document.languageId,
-            version,
-            text: document.text,
-          },
-          targetRevision,
-        );
-        runtime.documents.set(document.uri, {
-          path: document.path,
-          uri: document.uri,
-          text: document.text,
-          version,
-        });
-        synchronizedUris.add(document.uri);
-        if (
-          !this.synchronizationTargetIsCurrent(
-            runtime,
-            operation,
-            desired,
-            targetRevision,
-            targetTexts,
-          )
-        ) {
-          return false;
-        }
-        continue;
-      }
-      if (tracked.text === document.text) continue;
-      const expectedVersion = tracked.version + 1;
-      runtime.coordinator?.trackDocument(
-        document.uri,
-        expectedVersion,
-      );
-      const version = await runtime.client.replaceDocument(
-        document.uri,
-        document.text,
-        targetRevision,
-      );
-      if (version !== expectedVersion) {
-        throw new Error(
-          "Language-service document version did not advance as expected",
-        );
-      }
-      runtime.documents.set(document.uri, {
-        ...tracked,
-        text: document.text,
-        version,
-      });
-      synchronizedUris.add(document.uri);
-      if (
-        !this.synchronizationTargetIsCurrent(
+        await this.openSyncDocument(
           runtime,
-          operation,
-          desired,
-          targetRevision,
-          targetTexts,
-        )
-      ) {
-        return false;
+          document,
+          context,
+          synchronizedUris,
+        );
+      } else {
+        if (tracked.text === document.text) continue;
+        await this.replaceSyncDocument(
+          runtime,
+          tracked,
+          document,
+          context,
+          synchronizedUris,
+        );
       }
+      if (!this.syncTargetIsCurrent(runtime, context)) return false;
+    }
+    return true;
+  }
+
+  private async syncDocuments(
+    runtime: ActiveRuntime,
+    desired: DesiredProject,
+    operation: number,
+  ): Promise<boolean> {
+    const targetRevision = desired.revision;
+    const targetTexts = desired.effectiveTexts;
+    const context: SyncContext = {
+      operation,
+      desired,
+      targetRevision,
+      targetTexts,
+    };
+    const root = runtime.root;
+    if (!root || !this.syncTargetIsCurrent(runtime, context)) return false;
+    const wanted = this.wantedSyncDocuments(runtime, root, targetTexts);
+    const synchronizedUris = new Set<string>();
+
+    if (!(await this.closeRemovedDocuments(runtime, wanted, context))) {
+      return false;
+    }
+    if (
+      !(await this.syncWantedDocuments(
+        runtime,
+        wanted,
+        synchronizedUris,
+        context,
+      ))
+    ) {
+      return false;
     }
     if (runtime.projectRevision !== targetRevision) {
       for (const uri of wanted.keys()) {
@@ -1351,13 +1520,7 @@ export class LanguageServiceController {
       }
     }
     runtime.projectRevision = targetRevision;
-    return this.synchronizationTargetIsCurrent(
-      runtime,
-      operation,
-      desired,
-      targetRevision,
-      targetTexts,
-    );
+    return this.syncTargetIsCurrent(runtime, context);
   }
 
   private publishLocalDocuments(desired: DesiredProject): void {
@@ -1378,7 +1541,7 @@ export class LanguageServiceController {
         .getState()
         .setLocalDocument(next.uri, next.version, reason);
     }
-    for (const [path, document] of [...this.localDocuments]) {
+    for (const [path, document] of this.localDocuments) {
       if (wanted.has(path)) continue;
       this.localDocuments.delete(path);
       this.store.getState().removeDocument(document.uri);
@@ -1491,10 +1654,10 @@ export class LanguageServiceController {
           positionEncoding: runtime.client.positionEncoding,
           client: runtime.client,
           documentForPath: (path) => {
-            const normalizedPath = path.replace(/\\/g, "/");
+            const normalizedPath = path.replaceAll("\\", "/");
             for (const document of runtime.documents.values()) {
               if (
-                document.path.replace(/\\/g, "/") === normalizedPath
+                document.path.replaceAll("\\", "/") === normalizedPath
               ) {
                 return { ...document };
               }
@@ -1542,9 +1705,8 @@ export class LanguageServiceController {
       runtime !== this.runtime ||
       runtime.expectedStop ||
       !runtime.ready ||
-      !desired ||
-      desired.projectId !== runtime.projectId ||
-      desired.revision !== runtime.projectRevision ||
+      desired?.projectId !== runtime.projectId ||
+      desired?.revision !== runtime.projectRevision ||
       !runtime.root ||
       !requestWorkspaceSymbols ||
       !runtime.client.supports("workspaceSymbols")
@@ -1553,7 +1715,7 @@ export class LanguageServiceController {
     }
     const identity =
       useIndexStore.getState().intelligenceState.identity;
-    if (!identity || identity.projectId !== runtime.projectId) {
+    if (identity?.projectId !== runtime.projectId) {
       return;
     }
     const identityKey = [
@@ -1615,11 +1777,10 @@ export class LanguageServiceController {
         !runtime.ready ||
         this.desired !== desired ||
         desired.revision !== runtime.projectRevision ||
-        !latestIdentity ||
-        latestIdentity.projectId !== identity.projectId ||
-        latestIdentity.projectRevision !==
+        latestIdentity?.projectId !== identity.projectId ||
+        latestIdentity?.projectRevision !==
           identity.projectRevision ||
-        latestIdentity.requestGeneration !==
+        latestIdentity?.requestGeneration !==
           identity.requestGeneration
       ) {
         return;

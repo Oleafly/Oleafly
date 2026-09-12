@@ -150,6 +150,41 @@ const TOOL_COMMAND_ICON_COLOR: Record<ToolDefinition["tone"], string> = {
   amber: "text-amber-600 dark:text-amber-300",
 };
 
+type CommandFilesState = ReturnType<typeof useFilesStore.getState>;
+
+function selectedEditorText(): string | undefined {
+  const view = getEditorView();
+  if (!view) return undefined;
+  const sel = view.state.selection.main;
+  if (sel.from === sel.to) return undefined;
+  return view.state.sliceDoc(sel.from, sel.to).trim() || undefined;
+}
+
+function documentScanSource(files: CommandFilesState): string | undefined {
+  const selected = selectedEditorText();
+  if (selected) return selected;
+  const active = files.activePath;
+  if (active && /\.tex$/i.test(active)) {
+    const content = files.files[active]?.content?.trim();
+    if (content) return content;
+  }
+  if (files.mainDoc) {
+    const content = files.files[files.mainDoc]?.content?.trim();
+    if (content) return content;
+  }
+  return undefined;
+}
+
+function documentScanBibOverride(files: CommandFilesState): string | null {
+  return (
+    files.tree
+      .filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"))
+      .map((entry) => files.files[entry.path]?.content ?? "")
+      .filter(Boolean)
+      .join("\n\n") || null
+  );
+}
+
 export function registerOmnibarCommands() {
   registerCommand({
     id: "omnibar.create",
@@ -388,36 +423,13 @@ export function registerPaletteCommands() {
     run: () => {
       // Capture selection (or active/main .tex content) and .bib filter text
       // before openHomePage closes the project and clears the files store.
-      const view = getEditorView();
       const files = useFilesStore.getState();
-      let source: string | undefined;
-      if (view) {
-        const sel = view.state.selection.main;
-        if (sel.from !== sel.to) {
-          const selected = view.state.sliceDoc(sel.from, sel.to).trim();
-          if (selected) source = selected;
-        }
-      }
-      if (!source) {
-        const active = files.activePath;
-        if (active && /\.tex$/i.test(active)) {
-          const content = files.files[active]?.content?.trim();
-          if (content) source = content;
-        }
-        if (!source && files.mainDoc) {
-          const content = files.files[files.mainDoc]?.content?.trim();
-          if (content) source = content;
-        }
-      }
-      const bibOverride =
-        files.tree
-          .filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"))
-          .map((entry) => files.files[entry.path]?.content ?? "")
-          .filter(Boolean)
-          .join("\n\n") || null;
       useDocumentCitationUiStore
         .getState()
-        .requestDocumentScan(source, bibOverride);
+        .requestDocumentScan(
+          documentScanSource(files),
+          documentScanBibOverride(files),
+        );
       void openHomePage("literature-search");
     },
   });
@@ -509,7 +521,7 @@ export function registerPaletteCommands() {
     icon: () => <Tag className="size-4" />,
     order: 470,
     when: activeIsLatexSource,
-    run: ins("\\label{}"),
+    run: ins(String.raw`\label{}`),
   });
 
   palette({

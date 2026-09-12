@@ -35,9 +35,15 @@ interface OpenPreview {
   error: string | null;
 }
 
-function joinPath(root: string, relative: string): string {
+function trimTrailingSeparators(value: string): string {
+  let end = value.length;
+  while (end > 0 && (value[end - 1] === "/" || value[end - 1] === "\\")) end -= 1;
+  return value.slice(0, end);
+}
+
+export function joinPath(root: string, relative: string): string {
   const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
-  return `${root.replace(/[\\/]+$/, "")}${separator}${relative.replace(/\//g, separator)}`;
+  return `${trimTrailingSeparators(root)}${separator}${relative.replaceAll("/", separator)}`;
 }
 
 export function LinkedFoldersSection() {
@@ -54,6 +60,33 @@ export function LinkedFoldersSection() {
   const toggle = useLinkedRootsStore((state) => state.toggle);
   const [preview, setPreview] = useState<OpenPreview | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const previewBody = () => {
+    if (!preview?.content) {
+      return (
+        <output className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
+        </output>
+      );
+    }
+    if (preview.content.isBinary) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          {t(($) => $.researchTools.linked.binary)}
+        </p>
+      );
+    }
+    return (
+      <>
+        <pre className="whitespace-pre-wrap break-words text-xs">{preview.content.content}</pre>
+        {preview.content.truncated ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t(($) => $.researchTools.linked.previewTruncated)}
+          </p>
+        ) : null}
+      </>
+    );
+  };
 
   useEffect(() => {
     void bindProject(projectId);
@@ -76,18 +109,18 @@ export function LinkedFoldersSection() {
     });
     try {
       const content = await readResearchRootFile(projectId, root.id, relativePath);
-      setPreview((current) =>
-        current && current.rootId === root.id && current.relativePath === relativePath
-          ? { ...current, content }
-          : current,
-      );
+      setPreview((current) => {
+        if (!current) return current;
+        if (current.rootId !== root.id || current.relativePath !== relativePath) return current;
+        return { ...current, content };
+      });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
-      setPreview((current) =>
-        current && current.rootId === root.id && current.relativePath === relativePath
-          ? { ...current, error: message }
-          : current,
-      );
+      setPreview((current) => {
+        if (!current) return current;
+        if (current.rootId !== root.id || current.relativePath !== relativePath) return current;
+        return { ...current, error: message };
+      });
     }
   };
 
@@ -100,13 +133,12 @@ export function LinkedFoldersSection() {
     const entries = listings[key];
     if (loading[key]) {
       return (
-        <p
-          role="status"
+        <output
           className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
           <Loader2 className="size-3 animate-spin" /> {t(($) => $.common.state.loading)}
-        </p>
+        </output>
       );
     }
     if (errors[key]) {
@@ -267,24 +299,7 @@ export function LinkedFoldersSection() {
               <p role="alert" className="text-sm text-destructive">
                 {preview.error}
               </p>
-            ) : !preview?.content ? (
-              <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-              </p>
-            ) : preview.content.isBinary ? (
-              <p className="text-sm text-muted-foreground">
-                {t(($) => $.researchTools.linked.binary)}
-              </p>
-            ) : (
-              <>
-                <pre className="whitespace-pre-wrap break-words text-xs">{preview.content.content}</pre>
-                {preview.content.truncated ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {t(($) => $.researchTools.linked.previewTruncated)}
-                  </p>
-                ) : null}
-              </>
-            )}
+            ) : previewBody()}
           </div>
           <DialogFooter>
             <Button

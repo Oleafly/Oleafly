@@ -21,7 +21,7 @@ export interface PersonasTabProps {
   setMsg: (msg: { ok: boolean; text: string } | null) => void;
 }
 
-export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
+export function PersonasTab({ cfg, persist, setMsg }: Readonly<PersonasTabProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Persona | null>(null);

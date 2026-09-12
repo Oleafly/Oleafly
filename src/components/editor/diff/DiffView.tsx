@@ -36,6 +36,26 @@ function hasNullByte(s: string): boolean {
   return s.includes("\u0000");
 }
 
+type ChunkInfo = NonNullable<ReturnType<typeof getChunks>>;
+
+function chunkIndexFor(
+  chunks: ChunkInfo["chunks"],
+  side: NonNullable<ChunkInfo["side"]>,
+  head: number,
+  dir: "next" | "prev",
+): number | null {
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const chunk = chunks[i];
+    const [from, to] = side === "b" ? [chunk.fromB, chunk.toB] : [chunk.fromA, chunk.toA];
+    if (to < head) return i + 1;
+    if (from <= head) {
+      if (chunks.length === 1) return null;
+      return i + (dir === "prev" ? 0 : 1);
+    }
+  }
+  return 0;
+}
+
 export function DiffView() {
   const { t } = useTranslation(["common", "editor"]);
   const diff = useDiffStore(activeDiff);
@@ -228,23 +248,8 @@ export function DiffView() {
     if (!info?.chunks.length || !info.side) return;
     const chunks = info.chunks;
     const head = v.state.selection.main.head;
-    let index = 0;
-    for (let i = chunks.length - 1; i >= 0; i--) {
-      const chunk = chunks[i];
-      const [from, to] =
-        info.side === "b"
-          ? [chunk.fromB, chunk.toB]
-          : [chunk.fromA, chunk.toA];
-      if (to < head) {
-        index = i + 1;
-        break;
-      }
-      if (from <= head) {
-        if (chunks.length === 1) return;
-        index = i + (dir === "prev" ? 0 : 1);
-        break;
-      }
-    }
+    const index = chunkIndexFor(chunks, info.side, head, dir);
+    if (index === null) return;
     const offset =
       dir === "prev" ? chunks.length - 1 : 0;
     const next = chunks[(index + offset) % chunks.length];

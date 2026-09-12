@@ -143,6 +143,13 @@ export function PreflightPanel() {
   const spinning = (id: CheckId) => busy === id || busy === "all";
 
   const enabledCount = CHECK_IDS.filter((id) => enabled[id]).length;
+  const runEnabledLabel = () => {
+    if (running) return t(($) => $.preflight.panel.analyzing);
+    if (CHECKS.every((c) => !enabled[c.id] || ran[c.id])) {
+      return t(($) => $.preflight.panel.rerunEnabled, { count: enabledCount });
+    }
+    return t(($) => $.preflight.panel.runEnabled, { count: enabledCount });
+  };
 
   return (
     <div
@@ -335,11 +342,7 @@ export function PreflightPanel() {
             className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
           >
             {running ? <RefreshCw className="size-4 animate-spin" /> : <Play className="size-4" />}
-            {running
-              ? t(($) => $.preflight.panel.analyzing)
-              : CHECKS.every((c) => !enabled[c.id] || ran[c.id])
-                ? t(($) => $.preflight.panel.rerunEnabled, { count: enabledCount })
-                : t(($) => $.preflight.panel.runEnabled, { count: enabledCount })}
+            {runEnabledLabel()}
           </button>
         )}
 

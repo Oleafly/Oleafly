@@ -22,7 +22,7 @@ oleafly-history = { path = "../crates/oleafly-history" }
 # `unstable` unlocks the multi-webview APIs (Webview class) that power the
 # composer's embedded browser pane; supported on macOS, Windows, and Linux.
 tauri = { version = "2", features = ["macos-private-api", "unstable"] }
-tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util"] }
+tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util", "fs"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 tauri-plugin-shell = "2"
 tauri-plugin-playwright = { version = "0.4", optional = true }

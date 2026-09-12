@@ -51,7 +51,67 @@ import {
 import { useDiagramKit } from "./kit";
 import type { DiagramHost } from "./host";
 import { cn } from "./cn";
-import type { DiagramMessageKey } from "./messages";
+import type { DiagramMessageKey, DiagramTranslator } from "./messages";
+
+function CompileIcon({ busy, hasCompiled }: Readonly<{ busy: boolean; hasCompiled: boolean }>) {
+  if (busy) return <Loader2 className="compile-shimmer-icon size-3.5" />;
+  if (hasCompiled) return <RefreshCw className="size-3.5" />;
+  return <Play className="size-3.5" />;
+}
+
+function compileLabel(t: DiagramTranslator, busy: boolean, hasCompiled: boolean): string {
+  if (busy) return t("composer.compiling");
+  if (hasCompiled) return t("composer.recompile");
+  return t("composer.compile");
+}
+
+function PreviewBody({
+  busy,
+  png,
+  log,
+  background,
+  t,
+}: Readonly<{
+  busy: boolean;
+  png: string | null;
+  log: string;
+  background: string;
+  t: DiagramTranslator;
+}>) {
+  if (busy && !png && !log) {
+    return (
+      <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+        <Loader2 className="mr-2 size-4 animate-spin" />
+        {t("composer.compiling")}
+      </div>
+    );
+  }
+  if (png) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <img
+          src={png}
+          alt={t("preview.alt")}
+          className={cn(
+            "max-h-full max-w-full object-contain",
+            background === "" &&
+              "bg-[length:16px_16px] bg-[linear-gradient(45deg,#252525_25%,transparent_25%,transparent_75%,#252525_75%,#252525),linear-gradient(45deg,#252525_25%,#333_25%,#333_75%,#252525_75%,#252525)] bg-[position:0_0,8px_8px]",
+          )}
+        />
+      </div>
+    );
+  }
+  if (log) {
+    return (
+      <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
+    );
+  }
+  return (
+    <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+      {t("preview.empty")}
+    </div>
+  );
+}
 
 function starterModel(): DiagramModel {
   const STROKE = "#1e293b";
@@ -237,12 +297,16 @@ const TIKZ_SNIPPETS: { id: string; key: DiagramMessageKey; icon: ReactNode; snip
   { id: "scope", key: "snippets.scope", icon: <Braces className="size-3.5" />, snippet: "\\begin{scope}\n  \n\\end{scope}\n" },
 ];
 
-function safeName(name: string): string {
-  return name
-    .trim()
-    .replace(/[^A-Za-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64);
+function trimDashes(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === "-") start++;
+  while (end > start && value[end - 1] === "-") end--;
+  return value.slice(start, end);
+}
+
+export function safeName(name: string): string {
+  return trimDashes(name.trim().replace(/[^A-Za-z0-9_-]+/g, "-")).slice(0, 64);
 }
 
 type Mode = "draw" | "code";
@@ -261,7 +325,7 @@ export function DiagramComposer({
   forcePreviewOpen = false,
   brand,
   windowControls,
-}: {
+}: Readonly<{
   open: boolean;
   projectId: string | null;
   projectName?: string | null;
@@ -280,7 +344,7 @@ export function DiagramComposer({
   // App-supplied OS window controls (min/max/close), rendered at the far right
   // of the toolbar on platforms that draw a frameless window (e.g. Windows).
   windowControls?: ReactNode;
-}) {
+}>) {
   const { Button, Input, ColorPicker, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast, t } =
     useDiagramKit();
 
@@ -385,7 +449,7 @@ export function DiagramComposer({
     if (!projectId || busy) return;
     // In draw mode the code is debounced; compile the freshest generated TikZ.
     const raw = overrideCode ?? sourceToCompile(syncRef.current, mode, model, code);
-    const nextBackground = overrideBackground !== undefined ? overrideBackground : background;
+    const nextBackground = overrideBackground ?? background;
     const source = buildStandaloneDoc({
       code: raw,
       libraries: DIAGRAM_LIBS,
@@ -645,7 +709,7 @@ export function DiagramComposer({
   const hasPreviewResult = !!(png || log);
   const showPreview = previewOpen || forcePreviewOpen;
 
-  const previewOpts = (
+  const renderPreviewOpts = () => (
     <>
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         {t("preview.pngScale")}
@@ -675,6 +739,288 @@ export function DiagramComposer({
         />
       </div>
     </>
+  );
+
+  const renderComposerActions = () => (
+    <div className="ml-auto flex items-center gap-2">
+      {compileFailed && host.fixWithAi && (
+        <Tooltip label={t("composer.fixWithAiTooltip")}>
+          <Button variant="secondary" size="sm" onClick={() => void fixWithAi()} disabled={fixing}>
+            {fixing ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+            {t("composer.fixWithAi")}
+          </Button>
+        </Tooltip>
+      )}
+      <Button data-tour="diagram-compile" data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
+        <CompileIcon busy={busy} hasCompiled={hasCompiled} />
+        <span className={busy ? "ai-shimmer" : undefined}>
+          {compileLabel(t, busy, hasCompiled)}
+        </span>
+      </Button>
+      <div className="relative" ref={savePickerRef}>
+        <Tooltip label={t("composer.saveTooltip")}>
+          <Button
+            data-tour="diagram-save-project"
+            variant="ghost"
+            size="sm"
+            aria-label={t("composer.save")}
+            onClick={() => void openSavePicker()}
+          >
+            <Save className="size-3.5" />
+            <ChevronRight className="size-3 rotate-90" />
+          </Button>
+        </Tooltip>
+        {savePickerOpen && (
+          <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border bg-background p-1 shadow-lg">
+            <div
+              className="relative"
+              onMouseEnter={() => setSaveToProjectHover(true)}
+              onMouseLeave={() => setSaveToProjectHover(false)}
+            >
+              <button
+                type="button"
+                data-testid="diagram-save-to-project"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+              >
+                <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="flex flex-1 items-center justify-end gap-2">
+                  {t("composer.saveToProject")} <FolderOpen className="size-3.5" />
+                </span>
+              </button>
+              {saveToProjectHover && (
+                <div className="absolute right-full top-0 z-30 mr-1 w-64 rounded-md border bg-background p-2 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => void saveAsNewProject()}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                  >
+                    <Save className="size-3.5" /> {t("composer.newProject")}
+                  </button>
+                  <div className="my-1 border-t" />
+                  <div className="max-h-40 overflow-auto">
+                    {projectPicks.length === 0 ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("composer.noOtherProjects")}</div>
+                    ) : (
+                      projectPicks.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => void saveToExistingProject(p.id)}
+                          className="flex w-full items-center gap-2 truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                        >
+                          {p.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="my-1 border-t" />
+            <button
+              type="button"
+              onClick={() => void saveFigureGlobally()}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+            >
+              <Save className="size-3.5" /> {t("composer.saveFigure")}
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="relative" ref={downloadPickerRef}>
+        <Tooltip label={t("composer.downloadTooltip")}>
+          <Button
+            variant="ghost"
+            size="sm"
+            data-tour="diagram-download"
+            aria-label={t("composer.download")}
+            onClick={() => setDownloadPickerOpen((v) => !v)}
+          >
+            <Download className="size-3.5" />
+            <ChevronRight className="size-3 rotate-90" />
+          </Button>
+        </Tooltip>
+        {downloadPickerOpen && (
+          <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-md border bg-background p-1 shadow-lg">
+            <button
+              type="button"
+              onClick={() => void downloadFigure("png")}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+            >
+              {t("composer.formatPng")}
+            </button>
+            <Tooltip label={t("composer.svgTooltip")}>
+              <button
+                type="button"
+                disabled
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground/50"
+              >
+                {t("composer.formatSvgSoon")}
+              </button>
+            </Tooltip>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderComposerPreviewPane = () => (
+    showPreview && (
+      <div data-tour="diagram-preview-panel" className="flex min-h-0 min-w-0 flex-col">
+        <div className="flex min-h-[34px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-sidebar px-3 py-1">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("preview.label")}</span>
+          {renderPreviewOpts()}
+          <div className="ml-auto flex items-center gap-1">
+            {busy && (
+              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Loader2 className="size-3.5 animate-spin" />
+                {t("composer.compiling")}
+              </span>
+            )}
+            <Tooltip label={t("preview.minimize")}>
+              <button
+                type="button"
+                aria-label={t("preview.minimize")}
+                onClick={() => {
+                  setPreviewOpen(false);
+                }}
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <PanelRightClose className="size-3.5" />
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto bg-sidebar p-3">
+          <PreviewBody busy={busy} png={png} log={log} background={background} t={t} />
+        </div>
+      </div>
+    )
+  );
+
+  const renderComposerEditorPane = () => (
+    <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", showPreview && "border-r")}>
+      {mode === "draw" ? (
+        <DiagramCanvas
+          model={model}
+          onChange={onModelChange}
+          showPreviewAction={hasPreviewResult && !showPreview}
+          onShowPreview={() => setPreviewOpen(true)}
+        />
+      ) : (
+        <>
+          <div className="flex h-[34px] shrink-0 items-center gap-0.5 border-b bg-sidebar px-2">
+            <span className="mr-1 text-[11px] text-muted-foreground">{t("composer.snippets")}</span>
+            {TIKZ_SNIPPETS.map((s) => (
+              <Tooltip key={s.id} label={t(s.key)} side="bottom">
+                <button
+                  type="button"
+                  aria-label={t(s.key)}
+                  onClick={() => cmRef.current?.insert(s.snippet)}
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  {s.icon}
+                </button>
+              </Tooltip>
+            ))}
+            {hasPreviewResult && !showPreview && (
+              <div className="ml-auto">
+                <Tooltip label={t("preview.showTooltip")}>
+                  <button
+                    type="button"
+                    aria-label={t("preview.showLabel")}
+                    onClick={() => setPreviewOpen(true)}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <PanelRightOpen className="size-3.5" />
+                    {t("preview.label")}
+                  </button>
+                </Tooltip>
+              </div>
+            )}
+          </div>
+          <div className="min-h-0 flex-1 bg-background">
+            <CmCodeEditor ref={cmRef} value={code} onChange={handleCodeChange} extensions={codeExtensions} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const renderComposerTitle = () => (
+    <div className="flex min-w-0 items-center gap-1">
+      {editingName ? (
+        <span ref={nameEditRef} className="flex items-center gap-1">
+          <Input
+            id="diagram-name"
+            aria-label={t("composer.nameLabel")}
+            autoFocus
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitName();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                cancelEditName();
+              }
+            }}
+            className="h-6 w-[160px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+          />
+          <span className="text-sm text-muted-foreground">{`.${diagramExt}`}</span>
+          <Tooltip label={t("composer.saveNameTooltip")}>
+            <button
+              type="button"
+              onClick={commitName}
+              aria-label={t("composer.saveName")}
+              className="flex size-6 items-center justify-center rounded text-emerald-600 hover:bg-accent dark:text-emerald-400"
+            >
+              <Check className="size-3.5" />
+            </button>
+          </Tooltip>
+          <Tooltip label={t("composer.cancelRenameTooltip")}>
+            <button
+              type="button"
+              onClick={cancelEditName}
+              aria-label={t("composer.cancelRename")}
+              className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          </Tooltip>
+        </span>
+      ) : (
+        <Tooltip label={displayFile}>
+          <button
+            type="button"
+            data-testid="diagram-name-display"
+            onClick={startEditName}
+            title={t("composer.renameTooltip")}
+            className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
+          </button>
+        </Tooltip>
+      )}
+      <Tooltip label={t("composer.importTooltip")}>
+        <button
+          type="button"
+          data-tour="diagram-import"
+          aria-label={t("composer.importLabel")}
+          onClick={() => void importTikzFile()}
+          disabled={importing}
+          className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+        >
+          {importing ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <FileDown className="size-4" />
+          )}
+        </button>
+      </Tooltip>
+    </div>
   );
 
   return (
@@ -719,78 +1065,7 @@ export function DiagramComposer({
           )}
         </div>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
-        <div className="flex min-w-0 items-center gap-1">
-          {editingName ? (
-            <span ref={nameEditRef} className="flex items-center gap-1">
-              <Input
-                id="diagram-name"
-                aria-label={t("composer.nameLabel")}
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    commitName();
-                  } else if (e.key === "Escape") {
-                    e.preventDefault();
-                    cancelEditName();
-                  }
-                }}
-                className="h-6 w-[160px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
-              />
-              <span className="text-sm text-muted-foreground">{`.${diagramExt}`}</span>
-              <Tooltip label={t("composer.saveNameTooltip")}>
-                <button
-                  type="button"
-                  onClick={commitName}
-                  aria-label={t("composer.saveName")}
-                  className="flex size-6 items-center justify-center rounded text-emerald-600 hover:bg-accent dark:text-emerald-400"
-                >
-                  <Check className="size-3.5" />
-                </button>
-              </Tooltip>
-              <Tooltip label={t("composer.cancelRenameTooltip")}>
-                <button
-                  type="button"
-                  onClick={cancelEditName}
-                  aria-label={t("composer.cancelRename")}
-                  className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </Tooltip>
-            </span>
-          ) : (
-            <Tooltip label={displayFile}>
-              <button
-                type="button"
-                data-testid="diagram-name-display"
-                onClick={startEditName}
-                title={t("composer.renameTooltip")}
-                className="flex min-w-0 items-center rounded px-1 py-0.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                <span className="max-w-[220px] truncate font-normal">{displayFile}</span>
-              </button>
-            </Tooltip>
-          )}
-          <Tooltip label={t("composer.importTooltip")}>
-            <button
-              type="button"
-              data-tour="diagram-import"
-              aria-label={t("composer.importLabel")}
-              onClick={() => void importTikzFile()}
-              disabled={importing}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-            >
-              {importing ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <FileDown className="size-4" />
-              )}
-            </button>
-          </Tooltip>
-        </div>
+        {renderComposerTitle()}
 
         <div data-tour="diagram-modes" className="group absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border bg-background/80 p-0.5">
           {(["draw", "code"] as Mode[]).map((m) => (
@@ -812,132 +1087,7 @@ export function DiagramComposer({
           ))}
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          {compileFailed && host.fixWithAi && (
-            <Tooltip label={t("composer.fixWithAiTooltip")}>
-              <Button variant="secondary" size="sm" onClick={() => void fixWithAi()} disabled={fixing}>
-                {fixing ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-                {t("composer.fixWithAi")}
-              </Button>
-            </Tooltip>
-          )}
-          <Button data-tour="diagram-compile" data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
-            {busy ? (
-              <Loader2 className="compile-shimmer-icon size-3.5" />
-            ) : hasCompiled ? (
-              <RefreshCw className="size-3.5" />
-            ) : (
-              <Play className="size-3.5" />
-            )}
-            <span className={busy ? "ai-shimmer" : undefined}>
-              {busy ? t("composer.compiling") : hasCompiled ? t("composer.recompile") : t("composer.compile")}
-            </span>
-          </Button>
-          <div className="relative" ref={savePickerRef}>
-            <Tooltip label={t("composer.saveTooltip")}>
-              <Button
-                data-tour="diagram-save-project"
-                variant="ghost"
-                size="sm"
-                aria-label={t("composer.save")}
-                onClick={() => void openSavePicker()}
-              >
-                <Save className="size-3.5" />
-                <ChevronRight className="size-3 rotate-90" />
-              </Button>
-            </Tooltip>
-            {savePickerOpen && (
-              <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border bg-background p-1 shadow-lg">
-                <div
-                  className="relative"
-                  onMouseEnter={() => setSaveToProjectHover(true)}
-                  onMouseLeave={() => setSaveToProjectHover(false)}
-                >
-                  <button
-                    type="button"
-                    data-testid="diagram-save-to-project"
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                  >
-                    <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="flex flex-1 items-center justify-end gap-2">
-                      {t("composer.saveToProject")} <FolderOpen className="size-3.5" />
-                    </span>
-                  </button>
-                  {saveToProjectHover && (
-                    <div className="absolute right-full top-0 z-30 mr-1 w-64 rounded-md border bg-background p-2 shadow-lg">
-                      <button
-                        type="button"
-                        onClick={() => void saveAsNewProject()}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                      >
-                        <Save className="size-3.5" /> {t("composer.newProject")}
-                      </button>
-                      <div className="my-1 border-t" />
-                      <div className="max-h-40 overflow-auto">
-                        {projectPicks.length === 0 ? (
-                          <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("composer.noOtherProjects")}</div>
-                        ) : (
-                          projectPicks.map((p) => (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() => void saveToExistingProject(p.id)}
-                              className="flex w-full items-center gap-2 truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                            >
-                              {p.name}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="my-1 border-t" />
-                <button
-                  type="button"
-                  onClick={() => void saveFigureGlobally()}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                >
-                  <Save className="size-3.5" /> {t("composer.saveFigure")}
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="relative" ref={downloadPickerRef}>
-            <Tooltip label={t("composer.downloadTooltip")}>
-              <Button
-                variant="ghost"
-                size="sm"
-                data-tour="diagram-download"
-                aria-label={t("composer.download")}
-                onClick={() => setDownloadPickerOpen((v) => !v)}
-              >
-                <Download className="size-3.5" />
-                <ChevronRight className="size-3 rotate-90" />
-              </Button>
-            </Tooltip>
-            {downloadPickerOpen && (
-              <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-md border bg-background p-1 shadow-lg">
-                <button
-                  type="button"
-                  onClick={() => void downloadFigure("png")}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                >
-                  {t("composer.formatPng")}
-                </button>
-                <Tooltip label={t("composer.svgTooltip")}>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground/50"
-                  >
-                    {t("composer.formatSvgSoon")}
-                  </button>
-                </Tooltip>
-              </div>
-            )}
-          </div>
-        </div>
+        {renderComposerActions()}
         {windowControls}
       </div>
 
@@ -945,108 +1095,9 @@ export function DiagramComposer({
         data-tour="diagram-preview-affordance"
         className={cn("min-h-0 flex-1", showPreview ? "grid grid-cols-2" : "flex")}
       >
-        <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", showPreview && "border-r")}>
-          {mode === "draw" ? (
-            <DiagramCanvas
-              model={model}
-              onChange={onModelChange}
-              showPreviewAction={hasPreviewResult && !showPreview}
-              onShowPreview={() => setPreviewOpen(true)}
-            />
-          ) : (
-            <>
-              <div className="flex h-[34px] shrink-0 items-center gap-0.5 border-b bg-sidebar px-2">
-                <span className="mr-1 text-[11px] text-muted-foreground">{t("composer.snippets")}</span>
-                {TIKZ_SNIPPETS.map((s) => (
-                  <Tooltip key={s.id} label={t(s.key)} side="bottom">
-                    <button
-                      type="button"
-                      aria-label={t(s.key)}
-                      onClick={() => cmRef.current?.insert(s.snippet)}
-                      className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    >
-                      {s.icon}
-                    </button>
-                  </Tooltip>
-                ))}
-                {hasPreviewResult && !showPreview && (
-                  <div className="ml-auto">
-                    <Tooltip label={t("preview.showTooltip")}>
-                      <button
-                        type="button"
-                        aria-label={t("preview.showLabel")}
-                        onClick={() => setPreviewOpen(true)}
-                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                      >
-                        <PanelRightOpen className="size-3.5" />
-                        {t("preview.label")}
-                      </button>
-                    </Tooltip>
-                  </div>
-                )}
-              </div>
-              <div className="min-h-0 flex-1 bg-background">
-                <CmCodeEditor ref={cmRef} value={code} onChange={handleCodeChange} extensions={codeExtensions} />
-              </div>
-            </>
-          )}
-        </div>
+        {renderComposerEditorPane()}
 
-        {showPreview && (
-          <div data-tour="diagram-preview-panel" className="flex min-h-0 min-w-0 flex-col">
-            <div className="flex min-h-[34px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-sidebar px-3 py-1">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("preview.label")}</span>
-              {previewOpts}
-              <div className="ml-auto flex items-center gap-1">
-                {busy && (
-                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <Loader2 className="size-3.5 animate-spin" />
-                    {t("composer.compiling")}
-                  </span>
-                )}
-                <Tooltip label={t("preview.minimize")}>
-                  <button
-                    type="button"
-                    aria-label={t("preview.minimize")}
-                    onClick={() => {
-                      setPreviewOpen(false);
-                    }}
-                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <PanelRightClose className="size-3.5" />
-                  </button>
-                </Tooltip>
-              </div>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-auto bg-sidebar p-3">
-              {busy && !png && !log ? (
-                <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  {t("composer.compiling")}
-                </div>
-              ) : png ? (
-                <div className="flex h-full items-center justify-center">
-                  <img
-                    src={png}
-                    alt={t("preview.alt")}
-                    className={cn(
-                      "max-h-full max-w-full object-contain",
-                      background === "" &&
-                        "bg-[length:16px_16px] bg-[linear-gradient(45deg,#252525_25%,transparent_25%,transparent_75%,#252525_75%,#252525),linear-gradient(45deg,#252525_25%,#333_25%,#333_75%,#252525_75%,#252525)] bg-[position:0_0,8px_8px]",
-                    )}
-                  />
-                </div>
-              ) : log ? (
-                <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
-              ) : (
-                <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
-                  {t("preview.empty")}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {renderComposerPreviewPane()}
       </div>
 
     </div>

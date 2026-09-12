@@ -37,4 +37,22 @@ describe("Markdown prose masking", () => {
       expect(source.slice(range.from, range.to)).toBe(range.word);
     }
   });
+
+  it("masks a bracketed cite whose first at-sign starts no citation key", () => {
+    const source = "Ask [contact @ desk, see @smith2024] before filing.";
+    const masked = maskMarkdown(source);
+    expect(masked).toContain("Ask");
+    expect(masked).toContain("before filing.");
+    expect(masked).not.toContain("contact");
+    expect(masked).not.toContain("desk");
+    expect(masked).not.toContain("smith2024");
+    expect(masked).toHaveLength(source.length);
+  });
+
+  it("leaves a bracketed span with no citation key alone", () => {
+    const source = "Ask [the front desk @ noon] before filing.";
+    const masked = maskMarkdown(source);
+    expect(masked).toContain("front desk");
+    expect(masked).toContain("noon");
+  });
 });

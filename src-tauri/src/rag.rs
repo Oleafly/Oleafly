@@ -129,7 +129,7 @@ fn walk_indexable(
             items.push(entry);
         }
     }
-    items.sort_by_key(|entry| entry.file_name());
+    items.sort_by_key(std::fs::DirEntry::file_name);
 
     for entry in items {
         if scan_should_stop(cancelled, limits.deadline) || out.paths.len() >= limits.files {

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
-import { AiChrome, AiMark, AI_GRADIENT } from "@/components/ai/AiChrome";
+import { AiChrome, AiMark } from "@/components/ai/AiChrome";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { useFilesStore } from "@/store/files";
 import { isAutoApprovable } from "@/store/mcp-approvals";
@@ -41,7 +41,8 @@ function mcpApprovalDetails(req: ToolApprovalRequest): McpApprovalDetails | null
 }
 
 // Re-export so MCP shell and others keep a single import path.
-export { AI_GRADIENT, AiChrome, AiMark, isAutoApprovable };
+export { AI_GRADIENT, AiChrome, AiMark } from "@/components/ai/AiChrome";
+export { isAutoApprovable } from "@/store/mcp-approvals";
 
 export function ToolConfirm({
   req,
@@ -51,7 +52,7 @@ export function ToolConfirm({
   onApproveProject,
   sessionAutoApprove,
   embedded,
-}: {
+}: Readonly<{
   req: ToolApprovalRequest;
   onApprove: () => void;
   onReject: () => void;
@@ -60,19 +61,22 @@ export function ToolConfirm({
   onApproveProject?: () => void;
   sessionAutoApprove?: boolean;
   embedded?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const canSession = isAutoApprovable(req.tool) && !!onApproveSession;
   const commandApproval = req.tool === "run_command";
   const mcpApproval = mcpApprovalDetails(req);
   const networkApproval = toolRisk(req.tool) === "network";
-  const approvalLabel = commandApproval
-    ? t(($) => $.ai.approval.confirm.command)
-    : mcpApproval
-      ? t(($) => $.ai.approval.confirm.externalTool)
-      : networkApproval
-      ? t(($) => $.ai.approval.confirm.internet)
-      : t(($) => $.ai.approval.confirm.edit);
+  let approvalLabel: string;
+  if (commandApproval) {
+    approvalLabel = t(($) => $.ai.approval.confirm.command);
+  } else if (mcpApproval) {
+    approvalLabel = t(($) => $.ai.approval.confirm.externalTool);
+  } else if (networkApproval) {
+    approvalLabel = t(($) => $.ai.approval.confirm.internet);
+  } else {
+    approvalLabel = t(($) => $.ai.approval.confirm.edit);
+  }
   const filePath = req.diff?.path ?? req.path;
   const changeLine = req.diff ? firstChangedLine(req.diff.oldText, req.diff.newText) : null;
 
@@ -96,19 +100,24 @@ export function ToolConfirm({
     };
   }, [filePath, changeLine]);
 
+  let approvalHeadline: string;
+  if (commandApproval) {
+    approvalHeadline = t(($) => $.ai.approval.headline.command);
+  } else if (mcpApproval) {
+    approvalHeadline = t(($) => $.ai.approval.headline.externalTool);
+  } else if (networkApproval) {
+    approvalHeadline = t(($) => $.ai.approval.headline.internet);
+  } else {
+    approvalHeadline = t(($) => $.ai.approval.headline.edit);
+  }
+
   const body = (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-2.5">
         <AiMark className="mt-0.5 text-foreground" />
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-sm font-semibold leading-snug text-foreground">
-            {commandApproval
-              ? t(($) => $.ai.approval.headline.command)
-              : mcpApproval
-                ? t(($) => $.ai.approval.headline.externalTool)
-                : networkApproval
-                ? t(($) => $.ai.approval.headline.internet)
-              : t(($) => $.ai.approval.headline.edit)}
+            {approvalHeadline}
           </p>
           {mcpApproval && (
             <p className="text-[11px] leading-snug text-muted-foreground">

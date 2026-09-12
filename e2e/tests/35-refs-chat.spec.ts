@@ -52,6 +52,7 @@ test("references panel guides toward Shift-F12", async ({ tauriPage }) => {
 });
 
 test("new chat clears the transcript and history brings it back", async ({ tauriPage }) => {
+  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run");
   test.setTimeout(300_000);
   await openProject(tauriPage, "E2E Doc");
@@ -82,6 +83,7 @@ test("new chat clears the transcript and history brings it back", async ({ tauri
 });
 
 test("custom instructions steer a real reply", async ({ tauriPage }) => {
+  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run");
   test.setTimeout(300_000);
   await openProject(tauriPage, "E2E Doc");
@@ -137,6 +139,7 @@ test("custom instructions steer a real reply", async ({ tauriPage }) => {
 });
 
 test("the active conversation survives tab switches and sidebar collapse", async ({ tauriPage }) => {
+  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run");
   test.setTimeout(300_000);
   await openProject(tauriPage, "E2E Doc");

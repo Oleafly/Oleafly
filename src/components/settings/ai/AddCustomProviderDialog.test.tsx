@@ -179,5 +179,13 @@ describe("AddCustomProviderDialog", () => {
   it("normalizes trailing slashes in base URLs", () => {
     expect(normalizeBaseURL(" https://api.acme.test/v1// ")).toBe("https://api.acme.test/v1");
     expect(normalizeBaseURL("http://localhost:1234")).toBe("http://localhost:1234");
+    expect(normalizeBaseURL("")).toBe("");
+    expect(normalizeBaseURL("   ")).toBe("");
+    expect(normalizeBaseURL("/")).toBe("");
+    expect(normalizeBaseURL("////")).toBe("");
+    expect(normalizeBaseURL("https://api.acme.test/")).toBe("https://api.acme.test");
+    expect(normalizeBaseURL(`https://api.acme.test${"/".repeat(5000)}`)).toBe(
+      "https://api.acme.test",
+    );
   });
 });

@@ -362,7 +362,7 @@ function costCell(
   };
 }
 
-function Truncated({ value, label, className }: { value: string; label?: string; className?: string }) {
+function Truncated({ value, label, className }: Readonly<{ value: string; label?: string; className?: string }>) {
   const text = label ?? value;
   return (
     <Tooltip label={value} wide>
@@ -376,12 +376,12 @@ function Metric({
   value,
   detail,
   exact,
-}: {
+}: Readonly<{
   label: string;
   value: string;
   detail: ReactNode;
   exact?: string;
-}) {
+}>) {
   return (
     <div className="rounded-lg border bg-card p-3">
       <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -397,7 +397,19 @@ function tickStep(length: number): number {
   return TICK_STEPS.find((step) => Math.ceil(length / step) <= 7) ?? TICK_STEPS.at(-1) ?? 90;
 }
 
-function UsageTrend({ report }: { report: UsageReportData }) {
+function tickTransform(position: number, x: number): string {
+  if (position === 0) return "none";
+  if (x > 92) return "translateX(-100%)";
+  return "translateX(-50%)";
+}
+
+function heatmapCellTone(cell: UsageReportData["heatmap"][number] | undefined): string {
+  if (cell === undefined) return "bg-muted";
+  if (cell.tokenTotal === null) return "bg-muted-foreground/30";
+  return "bg-primary";
+}
+
+function UsageTrend({ report }: Readonly<{ report: UsageReportData }>) {
   const { t } = useTranslation(["usage"]);
   const series = useMemo(() => fillDailySeries(report), [report]);
   const [hover, setHover] = useState<number | null>(null);
@@ -418,12 +430,13 @@ function UsageTrend({ report }: { report: UsageReportData }) {
     let current: Array<{ x: number; y: number }> = [];
     const flush = () => {
       if (current.length > 0) {
-        const line = current.map((point) => `${point.x},${point.y}`).join(" ");
+        const points = current.map((point) => `${point.x},${point.y}`);
+        const line = points.join(" ");
         const first = current[0];
-        const last = current[current.length - 1];
+        const last = current.at(-1) ?? first;
         segments.push({
           line,
-          area: `M${first.x},37 L${current.map((point) => `${point.x},${point.y}`).join(" L")} L${last.x},37 Z`,
+          area: `M${first.x},37 L${points.join(" L")} L${last.x},37 Z`,
         });
       }
       current = [];
@@ -442,7 +455,7 @@ function UsageTrend({ report }: { report: UsageReportData }) {
       segments,
       ticks,
       x,
-      hasUnknown: totals.some((total) => total === null),
+      hasUnknown: totals.includes(null),
     };
   }, [series]);
 
@@ -561,12 +574,7 @@ function UsageTrend({ report }: { report: UsageReportData }) {
             className="absolute top-0 whitespace-nowrap"
             style={{
               left: `${tick.x}%`,
-              transform:
-                position === 0
-                  ? "none"
-                  : tick.x > 92
-                    ? "translateX(-100%)"
-                    : "translateX(-50%)",
+              transform: tickTransform(position, tick.x),
             }}
           >
             {formatUtcDay(series[tick.index].day)}
@@ -601,7 +609,7 @@ function UsageTrend({ report }: { report: UsageReportData }) {
   );
 }
 
-function UsageHeatmap({ report }: { report: UsageReportData }) {
+function UsageHeatmap({ report }: Readonly<{ report: UsageReportData }>) {
   const { t } = useTranslation(["usage"]);
   const weekdays: Record<(typeof WEEKDAY_KEYS)[number], string> = {
     sun: t(($) => $.usage.heatmap.weekdays.sun),
@@ -641,21 +649,23 @@ function UsageHeatmap({ report }: { report: UsageReportData }) {
               cell === undefined || cell.tokenTotal === null
                 ? 0
                 : 0.15 + (cell.tokenTotal / maximum) * 0.85;
-            const tokenLabel =
-              cell === undefined
-                ? t(($) => $.usage.heatmap.noActivity)
-                : cell.tokenTotal === null
-                  ? t(($) => $.usage.heatmap.tokenUnavailable)
-                  : t(($) => $.usage.counts.tokens, {
-                      count: cell.tokenTotal,
-                      total: formatNumber(cell.tokenTotal),
-                    });
+            let tokenLabel: string;
+            if (cell === undefined) {
+              tokenLabel = t(($) => $.usage.heatmap.noActivity);
+            } else if (cell.tokenTotal === null) {
+              tokenLabel = t(($) => $.usage.heatmap.tokenUnavailable);
+            } else {
+              tokenLabel = t(($) => $.usage.counts.tokens, {
+                count: cell.tokenTotal,
+                total: formatNumber(cell.tokenTotal),
+              });
+            }
             row.push(
               <span
                 key={`${weekdayKey}:${hour}`}
                 className={cn(
                   "aspect-square rounded-[2px]",
-                  cell === undefined ? "bg-muted" : cell.tokenTotal === null ? "bg-muted-foreground/30" : "bg-primary",
+                  heatmapCellTone(cell),
                 )}
                 style={intensity > 0 ? { opacity: intensity } : undefined}
                 title={t(($) => $.usage.heatmap.cell, {
@@ -710,13 +720,13 @@ function BreakdownTable({
   labelForKey = (value) => value,
   onSelect,
   icon,
-}: {
+}: Readonly<{
   title: string;
   rows: UsageBreakdown[];
   labelForKey?: (value: string) => string;
   onSelect?: (value: string) => void;
   icon?: (value: string) => ReactNode;
-}) {
+}>) {
   const { t } = useTranslation(["usage"]);
   return (
     <section className="flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card">
@@ -790,13 +800,13 @@ function SessionsTable({
   onSelectFilter,
   onPageChange,
   onPageSizeChange,
-}: {
+}: Readonly<{
   report: UsageReportData;
   projectNames: ReadonlyMap<string, string>;
   onSelectFilter?: UsageReportProps["onSelectFilter"];
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
-}) {
+}>) {
   const { t } = useTranslation(["usage"]);
   const { items, page, pageSize, total } = report.sessions;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -982,7 +992,7 @@ export function UsageReport({
   onSelectFilter,
   onPageChange,
   onPageSizeChange,
-}: UsageReportProps) {
+}: Readonly<UsageReportProps>) {
   const { t } = useTranslation(["usage"]);
   const totals = report.totals;
   const [exporting, setExporting] = useState(false);
@@ -1005,18 +1015,20 @@ export function UsageReport({
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
-  const cacheDetail =
-    totals.cacheRate === null
-      ? t(($) => $.usage.counts.cacheUnknown, {
-          count: totals.cacheUnknownRecords,
-          total: formatNumber(totals.cacheUnknownRecords),
-        })
-      : totals.cacheUnknownRecords > 0
-        ? t(($) => $.usage.cache.rateWithUnknown, {
-            percent: cachePercent,
-            unknown: formatNumber(totals.cacheUnknownRecords),
-          })
-        : t(($) => $.usage.cache.rate, { percent: cachePercent });
+  let cacheDetail: string;
+  if (totals.cacheRate === null) {
+    cacheDetail = t(($) => $.usage.counts.cacheUnknown, {
+      count: totals.cacheUnknownRecords,
+      total: formatNumber(totals.cacheUnknownRecords),
+    });
+  } else if (totals.cacheUnknownRecords > 0) {
+    cacheDetail = t(($) => $.usage.cache.rateWithUnknown, {
+      percent: cachePercent,
+      unknown: formatNumber(totals.cacheUnknownRecords),
+    });
+  } else {
+    cacheDetail = t(($) => $.usage.cache.rate, { percent: cachePercent });
+  }
 
   const exportReport = async () => {
     setExporting(true);
@@ -1199,13 +1211,13 @@ function FilterSelect({
   options,
   onChange,
   allLabel,
-}: {
+}: Readonly<{
   label: string;
   value: string;
   options: FilterOption[];
   onChange: (value: string) => void;
   allLabel: string;
-}) {
+}>) {
   return (
     <div className="min-w-0 space-y-1">
       <span className="block text-[11px] leading-4 text-muted-foreground">{label}</span>
@@ -1232,7 +1244,7 @@ export function UsageReportDialog({
   trigger,
   initialFilter,
   query = queryUsageReport,
-}: UsageReportDialogProps) {
+}: Readonly<UsageReportDialogProps>) {
   const { t } = useTranslation(["usage"]);
   const quickRangeLabels: Record<UsageQuickRange, string> = {
     "7d": t(($) => $.usage.quickRanges.days7),
@@ -1307,6 +1319,35 @@ export function UsageReportDialog({
       end: isoDay(bounds.endMs - 1),
     }));
     setFilter((current) => ({ ...current, ...bounds, page: 0 }));
+  };
+
+  const loadedReport = () => {
+    const data = reportQuery.data;
+    if (!data) return null;
+    if (data.totals.recordCount === 0) {
+      return (
+        <Empty className="min-h-56">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BarChart3 className="size-5" />
+            </EmptyMedia>
+            <EmptyTitle>{t(($) => $.usage.dialog.emptyTitle)}</EmptyTitle>
+            <EmptyDescription>{t(($) => $.usage.dialog.emptyDescription)}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      );
+    }
+    return (
+      <UsageReport
+        report={data}
+        projectNames={projectNames}
+        onSelectFilter={chooseFilter}
+        onPageChange={(page) => setFilter((current) => ({ ...current, page }))}
+        onPageSizeChange={(pageSize) =>
+          setFilter((current) => ({ ...current, pageSize, page: 0 }))
+        }
+      />
+    );
   };
 
   return (
@@ -1457,28 +1498,7 @@ export function UsageReportDialog({
               </div>
             </div>
           )}
-          {reportQuery.data && reportQuery.data.totals.recordCount === 0 && (
-            <Empty className="min-h-56">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <BarChart3 className="size-5" />
-                </EmptyMedia>
-                <EmptyTitle>{t(($) => $.usage.dialog.emptyTitle)}</EmptyTitle>
-                <EmptyDescription>{t(($) => $.usage.dialog.emptyDescription)}</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
-          {reportQuery.data && reportQuery.data.totals.recordCount > 0 && (
-            <UsageReport
-              report={reportQuery.data}
-              projectNames={projectNames}
-              onSelectFilter={chooseFilter}
-              onPageChange={(page) => setFilter((current) => ({ ...current, page }))}
-              onPageSizeChange={(pageSize) =>
-                setFilter((current) => ({ ...current, pageSize, page: 0 }))
-              }
-            />
-          )}
+          {loadedReport()}
         </div>
       </DialogContent>
     </Dialog>

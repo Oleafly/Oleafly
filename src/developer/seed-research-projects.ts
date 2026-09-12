@@ -28,7 +28,7 @@ export function researchSeedArchiveName(project: ResearchSeedProject): string {
 }
 
 export function researchSeedRoot(libraryPath: string): string {
-  const normalized = libraryPath.trim().replaceAll("\\", "/").replace(/\/+$/, "");
+  const normalized = libraryPath.trim().replaceAll("\\", "/").replace(/(?<!\/)\/+$/, "");
   const suffix = "/.oleafly-dev/projects";
   if (!normalized.toLowerCase().endsWith(suffix)) {
     throw new Error(i18n.t(($) => $.core.developer.sandboxOnly));
@@ -38,7 +38,7 @@ export function researchSeedRoot(libraryPath: string): string {
 }
 
 function archivePath(seedRoot: string, project: ResearchSeedProject): string {
-  return `${seedRoot.replace(/\/+$/, "")}/archives/${researchSeedArchiveName(project)}`;
+  return `${seedRoot.replace(/(?<!\/)\/+$/, "")}/archives/${researchSeedArchiveName(project)}`;
 }
 
 async function copySeedProject(seedRoot: string, project: ResearchSeedProject): Promise<void> {

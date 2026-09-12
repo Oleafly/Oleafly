@@ -23,7 +23,7 @@ export function CodeField({
   placeholder,
   className,
   testId,
-}: CodeFieldProps) {
+}: Readonly<CodeFieldProps>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);

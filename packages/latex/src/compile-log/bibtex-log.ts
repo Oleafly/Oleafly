@@ -60,15 +60,15 @@ export function parseBibtexLog(log: string): LogDiagnostic[] {
     }
     multiLineWarning.lastIndex = 0;
     while ((result = multiLineWarning.exec(text))) {
-      push("warning", result[3], result[1], parseInt(result[2], 10));
+      push("warning", result[3], result[1], Number.parseInt(result[2], 10));
     }
     multiLineError.lastIndex = 0;
     while ((result = multiLineError.exec(text))) {
-      push("error", result[3], result[1], parseInt(result[2], 10));
+      push("error", result[3], result[1], Number.parseInt(result[2], 10));
     }
     multiLineMacroError.lastIndex = 0;
     while ((result = multiLineMacroError.exec(text))) {
-      push("error", result[3], result[1], parseInt(result[2], 10));
+      push("error", result[3], result[1], Number.parseInt(result[2], 10));
     }
     badCrossReference.lastIndex = 0;
     while ((result = badCrossReference.exec(text))) {

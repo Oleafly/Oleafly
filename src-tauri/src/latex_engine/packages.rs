@@ -1,4 +1,8 @@
-use super::*;
+use super::{
+    acquire_tex_runtime_read, acquire_tex_runtime_write, run_tex_utility, tlmgr_path, tlmgr_run_at,
+    validate_package_names, within_flow_budget, AppState, Path, TexUtilityOutput,
+    TinytexMutationGuard, TLMGR_FLOW_BUDGET, TLMGR_INFO_TIMEOUT,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, serde::Serialize)]
@@ -221,7 +225,12 @@ pub async fn tlmgr_install_missing(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        cross_release_error, install_missing_at, literal_pattern, package_command_error,
+        parse_search_result, resolve_providers, search_packages, validate_files,
+        within_flow_budget, SearchResult, TexUtilityOutput, TLMGR_FLOW_BUDGET,
+    };
+    use crate::latex_engine::flow_budget_message;
 
     fn results(files: serde_json::Value) -> SearchResult {
         parse_search_result(&serde_json::json!({"packages": {}, "files": files}).to_string())

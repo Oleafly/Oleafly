@@ -6,7 +6,7 @@ import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 
 export function CheckpointToggles() {
   const { t } = useTranslation(["common", "settings"]);
-  const [config, setConfigState] = useState<AppConfig | null>(null);
+  const [configState, setConfigState] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<"load" | "save" | null>(null);
   const configRequest = useRef(0);
 
@@ -33,8 +33,8 @@ export function CheckpointToggles() {
     void setConfig(next).catch(() => setConfigError("save"));
   };
 
-  const checkpointsEnabled = config ? config.checkpoints_enabled !== false : true;
-  const notificationsEnabled = config ? config.checkpoint_notifications !== false : true;
+  const checkpointsEnabled = configState ? configState.checkpoints_enabled !== false : true;
+  const notificationsEnabled = configState ? configState.checkpoint_notifications !== false : true;
 
   return (
     <section
@@ -61,8 +61,8 @@ export function CheckpointToggles() {
           description={t(($) => $.settings.checkpoints.afterCompile.description)}
           checked={checkpointsEnabled}
           onChange={(value) => {
-            if (!config) return;
-            writeConfig({ ...config, checkpoints_enabled: value });
+            if (!configState) return;
+            writeConfig({ ...configState, checkpoints_enabled: value });
           }}
         />
         <SettingsToggleRow
@@ -70,8 +70,8 @@ export function CheckpointToggles() {
           description={t(($) => $.settings.checkpoints.notifyOnFailure.description)}
           checked={notificationsEnabled}
           onChange={(value) => {
-            if (!config) return;
-            writeConfig({ ...config, checkpoint_notifications: value });
+            if (!configState) return;
+            writeConfig({ ...configState, checkpoint_notifications: value });
           }}
         />
         {configError ? (

@@ -79,6 +79,144 @@ function delimiterTokenEnd(
   return Math.min(source.length, cursor + 1);
 }
 
+function skipXparseModifiers(
+  source: string,
+  start: number,
+  diagnostics: XparseSpecificationDiagnostic[],
+): number | null {
+  let cursor = start;
+  while (source[cursor] === "+" || source[cursor] === "!") {
+    cursor = skipWhitespace(source, cursor + 1);
+  }
+  while (source[cursor] === ">") {
+    const processorEnd = requiredGroupEnd(
+      source,
+      cursor + 1,
+      ">",
+      "processor",
+      diagnostics,
+    );
+    if (processorEnd === null) return null;
+    cursor = skipWhitespace(source, processorEnd);
+  }
+  return cursor;
+}
+
+function triggerTokenEnd(
+  source: string,
+  typeFrom: number,
+  cursor: number,
+  diagnostics: XparseSpecificationDiagnostic[],
+): number | null {
+  const end = delimiterTokenEnd(source, cursor);
+  if (end === null) {
+    diagnostics.push({
+      from: typeFrom,
+      to: typeFrom + 1,
+      message: editorMessage("latex.xparse.triggerToken"),
+    });
+    return null;
+  }
+  return end;
+}
+
+function delimitedArgumentEnd(
+  source: string,
+  type: string,
+  typeFrom: number,
+  cursor: number,
+  diagnostics: XparseSpecificationDiagnostic[],
+): number | null {
+  const leftEnd = delimiterTokenEnd(source, cursor);
+  const rightEnd =
+    leftEnd === null ? null : delimiterTokenEnd(source, leftEnd);
+  if (leftEnd === null || rightEnd === null) {
+    diagnostics.push({
+      from: typeFrom,
+      to: Math.min(
+        source.length,
+        Math.max(typeFrom + 1, leftEnd ?? typeFrom + 1),
+      ),
+      message: editorMessage("latex.xparse.delimiterTokens", { type }),
+    });
+    return null;
+  }
+  if (type !== "R" && type !== "D") return rightEnd;
+  return requiredGroupEnd(source, rightEnd, type, "defaultValue", diagnostics);
+}
+
+function embellishedArgumentEnd(
+  source: string,
+  type: string,
+  cursor: number,
+  diagnostics: XparseSpecificationDiagnostic[],
+): number | null {
+  const embellishments = requiredGroupEnd(
+    source,
+    cursor,
+    type,
+    "embellishmentList",
+    diagnostics,
+  );
+  if (embellishments === null) return null;
+  if (type !== "E") return embellishments;
+  return requiredGroupEnd(
+    source,
+    embellishments,
+    type,
+    "defaultList",
+    diagnostics,
+  );
+}
+
+function xparseArgumentEnd(
+  source: string,
+  type: string,
+  typeFrom: number,
+  cursor: number,
+  diagnostics: XparseSpecificationDiagnostic[],
+): number | null {
+  switch (type) {
+    case "m":
+    case "b":
+    case "v":
+    case "o":
+    case "s":
+      return cursor;
+    case "O":
+      return requiredGroupEnd(
+        source,
+        cursor,
+        type,
+        "defaultValue",
+        diagnostics,
+      );
+    case "t":
+      return triggerTokenEnd(source, typeFrom, cursor, diagnostics);
+    case "r":
+    case "R":
+    case "d":
+    case "D":
+      return delimitedArgumentEnd(
+        source,
+        type,
+        typeFrom,
+        cursor,
+        diagnostics,
+      );
+    case "e":
+    case "E":
+      return embellishedArgumentEnd(source, type, cursor, diagnostics);
+    default:
+      diagnostics.push({
+        from: typeFrom,
+        to: typeFrom + 1,
+        message: editorMessage("latex.xparse.unknownType", { type }),
+      });
+      return cursor;
+  }
+}
+
 /**
  * Validates the documented xparse argument-type grammar that Oleafly can
  * faithfully turn into completion snippets. Offsets are relative to the
@@ -94,20 +232,10 @@ export function validateXparseArgumentSpecification(
     cursor = skipWhitespace(source, cursor);
     if (cursor >= source.length) break;
 
-    while (source[cursor] === "+" || source[cursor] === "!") {
-      cursor = skipWhitespace(source, cursor + 1);
-    }
-    while (source[cursor] === ">") {
-      const processorEnd = requiredGroupEnd(
-        source,
-        cursor + 1,
-        ">",
-        "processor",
-        diagnostics,
-      );
-      if (processorEnd === null) return diagnostics;
-      cursor = skipWhitespace(source, processorEnd);
-    }
+    const afterModifiers = skipXparseModifiers(source, cursor, diagnostics);
+    if (afterModifiers === null) return diagnostics;
+    cursor = afterModifiers;
+
     if (cursor >= source.length) {
       diagnostics.push({
         from: Math.max(0, source.length - 1),
@@ -121,99 +249,15 @@ export function validateXparseArgumentSpecification(
     const type = source[cursor];
     cursor += 1;
 
-    if ("mbvos".includes(type)) continue;
-
-    if (type === "O") {
-      const end = requiredGroupEnd(
-        source,
-        cursor,
-        type,
-        "defaultValue",
-        diagnostics,
-      );
-      if (end === null) break;
-      cursor = end;
-      continue;
-    }
-
-    if (type === "t") {
-      const end = delimiterTokenEnd(source, cursor);
-      if (end === null) {
-        diagnostics.push({
-          from: typeFrom,
-          to: typeFrom + 1,
-          message: editorMessage("latex.xparse.triggerToken"),
-        });
-        break;
-      }
-      cursor = end;
-      continue;
-    }
-
-    if (
-      type === "r" ||
-      type === "R" ||
-      type === "d" ||
-      type === "D"
-    ) {
-      const leftEnd = delimiterTokenEnd(source, cursor);
-      const rightEnd =
-        leftEnd === null ? null : delimiterTokenEnd(source, leftEnd);
-      if (leftEnd === null || rightEnd === null) {
-        diagnostics.push({
-          from: typeFrom,
-          to: Math.min(
-            source.length,
-            Math.max(typeFrom + 1, leftEnd ?? typeFrom + 1),
-          ),
-          message: editorMessage("latex.xparse.delimiterTokens", { type }),
-        });
-        break;
-      }
-      cursor = rightEnd;
-      if (type === "R" || type === "D") {
-        const defaultEnd = requiredGroupEnd(
-          source,
-          cursor,
-          type,
-          "defaultValue",
-          diagnostics,
-        );
-        if (defaultEnd === null) break;
-        cursor = defaultEnd;
-      }
-      continue;
-    }
-
-    if (type === "e" || type === "E") {
-      const embellishments = requiredGroupEnd(
-        source,
-        cursor,
-        type,
-        "embellishmentList",
-        diagnostics,
-      );
-      if (embellishments === null) break;
-      cursor = embellishments;
-      if (type === "E") {
-        const defaults = requiredGroupEnd(
-          source,
-          cursor,
-          type,
-          "defaultList",
-          diagnostics,
-        );
-        if (defaults === null) break;
-        cursor = defaults;
-      }
-      continue;
-    }
-
-    diagnostics.push({
-      from: typeFrom,
-      to: typeFrom + 1,
-      message: editorMessage("latex.xparse.unknownType", { type }),
-    });
+    const next = xparseArgumentEnd(
+      source,
+      type,
+      typeFrom,
+      cursor,
+      diagnostics,
+    );
+    if (next === null) break;
+    cursor = next;
   }
 
   return diagnostics;

@@ -33,7 +33,10 @@ async function main() {
   if (pack.schemaVersion !== SCHEMA_VERSION) {
     throw new Error(`pack.json uses unsupported schemaVersion ${pack.schemaVersion}`);
   }
-  const skills = [...(pack.skills ?? [])].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const skills = [...(pack.skills ?? [])].sort((a, b) => {
+    if (a.id < b.id) return -1;
+    return a.id > b.id ? 1 : 0;
+  });
   const seen = new Set();
   for (const skill of skills) {
     if (seen.has(skill.id)) throw new Error(`pack.json lists "${skill.id}" twice`);
@@ -51,7 +54,9 @@ async function main() {
   );
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   console.error(error.message ?? error);
   process.exitCode = 1;
-});
+}
