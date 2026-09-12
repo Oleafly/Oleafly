@@ -18,6 +18,25 @@ vi.mock("@/lib/github", () => ({
 vi.mock("@/features/project-import", () => ({
   importGitHubRepository: vi.fn(async () => {}),
   importSelectedFile: vi.fn(async () => {}),
+  importArxivPaper: vi.fn(async () => true),
+  importFileKind: (path: string) => {
+    if (path.endsWith(".zip")) return "project";
+    if (path.endsWith(".docx")) return "word";
+    if (path.endsWith(".md")) return "markdown";
+    if (path.endsWith(".html")) return "html";
+    if (path.endsWith(".typ")) return "typst";
+    return null;
+  },
+  importTargetsForKind: (kind: string) => {
+    if (kind === "html") {
+      return [
+        { target: "latex", label: "LaTeX project", recommended: true },
+        { target: "markdown", label: "Markdown project" },
+        { target: "typst", label: "Typst project" },
+      ];
+    }
+    return [];
+  },
 }));
 
 vi.mock("@/lib/native-file-dialog", () => ({
@@ -26,7 +45,11 @@ vi.mock("@/lib/native-file-dialog", () => ({
 
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
 
-import { importGitHubRepository, importSelectedFile } from "@/features/project-import";
+import {
+  importArxivPaper,
+  importGitHubRepository,
+  importSelectedFile,
+} from "@/features/project-import";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { ProjectImportDialog } from "./ProjectImportDialog";
 
@@ -74,6 +97,34 @@ describe("ProjectImportDialog", () => {
 
     expect(screen.getByTestId("project-import-word")).toBeInTheDocument();
     expect(screen.queryByText("oleafly/paper")).not.toBeInTheDocument();
+  });
+
+  it("asks for the project type when the registry offers several targets", async () => {
+    vi.mocked(pickOpenPath).mockResolvedValue("/tmp/paper.html");
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-html"));
+
+    expect(await screen.findByTestId("project-import-target-latex")).toBeInTheDocument();
+    expect(screen.getByTestId("project-import-target-typst")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("project-import-target-typst"));
+
+    await waitFor(() =>
+      expect(importSelectedFile).toHaveBeenCalledWith("/tmp/paper.html", "typst"),
+    );
+  });
+
+  it("imports an arXiv paper by id", async () => {
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-arxiv"));
+    fireEvent.change(screen.getByTestId("project-import-arxiv-id"), {
+      target: { value: "2301.01234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Import/ }));
+
+    await waitFor(() => expect(importArxivPaper).toHaveBeenCalledWith("2301.01234"));
   });
 
   it("offers the Settings route when GitHub is not connected", () => {

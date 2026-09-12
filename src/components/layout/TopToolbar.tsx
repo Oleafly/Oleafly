@@ -45,6 +45,7 @@ import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
 import { exportCurrentPdf, exportCurrentImagePng } from "@/features/export";
 import { ensurePandoc } from "@/features/pandoc";
+import { exportRoutesFor } from "@oleafly/conversion-registry";
 import {
   downloadProjectZip,
   duplicateProject,
@@ -67,9 +68,29 @@ const FMT_LABEL: Record<string, string> = {
   pptx: "PowerPoint",
   epub: "EPUB",
   txt: "Text",
+  typst: "Typst",
+  tex: "TeX",
 };
 
-type DocFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt";
+type DocFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
+
+/** Backend export format id for a registry target ("md"/"tex" are the ids). */
+function formatForTarget(target: string): DocFormat {
+  switch (target) {
+    case "markdown":
+      return "md";
+    case "latex":
+      return "tex";
+    case "typst":
+      return "typst";
+    case "docx":
+      return "docx";
+    case "html":
+      return "html";
+    default:
+      return "docx";
+  }
+}
 
 function classifyDoc(source: string): "presentation" | "book" | "doc" {
   if (/\\documentclass(\[[^\]]*\])?\{\s*beamer\s*\}/.test(source)) return "presentation";
@@ -445,6 +466,12 @@ export function TopToolbar() {
                     Export as PNG (raster image)
                   </DropdownMenuItem>
                 )}
+                {!isSingleFigureProject && engine.capabilities.produces_pdf && (
+                  <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
+                    <ImagePlay className="size-4 text-muted-foreground" />
+                    Export page as PNG (raster image)
+                  </DropdownMenuItem>
+                )}
                 {!pdfBytes && (
                   <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
                     {isSingleFigureProject ? "Compile the figure first" : "PDF requires a compile first"}
@@ -453,18 +480,18 @@ export function TopToolbar() {
                 {!isSingleFigureProject && engine.capabilities.conversion_exports.length > 0 && (
                   <>
                     <DropdownMenuSeparator />
-                    {engine.capabilities.conversion_exports.includes("docx") && <DropdownMenuItem onSelect={() => void doExportFormat("docx")}>
-                      <FileType className="size-4 text-muted-foreground" />
-                      Export as Word (.docx)
-                    </DropdownMenuItem>}
-                    {engine.capabilities.conversion_exports.includes("html") && <DropdownMenuItem onSelect={() => void doExportFormat("html")}>
-                      <FileType className="size-4 text-muted-foreground" />
-                      Export as HTML (.html)
-                    </DropdownMenuItem>}
-                    {engine.capabilities.conversion_exports.includes("md") && <DropdownMenuItem onSelect={() => void doExportFormat("md")}>
-                      <FileType className="size-4 text-muted-foreground" />
-                      Export as Markdown (.md)
-                    </DropdownMenuItem>}
+                    {exportRoutesFor(engine.id, engine.capabilities.conversion_exports)
+                      .filter((route) => route.target !== "pdf")
+                      .map((route) => (
+                        <DropdownMenuItem
+                          key={route.id}
+                          data-testid={`export-route-${route.id}`}
+                          onSelect={() => void doExportFormat(formatForTarget(route.target))}
+                        >
+                          <FileType className="size-4 text-muted-foreground" />
+                          Export as {route.label}
+                        </DropdownMenuItem>
+                      ))}
                     {engine.capabilities.conversion_exports.includes("txt") && <DropdownMenuItem onSelect={() => void doExportFormat("txt")}>
                       <FileType className="size-4 text-muted-foreground" />
                       Export as Plain text (.txt)

@@ -17,6 +17,7 @@ import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
   importGitHubRepository,
   importSelectedFile,
+  importTargetsForKind,
   type ProjectImportFileKind,
 } from "@/features/project-import";
 import { useGithubStore } from "@/store/github";
@@ -44,6 +45,36 @@ function pickerOptions(kind: ProjectImportFileKind) {
         filters: [{ name: "Markdown document", extensions: ["md", "markdown"] }],
         title: "Import a Markdown document",
       };
+    case "html":
+      return {
+        multiple: false as const,
+        filters: [{ name: "HTML page", extensions: ["html", "htm"] }],
+        title: "Import an HTML page",
+      };
+    case "typst":
+      return {
+        multiple: false as const,
+        filters: [{ name: "Typst document", extensions: ["typ"] }],
+        title: "Import a Typst document",
+      };
+  }
+}
+
+/** Conversion sources that offer more than one project type. */
+const CONVERTIBLE_KINDS: ProjectImportFileKind[] = ["word", "markdown", "html", "typst"];
+
+function kindLabel(kind: ProjectImportFileKind): string {
+  switch (kind) {
+    case "word":
+      return "Word document";
+    case "markdown":
+      return "Markdown document";
+    case "html":
+      return "HTML page";
+    case "typst":
+      return "Typst document";
+    case "project":
+      return "Existing project";
   }
 }
 
@@ -98,13 +129,16 @@ export function ProjectImportMenu({
     };
   }, [githubOpen, githubStatus, refreshGithub, repositories.length]);
 
-  const importFile = async (kind: ProjectImportFileKind) => {
+  const importFile = async (
+    kind: ProjectImportFileKind,
+    target?: "latex" | "markdown" | "typst",
+  ) => {
     const selection = await pickOpenPath(pickerOptions(kind));
     if (typeof selection !== "string") return;
     setBusy(true);
     onImportSelected?.();
     try {
-      await importSelectedFile(selection);
+      await importSelectedFile(selection, target);
     } catch (error) {
       notifyError("import", error);
     } finally {
@@ -152,12 +186,29 @@ export function ProjectImportMenu({
         <DropdownMenuItem onSelect={() => void importFile("project")}>
           Existing project (.zip)
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => void importFile("word")}>
-          Word document
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => void importFile("markdown")}>
-          Markdown document
-        </DropdownMenuItem>
+        {CONVERTIBLE_KINDS.map((kind) => {
+          const label = kindLabel(kind);
+          const targets = importTargetsForKind(kind);
+          return (
+            <DropdownMenuSub key={kind}>
+              <DropdownMenuSubTrigger data-testid={`import-kind-${kind}`}>
+                {label}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {targets.map((target) => (
+                  <DropdownMenuItem
+                    key={target.target}
+                    data-testid={`import-target-${kind}-${target.target}`}
+                    onSelect={() => void importFile(kind, target.target)}
+                  >
+                    {target.label}
+                    {target.recommended ? " (recommended)" : ""}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          );
+        })}
         <DropdownMenuLabel>Cloud</DropdownMenuLabel>
         <DropdownMenuSub open={githubOpen} onOpenChange={setGithubOpen}>
           <DropdownMenuSubTrigger>GitHub</DropdownMenuSubTrigger>

@@ -439,8 +439,8 @@ export const readFileBase64 = (projectId: string, path: string) =>
 export const createProjectFromDocx = (name: string, dataBase64: string) =>
   invoke<string>("create_project_from_docx", { name, dataBase64 });
 
-export const importDocument = (path: string) =>
-  invoke<string>("import_document", { path });
+export const importDocument = (path: string, target?: ImportTarget) =>
+  invoke<string>("import_document", { path, target: target ?? null });
 
 export const appendAppLog = (message: string) =>
   invoke<void>("append_app_log", { message });
@@ -744,6 +744,90 @@ export const compileTagged = (projectId: string, mainDoc: string) =>
 
 export const fetchDoiBibtex = (doi: string) => invoke<string>("fetch_doi_bibtex", { doi });
 export const fetchArxiv = (id: string) => invoke<string>("fetch_arxiv", { id });
+export const fetchIsbnBibtex = (isbn: string) => invoke<string>("fetch_isbn_bibtex", { isbn });
+export const fetchPmidBibtex = (pmid: string) => invoke<string>("fetch_pmid_bibtex", { pmid });
+export const importArxivEprint = (arxivId: string, name?: string) =>
+  invoke<string>("import_arxiv_eprint", { arxivId, name: name ?? null });
+
+// --- Conversion matrix (registry-driven tools) ---
+
+/** The kind of project an import produces. */
+export type ImportTarget = "latex" | "markdown" | "typst";
+
+export interface CleanAction {
+  kind: "renamed-key" | "removed-duplicate" | "advisory";
+  old?: string;
+  new?: string;
+  removed?: string;
+  kept?: string;
+  by?: string;
+  key?: string;
+  field?: string;
+}
+
+export interface CleanLibraryOutcome {
+  original: string;
+  cleaned: string;
+  entriesBefore: number;
+  entriesAfter: number;
+  actions: CleanAction[];
+  applied: boolean;
+}
+
+export const cleanBibtexLibrary = (projectId: string, bibPath: string, apply: boolean) =>
+  invoke<CleanLibraryOutcome>("clean_bibtex_library", { projectId, bibPath, apply });
+
+export interface StatsPValueResult {
+  p: number;
+  label: string;
+}
+
+export const statsPValue = (test: string, statistic: number, df?: number) =>
+  invoke<StatsPValueResult>("stats_p_value", { test, statistic, df: df ?? null });
+
+export interface StatsSampleSizeResult {
+  z: number;
+  infinitePopulation: number;
+  finitePopulation?: number | null;
+}
+
+export const statsSampleSize = (
+  proportion: number,
+  marginError: number,
+  confidence: number,
+  population?: number,
+) =>
+  invoke<StatsSampleSizeResult>("stats_sample_size", {
+    proportion,
+    marginError,
+    confidence,
+    population: population ?? null,
+  });
+
+export interface StatsConfidenceIntervalResult {
+  pointEstimate: number;
+  lower: number;
+  upper: number;
+  standardError: number;
+  marginOfError: number;
+  criticalValue: number;
+  criticalLabel: string;
+  degreesOfFreedom?: number | null;
+}
+
+export const statsConfidenceInterval = (
+  mode: "mean" | "proportion",
+  confidence: number,
+  options: { mean?: number; sd?: number; n?: number; successes?: number },
+) =>
+  invoke<StatsConfidenceIntervalResult>("stats_confidence_interval", {
+    mode,
+    confidence,
+    mean: options.mean ?? null,
+    sd: options.sd ?? null,
+    n: options.n ?? null,
+    successes: options.successes ?? null,
+  });
 export const literatureArxivLookup = (arxivId: string) =>
   invoke<string>("literature_arxiv_lookup", { arxivId });
 export const crossrefSearch = (query: string) => invoke<string>("crossref_search", { query });

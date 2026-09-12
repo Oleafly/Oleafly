@@ -6,10 +6,13 @@ import {
   FileText,
   FileType2,
   Github,
+  Globe,
   Loader2,
   Lock,
   Package,
+  Sigma,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,8 +25,11 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
+  importArxivPaper,
+  importFileKind,
   importGitHubRepository,
   importSelectedFile,
+  importTargetsForKind,
   type ProjectImportFileKind,
 } from "@/features/project-import";
 import { useGithubStore } from "@/store/github";
@@ -52,6 +58,18 @@ function pickerOptions(kind: ProjectImportFileKind) {
         filters: [{ name: "Markdown document", extensions: ["md", "markdown"] }],
         title: "Import a Markdown document",
       };
+    case "html":
+      return {
+        multiple: false as const,
+        filters: [{ name: "HTML page", extensions: ["html", "htm"] }],
+        title: "Import an HTML page",
+      };
+    case "typst":
+      return {
+        multiple: false as const,
+        filters: [{ name: "Typst document", extensions: ["typ"] }],
+        title: "Import a Typst document",
+      };
   }
 }
 
@@ -70,14 +88,26 @@ const LOCAL_SOURCES: {
   {
     kind: "word",
     title: "Word document",
-    description: "A .docx file, converted on the way in.",
+    description: "Convert .docx to a LaTeX, Markdown, or Typst project.",
     icon: FileType2,
   },
   {
     kind: "markdown",
     title: "Markdown document",
-    description: "A .md file, kept as Markdown.",
+    description: "Convert .md to a LaTeX or Typst project.",
     icon: FileText,
+  },
+  {
+    kind: "html",
+    title: "HTML page",
+    description: "Convert .html to a LaTeX, Markdown, or Typst project.",
+    icon: Globe,
+  },
+  {
+    kind: "typst",
+    title: "Typst document",
+    description: "Convert .typ to a LaTeX or Markdown project.",
+    icon: Sigma,
   },
 ];
 
@@ -92,7 +122,11 @@ export function ProjectImportDialog({
 }) {
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
-  const [view, setView] = useState<"sources" | "github">("sources");
+  const [view, setView] = useState<"sources" | "github" | "target" | "arxiv">(
+    "sources",
+  );
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [arxivId, setArxivId] = useState("");
   const [busy, setBusy] = useState(false);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
@@ -131,15 +165,37 @@ export function ProjectImportDialog({
   const importFile = async (kind: ProjectImportFileKind) => {
     const selection = await pickOpenPath(pickerOptions(kind));
     if (typeof selection !== "string") return;
+    const fileKind = importFileKind(selection) ?? kind;
+    if (importTargetsForKind(fileKind).length > 1) {
+      setPendingPath(selection);
+      setView("target");
+      return;
+    }
+    await runImport(() => importSelectedFile(selection));
+  };
+
+  const importWithTarget = async (target: "latex" | "markdown" | "typst") => {
+    if (!pendingPath) return;
+    const path = pendingPath;
+    setPendingPath(null);
+    setView("sources");
+    await runImport(() => importSelectedFile(path, target));
+  };
+
+  const runImport = async (work: () => Promise<boolean>) => {
     setBusy(true);
     onImportStarted?.();
     try {
-      await importSelectedFile(selection);
+      await work();
     } catch (error) {
       notifyError("import", error);
     } finally {
       setBusy(false);
     }
+  };
+
+  const importFromArxiv = async () => {
+    await runImport(() => importArxivPaper(arxivId));
   };
 
   const importRepository = async (repository: GitHubRepo) => {
@@ -172,7 +228,7 @@ export function ProjectImportDialog({
       <DialogContent data-testid="project-import-dialog" className="max-w-xl gap-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {view === "github" ? (
+            {view !== "sources" ? (
               <button
                 type="button"
                 aria-label="Back to import sources"
@@ -183,16 +239,85 @@ export function ProjectImportDialog({
                 <ChevronLeft aria-hidden="true" className="size-4" />
               </button>
             ) : null}
-            {view === "github" ? "Import from GitHub" : "Import a project"}
+            {view === "github"
+              ? "Import from GitHub"
+              : view === "arxiv"
+                ? "Import an arXiv paper"
+                : view === "target"
+                  ? "Choose the project type"
+                  : "Import a project"}
           </DialogTitle>
           <DialogDescription>
             {view === "github"
               ? "Choose a repository to copy into your library."
-              : "Oleafly copies what you choose into a new project. The original is left alone."}
+              : view === "arxiv"
+                ? "Oleafly downloads the paper's LaTeX source and unpacks it as a project."
+                : view === "target"
+                  ? "The conversion route comes from the conversion registry."
+                  : "Oleafly copies what you choose into a new project. The original is left alone."}
           </DialogDescription>
         </DialogHeader>
 
-        {view === "sources" ? (
+        {view === "target" ? (
+          <div className="grid gap-2">
+            {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
+              (target) => (
+                <button
+                  key={target.target}
+                  type="button"
+                  disabled={busy}
+                  data-testid={`project-import-target-${target.target}`}
+                  onClick={() => void importWithTarget(target.target)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors",
+                    "hover:border-primary/40 hover:bg-accent disabled:opacity-60",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">
+                      {target.label}
+                    </span>
+                    {target.recommended ? (
+                      <span className="block text-xs text-muted-foreground">
+                        Recommended for this file type
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              ),
+            )}
+          </div>
+        ) : view === "arxiv" ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Input
+                data-testid="project-import-arxiv-id"
+                value={arxivId}
+                placeholder="2301.01234 or math.GT/0309136"
+                onChange={(event) => setArxivId(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void importFromArxiv();
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={busy || arxivId.trim() === ""}
+                onClick={() => void importFromArxiv()}
+              >
+                {busy ? (
+                  <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                ) : null}
+                Import
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Papers whose authors published a PDF only cannot be imported this
+              way; Oleafly says so instead of guessing.
+            </p>
+          </div>
+        ) : view === "sources" ? (
           <div className="space-y-4">
             <section className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -232,6 +357,27 @@ export function ProjectImportDialog({
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 From the cloud
               </h3>
+              <button
+                type="button"
+                disabled={busy}
+                data-testid="project-import-arxiv"
+                onClick={() => setView("arxiv")}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors",
+                  "hover:border-primary/40 hover:bg-accent disabled:opacity-60",
+                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                )}
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Sigma aria-hidden="true" className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-foreground">arXiv paper</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Download a paper's LaTeX source by its arXiv id.
+                  </span>
+                </span>
+              </button>
               <button
                 type="button"
                 disabled={busy}

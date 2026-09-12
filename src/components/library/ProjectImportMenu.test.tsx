@@ -14,6 +14,29 @@ vi.mock("@/lib/github", () => ({
 vi.mock("@/features/project-import", () => ({
   importGitHubRepository: vi.fn(),
   importSelectedFile: vi.fn(),
+  importTargetsForKind: vi.fn((kind: string) => {
+    switch (kind) {
+      case "word":
+      case "html":
+        return [
+          { target: "latex", label: "LaTeX project", recommended: true },
+          { target: "markdown", label: "Markdown project" },
+          { target: "typst", label: "Typst project" },
+        ];
+      case "markdown":
+        return [
+          { target: "latex", label: "LaTeX project", recommended: true },
+          { target: "typst", label: "Typst project" },
+        ];
+      case "typst":
+        return [
+          { target: "latex", label: "LaTeX project", recommended: true },
+          { target: "markdown", label: "Markdown project" },
+        ];
+      default:
+        return [];
+    }
+  }),
 }));
 
 vi.mock("@oleafly/templates", () => ({
@@ -47,8 +70,12 @@ describe("ProjectImportMenu", () => {
     expect(screen.getByText("Local")).toBeInTheDocument();
     expect(screen.getByText("Cloud")).toBeInTheDocument();
     expect(screen.getByText("Existing project (.zip)")).toBeInTheDocument();
-    expect(screen.getByText("Word document")).toBeInTheDocument();
-    expect(screen.getByText("Markdown document")).toBeInTheDocument();
+    expect(screen.getByTestId("import-kind-word")).toHaveTextContent("Word document");
+    expect(screen.getByTestId("import-kind-markdown")).toHaveTextContent(
+      "Markdown document",
+    );
+    expect(screen.getByTestId("import-kind-html")).toHaveTextContent("HTML page");
+    expect(screen.getByTestId("import-kind-typst")).toHaveTextContent("Typst document");
     expect(screen.getByText("GitHub")).toBeInTheDocument();
   });
 

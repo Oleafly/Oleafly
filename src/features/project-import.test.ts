@@ -5,6 +5,7 @@ import { CONVERSION_NOTICE } from "@/features/import-copy";
 const mocks = vi.hoisted(() => ({
   ensurePandoc: vi.fn(),
   githubImportRepo: vi.fn(),
+  importArxivEprint: vi.fn(),
   importDocument: vi.fn(),
   importProject: vi.fn(),
   openProject: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/lib/github", () => ({
 
 vi.mock("@/lib/tauri", () => ({
   importDocument: mocks.importDocument,
+  importArxivEprint: mocks.importArxivEprint,
 }));
 
 vi.mock("@/store/files", () => ({
@@ -34,6 +36,7 @@ vi.mock("@/store/files", () => ({
 }));
 
 import {
+  importArxivPaper,
   importFileKind,
   importGitHubRepository,
   importSelectedFile,
@@ -56,6 +59,9 @@ describe("project import file detection", () => {
     expect(importFileKind("Draft.docx")).toBe("word");
     expect(importFileKind("notes.md")).toBe("markdown");
     expect(importFileKind("notes.markdown")).toBe("markdown");
+    expect(importFileKind("page.html")).toBe("html");
+    expect(importFileKind("page.htm")).toBe("html");
+    expect(importFileKind("paper.typ")).toBe("typst");
     expect(importFileKind("notes.txt")).toBeNull();
   });
 });
@@ -75,7 +81,7 @@ describe("project file import", () => {
       await expect(importSelectedFile(path)).resolves.toBe(true);
 
       expect(mocks.ensurePandoc).toHaveBeenCalledOnce();
-      expect(mocks.importDocument).toHaveBeenCalledWith(path);
+      expect(mocks.importDocument).toHaveBeenCalledWith(path, "latex");
       expect(mocks.refreshProjects).toHaveBeenCalledOnce();
       expect(mocks.openProject).toHaveBeenCalledWith("converted-project");
       expect(useToastStore.getState().toasts).toEqual([
@@ -83,6 +89,25 @@ describe("project file import", () => {
       ]);
     },
   );
+
+  it.each([
+    ["/tmp/page.html", "latex"],
+    ["/tmp/page.html", "typst"],
+    ["/tmp/paper.typ", "markdown"],
+  ] as const)("converts %s into the requested %s project", async (path, target) => {
+    await expect(importSelectedFile(path, target)).resolves.toBe(true);
+
+    expect(mocks.importDocument).toHaveBeenCalledWith(path, target);
+  });
+
+  it("imports an arXiv e-print by id", async () => {
+    mocks.importArxivEprint.mockResolvedValue("arxiv-project");
+
+    await expect(importArxivPaper("arXiv:2301.01234")).resolves.toBe(true);
+
+    expect(mocks.importArxivEprint).toHaveBeenCalledWith("2301.01234");
+    expect(mocks.openProject).toHaveBeenCalledWith("arxiv-project");
+  });
 
   it("stops cleanly when Pandoc installation is declined", async () => {
     mocks.ensurePandoc.mockResolvedValue(false);

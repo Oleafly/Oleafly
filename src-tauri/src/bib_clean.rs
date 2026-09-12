@@ -10,21 +10,66 @@ const FUZZY_TITLE_THRESHOLD: f64 = 0.9;
 const YEAR_WINDOW: i64 = 1;
 
 #[derive(Debug, serde::Serialize)]
-#[serde(rename_all = "camelCase", tag = "kind", content = "data")]
-pub enum CleanAction {
-    /// `old` renamed to `new`.
-    #[serde(rename_all = "camelCase")]
-    RenamedKey { old: String, new: String },
-    /// Duplicate removed; `kept` is the surviving key.
-    #[serde(rename_all = "camelCase")]
-    RemovedDuplicate {
-        removed: String,
-        kept: String,
-        by: String,
-    },
-    /// The entry is missing a field worth filling by hand.
-    #[serde(rename_all = "camelCase")]
-    Advisory { key: String, field: String },
+#[serde(rename_all = "camelCase")]
+pub struct CleanAction {
+    /// "renamed-key" | "removed-duplicate" | "advisory"
+    pub kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub old: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub new: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub removed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kept: Option<String>,
+    /// How a duplicate was detected: "doi", "title", or "similar title".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field: Option<String>,
+}
+
+impl CleanAction {
+    fn renamed_key(old: String, new: String) -> Self {
+        Self {
+            kind: "renamed-key",
+            old: Some(old),
+            new: Some(new),
+            removed: None,
+            kept: None,
+            by: None,
+            key: None,
+            field: None,
+        }
+    }
+
+    fn removed_duplicate(removed: String, kept: String, by: &str) -> Self {
+        Self {
+            kind: "removed-duplicate",
+            old: None,
+            new: None,
+            removed: Some(removed),
+            kept: Some(kept),
+            by: Some(by.to_string()),
+            key: None,
+            field: None,
+        }
+    }
+
+    fn advisory(key: String, field: String) -> Self {
+        Self {
+            kind: "advisory",
+            old: None,
+            new: None,
+            removed: None,
+            kept: None,
+            by: None,
+            key: Some(key),
+            field: Some(field),
+        }
+    }
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -198,10 +243,10 @@ pub(crate) fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, String> 
         let trimmed = l.trim_start();
         trimmed.starts_with('%') && !trimmed.starts_with("%!")
     }) {
-        actions.push(CleanAction::Advisory {
-            key: String::new(),
-            field: "Comments between entries are dropped when the library is rewritten.".into(),
-        });
+        actions.push(CleanAction::advisory(
+            String::new(),
+            "Comments between entries are dropped when the library is rewritten.".into(),
+        ));
     }
 
     let mut kept: Vec<Entry> = Vec::new();
@@ -230,11 +275,7 @@ pub(crate) fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, String> 
                         (entry.key.clone(), keeper.key.clone())
                     }
                 };
-                actions.push(CleanAction::RemovedDuplicate {
-                    removed,
-                    kept: kept_entry,
-                    by: "doi".into(),
-                });
+                actions.push(CleanAction::removed_duplicate(removed, kept_entry, "doi"));
             }
             None => kept.push(entry),
         }
@@ -267,15 +308,11 @@ pub(crate) fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, String> 
                     kept.swap(i, j);
                 }
                 kept.remove(j);
-                actions.push(CleanAction::RemovedDuplicate {
+                actions.push(CleanAction::removed_duplicate(
                     removed,
-                    kept: keeper,
-                    by: if similar {
-                        "title".into()
-                    } else {
-                        "similar title".into()
-                    },
-                });
+                    keeper,
+                    if similar { "title" } else { "similar title" },
+                ));
             } else {
                 j += 1;
             }
@@ -298,22 +335,22 @@ pub(crate) fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, String> 
             )
         };
         if !has_author {
-            actions.push(CleanAction::Advisory {
-                key: entry_key.clone(),
-                field: "missing author".into(),
-            });
+            actions.push(CleanAction::advisory(
+                entry_key.clone(),
+                "missing author".into(),
+            ));
         }
         if !has_title {
-            actions.push(CleanAction::Advisory {
-                key: entry_key.clone(),
-                field: "missing title".into(),
-            });
+            actions.push(CleanAction::advisory(
+                entry_key.clone(),
+                "missing title".into(),
+            ));
         }
         if year.is_empty() {
-            actions.push(CleanAction::Advisory {
-                key: entry_key.clone(),
-                field: "missing year".into(),
-            });
+            actions.push(CleanAction::advisory(
+                entry_key.clone(),
+                "missing year".into(),
+            ));
         }
         let desired = crate::citation::cite_key(&author, &year, &title);
         if desired.is_empty() || desired == entry_key {
@@ -328,10 +365,7 @@ pub(crate) fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, String> 
             final_key = format!("{}{}", desired, collision_suffix(n));
             n += 1;
         }
-        actions.push(CleanAction::RenamedKey {
-            old: entry_key,
-            new: final_key.clone(),
-        });
+        actions.push(CleanAction::renamed_key(entry_key, final_key.clone()));
         kept[index].key = final_key.clone();
         taken.insert(final_key);
     }
@@ -380,8 +414,10 @@ pub async fn clean_bibtex_library(
     // Rewrite the bibliography and every source file citing a renamed key.
     let mut renames: Vec<(String, String)> = Vec::new();
     for action in &outcome.actions {
-        if let CleanAction::RenamedKey { old, new } = action {
-            renames.push((old.clone(), new.clone()));
+        if action.kind == "renamed-key" {
+            if let (Some(old), Some(new)) = (&action.old, &action.new) {
+                renames.push((old.clone(), new.clone()));
+            }
         }
     }
     let write_root = root.clone();
@@ -464,11 +500,12 @@ mod tests {
         let removed: Vec<_> = outcome
             .actions
             .iter()
-            .filter_map(|a| match a {
-                CleanAction::RemovedDuplicate { removed, by, .. } => {
-                    Some((removed.clone(), by.clone()))
-                }
-                _ => None,
+            .filter(|a| a.kind == "removed-duplicate")
+            .map(|a| {
+                (
+                    a.removed.clone().unwrap_or_default(),
+                    a.by.clone().unwrap_or_default(),
+                )
             })
             .collect();
         assert!(
@@ -486,9 +523,12 @@ mod tests {
         let renamed: Vec<_> = outcome
             .actions
             .iter()
-            .filter_map(|a| match a {
-                CleanAction::RenamedKey { old, new } => Some((old.clone(), new.clone())),
-                _ => None,
+            .filter(|a| a.kind == "renamed-key")
+            .map(|a| {
+                (
+                    a.old.clone().unwrap_or_default(),
+                    a.new.clone().unwrap_or_default(),
+                )
             })
             .collect();
         assert!(
@@ -500,10 +540,9 @@ mod tests {
         // Richer duplicate wins: the kept entry keeps both authors.
         assert!(outcome.cleaned.contains("Shazeer"));
         // Advisories fire for the entry missing author/year.
-        assert!(outcome
-            .actions
-            .iter()
-            .any(|a| matches!(a, CleanAction::Advisory { key, field } if key == "incomplete2020" && field.contains("author"))));
+        assert!(outcome.actions.iter().any(|a| a.kind == "advisory"
+            && a.key.as_deref() == Some("incomplete2020")
+            && a.field.as_deref().is_some_and(|f| f.contains("author"))));
     }
 
     #[test]

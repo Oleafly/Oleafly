@@ -15,7 +15,7 @@ export const LATEX_ENGINE: DocumentEngineDescriptor = {
     formatting_profile: "latex",
     source_preflight_profile: "latex",
     features: ["citations", "document_index"],
-    conversion_exports: ["docx", "html", "md", "txt", "pptx", "epub"],
+    conversion_exports: ["docx", "html", "md", "txt", "pptx", "epub", "typst"],
     template_kinds: ["document", "image"],
     compiler_prerequisite: null,
   },
