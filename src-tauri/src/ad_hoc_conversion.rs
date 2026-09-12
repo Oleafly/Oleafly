@@ -6,7 +6,7 @@
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const MAX_TEXT_INPUT_BYTES: usize = 20 * 1024 * 1024;
 const MAX_BINARY_INPUT_BYTES: usize = 128 * 1024 * 1024;
@@ -147,44 +147,25 @@ fn collect_media(root: &Path, output: &Path) -> Result<Vec<AdHocArtifact>, Strin
     Ok(files)
 }
 
-#[tauri::command]
-pub async fn convert_ad_hoc(
-    request: AdHocConversionRequest,
-) -> Result<AdHocConversionResult, String> {
-    let plan =
-        crate::conversion::ad_hoc_plan(&request.source, &request.target).ok_or_else(|| {
-            format!(
-                "{} to {} is not an available ad-hoc conversion.",
-                request.source, request.target
-            )
-        })?;
-    let input = decode_input(&request)?;
-    let pandoc = tauri::async_runtime::spawn_blocking(crate::project::find_pandoc)
-        .await
-        .map_err(|error| error.to_string())?
-        .ok_or_else(|| {
-            "Pandoc is not installed. Install it from Tools, then try again.".to_string()
-        })?;
-
+fn stage_conversion_workspace(
+    input: Vec<u8>,
+    source_name: &'static str,
+) -> Result<(tempfile::TempDir, PathBuf), String> {
     let temporary = tempfile::tempdir()
         .map_err(|error| format!("Could not prepare the conversion workspace: {error}"))?;
     let root = temporary.path().to_path_buf();
-    let source = root.join(plan.source_name);
-    let output = root.join(plan.output_name);
-    std::fs::write(&source, input)
+    std::fs::write(root.join(source_name), input)
         .map_err(|error| format!("Could not stage the source document: {error}"))?;
+    Ok((temporary, root))
+}
 
-    let (log, code) =
-        crate::document_engine::run_supervised_external(Path::new(&pandoc), &plan.args, &root)
-            .await?;
-    if code != Some(0) {
-        let detail = log.trim();
-        return Err(if detail.is_empty() {
-            "Pandoc could not convert this document.".into()
-        } else {
-            format!("Pandoc could not convert this document: {detail}")
-        });
-    }
+fn finish_conversion(
+    temporary: tempfile::TempDir,
+    plan: crate::conversion::AdHocPlan,
+    target_is_typst: bool,
+) -> Result<AdHocConversionResult, String> {
+    let root = temporary.path();
+    let output = root.join(plan.output_name);
     let metadata = std::fs::metadata(&output)
         .map_err(|_| "The converter did not produce an output file.".to_string())?;
     if !metadata.is_file() || metadata.len() > MAX_OUTPUT_BYTES {
@@ -193,12 +174,12 @@ pub async fn convert_ad_hoc(
 
     let mut bytes = std::fs::read(&output)
         .map_err(|error| format!("Could not read the converted output: {error}"))?;
-    if request.target == "typst" {
+    if target_is_typst {
         let source = String::from_utf8(bytes)
             .map_err(|_| "Pandoc returned invalid Typst text.".to_string())?;
         bytes = crate::conversion::fixup_typst_source(&source).into_bytes();
     }
-    let files = collect_media(&root, &output)?;
+    let files = collect_media(root, &output)?;
     if plan.binary_output {
         Ok(AdHocConversionResult {
             kind: "binary",
@@ -220,6 +201,66 @@ pub async fn convert_ad_hoc(
             files,
         })
     }
+}
+
+async fn discard_conversion_workspace(temporary: tempfile::TempDir) {
+    let _ = tauri::async_runtime::spawn_blocking(move || drop(temporary)).await;
+}
+
+#[tauri::command]
+pub async fn convert_ad_hoc(
+    request: AdHocConversionRequest,
+) -> Result<AdHocConversionResult, String> {
+    let plan =
+        crate::conversion::ad_hoc_plan(&request.source, &request.target).ok_or_else(|| {
+            format!(
+                "{} to {} is not an available ad-hoc conversion.",
+                request.source, request.target
+            )
+        })?;
+    let target_is_typst = request.target == "typst";
+    let input = tauri::async_runtime::spawn_blocking(move || decode_input(&request))
+        .await
+        .map_err(|error| error.to_string())??;
+    let pandoc = tauri::async_runtime::spawn_blocking(crate::project::find_pandoc)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| {
+            "Pandoc is not installed. Install it from Tools, then try again.".to_string()
+        })?;
+
+    let source_name = plan.source_name;
+    let (temporary, root) = tauri::async_runtime::spawn_blocking(move || {
+        stage_conversion_workspace(input, source_name)
+    })
+    .await
+    .map_err(|error| error.to_string())??;
+
+    let execution =
+        crate::document_engine::run_supervised_external(Path::new(&pandoc), &plan.args, &root)
+            .await;
+    let (log, code) = match execution {
+        Ok(result) => result,
+        Err(error) => {
+            discard_conversion_workspace(temporary).await;
+            return Err(error);
+        }
+    };
+    if code != Some(0) {
+        let detail = log.trim();
+        let error = if detail.is_empty() {
+            "Pandoc could not convert this document.".into()
+        } else {
+            format!("Pandoc could not convert this document: {detail}")
+        };
+        discard_conversion_workspace(temporary).await;
+        return Err(error);
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        finish_conversion(temporary, plan, target_is_typst)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[cfg(test)]
