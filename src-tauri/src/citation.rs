@@ -248,13 +248,19 @@ pub(crate) fn isbn_bibtex(data: &serde_json::Value, isbn: &str) -> Result<String
     ))
 }
 
-/// Canonical BibTeX for an ISBN, via OpenLibrary.
+/// Canonical BibTeX for an ISBN, via OpenLibrary. The `api/books` view
+/// answers directly with authors and publishers; the plain `.json` view
+/// redirects and drops them.
 #[tauri::command]
 pub async fn fetch_isbn_bibtex(isbn: String) -> Result<String, String> {
     let isbn = normalize_isbn(&isbn)?;
-    let url = format!("https://openlibrary.org/isbn/{isbn}.json?jscmd=data");
     let resp = client()?
-        .get(&url)
+        .get("https://openlibrary.org/api/books")
+        .query(&[
+            ("bibkeys", format!("ISBN:{isbn}").as_str()),
+            ("jscmd", "data"),
+            ("format", "json"),
+        ])
         .send()
         .await
         .map_err(|e| format!("lookup failed: {e}"))?
@@ -264,7 +270,11 @@ pub async fn fetch_isbn_bibtex(isbn: String) -> Result<String, String> {
         .json()
         .await
         .map_err(|e| format!("OpenLibrary returned an unreadable response: {e}"))?;
-    isbn_bibtex(&data, &isbn)
+    let entry = data
+        .get(format!("ISBN:{isbn}"))
+        .cloned()
+        .ok_or("No book found for that ISBN.")?;
+    isbn_bibtex(&entry, &isbn)
 }
 
 /// BibTeX for an article, from NCBI's PubMed esummary record.

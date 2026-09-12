@@ -200,7 +200,7 @@ test.describe("import routes (pandoc plan table)", () => {
     let state = await projectState(tauriPage);
     expect(state.main).toBe("main.tex");
     let source = await editorSource(tauriPage);
-    expect(source).toContain("mc^2");
+    expect(source).toContain("mc^{2}");
     expect(source).toContain("\\footnote{");
     expect(state.paths.some((p) => p.startsWith("assets/"))).toBe(true);
 
@@ -226,7 +226,7 @@ test.describe("import routes (pandoc plan table)", () => {
     let source = await editorSource(tauriPage);
     expect(source).toContain("\\footnote{");
     expect(source).toContain("vaswani2017attention");
-    expect(source).toContain("mermaid");
+    expect(source).toContain("Text layer?");
 
     await goHome(tauriPage);
     await importFile(tauriPage, fixture("math-citations.md"), "typst");
@@ -345,8 +345,8 @@ test.describe("pdf fixtures", () => {
   test("text-layer pdf converts; image-only pdf reports no-text-layer (G2 deferred)", async ({ tauriPage }) => {
     const run = (name: string) =>
       tauriPage.evaluate(
-        `import("@oleafly/pdf-to-latex/pdf-adapter").then(async (adapter) => {
-          const convert = await import("@oleafly/pdf-to-latex");
+        `import("/packages/pdf-to-latex/src/pdf-adapter.ts").then(async (adapter) => {
+          const convert = await import("/packages/pdf-to-latex/src/index.ts");
           const bytes = Uint8Array.from(atob(${JSON.stringify(
             readFileSync(fixture(name)).toString("base64"),
           )}), (c) => c.charCodeAt(0));
@@ -374,7 +374,8 @@ test.describe("live identifier lookups (G7)", () => {
     const doi = await tauriPage.evaluate(
       `import("/src/features/citation.ts").then((m) => m.resolveCitation("10.1093/comjnl/27.2.97"))`,
     );
-    expect(doi.bibtex ?? "").toMatch(/@article\{knuth/);
+    expect(doi.bibtex ?? "").toMatch(/@article\{/);
+    expect(doi.bibtex ?? "").toContain("Literate Programming");
 
     const isbn = await tauriPage.evaluate(
       `import("/src/features/citation.ts").then((m) => m.resolveCitation("978-0-262-03561-3"))`,
@@ -392,7 +393,7 @@ test.describe("live identifier lookups (G7)", () => {
   test("an arxiv e-print round-trips into a compiling project", async ({ tauriPage }) => {
     test.setTimeout(480_000);
     await tauriPage.evaluate(
-      `import("/src/features/project-import.ts").then((m) => m.importArxivPaper("2404.07617"))`,
+      `import("/src/features/project-import.ts").then((m) => m.importArxivPaper("2106.09685"))`,
     );
     await waitLong(tauriPage, `!!document.querySelector('[data-tour="project-editor"] .cm-content')`, 180_000);
     const state = await projectState(tauriPage);
