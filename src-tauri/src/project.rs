@@ -2432,6 +2432,30 @@ pub async fn read_file_base64(project_id: String, path: String) -> Result<String
     .map_err(|e| e.to_string())?
 }
 
+/// Read a user-picked spreadsheet (CSV/TSV/XLSX) as base64 so the webview
+/// can parse it with SheetJS. The path always comes from our own file dialog,
+/// like `import_document`; size-capped to keep accidental picks harmless.
+#[tauri::command]
+pub async fn read_picked_file_base64(path: String) -> Result<String, String> {
+    const MAX_PICKED_BYTES: u64 = 16 * 1024 * 1024;
+    let read_path = PathBuf::from(&path);
+    if !read_path.is_file() {
+        return Err(format!("file not found: {path}"));
+    }
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        let metadata = std::fs::metadata(&read_path).map_err(|e| e.to_string())?;
+        if metadata.len() > MAX_PICKED_BYTES {
+            return Err("that file is larger than the 16 MB table-import limit".into());
+        }
+        let bytes = std::fs::read(&read_path)
+            .map_err(|e| format!("failed to read {path}: {e}"))?;
+        Ok(STANDARD.encode(&bytes))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Append a line to the global app log at `~/.oleafly/app.log` (append-only,
 /// created if missing). Used by the frontend to record caught errors so users
 /// can share the file for debugging.

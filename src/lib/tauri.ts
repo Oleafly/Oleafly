@@ -435,6 +435,8 @@ export const saveFileBase64 = (
 
 export const readFileBase64 = (projectId: string, path: string) =>
   invoke<string>("read_file_base64", { projectId, path });
+export const readPickedFileBase64 = (path: string) =>
+  invoke<string>("read_picked_file_base64", { path });
 
 export const createProjectFromDocx = (name: string, dataBase64: string) =>
   invoke<string>("create_project_from_docx", { name, dataBase64 });

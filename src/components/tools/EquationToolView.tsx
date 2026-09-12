@@ -23,6 +23,10 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { toast } from "@/lib/toast";
+import {
+  equationToSvgDocument,
+  svgDocumentToPngBytes,
+} from "@/features/equation-export";
 
 export function EquationToolView() {
   const activePage = useHomeViewStore((s) => s.page);
@@ -39,11 +43,9 @@ export function EquationToolView() {
   const rendered = renderEquation(input, display);
   const wrapped = display ? `\\[ ${input} \\]` : `$${input}$`;
 
-  const buildSvgMarkup = () =>
-    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${previewTheme === "dark" ? "#111111" : "#ffffff"};color:${previewTheme === "dark" ? "#ffffff" : "#000000"};font-size:28px;padding:24px;box-sizing:border-box;">${rendered.html}</div></foreignObject></svg>`;
-
-  const downloadBlob = (content: string, type: string, filename: string) => {
-    const url = URL.createObjectURL(new Blob([content], { type }));
+  const downloadBlob = (content: string | Blob, type: string, filename: string) => {
+    const blob = content instanceof Blob ? content : new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
@@ -51,29 +53,37 @@ export function EquationToolView() {
     URL.revokeObjectURL(url);
   };
 
-  const exportPng = () => {
-    if (!rendered.html) return;
-    const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(buildSvgMarkup())}`;
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(img, 0, 0);
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = "latex-preview.png";
-      a.click();
-    };
-    img.onerror = () => toast.error("Couldn't export this snippet as an image");
-    img.src = svgUrl;
+  // True vector export: MathJax renders the equation to an SVG document with
+  // glyph paths, rather than rasterizing the KaTeX preview.
+  const exportPng = async () => {
+    try {
+      const svg = await equationToSvgDocument(input, display);
+      const bytes = await svgDocumentToPngBytes(
+        svg,
+        3,
+        previewTheme === "dark" ? "#111111" : "#ffffff",
+      );
+      downloadBlob(
+        new Blob([bytes.slice().buffer], { type: "image/png" }),
+        "image/png",
+        "equation.png",
+      );
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Couldn't export this snippet as an image",
+      );
+    }
   };
 
-  const exportSvg = () => {
-    if (!rendered.html) return;
-    downloadBlob(buildSvgMarkup(), "image/svg+xml", "latex-preview.svg");
+  const exportSvg = async () => {
+    try {
+      const svg = await equationToSvgDocument(input, display);
+      downloadBlob(svg, "image/svg+xml", "equation.svg");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Couldn't export this snippet as SVG",
+      );
+    }
   };
 
   const copyMathML = () => {

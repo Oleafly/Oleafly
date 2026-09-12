@@ -489,6 +489,7 @@ pub fn run() {
             project::import_paths_into_project,
             project::save_file_base64,
             project::read_file_base64,
+            project::read_picked_file_base64,
             project::append_app_log,
             project::read_app_log,
             project::has_pandoc,

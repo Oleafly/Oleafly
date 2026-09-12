@@ -6,6 +6,7 @@ import {
   Bold,
   Code,
   Divide,
+  FileDown,
   Heading,
   Image,
   Italic,
@@ -35,6 +36,8 @@ import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { goToSyncTex } from "@/features/synctex";
+import { saveEquationAsPng, saveEquationAsSvg } from "@/features/equation-export";
+import { useTableImportStore } from "@/store/table-import";
 import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
 import {
@@ -80,6 +83,7 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
   const engine = useFilesStore((s) => s.engine);
   const syncTexSupported =
     projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engine.capabilities.supports_synctex;
+  const setTableImportOpen = useTableImportStore((state) => state.setOpen);
   if (!engineLoaded) {
     return (
       <ContextMenu>
@@ -114,6 +118,13 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
           </ContextMenuItem>
           <ContextMenuItem onClick={() => insertAtCursor("- Item\n")}>
             <List className="mr-2 size-4" /> Bulleted list
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => setTableImportOpen(true)}>
+            <Table className="mr-2 size-4" /> Table from CSV/XLSX…
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => void saveEquationAsSvg()}>
+            <FileDown className="mr-2 size-4" /> Equation as SVG
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -235,6 +246,9 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
         <ContextMenuItem onClick={() => insertTable(3, 3)}>
           <Table className="mr-2 size-4" /> Table
         </ContextMenuItem>
+        <ContextMenuItem onClick={() => setTableImportOpen(true)} data-testid="context-table-from-file">
+          <Table className="mr-2 size-4" /> Table from CSV/XLSX…
+        </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={insertAlign}>
           <Rows3 className="mr-2 size-4" /> Align
@@ -244,6 +258,12 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
         </ContextMenuItem>
         <ContextMenuItem onClick={insertFraction}>
           <Divide className="mr-2 size-4" /> Fraction
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => void saveEquationAsSvg()} data-testid="context-export-equation-svg">
+          <FileDown className="mr-2 size-4" /> Equation as SVG
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => void saveEquationAsPng()} data-testid="context-export-equation-png">
+          <FileDown className="mr-2 size-4" /> Equation as PNG
         </ContextMenuItem>
         <ContextMenuItem onClick={insertBlockquote}>
           <Quote className="mr-2 size-4" /> Blockquote
