@@ -35,6 +35,16 @@ complete license is included at
 the exact bundled version is available from the
 [3.9.0.2 source tag](https://github.com/jgm/pandoc/tree/3.9.0.2) and the
 [source archive](https://github.com/jgm/pandoc/archive/refs/tags/3.9.0.2.tar.gz).
+`scripts/fetch-pandoc.sh` downloads the release archive for each target and
+checks it against these SHA-256 digests before extracting the executable:
+
+| File | SHA-256 |
+|---|---|
+| `pandoc-3.9.0.2-arm64-macOS.zip` | `6e9eca844076bcbb599bbeebbba78a70f93b5307782b85c2c272872812c88875` |
+| `pandoc-3.9.0.2-linux-arm64.tar.gz` | `b6d21e8f9c3b15744f5a7ab40248019157ed7793875dbe0383d4c82ff572b528` |
+| `pandoc-3.9.0.2-linux-amd64.tar.gz` | `a69abfababda8a56969a254b09f9553a7be89ddec00d4e0fe9fd585d71a67508` |
+| `pandoc-3.9.0.2-windows-x86_64.zip` | `c97542f2800f446e788d9f74237856d995421ad1bb3cc8324286840c5f272d3a` |
+| `COPYING.md` (license text) | `9d56cac92294e206af026a5502bee0fed77200b08b51ec28aa63c9efda4dcfdd` |
 
 The exact Tinymist 0.15.2 license is shipped in every application bundle at
 `resources/licenses/tinymist-0.15.2-LICENSE`, alongside exactly one

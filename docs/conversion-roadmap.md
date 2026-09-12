@@ -19,9 +19,6 @@ means a quarter or more.
   copier needs to limit total size, stay inside the chosen source folder,
   and report missing files before it can run automatically.
 
-- **Scanned-PDF OCR (G2, M).** The PDF importer reports which pages have no
-  text layer and stops. An OCR stage needs an engine, a download plan, and
-  a way to review the recognized text.
 - **Local equation and handwriting recognition (G3, M).** Today a vision
   model transcribes one equation at the cursor. A local ONNX recognizer with
   detection for full photos and whiteboards is planned; until then this
@@ -31,8 +28,9 @@ means a quarter or more.
 
 ## Citation finishing
 
-- **CSL style picker (G4, S–M).** Bibliography styles are configured
-  in the document source. A local CSL renderer and style picker have not been
+- **CSL style picker (G4, S–M).** The reference tool renders eight styles
+  locally, but a compiled bibliography still takes its style from the document
+  source. A picker that writes the chosen style into the document has not been
   implemented.
 - **Zotero live sync (G5, M).** The connector stores a key, and RDF exports
   import fine, but nothing calls the Zotero API yet.
@@ -71,8 +69,3 @@ means a quarter or more.
 - **Browser extension (G29, M).** Nothing shipped.
 - **Domain packs (G30–G38, S–M each).** Math, engineering, medical, and
   biology tool packs have not been started.
-
-## Editor niceties
-
-- **Mermaid to TikZ (G19, M).** Mermaid renders in chat; converting a
-  diagram to TikZ deterministically is not built.

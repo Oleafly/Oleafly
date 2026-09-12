@@ -70,33 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in a paper, with a copy button. The README carries the same entry in every
   language, and CITATION.cff is current, so GitHub's Cite this repository
   button matches.
-
-### Fixed
-
-- Saved arXiv sources that contain one gzip-compressed TeX file now open in the
-  converter instead of being rejected as a damaged tar archive.
-- Importing a reference library, or inserting a citation into a project
-  without a bibliography, shows the new `.bib` file in the file tree and the
-  Citations panel right away instead of after reopening the project.
-- Bibliography files declared with `\addbibresource` or `\bibliography`
-  resolve the way TeX and Biber resolve them, and a declaration that points at
-  a missing file is reported on that line.
-- A stale bibliography no longer disables the pinned Biber. The compile reruns
-  Biber whenever the engine did not write the `.bbl` itself, and Biber's own
-  messages, including a `.bib` file it could not find, appear in the compile
-  log and the diagnostics.
-- Pasting LaTeX no longer paints a document-wide "Not in dictionary"
-  underline. Readability rules that trip on masked markup are off, findings
-  that cross masked markup are dropped, and Ignore always does something.
-- On a TeX Live one release behind the package repository, package searches
-  read the local database first and say when a remote lookup needs a newer
-  TeX Live. Installs into a system tree you cannot write to fall back to your
-  personal tree, and a failed install shows the installer's own message.
-- The CLI bridge confirmation dialog appears above Settings and shows npm's
-  error text when an install fails.
-- System TeX compiles run with TeX Live's restricted shell escape, so
-  templates that convert EPS figures compile without granting full shell
-  access.
 - A conversion registry now drives the Import and Export menus. Word, Markdown, HTML, and
   Typst files can be imported as LaTeX, Markdown, or Typst projects; LaTeX and Markdown
   projects export to Typst; Typst projects export to Word, HTML, Markdown, and LaTeX. The
@@ -124,10 +97,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistics calculators for p-values, sample sizes, and confidence intervals are in the
   Tools panel, computed locally. Proportion intervals use Wilson's method, so zero
   successes still produce a useful interval. Editing inputs clears the previous result.
-- Imports keep the selected file and show errors in the dialog so failed attempts can
-  be retried. The library's Import menu also accepts arXiv links.
-- Document exports save pending edits first and stop if the open project changes.
-  Export destinations inside the source project are rejected to protect its files.
 - Statistics, Symbols, Writing Generators, table import, and reference cleanup
   use the LaTeX Preview layout, with separate input and preview panes. Statistics
   can copy a labeled result report. Symbols previews the selected command and
@@ -140,6 +109,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings, Citation Search has a field for an OpenAlex API key. OpenAlex made keys
   mandatory in February 2026; without one, searches still work but from a small shared
   daily pool.
+
+### Fixed
+
+- Saved arXiv sources that contain one gzip-compressed TeX file now open in the
+  converter instead of being rejected as a damaged tar archive.
+- Importing a reference library, or inserting a citation into a project
+  without a bibliography, shows the new `.bib` file in the file tree and the
+  Citations panel right away instead of after reopening the project.
+- Bibliography files declared with `\addbibresource` or `\bibliography`
+  resolve the way TeX and Biber resolve them, and a declaration that points at
+  a missing file is reported on that line.
+- A stale bibliography no longer disables the pinned Biber. The compile reruns
+  Biber whenever the engine did not write the `.bbl` itself, and Biber's own
+  messages, including a `.bib` file it could not find, appear in the compile
+  log and the diagnostics.
+- Pasting LaTeX no longer paints a document-wide "Not in dictionary"
+  underline. Readability rules that trip on masked markup are off, findings
+  that cross masked markup are dropped, and Ignore always does something.
+- On a TeX Live one release behind the package repository, package searches
+  read the local database first and say when a remote lookup needs a newer
+  TeX Live. Installs into a system tree you cannot write to fall back to your
+  personal tree, and a failed install shows the installer's own message.
+- The CLI bridge confirmation dialog appears above Settings and shows npm's
+  error text when an install fails.
+- System TeX compiles run with TeX Live's restricted shell escape, so
+  templates that convert EPS figures compile without granting full shell
+  access.
+- Imports keep the selected file and show errors in the dialog so failed attempts can
+  be retried. The library's Import menu also accepts arXiv links.
+- Document exports save pending edits first and stop if the open project changes.
+  Export destinations inside the source project are rejected to protect its files.
 
 ## [0.4.0] - 2026-09-07
 
