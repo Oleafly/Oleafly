@@ -2270,82 +2270,16 @@ impl Store {
         drop(pack);
 
         if !new_chunks.is_empty() {
-            let pack_id = hash_file(&staged_pack)?;
-            let pack_id_hex = pack_id.to_hex();
-            let file_name = format!("{pack_id_hex}.pack");
-            let destination = self.root.join("packs").join(&file_name);
-            if destination.exists() {
-                if hash_file(&destination)? != pack_id {
-                    return Err(HistoryError::Corrupt(format!(
-                        "immutable pack collision for {pack_id_hex}"
-                    )));
-                }
-                fs::remove_file(&staged_pack)?;
-            } else {
-                fs::rename(&staged_pack, &destination)?;
-                set_private_file_permissions(&destination)?;
-                sync_directory(&self.root.join("packs"))?;
-            }
-            transaction.execute(
-                "INSERT OR IGNORE INTO packs(pack_id, file_name, encoded_size) VALUES (?1, ?2, ?3)",
-                params![pack_id_hex, file_name, pack_len as i64],
+            publish_import_pack(
+                &self.root,
+                &transaction,
+                &staged_pack,
+                pack_len,
+                &new_chunks,
             )?;
-            for chunk in &new_chunks {
-                transaction.execute(
-                    "INSERT OR IGNORE INTO chunks(
-                        chunk_hash, pack_id, payload_offset, stored_len, raw_len, encoding
-                     ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                    params![
-                        chunk.hash.to_hex(),
-                        pack_id_hex,
-                        chunk.payload_offset as i64,
-                        chunk.stored_len as i64,
-                        chunk.raw_len as i64,
-                        chunk.encoding.as_i64(),
-                    ],
-                )?;
-            }
         }
 
-        let mut missing = Vec::new();
-        let mut existing_checkpoints = 0_u64;
-        for checkpoint in checkpoints {
-            let root_hex = checkpoint.root.as_hex();
-            if query_checkpoint(&transaction, &root_hex)?.is_some() {
-                existing_checkpoints += 1;
-                continue;
-            }
-            let manifest_json = serde_json::to_vec(&checkpoint.manifest)?;
-            let existing_manifest = transaction
-                .query_row(
-                    "SELECT manifest_json FROM manifests WHERE snapshot_root = ?1",
-                    [&root_hex],
-                    |row| row.get::<_, Vec<u8>>(0),
-                )
-                .optional()?;
-            if let Some(existing_manifest) = existing_manifest {
-                if existing_manifest != manifest_json {
-                    return Err(HistoryError::Corrupt(format!(
-                        "snapshot root {root_hex} has conflicting manifest bytes"
-                    )));
-                }
-            } else {
-                transaction.execute(
-                    "INSERT INTO manifests(snapshot_root, manifest_json) VALUES (?1, ?2)",
-                    params![root_hex, manifest_json],
-                )?;
-            }
-            for file in &checkpoint.manifest.files {
-                for chunk in &file.chunks {
-                    transaction.execute(
-                        "INSERT OR IGNORE INTO manifest_chunks(snapshot_root, chunk_hash)
-                         VALUES (?1, ?2)",
-                        params![root_hex, chunk.hash],
-                    )?;
-                }
-            }
-            missing.push(checkpoint);
-        }
+        let (missing, existing_checkpoints) = stage_imported_manifests(&transaction, checkpoints)?;
 
         // All visible roots are inserted last in this single transaction.
         for checkpoint in &missing {
@@ -3348,6 +3282,97 @@ fn validate_portable_label(label: Option<&str>) -> Result<Option<String>> {
 fn hash_length_prefixed(hasher: &mut blake3::Hasher, value: &[u8]) {
     hasher.update(&(value.len() as u64).to_le_bytes());
     hasher.update(value);
+}
+
+fn publish_import_pack(
+    root_dir: &Path,
+    transaction: &rusqlite::Transaction<'_>,
+    staged_pack: &Path,
+    pack_len: u64,
+    new_chunks: &[StagedChunk],
+) -> Result<()> {
+    let pack_id = hash_file(staged_pack)?;
+    let pack_id_hex = pack_id.to_hex();
+    let file_name = format!("{pack_id_hex}.pack");
+    let destination = root_dir.join("packs").join(&file_name);
+    if destination.exists() {
+        if hash_file(&destination)? != pack_id {
+            return Err(HistoryError::Corrupt(format!(
+                "immutable pack collision for {pack_id_hex}"
+            )));
+        }
+        fs::remove_file(staged_pack)?;
+    } else {
+        fs::rename(staged_pack, &destination)?;
+        set_private_file_permissions(&destination)?;
+        sync_directory(&root_dir.join("packs"))?;
+    }
+    transaction.execute(
+        "INSERT OR IGNORE INTO packs(pack_id, file_name, encoded_size) VALUES (?1, ?2, ?3)",
+        params![pack_id_hex, file_name, pack_len as i64],
+    )?;
+    for chunk in new_chunks {
+        transaction.execute(
+            "INSERT OR IGNORE INTO chunks(
+                        chunk_hash, pack_id, payload_offset, stored_len, raw_len, encoding
+                     ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                chunk.hash.to_hex(),
+                pack_id_hex,
+                chunk.payload_offset as i64,
+                chunk.stored_len as i64,
+                chunk.raw_len as i64,
+                chunk.encoding.as_i64(),
+            ],
+        )?;
+    }
+    Ok(())
+}
+
+fn stage_imported_manifests(
+    transaction: &rusqlite::Transaction<'_>,
+    checkpoints: Vec<ImportedCheckpoint>,
+) -> Result<(Vec<ImportedCheckpoint>, u64)> {
+    let mut missing = Vec::new();
+    let mut existing_checkpoints = 0_u64;
+    for checkpoint in checkpoints {
+        let root_hex = checkpoint.root.as_hex();
+        if query_checkpoint(transaction, &root_hex)?.is_some() {
+            existing_checkpoints += 1;
+            continue;
+        }
+        let manifest_json = serde_json::to_vec(&checkpoint.manifest)?;
+        let existing_manifest = transaction
+            .query_row(
+                "SELECT manifest_json FROM manifests WHERE snapshot_root = ?1",
+                [&root_hex],
+                |row| row.get::<_, Vec<u8>>(0),
+            )
+            .optional()?;
+        if let Some(existing_manifest) = existing_manifest {
+            if existing_manifest != manifest_json {
+                return Err(HistoryError::Corrupt(format!(
+                    "snapshot root {root_hex} has conflicting manifest bytes"
+                )));
+            }
+        } else {
+            transaction.execute(
+                "INSERT INTO manifests(snapshot_root, manifest_json) VALUES (?1, ?2)",
+                params![root_hex, manifest_json],
+            )?;
+        }
+        for file in &checkpoint.manifest.files {
+            for chunk in &file.chunks {
+                transaction.execute(
+                    "INSERT OR IGNORE INTO manifest_chunks(snapshot_root, chunk_hash)
+                         VALUES (?1, ?2)",
+                    params![root_hex, chunk.hash],
+                )?;
+            }
+        }
+        missing.push(checkpoint);
+    }
+    Ok((missing, existing_checkpoints))
 }
 
 fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkpoint>> {

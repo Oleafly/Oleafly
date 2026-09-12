@@ -15,6 +15,21 @@ const SECTION_LEVEL: Record<string, number> = {
   subparagraph: 6,
 };
 
+type SymSpan = {
+  readonly from: number;
+  readonly to: number;
+  readonly nameFrom: number;
+  readonly nameTo: number;
+};
+
+type SymSink = {
+  readonly path: string;
+  readonly text: string;
+  readonly defs: Sym[];
+  readonly uses: Sym[];
+  readonly lineAt: (offset: number) => number;
+};
+
 export function maskComments(text: string): string {
   return text
     .split("\n")
@@ -52,24 +67,32 @@ function dirname(p: string): string {
   return i >= 0 ? p.slice(0, i) : "";
 }
 
+function lastSegmentHasExtension(
+  path: string,
+  separators: readonly string[],
+): boolean {
+  let segmentStart = 0;
+  for (const separator of separators) {
+    segmentStart = Math.max(segmentStart, path.lastIndexOf(separator) + 1);
+  }
+  const dot = path.indexOf(".", segmentStart);
+  return dot >= 0 && dot < path.length - 1;
+}
+
 function joinInput(dir: string, rel: string): string {
   let r = rel.replace(/^\.\//, "").trim();
   if (r.startsWith("/")) r = r.slice(1);
   const resolved = dir ? `${dir}/${r}` : r;
-  return /\.[^/\\]+$/.test(resolved) ? resolved : `${resolved}.tex`;
+  return lastSegmentHasExtension(resolved, ["/", "\\"])
+    ? resolved
+    : `${resolved}.tex`;
 }
 
-export function parseFile(path: string, rawText: string): FileSymbols {
-  if (path.toLowerCase().endsWith(".typ")) return parseTypstFile(path, rawText);
-  if (/\.(?:md|markdown)$/i.test(path)) return parseMarkdownFile(path, rawText);
-  const text = maskComments(rawText);
-  const defs: Sym[] = [];
-  const uses: Sym[] = [];
-
-  // Precompute line starts for O(log n) line lookup.
+// Precompute line starts for O(log n) line lookup.
+function lineIndex(text: string): (offset: number) => number {
   const lineStarts: number[] = [0];
   for (let i = 0; i < text.length; i++) if (text[i] === "\n") lineStarts.push(i + 1);
-  const lineAt = (offset: number): number => {
+  return (offset: number): number => {
     let lo = 0;
     let hi = lineStarts.length - 1;
     while (lo < hi) {
@@ -79,36 +102,61 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     }
     return lo + 1;
   };
+}
 
-  const push = (
-    arr: Sym[],
-    kind: SymKind,
-    name: string,
-    from: number,
-    to: number,
-    nameFrom: number,
-    nameTo: number,
-    extra?: Partial<Sym>,
-  ) => {
-    arr.push({ kind, name, file: path, line: lineAt(from), from, to, nameFrom, nameTo, ...extra });
+function pushSym(
+  sink: SymSink,
+  arr: Sym[],
+  kind: SymKind,
+  name: string,
+  span: SymSpan,
+  extra?: Partial<Sym>,
+): void {
+  arr.push({
+    kind,
+    name,
+    file: sink.path,
+    line: sink.lineAt(span.from),
+    ...span,
+    ...extra,
+  });
+}
+
+function spanFromMatch(
+  index: number,
+  whole: string,
+  nameFrom: number,
+  nameLength: number,
+): SymSpan {
+  return {
+    from: index,
+    to: index + whole.length,
+    nameFrom,
+    nameTo: nameFrom + nameLength,
   };
+}
 
-  if (path.endsWith(".bib")) {
-    const re = /@(\w+)\s*\{\s*([^,\s}]+)/g;
-    for (const m of text.matchAll(re)) {
-      const type = m[1].toLowerCase();
-      if (type === "comment" || type === "string" || type === "preamble") continue;
-      const key = m[2];
-      const keyStart = m.index + m[0].lastIndexOf(key);
-      push(defs, "bibentry", key, m.index, m.index + m[0].length, keyStart, keyStart + key.length);
-    }
-    return { file: path, defs, uses };
+function collectBibEntries(sink: SymSink): void {
+  const re = /@(\w+)\s*\{\s*([^,\s}]+)/g;
+  for (const m of sink.text.matchAll(re)) {
+    const type = m[1].toLowerCase();
+    if (type === "comment" || type === "string" || type === "preamble") continue;
+    const key = m[2];
+    const keyStart = m.index + m[0].lastIndexOf(key);
+    pushSym(
+      sink,
+      sink.defs,
+      "bibentry",
+      key,
+      spanFromMatch(m.index, m[0], keyStart, key.length),
+    );
   }
+}
 
-  // --- Definitions ---
-
-  // Sectioning. Match up to the opening brace, then brace-match so titles with
-  // nested braces (e.g. `\section{Intro to \texttt{x}}`) are captured whole.
+// Sectioning. Match up to the opening brace, then brace-match so titles with
+// nested braces (e.g. `\section{Intro to \texttt{x}}`) are captured whole.
+function collectSections(sink: SymSink): void {
+  const { text } = sink;
   const sec = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*\{/g;
   for (let m = sec.exec(text); m; m = sec.exec(text)) {
     const open = m.index + m[0].length - 1;
@@ -116,91 +164,187 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     if (close < 0) continue;
     const inner = text.slice(open + 1, close);
     const nameStart = open + 1;
-    push(defs, "section", inner.trim(), m.index, close + 1, nameStart, nameStart + inner.length, {
-      level: SECTION_LEVEL[m[1]],
-    });
+    pushSym(
+      sink,
+      sink.defs,
+      "section",
+      inner.trim(),
+      {
+        from: m.index,
+        to: close + 1,
+        nameFrom: nameStart,
+        nameTo: nameStart + inner.length,
+      },
+      { level: SECTION_LEVEL[m[1]] },
+    );
     sec.lastIndex = close + 1; // resume scanning after this section's title
   }
+}
 
+function collectLabels(sink: SymSink): void {
   const label = /\\label\s*\{([^}]*)\}/g;
-  for (const m of text.matchAll(label)) {
+  for (const m of sink.text.matchAll(label)) {
     const start = m.index + m[0].lastIndexOf("{") + 1;
-    push(defs, "label", m[1].trim(), m.index, m.index + m[0].length, start, start + m[1].length);
+    pushSym(
+      sink,
+      sink.defs,
+      "label",
+      m[1].trim(),
+      spanFromMatch(m.index, m[0], start, m[1].length),
+    );
   }
+}
 
-  // Macros: \newcommand / \renewcommand / \providecommand (braced or bare).
-  const cmd = /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([a-zA-Z@]+)/g;
-  for (const m of text.matchAll(cmd)) {
-    const nameStart = m.index + m[0].lastIndexOf(`\\${m[1]}`) + 1;
-    push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
-  }
-  const def = /\\def\s*\\([a-zA-Z@]+)/g;
-  for (const m of text.matchAll(def)) {
-    const nameStart = m.index + m[0].lastIndexOf(`\\${m[1]}`) + 1;
-    push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
-  }
-  const dmo = /\\DeclareMathOperator\*?\s*\{\s*\\([a-zA-Z@]+)/g;
-  for (const m of text.matchAll(dmo)) {
-    const nameStart = m.index + m[0].lastIndexOf(`\\${m[1]}`) + 1;
-    push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
-  }
+// Macros: \newcommand / \renewcommand / \providecommand (braced or bare).
+const MACRO_PATTERNS: readonly RegExp[] = [
+  /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([a-zA-Z@]+)/g,
+  /\\def\s*\\([a-zA-Z@]+)/g,
+  /\\DeclareMathOperator\*?\s*\{\s*\\([a-zA-Z@]+)/g,
+];
 
-  // \bibitem is treated as an inline bib entry.
-  const braceDef: [RegExp, SymKind][] = [
-    [/\\newtheorem\*?\s*\{([^}]*)\}/g, "theorem"],
-    [/\\(?:newenvironment|renewenvironment)\s*\{([^}]*)\}/g, "environment"],
-    [/\\newglossaryentry\s*\{([^}]*)\}/g, "glossary"],
-    [/\\newacronym\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g, "glossary"],
-    [/\\bibitem\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g, "bibentry"],
-  ];
-  for (const [re, kind] of braceDef) {
-    for (const m of text.matchAll(re)) {
+function collectMacroDefinitions(sink: SymSink): void {
+  for (const re of MACRO_PATTERNS) {
+    for (const m of sink.text.matchAll(re)) {
+      const nameStart = m.index + m[0].lastIndexOf(`\\${m[1]}`) + 1;
+      pushSym(
+        sink,
+        sink.defs,
+        "macro",
+        m[1],
+        spanFromMatch(m.index, m[0], nameStart, m[1].length),
+      );
+    }
+  }
+}
+
+// \bibitem is treated as an inline bib entry.
+const BRACE_DEFINITIONS: readonly [RegExp, SymKind][] = [
+  [/\\newtheorem\*?\s*\{([^}]*)\}/g, "theorem"],
+  [/\\(?:newenvironment|renewenvironment)\s*\{([^}]*)\}/g, "environment"],
+  [/\\newglossaryentry\s*\{([^}]*)\}/g, "glossary"],
+  [/\\newacronym\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g, "glossary"],
+  [/\\bibitem\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g, "bibentry"],
+];
+
+function collectBraceDefinitions(sink: SymSink): void {
+  for (const [re, kind] of BRACE_DEFINITIONS) {
+    for (const m of sink.text.matchAll(re)) {
       const start = m.index + m[0].lastIndexOf("{") + 1;
-      push(defs, kind, m[1].trim(), m.index, m.index + m[0].length, start, start + m[1].length);
+      pushSym(
+        sink,
+        sink.defs,
+        kind,
+        m[1].trim(),
+        spanFromMatch(m.index, m[0], start, m[1].length),
+      );
     }
   }
+}
 
-  // --- Uses ---
+// Multi-key commands: \ref-family and \cite-family. One use per key.
+function pushKeys(
+  sink: SymSink,
+  whole: string,
+  wholeIdx: number,
+  group: string,
+  kind: SymKind,
+): void {
+  const keyBase = wholeIdx + whole.lastIndexOf("{") + 1;
+  const partRe = /[^,]+/g;
+  for (const pm of group.matchAll(partRe)) {
+    const seg = pm[0];
+    const key = seg.trim();
+    if (!key || key === "*") continue;
+    const lead = seg.length - seg.trimStart().length;
+    const nameFrom = keyBase + pm.index + lead;
+    pushSym(
+      sink,
+      sink.uses,
+      kind,
+      key,
+      spanFromMatch(wholeIdx, whole, nameFrom, key.length),
+    );
+  }
+}
 
-  // Multi-key commands: \ref-family and \cite-family. One use per key.
-  const pushKeys = (whole: string, wholeIdx: number, group: string, kind: SymKind) => {
-    const keyBase = wholeIdx + whole.lastIndexOf("{") + 1;
-    const partRe = /[^,]+/g;
-    for (const pm of group.matchAll(partRe)) {
-      const seg = pm[0];
-      const key = seg.trim();
-      if (!key || key === "*") continue;
-      const lead = seg.length - seg.trimStart().length;
-      const nameFrom = keyBase + pm.index + lead;
-      push(uses, kind, key, wholeIdx, wholeIdx + whole.length, nameFrom, nameFrom + key.length);
+const KEY_USE_PATTERNS: readonly [RegExp, SymKind][] = [
+  [
+    /\\(?:ref|eqref|autoref|cref|Cref|cpageref|pageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{([^}]*)\}/g,
+    "ref",
+  ],
+  [
+    /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g,
+    "cite",
+  ],
+];
+
+function collectKeyUses(sink: SymSink): void {
+  for (const [re, kind] of KEY_USE_PATTERNS) {
+    for (const m of sink.text.matchAll(re)) {
+      pushKeys(sink, m[0], m.index, m[1], kind);
     }
-  };
-
-  const ref = /\\(?:ref|eqref|autoref|cref|Cref|cpageref|pageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{([^}]*)\}/g;
-  for (const m of text.matchAll(ref)) pushKeys(m[0], m.index, m[1], "ref");
-
-  const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
-  for (const m of text.matchAll(cite)) pushKeys(m[0], m.index, m[1], "cite");
-
-  const gls = /\\(?:gls|Gls|GLS|glspl|Glspl|acrshort|acrlong|acrfull|acs|acl|ac)\s*\{([^}]*)\}/g;
-  for (const m of text.matchAll(gls)) {
-    const start = m.index + m[0].lastIndexOf("{") + 1;
-    push(uses, "glossaryuse", m[1].trim(), m.index, m.index + m[0].length, start, start + m[1].length);
   }
-  const beginEnv = /\\begin\s*\{([^}]*)\}/g;
-  for (const m of text.matchAll(beginEnv)) {
-    const start = m.index + m[0].lastIndexOf("{") + 1;
-    push(uses, "envuse", m[1].trim(), m.index, m.index + m[0].length, start, start + m[1].length);
+}
+
+const BRACE_USE_PATTERNS: readonly [RegExp, SymKind][] = [
+  [
+    /\\(?:gls|Gls|GLS|glspl|Glspl|acrshort|acrlong|acrfull|acs|acl|ac)\s*\{([^}]*)\}/g,
+    "glossaryuse",
+  ],
+  [/\\begin\s*\{([^}]*)\}/g, "envuse"],
+];
+
+function collectBraceUses(sink: SymSink): void {
+  for (const [re, kind] of BRACE_USE_PATTERNS) {
+    for (const m of sink.text.matchAll(re)) {
+      const start = m.index + m[0].lastIndexOf("{") + 1;
+      pushSym(
+        sink,
+        sink.uses,
+        kind,
+        m[1].trim(),
+        spanFromMatch(m.index, m[0], start, m[1].length),
+      );
+    }
   }
-  const dir = dirname(path);
+}
+
+function collectInputEdges(sink: SymSink, dir: string): void {
   const input = /\\(?:input|include)\s*\{([^}]*)\}/g;
-  for (const m of text.matchAll(input)) {
+  for (const m of sink.text.matchAll(input)) {
     const start = m.index + m[0].lastIndexOf("{") + 1;
     const raw = m[1].trim();
-    push(uses, "inputedge", raw, m.index, m.index + m[0].length, start, start + m[1].length, {
-      target: joinInput(dir, raw),
-    });
+    pushSym(
+      sink,
+      sink.uses,
+      "inputedge",
+      raw,
+      spanFromMatch(m.index, m[0], start, m[1].length),
+      { target: joinInput(dir, raw) },
+    );
   }
+}
+
+export function parseFile(path: string, rawText: string): FileSymbols {
+  if (path.toLowerCase().endsWith(".typ")) return parseTypstFile(path, rawText);
+  if (/\.(?:md|markdown)$/i.test(path)) return parseMarkdownFile(path, rawText);
+  const text = maskComments(rawText);
+  const defs: Sym[] = [];
+  const uses: Sym[] = [];
+  const sink: SymSink = { path, text, defs, uses, lineAt: lineIndex(text) };
+
+  if (path.endsWith(".bib")) {
+    collectBibEntries(sink);
+    return { file: path, defs, uses };
+  }
+
+  collectSections(sink);
+  collectLabels(sink);
+  collectMacroDefinitions(sink);
+  collectBraceDefinitions(sink);
+  collectKeyUses(sink);
+  collectBraceUses(sink);
+  collectInputEdges(sink, dirname(path));
 
   return { file: path, defs, uses };
 }

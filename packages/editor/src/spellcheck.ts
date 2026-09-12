@@ -1131,6 +1131,94 @@ function localGrammarFallback(
   return diagnostics;
 }
 
+function grammarCategoryHidden(
+  kind: string,
+  showRegionalism: boolean,
+  showWordChoice: boolean,
+): boolean {
+  if (!showRegionalism && /regional/i.test(kind)) return true;
+  return !showWordChoice && /word.?choice/i.test(kind);
+}
+
+function proseGrammarDiagnostics(
+  h: SpellHost,
+  projectId: string | null,
+  path: string,
+  text: string,
+  map: number[],
+  diags: GrammarDiag[],
+  prefs: { showRegionalism: boolean; showWordChoice: boolean },
+): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const d of diags) {
+    // Category mutes from Settings (e.g. hide all
+    // regionalism/word-choice).
+    if (
+      grammarCategoryHidden(d.kind, prefs.showRegionalism, prefs.showWordChoice)
+    ) {
+      continue;
+    }
+    if (d.from >= map.length) continue;
+    const from = map[d.from];
+    const to = (map[Math.min(d.to, map.length) - 1] ?? from) + 1;
+    if (to <= from) continue;
+    const word = text.slice(from, to);
+    if (h.isWordIgnored(projectId, word)) continue;
+    // regionalism ("Spanner"), word choice, or any style suggestion.
+    out.push(
+      proofreadingDiagnostic(
+        h,
+        projectId,
+        word,
+        d.suggestions,
+        {
+          from,
+          to,
+          severity: "warning",
+          message: d.message,
+        },
+        {
+          kind: d.kind,
+          message: d.message,
+          path,
+          suppressionKey: grammarSuppressionKey(null, text, from),
+        },
+      ),
+    );
+  }
+  return out;
+}
+
+async function mainThreadGrammarDiagnostics(
+  h: SpellHost,
+  view: EditorView,
+  path: string,
+): Promise<Diagnostic[]> {
+  if (!h.lintGrammar) {
+    return localGrammarFallback(view.state.doc.toString(), path, h);
+  }
+  const projectId = h.getProjectId();
+  const { showRegionalism, showWordChoice } = h.getLintPrefs();
+  const text = view.state.doc.toString();
+  // Guard: masking + WASM grammar linting both run on the main thread,
+  // so on a very large document they would jank the editor after the
+  // debounce. Skip the pass above a generous cap (covers normal
+  // single-file docs).
+  if (text.length > MAX_GRAMMAR_CHARS) {
+    return localGrammarFallback(text, path, h);
+  }
+  // Lint compacted prose (no masking gaps), then map spans back to the
+  // document.
+  const { prose, map } = /\.(?:md|markdown)$/i.test(path)
+    ? markdownToProse(text)
+    : maskToProse(text);
+  const diags = await h.lintGrammar(prose, prose.length);
+  return proseGrammarDiagnostics(h, projectId, path, text, map, diags, {
+    showRegionalism,
+    showWordChoice,
+  });
+}
+
 export function createHarperLinter(includeSpelling = false) {
   return linter(
     async (view): Promise<Diagnostic[]> =>
@@ -1152,60 +1240,7 @@ export function createHarperLinter(includeSpelling = false) {
         }
         if (workerDiagnostics) return workerDiagnostics;
         try {
-          if (!h.lintGrammar) {
-            return localGrammarFallback(view.state.doc.toString(), path, h);
-          }
-          const projectId = h.getProjectId();
-          const { showRegionalism, showWordChoice } = h.getLintPrefs();
-          const text = view.state.doc.toString();
-          // Guard: masking + WASM grammar linting both run on the main thread,
-          // so on a very large document they would jank the editor after the
-          // debounce. Skip the pass above a generous cap (covers normal
-          // single-file docs).
-          if (text.length > MAX_GRAMMAR_CHARS) {
-            return localGrammarFallback(text, path, h);
-          }
-          // Lint compacted prose (no masking gaps), then map spans back to the
-          // document.
-          const { prose, map } = /\.(?:md|markdown)$/i.test(path)
-            ? markdownToProse(text)
-            : maskToProse(text);
-          const diags = await h.lintGrammar(prose, prose.length);
-          const out: Diagnostic[] = [];
-          for (const d of diags) {
-            // Category mutes from Settings (e.g. hide all
-            // regionalism/word-choice).
-            if (!showRegionalism && /regional/i.test(d.kind)) continue;
-            if (!showWordChoice && /word.?choice/i.test(d.kind)) continue;
-            if (d.from >= map.length) continue;
-            const from = map[d.from];
-            const to = (map[Math.min(d.to, map.length) - 1] ?? from) + 1;
-            if (to <= from) continue;
-            const word = text.slice(from, to);
-            if (h.isWordIgnored(projectId, word)) continue;
-            // regionalism ("Spanner"), word choice, or any style suggestion.
-            out.push(
-              proofreadingDiagnostic(
-                h,
-                projectId,
-                word,
-                d.suggestions,
-                {
-                  from,
-                  to,
-                  severity: "warning",
-                  message: d.message,
-                },
-                {
-                  kind: d.kind,
-                  message: d.message,
-                  path,
-                  suppressionKey: grammarSuppressionKey(null, text, from),
-                },
-              ),
-            );
-          }
-          return out;
+          return await mainThreadGrammarDiagnostics(h, view, path);
         } catch {
           return localGrammarFallback(view.state.doc.toString(), path, h);
         }

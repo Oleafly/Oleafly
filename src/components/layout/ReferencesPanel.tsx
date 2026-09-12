@@ -407,6 +407,33 @@ export function ReferencesPanel() {
     );
   };
 
+  const renderPanelBreadcrumbRow = () => (
+    <div className="mt-1.5 flex min-w-0 items-center gap-2 px-0.5">
+      <PanelBreadcrumb
+        project={projectName || undefined}
+        path={activePath}
+      />
+      {view === "results" && query ? (
+        <Tooltip label={query.title} side="bottom">
+          <span className="ml-auto max-w-[48%] shrink truncate text-[9px] font-medium text-sidebar-foreground/75">
+            {query.title}
+          </span>
+        </Tooltip>
+      ) : null}
+      {notice ? (
+        <Tooltip label={notice} side="bottom">
+          <span
+            className={`flex shrink-0 items-center text-amber-600 dark:text-amber-400 ${
+              view === "results" && query ? "" : "ml-auto"
+            }`}
+          >
+            <Info aria-hidden className="size-3.5" />
+          </span>
+        </Tooltip>
+      ) : null}
+    </div>
+  );
+
   return (
     <>
       <section
@@ -516,30 +543,7 @@ export function ReferencesPanel() {
             </button>
           ) : null}
         </div>
-        <div className="mt-1.5 flex min-w-0 items-center gap-2 px-0.5">
-          <PanelBreadcrumb
-            project={projectName || undefined}
-            path={activePath}
-          />
-          {view === "results" && query ? (
-            <Tooltip label={query.title} side="bottom">
-              <span className="ml-auto max-w-[48%] shrink truncate text-[9px] font-medium text-sidebar-foreground/75">
-                {query.title}
-              </span>
-            </Tooltip>
-          ) : null}
-          {notice ? (
-            <Tooltip label={notice} side="bottom">
-              <span
-                className={`flex shrink-0 items-center text-amber-600 dark:text-amber-400 ${
-                  view === "results" && query ? "" : "ml-auto"
-                }`}
-              >
-                <Info aria-hidden className="size-3.5" />
-              </span>
-            </Tooltip>
-          ) : null}
-        </div>
+        {renderPanelBreadcrumbRow()}
       </div>
 
       {notice ? (

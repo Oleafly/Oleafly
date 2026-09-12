@@ -65,7 +65,7 @@ import {
   X,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type GitFileChange, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -578,6 +578,15 @@ export function blockedModelMessage(reason: string): string {
   return trimmed
     ? i18n.t(($) => $.ai.models.blockedWithReason, { reason: trimmed })
     : i18n.t(($) => $.ai.models.blocked);
+}
+
+function stillAddedAt(path: string) {
+  return (entry: GitFileChange) =>
+    entry.path === path && (entry.status === "?" || entry.status === "A");
+}
+
+export function appendHandoffPrompt(existing: string, prompt: string): string {
+  return existing.trim() ? `${existing.trimEnd()}\n\n${prompt}` : prompt;
 }
 
 function describeProbeFailure(error: unknown): string {
@@ -1301,7 +1310,7 @@ export function ChatCore() {
     mentionMenuDismissedInput !== input;
 
   // Load sticky agent memory when the project changes. Also drop the in-run
-  // todo checklist, which is not project-scoped, so project A's plan does not
+  // checklist, which is not project-scoped, so project A's plan does not
   // linger under project B.
   useEffect(() => {
     if (projectId) useAgentMemoryStore.getState().load(projectId);
@@ -2275,10 +2284,7 @@ ${sandboxedCustom}`;
                   try {
                     const headContent = await gitShow(runProjectId, nextOid, path);
                     const change = turn.changedFiles[path];
-                    const remainsAdded = workingChanges?.some(
-                      (entry) =>
-                        entry.path === path && (entry.status === "?" || entry.status === "A"),
-                    );
+                    const remainsAdded = workingChanges?.some(stillAddedAt(path));
                     if (
                       change.created &&
                       headContent === "" &&
@@ -2389,6 +2395,27 @@ ${sandboxedCustom}`;
           call.created = true;
         }
       };
+      const recordWrittenFile = (call: OutputToolCall, record: Record<string, unknown>) => {
+        const args = argRecord(call.args);
+        const isDirectory = call.name === "create_file" && (record.is_dir === true || args?.is_dir === true);
+        if (isDirectory || !call.path) return;
+        assistantOutputs.openFile(call.path, "write");
+        if (!runChatId || !trackedTurnId || call.beforeContent === undefined) return;
+        const cachedAfter = useFilesStore.getState().files[call.path]?.content;
+        const argumentContent = args?.content;
+        const afterContent =
+          cachedAfter ?? (typeof argumentContent === "string" ? argumentContent : "");
+        useAgentFileChangesStore
+          .getState()
+          .recordFileChange(
+            runChatId,
+            trackedTurnId,
+            call.path,
+            call.beforeContent,
+            afterContent,
+            call.created ? { created: true } : undefined,
+          );
+      };
       const mirrorToolOutput = (
         call: OutputToolCall | undefined,
         output: unknown,
@@ -2402,31 +2429,9 @@ ${sandboxedCustom}`;
             call.name === "replace_in_file" ||
             call.name === "create_file")
         ) {
-          const args = argRecord(call.args);
-          const isDirectory = call.name === "create_file" && (record.is_dir === true || args?.is_dir === true);
-          if (!isDirectory && call.path) {
-            assistantOutputs.openFile(call.path, "write");
-            if (runChatId && trackedTurnId && call.beforeContent !== undefined) {
-              const cachedAfter = useFilesStore.getState().files[call.path]?.content;
-              const argumentContent = args?.content;
-              const afterContent =
-                cachedAfter ?? (typeof argumentContent === "string" ? argumentContent : "");
-              useAgentFileChangesStore
-                .getState()
-                .recordFileChange(
-                  runChatId,
-                  trackedTurnId,
-                  call.path,
-                  call.beforeContent,
-                  afterContent,
-                  call.created ? { created: true } : undefined,
-                );
-            }
-          }
+          recordWrittenFile(call, record);
         }
-        if (call.name === "compile") {
-          if (record?.success === true) assistantOutputs.openPdf();
-        }
+        if (call.name === "compile" && record?.success === true) assistantOutputs.openPdf();
         if (
           (call.name === "run_command" && record?.exec === true && record.exit_code === 0) ||
           (call.name === "git_commit" && record?.success === true)
@@ -2852,8 +2857,7 @@ ${sandboxedCustom}`;
       void send(h.prompt);
       return;
     }
-    const existing = inputRef.current;
-    setInput(existing.trim() ? `${existing.replace(/\s+$/u, "")}\n\n${h.prompt}` : h.prompt);
+    setInput(appendHandoffPrompt(inputRef.current, h.prompt));
   }, [handoffPending, streaming, providerConfigReady, apiKey, send, setInput]);
 
   const prevProjectIdRef = useRef<string | null | undefined>(undefined);
@@ -2890,29 +2894,33 @@ ${sandboxedCustom}`;
   }, [projectId, trackRunRequestId, dropPendingPersist]);
 
   useEffect(() => {
+    type ChatsState = ReturnType<typeof useChatsStore.getState>;
+    const adoptActiveRun = (run: NonNullable<ReturnType<typeof activeChatRun>>, cs: ChatsState) => {
+      setApprovalModeLocked(true);
+      if (!run.chatId || run.chatId !== cs.activeId) return;
+      abortRef.current = run.controller;
+      setStreaming(true);
+      setPendingApproval(run.pendingApproval);
+      if (runOwnerRef.current) return;
+      const current = cs.liveOrSaved(run.chatId);
+      if (current) setMessages(current);
+    };
+    const releaseRunState = (cs: ChatsState) => {
+      setStreaming(false);
+      setApprovalModeLocked(false);
+      setThinkingText(null);
+      setPendingApproval(null);
+      if (cs.projectId !== projectId || !cs.activeId) return;
+      const chat = cs.byId(cs.activeId);
+      if (chat) setMessages(chat.messages);
+    };
     const sync = () => {
       const run = activeChatRun();
       const cs = useChatsStore.getState();
       if (run && run.projectId === projectId && cs.projectId === projectId) {
-        setApprovalModeLocked(true);
-        if (run.chatId && run.chatId === cs.activeId) {
-          abortRef.current = run.controller;
-          setStreaming(true);
-          setPendingApproval(run.pendingApproval);
-          if (!runOwnerRef.current) {
-            const current = cs.liveOrSaved(run.chatId);
-            if (current) setMessages(current);
-          }
-        }
+        adoptActiveRun(run, cs);
       } else if (!run && !runOwnerRef.current) {
-        setStreaming(false);
-        setApprovalModeLocked(false);
-        setThinkingText(null);
-        setPendingApproval(null);
-        if (cs.projectId === projectId && cs.activeId) {
-          const chat = cs.byId(cs.activeId);
-          if (chat) setMessages(chat.messages);
-        }
+        releaseRunState(cs);
       }
     };
     sync();

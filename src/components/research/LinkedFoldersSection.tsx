@@ -35,9 +35,15 @@ interface OpenPreview {
   error: string | null;
 }
 
-function joinPath(root: string, relative: string): string {
+function trimTrailingSeparators(value: string): string {
+  let end = value.length;
+  while (end > 0 && (value[end - 1] === "/" || value[end - 1] === "\\")) end -= 1;
+  return value.slice(0, end);
+}
+
+export function joinPath(root: string, relative: string): string {
   const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
-  return `${root.replace(/[\\/]+$/, "")}${separator}${relative.replaceAll("/", separator)}`;
+  return `${trimTrailingSeparators(root)}${separator}${relative.replaceAll("/", separator)}`;
 }
 
 export function LinkedFoldersSection() {
@@ -58,9 +64,9 @@ export function LinkedFoldersSection() {
   const previewBody = () => {
     if (!preview?.content) {
       return (
-        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+        <output className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-        </p>
+        </output>
       );
     }
     if (preview.content.isBinary) {
@@ -127,13 +133,12 @@ export function LinkedFoldersSection() {
     const entries = listings[key];
     if (loading[key]) {
       return (
-        <p
-          role="status"
+        <output
           className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
           <Loader2 className="size-3 animate-spin" /> {t(($) => $.common.state.loading)}
-        </p>
+        </output>
       );
     }
     if (errors[key]) {

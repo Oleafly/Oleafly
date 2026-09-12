@@ -427,10 +427,10 @@ export function ResearchTasksPanel({
       ) : null}
 
       {loading && tasks.length === 0 ? (
-        <div role="status" className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+        <output className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />{" "}
           {t(($) => $.researchTools.tasks.panel.loading)}
-        </div>
+        </output>
       ) : taskListBody()}
 
       {selectedTask ? (

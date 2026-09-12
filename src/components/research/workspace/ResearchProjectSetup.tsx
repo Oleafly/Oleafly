@@ -84,6 +84,91 @@ function previewLanguage(path: string): string | undefined {
   return extension;
 }
 
+function causeDetail(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
+function previewPanel({
+  preview,
+  previewing,
+  selectedPreviewPath,
+  previewTree,
+  previewPane,
+}: Readonly<{
+  preview: ResearchProjectPreview | null;
+  previewing: boolean;
+  selectedPreviewPath: string | null;
+  previewTree: () => React.ReactNode;
+  previewPane: () => React.ReactNode;
+}>) {
+  return (
+    <div className="flex h-[32rem] flex-col overflow-hidden rounded-lg border bg-background">
+      <div className="flex h-9 items-center justify-between border-b bg-sidebar px-3">
+        <div className="flex items-center gap-1.5">
+          <FolderTree aria-hidden="true" className="size-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
+            {i18n.t(($) => $.researchTools.setup.previewTitle)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            {preview
+              ? i18n.t(($) => $.researchTools.setup.mainDocument, { path: preview.mainDocument })
+              : "\u00a0"}
+          </span>
+          {previewing ? (
+            <Loader2
+              aria-label={i18n.t(($) => $.researchTools.setup.buildingPreview)}
+              className="size-3.5 animate-spin text-muted-foreground"
+            />
+          ) : null}
+        </div>
+      </div>
+      <div className="grid min-h-0 flex-1 overflow-hidden md:grid-cols-[minmax(12rem,0.42fr)_minmax(0,1fr)]">
+        <div className="overflow-auto border-r bg-sidebar p-1.5">
+          {previewing && !preview ? (
+            <ul className="space-y-1 p-1" aria-hidden="true">
+              {PREVIEW_TREE_SKELETON.map((width) => (
+                <li
+                  key={width}
+                  className="h-5 animate-pulse rounded bg-muted"
+                  style={{ width: `${width}%` }}
+                />
+              ))}
+            </ul>
+          ) : previewTree()}
+        </div>
+        <div className="flex min-w-0 flex-col overflow-hidden">
+          {preview && selectedPreviewPath ? (
+            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b bg-card px-3">
+              <FileIcon
+                name={selectedPreviewPath.split("/").pop() ?? selectedPreviewPath}
+                className="size-4 shrink-0"
+              />
+              <span className="truncate text-xs text-foreground">
+                {selectedPreviewPath.split("/").pop()}
+              </span>
+            </div>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-auto">
+            {previewing && !preview ? (
+              <div className="space-y-2 px-4 py-3" aria-hidden="true">
+                {PREVIEW_TEXT_SKELETON.map((width) => (
+                  <div
+                    key={width}
+                    className="h-3 animate-pulse rounded bg-muted"
+                    style={{ width: `${width}%` }}
+                  />
+                ))}
+              </div>
+            ) : previewPane()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ResearchProjectSetup({
   open,
   onClose,
@@ -160,6 +245,32 @@ export function ResearchProjectSetup({
     };
   }, [engine, name, open, starter]);
 
+  const reportSetupFailure = async (cause: unknown) => {
+    const detail = causeDetail(cause);
+    if (cause instanceof ResearchProjectSetupStageError && cause.stage === "task") {
+      if (cause.projectId) {
+        try {
+          await onCreated(cause.projectId);
+        } catch (error_) {
+          setError(
+            t(($) => $.researchTools.setup.errorProjectOnly, {
+              detail,
+              openDetail: causeDetail(error_),
+            }),
+          );
+          return;
+        }
+      }
+      setError(t(($) => $.researchTools.setup.errorTask, { detail }));
+      return;
+    }
+    if (cause instanceof ResearchProjectSetupStageError && cause.stage === "open") {
+      setError(t(($) => $.researchTools.setup.errorOpen, { detail }));
+      return;
+    }
+    setError(detail);
+  };
+
   const create = async () => {
     if (!preview || previewing || creating) return;
     setCreating(true);
@@ -183,25 +294,7 @@ export function ResearchProjectSetup({
       });
       (onFinished ?? onClose)();
     } catch (cause) {
-      const detail = cause instanceof Error ? cause.message : String(cause);
-      if (cause instanceof ResearchProjectSetupStageError && cause.stage === "task") {
-        if (cause.projectId) {
-          try {
-            await onCreated(cause.projectId);
-          } catch (error_) {
-            const openDetail = error_ instanceof Error ? error_.message : String(error_);
-            setError(
-              t(($) => $.researchTools.setup.errorProjectOnly, { detail, openDetail }),
-            );
-            return;
-          }
-        }
-        setError(t(($) => $.researchTools.setup.errorTask, { detail }));
-      } else if (cause instanceof ResearchProjectSetupStageError && cause.stage === "open") {
-        setError(t(($) => $.researchTools.setup.errorOpen, { detail }));
-      } else {
-        setError(detail);
-      }
+      await reportSetupFailure(cause);
     } finally {
       setCreating(false);
     }
@@ -360,70 +453,7 @@ export function ResearchProjectSetup({
               </div>
             </div>
           </div>
-          <div className="flex h-[32rem] flex-col overflow-hidden rounded-lg border bg-background">
-            <div className="flex h-9 items-center justify-between border-b bg-sidebar px-3">
-              <div className="flex items-center gap-1.5">
-                <FolderTree aria-hidden="true" className="size-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-                  {t(($) => $.researchTools.setup.previewTitle)}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-muted-foreground">
-                  {preview
-                    ? t(($) => $.researchTools.setup.mainDocument, { path: preview.mainDocument })
-                    : "\u00a0"}
-                </span>
-                {previewing ? (
-                  <Loader2
-                    aria-label={t(($) => $.researchTools.setup.buildingPreview)}
-                    className="size-3.5 animate-spin text-muted-foreground"
-                  />
-                ) : null}
-              </div>
-            </div>
-            <div className="grid min-h-0 flex-1 overflow-hidden md:grid-cols-[minmax(12rem,0.42fr)_minmax(0,1fr)]">
-              <div className="overflow-auto border-r bg-sidebar p-1.5">
-                {previewing && !preview ? (
-                  <ul className="space-y-1 p-1" aria-hidden="true">
-                    {PREVIEW_TREE_SKELETON.map((width) => (
-                      <li
-                        key={width}
-                        className="h-5 animate-pulse rounded bg-muted"
-                        style={{ width: `${width}%` }}
-                      />
-                    ))}
-                  </ul>
-                ) : previewTree()}
-              </div>
-              <div className="flex min-w-0 flex-col overflow-hidden">
-                {preview && selectedPreviewPath ? (
-                  <div className="flex h-9 shrink-0 items-center gap-1.5 border-b bg-card px-3">
-                    <FileIcon
-                      name={selectedPreviewPath.split("/").pop() ?? selectedPreviewPath}
-                      className="size-4 shrink-0"
-                    />
-                    <span className="truncate text-xs text-foreground">
-                      {selectedPreviewPath.split("/").pop()}
-                    </span>
-                  </div>
-                ) : null}
-                <div className="min-h-0 flex-1 overflow-auto">
-                  {previewing && !preview ? (
-                    <div className="space-y-2 px-4 py-3" aria-hidden="true">
-                      {PREVIEW_TEXT_SKELETON.map((width) => (
-                        <div
-                          key={width}
-                          className="h-3 animate-pulse rounded bg-muted"
-                          style={{ width: `${width}%` }}
-                        />
-                      ))}
-                    </div>
-                  ) : previewPane()}
-                </div>
-              </div>
-            </div>
-          </div>
+          {previewPanel({ preview, previewing, selectedPreviewPath, previewTree, previewPane })}
         </div>
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
         <DialogFooter>

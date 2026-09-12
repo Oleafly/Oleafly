@@ -41,6 +41,39 @@ export function mergeAcpEvents(current: readonly AcpEvent[], incoming: readonly 
   return [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
 }
 
+function applySessionEvent(sessions: Record<string, AcpSession>, event: AcpEvent): void {
+  const session = sessions[event.sessionId];
+  if (!session || event.sequence <= session.lastSequence) return;
+  sessions[event.sessionId] = {
+    ...session,
+    status: statusForEvent(event, session.status),
+    turnId: event.turnId,
+    updatedAt: event.timestamp,
+    lastSequence: event.sequence,
+  };
+}
+
+function clearsPermissions(event: AcpEvent): boolean {
+  if (event.kind === "turn_complete") return true;
+  return event.kind === "status" && event.data.status !== "running" && event.data.status !== "ready";
+}
+
+function applyPermissionEvent(permissions: Record<string, AcpPermission[]>, event: AcpEvent): void {
+  if (event.kind === "permission") {
+    const permission = event.data as unknown as AcpPermission;
+    const current = permissions[event.sessionId] ?? [];
+    if (permission.expiresAt > Date.now() && !current.some((value) => value.id === permission.id)) {
+      permissions[event.sessionId] = [...current, permission];
+    }
+    return;
+  }
+  if (event.kind === "permission_resolved") {
+    permissions[event.sessionId] = (permissions[event.sessionId] ?? []).filter((value) => value.id !== event.data.id);
+    return;
+  }
+  if (clearsPermissions(event)) permissions[event.sessionId] = [];
+}
+
 let catalogRequest = 0;
 
 export const useAcpSessionsStore = create<AcpState>((set, get) => ({
@@ -114,20 +147,8 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       const group = grouped.get(event.sessionId) ?? [];
       group.push(event);
       grouped.set(event.sessionId, group);
-      const session = sessions[event.sessionId];
-      if (session && event.sequence > session.lastSequence) {
-        const status = statusForEvent(event, session.status);
-        sessions[event.sessionId] = { ...session, status, turnId: event.turnId, updatedAt: event.timestamp, lastSequence: event.sequence };
-      }
-      if (event.kind === "permission") {
-        const permission = event.data as unknown as AcpPermission;
-        const current = permissions[event.sessionId] ?? [];
-        if (permission.expiresAt > Date.now() && !current.some((value) => value.id === permission.id)) permissions[event.sessionId] = [...current, permission];
-      } else if (event.kind === "permission_resolved") {
-        permissions[event.sessionId] = (permissions[event.sessionId] ?? []).filter((value) => value.id !== event.data.id);
-      } else if (event.kind === "turn_complete" || (event.kind === "status" && event.data.status !== "running" && event.data.status !== "ready")) {
-        permissions[event.sessionId] = [];
-      }
+      applySessionEvent(sessions, event);
+      applyPermissionEvent(permissions, event);
     }
     for (const [id, group] of grouped) events[id] = mergeAcpEvents(events[id] ?? [], group);
     return { events, sessions, permissions };

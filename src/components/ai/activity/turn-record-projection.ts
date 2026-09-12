@@ -77,59 +77,83 @@ function appendText(row: ChatMessage, text: string) {
   row.content = row.content ? `${row.content}\n\n${trimmed}` : trimmed;
 }
 
+type StoreItem = RecordedStoreItem["item"];
+type SubAgentActivityItem = Extract<StoreItem, { type: "subAgentActivity" }>;
+
+function appendReasoning(
+  row: ChatMessage,
+  id: string,
+  summary: readonly string[],
+  content: readonly string[],
+) {
+  const text = [...summary, ...content].join("\n").trim();
+  if (!text) return;
+  row.reasoningBlocks = [
+    ...(row.reasoningBlocks ?? []),
+    { id, text, ms: 0, beforeTool: row.toolCalls?.length ?? 0 },
+  ];
+}
+
+function subagentEntry(item: SubAgentActivityItem): SubagentEntry {
+  return {
+    id: item.agentId,
+    label: item.label,
+    state: item.kind,
+    detail: item.detail ?? undefined,
+    runtime: item.runtime ?? undefined,
+    sessionId: item.sessionId ?? undefined,
+    providerId: item.providerId ?? undefined,
+    modelId: item.modelId ?? undefined,
+    agentId: item.runtimeAgentId ?? undefined,
+  };
+}
+
+function mergeSubagent(list: readonly SubagentEntry[], entry: SubagentEntry): SubagentEntry[] {
+  const index = list.findIndex((existing) => existing.id === entry.id);
+  if (index < 0) return [...list, entry];
+  return list.map((existing, at) => (at === index ? entry : existing));
+}
+
+function applyRecorded(turn: TurnRecord, state: TurnRows, recorded: RecordedStoreItem) {
+  const item = recorded.item;
+  if (item.type === "userMessage" || item.type === "steeringUserMessage") {
+    state.rows.push({ id: recorded.id, role: "user", content: item.text });
+    state.assistant = null;
+    return;
+  }
+  if (item.type === "agentMessage" || item.type === "plan") {
+    appendText(assistantRow(turn, state), item.text);
+    return;
+  }
+  if (item.type === "reasoning") {
+    appendReasoning(assistantRow(turn, state), recorded.id, item.summary, item.content);
+    return;
+  }
+  if (item.type === "subAgentActivity") {
+    const row = assistantRow(turn, state);
+    row.subagents = mergeSubagent(row.subagents ?? [], subagentEntry(item));
+    return;
+  }
+  if (item.type === "error") {
+    state.rows.push({ id: recorded.id, role: "assistant", content: item.message });
+    state.assistant = null;
+    return;
+  }
+  const tool = toolEntry(recorded);
+  if (tool) {
+    const row = assistantRow(turn, state);
+    row.toolCalls = [...(row.toolCalls ?? []), tool];
+  }
+}
+
+function hasErrorRow(rows: readonly ChatMessage[], error: string): boolean {
+  return rows.some((row) => row.role === "assistant" && row.content === error);
+}
+
 function projectTurn(turn: TurnRecord): ChatMessage[] {
   const state: TurnRows = { rows: [], assistant: null };
-  for (const recorded of turn.items) {
-    const item = recorded.item;
-    if (item.type === "userMessage" || item.type === "steeringUserMessage") {
-      state.rows.push({ id: recorded.id, role: "user", content: item.text });
-      state.assistant = null;
-      continue;
-    }
-    if (item.type === "agentMessage" || item.type === "plan") {
-      appendText(assistantRow(turn, state), item.text);
-      continue;
-    }
-    if (item.type === "reasoning") {
-      const row = assistantRow(turn, state);
-      const text = [...item.summary, ...item.content].join("\n").trim();
-      if (!text) continue;
-      row.reasoningBlocks = [
-        ...(row.reasoningBlocks ?? []),
-        { id: recorded.id, text, ms: 0, beforeTool: row.toolCalls?.length ?? 0 },
-      ];
-      continue;
-    }
-    if (item.type === "subAgentActivity") {
-      const row = assistantRow(turn, state);
-      const entry: SubagentEntry = {
-        id: item.agentId,
-        label: item.label,
-        state: item.kind,
-        detail: item.detail ?? undefined,
-        runtime: item.runtime ?? undefined,
-        sessionId: item.sessionId ?? undefined,
-        providerId: item.providerId ?? undefined,
-        modelId: item.modelId ?? undefined,
-        agentId: item.runtimeAgentId ?? undefined,
-      };
-      const list = row.subagents ?? [];
-      const index = list.findIndex((existing) => existing.id === entry.id);
-      row.subagents = index >= 0 ? list.map((existing, at) => (at === index ? entry : existing)) : [...list, entry];
-      continue;
-    }
-    if (item.type === "error") {
-      state.rows.push({ id: recorded.id, role: "assistant", content: item.message });
-      state.assistant = null;
-      continue;
-    }
-    const tool = toolEntry(recorded);
-    if (tool) {
-      const row = assistantRow(turn, state);
-      row.toolCalls = [...(row.toolCalls ?? []), tool];
-    }
-  }
-  if (turn.error && !state.rows.some((row) => row.role === "assistant" && row.content === turn.error)) {
+  for (const recorded of turn.items) applyRecorded(turn, state, recorded);
+  if (turn.error && !hasErrorRow(state.rows, turn.error)) {
     state.rows.push({ id: `${turn.turnId}:error`, role: "assistant", content: turn.error });
   }
   return state.rows;

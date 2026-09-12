@@ -187,6 +187,38 @@ async function forwardSyncTexToRevealedLine(): Promise<void> {
   await forwardFromCursor();
 }
 
+async function revealPdfTarget(
+  page: number | undefined,
+  state: {
+    wantsPage: boolean;
+    syncTexReady: boolean;
+    editorRevealed: boolean;
+    switched: boolean;
+  },
+  notes: string[],
+): Promise<boolean> {
+  if (state.wantsPage) {
+    const pdfRevealed = await showPdfPage(
+      page as number,
+      state.switched ? 1500 : 0,
+    );
+    if (!pdfRevealed) {
+      notes.push(
+        "The PDF preview is not showing a document, so its page did not change.",
+      );
+    }
+    return pdfRevealed;
+  }
+  if (state.editorRevealed && state.syncTexReady) {
+    try {
+      await forwardSyncTexToRevealedLine();
+    } catch {
+      notes.push("The PDF preview stayed where it was.");
+    }
+  }
+  return false;
+}
+
 const revealLocationHost = async (target: {
   path?: string;
   line?: number;
@@ -211,17 +243,11 @@ const revealLocationHost = async (target: {
     if (!editorRevealed) notes.push(`Could not open ${target.path} in the editor.`);
   }
 
-  let pdfRevealed = false;
-  if (wantsPage) {
-    pdfRevealed = await showPdfPage(target.page as number, switched ? 1500 : 0);
-    if (!pdfRevealed) notes.push("The PDF preview is not showing a document, so its page did not change.");
-  } else if (editorRevealed && syncTexReady) {
-    try {
-      await forwardSyncTexToRevealedLine();
-    } catch {
-      notes.push("The PDF preview stayed where it was.");
-    }
-  }
+  const pdfRevealed = await revealPdfTarget(
+    target.page,
+    { wantsPage, syncTexReady, editorRevealed, switched },
+    notes,
+  );
 
   return {
     revealed: editorRevealed || pdfRevealed,

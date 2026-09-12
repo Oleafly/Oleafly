@@ -759,25 +759,107 @@ function CanvasInner({
   else if (pending) canvasHint = t("canvas.hintDrawing");
   else if (spacePressed) canvasHint = t("canvas.hintPanning");
 
+  const renderCanvasActions = () => (
+    <div
+      style={chromeStyle}
+      className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-full border p-1 shadow-md backdrop-blur-sm"
+    >
+      {showPreviewAction && onShowPreview && (
+        <Tooltip label={t("preview.showTooltip")}>
+          <button
+            type="button"
+            aria-label={t("preview.showLabel")}
+            onClick={onShowPreview}
+            className={cn(
+              "mr-0.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
+              chromeHover,
+            )}
+          >
+            <PanelRightOpen className="size-3.5" />
+            {t("preview.label")}
+          </button>
+        </Tooltip>
+      )}
+      <Tooltip label={canvasTheme === "dark" ? t("canvas.lightCanvas") : t("canvas.darkCanvas")}>
+        <button
+          type="button"
+          aria-label={t("canvas.toggleTheme")}
+          onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
+          className={cn(
+            "flex size-6 items-center justify-center rounded-full transition-colors",
+            chromeHover,
+          )}
+        >
+          {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+        </button>
+      </Tooltip>
+      <Tooltip label={showMinimap ? t("canvas.hideMinimap") : t("canvas.showMinimap")}>
+        <button
+          type="button"
+          aria-label={t("canvas.toggleMinimap")}
+          aria-pressed={showMinimap}
+          onClick={() => setShowMinimap((v) => !v)}
+          className={cn(
+            "flex size-6 items-center justify-center rounded-full transition-colors",
+            showMinimap ? minimapActiveClass : chromeHover,
+          )}
+        >
+          <MapIcon className="size-3.5" />
+        </button>
+      </Tooltip>
+    </div>
+  );
+
+  const renderInspectorPanel = () => (
+    !readOnly && (selectedNode || selectedEdge) && (
+      <div
+        data-tour="diagram-inspector"
+        role="complementary"
+        aria-label={t("canvas.shapeStyle")}
+        style={chromeStyle}
+        className="absolute right-2 top-12 z-10 max-h-[calc(100%-3.5rem)] w-56 overflow-y-auto rounded-lg border shadow-md backdrop-blur-sm"
+      >
+        <Inspector
+          node={selectedNode ? rfNodeToModel(selectedNode) : null}
+          edge={selectedEdge ? rfEdgeToModel(selectedEdge) : null}
+          onNodeChange={patchNode}
+          onEdgeChange={patchEdge}
+          onReorder={reorder}
+        />
+      </div>
+    )
+  );
+
+  const canvasSelectionFlag = () => (selectedNode || selectedEdge ? "true" : "false");
+  const canvasClassName = () =>
+    cn(
+      canvasDark ? "dark" : "light",
+      "relative min-h-0 flex-1",
+      pending && !spacePressed && "[&_.react-flow__pane]:cursor-crosshair",
+      spacePressed && !isPanning && "[&_.react-flow__pane]:cursor-grab",
+      spacePressed && isPanning && "[&_.react-flow__pane]:cursor-grabbing",
+    );
+  const canvasStyle = () => ({
+    background: canvasDark ? "#121212" : "#ffffff",
+    color: canvasDark ? "#e5e7eb" : "#0f172a",
+  });
+  const canvasPointerHandlers = () => ({
+    onPointerDown: readOnly ? undefined : onFlowPointerDown,
+    onPointerMove: readOnly ? undefined : onFlowPointerMove,
+    onPointerUp: readOnly ? undefined : onFlowPointerUp,
+    onPointerCancel: readOnly ? undefined : onFlowPointerUp,
+  });
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div
         data-tour="diagram-canvas"
-        data-tour-selection={selectedNode || selectedEdge ? "true" : "false"}
-        className={cn(
-          canvasDark ? "dark" : "light",
-          "relative min-h-0 flex-1",
-          pending && !spacePressed && "[&_.react-flow__pane]:cursor-crosshair",
-          spacePressed && !isPanning && "[&_.react-flow__pane]:cursor-grab",
-          spacePressed && isPanning && "[&_.react-flow__pane]:cursor-grabbing",
-        )}
-        style={{ background: canvasDark ? "#121212" : "#ffffff", color: canvasDark ? "#e5e7eb" : "#0f172a" }}
+        data-tour-selection={canvasSelectionFlag()}
+        className={canvasClassName()}
+        style={canvasStyle()}
         // Block the app-wide dev context menu on the canvas.
         onContextMenu={(e) => e.preventDefault()}
-        onPointerDown={readOnly ? undefined : onFlowPointerDown}
-        onPointerMove={readOnly ? undefined : onFlowPointerMove}
-        onPointerUp={readOnly ? undefined : onFlowPointerUp}
-        onPointerCancel={readOnly ? undefined : onFlowPointerUp}
+        {...canvasPointerHandlers()}
       >
         {!readOnly && <div
           data-tour="diagram-palette"
@@ -821,72 +903,9 @@ function CanvasInner({
             {canvasHint}
           </span>
         </div>
-        <div
-          style={chromeStyle}
-          className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-full border p-1 shadow-md backdrop-blur-sm"
-        >
-          {showPreviewAction && onShowPreview && (
-            <Tooltip label={t("preview.showTooltip")}>
-              <button
-                type="button"
-                aria-label={t("preview.showLabel")}
-                onClick={onShowPreview}
-                className={cn(
-                  "mr-0.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
-                  chromeHover,
-                )}
-              >
-                <PanelRightOpen className="size-3.5" />
-                {t("preview.label")}
-              </button>
-            </Tooltip>
-          )}
-          <Tooltip label={canvasTheme === "dark" ? t("canvas.lightCanvas") : t("canvas.darkCanvas")}>
-            <button
-              type="button"
-              aria-label={t("canvas.toggleTheme")}
-              onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
-              className={cn(
-                "flex size-6 items-center justify-center rounded-full transition-colors",
-                chromeHover,
-              )}
-            >
-              {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-            </button>
-          </Tooltip>
-          <Tooltip label={showMinimap ? t("canvas.hideMinimap") : t("canvas.showMinimap")}>
-            <button
-              type="button"
-              aria-label={t("canvas.toggleMinimap")}
-              aria-pressed={showMinimap}
-              onClick={() => setShowMinimap((v) => !v)}
-              className={cn(
-                "flex size-6 items-center justify-center rounded-full transition-colors",
-                showMinimap ? minimapActiveClass : chromeHover,
-              )}
-            >
-              <MapIcon className="size-3.5" />
-            </button>
-          </Tooltip>
-        </div>
+        {renderCanvasActions()}
 
-        {!readOnly && (selectedNode || selectedEdge) && (
-          <div
-            data-tour="diagram-inspector"
-            role="complementary"
-            aria-label={t("canvas.shapeStyle")}
-            style={chromeStyle}
-            className="absolute right-2 top-12 z-10 max-h-[calc(100%-3.5rem)] w-56 overflow-y-auto rounded-lg border shadow-md backdrop-blur-sm"
-          >
-            <Inspector
-              node={selectedNode ? rfNodeToModel(selectedNode) : null}
-              edge={selectedEdge ? rfEdgeToModel(selectedEdge) : null}
-              onNodeChange={patchNode}
-              onEdgeChange={patchEdge}
-              onReorder={reorder}
-            />
-          </div>
-        )}
+        {renderInspectorPanel()}
 
         <DiagramEditContext.Provider value={editApi}>
           <ReactFlow

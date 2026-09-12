@@ -408,7 +408,7 @@ export function LogPane() {
   }, [log]);
 
   useEffect(() => {
-    log;
+    void log;
     if (!followTailRef.current || tailFrameRef.current !== null) return;
     tailFrameRef.current = requestAnimationFrame(() => {
       tailFrameRef.current = null;

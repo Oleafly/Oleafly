@@ -188,6 +188,115 @@ export function GitHubSection() {
     setMsg({ ok: true, kind: "disconnected" });
   };
 
+  const renderGitHubConnectForm = () => (
+    <>
+      <Button
+        disabled={busy || ghLoading}
+        onClick={() => void connectDeviceFlow()}
+      >
+        {busy || ghLoading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Github className="size-4" />
+        )}
+        {t(($) => $.settings.github.connect)}
+      </Button>
+      {flowError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+          {flowError}
+        </div>
+      )}
+      <button type="button"
+        onClick={() => setShowAdvanced((v) => !v)}
+        className="flex items-center gap-1 pt-1 text-[11px] text-muted-foreground hover:text-foreground"
+      >
+        {showAdvanced ? (
+          <ChevronDown className="size-3" />
+        ) : (
+          <ChevronRight className="size-3" />
+        )}
+        {t(($) => $.settings.github.advanced.toggle)}
+      </button>
+      {showAdvanced && (
+        <div className="flex gap-2 pt-1">
+          <Input
+            type="password"
+            value={pat}
+            onChange={(e) => setPat(e.target.value)}
+            placeholder={t(($) => $.settings.github.advanced.tokenPlaceholder)}
+            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+          />
+          <Button
+            size="sm"
+            disabled={busy || !pat.trim()}
+            onClick={() => void connectPat()}
+          >
+            {t(($) => $.settings.github.advanced.connect)}
+          </Button>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {GITHUB_OAUTH_CLIENT_ID
+          ? t(($) => $.settings.github.hint.oauth)
+          : t(($) => $.settings.github.hint.token)}
+      </p>
+    </>
+  );
+
+  const renderGitHubDeviceFlow = () => {
+    if (!flow) return null;
+    return (
+    <div className="space-y-3 rounded-lg border bg-background p-4">
+      <div>
+        <div className="text-sm font-semibold">
+          {t(($) => $.settings.github.device.title)}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          <Trans
+            ns="settings"
+            i18nKey={($) => $.settings.github.device.opened}
+            values={{ url: flow.verification_uri }}
+            components={{
+              verificationLink: (
+                <button type="button"
+                  onClick={() => void open(flow.verification_uri)}
+                  className="font-medium text-primary hover:underline dark:text-primary"
+                />
+              ),
+            }}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-center gap-2 rounded-md border bg-muted/40 py-4">
+        <code className="select-all font-mono text-2xl font-semibold tracking-[0.25em]">
+          {flow.user_code}
+        </code>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-1"
+          onClick={() => copyCode(flow.user_code)}
+        >
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button size="sm" onClick={() => void open(flow.verification_uri)}>
+          {t(($) => $.settings.github.device.openGithub)}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={cancelFlow}>
+          {t(($) => $.common.actions.cancel)}
+        </Button>
+        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin" />
+          {t(($) => $.settings.github.device.waiting)}
+        </span>
+      </div>
+    </div>
+    );
+  };
+
   return (
     <div className="space-y-2 text-sm">
       <div>
@@ -246,107 +355,9 @@ export function GitHubSection() {
         </div>
       )}
       {!connected && (flow ? (
-        <div className="space-y-3 rounded-lg border bg-background p-4">
-          <div>
-            <div className="text-sm font-semibold">
-              {t(($) => $.settings.github.device.title)}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              <Trans
-                ns="settings"
-                i18nKey={($) => $.settings.github.device.opened}
-                values={{ url: flow.verification_uri }}
-                components={{
-                  verificationLink: (
-                    <button type="button"
-                      onClick={() => void open(flow.verification_uri)}
-                      className="font-medium text-primary hover:underline dark:text-primary"
-                    />
-                  ),
-                }}
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-center gap-2 rounded-md border bg-muted/40 py-4">
-            <code className="select-all font-mono text-2xl font-semibold tracking-[0.25em]">
-              {flow.user_code}
-            </code>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ml-1"
-              onClick={() => copyCode(flow.user_code)}
-            >
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => void open(flow.verification_uri)}>
-              {t(($) => $.settings.github.device.openGithub)}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={cancelFlow}>
-              {t(($) => $.common.actions.cancel)}
-            </Button>
-            <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" />
-              {t(($) => $.settings.github.device.waiting)}
-            </span>
-          </div>
-        </div>
+        renderGitHubDeviceFlow()
       ) : (
-        <>
-          <Button
-            disabled={busy || ghLoading}
-            onClick={() => void connectDeviceFlow()}
-          >
-            {busy || ghLoading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Github className="size-4" />
-            )}
-            {t(($) => $.settings.github.connect)}
-          </Button>
-          {flowError && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-              {flowError}
-            </div>
-          )}
-          <button type="button"
-            onClick={() => setShowAdvanced((v) => !v)}
-            className="flex items-center gap-1 pt-1 text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            {showAdvanced ? (
-              <ChevronDown className="size-3" />
-            ) : (
-              <ChevronRight className="size-3" />
-            )}
-            {t(($) => $.settings.github.advanced.toggle)}
-          </button>
-          {showAdvanced && (
-            <div className="flex gap-2 pt-1">
-              <Input
-                type="password"
-                value={pat}
-                onChange={(e) => setPat(e.target.value)}
-                placeholder={t(($) => $.settings.github.advanced.tokenPlaceholder)}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
-              />
-              <Button
-                size="sm"
-                disabled={busy || !pat.trim()}
-                onClick={() => void connectPat()}
-              >
-                {t(($) => $.settings.github.advanced.connect)}
-              </Button>
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {GITHUB_OAUTH_CLIENT_ID
-              ? t(($) => $.settings.github.hint.oauth)
-              : t(($) => $.settings.github.hint.token)}
-          </p>
-        </>
+        renderGitHubConnectForm()
       ))}
 
       {msg && (

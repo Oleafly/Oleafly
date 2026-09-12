@@ -118,7 +118,7 @@ export function markdownBibliographyPaths(source: string): string[] {
 
   const paths: string[] = [];
   for (const line of lines.slice(declaration + 1)) {
-    const item = /^\s*-\s+(.*?)\s*$/.exec(line);
+    const item = /^\s*-\s+((?:\S(?:.*\S)?)?)\s*$/.exec(line);
     if (item) {
       const path = unquoteYamlScalar(item[1]);
       if (path) paths.push(path);
@@ -258,84 +258,153 @@ export async function bibliographyTargetForProject(): Promise<
   return { path: loaded.target.path, exists, content: loaded.content };
 }
 
+type CitationFiles = ReturnType<typeof useFilesStore.getState>;
+type LoadedCitationFiles = Awaited<ReturnType<typeof loadCitationFiles>>;
+
+async function loadCitationTarget(
+  files: CitationFiles,
+): Promise<{ loaded: LoadedCitationFiles } | { error: string }> {
+  try {
+    const loaded = await loadCitationFiles(files);
+    validateCitationFiles(files, loaded.target.path);
+    return { loaded };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+function existingBibKeys(content: string): Set<string> {
+  const idx = useIndexStore.getState().index;
+  const keys = new Set<string>(
+    idx ? idx.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : [],
+  );
+  for (const km of content.matchAll(/@\w+\s*\{\s*([^,\s}]+)/g)) keys.add(km[1]);
+  return keys;
+}
+
+async function writeCitationTarget(
+  files: CitationFiles,
+  id: string | null,
+  targetPath: string,
+  newContent: string,
+): Promise<string | null> {
+  if (files.files[targetPath] !== undefined) {
+    files.setContent(targetPath, newContent);
+    // Persist now instead of waiting for the autosave debounce, so a compile
+    // (which reads from disk) resolves the new \cite immediately.
+    try {
+      await useFilesStore.getState().saveFile(targetPath);
+      assertCitationProject(id);
+    } catch (e) {
+      return i18n.t(($) => $.core.citation.writeFailed, {
+        path: targetPath,
+        detail: String(e),
+      });
+    }
+    return null;
+  }
+  if (id) {
+    try {
+      await useFilesStore.getState().writeProjectFile(id, targetPath, newContent);
+      assertCitationProject(id);
+    } catch (e) {
+      return i18n.t(($) => $.core.citation.writeFailed, {
+        path: targetPath,
+        detail: String(e),
+      });
+    }
+  }
+  return null;
+}
+
+async function writeBibliographyDeclaration(
+  files: CitationFiles,
+  id: string,
+  mainPath: string,
+  next: string,
+  currentMainLoaded: boolean,
+): Promise<void> {
+  if (currentMainLoaded) {
+    files.setContent(mainPath, next);
+    await useFilesStore.getState().saveFile(mainPath);
+    return;
+  }
+  await useFilesStore.getState().writeProjectFile(id, mainPath, next);
+}
+
+async function ensureBibliographyDeclared(
+  files: CitationFiles,
+  id: string | null,
+  loadedMain: string | undefined,
+  targetPath: string,
+): Promise<void> {
+  const profile = files.engine.capabilities.formatting_profile;
+  if (profile !== "typst" && profile !== "markdown") return;
+  if (!id || loadedMain === undefined) return;
+  const mainPath = files.mainDoc;
+  const currentMain = useFilesStore.getState().files[mainPath];
+  const main = currentMain?.content ?? loadedMain;
+  const next =
+    profile === "typst"
+      ? ensureTypstBibliography(main, targetPath)
+      : ensureMarkdownBibliography(main, targetPath);
+  if (next === main) return;
+  await writeBibliographyDeclaration(files, id, mainPath, next, currentMain !== undefined);
+}
+
+function appendBibEntries(content: string, blocks: readonly string[]): string {
+  const body = blocks.join("\n\n");
+  return content.trim() ? `${content.trimEnd()}\n\n${body}\n` : `${body}\n`;
+}
+
+function dedupeImportedEntries(
+  entries: readonly ParsedBib[],
+  content: string,
+  existingKeys: Set<string>,
+): { newBlocks: string[]; duplicates: number } {
+  const seenDois = new Set<string>();
+  const newBlocks: string[] = [];
+  let duplicates = 0;
+  for (const entry of entries) {
+    const doi = entry.fields.doi?.trim().toLowerCase();
+    if (doi && (findKeyByDoi(content, doi) || seenDois.has(doi))) {
+      duplicates++;
+      continue;
+    }
+    if (doi) seenDois.add(doi);
+    const key = generateCiteKey(entry.fields, existingKeys);
+    existingKeys.add(key);
+    newBlocks.push(stringifyBibEntry({ ...entry, key }));
+  }
+  return { newBlocks, duplicates };
+}
+
 export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
   const parsed = parseEntry(bibtex);
   if (!parsed) return { error: i18n.t(($) => $.core.citation.parseFailed) };
 
   const files = useFilesStore.getState();
   const id = files.projectId;
-  let loaded: Awaited<ReturnType<typeof loadCitationFiles>>;
-  try {
-    loaded = await loadCitationFiles(files);
-    validateCitationFiles(files, loaded.target.path);
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) };
-  }
+  const outcome = await loadCitationTarget(files);
+  if ("error" in outcome) return { error: outcome.error };
+  const loaded = outcome.loaded;
   const { target, content } = loaded;
 
   const doi = parsed.fields.doi;
-  if (doi) {
-    const existing = findKeyByDoi(content, doi);
-    if (existing) {
-      insertCite(existing);
-      return { key: existing };
-    }
+  const existing = doi ? findKeyByDoi(content, doi) : null;
+  if (existing) {
+    insertCite(existing);
+    return { key: existing };
   }
 
-  const idx = useIndexStore.getState().index;
-  const existingKeys = new Set<string>(idx ? idx.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : []);
-  for (const km of content.matchAll(/@\w+\s*\{\s*([^,\s}]+)/g)) existingKeys.add(km[1]);
-
-  const key = generateCiteKey(parsed.fields, existingKeys);
+  const key = generateCiteKey(parsed.fields, existingBibKeys(content));
   const entry = setKey(bibtex.trim(), key);
-  const newContent = content.trim() ? `${content.trimEnd()}\n\n${entry}\n` : `${entry}\n`;
+  const newContent = appendBibEntries(content, [entry]);
 
-  if (files.files[target.path] !== undefined) {
-    files.setContent(target.path, newContent);
-    // Persist now instead of waiting for the autosave debounce, so a compile
-    // (which reads from disk) resolves the new \cite immediately.
-    try {
-      await useFilesStore.getState().saveFile(target.path);
-      assertCitationProject(id);
-    } catch (e) {
-      return {
-        error: i18n.t(($) => $.core.citation.writeFailed, {
-          path: target.path,
-          detail: String(e),
-        }),
-      };
-    }
-  } else if (id) {
-    try {
-      await useFilesStore.getState().writeProjectFile(id, target.path, newContent);
-      assertCitationProject(id);
-    } catch (e) {
-      return {
-        error: i18n.t(($) => $.core.citation.writeFailed, {
-          path: target.path,
-          detail: String(e),
-        }),
-      };
-    }
-  }
+  const writeError = await writeCitationTarget(files, id, target.path, newContent);
+  if (writeError) return { error: writeError };
 
-  const profile = files.engine.capabilities.formatting_profile;
-  if ((profile === "typst" || profile === "markdown") && id && loaded.main !== undefined) {
-    const mainPath = files.mainDoc;
-    const currentMain = useFilesStore.getState().files[mainPath];
-    const main = currentMain?.content ?? loaded.main;
-    const next = profile === "typst"
-      ? ensureTypstBibliography(main, target.path)
-      : ensureMarkdownBibliography(main, target.path);
-    if (next !== main) {
-      if (currentMain !== undefined) {
-        files.setContent(mainPath, next);
-        await useFilesStore.getState().saveFile(mainPath);
-      } else {
-        await useFilesStore.getState().writeProjectFile(id, mainPath, next);
-      }
-    }
-  }
+  await ensureBibliographyDeclared(files, id, loaded.main, target.path);
 
   if (useFilesStore.getState().projectId !== id) {
     return { error: i18n.t(($) => $.core.citation.projectChangedNotInserted) };
@@ -361,78 +430,27 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
 
   const files = useFilesStore.getState();
   const id = files.projectId;
-  let loaded: Awaited<ReturnType<typeof loadCitationFiles>>;
-  try {
-    loaded = await loadCitationFiles(files);
-    validateCitationFiles(files, loaded.target.path);
-  } catch (error) {
-    return { imported: 0, duplicates: 0, errors: [error instanceof Error ? error.message : String(error)] };
-  }
+  const outcome = await loadCitationTarget(files);
+  if ("error" in outcome) return { imported: 0, duplicates: 0, errors: [outcome.error] };
+  const loaded = outcome.loaded;
   const { target, content } = loaded;
 
-  const idx = useIndexStore.getState().index;
-  const existingKeys = new Set<string>(idx ? idx.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : []);
-  for (const km of content.matchAll(/@\w+\s*\{\s*([^,\s}]+)/g)) existingKeys.add(km[1]);
-
-  const seenDois = new Set<string>();
-  const newBlocks: string[] = [];
-  let duplicates = 0;
-  for (const entry of entries) {
-    const doi = entry.fields.doi?.trim().toLowerCase();
-    if (doi && (findKeyByDoi(content, doi) || seenDois.has(doi))) {
-      duplicates++;
-      continue;
-    }
-    if (doi) seenDois.add(doi);
-    const key = generateCiteKey(entry.fields, existingKeys);
-    existingKeys.add(key);
-    newBlocks.push(stringifyBibEntry({ ...entry, key }));
-  }
+  const { newBlocks, duplicates } = dedupeImportedEntries(
+    entries,
+    content,
+    existingBibKeys(content),
+  );
 
   if (!newBlocks.length) return { imported: 0, duplicates, errors: [], bibPath: target.path };
 
-  const newContent = content.trim()
-    ? `${content.trimEnd()}\n\n${newBlocks.join("\n\n")}\n`
-    : `${newBlocks.join("\n\n")}\n`;
+  const newContent = appendBibEntries(content, newBlocks);
 
   const errors: string[] = [];
-  if (files.files[target.path] !== undefined) {
-    files.setContent(target.path, newContent);
-    try {
-      await useFilesStore.getState().saveFile(target.path);
-      assertCitationProject(id);
-    } catch (e) {
-      errors.push(
-        i18n.t(($) => $.core.citation.writeFailed, { path: target.path, detail: String(e) }),
-      );
-    }
-  } else if (id) {
-    try {
-      await useFilesStore.getState().writeProjectFile(id, target.path, newContent);
-      assertCitationProject(id);
-    } catch (e) {
-      errors.push(
-        i18n.t(($) => $.core.citation.writeFailed, { path: target.path, detail: String(e) }),
-      );
-    }
-  }
+  const writeError = await writeCitationTarget(files, id, target.path, newContent);
+  if (writeError) errors.push(writeError);
 
-  const profile = files.engine.capabilities.formatting_profile;
-  if (!errors.length && (profile === "typst" || profile === "markdown") && id && loaded.main !== undefined) {
-    const mainPath = files.mainDoc;
-    const currentMain = useFilesStore.getState().files[mainPath];
-    const main = currentMain?.content ?? loaded.main;
-    const next = profile === "typst"
-      ? ensureTypstBibliography(main, target.path)
-      : ensureMarkdownBibliography(main, target.path);
-    if (next !== main) {
-      if (currentMain !== undefined) {
-        files.setContent(mainPath, next);
-        await useFilesStore.getState().saveFile(mainPath);
-      } else {
-        await useFilesStore.getState().writeProjectFile(id, mainPath, next);
-      }
-    }
+  if (!errors.length) {
+    await ensureBibliographyDeclared(files, id, loaded.main, target.path);
   }
 
   if (useFilesStore.getState().projectId !== id) {

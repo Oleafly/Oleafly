@@ -451,6 +451,52 @@ export function createResearchArtifactAction(
   };
 }
 
+function compileSummary(
+  status: ResearchToolStatus,
+  diagnostics: readonly string[],
+): string {
+  if (diagnostics.length) {
+    return i18n.t(($) => $.core.toolActivity.summary.diagnostics, {
+      count: diagnostics.length,
+    });
+  }
+  if (status === "completed") {
+    return i18n.t(($) => $.core.toolActivity.summary.compileSucceeded);
+  }
+  return i18n.t(($) => $.core.toolActivity.summary.compileFailed);
+}
+
+function toolSummary(context: {
+  kind: ResearchToolView["kind"];
+  status: ResearchToolStatus;
+  reason: string | undefined;
+  resultCount: number;
+  verified: boolean | undefined;
+  diagnostics: readonly string[];
+  path: string | undefined;
+}): string | undefined {
+  const { kind, status, verified, diagnostics } = context;
+  if (kind === "literature" && status === "completed") {
+    return i18n.t(($) => $.core.toolActivity.summary.papers, {
+      count: context.resultCount,
+    });
+  }
+  if (kind === "citation" && verified === true) {
+    return i18n.t(($) => $.core.toolActivity.summary.citationVerified);
+  }
+  if (kind === "citation" && verified === false) {
+    return (
+      context.reason ??
+      i18n.t(($) => $.core.toolActivity.summary.citationUnverified)
+    );
+  }
+  if (kind === "compile" && (status === "completed" || status === "failed")) {
+    return compileSummary(status, diagnostics);
+  }
+  if (kind === "source" && context.path) return context.path;
+  return undefined;
+}
+
 export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
   const value = parseOutput(entry.output);
   const data = record(value);
@@ -472,28 +518,15 @@ export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
   const verified = typeof data?.verified === "boolean" ? data.verified : undefined;
   const errors = diagnosticMessages(data?.errors);
   const diagnostics = [...errors, ...diagnosticMessages(data?.diagnostics)];
-  let summary: string | undefined;
-  if (kind === "literature" && status === "completed") {
-    summary = i18n.t(($) => $.core.toolActivity.summary.papers, { count: results.length });
-  }
-  if (kind === "citation" && verified === true) {
-    summary = i18n.t(($) => $.core.toolActivity.summary.citationVerified);
-  }
-  if (kind === "citation" && verified === false) {
-    summary =
-      stringValue(data?.reason) ?? i18n.t(($) => $.core.toolActivity.summary.citationUnverified);
-  }
-  if (kind === "compile" && status === "completed") {
-    summary = diagnostics.length
-      ? i18n.t(($) => $.core.toolActivity.summary.diagnostics, { count: diagnostics.length })
-      : i18n.t(($) => $.core.toolActivity.summary.compileSucceeded);
-  }
-  if (kind === "compile" && status === "failed") {
-    summary = diagnostics.length
-      ? i18n.t(($) => $.core.toolActivity.summary.diagnostics, { count: diagnostics.length })
-      : i18n.t(($) => $.core.toolActivity.summary.compileFailed);
-  }
-  if (kind === "source" && path) summary = path;
+  const summary = toolSummary({
+    kind,
+    status,
+    reason: stringValue(data?.reason),
+    resultCount: results.length,
+    verified,
+    diagnostics,
+    path,
+  });
   return {
     kind,
     name,

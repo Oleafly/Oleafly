@@ -1005,6 +1005,44 @@ function tarOctal(block, start, length, fieldName) {
   return Number.parseInt(raw, 8);
 }
 
+function tarEndMarkerReached(tar, header, offset) {
+  if (!header.every((byte) => byte === 0)) return false;
+  if (!tar.subarray(offset).every((byte) => byte === 0)) {
+    throw new Error("tar archive has non-zero data after its end marker");
+  }
+  return true;
+}
+
+function assertTarChecksum(header) {
+  const storedChecksum = tarOctal(header, 148, 8, "checksum");
+  let calculatedChecksum = 0;
+  for (let index = 0; index < header.length; index += 1) {
+    calculatedChecksum += index >= 148 && index < 156 ? 0x20 : header[index];
+  }
+  if (storedChecksum !== calculatedChecksum) throw new Error("tar header checksum mismatch");
+}
+
+function tarEntryName(header, names) {
+  const name = tarString(header, 0, 100);
+  const prefix = tarString(header, 345, 155);
+  const fullName = prefix ? `${prefix}/${name}` : name;
+  if (!isSafeArchivePath(fullName)) throw new Error(`unsafe tar entry: ${fullName}`);
+  if (names.has(fullName)) throw new Error(`duplicate tar entry: ${fullName}`);
+  names.add(fullName);
+  return fullName;
+}
+
+function tarEntryBounds(header, fullName, tarLength, offset) {
+  const type = String.fromCodePoint(header[156] || 0x30);
+  if (!["0", "5"].includes(type)) throw new Error(`unsupported tar entry type for ${fullName}`);
+  const size = tarOctal(header, 124, 12, "size");
+  const dataStart = offset + 512;
+  const dataEnd = dataStart + size;
+  if (dataEnd > tarLength) throw new Error(`truncated tar entry: ${fullName}`);
+  if (type === "5" && size !== 0) throw new Error(`tar directory has content: ${fullName}`);
+  return { type, size, dataStart, dataEnd };
+}
+
 function extractTarGz(archive, expectedMember, maxOutputLength) {
   const tar = gunzipSync(archive, { maxOutputLength });
   let offset = 0;
@@ -1013,39 +1051,18 @@ function extractTarGz(archive, expectedMember, maxOutputLength) {
 
   while (offset + 512 <= tar.length) {
     const header = tar.subarray(offset, offset + 512);
-    if (header.every((byte) => byte === 0)) {
-      if (!tar.subarray(offset).every((byte) => byte === 0)) {
-        throw new Error("tar archive has non-zero data after its end marker");
-      }
-      break;
-    }
+    if (tarEndMarkerReached(tar, header, offset)) break;
 
-    const storedChecksum = tarOctal(header, 148, 8, "checksum");
-    let calculatedChecksum = 0;
-    for (let index = 0; index < header.length; index += 1) {
-      calculatedChecksum += index >= 148 && index < 156 ? 0x20 : header[index];
-    }
-    if (storedChecksum !== calculatedChecksum) throw new Error("tar header checksum mismatch");
-
-    const name = tarString(header, 0, 100);
-    const prefix = tarString(header, 345, 155);
-    const fullName = prefix ? `${prefix}/${name}` : name;
-    if (!isSafeArchivePath(fullName)) throw new Error(`unsafe tar entry: ${fullName}`);
-    if (names.has(fullName)) throw new Error(`duplicate tar entry: ${fullName}`);
-    names.add(fullName);
-
-    const type = String.fromCodePoint(header[156] || 0x30);
-    if (!["0", "5"].includes(type)) throw new Error(`unsupported tar entry type for ${fullName}`);
-    const size = tarOctal(header, 124, 12, "size");
-    const dataStart = offset + 512;
-    const dataEnd = dataStart + size;
-    if (dataEnd > tar.length) throw new Error(`truncated tar entry: ${fullName}`);
-    if (type === "5" && size !== 0) throw new Error(`tar directory has content: ${fullName}`);
+    assertTarChecksum(header);
+    const fullName = tarEntryName(header, names);
+    const entry = tarEntryBounds(header, fullName, tar.length, offset);
     if (fullName === expectedMember) {
-      if (type !== "0") throw new Error(`expected tar member is not a regular file: ${fullName}`);
-      matched = Buffer.from(tar.subarray(dataStart, dataEnd));
+      if (entry.type !== "0") {
+        throw new Error(`expected tar member is not a regular file: ${fullName}`);
+      }
+      matched = Buffer.from(tar.subarray(entry.dataStart, entry.dataEnd));
     }
-    offset = dataStart + Math.ceil(size / 512) * 512;
+    offset = entry.dataStart + Math.ceil(entry.size / 512) * 512;
   }
 
   if (!matched) throw new Error(`archive member is missing: ${expectedMember}`);
@@ -1062,8 +1079,7 @@ function findZipEocd(archive) {
   throw new Error("ZIP end-of-central-directory record is missing");
 }
 
-function extractZip(archive, expectedMember, maxOutputLength) {
-  const eocd = findZipEocd(archive);
+function readZipDirectorySummary(archive, eocd) {
   const disk = archive.readUInt16LE(eocd + 4);
   const centralDisk = archive.readUInt16LE(eocd + 6);
   const entriesOnDisk = archive.readUInt16LE(eocd + 8);
@@ -1077,71 +1093,99 @@ function extractZip(archive, expectedMember, maxOutputLength) {
     throw new Error("ZIP64 archives are not supported");
   }
   if (centralOffset + centralSize > eocd) throw new Error("invalid ZIP central directory bounds");
+  return { entryCount, centralSize, centralOffset };
+}
+
+function assertRegularZipEntry(versionMadeBy, externalAttributes, name) {
+  const origin = versionMadeBy >>> 8;
+  const unixMode = externalAttributes >>> 16;
+  const unixType = unixMode & 0o170000;
+  if (origin === 3 && unixType && ![0o040000, 0o100000].includes(unixType)) {
+    throw new Error(`non-regular ZIP entry is forbidden: ${name}`);
+  }
+}
+
+function readZipCentralEntry(archive, offset, names) {
+  if (offset + 46 > archive.length || archive.readUInt32LE(offset) !== 0x02014b50) {
+    throw new Error("invalid ZIP central directory entry");
+  }
+  const versionMadeBy = archive.readUInt16LE(offset + 4);
+  const flags = archive.readUInt16LE(offset + 8);
+  const compression = archive.readUInt16LE(offset + 10);
+  const compressedSize = archive.readUInt32LE(offset + 20);
+  const uncompressedSize = archive.readUInt32LE(offset + 24);
+  const nameLength = archive.readUInt16LE(offset + 28);
+  const extraLength = archive.readUInt16LE(offset + 30);
+  const commentLength = archive.readUInt16LE(offset + 32);
+  const startDisk = archive.readUInt16LE(offset + 34);
+  const externalAttributes = archive.readUInt32LE(offset + 38);
+  const localOffset = archive.readUInt32LE(offset + 42);
+  const nameStart = offset + 46;
+  const nameEnd = nameStart + nameLength;
+  if (nameEnd + extraLength + commentLength > archive.length) {
+    throw new Error("truncated ZIP central directory entry");
+  }
+  const name = archive.subarray(nameStart, nameEnd).toString("utf8");
+  if (!isSafeArchivePath(name)) throw new Error(`unsafe ZIP entry: ${name}`);
+  if (names.has(name)) throw new Error(`duplicate ZIP entry: ${name}`);
+  names.add(name);
+  if (flags & 0x1) throw new Error(`encrypted ZIP entry is forbidden: ${name}`);
+  if (![0, 8].includes(compression)) {
+    throw new Error(`unsupported ZIP compression method for ${name}: ${compression}`);
+  }
+  if (startDisk !== 0) throw new Error(`multi-disk ZIP entry is forbidden: ${name}`);
+  assertRegularZipEntry(versionMadeBy, externalAttributes, name);
+  return {
+    name,
+    compression,
+    compressedSize,
+    uncompressedSize,
+    localOffset,
+    next: nameEnd + extraLength + commentLength,
+  };
+}
+
+function readZipMember(archive, entry, maxOutputLength) {
+  const { name, localOffset, compression, compressedSize, uncompressedSize } = entry;
+  if (localOffset + 30 > archive.length || archive.readUInt32LE(localOffset) !== 0x04034b50) {
+    throw new Error(`invalid ZIP local header for ${name}`);
+  }
+  const localNameLength = archive.readUInt16LE(localOffset + 26);
+  const localExtraLength = archive.readUInt16LE(localOffset + 28);
+  const localNameStart = localOffset + 30;
+  const localNameEnd = localNameStart + localNameLength;
+  const localName = archive.subarray(localNameStart, localNameEnd).toString("utf8");
+  if (localName !== name) throw new Error(`ZIP local filename mismatch for ${name}`);
+  const dataStart = localNameEnd + localExtraLength;
+  const dataEnd = dataStart + compressedSize;
+  if (dataEnd > archive.length) throw new Error(`truncated ZIP data for ${name}`);
+  const compressed = archive.subarray(dataStart, dataEnd);
+  const value =
+    compression === 0
+      ? Buffer.from(compressed)
+      : inflateRawSync(compressed, { maxOutputLength });
+  if (value.length !== uncompressedSize) {
+    throw new Error(`ZIP member size mismatch for ${name}`);
+  }
+  return value;
+}
+
+function extractZip(archive, expectedMember, maxOutputLength) {
+  const eocd = findZipEocd(archive);
+  const { entryCount, centralSize, centralOffset } = readZipDirectorySummary(
+    archive,
+    eocd,
+  );
 
   let offset = centralOffset;
   let matched;
   const names = new Set();
   for (let index = 0; index < entryCount; index += 1) {
-    if (offset + 46 > archive.length || archive.readUInt32LE(offset) !== 0x02014b50) {
-      throw new Error("invalid ZIP central directory entry");
+    const entry = readZipCentralEntry(archive, offset, names);
+    if (entry.name === expectedMember) {
+      matched = readZipMember(archive, entry, maxOutputLength);
     }
-    const versionMadeBy = archive.readUInt16LE(offset + 4);
-    const flags = archive.readUInt16LE(offset + 8);
-    const compression = archive.readUInt16LE(offset + 10);
-    const compressedSize = archive.readUInt32LE(offset + 20);
-    const uncompressedSize = archive.readUInt32LE(offset + 24);
-    const nameLength = archive.readUInt16LE(offset + 28);
-    const extraLength = archive.readUInt16LE(offset + 30);
-    const commentLength = archive.readUInt16LE(offset + 32);
-    const startDisk = archive.readUInt16LE(offset + 34);
-    const externalAttributes = archive.readUInt32LE(offset + 38);
-    const localOffset = archive.readUInt32LE(offset + 42);
-    const nameStart = offset + 46;
-    const nameEnd = nameStart + nameLength;
-    if (nameEnd + extraLength + commentLength > archive.length) {
-      throw new Error("truncated ZIP central directory entry");
-    }
-    const name = archive.subarray(nameStart, nameEnd).toString("utf8");
-    if (!isSafeArchivePath(name)) throw new Error(`unsafe ZIP entry: ${name}`);
-    if (names.has(name)) throw new Error(`duplicate ZIP entry: ${name}`);
-    names.add(name);
-    if (flags & 0x1) throw new Error(`encrypted ZIP entry is forbidden: ${name}`);
-    if (![0, 8].includes(compression)) {
-      throw new Error(`unsupported ZIP compression method for ${name}: ${compression}`);
-    }
-    if (startDisk !== 0) throw new Error(`multi-disk ZIP entry is forbidden: ${name}`);
-
-    const origin = versionMadeBy >>> 8;
-    const unixMode = externalAttributes >>> 16;
-    const unixType = unixMode & 0o170000;
-    if (origin === 3 && unixType && ![0o040000, 0o100000].includes(unixType)) {
-      throw new Error(`non-regular ZIP entry is forbidden: ${name}`);
-    }
-
-    if (name === expectedMember) {
-      if (localOffset + 30 > archive.length || archive.readUInt32LE(localOffset) !== 0x04034b50) {
-        throw new Error(`invalid ZIP local header for ${name}`);
-      }
-      const localNameLength = archive.readUInt16LE(localOffset + 26);
-      const localExtraLength = archive.readUInt16LE(localOffset + 28);
-      const localNameStart = localOffset + 30;
-      const localNameEnd = localNameStart + localNameLength;
-      const localName = archive.subarray(localNameStart, localNameEnd).toString("utf8");
-      if (localName !== name) throw new Error(`ZIP local filename mismatch for ${name}`);
-      const dataStart = localNameEnd + localExtraLength;
-      const dataEnd = dataStart + compressedSize;
-      if (dataEnd > archive.length) throw new Error(`truncated ZIP data for ${name}`);
-      const compressed = archive.subarray(dataStart, dataEnd);
-      const value =
-        compression === 0
-          ? Buffer.from(compressed)
-          : inflateRawSync(compressed, { maxOutputLength });
-      if (value.length !== uncompressedSize) {
-        throw new Error(`ZIP member size mismatch for ${name}`);
-      }
-      matched = value;
-    }
-    offset = nameEnd + extraLength + commentLength;
+    offset = entry.next;
   }
   if (offset !== centralOffset + centralSize) throw new Error("ZIP central directory size mismatch");
   if (!matched) throw new Error(`archive member is missing: ${expectedMember}`);
@@ -1175,7 +1219,76 @@ export function extractPinnedBinary(archive, targetEntry) {
   return binary;
 }
 
-async function installSelection(
+async function installResourceArchive(
+  manifest,
+  serverId,
+  server,
+  target,
+  targetEntry,
+  options,
+) {
+  const destination = resourceArchivePath(targetEntry);
+  await enforceSingleTargetResource(
+    server,
+    targetEntry,
+    !options.check,
+  );
+  const current = await validateResourceArchive(destination, targetEntry);
+  if (options.check) {
+    if (!current.ok) throw new Error(`${destination} ${current.reason}`);
+    console.log(
+      `✓ ${server.displayName} ${server.version} ${target} (resource archive)`,
+    );
+    return;
+  }
+  if (current.ok && !options.force) {
+    console.log(
+      `✓ current ${server.displayName} ${server.version} ${target} (resource archive)`,
+    );
+    return;
+  }
+
+  console.log(
+    `→ fetching ${server.displayName} ${server.version} for ${target} (resource archive)`,
+  );
+  const archive = await ensureArchive(
+    manifest,
+    serverId,
+    server,
+    targetEntry,
+    options,
+  );
+  const archiveFile = await inspectRegularFile(archive, {
+    bytes: true,
+    digest: true,
+  });
+  if (!archiveFile.ok) {
+    throw new Error(
+      `verified archive disappeared before resource staging: ${archive}`,
+    );
+  }
+  if (
+    archiveFile.bytes.length !== targetEntry.archiveSize ||
+    archiveFile.digest !== targetEntry.archiveSha256
+  ) {
+    throw new Error(`archive changed before resource staging: ${archive}`);
+  }
+  // Parse and verify the exact binary before publishing the archive. Runtime
+  // repeats these checks before installing into app-local-data.
+  extractPinnedBinary(archiveFile.bytes, targetEntry);
+  // Keep the source resource writable by its owner so Tauri's incremental
+  // resource copier can refresh build outputs. Runtime immutability is
+  // enforced cryptographically by the exact pinned size and SHA-256.
+  await atomicWrite(destination, archiveFile.bytes, 0o644);
+  const staged = await validateResourceArchive(destination, targetEntry);
+  if (!staged.ok) {
+    throw new Error(`staged resource ${destination} ${staged.reason}`);
+  }
+  await enforceSingleTargetResource(server, targetEntry, false);
+  console.log(`✓ staged immutable resource ${destination}`);
+}
+
+async function installExtractedBinary(
   manifest,
   serverId,
   server,
@@ -1183,72 +1296,8 @@ async function installSelection(
   targetEntry,
   options,
   hostTarget,
+  mode,
 ) {
-  const mode = resolvedInstallMode(server, options.installMode);
-  assertDistributionPolicy(server, mode);
-  if (mode === "resource") {
-    const destination = resourceArchivePath(targetEntry);
-    await enforceSingleTargetResource(
-      server,
-      targetEntry,
-      !options.check,
-    );
-    const current = await validateResourceArchive(destination, targetEntry);
-    if (options.check) {
-      if (!current.ok) throw new Error(`${destination} ${current.reason}`);
-      console.log(
-        `✓ ${server.displayName} ${server.version} ${target} (resource archive)`,
-      );
-      return;
-    }
-    if (current.ok && !options.force) {
-      console.log(
-        `✓ current ${server.displayName} ${server.version} ${target} (resource archive)`,
-      );
-      return;
-    }
-
-    console.log(
-      `→ fetching ${server.displayName} ${server.version} for ${target} (resource archive)`,
-    );
-    const archive = await ensureArchive(
-      manifest,
-      serverId,
-      server,
-      targetEntry,
-      options,
-    );
-    const archiveFile = await inspectRegularFile(archive, {
-      bytes: true,
-      digest: true,
-    });
-    if (!archiveFile.ok) {
-      throw new Error(
-        `verified archive disappeared before resource staging: ${archive}`,
-      );
-    }
-    if (
-      archiveFile.bytes.length !== targetEntry.archiveSize ||
-      archiveFile.digest !== targetEntry.archiveSha256
-    ) {
-      throw new Error(`archive changed before resource staging: ${archive}`);
-    }
-    // Parse and verify the exact binary before publishing the archive. Runtime
-    // repeats these checks before installing into app-local-data.
-    extractPinnedBinary(archiveFile.bytes, targetEntry);
-    // Keep the source resource writable by its owner so Tauri's incremental
-    // resource copier can refresh build outputs. Runtime immutability is
-    // enforced cryptographically by the exact pinned size and SHA-256.
-    await atomicWrite(destination, archiveFile.bytes, 0o644);
-    const staged = await validateResourceArchive(destination, targetEntry);
-    if (!staged.ok) {
-      throw new Error(`staged resource ${destination} ${staged.reason}`);
-    }
-    await enforceSingleTargetResource(server, targetEntry, false);
-    console.log(`✓ staged immutable resource ${destination}`);
-    return;
-  }
-
   const destination = outputPath(
     manifest,
     serverId,
@@ -1301,6 +1350,70 @@ async function installSelection(
   console.log(`✓ installed ${destination}`);
 }
 
+async function installSelection(
+  manifest,
+  serverId,
+  server,
+  target,
+  targetEntry,
+  options,
+  hostTarget,
+) {
+  const mode = resolvedInstallMode(server, options.installMode);
+  assertDistributionPolicy(server, mode);
+  if (mode === "resource") {
+    await installResourceArchive(
+      manifest,
+      serverId,
+      server,
+      target,
+      targetEntry,
+      options,
+    );
+    return;
+  }
+  await installExtractedBinary(
+    manifest,
+    serverId,
+    server,
+    target,
+    targetEntry,
+    options,
+    hostTarget,
+    mode,
+  );
+}
+
+function detectedHostTarget() {
+  try {
+    return currentTarget();
+  } catch {
+    return undefined;
+  }
+}
+
+function assertTargetEntry(server, serverId, target, targetEntry, mode) {
+  if (!targetEntry) throw new Error(`${server.displayName} has no asset for ${target}`);
+  if (!SHA256_RE.test(targetEntry.archiveSha256) || !SHA256_RE.test(targetEntry.binarySha256)) {
+    throw new Error(`${server.displayName} has invalid checksum metadata for ${target}`);
+  }
+  if (mode !== "resource") {
+    if (targetEntry.resourceRelativePath !== undefined) {
+      throw new Error(
+        `${server.displayName} declares a resource path outside resource-archive mode`,
+      );
+    }
+    return;
+  }
+  const expectedResourcePath =
+    `resources/language-servers/${serverId}/${server.version}/${targetEntry.asset}`;
+  if (targetEntry.resourceRelativePath !== expectedResourcePath) {
+    throw new Error(
+      `${server.displayName} has an unexpected resource path for ${target}`,
+    );
+  }
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (options.help) {
@@ -1311,12 +1424,7 @@ export async function main(argv = process.argv.slice(2)) {
   const manifest = await loadManifest();
   const targets = selectedTargets(manifest, options.target);
   const servers = selectedServers(manifest, options.server);
-  let hostTarget;
-  try {
-    hostTarget = currentTarget();
-  } catch {
-    hostTarget = undefined;
-  }
+  const hostTarget = detectedHostTarget();
 
   for (const [serverId, server] of servers) {
     const mode = resolvedInstallMode(server, options.installMode);
@@ -1328,23 +1436,7 @@ export async function main(argv = process.argv.slice(2)) {
     }
     for (const target of targets) {
       const targetEntry = server.targets[target];
-      if (!targetEntry) throw new Error(`${server.displayName} has no asset for ${target}`);
-      if (!SHA256_RE.test(targetEntry.archiveSha256) || !SHA256_RE.test(targetEntry.binarySha256)) {
-        throw new Error(`${server.displayName} has invalid checksum metadata for ${target}`);
-      }
-      if (mode === "resource") {
-        const expectedResourcePath =
-          `resources/language-servers/${serverId}/${server.version}/${targetEntry.asset}`;
-        if (targetEntry.resourceRelativePath !== expectedResourcePath) {
-          throw new Error(
-            `${server.displayName} has an unexpected resource path for ${target}`,
-          );
-        }
-      } else if (targetEntry.resourceRelativePath !== undefined) {
-        throw new Error(
-          `${server.displayName} declares a resource path outside resource-archive mode`,
-        );
-      }
+      assertTargetEntry(server, serverId, target, targetEntry, mode);
       await installSelection(
         manifest,
         serverId,

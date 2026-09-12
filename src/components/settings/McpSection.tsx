@@ -457,6 +457,94 @@ export function McpSection() {
     );
   }
 
+  const renderMcpStatus = () => (
+    <div data-testid="mcp-status" className="rounded-lg border bg-card p-3 text-sm">
+      {status?.running && status.url ? (
+        <span className="text-emerald-600 dark:text-emerald-500">
+          {restartConfirmation
+            ? t(($) => $.settings.mcp.section.status.restartedAt, { url: restartConfirmation })
+            : t(($) => $.settings.mcp.section.status.runningAt, { url: status.url })}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">{t(($) => $.common.state.off)}</span>
+      )}
+    </div>
+  );
+
+  const renderMcpTokenCard = () => (
+    <div className="space-y-2 rounded-lg border bg-card p-3">
+      <div className="text-xs font-medium">{t(($) => $.settings.mcp.section.token.label)}</div>
+      <code className="block w-full truncate rounded bg-muted px-2 py-1.5 text-[11px] font-mono">
+        {status?.running
+          ? shownToken
+          : t(($) => $.settings.mcp.section.token.enableToView)}
+      </code>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={!status?.running || busy}
+          onClick={() => {
+            if (revealed) {
+              setRevealed(false);
+            } else {
+              void revealToken();
+            }
+          }}
+        >
+          {revealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          {revealed
+            ? t(($) => $.settings.mcp.section.token.hide)
+            : t(($) => $.settings.mcp.section.token.reveal)}
+        </Button>
+        <CopyBtn text={token ?? ""} testId="mcp-copy-token" />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          data-testid="mcp-copy-url"
+          onClick={() => void navigator.clipboard.writeText(url)}
+        >
+          <Copy className="size-3.5" />
+          {t(($) => $.settings.mcp.section.token.copyUrl)}
+        </Button>
+        {!confirmRegen ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            onClick={() => setConfirmRegen(true)}
+          >
+            <RefreshCw className="size-3.5" />
+            {t(($) => $.settings.mcp.section.token.regenerate)}
+          </Button>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-amber-600 dark:text-amber-500">
+              {t(($) => $.settings.mcp.section.token.regenerateWarning)}
+            </span>
+            <Button type="button" size="sm" disabled={busy} onClick={() => void regenerate()}>
+              {t(($) => $.common.actions.confirm)}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setConfirmRegen(false)}
+            >
+              {t(($) => $.common.actions.cancel)}
+            </Button>
+          </div>
+        )}
+      </div>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        {t(($) => $.settings.mcp.section.token.help)}
+      </p>
+    </div>
+  );
+
   return (
     <div className="space-y-5" data-testid="oleafly-mcp-server">
       <div>
@@ -504,17 +592,7 @@ export function McpSection() {
         </span>
       </div>
 
-      <div data-testid="mcp-status" className="rounded-lg border bg-card p-3 text-sm">
-        {status?.running && status.url ? (
-          <span className="text-emerald-600 dark:text-emerald-500">
-            {restartConfirmation
-              ? t(($) => $.settings.mcp.section.status.restartedAt, { url: restartConfirmation })
-              : t(($) => $.settings.mcp.section.status.runningAt, { url: status.url })}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">{t(($) => $.common.state.off)}</span>
-        )}
-      </div>
+      {renderMcpStatus()}
 
       {enabled && (
         <div className="space-y-1.5">
@@ -636,77 +714,7 @@ export function McpSection() {
         </span>
       </div>
 
-      <div className="space-y-2 rounded-lg border bg-card p-3">
-        <div className="text-xs font-medium">{t(($) => $.settings.mcp.section.token.label)}</div>
-        <code className="block w-full truncate rounded bg-muted px-2 py-1.5 text-[11px] font-mono">
-          {status?.running
-            ? shownToken
-            : t(($) => $.settings.mcp.section.token.enableToView)}
-        </code>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={!status?.running || busy}
-            onClick={() => {
-              if (revealed) {
-                setRevealed(false);
-              } else {
-                void revealToken();
-              }
-            }}
-          >
-            {revealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            {revealed
-              ? t(($) => $.settings.mcp.section.token.hide)
-              : t(($) => $.settings.mcp.section.token.reveal)}
-          </Button>
-          <CopyBtn text={token ?? ""} testId="mcp-copy-token" />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            data-testid="mcp-copy-url"
-            onClick={() => void navigator.clipboard.writeText(url)}
-          >
-            <Copy className="size-3.5" />
-            {t(($) => $.settings.mcp.section.token.copyUrl)}
-          </Button>
-          {!confirmRegen ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={busy}
-              onClick={() => setConfirmRegen(true)}
-            >
-              <RefreshCw className="size-3.5" />
-              {t(($) => $.settings.mcp.section.token.regenerate)}
-            </Button>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-amber-600 dark:text-amber-500">
-                {t(($) => $.settings.mcp.section.token.regenerateWarning)}
-              </span>
-              <Button type="button" size="sm" disabled={busy} onClick={() => void regenerate()}>
-                {t(($) => $.common.actions.confirm)}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setConfirmRegen(false)}
-              >
-                {t(($) => $.common.actions.cancel)}
-              </Button>
-            </div>
-          )}
-        </div>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          {t(($) => $.settings.mcp.section.token.help)}
-        </p>
-      </div>
+      {renderMcpTokenCard()}
 
       <div className="space-y-3">
         <h3 className="text-sm font-semibold">{t(($) => $.settings.mcp.section.clients.title)}</h3>

@@ -263,6 +263,63 @@ function matchingProjectFiles(
   return [...matches].sort((a, b) => Number(a > b) - Number(a < b));
 }
 
+const INCLUDE_EXTENSIONS = [
+  ".tex",
+  ".ltx",
+  ".latex",
+  ".typ",
+  ".md",
+  ".markdown",
+];
+const ASSET_EXTENSIONS = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".svg",
+  ".pdf",
+  ".webp",
+  ".eps",
+];
+
+function bibliographyTargetFiles(
+  edge: ProjectEdge,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): readonly string[] {
+  for (const candidate of bibliographyCandidatePaths(
+    edge.rawTarget,
+    edge.fromFile,
+    bibliographyEngineFor(edge),
+  )) {
+    const matches = matchingProjectFiles(candidate, known, knownByLower);
+    if (matches.length > 0) return matches;
+  }
+  return [];
+}
+
+function addExtensionCandidates(
+  normalized: string,
+  edge: ProjectEdge,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+  candidates: Set<string>,
+): void {
+  const extensions =
+    edge.kind === "include" || edge.kind === "import"
+      ? INCLUDE_EXTENSIONS
+      : ASSET_EXTENSIONS;
+  for (const extension of extensions) {
+    const withExtension = `${normalized}${extension}`;
+    if (known.has(withExtension)) candidates.add(withExtension);
+    for (
+      const candidate of
+      knownByLower.get(withExtension.toLowerCase()) ?? []
+    ) {
+      candidates.add(candidate);
+    }
+  }
+}
+
 function candidateTargetFiles(
   edge: ProjectEdge,
   known: ReadonlySet<string>,
@@ -270,19 +327,11 @@ function candidateTargetFiles(
 ): readonly string[] {
   if (!edge.targetFile) return [];
   if (edge.kind === "bibliography") {
-    for (const candidate of bibliographyCandidatePaths(
-      edge.rawTarget,
-      edge.fromFile,
-      bibliographyEngineFor(edge),
-    )) {
-      const matches = matchingProjectFiles(candidate, known, knownByLower);
-      if (matches.length > 0) return matches;
-    }
-    return [];
+    return bibliographyTargetFiles(edge, known, knownByLower);
   }
-  const candidates = new Set<string>();
   const normalized = normalizeProjectPath(edge.targetFile);
   if (!normalized) return [];
+  const candidates = new Set<string>();
   if (known.has(normalized)) candidates.add(normalized);
   for (const candidate of knownByLower.get(normalized.toLowerCase()) ?? []) {
     candidates.add(candidate);
@@ -290,28 +339,7 @@ function candidateTargetFiles(
 
   const hasExtension = /\.[a-z0-9]+$/i.test(normalized);
   if (!hasExtension) {
-    const extensions =
-      edge.kind === "include" || edge.kind === "import"
-        ? [".tex", ".ltx", ".latex", ".typ", ".md", ".markdown"]
-        : [
-            ".png",
-            ".jpg",
-            ".jpeg",
-            ".svg",
-            ".pdf",
-            ".webp",
-            ".eps",
-          ];
-    for (const extension of extensions) {
-      const withExtension = `${normalized}${extension}`;
-      if (known.has(withExtension)) candidates.add(withExtension);
-      for (
-        const candidate of
-        knownByLower.get(withExtension.toLowerCase()) ?? []
-      ) {
-        candidates.add(candidate);
-      }
-    }
+    addExtensionCandidates(normalized, edge, known, knownByLower, candidates);
   }
   return [...candidates].sort((a, b) => Number(a > b) - Number(a < b));
 }
@@ -334,54 +362,60 @@ function resolveEdge(
   };
 }
 
+function referenceCandidates(
+  use: ProjectUse,
+  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+): readonly ProjectDefinition[] {
+  let candidates =
+    use.engine === "markdown"
+      ? byKey.get(
+          `reference:${use.location.file}:${use.name}`,
+        ) ?? []
+      : byKey.get(`reference:${use.name}`) ?? [];
+  if (use.target?.includes("#")) {
+    const [file, anchor] = use.target.split("#", 2);
+    candidates =
+      byKey.get(
+        `reference:${file}:${anchor || use.name}`,
+      ) ??
+      (byKey.get(`reference:${anchor || use.name}`) ?? []).filter(
+        (definition) => definition.location.file === file,
+      );
+  }
+  if (use.syntax === "typst-at") {
+    const citations = byKey.get(`citation:${use.name}`) ?? [];
+    if (candidates.length === 0) return citations;
+    if (citations.length > 0) return [...candidates, ...citations];
+  }
+  return candidates;
+}
+
+function macroCandidates(
+  use: ProjectUse,
+  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+): readonly ProjectDefinition[] {
+  const candidates = byKey.get(`macro:${use.name}`) ?? [];
+  if (use.syntax !== "candidate") return candidates;
+  return candidates.filter(
+    (definition) =>
+      definition.location.file !== use.location.file ||
+      definition.location.range.from !== use.location.range.from ||
+      definition.location.range.to !== use.location.range.to,
+  );
+}
+
 function definitionCandidatesForUse(
   use: ProjectUse,
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
 ): readonly ProjectDefinition[] {
-  if (use.kind === "reference") {
-    let candidates =
-      use.engine === "markdown"
-        ? byKey.get(
-            `reference:${use.location.file}:${use.name}`,
-          ) ?? []
-        : byKey.get(`reference:${use.name}`) ?? [];
-    if (use.target?.includes("#")) {
-      const [file, anchor] = use.target.split("#", 2);
-      candidates =
-        byKey.get(
-          `reference:${file}:${anchor || use.name}`,
-        ) ??
-        (byKey.get(`reference:${anchor || use.name}`) ?? []).filter(
-          (definition) => definition.location.file === file,
-        );
-    }
-    if (use.syntax === "typst-at") {
-      const citations = byKey.get(`citation:${use.name}`) ?? [];
-      if (candidates.length === 0) return citations;
-      if (citations.length > 0) return [...candidates, ...citations];
-    }
-    return candidates;
-  }
-  if (use.kind === "citation") {
-    return byKey.get(`citation:${use.name}`) ?? [];
-  }
-  if (use.kind === "macro") {
-    const candidates = byKey.get(`macro:${use.name}`) ?? [];
-    return use.syntax === "candidate"
-      ? candidates.filter(
-          (definition) =>
-            definition.location.file !== use.location.file ||
-            definition.location.range.from !==
-              use.location.range.from ||
-            definition.location.range.to !== use.location.range.to,
-        )
-      : candidates;
-  }
-  if (use.kind === "environment") {
-    return byKey.get(`environment:${use.name}`) ?? [];
-  }
-  if (use.kind === "glossary") {
-    return byKey.get(`glossary:${use.name}`) ?? [];
+  if (use.kind === "reference") return referenceCandidates(use, byKey);
+  if (use.kind === "macro") return macroCandidates(use, byKey);
+  if (
+    use.kind === "citation" ||
+    use.kind === "environment" ||
+    use.kind === "glossary"
+  ) {
+    return byKey.get(`${use.kind}:${use.name}`) ?? [];
   }
   return [];
 }
@@ -548,26 +582,10 @@ function hierarchyFor(
   return { roots, nodes, edges };
 }
 
-export function assembleProjectIntelligenceResult(
-  input: AssembleProjectIntelligenceInput,
-): AssembledProjectIntelligence {
-  const orderedFiles = Object.fromEntries(
-    Object.entries(input.files).sort(([left], [right]) =>
-      left.localeCompare(right),
-    ),
-  );
-  const definitions: ProjectDefinition[] = Object.values(orderedFiles)
-    .flatMap((file) => file.definitions)
-    .sort(
-      (left, right) =>
-        left.location.file.localeCompare(right.location.file) ||
-        left.location.range.from - right.location.range.from ||
-        left.id.localeCompare(right.id),
-    );
+function definitionsByKey(
+  definitions: readonly ProjectDefinition[],
+): Map<string, ProjectDefinition[]> {
   const byKey = new Map<string, ProjectDefinition[]>();
-  const definitionsById = new Map(
-    definitions.map((definition) => [definition.id, definition]),
-  );
   for (const definition of definitions) {
     const key = definitionKey(definition);
     if (!key) continue;
@@ -575,9 +593,15 @@ export function assembleProjectIntelligenceResult(
     values.push(definition);
     byKey.set(key, values);
   }
+  return byKey;
+}
 
+function knownFileIndex(knownFiles: readonly string[]): {
+  known: Set<string>;
+  knownByLower: Map<string, string[]>;
+} {
   const known = new Set(
-    input.knownFiles
+    knownFiles
       .map((file) => normalizeProjectPath(file))
       .filter((file): file is string => file !== null),
   );
@@ -586,6 +610,149 @@ export function assembleProjectIntelligenceResult(
     const lower = file.toLowerCase();
     knownByLower.set(lower, [...(knownByLower.get(lower) ?? []), file]);
   }
+  return { known, knownByLower };
+}
+
+function resolveUses(
+  files: readonly FileAnalysis[],
+  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+  edgeByLocation: ReadonlyMap<string, ProjectEdge>,
+): ProjectUse[] {
+  const uses: ProjectUse[] = [];
+  for (const original of files.flatMap((file) => file.uses)) {
+    const edge = edgeByLocation.get(
+      `${original.location.file}:${original.location.range.from}:${original.kind}`,
+    );
+    const resolved = resolvedUse(original, byKey, edge);
+    if (resolved) uses.push(resolved);
+  }
+  uses.sort(
+    (left, right) =>
+      left.location.file.localeCompare(right.location.file) ||
+      left.location.range.from - right.location.range.from ||
+      left.id.localeCompare(right.id),
+  );
+  return uses;
+}
+
+function duplicateDefinitionDiagnostics(
+  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
+): ProjectDiagnostic[] {
+  const out: ProjectDiagnostic[] = [];
+  for (const candidates of byKey.values()) {
+    if (
+      candidates.length < 2 ||
+      !candidates.every((definition) =>
+        TARGET_DEFINITION_KINDS.has(definition.kind),
+      )
+    ) {
+      continue;
+    }
+    // Multiple macro definitions commonly represent an intentional
+    // new/renew chain. TexLab owns semantic validity for those commands.
+    if (candidates.every((definition) => definition.kind === "macro")) {
+      continue;
+    }
+    out.push(
+      ...candidates.map((definition) =>
+        diagnosticForDefinitionDuplicate(definition, candidates),
+      ),
+    );
+  }
+  return out;
+}
+
+function unresolvedUseDiagnostics(
+  uses: readonly ProjectUse[],
+  definitionsById: ReadonlyMap<string, ProjectDefinition>,
+): ProjectDiagnostic[] {
+  const out: ProjectDiagnostic[] = [];
+  for (const use of uses) {
+    if (use.kind !== "reference" && use.kind !== "citation") continue;
+    if (use.resolution === "resolved") continue;
+    out.push(
+      diagnosticForUse(
+        use,
+        use.definitionIds
+          .map((id) => definitionsById.get(id))
+          .filter(
+            (definition): definition is ProjectDefinition =>
+              definition !== undefined,
+          ),
+      ),
+    );
+  }
+  return out;
+}
+
+function edgeDiagnostics(edges: readonly ProjectEdge[]): ProjectDiagnostic[] {
+  const out: ProjectDiagnostic[] = [];
+  for (const edge of edges) {
+    if (
+      edge.resolution === "unresolved" ||
+      edge.resolution === "duplicate"
+    ) {
+      out.push(diagnosticForEdge(edge));
+    }
+  }
+  return out;
+}
+
+function fileStatesAndOutlines(files: readonly FileAnalysis[]): {
+  fileStates: Record<string, ProjectFileState>;
+  outlines: Record<string, readonly OutlineNode[]>;
+} {
+  const fileStates: Record<string, ProjectFileState> = {};
+  const outlines: Record<string, readonly OutlineNode[]> = {};
+  for (const file of files) {
+    fileStates[file.file] = fileStateOf(file);
+    outlines[file.file] = [...file.outline].sort(
+      (left, right) =>
+        left.range.from - right.range.from ||
+        left.id.localeCompare(right.id),
+    );
+  }
+  return { fileStates, outlines };
+}
+
+function packageRefNames(
+  files: readonly FileAnalysis[],
+  kind: "package" | "class",
+): string[] {
+  return [
+    ...new Set(
+      files.flatMap((file) =>
+        (file.packageRefs ?? [])
+          .filter((ref) => ref.kind === kind)
+          .map((ref) => ref.name),
+      ),
+    ),
+  ].sort((a, b) => Number(a > b) - Number(a < b));
+}
+
+export function assembleProjectIntelligenceResult(
+  input: AssembleProjectIntelligenceInput,
+): AssembledProjectIntelligence {
+  const orderedFiles = Object.fromEntries(
+    Object.entries(input.files).sort(([left], [right]) =>
+      left.localeCompare(right),
+    ),
+  );
+  const fileList = Object.values(orderedFiles);
+  const definitions: ProjectDefinition[] = fileList
+    .flatMap((file) => file.definitions)
+    .sort(
+      (left, right) =>
+        left.location.file.localeCompare(right.location.file) ||
+        left.location.range.from - right.location.range.from ||
+        left.id.localeCompare(right.id),
+    );
+  const definitionsById = new Map(
+    definitions.map((definition) => [definition.id, definition]),
+  );
+  const byKey = definitionsByKey(definitions);
+
+  const { known, knownByLower } = knownFileIndex(input.knownFiles);
   const edges = Object.values(orderedFiles)
     .flatMap((file) => file.edges)
     .map((edge) => resolveEdge(edge, known, knownByLower))
@@ -602,73 +769,14 @@ export function assembleProjectIntelligenceResult(
     ]),
   );
 
-  const uses: ProjectUse[] = [];
-  for (const original of Object.values(orderedFiles).flatMap(
-    (file) => file.uses,
-  )) {
-    const edge = edgeByLocation.get(
-      `${original.location.file}:${original.location.range.from}:${original.kind}`,
-    );
-    const resolved = resolvedUse(original, byKey, edge);
-    if (resolved) uses.push(resolved);
-  }
-  uses.sort(
-    (left, right) =>
-      left.location.file.localeCompare(right.location.file) ||
-      left.location.range.from - right.location.range.from ||
-      left.id.localeCompare(right.id),
-  );
+  const uses = resolveUses(fileList, byKey, edgeByLocation);
 
-  const diagnostics: ProjectDiagnostic[] = Object.values(orderedFiles)
-    .flatMap((file) => file.diagnostics);
-  for (const candidates of byKey.values()) {
-    if (
-      candidates.length < 2 ||
-      !candidates.every((definition) =>
-        TARGET_DEFINITION_KINDS.has(definition.kind),
-      )
-    ) {
-      continue;
-    }
-    // Multiple macro definitions commonly represent an intentional
-    // new/renew chain. TexLab owns semantic validity for those commands.
-    if (candidates.every((definition) => definition.kind === "macro")) {
-      continue;
-    }
-    diagnostics.push(
-      ...candidates.map((definition) =>
-        diagnosticForDefinitionDuplicate(definition, candidates),
-      ),
-    );
-  }
-  for (const use of uses) {
-    if (
-      use.kind !== "reference" &&
-      use.kind !== "citation"
-    ) {
-      continue;
-    }
-    if (use.resolution === "resolved") continue;
-    diagnostics.push(
-      diagnosticForUse(
-        use,
-        use.definitionIds
-          .map((id) => definitionsById.get(id))
-          .filter(
-            (definition): definition is ProjectDefinition =>
-              definition !== undefined,
-          ),
-      ),
-    );
-  }
-  for (const edge of edges) {
-    if (
-      edge.resolution === "unresolved" ||
-      edge.resolution === "duplicate"
-    ) {
-      diagnostics.push(diagnosticForEdge(edge));
-    }
-  }
+  const diagnostics: ProjectDiagnostic[] = fileList.flatMap(
+    (file) => file.diagnostics,
+  );
+  diagnostics.push(...duplicateDefinitionDiagnostics(byKey));
+  diagnostics.push(...unresolvedUseDiagnostics(uses, definitionsById));
+  diagnostics.push(...edgeDiagnostics(edges));
   diagnostics.sort(
     (left, right) =>
       left.location.file.localeCompare(right.location.file) ||
@@ -689,43 +797,16 @@ export function assembleProjectIntelligenceResult(
       .filter((use) => use.kind === "bibliography")
       .map((use) => use.id),
   };
-  const fileStates: Record<string, ProjectFileState> = {};
-  const outlines: Record<string, readonly OutlineNode[]> = {};
-  for (const file of Object.values(orderedFiles)) {
-    fileStates[file.file] = fileStateOf(file);
-    outlines[file.file] = [...file.outline].sort(
-      (left, right) =>
-        left.range.from - right.range.from ||
-        left.id.localeCompare(right.id),
-    );
-  }
-  const partialFiles = Object.values(orderedFiles).filter(
-    (file) => file.status !== "success",
-  );
+  const { fileStates, outlines } = fileStatesAndOutlines(fileList);
+  const partialFiles = fileList.filter((file) => file.status !== "success");
   const status = partialFiles.length > 0 ? "partial" : "success";
   const hierarchy = hierarchyFor(
     orderedFiles,
     edges,
     input.mainDocument,
   );
-  const detectedPackages = [
-    ...new Set(
-      Object.values(orderedFiles).flatMap((file) =>
-        (file.packageRefs ?? [])
-          .filter((ref) => ref.kind === "package")
-          .map((ref) => ref.name),
-      ),
-    ),
-  ].sort((a, b) => Number(a > b) - Number(a < b));
-  const documentClasses = [
-    ...new Set(
-      Object.values(orderedFiles).flatMap((file) =>
-        (file.packageRefs ?? [])
-          .filter((ref) => ref.kind === "class")
-          .map((ref) => ref.name),
-      ),
-    ),
-  ].sort((a, b) => Number(a > b) - Number(a < b));
+  const detectedPackages = packageRefNames(fileList, "package");
+  const documentClasses = packageRefNames(fileList, "class");
 
   const snapshot: ProjectIntelligenceSnapshot = {
     protocolVersion: PROJECT_INTELLIGENCE_PROTOCOL_VERSION,

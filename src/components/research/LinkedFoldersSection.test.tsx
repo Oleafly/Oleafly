@@ -4,6 +4,7 @@ import type { ResearchRootFileEntry, ResearchWorkspace } from "@/lib/research-wo
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let LinkedFoldersSection: typeof import("./LinkedFoldersSection").LinkedFoldersSection;
+let joinPath: typeof import("./LinkedFoldersSection").joinPath;
 let useLinkedRootsStore: typeof import("./linked-roots-store").useLinkedRootsStore;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
 let cleanup: typeof import("@testing-library/react").cleanup;
@@ -54,7 +55,7 @@ beforeAll(async () => {
   ({ cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
   ({ useFilesStore } = await import("@/store/files"));
   ({ useLinkedRootsStore } = await import("./linked-roots-store"));
-  ({ LinkedFoldersSection } = await import("./LinkedFoldersSection"));
+  ({ LinkedFoldersSection, joinPath } = await import("./LinkedFoldersSection"));
 });
 
 beforeEach(() => {
@@ -181,5 +182,27 @@ describe("LinkedFoldersSection", () => {
     fireEvent.click(page().getByRole("button", { name: /Study data/ }));
     await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("could not list linked folder"));
     expect(page().getByTestId("linked-folders-section")).toBeInTheDocument();
+  });
+});
+
+describe("joinPath", () => {
+  it("drops a trailing separator run before joining", () => {
+    expect(joinPath("/Users/me/data", "notes/day1.csv")).toBe("/Users/me/data/notes/day1.csv");
+    expect(joinPath("/Users/me/data/", "notes/day1.csv")).toBe("/Users/me/data/notes/day1.csv");
+    expect(joinPath("/Users/me/data///", "notes/day1.csv")).toBe("/Users/me/data/notes/day1.csv");
+  });
+
+  it("keeps Windows roots on backslashes", () => {
+    expect(joinPath("C:\\data", "notes/day1.csv")).toBe("C:\\data\\notes\\day1.csv");
+    expect(joinPath("C:\\data\\", "notes/day1.csv")).toBe("C:\\data\\notes\\day1.csv");
+  });
+
+  it("matches the trailing-separator regex it replaced", () => {
+    for (const root of ["/a", "/a/", "/a//", "\\\\server\\share\\", "", "/", "//"]) {
+      const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
+      expect(joinPath(root, "f/g")).toBe(
+        `${root.replace(/[\\/]+$/, "")}${separator}${"f/g".replaceAll("/", separator)}`,
+      );
+    }
   });
 });

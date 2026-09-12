@@ -730,6 +730,136 @@ fn env_name(text: &[u16], open: usize, end: usize) -> &[u16] {
     }
 }
 
+fn mask_math_step(chars: &mut [u16], i: usize, math: &mut u8) -> usize {
+    let c = chars[i];
+    let next = chars.get(i + 1).copied();
+    if c == BACKSLASH && matches!(next, Some(CLOSE_PAREN) | Some(CLOSE_BRACKET)) {
+        blank_run(chars, i, i + 2);
+        *math = 0;
+        return i + 2;
+    }
+    if c == DOLLAR {
+        if *math == 2 && next == Some(DOLLAR) {
+            blank_run(chars, i, i + 2);
+            *math = 0;
+            return i + 2;
+        }
+        if *math == 1 {
+            blank_run(chars, i, i + 1);
+            *math = 0;
+            return i + 1;
+        }
+    }
+    blank_run(chars, i, i + 1);
+    i + 1
+}
+
+fn verbatim_span_end(chars: &[u16], n: usize, name: &str, j: usize) -> usize {
+    let mut k = j;
+    if chars.get(k) == Some(&STAR) {
+        k += 1;
+    }
+    k = skip_inline_space(chars, k);
+    if chars.get(k) == Some(&OPEN_BRACKET) {
+        k = match_group(chars, k);
+    }
+    k = skip_inline_space(chars, k);
+    if name == "mintinline" && chars.get(k) == Some(&OPEN_BRACE) {
+        k = match_group(chars, k);
+        k = skip_inline_space(chars, k);
+    }
+    if chars.get(k) == Some(&OPEN_BRACE) {
+        return match_group(chars, k);
+    }
+    let Some(&delimiter) = chars.get(k) else {
+        return k;
+    };
+    if delimiter == NEWLINE {
+        return k;
+    }
+    k += 1;
+    while k < n && chars[k] != NEWLINE {
+        if chars[k] == delimiter && chars[k - 1] != BACKSLASH {
+            k += 1;
+            break;
+        }
+        k += 1;
+    }
+    k
+}
+
+fn mask_begin_command(text: &[u16], chars: &mut [u16], i: usize, j: usize) -> usize {
+    let s = skip_inline_space(chars, j);
+    if chars.get(s) != Some(&OPEN_BRACE) {
+        blank_run(chars, i, j);
+        return j;
+    }
+    let end = match_group(chars, s);
+    let mut env = env_name(text, s, end);
+    if env.last() == Some(&STAR) {
+        env = &env[..env.len() - 1];
+    }
+    let env_string = String::from_utf16_lossy(env);
+    if OPAQUE_ENVS.contains(&env_string.as_str()) {
+        let env_end = find_env_end(text, end, env);
+        blank_run(chars, i, env_end);
+        return env_end;
+    }
+    blank_run(chars, i, j);
+    consume_args(chars, j)
+}
+
+fn mask_command(text: &[u16], chars: &mut [u16], n: usize, i: usize, math: &mut u8) -> usize {
+    let next = chars.get(i + 1).copied();
+    if matches!(next, Some(OPEN_PAREN) | Some(OPEN_BRACKET)) {
+        blank_run(chars, i, i + 2);
+        *math = if next == Some(OPEN_PAREN) { 3 } else { 4 };
+        return i + 2;
+    }
+    if next == Some(BACKSLASH) {
+        blank_run(chars, i, i + 2);
+        let mut k = skip_inline_space(chars, i + 2);
+        if chars.get(k) == Some(&OPEN_BRACKET) {
+            let end = match_group(chars, k);
+            blank_run(chars, k, end);
+            k = end;
+        }
+        return k;
+    }
+    if !next.is_some_and(is_command_char) {
+        blank_run(chars, i, i + 2);
+        return i + 2;
+    }
+    let mut j = i + 1;
+    while j < n && is_command_char(chars[j]) {
+        j += 1;
+    }
+    let name = String::from_utf16_lossy(&text[i + 1..j]);
+
+    if matches!(name.as_str(), "verb" | "Verb" | "lstinline" | "mintinline") {
+        let k = verbatim_span_end(chars, n, &name, j);
+        blank_run(chars, i, k);
+        return k.max(j);
+    }
+
+    if name == "begin" {
+        return mask_begin_command(text, chars, i, j);
+    }
+    if name == "end" {
+        blank_run(chars, i, j);
+        return consume_args(chars, j);
+    }
+
+    blank_run(chars, i, j);
+    if OPAQUE_ARG_CMDS.contains(&name.as_str()) || is_cite_like(&name) {
+        return consume_args(chars, j);
+    }
+    if FIRST_ARG_OPAQUE_CMDS.contains(&name.as_str()) {
+        return consume_opaque_prefix(chars, j, &name);
+    }
+    j
+}
+
 pub(crate) fn mask_latex(text: &[u16]) -> Vec<u16> {
     let n = text.len();
     let mut chars = text.to_vec();
@@ -764,132 +894,12 @@ pub(crate) fn mask_latex(text: &[u16]) -> Vec<u16> {
         }
 
         if math != 0 {
-            if c == BACKSLASH && matches!(next, Some(CLOSE_PAREN) | Some(CLOSE_BRACKET)) {
-                blank_run(&mut chars, i, i + 2);
-                math = 0;
-                i += 2;
-                continue;
-            }
-            if c == DOLLAR {
-                if math == 2 && next == Some(DOLLAR) {
-                    blank_run(&mut chars, i, i + 2);
-                    math = 0;
-                    i += 2;
-                    continue;
-                }
-                if math == 1 {
-                    blank_run(&mut chars, i, i + 1);
-                    math = 0;
-                    i += 1;
-                    continue;
-                }
-            }
-            blank_run(&mut chars, i, i + 1);
-            i += 1;
+            i = mask_math_step(&mut chars, i, &mut math);
             continue;
         }
 
         if c == BACKSLASH {
-            if matches!(next, Some(OPEN_PAREN) | Some(OPEN_BRACKET)) {
-                blank_run(&mut chars, i, i + 2);
-                math = if next == Some(OPEN_PAREN) { 3 } else { 4 };
-                i += 2;
-                continue;
-            }
-            if next == Some(BACKSLASH) {
-                blank_run(&mut chars, i, i + 2);
-                let mut k = skip_inline_space(&chars, i + 2);
-                if chars.get(k) == Some(&OPEN_BRACKET) {
-                    let end = match_group(&chars, k);
-                    blank_run(&mut chars, k, end);
-                    k = end;
-                }
-                i = k;
-                continue;
-            }
-            if !next.is_some_and(is_command_char) {
-                blank_run(&mut chars, i, i + 2);
-                i += 2;
-                continue;
-            }
-            let mut j = i + 1;
-            while j < n && is_command_char(chars[j]) {
-                j += 1;
-            }
-            let name = String::from_utf16_lossy(&text[i + 1..j]);
-
-            if matches!(name.as_str(), "verb" | "Verb" | "lstinline" | "mintinline") {
-                let mut k = j;
-                if chars.get(k) == Some(&STAR) {
-                    k += 1;
-                }
-                k = skip_inline_space(&chars, k);
-                if chars.get(k) == Some(&OPEN_BRACKET) {
-                    k = match_group(&chars, k);
-                }
-                k = skip_inline_space(&chars, k);
-                if name == "mintinline" && chars.get(k) == Some(&OPEN_BRACE) {
-                    k = match_group(&chars, k);
-                    k = skip_inline_space(&chars, k);
-                }
-                if chars.get(k) == Some(&OPEN_BRACE) {
-                    k = match_group(&chars, k);
-                } else if let Some(&delimiter) = chars.get(k) {
-                    if delimiter != NEWLINE {
-                        k += 1;
-                        while k < n && chars[k] != NEWLINE {
-                            if chars[k] == delimiter && chars[k - 1] != BACKSLASH {
-                                k += 1;
-                                break;
-                            }
-                            k += 1;
-                        }
-                    }
-                }
-                blank_run(&mut chars, i, k);
-                i = k.max(j);
-                continue;
-            }
-
-            if name == "begin" {
-                let s = skip_inline_space(&chars, j);
-                if chars.get(s) == Some(&OPEN_BRACE) {
-                    let end = match_group(&chars, s);
-                    let mut env = env_name(text, s, end);
-                    if env.last() == Some(&STAR) {
-                        env = &env[..env.len() - 1];
-                    }
-                    let env_string = String::from_utf16_lossy(env);
-                    if OPAQUE_ENVS.contains(&env_string.as_str()) {
-                        let env_end = find_env_end(text, end, env);
-                        blank_run(&mut chars, i, env_end);
-                        i = env_end;
-                        continue;
-                    }
-                    blank_run(&mut chars, i, j);
-                    i = consume_args(&mut chars, j);
-                    continue;
-                }
-                blank_run(&mut chars, i, j);
-                i = j;
-                continue;
-            }
-            if name == "end" {
-                blank_run(&mut chars, i, j);
-                i = consume_args(&mut chars, j);
-                continue;
-            }
-
-            blank_run(&mut chars, i, j);
-            if OPAQUE_ARG_CMDS.contains(&name.as_str()) || is_cite_like(&name) {
-                i = consume_args(&mut chars, j);
-                continue;
-            }
-            if FIRST_ARG_OPAQUE_CMDS.contains(&name.as_str()) {
-                i = consume_opaque_prefix(&mut chars, j, &name);
-                continue;
-            }
-            i = j;
+            i = mask_command(text, &mut chars, n, i, &mut math);
             continue;
         }
 
@@ -1054,6 +1064,74 @@ struct StructureScan {
     display_math_envs: u64,
 }
 
+fn scan_environment_command(
+    text: &[u16],
+    scan: &mut StructureScan,
+    name: &str,
+    cursor: usize,
+    i: usize,
+) -> usize {
+    let open = skip_space(text, cursor);
+    if text.get(open) != Some(&OPEN_BRACE) {
+        return i + 1;
+    }
+    let Some(close) = group_end(text, open) else {
+        return i + 1;
+    };
+    let env = String::from_utf16_lossy(env_name(text, open, close));
+    if name == "begin" {
+        if FIGURE_ENVS.contains(&env.as_str()) {
+            scan.figures += 1;
+        }
+        if DISPLAY_MATH_ENVS.contains(&env.as_str()) {
+            scan.display_math_envs += 1;
+        }
+    }
+    close
+}
+
+fn scan_command_arguments(
+    text: &[u16],
+    scan: &mut StructureScan,
+    name: &str,
+    heading: bool,
+    mut cursor: usize,
+) -> usize {
+    let mut groups_to_skip = usize::from(name == "captionof");
+    loop {
+        let open = skip_space(text, cursor);
+        let opener = text.get(open).copied();
+        if opener != Some(OPEN_BRACE) && opener != Some(OPEN_BRACKET) {
+            break;
+        }
+        let Some(close) = group_end(text, open) else {
+            break;
+        };
+        if opener == Some(OPEN_BRACKET) {
+            cursor = close;
+            continue;
+        }
+        if groups_to_skip > 0 {
+            groups_to_skip -= 1;
+            cursor = close;
+            continue;
+        }
+        let span = Span {
+            from: open + 1,
+            to: close - 1,
+        };
+        if heading {
+            scan.header_args.push(span);
+            scan.headers += 1;
+        } else {
+            scan.outside_args.push(span);
+        }
+        cursor = close;
+        break;
+    }
+    cursor
+}
+
 fn scan_structure(text: &[u16]) -> StructureScan {
     let n = text.len();
     let mut scan = StructureScan::default();
@@ -1081,25 +1159,7 @@ fn scan_structure(text: &[u16]) -> StructureScan {
         let mut cursor = name_end;
 
         if name == "begin" || name == "end" {
-            let open = skip_space(text, cursor);
-            if text.get(open) != Some(&OPEN_BRACE) {
-                i += 1;
-                continue;
-            }
-            let Some(close) = group_end(text, open) else {
-                i += 1;
-                continue;
-            };
-            let env = String::from_utf16_lossy(env_name(text, open, close));
-            if name == "begin" {
-                if FIGURE_ENVS.contains(&env.as_str()) {
-                    scan.figures += 1;
-                }
-                if DISPLAY_MATH_ENVS.contains(&env.as_str()) {
-                    scan.display_math_envs += 1;
-                }
-            }
-            i = close;
+            i = scan_environment_command(text, &mut scan, &name, cursor, i);
             continue;
         }
 
@@ -1112,39 +1172,7 @@ fn scan_structure(text: &[u16]) -> StructureScan {
             i += 1;
             continue;
         }
-        let mut groups_to_skip = usize::from(name == "captionof");
-        loop {
-            let open = skip_space(text, cursor);
-            let opener = text.get(open).copied();
-            if opener != Some(OPEN_BRACE) && opener != Some(OPEN_BRACKET) {
-                break;
-            }
-            let Some(close) = group_end(text, open) else {
-                break;
-            };
-            if opener == Some(OPEN_BRACKET) {
-                cursor = close;
-                continue;
-            }
-            if groups_to_skip > 0 {
-                groups_to_skip -= 1;
-                cursor = close;
-                continue;
-            }
-            let span = Span {
-                from: open + 1,
-                to: close - 1,
-            };
-            if heading {
-                scan.header_args.push(span);
-                scan.headers += 1;
-            } else {
-                scan.outside_args.push(span);
-            }
-            cursor = close;
-            break;
-        }
-        i = cursor;
+        i = scan_command_arguments(text, &mut scan, &name, heading, cursor);
     }
     scan.header_args.sort_by_key(|span| span.from);
     scan.outside_args.sort_by_key(|span| span.from);

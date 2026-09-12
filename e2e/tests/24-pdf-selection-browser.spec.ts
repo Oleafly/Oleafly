@@ -67,7 +67,12 @@ async function dragAcrossProductionPdf(page: Page) {
     steps: 24,
   });
   await page.mouse.up();
-  await page.waitForTimeout(50);
+  await page.waitForFunction(() => {
+    const selection = document.getSelection();
+    return (
+      selection !== null && selection.rangeCount > 0 && !selection.isCollapsed
+    );
+  });
 
   const result = await page.evaluate(() => {
     const layer = document.querySelector(".textLayer");

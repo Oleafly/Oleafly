@@ -63,86 +63,222 @@ function toolStatus(status: unknown, previous: ToolEntry["status"] | undefined):
   return previous ?? "running";
 }
 
+interface ProjectionState {
+  rows: Row[];
+  tools: Map<string, number>;
+  lastKind: string;
+}
+
+const TERMINAL_STATUSES = ["failed", "disconnected", "cancelled"];
+
+function rowId(event: AcpEvent): string {
+  return `${event.sessionId}:${event.sequence}`;
+}
+
+function appendRow(
+  state: ProjectionState,
+  event: AcpEvent,
+  kind: string,
+  msg: ChatMessage,
+  raw?: string,
+) {
+  const id = rowId(event);
+  state.rows.push({ id, turn: event.turnId, kind, msg: { id, createdAt: event.timestamp, ...msg }, raw });
+}
+
+function imageAttachments(images: unknown) {
+  if (!Array.isArray(images)) return undefined;
+  return images.map((image: unknown, index) => ({
+    name: i18n.t(($) => $.ai.acp.imageAttachmentName, { index: index + 1 }),
+    mediaType: text(object(image).mimeType),
+  }));
+}
+
+function mergeChunk(previous: Row, chunk: string, reasoning: boolean) {
+  const block = previous.msg.reasoningBlocks?.[0];
+  if (reasoning && block) {
+    previous.msg = { ...previous.msg, reasoningBlocks: [{ ...block, text: block.text + chunk }] };
+    return;
+  }
+  previous.raw = `${previous.raw ?? previous.msg.content}${chunk}`;
+  previous.msg = noticed(previous.msg, previous.raw);
+}
+
+function applyChunk(state: ProjectionState, event: AcpEvent): boolean {
+  const chunk = chunkText(object(event.data.content));
+  if (!chunk) return false;
+  const previous = state.rows.at(-1);
+  const reasoning = event.kind === "agent_thought_chunk";
+  if (previous?.kind === event.kind && previous.turn === event.turnId && state.lastKind === event.kind) {
+    mergeChunk(previous, chunk, reasoning);
+  } else if (reasoning) {
+    appendRow(state, event, event.kind, {
+      role: "assistant",
+      content: "",
+      reasoningBlocks: [{ id: rowId(event), text: chunk, beforeTool: 0 }],
+    });
+  } else {
+    appendRow(state, event, event.kind, noticed({ role: "assistant", content: chunk }, chunk), chunk);
+  }
+  return true;
+}
+
+function applyToolCall(state: ProjectionState, event: AcpEvent): boolean {
+  const data = event.data;
+  const toolId = text(data.toolCallId);
+  if (!toolId) return false;
+  const key = `${event.turnId}:${toolId}`;
+  const index = state.tools.get(key);
+  const previous = index === undefined ? undefined : state.rows[index].msg.toolCalls?.[0];
+  const tool: ToolEntry = {
+    id: toolId,
+    name: text(data.title) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback),
+    status: toolStatus(data.status, previous?.status),
+    output: data.content ? toolOutput(data) : previous?.output,
+  };
+  if (index === undefined) {
+    state.tools.set(key, state.rows.length);
+    appendRow(state, event, "tool", { role: "assistant", content: "", toolCalls: [tool] });
+  } else {
+    state.rows[index].msg = { ...state.rows[index].msg, toolCalls: [tool] };
+  }
+  return true;
+}
+
+function planContent(entries: readonly unknown[]): string {
+  return entries
+    .map((entry: unknown) => {
+      const value = object(entry);
+      return `- ${value.status === "completed" ? "[x]" : "[ ]"} ${text(value.content)}`;
+    })
+    .join("\n");
+}
+
+function applyDiagnostics(state: ProjectionState, event: AcpEvent) {
+  const detail = text(event.data.stderr);
+  if (detail) {
+    appendRow(
+      state,
+      event,
+      "error",
+      noticed({ role: "assistant", content: "" }, detail, (value) =>
+        i18n.t(($) => $.ai.acp.agentReported, { detail: value }),
+      ),
+    );
+  }
+}
+
+function failRunningTools(row: Row) {
+  if (row.msg.toolCalls?.some((tool) => tool.status === "running")) {
+    row.msg = {
+      ...row.msg,
+      toolCalls: row.msg.toolCalls.map((tool) => (tool.status === "running" ? { ...tool, status: "error" } : tool)),
+    };
+  }
+}
+
+function closeTurn(state: ProjectionState, turnId: string | null) {
+  for (const row of state.rows) {
+    if (turnId && row.turn !== turnId) continue;
+    if (row.msg.reasoningBlocks?.some((block) => block.ms === undefined)) {
+      row.msg = {
+        ...row.msg,
+        reasoningBlocks: row.msg.reasoningBlocks.map((block) => ({ ...block, ms: block.ms ?? 0 })),
+      };
+    }
+    failRunningTools(row);
+  }
+}
+
+function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
+  const data = event.data;
+  const terminal = event.kind === "turn_complete" || TERMINAL_STATUSES.includes(text(data.status));
+  if (!terminal) return;
+  closeTurn(state, event.turnId);
+  if (data.error && !alreadySaid(state.rows, event.turnId, text(data.error))) {
+    appendRow(state, event, "error", noticed({ role: "assistant", content: "" }, text(data.error)));
+  }
+}
+
+function applyEvent(state: ProjectionState, event: AcpEvent): boolean {
+  const data = event.data;
+  if (event.kind === "user_message") {
+    appendRow(state, event, "user", {
+      role: "user",
+      content: text(data.text),
+      attachments: imageAttachments(data.images),
+    });
+    return true;
+  }
+  if (event.kind === "agent_message_chunk" || event.kind === "agent_thought_chunk") {
+    return applyChunk(state, event);
+  }
+  if (event.kind === "tool_call" || event.kind === "tool_call_update") {
+    return applyToolCall(state, event);
+  }
+  if (event.kind === "plan" && Array.isArray(data.entries)) {
+    appendRow(state, event, "plan", { role: "assistant", content: planContent(data.entries) });
+    return true;
+  }
+  if (event.kind === "diagnostics") {
+    applyDiagnostics(state, event);
+    return true;
+  }
+  if (event.kind === "turn_complete" || event.kind === "status") applyTurnEnd(state, event);
+  return true;
+}
+
+function latestAssistantIndex(rows: readonly Row[]): number {
+  for (let index = rows.length - 1; index >= 0; index--) {
+    if (rows[index].msg.role === "assistant") return index;
+  }
+  return -1;
+}
+
+function renderRows(
+  rows: readonly Row[],
+  running: boolean,
+  previousRendered: readonly RenderedMessage[],
+): RenderedMessage[] {
+  const latest = latestAssistantIndex(rows);
+  return rows.map((row, index) => {
+    const live = running && index === rows.length - 1;
+    const isLatestAssistant = index === latest;
+    const previous = previousRendered[index];
+    return previous?.msg === row.msg && previous.live === live && previous.isLatestAssistant === isLatestAssistant
+      ? previous
+      : { key: row.id, index, live, isLatestAssistant, msg: row.msg };
+  });
+}
+
+function isAppendOnly(previousEvents: readonly AcpEvent[], events: readonly AcpEvent[]): boolean {
+  if (previousEvents.length > events.length) return false;
+  if (!previousEvents.length) return true;
+  return previousEvents[0] === events[0] && previousEvents.at(-1) === events[previousEvents.length - 1];
+}
+
 export function createAcpProjector() {
   let previousEvents: readonly AcpEvent[] = [];
-  let rows: Row[] = [];
   let rendered: RenderedMessage[] = [];
-  let tools = new Map<string, number>();
-  let lastKind = "";
+  const state: ProjectionState = { rows: [], tools: new Map(), lastKind: "" };
   return (events: readonly AcpEvent[], running: boolean): RenderedMessage[] => {
-    const appendOnly = previousEvents.length <= events.length && (!previousEvents.length || (previousEvents[0] === events[0] && previousEvents.at(-1) === events[previousEvents.length - 1]));
+    const appendOnly = isAppendOnly(previousEvents, events);
     const from = appendOnly ? previousEvents.length : 0;
-    if (!appendOnly) { rows = []; tools = new Map(); lastKind = ""; rendered = []; }
+    if (!appendOnly) {
+      state.rows = [];
+      state.tools = new Map();
+      state.lastKind = "";
+      rendered = [];
+    }
     for (let position = from; position < events.length; position++) {
       const event = events[position];
-      const data = event.data;
-      const id = `${event.sessionId}:${event.sequence}`;
-      const append = (kind: string, msg: ChatMessage, raw?: string) => { rows.push({ id, turn: event.turnId, kind, msg: { id, createdAt: event.timestamp, ...msg }, raw }); };
-      if (event.kind === "user_message") {
-        append("user", { role: "user", content: text(data.text), attachments: Array.isArray(data.images) ? data.images.map((image: unknown, index) => ({ name: i18n.t(($) => $.ai.acp.imageAttachmentName, { index: index + 1 }), mediaType: text(object(image).mimeType) })) : undefined });
-      } else if (event.kind === "agent_message_chunk" || event.kind === "agent_thought_chunk") {
-        const content = object(data.content);
-        const chunk = chunkText(content);
-        if (!chunk) continue;
-        const previous = rows.at(-1);
-        const reasoning = event.kind === "agent_thought_chunk";
-        if (previous?.kind === event.kind && previous.turn === event.turnId && lastKind === event.kind) {
-          const block = previous.msg.reasoningBlocks?.[0];
-          if (reasoning && block) {
-            previous.msg = { ...previous.msg, reasoningBlocks: [{ ...block, text: block.text + chunk }] };
-          } else {
-            previous.raw = `${previous.raw ?? previous.msg.content}${chunk}`;
-            previous.msg = noticed(previous.msg, previous.raw);
-          }
-        } else if (reasoning) {
-          append(event.kind, { role: "assistant", content: "", reasoningBlocks: [{ id, text: chunk, beforeTool: 0 }] });
-        } else {
-          append(event.kind, noticed({ role: "assistant", content: chunk }, chunk), chunk);
-        }
-      } else if (event.kind === "tool_call" || event.kind === "tool_call_update") {
-        const toolId = text(data.toolCallId);
-        if (!toolId) continue;
-        const key = `${event.turnId}:${toolId}`;
-        const index = tools.get(key);
-        const previous = index === undefined ? undefined : rows[index].msg.toolCalls?.[0];
-        const status = toolStatus(data.status, previous?.status);
-        const tool: ToolEntry = { id: toolId, name: text(data.title) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback), status, output: data.content ? toolOutput(data) : previous?.output };
-        if (index === undefined) { tools.set(key, rows.length); append("tool", { role: "assistant", content: "", toolCalls: [tool] }); }
-        else rows[index].msg = { ...rows[index].msg, toolCalls: [tool] };
-      } else if (event.kind === "plan" && Array.isArray(data.entries)) {
-        append("plan", { role: "assistant", content: data.entries.map((entry: unknown) => { const value = object(entry); return `- ${value.status === "completed" ? "[x]" : "[ ]"} ${text(value.content)}`; }).join("\n") });
-      } else if (event.kind === "diagnostics") {
-        const detail = text(data.stderr);
-        if (detail) append("error", noticed({ role: "assistant", content: "" }, detail, (value) =>
-          i18n.t(($) => $.ai.acp.agentReported, { detail: value }),
-        ));
-      } else if (event.kind === "turn_complete" || event.kind === "status") {
-        const terminal = event.kind === "turn_complete" || ["failed", "disconnected", "cancelled"].includes(text(data.status));
-        if (terminal) {
-          for (const row of rows) {
-            if (event.turnId && row.turn !== event.turnId) continue;
-            if (row.msg.reasoningBlocks?.some((block) => block.ms === undefined)) row.msg = { ...row.msg, reasoningBlocks: row.msg.reasoningBlocks.map((block) => ({ ...block, ms: block.ms ?? 0 })) };
-            if (row.msg.toolCalls?.some((tool) => tool.status === "running")) row.msg = { ...row.msg, toolCalls: row.msg.toolCalls.map((tool) => tool.status === "running" ? { ...tool, status: "error" } : tool) };
-          }
-          if (data.error && !alreadySaid(rows, event.turnId, text(data.error))) append("error", noticed({ role: "assistant", content: "" }, text(data.error)));
-        }
-      }
-      lastKind = event.kind;
+      if (applyEvent(state, event)) state.lastKind = event.kind;
     }
     if (!running) {
-      for (const row of rows) {
-        if (row.msg.toolCalls?.some((tool) => tool.status === "running")) row.msg = { ...row.msg, toolCalls: row.msg.toolCalls.map((tool) => tool.status === "running" ? { ...tool, status: "error" } : tool) };
-      }
+      for (const row of state.rows) failRunningTools(row);
     }
     previousEvents = events;
-    let latest = -1;
-    for (let index = rows.length - 1; index >= 0; index--) if (rows[index].msg.role === "assistant") { latest = index; break; }
-    rendered = rows.map((row, index) => {
-      const live = running && index === rows.length - 1;
-      const isLatestAssistant = index === latest;
-      const previous = rendered[index];
-      return previous?.msg === row.msg && previous.live === live && previous.isLatestAssistant === isLatestAssistant ? previous : { key: row.id, index, live, isLatestAssistant, msg: row.msg };
-    });
+    rendered = renderRows(state.rows, running, rendered);
     return rendered;
   };
 }

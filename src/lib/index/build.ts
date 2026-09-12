@@ -61,43 +61,72 @@ export function assembleIndex(
   }
 
   // Second pass: macro uses. Needs the project-wide macro name set.
-  const macroNames = [...new Set(defs.filter((d) => d.kind === "macro").map((d) => d.name))];
-  if (macroNames.length > 0) {
-    macroNames.sort((a, b) => b.length - a.length);
-    const alt = macroNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)).join("|");
-    const macroDefSpans = new Map<string, [number, number][]>();
-    for (const d of defs) {
-      if (d.kind !== "macro") continue;
-      const arr = macroDefSpans.get(d.file) ?? [];
-      arr.push([d.from, d.to]);
-      macroDefSpans.set(d.file, arr);
-    }
-    for (const [path, rawText] of Object.entries(files)) {
-      if (/\.(?:typ|md|markdown)$/i.test(path)) continue;
-      const text = maskComments(rawText);
-      const spans = macroDefSpans.get(path) ?? [];
-      const lineAt = lineCounter(text);
-      const re = new RegExp(String.raw`\\(${alt})(?![a-zA-Z@])`, "g");
-      for (const m of text.matchAll(re)) {
-        const at = m.index;
-        if (spans.some(([f, t]) => at >= f && at < t)) continue;
-        const name = m[1];
-        const nameFrom = at + 1;
-        uses.push({
-          kind: "macrouse",
-          name,
-          file: path,
-          line: lineAt(at),
-          from: at,
-          to: at + 1 + name.length,
-          nameFrom,
-          nameTo: nameFrom + name.length,
-        });
-      }
-    }
-  }
+  collectMacroUses(defs, files, uses);
 
   return indexFromSymbols(defs, uses);
+}
+
+function macroDefinitionSpans(
+  defs: readonly Sym[],
+): Map<string, [number, number][]> {
+  const macroDefSpans = new Map<string, [number, number][]>();
+  for (const d of defs) {
+    if (d.kind !== "macro") continue;
+    const arr = macroDefSpans.get(d.file) ?? [];
+    arr.push([d.from, d.to]);
+    macroDefSpans.set(d.file, arr);
+  }
+  return macroDefSpans;
+}
+
+function collectFileMacroUses(
+  path: string,
+  rawText: string,
+  alt: string,
+  spans: readonly [number, number][],
+  uses: Sym[],
+): void {
+  const text = maskComments(rawText);
+  const lineAt = lineCounter(text);
+  const re = new RegExp(String.raw`\\(${alt})(?![a-zA-Z@])`, "g");
+  for (const m of text.matchAll(re)) {
+    const at = m.index;
+    if (spans.some(([f, t]) => at >= f && at < t)) continue;
+    const name = m[1];
+    const nameFrom = at + 1;
+    uses.push({
+      kind: "macrouse",
+      name,
+      file: path,
+      line: lineAt(at),
+      from: at,
+      to: at + 1 + name.length,
+      nameFrom,
+      nameTo: nameFrom + name.length,
+    });
+  }
+}
+
+function collectMacroUses(
+  defs: readonly Sym[],
+  files: Record<string, string>,
+  uses: Sym[],
+): void {
+  const macroNames = [...new Set(defs.filter((d) => d.kind === "macro").map((d) => d.name))];
+  if (macroNames.length === 0) return;
+  macroNames.sort((a, b) => b.length - a.length);
+  const alt = macroNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)).join("|");
+  const macroDefSpans = macroDefinitionSpans(defs);
+  for (const [path, rawText] of Object.entries(files)) {
+    if (/\.(?:typ|md|markdown)$/i.test(path)) continue;
+    collectFileMacroUses(
+      path,
+      rawText,
+      alt,
+      macroDefSpans.get(path) ?? [],
+      uses,
+    );
+  }
 }
 
 /**

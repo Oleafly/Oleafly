@@ -558,6 +558,9 @@ export interface LatexMathContext {
 
 type MathToken = LatexMathDelimiter | "$$";
 
+const INLINE_MATH_TOKEN = String.raw`\(` as MathToken;
+const DISPLAY_MATH_TOKEN = String.raw`\[` as MathToken;
+
 interface OpenMath {
   token: MathToken;
   at: number;
@@ -597,80 +600,96 @@ const MATH_ENVIRONMENTS = new Set([
   "smallmatrix",
 ]);
 
+function mathEnvironmentStep(
+  text: string,
+  cursor: number,
+  stack: OpenMath[],
+): number {
+  let commandEnd = cursor + 1;
+  while (commandCharacter(text[commandEnd])) commandEnd += 1;
+  const command = text.slice(cursor + 1, commandEnd);
+  if (command !== "begin" && command !== "end") return commandEnd;
+  const environment = simpleBracedValue(text, commandEnd);
+  if (!environment || !MATH_ENVIRONMENTS.has(environment.value)) {
+    return commandEnd;
+  }
+  if (command === "begin") {
+    stack.push({
+      token: "env",
+      at: cursor,
+      width: environment.to - cursor,
+    });
+  } else if (stack.at(-1)?.token === "env") {
+    stack.pop();
+  }
+  return environment.to;
+}
+
+function mathBackslashStep(
+  text: string,
+  cursor: number,
+  stack: OpenMath[],
+): number {
+  const next = text[cursor + 1];
+  if (next === "(" || next === "[") {
+    stack.push({
+      token: next === "(" ? INLINE_MATH_TOKEN : DISPLAY_MATH_TOKEN,
+      at: cursor,
+      width: 2,
+    });
+    return cursor + 2;
+  }
+  if (next === ")" || next === "]") {
+    const opener = next === ")" ? String.raw`\(` : String.raw`\[`;
+    if (stack.at(-1)?.token === opener) stack.pop();
+    return cursor + 2;
+  }
+  if (commandCharacter(next)) return mathEnvironmentStep(text, cursor, stack);
+  return cursor + 2;
+}
+
+function mathDollarStep(
+  text: string,
+  cursor: number,
+  stack: OpenMath[],
+): number {
+  const doubled = text[cursor + 1] === "$";
+  const open = stack.at(-1);
+  if (open && (open.token === "$" || open.token === "$$")) {
+    stack.pop();
+    return cursor + (open.token === "$$" && doubled ? 2 : 1);
+  }
+  const token: MathToken = doubled ? "$$" : "$";
+  stack.push({ token, at: cursor, width: token.length });
+  return cursor + token.length;
+}
+
+function mathNewlineStep(
+  text: string,
+  cursor: number,
+  stack: OpenMath[],
+): number {
+  let scan = cursor + 1;
+  while (inlineWhitespace(text[scan])) scan += 1;
+  if (scan >= text.length || text[scan] === "\n") stack.length = 0;
+  return cursor + 1;
+}
+
 function openMathTokens(text: string): OpenMath[] {
   const stack: OpenMath[] = [];
   let cursor = 0;
 
   while (cursor < text.length) {
     const character = text[cursor];
-
     if (character === "\\") {
-      const next = text[cursor + 1];
-      if (next === "(" || next === "[") {
-        stack.push({
-          token: next === "(" ? "\\(" : "\\[",
-          at: cursor,
-          width: 2,
-        });
-        cursor += 2;
-        continue;
-      }
-      if (next === ")" || next === "]") {
-        const opener = next === ")" ? String.raw`\(` : String.raw`\[`;
-        if (stack.at(-1)?.token === opener) stack.pop();
-        cursor += 2;
-        continue;
-      }
-      if (commandCharacter(next)) {
-        let commandEnd = cursor + 1;
-        while (commandCharacter(text[commandEnd])) commandEnd += 1;
-        const command = text.slice(cursor + 1, commandEnd);
-        if (command === "begin" || command === "end") {
-          const environment = simpleBracedValue(text, commandEnd);
-          if (environment && MATH_ENVIRONMENTS.has(environment.value)) {
-            if (command === "begin") {
-              stack.push({
-                token: "env",
-                at: cursor,
-                width: environment.to - cursor,
-              });
-            } else if (stack.at(-1)?.token === "env") {
-              stack.pop();
-            }
-            cursor = environment.to;
-            continue;
-          }
-        }
-        cursor = commandEnd;
-        continue;
-      }
-      cursor += 2;
-      continue;
-    }
-
-    if (character === "$") {
-      const doubled = text[cursor + 1] === "$";
-      const open = stack.at(-1);
-      if (open && (open.token === "$" || open.token === "$$")) {
-        stack.pop();
-        cursor += open.token === "$$" && doubled ? 2 : 1;
-        continue;
-      }
-      const token: MathToken = doubled ? "$$" : "$";
-      stack.push({ token, at: cursor, width: token.length });
-      cursor += token.length;
-      continue;
-    }
-
-    if (character === "\n") {
-      let scan = cursor + 1;
-      while (inlineWhitespace(text[scan])) scan += 1;
-      if (scan >= text.length || text[scan] === "\n") stack.length = 0;
+      cursor = mathBackslashStep(text, cursor, stack);
+    } else if (character === "$") {
+      cursor = mathDollarStep(text, cursor, stack);
+    } else if (character === "\n") {
+      cursor = mathNewlineStep(text, cursor, stack);
+    } else {
       cursor += 1;
-      continue;
     }
-
-    cursor += 1;
   }
 
   return stack;

@@ -100,7 +100,7 @@ export function DiffView() {
   }, []);
 
   useEffect(() => {
-    reloadKey;
+    void reloadKey;
     if (!diff || !projectId) return;
     const { path, side } = diff;
     let cancelled = false;

@@ -297,6 +297,18 @@ function PairEditor({
   );
 }
 
+function serverEditorValid(
+  jsonMode: boolean,
+  jsonText: string,
+  config: McpServerConfig,
+): boolean {
+  if (jsonMode) return jsonText.trim().length > 0;
+  if (config.name.trim().length === 0) return false;
+  return config.transport === "stdio"
+    ? config.command.trim().length > 0
+    : config.url.trim().length > 0;
+}
+
 function ServerEditor({
   state,
   busy,
@@ -387,13 +399,8 @@ function ServerEditor({
     void onSubmit(state.originalName, formConfig());
   };
 
-  const valid =
-    state?.mode === "add" && editorView === "json"
-      ? jsonText.trim().length > 0
-      : config.name.trim().length > 0 &&
-        (config.transport === "stdio"
-          ? config.command.trim().length > 0
-          : config.url.trim().length > 0);
+  const jsonMode = state?.mode === "add" && editorView === "json";
+  const valid = serverEditorValid(jsonMode, jsonText, config);
 
   const submitLabel = (): string => {
     if (state?.mode === "edit" && !config.enabled) {
@@ -402,6 +409,167 @@ function ServerEditor({
     if (state?.mode === "edit") return t(($) => $.settings.mcp.servers.editor.saveAndValidate);
     return t(($) => $.settings.mcp.servers.editor.addAndValidate);
   };
+
+  const renderServerFormFields = () => (
+    <>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium" htmlFor="mcp-server-name">
+          {t(($) => $.settings.mcp.servers.editor.nameLabel)}
+        </label>
+        <Input
+          ref={serverNameRef}
+          id="mcp-server-name"
+          autoComplete="off"
+          value={config.name}
+          onChange={(event) => setConfig({ ...config, name: event.target.value })}
+        />
+      </div>
+
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-medium">
+          {t(($) => $.settings.mcp.servers.editor.transportLegend)}
+        </legend>
+        <RadioGroup
+          className="grid grid-cols-2 gap-2"
+          value={config.transport}
+          onValueChange={(transport) => {
+            if (transport === "stdio") {
+              setConfig({
+                name: config.name,
+                enabled: config.enabled,
+                transport: "stdio",
+                command: "",
+                args: [],
+                env: {},
+              });
+            } else {
+              setConfig({
+                name: config.name,
+                enabled: config.enabled,
+                transport: "remote",
+                url: "",
+                headers: {},
+              });
+            }
+            setArgsText("");
+            setPairs(initialPairs({}));
+          }}
+        >
+          <label
+            htmlFor="mcp-transport-stdio"
+            className="flex cursor-pointer items-center gap-2 rounded-md border p-2.5 text-sm"
+          >
+            <RadioGroupItem id="mcp-transport-stdio" value="stdio" />
+            <Terminal aria-hidden className="size-4 text-muted-foreground" />
+            {t(($) => $.settings.mcp.servers.editor.transportStdio)}
+          </label>
+          <label
+            htmlFor="mcp-transport-remote"
+            className="flex cursor-pointer items-center gap-2 rounded-md border p-2.5 text-sm"
+          >
+            <RadioGroupItem id="mcp-transport-remote" value="remote" />
+            <Globe2 aria-hidden className="size-4 text-muted-foreground" />
+            {t(($) => $.settings.mcp.servers.editor.transportRemote)}
+          </label>
+        </RadioGroup>
+      </fieldset>
+
+      {config.transport === "stdio" ? (
+        <>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" htmlFor="mcp-server-command">
+              {t(($) => $.settings.mcp.servers.editor.commandLabel)}
+            </label>
+            <Input
+              id="mcp-server-command"
+              autoComplete="off"
+              placeholder={COMMAND_PLACEHOLDER}
+              value={config.command}
+              onChange={(event) =>
+                setConfig({ ...config, command: event.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" htmlFor="mcp-server-args">
+              {t(($) => $.settings.mcp.servers.editor.argsLabel)}
+            </label>
+            <Textarea
+              id="mcp-server-args"
+              className="min-h-24 font-mono text-xs"
+              placeholder={
+                "-y\n@modelcontextprotocol/server-filesystem\n/path/to/project"
+              }
+              value={argsText}
+              onChange={(event) => setArgsText(event.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {t(($) => $.settings.mcp.servers.editor.argsHint)}
+            </p>
+          </div>
+          <PairEditor kind="Environment" rows={pairs} onChange={setPairs} />
+        </>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium" htmlFor="mcp-server-url">
+              {t(($) => $.settings.mcp.servers.editor.urlLabel)}
+            </label>
+            <Input
+              id="mcp-server-url"
+              autoComplete="off"
+              placeholder={URL_PLACEHOLDER}
+              type="url"
+              value={config.url}
+              onChange={(event) => setConfig({ ...config, url: event.target.value })}
+            />
+          </div>
+          <PairEditor kind="Header" rows={pairs} onChange={setPairs} />
+        </>
+      )}
+    </>
+  );
+
+  const renderEditorViewSwitcher = () => (
+    <fieldset
+      className="absolute right-11 top-3 flex rounded-md bg-muted p-0.5"
+      aria-label={t(($) => $.settings.mcp.servers.editor.viewSwitchLabel)}
+    >
+      <Button
+        type="button"
+        variant={editorView === "form" ? "secondary" : "ghost"}
+        size="xs"
+        aria-pressed={editorView === "form"}
+        onClick={() => {
+          if (editorView === "json") {
+            try {
+              applyFormConfig(parseMcpServerJson(jsonText));
+              setEditorView("form");
+              setJsonError(null);
+            } catch (parseError) {
+              setJsonError(describeError(parseError));
+            }
+          }
+        }}
+      >
+        {t(($) => $.settings.mcp.servers.editor.formView)}
+      </Button>
+      <Button
+        type="button"
+        variant={editorView === "json" ? "secondary" : "ghost"}
+        size="xs"
+        aria-pressed={editorView === "json"}
+        onClick={() => {
+          if (editorView === "json") return;
+          setJsonText(serializeMcpServerJson(formConfig()));
+          setEditorView("json");
+          setJsonError(null);
+        }}
+      >
+        {t(($) => $.settings.mcp.servers.editor.jsonView)}
+      </Button>
+    </fieldset>
+  );
 
   return (
     <Dialog open={state !== null} onOpenChange={(open) => !open && onClose()}>
@@ -424,47 +592,10 @@ function ServerEditor({
           </DialogDescription>
         </DialogHeader>
         {state?.mode === "add" ? (
-          <fieldset
-            className="absolute right-11 top-3 flex rounded-md bg-muted p-0.5"
-            aria-label={t(($) => $.settings.mcp.servers.editor.viewSwitchLabel)}
-          >
-            <Button
-              type="button"
-              variant={editorView === "form" ? "secondary" : "ghost"}
-              size="xs"
-              aria-pressed={editorView === "form"}
-              onClick={() => {
-                if (editorView === "json") {
-                  try {
-                    applyFormConfig(parseMcpServerJson(jsonText));
-                    setEditorView("form");
-                    setJsonError(null);
-                  } catch (parseError) {
-                    setJsonError(describeError(parseError));
-                  }
-                }
-              }}
-            >
-              {t(($) => $.settings.mcp.servers.editor.formView)}
-            </Button>
-            <Button
-              type="button"
-              variant={editorView === "json" ? "secondary" : "ghost"}
-              size="xs"
-              aria-pressed={editorView === "json"}
-              onClick={() => {
-                if (editorView === "json") return;
-                setJsonText(serializeMcpServerJson(formConfig()));
-                setEditorView("json");
-                setJsonError(null);
-              }}
-            >
-              {t(($) => $.settings.mcp.servers.editor.jsonView)}
-            </Button>
-          </fieldset>
+          renderEditorViewSwitcher()
         ) : null}
         <form className="space-y-4" onSubmit={submit}>
-          {state?.mode === "add" && editorView === "json" ? (
+          {jsonMode ? (
             <div className="space-y-1.5">
               <label className="text-xs font-medium" htmlFor="mcp-server-json">
                 {t(($) => $.settings.mcp.servers.editor.jsonLabel)}
@@ -484,123 +615,7 @@ function ServerEditor({
               </p>
             </div>
           ) : (
-            <>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium" htmlFor="mcp-server-name">
-                  {t(($) => $.settings.mcp.servers.editor.nameLabel)}
-                </label>
-                <Input
-                  ref={serverNameRef}
-                  id="mcp-server-name"
-                  autoComplete="off"
-                  value={config.name}
-                  onChange={(event) => setConfig({ ...config, name: event.target.value })}
-                />
-              </div>
-
-              <fieldset className="space-y-2">
-                <legend className="text-xs font-medium">
-                  {t(($) => $.settings.mcp.servers.editor.transportLegend)}
-                </legend>
-                <RadioGroup
-                  className="grid grid-cols-2 gap-2"
-                  value={config.transport}
-                  onValueChange={(transport) => {
-                    if (transport === "stdio") {
-                      setConfig({
-                        name: config.name,
-                        enabled: config.enabled,
-                        transport: "stdio",
-                        command: "",
-                        args: [],
-                        env: {},
-                      });
-                    } else {
-                      setConfig({
-                        name: config.name,
-                        enabled: config.enabled,
-                        transport: "remote",
-                        url: "",
-                        headers: {},
-                      });
-                    }
-                    setArgsText("");
-                    setPairs(initialPairs({}));
-                  }}
-                >
-                  <label
-                    htmlFor="mcp-transport-stdio"
-                    className="flex cursor-pointer items-center gap-2 rounded-md border p-2.5 text-sm"
-                  >
-                    <RadioGroupItem id="mcp-transport-stdio" value="stdio" />
-                    <Terminal aria-hidden className="size-4 text-muted-foreground" />
-                    {t(($) => $.settings.mcp.servers.editor.transportStdio)}
-                  </label>
-                  <label
-                    htmlFor="mcp-transport-remote"
-                    className="flex cursor-pointer items-center gap-2 rounded-md border p-2.5 text-sm"
-                  >
-                    <RadioGroupItem id="mcp-transport-remote" value="remote" />
-                    <Globe2 aria-hidden className="size-4 text-muted-foreground" />
-                    {t(($) => $.settings.mcp.servers.editor.transportRemote)}
-                  </label>
-                </RadioGroup>
-              </fieldset>
-
-              {config.transport === "stdio" ? (
-                <>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium" htmlFor="mcp-server-command">
-                      {t(($) => $.settings.mcp.servers.editor.commandLabel)}
-                    </label>
-                    <Input
-                      id="mcp-server-command"
-                      autoComplete="off"
-                      placeholder={COMMAND_PLACEHOLDER}
-                      value={config.command}
-                      onChange={(event) =>
-                        setConfig({ ...config, command: event.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium" htmlFor="mcp-server-args">
-                      {t(($) => $.settings.mcp.servers.editor.argsLabel)}
-                    </label>
-                    <Textarea
-                      id="mcp-server-args"
-                      className="min-h-24 font-mono text-xs"
-                      placeholder={
-                        "-y\n@modelcontextprotocol/server-filesystem\n/path/to/project"
-                      }
-                      value={argsText}
-                      onChange={(event) => setArgsText(event.target.value)}
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      {t(($) => $.settings.mcp.servers.editor.argsHint)}
-                    </p>
-                  </div>
-                  <PairEditor kind="Environment" rows={pairs} onChange={setPairs} />
-                </>
-              ) : (
-                <>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium" htmlFor="mcp-server-url">
-                      {t(($) => $.settings.mcp.servers.editor.urlLabel)}
-                    </label>
-                    <Input
-                      id="mcp-server-url"
-                      autoComplete="off"
-                      placeholder={URL_PLACEHOLDER}
-                      type="url"
-                      value={config.url}
-                      onChange={(event) => setConfig({ ...config, url: event.target.value })}
-                    />
-                  </div>
-                  <PairEditor kind="Header" rows={pairs} onChange={setPairs} />
-                </>
-              )}
-            </>
+            renderServerFormFields()
           )}
 
           {jsonError ?? error ? (

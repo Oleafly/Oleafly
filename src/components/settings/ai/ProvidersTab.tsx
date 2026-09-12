@@ -425,6 +425,187 @@ export function ProvidersTab({
           // Settings never recommends or expands a provider implicitly. The
           // user chooses which card to inspect, including the active provider.
           const isOpen = openProviders[p.id] ?? false;
+          const renderProviderKeyActions = () => (
+            <div className="mt-2 flex gap-2">
+              {isReplacingKey ? (
+                <Input
+                  type="password"
+                  value={value}
+                  onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
+                  placeholder={t(($) => $.settings.ai.providers.keyPlaceholder)}
+                  data-testid={`ai-provider-key-${p.id}`}
+                  autoFocus={hasSaved}
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid={`ai-provider-replace-${p.id}`}
+                  disabled={saving === p.id}
+                  onClick={() => setEditingKey((m) => ({ ...m, [p.id]: true }))}
+                  className="h-8 text-xs"
+                >
+                  {t(($) => $.settings.ai.providers.replaceKey)}
+                </Button>
+              )}
+              {dirty ? (
+                <Button
+                  size="sm"
+                  data-testid={`ai-provider-save-${p.id}`}
+                  disabled={saving === p.id}
+                  onClick={() => void validateAndSave(p.id)}
+                >
+                  {saving === p.id ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : null}
+                  {t(($) => $.common.actions.save)}
+                </Button>
+              ) : null}
+              {isCustom ? (
+                <>
+                  <Tooltip label={t(($) => $.settings.ai.providers.editTooltip)}>
+                    <button type="button"
+                      data-testid={`ai-provider-edit-${p.id}`}
+                      aria-label={t(($) => $.settings.ai.providers.editAriaLabel, {
+                        provider: p.name,
+                      })}
+                      disabled={saving === p.id}
+                      onClick={() => onEditCustomProvider(p.id)}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip label={t(($) => $.settings.ai.providers.removeTooltip)}>
+                    <button type="button"
+                      data-testid={`ai-provider-delete-${p.id}`}
+                      aria-label={t(($) => $.settings.ai.providers.removeAriaLabel, {
+                        provider: p.name,
+                      })}
+                      disabled={saving === p.id}
+                      onClick={() => setConfirmRemove({ id: p.id, name: p.name })}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </Tooltip>
+                </>
+              ) : null}
+              {!isCustom && hasSaved ? (
+                <Tooltip label={t(($) => $.settings.ai.providers.deleteKeyTooltip)}>
+                  <button type="button"
+                    data-testid={`ai-provider-delete-${p.id}`}
+                    aria-label={t(($) => $.settings.ai.providers.deleteKeyAriaLabel, {
+                      provider: p.name,
+                    })}
+                    disabled={saving === p.id}
+                    onClick={() => void deleteKey(p.id)}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </Tooltip>
+              ) : null}
+            </div>
+          );
+
+          const renderProviderBody = () => (
+            isOpen && (p.id === "ollama" ? (
+              <div className="px-3 pb-3">
+                <OllamaSetup
+                  active={isActive}
+                  host={value}
+                  onHostChange={(v) => setKeys((k) => ({ ...k, ollama: v }))}
+                  status={ollama.status}
+                  models={ollama.models}
+                  onDetect={() => void refreshOllama(value || DEFAULT_OLLAMA_HOST)}
+                  selectedModel={cfg.ai_model || ""}
+                  onUse={(m) => void applyOllamaModel(m)}
+                  onDisconnect={hasSaved ? () => void deleteKey("ollama") : undefined}
+                  installed={ollama.installed}
+                  starting={ollama.starting}
+                  onStart={onStartOllama}
+                />
+              </div>
+            ) : (
+              <div className="px-3 pb-3">
+                {(() => {
+                  const storedModels = cfg.ai_provider_models[p.id] ?? seedProviderModels(p.id);
+                  const enabled = enabledModels(storedModels);
+                  return (
+                    isSelected &&
+                    enabled.length > 0 && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground">
+                          {t(($) => $.settings.ai.providers.modelLabel)}
+                        </span>
+                        <Select
+                          value={cfg.ai_model || defaultModel(p.id)}
+                          onValueChange={(v) => void changeModel(v)}
+                        >
+                          <SelectTrigger className="h-8 flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="z-[100]">
+                            {enabled.map((m) => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )
+                  );
+                })()}
+                {renderProviderKeyActions()}
+                {(() => {
+                  const providerStatus = status[p.id] ?? "idle";
+                  if (providerStatus === "idle") return null;
+                  const nonValidClass =
+                    providerStatus === "error"
+                      ? "mt-1.5 text-[11px] text-destructive"
+                      : "mt-1.5 text-[11px] text-muted-foreground";
+                  const nonValidatingText =
+                    providerStatus === "valid"
+                      ? t(($) => $.settings.ai.providers.status.valid)
+                      : t(($) => $.settings.ai.providers.status.error, {
+                          message:
+                            errorMsg[p.id] ??
+                            t(($) => $.settings.ai.providers.status.errorFallback),
+                        });
+                  return (
+                    <p
+                      data-testid={`ai-provider-status-${p.id}`}
+                      className={
+                        providerStatus === "valid"
+                          ? "mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-500"
+                          : nonValidClass
+                      }
+                    >
+                      {providerStatus === "validating"
+                        ? t(($) => $.settings.ai.providers.status.validating)
+                        : nonValidatingText}
+                    </p>
+                  );
+                })()}
+                {isConfigured && (
+                  <ModelManager
+                    providerId={p.id}
+                    models={cfg.ai_provider_models[p.id] ?? seedProviderModels(p.id)}
+                    apiKey={value}
+                    onChange={(next) => void persistModels(p.id, next)}
+                    onRefreshed={(next, at) => void persistRefreshedModels(p.id, next, at)}
+                    refreshedAt={cfg.ai_model_lists_refreshed_at?.[p.id]}
+                    probes={cfg.ai_model_probes}
+                    discoverable={supportsModelDiscovery(p.id, isCustom)}
+                  />
+                )}
+              </div>
+            ))
+          );
+
           return (
             <div
               key={p.id}
@@ -479,180 +660,7 @@ export function ProvidersTab({
                 </div>
               </div>
 
-              {isOpen && (p.id === "ollama" ? (
-                <div className="px-3 pb-3">
-                  <OllamaSetup
-                    active={isActive}
-                    host={value}
-                    onHostChange={(v) => setKeys((k) => ({ ...k, ollama: v }))}
-                    status={ollama.status}
-                    models={ollama.models}
-                    onDetect={() => void refreshOllama(value || DEFAULT_OLLAMA_HOST)}
-                    selectedModel={cfg.ai_model || ""}
-                    onUse={(m) => void applyOllamaModel(m)}
-                    onDisconnect={hasSaved ? () => void deleteKey("ollama") : undefined}
-                    installed={ollama.installed}
-                    starting={ollama.starting}
-                    onStart={onStartOllama}
-                  />
-                </div>
-              ) : (
-                <div className="px-3 pb-3">
-                  {(() => {
-                    const storedModels = cfg.ai_provider_models[p.id] ?? seedProviderModels(p.id);
-                    const enabled = enabledModels(storedModels);
-                    return (
-                      isSelected &&
-                      enabled.length > 0 && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-[11px] text-muted-foreground">
-                            {t(($) => $.settings.ai.providers.modelLabel)}
-                          </span>
-                          <Select
-                            value={cfg.ai_model || defaultModel(p.id)}
-                            onValueChange={(v) => void changeModel(v)}
-                          >
-                            <SelectTrigger className="h-8 flex-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="z-[100]">
-                              {enabled.map((m) => (
-                                <SelectItem key={m.id} value={m.id}>
-                                  {m.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )
-                    );
-                  })()}
-                  <div className="mt-2 flex gap-2">
-                    {isReplacingKey ? (
-                      <Input
-                        type="password"
-                        value={value}
-                        onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
-                        placeholder={t(($) => $.settings.ai.providers.keyPlaceholder)}
-                        data-testid={`ai-provider-key-${p.id}`}
-                        autoFocus={hasSaved}
-                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
-                      />
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        data-testid={`ai-provider-replace-${p.id}`}
-                        disabled={saving === p.id}
-                        onClick={() => setEditingKey((m) => ({ ...m, [p.id]: true }))}
-                        className="h-8 text-xs"
-                      >
-                        {t(($) => $.settings.ai.providers.replaceKey)}
-                      </Button>
-                    )}
-                    {dirty ? (
-                      <Button
-                        size="sm"
-                        data-testid={`ai-provider-save-${p.id}`}
-                        disabled={saving === p.id}
-                        onClick={() => void validateAndSave(p.id)}
-                      >
-                        {saving === p.id ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : null}
-                        {t(($) => $.common.actions.save)}
-                      </Button>
-                    ) : null}
-                    {isCustom ? (
-                      <>
-                        <Tooltip label={t(($) => $.settings.ai.providers.editTooltip)}>
-                          <button type="button"
-                            data-testid={`ai-provider-edit-${p.id}`}
-                            aria-label={t(($) => $.settings.ai.providers.editAriaLabel, {
-                              provider: p.name,
-                            })}
-                            disabled={saving === p.id}
-                            onClick={() => onEditCustomProvider(p.id)}
-                            className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        </Tooltip>
-                        <Tooltip label={t(($) => $.settings.ai.providers.removeTooltip)}>
-                          <button type="button"
-                            data-testid={`ai-provider-delete-${p.id}`}
-                            aria-label={t(($) => $.settings.ai.providers.removeAriaLabel, {
-                              provider: p.name,
-                            })}
-                            disabled={saving === p.id}
-                            onClick={() => setConfirmRemove({ id: p.id, name: p.name })}
-                            className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </Tooltip>
-                      </>
-                    ) : null}
-                    {!isCustom && hasSaved ? (
-                      <Tooltip label={t(($) => $.settings.ai.providers.deleteKeyTooltip)}>
-                        <button type="button"
-                          data-testid={`ai-provider-delete-${p.id}`}
-                          aria-label={t(($) => $.settings.ai.providers.deleteKeyAriaLabel, {
-                            provider: p.name,
-                          })}
-                          disabled={saving === p.id}
-                          onClick={() => void deleteKey(p.id)}
-                          className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </Tooltip>
-                    ) : null}
-                  </div>
-                  {(() => {
-                    const providerStatus = status[p.id] ?? "idle";
-                    if (providerStatus === "idle") return null;
-                    const nonValidClass =
-                      providerStatus === "error"
-                        ? "mt-1.5 text-[11px] text-destructive"
-                        : "mt-1.5 text-[11px] text-muted-foreground";
-                    const nonValidatingText =
-                      providerStatus === "valid"
-                        ? t(($) => $.settings.ai.providers.status.valid)
-                        : t(($) => $.settings.ai.providers.status.error, {
-                            message:
-                              errorMsg[p.id] ??
-                              t(($) => $.settings.ai.providers.status.errorFallback),
-                          });
-                    return (
-                      <p
-                        data-testid={`ai-provider-status-${p.id}`}
-                        className={
-                          providerStatus === "valid"
-                            ? "mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-500"
-                            : nonValidClass
-                        }
-                      >
-                        {providerStatus === "validating"
-                          ? t(($) => $.settings.ai.providers.status.validating)
-                          : nonValidatingText}
-                      </p>
-                    );
-                  })()}
-                  {isConfigured && (
-                    <ModelManager
-                      providerId={p.id}
-                      models={cfg.ai_provider_models[p.id] ?? seedProviderModels(p.id)}
-                      apiKey={value}
-                      onChange={(next) => void persistModels(p.id, next)}
-                      onRefreshed={(next, at) => void persistRefreshedModels(p.id, next, at)}
-                      refreshedAt={cfg.ai_model_lists_refreshed_at?.[p.id]}
-                      probes={cfg.ai_model_probes}
-                      discoverable={supportsModelDiscovery(p.id, isCustom)}
-                    />
-                  )}
-                </div>
-              ))}
+              {renderProviderBody()}
             </div>
           );
         })}

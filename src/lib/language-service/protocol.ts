@@ -305,58 +305,34 @@ function semanticTokenCapabilities(value: unknown) {
   return { full, range, legend };
 }
 
-function textDocumentSyncCapabilities(
-  value: unknown,
+function syncChangeKind(
+  candidate: unknown,
+): "none" | "full" | "incremental" | null {
+  if (candidate === 0) return "none";
+  if (candidate === 1) return "full";
+  if (candidate === 2) return "incremental";
+  return null;
+}
+
+function numericTextDocumentSync(
+  value: number,
 ): NegotiatedServerCapabilities["textDocumentSync"] {
-  const changeKind = (
-    candidate: unknown,
-  ): "none" | "full" | "incremental" | null => {
-    if (candidate === 0) return "none";
-    if (candidate === 1) return "full";
-    if (candidate === 2) return "incremental";
-    return null;
-  };
-  if (typeof value === "number") {
-    const change = changeKind(value);
-    if (!change) {
-      throw new JsonRpcProtocolError(
-        `Language server advertised invalid textDocumentSync kind: ${String(value)}`,
-      );
-    }
-    return {
-      openClose: change !== "none",
-      change,
-      save: { enabled: false, includeText: false },
-    };
-  }
-  if (value === undefined || value === null) {
-    return {
-      openClose: false,
-      change: "none",
-      save: { enabled: false, includeText: false },
-    };
-  }
-  if (!isRecord(value)) {
-    throw new JsonRpcProtocolError(
-      "Language server advertised malformed textDocumentSync options",
-    );
-  }
-  const change =
-    value.change === undefined ? "none" : changeKind(value.change);
+  const change = syncChangeKind(value);
   if (!change) {
     throw new JsonRpcProtocolError(
-      `Language server advertised invalid textDocumentSync change kind: ${String(value.change)}`,
+      `Language server advertised invalid textDocumentSync kind: ${String(value)}`,
     );
   }
-  if (
-    value.openClose !== undefined &&
-    typeof value.openClose !== "boolean"
-  ) {
-    throw new JsonRpcProtocolError(
-      "Language server advertised malformed textDocumentSync openClose",
-    );
-  }
-  const saveValue = value.save;
+  return {
+    openClose: change !== "none",
+    change,
+    save: { enabled: false, includeText: false },
+  };
+}
+
+function textDocumentSyncSave(
+  saveValue: unknown,
+): { enabled: boolean; includeText: boolean } {
   if (
     isRecord(saveValue) &&
     saveValue.includeText !== undefined &&
@@ -376,18 +352,48 @@ function textDocumentSyncCapabilities(
       "Language server advertised malformed textDocumentSync save capability",
     );
   }
-  const recordSave = isRecord(saveValue)
-    ? {
-        enabled: true,
-        includeText: saveValue.includeText === true,
-      }
-    : { enabled: false, includeText: false };
-  const save =
-    saveValue === true ? { enabled: true, includeText: false } : recordSave;
+  if (saveValue === true) return { enabled: true, includeText: false };
+  if (isRecord(saveValue)) {
+    return { enabled: true, includeText: saveValue.includeText === true };
+  }
+  return { enabled: false, includeText: false };
+}
+
+function textDocumentSyncCapabilities(
+  value: unknown,
+): NegotiatedServerCapabilities["textDocumentSync"] {
+  if (typeof value === "number") return numericTextDocumentSync(value);
+  if (value === undefined || value === null) {
+    return {
+      openClose: false,
+      change: "none",
+      save: { enabled: false, includeText: false },
+    };
+  }
+  if (!isRecord(value)) {
+    throw new JsonRpcProtocolError(
+      "Language server advertised malformed textDocumentSync options",
+    );
+  }
+  const change =
+    value.change === undefined ? "none" : syncChangeKind(value.change);
+  if (!change) {
+    throw new JsonRpcProtocolError(
+      `Language server advertised invalid textDocumentSync change kind: ${String(value.change)}`,
+    );
+  }
+  if (
+    value.openClose !== undefined &&
+    typeof value.openClose !== "boolean"
+  ) {
+    throw new JsonRpcProtocolError(
+      "Language server advertised malformed textDocumentSync openClose",
+    );
+  }
   return {
     openClose: value.openClose === true,
     change,
-    save,
+    save: textDocumentSyncSave(value.save),
   };
 }
 

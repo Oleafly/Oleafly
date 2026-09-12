@@ -161,9 +161,9 @@ export function TaskOutputsSection() {
   const previewBody = () => {
     if (preview?.loading) {
       return (
-        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+        <output className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-        </p>
+        </output>
       );
     }
     if (preview?.note) return <p className="text-sm text-muted-foreground">{preview.note}</p>;

@@ -479,6 +479,176 @@ export function SkillsTab() {
                   const isUserSkill = skill.source === "user";
                   const projectOverride = skillProjectOverride(skill);
                   const projectAvailable = isSkillAvailable(skill);
+                  const renderSkillActions = () => (
+                    <div className="mt-2 flex items-center justify-end gap-1">
+                      {skill.updateAvailable ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          data-testid={`skill-update-${skill.id}`}
+                          disabled={busy}
+                          onClick={() => setUpdateTarget(skill)}
+                        >
+                          {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                          {t(($) => $.settings.ai.skills.updateAction)}
+                        </Button>
+                      ) : null}
+                      {isUserSkill ? (
+                        <>
+                          <Tooltip
+                            label={t(($) => $.settings.ai.skills.validateAria, {
+                              name: skill.name,
+                            })}
+                          >
+                            <button
+                              type="button"
+                              aria-label={t(($) => $.settings.ai.skills.validateAria, {
+                                name: skill.name,
+                              })}
+                              disabled={busy}
+                              onClick={() =>
+                                void runRecordMutation(skill.id, () => validateSkill(skill.id))
+                              }
+                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                            >
+                              {busy ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <RefreshCw className="size-3.5" />
+                              )}
+                            </button>
+                          </Tooltip>
+                          <Tooltip
+                            label={t(($) => $.settings.ai.skills.editAria, { name: skill.name })}
+                          >
+                            <button
+                              type="button"
+                              aria-label={t(($) => $.settings.ai.skills.editAria, {
+                                name: skill.name,
+                              })}
+                              disabled={busy}
+                              onClick={() => setEditor(skill)}
+                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </Tooltip>
+                        </>
+                      ) : null}
+                      {skill.removable ? (
+                        <Tooltip
+                          label={t(($) => $.settings.ai.skills.removeAria, { name: skill.name })}
+                        >
+                          <button
+                            type="button"
+                            aria-label={t(($) => $.settings.ai.skills.removeAria, {
+                              name: skill.name,
+                            })}
+                            disabled={busy}
+                            onClick={() => setRemoveTarget(skill)}
+                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </Tooltip>
+                      ) : null}
+                    </div>
+                  );
+
+                  const renderSkillProjectScope = () => (
+                    projectId ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground">
+                            {t(($) => $.settings.ai.skills.useInProject)}
+                          </span>
+                          <Switch
+                            data-testid={`skill-project-toggle-${skill.id}`}
+                            checked={projectAvailable}
+                            disabled={invalid || busy}
+                            aria-label={t(($) => $.settings.ai.skills.useInProjectAria, {
+                              name: skill.name,
+                            })}
+                            onCheckedChange={(enabled) =>
+                              void runRecordMutation(
+                                skill.id,
+                                () => setSkillProjectEnabled(projectId, skill.id, enabled),
+                                "project",
+                              )
+                            }
+                          />
+                        </div>
+                        {projectOverride === null ? (
+                          <span className="text-[10px] text-muted-foreground/80">
+                            {t(($) => $.settings.ai.skills.inheritsDevice)}
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground/80">
+                              {projectOverride
+                                ? t(($) => $.settings.ai.skills.onForProject)
+                                : t(($) => $.settings.ai.skills.offForProject)}
+                            </span>
+                            <button
+                              type="button"
+                              data-testid={`skill-project-reset-${skill.id}`}
+                              disabled={busy}
+                              aria-label={t(($) => $.settings.ai.skills.useDeviceSettingAria, {
+                                name: skill.name,
+                              })}
+                              onClick={() =>
+                                void runRecordMutation(
+                                  skill.id,
+                                  () => setSkillProjectEnabled(projectId, skill.id, null),
+                                  "project",
+                                )
+                              }
+                              className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+                            >
+                              {t(($) => $.settings.ai.skills.useDeviceSetting)}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : null
+                  );
+
+                  const renderSkillFiles = () => (
+                    skill.files.length > 0 ? (
+                      <div className="mt-1.5">
+                        <button
+                          type="button"
+                          data-testid={`skill-files-toggle-${skill.id}`}
+                          onClick={() => toggleFiles(skill.id)}
+                          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                        >
+                          {filesExpanded ? (
+                            <ChevronDown className="size-3" />
+                          ) : (
+                            <ChevronRight className="size-3" />
+                          )}
+                          {t(($) => $.settings.ai.skills.fileCount, {
+                            count: skill.files.length,
+                          })}
+                        </button>
+                        {filesExpanded ? (
+                          <ul className="mt-1 space-y-0.5 rounded-md border bg-background p-2">
+                            {skill.files.map((file) => (
+                              <li
+                                key={file.path}
+                                className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
+                              >
+                                <code className="min-w-0 truncate">{file.path}</code>
+                                <span className="shrink-0">{formatBytes(file.bytes)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    ) : null
+                  );
+
                   return (
                     <div
                       key={skill.id}
@@ -506,38 +676,7 @@ export function SkillsTab() {
                           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                             {skill.description || t(($) => $.settings.ai.skills.missingDescription)}
                           </p>
-                          {skill.files.length > 0 ? (
-                            <div className="mt-1.5">
-                              <button
-                                type="button"
-                                data-testid={`skill-files-toggle-${skill.id}`}
-                                onClick={() => toggleFiles(skill.id)}
-                                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                              >
-                                {filesExpanded ? (
-                                  <ChevronDown className="size-3" />
-                                ) : (
-                                  <ChevronRight className="size-3" />
-                                )}
-                                {t(($) => $.settings.ai.skills.fileCount, {
-                                  count: skill.files.length,
-                                })}
-                              </button>
-                              {filesExpanded ? (
-                                <ul className="mt-1 space-y-0.5 rounded-md border bg-background p-2">
-                                  {skill.files.map((file) => (
-                                    <li
-                                      key={file.path}
-                                      className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
-                                    >
-                                      <code className="min-w-0 truncate">{file.path}</code>
-                                      <span className="shrink-0">{formatBytes(file.bytes)}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : null}
-                            </div>
-                          ) : null}
+                          {renderSkillFiles()}
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-1.5">
                           <Switch
@@ -554,61 +693,7 @@ export function SkillsTab() {
                               )
                             }
                           />
-                          {projectId ? (
-                            <div className="flex flex-col items-end gap-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-muted-foreground">
-                                  {t(($) => $.settings.ai.skills.useInProject)}
-                                </span>
-                                <Switch
-                                  data-testid={`skill-project-toggle-${skill.id}`}
-                                  checked={projectAvailable}
-                                  disabled={invalid || busy}
-                                  aria-label={t(($) => $.settings.ai.skills.useInProjectAria, {
-                                    name: skill.name,
-                                  })}
-                                  onCheckedChange={(enabled) =>
-                                    void runRecordMutation(
-                                      skill.id,
-                                      () => setSkillProjectEnabled(projectId, skill.id, enabled),
-                                      "project",
-                                    )
-                                  }
-                                />
-                              </div>
-                              {projectOverride === null ? (
-                                <span className="text-[10px] text-muted-foreground/80">
-                                  {t(($) => $.settings.ai.skills.inheritsDevice)}
-                                </span>
-                              ) : (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] text-muted-foreground/80">
-                                    {projectOverride
-                                      ? t(($) => $.settings.ai.skills.onForProject)
-                                      : t(($) => $.settings.ai.skills.offForProject)}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    data-testid={`skill-project-reset-${skill.id}`}
-                                    disabled={busy}
-                                    aria-label={t(($) => $.settings.ai.skills.useDeviceSettingAria, {
-                                      name: skill.name,
-                                    })}
-                                    onClick={() =>
-                                      void runRecordMutation(
-                                        skill.id,
-                                        () => setSkillProjectEnabled(projectId, skill.id, null),
-                                        "project",
-                                      )
-                                    }
-                                    className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
-                                  >
-                                    {t(($) => $.settings.ai.skills.useDeviceSetting)}
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          ) : null}
+                          {renderSkillProjectScope()}
                         </div>
                       </div>
 
@@ -621,80 +706,7 @@ export function SkillsTab() {
                         </p>
                       ) : null}
 
-                      <div className="mt-2 flex items-center justify-end gap-1">
-                        {skill.updateAvailable ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            data-testid={`skill-update-${skill.id}`}
-                            disabled={busy}
-                            onClick={() => setUpdateTarget(skill)}
-                          >
-                            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                            {t(($) => $.settings.ai.skills.updateAction)}
-                          </Button>
-                        ) : null}
-                        {isUserSkill ? (
-                          <>
-                            <Tooltip
-                              label={t(($) => $.settings.ai.skills.validateAria, {
-                                name: skill.name,
-                              })}
-                            >
-                              <button
-                                type="button"
-                                aria-label={t(($) => $.settings.ai.skills.validateAria, {
-                                  name: skill.name,
-                                })}
-                                disabled={busy}
-                                onClick={() =>
-                                  void runRecordMutation(skill.id, () => validateSkill(skill.id))
-                                }
-                                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                              >
-                                {busy ? (
-                                  <Loader2 className="size-3.5 animate-spin" />
-                                ) : (
-                                  <RefreshCw className="size-3.5" />
-                                )}
-                              </button>
-                            </Tooltip>
-                            <Tooltip
-                              label={t(($) => $.settings.ai.skills.editAria, { name: skill.name })}
-                            >
-                              <button
-                                type="button"
-                                aria-label={t(($) => $.settings.ai.skills.editAria, {
-                                  name: skill.name,
-                                })}
-                                disabled={busy}
-                                onClick={() => setEditor(skill)}
-                                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                              >
-                                <Pencil className="size-3.5" />
-                              </button>
-                            </Tooltip>
-                          </>
-                        ) : null}
-                        {skill.removable ? (
-                          <Tooltip
-                            label={t(($) => $.settings.ai.skills.removeAria, { name: skill.name })}
-                          >
-                            <button
-                              type="button"
-                              aria-label={t(($) => $.settings.ai.skills.removeAria, {
-                                name: skill.name,
-                              })}
-                              disabled={busy}
-                              onClick={() => setRemoveTarget(skill)}
-                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          </Tooltip>
-                        ) : null}
-                      </div>
+                      {renderSkillActions()}
                     </div>
                   );
                 })}

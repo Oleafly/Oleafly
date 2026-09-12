@@ -1208,23 +1208,27 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     const requestedDoc = docRef.current;
     const requestedSeq = loadSeqRef.current;
     if (!requestedDoc) return;
-    try {
-      // A page is never rasterized against a borrowed/approximate wrapper.
-      // Exact rotation, UserUnit and MediaBox geometry must win first.
-      await ensurePageGeometry(pageNo);
-    } catch (error) {
-      if (
-        requestedSeq === loadSeqRef.current &&
-        docRef.current === requestedDoc
-      ) {
-        const failedWrap = wrapsRef.current.get(pageNo);
-        if (failedWrap) {
-          failedWrap.dataset.pdfGeometry = "error";
-          failedWrap.dataset.pdfGeometryError = String(error);
+    const prepareGeometry = async (): Promise<boolean> => {
+      try {
+        // A page is never rasterized against a borrowed/approximate wrapper.
+        // Exact rotation, UserUnit and MediaBox geometry must win first.
+        await ensurePageGeometry(pageNo);
+        return true;
+      } catch (error) {
+        if (
+          requestedSeq === loadSeqRef.current &&
+          docRef.current === requestedDoc
+        ) {
+          const failedWrap = wrapsRef.current.get(pageNo);
+          if (failedWrap) {
+            failedWrap.dataset.pdfGeometry = "error";
+            failedWrap.dataset.pdfGeometryError = String(error);
+          }
         }
+        return false;
       }
-      return;
-    }
+    };
+    if (!(await prepareGeometry())) return;
 
     const doc = docRef.current;
     const wrap = wrapsRef.current.get(pageNo);
@@ -1242,8 +1246,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     }
     const existing = renderedRef.current.get(pageNo);
     if (existing?.renderScale === renderScale) return; // already correct
-    if (existing) cancelRenderState(existing);
-    else reserveRenderSlot(pageNo);
+    const prepareRenderSlot = () => {
+      if (existing) cancelRenderState(existing);
+      else reserveRenderSlot(pageNo);
+    };
+    prepareRenderSlot();
 
     const seq = loadSeqRef.current;
     const state: RenderState = {
@@ -1266,6 +1273,24 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       docRef.current === doc &&
       wrapsRef.current.get(pageNo) === wrap &&
       renderedRef.current.get(pageNo) === state;
+    const reportRenderFailure = (err: unknown) => {
+      if (!String(err).includes("RenderingCancelled")) {
+        const container = containerRef.current;
+        if (container && isCurrent() && renderedRef.current.size === 1) {
+          container.dataset.pdfRenderError = String(err);
+          container.textContent = tRef.current("error.firstPage");
+          onLoadStateChangeRef.current?.({
+            status: "error",
+            documentIdentity: documentIdentityRef.current,
+            message: tRef.current("error.firstPage"),
+          });
+        }
+      }
+      if (renderedRef.current.get(pageNo) === state) {
+        cancelRenderState(state);
+        renderedRef.current.delete(pageNo);
+      }
+    };
 
     try {
       const page = await doc.getPage(pageNo);
@@ -1282,42 +1307,50 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           page.rotate + rotationRef.current,
         ),
       });
-      const dpr = window.devicePixelRatio || 1;
-      const geometry = applyPdfLayerViewport(wrap, viewport, dpr);
-      const baseViewport = page.getViewport({
-        scale: 1,
-        rotation: normalizeRotation(
-          page.rotate + rotationRef.current,
-        ),
-      });
-      applyExactPageViewport(pageNo, baseViewport);
-      wrap.dataset.pdfRasterScale = String(renderScale);
-      wrap.dataset.pdfCanvasScaling = geometry.restrictedScaling
-        ? "restricted"
-        : "native";
-      wrap.dataset.pdfRotation = String(viewport.rotation);
-      wrap.dataset.pdfUserUnit = String(viewport.userUnit);
+      const prepareWrapGeometry = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const wrapGeometry = applyPdfLayerViewport(wrap, viewport, dpr);
+        const baseViewport = page.getViewport({
+          scale: 1,
+          rotation: normalizeRotation(
+            page.rotate + rotationRef.current,
+          ),
+        });
+        applyExactPageViewport(pageNo, baseViewport);
+        wrap.dataset.pdfRasterScale = String(renderScale);
+        wrap.dataset.pdfCanvasScaling = wrapGeometry.restrictedScaling
+          ? "restricted"
+          : "native";
+        wrap.dataset.pdfRotation = String(viewport.rotation);
+        wrap.dataset.pdfUserUnit = String(viewport.userUnit);
+        return wrapGeometry;
+      };
+      const geometry = prepareWrapGeometry();
 
-      const canvas = document.createElement("canvas");
-      canvas.className = "pdf-canvas";
-      canvas.setAttribute("role", "presentation");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("2D canvas context is unavailable");
-      canvas.width = geometry.canvasWidth;
-      canvas.height = geometry.canvasHeight;
-      canvas.style.width = geometry.cssWidth;
-      canvas.style.height = geometry.cssHeight;
-      // All interactive layers share the page wrapper's exact (0, 0) origin.
-      // Leaving a canvas as an inline replaced element lets line-box/baseline
-      // metrics shift its painted pixels by a fraction of a CSS pixel in
-      // WebKit, while the absolute text layer stays at the wrapper origin.
-      canvas.style.position = "absolute";
-      canvas.style.inset = "0";
-      canvas.style.display = "block";
-      const transform =
-        geometry.outputScaleX !== 1 || geometry.outputScaleY !== 1
-          ? [geometry.outputScaleX, 0, 0, geometry.outputScaleY, 0, 0]
-          : undefined;
+      const createPageCanvas = () => {
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.className = "pdf-canvas";
+        pageCanvas.setAttribute("role", "presentation");
+        const context = pageCanvas.getContext("2d");
+        if (!context) throw new Error("2D canvas context is unavailable");
+        pageCanvas.width = geometry.canvasWidth;
+        pageCanvas.height = geometry.canvasHeight;
+        pageCanvas.style.width = geometry.cssWidth;
+        pageCanvas.style.height = geometry.cssHeight;
+        // All interactive layers share the page wrapper's exact (0, 0) origin.
+        // Leaving a canvas as an inline replaced element lets line-box/baseline
+        // metrics shift its painted pixels by a fraction of a CSS pixel in
+        // WebKit, while the absolute text layer stays at the wrapper origin.
+        pageCanvas.style.position = "absolute";
+        pageCanvas.style.inset = "0";
+        pageCanvas.style.display = "block";
+        const canvasTransform =
+          geometry.outputScaleX !== 1 || geometry.outputScaleY !== 1
+            ? [geometry.outputScaleX, 0, 0, geometry.outputScaleY, 0, 0]
+            : undefined;
+        return { canvas: pageCanvas, ctx: context, transform: canvasTransform };
+      };
+      const { canvas, ctx, transform } = createPageCanvas();
       wrap.appendChild(canvas);
       state.nodes.push(canvas);
 
@@ -1358,6 +1391,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       // runtime. We wire TextLayer's public mapping into the compatible
       // accessibility contract; a highlighter is intentionally absent because
       // this lightweight preview has no PDFFindController.
+      const buildTextLayer = async (): Promise<boolean> => {
       try {
         const textContent =
           (pageNo === 1 ? probedPageText.get(doc) : undefined) ??
@@ -1367,7 +1401,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             15_000,
             "page text",
           ));
-        if (!isCurrent()) return;
+        if (!isCurrent()) return false;
         textContentRef.current.set(pageNo, textContent);
         const textLayer = new pdfjsLib.TextLayer({
           textContentSource: textContent,
@@ -1385,7 +1419,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         }
         if (!isCurrent()) {
           textLayer.cancel();
-          return;
+          return false;
         }
         try {
           calibratePdfTextLayerWidths(
@@ -1422,14 +1456,18 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           searchMatchesByPageRef.current.get(pageNo) ?? [],
           searchActiveIndexRef.current,
         );
+        return true;
       } catch {
         state.textLayer = null;
         state.renderedTextLayer = null;
         accessibilityManager.disable();
-        if (!isCurrent()) return;
+        if (!isCurrent()) return false;
         textDiv.replaceChildren();
         /* text selection is a non-fatal enhancement */
+        return true;
       }
+      };
+      if (!(await buildTextLayer())) return;
 
       void syncScreenReaderLayer(pageNo, state, wrap);
 
@@ -1445,25 +1483,31 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       // pdf.js type declaration says `void`, while the 6.1.200 implementation
       // returns the generated structure-tree DOM, hence the narrow `unknown`
       // bridge here.
-      try {
-        const structureDom = (await structTreeLayer.render()) as unknown;
-        if (!isCurrent()) return;
-        structTreeLayer.updateTextLayer();
-        if (structureDom instanceof HTMLElement && structureDom.parentNode !== canvas) {
-          canvas.append(structureDom);
+      const buildStructTree = async (): Promise<boolean> => {
+        try {
+          const structureDom = (await structTreeLayer.render()) as unknown;
+          if (!isCurrent()) return false;
+          structTreeLayer.updateTextLayer();
+          if (structureDom instanceof HTMLElement && structureDom.parentNode !== canvas) {
+            canvas.append(structureDom);
+          }
+          structTreeLayer.show();
+          return true;
+        } catch {
+          /* untagged PDFs legitimately have no structure tree */
+          return true;
         }
-        structTreeLayer.show();
-      } catch {
-        /* untagged PDFs legitimately have no structure tree */
-      }
+      };
+      if (!(await buildStructTree())) return;
 
       // Links/annotations (best-effort).
+      const buildAnnotations = async (): Promise<boolean> => {
       try {
         const [annotations, optionalContentConfig] = await Promise.all([
           page.getAnnotations({ intent: "display" }),
           optionalContentConfigPromise,
         ]);
-        if (!isCurrent()) return;
+        if (!isCurrent()) return false;
         const annotationLayer = new pdfjsLib.AnnotationLayer({
           div: annotDiv,
           accessibilityManager,
@@ -1489,7 +1533,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           enableScripting: false,
           optionalContentConfig,
         });
-        if (!isCurrent()) return;
+        if (!isCurrent()) return false;
         annotDiv.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((a) => {
           const href = a.getAttribute("href") ?? "";
           if (href.startsWith("#")) return;
@@ -1507,26 +1551,15 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             onOpenLinkRef.current?.(safeUrl);
           });
         });
+        return true;
       } catch {
         /* annotation rendering is a non-fatal enhancement */
+        return true;
       }
+      };
+      if (!(await buildAnnotations())) return;
     } catch (err) {
-      if (!String(err).includes("RenderingCancelled")) {
-        const container = containerRef.current;
-        if (container && isCurrent() && renderedRef.current.size === 1) {
-          container.dataset.pdfRenderError = String(err);
-          container.textContent = tRef.current("error.firstPage");
-          onLoadStateChangeRef.current?.({
-            status: "error",
-            documentIdentity: documentIdentityRef.current,
-            message: tRef.current("error.firstPage"),
-          });
-        }
-      }
-      if (renderedRef.current.get(pageNo) === state) {
-        cancelRenderState(state);
-        renderedRef.current.delete(pageNo);
-      }
+      reportRenderFailure(err);
     }
   }, [
     applyExactPageViewport,

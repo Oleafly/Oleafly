@@ -22,15 +22,15 @@ export function IndexKeeper() {
   const content = useActiveContent();
 
   useEffect(() => {
-    projectId;
+    void projectId;
     useIndexStore.getState().reset();
   }, [projectId]);
 
   useLayoutEffect(() => {
     if (!projectId) return;
     // These identities intentionally define the accepted filesystem snapshot.
-    mainDocument;
-    tree;
+    void mainDocument;
+    void tree;
     useIndexStore.getState().invalidateFilesystem();
   }, [mainDocument, projectId, tree]);
 
@@ -39,8 +39,8 @@ export function IndexKeeper() {
     // updates (e.g. an AI edit touching many files) coalesces into one rebuild.
     // Not clearing the index here avoids a go-to-def gap while editing.
     if (!projectId || projectLoading) return;
-    mainDocument;
-    tree;
+    void mainDocument;
+    void tree;
     const t = setTimeout(() => void useIndexStore.getState().rebuildFromDisk(), 200);
     return () => clearTimeout(t);
   }, [mainDocument, projectId, projectLoading, tree]);

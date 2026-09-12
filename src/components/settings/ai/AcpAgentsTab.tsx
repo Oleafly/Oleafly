@@ -354,7 +354,7 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
     void useAcpSessionsStore
       .getState()
       .refreshCatalog(true)
-      .catch((value: unknown) => setError(acpError(value)));
+      .catch((error_: unknown) => setError(acpError(error_)));
   }, []);
 
   const action = async (key: string, work: () => Promise<void>) => {

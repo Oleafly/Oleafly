@@ -169,6 +169,17 @@ describe("markdownBibliographyPaths", () => {
     ]);
   });
 
+  it("trims a block list item and keeps its inner spacing", () => {
+    const source = markdown(
+      "bibliography:\n  -   refs/my library.bib   \n  -\t'quoted one.bib'\t\n  -   \n  - last.bib",
+    );
+    expect(markdownBibliographyPaths(source)).toEqual([
+      "refs/my library.bib",
+      "quoted one.bib",
+      "last.bib",
+    ]);
+  });
+
   it("returns nothing without front matter or a bibliography key", () => {
     expect(markdownBibliographyPaths("# Paper\n")).toEqual([]);
     expect(markdownBibliographyPaths(markdown("title: Paper"))).toEqual([]);

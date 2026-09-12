@@ -36,6 +36,37 @@ function extractArxivFromUrl(url: string | null | undefined): string | null {
   return normalizeArxivId(id);
 }
 
+function applyBibliographyField(
+  key: string,
+  value: string,
+  out: {
+    dois: Set<string>;
+    arxivIds: Set<string>;
+    titles: Set<string>;
+  },
+): void {
+  if (key === "doi") {
+    const doi = normalizeDoiKey(value);
+    if (doi.startsWith("10.")) out.dois.add(doi);
+    return;
+  }
+
+  if (key === "eprint") {
+    out.arxivIds.add(normalizeArxivId(value));
+    return;
+  }
+
+  if (key === "title") {
+    const titleKey = normalizeTitleKey(value);
+    if (titleKey) out.titles.add(titleKey);
+    return;
+  }
+
+  // url / note may embed arXiv abs links
+  const arxiv = extractArxivFromUrl(value);
+  if (arxiv) out.arxivIds.add(arxiv);
+}
+
 /**
  * Parse DOI, arXiv, and title identities from BibTeX (or similar) text.
  * Uses lightweight field regexes in the spirit of the OpenLeaf content script.
@@ -56,27 +87,7 @@ export function parseBibliographyIdentities(bibText: string): BibliographyIdenti
     const key = match[1].toLowerCase();
     const value = (match[2] ?? match[3] ?? "").trim();
     if (!value) continue;
-
-    if (key === "doi") {
-      const doi = normalizeDoiKey(value);
-      if (doi.startsWith("10.")) dois.add(doi);
-      continue;
-    }
-
-    if (key === "eprint") {
-      arxivIds.add(normalizeArxivId(value));
-      continue;
-    }
-
-    if (key === "title") {
-      const titleKey = normalizeTitleKey(value);
-      if (titleKey) titles.add(titleKey);
-      continue;
-    }
-
-    // url / note may embed arXiv abs links
-    const arxiv = extractArxivFromUrl(value);
-    if (arxiv) arxivIds.add(arxiv);
+    applyBibliographyField(key, value, { dois, arxivIds, titles });
   }
 
   // Also catch bare arxiv.org/abs|pdf links anywhere in the bib text

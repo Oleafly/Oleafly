@@ -573,7 +573,7 @@ export function SourceControl() {
     return undefined;
   };
 
-  const commitPanel = (
+  const renderCommitPanel = () => (
     <div className="flex flex-col gap-2">
       <Input
         data-testid="commit-title"
@@ -647,7 +647,8 @@ export function SourceControl() {
     </div>
   );
 
-  const statusNotice = status && (
+  const renderStatusNotice = () =>
+    status && (
     <div
       data-testid="source-control-status"
       className={cn(
@@ -661,7 +662,7 @@ export function SourceControl() {
     </div>
   );
 
-  const remoteSection = (
+  const renderRemoteSection = () => (
     <div>
       <div className="flex items-center justify-between gap-2 px-1 pb-1">
         <span className="flex min-w-0 items-center gap-1.5">
@@ -807,6 +808,28 @@ export function SourceControl() {
     );
   };
 
+  const renderAheadBehind = () => (
+    remote && aheadBehind?.has_upstream && (aheadBehind.ahead > 0 || aheadBehind.behind > 0) && (
+      <Tooltip
+        label={t(($) => $.shell.sourceControl.aheadBehind, {
+          ahead: aheadBehind.ahead,
+          behind: aheadBehind.behind,
+          branch,
+        })}
+        side="bottom"
+      >
+        <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
+          {aheadBehind.ahead > 0 && (
+            <span className="text-emerald-600 dark:text-emerald-400">↑{aheadBehind.ahead}</span>
+          )}
+          {aheadBehind.behind > 0 && (
+            <span className="text-amber-600 dark:text-amber-400">↓{aheadBehind.behind}</span>
+          )}
+        </span>
+      </Tooltip>
+    )
+  );
+
   return (
     <div className="flex h-full flex-col bg-sidebar">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
@@ -837,25 +860,7 @@ export function SourceControl() {
             onCopyLink={() => void shareGithub()}
           />
         )}
-        {remote && aheadBehind?.has_upstream && (aheadBehind.ahead > 0 || aheadBehind.behind > 0) && (
-          <Tooltip
-            label={t(($) => $.shell.sourceControl.aheadBehind, {
-              ahead: aheadBehind.ahead,
-              behind: aheadBehind.behind,
-              branch,
-            })}
-            side="bottom"
-          >
-            <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
-              {aheadBehind.ahead > 0 && (
-                <span className="text-emerald-600 dark:text-emerald-400">↑{aheadBehind.ahead}</span>
-              )}
-              {aheadBehind.behind > 0 && (
-                <span className="text-amber-600 dark:text-amber-400">↓{aheadBehind.behind}</span>
-              )}
-            </span>
-          </Tooltip>
-        )}
+        {renderAheadBehind()}
         {githubConnected && (
           <Tooltip
             side="bottom"
@@ -928,15 +933,15 @@ export function SourceControl() {
         >
           {remoteFirst ? (
             <>
-              {remoteSection}
-              <div className="mt-3 border-t border-sidebar-border pt-2">{commitPanel}</div>
-              {statusNotice}
+              {renderRemoteSection()}
+              <div className="mt-3 border-t border-sidebar-border pt-2">{renderCommitPanel()}</div>
+              {renderStatusNotice()}
             </>
           ) : (
             <>
-              {commitPanel}
-              {statusNotice}
-              <div className="mt-3 border-t border-sidebar-border pt-2">{remoteSection}</div>
+              {renderCommitPanel()}
+              {renderStatusNotice()}
+              <div className="mt-3 border-t border-sidebar-border pt-2">{renderRemoteSection()}</div>
             </>
           )}
         </div>

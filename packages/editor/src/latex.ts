@@ -426,6 +426,110 @@ function xparseDelimiter(
   };
 }
 
+interface XparseTemplateStep {
+  readonly cursor: number;
+  readonly snippet: string;
+}
+
+function xparseDefaultedOptional(
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep {
+  const defaultGroup = parsedGroup(specification, cursor);
+  const value = snippetDefault(defaultGroup?.content ?? "");
+  const suffix = value ? `:${value}` : "";
+  return {
+    cursor: defaultGroup?.to ?? cursor,
+    snippet: `[${"${"}${placeholder}${suffix}}]`,
+  };
+}
+
+function xparseSwitchArgument(
+  kind: string,
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep {
+  const next =
+    kind === "t" ? xparseDelimiter(specification, cursor).to : cursor;
+  return { cursor: next, snippet: `${"${"}${placeholder}}` };
+}
+
+function xparseDelimitedArgument(
+  kind: string,
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep {
+  const left = xparseDelimiter(specification, cursor);
+  const right = xparseDelimiter(specification, left.to);
+  const next =
+    kind === "R" || kind === "D"
+      ? (parsedGroup(specification, right.to)?.to ?? right.to)
+      : right.to;
+  return {
+    cursor: next,
+    snippet: `${left.value}${"${"}${placeholder}}${right.value}`,
+  };
+}
+
+function xparseEmbellishedArgument(
+  kind: string,
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep {
+  const afterKeys = parsedGroup(specification, cursor)?.to ?? cursor;
+  const next =
+    kind === "E" ? (parsedGroup(specification, afterKeys)?.to ?? afterKeys) : afterKeys;
+  return { cursor: next, snippet: `${"${"}${placeholder}}` };
+}
+
+function xparseTemplateStep(
+  kind: string,
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep | null {
+  switch (kind) {
+    case "+":
+    case "!":
+      return { cursor, snippet: "" };
+    case ">":
+      return {
+        cursor: parsedGroup(specification, cursor)?.to ?? cursor,
+        snippet: "",
+      };
+    case "m":
+    case "b":
+    case "v":
+      return { cursor, snippet: `{${"${"}${placeholder}}}` };
+    case "o":
+      return { cursor, snippet: `[${"${"}${placeholder}}]` };
+    case "O":
+      return xparseDefaultedOptional(specification, cursor, placeholder);
+    case "s":
+    case "t":
+      return xparseSwitchArgument(kind, specification, cursor, placeholder);
+    case "r":
+    case "R":
+    case "d":
+    case "D":
+      return xparseDelimitedArgument(kind, specification, cursor, placeholder);
+    case "e":
+    case "E":
+      return xparseEmbellishedArgument(
+        kind,
+        specification,
+        cursor,
+        placeholder,
+      );
+    default:
+      return null;
+  }
+}
+
 function xparseCommandTemplate(
   label: string,
   specification: string,
@@ -439,62 +543,11 @@ function xparseCommandTemplate(
     if (!kind) break;
     cursor += 1;
 
-    if (kind === "+" || kind === "!") continue;
-    if (kind === ">") {
-      const processor = parsedGroup(specification, cursor);
-      cursor = processor?.to ?? cursor;
-      continue;
-    }
-
-    if (kind === "m" || kind === "b" || kind === "v") {
-      template += `{${"${"}${placeholder}}}`;
-      placeholder += 1;
-      continue;
-    }
-    if (kind === "o") {
-      template += `[${"${"}${placeholder}}]`;
-      placeholder += 1;
-      continue;
-    }
-    if (kind === "O") {
-      const defaultGroup = parsedGroup(specification, cursor);
-      cursor = defaultGroup?.to ?? cursor;
-      const value = snippetDefault(defaultGroup?.content ?? "");
-      const suffix = value ? `:${value}` : "";
-      template += `[${"${"}${placeholder}${suffix}}]`;
-      placeholder += 1;
-      continue;
-    }
-    if (kind === "s" || kind === "t") {
-      if (kind === "t") {
-        cursor = xparseDelimiter(specification, cursor).to;
-      }
-      template += `${"${"}${placeholder}}`;
-      placeholder += 1;
-      continue;
-    }
-    if (
-      kind === "r" ||
-      kind === "R" ||
-      kind === "d" ||
-      kind === "D"
-    ) {
-      const left = xparseDelimiter(specification, cursor);
-      const right = xparseDelimiter(specification, left.to);
-      cursor = right.to;
-      if (kind === "R" || kind === "D") {
-        cursor = parsedGroup(specification, cursor)?.to ?? cursor;
-      }
-      template += `${left.value}${"${"}${placeholder}}${right.value}`;
-      placeholder += 1;
-      continue;
-    }
-    if (kind === "e" || kind === "E") {
-      cursor = parsedGroup(specification, cursor)?.to ?? cursor;
-      if (kind === "E") {
-        cursor = parsedGroup(specification, cursor)?.to ?? cursor;
-      }
-      template += `${"${"}${placeholder}}`;
+    const step = xparseTemplateStep(kind, specification, cursor, placeholder);
+    if (!step) continue;
+    cursor = step.cursor;
+    if (step.snippet) {
+      template += step.snippet;
       placeholder += 1;
     }
   }
@@ -560,6 +613,92 @@ function collectPackageNames(
  * symbols, but completion must not disappear while that service starts or
  * while another file is malformed.
  */
+function collectClassicCommands(
+  catalogText: string,
+  commands: Map<string, LocalCommand>,
+): void {
+  for (const match of catalogText.matchAll(
+    /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand)\*?/gu,
+  )) {
+    const definition = classicCommandDefinition(
+      catalogText,
+      (match.index ?? 0) + match[0].length,
+    );
+    if (definition) commands.set(definition.label, definition);
+  }
+}
+
+function collectXparseCommands(
+  catalogText: string,
+  commands: Map<string, LocalCommand>,
+): void {
+  for (const match of catalogText.matchAll(
+    /\\(?:New|Renew|Provide|Declare)DocumentCommand\*?/gu,
+  )) {
+    const definition = xparseCommandDefinition(
+      catalogText,
+      (match.index ?? 0) + match[0].length,
+    );
+    if (definition) commands.set(definition.label, definition);
+  }
+}
+
+function primitiveDefinitionTemplate(
+  label: string,
+  argumentCount: number,
+): string {
+  let template = label;
+  for (let index = 1; index <= argumentCount; index += 1) {
+    template += `{${"${"}${index}}}`;
+  }
+  return template;
+}
+
+function collectPrimitiveDefinitions(
+  catalogText: string,
+  commands: Map<string, LocalCommand>,
+): void {
+  for (const match of catalogText.matchAll(
+    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[A-Za-z@]+|.))((?:\s*#[1-9])*)/gu,
+  )) {
+    const label = match[1];
+    if (!label) continue;
+    const bodyStart =
+      (match.index ?? 0) + match[0].length;
+    if (!parsedGroup(catalogText, bodyStart)) continue;
+    const argumentCount = commandArgumentCount(match[2] ?? "");
+    commands.set(label, {
+      label,
+      detail: argumentDetail(argumentCount, 0),
+      template: primitiveDefinitionTemplate(label, argumentCount),
+    });
+  }
+}
+
+const ENVIRONMENT_DEFINITION_PATTERNS = [
+  /\\(?:newenvironment|renewenvironment)\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
+  /\\(?:New|Renew|Provide|Declare)DocumentEnvironment\s*\{\s*([^{}\s]+)\s*\}/gu,
+  /\\newtheorem\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
+];
+
+function collectEnvironmentNames(
+  catalogText: string,
+  environments: Set<string>,
+): void {
+  for (const pattern of ENVIRONMENT_DEFINITION_PATTERNS) {
+    for (const match of catalogText.matchAll(pattern)) {
+      if (match[1]) environments.add(match[1]);
+    }
+  }
+}
+
+function collectLabelNames(catalogText: string, labels: Set<string>): void {
+  for (const match of catalogText.matchAll(/\\label\s*\{([^}]{1,500})\}/gu)) {
+    const label = match[1]?.trim();
+    if (label) labels.add(label);
+  }
+}
+
 function latexCatalog(state: {
   doc: { toString: () => string };
 }): LocalLatexCatalog {
@@ -574,64 +713,11 @@ function latexCatalog(state: {
   const labels = new Set<string>();
   const packages = new Set<string>();
 
-  for (const match of catalogText.matchAll(
-    /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand)\*?/gu,
-  )) {
-    const definition = classicCommandDefinition(
-      catalogText,
-      (match.index ?? 0) + match[0].length,
-    );
-    if (definition) commands.set(definition.label, definition);
-  }
-  for (const match of catalogText.matchAll(
-    /\\(?:New|Renew|Provide|Declare)DocumentCommand\*?/gu,
-  )) {
-    const definition = xparseCommandDefinition(
-      catalogText,
-      (match.index ?? 0) + match[0].length,
-    );
-    if (definition) commands.set(definition.label, definition);
-  }
-  for (const match of catalogText.matchAll(
-    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[A-Za-z@]+|.))((?:\s*#[1-9])*)/gu,
-  )) {
-    const label = match[1];
-    if (!label) continue;
-    const bodyStart =
-      (match.index ?? 0) + match[0].length;
-    if (!parsedGroup(catalogText, bodyStart)) continue;
-    const argumentCount = commandArgumentCount(match[2] ?? "");
-    let template = label;
-    for (let index = 1; index <= argumentCount; index += 1) {
-      template += `{${"${"}${index}}}`;
-    }
-    commands.set(label, {
-      label,
-      detail: argumentDetail(argumentCount, 0),
-      template,
-    });
-  }
-
-  for (const match of catalogText.matchAll(
-    /\\(?:newenvironment|renewenvironment)\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
-  )) {
-    if (match[1]) environments.add(match[1]);
-  }
-  for (const match of catalogText.matchAll(
-    /\\(?:New|Renew|Provide|Declare)DocumentEnvironment\s*\{\s*([^{}\s]+)\s*\}/gu,
-  )) {
-    if (match[1]) environments.add(match[1]);
-  }
-  for (const match of catalogText.matchAll(
-    /\\newtheorem\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
-  )) {
-    if (match[1]) environments.add(match[1]);
-  }
-
-  for (const match of catalogText.matchAll(/\\label\s*\{([^}]{1,500})\}/gu)) {
-    const label = match[1]?.trim();
-    if (label) labels.add(label);
-  }
+  collectClassicCommands(catalogText, commands);
+  collectXparseCommands(catalogText, commands);
+  collectPrimitiveDefinitions(catalogText, commands);
+  collectEnvironmentNames(catalogText, environments);
+  collectLabelNames(catalogText, labels);
   collectPackageNames(catalogText, packages);
 
   const catalog = {
@@ -798,6 +884,53 @@ interface OpenCommandArgument {
   readonly text: string;
 }
 
+function controlWordEnd(prefix: string, start: number): number {
+  let cursor = start;
+  while (/[A-Za-z@]/u.test(prefix[cursor] ?? "")) cursor += 1;
+  return cursor;
+}
+
+function skipOptionalGroups(
+  prefix: string,
+  start: number,
+  groups: number,
+): number | null {
+  let cursor = start;
+  for (let group = 0; group < groups && prefix[cursor] === "["; group += 1) {
+    const groupEnd = latexBalancedGroupEnd(prefix, cursor, "[", "]");
+    if (groupEnd === null) return null;
+    cursor = skipWhitespace(prefix, groupEnd);
+  }
+  return cursor;
+}
+
+function openArgumentStartsAt(
+  prefix: string,
+  commandStart: number,
+  commands: ReadonlySet<string>,
+  options: {
+    readonly allowStar?: boolean;
+    readonly optionalGroups?: number;
+  },
+): boolean {
+  let cursor = controlWordEnd(prefix, commandStart + 1);
+  if (!commands.has(prefix.slice(commandStart + 1, cursor))) return false;
+  if (options.allowStar && prefix[cursor] === "*") cursor += 1;
+  const afterGroups = skipOptionalGroups(
+    prefix,
+    skipWhitespace(prefix, cursor),
+    options.optionalGroups ?? 0,
+  );
+  if (afterGroups === null) return false;
+  if (prefix[afterGroups] !== "{") return false;
+  const argument = prefix.slice(afterGroups + 1);
+  return (
+    argument.length <= 500 &&
+    !argument.includes("{") &&
+    !argument.includes("}")
+  );
+}
+
 function openCommandArgument(
   context: CompletionContext,
   commands: ReadonlySet<string>,
@@ -812,37 +945,8 @@ function openCommandArgument(
   let commandStart = prefix.lastIndexOf("\\");
 
   while (commandStart >= 0) {
-    let cursor = commandStart + 1;
-    while (/[A-Za-z@]/u.test(prefix[cursor] ?? "")) cursor += 1;
-    const command = prefix.slice(commandStart + 1, cursor);
-    if (commands.has(command)) {
-      if (options.allowStar && prefix[cursor] === "*") cursor += 1;
-      cursor = skipWhitespace(prefix, cursor);
-
-      let valid = true;
-      for (
-        let group = 0;
-        group < (options.optionalGroups ?? 0) && prefix[cursor] === "[";
-        group += 1
-      ) {
-        const groupEnd = latexBalancedGroupEnd(prefix, cursor, "[", "]");
-        if (groupEnd === null) {
-          valid = false;
-          break;
-        }
-        cursor = skipWhitespace(prefix, groupEnd);
-      }
-
-      if (valid && prefix[cursor] === "{") {
-        const argument = prefix.slice(cursor + 1);
-        if (
-          argument.length <= 500 &&
-          !argument.includes("{") &&
-          !argument.includes("}")
-        ) {
-          return { text: prefix.slice(commandStart) };
-        }
-      }
+    if (openArgumentStartsAt(prefix, commandStart, commands, options)) {
+      return { text: prefix.slice(commandStart) };
     }
     if (commandStart === 0) break;
     commandStart = prefix.lastIndexOf("\\", commandStart - 1);

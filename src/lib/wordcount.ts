@@ -40,7 +40,7 @@ export function countWords(tex: string): WordCountStats {
 // Legacy regex-based counting, kept only as the fallback when the mask fails.
 function heuristicCount(tex: string): Omit<WordCountStats, "method"> {
   let t = splitLatexDocument(tex).body;
-  t = t.replace(/(^|[^\\])%.*$/gm, "$1");
+  t = t.replace(/(^|[^\\])%[^\n\r\u2028\u2029]*/gm, "$1");
   t = t.replace(/\\(begin|end)\s*\{[^}]*\}/g, " ");
   t = t.replace(/\\[a-zA-Z]+\*?\s*\{([^}]*)\}/g, "$1");
   t = t.replace(/\\[a-zA-Z]+\*?/g, " ").replace(/[{}$]/g, " ");

@@ -60,4 +60,16 @@ describe("parseFile: Typst", () => {
     const parsed = parseFile("main.typ", `${"#".repeat(20_000)} @after`);
     expect(parsed.uses.map((symbol) => symbol.name)).toEqual(["after"]);
   });
+
+  it("resolves import targets by the extension of the last segment", () => {
+    const targets = (source: string) =>
+      parseFile("dir/main.typ", source)
+        .uses.filter((symbol) => symbol.kind === "inputedge")
+        .map((symbol) => symbol.target);
+    expect(targets('#include "child"')).toEqual(["dir/child.typ"]);
+    expect(targets('#include "child.typ"')).toEqual(["dir/child.typ"]);
+    expect(targets('#include "a.b.c"')).toEqual(["dir/a.b.c"]);
+    expect(targets('#include "v1.0/child"')).toEqual(["dir/v1.0/child.typ"]);
+    expect(targets('#include "child."')).toEqual(["dir/child..typ"]);
+  });
 });

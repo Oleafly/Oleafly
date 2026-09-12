@@ -132,66 +132,61 @@ function looksUnusual(name, source) {
   );
 }
 
-export function extract(source, pkgName) {
-  const text = stripComments(source);
-  const macros = new Map();
-  const envs = new Set();
-  const deps = new Set();
-  const keys = {};
-  const args = [];
+function definedCommandName(text, start) {
+  if (text[start] === "{") {
+    const g = readGroup(text, start);
+    if (!g) return null;
+    return { name: g.body.trim().replace(/^\\/, ""), pos: g.end };
+  }
+  if (text[start] === "\\") {
+    const mm = /^\\([A-Za-z@]+|.)/.exec(text.slice(start));
+    if (!mm) return null;
+    return { name: mm[1], pos: start + mm[0].length };
+  }
+  return null;
+}
 
-  const addMacro = (name, entry) => {
-    if (!name || !CONTROL_WORD.test(name)) return;
-    if (name.includes("@")) return; // package-internal by convention
-    const list = macros.get(name) ?? [];
-    if (!list.some((e) => e.snippet === entry.snippet)) list.push(entry);
-    macros.set(name, list);
-  };
+function commandArgumentShape(text, pos) {
+  let probe = pos;
+  while (probe < text.length && /\s/.test(text[probe])) probe += 1;
+  const sig = readGroup(text, probe);
+  if (sig && /^[\ssmoOtdDvrRlgGebB+!]*$/.test(sig.body) && /[smo]/i.test(sig.body)) {
+    const tokens = sig.body.replace(/\s+/g, "");
+    return {
+      argCount: tokens.replace(/[+!]/g, "").length,
+      hasOptional: /[oOdD]/.test(tokens),
+    };
+  }
+  const opt = readOptional(text, pos);
+  if (opt && /^\d+$/.test(opt.body.trim())) {
+    return {
+      argCount: Number(opt.body.trim()),
+      hasOptional: Boolean(readOptional(text, opt.end)),
+    };
+  }
+  return { argCount: 0, hasOptional: false };
+}
 
+function collectCommandDefinitions(text, addMacro) {
   // \newcommand{\foo}[n][default]{...} and the LaTeX2e/xparse relatives.
   const cmdRe =
     /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand|DeclareTextCommand|NewDocumentCommand|DeclareDocumentCommand|ProvideDocumentCommand)\s*\*?\s*/g;
   for (let m = cmdRe.exec(text); m; m = cmdRe.exec(text)) {
-    let pos = m.index + m[0].length;
-    let name = null;
-    if (text[pos] === "{") {
-      const g = readGroup(text, pos);
-      if (!g) continue;
-      name = g.body.trim().replace(/^\\/, "");
-      pos = g.end;
-    } else if (text[pos] === "\\") {
-      const mm = /^\\([A-Za-z@]+|.)/.exec(text.slice(pos));
-      if (!mm) continue;
-      name = mm[1];
-      pos += mm[0].length;
-    } else continue;
-
-    let argCount = 0;
-    let hasOptional = false;
-    let probe = pos;
-    while (probe < text.length && /\s/.test(text[probe])) probe += 1;
-    const sig = readGroup(text, probe);
-    if (sig && /^[\ssmoOtdDvrRlgGebB+!]*$/.test(sig.body) && /[smo]/i.test(sig.body)) {
-      const tokens = sig.body.replace(/\s+/g, "");
-      argCount = tokens.replace(/[+!]/g, "").length;
-      hasOptional = /[oOdD]/.test(tokens);
-    } else {
-      const opt = readOptional(text, pos);
-      if (opt && /^\d+$/.test(opt.body.trim())) {
-        argCount = Number(opt.body.trim());
-        hasOptional = Boolean(readOptional(text, opt.end));
-      }
-    }
-
+    const defined = definedCommandName(text, m.index + m[0].length);
+    if (!defined) continue;
+    const name = defined.name;
+    const { argCount, hasOptional } = commandArgumentShape(text, defined.pos);
     const snippet = buildSnippet(name, argCount, hasOptional);
     if (snippet) {
       addMacro(name, { name, snippet });
       addMacro(name, { name });
-    } else {
-      addMacro(name, looksUnusual(name, text) ? { name, unusual: true } : { name });
+      continue;
     }
+    addMacro(name, looksUnusual(name, text) ? { name, unusual: true } : { name });
   }
+}
 
+function collectPlainTexDefinitions(text, addMacro) {
   // Plain TeX: \def\foo#1#2{...}, including the \long/\global/\protected forms
   // that many packages use for their entire public interface.
   const defRe =
@@ -207,7 +202,9 @@ export function extract(source, pkgName) {
       addMacro(name, { name });
     }
   }
+}
 
+function collectDeclaredNames(text, addMacro) {
   // \let aliases expose a usable name too.
   const letRe = /\\let\s*\\([A-Za-z@]+)\s*(?:=\s*)?\\[A-Za-z@]+/g;
   for (let m = letRe.exec(text); m; m = letRe.exec(text)) addMacro(m[1], { name: m[1] });
@@ -246,13 +243,17 @@ export function extract(source, pkgName) {
   ]) {
     for (let m = re.exec(text); m; m = re.exec(text)) addMacro(m[1], { name: m[1], unusual: true });
   }
+}
 
+function collectEnvironmentNames(text, envs) {
   const envRe =
     /\\(?:newenvironment|renewenvironment|NewDocumentEnvironment|DeclareDocumentEnvironment|newtheorem)\s*(?:\*\s*)?\{([A-Za-z@*]+)\}/g;
   for (let m = envRe.exec(text); m; m = envRe.exec(text)) {
     if (!m[1].includes("@")) envs.add(m[1]);
   }
+}
 
+function collectRequiredPackages(text, pkgName, deps) {
   const reqRe = /\\RequirePackage\s*(?:\[[^\]]*\]\s*)?\{([^}]+)\}/g;
   for (let m = reqRe.exec(text); m; m = reqRe.exec(text)) {
     for (const d of m[1].split(",")) {
@@ -260,7 +261,9 @@ export function extract(source, pkgName) {
       if (name && name !== pkgName && /^[A-Za-z0-9@_-]+$/.test(name)) deps.add(name);
     }
   }
+}
 
+function collectOptionKeys(text) {
   const optNames = [];
   const optRe = /\\DeclareOption\s*\{([^}*]+)\}/g;
   for (let m = optRe.exec(text); m; m = optRe.exec(text)) {
@@ -279,7 +282,10 @@ export function extract(source, pkgName) {
     set.add(key);
     byFamily.set(family, set);
   }
+  return { optNames, byFamily };
+}
 
+function collectKeyConsumers(text, byFamily) {
   // A command whose body calls \setkeys{FAMILY} takes that family's keys, so
   // \hypersetup{} offers the same keys as \usepackage[...]{hyperref}.
   const consumers = new Map();
@@ -295,6 +301,32 @@ export function extract(source, pkgName) {
       consumers.set(name, fam[1].trim());
     }
   }
+  return consumers;
+}
+
+export function extract(source, pkgName) {
+  const text = stripComments(source);
+  const macros = new Map();
+  const envs = new Set();
+  const deps = new Set();
+  const keys = {};
+  const args = [];
+
+  const addMacro = (name, entry) => {
+    if (!name || !CONTROL_WORD.test(name)) return;
+    if (name.includes("@")) return; // package-internal by convention
+    const list = macros.get(name) ?? [];
+    if (!list.some((e) => e.snippet === entry.snippet)) list.push(entry);
+    macros.set(name, list);
+  };
+
+  collectCommandDefinitions(text, addMacro);
+  collectPlainTexDefinitions(text, addMacro);
+  collectDeclaredNames(text, addMacro);
+  collectEnvironmentNames(text, envs);
+  collectRequiredPackages(text, pkgName, deps);
+  const { optNames, byFamily } = collectOptionKeys(text);
+  const consumers = collectKeyConsumers(text, byFamily);
 
   if (optNames.length) {
     const pkgId = String.raw`\usepackage/${pkgName}#c`;
@@ -368,27 +400,16 @@ async function collectSources(texmf) {
  * Read a package's own source, widening to its bundle only when the .sty turns
  * out to be a loader.
  */
-async function readPackageSources(styPath, byBundle, pkgName) {
-  const primary = await readFile(styPath, "utf8").catch(() => null);
-  if (primary === null) return null;
-
-  const direct = extract(primary, pkgName);
-  const delegates = /\\(?:input|RequirePackage|LoadClass)\b/.test(primary);
-  if (direct.macros.length >= 12 || !delegates) return primary;
-
+function bundleKeyFor(styPath) {
   const rel = styPath.split("/tex/")[1]?.split("/") ?? [];
-  const bundleKey =
-    rel.length > 1
-      ? join(styPath.slice(0, styPath.indexOf("/tex/") + 4), rel[0], rel[1])
-      : dirname(styPath);
-  const siblings = (byBundle.get(bundleKey) ?? []).filter((p) => p !== styPath);
-  // A small bundle is one package split across a few files, and reading it
-  // whole is right. A large one holds many independent packages, and reading
-  // it whole would make every shim in it claim the bundle's entire interface.
-  if (siblings.length > 60) return primary;
+  return rel.length > 1
+    ? join(styPath.slice(0, styPath.indexOf("/tex/") + 4), rel[0], rel[1])
+    : dirname(styPath);
+}
 
-  const parts = [primary];
-  let budget = 2_000_000;
+async function readSiblingSources(siblings, budgetLimit) {
+  const parts = [];
+  let budget = budgetLimit;
   for (const sp of siblings) {
     if (budget <= 0) break;
     // Skip a package's own legacy-compatibility sources. Their commands still
@@ -407,6 +428,26 @@ async function readPackageSources(styPath, byBundle, pkgName) {
     parts.push(text);
     budget -= size;
   }
+  return parts;
+}
+
+async function readPackageSources(styPath, byBundle, pkgName) {
+  const primary = await readFile(styPath, "utf8").catch(() => null);
+  if (primary === null) return null;
+
+  const direct = extract(primary, pkgName);
+  const delegates = /\\(?:input|RequirePackage|LoadClass)\b/.test(primary);
+  if (direct.macros.length >= 12 || !delegates) return primary;
+
+  const siblings = (byBundle.get(bundleKeyFor(styPath)) ?? []).filter(
+    (p) => p !== styPath,
+  );
+  // A small bundle is one package split across a few files, and reading it
+  // whole is right. A large one holds many independent packages, and reading
+  // it whole would make every shim in it claim the bundle's entire interface.
+  if (siblings.length > 60) return primary;
+
+  const parts = [primary, ...(await readSiblingSources(siblings, 2_000_000))];
   return parts.join("\n");
 }
 

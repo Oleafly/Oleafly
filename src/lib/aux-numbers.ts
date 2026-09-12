@@ -82,33 +82,44 @@ function readBalancedGroup(
  * records (names ending in `@cref`), ignores malformed lines, and slices the
  * input head at 1 MB.
  */
+function skipTabsAndSpaces(text: string, from: number): number {
+  let i = from;
+  while (i < text.length && (text[i] === " " || text[i] === "\t")) i++;
+  return i;
+}
+
+// Inside the payload the first two balanced groups are {NUMBER}{PAGE};
+// anything after (hyperref anchors, `\relax`, ...) is ignored.
+function parseNewlabelPayload(inner: string): LabelNumber | null {
+  const number = readBalancedGroup(inner, skipTabsAndSpaces(inner, 0));
+  if (!number) return null;
+  const page = readBalancedGroup(inner, skipTabsAndSpaces(inner, number.end));
+  if (!page) return null;
+  return { number: number.content, page: page.content };
+}
+
+function parseNewlabelLine(
+  line: string,
+): { name: string; value: LabelNumber } | null {
+  const at = line.indexOf(String.raw`\newlabel`);
+  if (at < 0) return null;
+  const nameAt = skipTabsAndSpaces(line, at + String.raw`\newlabel`.length);
+  const name = readBalancedGroup(line, nameAt);
+  if (!name || name.content.length === 0) return null;
+  if (name.content.endsWith("@cref")) return null;
+  const payload = readBalancedGroup(line, skipTabsAndSpaces(line, name.end));
+  if (!payload) return null;
+  const value = parseNewlabelPayload(payload.content);
+  if (!value) return null;
+  return { name: name.content, value };
+}
+
 export function parseAuxLabels(aux: string): Map<string, LabelNumber> {
   const out = new Map<string, LabelNumber>();
   const text = aux.length > MAX_AUX_CHARS ? aux.slice(0, MAX_AUX_CHARS) : aux;
   for (const line of text.split("\n")) {
-    const at = line.indexOf(String.raw`\newlabel`);
-    if (at < 0) continue;
-    let i = at + String.raw`\newlabel`.length;
-    while (i < line.length && (line[i] === " " || line[i] === "\t")) i++;
-    const name = readBalancedGroup(line, i);
-    if (!name || name.content.length === 0) continue;
-    if (name.content.endsWith("@cref")) continue;
-    i = name.end;
-    while (i < line.length && (line[i] === " " || line[i] === "\t")) i++;
-    const payload = readBalancedGroup(line, i);
-    if (!payload) continue;
-    // Inside the payload the first two balanced groups are {NUMBER}{PAGE};
-    // anything after (hyperref anchors, `\relax`, ...) is ignored.
-    const inner = payload.content;
-    let j = 0;
-    while (j < inner.length && (inner[j] === " " || inner[j] === "\t")) j++;
-    const number = readBalancedGroup(inner, j);
-    if (!number) continue;
-    j = number.end;
-    while (j < inner.length && (inner[j] === " " || inner[j] === "\t")) j++;
-    const page = readBalancedGroup(inner, j);
-    if (!page) continue;
-    out.set(name.content, { number: number.content, page: page.content });
+    const parsed = parseNewlabelLine(line);
+    if (parsed) out.set(parsed.name, parsed.value);
   }
   return out;
 }
@@ -124,6 +135,62 @@ function auxInputReferences(content: string): string[] {
     refs.push(ref);
   }
   return refs;
+}
+
+async function readAuxFile(
+  projectId: string,
+  name: string,
+): Promise<string | null> {
+  try {
+    return await readFileContent(projectId, `${BUILD_DIR}/${name}`);
+  } catch {
+    return null; // a missing child aux is not fatal
+  }
+}
+
+function mergeAuxLabels(
+  merged: Map<string, LabelNumber>,
+  content: string,
+): void {
+  for (const [label, value] of parseAuxLabels(content)) {
+    if (!merged.has(label)) merged.set(label, value);
+  }
+}
+
+function enqueueAuxInputs(
+  content: string,
+  visited: Set<string>,
+  queue: string[],
+): void {
+  for (const ref of auxInputReferences(content)) {
+    if (visited.has(ref)) continue;
+    visited.add(ref);
+    queue.push(ref);
+  }
+}
+
+async function collectAuxChain(
+  projectId: string,
+): Promise<{ merged: Map<string, LabelNumber>; entryRead: boolean }> {
+  const merged = new Map<string, LabelNumber>();
+  const visited = new Set<string>([ENTRY_AUX]);
+  const queue: string[] = [ENTRY_AUX];
+  let totalChars = 0;
+  let filesRead = 0;
+  let entryRead = false;
+  while (queue.length > 0 && filesRead < MAX_AUX_FILES && totalChars < MAX_AUX_CHARS) {
+    const name = queue.shift() as string;
+    const raw = await readAuxFile(projectId, name);
+    if (raw === null) continue;
+    filesRead++;
+    if (name === ENTRY_AUX) entryRead = true;
+    const remaining = MAX_AUX_CHARS - totalChars;
+    const content = raw.length > remaining ? raw.slice(0, remaining) : raw;
+    totalChars += content.length;
+    mergeAuxLabels(merged, content);
+    enqueueAuxInputs(content, visited, queue);
+  }
+  return { merged, entryRead };
 }
 
 /**
@@ -148,35 +215,7 @@ export async function refreshAuxNumbers(
   }
   const seq = ++refreshSeq;
   try {
-    const merged = new Map<string, LabelNumber>();
-    const visited = new Set<string>([ENTRY_AUX]);
-    const queue: string[] = [ENTRY_AUX];
-    let totalChars = 0;
-    let filesRead = 0;
-    let entryRead = false;
-    while (queue.length > 0 && filesRead < MAX_AUX_FILES && totalChars < MAX_AUX_CHARS) {
-      const name = queue.shift() as string;
-      let content: string;
-      try {
-        content = await readFileContent(projectId, `${BUILD_DIR}/${name}`);
-      } catch {
-        continue; // a missing child aux is not fatal
-      }
-      filesRead++;
-      if (name === ENTRY_AUX) entryRead = true;
-      const remaining = MAX_AUX_CHARS - totalChars;
-      if (content.length > remaining) content = content.slice(0, remaining);
-      totalChars += content.length;
-      for (const [label, value] of parseAuxLabels(content)) {
-        if (!merged.has(label)) merged.set(label, value);
-      }
-      for (const ref of auxInputReferences(content)) {
-        if (!visited.has(ref)) {
-          visited.add(ref);
-          queue.push(ref);
-        }
-      }
-    }
+    const { merged, entryRead } = await collectAuxChain(projectId);
     // Without the entry aux there is nothing trustworthy to cache.
     if (!entryRead) return;
     // A newer refresh (or clear) superseded this one while files were read.

@@ -23,9 +23,9 @@ export interface MathScanOptions {
 
 const MAX_SCANNED_EXPRESSIONS = 10_000;
 
-const OPEN_INLINE = String.raw`\(`;
+const OPEN_INLINE = String.raw`\(` as MathDelimiter;
 const CLOSE_INLINE = String.raw`\)`;
-const OPEN_DISPLAY = String.raw`\[`;
+const OPEN_DISPLAY = String.raw`\[` as MathDelimiter;
 const CLOSE_DISPLAY = String.raw`\]`;
 
 function isEscaped(text: string, index: number): boolean {
@@ -250,6 +250,149 @@ function incompleteEnd(text: string, bodyFrom: number, limit: number): number {
   return lineEnd < 0 || lineEnd > limit ? limit : lineEnd;
 }
 
+function markdownSkipEnd(
+  text: string,
+  cursor: number,
+  to: number,
+): number | null {
+  if (text.startsWith("<!--", cursor)) {
+    const commentEnd = text.indexOf("-->", cursor + 4);
+    return commentEnd < 0 || commentEnd >= to ? to : commentEnd + 3;
+  }
+  const fence =
+    text[cursor] === "`" || text[cursor] === "~" ? fenceAt(text, cursor) : null;
+  if (fence) return afterMarkdownFence(text, cursor, to, fence);
+  if (text[cursor] === "`" && !isEscaped(text, cursor)) {
+    return afterInlineCode(text, cursor, to);
+  }
+  if (text[cursor] === "]" && text[cursor + 1] === "(") {
+    return afterMarkdownLinkDestination(text, cursor + 1, to);
+  }
+  if (text[cursor] === "<") return afterMarkdownTag(text, cursor, to);
+  return afterPlainUrl(text, cursor, to);
+}
+
+function latexSkipEnd(
+  text: string,
+  cursor: number,
+  to: number,
+): number | null {
+  if (text[cursor] === "%" && !isEscaped(text, cursor)) {
+    const lineEnd = text.indexOf("\n", cursor + 1);
+    return lineEnd < 0 || lineEnd >= to ? to : lineEnd + 1;
+  }
+  const verbEnd = afterLatexVerb(text, cursor, to);
+  if (verbEnd !== null) return verbEnd;
+  return afterLatexVerbatim(text, cursor, to);
+}
+
+interface MathOpener {
+  readonly delimiter: MathDelimiter;
+  readonly length: number;
+}
+
+const MATH_OPENERS: readonly (MathOpener | null)[] = [
+  null,
+  { delimiter: "$", length: 1 },
+  { delimiter: "$$", length: 2 },
+  { delimiter: OPEN_INLINE, length: 2 },
+  { delimiter: OPEN_DISPLAY, length: 2 },
+];
+
+function mathOpenerKindAt(
+  text: string,
+  cursor: number,
+  format: MathSourceFormat,
+): number {
+  if (
+    text.startsWith("$$", cursor) &&
+    !isEscaped(text, cursor) &&
+    text[cursor - 1] !== "$" &&
+    text[cursor + 2] !== "$"
+  ) {
+    return 2;
+  }
+  if (
+    text[cursor] === "$" &&
+    !isEscaped(text, cursor) &&
+    text[cursor - 1] !== "$" &&
+    text[cursor + 1] !== "$" &&
+    (format !== "markdown" || markdownDollarCanOpen(text, cursor))
+  ) {
+    return 1;
+  }
+  if (text.startsWith("\\(", cursor) && !isEscaped(text, cursor)) {
+    return 3;
+  }
+  if (text.startsWith("\\[", cursor) && !isEscaped(text, cursor)) {
+    return 4;
+  }
+  return 0;
+}
+
+function appendMathExpression(
+  expressions: MathExpression[],
+  text: string,
+  cursor: number,
+  to: number,
+  opener: MathOpener,
+  format: MathSourceFormat,
+  excluded: readonly { from: number; to: number }[],
+): number {
+  const delimiter = opener.delimiter;
+  const openerLength = opener.length;
+  const display = delimiter === "$$" || delimiter === OPEN_DISPLAY;
+  const bodyFrom = cursor + openerLength;
+  const closeAt = findClosingDelimiter(
+    text,
+    bodyFrom,
+    to,
+    delimiter,
+    format,
+    excluded,
+  );
+  if (closeAt >= 0) {
+    const expressionTo = closeAt + openerLength;
+    expressions.push({
+      from: cursor,
+      to: expressionTo,
+      bodyFrom,
+      bodyTo: closeAt,
+      source: text.slice(cursor, expressionTo),
+      body: text.slice(bodyFrom, closeAt),
+      display,
+      delimiter,
+      status: "complete",
+    });
+    return expressionTo;
+  }
+
+  // Avoid treating ordinary unmatched currency such as "$20" as damaged
+  // Pandoc math. A completed "$20$" expression is still recognized above.
+  if (
+    format === "markdown" &&
+    delimiter === "$" &&
+    /\d/u.test(text[bodyFrom] ?? "")
+  ) {
+    return cursor + openerLength;
+  }
+
+  // An unterminated opener must not swallow the rest of the document.
+  const expressionTo = incompleteEnd(text, bodyFrom, to);
+  expressions.push({
+    from: cursor,
+    to: expressionTo,
+    bodyFrom,
+    bodyTo: expressionTo,
+    source: text.slice(cursor, expressionTo),
+    body: text.slice(bodyFrom, expressionTo),
+    display,
+    delimiter,
+    status: "incomplete",
+  });
+  return Math.max(cursor + openerLength, expressionTo);
+}
+
 /**
  * Recognizes math without changing the input. The returned ranges always point
  * into the exact source string. Escaped delimiters, Markdown code/fences and
@@ -284,144 +427,30 @@ export function scanMathExpressions(
       continue;
     }
 
-    if (options.format === "markdown") {
-      if (text.startsWith("<!--", cursor)) {
-        const commentEnd = text.indexOf("-->", cursor + 4);
-        cursor = commentEnd < 0 || commentEnd >= to ? to : commentEnd + 3;
-        continue;
-      }
-      const fence = text[cursor] === "`" || text[cursor] === "~"
-        ? fenceAt(text, cursor)
-        : null;
-      if (fence) {
-        cursor = afterMarkdownFence(text, cursor, to, fence);
-        continue;
-      }
-      if (text[cursor] === "`" && !isEscaped(text, cursor)) {
-        cursor = afterInlineCode(text, cursor, to);
-        continue;
-      }
-      if (text[cursor] === "]" && text[cursor + 1] === "(") {
-        cursor = afterMarkdownLinkDestination(text, cursor + 1, to);
-        continue;
-      }
-      if (text[cursor] === "<") {
-        cursor = afterMarkdownTag(text, cursor, to);
-        continue;
-      }
-      const urlEnd = afterPlainUrl(text, cursor, to);
-      if (urlEnd !== null) {
-        cursor = urlEnd;
-        continue;
-      }
-    } else {
-      if (text[cursor] === "%" && !isEscaped(text, cursor)) {
-        const lineEnd = text.indexOf("\n", cursor + 1);
-        cursor = lineEnd < 0 || lineEnd >= to ? to : lineEnd + 1;
-        continue;
-      }
-      const verbEnd = afterLatexVerb(text, cursor, to);
-      if (verbEnd !== null) {
-        cursor = verbEnd;
-        continue;
-      }
-      const environmentEnd = afterLatexVerbatim(text, cursor, to);
-      if (environmentEnd !== null) {
-        cursor = environmentEnd;
-        continue;
-      }
+    const skipped =
+      options.format === "markdown"
+        ? markdownSkipEnd(text, cursor, to)
+        : latexSkipEnd(text, cursor, to);
+    if (skipped !== null) {
+      cursor = skipped;
+      continue;
     }
 
-    let delimiter: MathDelimiter | null = null;
-    let openerLength = 0;
-    if (
-      text.startsWith("$$", cursor) &&
-      !isEscaped(text, cursor) &&
-      text[cursor - 1] !== "$" &&
-      text[cursor + 2] !== "$"
-    ) {
-      delimiter = "$$";
-      openerLength = 2;
-    } else if (
-      text[cursor] === "$" &&
-      !isEscaped(text, cursor) &&
-      text[cursor - 1] !== "$" &&
-      text[cursor + 1] !== "$" &&
-      (options.format !== "markdown" || markdownDollarCanOpen(text, cursor))
-    ) {
-      delimiter = "$";
-      openerLength = 1;
-    } else if (
-      text.startsWith("\\(", cursor) &&
-      !isEscaped(text, cursor)
-    ) {
-      delimiter = "\\(";
-      openerLength = 2;
-    } else if (
-      text.startsWith("\\[", cursor) &&
-      !isEscaped(text, cursor)
-    ) {
-      delimiter = "\\[";
-      openerLength = 2;
-    }
-
-    if (!delimiter) {
+    const opener = MATH_OPENERS[mathOpenerKindAt(text, cursor, options.format)];
+    if (!opener) {
       cursor++;
       continue;
     }
 
-    const display = delimiter === "$$" || delimiter === OPEN_DISPLAY;
-    const bodyFrom = cursor + openerLength;
-    const closeAt = findClosingDelimiter(
+    cursor = appendMathExpression(
+      expressions,
       text,
-      bodyFrom,
+      cursor,
       to,
-      delimiter,
+      opener,
       options.format,
       excluded,
     );
-    if (closeAt >= 0) {
-      const expressionTo = closeAt + openerLength;
-      expressions.push({
-        from: cursor,
-        to: expressionTo,
-        bodyFrom,
-        bodyTo: closeAt,
-        source: text.slice(cursor, expressionTo),
-        body: text.slice(bodyFrom, closeAt),
-        display,
-        delimiter,
-        status: "complete",
-      });
-      cursor = expressionTo;
-      continue;
-    }
-
-    // Avoid treating ordinary unmatched currency such as "$20" as damaged
-    // Pandoc math. A completed "$20$" expression is still recognized above.
-    if (
-      options.format === "markdown" &&
-      delimiter === "$" &&
-      /\d/u.test(text[bodyFrom] ?? "")
-    ) {
-      cursor += openerLength;
-      continue;
-    }
-
-    // An unterminated opener must not swallow the rest of the document.
-    const expressionTo = incompleteEnd(text, bodyFrom, to);
-    expressions.push({
-      from: cursor,
-      to: expressionTo,
-      bodyFrom,
-      bodyTo: expressionTo,
-      source: text.slice(cursor, expressionTo),
-      body: text.slice(bodyFrom, expressionTo),
-      display,
-      delimiter,
-      status: "incomplete",
-    });
-    cursor = Math.max(cursor + openerLength, expressionTo);
   }
 
   return expressions;

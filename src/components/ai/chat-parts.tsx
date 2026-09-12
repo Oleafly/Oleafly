@@ -1,4 +1,13 @@
-import { memo, useCallback, useEffect, useId, useRef, useState, type FocusEvent } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FocusEvent,
+  type RefObject,
+} from "react";
 import {
   Bot,
   Brain,
@@ -15,7 +24,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ChatMessage, SubagentEntry, ToolEntry } from "@/store/chats";
+import type { ChatMessage, ReasoningBlockData, SubagentEntry, ToolEntry } from "@/store/chats";
 import { agentTodoProgress, type AgentTodo } from "@/store/agent-todos";
 import {
   agentFileChangeTotals,
@@ -712,41 +721,65 @@ export function friendlyHint(
   return null;
 }
 
+function responseBodyMessage(value: unknown): string {
+  if (typeof value !== "string") return "";
+  try {
+    const parsed = JSON.parse(value) as { error?: { message?: string } };
+    return parsed.error?.message ?? value;
+  } catch {
+    return String(value);
+  }
+}
+
+function rawErrorDetail(bodyMsg: string, bodyIsExtra: boolean, statusCode?: number): string {
+  const statusSuffix = statusCode ? `, HTTP ${statusCode}` : "";
+  if (bodyIsExtra) return ` (${bodyMsg.slice(0, 160)}${statusSuffix})`;
+  if (statusCode) return ` (HTTP ${statusCode})`;
+  return "";
+}
+
+function detailedError(
+  head: string,
+  detail: Readonly<{
+    name: string;
+    message: string;
+    statusCode?: number;
+    bodyMsg: string;
+    bodyIsExtra: boolean;
+    fallback: unknown;
+  }>,
+): string {
+  const parts: string[] = [head];
+  if (detail.name) parts.push(detail.name);
+  if (detail.message) parts.push(detail.message);
+  if (detail.statusCode) parts.push(`(HTTP ${detail.statusCode})`);
+  if (detail.bodyIsExtra) parts.push(`→ ${detail.bodyMsg.slice(0, 300)}`);
+  if (parts.length <= 1) parts.push(String(detail.fallback));
+  return parts.join(" ");
+}
+
 export function formatError(e: unknown, providerLabel?: string): string {
   const err = typeof e === "object" && e !== null
     ? e as Record<string, unknown>
     : {};
   const statusValue = err.statusCode ?? err.status;
   const statusCode = typeof statusValue === "number" ? statusValue : undefined;
-  let bodyMsg = "";
-  if (typeof err.responseBody === "string") {
-    try {
-      const parsed = JSON.parse(err.responseBody) as { error?: { message?: string } };
-      bodyMsg = parsed.error?.message ?? err.responseBody;
-    } catch {
-      bodyMsg = String(err.responseBody);
-    }
-  }
-  // Always keep a compact raw detail (status + provider message) for diagnosis.
+  const bodyMsg = responseBodyMessage(err.responseBody);
+  const bodyIsExtra = Boolean(bodyMsg) && bodyMsg !== err.message;
   const who = providerLabel ? `${providerLabel}: ` : "";
-  const statusSuffix = statusCode ? `, HTTP ${statusCode}` : "";
-  let rawDetail = "";
-  if (bodyMsg && bodyMsg !== err?.message) {
-    rawDetail = ` (${bodyMsg.slice(0, 160)}${statusSuffix})`;
-  } else if (statusCode) {
-    rawDetail = ` (HTTP ${statusCode})`;
-  }
+  const rawDetail = rawErrorDetail(bodyMsg, bodyIsExtra, statusCode);
   const message = typeof err.message === "string" ? err.message : String(e);
   const name = typeof err.name === "string" ? err.name : "";
   const hint = friendlyHint(`${message} ${bodyMsg}`, statusCode);
   if (hint) return `⚠ ${who}${hint}${rawDetail}`;
-  const parts: string[] = [`⚠ ${who}`.trimEnd()];
-  if (name) parts.push(name);
-  if (message) parts.push(message);
-  if (statusCode) parts.push(`(HTTP ${statusCode})`);
-  if (bodyMsg && bodyMsg !== err?.message) parts.push(`→ ${bodyMsg.slice(0, 300)}`);
-  if (parts.length <= 1) parts.push(String(e));
-  return parts.join(" ");
+  return detailedError(`⚠ ${who}`.trimEnd(), {
+    name,
+    message,
+    statusCode,
+    bodyMsg,
+    bodyIsExtra,
+    fallback: e,
+  });
 }
 
 // Keep active streams as plain text, then parse Markdown once reasoning is complete.
@@ -847,6 +880,65 @@ function SubagentStatusIcon({ state }: Readonly<{ state: string }>) {
 
 // Delegated child run, in the multi-agent-action card shape: what it was
 // asked, where it is, and what came back.
+function subagentStatusLabel(entry: SubagentEntry, detailText: string): string {
+  if (entry.state === "done") return i18n.t(($) => $.ai.chat.subagent.finished);
+  if (entry.state === "error") return i18n.t(($) => $.ai.chat.subagent.failed);
+  if (entry.state === "interrupted") return i18n.t(($) => $.ai.chat.subagent.stopped);
+  if (entry.state === "tool" && detailText) {
+    return i18n.t(($) => $.ai.chat.subagent.usingTool, { tool: detailText });
+  }
+  return i18n.t(($) => $.ai.chat.subagent.working);
+}
+
+function subagentEmptyBody(state: string): string {
+  return state === "error"
+    ? i18n.t(($) => $.ai.chat.subagent.errorBody)
+    : i18n.t(($) => $.ai.chat.subagent.stoppedBody);
+}
+
+function subagentOutput({
+  entry,
+  detailText,
+  bodyId,
+  bodyRef,
+  expanded,
+  overflows,
+}: Readonly<{
+  entry: SubagentEntry;
+  detailText: string;
+  bodyId: string;
+  bodyRef: RefObject<HTMLDivElement | null>;
+  expanded: boolean;
+  overflows: boolean;
+}>) {
+  return (
+    <div className="relative border-t">
+      <div
+        id={bodyId}
+        ref={bodyRef}
+        data-testid="subagent-output"
+        data-expanded={expanded ? "true" : "false"}
+        className={cn(
+          "px-2.5 py-2 text-[11px] leading-relaxed text-foreground/90",
+          !expanded && "max-h-44 overflow-hidden",
+        )}
+      >
+        {detailText ? (
+          <Markdown className="chat-markdown">{detailText}</Markdown>
+        ) : (
+          <span className="text-muted-foreground">{subagentEmptyBody(entry.state)}</span>
+        )}
+      </div>
+      {overflows && !expanded && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-muted to-transparent"
+        />
+      )}
+    </div>
+  );
+}
+
 export function SubagentCard({
   entry,
   actions,
@@ -886,18 +978,7 @@ export function SubagentCard({
           }
         }
       : null;
-  let statusLabel: string;
-  if (entry.state === "done") {
-    statusLabel = t(($) => $.ai.chat.subagent.finished);
-  } else if (entry.state === "error") {
-    statusLabel = t(($) => $.ai.chat.subagent.failed);
-  } else if (entry.state === "interrupted") {
-    statusLabel = t(($) => $.ai.chat.subagent.stopped);
-  } else if (entry.state === "tool" && detail.text) {
-    statusLabel = t(($) => $.ai.chat.subagent.usingTool, { tool: detail.text });
-  } else {
-    statusLabel = t(($) => $.ai.chat.subagent.working);
-  }
+  const statusLabel = subagentStatusLabel(entry, detail.text);
 
   return (
     <div
@@ -926,36 +1007,9 @@ export function SubagentCard({
           <Shimmer text={statusLabel} />
         </div>
       )}
-      {!running && (detail.text || entry.state !== "done") && (
-        <div className="relative border-t">
-          <div
-            id={bodyId}
-            ref={bodyRef}
-            data-testid="subagent-output"
-            data-expanded={expanded ? "true" : "false"}
-            className={cn(
-              "px-2.5 py-2 text-[11px] leading-relaxed text-foreground/90",
-              !expanded && "max-h-44 overflow-hidden",
-            )}
-          >
-            {detail.text ? (
-              <Markdown className="chat-markdown">{detail.text}</Markdown>
-            ) : (
-              <span className="text-muted-foreground">
-                {entry.state === "error"
-                  ? t(($) => $.ai.chat.subagent.errorBody)
-                  : t(($) => $.ai.chat.subagent.stoppedBody)}
-              </span>
-            )}
-          </div>
-          {overflows && !expanded && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-muted to-transparent"
-            />
-          )}
-        </div>
-      )}
+      {!running &&
+        (detail.text || entry.state !== "done") &&
+        subagentOutput({ entry, detailText: detail.text, bodyId, bodyRef, expanded, overflows })}
       {detail.notices.map((notice) => (
         <p
           key={notice}
@@ -1046,6 +1100,159 @@ function WorkedSteps({
 // *last* message's reference each streamed token, so every earlier message
 // skips re-render (and re-parsing its markdown) instead of reconciling the
 // whole list per token.
+type MessageRowContext = Readonly<{
+  msg: ChatMessage;
+  live?: boolean;
+  actions?: ResearchChatActions;
+  expansionScope?: string;
+  tools: readonly ToolEntry[];
+  blocks: readonly ReasoningBlockData[];
+}>;
+
+function scopedExpansionKey(scope: string | undefined, suffix: string): string | undefined {
+  return scope ? `${scope}:${suffix}` : undefined;
+}
+
+function reasoningAnchoredAt(
+  blocks: readonly ReasoningBlockData[],
+  toolCount: number,
+  index: number,
+): boolean {
+  return blocks.some((b) => Math.min(b.beforeTool, toolCount) === index);
+}
+
+function pushReasoningRows(rows: React.ReactNode[], context: MessageRowContext, index: number) {
+  const { blocks, tools, live, expansionScope } = context;
+  blocks.forEach((b, blockIndex) => {
+    if (Math.min(b.beforeTool, tools.length) === index) {
+      rows.push(
+        <ReasoningBlock
+          key={b.id ?? `legacy-reasoning-${blockIndex}`}
+          text={b.text}
+          active={!!live && b.ms === undefined}
+          durationMs={b.ms}
+          expansionKey={scopedExpansionKey(expansionScope, `reasoning:${b.id ?? blockIndex}`)}
+        />,
+      );
+    }
+  });
+}
+
+function explorationRunEnd(context: MessageRowContext, start: number): number {
+  const { tools, blocks, live } = context;
+  if (live || !EXPLORATION_TOOLS[tools[start].name]) return -1;
+  let j = start;
+  while (
+    j + 1 < tools.length &&
+    EXPLORATION_TOOLS[tools[j + 1].name] &&
+    !reasoningAnchoredAt(blocks, tools.length, j + 1)
+  ) {
+    j++;
+  }
+  return j > start ? j : -1;
+}
+
+function pushToolRow(rows: React.ReactNode[], context: MessageRowContext, index: number) {
+  const { tools, actions, expansionScope, live } = context;
+  const tool = tools[index];
+  const key = tool.id ?? `legacy-tool-${index}`;
+  rows.push(
+    <ToolBadge
+      key={key}
+      tc={tool}
+      actions={actions}
+      expansionKey={scopedExpansionKey(expansionScope, `tool:${key}`)}
+      live={live}
+    />,
+  );
+}
+
+function buildMessageRows(context: MessageRowContext): React.ReactNode[] {
+  const { msg, tools, actions, expansionScope } = context;
+  const rows: React.ReactNode[] = [];
+  let i = 0;
+  while (i <= tools.length) {
+    pushReasoningRows(rows, context, i);
+    if (i < tools.length) {
+      const end = explorationRunEnd(context, i);
+      if (end >= 0) {
+        rows.push(
+          <ExplorationGroup
+            key={tools[i].id ?? `explore-group-${i}`}
+            tools={tools.slice(i, end + 1)}
+            actions={actions}
+            expansionKey={scopedExpansionKey(expansionScope, `exploration:${tools[i].id ?? i}`)}
+          />,
+        );
+        i = end + 1;
+        continue;
+      }
+      pushToolRow(rows, context, i);
+    }
+    i++;
+  }
+  for (const entry of msg.subagents ?? []) {
+    rows.push(<SubagentCard key={entry.id} entry={entry} actions={actions} />);
+  }
+  return rows;
+}
+
+function messageTimestamp(createdAt: number | undefined): Readonly<{ iso?: string; label?: string }> {
+  if (createdAt === undefined) return {};
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return {};
+  return {
+    iso: date.toISOString(),
+    label: formatTime(date, { hour: "numeric", minute: "2-digit" }),
+  };
+}
+
+function messageBubble({
+  msg,
+  live,
+  tokenizedUserText,
+  messageTime,
+  messageIso,
+}: Readonly<{
+  msg: ChatMessage;
+  live?: boolean;
+  tokenizedUserText: React.ReactNode | null;
+  messageTime?: string;
+  messageIso?: string;
+}>) {
+  return (
+    <div
+      className={cn(
+        "group flex w-full flex-col items-start gap-0.5",
+        msg.role === "user" && "items-end",
+      )}
+    >
+      <div
+        className={cn(
+          "overflow-hidden rounded-lg px-3 py-2 text-sm",
+          msg.role === "user"
+            ? "max-w-[85%] bg-primary text-white"
+            : "w-full bg-background text-foreground ring-1 ring-border/60 dark:bg-muted dark:ring-0",
+        )}
+      >
+        {tokenizedUserText ?? (
+          <Markdown className="chat-markdown" inverted={msg.role === "user"} streaming={live}>
+            {msg.content}
+          </Markdown>
+        )}
+      </div>
+      <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+        {messageTime && (
+          <time dateTime={messageIso} className="tabular-nums">
+            {messageTime}
+          </time>
+        )}
+        <CopyMessageButton text={msg.content} />
+      </div>
+    </div>
+  );
+}
+
 export const MessageItem = memo(function MessageItem({
   msg,
   live,
@@ -1067,66 +1274,7 @@ export const MessageItem = memo(function MessageItem({
     (msg.reasoning ? [{ text: msg.reasoning, ms: msg.reasoningMs, beforeTool: 0 }] : []);
   // Each block renders before the tool call whose index it recorded, to
   // interleave thinking phases and tool badges in arrival order.
-  const rows: React.ReactNode[] = [];
-  let i = 0;
-  while (i <= tools.length) {
-    blocks.forEach((b, blockIndex) => {
-      if (Math.min(b.beforeTool, tools.length) === i) {
-        rows.push(
-          <ReasoningBlock
-            key={b.id ?? `legacy-reasoning-${blockIndex}`}
-            text={b.text}
-            active={!!live && b.ms === undefined}
-            durationMs={b.ms}
-            expansionKey={expansionScope ? `${expansionScope}:reasoning:${b.id ?? blockIndex}` : undefined}
-          />,
-        );
-      }
-    });
-    if (i < tools.length) {
-      // Collapse a finished run of consecutive read-only tools (with no
-      // reasoning anchored between them) into one exploration summary.
-      const reasoningAt = (index: number) =>
-        blocks.some((b) => Math.min(b.beforeTool, tools.length) === index);
-      if (!live && EXPLORATION_TOOLS[tools[i].name]) {
-        let j = i;
-        while (
-          j + 1 < tools.length &&
-          EXPLORATION_TOOLS[tools[j + 1].name] &&
-          !reasoningAt(j + 1)
-        ) {
-          j++;
-        }
-        if (j > i) {
-          rows.push(
-            <ExplorationGroup
-              key={tools[i].id ?? `explore-group-${i}`}
-              tools={tools.slice(i, j + 1)}
-              actions={actions}
-              expansionKey={expansionScope ? `${expansionScope}:exploration:${tools[i].id ?? i}` : undefined}
-            />,
-          );
-          i = j + 1;
-          continue;
-        }
-      }
-      const tool = tools[i];
-      const key = tool.id ?? `legacy-tool-${i}`;
-      rows.push(
-        <ToolBadge
-          key={key}
-          tc={tool}
-          actions={actions}
-          expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
-          live={live}
-        />,
-      );
-    }
-    i++;
-  }
-  for (const entry of msg.subagents ?? []) {
-    rows.push(<SubagentCard key={entry.id} entry={entry} actions={actions} />);
-  }
+  const rows = buildMessageRows({ msg, live, actions, expansionScope, tools, blocks });
   const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
   const hasVisibleOutcome = tools.some((tool) => {
     const view = projectToolEntry(tool);
@@ -1149,18 +1297,14 @@ export const MessageItem = memo(function MessageItem({
     !(msg.subagents?.length);
   const pictures = !live && msg.role === "assistant" ? lastFinishedPicture(msg.toolCalls ?? []) : [];
   const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
-  const createdAt = msg.createdAt === undefined ? null : new Date(msg.createdAt);
-  const validCreatedAt = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
-  const messageTime = validCreatedAt
-    ? formatTime(validCreatedAt, { hour: "numeric", minute: "2-digit" })
-    : undefined;
+  const timestamp = messageTimestamp(msg.createdAt);
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
       {foldSteps ? (
         <WorkedSteps
           rows={rows}
           totalMs={totalMs}
-          expansionKey={expansionScope ? `${expansionScope}:steps` : undefined}
+          expansionKey={scopedExpansionKey(expansionScope, "steps")}
         />
       ) : rows}
       {pictures.map((tool, index) => (
@@ -1207,41 +1351,15 @@ export const MessageItem = memo(function MessageItem({
           {notice}
         </p>
       ))}
-      {msg.content ? (
-        <div
-          className={cn(
-            "group flex w-full flex-col items-start gap-0.5",
-            msg.role === "user" && "items-end",
-          )}
-        >
-          <div
-            className={cn(
-              "overflow-hidden rounded-lg px-3 py-2 text-sm",
-              msg.role === "user"
-                ? "max-w-[85%] bg-primary text-white"
-                : "w-full bg-background text-foreground ring-1 ring-border/60 dark:bg-muted dark:ring-0",
-            )}
-          >
-            {tokenizedUserText ?? (
-              <Markdown
-                className="chat-markdown"
-                inverted={msg.role === "user"}
-                streaming={live}
-              >
-                {msg.content}
-              </Markdown>
-            )}
-          </div>
-          <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-            {messageTime && (
-              <time dateTime={validCreatedAt?.toISOString()} className="tabular-nums">
-                {messageTime}
-              </time>
-            )}
-            <CopyMessageButton text={msg.content} />
-          </div>
-        </div>
-      ) : null}
+      {msg.content
+        ? messageBubble({
+            msg,
+            live,
+            tokenizedUserText,
+            messageTime: timestamp.label,
+            messageIso: timestamp.iso,
+          })
+        : null}
     </div>
   );
 });

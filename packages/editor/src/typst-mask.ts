@@ -118,10 +118,26 @@ function endOfLine(text: string, from: number): number {
   return newline < 0 ? text.length : newline;
 }
 
+interface TypstNesting {
+  parentheses: number;
+  braces: number;
+  brackets: number;
+}
+
+function trackTypstNesting(character: string, nesting: TypstNesting): void {
+  if (character === "(") nesting.parentheses += 1;
+  else if (character === ")") {
+    nesting.parentheses = Math.max(0, nesting.parentheses - 1);
+  } else if (character === "{") nesting.braces += 1;
+  else if (character === "}") nesting.braces = Math.max(0, nesting.braces - 1);
+  else if (character === "[") nesting.brackets += 1;
+  else if (character === "]") {
+    nesting.brackets = Math.max(0, nesting.brackets - 1);
+  }
+}
+
 function statementEnd(text: string, from: number): number {
-  let parentheses = 0;
-  let braces = 0;
-  let brackets = 0;
+  const nesting: TypstNesting = { parentheses: 0, braces: 0, brackets: 0 };
   let cursor = from;
   while (cursor < text.length) {
     if (text.startsWith("//", cursor)) {
@@ -132,15 +148,14 @@ function statementEnd(text: string, from: number): number {
       cursor = opaque;
       continue;
     }
-    const balanced = parentheses === 0 && braces === 0 && brackets === 0;
-    if (text[cursor] === "(") parentheses += 1;
-    else if (text[cursor] === ")") parentheses = Math.max(0, parentheses - 1);
-    else if (text[cursor] === "{") braces += 1;
-    else if (text[cursor] === "}") braces = Math.max(0, braces - 1);
-    else if (text[cursor] === "[") brackets += 1;
-    else if (text[cursor] === "]") brackets = Math.max(0, brackets - 1);
-    else if (text[cursor] === ";" && balanced) return cursor + 1;
-    else if (text[cursor] === "\n" && balanced) return cursor;
+    const balanced =
+      nesting.parentheses === 0 &&
+      nesting.braces === 0 &&
+      nesting.brackets === 0;
+    const character = text[cursor];
+    if (balanced && character === ";") return cursor + 1;
+    if (balanced && character === "\n") return cursor;
+    trackTypstNesting(character, nesting);
     cursor += 1;
   }
   return text.length;
@@ -227,198 +242,217 @@ function maskRemoteTargets(characters: string[]): void {
   }
 }
 
-/**
- * Produces a same-UTF-16-length Typst string containing only visible markup
- * prose. Code expressions, comments, math, raw blocks, labels, citations,
- * URLs, and email addresses become spaces while line breaks are retained.
- */
-export function maskTypstToProse(text: string): string {
-  const characters = text.split("");
-  let cursor = 0;
-  while (cursor < text.length) {
-    if (text.startsWith("//", cursor)) {
-      const newline = text.indexOf("\n", cursor + 2);
-      const end = newline < 0 ? text.length : newline;
-      blank(characters, cursor, end);
-      cursor = end;
-      continue;
-    }
-    if (text.startsWith("/*", cursor)) {
-      let depth = 1;
-      let end = cursor + 2;
-      while (end < text.length && depth > 0) {
-        if (text.startsWith("/*", end)) {
-          depth += 1;
-          end += 2;
-        } else if (text.startsWith("*/", end)) {
-          depth -= 1;
-          end += 2;
-        } else {
-          end += 1;
-        }
-      }
-      blank(characters, cursor, end);
-      cursor = end;
-      continue;
-    }
-    if (text[cursor] === "`") {
-      let width = 1;
-      while (text[cursor + width] === "`") width += 1;
-      const fence = "`".repeat(width);
-      const close = text.indexOf(fence, cursor + width);
-      const end =
-        close < 0 ? text.length : close + fence.length;
-      blank(characters, cursor, end);
-      cursor = end;
-      continue;
-    }
-    if (text[cursor] === "$") {
-      let end = cursor + 1;
-      while (end < text.length) {
-        if (text[end] === "\\") {
-          end += 2;
-          continue;
-        }
-        if (text[end] === "$") {
-          end += 1;
-          break;
-        }
-        end += 1;
-      }
-      blank(characters, cursor, end);
-      cursor = end;
-      continue;
-    }
-    if (text[cursor] === "<") {
-      const close = text.indexOf(">", cursor + 1);
-      if (
-        close >= 0 &&
-        !/\s/u.test(text.slice(cursor + 1, close))
-      ) {
-        blank(characters, cursor, close + 1);
-        cursor = close + 1;
-        continue;
-      }
-    }
-    if (
-      text[cursor] === "@" &&
-      isIdentifierStart(text[cursor + 1])
-    ) {
-      let end = cursor + 2;
-      while (
-        isIdentifierContinue(text[end]) ||
-        text[end] === ":" ||
-        text[end] === "."
-      ) {
-        end += 1;
-      }
-      blank(characters, cursor, end);
-      cursor = end;
-      continue;
-    }
-    if (text[cursor] !== "#") {
-      cursor += 1;
-      continue;
-    }
+function typstLineCommentEnd(text: string, cursor: number): number {
+  const newline = text.indexOf("\n", cursor + 2);
+  return newline < 0 ? text.length : newline;
+}
 
-    const expressionStart = cursor;
-    cursor += 1;
-    if (text[cursor] === "{") {
-      const end = closingBalanced(
-        text,
-        cursor,
-        "{",
-        "}",
-      );
-      blank(characters, expressionStart, end);
-      cursor = end;
-      continue;
-    }
-    if (text[cursor] === '"') {
-      const end = closingQuote(text, cursor + 1);
-      blank(characters, expressionStart, end);
-      cursor = end;
-      continue;
-    }
-    if (!isIdentifierStart(text[cursor])) {
-      blank(characters, expressionStart, cursor);
-      continue;
-    }
-    const identifierStart = cursor;
-    cursor += 1;
-    while (isIdentifierContinue(text[cursor])) cursor += 1;
-    const identifier = text.slice(identifierStart, cursor);
-    blank(characters, expressionStart, cursor);
-
-    if (["if", "for", "while"].includes(identifier)) {
-      const blockStart = contentBlockStart(text, cursor);
-      const codeEnd =
-        blockStart >= 0 ? blockStart : statementEnd(text, cursor);
-      blank(characters, cursor, codeEnd);
-      if (identifier === "if" && blockStart >= 0) {
-        maskIfElseBranches(characters, text, blockStart);
-      }
-      cursor = codeEnd;
-      continue;
-    }
-    if (
-      [
-        "let",
-        "set",
-        "show",
-        "import",
-        "include",
-      ].includes(identifier)
-    ) {
-      const end = statementEnd(text, cursor);
-      blank(characters, cursor, end);
-      cursor = end;
-      continue;
-    }
-
-    // Calls and member access are one code expression:
-    // `#model.encoder.run(input).result`. Keep a following content block
-    // (`[visible prose]`) available to proofreading.
-    while (cursor < text.length) {
-      while (text[cursor] === " " || text[cursor] === "\t") {
-        blank(characters, cursor, cursor + 1);
-        cursor += 1;
-      }
-      if (text[cursor] === "(") {
-        const end = closingBalanced(
-          text,
-          cursor,
-          "(",
-          ")",
-        );
-        blank(characters, cursor, end);
-        cursor = end;
-        continue;
-      }
-      if (
-        text[cursor] === "." &&
-        isIdentifierStart(text[cursor + 1])
-      ) {
-        const memberStart = cursor;
-        cursor += 2;
-        while (isIdentifierContinue(text[cursor])) cursor += 1;
-        blank(characters, memberStart, cursor);
-        continue;
-      }
-      break;
+function typstBlockCommentEnd(text: string, cursor: number): number {
+  let depth = 1;
+  let end = cursor + 2;
+  while (end < text.length && depth > 0) {
+    if (text.startsWith("/*", end)) {
+      depth += 1;
+      end += 2;
+    } else if (text.startsWith("*/", end)) {
+      depth -= 1;
+      end += 2;
+    } else {
+      end += 1;
     }
   }
+  return end;
+}
 
-  maskRemoteTargets(characters);
-  // Markup punctuation is structural rather than prose. Preserve all source
-  // offsets while removing heading/list markers, content brackets, and
-  // emphasis delimiters that would otherwise create synthetic Harper lints.
+function typstRawFenceEnd(text: string, cursor: number): number {
+  let width = 1;
+  while (text[cursor + width] === "`") width += 1;
+  const fence = "`".repeat(width);
+  const close = text.indexOf(fence, cursor + width);
+  return close < 0 ? text.length : close + fence.length;
+}
+
+function typstInlineMathEnd(text: string, cursor: number): number {
+  let end = cursor + 1;
+  while (end < text.length) {
+    if (text[end] === "\\") {
+      end += 2;
+      continue;
+    }
+    if (text[end] === "$") {
+      end += 1;
+      break;
+    }
+    end += 1;
+  }
+  return end;
+}
+
+function typstLabelEnd(text: string, cursor: number): number | null {
+  const close = text.indexOf(">", cursor + 1);
+  if (close >= 0 && !/\s/u.test(text.slice(cursor + 1, close))) {
+    return close + 1;
+  }
+  return null;
+}
+
+function typstCitationEnd(text: string, cursor: number): number {
+  let end = cursor + 2;
+  while (
+    isIdentifierContinue(text[end]) ||
+    text[end] === ":" ||
+    text[end] === "."
+  ) {
+    end += 1;
+  }
+  return end;
+}
+
+const TYPST_BLOCK_KEYWORDS = ["if", "for", "while"];
+const TYPST_STATEMENT_KEYWORDS = [
+  "let",
+  "set",
+  "show",
+  "import",
+  "include",
+];
+
+function typstBlockKeywordEnd(
+  characters: string[],
+  text: string,
+  cursor: number,
+  identifier: string,
+): number {
+  const blockStart = contentBlockStart(text, cursor);
+  const codeEnd =
+    blockStart >= 0 ? blockStart : statementEnd(text, cursor);
+  blank(characters, cursor, codeEnd);
+  if (identifier === "if" && blockStart >= 0) {
+    maskIfElseBranches(characters, text, blockStart);
+  }
+  return codeEnd;
+}
+
+// Calls and member access are one code expression:
+// `#model.encoder.run(input).result`. Keep a following content block
+// (`[visible prose]`) available to proofreading.
+function typstCallChainEnd(
+  characters: string[],
+  text: string,
+  cursor: number,
+): number {
+  let at = cursor;
+  while (at < text.length) {
+    while (text[at] === " " || text[at] === "\t") {
+      blank(characters, at, at + 1);
+      at += 1;
+    }
+    if (text[at] === "(") {
+      const end = closingBalanced(text, at, "(", ")");
+      blank(characters, at, end);
+      at = end;
+      continue;
+    }
+    if (text[at] === "." && isIdentifierStart(text[at + 1])) {
+      const memberStart = at;
+      at += 2;
+      while (isIdentifierContinue(text[at])) at += 1;
+      blank(characters, memberStart, at);
+      continue;
+    }
+    break;
+  }
+  return at;
+}
+
+function typstHashExpressionEnd(
+  characters: string[],
+  text: string,
+  cursor: number,
+): number {
+  const expressionStart = cursor;
+  let at = cursor + 1;
+  if (text[at] === "{") {
+    const end = closingBalanced(text, at, "{", "}");
+    blank(characters, expressionStart, end);
+    return end;
+  }
+  if (text[at] === '"') {
+    const end = closingQuote(text, at + 1);
+    blank(characters, expressionStart, end);
+    return end;
+  }
+  if (!isIdentifierStart(text[at])) {
+    blank(characters, expressionStart, at);
+    return at;
+  }
+  const identifierStart = at;
+  at += 1;
+  while (isIdentifierContinue(text[at])) at += 1;
+  const identifier = text.slice(identifierStart, at);
+  blank(characters, expressionStart, at);
+
+  if (TYPST_BLOCK_KEYWORDS.includes(identifier)) {
+    return typstBlockKeywordEnd(characters, text, at, identifier);
+  }
+  if (TYPST_STATEMENT_KEYWORDS.includes(identifier)) {
+    const end = statementEnd(text, at);
+    blank(characters, at, end);
+    return end;
+  }
+  return typstCallChainEnd(characters, text, at);
+}
+
+function maskTypstToken(
+  characters: string[],
+  text: string,
+  cursor: number,
+): number {
+  if (text.startsWith("//", cursor)) {
+    const end = typstLineCommentEnd(text, cursor);
+    blank(characters, cursor, end);
+    return end;
+  }
+  if (text.startsWith("/*", cursor)) {
+    const end = typstBlockCommentEnd(text, cursor);
+    blank(characters, cursor, end);
+    return end;
+  }
+  if (text[cursor] === "`") {
+    const end = typstRawFenceEnd(text, cursor);
+    blank(characters, cursor, end);
+    return end;
+  }
+  if (text[cursor] === "$") {
+    const end = typstInlineMathEnd(text, cursor);
+    blank(characters, cursor, end);
+    return end;
+  }
+  if (text[cursor] === "<") {
+    const end = typstLabelEnd(text, cursor);
+    if (end !== null) {
+      blank(characters, cursor, end);
+      return end;
+    }
+  }
+  if (text[cursor] === "@" && isIdentifierStart(text[cursor + 1])) {
+    const end = typstCitationEnd(text, cursor);
+    blank(characters, cursor, end);
+    return end;
+  }
+  if (text[cursor] !== "#") return cursor + 1;
+  return typstHashExpressionEnd(characters, text, cursor);
+}
+
+const TYPST_MARKUP_MARKERS = [
+  /^[ \t]*(=+)(?=[ \t])/gmu,
+  /^[ \t]*([-+])(?=[ \t])/gmu,
+  /^[ \t]*(\/)(?=[ \t])/gmu,
+];
+
+function maskTypstMarkupMarkers(characters: string[]): void {
   const markup = characters.join("");
-  for (const pattern of [
-    /^[ \t]*(=+)(?=[ \t])/gmu,
-    /^[ \t]*([-+])(?=[ \t])/gmu,
-    /^[ \t]*(\/)(?=[ \t])/gmu,
-  ]) {
+  for (const pattern of TYPST_MARKUP_MARKERS) {
     for (const match of markup.matchAll(pattern)) {
       if (match.index === undefined) continue;
       const marker = match[1];
@@ -430,6 +464,9 @@ export function maskTypstToProse(text: string): string {
       );
     }
   }
+}
+
+function maskTypstDelimiters(characters: string[]): void {
   for (let index = 0; index < characters.length; index += 1) {
     if (
       (characters[index] === "[" ||
@@ -441,6 +478,26 @@ export function maskTypstToProse(text: string): string {
       blank(characters, index, index + 1);
     }
   }
+}
+
+/**
+ * Produces a same-UTF-16-length Typst string containing only visible markup
+ * prose. Code expressions, comments, math, raw blocks, labels, citations,
+ * URLs, and email addresses become spaces while line breaks are retained.
+ */
+export function maskTypstToProse(text: string): string {
+  const characters = text.split("");
+  let cursor = 0;
+  while (cursor < text.length) {
+    cursor = maskTypstToken(characters, text, cursor);
+  }
+
+  maskRemoteTargets(characters);
+  // Markup punctuation is structural rather than prose. Preserve all source
+  // offsets while removing heading/list markers, content brackets, and
+  // emphasis delimiters that would otherwise create synthetic Harper lints.
+  maskTypstMarkupMarkers(characters);
+  maskTypstDelimiters(characters);
   return characters.join("");
 }
 

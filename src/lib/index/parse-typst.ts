@@ -1,5 +1,12 @@
 import type { FileSymbols, Sym, SymKind } from "./types";
 
+type SymSpan = {
+  readonly from: number;
+  readonly to: number;
+  readonly nameFrom: number;
+  readonly nameTo: number;
+};
+
 function maskTypstBlockStep(
   text: string,
   i: number,
@@ -40,97 +47,143 @@ function maskTypstComments(text: string): string {
   return out;
 }
 
+type MarkupFrame = { mode: "markup"; close: boolean; brackets: number };
+type CodeFrame = {
+  mode: "code";
+  line: boolean;
+  started: boolean;
+  parens: number;
+  braces: number;
+  quoted: boolean;
+};
+type Frame = MarkupFrame | CodeFrame;
+
+const LINE_CODE_KEYWORDS = ["let", "set", "show", "import", "include"];
+
+function opensLineCode(text: string, hash: number): boolean {
+  let start = hash + 1;
+  while (text[start] === " " || text[start] === "\t") start++;
+  return LINE_CODE_KEYWORDS.some((word) => {
+    if (!text.startsWith(word, start)) return false;
+    const next = text[start + word.length];
+    return next === undefined || !/\w/.test(next);
+  });
+}
+
+function maskMarkupStep(
+  text: string,
+  i: number,
+  frame: MarkupFrame,
+  frames: Frame[],
+): number {
+  const char = text[i];
+  if (frame.close && char === "]" && frame.brackets === 0) {
+    frames.pop();
+    return i + 1;
+  }
+  if (frame.close && char === "[") {
+    frame.brackets++;
+    return i + 1;
+  }
+  if (frame.close && char === "]") {
+    frame.brackets--;
+    return i + 1;
+  }
+  if (char === "#") {
+    frames.push({
+      mode: "code",
+      line: opensLineCode(text, i),
+      started: false,
+      parens: 0,
+      braces: 0,
+      quoted: false,
+    });
+  }
+  return i + 1;
+}
+
+function maskQuotedStep(
+  text: string,
+  chars: string[],
+  i: number,
+  frame: CodeFrame,
+): number {
+  const char = text[i];
+  let cursor = i;
+  if (char !== "\n") chars[cursor] = " ";
+  if (char === "\\" && cursor + 1 < text.length) {
+    cursor++;
+    if (text[cursor] !== "\n") chars[cursor] = " ";
+  } else if (char === '"') {
+    frame.quoted = false;
+  }
+  return cursor + 1;
+}
+
+function maskCodeStep(
+  text: string,
+  chars: string[],
+  i: number,
+  frame: CodeFrame,
+  frames: Frame[],
+): number {
+  const char = text[i];
+  if (char === '"') {
+    frame.quoted = true;
+    chars[i] = " ";
+    frame.started = true;
+    return i + 1;
+  }
+  if (char === "[") {
+    frame.started = true;
+    frames.push({ mode: "markup", close: true, brackets: 0 });
+    return i + 1;
+  }
+  if (char === "(") {
+    frame.parens++;
+    frame.started = true;
+    return i + 1;
+  }
+  if (char === "{") {
+    frame.braces++;
+    frame.started = true;
+    return i + 1;
+  }
+  if (char === ")" && frame.parens > 0) {
+    frame.parens--;
+    return i + 1;
+  }
+  if (char === "}" && frame.braces > 0) {
+    frame.braces--;
+    return i + 1;
+  }
+  if (char === "\n" && frame.line) {
+    frames.pop();
+    return i;
+  }
+  if (
+    frame.started &&
+    !frame.line &&
+    frame.parens === 0 &&
+    frame.braces === 0 &&
+    /\s/.test(char)
+  ) {
+    frames.pop();
+    return i;
+  }
+  if (!/\s/.test(char)) frame.started = true;
+  return i + 1;
+}
+
 function maskStrings(text: string): string {
   const chars = text.split("");
-  type Frame = { mode: "markup"; close: boolean; brackets: number } | {
-    mode: "code";
-    line: boolean;
-    started: boolean;
-    parens: number;
-    braces: number;
-    quoted: boolean;
-  };
   const frames: Frame[] = [{ mode: "markup", close: false, brackets: 0 }];
   let i = 0;
   while (i < text.length) {
     const frame = frames.at(-1) as Frame;
-    const char = text[i];
-    if (frame.mode === "markup") {
-      if (frame.close && char === "]" && frame.brackets === 0) {
-        frames.pop();
-        i++;
-      } else if (frame.close && char === "[") {
-        frame.brackets++;
-        i++;
-      } else if (frame.close && char === "]") {
-        frame.brackets--;
-        i++;
-      } else if (char === "#") {
-        let start = i + 1;
-        while (text[start] === " " || text[start] === "\t") start++;
-        const line = ["let", "set", "show", "import", "include"].some((word) => {
-          if (!text.startsWith(word, start)) return false;
-          const next = text[start + word.length];
-          return next === undefined || !/\w/.test(next);
-        });
-        frames.push({
-          mode: "code",
-          line,
-          started: false,
-          parens: 0,
-          braces: 0,
-          quoted: false,
-        });
-        i++;
-      } else {
-        i++;
-      }
-      continue;
-    }
-    if (frame.quoted) {
-      if (char !== "\n") chars[i] = " ";
-      if (char === "\\" && i + 1 < text.length) {
-        i++;
-        if (text[i] !== "\n") chars[i] = " ";
-      } else if (char === '"') {
-        frame.quoted = false;
-      }
-      i++;
-      continue;
-    }
-    if (char === '"') {
-      frame.quoted = true;
-      chars[i] = " ";
-      frame.started = true;
-      i++;
-    } else if (char === "[") {
-      frame.started = true;
-      frames.push({ mode: "markup", close: true, brackets: 0 });
-      i++;
-    } else if (char === "(") {
-      frame.parens++;
-      frame.started = true;
-      i++;
-    } else if (char === "{") {
-      frame.braces++;
-      frame.started = true;
-      i++;
-    } else if (char === ")" && frame.parens > 0) {
-      frame.parens--;
-      i++;
-    } else if (char === "}" && frame.braces > 0) {
-      frame.braces--;
-      i++;
-    } else if (char === "\n" && frame.line) {
-      frames.pop();
-    } else if (
-      frame.started && !frame.line && frame.parens === 0 && frame.braces === 0 && /\s/.test(char)
-    ) {
-      frames.pop();
-    } else {
-      if (!/\s/.test(char)) frame.started = true;
-      i++;
-    }
+    if (frame.mode === "markup") i = maskMarkupStep(text, i, frame, frames);
+    else if (frame.quoted) i = maskQuotedStep(text, chars, i, frame);
+    else i = maskCodeStep(text, chars, i, frame, frames);
   }
   return chars.join("");
 }
@@ -145,7 +198,9 @@ function resolveImport(from: string, raw: string): string | null {
     else normalized.push(part);
   }
   const target = normalized.join("/");
-  return /\.[^/]+$/.test(target) ? target : `${target}.typ`;
+  const dot = target.indexOf(".", target.lastIndexOf("/") + 1);
+  const hasExtension = dot >= 0 && dot < target.length - 1;
+  return hasExtension ? target : `${target}.typ`;
 }
 
 export function parseTypstFile(path: string, rawText: string): FileSymbols {
@@ -166,32 +221,43 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
     return lo + 1;
   };
   const push = (
-    list: Sym[], kind: SymKind, name: string, from: number, to: number,
-    nameFrom: number, nameTo: number, extra?: Partial<Sym>,
-  ) => list.push({ kind, name, file: path, line: lineAt(from), from, to, nameFrom, nameTo, ...extra });
+    list: Sym[], kind: SymKind, name: string, span: SymSpan, extra?: Partial<Sym>,
+  ) => list.push({ kind, name, file: path, line: lineAt(span.from), ...span, ...extra });
 
   const heading = /^(={1,6})[ \t]+([^\n]+)$/gm;
   for (const match of text.matchAll(heading)) {
     const rawTitle = match[2].replace(/(?<![ \t])[ \t]+<[^>]+>[ \t]*$/, "").trim();
     if (!rawTitle) continue;
     const nameFrom = match.index + match[0].indexOf(match[2]) + match[2].indexOf(rawTitle);
-    push(defs, "section", rawTitle, match.index, match.index + match[0].length, nameFrom,
-      nameFrom + rawTitle.length, { level: match[1].length - 1 });
+    push(defs, "section", rawTitle, {
+      from: match.index,
+      to: match.index + match[0].length,
+      nameFrom,
+      nameTo: nameFrom + rawTitle.length,
+    }, { level: match[1].length - 1 });
   }
 
   const label = /<([A-Za-z_][\w:-]*)>/g;
   for (const match of code.matchAll(label)) {
     const nameFrom = match.index + 1;
-    push(defs, "label", match[1], match.index, match.index + match[0].length, nameFrom,
-      nameFrom + match[1].length);
+    push(defs, "label", match[1], {
+      from: match.index,
+      to: match.index + match[0].length,
+      nameFrom,
+      nameTo: nameFrom + match[1].length,
+    });
   }
 
   const atUse = /(?:^|[^\w])@([A-Za-z_][\w:-]*)/g;
   for (const match of code.matchAll(atUse)) {
     const at = match.index + match[0].lastIndexOf("@");
     const nameFrom = at + 1;
-    push(uses, "atuse", match[1], at, at + match[1].length + 1, nameFrom,
-      nameFrom + match[1].length);
+    push(uses, "atuse", match[1], {
+      from: at,
+      to: at + match[1].length + 1,
+      nameFrom,
+      nameTo: nameFrom + match[1].length,
+    });
   }
 
   const input = /#(?:include|import)\s+"([^"]+)"/g;
@@ -199,8 +265,12 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
     const target = resolveImport(path, match[1]);
     if (!target) continue;
     const nameFrom = match.index + match[0].indexOf(match[1]);
-    push(uses, "inputedge", match[1], match.index, match.index + match[0].length, nameFrom,
-      nameFrom + match[1].length, { target });
+    push(uses, "inputedge", match[1], {
+      from: match.index,
+      to: match.index + match[0].length,
+      nameFrom,
+      nameTo: nameFrom + match[1].length,
+    }, { target });
   }
   return { file: path, defs, uses };
 }

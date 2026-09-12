@@ -19,6 +19,9 @@ interface OpenMath extends OpenToken {
   delimiter: "$" | "$$" | "\\(" | "\\[";
 }
 
+const INLINE_MATH_DELIMITER = String.raw`\(` as OpenMath["delimiter"];
+const DISPLAY_MATH_DELIMITER = String.raw`\[` as OpenMath["delimiter"];
+
 const VERBATIM_ENVIRONMENTS = new Set([
   "verbatim",
   "verbatim*",
@@ -287,23 +290,183 @@ function validateOptionalDefinitionGroup(
   return group;
 }
 
+interface DefinitionKinds {
+  readonly classicCommand: boolean;
+  readonly xparseCommand: boolean;
+  readonly classicEnvironment: boolean;
+  readonly xparseEnvironment: boolean;
+}
+
+function controlSequenceNameEnd(
+  text: string,
+  cursor: number,
+  command: string,
+  diagnostics: Diagnostic[],
+): number | null {
+  let nameEnd = cursor + 1;
+  if (!text[nameEnd]) {
+    diagnostics.push(
+      diagnostic(
+        cursor,
+        cursor + 1,
+        "error",
+        editorMessage("latex.lint.incompleteCommandName", { command }),
+      ),
+    );
+    return null;
+  }
+  if (commandCharacter(text[nameEnd])) {
+    while (commandCharacter(text[nameEnd])) nameEnd += 1;
+  } else {
+    nameEnd += 1;
+  }
+  return nameEnd;
+}
+
+function definitionNameEnd(
+  text: string,
+  cursor: number,
+  command: string,
+  kinds: DefinitionKinds,
+  diagnostics: Diagnostic[],
+): number | null {
+  if (kinds.classicCommand && text[cursor] === "\\") {
+    return controlSequenceNameEnd(text, cursor, command, diagnostics);
+  }
+  const name = validateRequiredDefinitionGroup(
+    text,
+    cursor,
+    command,
+    kinds.classicEnvironment || kinds.xparseEnvironment
+      ? "environmentName"
+      : "commandName",
+    diagnostics,
+  );
+  if (!name) return null;
+  if (
+    (kinds.classicCommand || kinds.xparseCommand) &&
+    !validDefinedCommand(name.content)
+  ) {
+    diagnostics.push(
+      diagnostic(
+        name.from + 1,
+        name.to - 1,
+        "error",
+        editorMessage("latex.lint.requiresControlSequence", { command }),
+      ),
+    );
+  }
+  if (
+    (kinds.classicEnvironment || kinds.xparseEnvironment) &&
+    !name.content.trim()
+  ) {
+    diagnostics.push(
+      diagnostic(
+        name.from,
+        name.to,
+        "error",
+        editorMessage("latex.lint.emptyEnvironmentName", { command }),
+      ),
+    );
+  }
+  return name.to;
+}
+
+function xparseSpecificationEnd(
+  text: string,
+  cursor: number,
+  command: string,
+  diagnostics: Diagnostic[],
+): number | null {
+  const specification = validateRequiredDefinitionGroup(
+    text,
+    cursor,
+    command,
+    "argumentSpecification",
+    diagnostics,
+  );
+  if (!specification) return null;
+  for (const issue of validateXparseArgumentSpecification(
+    specification.content,
+  )) {
+    diagnostics.push(
+      diagnostic(
+        specification.from + 1 + issue.from,
+        specification.from + 1 + issue.to,
+        "error",
+        issue.message,
+      ),
+    );
+  }
+  return specification.to;
+}
+
+function classicArgumentCountEnd(
+  text: string,
+  cursor: number,
+  command: string,
+  diagnostics: Diagnostic[],
+): number | null {
+  const count = validateOptionalDefinitionGroup(
+    text,
+    cursor,
+    command,
+    "argumentCount",
+    diagnostics,
+  );
+  if (count === null) return null;
+  if (!count) return cursor;
+  if (!/^\d$/u.test(count.content.trim())) {
+    diagnostics.push(
+      diagnostic(
+        count.from + 1,
+        count.to - 1,
+        "error",
+        editorMessage("latex.lint.argumentCountDigit", { command }),
+      ),
+    );
+  }
+  const defaultValue = validateOptionalDefinitionGroup(
+    text,
+    count.to,
+    command,
+    "defaultArgument",
+    diagnostics,
+  );
+  if (defaultValue === null) return null;
+  return defaultValue ? defaultValue.to : count.to;
+}
+
+function definitionArgumentsEnd(
+  text: string,
+  cursor: number,
+  command: string,
+  kinds: DefinitionKinds,
+  diagnostics: Diagnostic[],
+): number | null {
+  if (kinds.xparseCommand || kinds.xparseEnvironment) {
+    return xparseSpecificationEnd(text, cursor, command, diagnostics);
+  }
+  return classicArgumentCountEnd(text, cursor, command, diagnostics);
+}
+
 function validateDefinition(
   text: string,
   commandEnd: number,
   command: string,
   diagnostics: Diagnostic[],
 ): void {
-  const classicCommand = CLASSIC_COMMAND_DEFINITIONS.has(command);
-  const xparseCommand = XPARSE_COMMAND_DEFINITIONS.has(command);
-  const classicEnvironment =
-    CLASSIC_ENVIRONMENT_DEFINITIONS.has(command);
-  const xparseEnvironment =
-    XPARSE_ENVIRONMENT_DEFINITIONS.has(command);
+  const kinds: DefinitionKinds = {
+    classicCommand: CLASSIC_COMMAND_DEFINITIONS.has(command),
+    xparseCommand: XPARSE_COMMAND_DEFINITIONS.has(command),
+    classicEnvironment: CLASSIC_ENVIRONMENT_DEFINITIONS.has(command),
+    xparseEnvironment: XPARSE_ENVIRONMENT_DEFINITIONS.has(command),
+  };
   if (
-    !classicCommand &&
-    !xparseCommand &&
-    !classicEnvironment &&
-    !xparseEnvironment
+    !kinds.classicCommand &&
+    !kinds.xparseCommand &&
+    !kinds.classicEnvironment &&
+    !kinds.xparseEnvironment
   ) {
     return;
   }
@@ -313,131 +476,35 @@ function validateDefinition(
     cursor = skipWhitespace(text, cursor + 1);
   }
 
-  if (classicCommand && text[cursor] === "\\") {
-    let nameEnd = cursor + 1;
-    if (!text[nameEnd]) {
-      diagnostics.push(
-        diagnostic(
-          cursor,
-          cursor + 1,
-          "error",
-          editorMessage("latex.lint.incompleteCommandName", { command }),
-        ),
-      );
-      return;
-    }
-    if (commandCharacter(text[nameEnd])) {
-      while (commandCharacter(text[nameEnd])) nameEnd += 1;
-    } else {
-      nameEnd += 1;
-    }
-    cursor = nameEnd;
-  } else {
-    const name = validateRequiredDefinitionGroup(
-      text,
-      cursor,
-      command,
-      classicEnvironment || xparseEnvironment
-        ? "environmentName"
-        : "commandName",
-      diagnostics,
-    );
-    if (!name) return;
-    if (
-      (classicCommand || xparseCommand) &&
-      !validDefinedCommand(name.content)
-    ) {
-      diagnostics.push(
-        diagnostic(
-          name.from + 1,
-          name.to - 1,
-          "error",
-          editorMessage("latex.lint.requiresControlSequence", { command }),
-        ),
-      );
-    }
-    if (
-      (classicEnvironment || xparseEnvironment) &&
-      !name.content.trim()
-    ) {
-      diagnostics.push(
-        diagnostic(
-          name.from,
-          name.to,
-          "error",
-          editorMessage("latex.lint.emptyEnvironmentName", { command }),
-        ),
-      );
-    }
-    cursor = name.to;
-  }
-
-  if (xparseCommand || xparseEnvironment) {
-    const specification = validateRequiredDefinitionGroup(
-      text,
-      cursor,
-      command,
-      "argumentSpecification",
-      diagnostics,
-    );
-    if (!specification) return;
-    for (const issue of validateXparseArgumentSpecification(
-      specification.content,
-    )) {
-      diagnostics.push(
-        diagnostic(
-          specification.from + 1 + issue.from,
-          specification.from + 1 + issue.to,
-          "error",
-          issue.message,
-        ),
-      );
-    }
-    cursor = specification.to;
-  } else {
-    const count = validateOptionalDefinitionGroup(
-      text,
-      cursor,
-      command,
-      "argumentCount",
-      diagnostics,
-    );
-    if (count === null) return;
-    if (count) {
-      if (!/^\d$/u.test(count.content.trim())) {
-        diagnostics.push(
-          diagnostic(
-            count.from + 1,
-            count.to - 1,
-            "error",
-            editorMessage("latex.lint.argumentCountDigit", { command }),
-          ),
-        );
-      }
-      cursor = count.to;
-      const defaultValue = validateOptionalDefinitionGroup(
-        text,
-        cursor,
-        command,
-        "defaultArgument",
-        diagnostics,
-      );
-      if (defaultValue === null) return;
-      if (defaultValue) cursor = defaultValue.to;
-    }
-  }
-
-  const firstBody = validateRequiredDefinitionGroup(
+  const afterName = definitionNameEnd(
     text,
     cursor,
     command,
-    classicEnvironment || xparseEnvironment
+    kinds,
+    diagnostics,
+  );
+  if (afterName === null) return;
+
+  const afterArguments = definitionArgumentsEnd(
+    text,
+    afterName,
+    command,
+    kinds,
+    diagnostics,
+  );
+  if (afterArguments === null) return;
+
+  const firstBody = validateRequiredDefinitionGroup(
+    text,
+    afterArguments,
+    command,
+    kinds.classicEnvironment || kinds.xparseEnvironment
       ? "beginBody"
       : "replacementBody",
     diagnostics,
   );
   if (!firstBody) return;
-  if (!classicEnvironment && !xparseEnvironment) return;
+  if (!kinds.classicEnvironment && !kinds.xparseEnvironment) return;
   validateRequiredDefinitionGroup(
     text,
     firstBody.to,
@@ -447,387 +514,442 @@ function validateDefinition(
   );
 }
 
-/**
- * A recovery-oriented, linear LaTeX syntax pass. It intentionally keeps
- * scanning after damage, skips comments/verbatim content, and reports every
- * useful current-document delimiter/environment error instead of allowing one
- * malformed construct to blank the rest of the file.
- */
-export function lintLatexText(text: string): Diagnostic[] {
-  const diagnostics: Diagnostic[] = [];
-  const braces: OpenToken[] = [];
-  const environments: OpenEnvironment[] = [];
-  const math: OpenMath[] = [];
-  const labels = new Map<string, number>();
+interface LatexLintScan {
+  readonly text: string;
+  readonly diagnostics: Diagnostic[];
+  readonly braces: OpenToken[];
+  readonly environments: OpenEnvironment[];
+  readonly math: OpenMath[];
+  readonly labels: Map<string, number>;
+}
 
-  let cursor = 0;
-  while (cursor < text.length) {
-    const char = text[cursor];
+function closeBraceStep(scan: LatexLintScan, cursor: number): number {
+  const open = scan.braces.pop();
+  if (!open) {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        cursor + 1,
+        "error",
+        editorMessage("latex.lint.unmatchedClosingBrace"),
+      ),
+    );
+  }
+  return cursor + 1;
+}
 
-    if (char === "%") {
-      const newline = text.indexOf("\n", cursor + 1);
-      cursor = newline < 0 ? text.length : newline + 1;
-      continue;
-    }
+function dollarMathStep(scan: LatexLintScan, cursor: number): number {
+  const delimiter = scan.text[cursor + 1] === "$" ? "$$" : "$";
+  const width = delimiter.length;
+  const top = scan.math.at(-1);
+  if (top?.delimiter === delimiter) {
+    scan.math.pop();
+  } else if (!top) {
+    scan.math.push({
+      delimiter,
+      from: cursor,
+      to: cursor + width,
+    });
+  } else {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        cursor + width,
+        "error",
+        editorMessage("latex.lint.mismatchedMathDelimiter", {
+          expected: matchingMathClose(top.delimiter),
+          found: delimiter,
+        }),
+      ),
+    );
+  }
+  return cursor + width;
+}
 
-    if (char === "{") {
-      braces.push({ from: cursor, to: cursor + 1 });
-      cursor += 1;
-      continue;
-    }
-    if (char === "}") {
-      const open = braces.pop();
-      if (!open) {
-        diagnostics.push(
-          diagnostic(
-            cursor,
-            cursor + 1,
-            "error",
-            editorMessage("latex.lint.unmatchedClosingBrace"),
-          ),
-        );
-      }
-      cursor += 1;
-      continue;
-    }
+function openInlineMathStep(
+  scan: LatexLintScan,
+  cursor: number,
+  next: string,
+): number {
+  scan.math.push({
+    delimiter: next === "(" ? INLINE_MATH_DELIMITER : DISPLAY_MATH_DELIMITER,
+    from: cursor,
+    to: cursor + 2,
+  });
+  return cursor + 2;
+}
 
-    if (char === "$") {
-      const delimiter = text[cursor + 1] === "$" ? "$$" : "$";
-      const width = delimiter.length;
-      const top = math.at(-1);
-      if (top?.delimiter === delimiter) {
-        math.pop();
-      } else if (!top) {
-        math.push({
-          delimiter,
-          from: cursor,
-          to: cursor + width,
-        });
-      } else {
-        diagnostics.push(
-          diagnostic(
-            cursor,
-            cursor + width,
-            "error",
-            editorMessage("latex.lint.mismatchedMathDelimiter", {
-              expected: matchingMathClose(top.delimiter),
-              found: delimiter,
-            }),
-          ),
-        );
-      }
-      cursor += width;
-      continue;
-    }
+function closeInlineMathStep(
+  scan: LatexLintScan,
+  cursor: number,
+  next: string,
+): number {
+  const close = next === ")" ? String.raw`\)` : String.raw`\]`;
+  const expectedOpen = next === ")" ? String.raw`\(` : String.raw`\[`;
+  const top = scan.math.at(-1);
+  if (top?.delimiter === expectedOpen) {
+    scan.math.pop();
+  } else {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        cursor + 2,
+        "error",
+        top
+          ? `Mismatched math delimiter: expected ${matchingMathClose(top.delimiter)}, got ${close}`
+          : `${close} has no matching ${expectedOpen}`,
+      ),
+    );
+  }
+  return cursor + 2;
+}
 
-    if (char !== "\\") {
-      cursor += 1;
-      continue;
-    }
+function inlineVerbatimStep(
+  scan: LatexLintScan,
+  cursor: number,
+  commandEnd: number,
+  command: string,
+): number {
+  const inline = latexInlineVerbatimSpan(scan.text, cursor);
+  if (!inline) {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        commandEnd,
+        "error",
+        editorMessage("latex.lint.invalidVerbatimArgument", { command }),
+      ),
+    );
+    return commandEnd;
+  }
+  if (!inline.complete) {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        Math.min(scan.text.length, commandEnd + 1),
+        "error",
+        editorMessage("latex.lint.unclosedCommand", { command }),
+      ),
+    );
+  }
+  return Math.max(commandEnd, inline.to);
+}
 
-    const next = text[cursor + 1];
-    if (next === "(" || next === "[") {
-      math.push({
-        delimiter: next === "(" ? "\\(" : "\\[",
-        from: cursor,
-        to: cursor + 2,
-      });
-      cursor += 2;
-      continue;
-    }
-    if (next === ")" || next === "]") {
-      const close = next === ")" ? String.raw`\)` : String.raw`\]`;
-      const expectedOpen = next === ")" ? String.raw`\(` : String.raw`\[`;
-      const top = math.at(-1);
-      if (top?.delimiter === expectedOpen) {
-        math.pop();
-      } else {
-        diagnostics.push(
-          diagnostic(
-            cursor,
-            cursor + 2,
-            "error",
-            top
-              ? `Mismatched math delimiter: expected ${matchingMathClose(top.delimiter)}, got ${close}`
-              : `${close} has no matching ${expectedOpen}`,
-          ),
-        );
-      }
-      cursor += 2;
-      continue;
-    }
+function validateRequiredBracedArgument(
+  scan: LatexLintScan,
+  cursor: number,
+  commandEnd: number,
+  command: string,
+): void {
+  const text = scan.text;
+  const argument = afterOptionalArguments(text, commandEnd);
+  if (argument.unclosedOptionalFrom !== null) {
+    scan.diagnostics.push(
+      diagnostic(
+        argument.unclosedOptionalFrom,
+        argument.unclosedOptionalFrom + 1,
+        "error",
+        editorMessage("latex.lint.unclosedOptionalArgument", { command }),
+      ),
+    );
+    return;
+  }
+  if (text[argument.start] !== "{") {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        commandEnd,
+        "error",
+        editorMessage("latex.lint.requiresBracedArgument", { command }),
+      ),
+    );
+    return;
+  }
+  const argumentEnd = balancedBraceEnd(text, argument.start);
+  if (
+    argumentEnd !== null &&
+    !text.slice(argument.start + 1, argumentEnd).trim()
+  ) {
+    scan.diagnostics.push(
+      diagnostic(
+        argument.start,
+        argumentEnd + 1,
+        "error",
+        editorMessage("latex.lint.emptyArgument", { command }),
+      ),
+    );
+  }
+}
 
-    if (!next) {
-      diagnostics.push(
+function validateCommandArguments(
+  scan: LatexLintScan,
+  cursor: number,
+  commandEnd: number,
+  command: string,
+): void {
+  if (
+    CLASSIC_COMMAND_DEFINITIONS.has(command) ||
+    XPARSE_COMMAND_DEFINITIONS.has(command) ||
+    CLASSIC_ENVIRONMENT_DEFINITIONS.has(command) ||
+    XPARSE_ENVIRONMENT_DEFINITIONS.has(command)
+  ) {
+    validateDefinition(scan.text, commandEnd, command, scan.diagnostics);
+    return;
+  }
+  if (!REQUIRED_BRACED_COMMANDS.has(command)) return;
+  validateRequiredBracedArgument(scan, cursor, commandEnd, command);
+}
+
+function labelStep(
+  scan: LatexLintScan,
+  argumentStart: number,
+  argumentEnd: number,
+  argument: string,
+): number {
+  const previous = scan.labels.get(argument);
+  if (previous !== undefined) {
+    scan.diagnostics.push(
+      diagnostic(
+        argumentStart + 1,
+        argumentEnd,
+        "warning",
+        editorMessage("latex.lint.duplicateLabel", { label: argument }),
+      ),
+    );
+  } else {
+    scan.labels.set(argument, argumentStart + 1);
+  }
+  return argumentEnd + 1;
+}
+
+function beginEnvironmentStep(
+  scan: LatexLintScan,
+  cursor: number,
+  argumentEnd: number,
+  argument: string,
+): number {
+  const text = scan.text;
+  if (VERBATIM_ENVIRONMENTS.has(argument)) {
+    const closing = `\\end{${argument}}`;
+    const close = text.indexOf(closing, argumentEnd + 1);
+    if (close < 0) {
+      scan.diagnostics.push(
         diagnostic(
           cursor,
-          cursor + 1,
+          argumentEnd + 1,
           "error",
-          editorMessage("latex.lint.incompleteCommandAtEof"),
+          editorMessage("latex.lint.unclosedEnvironment", {
+            environment: `\\begin{${argument}}`,
+          }),
         ),
       );
+      return text.length;
+    }
+    return close + closing.length;
+  }
+  scan.environments.push({
+    name: argument,
+    from: cursor,
+    to: argumentEnd + 1,
+  });
+  return argumentEnd + 1;
+}
+
+function endEnvironmentStep(
+  scan: LatexLintScan,
+  cursor: number,
+  argumentEnd: number,
+  argument: string,
+): number {
+  const environments = scan.environments;
+  const top = environments.at(-1);
+  if (top?.name === argument) {
+    environments.pop();
+    return argumentEnd + 1;
+  }
+  let matchingIndex = -1;
+  for (
+    let index = environments.length - 1;
+    index >= 0;
+    index -= 1
+  ) {
+    if (environments[index].name === argument) {
+      matchingIndex = index;
       break;
     }
+  }
+  if (matchingIndex < 0) {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        argumentEnd + 1,
+        "error",
+        editorMessage("latex.lint.endWithoutBegin", {
+          end: `\\end{${argument}}`,
+          begin: `\\begin{${argument}}`,
+        }),
+      ),
+    );
+    return argumentEnd + 1;
+  }
+  scan.diagnostics.push(
+    diagnostic(
+      cursor,
+      argumentEnd + 1,
+      "error",
+      editorMessage("latex.lint.mismatchedEnvironment", {
+        expected: `\\end{${top?.name ?? argument}}`,
+        found: `\\end{${argument}}`,
+      }),
+    ),
+  );
+  for (
+    let index = environments.length - 1;
+    index > matchingIndex;
+    index -= 1
+  ) {
+    const skipped = environments[index];
+    scan.diagnostics.push(
+      diagnostic(
+        skipped.from,
+        skipped.to,
+        "error",
+        editorMessage("latex.lint.unclosedEnvironment", {
+          environment: `\\begin{${skipped.name}}`,
+        }),
+      ),
+    );
+  }
+  environments.splice(matchingIndex);
+  return argumentEnd + 1;
+}
 
-    // Control symbols such as \%, \_, \{, \}, \\ and \$ are complete
-    // two-character commands. Their second character must not be interpreted
-    // as a source delimiter.
-    if (!commandCharacter(next)) {
-      cursor += 2;
-      continue;
-    }
-
-    let commandEnd = cursor + 2;
-    while (commandCharacter(text[commandEnd])) commandEnd += 1;
-    const command = text.slice(cursor + 1, commandEnd);
-
-    if (
-      command === "verb" ||
-      command === "lstinline" ||
-      command === "mintinline"
-    ) {
-      const inline = latexInlineVerbatimSpan(text, cursor);
-      if (!inline) {
-        diagnostics.push(
-          diagnostic(
-            cursor,
-            commandEnd,
-            "error",
-            editorMessage("latex.lint.invalidVerbatimArgument", { command }),
-          ),
-        );
-        cursor = commandEnd;
-        continue;
-      }
-      if (!inline.complete) {
-        diagnostics.push(
-          diagnostic(
-            cursor,
-            Math.min(text.length, commandEnd + 1),
-            "error",
-            editorMessage("latex.lint.unclosedCommand", { command }),
-          ),
-        );
-      }
-      cursor = Math.max(commandEnd, inline.to);
-      continue;
-    }
-
-    if (
-      CLASSIC_COMMAND_DEFINITIONS.has(command) ||
-      XPARSE_COMMAND_DEFINITIONS.has(command) ||
-      CLASSIC_ENVIRONMENT_DEFINITIONS.has(command) ||
-      XPARSE_ENVIRONMENT_DEFINITIONS.has(command)
-    ) {
-      validateDefinition(
-        text,
+function structuralCommandStep(
+  scan: LatexLintScan,
+  cursor: number,
+  commandEnd: number,
+  command: string,
+): number {
+  const text = scan.text;
+  let argumentStart = commandEnd;
+  while (whitespace(text[argumentStart])) argumentStart += 1;
+  if (text[argumentStart] !== "{") {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
         commandEnd,
-        command,
-        diagnostics,
-      );
-    } else if (REQUIRED_BRACED_COMMANDS.has(command)) {
-      const argument = afterOptionalArguments(text, commandEnd);
-      if (argument.unclosedOptionalFrom !== null) {
-        diagnostics.push(
-          diagnostic(
-            argument.unclosedOptionalFrom,
-            argument.unclosedOptionalFrom + 1,
-            "error",
-            editorMessage("latex.lint.unclosedOptionalArgument", { command }),
-          ),
-        );
-      } else if (text[argument.start] !== "{") {
-        diagnostics.push(
-          diagnostic(
-            cursor,
-            commandEnd,
-            "error",
-            editorMessage("latex.lint.requiresBracedArgument", { command }),
-          ),
-        );
-      } else {
-        const argumentEnd = balancedBraceEnd(text, argument.start);
-        if (
-          argumentEnd !== null &&
-          !text.slice(argument.start + 1, argumentEnd).trim()
-        ) {
-          diagnostics.push(
-            diagnostic(
-              argument.start,
-              argumentEnd + 1,
-              "error",
-              editorMessage("latex.lint.emptyArgument", { command }),
-            ),
-          );
-        }
-      }
-    }
+        "error",
+        editorMessage("latex.lint.requiresBracedArgument", { command }),
+      ),
+    );
+    return commandEnd;
+  }
+  const argumentEnd = text.indexOf("}", argumentStart + 1);
+  if (argumentEnd < 0) {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        Math.min(text.length, argumentStart + 1),
+        "error",
+        editorMessage("latex.lint.unclosedArgument", { command }),
+      ),
+    );
+    return argumentStart + 1;
+  }
+  const argument = text
+    .slice(argumentStart + 1, argumentEnd)
+    .trim();
+  if (!argument) {
+    scan.diagnostics.push(
+      diagnostic(
+        argumentStart,
+        argumentEnd + 1,
+        "error",
+        editorMessage("latex.lint.emptyArgument", { command }),
+      ),
+    );
+    return argumentEnd + 1;
+  }
+  if (command === "label") {
+    return labelStep(scan, argumentStart, argumentEnd, argument);
+  }
+  if (command === "begin") {
+    return beginEnvironmentStep(scan, cursor, argumentEnd, argument);
+  }
+  return endEnvironmentStep(scan, cursor, argumentEnd, argument);
+}
 
-    if (
-      command !== "begin" &&
-      command !== "end" &&
-      command !== "label"
-    ) {
-      cursor = commandEnd;
-      continue;
-    }
-
-    let argumentStart = commandEnd;
-    while (whitespace(text[argumentStart])) argumentStart += 1;
-    if (text[argumentStart] !== "{") {
-      diagnostics.push(
-        diagnostic(
-          cursor,
-          commandEnd,
-          "error",
-          editorMessage("latex.lint.requiresBracedArgument", { command }),
-        ),
-      );
-      cursor = commandEnd;
-      continue;
-    }
-    const argumentEnd = text.indexOf("}", argumentStart + 1);
-    if (argumentEnd < 0) {
-      diagnostics.push(
-        diagnostic(
-          cursor,
-          Math.min(text.length, argumentStart + 1),
-          "error",
-          editorMessage("latex.lint.unclosedArgument", { command }),
-        ),
-      );
-      cursor = argumentStart + 1;
-      continue;
-    }
-    const argument = text
-      .slice(argumentStart + 1, argumentEnd)
-      .trim();
-    if (!argument) {
-      diagnostics.push(
-        diagnostic(
-          argumentStart,
-          argumentEnd + 1,
-          "error",
-          editorMessage("latex.lint.emptyArgument", { command }),
-        ),
-      );
-      cursor = argumentEnd + 1;
-      continue;
-    }
-
-    if (command === "label") {
-      const previous = labels.get(argument);
-      if (previous !== undefined) {
-        diagnostics.push(
-          diagnostic(
-            argumentStart + 1,
-            argumentEnd,
-            "warning",
-            editorMessage("latex.lint.duplicateLabel", { label: argument }),
-          ),
-        );
-      } else {
-        labels.set(argument, argumentStart + 1);
-      }
-      cursor = argumentEnd + 1;
-      continue;
-    }
-
-    if (command === "begin") {
-      if (VERBATIM_ENVIRONMENTS.has(argument)) {
-        const closing = `\\end{${argument}}`;
-        const close = text.indexOf(closing, argumentEnd + 1);
-        if (close < 0) {
-          diagnostics.push(
-            diagnostic(
-              cursor,
-              argumentEnd + 1,
-              "error",
-              editorMessage("latex.lint.unclosedEnvironment", {
-                environment: `\\begin{${argument}}`,
-              }),
-            ),
-          );
-          cursor = text.length;
-        } else {
-          cursor = close + closing.length;
-        }
-        continue;
-      }
-      environments.push({
-        name: argument,
-        from: cursor,
-        to: argumentEnd + 1,
-      });
-      cursor = argumentEnd + 1;
-      continue;
-    }
-
-    const top = environments.at(-1);
-    if (top?.name === argument) {
-      environments.pop();
-      cursor = argumentEnd + 1;
-      continue;
-    }
-    let matchingIndex = -1;
-    for (
-      let index = environments.length - 1;
-      index >= 0;
-      index -= 1
-    ) {
-      if (environments[index].name === argument) {
-        matchingIndex = index;
-        break;
-      }
-    }
-    if (matchingIndex < 0) {
-      diagnostics.push(
-        diagnostic(
-          cursor,
-          argumentEnd + 1,
-          "error",
-          editorMessage("latex.lint.endWithoutBegin", {
-            end: `\\end{${argument}}`,
-            begin: `\\begin{${argument}}`,
-          }),
-        ),
-      );
-    } else {
-      diagnostics.push(
-        diagnostic(
-          cursor,
-          argumentEnd + 1,
-          "error",
-          editorMessage("latex.lint.mismatchedEnvironment", {
-            expected: `\\end{${top?.name ?? argument}}`,
-            found: `\\end{${argument}}`,
-          }),
-        ),
-      );
-      for (
-        let index = environments.length - 1;
-        index > matchingIndex;
-        index -= 1
-      ) {
-        const skipped = environments[index];
-        diagnostics.push(
-          diagnostic(
-            skipped.from,
-            skipped.to,
-            "error",
-            editorMessage("latex.lint.unclosedEnvironment", {
-              environment: `\\begin{${skipped.name}}`,
-            }),
-          ),
-        );
-      }
-      environments.splice(matchingIndex);
-    }
-    cursor = argumentEnd + 1;
+function backslashStep(scan: LatexLintScan, cursor: number): number | null {
+  const text = scan.text;
+  const next = text[cursor + 1];
+  if (next === "(" || next === "[") {
+    return openInlineMathStep(scan, cursor, next);
+  }
+  if (next === ")" || next === "]") {
+    return closeInlineMathStep(scan, cursor, next);
+  }
+  if (!next) {
+    scan.diagnostics.push(
+      diagnostic(
+        cursor,
+        cursor + 1,
+        "error",
+        editorMessage("latex.lint.incompleteCommandAtEof"),
+      ),
+    );
+    return null;
   }
 
-  for (const open of braces) {
-    diagnostics.push(
+  // Control symbols such as \%, \_, \{, \}, \\ and \$ are complete
+  // two-character commands. Their second character must not be interpreted
+  // as a source delimiter.
+  if (!commandCharacter(next)) return cursor + 2;
+
+  let commandEnd = cursor + 2;
+  while (commandCharacter(text[commandEnd])) commandEnd += 1;
+  const command = text.slice(cursor + 1, commandEnd);
+
+  if (
+    command === "verb" ||
+    command === "lstinline" ||
+    command === "mintinline"
+  ) {
+    return inlineVerbatimStep(scan, cursor, commandEnd, command);
+  }
+
+  validateCommandArguments(scan, cursor, commandEnd, command);
+
+  if (
+    command !== "begin" &&
+    command !== "end" &&
+    command !== "label"
+  ) {
+    return commandEnd;
+  }
+  return structuralCommandStep(scan, cursor, commandEnd, command);
+}
+
+function lintLatexStep(scan: LatexLintScan, cursor: number): number | null {
+  const text = scan.text;
+  const char = text[cursor];
+
+  if (char === "%") {
+    const newline = text.indexOf("\n", cursor + 1);
+    return newline < 0 ? text.length : newline + 1;
+  }
+  if (char === "{") {
+    scan.braces.push({ from: cursor, to: cursor + 1 });
+    return cursor + 1;
+  }
+  if (char === "}") return closeBraceStep(scan, cursor);
+  if (char === "$") return dollarMathStep(scan, cursor);
+  if (char !== "\\") return cursor + 1;
+  return backslashStep(scan, cursor);
+}
+
+function reportUnclosedTokens(scan: LatexLintScan): void {
+  for (const open of scan.braces) {
+    scan.diagnostics.push(
       diagnostic(
         open.from,
         open.to,
@@ -836,8 +958,8 @@ export function lintLatexText(text: string): Diagnostic[] {
       ),
     );
   }
-  for (const open of math) {
-    diagnostics.push(
+  for (const open of scan.math) {
+    scan.diagnostics.push(
       diagnostic(
         open.from,
         open.to,
@@ -849,8 +971,8 @@ export function lintLatexText(text: string): Diagnostic[] {
       ),
     );
   }
-  for (const open of environments) {
-    diagnostics.push(
+  for (const open of scan.environments) {
+    scan.diagnostics.push(
       diagnostic(
         open.from,
         open.to,
@@ -861,8 +983,34 @@ export function lintLatexText(text: string): Diagnostic[] {
       ),
     );
   }
+}
 
-  return diagnostics.sort(
+/**
+ * A recovery-oriented, linear LaTeX syntax pass. It intentionally keeps
+ * scanning after damage, skips comments/verbatim content, and reports every
+ * useful current-document delimiter/environment error instead of allowing one
+ * malformed construct to blank the rest of the file.
+ */
+export function lintLatexText(text: string): Diagnostic[] {
+  const scan: LatexLintScan = {
+    text,
+    diagnostics: [],
+    braces: [],
+    environments: [],
+    math: [],
+    labels: new Map<string, number>(),
+  };
+
+  let cursor = 0;
+  while (cursor < text.length) {
+    const next = lintLatexStep(scan, cursor);
+    if (next === null) break;
+    cursor = next;
+  }
+
+  reportUnclosedTokens(scan);
+
+  return scan.diagnostics.sort(
     (left, right) =>
       left.from - right.from ||
       left.to - right.to ||

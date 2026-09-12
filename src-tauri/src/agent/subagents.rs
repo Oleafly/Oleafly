@@ -1390,60 +1390,65 @@ pub async fn dispatch(
             )
         }
         // Legacy batch tool: spawn + wait all + one report.
-        crate::agent::SUBAGENT_TOOL => {
-            let tasks: Vec<serde_json::Value> = match serde_json::from_str(arguments) {
-                Ok(Value::Array(tasks)) => tasks,
-                _ => {
-                    return Some(Err(
-                        "spawn_subagents expects { \"tasks\": [{ \"label\"?, \"prompt\" }] }"
-                            .into(),
-                    ))
-                }
-            };
-            if tasks.is_empty() || tasks.len() > 4 {
-                return Some(Err("spawn_subagents runs 1 to 4 tasks per call".into()));
-            }
-            let mut ids = Vec::new();
-            for (index, task) in tasks.iter().enumerate() {
-                let prompt = task
-                    .get("prompt")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
-                let label = task
-                    .get("label")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
-                match manager
-                    .spawn(
-                        ctx,
-                        &format!("task_{}_{}", next_agent_id(), index),
-                        &prompt,
-                        label,
-                        RuntimeSelection::default(),
-                    )
-                    .await
-                {
-                    Ok(id) => ids.push(id),
-                    Err(error) => return Some(Err(error)),
-                }
-            }
-            let mut report = String::new();
-            for id in &ids {
-                if let Ok(result) = manager
-                    .wait(std::slice::from_ref(id), None, None, &ctx.multi_agent)
-                    .await
-                {
-                    report.push_str(&format!(
-                        "## {id}\n\n{}\n\n",
-                        result["output"].as_str().unwrap_or("")
-                    ));
-                }
-            }
-            Some(Ok(ToolOutput::text(report.trim_end().to_string())))
-        }
+        crate::agent::SUBAGENT_TOOL => run_subagent_batch(manager, ctx, arguments).await,
         _ => None,
     }
+}
+
+async fn run_subagent_batch(
+    manager: &Arc<SubagentManager>,
+    ctx: &RunContext,
+    arguments: &str,
+) -> Option<Result<ToolOutput, String>> {
+    let tasks: Vec<serde_json::Value> = match serde_json::from_str(arguments) {
+        Ok(Value::Array(tasks)) => tasks,
+        _ => {
+            return Some(Err(
+                "spawn_subagents expects { \"tasks\": [{ \"label\"?, \"prompt\" }] }".into(),
+            ))
+        }
+    };
+    if tasks.is_empty() || tasks.len() > 4 {
+        return Some(Err("spawn_subagents runs 1 to 4 tasks per call".into()));
+    }
+    let mut ids = Vec::new();
+    for (index, task) in tasks.iter().enumerate() {
+        let prompt = task
+            .get("prompt")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let label = task
+            .get("label")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        match manager
+            .spawn(
+                ctx,
+                &format!("task_{}_{}", next_agent_id(), index),
+                &prompt,
+                label,
+                RuntimeSelection::default(),
+            )
+            .await
+        {
+            Ok(id) => ids.push(id),
+            Err(error) => return Some(Err(error)),
+        }
+    }
+    let mut report = String::new();
+    for id in &ids {
+        if let Ok(result) = manager
+            .wait(std::slice::from_ref(id), None, None, &ctx.multi_agent)
+            .await
+        {
+            report.push_str(&format!(
+                "## {id}\n\n{}\n\n",
+                result["output"].as_str().unwrap_or("")
+            ));
+        }
+    }
+    Some(Ok(ToolOutput::text(report.trim_end().to_string())))
 }
 
 /// Wrap the normal tool runner with multi-agent dispatch: our tools run

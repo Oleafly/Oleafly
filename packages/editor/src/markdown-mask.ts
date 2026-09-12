@@ -12,6 +12,35 @@ function blank(chars: string[], from: number, to: number) {
   for (let i = from; i < to; i++) if (chars[i] !== "\n") chars[i] = " ";
 }
 
+function closesFence(
+  marker: RegExpExecArray | null,
+  fence: { char: string; length: number },
+): boolean {
+  if (!marker) return false;
+  const token = marker[1];
+  return token.startsWith(fence.char) && token.length >= fence.length;
+}
+
+function continuesFootnote(line: string): boolean {
+  return /^[ \t]*$/u.test(line) || /^(?: {2,}|\t)/u.test(line);
+}
+
+function maskNonProseLine(
+  chars: string[],
+  line: string,
+  offset: number,
+): void {
+  // Standard indented code blocks, and reference-link definitions (an
+  // identifier, target, and optional title): neither is rendered body
+  // prose. Keeping newlines preserves all offsets.
+  if (
+    /^(?: {4}|\t)\S/u.test(line) ||
+    /^[ \t]{0,3}\[(?!\^)[^\]\n]+\]:[ \t]*\S+/u.test(line)
+  ) {
+    blank(chars, offset, offset + line.length);
+  }
+}
+
 function maskBlockLines(chars: string[], text: string): void {
   const lines = text.split(/(?<=\n)/);
   let offset = 0;
@@ -26,7 +55,7 @@ function maskBlockLines(chars: string[], text: string): void {
     );
     if (fence) {
       blank(chars, offset, offset + line.length);
-      if (marker?.[1].startsWith(fence.char) && marker[1].length >= fence.length) fence = null;
+      if (closesFence(marker, fence)) fence = null;
     } else if (marker) {
       fence = { char: marker[1][0], length: marker[1].length };
       blank(chars, offset, offset + line.length);
@@ -35,22 +64,11 @@ function maskBlockLines(chars: string[], text: string): void {
       // The footnote label is metadata, but its body is rendered prose.
       blank(chars, offset, offset + footnote[0].length);
       footnoteContinuation = true;
-    } else if (
-      footnoteContinuation &&
-      (/^[ \t]*$/u.test(line) || /^(?: {2,}|\t)/u.test(line))
-    ) {
+    } else if (footnoteContinuation && continuesFootnote(line)) {
       // Indented footnote continuations remain visible prose.
     } else {
       footnoteContinuation = false;
-      // Standard indented code blocks, and reference-link definitions (an
-      // identifier, target, and optional title): neither is rendered body
-      // prose. Keeping newlines preserves all offsets.
-      if (
-        /^(?: {4}|\t)\S/u.test(line) ||
-        /^[ \t]{0,3}\[(?!\^)[^\]\n]+\]:[ \t]*\S+/u.test(line)
-      ) {
-        blank(chars, offset, offset + line.length);
-      }
+      maskNonProseLine(chars, line, offset);
     }
     offset += line.length;
   }
@@ -85,6 +103,57 @@ function maskInlineCode(chars: string[]): void {
   }
 }
 
+function referenceBracketEnd(source: string, from: number): number {
+  const close = source.indexOf("]", from);
+  if (close < 0) return -1;
+  const newline = source.indexOf("\n", from);
+  if (newline >= 0 && newline < close) return -1;
+  return close;
+}
+
+function referenceLinkEnd(source: string, start: number): number {
+  let at = start;
+  if (source[start] === "!") at += 1;
+  if (source[at] !== "[") return -1;
+  const label = referenceBracketEnd(source, at + 1);
+  if (label < 0 || source[label + 1] !== "[") return -1;
+  const reference = referenceBracketEnd(source, label + 2);
+  if (reference < 0) return -1;
+  return reference + 1;
+}
+
+function maskReferenceLinks(chars: string[]): void {
+  const source = chars.join("");
+  let index = 0;
+  while (index < source.length) {
+    const end = referenceLinkEnd(source, index);
+    if (end < 0) {
+      index += 1;
+      continue;
+    }
+    blank(chars, source.lastIndexOf("[", end - 1), end);
+    index = end;
+  }
+}
+
+function linkDestinationEnd(links: string, index: number): number {
+  let depth = 1;
+  let cursor = index + 2;
+  while (cursor < links.length && links[cursor] !== "\n") {
+    if (links[cursor] === "\\") {
+      cursor += 2;
+      continue;
+    }
+    if (links[cursor] === "(") depth++;
+    if (links[cursor] === ")" && --depth === 0) {
+      cursor++;
+      break;
+    }
+    cursor++;
+  }
+  return cursor;
+}
+
 function maskLinkDestinations(chars: string[]): void {
   const links = chars.join("");
   let index = 0;
@@ -93,20 +162,7 @@ function maskLinkDestinations(chars: string[]): void {
       index++;
       continue;
     }
-    let depth = 1;
-    let cursor = index + 2;
-    while (cursor < links.length && links[cursor] !== "\n") {
-      if (links[cursor] === "\\") {
-        cursor += 2;
-        continue;
-      }
-      if (links[cursor] === "(") depth++;
-      if (links[cursor] === ")" && --depth === 0) {
-        cursor++;
-        break;
-      }
-      cursor++;
-    }
+    const cursor = linkDestinationEnd(links, index);
     blank(chars, index + 1, cursor);
     index = Math.max(index, cursor - 1) + 1;
   }
@@ -139,14 +195,7 @@ export function maskMarkdown(text: string): string {
   }
   maskInlineCode(chars);
   maskLinkDestinations(chars);
-  for (const match of chars.join("").matchAll(/!?\[[^\]\n]*\]\[[^\]\n]*\]/gu)) {
-    const separator = match[0].lastIndexOf("[");
-    blank(
-      chars,
-      match.index! + separator,
-      match.index! + match[0].length,
-    );
-  }
+  maskReferenceLinks(chars);
   for (const pattern of [
     /<(?:https?:\/\/|mailto:)[^>\n]+>/giu,
     /<[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}>/giu,
