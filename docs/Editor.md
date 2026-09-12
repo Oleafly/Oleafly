@@ -86,12 +86,14 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   its suggestion would rewrite the markup underneath.
 - Typst goes through Harper's own Typst parser. Markdown and plain text use
   the existing masks.
-- Harper ships tuned for chat. The academic profile in
+- Harper is tuned for chat and email. The academic profile in
   `src/lib/proofreading/lint-profile.ts` turns off the rules that fight
   scholarly prose: sentence length, hedging, contractions, shorthand
   expansion, comma style, dash style, and the whitespace rules that a masked
-  document always trips. Settings keeps two lists on top of it, one of rules
-  the writer turned off and one of profile rules they turned back on.
+  document always trips. Each profile rule carries a one-line reason and an
+  example of what it would flag, and Settings shows both next to a switch.
+  Settings keeps two lists on top of it, one of rules the writer turned off
+  and one of profile rules they turned back on.
 - A finding is only ever as wide as the thing it is about. A spelling finding
   wider than 40 characters, or one that crosses a line, is dropped. A grammar
   finding stops at the end of its sentence and at 300 characters. The same

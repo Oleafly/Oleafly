@@ -156,7 +156,7 @@ type ClearTarget =
   | { type: "project"; id: string; label: string }
   | { type: "suppressed"; id: string; label: string };
 
-const NOTHING_TURNED_OFF = `You have not turned off any rules yourself. The academic profile turns off ${ACADEMIC_DISABLED_RULES.length} rules by default. They are listed below.`;
+const NOTHING_TURNED_OFF = `You have not turned off any rules. The ${ACADEMIC_DISABLED_RULES.length} rules below are off because the academic profile keeps them off. Turn on any you want.`;
 
 function ProfileRules() {
   const enabledRules = useSettingsStore(
@@ -195,18 +195,21 @@ function ProfileRules() {
           id="proofreading-profile-rules"
           className="text-xs font-medium text-foreground"
         >
-          Turned off by the academic profile
+          Rules the academic profile keeps off
         </h5>
         <p className="mt-1 text-xs text-muted-foreground">
-          Harper ships tuned for chat, so these rules start off. Turn one on
-          to see its findings again.
+          Harper is tuned for chat and email. These rules either push a style
+          papers do not follow, such as spelling out kB and min, or trip over
+          the placeholders that stand in for LaTeX markup, so Oleafly keeps them
+          off. Each one shows what it would flag. Turn it on if you want those
+          findings.
         </p>
       </div>
       <ul
         className="m-0 max-h-64 list-none space-y-1 overflow-y-auto p-0"
         aria-labelledby="proofreading-profile-rules"
       >
-        {ACADEMIC_PROFILE_RULES.map(({ rule, reason }) => (
+        {ACADEMIC_PROFILE_RULES.map(({ rule, reason, example }) => (
           <li
             key={rule}
             className="flex items-start justify-between gap-3 rounded-md px-1 py-1.5 hover:bg-accent/50"
@@ -216,6 +219,9 @@ function ProfileRules() {
                 {rule}
               </span>
               <p className="text-xs text-muted-foreground">{reason}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                Example: {example}
+              </p>
             </div>
             <Switch
               aria-label={`Turn on ${rule}`}
@@ -255,11 +261,13 @@ function TurnedOffFindings({
           id="proofreading-turned-off"
           className="text-xs font-medium text-foreground"
         >
-          Turned off rules and findings
+          Grammar rules and dismissed findings
         </h4>
         <p className="mt-1 text-xs text-muted-foreground">
-          Rules you turned off from a proofreading card, and findings you
-          dismissed one by one.
+          Hover an underlined word or sentence in the editor and a small card
+          shows what Harper found, with actions to fix it or ignore it. Rules
+          you turned off from that card and findings you ignored in this
+          project are listed here, so you can bring any of them back.
         </p>
       </div>
       {disabledRules.length === 0 ? (

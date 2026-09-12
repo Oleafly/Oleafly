@@ -98,9 +98,10 @@ describe("the academic profile against the installed Harper", () => {
 
   it("names only rules the installed Harper knows", async () => {
     const descriptions = await linter.getLintDescriptions();
-    for (const { rule, reason } of ACADEMIC_PROFILE_RULES) {
+    for (const { rule, reason, example } of ACADEMIC_PROFILE_RULES) {
       expect(descriptions[rule], rule).toBeTruthy();
       expect(reason.trim().length, rule).toBeGreaterThan(0);
+      expect(example.trim().length, rule).toBeGreaterThan(0);
     }
   });
 

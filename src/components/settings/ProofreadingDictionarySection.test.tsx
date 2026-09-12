@@ -12,7 +12,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { ProofreadingDictionarySection } from "./ProofreadingDictionarySection";
 
-describe("Turned off rules and findings", () => {
+describe("Grammar rules and dismissed findings", () => {
   beforeEach(() => {
     localStorage.clear();
     useDictionary.getState().clearAll();
@@ -26,7 +26,7 @@ describe("Turned off rules and findings", () => {
 
     expect(
       screen.getByText(
-        `You have not turned off any rules yourself. The academic profile turns off ${ACADEMIC_DISABLED_RULES.length} rules by default. They are listed below.`,
+        `You have not turned off any rules. The ${ACADEMIC_DISABLED_RULES.length} rules below are off because the academic profile keeps them off. Turn on any you want.`,
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("No grammar rules are turned off.")).toBeNull();
@@ -63,11 +63,17 @@ describe("Turned off rules and findings", () => {
     render(<ProofreadingDictionarySection />);
 
     const list = screen.getByRole("list", {
-      name: "Turned off by the academic profile",
+      name: "Rules the academic profile keeps off",
     });
     expect(within(list).getAllByRole("listitem")).toHaveLength(27);
     expect(ACADEMIC_PROFILE_RULES).toHaveLength(27);
-    for (const { rule, reason } of ACADEMIC_PROFILE_RULES) {
+    for (const { rule, reason, example } of ACADEMIC_PROFILE_RULES) {
+      expect(
+        [...list.querySelectorAll("p")].some(
+          (paragraph) => paragraph.textContent === `Example: ${example}`,
+        ),
+        rule,
+      ).toBe(true);
       expect(within(list).getByText(rule)).toBeInTheDocument();
       expect(within(list).getByText(reason)).toBeInTheDocument();
       expect(
