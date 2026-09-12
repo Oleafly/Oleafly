@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CiteOleaflyCard } from "@/components/settings/CiteOleaflyCard";
 import {
   AtSign,
   Blocks,
@@ -1285,6 +1286,8 @@ function HelpSection() {
           </button>
         </div>
       </div>
+
+      <CiteOleaflyCard version={version} />
 
       {/* Author row removed for now; will re-add later.
       <div className="grid grid-cols-2 gap-3">

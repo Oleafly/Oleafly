@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   download offers a retry.
 - The package list in Settings shows packages installed in your personal TeX
   tree next to the system ones.
+- Settings, Help & About shows a ready-to-copy BibTeX entry for citing Oleafly
+  in a paper, with a copy button. The README carries the same entry in every
+  language, and CITATION.cff is current, so GitHub's Cite this repository
+  button matches.
 
 ### Fixed
 

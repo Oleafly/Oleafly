@@ -187,4 +187,21 @@ Oleafly est développé par [Prajwal Murthy](https://github.com/prajwal-svm) et 
 
 Si Oleafly vous facilite la rédaction, [donnez-lui une ⭐ sur GitHub](https://github.com/Oleafly/Oleafly) pour aider d'autres chercheurs à le découvrir.
 
+### Citer Oleafly
+
+Si Oleafly vous a aidé à écrire un article, citez-le. Une entrée BibTeX dans votre bibliographie indique aux autres chercheurs d'où vient l'outil et garde visible un projet libre et open source :
+
+```bibtex
+@software{oleafly,
+  author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
+  title   = {Oleafly: a local-first desktop workspace for research writing},
+  year    = {2026},
+  version = {0.4.0},
+  url     = {https://github.com/Oleafly/Oleafly},
+  license = {AGPL-3.0-or-later}
+}
+```
+
+Le bouton **Cite this repository** en haut de la page du dépôt fournit la même référence en APA et en BibTeX, générée depuis [CITATION.cff](../../CITATION.cff). L'application propose un bouton de copie dans Réglages, Aide et à propos.
+
 [Sécurité](../../SECURITY.md) · [Code de conduite](../../CODE_OF_CONDUCT.md) · [AGPL-3.0-or-later](../../LICENSE)
