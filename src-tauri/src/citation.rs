@@ -138,7 +138,7 @@ fn bibtex_authors(names: &[String]) -> String {
 
 /// Key in the app's `firstauthorYEARfirstword` scheme, matching
 /// generateCiteKey in src/lib/citation/bibtex.ts.
-fn cite_key(author: &str, year: &str, title: &str) -> String {
+pub(crate) fn cite_key(author: &str, year: &str, title: &str) -> String {
     const STOP: &[&str] = &[
         "the", "a", "an", "of", "on", "in", "for", "and", "to", "with", "using", "via", "from",
         "by",
@@ -185,7 +185,7 @@ fn cite_key(author: &str, year: &str, title: &str) -> String {
 }
 
 /// The first 4-digit year found in a free-form date string ("2020 Mar 5").
-fn year_of(date: &str) -> String {
+pub(crate) fn year_of(date: &str) -> String {
     date.split_whitespace()
         .find(|token| token.len() == 4 && token.chars().all(|c| c.is_ascii_digit()))
         .unwrap_or_default()

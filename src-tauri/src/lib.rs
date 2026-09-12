@@ -11,6 +11,7 @@ mod ai_model_registry;
 mod approvals;
 mod arxiv_import;
 mod assets;
+mod bib_clean;
 mod biber_toolchain;
 mod browser;
 mod browser_cookie_import;
@@ -69,6 +70,7 @@ mod skills_pack;
 mod skills_share;
 mod stall_trace;
 mod state;
+mod stats;
 mod storage;
 mod synctex;
 mod template_packs;
@@ -512,6 +514,10 @@ pub fn run() {
             citation::fetch_pmid_bibtex,
             citation::crossref_search,
             arxiv_import::import_arxiv_eprint,
+            bib_clean::clean_bibtex_library,
+            stats::stats_p_value,
+            stats::stats_sample_size,
+            stats::stats_confidence_interval,
             literature::literature_search,
             literature::literature_arxiv_lookup,
             connectors::get_connector_key,
