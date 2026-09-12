@@ -238,7 +238,7 @@ describe("ad-hoc converter registry", () => {
       { text: "", file: sheet },
       progress,
     );
-    expect(progress).toHaveBeenCalledWith("Reading the first sheet");
+    expect(progress).toHaveBeenCalledWith({ step: "firstSheet" });
     expect(output.note).toBe("Converted 2 rows and 2 columns.");
   });
 
@@ -251,7 +251,7 @@ describe("ad-hoc converter registry", () => {
     mocks.completeViaBackend.mockResolvedValue({ text: "```text\ntranscribed\n```" });
     const result = await runAdHocConverter(id, { text: "", file: jpeg }, progress);
     expect(result.text).toBe("transcribed");
-    expect(progress).toHaveBeenCalledWith("Running the local vision model");
+    expect(progress).toHaveBeenCalledWith({ step: "visionModel" });
     expect(mocks.completeViaBackend).toHaveBeenCalledWith(
       expect.objectContaining({
         system: expect.stringContaining(`Return only ${target} source`),
@@ -351,7 +351,7 @@ describe("ad-hoc converter registry", () => {
     );
     const progress = vi.fn();
     await runAdHocConverter("equation-to-latex", { text: "", file: image }, progress);
-    expect(progress).toHaveBeenCalledWith("Reading the equation with the local vision model");
+    expect(progress).toHaveBeenCalledWith({ step: "readingEquation" });
     expect(mocks.completeViaBackend).toHaveBeenLastCalledWith(
       expect.objectContaining({ system: expect.stringContaining("one LaTeX math expression") }),
       undefined,
@@ -363,7 +363,7 @@ describe("ad-hoc converter registry", () => {
       { text: "the square root of x", file: null },
       progress,
     );
-    expect(progress).toHaveBeenCalledWith("Converting the equation with the local model");
+    expect(progress).toHaveBeenCalledWith({ step: "convertingEquation" });
   });
 
   it("transcribes bounded scanned PDFs and inserts target-specific page breaks", async () => {
@@ -378,7 +378,7 @@ describe("ad-hoc converter registry", () => {
     const bytes = new Uint8Array([1, 2, 3]);
     const markdown = await transcribePdfPages(bytes, 2, "Markdown", progress);
     expect(markdown).toBe("x^2\n\n---\n\nx^2");
-    expect(progress).toHaveBeenLastCalledWith("Transcribing page 2 of 2");
+    expect(progress).toHaveBeenLastCalledWith({ step: "transcribingPage", page: 2, total: 2 });
     expect(mocks.pdfPageToPng).toHaveBeenCalledWith(bytes, 2, 1.6, "#ffffff");
 
     const typst = await transcribePdfPages(bytes, 2, "Typst");
@@ -418,7 +418,7 @@ describe("ad-hoc converter registry", () => {
     ]);
     expect(result.note).toBe("Extracted 1 pages and 0 figures locally.");
     expect(progress.mock.calls.flat()).toEqual(
-      expect.arrayContaining(["Reading pages", "Converting document structure"]),
+      expect.arrayContaining([{ step: "readingPages" }, { step: "documentStructure" }]),
     );
   });
 
@@ -469,7 +469,7 @@ describe("ad-hoc converter registry", () => {
       mainFile: "main.tex",
       note: "1 source files. Main document: main.tex.",
     });
-    expect(progress).toHaveBeenCalledWith("Downloading the e-print source");
+    expect(progress).toHaveBeenCalledWith({ step: "downloadingSource" });
 
     const archive = new File([new Uint8Array([0x1f, 0x8b])], "paper.tar.gz");
     await runAdHocConverter("arxiv-to-latex", { text: "", file: archive }, progress);
@@ -477,7 +477,7 @@ describe("ad-hoc converter registry", () => {
       arxivId: undefined,
       dataBase64: "H4s=",
     });
-    expect(progress).toHaveBeenCalledWith("Unpacking the saved source");
+    expect(progress).toHaveBeenCalledWith({ step: "unpackingSource" });
   });
 
   it("requires an arXiv ID or saved archive", async () => {

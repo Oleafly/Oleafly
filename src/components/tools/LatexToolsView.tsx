@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, ToolCase } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -103,28 +103,31 @@ function ToolCard({ tool }: Readonly<{
   );
 }
 
+function matchingTools(search: string): readonly ToolDefinition[] {
+  const query = search.trim().toLowerCase();
+  if (!query) return TOOL_DEFINITIONS;
+  return TOOL_DEFINITIONS.filter((tool) =>
+    `${toolName(tool.id)} ${toolDescription(tool.id)} ${toolTags(tool.id).join(" ")} ${tool.slash.join(" ")}`
+      .toLowerCase()
+      .includes(query),
+  );
+}
+
+function groupByCategory(tools: readonly ToolDefinition[]) {
+  const byCategory = new Map<string, ToolDefinition[]>();
+  for (const tool of tools) {
+    byCategory.set(tool.category, [...(byCategory.get(tool.category) ?? []), tool]);
+  }
+  return TOOL_CATEGORY_ORDER.filter((category) => byCategory.has(category)).map((category) => ({
+    category,
+    tools: byCategory.get(category) ?? [],
+  }));
+}
+
 export function LatexToolsView() {
   const { t } = useTranslation(["common", "researchTools"]);
   const [search, setSearch] = useState("");
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return TOOL_DEFINITIONS;
-    return TOOL_DEFINITIONS.filter((tool) =>
-      `${toolName(tool.id)} ${toolDescription(tool.id)} ${toolTags(tool.id).join(" ")} ${tool.slash.join(" ")}`
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [search]);
-  const grouped = useMemo(() => {
-    const byCategory = new Map<string, ToolDefinition[]>();
-    for (const tool of filtered) {
-      byCategory.set(tool.category, [...(byCategory.get(tool.category) ?? []), tool]);
-    }
-    return TOOL_CATEGORY_ORDER.filter((category) => byCategory.has(category)).map((category) => ({
-      category,
-      tools: byCategory.get(category) ?? [],
-    }));
-  }, [filtered]);
+  const grouped = groupByCategory(matchingTools(search));
 
   return (
     <ToolPageShell

@@ -13,24 +13,50 @@ import { ensurePandoc } from "@/features/pandoc";
 import { emitTable, readTableRowsFromBytes } from "@/features/table-import";
 import { mermaidToTikz } from "@/features/mermaid-to-tikz";
 import type { ConverterToolId } from "@/lib/converter-types";
+import { i18n } from "@/i18n";
 
 export type ConverterInputKind = "text" | "file" | "image-or-text" | "arxiv";
 export type ProjectTarget = "latex" | "markdown" | "typst";
 
+export type ConverterProgressStep =
+  | "readingPages"
+  | "documentStructure"
+  | "mermaid"
+  | "firstSheet"
+  | "visionModel"
+  | "readingEquation"
+  | "convertingEquation"
+  | "unpackingSource"
+  | "downloadingSource"
+  | "transcribingPage";
+
+export interface ConverterProgress {
+  step: ConverterProgressStep;
+  page?: number;
+  total?: number;
+}
+
+export type ConverterProgressReporter = (progress: ConverterProgress) => void;
+
+export class LocalModelError extends Error {}
+
 export interface AdHocConverterDefinition {
   id: ConverterToolId;
-  title: string;
-  subtitle: string;
   inputKind: ConverterInputKind;
-  inputLabel: string;
-  inputHint: string;
   accept?: string;
   example?: string;
   sourceFileName?: string;
-  outputLabel: string;
   outputFileName: string;
   outputMediaType: string;
   projectTarget?: ProjectTarget;
+}
+
+export interface AdHocConverterCopy {
+  title: string;
+  subtitle: string;
+  inputLabel: string;
+  inputHint: string;
+  outputLabel: string;
 }
 
 const LATEX_EXAMPLE = String.raw`\documentclass{article}
@@ -60,240 +86,281 @@ Euler's identity is $e^(i pi) + 1 = 0$.
 export const AD_HOC_CONVERTERS: Record<ConverterToolId, AdHocConverterDefinition> = {
   "image-to-latex": {
     id: "image-to-latex",
-    title: "Image to LaTeX",
-    subtitle: "Transcribe notes, equations, or tables with an on-device vision model",
     inputKind: "file",
-    inputLabel: "Image",
-    inputHint: "PNG, JPEG, or WebP. The image stays on this device.",
     accept: "image/png,image/jpeg,image/webp",
-    outputLabel: "LaTeX",
     outputFileName: "transcription.tex",
     outputMediaType: "application/x-tex",
     projectTarget: "latex",
   },
   "arxiv-to-latex": {
     id: "arxiv-to-latex",
-    title: "arXiv to LaTeX",
-    subtitle: "Inspect and save an e-print source bundle before making it a project",
     inputKind: "arxiv",
-    inputLabel: "arXiv source",
-    inputHint: "Enter an arXiv ID, or choose a saved .tar.gz or .gz source archive.",
     accept: ".gz,.tgz,.tar.gz,application/gzip",
     example: "1706.03762",
-    outputLabel: "Main LaTeX source",
     outputFileName: "arxiv-source.zip",
     outputMediaType: "application/zip",
     projectTarget: "latex",
   },
   "equation-to-latex": {
     id: "equation-to-latex",
-    title: "Equation to LaTeX",
-    subtitle: "Turn typed or photographed math into an editable LaTeX expression",
     inputKind: "image-or-text",
-    inputLabel: "Equation",
-    inputHint: "Type an equation, describe it in words, or choose an image.",
     accept: "image/png,image/jpeg,image/webp",
     example: "e^(iπ) + 1 = 0",
-    outputLabel: "LaTeX equation",
     outputFileName: "equation.tex",
     outputMediaType: "application/x-tex",
   },
   "excel-to-latex": {
     id: "excel-to-latex",
-    title: "Excel to LaTeX",
-    subtitle: "Convert the first sheet into a safe, publication-ready table",
     inputKind: "file",
-    inputLabel: "Spreadsheet",
-    inputHint: "XLSX, XLS, CSV, or TSV. Formulas use their cached values.",
     accept: ".xlsx,.xls,.csv,.tsv,text/csv,text/tab-separated-values",
-    outputLabel: "LaTeX table",
     outputFileName: "table.tex",
     outputMediaType: "application/x-tex",
   },
   "html-to-latex": {
     id: "html-to-latex",
-    title: "HTML to LaTeX",
-    subtitle: "Convert semantic HTML into a standalone LaTeX document",
     inputKind: "text",
-    inputLabel: "HTML",
-    inputHint: "Paste an HTML fragment or a complete document.",
     sourceFileName: "source.html",
     example: `<article>
   <h1>A compact example</h1>
   <p>Euler's identity is <em>e</em><sup>iπ</sup> + 1 = 0.</p>
   <ul><li>Semantic HTML</li><li>Local conversion</li></ul>
 </article>`,
-    outputLabel: "LaTeX",
     outputFileName: "converted.tex",
     outputMediaType: "application/x-tex",
     projectTarget: "latex",
   },
   "image-to-typst": {
     id: "image-to-typst",
-    title: "Image to Typst",
-    subtitle: "Transcribe notes, equations, or tables with an on-device vision model",
     inputKind: "file",
-    inputLabel: "Image",
-    inputHint: "PNG, JPEG, or WebP. The image stays on this device.",
     accept: "image/png,image/jpeg,image/webp",
-    outputLabel: "Typst",
     outputFileName: "transcription.typ",
     outputMediaType: "text/x-typst",
     projectTarget: "typst",
   },
   "latex-to-html": {
     id: "latex-to-html",
-    title: "LaTeX to HTML",
-    subtitle: "Create standalone, accessible HTML with MathML equations",
     inputKind: "text",
-    inputLabel: "LaTeX",
-    inputHint: "Paste a fragment or a complete document.",
     sourceFileName: "source.tex",
     example: LATEX_EXAMPLE,
-    outputLabel: "HTML",
     outputFileName: "converted.html",
     outputMediaType: "text/html",
   },
   "latex-to-markdown": {
     id: "latex-to-markdown",
-    title: "LaTeX to Markdown",
-    subtitle: "Create portable Markdown without making a project first",
     inputKind: "text",
-    inputLabel: "LaTeX",
-    inputHint: "Paste a fragment or a complete document.",
     sourceFileName: "source.tex",
     example: LATEX_EXAMPLE,
-    outputLabel: "Markdown",
     outputFileName: "converted.md",
     outputMediaType: "text/markdown",
     projectTarget: "markdown",
   },
   "latex-to-typst": {
     id: "latex-to-typst",
-    title: "LaTeX to Typst",
-    subtitle: "Translate a LaTeX document into clean Typst source",
     inputKind: "text",
-    inputLabel: "LaTeX",
-    inputHint: "Paste a fragment or a complete document.",
     sourceFileName: "source.tex",
     example: LATEX_EXAMPLE,
-    outputLabel: "Typst",
     outputFileName: "converted.typ",
     outputMediaType: "text/x-typst",
     projectTarget: "typst",
   },
   "latex-to-word": {
     id: "latex-to-word",
-    title: "LaTeX to Word",
-    subtitle: "Create a DOCX with equations stored as editable Word math",
     inputKind: "text",
-    inputLabel: "LaTeX",
-    inputHint: "Paste a fragment or a complete document.",
     sourceFileName: "source.tex",
     example: LATEX_EXAMPLE,
-    outputLabel: "Word document",
     outputFileName: "converted.docx",
     outputMediaType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   },
   "markdown-to-latex": {
     id: "markdown-to-latex",
-    title: "Markdown to LaTeX",
-    subtitle: "Turn Markdown notes into a standalone LaTeX document",
     inputKind: "text",
-    inputLabel: "Markdown",
-    inputHint: "GitHub-style tables, lists, links, and math are supported.",
     sourceFileName: "source.md",
     example: MARKDOWN_EXAMPLE,
-    outputLabel: "LaTeX",
     outputFileName: "converted.tex",
     outputMediaType: "application/x-tex",
     projectTarget: "latex",
   },
   "markdown-to-typst": {
     id: "markdown-to-typst",
-    title: "Markdown to Typst",
-    subtitle: "Turn Markdown notes into editable Typst source",
     inputKind: "text",
-    inputLabel: "Markdown",
-    inputHint: "GitHub-style tables, lists, links, and math are supported.",
     sourceFileName: "source.md",
     example: MARKDOWN_EXAMPLE,
-    outputLabel: "Typst",
     outputFileName: "converted.typ",
     outputMediaType: "text/x-typst",
     projectTarget: "typst",
   },
   "mermaid-to-latex": {
     id: "mermaid-to-latex",
-    title: "Mermaid to LaTeX",
-    subtitle: "Turn a Mermaid flowchart into portable, editable TikZ",
     inputKind: "text",
-    inputLabel: "Mermaid flowchart",
-    inputHint: "Flowcharts support TD, LR, BT, and RL layouts, labels, and common node shapes.",
     sourceFileName: "diagram.mmd",
     example: `flowchart TD
   idea([Research question]) --> search[Search literature]
   search --> decide{Enough evidence?}
   decide -->|Yes| write[Write synthesis]
   decide -.->|No| search`,
-    outputLabel: "LaTeX / TikZ",
     outputFileName: "diagram.tex",
     outputMediaType: "application/x-tex",
   },
   "pdf-to-markdown": {
     id: "pdf-to-markdown",
-    title: "PDF to Markdown",
-    subtitle: "Extract text, equations, and figures locally",
     inputKind: "file",
-    inputLabel: "PDF",
-    inputHint: "Text PDFs use deterministic extraction. Scans use a local vision model.",
     accept: ".pdf,application/pdf",
-    outputLabel: "Markdown",
     outputFileName: "converted.md",
     outputMediaType: "text/markdown",
     projectTarget: "markdown",
   },
   "pdf-to-typst": {
     id: "pdf-to-typst",
-    title: "PDF to Typst",
-    subtitle: "Extract text, equations, and figures locally",
     inputKind: "file",
-    inputLabel: "PDF",
-    inputHint: "Text PDFs use deterministic extraction. Scans use a local vision model.",
     accept: ".pdf,application/pdf",
-    outputLabel: "Typst",
     outputFileName: "converted.typ",
     outputMediaType: "text/x-typst",
     projectTarget: "typst",
   },
   "typst-to-latex": {
     id: "typst-to-latex",
-    title: "Typst to LaTeX",
-    subtitle: "Prepare Typst content for LaTeX journals and submission systems",
     inputKind: "text",
-    inputLabel: "Typst",
-    inputHint: "Paste a fragment or a complete Typst document.",
     sourceFileName: "source.typ",
     example: TYPST_EXAMPLE,
-    outputLabel: "LaTeX",
     outputFileName: "converted.tex",
     outputMediaType: "application/x-tex",
     projectTarget: "latex",
   },
   "word-to-latex": {
     id: "word-to-latex",
-    title: "Word to LaTeX",
-    subtitle: "Convert a DOCX and keep its extracted media with the result",
     inputKind: "file",
-    inputLabel: "Word document",
-    inputHint: "Choose a .docx file. Equations and images are read locally.",
     accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    outputLabel: "LaTeX",
     outputFileName: "converted.tex",
     outputMediaType: "application/x-tex",
     projectTarget: "latex",
   },
 };
+
+const CONVERTER_COPY: Record<ConverterToolId, () => AdHocConverterCopy> = {
+  "image-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.imageToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.imageToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.imageToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.imageToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.imageToLatex.outputLabel),
+  }),
+  "arxiv-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.arxivToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.arxivToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.arxivToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.arxivToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.arxivToLatex.outputLabel),
+  }),
+  "equation-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.equationToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.equationToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.equationToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.equationToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.equationToLatex.outputLabel),
+  }),
+  "excel-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.excelToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.excelToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.excelToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.excelToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.excelToLatex.outputLabel),
+  }),
+  "html-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.htmlToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.htmlToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.htmlToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.htmlToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.htmlToLatex.outputLabel),
+  }),
+  "image-to-typst": () => ({
+    title: i18n.t(($) => $.researchTools.converters.imageToTypst.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.imageToTypst.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.imageToTypst.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.imageToTypst.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.imageToTypst.outputLabel),
+  }),
+  "latex-to-html": () => ({
+    title: i18n.t(($) => $.researchTools.converters.latexToHtml.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.latexToHtml.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.latexToHtml.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.latexToHtml.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.latexToHtml.outputLabel),
+  }),
+  "latex-to-markdown": () => ({
+    title: i18n.t(($) => $.researchTools.converters.latexToMarkdown.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.latexToMarkdown.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.latexToMarkdown.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.latexToMarkdown.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.latexToMarkdown.outputLabel),
+  }),
+  "latex-to-typst": () => ({
+    title: i18n.t(($) => $.researchTools.converters.latexToTypst.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.latexToTypst.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.latexToTypst.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.latexToTypst.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.latexToTypst.outputLabel),
+  }),
+  "latex-to-word": () => ({
+    title: i18n.t(($) => $.researchTools.converters.latexToWord.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.latexToWord.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.latexToWord.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.latexToWord.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.latexToWord.outputLabel),
+  }),
+  "markdown-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.markdownToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.markdownToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.markdownToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.markdownToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.markdownToLatex.outputLabel),
+  }),
+  "markdown-to-typst": () => ({
+    title: i18n.t(($) => $.researchTools.converters.markdownToTypst.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.markdownToTypst.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.markdownToTypst.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.markdownToTypst.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.markdownToTypst.outputLabel),
+  }),
+  "mermaid-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.mermaidToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.mermaidToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.mermaidToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.mermaidToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.mermaidToLatex.outputLabel),
+  }),
+  "pdf-to-markdown": () => ({
+    title: i18n.t(($) => $.researchTools.converters.pdfToMarkdown.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.pdfToMarkdown.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.pdfToMarkdown.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.pdfToMarkdown.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.pdfToMarkdown.outputLabel),
+  }),
+  "pdf-to-typst": () => ({
+    title: i18n.t(($) => $.researchTools.converters.pdfToTypst.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.pdfToTypst.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.pdfToTypst.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.pdfToTypst.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.pdfToTypst.outputLabel),
+  }),
+  "typst-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.typstToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.typstToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.typstToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.typstToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.typstToLatex.outputLabel),
+  }),
+  "word-to-latex": () => ({
+    title: i18n.t(($) => $.researchTools.converters.wordToLatex.title),
+    subtitle: i18n.t(($) => $.researchTools.converters.wordToLatex.subtitle),
+    inputLabel: i18n.t(($) => $.researchTools.converters.wordToLatex.inputLabel),
+    inputHint: i18n.t(($) => $.researchTools.converters.wordToLatex.inputHint),
+    outputLabel: i18n.t(($) => $.researchTools.converters.wordToLatex.outputLabel),
+  }),
+};
+
+export function converterCopy(id: ConverterToolId): AdHocConverterCopy {
+  return CONVERTER_COPY[id]();
+}
 
 export interface ConverterInput {
   text: string;
@@ -338,7 +405,7 @@ function dataUrlBase64(dataUrl: string): string {
 
 async function imageDataUrl(file: File): Promise<string> {
   if (file.size > 20 * 1024 * 1024) {
-    throw new Error("Choose an image smaller than 20 MB.");
+    throw new Error(i18n.t(($) => $.researchTools.converterErrors.chooseSmallerImage));
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
   const mediaType = bytes.length >= 8
@@ -358,7 +425,7 @@ async function imageDataUrl(file: File): Promise<string> {
         ? "image/webp"
         : null;
   if (!mediaType) {
-    throw new Error("Choose a PNG, JPEG, or WebP image.");
+    throw new Error(i18n.t(($) => $.researchTools.converterErrors.imageFormat));
   }
   return `data:${mediaType};base64,${bytesToBase64(bytes)}`;
 }
@@ -377,7 +444,7 @@ async function localModel(requiresVision: boolean): Promise<string> {
   try {
     models = await listOllamaModels(host);
   } catch {
-    throw new Error("Start Ollama in Settings, then install a local model for this conversion.");
+    throw new LocalModelError(i18n.t(($) => $.researchTools.converterErrors.ollamaUnavailable));
   }
   const eligible = requiresVision
     ? models.filter((model) => modelSupportsVision("ollama", model))
@@ -385,10 +452,10 @@ async function localModel(requiresVision: boolean): Promise<string> {
   const preferred = config.ai_provider === "ollama" ? config.ai_model : "";
   const selected = eligible.includes(preferred) ? preferred : eligible[0];
   if (!selected) {
-    throw new Error(
+    throw new LocalModelError(
       requiresVision
-        ? "Install a vision model in Ollama, such as Llama 3.2 Vision, then try again."
-        : "Install a local Ollama model, then try again.",
+        ? i18n.t(($) => $.researchTools.converterErrors.visionModelMissing)
+        : i18n.t(($) => $.researchTools.converterErrors.localModelMissing),
     );
   }
   return selected;
@@ -429,7 +496,7 @@ async function transcribeWithLocalModel(
     { provider_id: "ollama", model_id: model },
   );
   const cleaned = cleanModelOutput(response.text);
-  if (!cleaned) throw new Error("The local model returned an empty transcription.");
+  if (!cleaned) throw new LocalModelError(i18n.t(($) => $.researchTools.converterErrors.emptyTranscription));
   return cleaned;
 }
 
@@ -437,21 +504,21 @@ export async function transcribePdfPages(
   bytes: Uint8Array,
   pageCount: number,
   target: "LaTeX" | "Typst" | "Markdown",
-  onProgress?: (message: string) => void,
+  onProgress?: ConverterProgressReporter,
   signal?: AbortSignal,
 ): Promise<string> {
   if (pageCount < 1) {
-    throw new Error("This PDF does not contain any pages to transcribe.");
+    throw new Error(i18n.t(($) => $.researchTools.converterErrors.pdfNoPages));
   }
   if (pageCount > 50) {
-    throw new Error("Scanned-PDF transcription is limited to 50 pages at a time.");
+    throw new Error(i18n.t(($) => $.researchTools.converterErrors.pdfPageLimit));
   }
   const { pdfPageToPng } = await import("@/lib/pdf-image");
   const model = await localModel(true);
   const pages: string[] = [];
   for (let page = 1; page <= pageCount; page += 1) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-    onProgress?.(`Transcribing page ${page} of ${pageCount}`);
+    onProgress?.({ step: "transcribingPage", page, total: pageCount });
     const image = await pdfPageToPng(bytes, page, 1.6, "#ffffff");
     pages.push(await transcribeWithLocalModel(target, { image }, signal, model));
   }
@@ -488,7 +555,7 @@ function normalizeEquation(value: string): string | null {
 }
 
 async function runPandoc(request: AdHocConversionRequest): Promise<ConverterOutput> {
-  if (!(await ensurePandoc())) throw new Error("Pandoc isn't ready yet.");
+  if (!(await ensurePandoc())) throw new Error(i18n.t(($) => $.researchTools.converterErrors.pandocNotReady));
   const result: AdHocConversionResult = await convertAdHoc(request);
   return { ...result };
 }
@@ -511,9 +578,9 @@ function textOutput(
 }
 
 function requireFile(input: ConverterInput): File {
-  if (!input.file) throw new Error("Choose a file before converting.");
+  if (!input.file) throw new Error(i18n.t(($) => $.researchTools.converterErrors.chooseFile));
   if (input.file.size > 128 * 1024 * 1024) {
-    throw new Error("Choose a file smaller than 128 MB.");
+    throw new Error(i18n.t(($) => $.researchTools.converterErrors.fileTooLarge));
   }
   return input.file;
 }
@@ -522,11 +589,11 @@ async function pdfToText(
   definition: AdHocConverterDefinition,
   file: File,
   target: "markdown" | "typst",
-  onProgress?: (message: string) => void,
+  onProgress?: ConverterProgressReporter,
   signal?: AbortSignal,
 ): Promise<ConverterOutput> {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  onProgress?.("Reading pages");
+  onProgress?.({ step: "readingPages" });
   const { extractPagesForConvert } = await import("@oleafly/pdf-to-latex/pdf-adapter");
   const extracted = await extractPagesForConvert(bytes);
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -543,11 +610,11 @@ async function pdfToText(
       definition,
       transcribed,
       [],
-      `Transcribed ${latex.report.pages} scanned pages with a local model. Review equations and tables before using the result.`,
+      i18n.t(($) => $.researchTools.converterNotes.scannedPages, { pages: latex.report.pages }),
     );
   }
 
-  onProgress?.("Converting document structure");
+  onProgress?.({ step: "documentStructure" });
   const converted = await runPandoc({ source: "latex", target, text: latex.tex });
   const figures = extracted.figures.map((figure) => ({
     path: `assets/${figure.name}`,
@@ -556,32 +623,35 @@ async function pdfToText(
   return {
     ...converted,
     files: [...figures, ...converted.files],
-    note: `Extracted ${latex.report.pages} pages and ${latex.report.figures} figures locally.`,
+    note: i18n.t(($) => $.researchTools.converterNotes.extracted, {
+      pages: latex.report.pages,
+      figures: latex.report.figures,
+    }),
   };
 }
 
 async function mermaidOutput(
   definition: AdHocConverterDefinition,
   source: string,
-  onProgress?: (message: string) => void,
+  onProgress?: ConverterProgressReporter,
   signal?: AbortSignal,
 ): Promise<ConverterOutput> {
   if (source.length > 50_000) {
-    throw new Error("This Mermaid diagram is larger than the 50,000-character limit.");
+    throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.tooLarge));
   }
   try {
     return textOutput(
       definition,
       mermaidToTikz(source),
       [],
-      "Converted this flowchart into editable TikZ.",
+      i18n.t(($) => $.researchTools.converterNotes.mermaidTikz),
     );
   } catch {
     // Mermaid supports many diagram families that do not have a faithful,
     // deterministic TikZ equivalent. Render those with the bundled Mermaid
     // runtime and return a LaTeX snippet plus its local PNG asset instead of
     // silently dropping unsupported nodes or relationships.
-    onProgress?.("Rendering the Mermaid diagram");
+    onProgress?.({ step: "mermaid" });
     const [{ renderDiagram }, { svgDocumentToPngBytes }] = await Promise.all([
       import("@/components/ui/mermaid-diagram"),
       import("@/features/equation-export"),
@@ -601,7 +671,7 @@ async function mermaidOutput(
       definition,
       latex,
       [{ path: "assets/diagram.png", dataBase64: bytesToBase64(png) }],
-      "Rendered this diagram locally because its Mermaid syntax does not map cleanly to editable TikZ.",
+      i18n.t(($) => $.researchTools.converterNotes.mermaidRendered),
     );
   }
 }
@@ -609,7 +679,7 @@ async function mermaidOutput(
 export async function runAdHocConverter(
   id: ConverterToolId,
   input: ConverterInput,
-  onProgress?: (message: string) => void,
+  onProgress?: ConverterProgressReporter,
   signal?: AbortSignal,
 ): Promise<ConverterOutput> {
   const definition = AD_HOC_CONVERTERS[id];
@@ -641,20 +711,23 @@ export async function runAdHocConverter(
     }
     case "excel-to-latex": {
       const file = requireFile(input);
-      onProgress?.("Reading the first sheet");
+      onProgress?.({ step: "firstSheet" });
       const rows = await readTableRowsFromBytes(file.name, new Uint8Array(await file.arrayBuffer()));
-      if (rows.length === 0) throw new Error("The selected sheet is empty.");
+      if (rows.length === 0) throw new Error(i18n.t(($) => $.researchTools.converterErrors.emptySheet));
       return textOutput(
         definition,
         emitTable(rows, { target: "latex", header: true, boldHeader: true }),
         [],
-        `Converted ${rows.length.toLocaleString()} rows and ${Math.max(...rows.map((row) => row.length)).toLocaleString()} columns.`,
+        i18n.t(($) => $.researchTools.converterNotes.tableConverted, {
+          rows: rows.length.toLocaleString(),
+          columns: Math.max(...rows.map((row) => row.length)).toLocaleString(),
+        }),
       );
     }
     case "image-to-latex":
     case "image-to-typst": {
       const file = requireFile(input);
-      onProgress?.("Running the local vision model");
+      onProgress?.({ step: "visionModel" });
       const target = id === "image-to-typst" ? "Typst" : "LaTeX";
       const result = await transcribeWithLocalModel(
         target,
@@ -665,7 +738,7 @@ export async function runAdHocConverter(
     }
     case "equation-to-latex": {
       if (input.file) {
-        onProgress?.("Reading the equation with the local vision model");
+        onProgress?.({ step: "readingEquation" });
         const result = await transcribeWithLocalModel("LaTeX", {
           image: await imageDataUrl(requireFile(input)),
           equationOnly: true,
@@ -674,7 +747,7 @@ export async function runAdHocConverter(
       }
       const normalized = normalizeEquation(text);
       if (normalized) return textOutput(definition, normalized);
-      onProgress?.("Converting the equation with the local model");
+      onProgress?.({ step: "convertingEquation" });
       return textOutput(
         definition,
         await transcribeWithLocalModel("LaTeX", { text, equationOnly: true }, signal),
@@ -687,8 +760,8 @@ export async function runAdHocConverter(
     case "pdf-to-typst":
       return pdfToText(definition, requireFile(input), "typst", onProgress, signal);
     case "arxiv-to-latex": {
-      if (!text && !input.file) throw new Error("Enter an arXiv ID or choose a source archive.");
-      onProgress?.(input.file ? "Unpacking the saved source" : "Downloading the e-print source");
+      if (!text && !input.file) throw new Error(i18n.t(($) => $.researchTools.converterErrors.arxivInputRequired));
+      onProgress?.({ step: input.file ? "unpackingSource" : "downloadingSource" });
       const source = await extractArxivSource({
         arxivId: input.file ? undefined : text,
         dataBase64: input.file
@@ -703,7 +776,10 @@ export async function runAdHocConverter(
         mediaType: "application/zip",
         files: source.files,
         mainFile: source.mainFile,
-        note: `${source.files.length.toLocaleString()} source files. Main document: ${source.mainFile}.`,
+        note: i18n.t(($) => $.researchTools.converterNotes.arxivBundle, {
+          files: source.files.length.toLocaleString(),
+          mainFile: source.mainFile,
+        }),
       };
     }
   }

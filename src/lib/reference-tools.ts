@@ -9,6 +9,7 @@ import mlaStyle from "@/assets/csl/modern-language-association.csl?raw";
 import { generateCiteKey, stringifyBibEntry } from "@/lib/citation/bibtex";
 import { detectInput, type DetectedInput } from "@/lib/citation/detect";
 import { parseBib, validateBib, type BibFinding } from "@/lib/latex-tools";
+import { i18n } from "@/i18n";
 
 export type ReferenceToolId =
   | "arxiv-citation-generator"
@@ -90,7 +91,7 @@ function styleById(style: CitationStyleId): CitationStyleDefinition {
 
 function outputText(value: unknown): string {
   if (typeof value !== "string") {
-    throw new Error("The citation formatter returned an unreadable result.");
+    throw new Error(i18n.t(($) => $.researchTools.referenceErrors.unreadableResult));
   }
   return value.replaceAll("\u00a0", " ").trim();
 }
@@ -116,17 +117,19 @@ export function formatCitations(
 ): FormattedCitation {
   if (!bibtex.trim()) return { bibliography: "", inText: "", entries: 0 };
   if (bibtex.length > MAX_BIBTEX_CHARACTERS) {
-    throw new Error("This bibliography is larger than the 1 MB workspace limit.");
+    throw new Error(i18n.t(($) => $.researchTools.referenceErrors.bibliographyTooLarge));
   }
   registerStyles();
   const cached = cachedFormats.get(style);
   if (cachedBibtex === bibtex && cached) return { ...cached };
   const cite = parsedCitation(bibtex);
   if (cite.data.length === 0) {
-    throw new Error("No complete BibTeX entries were found.");
+    throw new Error(i18n.t(($) => $.researchTools.referenceErrors.noEntries));
   }
   if (cite.data.length > MAX_BIBTEX_ENTRIES) {
-    throw new Error(`This bibliography has more than ${MAX_BIBTEX_ENTRIES.toLocaleString()} entries.`);
+    throw new Error(i18n.t(($) => $.researchTools.referenceErrors.tooManyEntries, {
+      max: MAX_BIBTEX_ENTRIES.toLocaleString(),
+    }));
   }
   const template = styleById(style).template;
   const formatted = {
@@ -309,7 +312,7 @@ export function detectCitationTarget(raw: string): UrlCitationTarget {
 export function webpageBibtex(url: string, title = "Untitled webpage"): string {
   const parsed = new URL(url);
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("Enter an http or https web address.");
+    throw new Error(i18n.t(($) => $.researchTools.referenceErrors.webAddress));
   }
   const fields = {
     title: cleanField(title) || "Untitled webpage",

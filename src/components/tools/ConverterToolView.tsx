@@ -29,9 +29,12 @@ import {
 } from "@/components/tools/ToolWorkspace";
 import {
   AD_HOC_CONVERTERS,
+  converterCopy,
+  LocalModelError,
   projectReadySource,
   runAdHocConverter,
   type ConverterOutput,
+  type ConverterProgress,
 } from "@/features/ad-hoc-converters";
 import { createProjectFromAdHoc, writeBytesFile } from "@/lib/tauri";
 import { pickSavePath } from "@/lib/native-file-dialog";
@@ -45,6 +48,15 @@ import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 
 type InputMode = "text" | "file";
+
+type ConverterStatus =
+  | ConverterProgress
+  | { step: "ready" | "converting" | "converted" | "needsAttention" | "cancelled" };
+
+interface ConverterFailure {
+  message: string;
+  localModel: boolean;
+}
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -183,6 +195,7 @@ function openLocalModelSettings(): void {
 function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const { t } = useTranslation(["researchTools"]);
   const definition = AD_HOC_CONVERTERS[id];
+  const labels = converterCopy(id);
   const catalogTool = toolById(id);
   const editorTheme = useSettingsStore((state) => state.editorTheme);
   const initialMode: InputMode = definition.inputKind === "file" ? "file" : "text";
@@ -192,8 +205,8 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const [output, setOutput] = useState<ConverterOutput | null>(null);
   const [busy, setBusy] = useState(false);
   const [projectBusy, setProjectBusy] = useState(false);
-  const [progress, setProgress] = useState("Ready");
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<ConverterStatus>({ step: "ready" });
+  const [error, setError] = useState<ConverterFailure | null>(null);
   const request = useRef(0);
   const abortController = useRef<AbortController | null>(null);
   const allowsModes = definition.inputKind === "image-or-text" || definition.inputKind === "arxiv";
@@ -209,30 +222,41 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   );
   const canConvert = useFile ? Boolean(file) : Boolean(text.trim());
   const progressLabel = (() => {
-    const page = /^Transcribing page (\d+) of (\d+)$/.exec(progress);
-    if (page) {
-      return t(($) => $.researchTools.converter.progressTranscribingPage, {
-        page: Number(page[1]),
-        total: Number(page[2]),
-      });
+    switch (status.step) {
+      case "ready":
+        return t(($) => $.researchTools.converter.progressReady);
+      case "converting":
+        return t(($) => $.researchTools.converter.progressConverting);
+      case "converted":
+        return t(($) => $.researchTools.converter.progressConverted);
+      case "needsAttention":
+        return t(($) => $.researchTools.converter.progressNeedsAttention);
+      case "cancelled":
+        return t(($) => $.researchTools.converter.progressCancelled);
+      case "readingPages":
+        return t(($) => $.researchTools.converter.progressReadingPages);
+      case "documentStructure":
+        return t(($) => $.researchTools.converter.progressDocumentStructure);
+      case "mermaid":
+        return t(($) => $.researchTools.converter.progressMermaid);
+      case "firstSheet":
+        return t(($) => $.researchTools.converter.progressFirstSheet);
+      case "visionModel":
+        return t(($) => $.researchTools.converter.progressVisionModel);
+      case "readingEquation":
+        return t(($) => $.researchTools.converter.progressReadingEquation);
+      case "convertingEquation":
+        return t(($) => $.researchTools.converter.progressConvertingEquation);
+      case "unpackingSource":
+        return t(($) => $.researchTools.converter.progressUnpackingSource);
+      case "downloadingSource":
+        return t(($) => $.researchTools.converter.progressDownloadingSource);
+      case "transcribingPage":
+        return t(($) => $.researchTools.converter.progressTranscribingPage, {
+          page: status.page ?? 0,
+          total: status.total ?? 0,
+        });
     }
-    const labels: Record<string, string> = {
-      Ready: t(($) => $.researchTools.converter.progressReady),
-      Converting: t(($) => $.researchTools.converter.progressConverting),
-      Converted: t(($) => $.researchTools.converter.progressConverted),
-      "Needs attention": t(($) => $.researchTools.converter.progressNeedsAttention),
-      Cancelled: t(($) => $.researchTools.converter.progressCancelled),
-      "Reading pages": t(($) => $.researchTools.converter.progressReadingPages),
-      "Converting document structure": t(($) => $.researchTools.converter.progressDocumentStructure),
-      "Rendering the Mermaid diagram": t(($) => $.researchTools.converter.progressMermaid),
-      "Reading the first sheet": t(($) => $.researchTools.converter.progressFirstSheet),
-      "Running the local vision model": t(($) => $.researchTools.converter.progressVisionModel),
-      "Reading the equation with the local vision model": t(($) => $.researchTools.converter.progressReadingEquation),
-      "Converting the equation with the local model": t(($) => $.researchTools.converter.progressConvertingEquation),
-      "Unpacking the saved source": t(($) => $.researchTools.converter.progressUnpackingSource),
-      "Downloading the e-print source": t(($) => $.researchTools.converter.progressDownloadingSource),
-    };
-    return labels[progress] ?? progress;
   })();
 
   useEffect(
@@ -250,7 +274,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     setOutput(null);
     setError(null);
     setBusy(false);
-    setProgress("Ready");
+    setStatus({ step: "ready" });
   };
 
   const clear = () => {
@@ -269,23 +293,27 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     setBusy(true);
     setError(null);
     setOutput(null);
-    setProgress("Converting");
+    setStatus({ step: "converting" });
     try {
       const result = await runAdHocConverter(
         id,
         { text: useFile ? "" : text, file: useFile ? file : null },
-        setProgress,
+        (progress) => setStatus(progress),
         controller.signal,
       );
       if (request.current !== current) return;
       setOutput(result);
-      setProgress("Converted");
+      setStatus({ step: "converted" });
     } catch (caught) {
       if (request.current !== current) return;
       if (caught instanceof DOMException && caught.name === "AbortError") return;
       const message = caught instanceof Error ? caught.message : String(caught);
-      setError(message);
-      setProgress("Needs attention");
+      setError({
+        message,
+        localModel: caught instanceof LocalModelError
+          || /ollama|local model|vision model/i.test(message),
+      });
+      setStatus({ step: "needsAttention" });
       void logError(`converter ${id}`, caught);
     } finally {
       if (request.current === current) {
@@ -300,14 +328,14 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     abortController.current?.abort();
     abortController.current = null;
     setBusy(false);
-    setProgress("Cancelled");
+    setStatus({ step: "cancelled" });
   };
 
   const copy = async () => {
     if (!output?.text) return;
     try {
       await navigator.clipboard.writeText(output.text);
-      toast.success(t(($) => $.researchTools.converter.copied, { label: definition.outputLabel }));
+      toast.success(t(($) => $.researchTools.converter.copied, { label: labels.outputLabel }));
     } catch {
       toast.error(t(($) => $.researchTools.converter.copyFailed));
     }
@@ -334,7 +362,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       const projectName = stem(file?.name ?? "")
         || (id === "arxiv-to-latex" && text.trim()
           ? `arXiv ${text.trim()}`
-          : t(($) => $.researchTools.converter.resultName, { title: definition.title }));
+          : t(($) => $.researchTools.converter.resultName, { title: labels.title }));
       const projectId = await createProjectFromAdHoc({
         name: projectName,
         target: definition.projectTarget,
@@ -359,8 +387,8 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   return (
     <ToolPageShell
       page="converter"
-      title={definition.title}
-      subtitle={definition.subtitle}
+      title={labels.title}
+      subtitle={labels.subtitle}
       icon={catalogTool.icon}
       showTheme
       testId="converter-tool-view"
@@ -383,7 +411,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     >
       <ToolSplitView storageId={`converter-${id}`}>
         <ToolPane
-          title={definition.inputLabel}
+          title={labels.inputLabel}
           badge={useFile
             ? t(($) => $.researchTools.converter.file)
             : definition.inputKind === "arxiv"
@@ -410,7 +438,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
           }
           footer={
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>{definition.inputHint}</span>
+              <span>{labels.inputHint}</span>
               {id === "arxiv-to-latex" && !useFile ? (
                 <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
                   <CloudDownload className="size-3.5" /> {t(($) => $.researchTools.converter.downloadsFromArxiv)}
@@ -450,7 +478,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             <FileDrop
               file={file}
               accept={definition.accept}
-              label={definition.inputLabel}
+              label={labels.inputLabel}
               onChange={(next) => {
                 resetConversion();
                 setFile(next);
@@ -494,7 +522,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
         </ToolPane>
 
         <ToolPane
-          title={definition.outputLabel}
+          title={labels.outputLabel}
           badge={output
             ? output.kind === "binary"
               ? t(($) => $.researchTools.converter.file)
@@ -535,8 +563,8 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                   <FileText className="size-5" />
                 </div>
                 <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{error}</p>
-                {/ollama|local model|vision model/i.test(error) && (
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{error.message}</p>
+                {error.localModel && (
                   <Button variant="outline" size="sm" className="mt-4" onClick={openLocalModelSettings}>
                     <Settings /> {t(($) => $.researchTools.converter.openAiSettings)}
                   </Button>

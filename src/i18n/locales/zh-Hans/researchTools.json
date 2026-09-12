@@ -347,6 +347,232 @@
       "tagCountdown": "实时倒计时",
       "tagFieldFilters": "领域筛选",
       "tagSource": "ccf-deadlines"
+    },
+    "imageToLatex": {
+      "name": "图片转 LaTeX",
+      "description": "将笔记、公式或表格的图片转换为可编辑的 LaTeX。",
+      "tag1": "图片",
+      "tag2": "设备端模型",
+      "tag3": "无需项目"
+    },
+    "visualTypstEditor": {
+      "name": "可视化 Typst 编辑器",
+      "description": "在 Oleafly 的项目编辑器和实时预览中开始 Typst 文档。",
+      "tag1": "项目编辑器",
+      "tag2": "实时预览",
+      "tag3": "本地运行"
+    },
+    "arxivToLatex": {
+      "name": "arXiv 转 LaTeX",
+      "description": "下载 arXiv 源码包，或打开磁盘上已保存的压缩包。",
+      "tag1": "源码压缩包",
+      "tag2": "按 ID 查找需联网",
+      "tag3": "离线文件模式"
+    },
+    "equationToLatex": {
+      "name": "公式转 LaTeX",
+      "description": "将输入的公式或公式图片转换为整洁的 LaTeX 数学代码。",
+      "tag1": "文本或图片",
+      "tag2": "数学公式",
+      "tag3": "设备端模型"
+    },
+    "excelToLatex": {
+      "name": "Excel 转 LaTeX",
+      "description": "将 Excel、CSV 或 TSV 工作表转换为已转义的 LaTeX 表格。",
+      "tag1": "XLSX",
+      "tag2": "CSV 与 TSV",
+      "tag3": "本地运行"
+    },
+    "htmlToLatex": {
+      "name": "HTML 转 LaTeX",
+      "description": "将粘贴的 HTML 转换为独立的 LaTeX 文档。",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "本地运行"
+    },
+    "imageToTypst": {
+      "name": "图片转 Typst",
+      "description": "将笔记、公式或表格的图片转换为可编辑的 Typst。",
+      "tag1": "图片",
+      "tag2": "设备端模型",
+      "tag3": "无需项目"
+    },
+    "latexToHtml": {
+      "name": "LaTeX 转 HTML",
+      "description": "将 LaTeX 转换为带 MathML 公式、可独立访问的 HTML。",
+      "tag1": "MathML",
+      "tag2": "独立 HTML",
+      "tag3": "本地运行"
+    },
+    "latexToImage": {
+      "name": "LaTeX 转图片",
+      "description": "渲染 LaTeX 公式并导出清晰的 PNG 或 SVG。",
+      "tag1": "PNG",
+      "tag2": "SVG",
+      "tag3": "实时预览"
+    },
+    "latexToMarkdown": {
+      "name": "LaTeX 转 Markdown",
+      "description": "将 LaTeX 文档转换为可移植的 Markdown。",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "项目可选"
+    },
+    "latexToTypst": {
+      "name": "LaTeX 转 Typst",
+      "description": "将 LaTeX 转换为可复制、保存或作为项目打开的 Typst 源码。",
+      "tag1": "Typst",
+      "tag2": "Pandoc",
+      "tag3": "项目可选"
+    },
+    "latexToWord": {
+      "name": "LaTeX 转 Word",
+      "description": "生成 Word 文档，公式保存为 Word 原生数学对象。",
+      "tag1": "DOCX",
+      "tag2": "原生数学对象",
+      "tag3": "本地运行"
+    },
+    "markdownToLatex": {
+      "name": "Markdown 转 LaTeX",
+      "description": "将 Markdown 笔记转换为独立的 LaTeX 文档。",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "项目可选"
+    },
+    "markdownToTypst": {
+      "name": "Markdown 转 Typst",
+      "description": "立即将 Markdown 笔记转换为 Typst 源码。",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "项目可选"
+    },
+    "mermaidToLatex": {
+      "name": "Mermaid 转 LaTeX",
+      "description": "将 Mermaid 流程图转换为可编辑的 TikZ 代码。",
+      "tag1": "流程图",
+      "tag2": "TikZ",
+      "tag3": "本地运行"
+    },
+    "pdfToMarkdown": {
+      "name": "PDF 转 Markdown",
+      "description": "将 PDF 的文本层、公式和图片提取为 Markdown。",
+      "tag1": "文本层",
+      "tag2": "图片",
+      "tag3": "本地运行"
+    },
+    "pdfToTypst": {
+      "name": "PDF 转 Typst",
+      "description": "将 PDF 的文本层、公式和图片提取为 Typst。",
+      "tag1": "文本层",
+      "tag2": "图片",
+      "tag3": "本地运行"
+    },
+    "tableToLatex": {
+      "name": "表格转 LaTeX",
+      "description": "在可视化行列编辑器中构建 LaTeX 表格。",
+      "tag1": "可视化编辑器",
+      "tag2": "booktabs",
+      "tag3": "本地运行"
+    },
+    "typstEditor": {
+      "name": "Typst 编辑器",
+      "description": "创建 Typst 项目，支持源码编辑、实时预览和 PDF 导出。",
+      "tag1": "项目编辑器",
+      "tag2": "PDF 导出",
+      "tag3": "本地运行"
+    },
+    "typstToLatex": {
+      "name": "Typst 转 LaTeX",
+      "description": "将 Typst 标记转换为适用于期刊和投稿的 LaTeX。",
+      "tag1": "LaTeX",
+      "tag2": "Pandoc",
+      "tag3": "项目可选"
+    },
+    "wordToLatex": {
+      "name": "Word 转 LaTeX",
+      "description": "将 Word 文档转换为 LaTeX，并一并保留提取出的媒体文件。",
+      "tag1": "DOCX",
+      "tag2": "媒体文件",
+      "tag3": "项目可选"
+    },
+    "arxivCitationGenerator": {
+      "name": "arXiv 引用生成器",
+      "description": "查找 arXiv 论文，然后以八种格式生成并导出其引用。",
+      "tag1": "八种格式",
+      "tag2": "BibTeX",
+      "tag3": "手动模式可离线使用"
+    },
+    "bibliographyGenerator": {
+      "name": "参考文献生成器",
+      "description": "根据结构化信息或 BibTeX 构建、校验、排序并导出完整的参考文献。",
+      "tag1": "批量参考文献",
+      "tag2": "八种格式",
+      "tag3": "本地格式化"
+    },
+    "citationGenerator": {
+      "name": "引用生成器",
+      "description": "将文章信息或学术标识符转换为格式化引用和 BibTeX。",
+      "tag1": "结构化编辑器",
+      "tag2": "标识符查找",
+      "tag3": "本地格式化"
+    },
+    "citationStyles": {
+      "name": "按格式生成引用",
+      "description": "在 APA、MLA、Chicago、IEEE、Harvard、Vancouver、AMA 和 ACS 之间对比同一条参考文献。",
+      "tag1": "八种格式",
+      "tag2": "并排对比",
+      "tag3": "本地格式化"
+    },
+    "doiToBibtex": {
+      "name": "DOI 转 BibTeX",
+      "description": "获取 DOI 记录，检查每个字段，并导出整洁的 BibTeX。",
+      "tag1": "DOI 查找",
+      "tag2": "可编辑字段",
+      "tag3": "BibTeX"
+    },
+    "isbnToBibtex": {
+      "name": "ISBN 转 BibTeX",
+      "description": "根据 ISBN 获取图书元数据，加以修正并导出 BibTeX。",
+      "tag1": "ISBN-10 与 ISBN-13",
+      "tag2": "可编辑字段",
+      "tag3": "BibTeX"
+    },
+    "pubmedToBibtex": {
+      "name": "PubMed 转 BibTeX",
+      "description": "根据 PMID 获取 PubMed 记录，检查后导出 BibTeX。",
+      "tag1": "PMID 查找",
+      "tag2": "医学文献",
+      "tag3": "BibTeX"
+    },
+    "urlToBibtex": {
+      "name": "URL 转 BibTeX",
+      "description": "识别 DOI、arXiv 和 PubMed 链接，或构建安全且可编辑的网页引用。",
+      "tag1": "智能链接",
+      "tag2": "可编辑元数据",
+      "tag3": "本地回退"
+    },
+    "stats": {
+      "name": "统计计算器",
+      "description": "在本地计算 p 值、样本量和置信区间。",
+      "tag1": "p 值",
+      "tag2": "样本量",
+      "tag3": "置信区间"
+    },
+    "generators": {
+      "name": "写作生成器",
+      "description": "借助助手起草摘要、总结、改写或论文大纲。",
+      "tag1": "摘要",
+      "tag2": "总结",
+      "tag3": "改写",
+      "tag4": "论文大纲"
+    },
+    "symbols": {
+      "name": "符号参考",
+      "description": "浏览 LaTeX 符号并在当前光标处插入。",
+      "tag1": "希腊字母",
+      "tag2": "箭头",
+      "tag3": "速查表",
+      "tag4": "光标处插入"
     }
   },
   "generators": {
@@ -484,6 +710,166 @@
     "fileReady": "{{fileName}} 已就绪",
     "saveWordHint": "准备好后保存 Word 文档。",
     "resultPlaceholder": "转换结果会显示在这里。"
+  },
+  "converters": {
+    "imageToLatex": {
+      "title": "图片转 LaTeX",
+      "subtitle": "使用设备端视觉模型转录笔记、公式或表格",
+      "inputLabel": "图片",
+      "inputHint": "支持 PNG、JPEG 或 WebP。图片不会离开此设备。",
+      "outputLabel": "LaTeX"
+    },
+    "arxivToLatex": {
+      "title": "arXiv 转 LaTeX",
+      "subtitle": "在创建项目前先检查并保存电子预印本源码包",
+      "inputLabel": "arXiv 源码",
+      "inputHint": "输入 arXiv ID，或选择已保存的 .tar.gz 或 .gz 源码压缩包。",
+      "outputLabel": "LaTeX 主源码文件"
+    },
+    "equationToLatex": {
+      "title": "公式转 LaTeX",
+      "subtitle": "将输入或拍摄的数学公式转换为可编辑的 LaTeX 表达式",
+      "inputLabel": "公式",
+      "inputHint": "输入公式、用文字描述，或选择一张图片。",
+      "outputLabel": "LaTeX 公式"
+    },
+    "excelToLatex": {
+      "title": "Excel 转 LaTeX",
+      "subtitle": "将第一个工作表转换为安全且可直接用于出版的表格",
+      "inputLabel": "电子表格",
+      "inputHint": "支持 XLSX、XLS、CSV 或 TSV。公式将使用其缓存值。",
+      "outputLabel": "LaTeX 表格"
+    },
+    "htmlToLatex": {
+      "title": "HTML 转 LaTeX",
+      "subtitle": "将语义化 HTML 转换为独立的 LaTeX 文档",
+      "inputLabel": "HTML",
+      "inputHint": "粘贴 HTML 片段或完整文档。",
+      "outputLabel": "LaTeX"
+    },
+    "imageToTypst": {
+      "title": "图片转 Typst",
+      "subtitle": "使用设备端视觉模型转录笔记、公式或表格",
+      "inputLabel": "图片",
+      "inputHint": "支持 PNG、JPEG 或 WebP。图片不会离开此设备。",
+      "outputLabel": "Typst"
+    },
+    "latexToHtml": {
+      "title": "LaTeX 转 HTML",
+      "subtitle": "生成带 MathML 公式、可独立访问的 HTML",
+      "inputLabel": "LaTeX",
+      "inputHint": "粘贴片段或完整文档。",
+      "outputLabel": "HTML"
+    },
+    "latexToMarkdown": {
+      "title": "LaTeX 转 Markdown",
+      "subtitle": "无需先创建项目即可生成可移植的 Markdown",
+      "inputLabel": "LaTeX",
+      "inputHint": "粘贴片段或完整文档。",
+      "outputLabel": "Markdown"
+    },
+    "latexToTypst": {
+      "title": "LaTeX 转 Typst",
+      "subtitle": "将 LaTeX 文档转换为整洁的 Typst 源码",
+      "inputLabel": "LaTeX",
+      "inputHint": "粘贴片段或完整文档。",
+      "outputLabel": "Typst"
+    },
+    "latexToWord": {
+      "title": "LaTeX 转 Word",
+      "subtitle": "生成 DOCX，公式保存为可编辑的 Word 数学对象",
+      "inputLabel": "LaTeX",
+      "inputHint": "粘贴片段或完整文档。",
+      "outputLabel": "Word 文档"
+    },
+    "markdownToLatex": {
+      "title": "Markdown 转 LaTeX",
+      "subtitle": "将 Markdown 笔记转换为独立的 LaTeX 文档",
+      "inputLabel": "Markdown",
+      "inputHint": "支持 GitHub 风格的表格、列表、链接和数学公式。",
+      "outputLabel": "LaTeX"
+    },
+    "markdownToTypst": {
+      "title": "Markdown 转 Typst",
+      "subtitle": "将 Markdown 笔记转换为可编辑的 Typst 源码",
+      "inputLabel": "Markdown",
+      "inputHint": "支持 GitHub 风格的表格、列表、链接和数学公式。",
+      "outputLabel": "Typst"
+    },
+    "mermaidToLatex": {
+      "title": "Mermaid 转 LaTeX",
+      "subtitle": "将 Mermaid 流程图转换为可移植、可编辑的 TikZ",
+      "inputLabel": "Mermaid 流程图",
+      "inputHint": "流程图支持 TD、LR、BT 和 RL 布局，以及标签和常见节点形状。",
+      "outputLabel": "LaTeX / TikZ"
+    },
+    "pdfToMarkdown": {
+      "title": "PDF 转 Markdown",
+      "subtitle": "在本地提取文本、公式和图片",
+      "inputLabel": "PDF",
+      "inputHint": "含文本层的 PDF 使用确定性提取，扫描件使用本地视觉模型。",
+      "outputLabel": "Markdown"
+    },
+    "pdfToTypst": {
+      "title": "PDF 转 Typst",
+      "subtitle": "在本地提取文本、公式和图片",
+      "inputLabel": "PDF",
+      "inputHint": "含文本层的 PDF 使用确定性提取，扫描件使用本地视觉模型。",
+      "outputLabel": "Typst"
+    },
+    "typstToLatex": {
+      "title": "Typst 转 LaTeX",
+      "subtitle": "为 LaTeX 期刊和投稿系统准备 Typst 内容",
+      "inputLabel": "Typst",
+      "inputHint": "粘贴片段或完整的 Typst 文档。",
+      "outputLabel": "LaTeX"
+    },
+    "wordToLatex": {
+      "title": "Word 转 LaTeX",
+      "subtitle": "转换 DOCX，并将提取出的媒体文件与结果一并保留",
+      "inputLabel": "Word 文档",
+      "inputHint": "选择一个 .docx 文件。公式和图片将在本地读取。",
+      "outputLabel": "LaTeX"
+    }
+  },
+  "converterErrors": {
+    "chooseSmallerImage": "请选择小于 20 MB 的图片。",
+    "imageFormat": "请选择 PNG、JPEG 或 WebP 格式的图片。",
+    "ollamaUnavailable": "请在设置中启动 Ollama，然后为此转换安装一个本地模型。",
+    "visionModelMissing": "请在 Ollama 中安装一个视觉模型，例如 Llama 3.2 Vision，然后重试。",
+    "localModelMissing": "请安装一个本地 Ollama 模型，然后重试。",
+    "emptyTranscription": "本地模型返回了空的转录结果。",
+    "pdfNoPages": "此 PDF 不包含任何可转录的页面。",
+    "pdfPageLimit": "扫描版 PDF 每次最多转录 50 页。",
+    "pandocNotReady": "Pandoc 尚未就绪。",
+    "chooseFile": "请先选择文件再进行转换。",
+    "fileTooLarge": "请选择小于 128 MB 的文件。",
+    "emptySheet": "所选工作表为空。",
+    "arxivInputRequired": "请输入 arXiv ID 或选择源码压缩包。"
+  },
+  "converterNotes": {
+    "scannedPages": "已使用本地模型转录 {{pages}} 个扫描页面。使用结果前请检查公式和表格。",
+    "extracted": "已在本地提取 {{pages}} 页和 {{figures}} 张图片。",
+    "mermaidTikz": "已将此流程图转换为可编辑的 TikZ。",
+    "mermaidRendered": "此图表的 Mermaid 语法无法干净地映射为可编辑的 TikZ，因此已在本地渲染。",
+    "tableConverted": "已转换 {{rows}} 行 {{columns}} 列。",
+    "arxivBundle": "共 {{files}} 个源文件。主文档：{{mainFile}}。"
+  },
+  "mermaidErrors": {
+    "tooLarge": "此 Mermaid 图表超过了 50,000 个字符的上限。",
+    "header": "请以 flowchart TD、LR、BT 或 RL 开头。",
+    "nodeUnreadable": "无法读取某个 Mermaid 节点。",
+    "unsupportedFeature": "此 Mermaid 特性需要渲染后的输出。",
+    "chainedEdges": "链式 Mermaid 连线需要渲染后的输出。",
+    "noNodes": "请为 Mermaid 流程图添加至少一个节点。",
+    "tooComplex": "此流程图过大，无法输出为可编辑的 TikZ。"
+  },
+  "referenceErrors": {
+    "bibliographyTooLarge": "此参考文献超过了 1 MB 的工作区上限。",
+    "noEntries": "未找到完整的 BibTeX 条目。",
+    "tooManyEntries": "此参考文献的条目超过 {{max}} 条。",
+    "unreadableResult": "引用格式化工具返回了无法读取的结果。",
+    "webAddress": "请输入 http 或 https 网址。"
   },
   "references": {
     "tools": {

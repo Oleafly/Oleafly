@@ -1,3 +1,5 @@
+import { i18n } from "@/i18n";
+
 type Direction = "TD" | "TB" | "BT" | "LR" | "RL";
 type NodeShape = "box" | "rounded" | "diamond" | "circle" | "stadium";
 
@@ -168,7 +170,7 @@ function coordinates(
 /** Convert the common Mermaid flowchart grammar into dependency-free TikZ. */
 export function mermaidToTikz(source: string): string {
   if (source.length > 50_000) {
-    throw new Error("This Mermaid diagram is larger than the 50,000-character limit.");
+    throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.tooLarge));
   }
   const lines = source
     .replace(/\r\n?/g, "\n")
@@ -176,12 +178,12 @@ export function mermaidToTikz(source: string): string {
     .map((line) => line.replace(/%%.*$/, "").trim())
     .filter(Boolean);
   const header = /^(?:flowchart|graph)\s+(TD|TB|BT|LR|RL)\s*;?$/i.exec(lines[0] ?? "");
-  if (!header) throw new Error("Start the diagram with flowchart TD, LR, BT, or RL.");
+  if (!header) throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.header));
   const direction = header[1].toUpperCase() as Direction;
   const nodes = new Map<string, MermaidNode>();
   const edges: MermaidEdge[] = [];
   const addNode = (parsed: ReturnType<typeof parseNode>) => {
-    if (!parsed) throw new Error("A Mermaid node could not be read.");
+    if (!parsed) throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.nodeUnreadable));
     const current = nodes.get(parsed.id);
     if (!current || parsed.label !== parsed.id || parsed.shape !== "box") {
       nodes.set(parsed.id, { ...parsed, order: current?.order ?? nodes.size });
@@ -191,10 +193,10 @@ export function mermaidToTikz(source: string): string {
 
   for (const line of lines.slice(1)) {
     if (/^(?:subgraph|end\b|direction\b|classDef\b|class\b|style\b|linkStyle\b)/i.test(line)) {
-      throw new Error("This Mermaid feature needs rendered output.");
+      throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.unsupportedFeature));
     }
     const arrows = findEdgeArrows(line);
-    if (arrows.length > 1) throw new Error("Chained Mermaid edges need rendered output.");
+    if (arrows.length > 1) throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.chainedEdges));
     const edge = splitEdge(line, arrows[0]);
     if (!edge) {
       addNode(parseNode(line));
@@ -204,9 +206,9 @@ export function mermaidToTikz(source: string): string {
     const to = addNode(parseNode(edge.right));
     edges.push({ from, to, label: edge.label, style: edge.style });
   }
-  if (nodes.size === 0) throw new Error("Add at least one node to the Mermaid flowchart.");
+  if (nodes.size === 0) throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.noNodes));
   if (nodes.size > 500 || edges.length > 1_000) {
-    throw new Error("This flowchart is too large for editable TikZ output.");
+    throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.tooComplex));
   }
 
   const ordered = [...nodes.values()].sort((left, right) => left.order - right.order);
