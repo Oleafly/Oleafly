@@ -272,7 +272,7 @@ function wordAtPoint(
       offset = pos.offset;
     }
   }
-  if (!node || node.nodeType !== Node.TEXT_NODE || containingSpan?.contains(node) === false) {
+  if (node?.nodeType !== Node.TEXT_NODE || containingSpan?.contains(node) === false) {
     const fallbackText =
       containingSpan?.textContent?.trim() ??
       document.elementFromPoint(clientX, clientY)?.closest(".textLayer span")?.textContent?.trim() ??
@@ -2346,7 +2346,17 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         openAndProbe,
         forceMainThreadWorker,
       );
-      try {
+      const attemptShouldContinue = (e: unknown): boolean => {
+        container.dataset.pdfError = String(e);
+        if (cancelled) return false;
+        textContentRef.current.clear();
+        destroyLoadingTask();
+        const failure = pdfLoadFailure(e, tRef.current);
+        return (
+          failure.status !== "password_required" && failure.status !== "invalid"
+        );
+      };
+      const runLoadAttempts = async () => {
         let doc: pdfjsLib.PDFDocumentProxy | null = null;
         let lastErr: unknown;
         for (const [attemptIndex, attempt] of attempts.entries()) {
@@ -2357,21 +2367,16 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             break;
           } catch (e) {
             lastErr = e;
-            container.dataset.pdfError = String(e);
-            if (cancelled) return;
-            textContentRef.current.clear();
-            destroyLoadingTask();
-            const failure = pdfLoadFailure(e, tRef.current);
-            if (
-              failure.status === "password_required" ||
-              failure.status === "invalid"
-            ) {
-              break;
-            }
+            if (!attemptShouldContinue(e)) break;
           }
         }
-        if (cancelled) return;
+        if (cancelled) return null;
         if (!doc) throw lastErr;
+        return doc;
+      };
+      try {
+        const doc = await runLoadAttempts();
+        if (!doc) return;
         if (doc.numPages < 1) {
           throw new Error("The PDF contains no pages");
         }

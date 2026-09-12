@@ -118,7 +118,7 @@ export function markdownBibliographyPaths(source: string): string[] {
 
   const paths: string[] = [];
   for (const line of lines.slice(declaration + 1)) {
-    const item = /^\s*-\s+((?:\S(?:.*\S)?)?)\s*$/.exec(line);
+    const item = /^\s*-\s+(?=\S|$)(?=((?:\S(?:.*\S)?)?))\1\s*$/.exec(line);
     if (item) {
       const path = unquoteYamlScalar(item[1]);
       if (path) paths.push(path);

@@ -297,13 +297,16 @@ const TIKZ_SNIPPETS: { id: string; key: DiagramMessageKey; icon: ReactNode; snip
   { id: "scope", key: "snippets.scope", icon: <Braces className="size-3.5" />, snippet: "\\begin{scope}\n  \n\\end{scope}\n" },
 ];
 
-function safeName(name: string): string {
-  return name
-    .trim()
-    .replace(/[^A-Za-z0-9_-]+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "")
-    .slice(0, 64);
+function trimDashes(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === "-") start++;
+  while (end > start && value[end - 1] === "-") end--;
+  return value.slice(start, end);
+}
+
+export function safeName(name: string): string {
+  return trimDashes(name.trim().replace(/[^A-Za-z0-9_-]+/g, "-")).slice(0, 64);
 }
 
 type Mode = "draw" | "code";

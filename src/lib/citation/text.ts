@@ -1,12 +1,12 @@
 export function decodeXmlEntities(s: string): string {
   return s
-    .replaceAll(/&lt;/g, "<")
-    .replaceAll(/&gt;/g, ">")
-    .replaceAll(/&quot;/g, '"')
-    .replaceAll(/&#39;/g, "'")
-    .replaceAll(/&apos;/g, "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&apos;", "'")
     // Decode &amp; last so &amp;lt; -> &lt; (not <).
-    .replaceAll(/&amp;/g, "&");
+    .replaceAll("&amp;", "&");
 }
 
 // So remote metadata compiles as literal text rather than LaTeX commands.

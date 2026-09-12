@@ -52,6 +52,8 @@ export function TableGeneratorPanel() {
     [cells, aligns, booktabs, headerRow, caption],
   );
 
+  const previewHeader = cells[0] ?? [];
+
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto border-r p-4">
@@ -167,10 +169,10 @@ export function TableGeneratorPanel() {
             {headerRow && (
               <thead>
                 <tr className="border-b-2 border-foreground">
-                  {cells[0]?.map((v, ci) => (
+                  {previewHeader.map((v, ci) => (
                     <th
-                      // biome-ignore lint/suspicious/noArrayIndexKey: columns are positionally stable within a render
-                      key={`preview-head-${ci}`}
+                      // biome-ignore lint/suspicious/noArrayIndexKey: a preview column's coordinate is its stable identity while resizing this positional grid
+                      key={`preview-head-${ci}-${previewHeader.length}`}
                       className="px-3 py-1.5 font-semibold"
                       style={{ textAlign: alignToCss(aligns[ci]) }}
                     >

@@ -321,10 +321,10 @@ function mathOpenerKindAt(
   ) {
     return 1;
   }
-  if (text.startsWith("\\(", cursor) && !isEscaped(text, cursor)) {
+  if (text.startsWith(OPEN_INLINE, cursor) && !isEscaped(text, cursor)) {
     return 3;
   }
-  if (text.startsWith("\\[", cursor) && !isEscaped(text, cursor)) {
+  if (text.startsWith(OPEN_DISPLAY, cursor) && !isEscaped(text, cursor)) {
     return 4;
   }
   return 0;

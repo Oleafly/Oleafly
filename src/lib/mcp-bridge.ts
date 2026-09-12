@@ -46,6 +46,8 @@ export interface McpResult {
   isError?: boolean;
 }
 
+type McpScalarArgument = string | number | boolean;
+
 export interface McpToolEntry {
   description: string;
   inputSchema: unknown;
@@ -296,7 +298,7 @@ function createSkillTools(): Record<string, McpToolEntry> {
         additionalProperties: false,
       },
       execute: async (input) => {
-        const id = String((input.id ?? "") as string | number | boolean);
+        const id = String((input.id ?? "") as McpScalarArgument);
         try {
           const skill = validSkills(await loadSkills()).find((entry) => entry.id === id);
           if (!skill) return { error: `no skill named ${id} is installed` };
@@ -329,8 +331,8 @@ function createSkillTools(): Record<string, McpToolEntry> {
       execute: async (input) => {
         try {
           return await readSkillFile(
-            String((input.id ?? "") as string | number | boolean),
-            String((input.path ?? "") as string | number | boolean),
+            String((input.id ?? "") as McpScalarArgument),
+            String((input.path ?? "") as McpScalarArgument),
           );
         } catch (e) {
           return { error: String(e) };

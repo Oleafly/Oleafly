@@ -68,7 +68,7 @@ function boundedText(
   limit: number,
 ): string | null {
   if (typeof value !== "string") return null;
-  const normalized = value.replaceAll(/\0/g, "");
+  const normalized = value.replaceAll("\0", "");
   if (!normalized) return null;
   return normalized.slice(0, limit);
 }

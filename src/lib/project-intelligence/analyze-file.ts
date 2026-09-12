@@ -2073,7 +2073,7 @@ function markdownYamlLine(
     state.yamlBibliographyList = false;
     return false;
   }
-  const declaration = /^bibliography\s*:\s*(.*)\s*$/i.exec(line);
+  const declaration = /^bibliography\s*:\s*(?=\S|$)(?=(.*))\1\s*$/i.exec(line);
   if (declaration) {
     state.yamlBibliographyList = declaration[1].trim().length === 0;
     addYamlBibliographyDeclaration(context, line, state.offset, declaration);

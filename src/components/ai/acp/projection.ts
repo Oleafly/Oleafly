@@ -69,7 +69,7 @@ interface ProjectionState {
   lastKind: string;
 }
 
-const TERMINAL_STATUSES = ["failed", "disconnected", "cancelled"];
+const TERMINAL_STATUSES = new Set(["failed", "disconnected", "cancelled"]);
 
 function rowId(event: AcpEvent): string {
   return `${event.sessionId}:${event.sequence}`;
@@ -192,7 +192,7 @@ function closeTurn(state: ProjectionState, turnId: string | null) {
 
 function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
   const data = event.data;
-  const terminal = event.kind === "turn_complete" || TERMINAL_STATUSES.includes(text(data.status));
+  const terminal = event.kind === "turn_complete" || TERMINAL_STATUSES.has(text(data.status));
   if (!terminal) return;
   closeTurn(state, event.turnId);
   if (data.error && !alreadySaid(state.rows, event.turnId, text(data.error))) {

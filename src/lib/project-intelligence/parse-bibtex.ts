@@ -261,13 +261,13 @@ type ParsedFields = {
   readonly position: number;
 };
 
-const CROSS_REFERENCE_FIELDS: readonly string[] = [
+const CROSS_REFERENCE_FIELDS: ReadonlySet<string> = new Set([
   "crossref",
   "xref",
   "xdata",
   "related",
   "entryset",
-];
+]);
 
 function malformed(
   scan: BibtexScan,
@@ -504,7 +504,7 @@ function collectCrossReferences(
 ): void {
   const { file, source, starts } = scan;
   for (const field of fields) {
-    if (!CROSS_REFERENCE_FIELDS.includes(field.name)) continue;
+    if (!CROSS_REFERENCE_FIELDS.has(field.name)) continue;
     // `field.value` is normalized for metadata display. Resolution ranges
     // must instead be derived from the untouched source slice or whitespace
     // folding would shift every key after the first newline.

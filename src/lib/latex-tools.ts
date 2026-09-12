@@ -185,7 +185,7 @@ export function parseBib(src: string): { entries: BibEntry[]; parseErrors: strin
 
 type BibSpec = { required: string[][]; optional: string[] };
 
-const ALWAYS_ALLOWED_FIELDS = ["keywords", "abstract", "note", "url", "doi"];
+const ALWAYS_ALLOWED_FIELDS = new Set(["keywords", "abstract", "note", "url", "doi"]);
 
 function missingFieldMessages(spec: BibSpec, entry: BibEntry): string[] {
   const messages: string[] = [];
@@ -204,7 +204,7 @@ function unusualFieldMessages(spec: BibSpec, entry: BibEntry): string[] {
   const known = new Set([...spec.required.flat(), ...spec.optional]);
   const messages: string[] = [];
   for (const f of Object.keys(entry.fields)) {
-    if (known.has(f) || ALWAYS_ALLOWED_FIELDS.includes(f)) continue;
+    if (known.has(f) || ALWAYS_ALLOWED_FIELDS.has(f)) continue;
     messages.push(
       i18n.t(($) => $.core.bibtex.unusualField, { type: entry.type, field: f }),
     );
@@ -321,13 +321,14 @@ export function buildLatexTable(
   const lines: string[] = [];
   lines.push(String.raw`\begin{table}[htbp]`, String.raw`  \centering`);
   if (opts.caption) lines.push(String.raw`  \caption{${escapeLatex(opts.caption)}}`);
-  lines.push(String.raw`  \begin{tabular}{${colSpec}}`);
   lines.push(
+    String.raw`  \begin{tabular}{${colSpec}}`,
     ...(opts.booktabs
       ? booktabsBody(cells, opts.headerRow, row)
       : hlineBody(cells, opts.headerRow, row)),
+    String.raw`  \end{tabular}`,
+    String.raw`\end{table}`,
   );
-  lines.push(String.raw`  \end{tabular}`, String.raw`\end{table}`);
   return lines.join("\n");
 }
 

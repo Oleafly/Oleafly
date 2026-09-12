@@ -41,10 +41,21 @@ const systemFor = (engine: InlineEditArgs["engine"]) => {
 ].join(" ");
 };
 
+const FENCE = "```";
+
+function fenceBodyStart(text: string): number {
+  let index = FENCE.length;
+  while (index < text.length && /[a-zA-Z]/u.test(text[index] ?? "")) index++;
+  return text[index] === "\n" ? index + 1 : index;
+}
+
 function stripFence(s: string): string {
   const t = s.trim();
-  const m = /^```[a-zA-Z]*\n?([\s\S]*?)\n?```$/.exec(t);
-  return (m ? m[1] : t).trim();
+  if (!t.startsWith(FENCE) || !t.endsWith(FENCE)) return t;
+  const start = fenceBodyStart(t);
+  const end = t.length - FENCE.length;
+  if (start > end) return t;
+  return t.slice(start, end).trim();
 }
 
 export async function runInlineCompletion(args: InlineEditArgs): Promise<string> {

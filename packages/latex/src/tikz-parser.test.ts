@@ -244,6 +244,18 @@ describe("node syntax", () => {
     expect(model?.nodes[0].label).toBe("$x_i$ 50% & more");
   });
 
+  it("collapses every whitespace run that spans a line break in a label", () => {
+    const model = parseTikz(
+      String.raw`\node (a) at (0,0) {first \\  second   \\\\ third \\ 	 fourth};`,
+    );
+    expect(model?.nodes[0].label).toBe("first\nsecond\nthird\nfourth");
+  });
+
+  it("keeps a horizontal whitespace run that spans no line break", () => {
+    const model = parseTikz(String.raw`\node (a) at (0,0) {left   	  right};`);
+    expect(model?.nodes[0].label).toBe("left right");
+  });
+
   it("names unnamed nodes without colliding", () => {
     const model = parseTikz(String.raw`
       \node at (0,0) {First};

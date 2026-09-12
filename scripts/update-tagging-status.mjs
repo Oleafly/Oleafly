@@ -30,7 +30,7 @@ const OUT = path.resolve(here, "../packages/preflight/src/tagging-status.json");
 function unquote(value) {
   const text = value.trim();
   if (text.length >= 2 && ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'")))) {
-    return text.slice(1, -1).replaceAll(/\\"/g, '"').replaceAll(/''/g, "'");
+    return text.slice(1, -1).replaceAll('\\"', '"').replaceAll("''", "'");
   }
   return text;
 }

@@ -184,6 +184,16 @@ describe("markdownBibliographyPaths", () => {
     expect(markdownBibliographyPaths("# Paper\n")).toEqual([]);
     expect(markdownBibliographyPaths(markdown("title: Paper"))).toEqual([]);
   });
+
+  it("reads a block list from a file saved with CRLF endings", () => {
+    const source = "---\r\nbibliography:\r\n  - refs/a.bib\r\n  -   b.bib  \r\n---\r\n\r\nBody\r\n";
+    expect(markdownBibliographyPaths(source)).toEqual(["refs/a.bib", "b.bib"]);
+  });
+
+  it("skips a block list item that carries a stray carriage return", () => {
+    const source = markdown("bibliography:\n  - good.bib\n  - bro\rken.bib\n  - after.bib");
+    expect(markdownBibliographyPaths(source)).toEqual(["good.bib", "after.bib"]);
+  });
 });
 
 describe("selectCitationBibliography", () => {

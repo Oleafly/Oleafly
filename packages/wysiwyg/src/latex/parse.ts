@@ -80,25 +80,34 @@ function mergeAdjacentText(nodes: JSONContent[]): JSONContent[] {
   return out;
 }
 
-function inlineNodeToJSON(node: LatexNode, marks: JSONContent["marks"] = []): JSONContent[] | null {
-  if (node.type === "string") {
-    return [{ type: "text", text: node.content, ...(marks.length ? { marks } : {}) }];
-  }
-  if (node.type === "whitespace") {
-    return [{ type: "text", text: " ", ...(marks.length ? { marks } : {}) }];
-  }
-  if (node.type === "macro" && node.content === "href") {
+function markedTextNode(text: string, marks: JSONContent["marks"]): JSONContent {
+  return { type: "text", text, ...(marks?.length ? { marks } : {}) };
+}
+
+function markMacroArgumentIndex(node: Macro): number {
+  return node.args && node.args.length > 1 ? node.args.length - 1 : 0;
+}
+
+function inlineMacroToJSON(node: Macro, marks: JSONContent["marks"] = []): JSONContent[] | null {
+  if (node.content === "href") {
     const href = astToText(macroArgContent(node, 1));
     const text = astToText(macroArgContent(node, 2));
-    return [{ type: "text", text, marks: [...marks, { type: "link", attrs: { href } }] }];
+    return [{ type: "text", text, marks: [...(marks ?? []), { type: "link", attrs: { href } }] }];
   }
-  if (node.type === "macro" && node.content in MARK_MACRO) {
-    const inner = macroArgContent(node, node.args && node.args.length > 1 ? node.args.length - 1 : 0);
-    return inlineNodesToJSON(inner, [...marks, { type: MARK_MACRO[node.content] }]);
+  if (node.content in MARK_MACRO) {
+    const inner = macroArgContent(node, markMacroArgumentIndex(node));
+    return inlineNodesToJSON(inner, [...(marks ?? []), { type: MARK_MACRO[node.content] }]);
   }
-  if (node.type === "macro" && node.content in ESCAPED_CHAR_MACRO) {
-    return [{ type: "text", text: ESCAPED_CHAR_MACRO[node.content], ...(marks.length ? { marks } : {}) }];
+  if (node.content in ESCAPED_CHAR_MACRO) {
+    return [markedTextNode(ESCAPED_CHAR_MACRO[node.content], marks)];
   }
+  return null;
+}
+
+function inlineNodeToJSON(node: LatexNode, marks: JSONContent["marks"] = []): JSONContent[] | null {
+  if (node.type === "string") return [markedTextNode(node.content, marks)];
+  if (node.type === "whitespace") return [markedTextNode(" ", marks)];
+  if (node.type === "macro") return inlineMacroToJSON(node, marks);
   return null;
 }
 

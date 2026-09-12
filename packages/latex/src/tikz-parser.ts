@@ -324,11 +324,35 @@ function parseCoordinate(text: string): { x: number; y: number } | null {
   return { x, y };
 }
 
+const LABEL_WHITESPACE = /\s/u;
+
+function labelWhitespaceRunEnd(text: string, from: number): number {
+  let end = from;
+  while (end < text.length && LABEL_WHITESPACE.test(text[end] ?? "")) end++;
+  return end;
+}
+
+function collapseLabelLineBreaks(text: string): string {
+  let out = "";
+  let index = 0;
+  while (index < text.length) {
+    if (!LABEL_WHITESPACE.test(text[index] ?? "")) {
+      out += text[index];
+      index += 1;
+      continue;
+    }
+    const end = labelWhitespaceRunEnd(text, index);
+    const run = text.slice(index, end);
+    out += run.includes("\n") ? "\n" : run;
+    index = end;
+  }
+  return out;
+}
+
 function unescapeLabel(text: string): string {
-  return text
-    .replaceAll("\\\\", "\n")
-    .replace(/\\([&%#_${}])/g, "$1")
-    .replace(/[^\S\n]*\n\s*/g, "\n")
+  return collapseLabelLineBreaks(
+    text.replaceAll("\\\\", "\n").replace(/\\([&%#_${}])/g, "$1"),
+  )
     .replace(/[ \t]+/g, " ")
     .trim();
 }

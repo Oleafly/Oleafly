@@ -774,9 +774,11 @@ export function assembleProjectIntelligenceResult(
   const diagnostics: ProjectDiagnostic[] = fileList.flatMap(
     (file) => file.diagnostics,
   );
-  diagnostics.push(...duplicateDefinitionDiagnostics(byKey));
-  diagnostics.push(...unresolvedUseDiagnostics(uses, definitionsById));
-  diagnostics.push(...edgeDiagnostics(edges));
+  diagnostics.push(
+    ...duplicateDefinitionDiagnostics(byKey),
+    ...unresolvedUseDiagnostics(uses, definitionsById),
+    ...edgeDiagnostics(edges),
+  );
   diagnostics.sort(
     (left, right) =>
       left.location.file.localeCompare(right.location.file) ||

@@ -147,17 +147,22 @@ export function parseArgs(argv) {
   };
   let positionalTarget;
 
-  for (let index = 0; index < argv.length; index += 1) {
+  let index = 0;
+  while (index < argv.length) {
     const argument = argv[index];
-    if (argument === "--") continue;
+    if (argument === "--") {
+      index += 1;
+      continue;
+    }
     if (argument.startsWith("-")) {
-      index = applyOption(options, argv, index);
+      index = applyOption(options, argv, index) + 1;
       continue;
     }
     if (positionalTarget) {
       throw new Error(`unexpected positional argument: ${argument}`);
     }
     positionalTarget = argument;
+    index += 1;
   }
 
   if (positionalTarget) {
@@ -1288,16 +1293,17 @@ async function installResourceArchive(
   console.log(`✓ staged immutable resource ${destination}`);
 }
 
-async function installExtractedBinary(
-  manifest,
-  serverId,
-  server,
-  target,
-  targetEntry,
-  options,
-  hostTarget,
-  mode,
-) {
+async function installExtractedBinary(request) {
+  const {
+    manifest,
+    serverId,
+    server,
+    target,
+    targetEntry,
+    options,
+    hostTarget,
+    mode,
+  } = request;
   const destination = outputPath(
     manifest,
     serverId,
@@ -1372,7 +1378,7 @@ async function installSelection(
     );
     return;
   }
-  await installExtractedBinary(
+  await installExtractedBinary({
     manifest,
     serverId,
     server,
@@ -1381,7 +1387,7 @@ async function installSelection(
     options,
     hostTarget,
     mode,
-  );
+  });
 }
 
 function detectedHostTarget() {

@@ -183,6 +183,19 @@ const SECRET_PATTERNS = [
   /-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----/,
 ];
 
+const INTERNAL_COMMENT_TERMS =
+  /\b(?:TODO|FIXME|CONFIDENTIAL|INTERNAL ONLY|DO NOT DISTRIBUTE)\b/i;
+const SOURCE_LINE_BREAK = /\r\n|[\n\r\u2028\u2029]/u;
+
+function hasInternalComment(content: string): boolean {
+  for (const line of content.split(SOURCE_LINE_BREAK)) {
+    const start = line.search(/\S/u);
+    if (start === -1 || line[start] !== "%") continue;
+    if (INTERNAL_COMMENT_TERMS.test(line)) return true;
+  }
+  return false;
+}
+
 function filePrivacyFindings(file: ProjectContext["files"][number]): Finding[] {
   const out: Finding[] = [];
   if (isSensitiveFile(file.path)) {
@@ -211,7 +224,7 @@ function filePrivacyFindings(file: ProjectContext["files"][number]): Finding[] {
       ),
     );
   }
-  if (/^[^\S\r\n]*%.*\b(?:TODO|FIXME|CONFIDENTIAL|INTERNAL ONLY|DO NOT DISTRIBUTE)\b/im.test(content)) {
+  if (hasInternalComment(content)) {
     out.push(
       make(
         "privacy-internal-comment",

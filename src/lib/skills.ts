@@ -545,14 +545,14 @@ function assistantProcedureSteps(content: string): string[] {
   let captured = false;
   for (const line of content.split(/\r?\n/u)) {
     const trimmed = line.trim();
-    const heading = /^#{1,6}\s+(.+)$/u.exec(trimmed);
+    const heading = /^#{1,6}\s+(\S.*)$/u.exec(trimmed);
     if (heading) {
       if (captured) break;
       inProcedure = /^(?:approach|steps|procedure|process|workflow)\b/iu.test(heading[1]);
       continue;
     }
     if (!inProcedure) continue;
-    const item = /^(?:[-*+]\s+|\d+[.)]\s+)(.+)$/u.exec(trimmed);
+    const item = /^(?:[-*+]\s+|\d+[.)]\s+)(\S.*)$/u.exec(trimmed);
     if (item?.[1]?.trim()) {
       steps.push(item[1].trim());
       captured = true;

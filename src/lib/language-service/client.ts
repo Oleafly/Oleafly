@@ -298,7 +298,7 @@ function cloneCapabilities(
 }
 
 function fileUriForWorkspaceRoot(workspaceRoot: string): string {
-  const normalized = workspaceRoot.replaceAll(/\\/g, "/");
+  const normalized = workspaceRoot.replaceAll("\\", "/");
   const absolute = normalized.startsWith("/") ? normalized : `/${normalized}`;
   return `file://${absolute
     .split("/")

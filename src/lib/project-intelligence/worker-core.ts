@@ -274,7 +274,7 @@ function applyUpserts(
     const prior = cache.get(upsert.file);
     const error = upsertValidationError(upsert, prior);
     if (error) return { parsedFileCount, reusedFileCount, error };
-    if (prior && prior.text === upsert.text) {
+    if (prior?.text === upsert.text) {
       reusedFileCount++;
       reuseCachedUpsert(cache, upsert, prior);
       continue;

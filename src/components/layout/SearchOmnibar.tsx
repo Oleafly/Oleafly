@@ -224,9 +224,10 @@ export function parse(
   if (!q.startsWith("/")) {
     return { mode: "all", term: q, cmd: "" };
   }
-  const m = /^(\S*)\s*(\S[\s\S]*)?$/.exec(q.slice(1));
-  const cmd = (m?.[1] ?? "").toLowerCase();
-  const term = m?.[2] ?? "";
+  const rest = q.slice(1);
+  const boundary = rest.search(/\s/u);
+  const cmd = (boundary === -1 ? rest : rest.slice(0, boundary)).toLowerCase();
+  const term = boundary === -1 ? "" : rest.slice(boundary).trimStart();
   const found = slashEntries.find((entry) => entry.keys.includes(cmd));
   if (found) {
     return {

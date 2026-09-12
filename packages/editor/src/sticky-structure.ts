@@ -82,7 +82,7 @@ function closeHeadingScopes(
   close: CloseScope,
 ): void {
   let top = open.at(-1);
-  while (top && top.env === null && top.level >= level) {
+  while (top?.env === null && top.level >= level) {
     close(open.pop()!, lineNumber - 1);
     top = open.at(-1);
   }

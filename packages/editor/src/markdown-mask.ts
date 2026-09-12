@@ -212,7 +212,7 @@ export function maskMarkdown(text: string): string {
   for (const match of chars
     .join("")
     .matchAll(
-      /\[[^\]\n]*@[-\p{L}\p{N}_:.#/+]+(?![-\p{L}\p{N}_:.#/+])[^\]\n]*\]/gu,
+      /\[(?:[^\]\n@]|@(?![-\p{L}\p{N}_:.#/+]))*@[-\p{L}\p{N}_:.#/+]+(?![-\p{L}\p{N}_:.#/+])[^\]\n]*\]/gu,
     )) {
     blank(chars, match.index!, match.index! + match[0].length);
   }

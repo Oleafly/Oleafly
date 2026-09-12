@@ -114,6 +114,27 @@ describe("privacy and blind review", () => {
     expect(JSON.stringify(finding)).not.toContain(token);
   });
 
+  it.each([
+    ["% TODO fix the margins", true],
+    ["  \t% FIXME later", true],
+    ["%CONFIDENTIAL", true],
+    ["%% DO NOT DISTRIBUTE %%", true],
+    ["\t%\tINTERNAL ONLY", true],
+    ["% internal only", true],
+    ["%TODOS are fine", false],
+    ["TODO in plain prose", false],
+    ["\\section{TODO} % a clean comment", false],
+    ["x % TODO after code", false],
+  ])("flags %j as an internal comment: %s", (line, flagged) => {
+    const ids = runSubmissionRules({
+      project: project(
+        `\\documentclass{article}\n${line}\n\\begin{abstract}A\\end{abstract}`,
+      ),
+      profileId: "generic",
+    }).map((finding) => finding.id);
+    expect(ids.includes("privacy-internal-comment")).toBe(flagged);
+  });
+
   it("checks both source identity and PDF author metadata for blind review", () => {
     const source = String.raw`\documentclass{article}
 \author{Alex Chen}

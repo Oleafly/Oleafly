@@ -693,17 +693,17 @@ function readHiddenFilePatterns(raw: string): string[] {
 
 function filePatternRegex(pattern: string): RegExp {
   const escaped = pattern.replace(/[.+^${}()|[\]\\]/gu, String.raw`\$&`);
-  return new RegExp(`^${escaped.replaceAll(/\*/gu, ".*").replaceAll(/\?/gu, ".")}$`, "u");
+  return new RegExp(`^${escaped.replaceAll("*", ".*").replaceAll("?", ".")}$`, "u");
 }
 
 export function fileTreePathIsHidden(
   path: string,
   patterns: readonly string[],
 ): boolean {
-  const normalized = path.replaceAll(/\\/gu, "/").replace(/^\.\//u, "");
+  const normalized = path.replaceAll("\\", "/").replace(/^\.\//u, "");
   const segments = normalized.split("/").filter(Boolean);
   return patterns.some((rawPattern) => {
-    const pattern = rawPattern.trim().replaceAll(/\\/gu, "/");
+    const pattern = rawPattern.trim().replaceAll("\\", "/");
     if (!pattern) return false;
     const candidates = pattern.includes("/") ? [normalized] : segments;
     const expression = filePatternRegex(pattern);

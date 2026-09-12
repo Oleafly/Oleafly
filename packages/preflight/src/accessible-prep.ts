@@ -181,9 +181,7 @@ export function prepareAccessibleSource(source: string, opts?: PrepOptions): Pre
     changes.push({ kind: "warn", summary: message("prep.titleRequired") });
   }
 
-  changes.push(...packageChanges(out));
-
-  changes.push({
+  changes.push(...packageChanges(out), {
     kind: "info",
     summary: message(engine === "lualatex" ? "prep.compileLua" : "prep.compileAny"),
   });

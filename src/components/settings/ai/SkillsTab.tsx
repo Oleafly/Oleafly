@@ -48,6 +48,7 @@ import {
   validateSkill,
   type CreateSkillInput,
   type SkillEntry,
+  type SkillProjectOverride,
   type SkillToggleScope,
   type UpdateSkillInput,
 } from "@/lib/skills";
@@ -306,6 +307,19 @@ export function SkillsTab() {
     }
   };
 
+  const runSkillValidation = (skillId: string) => {
+    void runRecordMutation(skillId, () => validateSkill(skillId));
+  };
+
+  const applyProjectScope = (skillId: string, enabled: SkillProjectOverride) => {
+    if (!projectId) return;
+    void runRecordMutation(
+      skillId,
+      () => setSkillProjectEnabled(projectId, skillId, enabled),
+      "project",
+    );
+  };
+
   const addFolder = async () => {
     const selected = await pickOpenPath({
       directory: true,
@@ -507,9 +521,7 @@ export function SkillsTab() {
                                 name: skill.name,
                               })}
                               disabled={busy}
-                              onClick={() =>
-                                void runRecordMutation(skill.id, () => validateSkill(skill.id))
-                              }
+                              onClick={() => runSkillValidation(skill.id)}
                               className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                             >
                               {busy ? (
@@ -571,11 +583,7 @@ export function SkillsTab() {
                               name: skill.name,
                             })}
                             onCheckedChange={(enabled) =>
-                              void runRecordMutation(
-                                skill.id,
-                                () => setSkillProjectEnabled(projectId, skill.id, enabled),
-                                "project",
-                              )
+                              applyProjectScope(skill.id, enabled)
                             }
                           />
                         </div>
@@ -597,13 +605,7 @@ export function SkillsTab() {
                               aria-label={t(($) => $.settings.ai.skills.useDeviceSettingAria, {
                                 name: skill.name,
                               })}
-                              onClick={() =>
-                                void runRecordMutation(
-                                  skill.id,
-                                  () => setSkillProjectEnabled(projectId, skill.id, null),
-                                  "project",
-                                )
-                              }
+                              onClick={() => applyProjectScope(skill.id, null)}
                               className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
                             >
                               {t(($) => $.settings.ai.skills.useDeviceSetting)}

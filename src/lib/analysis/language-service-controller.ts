@@ -470,8 +470,8 @@ export function fileUriForProjectPath(
   workspaceRoot: string,
   path = "",
 ): string {
-  const normalizedRoot = workspaceRoot.replaceAll(/\\/g, "/").replace(/(?<!\/)\/+$/, "");
-  const normalizedPath = path.replaceAll(/\\/g, "/").replace(/^\/+/, "");
+  const normalizedRoot = workspaceRoot.replaceAll("\\", "/").replace(/(?<!\/)\/+$/, "");
+  const normalizedPath = path.replaceAll("\\", "/").replace(/^\/+/, "");
   const absolute = normalizedPath
     ? `${normalizedRoot}/${normalizedPath}`
     : normalizedRoot;
@@ -1654,10 +1654,10 @@ export class LanguageServiceController {
           positionEncoding: runtime.client.positionEncoding,
           client: runtime.client,
           documentForPath: (path) => {
-            const normalizedPath = path.replaceAll(/\\/g, "/");
+            const normalizedPath = path.replaceAll("\\", "/");
             for (const document of runtime.documents.values()) {
               if (
-                document.path.replaceAll(/\\/g, "/") === normalizedPath
+                document.path.replaceAll("\\", "/") === normalizedPath
               ) {
                 return { ...document };
               }

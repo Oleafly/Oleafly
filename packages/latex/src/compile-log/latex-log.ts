@@ -28,8 +28,8 @@ const latexWarn =
 const latexPackageWarningExtraLines = /^\((.*)\)\s+(.*?)(?: +on input line (\d+))?(\.)?$/;
 const latexMissChar = /^\s*(Missing character:.*?!)/;
 const latexNoPageOutput = /^No pages of output\.$/;
-const bibEmpty = /^Empty `thebibliography' environment/;
 const biberWarn = /^Biber warning:.*WARN - I didn't find a database entry for '([^']+)'/;
+const bibEmptyPrefix = "Empty `thebibliography' environment";
 const biblatexRerunBiber = "Package biblatex Warning: Please (re)run Biber on the file:";
 const oleaflyBiberModeA = "[Oleafly] Biber was not found (mode A)";
 const oleaflyBiberModeB = "[Oleafly] Biber/biblatex version mismatch (mode B)";
@@ -119,7 +119,7 @@ export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
       parseLine(line, state);
     }
     // Push the final result
-    if (state.current !== null && !bibEmpty.test(state.current.text)) {
+    if (state.current !== null && !state.current.text.startsWith(bibEmptyPrefix)) {
       state.out.push(finalize(state.current));
     }
   } catch {

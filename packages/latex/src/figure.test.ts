@@ -37,7 +37,7 @@ describe("bytesToBase64", () => {
     const bytes = new Uint8Array(0x8000 * 2 + 17).fill(0xff);
     bytes[0] = 0x00;
     const decoded = Uint8Array.from(atob(bytesToBase64(bytes)), (c) => c.charCodeAt(0));
-    expect(decoded.length).toBe(bytes.length);
+    expect(decoded).toHaveLength(bytes.length);
     expect(decoded[0]).toBe(0);
     expect(decoded.at(-1)).toBe(0xff);
   });

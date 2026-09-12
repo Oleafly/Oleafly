@@ -219,6 +219,12 @@ export function TaskDetailDialog({
     container.scrollTop = container.scrollHeight;
   }, [open, tab, running, timelineCount]);
 
+  const toggleChangedPath = (path: string, checked: boolean) => {
+    setSelectedPaths((current) =>
+      checked ? [...current, path] : current.filter((candidate) => candidate !== path),
+    );
+  };
+
   const previewFile = async (path: string) => {
     const requestRunKey = taskRunKey;
     const previewKey = `${requestRunKey}:${path}`;
@@ -468,11 +474,7 @@ export function TaskDetailDialog({
                   checked={selectedPaths.includes(change.path)}
                   disabled={task.status !== "awaiting_review" || busy || drifted}
                   onCheckedChange={(checked) =>
-                    setSelectedPaths((current) =>
-                      checked === true
-                        ? [...current, change.path]
-                        : current.filter((path) => path !== change.path),
-                    )
+                    toggleChangedPath(change.path, checked === true)
                   }
                 />
                 <Tooltip label={change.path} className="min-w-0 flex-1">

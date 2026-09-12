@@ -308,14 +308,14 @@ function typstCitationEnd(text: string, cursor: number): number {
   return end;
 }
 
-const TYPST_BLOCK_KEYWORDS = ["if", "for", "while"];
-const TYPST_STATEMENT_KEYWORDS = [
+const TYPST_BLOCK_KEYWORDS = new Set(["if", "for", "while"]);
+const TYPST_STATEMENT_KEYWORDS = new Set([
   "let",
   "set",
   "show",
   "import",
   "include",
-];
+]);
 
 function typstBlockKeywordEnd(
   characters: string[],
@@ -392,10 +392,10 @@ function typstHashExpressionEnd(
   const identifier = text.slice(identifierStart, at);
   blank(characters, expressionStart, at);
 
-  if (TYPST_BLOCK_KEYWORDS.includes(identifier)) {
+  if (TYPST_BLOCK_KEYWORDS.has(identifier)) {
     return typstBlockKeywordEnd(characters, text, at, identifier);
   }
-  if (TYPST_STATEMENT_KEYWORDS.includes(identifier)) {
+  if (TYPST_STATEMENT_KEYWORDS.has(identifier)) {
     const end = statementEnd(text, at);
     blank(characters, at, end);
     return end;
