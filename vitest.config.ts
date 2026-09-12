@@ -21,6 +21,7 @@ export default defineConfig({
       "@oleafly/preview": path.resolve(__dirname, "./packages/preview/src"),
       "@oleafly/pdf-to-latex": path.resolve(__dirname, "./packages/pdf-to-latex/src"),
       "@oleafly/latex-intelligence": path.resolve(__dirname, "./packages/latex-intelligence/src"),
+      "@oleafly/conversion-registry": path.resolve(__dirname, "./packages/conversion-registry/src"),
     },
   },
   test: {

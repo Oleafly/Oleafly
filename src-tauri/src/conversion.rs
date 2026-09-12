@@ -79,10 +79,10 @@ pub(crate) fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
         format!("--from={reader}"),
         format!("--to={writer}"),
         "--standalone".into(),
-        // Pandoc's sandbox blocks readers and writers from reaching outside
-        // the staged directory. Ad-hoc conversion never needs that access.
-        "--sandbox".into(),
     ];
+    if source != "html" {
+        args.push("--sandbox".into());
+    }
     if target == "html" {
         args.push("--mathml".into());
     }
@@ -273,13 +273,28 @@ mod tests {
         ] {
             let plan = ad_hoc_plan(source, target)
                 .unwrap_or_else(|| panic!("missing ad-hoc route {source} -> {target}"));
-            assert!(plan.args.contains(&"--sandbox".to_string()));
+            assert_eq!(
+                plan.args.contains(&"--sandbox".to_string()),
+                source != "html",
+                "sandbox flag mismatch for {source} -> {target}"
+            );
             assert!(plan.args.contains(&format!("--from={source}")) || source == "docx");
         }
         assert!(ad_hoc_plan("latex", "latex").is_none());
         assert!(ad_hoc_plan("pdf", "latex").is_none());
         assert!(ad_hoc_plan("docx", "typst").is_none());
         assert!(ad_hoc_plan("unknown", "html").is_none());
+    }
+
+    #[test]
+    fn html_reader_extracts_media_outside_the_sandbox() {
+        let html = ad_hoc_plan("html", "latex").unwrap();
+        assert!(html.args.contains(&"--extract-media=assets".to_string()));
+        assert!(!html.args.contains(&"--sandbox".to_string()));
+
+        let docx = ad_hoc_plan("docx", "latex").unwrap();
+        assert!(docx.args.contains(&"--extract-media=assets".to_string()));
+        assert!(docx.args.contains(&"--sandbox".to_string()));
     }
 
     #[test]

@@ -39,11 +39,7 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
     progress = toast.info(`Exporting ${extension.toUpperCase()}…`, undefined, true);
     if (format === "zip") await downloadProjectZip(projectId, destination);
     else await exportDocument(projectId, mainDoc, format, destination);
-    toast.success(
-      `Saved ${destination.split(/[/\\]/).pop()}`,
-      { label: "Show in folder", onClick: () => revealExportedFile(destination) },
-      true,
-    );
+    exportSuccessToast(extension.toUpperCase(), destination);
   } catch (error) {
     notifyError("export document", error);
   } finally {
@@ -64,7 +60,7 @@ function revealExportedFile(dest: string): void {
   });
 }
 
-function exportSuccessToast(kind: "PDF" | "PNG", dest: string): void {
+function exportSuccessToast(kind: string, dest: string): void {
   const fileName = dest.split(/[/\\]/).pop() || kind.toLowerCase();
   toast.success(
     i18n.t(($) => $.core.export.saved, { kind, fileName }),
