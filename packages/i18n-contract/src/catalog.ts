@@ -12,14 +12,19 @@ export function flattenCatalog(value: unknown, prefix = "", out: FlatCatalog = n
 }
 
 const PLACEHOLDER = /\{\{\s*([\w.-]+)\s*\}\}/g;
-const TAG = /<\/?([A-Za-z][\w-]*)[^<>]*>/g;
+const TAG = /<\/?([A-Za-z][\w-]*)(?:[\s/][^<>]*)?>/g;
+
+export function compareCodePoints(a: string, b: string): number {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
+}
 
 export function extractPlaceholders(text: string): string[] {
-  return [...text.matchAll(PLACEHOLDER)].map((m) => m[1] ?? "").sort();
+  return [...text.matchAll(PLACEHOLDER)].map((m) => m[1] ?? "").sort(compareCodePoints);
 }
 
 export function extractTags(text: string): string[] {
-  return [...text.matchAll(TAG)].map((m) => m[1] ?? "").sort();
+  return [...text.matchAll(TAG)].map((m) => m[1] ?? "").sort(compareCodePoints);
 }
 
 export const PLURAL_SUFFIXES = ["zero", "one", "two", "few", "many", "other"] as const;
@@ -32,7 +37,7 @@ export function pluralSuffix(key: string): string | null {
 }
 
 export function pluralCategories(locale: string): string[] {
-  return [...new Intl.PluralRules(locale).resolvedOptions().pluralCategories].sort();
+  return [...new Intl.PluralRules(locale).resolvedOptions().pluralCategories].sort(compareCodePoints);
 }
 
 export interface CatalogIssue {

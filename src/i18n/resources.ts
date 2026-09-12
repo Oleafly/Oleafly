@@ -1,5 +1,5 @@
 import type { ResourceKey } from "i18next";
-import type { SupportedLocale } from "@oleafly/i18n-contract";
+import { compareCodePoints, type SupportedLocale } from "@oleafly/i18n-contract";
 import ai from "./locales/en/ai.json" with { type: "json" };
 import catalog from "./locales/en/catalog.json" with { type: "json" };
 import common from "./locales/en/common.json" with { type: "json" };
@@ -64,7 +64,7 @@ export const englishResources: Record<string, Catalog> = {
   workspace,
 };
 
-export const NAMESPACES: readonly string[] = Object.keys(englishResources).sort();
+export const NAMESPACES: readonly string[] = Object.keys(englishResources).sort(compareCodePoints);
 
 export async function loadLocaleResources(locale: SupportedLocale): Promise<Record<string, Catalog>> {
   if (locale === "en") return englishResources;

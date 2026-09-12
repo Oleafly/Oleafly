@@ -89,7 +89,15 @@ describe("ProvidersTab", () => {
     });
 
     const card = screen.getByTestId("ai-provider-card-ollama");
-    const plain = (value: string) => value.replace(/<[^>]*>/gu, "").replace(/\s+/gu, " ").trim();
+    const plain = (value: string) => {
+      let text = value;
+      let previous = "";
+      while (text !== previous) {
+        previous = text;
+        text = text.replace(/<[^>]*>/gu, "");
+      }
+      return text.replace(/\s+/gu, " ").trim();
+    };
     expect(card).toHaveTextContent(
       plain(enSettings.ai.providers.ollama.noneResponding).replace(
         "{{host}}",
