@@ -15,7 +15,8 @@ import { retryProofreading } from "@/lib/proofreading/client";
  * floating badge over the document was one more thing between the writer and
  * their page. What stays here is the part that has to interrupt: the toasts for
  * a checker that went offline, gave up on an oversized document, or failed and
- * needs a retry.
+ * needs a retry. A partial pass (one engine finished, the other did not) is
+ * not announced; the panel still shows what was found.
  */
 export function ProofreadingNotifications({
   path,
@@ -52,9 +53,7 @@ export function ProofreadingNotifications({
       status.phase === "error");
   const informational =
     relevant &&
-    (status.phase === "too_large" ||
-      status.phase === "unsupported" ||
-      status.phase === "partial");
+    (status.phase === "too_large" || status.phase === "unsupported");
   const phaseMessage = (): string => {
     if (status.phase === "error") return t(($) => $.editor.proofreading.error);
     if (status.phase === "unavailable") return t(($) => $.editor.proofreading.unavailable);

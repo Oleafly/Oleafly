@@ -22,7 +22,6 @@ export const ACADEMIC_PROFILE_RULES = [
   { rule: "LongSentences", example: "flags any sentence of 41 words or more" },
   { rule: "Hedging", example: "flags \"I would argue that the method works\"" },
   { rule: "FillerWords", example: "flags a word that pads a sentence without adding meaning" },
-  { rule: "BoringWords", example: "flags an overused word and suggests a livelier one" },
   { rule: "DiscourseMarkers", example: "\"However the method fails\" becomes \"However, the method fails\"" },
   { rule: "ExplainLikeImFive", example: "\"ELI5\" becomes \"explain like I'm five\"" },
   { rule: "SplitWords", example: "\"alot\" becomes \"a lot\"" },
@@ -40,6 +39,8 @@ export type AcademicProfileRule = (typeof ACADEMIC_PROFILE_RULES)[number]["rule"
 
 export const ACADEMIC_DISABLED_RULES: readonly string[] =
   ACADEMIC_PROFILE_RULES.map((entry) => entry.rule);
+
+export const HARPER_PANICKING_RULES: readonly string[] = ["BoringWords"];
 
 export const LINT_RULE_NAME_PATTERN = /^[A-Za-z]\w{0,63}$/u;
 
@@ -78,6 +79,7 @@ export function buildLintConfig(
   for (const rule of ACADEMIC_DISABLED_RULES) assign(rule, false);
   for (const rule of userEnabled) assign(rule, true);
   for (const rule of userDisabled) assign(rule, false);
+  for (const rule of HARPER_PANICKING_RULES) assign(rule, false);
   return config;
 }
 

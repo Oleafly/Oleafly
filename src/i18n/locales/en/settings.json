@@ -1236,7 +1236,6 @@
       "help": "Harper is tuned for chat and email. These rules either push a style papers do not follow, such as spelling out kB and min, or trip over the placeholders that stand in for LaTeX markup, so Oleafly keeps them off. Each one shows what it would flag. Turn it on if you want those findings.",
       "reasons": {
         "AvoidContractions": "Asks you to write out every contraction.",
-        "BoringWords": "Asks for a livelier word.",
         "CompoundNouns": "Joins a compound noun that was written as two words.",
         "Dashes": "Replaces a typed -- or --- with the proper dash character.",
         "DiscourseMarkers": "Flags a sentence that opens with a marker such as however and leaves out the comma after it.",

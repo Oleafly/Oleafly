@@ -5,6 +5,7 @@ import { binaryInlined as binary } from "harper.js/binaryInlined";
 import {
   ACADEMIC_DISABLED_RULES,
   ACADEMIC_PROFILE_RULES,
+  HARPER_PANICKING_RULES,
   buildLintConfig,
   isLintRuleName,
   lintConfigFingerprint,
@@ -18,8 +19,15 @@ describe("buildLintConfig", () => {
       expect(config[rule], rule).toBe(false);
     }
     expect(Object.keys(config)).toHaveLength(
-      ACADEMIC_DISABLED_RULES.length,
+      ACADEMIC_DISABLED_RULES.length + HARPER_PANICKING_RULES.length,
     );
+  });
+
+  it("keeps a panicking rule off even when the writer enabled it earlier", () => {
+    const config = buildLintConfig([], ["BoringWords", "LongSentences"]);
+    expect(config.BoringWords).toBe(false);
+    expect(config.LongSentences).toBe(true);
+    expect(ACADEMIC_DISABLED_RULES.includes("BoringWords")).toBe(false);
   });
 
   it("turns a profile rule back on when the writer asks for it", () => {
@@ -53,7 +61,10 @@ describe("buildLintConfig", () => {
       ["has space", "", "a".repeat(120), "9Leading"],
       [],
     );
-    expect(Object.keys(config)).toEqual([...ACADEMIC_DISABLED_RULES]);
+    expect(Object.keys(config)).toEqual([
+      ...ACADEMIC_DISABLED_RULES,
+      ...HARPER_PANICKING_RULES,
+    ]);
   });
 
   it("fingerprints the same config identically regardless of key order", () => {
@@ -104,6 +115,21 @@ describe("the academic profile against the installed Harper", () => {
       expect(enSettings.proofreading.profileRules.reasons[rule].trim().length, rule).toBeGreaterThan(0);
       expect(example.trim().length, rule).toBeGreaterThan(0);
     }
+  });
+
+  it("still needs the BoringWords block: the installed Harper panics on a common word", async () => {
+    const probe = new LocalLinter({ binary });
+    await probe.setup();
+    const defaults = await probe.getDefaultLintConfig();
+    const only: Record<string, boolean> = Object.fromEntries(
+      Object.keys(defaults).map((rule) => [rule, false]),
+    );
+    only.BoringWords = true;
+    await probe.setLintConfig(only);
+    await expect(probe.lint("This is very good.")).rejects.toThrow();
+    await Promise.resolve()
+      .then(() => probe.dispose?.())
+      .catch(() => undefined);
   });
 
   it("describes the split and merge rules the way Harper applies them", async () => {

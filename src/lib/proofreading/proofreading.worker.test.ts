@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   activeDialect: "" as string,
   importWords: vi.fn<(words: string[]) => void>(),
   lintLanguage: vi.fn<(language: string) => void>(),
+  linterConstructions: 0,
   lints: null as
     | null
     | ((text: string) => ReturnType<typeof fakeLint>[]),
@@ -50,6 +51,9 @@ vi.mock("harper.js", () => ({
     Indian: "indian",
   },
   LocalLinter: class {
+    constructor() {
+      mocks.linterConstructions += 1;
+    }
     async setup() {}
     async getDefaultLintConfig() {
       return { Spaces: null, LongSentences: null, AnA: null, FakeRule: null };
@@ -537,5 +541,35 @@ describe("latex findings land on the document", () => {
     expect(after.type).toBe("result");
     if (after.type !== "result") return;
     expect(after.diagnostics).toEqual([]);
+  });
+});
+
+describe("grammar engine recovery", () => {
+  it("rebuilds the grammar engine after it crashes mid-check", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const before = mocks.linterConstructions;
+    mocks.lints = () => {
+      throw new Error("unreachable");
+    };
+    const crashing = request(930, "grammar");
+    crashing.text = "rebuild after a crash";
+    const crashed = await analyze(crashing);
+    expect(crashed.type).toBe("error");
+    if (crashed.type !== "error") return;
+    expect(crashed.error.message).toContain("unreachable");
+
+    mocks.lints = null;
+    const recovering = request(931, "grammar");
+    recovering.text = "rebuild after a crash";
+    const recovered = await analyze(recovering);
+    expect(recovered.type).toBe("result");
+    if (recovered.type !== "result") return;
+    expect(recovered.status).toBe("ready");
+    expect(mocks.linterConstructions).toBe(before + 1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("grammar engine failed"),
+      "unreachable",
+    );
+    warn.mockRestore();
   });
 });

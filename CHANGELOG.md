@@ -112,6 +112,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Grammar checking no longer stays off for the rest of a session after Harper
+  fails on one sentence. The checker is rebuilt on the next pass and the
+  failure is written to the console once. The BoringWords rule is switched
+  off and removed from Settings until Harper fixes the crash it causes on
+  common words such as "very". The toast about a partial proofreading pass is
+  gone; the Project info panel still shows what each pass found.
+- Table import reads only the spreadsheet chosen in the app's own file dialog,
+  and creating a project from a conversion no longer blocks other requests
+  while large files are written.
 - Saved arXiv sources that contain one gzip-compressed TeX file now open in the
   converter instead of being rejected as a damaged tar archive.
 - Importing a reference library, or inserting a citation into a project

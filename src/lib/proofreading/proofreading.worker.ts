@@ -369,6 +369,32 @@ async function getGrammarLinter(): Promise<LocalLinter> {
   return grammarPromise;
 }
 
+const grammarFailuresLogged = new Set<string>();
+
+function discardGrammarLinter(error: unknown) {
+  const dead = grammarPromise;
+  grammarPromise = null;
+  grammarDictionaryKey = null;
+  grammarDialect = null;
+  grammarDialectValues = null;
+  grammarRuleNames = null;
+  grammarLintConfigKey = null;
+  dead
+    ?.then((linter) => {
+      try {
+        linter.dispose?.();
+      } catch {}
+    })
+    .catch(() => {});
+  const detail = error instanceof Error ? error.message : String(error);
+  if (grammarFailuresLogged.has(detail)) return;
+  grammarFailuresLogged.add(detail);
+  console.warn(
+    "Proofreading: the grammar engine failed and will be rebuilt on the next check.",
+    detail,
+  );
+}
+
 async function syncGrammarDialect(
   linter: LocalLinter,
   dialect: ProofreadingDialect,
@@ -644,11 +670,17 @@ async function grammarDiagnostics(
   const input = grammarInput(request);
   const { prose, map } = input;
   if (!prose) return { diagnostics: [], malformedLintCount: 0 };
-  const linter = await getGrammarLinter();
-  await syncGrammarDialect(linter, request.preferences.dialect);
-  await syncGrammarLintConfig(linter, request.preferences);
-  await syncGrammarDictionary(linter, ignored);
-  const rows = await organizedGrammarLints(linter, input);
+  let rows: { rule: string | null; lint: Lint }[];
+  try {
+    const linter = await getGrammarLinter();
+    await syncGrammarDialect(linter, request.preferences.dialect);
+    await syncGrammarLintConfig(linter, request.preferences);
+    await syncGrammarDictionary(linter, ignored);
+    rows = await organizedGrammarLints(linter, input);
+  } catch (error) {
+    discardGrammarLinter(error);
+    throw error;
+  }
   const context: GrammarLintContext = {
     request,
     prose,

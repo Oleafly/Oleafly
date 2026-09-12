@@ -73,8 +73,8 @@ describe("Grammar rules and dismissed findings", () => {
     const list = screen.getByRole("list", {
       name: enSettings.proofreading.profileRules.title,
     });
-    expect(within(list).getAllByRole("listitem")).toHaveLength(27);
-    expect(ACADEMIC_PROFILE_RULES).toHaveLength(27);
+    expect(within(list).getAllByRole("listitem")).toHaveLength(26);
+    expect(ACADEMIC_PROFILE_RULES).toHaveLength(26);
     for (const { rule, example } of ACADEMIC_PROFILE_RULES) {
       expect(
         [...list.querySelectorAll("p")].some(

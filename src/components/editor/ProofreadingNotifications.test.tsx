@@ -92,12 +92,17 @@ describe("ProofreadingNotifications", () => {
 
     mount("unsupported");
     expect(sonner.warning).toHaveBeenCalledWith(copy.unsupported, expect.anything());
+  });
 
-    mount("partial", { diagnosticCount: 4 });
-    expect(sonner.warning).toHaveBeenCalledWith(
-      copy.partial_other.replace("{{count}}", "4"),
-      expect.anything(),
-    );
+  it("stays quiet for a partial pass and clears any earlier notice", () => {
+    mount("partial", {
+      diagnosticCount: 4,
+      message: "Partial proofreading: grammar checking did not finish. Valid findings are still shown.",
+    });
+
+    expect(sonner.warning).not.toHaveBeenCalled();
+    expect(sonner.error).not.toHaveBeenCalled();
+    expect(sonner.dismiss).toHaveBeenCalledWith("proofreading:source");
   });
 
   it("prefers a message the checker supplied", () => {
