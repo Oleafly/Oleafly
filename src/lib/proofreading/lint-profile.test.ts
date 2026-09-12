@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalLinter } from "harper.js";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -77,6 +79,16 @@ describe("buildLintConfig", () => {
   });
 });
 
+describe("the BoringWords block", () => {
+  it("is pinned to the harper.js line that panics on common words; re-check it on upgrade", () => {
+    const manifest = JSON.parse(
+      readFileSync(path.join(process.cwd(), "node_modules/harper.js/package.json"), "utf8"),
+    ) as { version: string };
+    expect(HARPER_PANICKING_RULES).toEqual(["BoringWords"]);
+    expect(manifest.version.startsWith("2.10.")).toBe(true);
+  });
+});
+
 describe("sanitizeLintRuleNames", () => {
   it("sorts, de-duplicates, and drops anything that is not a rule name", () => {
     expect(
@@ -115,21 +127,6 @@ describe("the academic profile against the installed Harper", () => {
       expect(enSettings.proofreading.profileRules.reasons[rule].trim().length, rule).toBeGreaterThan(0);
       expect(example.trim().length, rule).toBeGreaterThan(0);
     }
-  });
-
-  it("still needs the BoringWords block: the installed Harper panics on a common word", async () => {
-    const probe = new LocalLinter({ binary });
-    await probe.setup();
-    const defaults = await probe.getDefaultLintConfig();
-    const only: Record<string, boolean> = Object.fromEntries(
-      Object.keys(defaults).map((rule) => [rule, false]),
-    );
-    only.BoringWords = true;
-    await probe.setLintConfig(only);
-    await expect(probe.lint("This is very good.")).rejects.toThrow();
-    await Promise.resolve()
-      .then(() => probe.dispose?.())
-      .catch(() => undefined);
   });
 
   it("describes the split and merge rules the way Harper applies them", async () => {
