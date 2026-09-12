@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tools now opens as a full page, with 22 converters grouped alongside the
+  existing research and writing tools. Each converter is also available from
+  the command palette. Ad hoc conversions show the result immediately, with
+  copy or download actions and a project option only where the result can be
+  edited as a document.
+- Local converters now cover LaTeX, Typst, Markdown, HTML, Word, spreadsheets,
+  PDFs, images, equations, Mermaid diagrams, and saved arXiv source archives.
+  Pandoc ships with the desktop app, while image and scanned-PDF transcription
+  uses a vision model in Ollama. Entering an arXiv ID is the one converter path
+  that needs a network connection; a saved source archive works offline.
 - Typing `$`, `\(` or `\[` in the source editor inserts the closing
   delimiter. Typing `$` again at the end of a formula steps over it, brackets
   pair inside inline math, and an empty `$$` becomes display math. Completing
@@ -46,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Saved arXiv sources that contain one gzip-compressed TeX file now open in the
+  converter instead of being rejected as a damaged tar archive.
 - Importing a reference library, or inserting a citation into a project
   without a bibliography, shows the new `.bib` file in the file tree and the
   Citations panel right away instead of after reopening the project.

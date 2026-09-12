@@ -7,7 +7,14 @@ export function modelSupportsVision(provider: string, model: string): boolean {
   if (/gpt-4o|gpt-4\.1|gpt-4-turbo|chatgpt-4o|gpt-5|o4/.test(m)) return true;
   // Claude 3 and 4 families are all vision-capable.
   if (/claude-3|claude-.{0,40}-4|claude-(sonnet|opus|haiku)-4/.test(m)) return true;
-  if (/llava|bakllava|-vl\b|vision|moondream|minicpm-v/.test(m)) return true;
+  if (
+    /llava|bakllava|(?:^|[-_.])vl\b|qwen[\w.:-]*[-_.]?vl|vision|moondream|minicpm-v/.test(
+      m,
+    )
+  )
+    return true;
+  // Gemma 3's 4B, 12B, and 27B variants accept images. The compact 1B model does not.
+  if (/gemma3(?!(?::|[-_])?1b\b)/.test(m)) return true;
   if (/^glm-[\d.]+v\b/.test(m)) return true;
   if (provider === "xai" && /vision/.test(m)) return true;
   return false;

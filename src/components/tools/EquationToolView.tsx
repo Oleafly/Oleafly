@@ -6,10 +6,13 @@ import {
   Copy,
   Download,
   FileCode2,
+  FolderPlus,
   Image as ImageIcon,
+  Loader2,
   Sigma,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import {
   EQUATION_EXAMPLES,
@@ -24,9 +27,48 @@ import { cn, isMac } from "@/lib/utils";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { toast } from "@/lib/toast";
 import {
+  createImageProject,
+  listFiles,
+  projectMutationGeneration,
+  writeProjectBytes,
+} from "@/lib/tauri";
+import { useFilesStore } from "@/store/files";
+import {
   equationToSvgDocument,
   svgDocumentToPngBytes,
 } from "@/features/equation-export";
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
+  }
+  return btoa(binary);
+}
+
+function pngFileName(value: string): string | null {
+  const name = value.trim().replace(/\.png$/i, "");
+  const hasControlCharacter = [...name].some(
+    (character) => character.charCodeAt(0) < 32,
+  );
+  const windowsStem = name.split(".")[0].toUpperCase();
+  const windowsReserved = ["CON", "PRN", "AUX", "NUL"].includes(windowsStem)
+    || /^(?:COM|LPT)[1-9]$/.test(windowsStem);
+  if (
+    !name
+    || name.length > 120
+    || name === "."
+    || name === ".."
+    || /[\\/:*?"<>|]/.test(name)
+    || hasControlCharacter
+    || name.endsWith(".")
+    || windowsReserved
+  ) {
+    return null;
+  }
+  return `${name}.png`;
+}
 
 export function EquationToolView() {
   const activePage = useHomeViewStore((s) => s.page);
@@ -37,6 +79,10 @@ export function EquationToolView() {
   const [display, setDisplay] = useState(true);
   const [previewTheme, setPreviewTheme] = useState<"light" | "dark">("dark");
   const [zoom, setZoom] = useState(100);
+  const projects = useFilesStore((state) => state.projects);
+  const refreshProjects = useFilesStore((state) => state.refreshProjects);
+  const [assetName, setAssetName] = useState("equation.png");
+  const [savingProject, setSavingProject] = useState(false);
 
   if (activePage !== "equation") return null;
 
@@ -121,6 +167,67 @@ export function EquationToolView() {
     }
   };
 
+  const equationPng = async () => {
+    const svg = await equationToSvgDocument(input, display);
+    return svgDocumentToPngBytes(
+      svg,
+      3,
+      previewTheme === "dark" ? "#111111" : "#ffffff",
+    );
+  };
+
+  const saveToProject = async (project: { id: string; name: string }) => {
+    if (savingProject) return;
+    const fileName = pngFileName(assetName);
+    if (!fileName) {
+      toast.error("Choose a short PNG file name without slashes or special characters.");
+      return;
+    }
+    const path = `figures/${fileName}`;
+    setSavingProject(true);
+    try {
+      const [files, generation] = await Promise.all([
+        listFiles(project.id),
+        projectMutationGeneration(project.id),
+      ]);
+      const exists = files.some((file) => file.path.toLowerCase() === path.toLowerCase());
+      if (exists && !window.confirm(`${path} already exists in ${project.name}. Replace it?`)) {
+        return;
+      }
+      const bytes = await equationPng();
+      await writeProjectBytes(project.id, path, bytesToBase64(bytes), generation);
+      await refreshProjects();
+      toast.success(`Saved ${path} to ${project.name}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Oleafly couldn't save the equation.");
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const saveAsProject = async () => {
+    if (savingProject) return;
+    const projectName = pngFileName(assetName)?.replace(/\.png$/i, "") || "Equation";
+    const math = display ? `\\[\n${input}\n\\]` : `$${input}$`;
+    const source = [
+      "\\documentclass[border=6pt]{standalone}",
+      "\\usepackage{amsmath,amssymb}",
+      "\\begin{document}",
+      math,
+      "\\end{document}",
+    ].join("\n");
+    setSavingProject(true);
+    try {
+      await createImageProject(projectName, source);
+      await refreshProjects();
+      toast.success("Saved as a new image project. You can open it from the Library.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Oleafly couldn't create the project.");
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
   return (
     <div data-testid="equation-tool-view" className="flex h-full flex-col bg-background">
       <div
@@ -133,7 +240,7 @@ export function EquationToolView() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => goTo("library")}
+          onClick={() => goTo("tools")}
           data-testid="equation-tool-view-back"
         >
           <ArrowLeft className="size-4" /> Back
@@ -166,6 +273,48 @@ export function EquationToolView() {
         >
           <Copy className="size-4" /> Copy LaTeX
         </Button>
+        {rendered.html && (
+          <Popover
+            align="right"
+            closeOnClick={false}
+            ariaLabel="Save equation to a project"
+            className="w-72 p-2"
+            onOpenChange={(open) => {
+              if (open) void refreshProjects();
+            }}
+            trigger={
+              <>
+                {savingProject ? <Loader2 className="size-4 animate-spin" /> : <FolderPlus className="size-4" />}
+                Project
+              </>
+            }
+            triggerClassName="border bg-background hover:bg-accent"
+            disabled={savingProject}
+          >
+            <label htmlFor="equation-project-file-name" className="px-1 text-xs font-medium text-muted-foreground">
+              PNG file name
+            </label>
+            <Input
+              id="equation-project-file-name"
+              value={assetName}
+              onChange={(event) => setAssetName(event.target.value)}
+              className="mt-1 h-8"
+            />
+            <div className="my-2 border-t" />
+            <PopoverItem onClick={() => void saveAsProject()}>
+              <FolderPlus className="size-4" /> New image project
+            </PopoverItem>
+            {projects.length > 0 && <div className="my-1 border-t" />}
+            <div className="max-h-52 overflow-y-auto">
+              {projects.map((project) => (
+                <PopoverItem key={project.id} onClick={() => void saveToProject(project)}>
+                  <ImageIcon className="size-4" />
+                  <span className="truncate">{project.name}</span>
+                </PopoverItem>
+              ))}
+            </div>
+          </Popover>
+        )}
         {rendered.html ? (
           <Popover
             align="right"

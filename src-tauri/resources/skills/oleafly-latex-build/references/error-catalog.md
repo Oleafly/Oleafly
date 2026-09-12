@@ -63,7 +63,7 @@ Typst has no SyncTeX, so an error location cannot be clicked through to the PDF.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Compile reports Pandoc missing | Pandoc is not installed | Tell the user; the app downloads it on demand |
+| Compile reports Pandoc missing | The bundled runtime is unavailable | Tell the user to repair Pandoc from Settings |
 | A raw LaTeX block does not render | Pandoc passes some raw blocks through and drops others | Simplify to Markdown constructs, or move the project to LaTeX |
 | Citations do not resolve | The `.bib` was not discovered | Every `.bib` in the project is passed to Pandoc automatically. Check the file is inside the project |
 

@@ -34,7 +34,9 @@ export type SourceFormat =
   | "html"
   | "pdf"
   | "image"
+  | "equation"
   | "csv"
+  | "mermaid"
   | "arxiv"
   | "doi"
   | "isbn"
@@ -49,6 +51,7 @@ export type ConversionEngine =
   | "tectonic"
   | "typst"
   | "pdf-pipeline"
+  | "local-model"
   | "api-lookup"
   | "internal";
 
@@ -169,22 +172,22 @@ export const REGISTRY: readonly ConversionRoute[] = [
     surface: "Export menu",
   },
   ...pandocRoutes("latex", [
-    ["latex-to-docx", "Word (.docx)", "Pandoc writer with native OMML equations.", "docx", "existing"],
-    ["latex-to-html", "HTML (MathML)", "Standalone self-contained HTML with MathML equations for accessibility.", "html", "existing", "G11", { flags: PANDOC_HTML }],
-    ["latex-to-markdown", "Markdown (.md)", "Pandoc writer; math lands in dollar delimiters.", "markdown", "existing"],
-    ["latex-to-typst", "Typst (.typ)", "Pandoc's typst writer with a fixup for its empty font declaration.", "typst", "available", "G10", { flags: PANDOC_STANDALONE }],
+    ["latex-to-docx", "Word (.docx)", "Pandoc writes editable Word math instead of flattening equations into images.", "docx", "existing", undefined, { surface: "Export menu, Tools page" }],
+    ["latex-to-html", "HTML (MathML)", "Standalone HTML with MathML equations for accessible reading.", "html", "existing", "G11", { flags: PANDOC_HTML, surface: "Export menu, Tools page" }],
+    ["latex-to-markdown", "Markdown (.md)", "Pandoc keeps math in dollar delimiters.", "markdown", "existing", undefined, { surface: "Export menu, Tools page" }],
+    ["latex-to-typst", "Typst (.typ)", "Pandoc writes Typst source, followed by a compatibility fixup.", "typst", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Export menu, Tools page" }],
   ], { direction: "export" }),
   {
     id: "latex-to-image",
     label: "Equation SVG / PNG",
-    blurb: "Render a selected equation with MathJax and save it as SVG or PNG.",
+    blurb: "Render a LaTeX equation as SVG or PNG, then download it or add the PNG to a project.",
     source: "latex",
     target: "image",
     direction: "tool",
     engine: "internal",
     status: "available",
     gapId: "G16",
-    surface: "Editor context menu, Equation tool",
+    surface: "Editor context menu, Equation tool, Tools page",
   },
 
   // --- Markdown -----------------------------------------------------------
@@ -194,8 +197,8 @@ export const REGISTRY: readonly ConversionRoute[] = [
     ["markdown-to-html", "HTML (MathML)", "Standalone self-contained HTML with MathML equations.", "html", "existing", undefined, { flags: PANDOC_HTML }],
   ], { direction: "export" }),
   ...pandocRoutes("markdown", [
-    ["markdown-to-latex", "LaTeX (.tex)", "Import as a LaTeX project, or export .tex from a Markdown project.", "latex", "existing", undefined, { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
-    ["markdown-to-typst", "Typst (.typ)", "Import as a Typst project, or export .typ from a Markdown project.", "typst", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
+    ["markdown-to-latex", "LaTeX (.tex)", "Convert directly, import as a LaTeX project, or export from a Markdown project.", "latex", "existing", undefined, { flags: PANDOC_STANDALONE, surface: "Tools page, Import dialog, Export menu" }],
+    ["markdown-to-typst", "Typst (.typ)", "Convert directly, import as a Typst project, or export from a Markdown project.", "typst", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Tools page, Import dialog, Export menu" }],
   ], { direction: "import", extensions: ["md", "markdown"] }),
 
   // --- Typst --------------------------------------------------------------
@@ -211,7 +214,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
     surface: "Export menu",
   },
   ...pandocRoutes("typst", [
-    ["typst-to-latex", "LaTeX (.tex)", "Import a Typst file as a LaTeX project, or export .tex from a Typst project.", "latex", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
+    ["typst-to-latex", "LaTeX (.tex)", "Convert directly, import as a LaTeX project, or export from a Typst project.", "latex", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Tools page, Import dialog, Export menu" }],
     ["typst-to-markdown", "Markdown (.md)", "Pandoc's markdown writer; import as a Markdown project or export .md.", "markdown", "available", "G28", { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
   ], { direction: "import", extensions: ["typ"] }),
   ...pandocRoutes("typst", [
@@ -221,7 +224,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
 
   // --- Word ---------------------------------------------------------------
   ...pandocRoutes("docx", [
-    ["docx-to-latex", "LaTeX project", "Pandoc turns the document into a project, with OMML equations and media extracted to assets/.", "latex", "existing", undefined, { flags: PANDOC_EXTRACT_MEDIA }],
+    ["docx-to-latex", "LaTeX project", "Pandoc keeps editable equations and extracts embedded media into assets/.", "latex", "existing", undefined, { flags: PANDOC_EXTRACT_MEDIA, surface: "Import dialog, Tools page" }],
     ["docx-to-markdown", "Markdown project", "Import as a Markdown project; export other formats from there.", "markdown", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
     ["docx-to-typst", "Typst project", "Import as a Typst project.", "typst", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
     ["docx-to-pdf", "PDF", "Import as a LaTeX project, then compile.", "pdf", "existing", undefined, { extensions: false, plan: false }],
@@ -230,7 +233,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
 
   // --- HTML ---------------------------------------------------------------
   ...pandocRoutes("html", [
-    ["html-to-latex", "LaTeX project", "Pandoc's html reader; embedded images are extracted to assets/.", "latex", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
+    ["html-to-latex", "LaTeX project", "Pandoc converts semantic HTML and extracts embedded images into assets/.", "latex", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA, surface: "Import dialog, Tools page" }],
     ["html-to-markdown", "Markdown project", "Import as a Markdown project.", "markdown", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
     ["html-to-typst", "Typst project", "Import as a Typst project.", "typst", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
     ["html-to-pdf", "PDF", "Import as a LaTeX project, then compile.", "pdf", "available", "G10", { extensions: false, plan: false }],
@@ -247,7 +250,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
     direction: "import",
     engine: "pdf-pipeline",
     status: "existing",
-    surface: "Import dialog",
+    surface: "Tools page, Import dialog",
   },
   {
     id: "pdf-to-image",
@@ -289,41 +292,75 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "pdf-to-markdown",
     label: "Markdown",
-    blurb: "Not built yet.",
+    blurb: "The local PDF pipeline preserves reading order and figures, then writes Markdown.",
     source: "pdf",
     target: "markdown",
-    direction: "import",
+    direction: "tool",
     engine: "pdf-pipeline",
-    status: "deferred",
+    status: "available",
     gapId: "G13",
-    deferredReason: "Same quality gate as PDF to Word; the LaTeX path exists today.",
-    surface: "Import dialog",
+    surface: "Tools page",
+  },
+  {
+    id: "pdf-to-typst",
+    label: "Typst",
+    blurb: "The local PDF pipeline preserves reading order and figures, then writes Typst.",
+    source: "pdf",
+    target: "typst",
+    direction: "tool",
+    engine: "pdf-pipeline",
+    status: "available",
+    gapId: "G13",
+    surface: "Tools page",
   },
   {
     id: "pdf-scanned-to-latex",
     label: "Scanned PDF to LaTeX",
-    blurb: "Scanned pages stop at a clear no-text-layer message.",
+    blurb: "A local Ollama vision model transcribes scanned pages into editable LaTeX.",
     source: "pdf",
     target: "latex",
-    direction: "import",
-    engine: "pdf-pipeline",
-    status: "deferred",
+    direction: "tool",
+    engine: "local-model",
+    status: "available",
     gapId: "G2",
-    deferredReason: "OCR for scanned PDFs is not in yet; the importer reports which pages have no text layer.",
-    surface: "Import dialog",
+    surface: "PDF to LaTeX tool",
   },
 
   // --- Images -------------------------------------------------------------
   {
     id: "image-to-latex",
     label: "LaTeX equation",
-    blurb: "A vision model transcribes an equation or table photo to LaTeX at the cursor.",
+    blurb: "A local vision model transcribes an equation or table photo into editable LaTeX.",
     source: "image",
     target: "latex",
     direction: "tool",
-    engine: "internal",
-    status: "existing",
-    surface: "Editor toolbar",
+    engine: "local-model",
+    status: "available",
+    surface: "Tools page, Editor toolbar",
+  },
+  {
+    id: "image-to-typst",
+    label: "Typst source",
+    blurb: "A local vision model transcribes notes, equations, or tables into editable Typst.",
+    source: "image",
+    target: "typst",
+    direction: "tool",
+    engine: "local-model",
+    status: "available",
+    surface: "Tools page",
+  },
+
+  // --- Equations ----------------------------------------------------------
+  {
+    id: "equation-to-latex",
+    label: "LaTeX equation",
+    blurb: "Normalize typed math directly, or read natural-language and photographed equations with a local model.",
+    source: "equation",
+    target: "latex",
+    direction: "tool",
+    engine: "local-model",
+    status: "available",
+    surface: "Tools page",
   },
 
   // --- Spreadsheets -------------------------------------------------------
@@ -337,7 +374,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
     engine: "internal",
     status: "available",
     gapId: "G17",
-    surface: "Editor context menu, Table tool",
+    surface: "Tools page, Editor context menu, Table tool",
     extensions: ["csv", "tsv", "xlsx", "xls"],
   },
   {
@@ -354,18 +391,31 @@ export const REGISTRY: readonly ConversionRoute[] = [
     extensions: ["csv", "tsv", "xlsx", "xls"],
   },
 
+  // --- Mermaid ------------------------------------------------------------
+  {
+    id: "mermaid-to-latex",
+    label: "TikZ or LaTeX figure",
+    blurb: "Common flowcharts become editable TikZ; other Mermaid diagrams render locally as a LaTeX-ready figure.",
+    source: "mermaid",
+    target: "latex",
+    direction: "tool",
+    engine: "internal",
+    status: "available",
+    surface: "Tools page",
+  },
+
   // --- arXiv --------------------------------------------------------------
   {
     id: "arxiv-to-latex",
     label: "LaTeX project",
-    blurb: "Download the e-print tarball, unpack it, and infer the main document.",
+    blurb: "Download an e-print source bundle, or unpack a saved archive offline, then infer the main document.",
     source: "arxiv",
     target: "latex",
     direction: "import",
     engine: "api-lookup",
     status: "available",
     gapId: "G7",
-    surface: "Import dialog",
+    surface: "Tools page, Import dialog",
   },
   {
     id: "arxiv-to-bibtex",

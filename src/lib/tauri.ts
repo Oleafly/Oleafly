@@ -441,6 +441,56 @@ export const readFileBase64 = (projectId: string, path: string) =>
 export const readPickedFileBase64 = (path: string) =>
   invoke<string>("read_picked_file_base64", { path });
 
+export interface AdHocArtifact {
+  path: string;
+  dataBase64: string;
+}
+
+export interface AdHocConversionRequest {
+  source: "latex" | "markdown" | "typst" | "html" | "docx";
+  target: "latex" | "markdown" | "typst" | "html" | "docx";
+  text?: string;
+  dataBase64?: string;
+}
+
+export interface AdHocConversionResult {
+  kind: "text" | "binary";
+  text: string | null;
+  dataBase64: string | null;
+  fileName: string;
+  mediaType: string;
+  files: AdHocArtifact[];
+}
+
+export const convertAdHoc = (request: AdHocConversionRequest) =>
+  invoke<AdHocConversionResult>("convert_ad_hoc", { request });
+
+export interface ArxivSourceRequest {
+  arxivId?: string;
+  dataBase64?: string;
+}
+
+export interface ArxivSourceResult {
+  archiveName: string;
+  mainFile: string;
+  mainSource: string;
+  files: AdHocArtifact[];
+}
+
+export const extractArxivSource = (request: ArxivSourceRequest) =>
+  invoke<ArxivSourceResult>("extract_arxiv_source", { request });
+
+export interface CreateAdHocProjectRequest {
+  name: string;
+  target: "latex" | "markdown" | "typst";
+  text?: string;
+  mainFile?: string;
+  files: AdHocArtifact[];
+}
+
+export const createProjectFromAdHoc = (request: CreateAdHocProjectRequest) =>
+  invoke<string>("create_project_from_ad_hoc", { request });
+
 export const createProjectFromDocx = (name: string, dataBase64: string) =>
   invoke<string>("create_project_from_docx", { name, dataBase64 });
 

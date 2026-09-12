@@ -7,11 +7,12 @@ import {
   Download,
   FileArchive,
   FileInput,
-  FileType2,
   FolderPlus,
   Heading,
   Image as ImageIcon,
+  Loader2,
   Radical,
+  ScanText,
   ScissorsLineDashed,
   Settings2,
   Sigma,
@@ -46,8 +47,15 @@ const HANDLES = [
   { icon: Columns2, label: "Two-column layouts" },
   { icon: Radical, label: "Inline & display math" },
   { icon: ImageIcon, label: "Figures (auto-extracted)" },
-  { icon: FileType2, label: "Word documents (.docx), via pandoc" },
 ];
+
+function openPdf(file: File): void {
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    toast.error("Choose a PDF here. Word to LaTeX has its own converter in Tools.");
+    return;
+  }
+  void handlePickedFile(file);
+}
 
 function PdfDropzoneLanding() {
   const [dragOver, setDragOver] = useState(false);
@@ -75,12 +83,12 @@ function PdfDropzoneLanding() {
             e.preventDefault();
             setDragOver(false);
             const f = e.dataTransfer.files?.[0];
-            if (f) void handlePickedFile(f);
+            if (f) openPdf(f);
           }}
         >
           <FileInput className="size-10 text-muted-foreground" />
           <div>
-            <p className="text-lg font-semibold">Drop a PDF or Word document here</p>
+            <p className="text-lg font-semibold">Drop a PDF here</p>
             <p className="mt-1.5 text-sm text-muted-foreground">
               Or{" "}
               <button
@@ -101,12 +109,12 @@ function PdfDropzoneLanding() {
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf,.docx"
+            accept=".pdf,application/pdf"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = "";
-              if (f) void handlePickedFile(f);
+              if (f) openPdf(f);
             }}
           />
         </div>
@@ -187,11 +195,12 @@ function PagePreviews() {
 function SourcePane() {
   const tex = useImportStore((s) => s.result?.tex ?? "");
   const likelyScanned = useImportStore((s) => s.result?.report.likelyScanned ?? false);
+  const scanTranscribed = useImportStore((s) => s.scanTranscribed);
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {likelyScanned && (
+      {likelyScanned && !scanTranscribed && (
         <div className="border-b px-4 py-2 text-xs text-muted-foreground">
-          This PDF has no text layer (likely scanned). Use Refine with AI to transcribe it.
+          This PDF looks scanned. Transcribe it with a local vision model to recover editable text.
         </div>
       )}
       <LatexSourceViewer source={tex} />
@@ -284,6 +293,8 @@ export function PdfImportView() {
   const close = useImportStore((s) => s.close);
   const fileName = useImportStore((s) => s.fileName);
   const result = useImportStore((s) => s.result);
+  const scanTranscribed = useImportStore((s) => s.scanTranscribed);
+  const transcribeScan = useImportStore((s) => s.transcribeScan);
   const [refineable, setRefineable] = useState(false);
   const fullscreen = useFullscreen();
   const active = page === "pdf-import";
@@ -305,7 +316,7 @@ export function PdfImportView() {
           size="sm"
           onClick={() => {
             close();
-            useHomeViewStore.getState().goTo("library");
+            useHomeViewStore.getState().goTo("tools");
           }}
           data-testid="import-back"
         >
@@ -361,6 +372,18 @@ export function PdfImportView() {
                 <Sparkles className="size-4" /> Refine with AI
               </Button>
             )}
+            {result?.report.likelyScanned && !scanTranscribed && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                data-testid="import-transcribe-scan"
+                onClick={() => void transcribeScan()}
+              >
+                {busy ? <Loader2 className="animate-spin" /> : <ScanText />}
+                Transcribe scan locally
+              </Button>
+            )}
             <Button
               size="sm"
               disabled={!result}
@@ -404,7 +427,9 @@ export function PdfImportView() {
             {busy && <span className="ml-3 text-xs text-muted-foreground">Converting...</span>}
             {error && <span className="ml-3 text-xs text-destructive">{error}</span>}
             <span className="ml-auto text-xs text-muted-foreground">
-              AI-free local reconstruction. Review before trusting.
+              {scanTranscribed
+                ? "Transcribed on this device. Review equations and tables."
+                : "Reconstructed on this device. Review before using."}
             </span>
           </div>
           <div className="flex min-h-0 flex-1">

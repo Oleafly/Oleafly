@@ -45,8 +45,9 @@ function distroTooltip(distro: TexDistribution): string {
 }
 
 /**
- * Markdown projects compile through pandoc into LaTeX and then the bundled
- * Tectonic, so the only moving part the user can affect is pandoc itself.
+ * Markdown projects compile through the bundled Pandoc into LaTeX and then
+ * the bundled Tectonic. The install action is a recovery path for development
+ * builds or damaged app bundles.
  */
 function MarkdownEngineTab() {
   const [pandoc, setPandoc] = useState<"checking" | "ready" | "missing" | "installing">("checking");
@@ -72,7 +73,7 @@ function MarkdownEngineTab() {
         <Tooltip
           wide
           side="right"
-          label="Markdown projects are converted with pandoc (Pandoc Markdown: tables, footnotes, citations, math) into LaTeX, then typeset to PDF by the bundled Tectonic. Pandoc is downloaded on demand the first time it is needed."
+          label="Markdown projects are converted with the Pandoc and Tectonic copies included with Oleafly. Tables, footnotes, citations, and math stay on this device."
         >
           <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
         </Tooltip>
@@ -90,7 +91,7 @@ function MarkdownEngineTab() {
           {pandoc === "ready" && <Check className="size-3.5 text-primary" />}
           {pandoc === "missing" && (
             <Button type="button" size="sm" variant="outline" className="ml-auto h-7" onClick={() => void install()}>
-              Install pandoc
+              Repair Pandoc
             </Button>
           )}
           {pandoc === "installing" && (
@@ -99,10 +100,10 @@ function MarkdownEngineTab() {
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
           {pandoc === "checking" && "Checking for pandoc…"}
-          {pandoc === "ready" && "Detected. Markdown projects convert to LaTeX with pandoc, then compile with the bundled Tectonic."}
+          {pandoc === "ready" && "Ready. Markdown projects convert with the Pandoc and Tectonic copies included with Oleafly."}
           {pandoc === "missing" &&
-            "Not found on this Mac. Oleafly downloads a compatible pandoc (2.19 or newer) into its own folder; nothing else on your system changes."}
-          {pandoc === "installing" && "Fetching a pinned pandoc release. This takes a moment on first use."}
+            "The bundled copy is unavailable. Repair it to download the pinned version into Oleafly's own folder."}
+          {pandoc === "installing" && "Repairing Pandoc with the pinned release…"}
         </p>
       </div>
       <div className="rounded-lg border border-primary p-3 ring-1 ring-primary">

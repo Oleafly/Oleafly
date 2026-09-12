@@ -61,11 +61,12 @@ function validateSheetRange(XLSX: typeof import("xlsx"), sheet: import("xlsx").W
   }
 }
 
-/** Parse a picked CSV/TSV/XLSX file into rows of cells. */
-export async function readTableRows(path: string): Promise<string[][]> {
-  const base64 = await readPickedFileBase64(path);
-  const bytes = bytesFromBase64(base64);
-  if (/\.(xlsx|xls)$/i.test(path)) {
+/** Parse CSV/TSV/XLSX bytes without reading outside the supplied payload. */
+export async function readTableRowsFromBytes(
+  fileName: string,
+  bytes: Uint8Array,
+): Promise<string[][]> {
+  if (/\.(xlsx|xls)$/i.test(fileName)) {
     const XLSX = await import("xlsx");
     const workbook = XLSX.read(bytes, {
       type: "array",
@@ -85,6 +86,12 @@ export async function readTableRows(path: string): Promise<string[][]> {
     return validateTableRows(parseDelimited(text));
   }
   return validateTableRows(parseDelimited(new TextDecoder().decode(bytes)));
+}
+
+/** Parse a picked CSV/TSV/XLSX file into rows of cells. */
+export async function readTableRows(path: string): Promise<string[][]> {
+  const base64 = await readPickedFileBase64(path);
+  return readTableRowsFromBytes(path, bytesFromBase64(base64));
 }
 
 /** Emit the table source for the active engine. */

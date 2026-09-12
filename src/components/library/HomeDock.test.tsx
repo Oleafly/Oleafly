@@ -27,7 +27,7 @@ import { HomeDock } from "./HomeDock";
 beforeEach(() => {
   themeMocks.preference = "system";
   themeMocks.setPreference.mockClear();
-  useHomeViewStore.setState({ page: "library", toolsOpen: false });
+  useHomeViewStore.setState({ page: "library", activeConverter: null });
   useSettingsStore.setState({ dockPlacement: "left", latexTools: true });
 });
 
@@ -51,10 +51,10 @@ describe("HomeDock", () => {
     expect(screen.queryByTestId("open-latex-tools")).not.toBeInTheDocument();
   });
 
-  it("clicking Tools opens the tools modal", () => {
+  it("clicking Tools opens the tools page", () => {
     render(<HomeDock />);
     fireEvent.click(screen.getByTestId("open-latex-tools"));
-    expect(useHomeViewStore.getState().toolsOpen).toBe(true);
+    expect(useHomeViewStore.getState().page).toBe("tools");
   });
 
   it("renders bottom orientation when dockPlacement is bottom", () => {

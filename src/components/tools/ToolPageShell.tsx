@@ -44,7 +44,7 @@ export function ToolPageShell({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => goTo("library")}
+          onClick={() => goTo(page === "tools" ? "library" : "tools")}
           data-testid={`${testId}-back`}
         >
           <ArrowLeft className="size-4" /> Back

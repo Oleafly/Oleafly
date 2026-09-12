@@ -1,4 +1,5 @@
 mod acp;
+mod ad_hoc_conversion;
 mod agent;
 mod agent_config;
 mod agent_exec;
@@ -301,6 +302,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(traced_commands(tauri::generate_handler![
+            ad_hoc_conversion::convert_ad_hoc,
+            arxiv_import::extract_arxiv_source,
             research_tasks::research_task_list,
             research_tasks::research_task_create,
             research_tasks::research_task_edit,
@@ -537,6 +540,7 @@ pub fn run() {
             project::list_projects,
             project::create_project,
             project::create_project_from_pdf_conversion,
+            project::create_project_from_ad_hoc,
             project::create_typst_project,
             project::create_markdown_project,
             project::create_image_project,

@@ -40,7 +40,7 @@ const appState = vi.hoisted(() => {
     },
   };
   const computerUseListeners = new Set<() => void>();
-  const home = { page: "library", toolsOpen: false };
+  const home = { page: "library" };
   return { analysis, compile, computerUseListeners, files, home };
 });
 
@@ -281,7 +281,6 @@ describe("project dock layout", () => {
     panelHandleMocks.resize.mockClear();
     panelHandleMocks.callbacks.clear();
     appState.home.page = "library";
-    appState.home.toolsOpen = false;
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({
       webBrowser: true,

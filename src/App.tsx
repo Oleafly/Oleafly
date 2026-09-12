@@ -130,6 +130,9 @@ const SymbolsToolView = lazy(() =>
 const EquationToolView = lazy(() =>
   import("@/components/tools/EquationToolView").then((m) => ({ default: m.EquationToolView })),
 );
+const ConverterToolView = lazy(() =>
+  import("@/components/tools/ConverterToolView").then((m) => ({ default: m.ConverterToolView })),
+);
 const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
@@ -241,7 +244,6 @@ function AppContent() {
   const closeDocks = useSettingsStore((s) => s.closeDocks);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
-  const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const pdfPanelRef = useRef<ImperativePanelHandle>(null);
@@ -751,6 +753,7 @@ function AppContent() {
         <Suspense fallback={null}>
           {homePage === "pdf-import" && <PdfImportView />}
           {homePage === "equation" && <EquationToolView />}
+          {homePage === "converter" && <ConverterToolView />}
           {homePage === "bibtex" && <BibtexToolView />}
           {homePage === "table" && <TableToolView />}
           {homePage === "lab-search" && <LabSearchToolView />}
@@ -759,7 +762,7 @@ function AppContent() {
           {homePage === "stats" && <StatsToolView />}
           {homePage === "generators" && <GeneratorsToolView />}
           {homePage === "symbols" && <SymbolsToolView />}
-          {toolsOpen && <LatexToolsView />}
+          {homePage === "tools" && <LatexToolsView />}
         </Suspense>
         <ExternalToolApprovals />
         <EnginePickerModal />

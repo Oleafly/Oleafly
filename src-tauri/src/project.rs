@@ -3370,6 +3370,208 @@ pub struct PdfConversionFigure {
     pub data_base64: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdHocProjectFile {
+    pub path: String,
+    pub data_base64: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAdHocProjectRequest {
+    pub name: String,
+    pub target: String,
+    pub text: Option<String>,
+    pub main_file: Option<String>,
+    pub files: Vec<AdHocProjectFile>,
+}
+
+fn safe_ad_hoc_project_path(path: &str) -> Result<PathBuf, String> {
+    if path.is_empty() || path.len() > 4096 || path.contains('\\') {
+        return Err("A converted file has an invalid path.".into());
+    }
+    let candidate = Path::new(path);
+    let components: Vec<_> = candidate.components().collect();
+    if components.is_empty()
+        || components.len() > IMPORT_MAX_DEPTH
+        || components
+            .iter()
+            .any(|component| !matches!(component, std::path::Component::Normal(_)))
+    {
+        return Err("A converted file has an invalid path.".into());
+    }
+    let mut normalized = PathBuf::new();
+    for component in components {
+        let std::path::Component::Normal(segment) = component else {
+            return Err("A converted file has an invalid path.".into());
+        };
+        let segment = segment
+            .to_str()
+            .ok_or_else(|| "A converted filename is not valid Unicode.".to_string())?;
+        let windows_stem = segment
+            .split('.')
+            .next()
+            .unwrap_or_default()
+            .to_ascii_uppercase();
+        let windows_reserved = matches!(windows_stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+            || (windows_stem.len() == 4
+                && (windows_stem.starts_with("COM") || windows_stem.starts_with("LPT"))
+                && windows_stem.as_bytes()[3].is_ascii_digit()
+                && windows_stem.as_bytes()[3] != b'0');
+        if segment.len() > 255
+            || segment.ends_with([' ', '.'])
+            || segment
+                .chars()
+                .any(|character| character <= '\u{1f}' || r#"<>:\"/\|?*"#.contains(character))
+            || windows_reserved
+        {
+            return Err(
+                "A converted file has a name that is not portable across platforms.".into(),
+            );
+        }
+        if [".git", ".oleafly", "project.json"]
+            .iter()
+            .any(|reserved| segment.eq_ignore_ascii_case(reserved))
+        {
+            return Err("A converted file uses a reserved project path.".into());
+        }
+        normalized.push(segment);
+    }
+    Ok(normalized)
+}
+
+/// Publish converter output as one complete project. A normal text conversion
+/// supplies `text` and media under assets/. A source bundle supplies
+/// `mainFile` plus every file, as produced by the bounded arXiv extractor.
+#[tauri::command(async)]
+pub fn create_project_from_ad_hoc(request: CreateAdHocProjectRequest) -> Result<String, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+
+    const MAX_FILES: usize = 5000;
+    const MAX_TOTAL_BYTES: usize = 256 * 1024 * 1024;
+    let project_name: String = request.name.trim().chars().take(200).collect();
+    let project_name = if project_name.is_empty() {
+        "Converted document".into()
+    } else {
+        project_name
+    };
+    let (default_main, engine, expected_extension) = match request.target.as_str() {
+        "latex" => ("main.tex", default_engine(), "tex"),
+        "markdown" => ("main.md", "markdown".into(), "md"),
+        "typst" => ("main.typ", "typst".into(), "typ"),
+        _ => return Err("Choose a LaTeX, Markdown, or Typst project.".into()),
+    };
+    if request.files.len() > MAX_FILES {
+        return Err("The conversion produced too many project files.".into());
+    }
+    let source_bundle = request.main_file.is_some();
+    if source_bundle == request.text.is_some() {
+        return Err("The converter supplied an invalid project payload.".into());
+    }
+    let main_doc = request.main_file.unwrap_or_else(|| default_main.into());
+    let main_path = safe_ad_hoc_project_path(&main_doc)?;
+    let extension = main_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    if !extension.eq_ignore_ascii_case(expected_extension) {
+        return Err("The converted main document does not match the project type.".into());
+    }
+
+    let mut decoded = Vec::with_capacity(request.files.len() + usize::from(!source_bundle));
+    let mut paths = HashSet::new();
+    let mut total = 0_usize;
+    for file in request.files {
+        let relative = safe_ad_hoc_project_path(&file.path)?;
+        let normalized = relative
+            .to_str()
+            .ok_or_else(|| "A converted filename is not valid Unicode.".to_string())?
+            .replace('\\', "/");
+        if !source_bundle && !normalized.starts_with("assets/") {
+            return Err("Converted media must stay inside the assets folder.".into());
+        }
+        if !paths.insert(normalized.to_ascii_lowercase()) {
+            return Err("The conversion produced duplicate file paths.".into());
+        }
+        let encoded = file.data_base64.trim();
+        let estimated = encoded.len().saturating_mul(3) / 4;
+        if total.saturating_add(estimated) > MAX_TOTAL_BYTES {
+            return Err("The converted project is larger than the 256 MB limit.".into());
+        }
+        let bytes = STANDARD
+            .decode(encoded)
+            .map_err(|_| format!("Could not decode {}.", file.path))?;
+        total = total.saturating_add(bytes.len());
+        if total > MAX_TOTAL_BYTES {
+            return Err("The converted project is larger than the 256 MB limit.".into());
+        }
+        decoded.push((relative, bytes));
+    }
+    if source_bundle {
+        let main_key = main_path
+            .to_str()
+            .ok_or_else(|| "The converted main document has an invalid name.".to_string())?
+            .replace('\\', "/")
+            .to_ascii_lowercase();
+        if !paths.contains(&main_key) {
+            return Err("The source bundle is missing its main document.".into());
+        }
+    } else {
+        let text = request.text.unwrap_or_default();
+        total = total.saturating_add(text.len());
+        if total > MAX_TOTAL_BYTES {
+            return Err("The converted project is larger than the 256 MB limit.".into());
+        }
+        decoded.push((main_path.clone(), text.into_bytes()));
+    }
+
+    static AD_HOC_PROJECT_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    let _guard = AD_HOC_PROJECT_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| "The converted-project lock is unavailable.".to_string())?;
+    let root = paths::projects_root()?;
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let staging = create_unique_temporary_directory(&root, ".oleafly-converted-project")?;
+    let result = (|| -> Result<(), String> {
+        for (path, bytes) in decoded {
+            let destination = staging.join(path);
+            if let Some(parent) = destination.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|error| format!("Could not create a project folder: {error}"))?;
+            }
+            atomic_write(&destination, &bytes)
+                .map_err(|error| format!("Could not write a converted file: {error}"))?;
+        }
+        write_meta_at(
+            &staging.join("project.json"),
+            &ProjectMeta {
+                name: project_name,
+                main_doc,
+                engine,
+                color: String::new(),
+                kind: String::new(),
+                exports: Vec::new(),
+                hidden: false,
+                forked_from: None,
+                tex: None,
+                tex_flavor: None,
+                allow_shell_escape: false,
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
+                extra: HashMap::new(),
+            },
+        )
+    })();
+    if let Err(error) = result {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(error);
+    }
+    let project_id = reservation.publish_staged(&staging)?;
+    initialize_git_for_project_quietly(&project_id);
+    Ok(project_id)
+}
+
 /// Publish a converted PDF as one complete project. The library never observes
 /// a project containing only `main.tex` (or only some figures): every payload
 /// is validated and staged in a sibling directory before the final rename.
@@ -4426,8 +4628,16 @@ fn find_pandoc_on_path(path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
 }
 
 pub(crate) fn find_pandoc() -> Option<String> {
+    // Release builds carry Pandoc beside the app as a checksum-pinned Tauri
+    // sidecar, so every document conversion works without a first-run download.
+    if let Ok(bundled) = crate::document_engine::resolve_bundled_sidecar("pandoc") {
+        if let Some(bundled) = canonical_supported_pandoc(&bundled) {
+            return bundled.into_os_string().into_string().ok();
+        }
+    }
     let mut candidates: Vec<PathBuf> = Vec::new();
-    // Our own on-demand download location wins first (guaranteed compatible).
+    // Keep the managed cache as a fallback for older installations and
+    // developer builds that do not stage the bundled sidecar.
     if let Ok(root) = paths::oleafly_root() {
         candidates.push(root.join("bin").join(if cfg!(windows) {
             "pandoc.exe"
@@ -5929,18 +6139,20 @@ async fn recycle_project_synchronized(
 mod tests {
     use super::{
         copy_path_in_project, create_diagram_project, create_image_project_in,
-        create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
-        create_project_transaction, create_typst_project_in, download_project_zip,
-        duplicate_project, engine_for_main_document, export_would_write_inside_project,
-        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project_blocking,
-        import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
-        import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
-        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
-        pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
-        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
+        create_markdown_project_in, create_path_in_project, create_project_from_ad_hoc,
+        create_project_from_pdf_conversion, create_project_transaction, create_typst_project_in,
+        download_project_zip, duplicate_project, engine_for_main_document,
+        export_would_write_inside_project, extract_pandoc, flatten_single_root_folder,
+        get_or_create_scratch_project_blocking, import_paths_transactional,
+        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
+        import_skip, infer_main_document, is_table_import_extension, normalize_loaded_tex_flavor,
+        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta,
+        read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
+        safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
         tex_root_magic_target, try_reserve_project_directory, validate_conversion_export,
-        validate_tex_flavor, write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope,
-        PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
+        validate_tex_flavor, write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest,
+        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
+        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -9348,5 +9560,190 @@ mod tests {
         normalize_loaded_tex_flavor(&mut legacy).unwrap();
 
         assert_eq!(legacy.tex_flavor, None);
+    }
+
+    #[test]
+    fn ad_hoc_project_paths_reject_traversal_and_reserved_state() {
+        assert_eq!(
+            safe_ad_hoc_project_path("assets/figure.png").unwrap(),
+            std::path::PathBuf::from("assets/figure.png")
+        );
+        for path in [
+            "../escape.tex",
+            "/absolute.tex",
+            "nested\\windows.tex",
+            ".git/config",
+            ".oleafly/build/log",
+            "project.json",
+            "assets/CON.png",
+            "assets/trailing. ",
+            "assets/bad:name.png",
+        ] {
+            assert!(safe_ad_hoc_project_path(path).is_err(), "accepted {path}");
+        }
+    }
+
+    #[test]
+    fn ad_hoc_text_project_is_published_with_its_assets() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("ad-hoc-project");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+
+        let id = create_project_from_ad_hoc(CreateAdHocProjectRequest {
+            name: "Converted notes".into(),
+            target: "latex".into(),
+            text: Some("\\documentclass{article}\\begin{document}Ready\\end{document}".into()),
+            main_file: None,
+            files: vec![AdHocProjectFile {
+                path: "assets/figure.png".into(),
+                data_base64: "AQID".into(),
+            }],
+        })
+        .unwrap();
+        let directory = crate::paths::project_dir(&id).unwrap();
+        let meta: ProjectMeta =
+            serde_json::from_str(&std::fs::read_to_string(directory.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(meta.name, "Converted notes");
+        assert_eq!(meta.main_doc, "main.tex");
+        assert_eq!(
+            std::fs::read(directory.join("assets/figure.png")).unwrap(),
+            [1, 2, 3]
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn ad_hoc_projects_cover_every_target_and_source_bundles() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("ad-hoc-project-targets");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+
+        for (target, main_doc, engine, source) in [
+            ("latex", "main.tex", "xetex", "\\documentclass{article}"),
+            ("markdown", "main.md", "markdown", "# Converted"),
+            ("typst", "main.typ", "typst", "= Converted"),
+        ] {
+            let id = create_project_from_ad_hoc(CreateAdHocProjectRequest {
+                name: " ".into(),
+                target: target.into(),
+                text: Some(source.into()),
+                main_file: None,
+                files: Vec::new(),
+            })
+            .unwrap();
+            let directory = crate::paths::project_dir(&id).unwrap();
+            let meta: ProjectMeta = serde_json::from_str(
+                &std::fs::read_to_string(directory.join("project.json")).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(meta.name, "Converted document");
+            assert_eq!(meta.main_doc, main_doc);
+            assert_eq!(meta.engine, engine);
+            assert_eq!(
+                std::fs::read_to_string(directory.join(main_doc)).unwrap(),
+                source
+            );
+        }
+
+        let bundle_id = create_project_from_ad_hoc(CreateAdHocProjectRequest {
+            name: "Source bundle".into(),
+            target: "latex".into(),
+            text: None,
+            main_file: Some("paper/main.tex".into()),
+            files: vec![
+                AdHocProjectFile {
+                    path: "paper/main.tex".into(),
+                    data_base64: "XFxkb2N1bWVudGNsYXNze2FydGljbGV9".into(),
+                },
+                AdHocProjectFile {
+                    path: "paper/section.tex".into(),
+                    data_base64: "U2VjdGlvbg==".into(),
+                },
+            ],
+        })
+        .unwrap();
+        let bundle = crate::paths::project_dir(&bundle_id).unwrap();
+        assert!(bundle.join("paper/main.tex").is_file());
+        assert!(bundle.join("paper/section.tex").is_file());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn ad_hoc_project_validation_rejects_ambiguous_or_unsafe_payloads() {
+        let request = |target: &str,
+                       text: Option<&str>,
+                       main_file: Option<&str>,
+                       files: Vec<AdHocProjectFile>| {
+            create_project_from_ad_hoc(CreateAdHocProjectRequest {
+                name: "Converted".into(),
+                target: target.into(),
+                text: text.map(str::to_string),
+                main_file: main_file.map(str::to_string),
+                files,
+            })
+        };
+        assert!(request("pdf", Some("x"), None, Vec::new()).is_err());
+        assert!(request("latex", None, None, Vec::new()).is_err());
+        assert!(request("latex", Some("x"), Some("main.tex"), Vec::new()).is_err());
+        assert!(request("latex", None, Some("main.md"), Vec::new()).is_err());
+        assert!(request(
+            "latex",
+            Some("x"),
+            None,
+            vec![AdHocProjectFile {
+                path: "outside.png".into(),
+                data_base64: "AQID".into(),
+            }],
+        )
+        .is_err());
+        assert!(request(
+            "latex",
+            Some("x"),
+            None,
+            vec![
+                AdHocProjectFile {
+                    path: "assets/a.png".into(),
+                    data_base64: "AQID".into(),
+                },
+                AdHocProjectFile {
+                    path: "assets/A.PNG".into(),
+                    data_base64: "AQID".into(),
+                },
+            ],
+        )
+        .is_err());
+        assert!(request(
+            "latex",
+            Some("x"),
+            None,
+            vec![AdHocProjectFile {
+                path: "assets/a.png".into(),
+                data_base64: "not-base64".into(),
+            }],
+        )
+        .is_err());
+        assert!(request(
+            "latex",
+            None,
+            Some("main.tex"),
+            vec![AdHocProjectFile {
+                path: "section.tex".into(),
+                data_base64: "WA==".into(),
+            }],
+        )
+        .is_err());
+
+        let too_many = (0..=5000)
+            .map(|index| AdHocProjectFile {
+                path: format!("assets/{index}.png"),
+                data_base64: String::new(),
+            })
+            .collect();
+        assert!(request("latex", Some("x"), None, too_many).is_err());
     }
 }

@@ -19,6 +19,91 @@ pub(crate) struct ImportPlan {
     pub engine: &'static str,
 }
 
+/// A whitelisted, project-independent pandoc conversion. The caller supplies
+/// bytes for `source_name`; pandoc writes `output_name` inside an isolated
+/// temporary directory. Keeping argv construction here means the webview can
+/// choose a registered route, but cannot smuggle arbitrary pandoc flags.
+pub(crate) struct AdHocPlan {
+    pub source_name: &'static str,
+    pub output_name: &'static str,
+    pub args: Vec<String>,
+    pub binary_output: bool,
+    pub media_type: &'static str,
+}
+
+/// Build a deterministic converter plan for the text/document routes exposed
+/// by the Tools page. PDF, image, spreadsheet, equation, and Mermaid inputs
+/// have dedicated adapters and deliberately do not enter this table.
+pub(crate) fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
+    let (reader, source_name) = match source {
+        "latex" => ("latex", "source.tex"),
+        "markdown" => ("markdown", "source.md"),
+        "typst" => ("typst", "source.typ"),
+        "html" => ("html", "source.html"),
+        "docx" => ("docx", "source.docx"),
+        _ => return None,
+    };
+    let (writer, output_name, binary_output, media_type) = match target {
+        "latex" => ("latex", "converted.tex", false, "application/x-tex"),
+        "markdown" => ("markdown", "converted.md", false, "text/markdown"),
+        "typst" => ("typst", "converted.typ", false, "text/x-typst"),
+        "html" => ("html5", "converted.html", false, "text/html"),
+        "docx" => (
+            "docx",
+            "converted.docx",
+            true,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ),
+        _ => return None,
+    };
+    if reader == writer {
+        return None;
+    }
+    let supported = matches!(
+        (source, target),
+        ("latex", "html")
+            | ("latex", "markdown")
+            | ("latex", "typst")
+            | ("latex", "docx")
+            | ("markdown", "latex")
+            | ("markdown", "typst")
+            | ("typst", "latex")
+            | ("html", "latex")
+            | ("docx", "latex")
+    );
+    if !supported {
+        return None;
+    }
+
+    let mut args = vec![
+        format!("--from={reader}"),
+        format!("--to={writer}"),
+        "--standalone".into(),
+        // Pandoc's sandbox blocks readers and writers from reaching outside
+        // the staged directory. Ad-hoc conversion never needs that access.
+        "--sandbox".into(),
+    ];
+    if target == "html" {
+        args.push("--mathml".into());
+    }
+    if source == "docx" || source == "html" {
+        args.push("--extract-media=assets".into());
+    }
+    args.extend([
+        "-o".into(),
+        output_name.into(),
+        "--".into(),
+        source_name.into(),
+    ]);
+    Some(AdHocPlan {
+        source_name,
+        output_name,
+        args,
+        binary_output,
+        media_type,
+    })
+}
+
 /// The pandoc reader name for an importable file extension.
 fn pandoc_reader(extension: &str) -> Option<&'static str> {
     match extension {
@@ -171,6 +256,30 @@ mod tests {
         assert!(!fixed.contains("font: (),"));
         // Idempotent.
         assert_eq!(fixed, fixup_typst_source(&fixed));
+    }
+
+    #[test]
+    fn ad_hoc_routes_are_exactly_whitelisted() {
+        for (source, target) in [
+            ("latex", "html"),
+            ("latex", "markdown"),
+            ("latex", "typst"),
+            ("latex", "docx"),
+            ("markdown", "latex"),
+            ("markdown", "typst"),
+            ("typst", "latex"),
+            ("html", "latex"),
+            ("docx", "latex"),
+        ] {
+            let plan = ad_hoc_plan(source, target)
+                .unwrap_or_else(|| panic!("missing ad-hoc route {source} -> {target}"));
+            assert!(plan.args.contains(&"--sandbox".to_string()));
+            assert!(plan.args.contains(&format!("--from={source}")) || source == "docx");
+        }
+        assert!(ad_hoc_plan("latex", "latex").is_none());
+        assert!(ad_hoc_plan("pdf", "latex").is_none());
+        assert!(ad_hoc_plan("docx", "typst").is_none());
+        assert!(ad_hoc_plan("unknown", "html").is_none());
     }
 
     #[test]

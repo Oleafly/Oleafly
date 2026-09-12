@@ -84,7 +84,7 @@ export async function svgDocumentToPngBytes(
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const element = new Image();
       element.onload = () => resolve(element);
-      element.onerror = () => reject(new Error("the equation SVG could not be rasterized"));
+      element.onerror = () => reject(new Error("the SVG could not be rasterized"));
       element.src = url;
     });
     const width = Math.max(1, Math.ceil((image.width || 300) * scale));

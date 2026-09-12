@@ -1,6 +1,6 @@
 # Development
 
-What you need to work on Oleafly. The app is a [Tauri 2](https://tauri.app) project: a React + TypeScript + Vite frontend that talks over IPC to a Rust backend. Rust selects a compiler through the `DocumentEngine` interface. LaTeX and Typst use shipped CLI sidecars. Markdown uses a discovered or on-demand Pandoc executable with the shipped Tectonic executable as Pandoc's PDF engine.
+What you need to work on Oleafly. The app is a [Tauri 2](https://tauri.app) project: a React + TypeScript + Vite frontend that talks over IPC to a Rust backend. Rust selects a compiler through the `DocumentEngine` interface. LaTeX, Typst, and Markdown use shipped CLI sidecars. Markdown runs the bundled Pandoc executable with the bundled Tectonic executable as its PDF engine.
 
 ## Repo layout
 
@@ -42,7 +42,7 @@ covers the port pattern, the contribution registry, and the alias wiring.
   `package.json`)
 - Rust (stable) via [rustup](https://rustup.rs)
 - [Tauri 2 system dependencies](https://v2.tauri.app/start/prerequisites/) for your OS
-- Optional during setup: [pandoc](https://pandoc.org/installing.html) for Markdown PDF compilation and document export (the app can install its pinned build on demand)
+- No system document engines are required. The setup scripts stage the same pinned Tectonic, Biber, Pandoc, and Typst binaries shipped with Oleafly.
 
 ## First run
 
@@ -51,6 +51,7 @@ pnpm install
 host_target="$(rustc -vV | sed -n 's/^host: //p')"
 ./scripts/fetch-tectonic.sh "$host_target"
 ./scripts/fetch-biber.sh "$host_target" # pinned Biber 2.17
+./scripts/fetch-pandoc.sh "$host_target"
 ./scripts/fetch-typst.sh "$host_target"
 pnpm tauri dev
 ```
@@ -137,16 +138,21 @@ pnpm test:e2e:app                         # builds + launches the app, runs Play
 
 Tauri's [sidecar documentation](https://v2.tauri.app/develop/sidecar/) defines
 `bundle.externalBin` inputs with target-triple suffixes and exposes the packaged
-sidecar under its unsuffixed name at runtime. Oleafly's Pandoc adapter resolves
-that packaged Tectonic executable beside the application executable, matching
-Tauri's desktop bundle layout. Unit tests cover macOS app-bundle and Cargo
-debug/release candidates, while the release workflow inspects the staged
-unsuffixed sibling on every target.
+sidecar under its unsuffixed name at runtime. Oleafly resolves both Pandoc and
+Tectonic beside the application executable, matching Tauri's desktop bundle
+layout. Unit tests cover macOS app-bundle and Cargo debug/release candidates,
+while the release workflow checks every staged sidecar on every target.
 
 Tectonic 0.16.9 release archives are checksum-pinned from the official GitHub
 Releases API `digest` fields. `scripts/fetch-tectonic.sh` verifies SHA256 before
 extracting exactly the root `tectonic`/`tectonic.exe` regular-file member. The
 same script is used by CI and every release target, including Windows.
+
+Pandoc 3.9.0.2 follows the same policy. `scripts/fetch-pandoc.sh` verifies the
+release archive before extracting only the expected executable. The app still
+recognizes a compatible system or previously managed Pandoc as a development
+fallback, but release builds use the bundled copy and do not download a runtime
+when a conversion starts.
 
 TexLab 5.26.0 and Tinymist 0.15.2 have a separate machine-readable manifest,
 secure Node fetcher, and distribution policy. Neither language server is a

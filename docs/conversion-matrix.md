@@ -15,9 +15,11 @@ Legend: ✅ shipped · 🟡 deferred with a gap id · — not applicable.
 | Typst | ✅ [PDF](#typst-to-pdf) | ✅ [Word (.docx)](#typst-to-docx) | ✅ [HTML (MathML)](#typst-to-html) | ✅ [Markdown (.md)](#typst-to-markdown) | ✅ [LaTeX (.tex)](#typst-to-latex) | — | — | — |
 | Word (.docx) | ✅ [PDF](#docx-to-pdf) | — | ✅ [HTML (MathML)](#docx-to-html) | ✅ [Markdown project](#docx-to-markdown) | ✅ [LaTeX project](#docx-to-latex) | ✅ [Typst project](#docx-to-typst) | — | — |
 | HTML | ✅ [PDF](#html-to-pdf) | ✅ [Word (.docx)](#html-to-docx) | — | ✅ [Markdown project](#html-to-markdown) | ✅ [LaTeX project](#html-to-latex) | ✅ [Typst project](#html-to-typst) | — | — |
-| PDF | — | 🟡 DEFERRED (G13) [Word (.docx)](#pdf-to-docx) | 🟡 DEFERRED (G13) [HTML](#pdf-to-html) | 🟡 DEFERRED (G13) [Markdown](#pdf-to-markdown) | ✅ [LaTeX project](#pdf-to-latex)<br>🟡 DEFERRED (G2) [Scanned PDF to LaTeX](#pdf-scanned-to-latex) | — | — | ✅ [Page PNG](#pdf-to-image) |
-| Image (equation or photo) | — | — | — | — | ✅ [LaTeX equation](#image-to-latex) | — | — | — |
+| PDF | — | 🟡 DEFERRED (G13) [Word (.docx)](#pdf-to-docx) | 🟡 DEFERRED (G13) [HTML](#pdf-to-html) | ✅ [Markdown](#pdf-to-markdown) | ✅ [LaTeX project](#pdf-to-latex)<br>✅ [Scanned PDF to LaTeX](#pdf-scanned-to-latex) | ✅ [Typst](#pdf-to-typst) | — | ✅ [Page PNG](#pdf-to-image) |
+| Image (equation or photo) | — | — | — | — | ✅ [LaTeX equation](#image-to-latex) | ✅ [Typst source](#image-to-typst) | — | — |
+| Typed or photographed equation | — | — | — | — | ✅ [LaTeX equation](#equation-to-latex) | — | — | — |
 | CSV / XLSX | — | — | — | — | ✅ [LaTeX booktabs table](#csv-to-latex) | ✅ [Typst table](#csv-to-typst) | — | — |
+| Mermaid diagram | — | — | — | — | ✅ [TikZ or LaTeX figure](#mermaid-to-latex) | — | — | — |
 | arXiv id | — | — | — | — | ✅ [LaTeX project](#arxiv-to-latex) | — | ✅ [BibTeX](#arxiv-to-bibtex) | — |
 | DOI | — | — | — | — | — | — | ✅ [BibTeX](#doi-to-bibtex) | — |
 | ISBN | — | — | — | — | — | — | ✅ [BibTeX](#isbn-to-bibtex) | — |
@@ -42,54 +44,54 @@ Compile with the bundled Tectonic engine (or latexmk on a system TeX).
 
 ### latex-to-docx
 
-Pandoc writer with native OMML equations.
+Pandoc writes editable Word math instead of flattening equations into images.
 
 - **Direction:** export
 - **Engine:** pandoc
 - **Status:** existing
-- **Surface:** Export menu
+- **Surface:** Export menu, Tools page
 - **Pandoc route:** `--from=latex --to=docx`
 
 ### latex-to-html
 
-Standalone self-contained HTML with MathML equations for accessibility.
+Standalone HTML with MathML equations for accessible reading.
 
 - **Direction:** export
 - **Engine:** pandoc
 - **Status:** existing
-- **Surface:** Export menu
+- **Surface:** Export menu, Tools page
 - **Gap:** G11
 - **Pandoc route:** `--from=latex --to=html5 --standalone --embed-resources --mathml`
 
 ### latex-to-markdown
 
-Pandoc writer; math lands in dollar delimiters.
+Pandoc keeps math in dollar delimiters.
 
 - **Direction:** export
 - **Engine:** pandoc
 - **Status:** existing
-- **Surface:** Export menu
+- **Surface:** Export menu, Tools page
 - **Pandoc route:** `--from=latex --to=markdown`
 
 ### latex-to-typst
 
-Pandoc's typst writer with a fixup for its empty font declaration.
+Pandoc writes Typst source, followed by a compatibility fixup.
 
 - **Direction:** export
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Export menu
+- **Surface:** Export menu, Tools page
 - **Gap:** G10
 - **Pandoc route:** `--from=latex --to=typst --standalone`
 
 ### latex-to-image
 
-Render a selected equation with MathJax and save it as SVG or PNG.
+Render a LaTeX equation as SVG or PNG, then download it or add the PNG to a project.
 
 - **Direction:** tool
 - **Engine:** internal
 - **Status:** available
-- **Surface:** Editor context menu, Equation tool
+- **Surface:** Editor context menu, Equation tool, Tools page
 - **Gap:** G16
 
 ## Markdown
@@ -125,22 +127,22 @@ Standalone self-contained HTML with MathML equations.
 
 ### markdown-to-latex
 
-Import as a LaTeX project, or export .tex from a Markdown project.
+Convert directly, import as a LaTeX project, or export from a Markdown project.
 
 - **Direction:** import
 - **Engine:** pandoc
 - **Status:** existing
-- **Surface:** Import dialog, Export menu
+- **Surface:** Tools page, Import dialog, Export menu
 - **Pandoc route:** `--from=markdown --to=latex --standalone`
 
 ### markdown-to-typst
 
-Import as a Typst project, or export .typ from a Markdown project.
+Convert directly, import as a Typst project, or export from a Markdown project.
 
 - **Direction:** import
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Import dialog, Export menu
+- **Surface:** Tools page, Import dialog, Export menu
 - **Gap:** G10
 - **Pandoc route:** `--from=markdown --to=typst --standalone`
 
@@ -157,12 +159,12 @@ Compile with the bundled Typst engine.
 
 ### typst-to-latex
 
-Import a Typst file as a LaTeX project, or export .tex from a Typst project.
+Convert directly, import as a LaTeX project, or export from a Typst project.
 
 - **Direction:** import
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Import dialog, Export menu
+- **Surface:** Tools page, Import dialog, Export menu
 - **Gap:** G10
 - **Pandoc route:** `--from=typst --to=latex --standalone`
 
@@ -203,12 +205,12 @@ Pandoc reads Typst directly and writes a .docx with OMML equations.
 
 ### docx-to-latex
 
-Pandoc turns the document into a project, with OMML equations and media extracted to assets/.
+Pandoc keeps editable equations and extracts embedded media into assets/.
 
 - **Direction:** import
 - **Engine:** pandoc
 - **Status:** existing
-- **Surface:** Import dialog
+- **Surface:** Import dialog, Tools page
 - **Pandoc route:** `--from=docx --to=latex --standalone --extract-media=assets`
 
 ### docx-to-markdown
@@ -256,12 +258,12 @@ Import as a Markdown project, then export self-contained HTML with MathML.
 
 ### html-to-latex
 
-Pandoc's html reader; embedded images are extracted to assets/.
+Pandoc converts semantic HTML and extracts embedded images into assets/.
 
 - **Direction:** import
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Import dialog
+- **Surface:** Import dialog, Tools page
 - **Gap:** G10
 - **Pandoc route:** `--from=html --to=latex --standalone --extract-media=assets`
 
@@ -316,7 +318,7 @@ The built-in text-layer pipeline: columns, headings, math detection, and figure 
 - **Direction:** import
 - **Engine:** pdf-pipeline
 - **Status:** existing
-- **Surface:** Import dialog
+- **Surface:** Tools page, Import dialog
 
 ### pdf-to-image
 
@@ -351,36 +353,64 @@ Not built yet.
 
 ### pdf-to-markdown
 
-Not built yet.
+The local PDF pipeline preserves reading order and figures, then writes Markdown.
 
-- **Direction:** import
+- **Direction:** tool
 - **Engine:** pdf-pipeline
-- **Status:** deferred
-- **Surface:** Import dialog
+- **Status:** available
+- **Surface:** Tools page
 - **Gap:** G13
-- **Deferred because:** Same quality gate as PDF to Word; the LaTeX path exists today.
+
+### pdf-to-typst
+
+The local PDF pipeline preserves reading order and figures, then writes Typst.
+
+- **Direction:** tool
+- **Engine:** pdf-pipeline
+- **Status:** available
+- **Surface:** Tools page
+- **Gap:** G13
 
 ### pdf-scanned-to-latex
 
-Scanned pages stop at a clear no-text-layer message.
+A local Ollama vision model transcribes scanned pages into editable LaTeX.
 
-- **Direction:** import
-- **Engine:** pdf-pipeline
-- **Status:** deferred
-- **Surface:** Import dialog
+- **Direction:** tool
+- **Engine:** local-model
+- **Status:** available
+- **Surface:** PDF to LaTeX tool
 - **Gap:** G2
-- **Deferred because:** OCR for scanned PDFs is not in yet; the importer reports which pages have no text layer.
 
 ## Image (equation or photo)
 
 ### image-to-latex
 
-A vision model transcribes an equation or table photo to LaTeX at the cursor.
+A local vision model transcribes an equation or table photo into editable LaTeX.
 
 - **Direction:** tool
-- **Engine:** internal
-- **Status:** existing
-- **Surface:** Editor toolbar
+- **Engine:** local-model
+- **Status:** available
+- **Surface:** Tools page, Editor toolbar
+
+### image-to-typst
+
+A local vision model transcribes notes, equations, or tables into editable Typst.
+
+- **Direction:** tool
+- **Engine:** local-model
+- **Status:** available
+- **Surface:** Tools page
+
+## Typed or photographed equation
+
+### equation-to-latex
+
+Normalize typed math directly, or read natural-language and photographed equations with a local model.
+
+- **Direction:** tool
+- **Engine:** local-model
+- **Status:** available
+- **Surface:** Tools page
 
 ## CSV / XLSX
 
@@ -391,7 +421,7 @@ Parse CSV (or XLSX via SheetJS) and emit a booktabs table with full escaping, in
 - **Direction:** tool
 - **Engine:** internal
 - **Status:** available
-- **Surface:** Editor context menu, Table tool
+- **Surface:** Tools page, Editor context menu, Table tool
 - **Gap:** G17
 
 ### csv-to-typst
@@ -404,16 +434,27 @@ Same parser, Typst table emitter.
 - **Surface:** Editor context menu, Table tool
 - **Gap:** G17
 
+## Mermaid diagram
+
+### mermaid-to-latex
+
+Common flowcharts become editable TikZ; other Mermaid diagrams render locally as a LaTeX-ready figure.
+
+- **Direction:** tool
+- **Engine:** internal
+- **Status:** available
+- **Surface:** Tools page
+
 ## arXiv id
 
 ### arxiv-to-latex
 
-Download the e-print tarball, unpack it, and infer the main document.
+Download an e-print source bundle, or unpack a saved archive offline, then infer the main document.
 
 - **Direction:** import
 - **Engine:** api-lookup
 - **Status:** available
-- **Surface:** Import dialog
+- **Surface:** Tools page, Import dialog
 - **Gap:** G7
 
 ### arxiv-to-bibtex
@@ -509,5 +550,3 @@ Preview citation-key changes, remove DOI duplicates when every field is preserve
 
 - **pdf-to-docx** (G13): PDF ingestion quality (G13) needs the layout-model stage before Word output is worth shipping; today it goes PDF to LaTeX to .docx.
 - **pdf-to-html** (G13): Same quality gate as PDF to Word; the LaTeX path exists today.
-- **pdf-to-markdown** (G13): Same quality gate as PDF to Word; the LaTeX path exists today.
-- **pdf-scanned-to-latex** (G2): OCR for scanned PDFs is not in yet; the importer reports which pages have no text layer.

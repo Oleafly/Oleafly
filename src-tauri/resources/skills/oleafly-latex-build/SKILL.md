@@ -40,7 +40,7 @@ A compile failure is a lookup, not a puzzle. Read the first error, name its clas
 | `xetex` | Bundled Tectonic sidecar, XeTeX engine | The default. Fetches packages from a pinned TeX Live bundle. `fontspec` works. |
 | `latexmk` | The user's system TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) | The underlying engine is pdfLaTeX unless a `% !TeX program =` line, or fontspec / polyglossia / unicode-math, forces XeLaTeX or LuaLaTeX. Shell escape is off unless the user granted it for this project on this machine. |
 | `typst` | Pinned Typst CLI | No SyncTeX, no isolated figure compile, no conversion exports. |
-| `markdown` | Pandoc, with Tectonic as its PDF engine | Needs Pandoc installed; the app can download it. |
+| `markdown` | Bundled Pandoc, with bundled Tectonic as its PDF engine | Available offline in packaged builds. Settings can repair a missing development copy. |
 
 The assistant cannot switch engines. `set_main_doc` changes the engine as a side effect of the file extension, and that is the only lever it has. Anything else is a Settings change the user makes.
 
@@ -107,7 +107,7 @@ Then check what came out:
 | The same error survives two fixes | Stop editing. Report the log line, what you tried, and what you think it means. |
 | The error names a file that is not in the project | `list_files` and `search_project` before concluding it is missing. Then say whether it must be supplied by the user. |
 | Compile times out or is cancelled | Report it as a timeout, not a source error. A first Tectonic build downloads bundle files and is slow. |
-| Pandoc is missing on a Markdown project | Tell the user; the app installs it on demand from Settings. |
+| Pandoc is missing on a Markdown project | Tell the user the bundled runtime is unavailable and direct them to Settings to repair it. |
 | Biber or biblatex version skew | The log carries an `[Oleafly]` note that distinguishes Biber not found from a version mismatch. Quote it verbatim. |
 | The PDF looks stale | Compile again and compare page count with `get_pdf_text`. Do not delete build directories through `run_command` unless the user asks. |
 

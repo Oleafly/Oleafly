@@ -173,7 +173,8 @@ records.
 - Supports `.md` and `.markdown` projects, structural indexing, citations,
   and conversion exports declared by the descriptor.
 - Does not claim SyncTeX, offline compilation, or isolated figure support.
-- Pandoc can be installed on demand. The app records a clear prerequisite state.
+- Packaged builds include Pandoc. The app records a clear prerequisite state,
+  and Settings can repair a missing development copy.
 
 ## Sidecar and supply-chain policy
 

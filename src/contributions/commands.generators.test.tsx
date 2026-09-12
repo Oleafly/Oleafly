@@ -11,7 +11,6 @@ const state = vi.hoisted(() => ({
     closeProject: vi.fn(async () => {}),
   },
   home: {
-    closeTools: vi.fn(),
     goTo: vi.fn(),
     queuePageAfterProjectClose: vi.fn(),
     clearQueuedPageAfterProjectClose: vi.fn(),
@@ -48,6 +47,16 @@ afterEach(() => {
 });
 
 describe("project tool commands", () => {
+  it("registers every catalog tool on both command surfaces", async () => {
+    const { TOOL_DEFINITIONS } = await import("@/lib/tool-catalog");
+    const commands = registry.commands.filter((command) => command.id.startsWith("tool."));
+
+    expect(commands).toHaveLength(TOOL_DEFINITIONS.length);
+    for (const command of commands) {
+      expect(command.surfaces).toEqual(expect.arrayContaining(["omnibar", "palette"]));
+    }
+  });
+
   it.each(["generators", "symbols"])("opens %s over the active project", (page) => {
     registry.commands.find((command) => command.id === `tool.${page}`)?.run(ctx);
 

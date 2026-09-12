@@ -46,6 +46,7 @@
     "externalBin": [
       "binaries/tectonic",
       "binaries/tectonic-biber",
+      "binaries/pandoc",
       "binaries/typst"
     ],
     "resources": [
