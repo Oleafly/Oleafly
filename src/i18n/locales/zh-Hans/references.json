@@ -1,0 +1,114 @@
+{
+  "citeOleafly": "在本文中引用 Oleafly",
+  "empty": {
+    "citations": {
+      "detail": "导入参考文献库或添加一条引用即可开始。",
+      "title": "暂无引用"
+    },
+    "symbols": {
+      "detail": "在撰写项目的过程中，标题、标签、命令和环境会显示在这里。",
+      "title": "暂无符号"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "筛选引用",
+    "ariaLabelResults": "筛选结果",
+    "ariaLabelSymbols": "筛选符号",
+    "clear": "清除筛选",
+    "noCitation": "没有匹配“{{query}}”的引用。",
+    "noResult": "没有匹配“{{query}}”的结果。",
+    "noSymbol": "没有匹配“{{query}}”的符号。",
+    "placeholderCitations": "筛选键、标题、作者…",
+    "placeholderResults": "筛选位置…",
+    "placeholderSymbols": "筛选标签和命令…"
+  },
+  "import": {
+    "added_other": "已将 {{count}} 条参考文献添加到 {{target}}。",
+    "addedWithDuplicates_other": "已将 {{count}} 条参考文献添加到 {{target}}，其中 {{duplicates}} 条已存在。",
+    "allDuplicates_other": "这 {{count}} 条参考文献已存在于 {{target}} 中。",
+    "defaultTarget": "参考文献库",
+    "description": "将文献管理器或参考文献文件中的参考文献添加到此项目。",
+    "duplicateNote": "DOI 已存在于参考文献库中的条目将被跳过。",
+    "empty": "该文件中未找到参考文献。",
+    "endnote": {
+      "button": "选择 XML、RIS 或 BibTeX 文件",
+      "description": "选择 EndNote XML、RIS 或 BibTeX 文件。Oleafly 会将参考文献添加到项目的参考文献库。",
+      "title": "EndNote、RIS 或 BibTeX"
+    },
+    "failed": "无法导入这些参考文献。",
+    "nothingNew": "没有新的参考文献可添加到 {{target}}。",
+    "problems_other": "导入过程中出现 {{count}} 个问题。{{details}}",
+    "readFailed": "无法读取该文件。",
+    "title": "导入参考文献库",
+    "unrecognized": "无法识别的文件类型：{{name}}",
+    "zotero": {
+      "button": "选择 Zotero RDF 文件",
+      "description": "在 Zotero 中，依次选择 文件 → 导出文献库 → Zotero RDF，然后选择导出的文件。",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "结果不完整。格式错误或无法读取的文件可能遗漏部分出现位置。",
+    "stale": "正在更新。来自先前版本的引用、符号和范围已隐藏。"
+  },
+  "panel": {
+    "ariaLabel": "参考文献（Shift-F12）",
+    "clearQuery": "清除参考文献查询",
+    "importAriaLabel": "导入参考文献",
+    "issues_other": "{{count}} 个参考文献或引用问题",
+    "tabWithCount": "{{label}}（{{count}}）",
+    "title": "参考文献",
+    "viewTabs": "参考文献面板视图"
+  },
+  "query": {
+    "expired": {
+      "detail": "执行此查询后，项目已发生更改。请重新运行“查找参考文献”以使用当前的源码范围。",
+      "title": "参考文献结果已过期"
+    },
+    "noLocations": {
+      "detail": "该符号在此版本中存在，但没有匹配的定义或出现位置。",
+      "title": "未找到位置"
+    },
+    "none": {
+      "detail": "将光标置于标签、引用、命令或环境上，然后按 Shift-F12。",
+      "title": "无参考文献查询"
+    }
+  },
+  "tabs": {
+    "citations": "引用",
+    "results": "参考文献",
+    "symbols": "符号"
+  },
+  "trees": {
+    "citations": "项目中的引用",
+    "noCitations": "未找到参考文献条目或引用使用。",
+    "noSymbols": "未找到项目定义的符号。",
+    "symbols": "项目中的符号"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "无法分析项目的最新版本。源码文件未被更改。",
+      "title": "项目分析失败"
+    },
+    "indexing": {
+      "detail": "当前项目版本就绪后，参考文献和引用将会显示。",
+      "title": "正在索引项目信息"
+    },
+    "noProject": {
+      "detail": "打开一个文档项目，即可查看引用、符号和跨文件引用。",
+      "title": "未打开项目"
+    },
+    "offline": {
+      "detail": "目前无法在此工作区中检查参考文献和引用。",
+      "title": "分析服务不可用"
+    },
+    "unsupported": {
+      "detail": "当前项目未使用受支持的文档引擎。",
+      "title": "项目智能分析不可用"
+    },
+    "waiting": {
+      "detail": "最新项目版本尚未完成索引。",
+      "title": "正在等待项目分析"
+    }
+  }
+}

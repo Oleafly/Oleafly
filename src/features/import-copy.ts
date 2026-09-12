@@ -1,2 +1,5 @@
-export const CONVERSION_NOTICE =
-  "We’ve converted your content to LaTeX. You may need to edit styling, particularly for tables, figures and citations.";
+import { i18n } from "@/i18n";
+
+export function conversionNotice(): string {
+  return i18n.t(($) => $.core.import.conversionNotice);
+}

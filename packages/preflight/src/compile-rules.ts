@@ -1,4 +1,5 @@
 import { annotate } from "./standards";
+import { message, type MessageRef } from "./messages";
 import type { Finding, PdfFacts } from "./types";
 
 export interface CompileContext {
@@ -9,8 +10,8 @@ export interface CompileContext {
 function finding(
   id: string,
   severity: Finding["severity"],
-  title: string,
-  detail: string,
+  title: MessageRef,
+  detail: MessageRef,
 ): Finding {
   return annotate({ id, lens: "compile", severity, title, detail, certainty: "verified" }, "compile-log");
 }
@@ -88,18 +89,25 @@ function taggingStatusFinding(report: TaggingStatusReport): Finding[] {
   const blocking = [...report.groups.unsupported, ...report.groups.incompatible];
   const unproven = [...report.groups.unknown, ...report.groups.unclassified];
   if (!classProblem && blocking.length === 0 && unproven.length === 0) return [];
-  const sentences = [
+  const parts: MessageRef[] = [
     classProblem && report.documentClass
-      ? `The ${report.documentClass.name} class is ${report.documentClass.status}.`
+      ? message("rules.output-tagging-status.partClass", {
+          name: report.documentClass.name,
+          status: report.documentClass.status,
+        })
       : null,
     blocking.length > 0
-      ? `Not compatible with tagging: ${blocking.slice(0, 8).join(", ")}.`
+      ? message("rules.output-tagging-status.partBlocking", { files: blocking.slice(0, 8).join(", ") })
       : null,
-    unproven.length > 0 ? `No recorded verdict for: ${unproven.slice(0, 8).join(", ")}.` : null,
+    unproven.length > 0
+      ? message("rules.output-tagging-status.partUnproven", { files: unproven.slice(0, 8).join(", ") })
+      : null,
     report.groups.partial.length > 0
-      ? `Tagging only in part: ${report.groups.partial.slice(0, 8).join(", ")}.`
+      ? message("rules.output-tagging-status.partPartial", {
+          files: report.groups.partial.slice(0, 8).join(", "),
+        })
       : null,
-  ].filter((sentence): sentence is string => sentence !== null);
+  ].filter((part): part is MessageRef => part !== null);
   const flagged = (classProblem ? 1 : 0) + blocking.length + unproven.length;
   return [
     annotate(
@@ -107,8 +115,9 @@ function taggingStatusFinding(report: TaggingStatusReport): Finding[] {
         id: "output-tagging-status",
         lens: "a11y",
         severity: "warning",
-        title: `The tagging status report flagged ${flagged} item${flagged === 1 ? "" : "s"}`,
-        detail: `LaTeX wrote its own tagging status report at the end of the build. ${sentences.join(" ")} Anything that cannot tag can leave whole sections out of the structure tree, so replace what you can.`,
+        title: message("rules.output-tagging-status.title", { count: flagged }),
+        detail: message("rules.output-tagging-status.detail"),
+        detailParts: [...parts, message("rules.output-tagging-status.partAdvice")],
         certainty: "verified",
       },
       "compile-log",
@@ -132,8 +141,8 @@ function taggingLogFindings(logLines: readonly string[]): Finding[] {
           id: "output-tagpdf-warning",
           lens: "a11y",
           severity: "warning",
-          title: `Tagging reported ${unique.length} problem${unique.length === 1 ? "" : "s"}`,
-          detail: `The tagging code wrote these warnings to the log: ${unique.slice(0, 5).join(" ")} Each one is a place where the structure tree does not match the content. Fix them at the source and compile again.`,
+          title: message("rules.output-tagpdf-warning.title", { count: unique.length }),
+          detail: message("rules.output-tagpdf-warning.detail", { warnings: unique.slice(0, 5).join(" ") }),
           certainty: "verified",
         },
         "compile-log",
@@ -166,8 +175,8 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
       finding(
         "compile-failed",
         "error",
-        "The latest compilation failed",
-        "Submission output must come from a successful build. Fix the first compiler error, compile again, and rerun Preflight.",
+        message("rules.compile-failed.title"),
+        message("rules.compile-failed.detail"),
       ),
     );
   }
@@ -179,8 +188,8 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
       finding(
         "compile-overfull-box",
         widest >= 10 ? "error" : "warning",
-        `${overfull.length} overfull line${overfull.length === 1 ? "" : "s"} in the output`,
-        `The compiler reports content extending beyond its text box, up to ${widest.toFixed(1)} pt. Inspect these locations for clipped text, equations, tables, or links.`,
+        message("rules.compile-overfull-box.title", { count: overfull.length }),
+        message("rules.compile-overfull-box.detail", { width: widest.toFixed(1) }),
       ),
     );
   }
@@ -194,8 +203,8 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
       finding(
         "compile-missing-glyph",
         "error",
-        `${missingGlyphs.length} missing glyph${missingGlyphs.length === 1 ? "" : "s"}`,
-        "The selected fonts cannot render every character. Missing glyphs can silently disappear from the PDF, including symbols in names, equations, and citations.",
+        message("rules.compile-missing-glyph.title", { count: missingGlyphs.length }),
+        message("rules.compile-missing-glyph.detail"),
       ),
     );
   }
@@ -212,8 +221,8 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
       finding(
         "compile-unresolved-references",
         "error",
-        "The compiled output has unresolved references",
-        "At least one citation or cross-reference remained unresolved after compilation. The submitted PDF may contain [?] or ??. Check the log and run the required bibliography and LaTeX passes.",
+        message("rules.compile-unresolved-references.title"),
+        message("rules.compile-unresolved-references.detail"),
       ),
     );
   }
@@ -223,8 +232,8 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
       finding(
         "compile-rerun-required",
         "warning",
-        "Another compilation pass is required",
-        "The latest log says labels, citations, or the table of contents are not settled. Recompile until the rerun warning disappears before exporting.",
+        message("rules.compile-rerun-required.title"),
+        message("rules.compile-rerun-required.detail"),
       ),
     );
   }
@@ -238,8 +247,8 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
       finding(
         "compile-duplicate-destination",
         "warning",
-        "Duplicate PDF destinations",
-        "Two anchors share the same destination, so links or bookmarks can jump to the wrong place. This commonly comes from duplicate labels or page numbering resets.",
+        message("rules.compile-duplicate-destination.title"),
+        message("rules.compile-duplicate-destination.detail"),
       ),
     );
   }
@@ -251,8 +260,8 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
         finding(
           "compile-mixed-page-sizes",
           "warning",
-          "Mixed page sizes in one PDF",
-          `The PDF contains ${sizes.length} page sizes (${sizes.join(", ")}). Mixed media boxes often indicate an incorrectly included page or figure and can fail publisher production checks.`,
+          message("rules.compile-mixed-page-sizes.title"),
+          message("rules.compile-mixed-page-sizes.detail", { count: sizes.length, sizes: sizes.join(", ") }),
         ),
       );
     }

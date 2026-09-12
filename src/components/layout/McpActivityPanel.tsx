@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Activity, CheckCircle2, CircleAlert, Info, Loader2, Radio, Trash2 } from "lucide-react";
 import {
   formatMcpArgs,
@@ -9,15 +10,12 @@ import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { AiToolsGrid } from "@/components/ai/AiToolsList";
+import { formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
 function timeLabel(ts: number): string {
   try {
-    return new Date(ts).toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    return formatTime(ts, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   } catch {
     return "";
   }
@@ -34,6 +32,7 @@ function StatusIcon({ status }: { status: McpLogEntry["status"] }) {
 }
 
 function LogRow({ entry }: { entry: McpLogEntry }) {
+  const { t } = useTranslation(["shell"]);
   const args = useMemo(() => formatMcpArgs(entry.args), [entry.args]);
   return (
     <li
@@ -50,8 +49,12 @@ function LogRow({ entry }: { entry: McpLogEntry }) {
           <div className="flex items-baseline gap-1.5">
             <span className="truncate font-mono text-xs font-medium text-foreground">{entry.name}</span>
             <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
-              {timeLabel(entry.ts)}
-              {entry.durationMs != null ? ` · ${entry.durationMs}ms` : ""}
+              {entry.durationMs != null
+                ? t(($) => $.shell.mcpActivity.timeWithDuration, {
+                    time: timeLabel(entry.ts),
+                    ms: entry.durationMs,
+                  })
+                : timeLabel(entry.ts)}
             </span>
           </div>
           {args && (
@@ -78,6 +81,7 @@ function LogRow({ entry }: { entry: McpLogEntry }) {
 
 // Only mounted while the MCP rail tab is open.
 export function McpActivityPanel() {
+  const { t } = useTranslation(["shell"]);
   const logs = useMcpActivityStore((s) => s.logs);
   const serverRunning = useMcpActivityStore((s) => s.serverRunning);
   const clearLogs = useMcpActivityStore((s) => s.clearLogs);
@@ -95,7 +99,7 @@ export function McpActivityPanel() {
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
         <Activity className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          MCP activity
+          {t(($) => $.shell.rail.mcp)}
         </span>
         <span
           className={cn(
@@ -106,7 +110,9 @@ export function McpActivityPanel() {
           )}
         >
           <Radio className={cn("size-2.5", serverRunning && "animate-pulse")} />
-          {serverRunning ? "Live" : "Off"}
+          {serverRunning
+            ? t(($) => $.shell.mcpActivity.live)
+            : t(($) => $.shell.mcpActivity.off)}
         </span>
         <div className="ml-auto flex items-center gap-0.5">
           <Tooltip
@@ -114,23 +120,25 @@ export function McpActivityPanel() {
             wide
             label={
               <div>
-                <p className="mb-1.5 font-medium text-foreground">Tools available over MCP</p>
+                <p className="mb-1.5 font-medium text-foreground">
+                  {t(($) => $.shell.mcpActivity.toolsTitle)}
+                </p>
                 <AiToolsGrid columns={1} />
               </div>
             }
           >
             <button
               type="button"
-              aria-label="Tools available over MCP"
+              aria-label={t(($) => $.shell.mcpActivity.toolsTitle)}
               className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               <Info className="size-3.5" />
             </button>
           </Tooltip>
-          <Tooltip label="Clear log">
+          <Tooltip label={t(($) => $.shell.mcpActivity.clearLog)}>
             <button
               type="button"
-              aria-label="Clear MCP log"
+              aria-label={t(($) => $.shell.mcpActivity.clearLogAriaLabel)}
               disabled={logs.length === 0}
               onClick={clearLogs}
               className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
@@ -146,14 +154,14 @@ export function McpActivityPanel() {
           <div className="px-2 py-8 text-center text-xs text-muted-foreground">
             {serverRunning ? (
               <>
-                <p>Waiting for external agents…</p>
+                <p>{t(($) => $.shell.mcpActivity.waiting)}</p>
                 <p className="mt-1.5 text-[11px]">
-                  Tools called over MCP (Claude, Cursor, Grok, …) show up here live.
+                  {t(($) => $.shell.mcpActivity.waitingHint)}
                 </p>
               </>
             ) : (
               <>
-                <p>MCP server is off.</p>
+                <p>{t(($) => $.shell.mcpActivity.serverOff)}</p>
                 <Button
                   type="button"
                   variant="secondary"
@@ -165,7 +173,7 @@ export function McpActivityPanel() {
                     setSettingsOpen(true);
                   }}
                 >
-                  Open MCP settings
+                  {t(($) => $.shell.mcpActivity.openSettings)}
                 </Button>
               </>
             )}

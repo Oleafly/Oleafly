@@ -1,5 +1,6 @@
 import { submissionProfile, type SubmissionProfileId } from "./profiles";
 import { annotate, standardsFor } from "./standards";
+import { message } from "./messages";
 import type { Finding, PdfExtractionStatus, PdfFacts, PositionedText, StandardRef } from "./types";
 
 // Rows within this many PDF units of each other count as the same visual line.
@@ -41,9 +42,8 @@ export function analyzeReadingOrder(pages: PositionedText[][]): Finding[] {
             id: "pdf-reading-order",
             lens: "both",
             severity: "error",
-            title: "Columns read across in the output",
-            detail:
-              "On this page the text of two columns lands on the same lines, so a parser reads them straight across into scrambled text and a screen reader announces them out of order. Use a single-column layout for content that must be parsed. See the reader view below.",
+            title: message("rules.pdf-reading-order.title"),
+            detail: message("rules.pdf-reading-order.detail"),
             page: pageIdx + 1,
           },
           "layout-heuristic",
@@ -64,9 +64,8 @@ export function detectGarbledText(text: string): Finding[] {
         id: "pdf-garbled",
         lens: "both",
         severity: "error",
-        title: "Garbled or unmapped text in the output",
-        detail:
-          "The extracted text contains characters that did not map to Unicode, so copy-paste and parsers see garbled output and a screen reader cannot read it. This usually means a missing glyph-to-Unicode map or a font that is not embedded as text.",
+        title: message("rules.pdf-garbled.title"),
+        detail: message("rules.pdf-garbled.detail"),
       },
       "pdf-object-model",
     ),
@@ -84,9 +83,8 @@ export function checkSelectability(pages: PositionedText[][]): Finding[] {
             id: "pdf-selectable",
             lens: "both",
             severity: "error",
-            title: "Page has no selectable text",
-            detail:
-              "This page contains little or no extractable text, so a parser and a screen reader see nothing. It is likely rendered as an image or uses fonts that are not embedded as text. Make sure the content is real, selectable text.",
+            title: message("rules.pdf-selectable.title"),
+            detail: message("rules.pdf-selectable.detail"),
             page: pageIdx + 1,
           },
           "pdf-object-model",
@@ -125,9 +123,8 @@ export function outputGeometryFindings(pages: PositionedText[][], facts?: PdfFac
             id: "output-clipped-content",
             lens: "compile",
             severity: "error",
-            title: "Text extends outside the page",
-            detail:
-              "Selectable text lies beyond this page's media box and may be clipped or missing in print and publisher processing. Inspect wide equations, tables, URLs, and positioned content.",
+            title: message("rules.output-clipped-content.title"),
+            detail: message("rules.output-clipped-content.detail"),
             page: pageIdx + 1,
             certainty: "verified",
           },
@@ -143,9 +140,8 @@ export function outputGeometryFindings(pages: PositionedText[][], facts?: PdfFac
           id: "output-small-text",
           lens: "a11y",
           severity: "warning",
-          title: "Very small text detected",
-          detail:
-            `${tinyRuns} text runs measure below approximately 7 pt. Small type is difficult to read in print and at normal zoom. Confirm that the venue permits it and increase nonessentially small labels or footnotes.`,
+          title: message("rules.output-small-text.title"),
+          detail: message("rules.output-small-text.detail", { count: tinyRuns }),
           certainty: "advisory",
         },
         "layout-heuristic",
@@ -163,9 +159,8 @@ function navigationFindings(facts: PdfFacts | undefined, profileId: SubmissionPr
         id: "pdf-no-bookmarks",
         lens: "a11y",
         severity: "warning",
-        title: "Long PDF has no bookmarks",
-        detail:
-          "Long documents should expose a hierarchical bookmark outline so keyboard and assistive-technology users can navigate sections without reading every page in sequence. This is a WCAG best practice rather than a PDF/UA requirement. Load hyperref, or bookmark, to emit one.",
+        title: message("rules.pdf-no-bookmarks.title"),
+        detail: message("rules.pdf-no-bookmarks.detail"),
         certainty: "verified",
       },
       "pdf-object-model",
@@ -185,15 +180,18 @@ export function catalogFindings(
           id: "pdf-metadata-extraction-failed",
           lens: "a11y",
           severity: "info",
-          title: "PDF metadata could not be inspected",
-          detail:
-            "Preflight could not read the PDF metadata, so it cannot verify the document title or language. This is an unknown result, not evidence that those fields are missing. Recompile and run the check again.",
+          title: message("rules.pdf-metadata-extraction-failed.title"),
+          detail: message("rules.pdf-metadata-extraction-failed.detail"),
         },
         "pdf-object-model",
       ),
     );
   } else if (!meta.lang || !meta.title) {
-    const missing = [!meta.lang && "language", !meta.title && "title"].filter(Boolean).join(" and ");
+    const titleKey = !meta.lang && !meta.title
+      ? "rules.pdf-lang-title.titleBoth"
+      : meta.lang
+        ? "rules.pdf-lang-title.titleTitle"
+        : "rules.pdf-lang-title.titleLang";
     const standards: StandardRef[] = [
       ...(!meta.title ? standardsFor("no-title") : []),
       ...(!meta.lang ? standardsFor("no-lang") : []),
@@ -204,9 +202,8 @@ export function catalogFindings(
           id: "pdf-lang-title",
           lens: "a11y",
           severity: "warning",
-          title: `PDF is missing a ${missing}`,
-          detail:
-            "Assistive tech and browsers use the PDF's catalog language and title to announce the document correctly. Set them with hyperref, for example \\hypersetup{pdftitle={Your Name, CV}, pdflang=en-US}.",
+          title: message(titleKey),
+          detail: message("rules.pdf-lang-title.detail"),
           standards,
         },
         "pdf-object-model",
@@ -220,9 +217,8 @@ export function catalogFindings(
           id: "pdf-mark-info-extraction-failed",
           lens: "a11y",
           severity: "info",
-          title: "PDF tagging status could not be inspected",
-          detail:
-            "Preflight could not read the PDF's MarkInfo dictionary. That is an unknown result, not evidence either way, so it will not call the output tagged or untagged on that check alone.",
+          title: message("rules.pdf-mark-info-extraction-failed.title"),
+          detail: message("rules.pdf-mark-info-extraction-failed.detail"),
         },
         "pdf-object-model",
       ),

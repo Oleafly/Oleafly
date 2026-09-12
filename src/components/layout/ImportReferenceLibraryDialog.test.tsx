@@ -24,6 +24,7 @@ vi.mock("@/lib/toast", () => ({
   },
 }));
 
+import enReferences from "@/i18n/locales/en/references.json" with { type: "json" };
 import { ImportReferenceLibraryDialog } from "./ImportReferenceLibraryDialog";
 
 beforeEach(() => {
@@ -52,6 +53,20 @@ async function chooseZoteroFile(text = "<rdf:RDF />") {
   fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
   await waitFor(() => {
     expect(mocks.addCitations).toHaveBeenCalled();
+  });
+}
+
+async function chooseEndnoteFile(name = "library.ris") {
+  const input = document.querySelector<HTMLInputElement>(
+    'input[accept=".xml,.ris,.bib"]',
+  );
+  const file = {
+    name,
+    text: vi.fn().mockResolvedValue("TY  - JOUR"),
+  } as unknown as File;
+  fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
+  await waitFor(() => {
+    expect(mocks.parseCitationFile).toHaveBeenCalled();
   });
 }
 
@@ -206,5 +221,110 @@ describe("ImportReferenceLibraryDialog", () => {
     await waitFor(() => {
       expect(onImported).toHaveBeenCalledOnce();
     });
+  });
+
+  it("rejects a file format it cannot parse", async () => {
+    mocks.parseCitationFile.mockReturnValue(null);
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    await chooseEndnoteFile("notes.docx");
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        enReferences.import.unrecognized.replace("{{name}}", "notes.docx"),
+      ),
+    );
+    expect(mocks.addCitations).not.toHaveBeenCalled();
+  });
+
+  it("rejects a file that holds no reference", async () => {
+    mocks.parseCitationFile.mockReturnValue([]);
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    await chooseEndnoteFile();
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enReferences.import.empty),
+    );
+  });
+
+  it("reports a single problem on its own", async () => {
+    mocks.addCitations.mockResolvedValue({
+      imported: 0,
+      duplicates: 0,
+      errors: ["Could not write references.bib"],
+      bibPath: "references.bib",
+    });
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    await chooseZoteroFile();
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "Could not write references.bib.",
+      ),
+    );
+  });
+
+  it("falls back to the generic failure for an empty problem list", async () => {
+    mocks.addCitations.mockResolvedValue({
+      imported: 0,
+      duplicates: 0,
+      errors: ["   "],
+      bibPath: "references.bib",
+    });
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    await chooseZoteroFile();
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(enReferences.import.failed),
+    );
+  });
+
+  it("names the default bibliography when the backend reports none", async () => {
+    mocks.addCitations.mockResolvedValue({
+      imported: 0,
+      duplicates: 0,
+      errors: [],
+      bibPath: "",
+    });
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    await chooseZoteroFile();
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        enReferences.import.nothingNew.replace(
+          "{{target}}",
+          enReferences.import.defaultTarget,
+        ),
+      ),
+    );
+  });
+
+  it("reports a file it could not read", async () => {
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    const input = document.querySelector<HTMLInputElement>('input[accept=".rdf"]');
+    const file = {
+      name: "zotero-library.rdf",
+      text: vi.fn().mockRejectedValue(new Error("unreadable")),
+    } as unknown as File;
+    fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "import references",
+        expect.anything(),
+        enReferences.import.readFailed,
+      ),
+    );
+  });
+
+  it("ignores a change event that carries no file", () => {
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    const input = document.querySelector<HTMLInputElement>('input[accept=".rdf"]');
+    fireEvent.change(input as HTMLInputElement, { target: { files: [] } });
+    expect(mocks.parseCitationFile).not.toHaveBeenCalled();
+  });
+
+  it("opens the file picker from the visible button", async () => {
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+    const input = document.querySelector<HTMLInputElement>('input[accept=".rdf"]');
+    if (!input) throw new Error("no zotero input");
+    const click = vi.spyOn(input, "click").mockImplementation(() => {});
+    fireEvent.click(
+      screen.getByRole("button", { name: enReferences.import.zotero.button }),
+    );
+    expect(click).toHaveBeenCalled();
   });
 });

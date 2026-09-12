@@ -1,5 +1,7 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
 import { runSourceRules } from "@oleafly/preflight";
+import { preflightDetail, preflightMessage } from "@/components/preflight/message";
+import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 
 // Only findings that map to a source range are shown here; whole-document and
@@ -15,7 +17,10 @@ export function createPreflightLinter() {
           from: f.from,
           to: f.to,
           severity: f.severity,
-          message: `${f.title}. ${f.detail}`,
+          message: i18n.t(($) => $.intelligence.diagnostics.finding, {
+            title: preflightMessage(f.title),
+            detail: preflightDetail(f),
+          }),
           source: "preflight",
         });
       }

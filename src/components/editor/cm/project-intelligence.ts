@@ -26,7 +26,7 @@ import {
   atSuggestionCompletion,
   warmAtSuggestions,
 } from "./at-suggestions";
-import { clearProjectHoverIntel } from "./hover-intel";
+import { clearProjectHoverIntel, kindNoun } from "./hover-intel";
 import {
   fileTargetAccepts,
   keyvalKeysForCommand,
@@ -49,6 +49,7 @@ import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
+import { projectDiagnosticText } from "@/lib/project-intelligence/reason";
 import type {
   CitationCompletion,
   ProjectDefinition,
@@ -56,6 +57,7 @@ import type {
   ProjectIntelligenceState,
   ProjectUse,
 } from "@/lib/project-intelligence/types";
+import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 
@@ -234,7 +236,9 @@ function definitionOptions(
           : null;
       const auxDetail = auxNumber ? ` · №${auxNumber.number}` : "";
       const duplicateDetail = `${auxDetail}${
-        duplicateCount > 1 ? ` · duplicate (${duplicateCount})` : ""
+        duplicateCount > 1
+          ? ` · ${i18n.t(($) => $.intelligence.completion.duplicateCount, { count: duplicateCount })}`
+          : ""
       }`;
       const appendArguments =
         definition.kind === "macro" ||
@@ -264,7 +268,7 @@ function definitionOptions(
             : definition.kind === "macro"
               ? "function"
               : "variable",
-        detail: `${definition.kind}${duplicateDetail} · ${basename(definition.location.file)}:${definition.location.range.startLine}`,
+        detail: `${kindNoun(definition.kind)}${duplicateDetail} · ${basename(definition.location.file)}:${definition.location.range.startLine}`,
         info: definition.detail,
         apply: guardedApply(
           guard,
@@ -289,7 +293,10 @@ function citationOptions(
   ).map(
     (candidate: CitationCompletion) => {
       const duplicate = candidate.duplicate
-        ? ` · duplicate ${candidate.duplicateIndex + 1}/${candidate.duplicateCount}`
+        ? ` · ${i18n.t(($) => $.intelligence.completion.duplicateIndex, {
+            index: candidate.duplicateIndex + 1,
+            total: candidate.duplicateCount,
+          })}`
         : "";
       return {
         label: candidate.label,
@@ -420,7 +427,7 @@ function latexCompletion(
       .map((name) => ({
         label: name,
         type: "type",
-        detail: "standard LaTeX environment",
+        detail: i18n.t(($) => $.intelligence.completion.standardEnvironment),
         boost:
           environment[1] === "end" &&
           before.includes(`\\begin{${name}}`)
@@ -473,7 +480,9 @@ function latexCompletion(
       .map((option) => ({
         label: option,
         type: "property",
-        detail: `${packageOption.name} option`,
+        detail: i18n.t(($) => $.intelligence.completion.packageOption, {
+          name: packageOption.name,
+        }),
         apply: guardedApply(guard, option),
       } satisfies Completion));
     if (filtered.length) {
@@ -503,7 +512,7 @@ function latexCompletion(
         .map((name) => ({
           label: name,
           type: "namespace",
-          detail: names?.details[name] ?? "LaTeX package",
+          detail: names?.details[name] ?? i18n.t(($) => $.intelligence.completion.latexPackage),
           ...(names
             ? { info: corpusNameInfo(name, names.details[name]) }
             : {}),
@@ -529,7 +538,8 @@ function latexCompletion(
         .map((name) => ({
           label: name,
           type: "type",
-          detail: names?.details[name] ?? "LaTeX document class",
+          detail:
+            names?.details[name] ?? i18n.t(($) => $.intelligence.completion.latexDocumentClass),
           ...(names
             ? { info: corpusNameInfo(name, names.details[name]) }
             : {}),
@@ -633,7 +643,9 @@ function latexCompletion(
         keys.slice(0, FILTERED_COMPLETION_LIMIT).map((key) => ({
           label: key,
           type: "property",
-          detail: `\\${keyval.command} key`,
+          detail: i18n.t(($) => $.intelligence.completion.keyvalKey, {
+            command: keyval.command,
+          }),
           apply: guardedApply(guard, key),
         } satisfies Completion)),
       );
@@ -685,7 +697,7 @@ function latexCompletion(
           return {
             label: macro.name,
             type: "function",
-            detail: macro.detail ?? "package command",
+            detail: macro.detail ?? i18n.t(($) => $.intelligence.completion.packageCommand),
             ...(info ? { info } : {}),
             apply: guardedApply(
               guard,
@@ -855,7 +867,7 @@ function relatedActions(
   related: ProjectIntelligenceSnapshot["diagnostics"][number]["related"],
 ): Action[] {
   return related.slice(0, 3).map((item) => ({
-    name: item.message,
+    name: projectDiagnosticText(item.message),
     apply: () => {
       void navigateToProjectRange({
         path: item.location.file,
@@ -1105,10 +1117,10 @@ export function currentFileReferenceDiagnostics(
     if (candidates === 1) continue;
     const noun =
       use.syntax === "typst-at"
-        ? "Typst label or citation"
+        ? i18n.t(($) => $.intelligence.diagnostics.typstLabelOrCitation)
         : use.kind === "citation"
-          ? "Citation"
-          : "Reference";
+          ? i18n.t(($) => $.intelligence.diagnostics.citation)
+          : i18n.t(($) => $.intelligence.diagnostics.reference);
     diagnostics.push({
       from: use.location.range.from,
       to: Math.max(
@@ -1118,8 +1130,15 @@ export function currentFileReferenceDiagnostics(
       severity: "warning",
       message:
         candidates === 0
-          ? `Unresolved ${noun.toLocaleLowerCase("en-US")}: ${use.name}`
-          : `${noun} "${use.name}" has ${candidates} possible definitions.`,
+          ? i18n.t(($) => $.intelligence.diagnostics.unresolved, {
+              noun: noun.toLocaleLowerCase("en-US"),
+              name: use.name,
+            })
+          : i18n.t(($) => $.intelligence.diagnostics.ambiguous, {
+              noun,
+              name: use.name,
+              count: candidates,
+            }),
       source: "live references · current file",
     });
   }
@@ -1160,7 +1179,7 @@ export function projectIntelligenceExtensions(): Extension[] {
             severity: diagnostic.severity === "information"
               ? "info"
               : diagnostic.severity,
-            message: diagnostic.message,
+            message: projectDiagnosticText(diagnostic.message),
             source: partial
               ? "project intelligence · partial"
               : "project intelligence",

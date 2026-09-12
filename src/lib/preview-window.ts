@@ -1,4 +1,5 @@
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { i18n } from "@/i18n";
 import { isTauri } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import {
@@ -147,7 +148,7 @@ export async function openPreviewWindow(
   }
   const preview = new WebviewWindow(PREVIEW_WINDOW_LABEL, {
     url: `index.html?${query.toString()}`,
-    title: `Preview: ${title || "Oleafly"}`,
+    title: i18n.t(($) => $.shell.windows.preview, { title: title || "Oleafly" }),
     width: 720,
     height: 960,
     resizable: true,

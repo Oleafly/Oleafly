@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => {
   const listeners = new Map<string, (event: { payload: unknown }) => void>();
@@ -86,14 +87,14 @@ describe("BrowserChrome", () => {
 
   it("renders the tab strip and the address controls with their labels", async () => {
     await renderChrome();
-    expect(screen.getByRole("tablist", { name: "Open tabs" })).toBeInTheDocument();
+    expect(screen.getByRole("tablist", { name: enShell.browser.openTabs })).toBeInTheDocument();
     expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("Example");
-    expect(screen.getByRole("button", { name: "New tab" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Forward" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open in your browser" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Search or enter a URL" })).toHaveValue(
+    expect(screen.getByRole("button", { name: enShell.browser.newTab })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enShell.browser.back })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enShell.browser.forward })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enShell.browser.reload })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enShell.browser.openExternal })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: enShell.browser.address })).toHaveValue(
       "https://www.example.com/",
     );
     expect(screen.getByTestId("browser-chrome")).toHaveStyle({ height: "88px" });
@@ -101,7 +102,7 @@ describe("BrowserChrome", () => {
 
   it("navigates the active tab on Enter, turning text into a search", async () => {
     await renderChrome();
-    const field = screen.getByRole("textbox", { name: "Search or enter a URL" });
+    const field = screen.getByRole("textbox", { name: enShell.browser.address });
     fireEvent.focus(field);
     fireEvent.change(field, { target: { value: "latex tables" } });
     fireEvent.submit(field.closest("form") as HTMLFormElement);
@@ -115,7 +116,7 @@ describe("BrowserChrome", () => {
 
   it("adds https to a bare domain", async () => {
     await renderChrome();
-    const field = screen.getByRole("textbox", { name: "Search or enter a URL" });
+    const field = screen.getByRole("textbox", { name: enShell.browser.address });
     fireEvent.focus(field);
     fireEvent.change(field, { target: { value: "arxiv.org/abs/1" } });
     fireEvent.submit(field.closest("form") as HTMLFormElement);
@@ -129,9 +130,9 @@ describe("BrowserChrome", () => {
 
   it("drives back, forward, and reload on the active tab", async () => {
     await renderChrome();
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    fireEvent.click(screen.getByRole("button", { name: "Forward" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.back }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.forward }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.reload }));
     await waitFor(() => expect(mocks.browserReload).toHaveBeenCalledWith("oleafly-browser-pane-1"));
     expect(mocks.browserBack).toHaveBeenCalledWith("oleafly-browser-pane-1");
     expect(mocks.browserForward).toHaveBeenCalledWith("oleafly-browser-pane-1");
@@ -139,9 +140,9 @@ describe("BrowserChrome", () => {
 
   it("opens the home page in a new tab and closes tabs", async () => {
     await renderChrome();
-    fireEvent.click(screen.getByRole("button", { name: "New tab" }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.newTab }));
     await waitFor(() => expect(mocks.browserTabOpen).toHaveBeenCalledWith("https://home.test/"));
-    fireEvent.click(screen.getByRole("button", { name: "Close tab" }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.closeTab }));
     await waitFor(() =>
       expect(mocks.browserTabClose).toHaveBeenCalledWith("oleafly-browser-pane-1"),
     );
@@ -165,7 +166,7 @@ describe("BrowserChrome", () => {
       active: true,
     });
     expect(screen.queryByTestId("browser-loading")).not.toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Search or enter a URL" })).toHaveValue(
+    expect(screen.getByRole("textbox", { name: enShell.browser.address })).toHaveValue(
       "https://second.test/landed",
     );
 
@@ -192,12 +193,12 @@ describe("BrowserChrome", () => {
 
   it("hides the page before the overflow menu opens and shows it after it closes", async () => {
     await renderChrome();
-    fireEvent.pointerDown(screen.getByRole("button", { name: "More options" }));
-    fireEvent.click(screen.getByRole("button", { name: "More options" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: enShell.browser.moreOptions }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.moreOptions }));
     await waitFor(() => expect(mocks.browserContentVisible).toHaveBeenCalledWith(false));
     await screen.findByRole("menu");
-    expect(screen.getByRole("menuitem", { name: "Copy URL" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Set as home page" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: enShell.browser.copyUrl })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: enShell.browser.setHomePage })).toBeInTheDocument();
 
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     await waitFor(() => expect(mocks.browserContentVisible).toHaveBeenLastCalledWith(true));
@@ -205,15 +206,15 @@ describe("BrowserChrome", () => {
 
   it("opens the page in the system browser", async () => {
     await renderChrome();
-    fireEvent.click(screen.getByRole("button", { name: "Open in your browser" }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.openExternal }));
     expect(mocks.openExternal).toHaveBeenCalledWith("https://www.example.com/");
   });
 
   it("sets the home page and tells the main window", async () => {
     await renderChrome();
-    fireEvent.pointerDown(screen.getByRole("button", { name: "More options" }));
-    fireEvent.click(screen.getByRole("button", { name: "More options" }));
-    const item = await screen.findByRole("menuitem", { name: "Set as home page" });
+    fireEvent.pointerDown(screen.getByRole("button", { name: enShell.browser.moreOptions }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.moreOptions }));
+    const item = await screen.findByRole("menuitem", { name: enShell.browser.setHomePage });
     fireEvent.click(item);
     await waitFor(() =>
       expect(useSettingsStore.getState().browserHomePage).toBe("https://www.example.com/"),
@@ -225,9 +226,9 @@ describe("BrowserChrome", () => {
 
   it("copies the address of the active tab from the overflow menu", async () => {
     await renderChrome();
-    fireEvent.pointerDown(screen.getByRole("button", { name: "More options" }));
-    fireEvent.click(screen.getByRole("button", { name: "More options" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Copy URL" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: enShell.browser.moreOptions }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.moreOptions }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: enShell.browser.copyUrl }));
     await waitFor(() =>
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith("https://www.example.com/"),
     );
@@ -235,15 +236,15 @@ describe("BrowserChrome", () => {
 
   it("opens a tab from the overflow menu", async () => {
     await renderChrome();
-    fireEvent.pointerDown(screen.getByRole("button", { name: "More options" }));
-    fireEvent.click(screen.getByRole("button", { name: "More options" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "New tab" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: enShell.browser.moreOptions }));
+    fireEvent.click(screen.getByRole("button", { name: enShell.browser.moreOptions }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: enShell.browser.newTab }));
     await waitFor(() => expect(mocks.browserTabOpen).toHaveBeenCalledWith("https://home.test/"));
   });
 
   it("focuses the address field on the location shortcut", async () => {
     await renderChrome();
-    const field = screen.getByRole("textbox", { name: "Search or enter a URL" });
+    const field = screen.getByRole("textbox", { name: enShell.browser.address });
     expect(field).not.toHaveFocus();
     fireEvent.keyDown(window, { key: "l", metaKey: true });
     expect(field).toHaveFocus();
@@ -284,7 +285,7 @@ describe("BrowserChrome", () => {
 
   it("restores the committed address when the field is escaped or blurred", async () => {
     await renderChrome();
-    const field = screen.getByRole("textbox", { name: "Search or enter a URL" });
+    const field = screen.getByRole("textbox", { name: enShell.browser.address });
     fireEvent.focus(field);
     fireEvent.change(field, { target: { value: "half typed" } });
     expect(field).toHaveValue("half typed");
@@ -326,7 +327,7 @@ describe("BrowserChrome", () => {
 
   it("ignores key presses that bubble out of a control inside the tab", async () => {
     await renderChrome();
-    fireEvent.keyDown(screen.getByRole("button", { name: "Close tab" }), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("button", { name: enShell.browser.closeTab }), { key: "Enter" });
     expect(mocks.browserTabActivate).not.toHaveBeenCalled();
   });
 
@@ -338,7 +339,7 @@ describe("BrowserChrome", () => {
     });
     render(<BrowserChrome />);
     await waitFor(() => expect(mocks.browserState).toHaveBeenCalled());
-    const field = await screen.findByRole("textbox", { name: "Search or enter a URL" });
+    const field = await screen.findByRole("textbox", { name: enShell.browser.address });
     fireEvent.focus(field);
     fireEvent.change(field, { target: { value: "example.com" } });
     fireEvent.submit(field.closest("form") as HTMLFormElement);

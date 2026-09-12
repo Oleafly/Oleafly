@@ -12,12 +12,14 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import type { CitationCompletion } from "@/lib/project-intelligence/types";
+import { i18n } from "@/i18n";
 import { toast } from "@/lib/toast";
 import { useCitationStore } from "@/store/citation";
 import { useFilesStore } from "@/store/files";
@@ -27,6 +29,7 @@ import {
   isWysiwygActive,
   subscribeWysiwygProjectIntelligence,
 } from "@/components/editor/wysiwyg/controller";
+import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reason";
 
 function citationSource(key: string, format: string): string {
   return format === "markdown" ? `[@${key}]` : `\\cite{${key}}`;
@@ -39,6 +42,7 @@ function CitationRow({
   completion: CitationCompletion;
   onInsert: () => void;
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   return (
     <PopoverItem onClick={onInsert}>
       <span
@@ -50,13 +54,18 @@ function CitationRow({
         </span>
         {completion.duplicate && (
           <span className="text-[9px] font-medium text-amber-700 dark:text-amber-300">
-            duplicate {completion.duplicateIndex + 1}/
-            {completion.duplicateCount}
+            {t(($) => $.editor.citations.duplicate, {
+              index: completion.duplicateIndex + 1,
+              total: completion.duplicateCount,
+            })}
           </span>
         )}
         <span className="col-span-2 truncate text-[10px] text-muted-foreground">
-          {completion.detail} · {completion.location.file}:
-          {completion.location.range.startLine}
+          {t(($) => $.editor.citations.entryLocation, {
+            detail: completion.detail,
+            file: completion.location.file,
+            line: completion.location.range.startLine,
+          })}
         </span>
       </span>
     </PopoverItem>
@@ -68,6 +77,7 @@ export function ProjectCitationPicker({
 }: {
   variant: "bar" | "menu";
 }) {
+  const { t } = useTranslation(["common", "editor"]);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const activePath = useFilesStore((state) => state.activePath);
@@ -116,7 +126,7 @@ export function ProjectCitationPicker({
       isWysiwygActive() &&
       !getWysiwygProjectIntelligenceCurrent()
     ) {
-      toast.info("Project citations are updating.");
+      toast.info(i18n.t(($) => $.editor.citations.updating));
       return;
     }
     const files = useFilesStore.getState();
@@ -129,7 +139,7 @@ export function ProjectCitationPicker({
       (candidate) => candidate.id === completion.id,
     );
     if (!accepted || accepted.snapshot !== current?.snapshot || !entry) {
-      toast.info("Project citations changed. Reopen the picker to refresh.");
+      toast.info(i18n.t(($) => $.editor.citations.changed));
       return;
     }
     insertAtCursor(citationSource(entry.key, formattingProfile));
@@ -149,7 +159,7 @@ export function ProjectCitationPicker({
 
   return (
     <Popover
-      ariaLabel="Cite from project"
+      ariaLabel={t(($) => $.editor.citations.trigger)}
       closeOnClick={false}
       className="w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden p-0"
       triggerClassName={
@@ -163,7 +173,7 @@ export function ProjectCitationPicker({
         ) : (
           <>
             <AtSign className="size-4" />
-            <span className="flex-1 text-left">Cite from project</span>
+            <span className="flex-1 text-left">{t(($) => $.editor.citations.trigger)}</span>
           </>
         )
       }
@@ -173,8 +183,8 @@ export function ProjectCitationPicker({
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Key, author, or title…"
-          aria-label="Filter project citations"
+          placeholder={t(($) => $.editor.citations.filterPlaceholder)}
+          aria-label={t(($) => $.editor.citations.filterLabel)}
           className="h-7 border-0 bg-transparent px-0 text-xs shadow-none focus-visible:ring-0"
         />
       </div>
@@ -185,8 +195,7 @@ export function ProjectCitationPicker({
           role="status"
           className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] text-amber-800 dark:text-amber-200"
         >
-          Partial catalog. Malformed or unreadable bibliography files may be
-          omitted.
+          {t(($) => $.editor.citations.partialCatalog)}
         </div>
       ) : null}
 
@@ -197,7 +206,7 @@ export function ProjectCitationPicker({
             className="flex items-center gap-2 px-2 py-4 text-xs text-muted-foreground"
           >
             <Loader2 className="size-3.5 animate-spin" />
-            Updating project citations…
+            {t(($) => $.editor.citations.updatingList)}
           </div>
         )}
         {status === "error" && (
@@ -207,17 +216,16 @@ export function ProjectCitationPicker({
           >
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              {intelligenceState.failure?.message ??
-                intelligenceState.reason ??
-                "Citation analysis is unavailable."}
+              {projectIntelligenceFailureText(intelligenceState) ??
+                t(($) => $.editor.citations.unavailable)}
             </span>
           </div>
         )}
         {status === "ready" && completions.length === 0 && (
           <div className="px-2 py-4 text-center text-xs text-muted-foreground">
             {deferredQuery
-              ? "No matching project citations."
-              : "No bibliography entries in this project yet."}
+              ? t(($) => $.editor.citations.noMatches)
+              : t(($) => $.editor.citations.noEntries)}
           </div>
         )}
         {status === "ready" &&
@@ -239,7 +247,7 @@ export function ProjectCitationPicker({
           ) : (
             <BookOpenText className="size-3.5 text-muted-foreground" />
           )}
-          <span>Find and add a new citation…</span>
+          <span>{t(($) => $.editor.citations.addNew)}</span>
         </PopoverItem>
       </div>
     </Popover>

@@ -130,6 +130,8 @@ jobs:
       # backlog is reported as (non-blocking) warnings. See biome.json.
       - name: Lint
         run: pnpm lint
+      - name: i18n types and catalogs
+        run: pnpm i18n:types:check && pnpm i18n:validate
 
       # `pnpm build` runs `tsc -b` (typecheck) then `vite build` (bundle). The
       # frontend build needs no Tectonic sidecar.

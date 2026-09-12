@@ -1,10 +1,12 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export function OleaflyAssistantMascot({ className }: { className?: string }) {
+  const { t } = useTranslation(["shell"]);
   return (
     <span
       role="img"
-      aria-label="Oleafly AI assistant mascot"
+      aria-label={t(($) => $.shell.branding.assistantMascot)}
       className={cn(
         "oleafly-assistant-mascot relative block size-28 shrink-0 select-none",
         className,

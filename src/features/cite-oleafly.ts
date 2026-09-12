@@ -2,6 +2,7 @@ import { bibliographyTargetForProject } from "@/features/citation";
 import { appVersion } from "@/lib/tauri";
 import { bibtexHasOleaflyEntry, OLEAFLY_CITATION_KEY, oleaflyBibtex } from "@/lib/cite-oleafly";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
 
@@ -55,8 +56,8 @@ export async function runCiteOleaflyAction(options: { path?: string } = {}): Pro
     switch (outcome.kind) {
       case "added": {
         const markup = citationMarkup();
-        toast.success(`Added the Oleafly entry to ${outcome.path}. Cite it with ${markup}.`, {
-          label: "Undo",
+        toast.success(i18n.t(($) => $.core.citeOleafly.added, { path: outcome.path, markup }), {
+          label: i18n.t(($) => $.core.citeOleafly.undo),
           onClick: () => {
             void outcome.undo().catch((error) => notifyError("undo Oleafly citation", error));
           },
@@ -64,7 +65,12 @@ export async function runCiteOleaflyAction(options: { path?: string } = {}): Pro
         return;
       }
       case "present":
-        toast.info(`${outcome.path} already has the Oleafly entry. Cite it with ${citationMarkup()}.`);
+        toast.info(
+          i18n.t(($) => $.core.citeOleafly.present, {
+            path: outcome.path,
+            markup: citationMarkup(),
+          }),
+        );
         return;
       case "no-bibliography":
       case "no-project":
@@ -72,6 +78,6 @@ export async function runCiteOleaflyAction(options: { path?: string } = {}): Pro
         return;
     }
   } catch (error) {
-    notifyError("cite Oleafly", error, "Could not add the Oleafly citation. Copy it from Settings, Help & About instead.");
+    notifyError("cite Oleafly", error, i18n.t(($) => $.core.citeOleafly.failed));
   }
 }

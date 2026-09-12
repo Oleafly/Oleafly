@@ -18,6 +18,7 @@ import {
   type OutlineNode,
   type ProjectDefinition,
   type ProjectDiagnostic,
+  type ProjectDiagnosticMessage,
   type ProjectEdge,
   type ProjectFileState,
   type ProjectHierarchy,
@@ -84,7 +85,10 @@ function relatedDefinitions(
   return definitions
     .filter((definition) => definition.id !== currentId)
     .map((definition) => ({
-      message: `${definition.kind} "${definition.name}" is defined here.`,
+      message: {
+        key: "definedHere" as const,
+        params: { kind: definition.kind, name: definition.name },
+      },
       location: definition.location,
     }));
 }
@@ -108,8 +112,18 @@ function diagnosticForDefinitionDuplicate(
       ? "duplicate-citation-key"
       : "duplicate-definition",
     message: citation
-      ? `Citation key "${definition.name}" is defined ${candidates.length} times.`
-      : `${definition.kind} target "${definition.name}" is defined ${candidates.length} times.`,
+      ? {
+          key: "citationKeyDuplicated" as const,
+          params: { name: definition.name, count: candidates.length },
+        }
+      : {
+          key: "duplicateTargetDefined" as const,
+          params: {
+            kind: definition.kind,
+            name: definition.name,
+            count: candidates.length,
+          },
+        },
     location: definition.location,
     related: relatedDefinitions(candidates, definition.id),
   };
@@ -140,8 +154,18 @@ function diagnosticForUse(
         ? "unresolved-citation"
         : "unresolved-reference",
     message: duplicate
-      ? `${citation ? "Citation" : "Reference"} "${use.name}" has ${definitions.length} possible definitions.`
-      : `${citation ? "Citation" : "Reference"} "${use.name}" could not be resolved.`,
+      ? {
+          key: citation
+            ? ("citationHasManyDefinitions" as const)
+            : ("referenceHasManyDefinitions" as const),
+          params: { name: use.name, count: definitions.length },
+        }
+      : {
+          key: citation
+            ? ("citationUnresolved" as const)
+            : ("referenceUnresolved" as const),
+          params: { name: use.name },
+        },
     location: use.location,
     related: relatedDefinitions(definitions),
   };
@@ -161,14 +185,32 @@ function diagnosticForEdge(edge: ProjectEdge): ProjectDiagnostic {
     severity: "error",
     code: "unresolved-target",
     message: duplicate
-      ? `${edge.kind} target "${edge.rawTarget}" matches ${edge.candidateFiles.length} project files.`
+      ? {
+          key: "targetMatchesManyFiles" as const,
+          params: {
+            kind: edge.kind,
+            target: edge.rawTarget,
+            count: edge.candidateFiles.length,
+          },
+        }
       : edge.kind === "bibliography"
-        ? `Bibliography file "${bibliographyDisplayName(edge.rawTarget, bibliographyEngineFor(edge))}" was not found in the project.`
-        : `${edge.kind} target "${edge.rawTarget}" could not be resolved.`,
+        ? {
+            key: "bibliographyFileMissing" as const,
+            params: {
+              file: bibliographyDisplayName(
+                edge.rawTarget,
+                bibliographyEngineFor(edge),
+              ),
+            },
+          }
+        : {
+            key: "targetUnresolved" as const,
+            params: { kind: edge.kind, target: edge.rawTarget },
+          },
     location: edge.location,
     related: duplicate
       ? edge.candidateFiles.map((file) => ({
-          message: `Possible target: ${file}`,
+          message: { key: "possibleTarget" as const, params: { file } },
           location: {
             file,
             range: {
@@ -688,7 +730,10 @@ export function assembleProjectIntelligenceResult(
     status,
     ...(status === "partial"
       ? {
-          reason: `${partialFiles.length} file${partialFiles.length === 1 ? "" : "s"} produced recoverable partial analysis.`,
+          reason: {
+            key: "partialFiles" as const,
+            params: { count: partialFiles.length },
+          },
         }
       : {}),
     fileStates,
@@ -717,7 +762,7 @@ export function assembleProjectIntelligence(
 export function unreadableFileIntelligence(
   file: string,
   sourceRevision: number,
-  message = "The file could not be read.",
+  message: ProjectDiagnosticMessage = { key: "fileUnreadable" },
 ): FileAnalysis | null {
   const engine = engineForPath(file);
   if (!engine) return null;
@@ -735,7 +780,7 @@ export function unreadableFileIntelligence(
     sourceRevision,
     contentHash: "",
     status: "error",
-    statusReason: message,
+    statusReason: message.key,
     outline: [],
     definitions: [],
     uses: [],

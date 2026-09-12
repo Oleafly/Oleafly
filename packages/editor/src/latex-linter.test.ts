@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { lintLatexText } from "./latex-linter";
+import { installEnglishEditorMessages } from "./test-messages";
+
+installEnglishEditorMessages();
 
 describe("lintLatexText: environments", () => {
   it("passes correctly nested environments", () => {

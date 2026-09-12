@@ -51,3 +51,12 @@ if (typeof ResizeObserver === "undefined") {
   }
   (globalThis as Record<string, unknown>).ResizeObserver = resizeObserverStub;
 }
+
+const { i18n, initializeI18n } = await import("./src/i18n");
+if (!i18n.isInitialized) {
+  await initializeI18n({
+    preference: "en",
+    systemLocale: async () => "en",
+    missingKeyMode: "throw",
+  });
+}

@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "/packages/preview/src/polyfills";
 import { PdfViewer } from "/packages/preview/src/PdfViewer";
+import { prepareHarnessI18n } from "./harness-i18n";
 import "/src/styles/globals.css";
 
 async function makeSelectionFixture(): Promise<Uint8Array> {
@@ -58,6 +59,7 @@ if (!rootElement) throw new Error("PDF harness root is missing");
 
 try {
   const bytes = await makeSelectionFixture();
+  await prepareHarnessI18n();
   createRoot(rootElement).render(
     <StrictMode>
       <Harness bytes={bytes} />

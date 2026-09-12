@@ -5,6 +5,7 @@ import type {
   TextItem,
   TextMarkedContent,
 } from "pdfjs-dist/types/src/display/api";
+import type { PreviewTranslator } from "./messages";
 
 interface ScreenReaderText {
   byMarkedContent: Map<string, string>;
@@ -118,17 +119,22 @@ export function createPdfScreenReaderLayer({
   totalPages,
   textContent,
   structureTree,
+  t,
 }: {
   pageNumber: number;
   totalPages: number;
   textContent: TextContent;
   structureTree?: StructTreeNode | null;
+  t: PreviewTranslator;
 }): HTMLElement {
   const extracted = extractPdfScreenReaderText(textContent);
   const layer = document.createElement("section");
   layer.className =
     "pdf-screen-reader-layer relative z-10 min-h-full w-full rounded-[inherit] bg-background/90 text-foreground outline-none backdrop-blur-2xl backdrop-saturate-150 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring supports-[not(backdrop-filter:blur(0))]:bg-background";
-  layer.setAttribute("aria-label", `Screen reader view, page ${pageNumber} of ${totalPages}`);
+  layer.setAttribute(
+    "aria-label",
+    t("screenReader.layer", { page: pageNumber, total: totalPages }),
+  );
   layer.tabIndex = 0;
 
   const header = document.createElement("header");
@@ -137,11 +143,11 @@ export function createPdfScreenReaderLayer({
     : "sticky top-3 z-10 flex justify-end px-3";
   const title = document.createElement("span");
   title.className = "text-sm font-semibold tracking-[-0.01em]";
-  title.textContent = "Screen reader mode";
+  title.textContent = t("screenReader.title");
   const pageLabel = document.createElement("span");
   pageLabel.className =
     "rounded-full border border-white/20 bg-background/35 px-2.5 py-1 text-[11px] font-medium tabular-nums text-muted-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.16)] dark:border-white/10";
-  pageLabel.textContent = `Page ${pageNumber} of ${totalPages}`;
+  pageLabel.textContent = t("screenReader.pageLabel", { page: pageNumber, total: totalPages });
   if (pageNumber === 1) header.append(title);
   header.append(pageLabel);
 
@@ -162,7 +168,7 @@ export function createPdfScreenReaderLayer({
   if (!content.textContent?.trim()) {
     const empty = document.createElement("p");
     empty.className = "text-muted-foreground";
-    empty.textContent = "No readable text was found on this page.";
+    empty.textContent = t("screenReader.empty");
     content.appendChild(empty);
   }
 

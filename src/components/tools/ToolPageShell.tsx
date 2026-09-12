@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, isMac } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function ToolPageShell({
   testId: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
   const fullscreen = useFullscreen();
@@ -42,7 +44,7 @@ export function ToolPageShell({
           onClick={() => goTo("library")}
           data-testid={`${testId}-back`}
         >
-          <ArrowLeft className="size-4" /> Back
+          <ArrowLeft className="size-4" /> {t(($) => $.researchTools.tools.back)}
         </Button>
         <div className="h-6 w-px bg-border" />
         {Icon && (

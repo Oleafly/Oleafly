@@ -4,6 +4,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Bookmark,
@@ -59,6 +60,7 @@ import {
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useSettingsStore } from "@/store/settings";
 import { toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 import {
   ANY_PUBLICATION_YEAR,
   publicationYearOptions,
@@ -69,23 +71,23 @@ import { PaperReviewPanel } from "@/components/tools/PaperReviewPanel";
 
 const SUGGESTIONS = [
   {
-    domain: "Artificial intelligence",
+    domain: () => i18n.t(($) => $.researchTools.literature.suggestion.artificialIntelligence),
     query: "multimodal reasoning model hallucinations",
   },
   {
-    domain: "Cancer biology",
+    domain: () => i18n.t(($) => $.researchTools.literature.suggestion.cancerBiology),
     query: "spatial transcriptomics tumor microenvironment",
   },
   {
-    domain: "Climate science",
+    domain: () => i18n.t(($) => $.researchTools.literature.suggestion.climateScience),
     query: "ocean alkalinity enhancement carbon removal",
   },
   {
-    domain: "Materials science",
+    domain: () => i18n.t(($) => $.researchTools.literature.suggestion.materialsScience),
     query: "perovskite silicon tandem solar cells",
   },
   {
-    domain: "Quantum physics",
+    domain: () => i18n.t(($) => $.researchTools.literature.suggestion.quantumPhysics),
     query: "fault tolerant quantum error correction",
   },
 ] as const;
@@ -117,25 +119,31 @@ function formatCount(value: number): string {
 }
 
 function formatAuthors(authors: string[]): string {
-  if (authors.length === 0) return "Unknown authors";
+  if (authors.length === 0) {
+    return i18n.t(($) => $.researchTools.literature.unknownAuthors);
+  }
   if (authors.length <= 3) return authors.join(", ");
-  return `${authors.slice(0, 3).join(", ")} +${authors.length - 3}`;
+  return i18n.t(($) => $.researchTools.literature.moreAuthors, {
+    authors: authors.slice(0, 3).join(", "),
+    more: authors.length - 3,
+  });
 }
 
 function sourceError(run: LiteratureSourceRun): string {
   const label = SOURCE_LABEL.get(run.source)?.label ?? run.source;
-  const message = run.error ?? `${label} failed.`;
+  const message =
+    run.error ?? i18n.t(($) => $.researchTools.literature.sourceFailed, { label });
   return message.toLowerCase().startsWith(label.toLowerCase())
     ? message
-    : `${label}: ${message}`;
+    : i18n.t(($) => $.researchTools.literature.sourceMessage, { label, message });
 }
 
-async function copyText(value: string, label: string) {
+async function copyBibtex(value: string) {
   try {
     await navigator.clipboard.writeText(value);
-    toast.success(`${label} copied`);
+    toast.success(i18n.t(($) => $.researchTools.literature.toastCopied));
   } catch {
-    toast.error(`Could not copy ${label.toLowerCase()}.`);
+    toast.error(i18n.t(($) => $.researchTools.literature.toastCopyFailed));
   }
 }
 
@@ -163,18 +171,20 @@ function SourceBadge({
 }
 
 function SourceInformation() {
+  const { t } = useTranslation(["common", "researchTools"]);
   return (
     <Popover
       trigger={<Info className="size-4" />}
-      ariaLabel="About the six citation databases"
+      ariaLabel={t(($) => $.researchTools.literature.sourcesAbout)}
       align="left"
       className="max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(29rem,calc(100vw-2rem))] overscroll-contain overflow-y-auto p-0"
     >
       <div className="border-b px-4 py-3.5">
-        <h2 className="text-base font-semibold">Six databases, one search</h2>
+        <h2 className="text-base font-semibold">
+          {t(($) => $.researchTools.literature.sourcesTitle)}
+        </h2>
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-          Five databases are available now. USPTO search is paused while
-          PatentsView moves to the USPTO Open Data Portal.
+          {t(($) => $.researchTools.literature.sourcesNote)}
         </p>
       </div>
       <div className="divide-y">
@@ -195,7 +205,9 @@ function SourceInformation() {
                 ) : (
                   <Pause className="size-3" aria-hidden="true" />
                 )}
-                {source.available ? "Available" : "Paused"}
+                {source.available
+                  ? t(($) => $.researchTools.literature.available)
+                  : t(($) => $.researchTools.literature.paused)}
               </span>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -215,10 +227,11 @@ function SourceSelector({
   selected: LiteratureSource[];
   onToggle: (source: LiteratureSource) => void;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="mr-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        Sources
+        {t(($) => $.researchTools.literature.sources)}
       </span>
       <SourceInformation />
       {LITERATURE_SOURCES.map((source) => {
@@ -236,7 +249,9 @@ function SourceSelector({
               >
                 <Pause className="size-3.5 opacity-65" aria-hidden="true" />
                 {source.label}
-                <span className="text-[9px] uppercase tracking-wide">paused</span>
+                <span className="text-[9px] uppercase tracking-wide">
+                  {t(($) => $.researchTools.literature.pausedTag)}
+                </span>
               </span>
             </Tooltip>
           );
@@ -271,6 +286,7 @@ function SourceSelector({
 }
 
 function SourceRunSummary({ runs }: { runs: LiteratureSourceRun[] }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       {runs.map((run) => {
@@ -281,7 +297,16 @@ function SourceRunSummary({ runs }: { runs: LiteratureSourceRun[] }) {
             label={
               run.status === "error"
                 ? sourceError(run)
-                : `${run.count} results${run.total != null ? ` · ${formatCount(run.total)} indexed matches` : ""} · ${run.durationMs}ms`
+                : run.total != null
+                  ? t(($) => $.researchTools.literature.runSummaryIndexed, {
+                      results: run.count,
+                      indexed: formatCount(run.total),
+                      duration: run.durationMs,
+                    })
+                  : t(($) => $.researchTools.literature.runSummary, {
+                      results: run.count,
+                      duration: run.durationMs,
+                    })
             }
             wide
           >
@@ -321,11 +346,9 @@ function ResultRow({
   onRemove?: () => void;
   bibtex?: string;
 }) {
-  const copyBibtex = () =>
-    void copyText(
-      bibtex ?? bibtexForLiteratureRecord(record),
-      "BibTeX",
-    );
+  const { t } = useTranslation(["common", "researchTools"]);
+  const copyRecordBibtex = () =>
+    void copyBibtex(bibtex ?? bibtexForLiteratureRecord(record));
   return (
     <article className="group border-b border-border/70 px-1 py-5 last:border-b-0 sm:px-2">
       <div className="flex items-start gap-4">
@@ -341,7 +364,7 @@ function ResultRow({
             )}
             {record.openAccess === true && (
               <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                OPEN
+                {t(($) => $.researchTools.literature.openAccess)}
               </span>
             )}
           </div>
@@ -374,13 +397,17 @@ function ResultRow({
             {record.citationCount != null && (
               <>
                 <span aria-hidden="true">·</span>
-                <span>{formatCount(record.citationCount)} citations</span>
+                <span>
+                  {t(($) => $.researchTools.literature.citationCount, {
+                    citations: formatCount(record.citationCount),
+                  })}
+                </span>
               </>
             )}
             {record.doi && (
               <>
                 <span aria-hidden="true">·</span>
-                <span className="break-all font-mono">doi:{record.doi}</span>
+                <span className="break-all font-mono">{`doi:${record.doi}`}</span>
               </>
             )}
           </div>
@@ -398,7 +425,7 @@ function ResultRow({
                 onClick={onRemove}
                 className="text-muted-foreground hover:text-destructive"
               >
-                <Trash2 /> Remove
+                <Trash2 /> {t(($) => $.researchTools.literature.removeCitation)}
               </Button>
             ) : (
               <Button
@@ -408,16 +435,18 @@ function ResultRow({
                 onClick={onSave}
               >
                 {saved ? <BookmarkCheck /> : <Bookmark />}
-                {saved ? "Saved" : "Save citation"}
+                {saved
+                  ? t(($) => $.researchTools.literature.savedCitation)
+                  : t(($) => $.researchTools.literature.saveCitation)}
               </Button>
             )}
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={copyBibtex}
+              onClick={copyRecordBibtex}
             >
-              <Copy /> Copy BibTeX
+              <Copy /> {t(($) => $.researchTools.literature.copyBibtex)}
             </Button>
             {record.pdfUrl && (
               <Button type="button" variant="ghost" size="sm" asChild>
@@ -426,7 +455,7 @@ function ResultRow({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <FileText /> Open PDF
+                  <FileText /> {t(($) => $.researchTools.literature.openPdf)}
                 </a>
               </Button>
             )}
@@ -438,8 +467,13 @@ function ResultRow({
 }
 
 function ResultSkeleton() {
+  const { t } = useTranslation(["common", "researchTools"]);
   return (
-    <div className="space-y-0" role="status" aria-label="Searching literature">
+    <div
+      className="space-y-0"
+      role="status"
+      aria-label={t(($) => $.researchTools.literature.loadingAria)}
+    >
       {[0, 1, 2, 3].map((index) => (
         <div
           key={index}
@@ -462,28 +496,31 @@ function EmptySearch({
   onTry: (query: string) => void;
   noResults: boolean;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="mx-auto grid min-h-[23rem] max-w-4xl place-items-center px-6 py-10">
       <div className="w-full border-y border-border/70 py-9">
         <div className="grid gap-8 sm:grid-cols-[1fr_1.15fr] sm:items-start">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              {noResults ? "No matching records" : "Getting started"}
+              {noResults
+                ? t(($) => $.researchTools.literature.noResultsEyebrow)
+                : t(($) => $.researchTools.literature.gettingStarted)}
             </p>
             <h2 className="mt-2.5 text-2xl font-semibold tracking-tight">
               {noResults
-                ? "No results match the current query."
-                : "Search by topic, author, title, DOI, or method."}
+                ? t(($) => $.researchTools.literature.noResultsHeading)
+                : t(($) => $.researchTools.literature.startHeading)}
             </h2>
             <p className="mt-3 text-base leading-relaxed text-muted-foreground">
               {noResults
-                ? "Remove a year or open access filter, select more sources, or use fewer search terms."
-                : "Citation Search queries the selected databases at the same time and combines duplicate records."}
+                ? t(($) => $.researchTools.literature.noResultsBody)
+                : t(($) => $.researchTools.literature.startBody)}
             </p>
           </div>
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Recent research topics
+              {t(($) => $.researchTools.literature.topics)}
             </p>
             <div className="flex flex-col items-start gap-1">
               {SUGGESTIONS.map((suggestion, index) => (
@@ -494,11 +531,11 @@ function EmptySearch({
                   className="group flex w-full items-center gap-3 border-b border-border/60 py-2.5 text-left text-sm text-muted-foreground transition-colors last:border-b-0 hover:text-foreground"
                 >
                   <span className="font-mono text-[11px] text-muted-foreground/60">
-                    0{index + 1}
+                    {`0${index + 1}`}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
-                      {suggestion.domain}
+                      {suggestion.domain()}
                     </span>
                     <span className="mt-0.5 block text-foreground/85">
                       {suggestion.query}
@@ -522,18 +559,18 @@ function SavedLibrary({
   saved: SavedLiteratureCitation[];
   onRemove: (id: string) => void;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   if (saved.length === 0) {
     return (
       <div className="mx-auto flex min-h-[23rem] max-w-2xl flex-col justify-center px-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          Citation library
+          {t(($) => $.researchTools.literature.libraryEyebrow)}
         </p>
         <h2 className="mt-2.5 text-2xl font-semibold tracking-tight">
-          No citations have been saved.
+          {t(($) => $.researchTools.literature.libraryHeading)}
         </h2>
         <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          Save a result to keep its metadata and generated BibTeX between
-          sessions.
+          {t(($) => $.researchTools.literature.libraryBody)}
         </p>
       </div>
     );
@@ -542,9 +579,13 @@ function SavedLibrary({
     <div className="mx-auto w-full max-w-6xl px-4 py-2 sm:px-6">
       <div className="flex items-center justify-between border-b border-border/70 px-2 py-3">
         <p className="text-sm text-muted-foreground">
-          {saved.length} saved {saved.length === 1 ? "citation" : "citations"}
+          {t(($) => $.researchTools.literature.libraryCount, {
+            count: saved.length,
+          })}
         </p>
-        <span className="text-xs text-muted-foreground">Citation library</span>
+        <span className="text-xs text-muted-foreground">
+          {t(($) => $.researchTools.literature.libraryLabel)}
+        </span>
       </div>
       {saved.map((citation) => (
         <ResultRow
@@ -572,13 +613,16 @@ function PublicationYearSelect({
   minimum?: number;
   maximum?: number;
 }) {
+  const { t } = useTranslation(["common", "researchTools"]);
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger id={id} className="h-9 w-32 text-sm">
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="max-h-80">
-        <SelectItem value={ANY_PUBLICATION_YEAR}>Any year</SelectItem>
+        <SelectItem value={ANY_PUBLICATION_YEAR}>
+          {t(($) => $.researchTools.literature.anyYear)}
+        </SelectItem>
         {PUBLICATION_YEARS.map((year) => {
           const numericYear = Number(year);
           return (
@@ -600,6 +644,7 @@ function PublicationYearSelect({
 }
 
 export function LiteratureSearchPanel() {
+  const { t } = useTranslation(["common", "researchTools"]);
   const offline = useSettingsStore((state) => state.offline);
   const saved = useLiteratureLibraryStore((state) => state.saved);
   const saveCitation = useLiteratureLibraryStore((state) => state.save);
@@ -644,13 +689,11 @@ export function LiteratureSearchPanel() {
     const searchQuery = (nextQuery ?? query).trim();
     if (!searchQuery) return;
     if (offline) {
-      setError(
-        "Offline mode is enabled. New searches require network access.",
-      );
+      setError(t(($) => $.researchTools.literature.offline));
       return;
     }
     if (selectedSources.length === 0) {
-      setError("Select at least one available source.");
+      setError(t(($) => $.researchTools.literature.selectSource));
       return;
     }
     const yearRange = publicationYearRange(yearFrom, yearTo);
@@ -720,20 +763,18 @@ export function LiteratureSearchPanel() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                Citation Search
+                {t(($) => $.researchTools.literature.eyebrow)}
               </p>
               <span className="h-4 w-px bg-border" />
               <span className="text-[11px] text-muted-foreground">
-                open source search
+                {t(($) => $.researchTools.literature.openSource)}
               </span>
             </div>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-              Search scholarly literature across multiple indexes
+              {t(($) => $.researchTools.literature.heading)}
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Search selected databases at the same time, or scan your open
-              document for citation suggestions. Duplicate records are combined
-              and can be saved or exported as BibTeX.
+              {t(($) => $.researchTools.literature.intro)}
             </p>
           </div>
 
@@ -750,7 +791,7 @@ export function LiteratureSearchPanel() {
                 setTab("search");
               }}
             >
-              Manual search
+              {t(($) => $.researchTools.literature.modeSearch)}
             </Button>
             <Button
               type="button"
@@ -762,7 +803,7 @@ export function LiteratureSearchPanel() {
                 setTab("search");
               }}
             >
-              From document
+              {t(($) => $.researchTools.literature.modeDocument)}
             </Button>
             <Button
               type="button"
@@ -774,7 +815,7 @@ export function LiteratureSearchPanel() {
                 setTab("search");
               }}
             >
-              Review
+              {t(($) => $.researchTools.literature.modeReview)}
             </Button>
           </div>
 
@@ -788,8 +829,8 @@ export function LiteratureSearchPanel() {
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search papers, authors, topics, or methods"
-                  aria-label="Literature search query"
+                  placeholder={t(($) => $.researchTools.literature.queryPlaceholder)}
+                  aria-label={t(($) => $.researchTools.literature.queryAria)}
                   className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
                 />
                 <Button
@@ -808,7 +849,9 @@ export function LiteratureSearchPanel() {
                     <Search />
                   )}
                   <span className="hidden sm:inline">
-                    {loading ? "Searching" : "Search"}
+                    {loading
+                      ? t(($) => $.researchTools.literature.searching)
+                      : t(($) => $.researchTools.literature.search)}
                   </span>
                 </Button>
               </form>
@@ -827,7 +870,7 @@ export function LiteratureSearchPanel() {
                     aria-expanded={filtersOpen}
                   >
                     <SlidersHorizontal />
-                    Filters
+                    {t(($) => $.researchTools.literature.filters)}
                     {(yearFrom !== ANY_PUBLICATION_YEAR ||
                       yearTo !== ANY_PUBLICATION_YEAR ||
                       openAccessOnly) && (
@@ -841,7 +884,7 @@ export function LiteratureSearchPanel() {
                     onClick={openSourceSettings}
                   >
                     <KeyRound />
-                    Source setup
+                    {t(($) => $.researchTools.literature.sourceSetup)}
                   </Button>
                 </div>
               </div>
@@ -853,7 +896,7 @@ export function LiteratureSearchPanel() {
                       htmlFor="literature-year-from"
                       className="grid gap-1.5 text-xs font-medium text-muted-foreground"
                     >
-                      From year
+                      {t(($) => $.researchTools.literature.yearFrom)}
                       <PublicationYearSelect
                         id="literature-year-from"
                         value={yearFrom}
@@ -869,7 +912,7 @@ export function LiteratureSearchPanel() {
                       htmlFor="literature-year-to"
                       className="grid gap-1.5 text-xs font-medium text-muted-foreground"
                     >
-                      To year
+                      {t(($) => $.researchTools.literature.yearTo)}
                       <PublicationYearSelect
                         id="literature-year-to"
                         value={yearTo}
@@ -885,7 +928,7 @@ export function LiteratureSearchPanel() {
                       htmlFor="literature-result-limit"
                       className="grid gap-1.5 text-xs font-medium text-muted-foreground"
                     >
-                      Results per source
+                      {t(($) => $.researchTools.literature.resultsPerSource)}
                       <Select value={limit} onValueChange={setLimit}>
                         <SelectTrigger
                           id="literature-result-limit"
@@ -894,9 +937,15 @@ export function LiteratureSearchPanel() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="8">8 results</SelectItem>
-                          <SelectItem value="12">12 results</SelectItem>
-                          <SelectItem value="20">20 results</SelectItem>
+                          <SelectItem value="8">
+                            {t(($) => $.researchTools.literature.resultOption, { results: 8 })}
+                          </SelectItem>
+                          <SelectItem value="12">
+                            {t(($) => $.researchTools.literature.resultOption, { results: 12 })}
+                          </SelectItem>
+                          <SelectItem value="20">
+                            {t(($) => $.researchTools.literature.resultOption, { results: 20 })}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </label>
@@ -908,9 +957,9 @@ export function LiteratureSearchPanel() {
                         id="literature-open-access"
                         checked={openAccessOnly}
                         onCheckedChange={setOpenAccessOnly}
-                        aria-label="Open access only"
+                        aria-label={t(($) => $.researchTools.literature.openAccessOnly)}
                       />
-                      Open access only
+                      {t(($) => $.researchTools.literature.openAccessOnly)}
                     </label>
                   </div>
                 </div>
@@ -919,7 +968,7 @@ export function LiteratureSearchPanel() {
               {offline && (
                 <div className="mt-3 flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-800 dark:text-amber-300">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                  Offline mode is enabled. New searches require network access.
+                  {t(($) => $.researchTools.literature.offline)}
                 </div>
               )}
               {error && (
@@ -947,13 +996,13 @@ export function LiteratureSearchPanel() {
                     value="search"
                     className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                   >
-                    Suggestions
+                    {t(($) => $.researchTools.literature.tabSuggestions)}
                   </TabsTrigger>
                   <TabsTrigger
                     value="saved"
                     className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                   >
-                    My citations
+                    {t(($) => $.researchTools.literature.tabMyCitations)}
                     {saved.length > 0 && (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
                         {saved.length}
@@ -992,7 +1041,7 @@ export function LiteratureSearchPanel() {
                   value="search"
                   className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                 >
-                  Search
+                  {t(($) => $.researchTools.literature.tabSearch)}
                   {response && (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
                       {response.results.length}
@@ -1003,7 +1052,7 @@ export function LiteratureSearchPanel() {
                   value="saved"
                   className="h-12 rounded-none border-b-2 border-transparent px-4 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                 >
-                  My citations
+                  {t(($) => $.researchTools.literature.tabMyCitations)}
                   {saved.length > 0 && (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
                       {saved.length}
@@ -1014,13 +1063,13 @@ export function LiteratureSearchPanel() {
               {response && !loading && (
                 <div className="hidden min-w-0 items-center gap-3 md:flex">
                   <SourceRunSummary runs={response.runs} />
-                  <Tooltip label="Refresh every selected source">
+                  <Tooltip label={t(($) => $.researchTools.literature.refreshTooltip)}>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       className="size-8"
-                      aria-label="Refresh literature search"
+                      aria-label={t(($) => $.researchTools.literature.refreshAria)}
                       onClick={() => void runSearch(undefined, true)}
                     >
                       <RefreshCw className="size-4" />
@@ -1069,10 +1118,12 @@ export function LiteratureSearchPanel() {
               <div className="mx-auto w-full max-w-6xl px-4 py-2 sm:px-6">
                 <div className="flex flex-col gap-2 border-b border-border/70 px-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      {response.results.length}
-                    </span>{" "}
-                    deduplicated results for "{query}"
+                    <Trans
+                      ns="researchTools"
+                      i18nKey={($) => $.researchTools.literature.resultsFor}
+                      values={{ results: response.results.length, query }}
+                      components={{ strong: <span className="font-medium text-foreground" /> }}
+                    />
                   </p>
                   <div className="flex items-center gap-3 md:hidden">
                     <SourceRunSummary runs={response.runs} />
@@ -1098,8 +1149,8 @@ export function LiteratureSearchPanel() {
                         saveCitation(record);
                         toast.success(
                           isSaved
-                            ? "Saved citation updated"
-                            : "Citation saved",
+                            ? t(($) => $.researchTools.literature.toastUpdated)
+                            : t(($) => $.researchTools.literature.toastSaved),
                         );
                       }}
                     />

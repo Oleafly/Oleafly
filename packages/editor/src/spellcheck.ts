@@ -21,6 +21,7 @@ import {
   type ProofreadingCardAction,
 } from "./diagnostic-card";
 import { markdownSpellcheckRanges, markdownToProse } from "./markdown-mask";
+import type { EditorTranslator } from "./messages";
 import {
   createGrammarSuppressionKeyer,
   grammarSuppressionKey,
@@ -49,6 +50,7 @@ export interface GrammarDiag {
 
 // Installed once via setSpellHost; the linters are inert without it.
 export interface SpellHost {
+  t: EditorTranslator;
   getProjectId(): string | null;
   getActivePath(): string | null;
   getLintPrefs(): {
@@ -335,18 +337,22 @@ function ignoreEntries(
   word: string,
 ): ProofreadingCardAction[] {
   return ignoreActions(h, projectId, word).map((action, index) => ({
-    label: projectId && index === 0 ? "Ignore" : "Ignore everywhere",
+    label:
+      projectId && index === 0
+        ? h.t("spellcheck.ignore")
+        : h.t("spellcheck.ignoreEverywhere"),
     action,
   }));
 }
 
 function suggestionEntries(
+  h: SpellHost,
   suggestions: GrammarSuggestion[],
 ): ProofreadingCardAction[] {
-  return suggestionActions(suggestions).map((action, index) => ({
+  return suggestionActions(h, suggestions).map((action, index) => ({
     // The action name is a quoted, elided preview meant for a button strip.
     // Rows have room for the replacement itself.
-    label: labelForSuggestion(suggestions[index]),
+    label: labelForSuggestion(h, suggestions[index]),
     action,
   }));
 }
@@ -354,9 +360,6 @@ function suggestionEntries(
 function elide(word: string, limit = 22): string {
   return word.length > limit ? `${word.slice(0, limit - 1)}…` : word;
 }
-
-const DICTIONARY_WRITE_FAILED =
-  "That word could not be saved, so it is hidden for now.";
 
 function spellingDismissEntries(
   h: SpellHost,
@@ -369,10 +372,10 @@ function spellingDismissEntries(
   const entries: ProofreadingCardAction[] = [];
   if (projectId) {
     entries.push({
-      label: "Ignore in this project",
+      label: h.t("spellcheck.ignoreInProject"),
       icon: "project",
       action: {
-        name: `Ignore “${short}” in this project`,
+        name: h.t("spellcheck.ignoreWordInProject", { word: short }),
         apply: (view, from, to) => {
           const active = h.getProjectId();
           if (!active) return;
@@ -382,7 +385,7 @@ function spellingDismissEntries(
               actions.addToProjectDictionary(active, word),
             ) === "failed"
           ) {
-            actions.notify(DICTIONARY_WRITE_FAILED);
+            actions.notify(h.t("spellcheck.dictionaryWriteFailed"));
           }
           dismissRange(view, from, to);
         },
@@ -390,10 +393,10 @@ function spellingDismissEntries(
     });
   }
   entries.push({
-    label: "Ignore everywhere",
+    label: h.t("spellcheck.ignoreEverywhere"),
     icon: "everywhere",
     action: {
-      name: `Ignore “${short}” everywhere`,
+      name: h.t("spellcheck.ignoreWordEverywhere", { word: short }),
       apply: (view, from, to) => {
         rememberDismissedFindings(view, from, to);
         if (
@@ -401,17 +404,17 @@ function spellingDismissEntries(
             actions.addToPersonalDictionary(word),
           ) === "failed"
         ) {
-          actions.notify(DICTIONARY_WRITE_FAILED);
+          actions.notify(h.t("spellcheck.dictionaryWriteFailed"));
         }
         dismissRange(view, from, to);
       },
     },
   });
   entries.push({
-    label: "Ignore for now",
+    label: h.t("spellcheck.ignoreForNow"),
     icon: "now",
     action: {
-      name: `Ignore “${short}” for now`,
+      name: h.t("spellcheck.ignoreWordForNow", { word: short }),
       apply: (view, from, to) => {
         rememberDismissedFindings(view, from, to);
         actions.ignoreHere(
@@ -434,10 +437,10 @@ function grammarDismissEntries(
 ): ProofreadingCardAction[] {
   const entries: ProofreadingCardAction[] = [
     {
-      label: "Ignore in this project",
+      label: h.t("spellcheck.ignoreInProject"),
       icon: "project",
       action: {
-        name: "Ignore this finding in this project",
+        name: h.t("spellcheck.ignoreFindingInProject"),
         apply: (view, start, end) => {
           const active = h.getProjectId();
           rememberDismissedFindings(view, start, end);
@@ -448,8 +451,8 @@ function grammarDismissEntries(
           ) {
             actions.notify(
               active
-                ? "This finding could not be saved, so it is hidden for now."
-                : "Open a project to keep this finding hidden.",
+                ? h.t("spellcheck.findingWriteFailed")
+                : h.t("spellcheck.findingNeedsProject"),
             );
           }
           dismissRange(view, start, end);
@@ -459,10 +462,10 @@ function grammarDismissEntries(
   ];
   if (rule) {
     entries.push({
-      label: `Turn off rule “${elide(rule, 18)}”`,
+      label: h.t("spellcheck.turnOffRule", { rule: elide(rule, 18) }),
       icon: "rule",
       action: {
-        name: `Turn off the “${rule}” rule`,
+        name: h.t("spellcheck.turnOffRuleAction", { rule }),
         apply: (view, start, end) => {
           rememberDismissedFindings(view, start, end);
           if (
@@ -471,9 +474,7 @@ function grammarDismissEntries(
               return true;
             }) === "failed"
           ) {
-            actions.notify(
-              "That rule could not be turned off, so this finding is hidden for now.",
-            );
+            actions.notify(h.t("spellcheck.ruleWriteFailed"));
           }
           dismissRange(view, start, end);
         },
@@ -483,10 +484,15 @@ function grammarDismissEntries(
   return entries;
 }
 
-function labelForSuggestion(suggestion: GrammarSuggestion | undefined): string {
+function labelForSuggestion(
+  h: SpellHost,
+  suggestion: GrammarSuggestion | undefined,
+): string {
   if (!suggestion) return "";
-  if (suggestion.kind === 1) return "Remove";
-  if (suggestion.kind === 2) return `Add “${suggestion.text}”`;
+  if (suggestion.kind === 1) return h.t("spellcheck.suggestionRemove");
+  if (suggestion.kind === 2) {
+    return h.t("spellcheck.suggestionAdd", { text: suggestion.text });
+  }
   return suggestion.text;
 }
 
@@ -570,7 +576,7 @@ function proofreadingDiagnostic(
     suppressionKey?: string;
   } = {},
 ): Diagnostic {
-  const suggestionList = suggestionEntries(suggestions);
+  const suggestionList = suggestionEntries(h, suggestions);
   const spelling = isSpellingDiagnosticKind(meta.kind);
   const actions = actionHost;
   const suppressionKey = meta.suppressionKey ?? "";
@@ -814,7 +820,7 @@ function ignoreActions(h: SpellHost, projectId: string | null, word: string): Ac
   const actions: Action[] = [];
   if (projectId) {
     actions.push({
-      name: `Ignore “${short}” in this project`,
+      name: h.t("spellcheck.ignoreWordInProject", { word: short }),
       apply: (view, from, to) => {
         // Resolve the scope at action time. A lint card can remain mounted
         // while the user switches projects; applying its captured project ID
@@ -827,7 +833,7 @@ function ignoreActions(h: SpellHost, projectId: string | null, word: string): Ac
     });
   }
   actions.push({
-    name: `Ignore “${short}” everywhere`,
+    name: h.t("spellcheck.ignoreWordEverywhere", { word: short }),
     apply: (view, from, to) => {
       h.ignoreWordGlobally(word);
       refresh(view, from, to);
@@ -996,7 +1002,9 @@ export function createSpellLinter() {
                     from: r.from,
                     to: r.to,
                     severity: "warning",
-                    message: `Possible misspelling: "${r.word}"`,
+                    message: h.t("spellcheck.possibleMisspelling", {
+                      word: r.word,
+                    }),
                   }),
                 );
               }
@@ -1014,17 +1022,20 @@ export function createSpellLinter() {
   );
 }
 
-function suggestionActions(sugs: GrammarSuggestion[]): Action[] {
+function suggestionActions(
+  h: SpellHost,
+  sugs: GrammarSuggestion[],
+): Action[] {
   return sugs.slice(0, 8).map<Action>((s) => {
     const preview =
       s.text.length > 44 ? `${s.text.slice(0, 43)}…` : s.text;
     return {
       name:
         s.kind === 1
-          ? "Remove"
+          ? h.t("spellcheck.suggestionRemove")
           : s.kind === 2
-            ? `Add “${preview}”`
-            : `“${preview}”`,
+            ? h.t("spellcheck.suggestionAdd", { text: preview })
+            : h.t("spellcheck.suggestionReplace", { text: preview }),
       apply: (view, from, to) => {
         if (s.kind === 2) {
           view.dispatch({ changes: { from: to, insert: s.text } });
@@ -1064,7 +1075,10 @@ function localGrammarFallback(
       to,
       severity: "warning",
       message,
-      actions: [...suggestionActions(suggestions), ...ignoreActions(h, h.getProjectId(), word)],
+      actions: [
+        ...suggestionActions(h, suggestions),
+        ...ignoreActions(h, h.getProjectId(), word),
+      ],
     });
   };
 
@@ -1073,7 +1087,7 @@ function localGrammarFallback(
     const from = masked.map[match.index];
     const to = masked.map[match.index + match[0].length - 1];
     if (from === undefined || to === undefined) continue;
-    add(from, to + 1, `Repeated word: “${match[1]}”`);
+    add(from, to + 1, h.t("spellcheck.repeatedWord", { word: match[1] ?? "" }));
   }
 
   const corrections: Record<string, string> = {
@@ -1098,9 +1112,12 @@ function localGrammarFallback(
     const to = masked.map[match.index + match[0].length - 1];
     const replacement = corrections[(match[1] ?? "").toLocaleLowerCase()];
     if (from === undefined || to === undefined || !replacement) continue;
-    add(from, to + 1, `Possible spelling or grammar issue: “${match[0]}”`, [
-      { text: replacement, kind: 0 },
-    ]);
+    add(
+      from,
+      to + 1,
+      h.t("spellcheck.possibleIssue", { word: match[0] }),
+      [{ text: replacement, kind: 0 }],
+    );
   }
   return diagnostics;
 }

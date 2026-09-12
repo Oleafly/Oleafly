@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   DatabaseZap,
   FolderPlus,
@@ -15,6 +16,7 @@ import {
   recycleProject,
 } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { LEGACY_TOUR_KEYS, useTourStore } from "@/store/tours";
@@ -29,7 +31,9 @@ export const DEVELOPER_SETTINGS_SENTINEL = "oleafly-developer-settings-v1";
 
 export const DEVELOPER_NAV_ITEM = {
   id: "developer" as const,
-  label: "Developer",
+  get label() {
+    return i18n.t(($) => $.core.developer.nav);
+  },
   icon: Wrench,
 };
 
@@ -83,6 +87,7 @@ function SettingAction({
 }
 
 export function DeveloperSettings() {
+  const { t } = useTranslation(["common", "core"]);
   const [root, setRoot] = useState("");
   const [busy, setBusy] = useState(false);
   const [seedProgress, setSeedProgress] = useState("");
@@ -98,7 +103,7 @@ export function DeveloperSettings() {
     if (!store.projectId) return;
     await store.closeProject();
     if (useFilesStore.getState().projectId) {
-      throw new Error("The open project could not be closed safely.");
+      throw new Error(i18n.t(($) => $.core.developer.closeProjectFailed));
     }
   };
 
@@ -121,14 +126,33 @@ export function DeveloperSettings() {
     return result;
   };
 
-  const reportSeedResult = (result: ResearchSeedResult, prefix = "Seeded the research corpus") => {
-    const summary = `${prefix}: ${result.created} created, ${result.skipped} already present`;
+  const reportSeedResult = (result: ResearchSeedResult, removed: number | null = null) => {
+    const summary =
+      removed === null
+        ? t(($) => $.core.developer.seedSummary, {
+            created: result.created,
+            skipped: result.skipped,
+          })
+        : t(($) => $.core.developer.resetAndSeedSummary, {
+            removed,
+            created: result.created,
+            skipped: result.skipped,
+          });
     if (result.failed.length > 0) {
       const first = result.failed[0];
-      toast.error(`${summary}, ${result.failed.length} failed. First failure: ${first.name}: ${first.message}`, undefined, true);
+      toast.error(
+        t(($) => $.core.developer.seedFailures, {
+          summary,
+          count: result.failed.length,
+          name: first.name,
+          message: first.message,
+        }),
+        undefined,
+        true,
+      );
       return;
     }
-    toast.success(`${summary}.`);
+    toast.success(summary);
   };
 
   const replayFirstRun = async () => {
@@ -142,7 +166,7 @@ export function DeveloperSettings() {
       useSettingsStore.getState().setSettingsOpen(false);
       window.location.reload();
     } catch (error) {
-      notifyError("replay first run", error, "Couldn't reset the first-run tour.");
+      notifyError("replay first run", error, t(($) => $.core.developer.replayFailed));
       setBusy(false);
     }
   };
@@ -168,12 +192,12 @@ export function DeveloperSettings() {
       const removed = await moveAllProjectsToRecycleBin();
       if (action === "reset-and-seed") {
         const result = await seedSampleProjects();
-        reportSeedResult(result, `Moved ${removed} projects to the Recycle Bin and seeded the research corpus`);
+        reportSeedResult(result, removed);
       } else {
-        toast.success(`Moved ${removed} ${removed === 1 ? "project" : "projects"} to the Recycle Bin.`);
+        toast.success(t(($) => $.core.developer.projectsRecycled, { count: removed }));
       }
     } catch (error) {
-      notifyError("reset development data", error, "Couldn't reset the development sandbox.");
+      notifyError("reset development data", error, t(($) => $.core.developer.resetFailed));
     } finally {
       setSeedProgress("");
       setBusy(false);
@@ -182,19 +206,21 @@ export function DeveloperSettings() {
 
   const confirmation = {
     "clear-projects": {
-      title: "Clear all development projects?",
-      description: "Every project in the isolated development library moves to its Recycle Bin. Your production Oleafly library is not touched.",
-      label: "Clear projects",
+      title: t(($) => $.core.developer.confirm.clearProjects.title),
+      description: t(($) => $.core.developer.confirm.clearProjects.description),
+      label: t(($) => $.core.developer.confirm.clearProjects.action),
     },
     "reset-browser": {
-      title: "Reset development UI state?",
-      description: "This clears Oleafly settings, tours, and other browser state for this development origin, then reloads the app. Project files stay on disk.",
-      label: "Reset UI state",
+      title: t(($) => $.core.developer.confirm.resetBrowser.title),
+      description: t(($) => $.core.developer.confirm.resetBrowser.description),
+      label: t(($) => $.core.developer.confirm.resetBrowser.action),
     },
     "reset-and-seed": {
-      title: "Reset and seed the development library?",
-      description: `Every current development project moves to the Recycle Bin, then Oleafly copies ${RESEARCH_SEED_PROJECTS.length} research fixtures from the local oleafly-seed cache.`,
-      label: "Reset and seed",
+      title: t(($) => $.core.developer.confirm.resetAndSeed.title),
+      description: t(($) => $.core.developer.confirm.resetAndSeed.description, {
+        count: RESEARCH_SEED_PROJECTS.length,
+      }),
+      label: t(($) => $.core.developer.confirm.resetAndSeed.action),
     },
   } as const;
 
@@ -204,52 +230,59 @@ export function DeveloperSettings() {
         <div className="flex items-start gap-3">
           <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="min-w-0">
-            <p className="text-sm font-medium">Debug build only</p>
+            <p className="text-sm font-medium">{t(($) => $.core.developer.debugOnly.title)}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              These controls are loaded only by the Vite development build. Production builds
-              reject this module if its sentinel appears in any emitted asset.
+              {t(($) => $.core.developer.debugOnly.description)}
             </p>
           </div>
         </div>
       </div>
 
       <div className="rounded-lg border bg-card p-3">
-        <p className="text-xs font-medium">Development library</p>
+        <p className="text-xs font-medium">{t(($) => $.core.developer.library.label)}</p>
         <code className="mt-1 block break-all text-[11px] text-muted-foreground">
-          {root || "Checking library path…"}
+          {root || t(($) => $.core.developer.library.checking)}
         </code>
         {!safeSandbox && root ? (
           <p className="mt-2 text-xs font-medium text-destructive">
-            Project controls are locked because this is not the .oleafly-dev sandbox.
+            {t(($) => $.core.developer.library.locked)}
           </p>
         ) : null}
       </div>
 
       <div className="space-y-2">
         <SettingAction
-          title="Replay first run"
-          description="Reset every tour, close the current project, and return to the welcome flow."
+          title={t(($) => $.core.developer.actions.replayFirstRun.title)}
+          description={t(($) => $.core.developer.actions.replayFirstRun.description)}
           icon={RotateCcw}
           action={() => void replayFirstRun()}
           disabled={busy}
         />
         <SettingAction
-          title="Reset UI state"
-          description="Clear Oleafly local settings and persisted UI state without deleting projects."
+          title={t(($) => $.core.developer.actions.resetUiState.title)}
+          description={t(($) => $.core.developer.actions.resetUiState.description)}
           icon={DatabaseZap}
           action={() => setConfirmAction("reset-browser")}
           disabled={busy}
         />
         <SettingAction
-          title="Seed research corpus"
-          description={`Copy ${RESEARCH_SEED_PROJECTS.length} research projects from ~/Codespace/Oleafly/oleafly-seed. Papers, theses, books, talks, posters, and figures across LaTeX and Typst, every one verified to compile with the bundled engines. Existing fixtures are kept.`}
+          title={t(($) => $.core.developer.actions.seedCorpus.title)}
+          description={t(($) => $.core.developer.actions.seedCorpus.description, {
+            count: RESEARCH_SEED_PROJECTS.length,
+          })}
           icon={FolderPlus}
-          buttonLabel={seedProgress || "Seed corpus"}
+          buttonLabel={seedProgress || t(($) => $.core.developer.actions.seedCorpus.action)}
           action={() => {
             setBusy(true);
             void seedSampleProjects()
               .then((result) => reportSeedResult(result))
-              .catch((error) => notifyError("seed development projects", error, "Couldn't seed the research corpus."))
+              .catch((error) =>
+                notifyError(
+                  "seed development projects",
+                  error,
+                  t(($) => $.core.developer.seedFailed),
+                ),
+              )
               .finally(() => {
                 setSeedProgress("");
                 setBusy(false);
@@ -258,16 +291,18 @@ export function DeveloperSettings() {
           disabled={busy || !safeSandbox}
         />
         <SettingAction
-          title="Clear projects"
-          description="Move every development project to the Recycle Bin. Nothing is permanently deleted."
+          title={t(($) => $.core.developer.actions.clearProjects.title)}
+          description={t(($) => $.core.developer.actions.clearProjects.description)}
           icon={Trash2}
           action={() => setConfirmAction("clear-projects")}
           disabled={busy || !safeSandbox}
           destructive
         />
         <SettingAction
-          title="Reset and seed"
-          description={`Move current projects to the Recycle Bin, then copy all ${RESEARCH_SEED_PROJECTS.length} pinned real-world fixtures from the local cache.`}
+          title={t(($) => $.core.developer.actions.resetAndSeed.title)}
+          description={t(($) => $.core.developer.actions.resetAndSeed.description, {
+            count: RESEARCH_SEED_PROJECTS.length,
+          })}
           icon={Wrench}
           action={() => setConfirmAction("reset-and-seed")}
           disabled={busy || !safeSandbox}
@@ -276,9 +311,15 @@ export function DeveloperSettings() {
 
       <ConfirmationDialog
         open={confirmAction !== null}
-        title={confirmAction ? confirmation[confirmAction].title : "Confirm development action"}
+        title={
+          confirmAction
+            ? confirmation[confirmAction].title
+            : t(($) => $.core.developer.confirm.fallbackTitle)
+        }
         description={confirmAction ? confirmation[confirmAction].description : ""}
-        confirmLabel={confirmAction ? confirmation[confirmAction].label : "Continue"}
+        confirmLabel={
+          confirmAction ? confirmation[confirmAction].label : t(($) => $.common.actions.confirm)
+        }
         destructive
         onCancel={() => setConfirmAction(null)}
         onConfirm={() => void confirm()}

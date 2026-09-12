@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Loader2, Paperclip, Plus, Square, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,6 +43,7 @@ function canReconnect(session: AcpSession): boolean {
 }
 
 export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
+  const { t } = useTranslation(["common", "ai"]);
   const researchChatActions = useResearchChatActions(projectId);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const activeId = useAcpSessionsStore((state) => state.activeByProject[projectId] ?? null);
@@ -173,7 +176,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     const attachments = images;
     const prompt = [{ type: "text", text: message }, ...attachments.map(({ image }) => ({ type: "image", ...image }))];
     if (new TextEncoder().encode(message).byteLength > 256 * 1024 || new TextEncoder().encode(JSON.stringify({ sessionId: session.nativeSessionId, prompt })).byteLength > 1024 * 1024 - 1024) {
-      setError("This message and its images are too large. Shorten the message or remove an image.");
+      setError(t(($) => $.ai.acp.messageTooLarge));
       return;
     }
     const beforeSequence = session.lastSequence;
@@ -197,7 +200,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
   };
   const addImage = (file: File) => {
     if (file.size > 480 * 1024 || images.length >= 4) {
-      setError("Choose an image smaller than 480 KiB. You can attach up to four images.");
+      setError(t(($) => $.ai.acp.imageTooLarge));
       return;
     }
     const reader = new FileReader();
@@ -209,7 +212,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
         images: [...useAcpSessionsStore.getState().composers[projectId]?.images ?? [], { id: crypto.randomUUID(), name: file.name, image }],
       });
     };
-    reader.onerror = () => setError("The image could not be read.");
+    reader.onerror = () => setError(t(($) => $.ai.acp.imageReadFailed));
     reader.readAsDataURL(file);
   };
 
@@ -220,9 +223,9 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     if (agentId) await useAcpSessionsStore.getState().start(projectId, agentId);
   });
 
-  return <section className="flex h-full min-h-0 flex-col bg-sidebar text-foreground" aria-label="CLI agent assistant">
+  return <section className="flex h-full min-h-0 flex-col bg-sidebar text-foreground" aria-label={t(($) => $.ai.acp.assistantAriaLabel)}>
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3" onScroll={() => { const el = scrollRef.current; if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
-      {events[0]?.sequence > 1 && <Button variant="outline" size="sm" type="button" className="mb-3 w-full" disabled={busy} onClick={() => { if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId)); }}>Load earlier activity</Button>}
+      {events[0]?.sequence > 1 && <Button variant="outline" size="sm" type="button" className="mb-3 w-full" disabled={busy} onClick={() => { if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId)); }}>{t(($) => $.ai.acp.loadEarlier)}</Button>}
       {(busy || starting) && messages.length === 0 ? (
         <div
           data-testid="acp-connecting"
@@ -238,10 +241,12 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
           </span>
           <p className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Loader2 aria-hidden className="size-3.5 animate-spin text-muted-foreground" />
-            Starting {selectedAgent?.definition.name ?? "the agent"}
+            {t(($) => $.ai.acp.starting, {
+              agent: selectedAgent?.definition.name ?? t(($) => $.ai.acp.startingFallback),
+            })}
           </p>
           <p className="text-xs text-muted-foreground">
-            The agent's command line tool is launching. This takes a few seconds the first time.
+            {t(($) => $.ai.acp.startingHint)}
           </p>
         </div>
       ) : messages.length > 0 ? (
@@ -262,9 +267,11 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
           quickStartTestId="acp-quick-start"
           subtitle={
             session?.status === "ready"
-              ? `${selectedAgent?.definition.name ?? session.agentId} is ready in this project`
+              ? t(($) => $.ai.acp.readySubtitle, {
+                  agent: selectedAgent?.definition.name ?? session.agentId,
+                })
               : projectName
-                ? `Working on "${projectName}"`
+                ? t(($) => $.ai.acp.projectSubtitle, { project: projectName })
                 : undefined
           }
         />
@@ -272,14 +279,14 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     </div>
     {(error || (session?.error && session.status !== "auth_required")) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
     {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
-      <p>{catalog.find((agent) => agent.definition.id === session.agentId)?.signInHint ?? "Sign in using this agent's CLI, then reconnect."}</p>
+      <p>{catalog.find((agent) => agent.definition.id === session.agentId)?.signInHint ?? t(($) => $.ai.acp.signInFallback)}</p>
       <div className="flex flex-wrap gap-2">
         {session.authMethods.map((method) => <Button variant="outline" size="sm" key={method.id} type="button" disabled={busy} onClick={() => void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpAuthenticate(projectId, session.id, method.id)); })}>{method.name}</Button>)}
-        <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { await acpDisconnect(projectId, session.id); useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>Reconnect after sign-in</Button>
+        <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { await acpDisconnect(projectId, session.id); useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnectAfterSignIn)}</Button>
       </div>
     </div>}
     {session && ["disconnected", "cancelled", "failed"].includes(session.status) && <div className="border-t border-border p-3 text-xs">
-      {canReconnect(session) ? <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>Reconnect to conversation</Button> : <p>{session.taskId ? "Open the research task to resume this work." : session.parentSessionId ? "This conversation belongs to a delegated agent run." : "This agent cannot resume saved conversations. Start a new conversation when you are ready."}</p>}
+      {canReconnect(session) ? <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnect)}</Button> : <p>{session.taskId ? t(($) => $.ai.acp.resumeTask) : session.parentSessionId ? t(($) => $.ai.acp.delegatedConversation) : t(($) => $.ai.acp.noResume)}</p>}
     </div>}
     {permissions.length > 0 && <div className="max-h-64 space-y-2 overflow-y-auto border-t border-border p-3">
       {permissions.map((request) => <PermissionCard key={request.id} request={request} agentName={selectedAgent?.definition.name ?? session?.agentId} onChoose={choosePermission} />)}
@@ -303,7 +310,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     <form className="p-3 pt-1" onSubmit={(event) => { event.preventDefault(); void send(); }}>
       {images.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
         {images.map((value, index) => (
-          <Button key={value.id} type="button" variant="outline" size="xs" aria-label={`Remove ${value.name}`} onClick={() => setImages(images.filter((_, position) => position !== index))}>
+          <Button key={value.id} type="button" variant="outline" size="xs" aria-label={t(($) => $.ai.acp.removeImage, { name: value.name })} onClick={() => setImages(images.filter((_, position) => position !== index))}>
             {value.name} <X className="size-3" />
           </Button>
         ))}
@@ -318,8 +325,12 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
         />
         <Textarea
           ref={textareaRef}
-          aria-label="Message CLI agent"
-          placeholder={session?.status === "ready" ? "Ask the agent to work on this project" : "Start or reconnect a conversation to send a message"}
+          aria-label={t(($) => $.ai.acp.composerAriaLabel)}
+          placeholder={
+            session?.status === "ready"
+              ? t(($) => $.ai.acp.composerPlaceholderReady)
+              : t(($) => $.ai.acp.composerPlaceholderIdle)
+          }
           value={draft}
           rows={1}
           disabled={composerDisabled}
@@ -333,8 +344,8 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
         <div data-testid="acp-composer-controls" className="ai-composer-controls mt-2 flex min-h-7 min-w-0 flex-nowrap items-center justify-between gap-0.5">
           <div className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden">
             {session?.capabilities.image && (
-              <Tooltip label="Attach image">
-                <button type="button" aria-label="Attach image" className="ai-composer-attach flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40" disabled={running} onClick={() => fileRef.current?.click()}>
+              <Tooltip label={t(($) => $.ai.acp.attachImage)}>
+                <button type="button" aria-label={t(($) => $.ai.acp.attachImage)} className="ai-composer-attach flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40" disabled={running} onClick={() => fileRef.current?.click()}>
                   <Paperclip className="size-4" />
                 </button>
               </Tooltip>
@@ -351,7 +362,10 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
                 onClick={start}
               >
                 <Plus className="size-3.5" />
-                Start a conversation with {selectedAgent?.definition.name ?? "an agent"}
+                {t(($) => $.ai.acp.startConversation, {
+                  agent:
+                    selectedAgent?.definition.name ?? t(($) => $.ai.acp.startConversationFallback),
+                })}
               </Button>
             )}
           </div>
@@ -373,8 +387,8 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
                   useAcpSessionsStore.getState().setSnapshot(await acpSetModel(projectId, session.id, modelId));
                 })}
               >
-                <SelectTrigger aria-label="Agent model" data-testid="acp-model-picker" className="h-7 w-auto min-w-0 max-w-44 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
-                  <SelectValue placeholder="Agent model" />
+                <SelectTrigger aria-label={t(($) => $.ai.acp.agentModel)} data-testid="acp-model-picker" className="h-7 w-auto min-w-0 max-w-44 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
+                  <SelectValue placeholder={t(($) => $.ai.acp.agentModel)} />
                 </SelectTrigger>
                 <SelectContent className="z-[100]" align="end">
                   {session.controls.models.map((model) => (
@@ -384,18 +398,18 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
               </Select>
             ) : session ? (
               <span className="hidden max-w-40 truncate px-1 text-[11px] text-muted-foreground sm:inline">
-                {session.controls.modelId ?? "Model managed by the agent"}
+                {session.controls.modelId ?? t(($) => $.ai.acp.modelManaged)}
               </span>
             ) : null}
             {running ? (
-              <Tooltip label="Stop">
-                <button type="button" aria-label="Stop" title="Stop the agent" className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90 disabled:opacity-40" disabled={session?.status === "cancelling"} onClick={() => { if (activeId) void perform(async () => { await acpCancel(projectId, activeId); await useAcpSessionsStore.getState().resync(projectId, activeId); }); }}>
+              <Tooltip label={t(($) => $.ai.acp.stop)}>
+                <button type="button" aria-label={t(($) => $.ai.acp.stop)} title={t(($) => $.ai.acp.stopTitle)} className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90 disabled:opacity-40" disabled={session?.status === "cancelling"} onClick={() => { if (activeId) void perform(async () => { await acpCancel(projectId, activeId); await useAcpSessionsStore.getState().resync(projectId, activeId); }); }}>
                   <Square className="size-3.5 fill-current" />
                 </button>
               </Tooltip>
             ) : (
-              <Tooltip label="Send">
-                <button type="submit" aria-label="Send" className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40" disabled={!canSend}>
+              <Tooltip label={t(($) => $.ai.acp.send)}>
+                <button type="submit" aria-label={t(($) => $.ai.acp.send)} className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40" disabled={!canSend}>
                   <ArrowUp className="size-4" />
                 </button>
               </Tooltip>
@@ -418,7 +432,29 @@ const STATUS_DOT: Record<AcpSession["status"], string> = {
   failed: "bg-destructive",
 };
 
+function sessionStatusLabel(status: AcpSession["status"]): string {
+  switch (status) {
+    case "connecting":
+      return i18n.t(($) => $.ai.acp.sessionStatus.connecting);
+    case "auth_required":
+      return i18n.t(($) => $.ai.acp.sessionStatus.authRequired);
+    case "ready":
+      return i18n.t(($) => $.ai.acp.sessionStatus.ready);
+    case "running":
+      return i18n.t(($) => $.ai.acp.sessionStatus.running);
+    case "cancelling":
+      return i18n.t(($) => $.ai.acp.sessionStatus.cancelling);
+    case "cancelled":
+      return i18n.t(($) => $.ai.acp.sessionStatus.cancelled);
+    case "disconnected":
+      return i18n.t(($) => $.ai.acp.sessionStatus.disconnected);
+    default:
+      return i18n.t(($) => $.ai.acp.sessionStatus.failed);
+  }
+}
+
 function SessionStatusPill({ session, busy }: { session: AcpSession; busy: boolean }) {
+  const { t } = useTranslation(["common", "ai"]);
   return (
     <span
       data-testid="acp-session-status"
@@ -430,7 +466,14 @@ function SessionStatusPill({ session, busy }: { session: AcpSession; busy: boole
       ) : (
         <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[session.status])} />
       )}
-      <span className="truncate">{busy ? "Connecting" : `${session.agentId} · ${session.status.replaceAll("_", " ")}`}</span>
+      <span className="truncate">
+        {busy
+          ? t(($) => $.ai.acp.connecting)
+          : t(($) => $.ai.acp.sessionStatusPill, {
+              agent: session.agentId,
+              status: sessionStatusLabel(session.status),
+            })}
+      </span>
     </span>
   );
 }
@@ -447,15 +490,20 @@ export function agentRoster(catalog: AcpAgentStatus[]): AgentPickerEntry[] {
       available: readiness === "ready",
       hint:
         readiness === "bridge-missing"
-          ? "install the bridge in Agent setup"
+          ? i18n.t(($) => $.ai.acp.roster.bridgeMissing)
           : readiness === "cli-missing"
-            ? "CLI not found on this computer"
-            : "not available on this computer",
+            ? i18n.t(($) => $.ai.acp.roster.cliMissing)
+            : i18n.t(($) => $.ai.acp.roster.unavailable),
     });
   }
   for (const id of AGENT_MARK_IDS) {
     if (seen.has(id)) continue;
-    entries.push({ id, name: AGENT_ROSTER_NAMES[id] ?? id, available: false, hint: "coming soon" });
+    entries.push({
+      id,
+      name: AGENT_ROSTER_NAMES[id] ?? id,
+      available: false,
+      hint: i18n.t(($) => $.ai.acp.roster.comingSoon),
+    });
   }
   return entries;
 }

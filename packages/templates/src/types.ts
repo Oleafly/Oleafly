@@ -1,4 +1,5 @@
 import type { ComponentPropsWithRef, ComponentType, ReactNode } from "react";
+import type { TemplatesTranslator } from "./messages";
 
 // A structural subset of the host's richer manifest type; extra fields pass
 // through untouched.
@@ -47,4 +48,5 @@ export interface TemplatesKit {
     "aria-label"?: string;
     "data-testid"?: string;
   }>;
+  t: TemplatesTranslator;
 }

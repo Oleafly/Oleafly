@@ -1,6 +1,7 @@
 import {
   PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
   type BibliographyEntryDetail,
+  type ProjectDiagnosticMessage,
   type ProjectIntelligenceIdentity,
   type ProjectIntelligenceSnapshot,
 } from "./types";
@@ -24,7 +25,7 @@ export interface ProjectFileUpsert {
 export interface ProjectUnreadableFile {
   readonly file: string;
   readonly sourceRevision: number;
-  readonly message?: string;
+  readonly message?: ProjectDiagnosticMessage;
 }
 
 export interface AnalyzeProjectIntelligenceRequest {

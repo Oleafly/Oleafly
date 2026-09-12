@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ExternalLink, Github, Link as LinkIcon, Settings } from "lucide-react";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
@@ -21,6 +22,7 @@ export function GithubMenu({
   onOpenInGithub: () => void;
   onCopyLink: () => void;
 }) {
+  const { t } = useTranslation(["shell"]);
   const status = useGithubStore((s) => s.status);
   const user = useGithubStore((s) => s.user);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
@@ -39,10 +41,10 @@ export function GithubMenu({
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       {connected ? (
-        <Tooltip label={`Connected as @${login}`} side="bottom">
+        <Tooltip label={t(($) => $.shell.githubMenu.connectedAs, { login })} side="bottom">
           <DropdownMenuTrigger asChild>
             <button type="button"
-              aria-label={`GitHub: ${login}`}
+              aria-label={t(($) => $.shell.githubMenu.accountAriaLabel, { login })}
               className="flex h-9 items-center gap-1.5 rounded-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
               {user?.avatar_url ? (
@@ -57,12 +59,12 @@ export function GithubMenu({
           </DropdownMenuTrigger>
         </Tooltip>
       ) : (
-        <Tooltip label="GitHub" side="bottom">
+        <Tooltip label={t(($) => $.shell.githubMenu.tooltip)} side="bottom">
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              aria-label="GitHub actions"
+              aria-label={t(($) => $.shell.githubMenu.actions)}
               className="h-9 text-muted-foreground hover:text-foreground"
             >
               <Github />
@@ -74,27 +76,27 @@ export function GithubMenu({
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem disabled={!githubUrl} onSelect={onOpenInGithub}>
           <ExternalLink className="size-4 text-muted-foreground" />
-          <span className="truncate">Open in GitHub</span>
+          <span className="truncate">{t(($) => $.shell.githubMenu.openInGithub)}</span>
         </DropdownMenuItem>
         <DropdownMenuItem disabled={!githubUrl} onSelect={onCopyLink}>
           <LinkIcon className="size-4 text-muted-foreground" />
-          <span className="truncate">Copy repository link</span>
+          <span className="truncate">{t(($) => $.shell.githubMenu.copyRepositoryLink)}</span>
         </DropdownMenuItem>
         {!githubUrl && (
           <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
-            Push to GitHub to enable these
+            {t(($) => $.shell.githubMenu.pushHint)}
           </p>
         )}
         <DropdownMenuSeparator />
         {connected ? (
           <DropdownMenuItem onSelect={openSettings}>
             <Settings className="size-4 text-muted-foreground" />
-            <span className="truncate">GitHub settings</span>
+            <span className="truncate">{t(($) => $.shell.githubMenu.settings)}</span>
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem onSelect={openSettings}>
             <Github className="size-4 text-muted-foreground" />
-            <span className="truncate">Connect GitHub…</span>
+            <span className="truncate">{t(($) => $.shell.githubMenu.connect)}</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

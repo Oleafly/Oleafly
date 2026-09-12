@@ -1,5 +1,7 @@
 import { WidgetType } from "@codemirror/view";
 import { createRoot, type Root } from "react-dom/client";
+import { I18nextProvider } from "react-i18next";
+import { i18n } from "@/i18n";
 import { InlineEditPanel } from "./InlineEditPanel";
 
 // The panel reads the session store itself, so this widget is a stable singleton
@@ -15,7 +17,11 @@ class PromptWidget extends WidgetType {
     dom.className = "cm-inline-prompt";
     const root = createRoot(dom);
     (dom as unknown as { _reactRoot?: Root })._reactRoot = root;
-    root.render(<InlineEditPanel />);
+    root.render(
+      <I18nextProvider i18n={i18n}>
+        <InlineEditPanel />
+      </I18nextProvider>,
+    );
     return dom;
   }
 

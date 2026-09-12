@@ -1,4 +1,5 @@
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { RenderCache } from "./render-cache";
@@ -102,6 +103,7 @@ function initialDiagramState(source: string): DiagramState {
 }
 
 export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source: string }) {
+  const { t } = useTranslation(["core"]);
   const reactId = useId();
   const descriptionId = `mermaid-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}-source`;
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -250,10 +252,10 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
           <p
             role="status"
             aria-live="polite"
-            aria-label="Unable to render diagram."
+            aria-label={t(($) => $.core.mermaid.renderFailed)}
             className="px-2.5 pt-2.5 text-xs text-destructive"
           >
-            Unable to render diagram.
+            {t(($) => $.core.mermaid.renderFailed)}
           </p>
           <pre className="overflow-x-auto p-2.5 text-[0.85em] [scrollbar-width:thin]">
             <code className="font-mono language-mermaid">{source}</code>
@@ -264,7 +266,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
           {state.status === "loading" ? (
             <div
               role="status"
-              aria-label="Rendering diagram"
+              aria-label={t(($) => $.core.mermaid.rendering)}
               className="col-start-1 row-start-1 flex min-h-28 animate-pulse flex-col justify-center gap-3 p-5 opacity-100 transition-opacity duration-200 motion-reduce:animate-none motion-reduce:transition-none"
             >
               <span className="mx-auto h-2 w-2/5 rounded-full bg-muted-foreground/20" />
@@ -285,7 +287,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
             <div
               ref={hostRef}
               role="img"
-              aria-label="Diagram"
+              aria-label={t(($) => $.core.mermaid.diagram)}
               aria-describedby={descriptionId}
               className="col-start-1 row-start-1 min-w-0 overflow-x-auto p-2.5 opacity-100 transition-opacity duration-200 motion-reduce:transition-none [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full"
             />

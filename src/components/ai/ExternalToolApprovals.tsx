@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { isAutoApprovable, useMcpApprovalStore } from "@/store/mcp-approvals";
 import { AI_PROMPT_SURFACE } from "@/components/ai/AiChrome";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
@@ -6,6 +7,7 @@ import { cn } from "@/lib/utils";
 // Reuses the ToolConfirm card from the in-app chat so approval semantics
 // and the diff preview stay identical for MCP (external agent) requests.
 export function ExternalToolApprovals() {
+  const { t } = useTranslation(["common", "ai"]);
   const queue = useMcpApprovalStore((s) => s.queue);
   const sessionAutoApprove = useMcpApprovalStore((s) => s.sessionAutoApprove);
   const decide = useMcpApprovalStore((s) => s.decide);
@@ -26,9 +28,11 @@ export function ExternalToolApprovals() {
         )}
       >
         <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-          <p className="text-xs font-medium text-foreground">External agent request (MCP)</p>
+          <p className="text-xs font-medium text-foreground">{t(($) => $.ai.approval.external.title)}</p>
           {queue.length > 1 && (
-            <span className="text-[11px] text-muted-foreground">{queue.length - 1} more waiting</span>
+            <span className="text-[11px] text-muted-foreground">
+              {t(($) => $.ai.approval.external.moreWaiting, { count: queue.length - 1 })}
+            </span>
           )}
         </div>
         <div className="p-2 pt-2">

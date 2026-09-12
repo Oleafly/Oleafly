@@ -1,0 +1,15 @@
+{
+  "templateCategories": {
+    "blank": "Category of an empty starter template, not a blank page in a document",
+    "diagramsAndFigures": "Stable id in the template data is the English string \"Diagrams & Figures\"",
+    "cvsAndResumes": "Stable id in the template data is the English string \"CVs & Resumes\"",
+    "journalsAndConferences": "Stable id in the template data is the English string \"Journals & Conferences\"",
+    "thesesAndReports": "Stable id in the template data is the English string \"Theses & Reports\"",
+    "aiGenerated": "Category holding templates the user generated with AI"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Short chip label for the same category, must fit one line",
+    "diagramsAndFigures": "Short chip label for the same category, must fit one line",
+    "journalsAndConferences": "Short chip label for the same category, must fit one line"
+  }
+}

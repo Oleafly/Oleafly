@@ -1,4 +1,5 @@
 import type * as pdfjsLib from "pdfjs-dist";
+import type { PreviewTranslator } from "./messages";
 import { safePdfExternalUrl } from "./pdfSecurity";
 
 type RawOutline = NonNullable<
@@ -28,6 +29,7 @@ function normalizeItems(
   input: RawOutline,
   path: number[],
   targets: Map<string, PdfOutlineTarget>,
+  t: PreviewTranslator,
 ): PdfOutlineItem[] {
   return input.map((item: RawOutlineItem, index) => {
     const itemPath = [...path, index];
@@ -40,15 +42,15 @@ function normalizeItems(
         : null;
     const disabledReason =
       rawUrl && !externalUrl
-        ? "This link uses a blocked URL scheme."
+        ? t("outline.blockedScheme")
         : !externalUrl && !destination
-          ? "This outline item has no destination."
+          ? t("outline.noDestination")
           : undefined;
     targets.set(id, { destination, externalUrl });
     return {
       id,
-      title: item.title?.trim() || "Untitled section",
-      children: normalizeItems(item.items ?? [], itemPath, targets),
+      title: item.title?.trim() || t("outline.untitled"),
+      children: normalizeItems(item.items ?? [], itemPath, targets, t),
       external: externalUrl !== null,
       ...(disabledReason ? { disabledReason } : {}),
     };
@@ -57,10 +59,11 @@ function normalizeItems(
 
 export function normalizePdfOutline(
   outline: RawOutline | null,
+  t: PreviewTranslator,
 ): NormalizedPdfOutline {
   const targets = new Map<string, PdfOutlineTarget>();
   return {
-    items: normalizeItems(outline ?? [], [], targets),
+    items: normalizeItems(outline ?? [], [], targets, t),
     targets,
   };
 }

@@ -1,0 +1,19 @@
+language js
+
+or {
+  `toast.$method($message, $...)` where {
+    $method <: or { `error`, `success`, `info` },
+    $message <: string()
+  },
+  `toast.$method($key, $message, $...)` where {
+    $method <: or { `errorUnique`, `infoUnique`, `update` },
+    $message <: string()
+  },
+  `notifyError($scope, $error, $message)` where { $message <: string() }
+} as $call where {
+  register_diagnostic(
+    span = $call,
+    message = "Toast text must come from the catalog. Use t() or a message key.",
+    severity = "error"
+  )
+}

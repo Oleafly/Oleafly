@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useToastStore } from "@/store/toast";
-import { CONVERSION_NOTICE } from "@/features/import-copy";
+import { conversionNotice } from "@/features/import-copy";
 
 const mocks = vi.hoisted(() => ({
   ensurePandoc: vi.fn(),
@@ -79,7 +79,7 @@ describe("project file import", () => {
       expect(mocks.refreshProjects).toHaveBeenCalledOnce();
       expect(mocks.openProject).toHaveBeenCalledWith("converted-project");
       expect(useToastStore.getState().toasts).toEqual([
-        expect.objectContaining({ kind: "success", message: CONVERSION_NOTICE }),
+        expect.objectContaining({ kind: "success", message: conversionNotice() }),
       ]);
     },
   );

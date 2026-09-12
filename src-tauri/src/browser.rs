@@ -15,7 +15,6 @@ mod windows_shortcuts;
 
 pub const CHROME_HEIGHT_LOGICAL: f64 = 88.0;
 
-const WINDOW_TITLE: &str = "Oleafly Browser";
 const WINDOW_PREFIX: &str = "oleafly-browser-window-";
 const CHROME_PREFIX: &str = "oleafly-browser-chrome-";
 const PANE_PREFIX: &str = "oleafly-browser-pane-";
@@ -395,9 +394,9 @@ fn set_pane_visible<R: Runtime>(window: &Window<R>, pane: &str, visible: bool) {
 fn browser_window_title(title: &str) -> String {
     let title = title.trim();
     if title.is_empty() {
-        WINDOW_TITLE.to_owned()
+        crate::i18n::t("window.browser")
     } else {
-        format!("{title} - {WINDOW_TITLE}")
+        crate::i18n::t_with("window.browserTitled", &[("title", title)])
     }
 }
 
@@ -527,7 +526,7 @@ fn create_window<R: Runtime>(app: &AppHandle<R>, url: Url) -> Result<String, Str
     let window_label = format!("{WINDOW_PREFIX}{sequence}");
     let chrome_label = format!("{CHROME_PREFIX}{sequence}");
     let builder = WindowBuilder::new(app, &window_label)
-        .title(WINDOW_TITLE)
+        .title(crate::i18n::t("window.browser"))
         .inner_size(1024.0, 768.0)
         .min_inner_size(480.0, 320.0);
     #[cfg(target_os = "macos")]

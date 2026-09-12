@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "开始使用",
+    "overview": {
+      "title": "主页",
+      "content": "你的项目和项目创建都从这里开始。"
+    },
+    "create": {
+      "title": "创建一个真实项目",
+      "content": "选择“新建项目”，看看一项工作可以有哪些开始方式。"
+    },
+    "kind": {
+      "title": "三种开始方式",
+      "content": "开始一个研究项目、导入已有手稿，或使用现成模板。"
+    },
+    "kindTemplate": {
+      "title": "从模板开始",
+      "content": "选择“使用模板”打开模板库。另外两种起点在你需要时随时可用。"
+    },
+    "gallery": {
+      "title": "找到你的起点",
+      "content": "浏览分类、按名称搜索，并按编译器或离线可用性筛选模板。"
+    },
+    "template": {
+      "title": "选择模板",
+      "content": "选择任一真实模板以继续。模板中的文件将成为你的新项目。"
+    },
+    "name": {
+      "title": "为项目命名",
+      "content": "输入项目名称。名称不为空时，“下一步”才可用。"
+    },
+    "color": {
+      "title": "选择封面颜色",
+      "content": "这个颜色能让项目在主页上一眼可辨。你也可以保留模板的默认颜色。"
+    },
+    "createProject": {
+      "title": "创建你的项目",
+      "content": "点击“创建项目”，即可使用所选模板创建项目。"
+    }
+  },
+  "workspace": {
+    "label": "你的工作区",
+    "toolbar": {
+      "title": "项目工具栏",
+      "content": "项目操作和编译控制都在这里。"
+    },
+    "sidebar": {
+      "title": "工作区导航",
+      "content": "在文件、搜索、源代码管理、预检、参考文献和 MCP 活动之间切换。"
+    },
+    "editor": {
+      "title": "编辑器",
+      "content": "借助补全、诊断、格式化和代码智能来编写和浏览源码。"
+    },
+    "wysiwygToggle": {
+      "title": "试试所见即所得模式",
+      "content": "在原始源码和类似 Google 文档的格式化视图之间切换。"
+    },
+    "compile": {
+      "title": "编译与重新编译",
+      "content": "在此构建当前项目。本导览绝不会编译或更改你的源码。"
+    },
+    "logs": {
+      "title": "构建日志",
+      "content": "打开构建日志即可检查错误，而不会更改项目内容。旁边的状态会显示最近一次编译时间。"
+    },
+    "preview": {
+      "title": "PDF 预览",
+      "content": "在分栏视图中，编译后的文档始终显示在源码旁边。"
+    },
+    "zoom": {
+      "title": "完整的 PDF 工具箱",
+      "content": "打开大纲、搜索文本、在页面间跳转、选择单页或双页布局、缩放或适应页面、反转颜色、使用无障碍阅读视图、旋转、下载、保存到项目、进入全屏，或在独立窗口中打开预览。"
+    },
+    "sourceNavigation": {
+      "title": "PDF 跳转到源码",
+      "content": "点击编译后 PDF 中的内容，即可直接跳转到对应的源码。"
+    }
+  },
+  "research": {
+    "label": "研究工作区",
+    "open": {
+      "title": "研究工作区",
+      "content": "打开它，即可将研究任务交给代理，并关联你存放在别处的阅读文件夹和数据集。该功能刚推出，尚处于测试阶段，如遇问题请向我们反馈。"
+    },
+    "tasks": {
+      "title": "将研究任务加入队列",
+      "content": "描述一项工作并交给代理处理。每个任务都有独立的对话、输出和审阅笔记。"
+    },
+    "folders": {
+      "title": "关联你已有的文件夹",
+      "content": "让工作区指向项目外的阅读文件夹和数据集，不会复制或移动任何内容。"
+    }
+  },
+  "settings": {
+    "label": "设置",
+    "navigation": {
+      "title": "设置",
+      "content": "在这里切换偏好设置与集成选项。"
+    },
+    "general": {
+      "title": "通用偏好设置",
+      "content": "控制编辑行为、离线模式、快捷键和导览。"
+    },
+    "appearance": {
+      "title": "外观",
+      "content": "选择主题、字体排版、默认工作区布局和强调色。"
+    },
+    "dictionary": {
+      "title": "词典",
+      "content": "查看被拼写检查和语法检查忽略的项目级与全局词汇。"
+    },
+    "data": {
+      "title": "数据存储",
+      "content": "查看本地项目存储并管理应用数据。"
+    },
+    "ai": {
+      "title": "AI 助手",
+      "content": "配置提供商、模型、凭据，以及助手可使用的 MCP 服务器。"
+    },
+    "compiler": {
+      "title": "编译器",
+      "content": "选择并配置用于构建项目的 LaTeX 引擎。"
+    },
+    "downloads": {
+      "title": "下载",
+      "content": "管理可供离线使用的软件包和资源。"
+    },
+    "integrations": {
+      "title": "集成",
+      "content": "连接 GitHub、alphaXiv、Zotero、引用搜索，以及 Oleafly 的本地 MCP 服务器。"
+    },
+    "shortcuts": {
+      "title": "键盘快捷键",
+      "content": "查看、编辑、设置和重置应用的键盘快捷键。"
+    },
+    "mcp": {
+      "title": "助手 MCP",
+      "content": "选择助手可使用的 MCP 服务器。"
+    },
+    "help": {
+      "title": "帮助与关于",
+      "content": "重新开始上下文导览、打开文档、查看快捷键或报告问题。"
+    }
+  },
+  "aiSettings": {
+    "label": "AI 设置",
+    "tabs": {
+      "title": "AI 助手设置",
+      "content": "在此管理提供商与密钥、指令、人设、可复用技能和 MCP 服务器。"
+    },
+    "providers": {
+      "title": "连接提供商",
+      "content": "粘贴密钥后，保存前会先通过提供商验证。已连接的提供商显示绿色徽章，展开后是模型列表，你可以切换、扩充或还原模型。密钥在本机上始终保持加密。"
+    },
+    "customProvider": {
+      "title": "自带端点",
+      "content": "任何兼容 OpenAI 的 base URL 均可在此使用，包括 Ollama 或 LM Studio 等本地服务器。"
+    },
+    "openInstructions": {
+      "title": "指令",
+      "content": "点击“指令”标签页继续。"
+    },
+    "defaultModel": {
+      "title": "默认模型",
+      "content": "新聊天会默认使用此模型。你仍可在聊天面板中按会话切换模型。"
+    },
+    "instructions": {
+      "title": "自定义指令",
+      "content": "你的固定风格偏好，会附加到助手的每个请求中。"
+    },
+    "openPersonas": {
+      "title": "人设",
+      "content": "点击“人设”标签页继续。"
+    },
+    "personas": {
+      "title": "创建人设",
+      "content": "带有颜色标识的命名指令集，可在聊天的“人设”菜单中切换。不妨试试文字编辑、审稿人或 LaTeX 纯粹主义者。"
+    }
+  },
+  "ai": {
+    "label": "AI 助手",
+    "assistant": {
+      "title": "AI 助手",
+      "content": "在本次导览中与了解项目的助手协作，期间不会发送任何内容。"
+    },
+    "runtime": {
+      "title": "两种代理",
+      "content": "Oleafly 代理运行于你配置的模型提供商。CLI 代理尚处于测试阶段，可驱动本机已安装的编码代理。"
+    },
+    "connectProvider": {
+      "title": "连接提供商",
+      "content": "如果尚未配置提供商，请从这里开始。导览不会请求或更改任何凭据。"
+    },
+    "providerModel": {
+      "title": "提供商与模型",
+      "content": "为当前对话切换模型。更改仅对本次会话生效。默认模型在设置中配置。Logo 用于标识各模型所属的提供商。"
+    },
+    "prompts": {
+      "title": "提示词快捷方式",
+      "content": "选择一个现成的提示词，将其填入聊天输入框。"
+    },
+    "persona": {
+      "title": "人设",
+      "content": "选择助手的工作方式。启用的人设会替代你的默认指令，直到你将其关闭。"
+    },
+    "input": {
+      "title": "聊天输入框",
+      "content": "描述你的需求。助手可以使用项目上下文，但本导览绝不会发送请求。"
+    },
+    "attachments": {
+      "title": "附件",
+      "content": "当对话需要额外上下文时，可附加图片、PDF 和源码文件。"
+    },
+    "history": {
+      "title": "对话历史",
+      "content": "重新打开最近对话和完整聊天历史，同时让每个对话与其项目状态保持关联。"
+    },
+    "usage": {
+      "title": "用量",
+      "content": "已配置的对话会在有数据时在此显示运行次数、token 用量和预估成本。"
+    },
+    "restore": {
+      "title": "恢复项目状态",
+      "content": "AI 编辑完成后，可使用检查点恢复项目文件，同时保留对话。"
+    }
+  },
+  "diagram": {
+    "label": "图表编排器",
+    "composer": {
+      "title": "图表编排器",
+      "content": "以可视化方式或使用 TikZ 代码构建图表。本导览不会修改或保存你的内容。"
+    },
+    "import": {
+      "title": "导入 TikZ 文件",
+      "content": "已有 .tikz 或 .tex 文件？导入它即可替换这幅入门示例图。在你选择保存之前，它将一直保持草稿状态。"
+    },
+    "modes": {
+      "title": "绘制与代码",
+      "content": "绘制模式让你直接在画布上操作。代码模式显示生成的 TikZ 和可复用的代码片段。"
+    },
+    "palette": {
+      "title": "形状面板",
+      "content": "选择一个形状，然后在画布上点击并拖动以放置和调整大小。"
+    },
+    "handles": {
+      "title": "连接与调整大小",
+      "content": "选中形状后会出现连接和调整大小的控制柄，方便精确搭建结构并控制尺寸。"
+    },
+    "inspector": {
+      "title": "检查器",
+      "content": "选择形状或连接线，即可调整其样式、文本、路径和堆叠顺序。"
+    },
+    "preview": {
+      "title": "编译预览",
+      "content": "编译会在编辑器旁打开预览，并提供缩放和背景控制。"
+    },
+    "compile": {
+      "title": "编译",
+      "content": "编译会渲染一个独立的预览，而不会将图表插入你的文档。"
+    },
+    "saveProject": {
+      "title": "保存为项目",
+      "content": "将完成的图表保存为可复用的图片项目，并显示在主页上。"
+    },
+    "download": {
+      "title": "下载",
+      "content": "将编译后的图表下载为 PNG 文件，但不保存为项目。"
+    }
+  }
+}

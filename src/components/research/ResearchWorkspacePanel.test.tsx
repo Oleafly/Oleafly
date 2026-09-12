@@ -4,6 +4,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { AppConfig } from "@/lib/tauri";
 import type { ResearchTask, ResearchTaskDraft } from "@/lib/research-tasks";
 import type { ResearchWorkspace, ResearchRootFileContent } from "@/lib/research-workspace";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let ResearchWorkspacePanel: typeof import("./ResearchWorkspacePanel").ResearchWorkspacePanel;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
@@ -130,11 +132,11 @@ describe("ResearchWorkspacePanel integration", () => {
   it("offers project-scoped entry points and opens agent settings without a project", async () => {
     native.invoke.mockResolvedValue({});
     mount();
-    expect(page().getByText("Open a project to use research tasks")).toBeInTheDocument();
-    fireEvent.click(page().getByRole("button", { name: "Configure research agents" }));
+    expect(page().getByText(enResearchTools.tasks.panel.noProjectTitle)).toBeInTheDocument();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.workspace.configureAgents }));
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "ai" });
     await userEvent.setup({ document }).click(page().getByRole("tab", { name: "Linked folders" }));
-    expect(page().getByText("Open a project to link its research folders.")).toBeInTheDocument();
+    expect(page().getByText(enResearchTools.workspace.noProject)).toBeInTheDocument();
     expect(native.invoke.mock.calls.map(([command]) => command)).toEqual(["get_config"]);
   });
 
@@ -152,28 +154,28 @@ describe("ResearchWorkspacePanel integration", () => {
     });
     useFilesStore.setState({ projectId: "paper" });
     mount();
-    await waitFor(() => expect(page().getByRole("button", { name: "New task" })).toBeEnabled());
-    fireEvent.click(page().getByRole("button", { name: "New task" }));
-    openSelect("Agent and model");
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask })).toBeEnabled());
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+    openSelect(enResearchTools.tasks.composer.agentLabel);
     await waitFor(() => expect(page().getByRole("option", { name: /Research model/ })).toBeInTheDocument());
     expect(page().getByRole("option", { name: /Restricted CLI/ })).toHaveAttribute("data-disabled");
     expect(page().queryByRole("option", { name: /Missing CLI|Disabled model/ })).not.toBeInTheDocument();
     fireEvent.click(page().getByRole("option", { name: /Research model/ }));
-    choose("Start from", "Evidence audit");
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.starter.evidenceAudit.label);
     const user = userEvent.setup({ document });
-    await user.clear(page().getByLabelText("Title"));
-    await user.type(page().getByLabelText("Title"), "Check the cohort evidence");
-    await user.clear(page().getByLabelText("Instructions"));
-    await user.type(page().getByLabelText("Instructions"), "Compare the claims to the attached data");
+    await user.clear(page().getByLabelText(enResearchTools.tasks.composer.titleLabel));
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), "Check the cohort evidence");
+    await user.clear(page().getByLabelText(enResearchTools.tasks.composer.promptLabel));
+    await user.type(page().getByLabelText(enResearchTools.tasks.composer.promptLabel), "Compare the claims to the attached data");
     await act(async () => window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: { ...config } })));
-    fireEvent.click(page().getByRole("button", { name: "Create task" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     await waitFor(() => expect(native.invoke).toHaveBeenCalledWith("research_task_create", {
       draft: { projectId: "paper", title: "Check the cohort evidence", prompt: "Compare the claims to the attached data", runtimeId: "builtin", agentId: "openai", modelId: "research-model", skillIds: ["oleafly-verify-claims"], dependencyIds: [] },
     }));
-    await waitFor(() => expect(page().queryByLabelText("Instructions")).not.toBeInTheDocument());
+    await waitFor(() => expect(page().queryByLabelText(enResearchTools.tasks.composer.promptLabel)).not.toBeInTheDocument());
     expect(within(page().getByRole("dialog")).getByRole("heading", { name: "Check the cohort evidence" })).toBeInTheDocument();
-    fireEvent.click(within(page().getByRole("dialog")).getByRole("button", { name: "Close" }));
-    expect(within(page().getByRole("navigation", { name: "Research task list" })).getByText("Check the cohort evidence")).toBeInTheDocument();
+    fireEvent.click(within(page().getByRole("dialog")).getByRole("button", { name: enCommon.actions.close }));
+    expect(within(page().getByRole("navigation", { name: enResearchTools.tasks.panel.listLabel })).getByText("Check the cohort evidence")).toBeInTheDocument();
     expect(native.invoke).not.toHaveBeenCalledWith("research_task_start", expect.anything());
   });
 
@@ -186,10 +188,10 @@ describe("ResearchWorkspacePanel integration", () => {
     });
     useFilesStore.setState({ projectId: "paper" });
     mount();
-    await waitFor(() => expect(page().getByText("Assistant settings could not be loaded.")).toBeInTheDocument());
-    await waitFor(() => expect(page().getByRole("button", { name: "New task" })).toBeEnabled());
-    fireEvent.click(page().getByRole("button", { name: "New task" }));
-    openSelect("Agent and model");
+    await waitFor(() => expect(page().getByText(enResearchTools.workspace.configError)).toBeInTheDocument());
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask })).toBeEnabled());
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+    openSelect(enResearchTools.tasks.composer.agentLabel);
     expect(page().getByRole("option", { name: /Ready CLI/ })).not.toHaveAttribute("data-disabled");
   });
 
@@ -213,7 +215,7 @@ describe("ResearchWorkspacePanel integration", () => {
     await waitFor(() => expect(page().getByText("second data")).toBeInTheDocument());
     await act(async () => firstLoad.resolve(workspace("first")));
     expect(page().queryByText("first data")).not.toBeInTheDocument();
-    fireEvent.click(page().getByRole("button", { name: "Browse files" }));
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.roots.card.browse }));
     await waitFor(() => expect(page().getByRole("button", { name: "measurements.csv" })).toBeInTheDocument());
     fireEvent.click(page().getByRole("button", { name: "measurements.csv" }));
     expect(native.invoke).toHaveBeenCalledWith("read_research_root_file", { projectId: "second", rootId: "second-root", relativePath: "measurements.csv", maxBytes: 256 * 1024 });

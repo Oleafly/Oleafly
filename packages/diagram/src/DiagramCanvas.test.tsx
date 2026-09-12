@@ -7,6 +7,12 @@ import type { DiagramModel } from "@oleafly/latex";
 import { useDiagramEdit } from "./edit-context";
 
 const flow = vi.hoisted(() => ({ props: {} as ReactFlowProps }));
+const PROBE = vi.hoisted(() => ({
+  inspector: "Style inspector",
+  editingNode: "Editing node",
+  beginEdit: "Start label edit",
+  commitLabel: "Commit label",
+}));
 vi.mock("@xyflow/react", async (importOriginal) => {
   const original = await importOriginal<typeof import("@xyflow/react")>();
   return {
@@ -18,18 +24,19 @@ vi.mock("./kit", () => ({
   useDiagramKit: () => ({
     Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
     useThemeMode: () => "light",
+    t: (key: string) => key,
   }),
 }));
 vi.mock("./ShapeNode", () => ({ nodeTypes: {} }));
-vi.mock("./Inspector", () => ({ Inspector: () => <div>Style inspector</div> }));
+vi.mock("./Inspector", () => ({ Inspector: () => <div>{PROBE.inspector}</div> }));
 import { DiagramCanvas } from "./DiagramCanvas";
 
 function EditProbe() {
   const edit = useDiagramEdit();
   return <>
-    <output aria-label="Editing node">{edit.editingId ?? "none"}</output>
-    <button type="button" onClick={() => edit.beginEdit("one")}>Start label edit</button>
-    <button type="button" onClick={() => edit.commitLabel("one", "Changed")}>Commit label</button>
+    <output aria-label={PROBE.editingNode}>{edit.editingId ?? "none"}</output>
+    <button type="button" onClick={() => edit.beginEdit("one")}>{PROBE.beginEdit}</button>
+    <button type="button" onClick={() => edit.commitLabel("one", "Changed")}>{PROBE.commitLabel}</button>
   </>;
 }
 
@@ -44,8 +51,8 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 it("keeps imported previews read-only even when canvas events or label callbacks arrive", () => {
   const changed = vi.fn();
   render(<DiagramCanvas model={model} onChange={changed} readOnly />);
-  expect(screen.queryByRole("toolbar", { name: "Shape tools" })).not.toBeInTheDocument();
-  expect(screen.getByText("Read-only preview · Drag to pan")).toBeInTheDocument();
+  expect(screen.queryByRole("toolbar", { name: "canvas.shapeTools" })).not.toBeInTheDocument();
+  expect(screen.getByText("canvas.hintReadOnly")).toBeInTheDocument();
   expect(flow.props).toMatchObject({ nodesDraggable: false, nodesConnectable: false, elementsSelectable: false, edgesReconnectable: false, panOnDrag: true, deleteKeyCode: null });
   expect(flow.props.onConnect).toBeUndefined();
   expect(flow.props.onReconnect).toBeUndefined();
@@ -65,7 +72,7 @@ it("keeps imported previews read-only even when canvas events or label callbacks
 it("restores editing for an editable source and blocks undo after it becomes read-only", () => {
   const changed = vi.fn();
   const view = render(<DiagramCanvas model={model} onChange={changed} />);
-  expect(screen.getByRole("toolbar", { name: "Shape tools" })).toBeInTheDocument();
+  expect(screen.getByRole("toolbar", { name: "canvas.shapeTools" })).toBeInTheDocument();
   expect(flow.props.onConnect).toEqual(expect.any(Function));
   fireEvent.click(screen.getByRole("button", { name: "Start label edit" }));
   expect(screen.getByLabelText("Editing node")).toHaveTextContent("one");

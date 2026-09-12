@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Bold,
@@ -32,6 +33,7 @@ import {
 import { refineAvailable, refineWithAi } from "@/features/import-refine";
 import { LatexSourceViewer } from "@/components/import/LatexSourceViewer";
 import { cn, isMac } from "@/lib/utils";
+import { formatNumber } from "@/lib/intl";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { toast } from "@/lib/toast";
 import { useFullscreen } from "@/lib/use-fullscreen";
@@ -39,17 +41,28 @@ import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
 
 const HANDLES = [
-  { icon: Heading, label: "Headings, paragraphs, lists" },
-  { icon: Bold, label: "Bold / italic / monospace" },
-  { icon: Sigma, label: "Greek & math symbols" },
-  { icon: ScissorsLineDashed, label: "Header/footer stripping" },
-  { icon: Columns2, label: "Two-column layouts" },
-  { icon: Radical, label: "Inline & display math" },
-  { icon: ImageIcon, label: "Figures (auto-extracted)" },
-  { icon: FileType2, label: "Word documents (.docx), via pandoc" },
-];
+  { id: "structure", icon: Heading },
+  { id: "emphasis", icon: Bold },
+  { id: "symbols", icon: Sigma },
+  { id: "chrome", icon: ScissorsLineDashed },
+  { id: "columns", icon: Columns2 },
+  { id: "math", icon: Radical },
+  { id: "figures", icon: ImageIcon },
+  { id: "word", icon: FileType2 },
+] as const;
 
 function PdfDropzoneLanding() {
+  const { t } = useTranslation(["library"]);
+  const handleLabels: Record<(typeof HANDLES)[number]["id"], string> = {
+    structure: t(($) => $.library.pdfImport.handles.structure),
+    emphasis: t(($) => $.library.pdfImport.handles.emphasis),
+    symbols: t(($) => $.library.pdfImport.handles.symbols),
+    chrome: t(($) => $.library.pdfImport.handles.chrome),
+    columns: t(($) => $.library.pdfImport.handles.columns),
+    math: t(($) => $.library.pdfImport.handles.math),
+    figures: t(($) => $.library.pdfImport.handles.figures),
+    word: t(($) => $.library.pdfImport.handles.word),
+  };
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   return (
@@ -80,22 +93,26 @@ function PdfDropzoneLanding() {
         >
           <FileInput className="size-10 text-muted-foreground" />
           <div>
-            <p className="text-lg font-semibold">Drop a PDF or Word document here</p>
+            <p className="text-lg font-semibold">{t(($) => $.library.pdfImport.dropTitle)}</p>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Or{" "}
-              <button
-                type="button"
-                data-testid="pdf-dropzone-browse"
-                className="font-medium text-primary underline underline-offset-2"
-                onClick={(e) => {
-                  // The whole dropzone opens the picker; don't fire it twice.
-                  e.stopPropagation();
-                  inputRef.current?.click();
+              <Trans
+                ns="library"
+                i18nKey={($) => $.library.pdfImport.dropHint}
+                components={{
+                  browse: (
+                    <button
+                      type="button"
+                      data-testid="pdf-dropzone-browse"
+                      className="font-medium text-primary underline underline-offset-2"
+                      onClick={(e) => {
+                        // The whole dropzone opens the picker; don't fire it twice.
+                        e.stopPropagation();
+                        inputRef.current?.click();
+                      }}
+                    />
+                  ),
                 }}
-              >
-                browse
-              </button>{" "}
-              to upload. PDF conversion runs on your device. No files are uploaded.
+              />
             </p>
           </div>
           <input
@@ -112,15 +129,15 @@ function PdfDropzoneLanding() {
         </div>
         <div className="mt-8">
           <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            What it handles
+            {t(($) => $.library.pdfImport.handlesTitle)}
           </div>
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-            {HANDLES.map(({ icon: Icon, label }) => (
-              <div key={label} className="flex items-center gap-3 rounded-xl border p-3">
+            {HANDLES.map(({ icon: Icon, id }) => (
+              <div key={id} className="flex items-center gap-3 rounded-xl border p-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="size-4" />
                 </div>
-                {label}
+                {handleLabels[id]}
               </div>
             ))}
           </div>
@@ -131,14 +148,30 @@ function PdfDropzoneLanding() {
 }
 
 function StatsBar() {
+  const { t } = useTranslation(["library"]);
   const report = useImportStore((s) => s.result?.report ?? null);
   if (!report) return null;
   const parts = [
-    `${report.pages} pages`,
-    `${report.headings} headings`,
-    `${report.paragraphs} paragraphs`,
-    `${report.equations} equations`,
-    `${report.figures} figures`,
+    t(($) => $.library.pdfImport.stats.pages, {
+      count: report.pages,
+      total: formatNumber(report.pages),
+    }),
+    t(($) => $.library.pdfImport.stats.headings, {
+      count: report.headings,
+      total: formatNumber(report.headings),
+    }),
+    t(($) => $.library.pdfImport.stats.paragraphs, {
+      count: report.paragraphs,
+      total: formatNumber(report.paragraphs),
+    }),
+    t(($) => $.library.pdfImport.stats.equations, {
+      count: report.equations,
+      total: formatNumber(report.equations),
+    }),
+    t(($) => $.library.pdfImport.stats.figures, {
+      count: report.figures,
+      total: formatNumber(report.figures),
+    }),
   ];
   return (
     <div data-testid="import-stats" className="font-mono text-xs text-muted-foreground">
@@ -148,6 +181,7 @@ function StatsBar() {
 }
 
 function PagePreviews() {
+  const { t } = useTranslation(["library"]);
   const pdfBytes = useImportStore((s) => s.pdfBytes);
   const pageCount = useImportStore((s) => s.pages.length);
   const [pngs, setPngs] = useState<{ page: number; url: string }[]>([]);
@@ -176,7 +210,7 @@ function PagePreviews() {
         <img
           key={page}
           src={url}
-          alt={`Page ${page}`}
+          alt={t(($) => $.library.pdfImport.pageAlt, { page })}
           className="w-full rounded-md border shadow-sm"
         />
       ))}
@@ -185,13 +219,14 @@ function PagePreviews() {
 }
 
 function SourcePane() {
+  const { t } = useTranslation(["library"]);
   const tex = useImportStore((s) => s.result?.tex ?? "");
   const likelyScanned = useImportStore((s) => s.result?.report.likelyScanned ?? false);
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {likelyScanned && (
         <div className="border-b px-4 py-2 text-xs text-muted-foreground">
-          This PDF has no text layer (likely scanned). Use Refine with AI to transcribe it.
+          {t(($) => $.library.pdfImport.scanned)}
         </div>
       )}
       <LatexSourceViewer source={tex} />
@@ -200,22 +235,27 @@ function SourcePane() {
 }
 
 function OptionsPopover() {
+  const { t } = useTranslation(["library"]);
   const options = useImportStore((s) => s.options);
   const rerun = useImportStore((s) => s.rerun);
   const [range, setRange] = useState("");
   return (
     <Popover
       trigger={<Settings2 className="size-4" />}
-      ariaLabel="Conversion options"
+      ariaLabel={t(($) => $.library.pdfImport.options.label)}
       closeOnClick={false}
       className="w-64 space-y-3 p-3"
     >
       <div className="space-y-1">
-        <div className="text-xs font-medium">Page range (e.g. 2-5)</div>
-        <Input value={range} onChange={(e) => setRange(e.target.value)} placeholder="all pages" />
+        <div className="text-xs font-medium">{t(($) => $.library.pdfImport.options.pageRange)}</div>
+        <Input
+          value={range}
+          onChange={(e) => setRange(e.target.value)}
+          placeholder={t(($) => $.library.pdfImport.options.pageRangePlaceholder)}
+        />
       </div>
       <div className="space-y-1">
-        <div className="text-xs font-medium">Columns</div>
+        <div className="text-xs font-medium">{t(($) => $.library.pdfImport.options.columns)}</div>
         <div className="flex gap-1">
           {(["auto", 1, 2] as const).map((c) => (
             <Button
@@ -240,24 +280,27 @@ function OptionsPopover() {
           });
         }}
       >
-        Re-run conversion
+        {t(($) => $.library.pdfImport.options.rerun)}
       </Button>
     </Popover>
   );
 }
 
 function FiguresStrip() {
+  const { t } = useTranslation(["library"]);
   const figures = useImportStore((s) => s.figures);
   if (figures.length === 0) return null;
   return (
     <div className="border-t bg-muted/40 px-4 py-3">
       <div className="mb-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">
-        {figures.length} extracted {figures.length === 1 ? "figure" : "figures"} · click to
-        download
+        {t(($) => $.library.pdfImport.figuresStrip, {
+          count: figures.length,
+          total: formatNumber(figures.length),
+        })}
       </div>
       <div className="flex gap-3 overflow-x-auto">
         {figures.map((f) => (
-          <Tooltip key={f.name} label={`Save ${f.name}`}>
+          <Tooltip key={f.name} label={t(($) => $.library.pdfImport.saveFigure, { name: f.name })}>
             <button
               type="button"
               data-testid={`import-figure-${f.name}`}
@@ -275,6 +318,7 @@ function FiguresStrip() {
 }
 
 export function PdfImportView() {
+  const { t } = useTranslation(["library"]);
   const page = useHomeViewStore((s) => s.page);
   const pdfBytes = useImportStore((s) => s.pdfBytes);
   const busy = useImportStore((s) => s.busy);
@@ -287,6 +331,11 @@ export function PdfImportView() {
   const [refineable, setRefineable] = useState(false);
   const fullscreen = useFullscreen();
   const active = page === "pdf-import";
+  const viewLabels = {
+    preview: t(($) => $.library.pdfImport.views.preview),
+    source: t(($) => $.library.pdfImport.views.source),
+    split: t(($) => $.library.pdfImport.views.split),
+  };
   useEffect(() => {
     if (active) void refineAvailable().then(setRefineable);
   }, [active]);
@@ -309,10 +358,10 @@ export function PdfImportView() {
           }}
           data-testid="import-back"
         >
-          <ArrowLeft className="size-4" /> Back
+          <ArrowLeft className="size-4" /> {t(($) => $.library.pdfImport.back)}
         </Button>
         <div className="h-5 w-px shrink-0 bg-border" />
-        <div className="font-medium">PDF to LaTeX</div>
+        <div className="font-medium">{t(($) => $.library.pdfImport.heading)}</div>
         {pdfBytes && (
           <>
             <div className="max-w-48 truncate text-sm text-muted-foreground">{fileName}</div>
@@ -329,10 +378,10 @@ export function PdfImportView() {
               disabled={!result}
               onClick={() => {
                 void navigator.clipboard.writeText(result?.tex ?? "");
-                toast.success("Copied LaTeX source");
+                toast.success(t(($) => $.library.pdfImport.copied));
               }}
             >
-              <Copy className="size-4" /> Copy
+              <Copy className="size-4" /> {t(($) => $.library.pdfImport.copy)}
             </Button>
             <Button
               variant="outline"
@@ -340,7 +389,7 @@ export function PdfImportView() {
               disabled={!result}
               onClick={() => void downloadTex()}
             >
-              <Download className="size-4" /> .tex
+              <Download className="size-4" /> {".tex"}
             </Button>
             <Button
               variant="outline"
@@ -348,7 +397,7 @@ export function PdfImportView() {
               disabled={!result}
               onClick={() => void handleDownloadZipClick()}
             >
-              <FileArchive className="size-4" /> .zip
+              <FileArchive className="size-4" /> {".zip"}
             </Button>
             {refineable && (
               <Button
@@ -358,7 +407,7 @@ export function PdfImportView() {
                 data-testid="import-refine"
                 onClick={() => void refineWithAi()}
               >
-                <Sparkles className="size-4" /> Refine with AI
+                <Sparkles className="size-4" /> {t(($) => $.library.pdfImport.refine)}
               </Button>
             )}
             <Button
@@ -367,10 +416,10 @@ export function PdfImportView() {
               data-testid="import-create-project"
               onClick={() => void createProjectFromConversion()}
             >
-              <FolderPlus className="size-4" /> Create project
+              <FolderPlus className="size-4" /> {t(($) => $.library.pdfImport.createProject)}
             </Button>
             <Button variant="ghost" size="sm" onClick={close}>
-              New PDF
+              {t(($) => $.library.pdfImport.newFile)}
             </Button>
           </div>
         )}
@@ -381,7 +430,7 @@ export function PdfImportView() {
           )}
         >
           <span className="size-1.5 rounded-full bg-emerald-500" />
-          Local
+          {t(($) => $.library.pdfImport.local)}
         </div>
         <WindowControls />
       </div>
@@ -398,13 +447,17 @@ export function PdfImportView() {
                 onClick={() => setView(v)}
                 data-testid={`import-view-${v}`}
               >
-                {v[0].toUpperCase() + v.slice(1)}
+                {viewLabels[v]}
               </Button>
             ))}
-            {busy && <span className="ml-3 text-xs text-muted-foreground">Converting...</span>}
+            {busy && (
+              <span className="ml-3 text-xs text-muted-foreground">
+                {t(($) => $.library.pdfImport.converting)}
+              </span>
+            )}
             {error && <span className="ml-3 text-xs text-destructive">{error}</span>}
             <span className="ml-auto text-xs text-muted-foreground">
-              AI-free local reconstruction. Review before trusting.
+              {t(($) => $.library.pdfImport.disclaimer)}
             </span>
           </div>
           <div className="flex min-h-0 flex-1">

@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Table2,
 } from "lucide-react";
+import { i18n } from "@/i18n";
 import type { HomePage } from "@/store/home-view";
 
 export type ToolId =
@@ -19,13 +20,12 @@ export type ToolId =
   | "literature-search"
   | "deadlines";
 
+export type ToolCategory = "convert" | "validate" | "tables" | "research";
+
 export interface ToolDefinition {
   id: ToolId;
-  name: string;
-  description: string;
   icon: ComponentType<{ className?: string }>;
-  tags: readonly string[];
-  category: string;
+  category: ToolCategory;
   page: HomePage;
   slash: readonly [string, ...string[]];
   tone:
@@ -39,93 +39,169 @@ export interface ToolDefinition {
 }
 
 export const TOOL_CATEGORY_ORDER = [
-  "Convert",
-  "Validate",
-  "Tables",
-  "Research",
-] as const;
+  "convert",
+  "validate",
+  "tables",
+  "research",
+] as const satisfies readonly ToolCategory[];
 
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   {
     id: "pdf-to-latex",
-    name: "PDF to LaTeX",
-    description: "Convert PDFs to LaTeX with math, figures, and structure preserved.",
     icon: FileInput,
-    tags: ["Math extraction", "Figure export", "Client-side"],
-    category: "Convert",
+    category: "convert",
     page: "pdf-import",
     slash: ["pdf-to-latex", "pdf-import"],
     tone: "rose",
   },
   {
     id: "equation",
-    name: "LaTeX Preview",
-    description:
-      "Preview equations, matrices, aligned math, or chemistry, then copy the LaTeX source.",
     icon: Calculator,
-    tags: ["KaTeX", "Inline and display", "Copy source"],
-    category: "Convert",
+    category: "convert",
     page: "equation",
     slash: ["latex-preview", "equation"],
     tone: "violet",
   },
   {
     id: "bibtex",
-    name: "BibTeX Validator",
-    description: "Validate .bib files for syntax errors and missing required fields.",
     icon: ShieldCheck,
-    tags: ["12 entry types", "Required fields", "Duplicate keys"],
-    category: "Validate",
+    category: "validate",
     page: "bibtex",
     slash: ["bibtex-validator", "bibtex"],
     tone: "emerald",
   },
   {
     id: "table",
-    name: "LaTeX Table Generator",
-    description: "Build LaTeX tables with a visual row and column editor.",
     icon: Table2,
-    tags: ["Visual editor", "booktabs", "Export"],
-    category: "Tables",
+    category: "tables",
     page: "table",
     slash: ["latex-table", "table-generator", "table"],
     tone: "cyan",
   },
   {
     id: "literature-search",
-    name: "Citation Search",
-    description:
-      "Manual multi-source search, document paragraph scan with scored suggestions, and Friendly/Fire paper review. Duplicates are combined automatically.",
     icon: LibraryBig,
-    tags: ["Scholar indexes", "From document", "Review", "Saved citations"],
-    category: "Research",
+    category: "research",
     page: "literature-search",
     slash: ["citations-search", "citation-search", "literature-search"],
     tone: "blue",
   },
   {
     id: "lab-search",
-    name: "Lab Search",
-    description: "Find research institutions worldwide through the OpenAlex directory.",
     icon: School,
-    tags: ["Institution records", "Country filter", "ROR links"],
-    category: "Research",
+    category: "research",
     page: "lab-search",
     slash: ["lab-search", "institution-search"],
     tone: "sky",
   },
   {
     id: "deadlines",
-    name: "Conference Deadlines",
-    description: "View countdowns and filters for computer science conference deadlines.",
     icon: ClipboardClock,
-    tags: ["Live countdown", "Field filters", "ccf-deadlines"],
-    category: "Research",
+    category: "research",
     page: "deadlines",
     slash: ["conference-deadlines", "deadlines"],
     tone: "amber",
   },
 ];
+
+export function toolName(id: ToolId): string {
+  switch (id) {
+    case "pdf-to-latex":
+      return i18n.t(($) => $.researchTools.tools.pdfToLatex.name);
+    case "equation":
+      return i18n.t(($) => $.researchTools.tools.equation.name);
+    case "bibtex":
+      return i18n.t(($) => $.researchTools.tools.bibtex.name);
+    case "table":
+      return i18n.t(($) => $.researchTools.tools.table.name);
+    case "literature-search":
+      return i18n.t(($) => $.researchTools.tools.literatureSearch.name);
+    case "lab-search":
+      return i18n.t(($) => $.researchTools.tools.labSearch.name);
+    case "deadlines":
+      return i18n.t(($) => $.researchTools.tools.deadlines.name);
+  }
+}
+
+export function toolDescription(id: ToolId): string {
+  switch (id) {
+    case "pdf-to-latex":
+      return i18n.t(($) => $.researchTools.tools.pdfToLatex.description);
+    case "equation":
+      return i18n.t(($) => $.researchTools.tools.equation.description);
+    case "bibtex":
+      return i18n.t(($) => $.researchTools.tools.bibtex.description);
+    case "table":
+      return i18n.t(($) => $.researchTools.tools.table.description);
+    case "literature-search":
+      return i18n.t(($) => $.researchTools.tools.literatureSearch.description);
+    case "lab-search":
+      return i18n.t(($) => $.researchTools.tools.labSearch.description);
+    case "deadlines":
+      return i18n.t(($) => $.researchTools.tools.deadlines.description);
+  }
+}
+
+export function toolTags(id: ToolId): string[] {
+  switch (id) {
+    case "pdf-to-latex":
+      return [
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagMath),
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagFigures),
+        i18n.t(($) => $.researchTools.tools.pdfToLatex.tagClientSide),
+      ];
+    case "equation":
+      return [
+        i18n.t(($) => $.researchTools.tools.equation.tagKatex),
+        i18n.t(($) => $.researchTools.tools.equation.tagModes),
+        i18n.t(($) => $.researchTools.tools.equation.tagCopy),
+      ];
+    case "bibtex":
+      return [
+        i18n.t(($) => $.researchTools.tools.bibtex.tagEntryTypes),
+        i18n.t(($) => $.researchTools.tools.bibtex.tagRequiredFields),
+        i18n.t(($) => $.researchTools.tools.bibtex.tagDuplicateKeys),
+      ];
+    case "table":
+      return [
+        i18n.t(($) => $.researchTools.tools.table.tagVisualEditor),
+        i18n.t(($) => $.researchTools.tools.table.tagBooktabs),
+        i18n.t(($) => $.researchTools.tools.table.tagExport),
+      ];
+    case "literature-search":
+      return [
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagIndexes),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagFromDocument),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagReview),
+        i18n.t(($) => $.researchTools.tools.literatureSearch.tagSaved),
+      ];
+    case "lab-search":
+      return [
+        i18n.t(($) => $.researchTools.tools.labSearch.tagRecords),
+        i18n.t(($) => $.researchTools.tools.labSearch.tagCountryFilter),
+        i18n.t(($) => $.researchTools.tools.labSearch.tagRor),
+      ];
+    case "deadlines":
+      return [
+        i18n.t(($) => $.researchTools.tools.deadlines.tagCountdown),
+        i18n.t(($) => $.researchTools.tools.deadlines.tagFieldFilters),
+        i18n.t(($) => $.researchTools.tools.deadlines.tagSource),
+      ];
+  }
+}
+
+export function toolCategoryLabel(category: ToolCategory): string {
+  switch (category) {
+    case "convert":
+      return i18n.t(($) => $.researchTools.tools.category.convert);
+    case "validate":
+      return i18n.t(($) => $.researchTools.tools.category.validate);
+    case "tables":
+      return i18n.t(($) => $.researchTools.tools.category.tables);
+    case "research":
+      return i18n.t(($) => $.researchTools.tools.category.research);
+  }
+}
 
 export function toolById(id: ToolId): ToolDefinition {
   const tool = TOOL_DEFINITIONS.find((candidate) => candidate.id === id);

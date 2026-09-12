@@ -1,4 +1,5 @@
 import { insertEnvironment, insertTemplate, wrapSelectionOrPlaceholder } from "@/components/editor/cm/controller";
+import { i18n } from "@/i18n";
 import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 
 const NATIVE_HEADING_LEVEL: Record<string, 1 | 2 | 3> = {
@@ -8,7 +9,7 @@ const NATIVE_HEADING_LEVEL: Record<string, 1 | 2 | 3> = {
 };
 
 export interface HeadingLevel {
-  label: string;
+  label: () => string;
   hLabel: string;
   cmd: string;
   placeholder: string;
@@ -16,25 +17,25 @@ export interface HeadingLevel {
 }
 
 export const HEADING_LEVELS: HeadingLevel[] = [
-  { label: "Part", hLabel: "H1", cmd: "part", placeholder: "Part Title", className: "text-base font-bold" },
-  { label: "Chapter", hLabel: "H2", cmd: "chapter", placeholder: "Chapter Title", className: "text-base font-bold" },
-  { label: "Section", hLabel: "H3", cmd: "section", placeholder: "Section Title", className: "text-sm font-bold" },
+  { label: () => i18n.t(($) => $.editor.headings.part), hLabel: "H1", cmd: "part", placeholder: "Part Title", className: "text-base font-bold" },
+  { label: () => i18n.t(($) => $.editor.headings.chapter), hLabel: "H2", cmd: "chapter", placeholder: "Chapter Title", className: "text-base font-bold" },
+  { label: () => i18n.t(($) => $.editor.headings.section), hLabel: "H3", cmd: "section", placeholder: "Section Title", className: "text-sm font-bold" },
   {
-    label: "Subsection",
+    label: () => i18n.t(($) => $.editor.headings.subsection),
     hLabel: "H4",
     cmd: "subsection",
     placeholder: "Subsection Title",
     className: "text-sm font-semibold",
   },
   {
-    label: "Subsubsection",
+    label: () => i18n.t(($) => $.editor.headings.subsubsection),
     hLabel: "H5",
     cmd: "subsubsection",
     placeholder: "Subsubsection Title",
     className: "text-xs font-semibold",
   },
   {
-    label: "Paragraph",
+    label: () => i18n.t(($) => $.editor.headings.paragraph),
     hLabel: "H6",
     cmd: "paragraph",
     placeholder: "Paragraph Title",

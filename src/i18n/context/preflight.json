@@ -1,0 +1,37 @@
+{
+  "lens": {
+    "both": "A finding that counts against both the ATS and the Accessibility check",
+    "compile": "The build and layout check, not a verb"
+  },
+  "severity": {
+    "info": "Lowest severity of a preflight finding, below warning"
+  },
+  "scores": {
+    "ats": "Short ring label for Applicant Tracking System readiness, keep it very short",
+    "compile": "Short ring label for the build check, keep it very short",
+    "a11y": "Short ring label for the accessibility check, keep it very short",
+    "refs": "Short ring label for references and assets, keep it very short",
+    "submission": "Short ring label for submission readiness, keep it very short",
+    "privacy": "Short ring label for privacy and blind review, keep it very short"
+  },
+  "panel": {
+    "run": "Button that starts one preflight check",
+    "rerun": "Button that runs a preflight check again",
+    "collapse": "Collapses one check card in the panel",
+    "expand": "Expands one check card in the panel",
+    "groupSource": "Heading over findings that come from the project source files",
+    "groupOutput": "Heading over findings that come from the compiled PDF"
+  },
+  "finding": {
+    "review": "Badge on an advisory finding that a person still has to judge",
+    "manual": "Badge on a finding that no tool can decide from the file alone",
+    "page": "Page marker shown after a dot, for example p.3"
+  },
+  "atsCard": {
+    "notFound": "Shown where a resume parser recovered no value for a field"
+  },
+  "prepExport": {
+    "applied": "Button label after the prepared source was written into the document",
+    "copied": "Button label after the prepared source was copied to the clipboard"
+  }
+}

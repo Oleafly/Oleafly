@@ -287,7 +287,7 @@ export function createProjectIntelligenceWorker(
         const analysis = unreadableFileIntelligence(
           upsert.file,
           upsert.sourceRevision,
-          `Analysis failed: ${message}`,
+          { key: "analysisFailed", params: { message } },
         );
         if (analysis) {
           cache.set(upsert.file, {
@@ -307,11 +307,9 @@ export function createProjectIntelligenceWorker(
     }
     for (const file of known) {
       if (!engineForPath(file) || cache.has(file)) continue;
-      const analysis = unreadableFileIntelligence(
-        file,
-        0,
-        "The source file has not been loaded for current project analysis.",
-      );
+      const analysis = unreadableFileIntelligence(file, 0, {
+        key: "fileNotLoaded",
+      });
       if (!analysis) continue;
       cache.set(file, {
         text: null,

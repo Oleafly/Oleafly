@@ -37,6 +37,7 @@ import { setDiagnostics } from "@codemirror/lint";
 import { vim } from "@replit/codemirror-vim";
 
 import { highlightActiveLineWhenCollapsed } from "./active-line";
+import type { EditorTranslator } from "./messages";
 import { vscodeSearch } from "./search-panel";
 import { editorTheme } from "./theme";
 import {
@@ -67,6 +68,7 @@ import { gateCompletionSource, type CompletionSyntax } from "./completion-trigge
 // The use* members are React hooks: must follow hook rules, and the host
 // object identity must stay stable across renders.
 export interface EditorHost {
+  t: EditorTranslator;
   useActivePath(): string | null;
   getActivePath(): string | null;
   useDocVersion(): number;
@@ -325,7 +327,7 @@ export function CodeMirrorEditor({
         langCompartment.of(initialLang ? initialLang : []),
         editorTheme(),
         historyCompartment.of(history()),
-        vscodeSearch(),
+        vscodeSearch(host.t),
         sourceToolsCompartment.of(
           sourceToolsForPath(
             initialPath,

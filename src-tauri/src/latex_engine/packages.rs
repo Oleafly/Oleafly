@@ -420,7 +420,7 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(error.contains("was stopped"), "{error}");
+        assert!(error.contains("tex.package_operation_timeout"), "{error}");
         assert!(flow_budget_message(TLMGR_FLOW_BUDGET).contains("15 minutes"));
     }
 

@@ -6,8 +6,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ACCENTS,
   DEFAULT_HIDDEN_FILE_PATTERNS,
+  TERMINAL_COLOR_THEMES,
   useSettingsStore,
 } from "@/store/settings";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+
+const appearance = enSettings.appearance;
+const fill = (template: string, values: Record<string, string>) =>
+  Object.entries(values).reduce(
+    (text, [name, value]) => text.replace(`{{${name}}}`, value),
+    template,
+  );
 
 const themeMocks = vi.hoisted(() => ({
   preference: "dark" as "system" | "light" | "dark",
@@ -120,21 +129,25 @@ describe("Appearance settings tabs", () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
 
-    expect(screen.getByRole("tab", { name: "App" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Editor" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "PDF Preview" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Project" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Terminal" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Browser" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: appearance.tabs.app })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: appearance.tabs.editor })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: appearance.tabs.pdf })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: appearance.tabs.files })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: appearance.tabs.terminal })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: appearance.tabs.browser })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "PDF Preview" }));
-    expect(screen.getByRole("switch", { name: "PDF dark mode" })).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "PDF zoom shortcuts" })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.pdf }));
+    expect(
+      screen.getByRole("switch", { name: appearance.preview.darkMode.label }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: appearance.preview.zoomShortcuts.label }),
+    ).toBeInTheDocument();
 
     for (const label of [
-      "PDF dark mode",
-      "PDF zoom shortcuts",
-      "Preview PDF on hover",
+      appearance.preview.darkMode.label,
+      appearance.preview.zoomShortcuts.label,
+      appearance.preview.hoverPreview.label,
     ]) {
       await user.click(screen.getByRole("switch", { name: label }));
     }
@@ -158,8 +171,8 @@ describe("Appearance settings tabs", () => {
     expect(tabList).not.toHaveClass("w-full");
     expect(tabList).not.toHaveClass("max-w-xs");
 
-    const appTab = screen.getByRole("tab", { name: "App" });
-    const editorTab = screen.getByRole("tab", { name: "Editor" });
+    const appTab = screen.getByRole("tab", { name: appearance.tabs.app });
+    const editorTab = screen.getByRole("tab", { name: appearance.tabs.editor });
     const scrollIntoView = vi.fn();
     editorTab.scrollIntoView = scrollIntoView;
     appTab.focus();
@@ -194,7 +207,9 @@ describe("Appearance settings tabs", () => {
     await user.click(screen.getByTestId("settings-dock-placement-right"));
     await user.click(screen.getByTestId("settings-bg-pattern-grid"));
     await user.click(
-      screen.getByRole("button", { name: `${ACCENTS[1].name} accent` }),
+      screen.getByRole("button", {
+        name: fill(appearance.app.accent.swatchAriaLabel, { name: ACCENTS[1].name }),
+      }),
     );
     await user.click(screen.getByTestId("settings-appearance-light"));
 
@@ -205,14 +220,14 @@ describe("Appearance settings tabs", () => {
     });
     expect(themeMocks.setPreference).toHaveBeenCalledWith("light");
 
-    await user.click(screen.getByRole("tab", { name: "Editor" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
     for (const label of [
-      "Vim mode",
-      "Auto-complete",
-      "Auto-close brackets",
-      "Inline suggestion",
-      "Non-blinking cursor",
-      "Sticky scroll",
+      appearance.editor.vim.label,
+      appearance.editor.autocomplete.label,
+      appearance.editor.autoCloseBrackets.label,
+      appearance.editor.ghostCompletion.label,
+      appearance.editor.nonBlinkingCursor.label,
+      appearance.editor.stickyScroll.label,
     ]) {
       await user.click(screen.getByRole("switch", { name: label }));
     }
@@ -231,8 +246,8 @@ describe("Appearance settings tabs", () => {
     render(<AppearanceSection />);
 
     const row = screen.getByTestId("settings-row-appearance");
-    expect(row).toHaveTextContent("Appearance");
-    expect(row).toHaveTextContent("System follows the operating system and changes when it does.");
+    expect(row).toHaveTextContent(appearance.app.theme.label);
+    expect(row).toHaveTextContent(appearance.app.theme.description);
     expect(within(row).getByRole("button", { name: "Use system theme" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -264,7 +279,7 @@ describe("Appearance settings tabs", () => {
       screen.getByRole("button", { name: "Reset to defaults" }),
     );
     const confirmation = screen.getByRole("alertdialog");
-    expect(confirmation).toHaveTextContent("Appearance");
+    expect(confirmation).toHaveTextContent(appearance.sectionName);
     expect(useSettingsStore.getState().dockPlacement).toBe("right");
 
     await user.click(
@@ -288,10 +303,10 @@ describe("Appearance settings tabs", () => {
       .setBrowserHomePage("https://example.com/research");
 
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
 
     const homePage = screen.getByRole("textbox", {
-      name: "Browser home page",
+      name: appearance.browser.homePage.ariaLabel,
     });
     expect(homePage).toHaveValue("https://example.com/research");
 
@@ -317,32 +332,42 @@ describe("Appearance settings tabs", () => {
   it("uses the shared file-management controls to add and remove patterns", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Project" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.files }));
 
-    const homeView = screen.getByLabelText("Default home view");
-    expect(homeView).toHaveTextContent("Grid");
+    const homeView = screen.getByLabelText(appearance.files.homeView.label);
+    expect(homeView).toHaveTextContent(appearance.files.homeView.grid);
     await user.click(homeView);
-    await user.click(await screen.findByRole("option", { name: "List" }));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.files.homeView.list }),
+    );
     expect(useSettingsStore.getState().homeProjectLayout).toBe("list");
 
-    await user.click(screen.getByRole("switch", { name: "Show file tree on open" }));
+    await user.click(
+      screen.getByRole("switch", { name: appearance.files.showTree.label }),
+    );
     expect(useSettingsStore.getState().openInTree).toBe(true);
 
     expect(screen.getByText("*.aux")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("File name or pattern to hide"), {
+    fireEvent.change(screen.getByLabelText(appearance.files.hidden.inputAriaLabel), {
       target: { value: "*.generated.tex" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Add hidden file pattern" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: appearance.files.hidden.addAriaLabel }),
+    );
     expect(screen.getByText("*.generated.tex")).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Remove *.generated.tex from hidden files",
+        name: fill(appearance.files.hidden.removeAriaLabel, {
+          pattern: "*.generated.tex",
+        }),
       }),
     );
     expect(screen.queryByText("*.generated.tex")).not.toBeInTheDocument();
 
-    const patternInput = screen.getByLabelText("File name or pattern to hide");
+    const patternInput = screen.getByLabelText(
+      appearance.files.hidden.inputAriaLabel,
+    );
     fireEvent.change(patternInput, { target: { value: "   " } });
     const patternForm = patternInput.closest("form");
     expect(patternForm).not.toBeNull();
@@ -356,35 +381,80 @@ describe("Appearance settings tabs", () => {
   it("updates terminal appearance controls", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Terminal" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.terminal }));
 
-    expect(screen.getByLabelText("Terminal font size")).toBeInTheDocument();
-    expect(screen.getByLabelText("Terminal font family")).toBeInTheDocument();
-    expect(screen.getByLabelText("Regular font weight")).toBeInTheDocument();
-    expect(screen.getByLabelText("Bold font weight")).toBeInTheDocument();
-    expect(screen.getByLabelText("Terminal cursor style")).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Blink cursor" })).toBeInTheDocument();
     expect(
-      screen.getByRole("switch", { name: "Start shell with project" }),
+      screen.getByLabelText(appearance.terminal.fontSize.label),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Terminal color theme")).toBeInTheDocument();
-    expect(screen.getByLabelText("Terminal background color")).toBeInTheDocument();
-    expect(screen.getByLabelText("Terminal foreground color")).toBeInTheDocument();
-    expect(screen.getByLabelText("Terminal cursor color")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(appearance.terminal.font.ariaLabel),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(appearance.terminal.fontWeight.label),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(appearance.terminal.fontWeightBold.label),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(appearance.terminal.cursorStyle.ariaLabel),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: appearance.terminal.cursorBlink.label }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", {
+        name: appearance.terminal.startWithProject.label,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(appearance.terminal.colorTheme.ariaLabel),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(appearance.terminal.colors.backgroundAriaLabel),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(appearance.terminal.colors.foregroundAriaLabel),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(appearance.terminal.colors.cursorAriaLabel),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByLabelText("Terminal font size"));
-    await user.click(await screen.findByRole("option", { name: "16px" }));
-    await user.click(screen.getByLabelText("Terminal cursor style"));
-    await user.click(await screen.findByRole("option", { name: "Underline" }));
-    await user.click(screen.getByRole("switch", { name: "Blink cursor" }));
+    await user.click(screen.getByLabelText(appearance.terminal.fontSize.label));
     await user.click(
-      screen.getByRole("switch", { name: "Start shell with project" }),
+      await screen.findByRole("option", {
+        name: fill(appearance.fontSizeOption, { size: "16" }),
+      }),
     );
-    await user.click(screen.getByLabelText("Terminal color theme"));
-    await user.click(await screen.findByRole("option", { name: "Light · light" }));
-    fireEvent.change(screen.getByLabelText("Terminal background color"), {
-      target: { value: "#f8f8f8" },
-    });
+    await user.click(
+      screen.getByLabelText(appearance.terminal.cursorStyle.ariaLabel),
+    );
+    await user.click(
+      await screen.findByRole("option", {
+        name: appearance.terminal.cursorStyle.underline,
+      }),
+    );
+    await user.click(
+      screen.getByRole("switch", { name: appearance.terminal.cursorBlink.label }),
+    );
+    await user.click(
+      screen.getByRole("switch", {
+        name: appearance.terminal.startWithProject.label,
+      }),
+    );
+    await user.click(
+      screen.getByLabelText(appearance.terminal.colorTheme.ariaLabel),
+    );
+    await user.click(
+      await screen.findByRole("option", {
+        name: fill(appearance.terminal.colorTheme.optionLight, {
+          name: TERMINAL_COLOR_THEMES.light.name,
+        }),
+      }),
+    );
+    fireEvent.change(
+      screen.getByLabelText(appearance.terminal.colors.backgroundAriaLabel),
+      { target: { value: "#f8f8f8" } },
+    );
 
     expect(useSettingsStore.getState()).toMatchObject({
       terminalFontSize: 16,
@@ -399,11 +469,11 @@ describe("Appearance settings tabs", () => {
   it("updates browser search and home page controls", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
 
-    await user.click(screen.getByLabelText("Default search engine"));
+    await user.click(screen.getByLabelText(appearance.browser.searchEngine.label));
     await user.click(await screen.findByRole("option", { name: "DuckDuckGo" }));
-    const homePage = screen.getByLabelText("Browser home page");
+    const homePage = screen.getByLabelText(appearance.browser.homePage.ariaLabel);
     await user.clear(homePage);
     await user.type(homePage, "https://example.com/");
     fireEvent.blur(homePage);
@@ -417,9 +487,9 @@ describe("Appearance settings tabs", () => {
   it("renders a local icon for every browser search engine", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
 
-    const trigger = screen.getByLabelText("Default search engine");
+    const trigger = screen.getByLabelText(appearance.browser.searchEngine.label);
     expect(
       within(trigger).getByTestId("search-engine-icon-google"),
     ).toBeInTheDocument();
@@ -452,7 +522,7 @@ describe("Appearance settings tabs", () => {
   it("detects cookie sources only after the user opens the importer", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
 
     expect(browserCookieMocks.detectBrowserCookieSources).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
@@ -472,7 +542,7 @@ describe("Appearance settings tabs", () => {
   it("requires final confirmation and reports the imported cookie summary", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
 
     const chrome = await screen.findByRole("radio", {
@@ -526,7 +596,7 @@ describe("Appearance settings tabs", () => {
     });
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
     await user.click(
       await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
@@ -557,7 +627,7 @@ describe("Appearance settings tabs", () => {
   it("rejects URL-shaped domain filters before review", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
     await user.click(
       await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
@@ -595,7 +665,7 @@ describe("Appearance settings tabs", () => {
       .mockReturnValueOnce(currentDetection.promise);
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
@@ -637,7 +707,7 @@ describe("Appearance settings tabs", () => {
     browserCookieMocks.detectBrowserCookieSources.mockResolvedValueOnce([]);
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
 
     await waitFor(() =>
@@ -653,7 +723,7 @@ describe("Appearance settings tabs", () => {
     );
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -674,7 +744,7 @@ describe("Appearance settings tabs", () => {
     );
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
     await user.click(
       await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
@@ -706,7 +776,7 @@ describe("Appearance settings tabs", () => {
     );
     const user = userEvent.setup();
     render(<AppearanceSection />);
-    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.browser }));
     await user.click(screen.getByRole("button", { name: "Import cookies" }));
     await user.click(
       await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),

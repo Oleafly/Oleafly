@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +9,7 @@ import { GitHistoryPanel } from "@/components/editor/GitHistoryPanel";
 import { useSettingsStore } from "@/store/settings";
 
 export function VersioningModal() {
+  const { t } = useTranslation(["common", "editor"]);
   const open = useSettingsStore((state) => state.versioningOpen);
   const tab = useSettingsStore((state) => state.versioningTab);
   const setTab = useSettingsStore((state) => state.setVersioningTab);
@@ -24,7 +26,7 @@ export function VersioningModal() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <button
         type="button"
-        aria-label="Dismiss versioning"
+        aria-label={t(($) => $.editor.versioning.dismiss)}
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
@@ -44,13 +46,13 @@ export function VersioningModal() {
             <History className="size-4" />
           </span>
           <h2 id="versioning-title" className="min-w-0 flex-1 text-base font-semibold">
-            Versioning
+            {t(($) => $.editor.versioning.title)}
           </h2>
           <Button
             variant="ghost"
             size="icon"
             className="size-7"
-            aria-label="Close versioning"
+            aria-label={t(($) => $.editor.versioning.close)}
             disabled={checkpointsBusy}
             onClick={close}
           >
@@ -66,21 +68,21 @@ export function VersioningModal() {
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="flex shrink-0 justify-center px-4 pb-3">
-            <TabsList aria-label="Versioning views">
+            <TabsList aria-label={t(($) => $.editor.versioning.views)}>
               <TabsTrigger
                 value="git"
                 data-testid="versioning-tab-git"
                 disabled={checkpointsBusy}
                 onClick={() => setTab("git")}
               >
-                Git History
+                {t(($) => $.editor.versioning.gitHistory)}
               </TabsTrigger>
               <TabsTrigger
                 value="checkpoints"
                 data-testid="versioning-tab-checkpoints"
                 onClick={() => setTab("checkpoints")}
               >
-                Saved Checkpoints
+                {t(($) => $.editor.versioning.savedCheckpoints)}
               </TabsTrigger>
             </TabsList>
           </div>

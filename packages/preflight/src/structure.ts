@@ -1,4 +1,5 @@
 import { annotate } from "./standards";
+import { message, type MessageRef } from "./messages";
 import type { Finding } from "./types";
 
 export interface StructNode {
@@ -53,9 +54,8 @@ function singlePassFinding(structuralNodes: number): Finding[] {
     observed({
       id: "pdf-structure-single-pass",
       severity: "info",
-      title: "The tag tree looks like a first compile pass",
-      detail:
-        "The PDF is marked as tagged but its structure tree holds almost nothing, which is what a single pass produces. Tagged output needs two passes. Compile again and re-check.",
+      title: message("rules.pdf-structure-single-pass.title"),
+      detail: message("rules.pdf-structure-single-pass.detail"),
     }),
   ];
 }
@@ -63,18 +63,18 @@ function singlePassFinding(structuralNodes: number): Finding[] {
 function claimMismatch(ua: PdfUaFacts, tagged: boolean): Finding[] {
   if (ua.uaPart === null) return [];
   const gaps = [
-    !ua.xmpTitle && "no document title in the XMP metadata",
-    ua.displayDocTitle === false && "DisplayDocTitle is not set to true",
-    !tagged && "the file is not tagged",
-  ].filter((gap): gap is string => typeof gap === "string");
+    !ua.xmpTitle ? message("rules.pdf-ua-claim-mismatch.partNoXmpTitle") : null,
+    ua.displayDocTitle === false ? message("rules.pdf-ua-claim-mismatch.partNoDisplayDocTitle") : null,
+    !tagged ? message("rules.pdf-ua-claim-mismatch.partNotTagged") : null,
+  ].filter((gap): gap is MessageRef => gap !== null);
   if (gaps.length === 0) return [];
   return [
     observed({
       id: "pdf-ua-claim-mismatch",
       severity: "error",
-      title: `This PDF claims PDF/UA-${ua.uaPart} but does not meet it`,
-      detail:
-        `The XMP metadata declares pdfuaid:part ${ua.uaPart}, but the file does not back that up: ${gaps.join("; ")}. Anything that trusts the claim will report this PDF as conforming when it is not, so either close the gaps or drop the claim. With hyperref, set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true} and compile with tagging on.`,
+      title: message("rules.pdf-ua-claim-mismatch.title", { part: ua.uaPart }),
+      detail: message("rules.pdf-ua-claim-mismatch.detail", { part: ua.uaPart }),
+      detailParts: [...gaps, message("rules.pdf-ua-claim-mismatch.partAdvice")],
       certainty: "verified",
     }),
   ];
@@ -86,9 +86,8 @@ function xmpTitleFindings(ua: PdfUaFacts): Finding[] {
     observed({
       id: "pdf-xmp-title",
       severity: "warning",
-      title: "The title is only in the Info dictionary",
-      detail:
-        "The document title is set in the Info dictionary but not as dc:title in the XMP metadata, which is where PDF/UA looks for it. Loading hyperref with pdftitle writes both.",
+      title: message("rules.pdf-xmp-title.title"),
+      detail: message("rules.pdf-xmp-title.detail"),
       certainty: "verified",
     }),
   ];
@@ -101,9 +100,8 @@ function catalogUaFindings(ua: PdfUaFacts): Finding[] {
       observed({
         id: "pdf-display-doc-title",
         severity: "warning",
-        title: "The reader will show the filename, not the title",
-        detail:
-          "ViewerPreferences has no DisplayDocTitle entry set to true, so a PDF reader announces the filename in its window and to assistive tech. Set it with hyperref, for example \\hypersetup{pdfdisplaydoctitle=true}.",
+        title: message("rules.pdf-display-doc-title.title"),
+        detail: message("rules.pdf-display-doc-title.detail"),
         certainty: "verified",
       }),
     );
@@ -113,9 +111,8 @@ function catalogUaFindings(ua: PdfUaFacts): Finding[] {
       observed({
         id: "pdf-suspects",
         severity: "warning",
-        title: "The PDF marks its own tagging as unreliable",
-        detail:
-          "MarkInfo sets Suspects to true, which is the producer saying the tag tree may not match the visible content. Recompile with a current engine, and check the tagging warnings in the log.",
+        title: message("rules.pdf-suspects.title"),
+        detail: message("rules.pdf-suspects.detail"),
         certainty: "verified",
       }),
     );
@@ -126,9 +123,8 @@ function catalogUaFindings(ua: PdfUaFacts): Finding[] {
       observed({
         id: "pdf-link-alt",
         severity: "warning",
-        title: `${linksWithoutContents} link annotation${linksWithoutContents === 1 ? " has" : "s have"} no description`,
-        detail:
-          "A link annotation with no Contents entry gives a screen reader nothing to announce when it lists the links on a page. Describe the destination in the link text, and let hyperref carry that text into the annotation.",
+        title: message("rules.pdf-link-alt.title", { count: linksWithoutContents }),
+        detail: message("rules.pdf-link-alt.detail"),
         certainty: "verified",
       }),
     );
@@ -140,9 +136,11 @@ function catalogUaFindings(ua: PdfUaFacts): Finding[] {
       observed({
         id: "pdf-untagged-content",
         severity: "warning",
-        title: `${percent}% of the text sits outside the tag tree`,
-        detail:
-          `${ua.untaggedTextRuns} of ${totalRuns} text runs are not linked to anything in the tag tree, so a screen reader skips them. Artifacts are not counted. Real content has to be tagged, and decorative content has to be marked as an artifact, for example \\includegraphics[artifact]{...}.`,
+        title: message("rules.pdf-untagged-content.title", { percent }),
+        detail: message("rules.pdf-untagged-content.detail", {
+          untagged: ua.untaggedTextRuns,
+          total: totalRuns,
+        }),
         certainty: "verified",
       }),
     );
@@ -160,10 +158,11 @@ export function verifyStructure(
           observed({
             id: "pdf-structure-extraction-failed",
             severity: "info",
-            title: "PDF structure could not be fully inspected",
-            detail: `The accessibility structure tree could not be extracted for page${
-              structureFailedPages.length === 1 ? "" : "s"
-            } ${structureFailedPages.join(", ")}. Preflight will not treat the unavailable structure as proof that the PDF is untagged.`,
+            title: message("rules.pdf-structure-extraction-failed.title"),
+            detail: message("rules.pdf-structure-extraction-failed.detail", {
+              count: structureFailedPages.length,
+              pages: structureFailedPages.join(", "),
+            }),
           }),
         ]
       : [];
@@ -176,9 +175,8 @@ export function verifyStructure(
       observed({
         id: "pdf-untagged-output",
         severity: "info",
-        title: "This PDF is not tagged",
-        detail:
-          "The compiled PDF carries no structure tree, so a screen reader gets no headings, lists, tables, or reading order, and the file cannot satisfy PDF/UA-1 clause 7.1. Tagged output needs pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer with \\DocumentMetadata{tagging=on}. The bundled engine cannot produce tags. The source and output checks above still apply in the meantime.",
+        title: message("rules.pdf-untagged-output.title"),
+        detail: message("rules.pdf-untagged-output.detail"),
       }),
       ...(doc.ua ? claimMismatch(doc.ua, false) : []),
       ...titleFindings,
@@ -190,9 +188,8 @@ export function verifyStructure(
       observed({
         id: "pdf-structure-missing",
         severity: "warning",
-        title: "Tagged PDF has no readable structure tree",
-        detail:
-          "The PDF declares itself tagged, but Preflight found no document structure to navigate. Screen readers may not receive headings, lists, tables, or reading order. Tagging needs two compile passes, so compile again and re-check before treating this as final.",
+        title: message("rules.pdf-structure-missing.title"),
+        detail: message("rules.pdf-structure-missing.detail"),
       }),
       ...(doc.ua ? [...claimMismatch(doc.ua, false), ...titleFindings, ...catalogUaFindings(doc.ua)] : []),
       ...singlePassFinding(0),
@@ -211,9 +208,8 @@ export function verifyStructure(
         observed({
           id: "output-figure-alt",
           severity: "error",
-          title: "Tagged figure has no alt text",
-          detail:
-            "This figure is tagged but carries no alternative text, so a screen reader cannot describe it. Add a description at the source, for example \\includegraphics[alt={...}]{...}. Mark decorative images with [artifact] instead.",
+          title: message("rules.output-figure-alt.title"),
+          detail: message("rules.output-figure-alt.detail"),
         }),
       );
     }
@@ -223,9 +219,8 @@ export function verifyStructure(
         observed({
           id: "output-formula-alt",
           severity: "warning",
-          title: "Equation has no text alternative",
-          detail:
-            "Under PDF/UA-1 a Formula needs Alt or ActualText. Add one at the source, for example with \\tagpdfsetup or an alt key on the equation. Under PDF/UA-2 you can associate MathML instead by compiling with LuaLaTeX and \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}.",
+          title: message("rules.output-formula-alt.title"),
+          detail: message("rules.output-formula-alt.detail"),
         }),
       );
     }
@@ -235,9 +230,8 @@ export function verifyStructure(
         observed({
           id: "output-table-headers",
           severity: "warning",
-          title: "Tagged table has no header cells",
-          detail:
-            "This table has no header (TH) cells, so a screen reader cannot associate data with its column or row headings. Mark the header row, for example \\DocumentMetadata{tagging-setup={table/header-rows={1}}}.",
+          title: message("rules.output-table-headers.title"),
+          detail: message("rules.output-table-headers.detail"),
         }),
       );
     }
@@ -249,9 +243,8 @@ export function verifyStructure(
         observed({
           id: "output-heading-skip",
           severity: "warning",
-          title: "Heading level skipped in the tag tree",
-          detail:
-            "The tagged headings jump more than one level (for example H1 straight to H3), which breaks the outline a screen reader navigates by. Do not skip heading levels.",
+          title: message("rules.output-heading-skip.title"),
+          detail: message("rules.output-heading-skip.detail"),
         }),
       );
       break;

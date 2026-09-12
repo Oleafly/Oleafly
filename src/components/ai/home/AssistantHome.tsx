@@ -12,6 +12,7 @@ import {
   Sparkles,
   Wrench,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { groupSkills, type SkillGroup } from "@/lib/skill-groups";
 import { isSkillAvailable, type SkillEntry } from "@/lib/skills";
 import { cn } from "@/lib/utils";
@@ -74,8 +75,8 @@ export function homeSkillGroups(skills: readonly SkillEntry[]): SkillGroup[] {
 }
 
 function AssistantHomeView({
-  heading = "What would you like to do today?",
-  accent = "do today?",
+  heading,
+  accent,
   subtitle,
   skills,
   onPickSkill,
@@ -98,6 +99,9 @@ function AssistantHomeView({
   before?: ReactNode;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
+  const resolvedHeading = heading ?? t(($) => $.ai.home.heading);
+  const resolvedAccent = accent ?? t(($) => $.ai.home.headingAccent);
   const groups = useMemo(() => homeSkillGroups(skills), [skills]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   useEffect(() => {
@@ -112,8 +116,8 @@ function AssistantHomeView({
   const active = groups.find((group) => group.key === activeKey) ?? groups[0] ?? null;
   const cards = active ? active.skills.slice(0, CARD_COUNT) : [];
   const chips = active ? active.skills.slice(CARD_COUNT) : [];
-  const accentIndex = accent ? heading.lastIndexOf(accent) : -1;
-  const plain = accentIndex >= 0 ? heading.slice(0, accentIndex) : heading;
+  const accentIndex = resolvedAccent ? resolvedHeading.lastIndexOf(resolvedAccent) : -1;
+  const plain = accentIndex >= 0 ? resolvedHeading.slice(0, accentIndex) : resolvedHeading;
   const pick = (skill: SkillEntry) => {
     if (skillLocked(skill)) {
       onOpenSkills?.();
@@ -129,7 +133,7 @@ function AssistantHomeView({
       testId: `assistant-home-chip-${skill.id}`,
       label: skill.name,
       title: skillLocked(skill)
-        ? `${skill.name} is turned off for this project`
+        ? t(($) => $.ai.home.skillLockedTitle, { name: skill.name })
         : skill.description,
       icon: groupIcon,
       locked: skillLocked(skill),
@@ -159,7 +163,7 @@ function AssistantHomeView({
           {plain}
           {accentIndex >= 0 ? (
             <span className="bg-gradient-to-r from-foreground/70 via-primary to-primary bg-clip-text text-transparent">
-              {accent}
+              {resolvedAccent}
             </span>
           ) : null}
         </h2>
@@ -169,7 +173,7 @@ function AssistantHomeView({
       {showSkills && groups.length > 1 ? (
         <div
           role="tablist"
-          aria-label="Skill categories"
+          aria-label={t(($) => $.ai.home.skillCategories)}
           className="no-scrollbar flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border bg-muted/60 p-1"
         >
           {groups.map((group) => {
@@ -211,7 +215,11 @@ function AssistantHomeView({
                 type="button"
                 data-testid={`assistant-home-card-${skill.id}`}
                 data-locked={locked ? "true" : undefined}
-                title={locked ? `${skill.name} is turned off for this project` : skill.description}
+                title={
+                  locked
+                    ? t(($) => $.ai.home.skillLockedTitle, { name: skill.name })
+                    : skill.description
+                }
                 onClick={() => pick(skill)}
                 className={cn(
                   "group relative flex min-h-[6.5rem] flex-col items-start gap-1.5 overflow-hidden rounded-xl border bg-card p-3.5 text-left shadow-sm transition-shadow hover:shadow-md",

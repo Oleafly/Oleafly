@@ -9,6 +9,7 @@ import {
   Target,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { i18n } from "@/i18n";
 import { McpBrandIcon } from "./McpBrandIcon";
 
 export interface ComposerCommandActions {
@@ -46,7 +47,7 @@ export function createSkillCommands(
     icon: Sparkles,
     kind: "insert" as const,
     insertText: `/${skill.id} `,
-    group: "Skills",
+    group: i18n.t(($) => $.ai.commands.groups.skills),
     keywords: skill.id,
     action: () => {},
   }));
@@ -57,8 +58,8 @@ export function createSlashCommands(actions: ComposerCommandActions): ComposerCo
   if (actions.archiveChat) {
     commands.push({
       id: "archive",
-      label: "Archive",
-      description: "Archive this chat",
+      label: i18n.t(($) => $.ai.commands.archive.label),
+      description: i18n.t(($) => $.ai.commands.archive.description),
       icon: Archive,
       action: actions.archiveChat,
     });
@@ -66,8 +67,8 @@ export function createSlashCommands(actions: ComposerCommandActions): ComposerCo
   if (actions.forkChat) {
     commands.push({
       id: "fork-chat",
-      label: "Fork chat",
-      description: "Create a new chat from this conversation",
+      label: i18n.t(($) => $.ai.commands.forkChat.label),
+      description: i18n.t(($) => $.ai.commands.forkChat.description),
       icon: GitFork,
       action: actions.forkChat,
     });
@@ -75,24 +76,24 @@ export function createSlashCommands(actions: ComposerCommandActions): ComposerCo
   if (actions.openGoalEditor) {
     commands.push({
       id: "goal",
-      label: "Goal",
-      description: "Set what the assistant should keep working toward",
+      label: i18n.t(($) => $.ai.commands.goal.label),
+      description: i18n.t(($) => $.ai.commands.goal.description),
       icon: Target,
       action: actions.openGoalEditor,
     });
   }
   commands.push({
     id: "mcp",
-    label: "MCP",
-    description: "View connected MCP servers and their status",
+    label: i18n.t(($) => $.ai.commands.mcp.label),
+    description: i18n.t(($) => $.ai.commands.mcp.description),
     icon: McpBrandIcon,
     action: actions.openMcpSettings,
   });
   if (actions.openModelPicker) {
     commands.push({
       id: "model",
-      label: "Model",
-      description: "Choose the model for this chat",
+      label: i18n.t(($) => $.ai.commands.model.label),
+      description: i18n.t(($) => $.ai.commands.model.description),
       icon: Bot,
       action: actions.openModelPicker,
     });
@@ -100,8 +101,10 @@ export function createSlashCommands(actions: ComposerCommandActions): ComposerCo
   if (actions.togglePlanMode) {
     commands.push({
       id: "plan-mode",
-      label: actions.planMode ? "Disable Plan Mode" : "Enable Plan Mode",
-      description: "Turn structured planning on or off",
+      label: actions.planMode
+        ? i18n.t(($) => $.ai.commands.planMode.disableLabel)
+        : i18n.t(($) => $.ai.commands.planMode.enableLabel),
+      description: i18n.t(($) => $.ai.commands.planMode.description),
       icon: Lightbulb,
       action: actions.togglePlanMode,
     });
@@ -109,8 +112,8 @@ export function createSlashCommands(actions: ComposerCommandActions): ComposerCo
   if (actions.recordSkill) {
     commands.push({
       id: "record-skill",
-      label: "Record a skill",
-      description: "Save this chat's approach as an editable draft",
+      label: i18n.t(($) => $.ai.commands.recordSkill.label),
+      description: i18n.t(($) => $.ai.commands.recordSkill.description),
       icon: Sparkles,
       action: actions.recordSkill,
     });
@@ -123,24 +126,24 @@ export function createAttachCommands(actions: ComposerCommandActions): ComposerC
   if (actions.attachFiles) {
     commands.push({
       id: "files",
-      label: "Files",
-      description: "Attach files to your next message",
+      label: i18n.t(($) => $.ai.commands.files.label),
+      description: i18n.t(($) => $.ai.commands.files.description),
       icon: FolderOpen,
       action: actions.attachFiles,
     });
   }
   commands.push({
     id: "browser",
-    label: "Attach browser",
-    description: "Open the browser beside your document",
+    label: i18n.t(($) => $.ai.commands.browser.label),
+    description: i18n.t(($) => $.ai.commands.browser.description),
     icon: PanelRightOpen,
     action: actions.openBrowser,
   });
   if (actions.openGoalEditor) {
     commands.push({
       id: "goal",
-      label: "Goal",
-      description: "Set what the assistant should keep working toward",
+      label: i18n.t(($) => $.ai.commands.goal.label),
+      description: i18n.t(($) => $.ai.commands.goal.description),
       icon: Target,
       action: actions.openGoalEditor,
     });
@@ -148,8 +151,10 @@ export function createAttachCommands(actions: ComposerCommandActions): ComposerC
   if (actions.togglePlanMode) {
     commands.push({
       id: "plan-mode",
-      label: actions.planMode ? "Disable Plan Mode" : "Enable Plan Mode",
-      description: "Turn structured planning on or off",
+      label: actions.planMode
+        ? i18n.t(($) => $.ai.commands.planMode.disableLabel)
+        : i18n.t(($) => $.ai.commands.planMode.enableLabel),
+      description: i18n.t(($) => $.ai.commands.planMode.description),
       icon: Lightbulb,
       action: actions.togglePlanMode,
     });
@@ -157,8 +162,8 @@ export function createAttachCommands(actions: ComposerCommandActions): ComposerC
   if (actions.recordSkill) {
     commands.push({
       id: "record-skill",
-      label: "Record a skill",
-      description: "Save this chat's approach as an editable draft",
+      label: i18n.t(($) => $.ai.commands.recordSkill.label),
+      description: i18n.t(($) => $.ai.commands.recordSkill.description),
       icon: Sparkles,
       action: actions.recordSkill,
     });

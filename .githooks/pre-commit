@@ -28,6 +28,9 @@ fail() {
 if printf '%s\n' "$staged" | grep -qE '^(src/|packages/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig|vite\.config|vitest|biome\.json|index\.html)'; then
   echo "→ frontend: lint"
   pnpm lint || fail "biome lint"
+  echo "→ frontend: i18n types + catalogs"
+  pnpm i18n:types:check || fail "i18n types"
+  pnpm i18n:validate || fail "i18n validate"
   echo "→ frontend: typecheck + build"
   pnpm build || fail "tsc / vite build"
   echo "→ frontend: tests"

@@ -1,4 +1,5 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { StreamLanguage } from "@codemirror/language";
@@ -8,6 +9,7 @@ import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { editorTheme } from "@/components/editor/cm/theme";
 import { cn } from "@/lib/utils";
+import { describeError } from "@/lib/app-error";
 import { approvalsReadRaw, approvalsWriteRaw } from "@/lib/tauri";
 import { useApprovalModeStore } from "@/store/approval-mode";
 import { useFilesStore } from "@/store/files";
@@ -37,6 +39,7 @@ write_file = "allow"
 }
 
 export function ApprovalsFileEditor() {
+  const { t } = useTranslation(["common", "settings"]);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const editorThemeId = useSettingsStore((s) => s.editorTheme);
@@ -64,7 +67,7 @@ export function ApprovalsFileEditor() {
       }
       setDirty(false);
     } catch (error) {
-      setMessage({ ok: false, text: String(error) });
+      setMessage({ ok: false, text: describeError(error) });
     } finally {
       setBusy(false);
     }
@@ -105,12 +108,12 @@ export function ApprovalsFileEditor() {
       await approvalsWriteRaw(text);
       setLoaded(text);
       setDirty(false);
-      setMessage({ ok: true, text: "Saved. The rules apply to the next tool call." });
+      setMessage({ ok: true, text: t(($) => $.settings.ai.approvals.file.saved) });
       await client.invalidateQueries({ queryKey: ["project-approvals"] });
       const store = useApprovalModeStore.getState();
       if (projectId) await store.load(projectId);
     } catch (error) {
-      setMessage({ ok: false, text: String(error) });
+      setMessage({ ok: false, text: describeError(error) });
     } finally {
       setBusy(false);
     }
@@ -128,10 +131,9 @@ export function ApprovalsFileEditor() {
 
   return (
     <div className="rounded-lg border bg-card p-3" data-testid="approvals-file-editor">
-      <div className="text-sm font-medium">Approval rules file</div>
+      <div className="text-sm font-medium">{t(($) => $.settings.ai.approvals.file.title)}</div>
       <div className="mb-2 text-xs text-muted-foreground">
-        The Custom approval mode reads this file. It lives at ~/.oleafly/approvals.toml
-        and applies to every project on this device.
+        {t(($) => $.settings.ai.approvals.file.description)}
       </div>
       <div className="mb-2 rounded-md border bg-background px-2.5 py-2 text-xs">
         <button
@@ -141,47 +143,59 @@ export function ApprovalsFileEditor() {
           className="flex w-full items-center gap-1 text-left font-medium"
         >
           <ChevronRight className={cn("size-3 transition-transform", helpOpen && "rotate-90")} />
-          How the file works
+          {t(($) => $.settings.ai.approvals.file.helpToggle)}
         </button>
         <div className={cn("mt-2 min-w-0 space-y-2 break-words text-muted-foreground", !helpOpen && "hidden")}>
           <p>
-            The first table, <code className="font-mono">["$approval_modes"]</code>, sets the
-            approval mode per project: <code className="font-mono">"ask-for-approval"</code>,{" "}
-            <code className="font-mono">"approve-for-me"</code>,{" "}
-            <code className="font-mono">"full-access"</code> or{" "}
-            <code className="font-mono">"custom"</code>. A project that is not listed uses
-            Approve for me.
+            <Trans
+              ns="settings"
+              i18nKey={($) => $.settings.ai.approvals.file.help.modes}
+              components={{
+                modesTable: <code className="font-mono" />,
+                ask: <code className="font-mono" />,
+                approve: <code className="font-mono" />,
+                full: <code className="font-mono" />,
+                custom: <code className="font-mono" />,
+              }}
+            />
           </p>
           <p>
-            Then one table per project id, holding a rule per tool:{" "}
-            <code className="font-mono">"allow"</code> runs the tool without asking, and{" "}
-            <code className="font-mono">"deny"</code> refuses it. Deny rules are honoured in
-            every mode; allow rules take effect in Custom mode, and for run_command they also
-            skip the prompt in the other modes.
+            <Trans
+              ns="settings"
+              i18nKey={($) => $.settings.ai.approvals.file.help.rules}
+              components={{
+                allow: <code className="font-mono" />,
+                deny: <code className="font-mono" />,
+              }}
+            />
           </p>
           <p>
-            Project ids are the folder names under ~/.oleafly/projects.
+            {t(($) => $.settings.ai.approvals.file.help.projectIds)}
             {projectId ? (
               <>
                 {" "}
-                The open project, {projectName || "this project"}, has the id{" "}
-                <code className="font-mono">{projectId}</code>.
+                <Trans
+                  ns="settings"
+                  i18nKey={($) => $.settings.ai.approvals.file.help.openProject}
+                  values={{
+                    name:
+                      projectName || t(($) => $.settings.ai.approvals.project.thisProject),
+                    id: projectId,
+                  }}
+                  components={{ projectId: <code className="font-mono" /> }}
+                />
               </>
             ) : null}
           </p>
           <p className="break-words">
-            Tool names you can use:{" "}
-            {TOOL_NAMES.map((name) => (
-              <Fragment key={name}>
-                <code className="font-mono">{name}</code>{" "}
-              </Fragment>
-            ))}
-            and any MCP tool by its full name from the Tools list.
+            <Trans
+              ns="settings"
+              i18nKey={($) => $.settings.ai.approvals.file.help.toolNames}
+              values={{ names: TOOL_NAMES.join(" ") }}
+              components={{ names: <code className="font-mono" /> }}
+            />
           </p>
-          <p>
-            Comments starting with # are kept when you save here, but an "Always in this
-            project" choice on an approval card rewrites the file without them.
-          </p>
+          <p>{t(($) => $.settings.ai.approvals.file.help.comments)}</p>
         </div>
       </div>
       <div
@@ -198,7 +212,9 @@ export function ApprovalsFileEditor() {
           onClick={() => void save()}
           className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
         >
-          {busy ? "Saving" : "Save"}
+          {busy
+            ? t(($) => $.settings.ai.approvals.file.saving)
+            : t(($) => $.common.actions.save)}
         </button>
         <button
           type="button"
@@ -207,7 +223,9 @@ export function ApprovalsFileEditor() {
           onClick={() => void load()}
           className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
         >
-          {dirty ? "Discard changes" : "Reload"}
+          {dirty
+            ? t(($) => $.settings.ai.approvals.file.discard)
+            : t(($) => $.settings.ai.approvals.file.reload)}
         </button>
         <button
           type="button"
@@ -215,7 +233,7 @@ export function ApprovalsFileEditor() {
           onClick={insertExample}
           className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent"
         >
-          Insert an example
+          {t(($) => $.settings.ai.approvals.file.insertExample)}
         </button>
         {message && (
           <span
@@ -226,7 +244,9 @@ export function ApprovalsFileEditor() {
           </span>
         )}
         {!message && loaded === "" && !dirty && (
-          <span className="text-xs text-muted-foreground">The file is empty so far.</span>
+          <span className="text-xs text-muted-foreground">
+            {t(($) => $.settings.ai.approvals.file.emptyFile)}
+          </span>
         )}
       </div>
     </div>

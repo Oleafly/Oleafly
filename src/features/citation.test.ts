@@ -1,3 +1,4 @@
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ParsedBib } from "@/lib/citation/types";
 
@@ -273,7 +274,7 @@ describe("selectCitationBibliography", () => {
 
 describe("addCitation", () => {
   it("rejects a citation it cannot parse", async () => {
-    expect(await addCitation("not bibtex")).toEqual({ error: "Could not parse the citation." });
+    expect(await addCitation("not bibtex")).toEqual({ error: enCore.citation.parseFailed });
   });
 
   it("writes into the open bib file and declares it in Markdown front matter", async () => {
@@ -367,7 +368,9 @@ describe("addCitation", () => {
     mocks.saveFile.mockRejectedValue(new Error("disk full"));
 
     expect(await addCitation(BIBTEX)).toEqual({
-      error: "Could not write refs.bib: Error: disk full",
+      error: enCore.citation.writeFailed
+        .replace("{{path}}", "refs.bib")
+        .replace("{{detail}}", "Error: disk full"),
     });
   });
 
@@ -454,7 +457,11 @@ describe("addCitations", () => {
     const result = await addCitations(entries);
 
     expect(result.imported).toBe(2);
-    expect(result.errors).toEqual(["Could not write refs.bib: Error: read only"]);
+    expect(result.errors).toEqual([
+      enCore.citation.writeFailed
+        .replace("{{path}}", "refs.bib")
+        .replace("{{detail}}", "Error: read only"),
+    ]);
     expect(mocks.saveFile).toHaveBeenCalledTimes(1);
     expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
   });

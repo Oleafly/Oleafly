@@ -3,7 +3,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { standardsFor, type Finding } from "@oleafly/preflight";
+import enPreflight from "@/i18n/locales/en/preflight.json" with { type: "json" };
 import { useFilesStore } from "@/store/files";
+
+const FIXTURE_TITLE = enPreflight.rules["compile-failed"].title;
+const FIXTURE_DETAIL = enPreflight.rules["compile-failed"].detail;
 
 const mocks = vi.hoisted(() => ({
   gotoRange: vi.fn(),
@@ -22,8 +26,8 @@ const finding = (overrides: Partial<Finding> = {}): Finding => ({
   id: "finding",
   lens: "compile",
   severity: "error",
-  title: "Compile problem",
-  detail: "The detailed explanation.",
+  title: { key: "rules.compile-failed.title" },
+  detail: { key: "rules.compile-failed.detail" },
   ...overrides,
 });
 
@@ -73,21 +77,21 @@ describe("FindingRow", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
-    expect(screen.getByText("The detailed explanation.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(FIXTURE_TITLE) }));
+    expect(screen.getByText(FIXTURE_DETAIL)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Jump to source" }));
 
     await waitFor(() => expect(mocks.openFile).toHaveBeenCalledWith("sections/results.tex"));
     expect(mocks.revealSourceEditor).toHaveBeenCalledOnce();
     expect(mocks.gotoRange).toHaveBeenCalledWith(12, 24);
 
-    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
-    expect(screen.queryByText("The detailed explanation.")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(FIXTURE_TITLE) }));
+    expect(screen.queryByText(FIXTURE_DETAIL)).not.toBeInTheDocument();
   });
 
   it("does not offer or perform a jump without a complete source range", () => {
     render(<FindingRow finding={finding({ from: 1 })} />);
-    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(FIXTURE_TITLE) }));
     expect(screen.queryByRole("button", { name: "Jump to source" })).not.toBeInTheDocument();
   });
 
@@ -97,13 +101,13 @@ describe("FindingRow", () => {
         finding={finding({
           id: "figure-alt",
           lens: "a11y",
-          title: "Image without alt text",
+          title: { key: "rules.figure-alt.title" },
           standards: standardsFor("figure-alt"),
           machineCheckable: true,
         })}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Image without alt text/ }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(enPreflight.rules["figure-alt"].title) }));
 
     for (const label of ["PDF/UA-1 7.3", "PDF/UA-2 8.2.5.28.2", "Matterhorn 13-004", "WCAG 2.2 SC 1.1.1"]) {
       expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", expect.stringContaining("https://"));
@@ -121,7 +125,7 @@ describe("FindingRow", () => {
         finding={finding({ id: "link-text", lens: "a11y", standards: standardsFor("link-text") })}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(FIXTURE_TITLE) }));
     expect(screen.getAllByRole("link", { name: "WCAG 2.2 SC 2.4.4" })).toHaveLength(1);
     expect(screen.getByRole("link", { name: "WCAG 2.2 SC 2.4.4" })).toHaveAttribute(
       "title",
@@ -131,13 +135,13 @@ describe("FindingRow", () => {
 
   it("says so when a finding needs human judgement", () => {
     render(<FindingRow finding={finding({ id: "color-only", lens: "a11y", machineCheckable: false })} />);
-    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(FIXTURE_TITLE) }));
     expect(screen.getByText(/Needs your judgment/)).toBeInTheDocument();
   });
 
   it("shows no citation line for a finding with no standard behind it", () => {
     render(<FindingRow finding={finding()} />);
-    fireEvent.click(screen.getByRole("button", { name: /Compile problem/ }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(FIXTURE_TITLE) }));
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

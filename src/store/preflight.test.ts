@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runRefsRules } from "@oleafly/preflight";
 import type { RefsContext } from "@oleafly/preflight";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -211,18 +212,16 @@ describe("preflight store", () => {
   });
 
   it("reports why the document engine is unavailable", async () => {
-    useFilesStore.setState({ engineError: "Engine probe failed" });
+    useFilesStore.setState({ engineError: "loadFailed" });
     await usePreflightStore.getState().run();
     expect(usePreflightStore.getState()).toMatchObject({
       running: false,
-      error: "Engine probe failed",
+      error: enCore.engine.error.loadFailed,
     });
 
     useFilesStore.setState({ engineError: null });
     await usePreflightStore.getState().run();
-    expect(usePreflightStore.getState().error).toBe(
-      "Document engine details are still loading.",
-    );
+    expect(usePreflightStore.getState().error).toBe(enCore.engine.error.stillLoading);
     expect(mocks.runPreflight).not.toHaveBeenCalled();
   });
 

@@ -1,9 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { cn } from "@/lib/utils";
 import type { ResearchTask, ResearchTaskStatus } from "@/lib/research-tasks";
-import { STATUS_ICONS, STATUS_LABELS, statusBadgeClass } from "./task-status";
+import { STATUS_ICONS, statusBadgeClass, statusLabel } from "./task-status";
 
 export function TaskStatusBadge({
   status,
@@ -12,6 +13,7 @@ export function TaskStatusBadge({
   status: ResearchTaskStatus;
   className?: string;
 }) {
+  useTranslation(["common", "researchTools"]);
   const Icon = STATUS_ICONS[status];
   return (
     <Badge variant="outline" className={cn("gap-1", statusBadgeClass(status), className)}>
@@ -19,7 +21,7 @@ export function TaskStatusBadge({
         aria-hidden="true"
         className={cn("size-3", status === "running" && "animate-spin motion-reduce:animate-none")}
       />
-      {STATUS_LABELS[status]}
+      {statusLabel(status)}
     </Badge>
   );
 }

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { stepNeedsReachableTarget, tourRegistry, type TourStepDefinition } from "./registry";
+import {
+  resolveTourText,
+  stepNeedsReachableTarget,
+  TOUR_IDS,
+  TOUR_SCHEMA_VERSION,
+  type TourContext,
+  type TourDefinition,
+  tourRegistry,
+  toursForContext,
+  type TourStepDefinition,
+} from "./registry";
 
 describe("tour registry", () => {
   it("models the real Home creation flow with stable targets and interaction gates", () => {
@@ -131,5 +141,56 @@ describe("tour registry", () => {
     const previewStep = tourRegistry.diagram.steps.find((step) => step.id === "diagram-preview");
     expect(previewStep?.target).toBe('[data-tour="diagram-preview-panel"]');
     expect(previewStep?.placement).toBe("left");
+  });
+});
+
+describe("tour registry copy", () => {
+  it("resolves a label and every step title and content for every tour", () => {
+    const tours = Object.values(tourRegistry) as readonly TourDefinition[];
+    expect(tours).toHaveLength(TOUR_IDS.length);
+    for (const tour of tours) {
+      expect(TOUR_IDS).toContain(tour.id);
+      const label = resolveTourText(tour.label);
+      expect(label.length).toBeGreaterThan(0);
+      expect(label).not.toContain("onboarding.");
+      expect(tour.steps.length).toBeGreaterThan(0);
+      for (const step of tour.steps) {
+        const title = resolveTourText(step.title);
+        const content = resolveTourText(step.content);
+        expect(title.length, `${tour.id}/${step.id} title`).toBeGreaterThan(0);
+        expect(content.length, `${tour.id}/${step.id} content`).toBeGreaterThan(0);
+        expect(title).not.toContain("onboarding.");
+        expect(content).not.toContain("onboarding.");
+      }
+    }
+  });
+
+  it("gives every step a unique id inside its tour", () => {
+    for (const tour of Object.values(tourRegistry) as readonly TourDefinition[]) {
+      const ids = tour.steps.map((step) => step.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it("resolves plain string text through the same helper", () => {
+    expect(resolveTourText("plain")).toBe("plain");
+    expect(resolveTourText(() => "thunk")).toBe("thunk");
+  });
+
+  it("orders the tours of each context by priority", () => {
+    const contexts: TourContext[] = ["home", "project", "settings", "ai", "diagram"];
+    for (const context of contexts) {
+      const tours = toursForContext(context);
+      expect(tours.length).toBeGreaterThan(0);
+      for (const tour of tours) {
+        expect(tour.contexts).toContain(context);
+      }
+      const priorities = tours.map((tour) => tour.priority);
+      expect(priorities).toEqual([...priorities].sort((a, b) => a - b));
+    }
+  });
+
+  it("reports the schema version the coordinator persists against", () => {
+    expect(TOUR_SCHEMA_VERSION).toBeGreaterThan(0);
   });
 });

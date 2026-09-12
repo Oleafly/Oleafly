@@ -1,10 +1,18 @@
+import {
+  analysisReasonEnglishText,
+  type AnalysisReason,
+} from "./reason";
+
 export interface LanguageServiceLifecycleActions {
   retry(): void;
   setup(): Promise<void> | void;
 }
 
+export const LANGUAGE_SERVICE_SETUP_FAILURE_ANALYSIS_REASON: AnalysisReason =
+  { key: "setupFailed" };
+
 export const LANGUAGE_SERVICE_SETUP_FAILURE_REASON =
-  "Language-service setup failed. Check your connection and try again.";
+  analysisReasonEnglishText(LANGUAGE_SERVICE_SETUP_FAILURE_ANALYSIS_REASON);
 
 let activeActions: LanguageServiceLifecycleActions | null = null;
 

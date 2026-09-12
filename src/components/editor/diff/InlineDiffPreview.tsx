@@ -5,6 +5,7 @@ import { getChunks, unifiedMergeView } from "@codemirror/merge";
 import { scrollEditorPositionLocally } from "@oleafly/editor";
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
+import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 const MAX = 400_000;
@@ -32,7 +33,7 @@ export function InlineDiffPreview({
     if (oldText.length > MAX || newText.length > MAX) {
       const note = document.createElement("div");
       note.className = "px-3 py-2 text-[11px] text-muted-foreground";
-      note.textContent = "File too large to preview a diff.";
+      note.textContent = i18n.t(($) => $.editor.diff.previewTooLarge);
       host.appendChild(note);
       return;
     }

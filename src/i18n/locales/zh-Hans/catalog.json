@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "空白",
+    "diagramsAndFigures": "图表与图片",
+    "cvsAndResumes": "简历与履历",
+    "journalsAndConferences": "期刊与会议",
+    "bibliographies": "参考文献",
+    "assignments": "作业",
+    "thesesAndReports": "论文与报告",
+    "books": "书籍",
+    "presentations": "演示文稿",
+    "posters": "海报",
+    "newsletters": "时事通讯",
+    "calendars": "日历",
+    "letters": "信函",
+    "aiGenerated": "AI 生成"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "简历",
+    "diagramsAndFigures": "图表",
+    "journalsAndConferences": "期刊"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "一款温暖的人文无衬线字体，被众多现代简历与履历模板采用。"
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "一款简洁、中性的无衬线字体，屏幕显示与印刷均清晰易读。"
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "一款精致的过渡型衬线字体，非常适合学术与正式文书。"
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "学术写作模板包",
+      "description": "科研与基金申请计划书、文献综述、目的陈述、推荐信、白皮书以及学位论文。"
+    },
+    "beamer-themes": {
+      "label": "Beamer 主题合集",
+      "description": "包含 Madrid、Warsaw、Berkeley、Singapore、Copenhagen、Frankfurt、Boadilla 和 Pittsburgh 等 Beamer 主题演示文稿。"
+    },
+    "business-documents": {
+      "label": "商务文档",
+      "description": "发票、备忘录、会议纪要、商业计划与报告、证书以及三折页宣传册。"
+    },
+    "conference-preprints": {
+      "label": "会议预印本样式",
+      "description": "NeurIPS、ICML、ICLR、ACL、CVPR、AAAI、IJCAI、Springer LNCS、JMLR、arXiv 和 Interspeech 样式的预印本。"
+    },
+    "coursework": {
+      "label": "课程作业模板包",
+      "description": "作业、练习纸、小测验、评分标准、讲义、教学大纲、数学参考表、试卷以及伪代码说明文档。"
+    },
+    "creative-misc": {
+      "label": "创意与杂项",
+      "description": "食谱、邀请函、RPG 角色卡、年历、表格与 TikZ 示例集以及田野笔记。"
+    },
+    "cv-collection": {
+      "label": "履历与简历样式合集",
+      "description": "ModernCV、AltaCV、Awesome-CV、Europass、Friggeri、Plasmati、Twenty Seconds 以及 Jake 风格简历。"
+    },
+    "reports-lab": {
+      "label": "实验与技术报告",
+      "description": "实验报告、科学与技术报告、项目与实习报告以及年度报告。"
+    },
+    "resume-plus": {
+      "label": "简历与履历扩展",
+      "description": "双栏技术简历、极简简历、长篇学术履历、求职信以及 Typst 履历。"
+    },
+    "slides-posters": {
+      "label": "幻灯片与海报",
+      "description": "Metropolis beamer 幻灯片、tikzposter 竖版与横版以及 better-poster 海报布局。"
+    },
+    "venue-classes": {
+      "label": "期刊与会议文档类",
+      "description": "REVTeX、ACS achemso、Elsevier、ACM sigconf 以及 Typst 期刊起始模板。"
+    }
+  }
+}

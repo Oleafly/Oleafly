@@ -1,5 +1,6 @@
 import { maskComments } from "./mask";
 import { extractDocumentClass, submissionProfile, type SubmissionProfileId } from "./profiles";
+import { message, type MessageRef } from "./messages";
 import type { Finding, PdfFacts, ProjectContext, ProjectFile } from "./types";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".ltx", ".sty", ".cls"]);
@@ -51,8 +52,8 @@ function make(
   id: string,
   lens: Finding["lens"],
   severity: Finding["severity"],
-  title: string,
-  detail: string,
+  title: MessageRef,
+  detail: MessageRef,
   file?: string,
   certainty: Finding["certainty"] = "verified",
 ): Finding {
@@ -83,7 +84,7 @@ function checkProjectReferences(project: ProjectContext, profileId: SubmissionPr
     file: ProjectFile,
     expression: RegExp,
     extensions: readonly string[],
-    kind: "figure" | "included file",
+    kind: "Figure" | "Include",
   ) => {
     const content = maskComments(file.content ?? "");
     let match: RegExpExecArray | null;
@@ -100,8 +101,8 @@ function checkProjectReferences(project: ProjectContext, profileId: SubmissionPr
             "submission-path-case",
             "submission",
             "error",
-            `Filename case does not match: ${target}`,
-            `This ${kind} resolves only on a case-insensitive filesystem. The project contains "${caseMatch}", so match that capitalization exactly before submitting to Linux-based build systems.`,
+            message("rules.submission-path-case.title", { target }),
+            message(`rules.submission-path-case.detail${kind}`, { match: caseMatch }),
             file.path,
           ),
         );
@@ -111,8 +112,8 @@ function checkProjectReferences(project: ProjectContext, profileId: SubmissionPr
             "submission-missing-project-file",
             "submission",
             "error",
-            `Missing ${kind}: ${target}`,
-            `No project file resolves this reference from ${file.path}. A clean submission build will fail even if a local cache currently lets the document compile.`,
+            message(`rules.submission-missing-project-file.title${kind}`, { target }),
+            message("rules.submission-missing-project-file.detail", { file: file.path }),
             file.path,
           ),
         );
@@ -121,8 +122,8 @@ function checkProjectReferences(project: ProjectContext, profileId: SubmissionPr
   };
 
   for (const file of sourceFiles(project)) {
-    inspect(file, /\\includegraphics\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/, GRAPHICS_EXTENSIONS, "figure");
-    inspect(file, /\\(?:input|include)\s*\{([^}]*)\}/, INPUT_EXTENSIONS, "included file");
+    inspect(file, /\\includegraphics\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/, GRAPHICS_EXTENSIONS, "Figure");
+    inspect(file, /\\(?:input|include)\s*\{([^}]*)\}/, INPUT_EXTENSIONS, "Include");
   }
   return out;
 }
@@ -141,8 +142,12 @@ function checkFiguresAndTables(project: ProjectContext): Finding[] {
             "submission-missing-caption",
             "submission",
             "warning",
-            `${match[1].replaceAll("*", "")} without a caption`,
-            "Publication figures and tables should have a numbered, descriptive caption so they can be referenced and understood independently.",
+            message(
+              match[1].replaceAll("*", "") === "table"
+                ? "rules.submission-missing-caption.titleTable"
+                : "rules.submission-missing-caption.titleFigure",
+            ),
+            message("rules.submission-missing-caption.detail"),
             file.path,
           ),
         );
@@ -155,8 +160,8 @@ function checkFiguresAndTables(project: ProjectContext): Finding[] {
             "submission-label-before-caption",
             "refs",
             "warning",
-            "Label appears before its caption",
-            "Place the label after the caption. Otherwise LaTeX can bind it to the previous counter and produce the wrong figure or table number.",
+            message("rules.submission-label-before-caption.title"),
+            message("rules.submission-label-before-caption.detail"),
             file.path,
           ),
         );
@@ -176,8 +181,8 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
           "privacy-sensitive-file",
           "privacy",
           "error",
-          `Sensitive file included: ${file.path}`,
-          "Remove credentials and private-key files from the project before exporting, syncing, or publishing the source archive.",
+          message("rules.privacy-sensitive-file.title", { file: file.path }),
+          message("rules.privacy-sensitive-file.detail"),
           file.path,
         ),
       );
@@ -196,8 +201,8 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
           "privacy-credential",
           "privacy",
           "error",
-          `Possible credential in ${file.path}`,
-          "The project contains text shaped like an API token, cloud access key, or private key. Revoke exposed credentials, then remove them from the project and its Git history.",
+          message("rules.privacy-credential.title", { file: file.path }),
+          message("rules.privacy-credential.detail"),
           file.path,
         ),
       );
@@ -208,8 +213,8 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
           "privacy-internal-comment",
           "privacy",
           "warning",
-          `Internal note remains in ${file.path}`,
-          "Source comments are not visible in the PDF but may be public in a conference, journal, or preprint source archive. Review and remove private editorial notes.",
+          message("rules.privacy-internal-comment.title", { file: file.path }),
+          message("rules.privacy-internal-comment.detail"),
           file.path,
           "advisory",
         ),
@@ -225,8 +230,8 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
         "privacy-draft-artifact",
         "privacy",
         "warning",
-        "Draft markup is still enabled",
-        "The source enables draft, TODO, change-tracking, watermark, or label-debugging output. Disable it and visually inspect the final PDF before submission.",
+        message("rules.privacy-draft-artifact.title"),
+        message("rules.privacy-draft-artifact.detail"),
         undefined,
         "advisory",
       ),
@@ -242,8 +247,8 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
           "privacy-blind-author",
           "privacy",
           "error",
-          "Author identity remains in blind-review source",
-          "The source contains a non-anonymous author, affiliation, email, address, or thanks field. Replace identifying content using the venue's anonymous-review mode.",
+          message("rules.privacy-blind-author.title"),
+          message("rules.privacy-blind-author.detail"),
         ),
       );
     }
@@ -253,8 +258,8 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
           "privacy-blind-acknowledgements",
           "privacy",
           "warning",
-          "Acknowledgements may reveal the authors",
-          "Acknowledgements commonly identify institutions, grants, collaborators, or facilities. Remove them from a blind-review submission unless the venue explicitly permits them.",
+          message("rules.privacy-blind-acknowledgements.title"),
+          message("rules.privacy-blind-acknowledgements.detail"),
           undefined,
           "advisory",
         ),
@@ -266,8 +271,8 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
           "privacy-pdf-author",
           "privacy",
           "error",
-          "PDF metadata identifies an author",
-          `The PDF Author field is "${pdf.author}". Clear author metadata before uploading a blind-review PDF.`,
+          message("rules.privacy-pdf-author.title"),
+          message("rules.privacy-pdf-author.detail", { author: pdf.author }),
         ),
       );
     }
@@ -300,8 +305,8 @@ export function runSubmissionRules({
             "submission-nonportable-filename",
             "submission",
             "error",
-            `Non-portable filename: ${file.path}`,
-            "This profile permits only letters, numbers, underscores, plus, minus, dots, commas, equals signs, and directory separators. Rename the file and update its references.",
+            message("rules.submission-nonportable-filename.title", { file: file.path }),
+            message("rules.submission-nonportable-filename.detail"),
             file.path,
           ),
         );
@@ -317,8 +322,8 @@ export function runSubmissionRules({
           "submission-absolute-path",
           "submission",
           "error",
-          `Machine-specific path in ${file.path}`,
-          "Absolute local paths do not exist on publisher build servers. Move the dependency into the project and reference it with a relative path.",
+          message("rules.submission-absolute-path.title", { file: file.path }),
+          message("rules.submission-absolute-path.detail"),
           file.path,
         ),
       );
@@ -329,8 +334,8 @@ export function runSubmissionRules({
           "submission-shell-escape",
           "submission",
           "warning",
-          `External command execution required by ${file.path}`,
-          "Many publisher and archive builders disable shell escape. Pre-generate the output or confirm that the target venue supports this package and command.",
+          message("rules.submission-shell-escape.title", { file: file.path }),
+          message("rules.submission-shell-escape.detail"),
           file.path,
           "advisory",
         ),
@@ -345,8 +350,8 @@ export function runSubmissionRules({
           "submission-generated-file",
           "submission",
           "info",
-          `Generated build file included: ${file.path}`,
-          "Generated auxiliary files make source packages noisy and can preserve stale state. Exclude them unless the selected venue explicitly requires that file.",
+          message("rules.submission-generated-file.title", { file: file.path }),
+          message("rules.submission-generated-file.detail"),
           file.path,
           "advisory",
         ),
@@ -362,8 +367,15 @@ export function runSubmissionRules({
         "submission-document-class",
         "submission",
         "error",
-        `${profile.label} document class is not active`,
-        `This profile expects ${recommended.join(" or ")}, but the project uses ${dc ?? "no detected document class"}. Start from the venue's current official template.`,
+        message("rules.submission-document-class.title", { profile: profile.label }),
+        dc
+          ? message("rules.submission-document-class.detail", {
+              expected: recommended.join(" or "),
+              actual: dc,
+            })
+          : message("rules.submission-document-class.detailNoClass", {
+              expected: recommended.join(" or "),
+            }),
       ),
     );
   }
@@ -373,8 +385,8 @@ export function runSubmissionRules({
         "submission-no-abstract",
         "submission",
         "warning",
-        "No abstract detected",
-        "This publication profile expects an abstract in a standard abstract environment. Add it or confirm that the specific venue does not require one.",
+        message("rules.submission-no-abstract.title"),
+        message("rules.submission-no-abstract.detail"),
         undefined,
         "advisory",
       ),
@@ -386,8 +398,8 @@ export function runSubmissionRules({
         "submission-no-keywords",
         "submission",
         "warning",
-        "No publication keywords detected",
-        `The ${profile.label} profile expects keywords using its standard template command or environment.`,
+        message("rules.submission-no-keywords.title"),
+        message("rules.submission-no-keywords.detail", { profile: profile.label }),
         undefined,
         "advisory",
       ),
@@ -406,8 +418,11 @@ export function runSubmissionRules({
               "submission-figure-format",
               "submission",
               "error",
-              `Unsupported figure format: ${match[1].trim()}`,
-              `${profile.label} accepts ${allowedFigures.join(", ")} figure files for its supported TeX workflows. Convert this figure before upload.`,
+              message("rules.submission-figure-format.title", { file: match[1].trim() }),
+              message("rules.submission-figure-format.detail", {
+                profile: profile.label,
+                formats: allowedFigures.join(", "),
+              }),
               file.path,
             ),
           );
@@ -422,8 +437,8 @@ export function runSubmissionRules({
         "submission-placeholder",
         "submission",
         "warning",
-        "Draft placeholder remains in the manuscript",
-        "The source contains TODO, TBD, FIXME, placeholder copy, or question-mark markers. Review each occurrence before producing the final submission.",
+        message("rules.submission-placeholder.title"),
+        message("rules.submission-placeholder.detail"),
         undefined,
         "advisory",
       ),
@@ -438,22 +453,54 @@ export function runSubmissionRules({
           "submission-pdf-version",
           "submission",
           "error",
-          `PDF ${pdf.version} is below the required version`,
-          `${profile.label} requires PDF ${minimum} or later. Update the compiler PDF settings and regenerate the file.`,
+          message("rules.submission-pdf-version.title", { version: pdf.version }),
+          message("rules.submission-pdf-version.detail", { profile: profile.label, minimum }),
         ),
       );
     }
     if (profile.pdf.forbidBookmarks && pdf.outlineCount > 0) {
-      out.push(make("submission-bookmarks", "submission", "error", "PDF bookmarks are not permitted", `${profile.label} rejects PDF bookmarks. Remove the document outline for this submission profile.`));
+      out.push(
+        make(
+          "submission-bookmarks",
+          "submission",
+          "error",
+          message("rules.submission-bookmarks.title"),
+          message("rules.submission-bookmarks.detail", { profile: profile.label }),
+        ),
+      );
     }
     if (profile.pdf.forbidLinks && pdf.linkCount > 0) {
-      out.push(make("submission-links", "submission", "error", "PDF links are not permitted", `${profile.label} rejects link annotations. Disable generated hyperlinks for the submitted PDF.`));
+      out.push(
+        make(
+          "submission-links",
+          "submission",
+          "error",
+          message("rules.submission-links.title"),
+          message("rules.submission-links.detail", { profile: profile.label }),
+        ),
+      );
     }
     if (profile.pdf.forbidAttachments && pdf.attachmentCount > 0) {
-      out.push(make("submission-attachments", "submission", "error", "PDF contains embedded attachments", `${profile.label} rejects PDF attachments and packages. Remove all embedded files before submission.`));
+      out.push(
+        make(
+          "submission-attachments",
+          "submission",
+          "error",
+          message("rules.submission-attachments.title"),
+          message("rules.submission-attachments.detail", { profile: profile.label }),
+        ),
+      );
     }
     if (profile.pdf.forbidRestrictions && pdf.restricted === true) {
-      out.push(make("submission-security", "submission", "error", "PDF security restrictions are enabled", `${profile.label} requires a PDF without password or permission restrictions.`));
+      out.push(
+        make(
+          "submission-security",
+          "submission",
+          "error",
+          message("rules.submission-security.title"),
+          message("rules.submission-security.detail", { profile: profile.label }),
+        ),
+      );
     }
     if (profile.pdf.requireEmbeddedFonts) {
       const unembedded = pdf.fonts.filter((font) => font.embedded === false);
@@ -464,8 +511,11 @@ export function runSubmissionRules({
             "submission-unembedded-font",
             "submission",
             "error",
-            `${unembedded.length} font${unembedded.length === 1 ? " is" : "s are"} not embedded`,
-            `${profile.label} requires every font to be embedded or subset so text and mathematics render reliably. Fix ${unembedded.slice(0, 6).map((font) => font.name).join(", ")}.`,
+            message("rules.submission-unembedded-font.title", { count: unembedded.length }),
+            message("rules.submission-unembedded-font.detail", {
+              profile: profile.label,
+              fonts: unembedded.slice(0, 6).map((font) => font.name).join(", "),
+            }),
           ),
         );
       } else if (unknown.length > 0) {
@@ -474,8 +524,10 @@ export function runSubmissionRules({
             "submission-font-inspection-incomplete",
             "submission",
             "info",
-            "Some font embedding could not be verified",
-            `Preflight could not prove the embedding status of ${unknown.slice(0, 6).map((font) => font.name).join(", ")}. Confirm them with the venue's official PDF checker.`,
+            message("rules.submission-font-inspection-incomplete.title"),
+            message("rules.submission-font-inspection-incomplete.detail", {
+              fonts: unknown.slice(0, 6).map((font) => font.name).join(", "),
+            }),
             undefined,
             "manual",
           ),

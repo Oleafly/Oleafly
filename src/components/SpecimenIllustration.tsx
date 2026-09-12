@@ -1,4 +1,7 @@
+import { useTranslation } from "react-i18next";
+
 export function SpecimenIllustration() {
+  const { t } = useTranslation(["shell"]);
   const layerCount = 13;
   const depth = 130;
   const top = { x: 210, y: 75 };
@@ -21,7 +24,7 @@ export function SpecimenIllustration() {
     "M0,-72 L0,88 M0,-30 L24,-8 M0,-30 L-24,-8 M0,0 L28,20 M0,0 L-28,20 M0,28 L22,44 M0,28 L-22,44";
 
   return (
-    <svg viewBox="0 0 420 420" className="h-full w-full" role="img" aria-label="Decorative specimen diagram">
+    <svg viewBox="0 0 420 420" className="h-full w-full" role="img" aria-label={t(($) => $.shell.errorBoundary.specimen.diagramLabel)}>
       <g stroke="white" strokeOpacity="0.5" strokeWidth="1" fill="none">
         <path d={`M${top.x},${top.y} L${right.x},${right.y} L${bottom.x},${bottom.y} L${left.x},${left.y} Z`} />
         <path
@@ -63,29 +66,29 @@ export function SpecimenIllustration() {
       </g>
 
       <g fontFamily="ui-monospace, monospace" fontSize="9" fill="white" fillOpacity="0.65" letterSpacing="0.05em">
-        <text x="240" y="52">A1</text>
-        <text x="349" y="94">P5</text>
+        <text x="240" y="52">{"A1"}</text>
+        <text x="349" y="94">{"P5"}</text>
         <text x="352" y="107" fillOpacity="0.45" fontStyle="italic">
-          *Quercus L.
+          {"*Quercus L."}
         </text>
-        <text x="15" y="124">SPECIMEN:</text>
+        <text x="15" y="124">{t(($) => $.shell.errorBoundary.specimen.specimen)}</text>
         <text x="15" y="136" fillOpacity="0.45" fontStyle="italic">
-          *Quercus L.
+          {"*Quercus L."}
         </text>
-        <text x="0" y="168">VEIN DENSITY:</text>
+        <text x="0" y="168">{t(($) => $.shell.errorBoundary.specimen.veinDensity)}</text>
         <text x="0" y="180" fillOpacity="0.45">
-          19.5 mm/mm²
+          {"19.5 mm/mm²"}
         </text>
-        <text x="349" y="234">S9</text>
+        <text x="349" y="234">{"S9"}</text>
         <text x="349" y="246" fillOpacity="0.45">
-          LAYER 9/15
+          {t(($) => $.shell.errorBoundary.specimen.layer, { current: 9, total: 15 })}
         </text>
-        <text x="259" y="348">L12</text>
+        <text x="259" y="348">{"L12"}</text>
         <text x="259" y="360" fillOpacity="0.45">
-          TRANSVERSE PLANE
+          {t(($) => $.shell.errorBoundary.specimen.transversePlane)}
         </text>
         <text x="259" y="372" fillOpacity="0.45">
-          45x85mm
+          {"45x85mm"}
         </text>
       </g>
     </svg>

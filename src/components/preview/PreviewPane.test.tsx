@@ -5,6 +5,9 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useTourStore } from "@/store/tours";
+import enIntelligence from "@/i18n/locales/en/intelligence.json" with { type: "json" };
+import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
+import { buildIndex } from "@/lib/index/build";
 
 const pdfStub = vi.hoisted(() => ({
   fits: { width: 1.75, height: 0.6 } as Record<"width" | "height", number | null>,
@@ -54,6 +57,9 @@ vi.mock("@/lib/preview-window", () => ({
 import { PreviewPane } from "./PreviewPane";
 import { sessionZoomByProject } from "./preview-zoom";
 
+const [startupPrefix, startupMiddle] =
+  enPreview.startup.progressLabel.split(/\{\{\w+\}\}/);
+
 describe("PreviewPane empty state", () => {
   const recompile = vi.fn().mockResolvedValue(undefined);
 
@@ -89,8 +95,12 @@ describe("PreviewPane empty state", () => {
 
   it("shows the startup state without a duplicate compile button", () => {
     render(<PreviewPane />);
-    expect(screen.getByRole("status", { name: /Document startup/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Compile now" })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: new RegExp(startupPrefix) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: enPreview.startup.compileNow }),
+    ).not.toBeInTheDocument();
     expect(recompile).not.toHaveBeenCalled();
   });
 
@@ -98,11 +108,39 @@ describe("PreviewPane empty state", () => {
     render(<PreviewPane />);
     // Separate rows let analysis show "complete" above a service that is still
     // starting, which reads as an out-of-order checklist.
-    expect(screen.queryByText("Language service")).not.toBeInTheDocument();
-    expect(screen.getByText("Language analysis")).toBeInTheDocument();
     expect(
-      screen.getByRole("status", { name: /Document startup: \d+ of 3 stages/ }),
+      screen.queryByText(enPreview.startup.language.serviceLabel),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(enPreview.startup.language.analysisLabel),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", {
+        name: new RegExp(`${startupPrefix}\\d+${startupMiddle}3`),
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the analysis stage running while the project index rebuilds", () => {
+    const request = {
+      projectId: "preview-empty-fixture",
+      projectRevision: 2,
+      languageServiceGeneration: 0,
+      requestGeneration: 1,
+    };
+    const actions = useProjectAnalysisStore.getState();
+    actions.setLanguageService({ readiness: "ready" });
+    actions.beginProjectIndex(request);
+    actions.installProjectIndex({
+      request,
+      index: buildIndex({ "main.tex": "Paper" }),
+      partialReason: { key: "indexRebuilding" },
+    });
+    render(<PreviewPane />);
+    const detail = screen.getByText(
+      enIntelligence.analysis.reasons.indexRebuilding,
+    );
+    expect(detail.closest("li")).toHaveAttribute("aria-current", "step");
   });
 
   it("never mounts unverified bytes from an older project revision", () => {

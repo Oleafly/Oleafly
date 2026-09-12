@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { budgetGet, usageSummary } from "@/lib/tauri";
 import { formatUsd } from "@/lib/ai-pricing";
 import { useToastStore } from "@/store/toast";
@@ -18,7 +19,7 @@ export async function checkProjectBudget(projectId: string): Promise<BudgetGate>
         .pushUnique(
           `ai-budget-stop:${projectId}`,
           "error",
-          `This project reached its AI budget of ${formatUsd(budget)}. Raise or clear the budget in Settings to keep going.`,
+          i18n.t(($) => $.core.aiBudget.blocked, { budget: formatUsd(budget) }),
         );
       return "blocked";
     }
@@ -28,7 +29,10 @@ export async function checkProjectBudget(projectId: string): Promise<BudgetGate>
         .pushUnique(
           `ai-budget-warn:${projectId}`,
           "info",
-          `This project has used ${formatUsd(totals.cost_usd)} of its ${formatUsd(budget)} AI budget.`,
+          i18n.t(($) => $.core.aiBudget.warned, {
+            spent: formatUsd(totals.cost_usd),
+            budget: formatUsd(budget),
+          }),
         );
       return "warned";
     }

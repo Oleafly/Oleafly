@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TaskRuntimeEvent, TaskTranscriptEvent } from "@/lib/research-tasks";
 import { buildTaskTimeline } from "./task-timeline";
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 function transcript(events: TaskRuntimeEvent[]): TaskTranscriptEvent[] {
   return events.map((event, index) => ({
@@ -150,7 +151,7 @@ describe("buildTaskTimeline", () => {
     );
 
     expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ kind: "tool", tool: { name: "Tool call", status: "done" } });
+    expect(items[0]).toMatchObject({ kind: "tool", tool: { name: enResearchTools.tasks.timeline.toolCall, status: "done" } });
   });
 
   it("pairs legacy outcomes with the earliest unresolved request", () => {
@@ -221,7 +222,7 @@ describe("buildTaskTimeline", () => {
       "message",
       "artifact",
     ]);
-    expect(items[0]).toMatchObject({ text: "Session connected." });
+    expect(items[0]).toMatchObject({ text: enResearchTools.tasks.timeline.sessionConnected });
     expect(items[1]).toMatchObject({ text: "Working on step 1." });
     expect(items[2]).toMatchObject({ text: "Checking the sources." });
     expect(items[3]).toMatchObject({ text: "The sample sizes match." });

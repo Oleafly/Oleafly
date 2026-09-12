@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
+import { wysiwygMessage } from "./messages";
 import {
   compactRawInlineSource,
   isRawMathSource,
@@ -51,7 +52,7 @@ export const RawInline = Node.create({
       dom.dataset.type = "raw-inline";
       dom.dataset.rawInlineEditor = "true";
       dom.contentEditable = "false";
-      dom.setAttribute("aria-label", "Raw inline source");
+      dom.setAttribute("aria-label", wysiwygMessage("inline.label"));
 
       const source = document.createElement("code");
       source.className = "raw-inline-source";
@@ -62,7 +63,7 @@ export const RawInline = Node.create({
           // exact editable expression. Keep the complete source in the visual
           // document even after the preview paints.
           source.textContent = exactSource;
-          source.title = "Exact math source";
+          source.title = wysiwygMessage("inline.mathTitle");
           dom.dataset.rawInlineKind = "math";
         } else {
           source.textContent = compactRawInlineSource(exactSource);
@@ -76,9 +77,9 @@ export const RawInline = Node.create({
       const edit = document.createElement("button");
       edit.type = "button";
       edit.className = "raw-inline-edit";
-      edit.textContent = "Edit";
-      edit.title = "Edit exact source";
-      edit.setAttribute("aria-label", "Edit exact raw inline source");
+      edit.textContent = wysiwygMessage("inline.edit");
+      edit.title = wysiwygMessage("inline.editTitle");
+      edit.setAttribute("aria-label", wysiwygMessage("inline.editLabel"));
       dom.append(edit);
 
       const showSource = () => {
@@ -118,7 +119,7 @@ export const RawInline = Node.create({
         input.value = String(currentNode.attrs.source ?? "");
         input.rows = Math.min(Math.max(input.value.split("\n").length, 1), 6);
         input.spellcheck = false;
-        input.setAttribute("aria-label", "Exact raw inline source");
+        input.setAttribute("aria-label", wysiwygMessage("inline.inputLabel"));
 
         let composing = false;
         input.addEventListener("compositionstart", () => {

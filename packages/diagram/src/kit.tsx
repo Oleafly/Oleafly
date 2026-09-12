@@ -6,6 +6,7 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
+import type { DiagramTranslator } from "./messages";
 
 // UI primitives the host app injects so this package never imports the app's
 // component library directly. The prop shapes are structural subsets of the
@@ -51,6 +52,7 @@ export interface DiagramKit {
   toast: { success: (msg: string) => void; error: (msg: string) => void; info: (msg: string) => void };
   useThemeMode: () => "light" | "dark";
   usePrimaryColor: () => string;
+  t: DiagramTranslator;
 }
 
 export const DiagramKitContext = createContext<DiagramKit | null>(null);

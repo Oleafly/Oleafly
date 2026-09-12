@@ -333,10 +333,12 @@ pub async fn literature_search(
 ) -> Result<String, String> {
     let query = query.trim();
     if query.is_empty() {
-        return Err("Search query cannot be empty.".to_string());
+        return Err(crate::app_error::AppError::new("literature.query_empty").into());
     }
     if query.chars().count() > 500 {
-        return Err("Search query is too long (500 characters maximum).".to_string());
+        return Err(crate::app_error::AppError::new("literature.query_too_long")
+            .param("max", 500)
+            .into());
     }
     let limit = limit.clamp(1, 25);
     let years = year_range(year_from, year_to);
@@ -351,7 +353,7 @@ pub async fn literature_search(
             "USPTO has temporarily paused PatentsView search APIs during its Open Data Portal migration."
                 .to_string(),
         ),
-        _ => Err("Unknown literature source.".to_string()),
+        _ => Err(crate::app_error::AppError::new("literature.unknown_source").into()),
     }
 }
 

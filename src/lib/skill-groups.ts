@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import type { SkillEntry } from "@/lib/skills";
 
 export const SKILL_PHASE_ORDER = [
@@ -53,7 +54,15 @@ export function groupSkills(skills: readonly SkillEntry[]): SkillGroup[] {
       groups.push({ key: phase, label: SKILL_PHASE_LABELS[phase], skills: byName(list) });
     }
   }
-  if (yours.length > 0) groups.push({ key: "user", label: "Your skills", skills: byName(yours) });
-  if (shelf.length > 0) groups.push({ key: "shelf", label: "Domain shelf", skills: byName(shelf) });
+  if (yours.length > 0) groups.push({
+      key: "user",
+      label: i18n.t(($) => $.core.skillGroups.user),
+      skills: byName(yours),
+    });
+  if (shelf.length > 0) groups.push({
+      key: "shelf",
+      label: i18n.t(($) => $.core.skillGroups.shelf),
+      skills: byName(shelf),
+    });
   return groups;
 }

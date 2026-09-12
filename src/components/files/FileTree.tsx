@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from "react-i18next";
 import {
   useId,
   useMemo,
@@ -45,6 +46,7 @@ import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
 import { isFileConflictError } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
+import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 
@@ -134,6 +136,7 @@ interface TreeCtx {
 }
 
 export function FileTree() {
+  const { t } = useTranslation(["common", "shell", "workspace"]);
   const tree = useFilesStore((s) => s.tree);
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const activePath = useFilesStore((s) => s.activePath);
@@ -215,7 +218,9 @@ export function FileTree() {
         notifyError(
           `${action} file`,
           error,
-          `Could not ${action} "${from}". The original path was left unchanged.`,
+          action === "rename"
+            ? i18n.t(($) => $.workspace.files.renameFailed, { path: from })
+            : i18n.t(($) => $.workspace.files.moveFailed, { path: from }),
         );
       }
       return null;
@@ -246,7 +251,7 @@ export function FileTree() {
         notifyError(
           "resolve file conflict",
           error,
-          "The original and destination paths were left unchanged.",
+          i18n.t(($) => $.workspace.files.conflict.unchanged),
         );
       }
     } finally {
@@ -297,7 +302,7 @@ export function FileTree() {
           suggestedDestination: e.suggestedDestination,
         });
       } else {
-        notifyError("create file", e, `Could not create "${path}".`);
+        notifyError("create file", e, i18n.t(($) => $.workspace.files.createFailed, { path }));
       }
     }
   };
@@ -338,7 +343,7 @@ export function FileTree() {
     },
     onDelete: (path) => {
       void deleteEntry(path).catch((error) =>
-        notifyError("delete file", error, `Could not delete "${path}".`),
+        notifyError("delete file", error, i18n.t(($) => $.workspace.files.deleteFailed, { path })),
       );
     },
     onSetMain: setMainDoc,
@@ -375,7 +380,7 @@ export function FileTree() {
         <div className="flex items-center gap-1.5">
           <FolderTree className="size-3.5 text-muted-foreground" />
           <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-            Source Tree
+            {t(($) => $.shell.rail.files)}
           </span>
         </div>
         <div className="flex items-center gap-0.5">
@@ -383,8 +388,8 @@ export function FileTree() {
             variant="ghost"
             size="icon"
             className="size-7"
-            title="New file (in the selected folder)"
-            aria-label="New file in selected folder"
+            title={t(($) => $.workspace.files.newFileTitle)}
+            aria-label={t(($) => $.workspace.files.newFileAriaLabel)}
             onClick={() => startNew(targetDir(), "file")}
           >
             <FilePlus className="size-3.5" />
@@ -393,8 +398,8 @@ export function FileTree() {
             variant="ghost"
             size="icon"
             className="size-7"
-            title="New folder (in the selected folder)"
-            aria-label="New folder in selected folder"
+            title={t(($) => $.workspace.files.newFolderTitle)}
+            aria-label={t(($) => $.workspace.files.newFolderAriaLabel)}
             onClick={() => startNew(targetDir(), "dir")}
           >
             <FolderPlus className="size-3.5" />
@@ -405,18 +410,18 @@ export function FileTree() {
                 variant="ghost"
                 size="icon"
                 className="size-7"
-                title="Import a file or folder (into the selected folder)"
-                aria-label="Import into selected folder"
+                title={t(($) => $.workspace.files.importTitle)}
+                aria-label={t(($) => $.workspace.files.importAriaLabel)}
               >
                 <Import className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem onClick={() => ctx.onImport(targetDir(), "file")}>
-                <FilePlus className="size-4 text-muted-foreground" /> Import file(s)
+                <FilePlus className="size-4 text-muted-foreground" /> {t(($) => $.workspace.files.importFiles)}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => ctx.onImport(targetDir(), "dir")}>
-                <FolderPlus className="size-4 text-muted-foreground" /> Import folder
+                <FolderPlus className="size-4 text-muted-foreground" /> {t(($) => $.workspace.files.importFolder)}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -428,7 +433,7 @@ export function FileTree() {
         <ContextMenuTrigger asChild>
           <div
             role="tree"
-            aria-label="Source tree"
+            aria-label={t(($) => $.workspace.files.treeAriaLabel)}
             className={cn(
               "flex-1 overflow-auto p-1.5",
               dragOver === ROOT && "rounded-md ring-1 ring-inset ring-primary/40"
@@ -466,17 +471,17 @@ export function FileTree() {
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
           <ContextMenuItem onClick={() => ctx.onStartNew("", "file")}>
-            <FilePlus className="mr-2 size-4" /> New file
+            <FilePlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFile)}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => ctx.onStartNew("", "dir")}>
-            <FolderPlus className="mr-2 size-4" /> New folder
+            <FolderPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFolder)}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={() => ctx.onImport("", "file")}>
-            <Import className="mr-2 size-4" /> Import file(s)
+            <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFiles)}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => ctx.onImport("", "dir")}>
-            <Import className="mr-2 size-4" /> Import folder
+            <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -489,7 +494,7 @@ export function FileTree() {
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <button
             type="button"
-            aria-label="Cancel file move"
+            aria-label={t(($) => $.workspace.files.conflict.cancelAriaLabel)}
             className="absolute inset-0"
             onMouseDown={onConflictBackdropMouseDown}
           />
@@ -497,20 +502,28 @@ export function FileTree() {
             ref={conflictDialogRef}
             role="alertdialog"
             aria-modal="true"
-            aria-label="File move conflict"
+            aria-label={t(($) => $.workspace.files.conflict.dialogAriaLabel)}
             tabIndex={-1}
             className="relative w-full max-w-md rounded-xl border bg-background p-5 shadow-2xl"
           >
-            <h2 className="text-sm font-semibold">That name is already in use</h2>
+            <h2 className="text-sm font-semibold">{t(($) => $.workspace.files.conflict.title)}</h2>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              <span className="font-medium text-foreground">{conflict.to}</span> already exists.
-              Keep both files using{" "}
-              <span className="font-medium text-foreground">
-                {conflict.suggestedDestination}
-              </span>
-              {conflict.op === "rename"
-                ? ", or replace the existing destination. Oleafly will not replace it unless you choose Replace."
-                : ". Creating never replaces an existing file."}
+              <Trans
+                ns="workspace"
+                i18nKey={
+                  conflict.op === "rename"
+                    ? ($) => $.workspace.files.conflict.renameBody
+                    : ($) => $.workspace.files.conflict.createBody
+                }
+                values={{
+                  destination: conflict.to,
+                  suggestion: conflict.suggestedDestination,
+                }}
+                components={{
+                  destination: <span className="font-medium text-foreground" />,
+                  suggestion: <span className="font-medium text-foreground" />,
+                }}
+              />
             </p>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <Button
@@ -520,7 +533,7 @@ export function FileTree() {
                 disabled={resolvingConflict}
                 data-modal-initial-focus
               >
-                Cancel
+                {t(($) => $.common.actions.cancel)}
               </Button>
               <Button
                 variant="outline"
@@ -528,7 +541,7 @@ export function FileTree() {
                 onClick={() => void resolveConflict("keep_both")}
                 disabled={resolvingConflict}
               >
-                Keep both
+                {t(($) => $.workspace.files.conflict.keepBoth)}
               </Button>
               {conflict.op === "rename" && (
                 <Button
@@ -537,7 +550,7 @@ export function FileTree() {
                   onClick={() => void resolveConflict("replace")}
                   disabled={resolvingConflict}
                 >
-                  Replace
+                  {t(($) => $.workspace.files.conflict.replace)}
                 </Button>
               )}
             </div>
@@ -565,11 +578,10 @@ export function NewEntryInput({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation(["workspace"]);
   const inputRef = useInitialFocus<HTMLInputElement>();
   const inputId = useId();
   const finalizedRef = useRef(false);
-  const entryKind = mode === "dir" ? "folder" : "file";
-  const destination = parentPath ? `folder ${parentPath}` : "project root";
   const submitOnce = () => {
     if (finalizedRef.current) return;
     finalizedRef.current = true;
@@ -583,7 +595,13 @@ export function NewEntryInput({
   return (
     <div style={{ paddingLeft: `${depth * 12 + 8}px` }} className="py-0.5">
       <label htmlFor={inputId} className="sr-only">
-        New {entryKind} name in {destination}
+        {parentPath
+          ? mode === "dir"
+            ? t(($) => $.workspace.files.newEntry.folderInFolder, { folder: parentPath })
+            : t(($) => $.workspace.files.newEntry.fileInFolder, { folder: parentPath })
+          : mode === "dir"
+            ? t(($) => $.workspace.files.newEntry.folderInRoot)
+            : t(($) => $.workspace.files.newEntry.fileInRoot)}
       </label>
       <Input
         id={inputId}
@@ -595,7 +613,11 @@ export function NewEntryInput({
           if (e.key === "Enter") submitOnce();
           if (e.key === "Escape") cancelOnce();
         }}
-        placeholder={mode === "dir" ? "New folder name" : "New file name"}
+        placeholder={
+          mode === "dir"
+            ? t(($) => $.workspace.files.newEntry.folderPlaceholder)
+            : t(($) => $.workspace.files.newEntry.filePlaceholder)
+        }
         className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
       />
     </div>
@@ -615,6 +637,7 @@ export function RenameEntryInput({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation(["workspace"]);
   const inputRef = useInitialFocus<HTMLInputElement>();
   const finalizedRef = useRef(false);
   const submitOnce = () => {
@@ -632,7 +655,7 @@ export function RenameEntryInput({
     <div style={{ paddingLeft: `${depth * 12 + 0}px` }} className="py-0.5">
       <Input
         ref={inputRef}
-        aria-label="Rename file"
+        aria-label={t(($) => $.workspace.files.renameAriaLabel)}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={submitOnce}
@@ -648,6 +671,7 @@ export function RenameEntryInput({
 }
 
 function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: TreeCtx }) {
+  const { t } = useTranslation(["common", "workspace"]);
   const isOpen = ctx.expanded.has(node.path) || !node.isDir;
   const isActive = ctx.activePath === node.path;
   const isSelected = ctx.selected === node.path;
@@ -769,7 +793,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
       <span className="ml-auto flex shrink-0 items-center gap-1">
         <button
           type="button"
-          aria-label={`More actions for ${node.name}`}
+          aria-label={t(($) => $.workspace.files.moreActions, { name: node.name })}
           onClick={openRowMenu}
           className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-sidebar-accent-foreground/10 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -796,48 +820,54 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
             {node.isDir ? (
               <>
                 <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "file")}>
-                  <FilePlus className="mr-2 size-4" /> New file
+                  <FilePlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFile)}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "dir")}>
-                  <FolderPlus className="mr-2 size-4" /> New folder
+                  <FolderPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFolder)}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem onClick={() => ctx.onImport(node.path, "file")}>
-                  <Import className="mr-2 size-4" /> Import file(s)
+                  <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFiles)}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => ctx.onImport(node.path, "dir")}>
-                  <Import className="mr-2 size-4" /> Import folder
+                  <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
                 </ContextMenuItem>
               </>
             ) : (
               <>
-                <ContextMenuItem onClick={() => ctx.onOpen(node.path)}>Open</ContextMenuItem>
+                <ContextMenuItem onClick={() => ctx.onOpen(node.path)}>
+                  {t(($) => $.common.actions.open)}
+                </ContextMenuItem>
                 <ContextMenuItem
                   disabled={!ctx.mainExtensions.some((extension) =>
                     node.path.toLowerCase().endsWith(`.${extension.toLowerCase()}`),
                   )}
                   onClick={() => ctx.onSetMain(node.path)}
                 >
-                  Set as main document
+                  {t(($) => $.workspace.files.setMain)}
                 </ContextMenuItem>
               </>
             )}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => ctx.onStartRename(node.path, node.name)}>
-              <Pencil className="mr-2 size-4" /> Rename
+              <Pencil className="mr-2 size-4" /> {t(($) => $.common.actions.rename)}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => void ctx.onCopy(node.path, node.isDir)}>
-              <CopyPlus className="mr-2 size-4" /> Make a copy
+              <CopyPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.makeCopy)}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => {
-                if (window.confirm(`Delete ${node.path}? This cannot be undone.`))
+                if (
+                  window.confirm(
+                    t(($) => $.workspace.files.confirmDelete, { path: node.path }),
+                  )
+                )
                   void ctx.onDelete(node.path);
               }}
             >
-              <Trash2 className="mr-2 size-4" /> Delete
+              <Trash2 className="mr-2 size-4" /> {t(($) => $.common.actions.delete)}
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>

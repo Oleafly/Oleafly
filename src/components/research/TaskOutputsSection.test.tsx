@@ -31,6 +31,8 @@ vi.mock("@/store/files", () => {
 
 import * as api from "@/lib/research-tasks";
 import { useResearchTasksStore } from "@/store/research-tasks";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let TaskOutputsSection: typeof import("./TaskOutputsSection").TaskOutputsSection;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
@@ -171,7 +173,7 @@ describe("TaskOutputsSection", () => {
     render(<TaskOutputsSection />);
 
     const section = page().getByTestId("task-outputs-section");
-    expect(within(section).getByText("Task outputs")).toBeInTheDocument();
+    expect(within(section).getByText(enResearchTools.outputs.title)).toBeInTheDocument();
     expect(within(section).getByText("2")).toBeInTheDocument();
     expect(within(section).getByText("Task review")).toBeInTheDocument();
     expect(within(section).getByText("Task failed")).toBeInTheDocument();
@@ -192,7 +194,7 @@ describe("TaskOutputsSection", () => {
     expect(api.previewResearchTaskFile).toHaveBeenCalledWith("review", "review.tex");
 
     fireEvent.click(
-      within(page().getByRole("dialog")).getAllByRole("button", { name: "Close" })[0],
+      within(page().getByRole("dialog")).getAllByRole("button", { name: enCommon.actions.close })[0],
     );
     await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
   });

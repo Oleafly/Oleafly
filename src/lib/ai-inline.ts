@@ -1,3 +1,4 @@
+import { i18n } from "@/i18n";
 import { streamText as streamViaRust } from "@/lib/agent-backend";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 
@@ -11,12 +12,12 @@ export type InlineEditArgs = {
 };
 
 export const PRESETS: { id: string; label: string; instruction: string }[] = [
-  { id: "improve", label: "Improve", instruction: "Improve the clarity and flow of the selected text." },
-  { id: "grammar", label: "Fix grammar", instruction: "Fix any spelling and grammar mistakes in the selected text." },
-  { id: "concise", label: "Make concise", instruction: "Make the selected text more concise without losing meaning." },
-  { id: "expand", label: "Expand", instruction: "Expand the selected text with more detail." },
-  { id: "fix-source", label: "Fix source", instruction: "Fix source syntax errors in the selection. Keep it valid for the active document engine." },
-  { id: "translate", label: "Translate", instruction: "Translate the selected text to English." },
+  { id: "improve", get label() { return i18n.t(($) => $.core.inlineAi.improve); }, instruction: "Improve the clarity and flow of the selected text." },
+  { id: "grammar", get label() { return i18n.t(($) => $.core.inlineAi.grammar); }, instruction: "Fix any spelling and grammar mistakes in the selected text." },
+  { id: "concise", get label() { return i18n.t(($) => $.core.inlineAi.concise); }, instruction: "Make the selected text more concise without losing meaning." },
+  { id: "expand", get label() { return i18n.t(($) => $.core.inlineAi.expand); }, instruction: "Expand the selected text with more detail." },
+  { id: "fix-source", get label() { return i18n.t(($) => $.core.inlineAi.fixSource); }, instruction: "Fix source syntax errors in the selection. Keep it valid for the active document engine." },
+  { id: "translate", get label() { return i18n.t(($) => $.core.inlineAi.translate); }, instruction: "Translate the selected text to English." },
 ];
 
 const systemFor = (engine: InlineEditArgs["engine"]) => {

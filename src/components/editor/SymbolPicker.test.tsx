@@ -49,7 +49,7 @@ describe("SymbolPicker", () => {
     insertAtCursor.mockClear();
     const symbols = SYMBOL_CATEGORIES.flatMap((category) => category.items);
     expect(symbols.length).toBeGreaterThan(100);
-    expect(new Set(symbols.map((symbol) => symbol.name)).size).toBe(
+    expect(new Set(symbols.map((symbol) => symbol.name())).size).toBe(
       symbols.length,
     );
 

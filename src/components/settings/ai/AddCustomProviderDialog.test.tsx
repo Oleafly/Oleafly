@@ -2,6 +2,8 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import {
   AddCustomProviderDialog,
   normalizeBaseURL,
@@ -25,7 +27,9 @@ describe("AddCustomProviderDialog", () => {
     const onOpenChange = vi.fn();
     render(<AddCustomProviderDialog open onOpenChange={onOpenChange} onSubmit={onSubmit} />);
 
-    expect(screen.getByRole("heading", { name: "Add custom provider" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: enSettings.ai.customProvider.addTitle }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("custom-provider-submit"));
     expect(screen.getByTestId("custom-provider-id-error")).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -51,14 +55,20 @@ describe("AddCustomProviderDialog", () => {
       <AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} editing={ACME} />,
     );
 
-    expect(screen.getByRole("heading", { name: "Edit custom provider" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: enSettings.ai.customProvider.editTitle }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("custom-provider-id")).toHaveValue("acme");
     expect(screen.getByTestId("custom-provider-id")).toBeDisabled();
     expect(screen.getByTestId("custom-provider-name")).toHaveValue("Acme");
     expect(screen.getByTestId("custom-provider-baseurl")).toHaveValue("https://api.acme.test/v1");
     expect(screen.getByTestId("custom-provider-key")).toHaveValue("");
-    expect(screen.getByText("API key (leave blank to keep the saved key)")).toBeInTheDocument();
-    expect(screen.getByTestId("custom-provider-submit")).toHaveTextContent("Save");
+    expect(
+      screen.getByText(enSettings.ai.customProvider.keyLabelKeepSaved),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("custom-provider-submit")).toHaveTextContent(
+      enCommon.actions.save,
+    );
   });
 
   it("submits a base URL change without the key when one is stored", async () => {
@@ -90,7 +100,7 @@ describe("AddCustomProviderDialog", () => {
 
     fill("custom-provider-baseurl", "https://api.acme.test/v2");
     expect(screen.getByTestId("custom-provider-baseurl-note")).toHaveTextContent(
-      "Your saved API key will be sent to this new address.",
+      enSettings.ai.customProvider.baseUrlNote,
     );
 
     fill("custom-provider-baseurl", "https://api.acme.test/v1");

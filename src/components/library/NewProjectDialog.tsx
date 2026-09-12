@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import {
   NewProjectDialog as NewProjectDialogCore,
@@ -66,7 +67,7 @@ function KitSelect({
   );
 }
 
-const KIT: TemplatesKit = { Button, Input, Tooltip, Select: KitSelect };
+const KIT: Omit<TemplatesKit, "t"> = { Button, Input, Tooltip, Select: KitSelect };
 
 const HOST: TemplatesHost = {
   loadPreview: templatePreview,
@@ -97,6 +98,18 @@ export function NewProjectDialog(props: {
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
 }) {
+  const { t } = useTranslation(["templates"]);
+  const kit = useMemo<TemplatesKit>(
+    () => ({
+      ...KIT,
+      t: (key, params) =>
+        (t as unknown as (k: string, p?: Record<string, unknown>) => string)(
+          `templates:package.${key}`,
+          params,
+        ),
+    }),
+    [t],
+  );
   const [canGenerate, setCanGenerate] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [kind, setKind] = useState<ProjectKind | null>(null);
@@ -172,7 +185,7 @@ export function NewProjectDialog(props: {
         onGenerateWithAi={canGenerate ? () => setGenerateOpen(true) : undefined}
         onOpenTemplateDownloads={openTemplateDownloads}
         host={HOST}
-        kit={KIT}
+        kit={kit}
         colorOptions={BOOK_COLOR_OPTIONS}
         defaultColor={DEFAULT_BOOK_COLOR}
       />

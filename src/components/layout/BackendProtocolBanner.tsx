@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
 import { BACKEND_CAPABILITIES, PROTOCOL_VERSION } from "@oleafly/backend-port";
 import { backendProtocolInfo } from "@/lib/tauri";
@@ -7,6 +8,7 @@ import { backendProtocolInfo } from "@/lib/tauri";
 // packages/backend-port PROTOCOL_VERSION). Stays hidden when the backend is
 // unreachable: that is a startup-ordering or dev-harness situation, not drift.
 export function BackendProtocolBanner() {
+  const { t } = useTranslation(["shell"]);
   const [mismatch, setMismatch] = useState(false);
 
   useEffect(() => {
@@ -34,10 +36,7 @@ export function BackendProtocolBanner() {
       className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
     >
       <AlertTriangle className="size-3.5 shrink-0" />
-      <span>
-        This window and its backend were built for different Oleafly versions,
-        so some features may not work. Reinstalling the app fixes this.
-      </span>
+      <span>{t(($) => $.shell.backendProtocol.mismatch)}</span>
     </div>
   );
 }

@@ -259,7 +259,7 @@ pub async fn approvals_mode_set(
     if full_access_needs_confirmation(try_mode_for(&root, &project_id)?, mode)
         && !confirm_full_access(app).await?
     {
-        return Err("full access was not enabled".to_string());
+        return Err(crate::app_error::AppError::new("approvals.full_access_declined").into());
     }
     set_mode(&root, &project_id, mode)
 }
@@ -268,21 +268,19 @@ async fn confirm_full_access(app: tauri::AppHandle) -> Result<bool, String> {
     use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
     let (sender, receiver) = tokio::sync::oneshot::channel();
     app.dialog()
-        .message(
-            "Full access lets the assistant run shell commands and edit files without asking for approval each time. Enable full access?",
-        )
-        .title("Enable full access?")
+        .message(crate::i18n::t("dialog.fullAccess.message"))
+        .title(crate::i18n::t("dialog.fullAccess.title"))
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::OkCancelCustom(
-            "Enable full access".to_string(),
-            "Cancel".to_string(),
+            crate::i18n::t("dialog.fullAccess.confirm"),
+            crate::i18n::t("dialog.cancel"),
         ))
         .show(move |confirmed| {
             let _ = sender.send(confirmed);
         });
     receiver
         .await
-        .map_err(|_| "the full access confirmation was dismissed".to_string())
+        .map_err(|_| crate::i18n::t("errors.fullAccessDismissed"))
 }
 
 #[cfg(test)]

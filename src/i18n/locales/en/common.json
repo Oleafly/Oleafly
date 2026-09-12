@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "delete": "Delete",
+    "remove": "Remove",
+    "rename": "Rename",
+    "open": "Open",
+    "copy": "Copy",
+    "copied": "Copied",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "clear": "Clear",
+    "apply": "Apply",
+    "confirm": "Confirm",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "learnMore": "Learn more",
+    "showMore": "Show more",
+    "showLess": "Show less"
+  },
+  "state": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "none": "None",
+    "unknown": "Unknown",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "on": "On",
+    "off": "Off",
+    "beta": "Beta",
+    "new": "New",
+    "default": "Default"
+  },
+  "labels": {
+    "name": "Name",
+    "type": "Type",
+    "size": "Size",
+    "date": "Date",
+    "status": "Status",
+    "description": "Description",
+    "optional": "Optional",
+    "required": "Required"
+  }
+}

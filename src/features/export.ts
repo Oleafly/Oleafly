@@ -3,21 +3,23 @@ import { pickSavePath } from "@/lib/native-file-dialog";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { notifyError, toast } from "@/lib/toast";
+import { i18n } from "@/i18n";
 
 /** Show in Finder/Explorer; never flip a successful save into a failure toast. */
 function revealExportedFile(dest: string): void {
   void revealInDir(dest).catch(() => {
-    toast.info(
-      "File was saved, but Oleafly could not open its folder (permission denied). Check the location you chose in the save dialog.",
-    );
+    toast.info(i18n.t(($) => $.core.export.revealFailed));
   });
 }
 
 function exportSuccessToast(kind: "PDF" | "PNG", dest: string): void {
   const fileName = dest.split(/[/\\]/).pop() || kind.toLowerCase();
   toast.success(
-    `${kind} saved · ${fileName}`,
-    { label: "Show in folder", onClick: () => revealExportedFile(dest) },
+    i18n.t(($) => $.core.export.saved, { kind, fileName }),
+    {
+      label: i18n.t(($) => $.core.export.showInFolder),
+      onClick: () => revealExportedFile(dest),
+    },
     true,
   );
 }
@@ -41,7 +43,9 @@ export async function exportCurrentPdf(): Promise<void> {
     notifyError(
       "export pdf",
       e,
-      detail ? `Couldn't save the PDF: ${detail}` : "Couldn't save the PDF",
+      detail
+        ? i18n.t(($) => $.core.export.pdfFailedDetail, { detail })
+        : i18n.t(($) => $.core.export.pdfFailed),
     );
   }
 }
@@ -54,7 +58,9 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
   const name = (projectName || "figure").replace(/[^\w.-]+/g, "_");
   const dest = await pickSavePath({
     defaultPath: `${name}.png`,
-    filters: [{ name: "PNG image", extensions: ["png"] }],
+    filters: [
+      { name: i18n.t(($) => $.core.dialog.filters.pngImage), extensions: ["png"] },
+    ],
   });
   if (!dest) return;
   try {
@@ -67,7 +73,9 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
     notifyError(
       "export png",
       e,
-      detail ? `Couldn't save the PNG: ${detail}` : "Couldn't save the PNG",
+      detail
+        ? i18n.t(($) => $.core.export.pngFailedDetail, { detail })
+        : i18n.t(($) => $.core.export.pngFailed),
     );
   }
 }

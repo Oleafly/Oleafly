@@ -1,0 +1,67 @@
+{
+  "picker": {
+    "trigger": "Opens the math symbol picker",
+    "menuLabel": "Row that opens the symbol picker from the toolbar overflow menu",
+    "all": "Tab showing every symbol from every category",
+    "insert": "Accessible name of a symbol button; {{latex}} is the macro and stays verbatim",
+    "tooltip": "Tooltip over a symbol button; {{latex}} is the macro and stays verbatim"
+  },
+  "categories": {
+    "greekLower": "Lowercase Greek letters",
+    "greekUpper": "Uppercase Greek letters",
+    "sets": "Set theory symbols",
+    "spacing": "Ellipses and spacing macros",
+    "misc": "Symbols that fit no other category",
+    "accents": "Diacritics and over/under decorations",
+    "brackets": "Delimiters and fences"
+  },
+  "names": {
+    "greekLower": {
+      "epsilon": "The \\epsilon glyph; keep distinct from varepsilon",
+      "varepsilon": "The \\varepsilon glyph; keep distinct from epsilon",
+      "phi": "The \\phi glyph; keep distinct from varphi",
+      "varphi": "The \\varphi glyph; keep distinct from phi"
+    },
+    "operators": {
+      "star": "The \\star glyph, a five-pointed operator; keep distinct from asterisk",
+      "asterisk": "The \\ast glyph; keep distinct from star",
+      "circle": "The \\circ composition operator, not a filled dot",
+      "nablaDel": "The \\nabla operator, also called del",
+      "partialDerivative": "The \\partial symbol used for partial derivatives"
+    },
+    "calculus": {
+      "nablaGradient": "The same \\nabla glyph, listed here as the gradient operator",
+      "partial": "The same \\partial glyph, listed here among calculus operators"
+    },
+    "logic": {
+      "logicalAnd": "The \\land connective; keep distinct from wedge",
+      "wedge": "The \\wedge glyph, the same shape used outside logic",
+      "logicalOr": "The \\lor connective; keep distinct from vee",
+      "vee": "The \\vee glyph, the same shape used outside logic",
+      "topTrue": "The \\top symbol, read as true",
+      "bottomFalse": "The \\bot symbol, read as false"
+    },
+    "sets": {
+      "emptySet": "The \\emptyset glyph",
+      "emptySetVariant": "The \\varnothing glyph, a variant of the empty set"
+    },
+    "spacing": {
+      "quadSpace": "A horizontal space one quad wide",
+      "romanUprightMath": "Upright roman letters inside math mode",
+      "calligraphic": "Calligraphic math alphabet"
+    },
+    "misc": {
+      "hBarPlanck": "The reduced Planck constant glyph",
+      "scriptL": "The script lowercase l glyph",
+      "weierstrassP": "The Weierstrass p glyph",
+      "club": "The club suit glyph",
+      "spade": "The spade suit glyph",
+      "heart": "The heart suit glyph",
+      "diamondSuit": "The diamond suit glyph; keep distinct from the diamond operator"
+    },
+    "accents": {
+      "dotDerivative": "A single dot accent, commonly a time derivative",
+      "checkCaron": "The \\check accent, also called a caron"
+    }
+  }
+}

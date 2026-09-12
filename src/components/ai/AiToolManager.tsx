@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { Wrench } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -19,15 +21,22 @@ function toolDescription(
   description: string,
 ): string {
   const nativeDescription =
-    group.label === "Project tools" ? nativeDescriptions.get(name) : undefined;
+    group.kind === "project" ? nativeDescriptions.get(name)?.() : undefined;
   return (
     (nativeDescription ?? description.split("\n", 1)[0]?.trim()) ||
-    "No description provided."
+    i18n.t(($) => $.ai.tools.noDescription)
   );
 }
 
+function groupLabel(group: AvailableToolGroup): string {
+  return i18n.t(($) => $.ai.tools.sourceGroups[group.kind]);
+}
+
 function groupHeading(group: AvailableToolGroup): string {
-  return group.server ? `${group.label} ${group.server}` : group.label;
+  const label = groupLabel(group);
+  return group.server
+    ? i18n.t(($) => $.ai.tools.groupHeading, { label, server: group.server })
+    : label;
 }
 
 export function AiToolManager({
@@ -37,6 +46,7 @@ export function AiToolManager({
   groups: readonly AvailableToolGroup[];
   onOpen?: () => void;
 }) {
+  const { t } = useTranslation(["common", "ai"]);
   const enabledByName = useAiToolSettingsStore((state) => state.enabledByName);
   const setToolEnabled = useAiToolSettingsStore((state) => state.setToolEnabled);
   const setToolsEnabled = useAiToolSettingsStore((state) => state.setToolsEnabled);
@@ -49,11 +59,11 @@ export function AiToolManager({
   ).length;
 
   return (
-    <Tooltip label="Tools">
+    <Tooltip label={t(($) => $.ai.tools.managerTooltip)}>
       <Popover
         align="right"
-        ariaLabel="Manage agent tools"
-        contentAriaLabel="Tools"
+        ariaLabel={t(($) => $.ai.tools.managerAriaLabel)}
+        contentAriaLabel={t(($) => $.ai.tools.managerHeading)}
         closeOnClick={false}
         onOpenChange={(open) => {
           if (open) onOpen?.();
@@ -64,13 +74,16 @@ export function AiToolManager({
         <div data-testid="ai-tool-manager">
           <div className="flex items-center justify-between gap-3 border-b px-3 py-2.5">
             <div className="min-w-0">
-              <h2 className="text-sm font-medium">Tools</h2>
+              <h2 className="text-sm font-medium">{t(($) => $.ai.tools.managerHeading)}</h2>
               <p
                 aria-atomic="true"
                 aria-live="polite"
                 className="text-[11px] text-muted-foreground"
               >
-                {enabledCount} of {toolNames.length} enabled
+                {t(($) => $.ai.tools.enabledCount, {
+                  enabled: enabledCount,
+                  total: toolNames.length,
+                })}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
@@ -81,7 +94,7 @@ export function AiToolManager({
                 disabled={toolNames.length === 0 || enabledCount === toolNames.length}
                 onClick={() => setToolsEnabled(toolNames, true)}
               >
-                Enable all
+                {t(($) => $.ai.tools.enableAll)}
               </Button>
               <Button
                 type="button"
@@ -90,7 +103,7 @@ export function AiToolManager({
                 disabled={toolNames.length === 0 || enabledCount === 0}
                 onClick={() => setToolsEnabled(toolNames, false)}
               >
-                Disable all
+                {t(($) => $.ai.tools.disableAll)}
               </Button>
             </div>
           </div>
@@ -98,7 +111,7 @@ export function AiToolManager({
           <div className="max-h-[min(32rem,calc(100vh-6rem))] overflow-y-auto overscroll-contain">
             {groups.length === 0 ? (
               <p className="px-3 py-8 text-center text-xs text-muted-foreground">
-                No tools are available in this context.
+                {t(($) => $.ai.tools.emptyContext)}
               </p>
             ) : (
               groups.map((group) => {
@@ -109,7 +122,7 @@ export function AiToolManager({
                       aria-label={heading}
                       className="flex items-baseline gap-1.5 bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
                     >
-                      <span>{group.label}</span>
+                      <span>{groupLabel(group)}</span>
                       {group.server && (
                         <span className="normal-case tracking-normal text-foreground/70">
                           {group.server}
@@ -136,7 +149,7 @@ export function AiToolManager({
                               </p>
                             </div>
                             <Switch
-                              aria-label={`Enable ${tool.name}`}
+                              aria-label={t(($) => $.ai.tools.enableTool, { name: tool.name })}
                               checked={enabled}
                               onCheckedChange={(checked) =>
                                 setToolEnabled(tool.name, checked)

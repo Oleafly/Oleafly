@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { HANDOFF_RUNTIME_SWITCH_MESSAGE, useAgentHandoffStore } from "./agent-handoff";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import { useAgentHandoffStore } from "./agent-handoff";
 import { selectActiveRuntime, useAssistantRuntimeStore } from "./assistant-runtime";
 import { useToastStore } from "./toast";
 
@@ -22,7 +23,7 @@ describe("agent handoff runtime switch", () => {
     expect(runtime.runtime).toBe("acp");
     expect(useAgentHandoffStore.getState().pendingPrompt).toBe("Fix the compile error");
     expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([
-      HANDOFF_RUNTIME_SWITCH_MESSAGE,
+      enCore.assistant.handoffRuntimeSwitch,
     ]);
   });
 
