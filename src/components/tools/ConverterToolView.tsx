@@ -344,7 +344,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
         )
       }
     >
-      <ToolSplitView>
+      <ToolSplitView storageId={`converter-${id}`}>
         <ToolPane
           title={definition.inputLabel}
           badge={useFile ? "File" : definition.inputKind === "arxiv" ? "arXiv ID" : "Text"}

@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
 import {
   ArrowLeftRight,
+  Bookmark,
+  BookOpen,
   BookOpenText,
   Braces,
   Calculator,
@@ -12,21 +14,25 @@ import {
   FileText,
   FileType2,
   Image as ImageIcon,
-  LibraryBig,
+  Hash,
   ListChecks,
+  Link2,
   Network,
   School,
   ShieldCheck,
   Sigma,
+  Sparkles,
   Table2,
   TextCursorInput,
 } from "lucide-react";
 import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import type { ConverterToolId } from "@/lib/converter-types";
+import type { ReferenceToolId } from "@/lib/reference-tools";
 import type { HomePage } from "@/store/home-view";
 
 export type ToolId =
   | ConverterToolId
+  | ReferenceToolId
   | "pdf-to-latex"
   | "visual-typst-editor"
   | "latex-to-image"
@@ -43,6 +49,7 @@ export type ToolId =
 export type ToolDestination =
   | { kind: "page"; page: HomePage }
   | { kind: "converter"; converter: ConverterToolId }
+  | { kind: "reference"; tool: ReferenceToolId }
   | { kind: "typst-project"; mode: "visual" | "source" };
 
 export interface ToolDefinition {
@@ -61,9 +68,9 @@ export const TOOL_CATEGORY_ORDER = [
   "Converters",
   "Validate",
   "Research",
+  "References",
   "Statistics",
   "Write",
-  "Reference",
 ] as const;
 
 function converter(
@@ -76,6 +83,19 @@ function converter(
     ...tool,
     category: "Converters",
     destination: { kind: "converter", converter: converterId },
+  };
+}
+
+function reference(
+  definition: Omit<ToolDefinition, "category" | "destination"> & {
+    tool: ReferenceToolId;
+  },
+): ToolDefinition {
+  const { tool: referenceTool, ...definitionWithoutTool } = definition;
+  return {
+    ...definitionWithoutTool,
+    category: "References",
+    destination: { kind: "reference", tool: referenceTool },
   };
 }
 
@@ -318,14 +338,14 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   },
   {
     id: "literature-search",
-    name: "Citation Search",
-    description: "Search several scholarly indexes, scan a document, and save useful citations.",
-    icon: LibraryBig,
-    tags: ["Scholar indexes", "Document scan", "Saved citations"],
-    category: "Research",
+    name: "Find Citations",
+    description: "Find relevant papers across scholarly indexes, scan a draft, and export BibTeX.",
+    icon: Sparkles,
+    tags: ["Semantic search", "Document scan", "BibTeX export"],
+    category: "References",
     destination: { kind: "page", page: "literature-search" },
-    slash: ["citations-search", "citation-search", "literature-search"],
-    tone: "blue",
+    slash: ["find-citations", "citations-search", "citation-search", "literature-search"],
+    tone: "amber",
   },
   {
     id: "lab-search",
@@ -349,6 +369,86 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     slash: ["conference-deadlines", "deadlines"],
     tone: "amber",
   },
+  reference({
+    id: "arxiv-citation-generator",
+    tool: "arxiv-citation-generator",
+    name: "arXiv Citation Generator",
+    description: "Look up an arXiv paper, then format and export its citation in eight styles.",
+    icon: ArxivIcon,
+    tags: ["Eight styles", "BibTeX", "Manual mode works offline"],
+    slash: ["arxiv-citation", "cite-arxiv"],
+    tone: "amber",
+  }),
+  reference({
+    id: "bibliography-generator",
+    tool: "bibliography-generator",
+    name: "Bibliography Generator",
+    description: "Build, validate, sort, and export a complete bibliography from structured details or BibTeX.",
+    icon: Bookmark,
+    tags: ["Batch references", "Eight styles", "Local formatting"],
+    slash: ["bibliography-generator", "make-bibliography"],
+    tone: "amber",
+  }),
+  reference({
+    id: "citation-generator",
+    tool: "citation-generator",
+    name: "Citation Generator",
+    description: "Turn article details or a scholarly identifier into a formatted citation and BibTeX.",
+    icon: BookOpen,
+    tags: ["Structured editor", "Identifier lookup", "Local formatting"],
+    slash: ["citation-generator", "make-citation"],
+    tone: "amber",
+  }),
+  reference({
+    id: "citation-styles",
+    tool: "citation-styles",
+    name: "Citation Generators by Style",
+    description: "Compare one reference across APA, MLA, Chicago, IEEE, Harvard, Vancouver, AMA, and ACS.",
+    icon: BookOpenText,
+    tags: ["Eight styles", "Side-by-side", "Local formatting"],
+    slash: ["citation-styles", "citation-style-generator"],
+    tone: "amber",
+  }),
+  reference({
+    id: "doi-to-bibtex",
+    tool: "doi-to-bibtex",
+    name: "DOI to BibTeX",
+    description: "Retrieve a DOI record, review every field, and export clean BibTeX.",
+    icon: Link2,
+    tags: ["DOI lookup", "Editable fields", "BibTeX"],
+    slash: ["doi-to-bibtex", "doi-citation"],
+    tone: "amber",
+  }),
+  reference({
+    id: "isbn-to-bibtex",
+    tool: "isbn-to-bibtex",
+    name: "ISBN to BibTeX",
+    description: "Retrieve book metadata from an ISBN, correct it, and export BibTeX.",
+    icon: Hash,
+    tags: ["ISBN-10 and ISBN-13", "Editable fields", "BibTeX"],
+    slash: ["isbn-to-bibtex", "isbn-citation"],
+    tone: "amber",
+  }),
+  reference({
+    id: "pubmed-to-bibtex",
+    tool: "pubmed-to-bibtex",
+    name: "PubMed to BibTeX",
+    description: "Retrieve a PubMed record from its PMID, review it, and export BibTeX.",
+    icon: Hash,
+    tags: ["PMID lookup", "Medical literature", "BibTeX"],
+    slash: ["pubmed-to-bibtex", "pmid-to-bibtex"],
+    tone: "amber",
+  }),
+  reference({
+    id: "url-to-bibtex",
+    tool: "url-to-bibtex",
+    name: "URL to BibTeX",
+    description: "Recognize DOI, arXiv, and PubMed links, or build a safe editable webpage citation.",
+    icon: Link2,
+    tags: ["Smart links", "Editable metadata", "Local fallback"],
+    slash: ["url-to-bibtex", "webpage-citation"],
+    tone: "amber",
+  }),
   {
     id: "stats",
     name: "Statistics Calculators",
@@ -377,7 +477,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     description: "Browse LaTeX symbols and insert one at the current cursor.",
     icon: BookOpenText,
     tags: ["Greek", "Arrows", "Cheatsheet", "Insert at cursor"],
-    category: "Reference",
+    category: "References",
     destination: { kind: "page", page: "symbols" },
     slash: ["symbols", "cheatsheet", "greek-letters"],
     tone: "cyan",

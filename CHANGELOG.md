@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tools now includes a reference workspace for building citations and full
+  bibliographies. It formats APA, MLA, Chicago, IEEE, Harvard, Vancouver, AMA,
+  and ACS styles on the device, accepts structured details or BibTeX, compares
+  styles side by side, validates entries, and saves `.bib` files without
+  creating a project. DOI, arXiv, ISBN, and PubMed metadata lookups use their
+  public catalogs when online; manual editing and formatting remain available
+  offline. Find Citations brings the existing multi-index search and document
+  scan into the same section.
+- Two-pane tools now have a draggable, keyboard-accessible divider. Each tool
+  remembers its desktop layout, while narrow windows continue to stack the
+  panes for easier reading.
 - Tools now opens as a full page, with 22 converters grouped alongside the
   existing research and writing tools. Each converter is also available from
   the command palette. Ad hoc conversions show the result immediately, with

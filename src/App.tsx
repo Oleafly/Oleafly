@@ -133,6 +133,9 @@ const EquationToolView = lazy(() =>
 const ConverterToolView = lazy(() =>
   import("@/components/tools/ConverterToolView").then((m) => ({ default: m.ConverterToolView })),
 );
+const ReferenceToolView = lazy(() =>
+  import("@/components/tools/ReferenceToolView").then((m) => ({ default: m.ReferenceToolView })),
+);
 const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
@@ -754,6 +757,7 @@ function AppContent() {
           {homePage === "pdf-import" && <PdfImportView />}
           {homePage === "equation" && <EquationToolView />}
           {homePage === "converter" && <ConverterToolView />}
+          {homePage === "reference" && <ReferenceToolView />}
           {homePage === "bibtex" && <BibtexToolView />}
           {homePage === "table" && <TableToolView />}
           {homePage === "lab-search" && <LabSearchToolView />}

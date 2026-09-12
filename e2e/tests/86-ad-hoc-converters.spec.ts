@@ -35,6 +35,18 @@ const CONVERTER_IDS = [
   "word-to-latex",
 ] as const;
 
+const REFERENCE_TOOL_IDS = [
+  "literature-search",
+  "arxiv-citation-generator",
+  "bibliography-generator",
+  "citation-generator",
+  "citation-styles",
+  "doi-to-bibtex",
+  "isbn-to-bibtex",
+  "pubmed-to-bibtex",
+  "url-to-bibtex",
+] as const;
+
 let server: MockAiServer;
 
 test.beforeAll(async () => {
@@ -98,7 +110,9 @@ async function connectVision(page: Page) {
 test("the Tools page exposes all 22 converters and the palette opens one directly", async ({
   tauriPage,
 }) => {
-  await atTools(tauriPage);
+  await expect(tauriPage.getByTestId("open-latex-tools")).toBeVisible({ timeout: 30_000 });
+  await tauriPage.getByTestId("open-latex-tools").click();
+  await expect(tauriPage.getByTestId("latex-tools-view")).toBeVisible({ timeout: 30_000 });
   for (const id of CONVERTER_IDS) {
     await expect(tauriPage.getByTestId(`latex-tool-card-${id}`)).toBeVisible();
   }
@@ -113,6 +127,68 @@ test("the Tools page exposes all 22 converters and the palette opens one directl
   await tauriPage.keyboard.press("Enter");
   await expect(tauriPage.getByTestId("converter-tool-view")).toBeVisible();
   await expect(tauriPage.getByText("Image to Typst", { exact: true })).toBeVisible();
+});
+
+test("the Tools page exposes the complete reference toolkit and the palette opens it directly", async ({
+  tauriPage,
+}) => {
+  await atTools(tauriPage);
+  for (const id of REFERENCE_TOOL_IDS) {
+    await expect(tauriPage.getByTestId(`latex-tool-card-${id}`)).toBeVisible();
+  }
+  await expect(
+    tauriPage.getByTestId("latex-tool-card-arxiv-citation-generator").locator('[data-icon="arxiv"]'),
+  ).toBeVisible();
+
+  await pressGlobal(tauriPage, "f", { meta: true, shift: true });
+  await expect(tauriPage.locator("[cmdk-input]")).toBeVisible();
+  await fillCommandPalette(tauriPage, "doi to bibtex");
+  await expect(tauriPage.getByText("Open DOI to BibTeX", { exact: true })).toBeVisible();
+  await tauriPage.keyboard.press("Enter");
+  await expect(tauriPage.getByTestId("reference-tool-view")).toBeVisible();
+  await expect(tauriPage.getByText("DOI to BibTeX", { exact: true })).toBeVisible();
+});
+
+test("reference tools format, validate, compare, and export locally without a project", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(180_000);
+
+  await openCard(tauriPage, "citation-generator");
+  await expect(tauriPage.getByTestId("formatted-citation-output")).toContainText("Vaswani", {
+    timeout: 30_000,
+  });
+  await expect(tauriPage.getByText("Local formatter ready", { exact: true })).toBeVisible();
+
+  const handle = tauriPage.getByRole("separator", { name: "Resize tool panels" });
+  await expect(handle).toBeVisible();
+  const firstPanel = tauriPage.locator('[data-panel-id="reference-citation-generator-start"]');
+  const before = await firstPanel.getAttribute("data-panel-size");
+  await handle.focus();
+  await tauriPage.keyboard.press(Number.parseFloat(before ?? "50") >= 75 ? "ArrowLeft" : "ArrowRight");
+  await expect.poll(() => firstPanel.getAttribute("data-panel-size")).not.toBe(before);
+
+  await openCard(tauriPage, "bibliography-generator");
+  await expect(tauriPage.getByText("2 references", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(tauriPage.getByText("2 valid entries", { exact: true })).toBeVisible();
+
+  await openCard(tauriPage, "citation-styles");
+  for (const style of ["APA 7", "MLA 9", "Chicago", "IEEE", "Harvard", "Vancouver", "AMA 11", "ACS"]) {
+    await expect(tauriPage.getByText(style, { exact: true })).toBeVisible({ timeout: 30_000 });
+  }
+
+  await openCard(tauriPage, "url-to-bibtex");
+  await tauriPage.getByTestId("reference-lookup-input").fill("https://example.org/research");
+  await tauriPage.getByTestId("reference-lookup-button").click();
+  await expect(tauriPage.getByLabel("Title")).toHaveValue("Untitled webpage");
+  await expect(tauriPage.getByText(
+    "Built a private, editable webpage entry locally. Add the page title and author below.",
+    { exact: true },
+  )).toBeVisible();
+  await tauriPage.getByText("BibTeX", { exact: true }).click();
+  await expect(tauriPage.getByTestId("reference-bibtex-output")).toContainText(
+    "https://example.org/research",
+  );
 });
 
 test("every text converter runs its built-in example through the real app", async ({

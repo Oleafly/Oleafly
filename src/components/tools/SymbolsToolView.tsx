@@ -228,7 +228,7 @@ export function SymbolsToolView() {
       status={status}
       testId="symbols-tool-view"
     >
-      <ToolSplitView>
+      <ToolSplitView storageId="symbol-reference">
         <ToolPane
           title="Library"
           badge={filtered ? `${filtered.length}` : undefined}

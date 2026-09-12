@@ -96,6 +96,12 @@ export default defineConfig(async () => ({
       // cannot invalidate Vite's dependency graph and blank/reload the Tauri
       // WebView in the middle of project startup.
       "hunspell-asm",
+      // Citation formatting is lazy, but it is also the first action in every
+      // reference tool. Pre-bundle the shared parser and CSL engine so opening
+      // a tool cannot trigger Vite's dependency-discovery reload mid-session.
+      "@citation-js/core",
+      "@citation-js/plugin-bibtex",
+      "@citation-js/plugin-csl",
     ],
   },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the
@@ -138,6 +144,8 @@ export default defineConfig(async () => ({
   },
   resolve: {
     alias: {
+      "node-fetch": path.resolve(__dirname, "./src/shims/citation-browser-fetch.ts"),
+      "sync-fetch": path.resolve(__dirname, "./src/shims/citation-browser-sync-fetch.ts"),
       "@": path.resolve(__dirname, "./src"),
       "@oleafly/latex": path.resolve(__dirname, "./packages/latex/src"),
       "@oleafly/wysiwyg": path.resolve(__dirname, "./packages/wysiwyg/src"),

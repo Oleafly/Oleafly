@@ -35,8 +35,8 @@
     "tauri": "node scripts/tauri-sandbox.mjs",
     "lint": "biome lint src",
     "lint:fix": "biome lint --write src",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "vitest run --maxWorkers=4",
+    "test:coverage": "vitest run --coverage --maxWorkers=4",
     "test:editor:performance": "vitest run --config vitest.editor-performance.config.ts",
     "test:watch": "vitest",
     "prepare": "git config core.hooksPath .githooks || true",
@@ -44,6 +44,9 @@
     "test:e2e:app": "./scripts/e2e.sh"
   },
   "dependencies": {
+    "@citation-js/core": "0.8.2",
+    "@citation-js/plugin-bibtex": "0.8.2",
+    "@citation-js/plugin-csl": "0.8.2",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-css": "^6.3.1",

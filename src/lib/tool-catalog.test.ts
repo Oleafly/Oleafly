@@ -44,10 +44,27 @@ describe("tool catalog", () => {
   it("keeps the requested citation and PDF commands available", () => {
     expect(
       TOOL_DEFINITIONS.find((tool) => tool.id === "literature-search")?.slash,
-    ).toContain("citations-search");
+    ).toContain("find-citations");
     expect(
       TOOL_DEFINITIONS.find((tool) => tool.id === "pdf-to-latex")?.slash,
     ).toContain("pdf-to-latex");
+  });
+
+  it("keeps all eight ad hoc reference tools together", () => {
+    expect(
+      TOOL_DEFINITIONS.filter((tool) => tool.destination.kind === "reference").map(
+        (tool) => tool.id,
+      ),
+    ).toEqual([
+      "arxiv-citation-generator",
+      "bibliography-generator",
+      "citation-generator",
+      "citation-styles",
+      "doi-to-bibtex",
+      "isbn-to-bibtex",
+      "pubmed-to-bibtex",
+      "url-to-bibtex",
+    ]);
   });
 
   it("uses the recognizable arXiv mark for the source converter", () => {

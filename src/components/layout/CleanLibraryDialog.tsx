@@ -186,7 +186,7 @@ export function CleanLibraryDialog({
             </div>
           </div>
         </DialogHeader>
-        <ToolSplitView>
+        <ToolSplitView storageId="clean-library-review">
           <ToolPane title="Reference library" badge={outcome ? `${outcome.entriesBefore} entries` : undefined}
             footer={<p className="text-xs leading-relaxed text-muted-foreground">Preview saves your open files. Applying checks that they still match the preview and backs up the originals.</p>}
           >

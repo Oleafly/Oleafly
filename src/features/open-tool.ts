@@ -35,6 +35,10 @@ export async function openTool(tool: ToolDefinition): Promise<void> {
       useHomeViewStore.setState({ activeConverter: tool.destination.converter });
       await openHomePage("converter");
       return;
+    case "reference":
+      useHomeViewStore.setState({ activeReferenceTool: tool.destination.tool });
+      await openHomePage("reference");
+      return;
     case "typst-project":
       try {
         await useFilesStore.getState().createTypstProject("Untitled Typst document");

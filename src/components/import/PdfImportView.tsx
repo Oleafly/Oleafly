@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WindowControls } from "@/components/layout/WindowControls";
+import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 import {
   createProjectFromConversion,
   downloadFigure,
@@ -432,18 +433,20 @@ export function PdfImportView() {
                 : "Reconstructed on this device. Review before using."}
             </span>
           </div>
-          <div className="flex min-h-0 flex-1">
-            {(view === "preview" || view === "split") && (
-              <div className={view === "split" ? "w-1/2 border-r" : "w-full"}>
-                <PagePreviews />
-              </div>
-            )}
-            {(view === "source" || view === "split") && (
-              <div className={view === "split" ? "w-1/2" : "w-full"}>
-                <SourcePane />
-              </div>
-            )}
-          </div>
+          {view === "split" ? (
+            <ToolSplitView storageId="pdf-import-review">
+              <div className="h-full min-w-0"><PagePreviews /></div>
+              <div className="h-full min-w-0"><SourcePane /></div>
+            </ToolSplitView>
+          ) : (
+            <div className="flex min-h-0 flex-1">
+              {view === "preview" ? (
+                <div className="w-full"><PagePreviews /></div>
+              ) : (
+                <div className="w-full"><SourcePane /></div>
+              )}
+            </div>
+          )}
           <FiguresStrip />
         </>
       )}

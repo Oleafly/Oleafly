@@ -1,11 +1,71 @@
-import type { ReactNode } from "react";
+import { Children, useEffect, useState, type ReactNode } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { cn } from "@/lib/utils";
 
-export function ToolSplitView({ children, className }: { children: ReactNode; className?: string }) {
+function useDesktopSplit(): boolean {
+  const [desktop, setDesktop] = useState(() =>
+    typeof window === "undefined" || typeof window.matchMedia !== "function"
+      ? true
+      : window.matchMedia("(min-width: 768px)").matches,
+  );
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return desktop;
+}
+
+export function ToolSplitView({
+  children,
+  className,
+  storageId,
+}: {
+  children: ReactNode;
+  className?: string;
+  storageId?: string;
+}) {
+  const panes = Children.toArray(children);
+  const desktop = useDesktopSplit();
+
+  if (!desktop || panes.length !== 2) {
+    return (
+      <div
+        data-testid="tool-split-view"
+        className={cn("grid min-h-0 min-w-0 flex-1 grid-cols-1 overflow-auto", className)}
+      >
+        {panes}
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("grid min-h-0 min-w-0 flex-1 grid-cols-1 overflow-auto md:grid-cols-2 md:overflow-hidden", className)}>
-      {children}
-    </div>
+    <PanelGroup
+      direction="horizontal"
+      autoSaveId={storageId}
+      data-testid="tool-split-view"
+      className={cn("min-h-0 min-w-0 flex-1 overflow-hidden", className)}
+    >
+      <Panel id={storageId ? `${storageId}-start` : undefined} order={1} defaultSize={50} minSize={20} className="min-w-0">
+        {panes[0]}
+      </Panel>
+      <PanelResizeHandle
+        id={storageId ? `${storageId}-handle` : undefined}
+        aria-label="Resize tool panels"
+        data-testid="tool-split-resize-handle"
+        className="group relative flex w-2 shrink-0 cursor-col-resize items-center justify-center border-x border-border/70 bg-background transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <span className="pointer-events-none h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-ring group-data-[resize-handle-state=drag]:bg-ring" />
+      </PanelResizeHandle>
+      <Panel id={storageId ? `${storageId}-end` : undefined} order={2} defaultSize={50} minSize={20} className="min-w-0">
+        {panes[1]}
+      </Panel>
+    </PanelGroup>
   );
 }
 
@@ -18,7 +78,7 @@ export function ToolPane({ title, badge, actions, footer, children, className }:
   className?: string;
 }) {
   return (
-    <section aria-label={title} className={cn("flex min-h-80 min-w-0 flex-col border-b last:border-0 md:min-h-0 md:border-b-0 md:border-r", className)}>
+    <section aria-label={title} className={cn("flex h-full min-h-80 min-w-0 flex-col border-b last:border-0 md:min-h-0 md:border-b-0", className)}>
       <div className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>

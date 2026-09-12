@@ -180,7 +180,7 @@ export function GeneratorsToolView() {
         </Button>
       }
     >
-      <ToolSplitView>
+      <ToolSplitView storageId="writing-generators">
         <ToolPane title="Writing task" badge={`${GENERATORS.length} tasks`} footer={
           <p className="text-xs text-muted-foreground">Generate opens the assistant and sends the previewed prompt.</p>
         }>

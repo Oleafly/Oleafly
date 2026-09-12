@@ -20,6 +20,7 @@ beforeEach(() => {
   useHomeViewStore.setState({
     page: "library",
     activeConverter: null,
+    activeReferenceTool: null,
     queuedPageAfterProjectClose: null,
   });
   useFilesStore.setState({
@@ -78,6 +79,14 @@ describe("tool navigation", () => {
   it("opens page-backed tools through the same navigation guard", async () => {
     await openTool(toolById("table-to-latex"));
     expect(useHomeViewStore.getState().page).toBe("table");
+  });
+
+  it("selects a reference workspace before navigating", async () => {
+    await openTool(toolById("doi-to-bibtex"));
+    expect(useHomeViewStore.getState()).toMatchObject({
+      page: "reference",
+      activeReferenceTool: "doi-to-bibtex",
+    });
   });
 
   it.each([

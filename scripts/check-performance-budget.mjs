@@ -79,7 +79,11 @@ const limits = {
   // Raised to 14 MB after the Markdown project editing and terminal prompt
   // work on main (13.14 MB there) plus the skills settings tab, catalog,
   // sharing card and slash invocation: combined graph measures 13.17 MB.
-  totalJavaScript: 16_200_000,
+  // +1 MB for the citation workspace. Citation.js, citeproc, and the five
+  // additional CSL style definitions live in one 980 KB on-demand chunk
+  // (201 KB gzip). It is fetched only after a reference tool opens and leaves
+  // the 3.37 MB startup entry unchanged.
+  totalJavaScript: 17_200_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

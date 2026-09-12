@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useHomeViewStore } from "./home-view";
 
 beforeEach(() => {
-  useHomeViewStore.setState({ page: "library", activeConverter: null });
+  useHomeViewStore.setState({ page: "library", activeConverter: null, activeReferenceTool: null });
 });
 
 describe("useHomeViewStore", () => {
@@ -21,6 +21,14 @@ describe("useHomeViewStore", () => {
     expect(useHomeViewStore.getState()).toMatchObject({
       page: "converter",
       activeConverter: "latex-to-typst",
+    });
+  });
+
+  it("opens a reference tool as a full home page", () => {
+    useHomeViewStore.getState().openReferenceTool("doi-to-bibtex");
+    expect(useHomeViewStore.getState()).toMatchObject({
+      page: "reference",
+      activeReferenceTool: "doi-to-bibtex",
     });
   });
 });

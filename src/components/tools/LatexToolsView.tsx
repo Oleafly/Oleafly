@@ -119,7 +119,7 @@ export function LatexToolsView() {
     <ToolPageShell
       page="tools"
       title="Oleafly Tools"
-      subtitle="Quick, project-independent tools for research writing"
+      subtitle="Research, writing, and LaTeX tools without the setup"
       icon={ToolCase}
       showTheme
       testId="latex-tools-view"
@@ -131,10 +131,13 @@ export function LatexToolsView() {
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                 {TOOL_DEFINITIONS.length} tools
               </p>
-              <h1 className="mt-2 text-2xl font-bold tracking-tight">Convert, check, and keep moving</h1>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight">
+                Free tools for research, writing, and LaTeX
+              </h1>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Converters work without creating a project. Copy the result, save it, or open it in
-                Oleafly when you are ready.
+                Convert a document, check BibTeX, find a citation, run a calculation, or look up a
+                LaTeX symbol. No project setup. Copy or save the result, or open it in Oleafly if
+                you want to keep working.
               </p>
             </div>
             <div className="relative w-full lg:w-96">

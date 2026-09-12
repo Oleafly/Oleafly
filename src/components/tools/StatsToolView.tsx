@@ -166,7 +166,7 @@ function PValueCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: T
   const verdict = p === undefined ? null : p < 0.001 ? "p < .001" : p < 0.01 ? "p < .01" : p < 0.05 ? "p < .05" : p < 0.1 ? "p < .10" : "Not significant";
 
   return (
-    <ToolSplitView>
+    <ToolSplitView storageId="statistics-p-value">
       <ToolPane title="Calculator" actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-p-run" />} footer={<Examples><Button variant="outline" size="sm" onClick={() => setExample("t-two", "2.34", "28")}>t-test</Button><Button variant="outline" size="sm" onClick={() => setExample("z-two", "1.96")}>z-test</Button></Examples>}>
         <div className="mx-auto w-full max-w-md space-y-5 p-5 md:p-6">
           <label className="grid gap-1.5 text-sm"><span className="text-xs font-medium text-muted-foreground">Test</span><select value={test} onChange={(event) => { invalidate(); setTest(event.target.value); }} data-testid="stats-p-test" className="h-10 rounded-lg border bg-background/70 px-3 text-sm"><option value="t-two">t-test, two-tailed</option><option value="t-one">t-test, upper tail</option><option value="z-two">z-test, two-tailed</option><option value="z-one">z-test, upper tail</option><option value="chi">chi-square, upper tail</option></select></label>
@@ -193,7 +193,7 @@ function SampleSizeCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (ta
   const setExample = (nextPopulation: string) => { invalidate(); setProportion("50"); setMargin("5"); setConfidence("95"); setPopulation(nextPopulation); };
 
   return (
-    <ToolSplitView>
+    <ToolSplitView storageId="statistics-sample-size">
       <ToolPane title="Calculator" actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-n-run" />} footer={<Examples><Button variant="outline" size="sm" onClick={() => setExample("")}>Open population</Button><Button variant="outline" size="sm" onClick={() => setExample("1000")}>Population of 1,000</Button></Examples>}>
         <div className="mx-auto w-full max-w-md space-y-5 p-5 md:p-6">
           <NumberField label="Expected proportion (%)" value={proportion} onChange={(value) => { invalidate(); setProportion(value); }} placeholder="50" />
@@ -224,7 +224,7 @@ function ConfidenceIntervalCalculator({ tab, onTabChange }: { tab: Tab; onTabCha
   const setProportionExample = () => { invalidate(); setMode("proportion"); setSuccesses("0"); setN("10"); setConfidence("95"); };
 
   return (
-    <ToolSplitView>
+    <ToolSplitView storageId="statistics-confidence-interval">
       <ToolPane title="Calculator" actions={<CalculatorControls tab={tab} onTabChange={onTabChange} onCompute={() => void calculate()} busy={busy} testId="stats-ci-run" />} footer={<Examples><Button variant="outline" size="sm" onClick={setMeanExample}>Mean</Button><Button variant="outline" size="sm" onClick={setProportionExample}>0 of 10</Button></Examples>}>
         <div className="mx-auto w-full max-w-md space-y-5 p-5 md:p-6">
           <div data-testid="stats-ci-mode"><ToolSegmentedControl label="Estimate type" value={mode} options={[{ value: "mean", label: "Mean", testId: "stats-ci-mode-mean" }, { value: "proportion", label: "Proportion", testId: "stats-ci-mode-proportion" }]} onChange={(value) => { invalidate(); setMode(value); }} /></div>

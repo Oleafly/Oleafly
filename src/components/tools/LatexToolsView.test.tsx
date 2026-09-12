@@ -24,9 +24,15 @@ describe("LatexToolsView", () => {
     render(<LatexToolsView />);
     expect(screen.getByTestId("latex-tools-view")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Free tools for research, writing, and LaTeX" }),
+    ).toBeVisible();
+    expect(screen.getByText(/No project setup/)).toBeVisible();
     expect(screen.getByText("22", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByTestId("latex-tool-card-image-to-latex")).toBeVisible();
     expect(screen.getByTestId("latex-tool-card-word-to-latex")).toBeVisible();
+    expect(screen.getByTestId("latex-tool-card-doi-to-bibtex")).toBeVisible();
+    expect(screen.getByTestId("latex-tool-card-url-to-bibtex")).toBeVisible();
   });
 
   it("filters by name, description, tag, or command", () => {
