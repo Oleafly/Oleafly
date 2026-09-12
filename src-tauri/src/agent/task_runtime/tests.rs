@@ -837,9 +837,10 @@ impl AcpFixture {
         std::fs::write(&original, "Original manuscript").unwrap();
         let script = directory.path().join("fixture.py");
         std::fs::write(&script, ACP_TASK_FIXTURE).unwrap();
-        let output = std::process::Command::new("python3")
+        let output = tokio::process::Command::new("python3")
             .args(["-c", "import sys; print(sys.executable)"])
             .output()
+            .await
             .unwrap();
         assert!(output.status.success());
         let python = PathBuf::from(String::from_utf8(output.stdout).unwrap().trim())

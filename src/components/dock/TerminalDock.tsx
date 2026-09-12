@@ -57,7 +57,7 @@ function TerminalTabItem({
   onCloseLeft,
   onRename,
   onColor,
-}: {
+}: Readonly<{
   tab: TerminalTab;
   active: boolean;
   canCloseOthers: boolean;
@@ -70,7 +70,7 @@ function TerminalTabItem({
   onCloseLeft: () => void;
   onRename: (title: string) => void;
   onColor: (color: TerminalColorKey | null) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "workspace"]);
   const colorLabels = useBookColorLabels();
   const [editing, setEditing] = useState(false);
@@ -282,11 +282,11 @@ export function TerminalDock({
   projectId,
   projectName,
   visible = true,
-}: {
+}: Readonly<{
   projectId: string;
   projectName?: string;
   visible?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "workspace"]);
   const storeProjectId = useTerminalsStore((state) => state.projectId);
   const tabs = useTerminalsStore((state) => state.tabs);

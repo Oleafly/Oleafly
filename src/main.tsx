@@ -101,7 +101,7 @@ const ReactQueryDevtools = import.meta.env.DEV
     )
   : null;
 
-function WindowContent({ view }: { view: WindowView }) {
+function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "update") {
     return (
       <ThemeProvider>

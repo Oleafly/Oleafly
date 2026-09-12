@@ -4,6 +4,7 @@ import { openProject, openSettings } from "../helpers";
 // Requires network; skip with E2E_SKIP_NETWORK=1.
 
 test("a font component downloads, installs, and removes", async ({ tauriPage }) => {
+  // Ignored on purpose on offline runners, because the font pack is downloaded.
   test.skip(process.env.E2E_SKIP_NETWORK === "1", "network-dependent");
   test.setTimeout(300_000);
 

@@ -127,9 +127,9 @@ describe("lazy per-file intelligence view", () => {
     expect(files.flatMap((file) => file.diagnostics)).toEqual(
       seed.snapshot.diagnostics,
     );
-    expect(
-      files.flatMap((file) => file.definitions).length,
-    ).toBe(seed.snapshot.definitions.length);
+    expect(files.flatMap((file) => file.definitions)).toHaveLength(
+      seed.snapshot.definitions.length,
+    );
     expect(files.flatMap((file) => file.bibliographyEntries)).toEqual(
       seed.snapshot.bibliography.entries,
     );

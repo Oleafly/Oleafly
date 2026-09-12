@@ -230,12 +230,32 @@ function institutionStyle(type: string | null): InstitutionVisualStyle {
     : DEFAULT_INSTITUTION_STYLE;
 }
 
+function httpSearchError(status: number): Error {
+  if (status === 429) {
+    return new Error(i18n.t(($) => $.researchTools.labSearch.errorRateLimited));
+  }
+  return new Error(i18n.t(($) => $.researchTools.labSearch.errorHttp, { status }));
+}
+
+function isAbortError(value: unknown): boolean {
+  return value instanceof DOMException && value.name === "AbortError";
+}
+
+function searchFailureMessage(searchError: unknown): string {
+  if (searchError instanceof TypeError) {
+    return i18n.t(($) => $.researchTools.labSearch.errorNetwork);
+  }
+  return searchError instanceof Error
+    ? searchError.message
+    : i18n.t(($) => $.researchTools.labSearch.errorUnknown);
+}
+
 export function countryFlag(code: string): string {
   const normalized = code.trim().toUpperCase();
   if (!/^[A-Z]{2}$/.test(normalized)) return "";
   return String.fromCodePoint(
     ...[...normalized].map(
-      (character) => 127397 + character.charCodeAt(0),
+      (character) => 127397 + (character.codePointAt(0) ?? 0),
     ),
   );
 }
@@ -263,9 +283,9 @@ function institutionLocation(institution: Institution): string {
 
 function InstitutionCard({
   institution,
-}: {
+}: Readonly<{
   institution: Institution;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const openAlexUrl = safeInstitutionUrl(institution.id);
   const visualStyle = institutionStyle(institution.type);
@@ -377,9 +397,8 @@ function InstitutionCard({
 function LabSearchSkeleton() {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
-    <div
-      className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6"
-      role="status"
+    <output
+      className="block mx-auto w-full max-w-6xl px-4 py-6 sm:px-6"
       aria-label={t(($) => $.researchTools.labSearch.loadingAria)}
     >
       <div className="mb-4 h-4 w-48 animate-pulse rounded bg-muted" />
@@ -402,17 +421,17 @@ function LabSearchSkeleton() {
           </div>
         ))}
       </div>
-    </div>
+    </output>
   );
 }
 
 function EmptyLabSearch({
   noResults,
   onTry,
-}: {
+}: Readonly<{
   noResults: boolean;
   onTry: (query: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="mx-auto grid min-h-[24rem] max-w-4xl place-items-center px-6 py-10">
@@ -511,37 +530,15 @@ export function LabSearchPanel() {
           buildInstitutionSearchUrl(searchTerm, nextCountry),
           { signal: controller.signal },
         );
-        if (!response.ok) {
-          if (response.status === 429) {
-            throw new Error(
-              i18n.t(($) => $.researchTools.labSearch.errorRateLimited),
-            );
-          }
-          throw new Error(
-            i18n.t(($) => $.researchTools.labSearch.errorHttp, {
-              status: response.status,
-            }),
-          );
-        }
+        if (!response.ok) throw httpSearchError(response.status);
         const parsed = parseInstitutionSearchResult(await response.json());
         if (abortRef.current !== controller) return;
         setResults(parsed.results);
         setTotal(parsed.total);
       } catch (searchError) {
-        if (
-          searchError instanceof DOMException &&
-          searchError.name === "AbortError"
-        ) {
-          return;
-        }
+        if (isAbortError(searchError)) return;
         if (abortRef.current !== controller) return;
-        setError(
-          searchError instanceof TypeError
-            ? i18n.t(($) => $.researchTools.labSearch.errorNetwork)
-            : searchError instanceof Error
-              ? searchError.message
-              : i18n.t(($) => $.researchTools.labSearch.errorUnknown),
-        );
+        setError(searchFailureMessage(searchError));
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null;
@@ -670,11 +667,11 @@ export function LabSearchPanel() {
       </section>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {busy ? (
-          <LabSearchSkeleton />
-        ) : results === null ? (
+        {busy ? <LabSearchSkeleton /> : null}
+        {!busy && results === null ? (
           <EmptyLabSearch noResults={false} onTry={trySuggestion} />
-        ) : results.length === 0 ? (
+        ) : null}
+        {!busy && results !== null && (results.length === 0 ? (
           <EmptyLabSearch noResults onTry={trySuggestion} />
         ) : (
           <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6">
@@ -713,7 +710,7 @@ export function LabSearchPanel() {
               {t(($) => $.researchTools.labSearch.attribution)}
             </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

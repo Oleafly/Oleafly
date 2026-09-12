@@ -194,6 +194,112 @@ export function bibliographyEntryDetails(
   return workerClient.bibliographyEntries(snapshot.identity, entryIds);
 }
 
+function rebuildSuperseded(
+  sequence: number,
+  projectId: string,
+  knownFiles: readonly string[],
+): boolean {
+  if (sequence !== rebuildSequence) return true;
+  if (useFilesStore.getState().projectId !== projectId) return true;
+  return (
+    normalizedKnownSignature(currentKnownFiles()) !==
+    normalizedKnownSignature(knownFiles)
+  );
+}
+
+function rebuildDelta(
+  previousTexts: Readonly<Record<string, string>>,
+  loaded: { readonly texts: Record<string, string>; readonly unreadable: ReadonlySet<string> },
+  nextKnownSignature: string,
+): { changedPaths: string[]; removedPaths: string[]; projectChanged: boolean } {
+  const previousPaths = new Set(Object.keys(previousTexts));
+  const nextPaths = new Set(Object.keys(loaded.texts));
+  const changedPaths = Object.entries(loaded.texts)
+    .filter(
+      ([path, text]) => previousTexts[path] !== text || !sourceRevisions.has(path),
+    )
+    .map(([path]) => path);
+  const removedPaths = [...previousPaths].filter((path) => !nextPaths.has(path));
+  const unreadableChanged =
+    [...loaded.unreadable].some((path) => !unreadableFiles.has(path)) ||
+    [...unreadableFiles].some((path) => !loaded.unreadable.has(path));
+  const projectChanged =
+    projectRevision === 0 ||
+    changedPaths.length > 0 ||
+    removedPaths.length > 0 ||
+    unreadableChanged ||
+    nextKnownSignature !== knownFilesSignature;
+  return { changedPaths, removedPaths, projectChanged };
+}
+
+function bumpRebuiltSourceRevisions(
+  changedPaths: readonly string[],
+  loadedUnreadable: ReadonlySet<string>,
+  removedPaths: readonly string[],
+): void {
+  for (const path of changedPaths) nextSourceRevision(path);
+  for (const path of loadedUnreadable) {
+    if (!unreadableFiles.has(path)) nextSourceRevision(path);
+  }
+  for (const path of removedPaths) nextSourceRevision(path);
+}
+
+function rebuiltIntelligenceReusable(
+  projectChanged: boolean,
+  before: ProjectIntelligenceState,
+): boolean {
+  if (projectChanged) return false;
+  if (!before.data || before.stale) return false;
+  if (before.status !== "success" && before.status !== "partial") return false;
+  return !workerNeedsReset;
+}
+
+function upsertsForReset(
+  knownFiles: readonly string[],
+  explicitUpserts: readonly ProjectFileUpsert[],
+  analysisTexts: Readonly<Record<string, string>>,
+): ProjectFileUpsert[] {
+  const readableByPath = new Map(explicitUpserts.map((file) => [file.file, file]));
+  const resolved: ProjectFileUpsert[] = [];
+  for (const file of sourcePathsFromKnown(knownFiles)) {
+    const explicit = readableByPath.get(file);
+    if (explicit) {
+      resolved.push(explicit);
+      continue;
+    }
+    const text = analysisTexts[file];
+    if (text === undefined) continue;
+    resolved.push({ file, sourceRevision: currentSourceRevision(file), text });
+  }
+  return resolved;
+}
+
+function mergeScheduledInput(
+  carryOver: ScheduledAnalysis | null,
+  upserts: readonly ProjectFileUpsert[],
+  removals: readonly string[],
+  unreadable: readonly ProjectUnreadableFile[],
+): {
+  upserts: Map<string, ProjectFileUpsert>;
+  removals: Set<string>;
+  unreadable: Map<string, ProjectUnreadableFile>;
+} {
+  const combinedUpserts = new Map<string, ProjectFileUpsert>();
+  for (const file of carryOver?.input.upserts ?? []) combinedUpserts.set(file.file, file);
+  for (const file of upserts) combinedUpserts.set(file.file, file);
+  const combinedRemovals = new Set<string>(carryOver?.input.removals ?? []);
+  for (const file of removals) combinedRemovals.add(file);
+  for (const file of combinedUpserts.keys()) combinedRemovals.delete(file);
+  const combinedUnreadable = new Map<string, ProjectUnreadableFile>();
+  for (const file of carryOver?.input.unreadable ?? []) combinedUnreadable.set(file.file, file);
+  for (const file of unreadable) {
+    combinedUnreadable.set(file.file, file);
+    combinedUpserts.delete(file.file);
+  }
+  for (const file of combinedRemovals) combinedUnreadable.delete(file);
+  return { upserts: combinedUpserts, removals: combinedRemovals, unreadable: combinedUnreadable };
+}
+
 function sameIdentity(
   left: ProjectIntelligenceIdentity | null,
   right: ProjectIntelligenceIdentity,
@@ -372,60 +478,22 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       workerProjectId = projectId;
     }
     const analysisTexts = options.texts ?? get().texts;
-    const readableByPath = new Map(
-      options.upserts.map((file) => [file.file, file]),
-    );
     const upserts = reset
-      ? sourcePathsFromKnown(options.knownFiles)
-          .map((file) => {
-            const explicit = readableByPath.get(file);
-            if (explicit) return explicit;
-            const text = analysisTexts[file];
-            return text === undefined
-              ? null
-              : {
-                  file,
-                  sourceRevision: currentSourceRevision(file),
-                  text,
-                };
-          })
-          .filter(
-            (file): file is ProjectFileUpsert => file !== null,
-          )
+      ? upsertsForReset(options.knownFiles, options.upserts, analysisTexts)
       : options.upserts;
-    const combinedUpserts = new Map<string, ProjectFileUpsert>();
-    if (priorScheduled?.identity.projectId === projectId) {
-      for (const file of priorScheduled.input.upserts) {
-        combinedUpserts.set(file.file, file);
-      }
-    }
-    for (const file of upserts) combinedUpserts.set(file.file, file);
-    const combinedRemovals = new Set<string>(
-      priorScheduled?.identity.projectId === projectId
-        ? priorScheduled.input.removals
-        : [],
-    );
-    for (const file of options.removals) combinedRemovals.add(file);
-    for (const file of combinedUpserts.keys()) combinedRemovals.delete(file);
-    const combinedUnreadable = new Map<string, ProjectUnreadableFile>();
-    if (priorScheduled?.identity.projectId === projectId) {
-      for (const file of priorScheduled.input.unreadable) {
-        combinedUnreadable.set(file.file, file);
-      }
-    }
-    for (const file of options.unreadable) {
-      combinedUnreadable.set(file.file, file);
-      combinedUpserts.delete(file.file);
-    }
-    for (const file of combinedRemovals) combinedUnreadable.delete(file);
+    const carryOver =
+      priorScheduled?.identity.projectId === projectId ? priorScheduled : null;
+    const carriedReset = carryOver === null ? false : carryOver.input.reset;
+    const {
+      upserts: combinedUpserts,
+      removals: combinedRemovals,
+      unreadable: combinedUnreadable,
+    } = mergeScheduledInput(carryOver, upserts, options.removals, options.unreadable);
 
     const scheduled: ScheduledAnalysis = {
       identity,
       input: {
-        reset:
-          reset ||
-          (priorScheduled?.identity.projectId === projectId &&
-            priorScheduled.input.reset),
+        reset: reset || carriedReset,
         ...(options.mainDocument
           ? { mainDocument: options.mainDocument }
           : {}),
@@ -581,61 +649,22 @@ export const useIndexStore = create<IndexStore>((set, get) => {
           projectId,
           sourcePaths,
         );
-        if (
-          sequence !== rebuildSequence ||
-          useFilesStore.getState().projectId !== projectId ||
-          normalizedKnownSignature(currentKnownFiles()) !==
-            normalizedKnownSignature(knownFiles)
-        ) {
+        if (rebuildSuperseded(sequence, projectId, knownFiles)) {
           return;
         }
 
         const previous = get();
-        const previousPaths = new Set(Object.keys(previous.texts));
-        const nextPaths = new Set(Object.keys(loaded.texts));
-        const changedPaths = Object.entries(loaded.texts)
-          .filter(
-            ([path, text]) =>
-              previous.texts[path] !== text ||
-              !sourceRevisions.has(path),
-          )
-          .map(([path]) => path);
-        const removedPaths = [...previousPaths].filter(
-          (path) => !nextPaths.has(path),
+        const nextKnownSignature = normalizedKnownSignature(knownFiles);
+        const { changedPaths, removedPaths, projectChanged } = rebuildDelta(
+          previous.texts,
+          loaded,
+          nextKnownSignature,
         );
-        const unreadableChanged =
-          [...loaded.unreadable].some(
-            (path) => !unreadableFiles.has(path),
-          ) ||
-          [...unreadableFiles].some(
-            (path) => !loaded.unreadable.has(path),
-          );
-        const nextKnownSignature =
-          normalizedKnownSignature(knownFiles);
-        const projectChanged =
-          projectRevision === 0 ||
-          changedPaths.length > 0 ||
-          removedPaths.length > 0 ||
-          unreadableChanged ||
-          nextKnownSignature !== knownFilesSignature;
 
-        for (const path of changedPaths) nextSourceRevision(path);
-        for (const path of loaded.unreadable) {
-          if (!unreadableFiles.has(path)) nextSourceRevision(path);
-        }
-        for (const path of removedPaths) {
-          nextSourceRevision(path);
-        }
+        bumpRebuiltSourceRevisions(changedPaths, loaded.unreadable, removedPaths);
         unreadableFiles = loaded.unreadable;
         knownFilesSignature = nextKnownSignature;
-        if (
-          !projectChanged &&
-          intelligenceBeforeRead.data &&
-          !intelligenceBeforeRead.stale &&
-          (intelligenceBeforeRead.status === "success" ||
-            intelligenceBeforeRead.status === "partial") &&
-          !workerNeedsReset
-        ) {
+        if (rebuiltIntelligenceReusable(projectChanged, intelligenceBeforeRead)) {
           set({
             texts: loaded.texts,
             building: false,

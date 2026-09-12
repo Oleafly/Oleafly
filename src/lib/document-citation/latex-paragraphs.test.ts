@@ -54,4 +54,20 @@ describe("cleanLatex", () => {
   it("removes simple markup wrappers", () => {
     expect(cleanLatex("\\textbf{Hello} world")).toMatch(/Hello world/);
   });
+
+  it("drops a comment without eating its line terminator", () => {
+    expect(cleanLatex("alpha %note\nbeta")).toBe("alpha beta");
+    expect(cleanLatex("alpha %note\r\nbeta")).toBe("alpha beta");
+    expect(cleanLatex("alpha %note")).toBe("alpha");
+  });
+});
+
+describe("extractKeywords comment handling", () => {
+  it("removes comment text on CRLF lines", () => {
+    const q = extractKeywords(
+      "molecular generation networks %secretkeyword\r\nfor graph learning tasks",
+    );
+    expect(q).not.toMatch(/secretkeyword/);
+    expect(q.toLowerCase()).toContain("graph");
+  });
 });

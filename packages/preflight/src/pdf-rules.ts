@@ -22,7 +22,7 @@ export function analyzeReadingOrder(pages: PositionedText[][]): Finding[] {
           break;
         }
       }
-      if (key === null) key = it.y;
+      key ??= it.y;
       const arr = rows.get(key) ?? [];
       arr.push(it);
       rows.set(key, arr);

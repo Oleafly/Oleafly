@@ -95,7 +95,7 @@ function viewportWindows(
     .sort((left, right) => left.from - right.from);
   const merged: Array<{ from: number; to: number }> = [];
   for (const window of windows) {
-    const previous = merged[merged.length - 1];
+    const previous = merged.at(-1);
     if (previous && window.from <= previous.to) {
       previous.to = Math.max(previous.to, window.to);
     } else {
@@ -174,9 +174,9 @@ function visibleExpressions(
 }
 
 class MathPreviewWidget extends WidgetType {
-  private mounted = new WeakMap<HTMLElement, MountedMathPreview>();
-  private liveHosts = new WeakSet<HTMLElement>();
-  private resizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
+  private readonly mounted = new WeakMap<HTMLElement, MountedMathPreview>();
+  private readonly liveHosts = new WeakSet<HTMLElement>();
+  private readonly resizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
 
   constructor(
     readonly expression: MathExpression,
@@ -277,8 +277,6 @@ function buildDecorations(
             : {}),
         },
       }).range(expression.from, expression.to),
-    );
-    ranges.push(
       Decoration.widget({
         widget: new MathPreviewWidget(
           expression,

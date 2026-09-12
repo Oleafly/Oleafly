@@ -357,7 +357,7 @@ fn remote_slot() -> &'static Mutex<Option<Arc<ModelRegistry>>> {
 pub(crate) fn current_registry() -> Arc<ModelRegistry> {
     remote_slot()
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
         .clone()
         .unwrap_or_else(bundled_registry)
 }
@@ -367,7 +367,9 @@ fn adopt_remote(
     remote: Option<&str>,
 ) -> Option<Arc<ModelRegistry>> {
     let registry = Arc::new(parse_registry(remote?).ok()?);
-    *slot.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(registry.clone());
+    *slot
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(registry.clone());
     Some(registry)
 }
 

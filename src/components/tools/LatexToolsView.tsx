@@ -56,7 +56,9 @@ const TOOL_TONES: Record<
   },
 };
 
-function ToolCard({ tool }: { tool: ToolDefinition }) {
+function ToolCard({ tool }: Readonly<{
+  tool: ToolDefinition;
+}>) {
   const tone = TOOL_TONES[tool.tone];
   const name = toolName(tool.id);
   const description = toolDescription(tool.id);

@@ -27,7 +27,7 @@ export function Popover({
   closeOnClick = true,
   onOpenChange: onOpenChangeProp,
   disabled = false,
-}: PopoverProps) {
+}: Readonly<PopoverProps>) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -145,10 +145,10 @@ export function Popover({
 export function PopoverItem({
   onClick,
   children,
-}: {
+}: Readonly<{
   onClick: () => void;
   children: ReactNode;
-}) {
+}>) {
   return (
     <PopoverPrimitive.Close asChild>
       <Button

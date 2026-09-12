@@ -1219,7 +1219,7 @@ export const approvalsModeSet = (projectId: string, mode: ApprovalMode) =>
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i) ?? 0;
   return bytes;
 }
 
@@ -1230,7 +1230,7 @@ export function uint8ToBase64(bytes: Uint8Array): string {
   const CHUNK = 0x8000;
   let s = "";
   for (let i = 0; i < bytes.length; i += CHUNK) {
-    s += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
+    s += String.fromCodePoint.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
   }
   return btoa(s);
 }

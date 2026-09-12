@@ -106,7 +106,7 @@ function isLatexPath(path: string | null | undefined): boolean {
   return !!path && /\.tex$/i.test(path);
 }
 
-function SourceBadge({ source }: { source: LiteratureSource }) {
+function SourceBadge({ source }: Readonly<{ source: LiteratureSource }>) {
   const definition = SOURCE_LABEL.get(source);
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/35 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -118,9 +118,9 @@ function SourceBadge({ source }: { source: LiteratureSource }) {
 
 function SuggestionCard({
   suggestion,
-}: {
+}: Readonly<{
   suggestion: RankedLiteraturePaper;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const { record, score, reasoning } = suggestion;
   const [reasoningOpen, setReasoningOpen] = useState(false);
@@ -160,7 +160,7 @@ function SuggestionCard({
       if ("key" in result) {
         toast.success(
           i18n.t(($) => $.researchTools.citationScan.citeAdded, {
-            citation: `\\cite{${result.key}}`,
+            citation: String.raw`\cite{${result.key}}`,
           }),
         );
       } else {
@@ -305,7 +305,7 @@ function SuggestionCard({
   );
 }
 
-function ParagraphGroup({ result }: { result: ParagraphCitationResult }) {
+function ParagraphGroup({ result }: Readonly<{ result: ParagraphCitationResult }>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const [open, setOpen] = useState(true);
   const suggestionCount = result.suggestions.length;
@@ -491,6 +491,40 @@ export function DocumentCitationScanPanel() {
     abortRef.current?.abort();
   };
 
+  const markScanCancelled = () => {
+    setProgress((current) =>
+      current
+        ? {
+            ...current,
+            phase: "error",
+            message: t(($) => $.researchTools.citationScan.progressCancelled),
+          }
+        : current,
+    );
+  };
+
+  const reportScanFailure = (scanError: unknown) => {
+    if (scanError instanceof Error && scanError.name === "AbortError") {
+      markScanCancelled();
+      return;
+    }
+    setError(scanError instanceof Error ? scanError.message : String(scanError));
+  };
+
+  const restoreCachedScan = (cacheKey: string) => {
+    const cached = loadDocumentScanCache(cacheKey);
+    if (!cached) return false;
+    setParagraphs(cached.paragraphs);
+    setProgress({
+      phase: "complete",
+      completedParagraphs: cached.totalParagraphs,
+      totalParagraphs: cached.totalParagraphs,
+      message: t(($) => $.researchTools.citationScan.progressRestored),
+    });
+    setError(null);
+    return true;
+  };
+
   const runScan = async (opts?: { ignoreCache?: boolean }) => {
     if (!canScan) return;
     if (offline) {
@@ -510,20 +544,7 @@ export function DocumentCitationScanPanel() {
       rankMode,
     });
 
-    if (!opts?.ignoreCache) {
-      const cached = loadDocumentScanCache(cacheKey);
-      if (cached) {
-        setParagraphs(cached.paragraphs);
-        setProgress({
-          phase: "complete",
-          completedParagraphs: cached.totalParagraphs,
-          totalParagraphs: cached.totalParagraphs,
-          message: t(($) => $.researchTools.citationScan.progressRestored),
-        });
-        setError(null);
-        return;
-      }
-    }
+    if (!opts?.ignoreCache && restoreCachedScan(cacheKey)) return;
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -551,25 +572,7 @@ export function DocumentCitationScanPanel() {
       });
       saveDocumentScanCache(cacheKey, result);
     } catch (scanError) {
-      const isAbort =
-        scanError instanceof Error && scanError.name === "AbortError";
-      if (isAbort) {
-        setProgress((current) =>
-          current
-            ? {
-                ...current,
-                phase: "error",
-                message: t(($) => $.researchTools.citationScan.progressCancelled),
-              }
-            : current,
-        );
-      } else {
-        setError(
-          scanError instanceof Error
-            ? scanError.message
-            : String(scanError),
-        );
-      }
+      reportScanFailure(scanError);
     } finally {
       setScanning(false);
       if (abortRef.current === controller) {

@@ -30,7 +30,7 @@ export function openCliAgentSettings() {
 
 const ACTION_CLASS = "size-7 text-muted-foreground hover:text-foreground";
 
-function AcpWorkspaceActions({ projectId }: { projectId: string }) {
+function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["common", "ai"]);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const allSessions = useAcpSessionsStore((state) => state.sessions);
@@ -54,8 +54,8 @@ function AcpWorkspaceActions({ projectId }: { projectId: string }) {
     setBusy(true);
     try {
       await action();
-    } catch (value) {
-      setError(projectId, acpError(value));
+    } catch (error_) {
+      setError(projectId, acpError(error_));
     } finally {
       setBusy(false);
     }
@@ -126,7 +126,7 @@ function AcpWorkspaceActions({ projectId }: { projectId: string }) {
   );
 }
 
-export function AssistantShellAcpActions({ projectId }: { projectId?: string | null }) {
+export function AssistantShellAcpActions({ projectId }: Readonly<{ projectId?: string | null }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
     <>

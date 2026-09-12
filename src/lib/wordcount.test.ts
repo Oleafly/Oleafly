@@ -122,4 +122,20 @@ describe("countWords heuristic fallback", () => {
     expect(r.characters).toBe("hello world".length);
     expect(r.lines).toBe(1);
   });
+
+  it("strips comments but keeps escaped percents and line breaks", async () => {
+    vi.resetModules();
+    vi.doMock("@oleafly/editor", () => {
+      const boom = () => {
+        throw new Error("mask exploded");
+      };
+      return { maskLatex: boom, maskToProse: boom, spellcheckRanges: boom };
+    });
+    const { countWords: mockedCountWords } = await import("./wordcount");
+
+    expect(mockedCountWords("alpha %note here\nbeta").words).toBe(2);
+    expect(mockedCountWords("alpha %note here\r\nbeta").words).toBe(2);
+    expect(mockedCountWords("save 50\\% today %skipme\ndone").words).toBe(4);
+    expect(mockedCountWords("alpha %note here\nbeta").lines).toBe(2);
+  });
 });

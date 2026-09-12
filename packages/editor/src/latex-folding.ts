@@ -20,7 +20,44 @@ const SECTION_RE = /^\s*\\(part|chapter|section|subsection|subsubsection|paragra
 const WINDOW = 200_000;
 
 function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return s.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+}
+
+function environmentFoldRange(
+  state: EditorState,
+  lineStart: number,
+  lineEnd: number,
+  env: string,
+): { from: number; to: number } | null {
+  const rest = state.doc.sliceString(lineEnd, Math.min(state.doc.length, lineEnd + WINDOW));
+  const re = new RegExp(`\\\\(begin|end)\\{${escapeRe(env)}\\}`, "g");
+  let depth = 1;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(rest))) {
+    depth += m[1] === "begin" ? 1 : -1;
+    if (depth === 0) {
+      const endLine = state.doc.lineAt(lineEnd + m.index);
+      if (endLine.number > state.doc.lineAt(lineStart).number) return { from: lineEnd, to: endLine.to };
+      return null; // single-line block, nothing to fold
+    }
+  }
+  return null;
+}
+
+function sectionFoldEnd(
+  state: EditorState,
+  startNo: number,
+  level: number,
+): number {
+  const total = state.doc.lines;
+  for (let ln = startNo + 1; ln <= total; ln++) {
+    const line = state.doc.line(ln);
+    const lm = SECTION_RE.exec(line.text);
+    if (lm && SECTION_LEVEL[lm[1]] <= level) {
+      return state.doc.line(ln - 1).to;
+    }
+  }
+  return state.doc.length;
 }
 
 function latexFoldRange(state: EditorState, lineStart: number, lineEnd: number): { from: number; to: number } | null {
@@ -28,36 +65,13 @@ function latexFoldRange(state: EditorState, lineStart: number, lineEnd: number):
 
   const begin = /\\begin\{([^}]*)\}/.exec(lineText);
   if (begin) {
-    const env = begin[1];
-    const rest = state.doc.sliceString(lineEnd, Math.min(state.doc.length, lineEnd + WINDOW));
-    const re = new RegExp(`\\\\(begin|end)\\{${escapeRe(env)}\\}`, "g");
-    let depth = 1;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(rest))) {
-      depth += m[1] === "begin" ? 1 : -1;
-      if (depth === 0) {
-        const endLine = state.doc.lineAt(lineEnd + m.index);
-        if (endLine.number > state.doc.lineAt(lineStart).number) return { from: lineEnd, to: endLine.to };
-        return null; // single-line block, nothing to fold
-      }
-    }
-    return null;
+    return environmentFoldRange(state, lineStart, lineEnd, begin[1]);
   }
 
   const sec = SECTION_RE.exec(lineText);
   if (sec) {
-    const level = SECTION_LEVEL[sec[1]];
     const startNo = state.doc.lineAt(lineStart).number;
-    const total = state.doc.lines;
-    let to = state.doc.length;
-    for (let ln = startNo + 1; ln <= total; ln++) {
-      const line = state.doc.line(ln);
-      const lm = SECTION_RE.exec(line.text);
-      if (lm && SECTION_LEVEL[lm[1]] <= level) {
-        to = state.doc.line(ln - 1).to;
-        break;
-      }
-    }
+    const to = sectionFoldEnd(state, startNo, SECTION_LEVEL[sec[1]]);
     if (state.doc.lineAt(to).number > startNo) return { from: lineEnd, to };
   }
 

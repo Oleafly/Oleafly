@@ -147,6 +147,15 @@ export function EngineSection() {
 
   const kind = info?.kind ?? "none";
 
+  const tinytexActionLabel = () => {
+    if (installing) return installPhaseLabel(installPhase, progress);
+    if (partialDownloadBytes > 0) {
+      return t(($) => $.settings.engine.tinytex.resume, {
+        size: formatNumber(Math.round(partialDownloadBytes / 1_000_000)),
+      });
+    }
+    return t(($) => $.settings.engine.tinytex.download);
+  };
 
   return (
     <Tabs
@@ -309,13 +318,7 @@ export function EngineSection() {
                 className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
               >
                 {installing ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                {installing
-                  ? installPhaseLabel(installPhase, progress)
-                  : partialDownloadBytes > 0
-                    ? t(($) => $.settings.engine.tinytex.resume, {
-                        size: formatNumber(Math.round(partialDownloadBytes / 1_000_000)),
-                      })
-                    : t(($) => $.settings.engine.tinytex.download)}
+                {tinytexActionLabel()}
               </button>
             </div>
           </div>

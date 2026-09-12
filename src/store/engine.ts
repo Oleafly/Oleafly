@@ -23,18 +23,25 @@ export interface PackageError {
   detail: string;
 }
 
+function errorDetail(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return typeof error === "string" ? error : "";
+}
+
 function packageError(error: unknown, kind: PackageErrorKind, name = ""): PackageError {
-  const detail = error instanceof Error ? error.message : typeof error === "string" ? error : "";
-  return { kind, name, detail: detail.trim() };
+  return { kind, name, detail: errorDetail(error).trim() };
+}
+
+function packageErrorHeadline(error: PackageError): string {
+  if (error.kind === "read") return i18n.t(($) => $.settings.engine.packages.error.read);
+  if (error.kind === "install") {
+    return i18n.t(($) => $.settings.engine.packages.error.install, { name: error.name });
+  }
+  return i18n.t(($) => $.settings.engine.packages.error.remove, { name: error.name });
 }
 
 export function packageErrorMessage(error: PackageError): string {
-  const message =
-    error.kind === "read"
-      ? i18n.t(($) => $.settings.engine.packages.error.read)
-      : error.kind === "install"
-        ? i18n.t(($) => $.settings.engine.packages.error.install, { name: error.name })
-        : i18n.t(($) => $.settings.engine.packages.error.remove, { name: error.name });
+  const message = packageErrorHeadline(error);
   return error.detail
     ? i18n.t(($) => $.settings.engine.packages.error.withDetail, { message, detail: error.detail })
     : message;

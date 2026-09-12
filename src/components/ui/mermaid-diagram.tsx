@@ -202,7 +202,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
     if (shell && typeof IntersectionObserver === "function") {
       observer = new IntersectionObserver(
         (entries) => {
-          const entry = entries[entries.length - 1];
+          const entry = entries.at(-1);
           if (!entry) return;
           visible.current = entry.isIntersecting;
           if (entry.isIntersecting) ensureCurrent(mountedTheme.current !== null);
@@ -249,14 +249,13 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
     >
       {state.status === "error" ? (
         <div>
-          <p
-            role="status"
+          <output
             aria-live="polite"
             aria-label={t(($) => $.core.mermaid.renderFailed)}
-            className="px-2.5 pt-2.5 text-xs text-destructive"
+            className="block px-2.5 pt-2.5 text-xs text-destructive"
           >
             {t(($) => $.core.mermaid.renderFailed)}
-          </p>
+          </output>
           <pre className="overflow-x-auto p-2.5 text-[0.85em] [scrollbar-width:thin]">
             <code className="font-mono language-mermaid">{source}</code>
           </pre>
@@ -264,15 +263,14 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
       ) : (
         <>
           {state.status === "loading" ? (
-            <div
-              role="status"
+            <output
               aria-label={t(($) => $.core.mermaid.rendering)}
               className="col-start-1 row-start-1 flex min-h-28 animate-pulse flex-col justify-center gap-3 p-5 opacity-100 transition-opacity duration-200 motion-reduce:animate-none motion-reduce:transition-none"
             >
               <span className="mx-auto h-2 w-2/5 rounded-full bg-muted-foreground/20" />
               <span className="mx-auto h-9 w-3/5 rounded-md bg-muted-foreground/15" />
               <span className="mx-auto h-2 w-1/3 rounded-full bg-muted-foreground/20" />
-            </div>
+            </output>
           ) : (
             <div
               aria-hidden="true"

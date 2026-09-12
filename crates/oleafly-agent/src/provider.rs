@@ -215,7 +215,7 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
     } else {
         let mut candidates: Vec<&str> = keys
             .keys()
-            .map(|k| k.as_str())
+            .map(String::as_str)
             .chain(key_optional.iter().copied())
             .filter(|id| has_credential(id) && enabled_model(cfg, id).is_some())
             .collect();
@@ -223,7 +223,7 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
         candidates.dedup();
         candidates
             .first()
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .unwrap_or_else(|| saved.clone())
     };
 

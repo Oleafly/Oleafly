@@ -150,6 +150,45 @@ export function sameProofreadingIdentity(
   );
 }
 
+function validResponseIdentity(value: unknown): boolean {
+  const identity =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : null;
+  return (
+    !!identity &&
+    (typeof identity.projectId === "string" ||
+      identity.projectId === null) &&
+    (typeof identity.projectId !== "string" ||
+      identity.projectId.length <= 256) &&
+    typeof identity.path === "string" &&
+    identity.path.length <= 2_048 &&
+    typeof identity.revision === "number" &&
+    Number.isSafeInteger(identity.revision) &&
+    identity.revision >= 0 &&
+    typeof identity.requestGeneration === "number" &&
+    Number.isSafeInteger(identity.requestGeneration) &&
+    identity.requestGeneration > 0 &&
+    (identity.surface === "source" || identity.surface === "visual")
+  );
+}
+
+function validResponseError(value: unknown): boolean {
+  const error =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : null;
+  return (
+    !!error &&
+    ["invalid_request", "initialization_failed", "analysis_failed"].includes(
+      typeof error.code === "string" ? error.code : "",
+    ) &&
+    typeof error.message === "string" &&
+    error.message.length <= 1_024 &&
+    typeof error.retryable === "boolean"
+  );
+}
+
 export function isProofreadingWorkerResponse(
   value: unknown,
 ): value is ProofreadingWorkerResponse {
@@ -165,40 +204,9 @@ export function isProofreadingWorkerResponse(
   ) {
     return false;
   }
-  const identity =
-    candidate.identity && typeof candidate.identity === "object"
-      ? (candidate.identity as Record<string, unknown>)
-      : null;
-  const validIdentity =
-    !!identity &&
-    (typeof identity.projectId === "string" ||
-      identity.projectId === null) &&
-    (typeof identity.projectId !== "string" ||
-      identity.projectId.length <= 256) &&
-    typeof identity.path === "string" &&
-    identity.path.length <= 2_048 &&
-    typeof identity.revision === "number" &&
-    Number.isSafeInteger(identity.revision) &&
-    identity.revision >= 0 &&
-    typeof identity.requestGeneration === "number" &&
-    Number.isSafeInteger(identity.requestGeneration) &&
-    identity.requestGeneration > 0 &&
-    (identity.surface === "source" || identity.surface === "visual");
-  if (!validIdentity) return false;
+  if (!validResponseIdentity(candidate.identity)) return false;
   if (candidate.type === "error") {
-    const error =
-      candidate.error && typeof candidate.error === "object"
-        ? (candidate.error as Record<string, unknown>)
-        : null;
-    return (
-      !!error &&
-      ["invalid_request", "initialization_failed", "analysis_failed"].includes(
-        typeof error.code === "string" ? error.code : "",
-      ) &&
-      typeof error.message === "string" &&
-      error.message.length <= 1_024 &&
-      typeof error.retryable === "boolean"
-    );
+    return validResponseError(candidate.error);
   }
   const status = candidate.status;
   const diagnostics = candidate.diagnostics;
@@ -404,6 +412,26 @@ function boundedSentenceEnd(
   return cap;
 }
 
+function renderableSpanEnd(
+  diagnostic: ProofreadingDiagnostic,
+  text: string,
+): number | null {
+  const from = diagnostic.from;
+  const to = diagnostic.to;
+  if (to <= from || from < 0 || to > text.length) return null;
+  if (isSpellingDiagnosticKind(diagnostic.kind)) {
+    if (to - from > PROOFREADING_RENDER_LIMITS.spellingSpan) return null;
+    if (text.slice(from, to).includes("\n")) return null;
+    return to;
+  }
+  const bounded = boundedSentenceEnd(
+    text,
+    from,
+    Math.min(to, from + PROOFREADING_RENDER_LIMITS.grammarSpan),
+  );
+  return bounded <= from ? null : bounded;
+}
+
 export function guardProofreadingDiagnostics(
   diagnostics: readonly ProofreadingDiagnostic[],
   text: string,
@@ -412,19 +440,8 @@ export function guardProofreadingDiagnostics(
   const output: ProofreadingDiagnostic[] = [];
   for (const diagnostic of diagnostics) {
     const from = diagnostic.from;
-    let to = diagnostic.to;
-    if (to <= from || from < 0 || to > text.length) continue;
-    if (isSpellingDiagnosticKind(diagnostic.kind)) {
-      if (to - from > PROOFREADING_RENDER_LIMITS.spellingSpan) continue;
-      if (text.slice(from, to).includes("\n")) continue;
-    } else {
-      to = boundedSentenceEnd(
-        text,
-        from,
-        Math.min(to, from + PROOFREADING_RENDER_LIMITS.grammarSpan),
-      );
-      if (to <= from) continue;
-    }
+    const to = renderableSpanEnd(diagnostic, text);
+    if (to === null) continue;
     const word = text.slice(from, to);
     const key = word.trim().toLocaleLowerCase("en-US");
     const seen = perWord.get(key) ?? 0;

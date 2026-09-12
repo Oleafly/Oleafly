@@ -22,10 +22,10 @@ type TranscriptState =
 export function SessionTranscriptDialog({
   threadId,
   onClose,
-}: {
+}: Readonly<{
   threadId: string | null;
   onClose: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const [state, setState] = useState<TranscriptState>({ status: "loading" });
 

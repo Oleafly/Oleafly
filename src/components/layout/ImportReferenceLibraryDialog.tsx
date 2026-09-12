@@ -111,7 +111,7 @@ function UploadCard({
   buttonLabel,
   onFile,
   busy,
-}: UploadCardProps) {
+}: Readonly<UploadCardProps>) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="rounded-lg border p-4">
@@ -153,11 +153,11 @@ export function ImportReferenceLibraryDialog({
   open,
   onOpenChange,
   onImported,
-}: {
+}: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImported?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["references"]);
   const [busy, setBusy] = useState(false);
 

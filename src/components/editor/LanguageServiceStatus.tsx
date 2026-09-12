@@ -76,6 +76,24 @@ export function LanguageServiceStatus() {
   );
 }
 
+type SetupDisclosure = ReturnType<typeof getLanguageServiceSetupDisclosure>;
+
+function resolveSetupDisclosure(
+  kind: LanguageServiceKind | null,
+  wanted: boolean,
+): { disclosure: SetupDisclosure | null; disclosureFailure: string | null } {
+  if (!wanted || kind !== "texlab") return { disclosure: null, disclosureFailure: null };
+  try {
+    return { disclosure: getLanguageServiceSetupDisclosure(kind), disclosureFailure: null };
+  } catch (error) {
+    const disclosureFailure =
+      error instanceof Error
+        ? error.message
+        : i18n.t(($) => $.intelligence.languageService.setupMetadataInvalid);
+    return { disclosure: null, disclosureFailure };
+  }
+}
+
 interface LanguageServiceFailureStatusProps {
   failureMessage?: string;
   failureReason?: AnalysisReason;
@@ -92,7 +110,7 @@ function LanguageServiceFailureStatus({
   reason,
   setupRequired,
   visible,
-}: LanguageServiceFailureStatusProps) {
+}: Readonly<LanguageServiceFailureStatusProps>) {
   const { t } = useTranslation(["common", "intelligence"]);
   const [setupOpen, setSetupOpen] = useState(false);
   const [installPending, setInstallPending] = useState(false);
@@ -106,20 +124,10 @@ function LanguageServiceFailureStatus({
       mounted.current = false;
     };
   }, []);
-  let disclosure:
-    | ReturnType<typeof getLanguageServiceSetupDisclosure>
-    | null = null;
-  let disclosureFailure: string | null = null;
-  if ((setupRequired || setupOpen) && kind === "texlab") {
-    try {
-      disclosure = getLanguageServiceSetupDisclosure(kind);
-    } catch (error) {
-      disclosureFailure =
-        error instanceof Error
-          ? error.message
-          : i18n.t(($) => $.intelligence.languageService.setupMetadataInvalid);
-    }
-  }
+  const { disclosure, disclosureFailure } = resolveSetupDisclosure(
+    kind,
+    setupRequired || setupOpen,
+  );
   const canSetUp = setupRequired && disclosure !== null;
   const actionLabel = canSetUp
     ? t(($) => $.intelligence.languageService.setUp)
@@ -129,11 +137,26 @@ function LanguageServiceFailureStatus({
     failureMessage ??
     analysisReasonText(reason) ??
     t(($) => $.intelligence.languageService.startFailed);
-  const statusMessage = setupRequired
-    ? disclosureFailure
-      ? t(($) => $.intelligence.languageService.setupDetailsUnavailable)
-      : t(($) => $.intelligence.languageService.setupRequired)
-    : unavailableLabel;
+  const setupMessage = disclosureFailure
+    ? t(($) => $.intelligence.languageService.setupDetailsUnavailable)
+    : t(($) => $.intelligence.languageService.setupRequired);
+  const statusMessage = setupRequired ? setupMessage : unavailableLabel;
+  const installLabel = (detail: SetupDisclosure): string => {
+    if (installPending) {
+      return t(($) => $.intelligence.languageService.installing, {
+        name: detail.displayName,
+      });
+    }
+    if (installFailure) {
+      return t(($) => $.intelligence.languageService.retryDownload, {
+        name: detail.displayName,
+      });
+    }
+    return t(($) => $.intelligence.languageService.install, {
+      name: detail.displayName,
+      version: detail.version,
+    });
+  };
   const toastId = `language-service:${kind ?? "unknown"}`;
 
   useEffect(() => {
@@ -285,18 +308,7 @@ function LanguageServiceFailureStatus({
                 ) : (
                   <Download aria-hidden="true" />
                 )}
-                {installPending
-                  ? t(($) => $.intelligence.languageService.installing, {
-                      name: disclosure.displayName,
-                    })
-                  : installFailure
-                    ? t(($) => $.intelligence.languageService.retryDownload, {
-                        name: disclosure.displayName,
-                      })
-                    : t(($) => $.intelligence.languageService.install, {
-                        name: disclosure.displayName,
-                        version: disclosure.version,
-                      })}
+                {installLabel(disclosure)}
               </Button>
             </DialogFooter>
           </DialogContent>

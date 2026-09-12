@@ -19,7 +19,7 @@ function basename(path: string): string {
   return index >= 0 ? path.slice(index + 1) : path;
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <p className="px-0.5 pb-1 pt-3 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground/70 first:pt-0">
       {children}
@@ -31,11 +31,11 @@ function StatRow({
   label,
   value,
   indent,
-}: {
+}: Readonly<{
   label: string;
   value: number | string;
   indent?: boolean;
-}) {
+}>) {
   return (
     <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
       <span
@@ -53,7 +53,7 @@ function StatRow({
   );
 }
 
-function ProofreadingSection({ surface }: { surface: ProofreadingSurface }) {
+function ProofreadingSection({ surface }: Readonly<{ surface: ProofreadingSurface }>) {
   const { t } = useTranslation(["common", "editor"]);
   const status = useProofreadingStore((state) => state[surface]);
   const spellcheck = useSettingsStore((state) => state.spellcheck);
@@ -114,27 +114,30 @@ function ProofreadingSection({ surface }: { surface: ProofreadingSurface }) {
 export function ProjectInfoContent({
   snapshot,
   surface,
-}: {
+}: Readonly<{
   snapshot: ProjectInfoSnapshot | null;
   surface: ProofreadingSurface;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   const activePath = useFilesStore((state) => state.activePath);
   const stats = snapshot?.stats ?? EMPTY_DOCUMENT_STATS;
 
+  let rootSummary: string;
+  if (!snapshot) {
+    rootSummary = t(($) => $.editor.projectInfo.counting);
+  } else if (snapshot.fileCount > 1) {
+    rootSummary = t(($) => $.editor.projectInfo.fileSummary, {
+      count: snapshot.fileCount,
+      root: basename(snapshot.root),
+    });
+  } else {
+    rootSummary = basename(snapshot.root);
+  }
+
   return (
     <>
       <p className="text-sm font-semibold text-foreground">{t(($) => $.editor.projectInfo.heading)}</p>
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-        {snapshot
-          ? snapshot.fileCount > 1
-            ? t(($) => $.editor.projectInfo.fileSummary, {
-                count: snapshot.fileCount,
-                root: basename(snapshot.root),
-              })
-            : basename(snapshot.root)
-          : t(($) => $.editor.projectInfo.counting)}
-      </p>
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">{rootSummary}</p>
 
       {snapshot ? (
         <>
@@ -185,7 +188,7 @@ export function ProjectInfoContent({
  * proofreading badge that used to sit over the document: one place answers
  * "how big is this and what is wrong with it".
  */
-export function ProjectInfoButton({ surface }: { surface: ProofreadingSurface }) {
+export function ProjectInfoButton({ surface }: Readonly<{ surface: ProofreadingSurface }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [snapshot, setSnapshot] = useState<ProjectInfoSnapshot | null>(null);
   // Reopening while a previous read is still in flight must not paint that

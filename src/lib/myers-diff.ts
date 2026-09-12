@@ -36,6 +36,46 @@ export function commonAffixBounds<T>(
   return { prefix, oldEnd, newEnd };
 }
 
+function advanceSnake<T>(
+  oldItems: readonly T[],
+  newItems: readonly T[],
+  oldStart: number,
+  newStart: number,
+): number {
+  let oldIndex = oldStart;
+  let newIndex = newStart;
+  while (
+    oldIndex < oldItems.length &&
+    newIndex < newItems.length &&
+    oldItems[oldIndex] === newItems[newIndex]
+  ) {
+    oldIndex += 1;
+    newIndex += 1;
+  }
+  return oldIndex;
+}
+
+function takesUpperDiagonal(
+  frontier: Int32Array,
+  index: number,
+  diagonal: number,
+  distance: number,
+): boolean {
+  if (diagonal === -distance) return true;
+  return diagonal !== distance && frontier[index - 1] < frontier[index + 1];
+}
+
+function frontierStart(
+  frontier: Int32Array,
+  index: number,
+  diagonal: number,
+  distance: number,
+): number {
+  return takesUpperDiagonal(frontier, index, diagonal, distance)
+    ? frontier[index + 1]
+    : frontier[index - 1] + 1;
+}
+
 export function myersEditDistance<T>(
   oldItems: readonly T[],
   newItems: readonly T[],
@@ -58,20 +98,9 @@ export function myersEditDistance<T>(
       work += 1;
       if (work > workLimit) return null;
       const index = offset + diagonal;
-      let oldIndex =
-        diagonal === -distance ||
-        (diagonal !== distance && frontier[index - 1] < frontier[index + 1])
-          ? frontier[index + 1]
-          : frontier[index - 1] + 1;
-      let newIndex = oldIndex - diagonal;
-      while (
-        oldIndex < oldCount &&
-        newIndex < newCount &&
-        oldItems[oldIndex] === newItems[newIndex]
-      ) {
-        oldIndex += 1;
-        newIndex += 1;
-      }
+      let oldIndex = frontierStart(frontier, index, diagonal, distance);
+      oldIndex = advanceSnake(oldItems, newItems, oldIndex, oldIndex - diagonal);
+      const newIndex = oldIndex - diagonal;
       frontier[index] = oldIndex;
       if (oldIndex >= oldCount && newIndex >= newCount) return distance;
     }
@@ -105,20 +134,9 @@ export function myersEditScript<T>(
       work += 1;
       if (work > workLimit) return null;
       const index = offset + diagonal;
-      let oldIndex =
-        diagonal === -distance ||
-        (diagonal !== distance && frontier[index - 1] < frontier[index + 1])
-          ? frontier[index + 1]
-          : frontier[index - 1] + 1;
-      let newIndex = oldIndex - diagonal;
-      while (
-        oldIndex < oldCount &&
-        newIndex < newCount &&
-        oldItems[oldIndex] === newItems[newIndex]
-      ) {
-        oldIndex += 1;
-        newIndex += 1;
-      }
+      let oldIndex = frontierStart(frontier, index, diagonal, distance);
+      oldIndex = advanceSnake(oldItems, newItems, oldIndex, oldIndex - diagonal);
+      const newIndex = oldIndex - diagonal;
       frontier[index] = oldIndex;
       if (oldIndex >= oldCount && newIndex >= newCount) {
         return backtrack(trace, oldCount, newCount);
@@ -138,11 +156,14 @@ function backtrack(trace: Int32Array[], oldCount: number, newCount: number): Mye
     const snapshot = trace[distance];
     const base = distance + 1;
     const diagonal = oldIndex - newIndex;
-    const previousDiagonal =
-      diagonal === -distance ||
-      (diagonal !== distance && snapshot[base + diagonal - 1] < snapshot[base + diagonal + 1])
-        ? diagonal + 1
-        : diagonal - 1;
+    const previousDiagonal = takesUpperDiagonal(
+      snapshot,
+      base + diagonal,
+      diagonal,
+      distance,
+    )
+      ? diagonal + 1
+      : diagonal - 1;
     const previousOld = snapshot[base + previousDiagonal];
     const previousNew = previousOld - previousDiagonal;
 
@@ -162,11 +183,14 @@ function backtrack(trace: Int32Array[], oldCount: number, newCount: number): Mye
   }
 
   steps.reverse();
+  return mergeAdjacentEdits(steps);
+}
 
+function mergeAdjacentEdits(steps: readonly MyersEdit[]): MyersEdit[] {
   const merged: MyersEdit[] = [];
   for (const step of steps) {
-    const last = merged[merged.length - 1];
-    if (last && last.kind === step.kind) last.length += step.length;
+    const last = merged.at(-1);
+    if (last?.kind === step.kind) last.length += step.length;
     else merged.push(step);
   }
   return merged;

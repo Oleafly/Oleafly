@@ -1,21 +1,10 @@
 import {
-  setEditorView,
-  getEditorView,
-  getCurrentLine,
-  gotoLine,
-  selectWordNearLine,
-  gotoRange,
   insertAtCursor as coreInsertAtCursor,
-  replaceRange,
-  wrapSelection,
   wrapSelectionOrPlaceholder as coreWrapSelectionOrPlaceholder,
   insertTemplate as coreInsertTemplate,
   insertEnvironment as coreInsertEnvironment,
-  focusEditor,
   editorUndo as coreEditorUndo,
   editorRedo as coreEditorRedo,
-  editorFind,
-  waitForEditorDocument,
 } from "@oleafly/editor";
 import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 
@@ -31,7 +20,7 @@ export {
   focusEditor,
   editorFind,
   waitForEditorDocument,
-};
+} from "@oleafly/editor";
 
 function insertRawIntoWysiwyg(source: string, block: boolean): boolean {
   const editor = getWysiwygEditor();

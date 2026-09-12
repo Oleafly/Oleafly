@@ -1,26 +1,26 @@
 export const PREAMBLE = [
-  "\\documentclass[11pt]{article}",
-  "\\usepackage[utf8]{inputenc}",
-  "\\usepackage[T1]{fontenc}",
-  "\\usepackage[margin=1in]{geometry}",
-  "\\usepackage{amsmath,amssymb}",
-  "\\usepackage{graphicx}",
-  "\\usepackage{hyperref}",
-  "\\setlength{\\parskip}{0.5em}",
-  "\\setlength{\\parindent}{0pt}",
+  String.raw`\documentclass[11pt]{article}`,
+  String.raw`\usepackage[utf8]{inputenc}`,
+  String.raw`\usepackage[T1]{fontenc}`,
+  String.raw`\usepackage[margin=1in]{geometry}`,
+  String.raw`\usepackage{amsmath,amssymb}`,
+  String.raw`\usepackage{graphicx}`,
+  String.raw`\usepackage{hyperref}`,
+  String.raw`\setlength{\parskip}{0.5em}`,
+  String.raw`\setlength{\parindent}{0pt}`,
 ].join("\n");
 
 export const SECTION_CMD: Record<1 | 2 | 3, string> = {
-  1: "\\section",
-  2: "\\subsection",
-  3: "\\subsubsection",
+  1: String.raw`\section`,
+  2: String.raw`\subsection`,
+  3: String.raw`\subsubsection`,
 };
 
 export function figureBlock(name: string): string {
   return [
-    "\\begin{figure}[htbp]",
-    "  \\centering",
-    `  \\includegraphics[width=\\linewidth]{assets/${name}}`,
-    "\\end{figure}",
+    String.raw`\begin{figure}[htbp]`,
+    String.raw`  \centering`,
+    String.raw`  \includegraphics[width=\linewidth]{assets/${name}}`,
+    String.raw`\end{figure}`,
   ].join("\n");
 }

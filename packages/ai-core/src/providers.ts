@@ -221,7 +221,7 @@ export function pickActiveProvider(cfg: AIConfigLike): {
   credential: string;
 } {
   const saved = cfg.ai_provider || "openai";
-  const keys = { ...(cfg.ai_keys ?? {}) };
+  const keys = { ...cfg.ai_keys };
   if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
   // A custom provider with keyOptional is "configured" just by existing, even
   // before any key/host value has been typed (e.g. an unauthenticated local
@@ -229,11 +229,11 @@ export function pickActiveProvider(cfg: AIConfigLike): {
   const keyOptionalIds = (cfg.ai_custom_providers ?? [])
     .filter((c) => c.keyOptional)
     .map((c) => c.id);
-  const configured = [...new Set([...Object.keys(keys), ...keyOptionalIds])].filter(
+  const configured = [...new Set([...Object.keys(keys), ...keyOptionalIds])].find(
     (k) => (keys[k] ?? "").trim() || keyOptionalIds.includes(k)
   );
   const providerId =
-    (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved) ? saved : configured[0] ?? saved;
+    (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved) ? saved : configured ?? saved;
   const credential = keys[providerId] ?? "";
   const modelId =
     providerId === saved && cfg.ai_model ? cfg.ai_model : defaultModel(providerId);

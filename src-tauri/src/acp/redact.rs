@@ -10,35 +10,8 @@ impl Redactor {
             .filter(|(name, value)| sensitive_key(name) && value.len() >= 6)
             .map(|(_, value)| value)
             .collect();
-        fn collect(value: &Value, secrets: &mut Vec<String>) {
-            match value {
-                Value::Object(map) => {
-                    for (name, value) in map {
-                        if sensitive_key(name) || name == "value" {
-                            if let Some(text) = value.as_str() {
-                                if text.len() >= 6 {
-                                    secrets.push(text.into());
-                                    if text.get(..7).is_some_and(|prefix| {
-                                        prefix.eq_ignore_ascii_case("Bearer ")
-                                    }) {
-                                        secrets.push(text[7..].into());
-                                    }
-                                }
-                            }
-                        }
-                        collect(value, secrets);
-                    }
-                }
-                Value::Array(values) => {
-                    for value in values {
-                        collect(value, secrets);
-                    }
-                }
-                _ => {}
-            }
-        }
         for value in extra {
-            collect(value, &mut secrets);
+            collect_secrets(value, &mut secrets);
         }
         secrets.sort_by_key(|value| std::cmp::Reverse(value.len()));
         secrets.dedup();
@@ -160,6 +133,40 @@ impl Redactor {
             ),
             other => other.clone(),
         }
+    }
+}
+
+fn push_secret(text: &str, secrets: &mut Vec<String>) {
+    if text.len() < 6 {
+        return;
+    }
+    secrets.push(text.into());
+    if text
+        .get(..7)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("Bearer "))
+    {
+        secrets.push(text[7..].into());
+    }
+}
+
+fn collect_secrets(value: &Value, secrets: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            for (name, value) in map {
+                if sensitive_key(name) || name == "value" {
+                    if let Some(text) = value.as_str() {
+                        push_secret(text, secrets);
+                    }
+                }
+                collect_secrets(value, secrets);
+            }
+        }
+        Value::Array(values) => {
+            for value in values {
+                collect_secrets(value, secrets);
+            }
+        }
+        _ => {}
     }
 }
 

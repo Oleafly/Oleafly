@@ -55,7 +55,7 @@ const ANY_ENVIRONMENT = /\\(begin|end)\{([^{}]+)\}/g;
 const ITEM_LINE = /^(\s*)\\item(?![a-zA-Z])/;
 
 /** A line that is exactly an empty item: `\item` or `\item `. */
-const EMPTY_ITEM_LINE = /^\s*\\item(?![a-zA-Z])\s*(?:\[\s*\])?\s*$/;
+const EMPTY_ITEM_LINE = /^\s*\\item(?![a-zA-Z])(?:\s*\[\s*\]\s*|\s*)$/;
 
 const ITEM_MARKER = /^(\s*)(\\item(?![a-zA-Z])(\s*\[[^\]]*\])?)/;
 
@@ -98,33 +98,47 @@ function listScanStart(state: EditorState, upTo: number): number {
   return line.from === limit ? limit : Math.min(upTo, line.to + 1);
 }
 
+/** Drops the innermost matching entry and everything opened after it. */
+function truncateToMatch<T>(stack: T[], matches: (entry: T) => boolean): void {
+  for (let level = stack.length - 1; level >= 0; level--) {
+    if (matches(stack[level])) {
+      stack.length = level;
+      break;
+    }
+  }
+}
+
+function applyListEdges(
+  stack: ListContext[],
+  lineText: string,
+  indent: string,
+): void {
+  ANY_ENVIRONMENT.lastIndex = 0;
+  for (
+    let m = ANY_ENVIRONMENT.exec(lineText);
+    m;
+    m = ANY_ENVIRONMENT.exec(lineText)
+  ) {
+    const env = m[2].replace(/\*$/, "");
+    if (!LIST_NAMES.has(env)) continue;
+    if (m[1] === "begin") {
+      stack.push({ env, beginIndent: indent, itemIndent: null });
+      continue;
+    }
+    truncateToMatch(stack, (entry) => entry.env === env);
+  }
+}
+
 function listContexts(state: EditorState, upTo: number): ListContext[] {
   const from = listScanStart(state, upTo);
   const text = latexMaskedSlice(state, from, upTo);
   const stack: ListContext[] = [];
   for (const lineText of text.split("\n")) {
     const indent = leadingWhitespace(lineText);
-    ANY_ENVIRONMENT.lastIndex = 0;
-    for (
-      let m = ANY_ENVIRONMENT.exec(lineText);
-      m;
-      m = ANY_ENVIRONMENT.exec(lineText)
-    ) {
-      const env = m[2].replace(/\*$/, "");
-      if (!LIST_NAMES.has(env)) continue;
-      if (m[1] === "begin") {
-        stack.push({ env, beginIndent: indent, itemIndent: null });
-        continue;
-      }
-      for (let level = stack.length - 1; level >= 0; level--) {
-        if (stack[level].env === env) {
-          stack.length = level;
-          break;
-        }
-      }
-    }
-    if (stack.length > 0 && ITEM_LINE.test(lineText)) {
-      stack[stack.length - 1].itemIndent = indent;
+    applyListEdges(stack, lineText, indent);
+    const innermost = stack.at(-1);
+    if (innermost && ITEM_LINE.test(lineText)) {
+      innermost.itemIndent = indent;
     }
   }
   return stack;
@@ -140,8 +154,8 @@ function indentLike(state: EditorState, whitespace: string): string {
 
 function itemMarker(env: string): { text: string; caret: number } {
   return env === "description"
-    ? { text: "\\item[] ", caret: "\\item[".length }
-    : { text: "\\item ", caret: "\\item ".length };
+    ? { text: String.raw`\item[] `, caret: String.raw`\item[`.length }
+    : { text: String.raw`\item `, caret: String.raw`\item `.length };
 }
 
 function lineWindow(state: EditorState, line: Line): string {
@@ -181,11 +195,10 @@ function planEmptyItem(
   text: string,
   contexts: ListContext[],
 ): ContinuationPlan {
-  const inner = contexts[contexts.length - 1];
-  const outer = contexts[contexts.length - 2];
-  const closing = outer
-    ? closerBelowBlankLines(state, line, inner.env)
-    : null;
+  const inner = contexts.at(-1);
+  const outer = contexts.at(-2);
+  const closing =
+    inner && outer ? closerBelowBlankLines(state, line, inner.env) : null;
   if (outer && closing) {
     const indent = indentLike(
       state,
@@ -227,7 +240,7 @@ function planItemContinuation(
   if (pos === line.from) return null;
   if (inLatexIgnoredRegion(state, pos)) return null;
   const contexts = listContexts(state, line.from);
-  const context = contexts[contexts.length - 1];
+  const context = contexts.at(-1);
   if (!context) return null;
 
   const text = lineWindow(state, line);
@@ -267,7 +280,7 @@ export function continueListOnEnter(state: EditorState): TransactionSpec | null 
   const plans = state.selection.ranges.map((range) =>
     planItemContinuation(state, range.head),
   );
-  if (plans.some((plan) => plan === null)) return null;
+  if (plans.includes(null)) return null;
 
   let index = 0;
   return {
@@ -303,7 +316,7 @@ export function deleteItemMarkupBackward(view: EditorView): boolean {
       insert: " ".repeat(head[2].length),
     };
   });
-  if (plans.some((plan) => plan === null)) return false;
+  if (plans.includes(null)) return false;
 
   let index = 0;
   view.dispatch({
@@ -342,16 +355,12 @@ export function closeEnvironmentAtCursor(state: EditorState): TransactionSpec | 
     } else {
       // Close the nearest matching open environment; anything opened after it
       // is treated as implicitly closed. Stray \end entries are ignored.
-      for (let i = stack.length - 1; i >= 0; i--) {
-        if (stack[i].name === m[2]) {
-          stack.length = i;
-          break;
-        }
-      }
+      const name = m[2];
+      truncateToMatch(stack, (entry) => entry.name === name);
     }
   }
 
-  const open = stack[stack.length - 1];
+  const open = stack.at(-1);
   if (!open) return null;
 
   const indent = leadingWhitespace(
@@ -362,12 +371,11 @@ export function closeEnvironmentAtCursor(state: EditorState): TransactionSpec | 
   // Non-empty line: put \end on its own line, indented like its \begin.
   // Empty line: adopt the \begin indent. Whitespace-only line: the existing
   // whitespace already serves as indentation.
+  const emptyLineInsert = line.length === 0 ? `${indent}${closing}` : closing;
   const insert =
     line.length > LINE_WINDOW || lineWindow(state, line).trim().length > 0
       ? `\n${indent}${closing}`
-      : line.length === 0
-        ? `${indent}${closing}`
-        : closing;
+      : emptyLineInsert;
   return {
     changes: { from: head, insert },
     selection: { anchor: head + insert.length },

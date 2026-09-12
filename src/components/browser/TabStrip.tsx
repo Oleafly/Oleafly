@@ -13,7 +13,7 @@ interface TabStripProps {
   onNewTab: () => void;
 }
 
-export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: TabStripProps) {
+export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: Readonly<TabStripProps>) {
   const { t } = useTranslation(["shell"]);
   return (
     <div

@@ -535,15 +535,15 @@ function readBrowserHomePage(raw: string): string {
     return "https://www.google.com/";
   }
 }
-const GRAMMAR_DIALECT_IDS: GrammarDialect[] = [
+const GRAMMAR_DIALECT_IDS = new Set<GrammarDialect>([
   "american",
   "british",
   "australian",
   "canadian",
   "indian",
-];
+]);
 function readGrammarDialect(raw: string): GrammarDialect {
-  return GRAMMAR_DIALECT_IDS.includes(raw as GrammarDialect)
+  return GRAMMAR_DIALECT_IDS.has(raw as GrammarDialect)
     ? (raw as GrammarDialect)
     : "american";
 }
@@ -692,18 +692,18 @@ function readHiddenFilePatterns(raw: string): string[] {
 }
 
 function filePatternRegex(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/gu, "\\$&");
-  return new RegExp(`^${escaped.replace(/\*/gu, ".*").replace(/\?/gu, ".")}$`, "u");
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/gu, String.raw`\$&`);
+  return new RegExp(`^${escaped.replaceAll("*", ".*").replaceAll("?", ".")}$`, "u");
 }
 
 export function fileTreePathIsHidden(
   path: string,
   patterns: readonly string[],
 ): boolean {
-  const normalized = path.replace(/\\/gu, "/").replace(/^\.\//u, "");
+  const normalized = path.replaceAll("\\", "/").replace(/^\.\//u, "");
   const segments = normalized.split("/").filter(Boolean);
   return patterns.some((rawPattern) => {
-    const pattern = rawPattern.trim().replace(/\\/gu, "/");
+    const pattern = rawPattern.trim().replaceAll("\\", "/");
     if (!pattern) return false;
     const candidates = pattern.includes("/") ? [normalized] : segments;
     const expression = filePatternRegex(pattern);

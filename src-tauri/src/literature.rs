@@ -203,7 +203,7 @@ pub async fn literature_arxiv_lookup(arxiv_id: String) -> Result<String, String>
         && id.len() <= 32
         && id
             .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '/'));
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-'..='/'));
     if !valid {
         return Err("invalid arXiv id".to_string());
     }

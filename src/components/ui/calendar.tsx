@@ -8,6 +8,19 @@ export type CalendarProps = DayPickerProps & {
   className?: string;
 };
 
+type CalendarChevronProps = Parameters<
+  NonNullable<NonNullable<DayPickerProps["components"]>["Chevron"]>
+>[0];
+
+function CalendarChevron({
+  orientation,
+  className: chevronClassName,
+  ...rest
+}: CalendarChevronProps) {
+  const Icon = orientation === "left" ? ChevronLeft : ChevronRight;
+  return <Icon className={cn("size-4", chevronClassName)} {...rest} />;
+}
+
 export function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
   return (
     <DayPicker
@@ -52,12 +65,7 @@ export function Calendar({ className, classNames, showOutsideDays = true, ...pro
         hidden: "invisible",
         ...classNames,
       }}
-      components={{
-        Chevron: ({ orientation, className: chevronClassName, ...rest }) => {
-          const Icon = orientation === "left" ? ChevronLeft : ChevronRight;
-          return <Icon className={cn("size-4", chevronClassName)} {...rest} />;
-        },
-      }}
+      components={{ Chevron: CalendarChevron }}
       {...props}
     />
   );

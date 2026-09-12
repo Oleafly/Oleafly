@@ -103,13 +103,13 @@ export function IconBtn({
   children,
   wide,
   "data-tour": dataTour,
-}: {
+}: Readonly<{
   onClick: () => void;
   title: string;
   children: ReactNode;
   wide?: boolean;
   "data-tour"?: string;
-}) {
+}>) {
   return (
     <Tooltip label={title} side="bottom">
       <button
@@ -134,12 +134,12 @@ export function WysiwygModeSwitch({
   onToggle,
   secondLabel,
   "data-tour": dataTour,
-}: {
+}: Readonly<{
   wysiwyg: boolean;
   onToggle: () => void;
   secondLabel?: string;
   "data-tour"?: string;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <div
@@ -178,11 +178,11 @@ export function MenuRow({
   icon,
   label,
   onClick,
-}: {
+}: Readonly<{
   icon: ReactNode;
   label: string;
   onClick: () => void;
-}) {
+}>) {
   return (
     <button
       type="button"
@@ -224,7 +224,7 @@ export function dividerControl(id: string): ToolbarControl {
   };
 }
 
-function HeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
+function HeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
@@ -259,7 +259,7 @@ function HeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
   );
 }
 
-function ListDropdown({ variant }: { variant: "bar" | "menu" }) {
+function ListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
@@ -286,7 +286,7 @@ function ListDropdown({ variant }: { variant: "bar" | "menu" }) {
   );
 }
 
-function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
+function CodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
@@ -339,11 +339,11 @@ export function EditorToolbar({
   wysiwyg,
   onToggleWysiwyg,
   showVisualToggle = true,
-}: {
+}: Readonly<{
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
   showVisualToggle?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   const [visionReady, setVisionReady] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);

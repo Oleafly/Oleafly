@@ -41,7 +41,7 @@ export type AcademicProfileRule = (typeof ACADEMIC_PROFILE_RULES)[number]["rule"
 export const ACADEMIC_DISABLED_RULES: readonly string[] =
   ACADEMIC_PROFILE_RULES.map((entry) => entry.rule);
 
-export const LINT_RULE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
+export const LINT_RULE_NAME_PATTERN = /^[A-Za-z]\w{0,63}$/u;
 
 export function isLintRuleName(value: unknown): value is string {
   return typeof value === "string" && LINT_RULE_NAME_PATTERN.test(value);

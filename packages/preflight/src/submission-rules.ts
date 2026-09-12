@@ -1,5 +1,10 @@
 import { maskComments } from "./mask";
-import { extractDocumentClass, submissionProfile, type SubmissionProfileId } from "./profiles";
+import {
+  extractDocumentClass,
+  submissionProfile,
+  type SubmissionProfile,
+  type SubmissionProfileId,
+} from "./profiles";
 import { message, type MessageRef } from "./messages";
 import type { Finding, PdfFacts, ProjectContext, ProjectFile } from "./types";
 
@@ -23,7 +28,7 @@ function directory(path: string): string {
 
 function normalize(path: string): string {
   const parts: string[] = [];
-  for (const part of path.replace(/\\/g, "/").split("/")) {
+  for (const part of path.replaceAll("\\", "/").split("/")) {
     if (!part || part === ".") continue;
     if (part === "..") parts.pop();
     else parts.push(part);
@@ -122,7 +127,7 @@ function checkProjectReferences(project: ProjectContext, profileId: SubmissionPr
   };
 
   for (const file of sourceFiles(project)) {
-    inspect(file, /\\includegraphics\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/, GRAPHICS_EXTENSIONS, "Figure");
+    inspect(file, /\\includegraphics\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/, GRAPHICS_EXTENSIONS, "Figure");
     inspect(file, /\\(?:input|include)\s*\{([^}]*)\}/, INPUT_EXTENSIONS, "Include");
   }
   return out;
@@ -171,56 +176,114 @@ function checkFiguresAndTables(project: ProjectContext): Finding[] {
   return out;
 }
 
-function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonymousReview: boolean): Finding[] {
-  const out: Finding[] = [];
+const SECRET_PATTERNS = [
+  /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/,
+  /\bgh[pousr]_[A-Za-z0-9]{20,}\b/,
+  /\bAKIA[0-9A-Z]{16}\b/,
+  /-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----/,
+];
 
-  for (const file of project.files) {
-    if (isSensitiveFile(file.path)) {
-      out.push(
-        make(
-          "privacy-sensitive-file",
-          "privacy",
-          "error",
-          message("rules.privacy-sensitive-file.title", { file: file.path }),
-          message("rules.privacy-sensitive-file.detail"),
-          file.path,
-        ),
-      );
-    }
-    const content = file.content ?? "";
-    if (!content) continue;
-    const secretPatterns = [
-      /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/,
-      /\bgh[pousr]_[A-Za-z0-9]{20,}\b/,
-      /\bAKIA[0-9A-Z]{16}\b/,
-      /-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----/,
-    ];
-    if (secretPatterns.some((pattern) => pattern.test(content))) {
-      out.push(
-        make(
-          "privacy-credential",
-          "privacy",
-          "error",
-          message("rules.privacy-credential.title", { file: file.path }),
-          message("rules.privacy-credential.detail"),
-          file.path,
-        ),
-      );
-    }
-    if (/^\s*%.*\b(?:TODO|FIXME|CONFIDENTIAL|INTERNAL ONLY|DO NOT DISTRIBUTE)\b/im.test(content)) {
-      out.push(
-        make(
-          "privacy-internal-comment",
-          "privacy",
-          "warning",
-          message("rules.privacy-internal-comment.title", { file: file.path }),
-          message("rules.privacy-internal-comment.detail"),
-          file.path,
-          "advisory",
-        ),
-      );
-    }
+const INTERNAL_COMMENT_TERMS =
+  /\b(?:TODO|FIXME|CONFIDENTIAL|INTERNAL ONLY|DO NOT DISTRIBUTE)\b/i;
+const SOURCE_LINE_BREAK = /\r\n|[\n\r\u2028\u2029]/u;
+
+function hasInternalComment(content: string): boolean {
+  for (const line of content.split(SOURCE_LINE_BREAK)) {
+    const start = line.search(/\S/u);
+    if (start === -1 || line[start] !== "%") continue;
+    if (INTERNAL_COMMENT_TERMS.test(line)) return true;
   }
+  return false;
+}
+
+function filePrivacyFindings(file: ProjectContext["files"][number]): Finding[] {
+  const out: Finding[] = [];
+  if (isSensitiveFile(file.path)) {
+    out.push(
+      make(
+        "privacy-sensitive-file",
+        "privacy",
+        "error",
+        message("rules.privacy-sensitive-file.title", { file: file.path }),
+        message("rules.privacy-sensitive-file.detail"),
+        file.path,
+      ),
+    );
+  }
+  const content = file.content ?? "";
+  if (!content) return out;
+  if (SECRET_PATTERNS.some((pattern) => pattern.test(content))) {
+    out.push(
+      make(
+        "privacy-credential",
+        "privacy",
+        "error",
+        message("rules.privacy-credential.title", { file: file.path }),
+        message("rules.privacy-credential.detail"),
+        file.path,
+      ),
+    );
+  }
+  if (hasInternalComment(content)) {
+    out.push(
+      make(
+        "privacy-internal-comment",
+        "privacy",
+        "warning",
+        message("rules.privacy-internal-comment.title", { file: file.path }),
+        message("rules.privacy-internal-comment.detail"),
+        file.path,
+        "advisory",
+      ),
+    );
+  }
+  return out;
+}
+
+function blindReviewFindings(source: string, pdf: PdfFacts | undefined): Finding[] {
+  const out: Finding[] = [];
+  const authorSource = /\\(?:author|IEEEauthorblockN|affiliation|address|email|thanks)\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/gi;
+  const identifying = [...source.matchAll(authorSource)].some((match) => !/anonymous|omitted|blind review/i.test(match[1]));
+  if (identifying) {
+    out.push(
+      make(
+        "privacy-blind-author",
+        "privacy",
+        "error",
+        message("rules.privacy-blind-author.title"),
+        message("rules.privacy-blind-author.detail"),
+      ),
+    );
+  }
+  if (/\\(?:section\*?|begin)\s*\{?acknowledg/i.test(source)) {
+    out.push(
+      make(
+        "privacy-blind-acknowledgements",
+        "privacy",
+        "warning",
+        message("rules.privacy-blind-acknowledgements.title"),
+        message("rules.privacy-blind-acknowledgements.detail"),
+        undefined,
+        "advisory",
+      ),
+    );
+  }
+  if (pdf?.author && !/anonymous|omitted|blind review/i.test(pdf.author)) {
+    out.push(
+      make(
+        "privacy-pdf-author",
+        "privacy",
+        "error",
+        message("rules.privacy-pdf-author.title"),
+        message("rules.privacy-pdf-author.detail", { author: pdf.author }),
+      ),
+    );
+  }
+  return out;
+}
+
+function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonymousReview: boolean): Finding[] {
+  const out: Finding[] = project.files.flatMap(filePrivacyFindings);
 
   const source = sourceCorpus(project);
   const draftArtifact = /\\usepackage(?:\[[^\]]*\])?\{(?:draftwatermark|todonotes|showkeys|changes)\}|\\todo\s*\{|\\documentclass\s*\[[^\]]*\bdraft\b/i.exec(source);
@@ -239,43 +302,7 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
   }
 
   if (anonymousReview) {
-    const authorSource = /\\(?:author|IEEEauthorblockN|affiliation|address|email|thanks)\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/gi;
-    const identifying = [...source.matchAll(authorSource)].find((match) => !/anonymous|omitted|blind review/i.test(match[1]));
-    if (identifying) {
-      out.push(
-        make(
-          "privacy-blind-author",
-          "privacy",
-          "error",
-          message("rules.privacy-blind-author.title"),
-          message("rules.privacy-blind-author.detail"),
-        ),
-      );
-    }
-    if (/\\(?:section\*?|begin)\s*\{?acknowledg/i.test(source)) {
-      out.push(
-        make(
-          "privacy-blind-acknowledgements",
-          "privacy",
-          "warning",
-          message("rules.privacy-blind-acknowledgements.title"),
-          message("rules.privacy-blind-acknowledgements.detail"),
-          undefined,
-          "advisory",
-        ),
-      );
-    }
-    if (pdf?.author && !/anonymous|omitted|blind review/i.test(pdf.author)) {
-      out.push(
-        make(
-          "privacy-pdf-author",
-          "privacy",
-          "error",
-          message("rules.privacy-pdf-author.title"),
-          message("rules.privacy-pdf-author.detail", { author: pdf.author }),
-        ),
-      );
-    }
+    out.push(...blindReviewFindings(source, pdf));
   }
   return out;
 }
@@ -287,33 +314,27 @@ export interface SubmissionRuleInput {
   anonymousReview?: boolean;
 }
 
-export function runSubmissionRules({
-  project,
-  profileId,
-  pdf,
-  anonymousReview = false,
-}: SubmissionRuleInput): Finding[] {
-  const profile = submissionProfile(profileId);
-  const source = sourceCorpus(project);
+function portableNameFindings(project: ProjectContext): Finding[] {
   const out: Finding[] = [];
-
-  if (profile.source.portableFileNames) {
-    for (const file of project.files) {
-      if (!PORTABLE_NAME.test(file.path)) {
-        out.push(
-          make(
-            "submission-nonportable-filename",
-            "submission",
-            "error",
-            message("rules.submission-nonportable-filename.title", { file: file.path }),
-            message("rules.submission-nonportable-filename.detail"),
-            file.path,
-          ),
-        );
-      }
+  for (const file of project.files) {
+    if (!PORTABLE_NAME.test(file.path)) {
+      out.push(
+        make(
+          "submission-nonportable-filename",
+          "submission",
+          "error",
+          message("rules.submission-nonportable-filename.title", { file: file.path }),
+          message("rules.submission-nonportable-filename.detail"),
+          file.path,
+        ),
+      );
     }
   }
+  return out;
+}
 
+function sourceHygieneFindings(project: ProjectContext): Finding[] {
+  const out: Finding[] = [];
   for (const file of sourceFiles(project)) {
     const content = maskComments(file.content ?? "");
     if (/(?:^|[={\s])(?:\/[A-Za-z0-9._-]+){2,}|[A-Za-z]:\\[^\s}\]]+/m.test(content)) {
@@ -342,7 +363,11 @@ export function runSubmissionRules({
       );
     }
   }
+  return out;
+}
 
+function generatedFileFindings(project: ProjectContext): Finding[] {
+  const out: Finding[] = [];
   for (const file of project.files) {
     if (GENERATED_FILE.test(file.path)) {
       out.push(
@@ -358,27 +383,34 @@ export function runSubmissionRules({
       );
     }
   }
+  return out;
+}
 
+function documentClassFinding(source: string, profile: SubmissionProfile): Finding | null {
   const dc = documentClass(source);
   const recommended = profile.source.recommendedDocumentClasses;
-  if (recommended && (!dc || !recommended.some((name) => name.toLowerCase() === dc.toLowerCase()))) {
-    out.push(
-      make(
-        "submission-document-class",
-        "submission",
-        "error",
-        message("rules.submission-document-class.title", { profile: profile.label }),
-        dc
-          ? message("rules.submission-document-class.detail", {
-              expected: recommended.join(" or "),
-              actual: dc,
-            })
-          : message("rules.submission-document-class.detailNoClass", {
-              expected: recommended.join(" or "),
-            }),
-      ),
-    );
-  }
+  if (!recommended) return null;
+  if (dc && recommended.some((name) => name.toLowerCase() === dc.toLowerCase())) return null;
+  return make(
+    "submission-document-class",
+    "submission",
+    "error",
+    message("rules.submission-document-class.title", { profile: profile.label }),
+    dc
+      ? message("rules.submission-document-class.detail", {
+          expected: recommended.join(" or "),
+          actual: dc,
+        })
+      : message("rules.submission-document-class.detailNoClass", {
+          expected: recommended.join(" or "),
+        }),
+  );
+}
+
+function documentStructureFindings(source: string, profile: SubmissionProfile): Finding[] {
+  const out: Finding[] = [];
+  const classFinding = documentClassFinding(source, profile);
+  if (classFinding) out.push(classFinding);
   if (profile.source.requireAbstract && !/\\begin\{abstract\}[\s\S]*?\\end\{abstract\}/i.test(source)) {
     out.push(
       make(
@@ -405,31 +437,55 @@ export function runSubmissionRules({
       ),
     );
   }
+  return out;
+}
 
-  const allowedFigures = profile.source.allowedFigureExtensions;
-  if (allowedFigures) {
-    for (const file of sourceFiles(project)) {
-      const content = maskComments(file.content ?? "");
-      for (const match of content.matchAll(/\\includegraphics\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g)) {
-        const ext = extension(match[1].trim());
-        if (ext && !allowedFigures.includes(ext)) {
-          out.push(
-            make(
-              "submission-figure-format",
-              "submission",
-              "error",
-              message("rules.submission-figure-format.title", { file: match[1].trim() }),
-              message("rules.submission-figure-format.detail", {
-                profile: profile.label,
-                formats: allowedFigures.join(", "),
-              }),
-              file.path,
-            ),
-          );
-        }
+function figureFormatFindings(
+  project: ProjectContext,
+  profile: SubmissionProfile,
+  allowedFigures: readonly string[],
+): Finding[] {
+  const out: Finding[] = [];
+  for (const file of sourceFiles(project)) {
+    const content = maskComments(file.content ?? "");
+    for (const match of content.matchAll(/\\includegraphics\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g)) {
+      const ext = extension(match[1].trim());
+      if (ext && !allowedFigures.includes(ext)) {
+        out.push(
+          make(
+            "submission-figure-format",
+            "submission",
+            "error",
+            message("rules.submission-figure-format.title", { file: match[1].trim() }),
+            message("rules.submission-figure-format.detail", {
+              profile: profile.label,
+              formats: allowedFigures.join(", "),
+            }),
+            file.path,
+          ),
+        );
       }
     }
   }
+  return out;
+}
+
+export function runSubmissionRules({
+  project,
+  profileId,
+  pdf,
+  anonymousReview = false,
+}: SubmissionRuleInput): Finding[] {
+  const profile = submissionProfile(profileId);
+  const source = sourceCorpus(project);
+  const allowedFigures = profile.source.allowedFigureExtensions;
+  const out: Finding[] = [
+    ...(profile.source.portableFileNames ? portableNameFindings(project) : []),
+    ...sourceHygieneFindings(project),
+    ...generatedFileFindings(project),
+    ...documentStructureFindings(source, profile),
+    ...(allowedFigures ? figureFormatFindings(project, profile, allowedFigures) : []),
+  ];
 
   if (/\b(?:TODO|TBD|FIXME|Lorem ipsum)\b|\?\?+/i.test(source)) {
     out.push(
@@ -536,8 +592,10 @@ export function runSubmissionRules({
     }
   }
 
-  out.push(...checkProjectReferences(project, profileId));
-  out.push(...checkFiguresAndTables(project));
-  out.push(...checkPrivacy(project, pdf, anonymousReview));
+  out.push(
+    ...checkProjectReferences(project, profileId),
+    ...checkFiguresAndTables(project),
+    ...checkPrivacy(project, pdf, anonymousReview),
+  );
   return out;
 }

@@ -170,7 +170,7 @@ describe("AssistantHome", () => {
       expect(slider).toHaveAttribute("data-marquee", "paused");
       expect(cancel).toHaveBeenCalled();
       const scheduled = frames.length;
-      expect(frames.length).toBe(scheduled);
+      expect(frames).toHaveLength(scheduled);
 
       fireEvent.mouseLeave(slider);
       expect(slider).toHaveAttribute("data-marquee", "running");

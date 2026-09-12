@@ -16,7 +16,7 @@ export function buildStandaloneDoc(opts: {
     return true;
   });
   const libs = [...new Set((opts.libraries ?? []).map((l) => l.trim()).filter(Boolean))];
-  const usepackages = uniquePackages.map((p) => `\\usepackage{${p}}`).join("\n");
+  const usepackages = uniquePackages.map((p) => String.raw`\usepackage{${p}}`).join("\n");
   const uselibs = libs.length ? `\\usetikzlibrary{${libs.join(",")}}\n` : "";
   // A page background fills the whole cropped image (border included) via
   // \pagecolor; xcolor is required and provided by \usepackage{xcolor}.
@@ -43,14 +43,21 @@ export function normalizeFigureCode(code: string): string {
   return `\\begin{tikzpicture}\n${trimmed}\n\\end{tikzpicture}`;
 }
 
+function trimDashes(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === "-") {
+    start++;
+  }
+  while (end > start && value[end - 1] === "-") {
+    end--;
+  }
+  return value.slice(start, end);
+}
+
 export function slugifyFigureName(prompt: string): string {
-  const slug = prompt
-    .slice(0, 200)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48)
-    .replace(/-+$/g, "");
+  const collapsed = prompt.slice(0, 200).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const slug = trimDashes(trimDashes(collapsed).slice(0, 48));
   return slug || "figure";
 }
 
@@ -59,7 +66,7 @@ export function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
   for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    binary += String.fromCodePoint(...bytes.subarray(i, i + chunk));
   }
   return btoa(binary);
 }

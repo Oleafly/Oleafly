@@ -184,7 +184,5 @@ test("Appearance exposes scrollable dock tabs, search icons, and live terminal s
   await expect(tauriPage.locator(BROWSER)).not.toBeVisible();
 });
 
-test.skip(
-  "native browser page text and branding cannot be inspected through the app bridge",
-  async () => {},
-);
+// Native browser page text and branding cannot be inspected through the app bridge, so there is no
+// automated case for them here.

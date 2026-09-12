@@ -483,20 +483,7 @@ impl RemoteTransport {
             }
         }
         if modern {
-            request = request.header("Mcp-Method", method.clone());
-            if let Some(name) = modern_request_name(&message, &method)? {
-                request = request.header("Mcp-Name", encode_modern_header_value(name)?);
-            }
-            for (name, value) in additional_headers {
-                if !name.to_ascii_lowercase().starts_with("mcp-param-") {
-                    return Err(protocol_error("an internal MCP request header was invalid"));
-                }
-                let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
-                    .map_err(|_| protocol_error("an MCP parameter header name was invalid"))?;
-                let value = reqwest::header::HeaderValue::from_str(&value)
-                    .map_err(|_| protocol_error("an MCP parameter header value was invalid"))?;
-                request = request.header(name, value);
-            }
+            request = apply_modern_headers(request, &message, &method, additional_headers)?;
         }
         let response = request
             .json(&message)
@@ -510,22 +497,7 @@ impl RemoteTransport {
             });
         }
         if !response.status().is_success() {
-            let status = response.status().as_u16();
-            let mut body = Vec::new();
-            let mut stream = response.bytes_stream();
-            while let Some(chunk) = stream.next().await {
-                let chunk =
-                    chunk.map_err(|error| classify_remote_error(error, &self.timeout_error))?;
-                if body.len().saturating_add(chunk.len()) > MAX_REMOTE_RESPONSE_BYTES {
-                    return Err(protocol_error("server response exceeded the 2 MiB limit"));
-                }
-                body.extend_from_slice(&chunk);
-            }
-            return Err(McpConnectionError::RemoteStatus {
-                status,
-                method,
-                response: serde_json::from_slice(&body).ok(),
-            });
+            return Err(remote_status_error(response, method, &self.timeout_error).await);
         }
         if expected_id.is_none() && status != reqwest::StatusCode::ACCEPTED {
             return Err(protocol_error(&format!(
@@ -552,27 +524,11 @@ impl RemoteTransport {
                 "{method} returned unsupported content type '{received}'"
             )));
         }
-        let mut body = Vec::new();
         let mut sse = SseDecoder::default();
-        let mut received = 0_usize;
-        let mut stream = response.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|error| classify_remote_error(error, &self.timeout_error))?;
-            received = received.saturating_add(chunk.len());
-            if received > MAX_REMOTE_RESPONSE_BYTES {
-                return Err(protocol_error("server response exceeded the 2 MiB limit"));
-            }
-            if is_sse {
-                if let Some(expected_id) = expected_id {
-                    if let Some(response) = sse.push(&chunk, expected_id)? {
-                        return Ok(Some(response));
-                    }
-                } else {
-                    body.extend_from_slice(&chunk);
-                }
-            } else {
-                body.extend_from_slice(&chunk);
-            }
+        let (early, body) =
+            read_remote_body(response, expected_id, is_sse, &mut sse, &self.timeout_error).await?;
+        if let Some(early) = early {
+            return Ok(Some(early));
         }
         let Some(expected_id) = expected_id else {
             if body.is_empty() {
@@ -646,6 +602,85 @@ impl McpClientTransport for RemoteTransport {
     > {
         Box::pin(self.send_request(message, headers))
     }
+}
+
+fn apply_modern_headers(
+    mut request: reqwest::RequestBuilder,
+    message: &serde_json::Value,
+    method: &str,
+    additional_headers: std::collections::BTreeMap<String, String>,
+) -> Result<reqwest::RequestBuilder, McpConnectionError> {
+    request = request.header("Mcp-Method", method.to_string());
+    if let Some(name) = modern_request_name(message, method)? {
+        request = request.header("Mcp-Name", encode_modern_header_value(name)?);
+    }
+    for (name, value) in additional_headers {
+        if !name.to_ascii_lowercase().starts_with("mcp-param-") {
+            return Err(protocol_error("an internal MCP request header was invalid"));
+        }
+        let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
+            .map_err(|_| protocol_error("an MCP parameter header name was invalid"))?;
+        let value = reqwest::header::HeaderValue::from_str(&value)
+            .map_err(|_| protocol_error("an MCP parameter header value was invalid"))?;
+        request = request.header(name, value);
+    }
+    Ok(request)
+}
+
+async fn remote_status_error(
+    response: reqwest::Response,
+    method: String,
+    timeout_error: &McpConnectionError,
+) -> McpConnectionError {
+    let status = response.status().as_u16();
+    let mut body = Vec::new();
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = match chunk {
+            Ok(chunk) => chunk,
+            Err(error) => return classify_remote_error(error, timeout_error),
+        };
+        if body.len().saturating_add(chunk.len()) > MAX_REMOTE_RESPONSE_BYTES {
+            return protocol_error("server response exceeded the 2 MiB limit");
+        }
+        body.extend_from_slice(&chunk);
+    }
+    McpConnectionError::RemoteStatus {
+        status,
+        method,
+        response: serde_json::from_slice(&body).ok(),
+    }
+}
+
+async fn read_remote_body(
+    response: reqwest::Response,
+    expected_id: Option<u64>,
+    is_sse: bool,
+    sse: &mut SseDecoder,
+    timeout_error: &McpConnectionError,
+) -> Result<(Option<serde_json::Value>, Vec<u8>), McpConnectionError> {
+    let mut body = Vec::new();
+    let mut received = 0_usize;
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| classify_remote_error(error, timeout_error))?;
+        received = received.saturating_add(chunk.len());
+        if received > MAX_REMOTE_RESPONSE_BYTES {
+            return Err(protocol_error("server response exceeded the 2 MiB limit"));
+        }
+        if is_sse {
+            if let Some(expected_id) = expected_id {
+                if let Some(response) = sse.push(&chunk, expected_id)? {
+                    return Ok((Some(response), body));
+                }
+            } else {
+                body.extend_from_slice(&chunk);
+            }
+        } else {
+            body.extend_from_slice(&chunk);
+        }
+    }
+    Ok((None, body))
 }
 
 fn classify_remote_error(

@@ -97,7 +97,7 @@ interface MaskRegion {
 }
 
 function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return s.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 function findEnvEnd(text: string, from: number, env: string): number {
@@ -148,7 +148,7 @@ function collectLatexRegions(text: string): MaskRegion[] {
 
   for (const pattern of [
     /(?:https?:\/\/|www\.)[^\s<>{}\\]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
+    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
   ]) {
     for (const match of text.matchAll(pattern)) {
       if (match.index === undefined) continue;
@@ -243,29 +243,149 @@ function collectLatexRegions(text: string): MaskRegion[] {
     return at === -1 ? n : at;
   };
 
+  const mathCloseAt = (k: number, mode: 1 | 2 | 3 | 4): number | null => {
+    const ch = chars[k];
+    if (ch === "\n") return mode === 1 ? k : null;
+    if (ch === "\\" && (chars[k + 1] === ")" || chars[k + 1] === "]")) {
+      return k + 2;
+    }
+    if (ch === "$") {
+      if (mode === 2 && chars[k + 1] === "$") return k + 2;
+      if (mode === 1) return k + 1;
+    }
+    return null;
+  };
+
   const endOfMath = (start: number, mode: 1 | 2 | 3 | 4): number => {
     let k = start;
     while (k < n) {
-      const ch = chars[k];
-      if (ch === "\n") {
-        if (mode === 1) return k;
+      const close = mathCloseAt(k, mode);
+      if (close !== null) return close;
+      k = chars[k] === "%" ? endOfLine(k) : k + 1;
+    }
+    return n;
+  };
+
+  const verbatimDelimitedEnd = (start: number, delimiter: string): number => {
+    let k = start + 1;
+    while (k < n && chars[k] !== "\n") {
+      if (chars[k] === delimiter && chars[k - 1] !== "\\") {
         k++;
-        continue;
-      }
-      if (ch === "%") {
-        k = endOfLine(k);
-        continue;
-      }
-      if (ch === "\\" && (chars[k + 1] === ")" || chars[k + 1] === "]")) {
-        return k + 2;
-      }
-      if (ch === "$") {
-        if (mode === 2 && chars[k + 1] === "$") return k + 2;
-        if (mode === 1) return k + 1;
+        break;
       }
       k++;
     }
-    return n;
+    return k;
+  };
+
+  const endOfVerbatim = (j: number, name: string): number => {
+    let k = j;
+    if (chars[k] === "*") k++;
+    k = skipInlineSpace(k);
+    if (chars[k] === "[") k = matchGroup(k);
+    k = skipInlineSpace(k);
+    if (name === "mintinline" && chars[k] === "{") {
+      k = matchGroup(k);
+      k = skipInlineSpace(k);
+    }
+    if (chars[k] === "{") return matchGroup(k);
+    const delimiter = chars[k];
+    if (!delimiter || delimiter === "\n") return k;
+    return verbatimDelimitedEnd(k, delimiter);
+  };
+
+  const beginRegion = (start: number, j: number): number => {
+    const s = skipInlineSpace(j);
+    if (chars[s] !== "{") {
+      push(start, j, "block");
+      return j;
+    }
+    const groupEnd = matchGroup(s);
+    const env = text
+      .slice(s + 1, groupEnd - 1)
+      .trim()
+      .replace(/\*$/, "");
+    if (OPAQUE_ENVS.has(env)) {
+      const envEnd = findEnvEnd(text, groupEnd, env);
+      push(start, envEnd, "block");
+      return envEnd;
+    }
+    const args = endOfArgs(j);
+    push(start, args.end, "block", [{ from: start, to: j }, ...args.spans]);
+    return args.end;
+  };
+
+  const namedCommandRegion = (
+    start: number,
+    j: number,
+    name: string,
+  ): number => {
+    if (VERBATIM_CMDS.has(name)) {
+      const k = endOfVerbatim(j, name);
+      push(start, k, "inline");
+      return Math.max(k, j);
+    }
+    if (name === "begin") return beginRegion(start, j);
+    if (name === "end") {
+      const args = endOfArgs(j);
+      push(start, args.end, "block", [{ from: start, to: j }, ...args.spans]);
+      return args.end;
+    }
+    const opaqueArgs = OPAQUE_ARG_CMDS.has(name);
+    if (opaqueArgs || CITE_LIKE.test(name)) {
+      const args = endOfArgs(j);
+      const inline =
+        INLINE_ARG_CMDS.has(name) ||
+        (!opaqueArgs && CITE_LIKE.test(name));
+      push(start, args.end, inline ? "inline" : "block", [
+        { from: start, to: j },
+        ...args.spans,
+      ]);
+      return args.end;
+    }
+    if (FIRST_ARG_OPAQUE_CMDS.has(name)) {
+      const prefix = endOfOpaquePrefix(j, name);
+      push(start, prefix.end, "block", [
+        { from: start, to: j },
+        ...prefix.spans,
+      ]);
+      return prefix.end;
+    }
+    push(start, j, "block");
+    return j;
+  };
+
+  const backslashRegion = (start: number, next: string): number => {
+    if (next === "(" || next === "[") {
+      const stop = endOfMath(start + 2, next === "(" ? 3 : 4);
+      push(start, stop, next === "(" ? "inline" : "block");
+      return stop;
+    }
+    if (next === "\\") {
+      const spans: MaskSpan[] = [{ from: start, to: start + 2 }];
+      let k = skipInlineSpace(start + 2);
+      if (chars[k] === "[") {
+        const end = matchGroup(k);
+        spans.push({ from: k, to: end });
+        k = end;
+      }
+      push(start, k, "block", spans);
+      return k;
+    }
+    if (!/[a-zA-Z@]/.test(next)) {
+      push(start, start + 2, "block");
+      return start + 2;
+    }
+    let j = start + 1;
+    while (j < n && /[a-zA-Z@]/.test(chars[j])) j++;
+    return namedCommandRegion(start, j, text.slice(start + 1, j));
+  };
+
+  const dollarRegion = (start: number, next: string): number => {
+    const mode = next === "$" ? 2 : 1;
+    const stop = endOfMath(start + mode, mode);
+    push(start, stop, mode === 2 ? "block" : "inline");
+    return stop;
   };
 
   let i = 0;
@@ -275,147 +395,20 @@ function collectLatexRegions(text: string): MaskRegion[] {
 
     if (c === "\n") {
       i++;
-      continue;
-    }
-    if (c === "%") {
+    } else if (c === "%") {
       const stop = endOfLine(i);
       push(i, stop, "block");
       i = stop;
-      continue;
-    }
-
-    if (c === "\\") {
-      if (next === "(" || next === "[") {
-        const stop = endOfMath(i + 2, next === "(" ? 3 : 4);
-        push(i, stop, next === "(" ? "inline" : "block");
-        i = stop;
-        continue;
-      }
-      if (next === "\\") {
-        const spans: MaskSpan[] = [{ from: i, to: i + 2 }];
-        let k = skipInlineSpace(i + 2);
-        if (chars[k] === "[") {
-          const end = matchGroup(k);
-          spans.push({ from: k, to: end });
-          k = end;
-        }
-        push(i, k, "block", spans);
-        i = k;
-        continue;
-      }
-      if (!/[a-zA-Z@]/.test(next)) {
-        push(i, i + 2, "block");
-        i += 2;
-        continue;
-      }
-      let j = i + 1;
-      while (j < n && /[a-zA-Z@]/.test(chars[j])) j++;
-      const name = text.slice(i + 1, j);
-
-      if (VERBATIM_CMDS.has(name)) {
-        let k = j;
-        if (chars[k] === "*") k++;
-        k = skipInlineSpace(k);
-        if (chars[k] === "[") k = matchGroup(k);
-        k = skipInlineSpace(k);
-        if (name === "mintinline" && chars[k] === "{") {
-          k = matchGroup(k);
-          k = skipInlineSpace(k);
-        }
-        if (chars[k] === "{") {
-          k = matchGroup(k);
-        } else {
-          const delimiter = chars[k];
-          if (delimiter && delimiter !== "\n") {
-            k++;
-            while (k < n && chars[k] !== "\n") {
-              if (chars[k] === delimiter && chars[k - 1] !== "\\") {
-                k++;
-                break;
-              }
-              k++;
-            }
-          }
-        }
-        push(i, k, "inline");
-        i = Math.max(k, j);
-        continue;
-      }
-
-      if (name === "begin") {
-        const s = skipInlineSpace(j);
-        if (chars[s] === "{") {
-          const groupEnd = matchGroup(s);
-          const env = text
-            .slice(s + 1, groupEnd - 1)
-            .trim()
-            .replace(/\*$/, "");
-          if (OPAQUE_ENVS.has(env)) {
-            const envEnd = findEnvEnd(text, groupEnd, env);
-            push(i, envEnd, "block");
-            i = envEnd;
-            continue;
-          }
-          const args = endOfArgs(j);
-          push(i, args.end, "block", [
-            { from: i, to: j },
-            ...args.spans,
-          ]);
-          i = args.end;
-          continue;
-        }
-        push(i, j, "block");
-        i = j;
-        continue;
-      }
-      if (name === "end") {
-        const args = endOfArgs(j);
-        push(i, args.end, "block", [{ from: i, to: j }, ...args.spans]);
-        i = args.end;
-        continue;
-      }
-
-      const opaqueArgs = OPAQUE_ARG_CMDS.has(name);
-      if (opaqueArgs || CITE_LIKE.test(name)) {
-        const args = endOfArgs(j);
-        const inline =
-          INLINE_ARG_CMDS.has(name) ||
-          (!opaqueArgs && CITE_LIKE.test(name));
-        push(i, args.end, inline ? "inline" : "block", [
-          { from: i, to: j },
-          ...args.spans,
-        ]);
-        i = args.end;
-        continue;
-      }
-      if (FIRST_ARG_OPAQUE_CMDS.has(name)) {
-        const prefix = endOfOpaquePrefix(j, name);
-        push(i, prefix.end, "block", [
-          { from: i, to: j },
-          ...prefix.spans,
-        ]);
-        i = prefix.end;
-        continue;
-      }
-      push(i, j, "block");
-      i = j;
-      continue;
-    }
-
-    if (c === "$") {
-      const mode = next === "$" ? 2 : 1;
-      const stop = endOfMath(i + mode, mode);
-      push(i, stop, mode === 2 ? "block" : "inline");
-      i = stop;
-      continue;
-    }
-
-    if (LATEX_SPECIAL.has(c)) {
+    } else if (c === "\\") {
+      i = backslashRegion(i, next);
+    } else if (c === "$") {
+      i = dollarRegion(i, next);
+    } else if (LATEX_SPECIAL.has(c)) {
       push(i, i + 1, "block");
       i++;
-      continue;
+    } else {
+      i++;
     }
-    i++;
   }
 
   regions.sort((left, right) => left.from - right.from || right.to - left.to);
@@ -447,6 +440,43 @@ export interface ProseMask {
   masked: MaskSpan[];
 }
 
+function blankRegionSpans(
+  out: string[],
+  blanks: readonly MaskSpan[],
+  from: number,
+): void {
+  for (const span of blanks) {
+    const start = Math.max(span.from, from);
+    if (span.to > start) blankInto(out, start, span.to);
+  }
+}
+
+function writeProsePlaceholder(
+  out: string[],
+  text: string,
+  from: number,
+  to: number,
+): void {
+  const span = to - from;
+  const placeholder =
+    span >= PROSE_PLACEHOLDER.length
+      ? PROSE_PLACEHOLDER
+      : PROSE_SHORT_PLACEHOLDER;
+  const before = from > 0 ? text[from - 1] : " ";
+  const after = span === placeholder.length ? (text[to] ?? " ") : " ";
+  if (
+    span < placeholder.length ||
+    /[\p{L}\p{N}]/u.test(before) ||
+    /[\p{L}\p{N}]/u.test(after) ||
+    text.slice(from, from + placeholder.length).includes("\n")
+  ) {
+    return;
+  }
+  for (let k = 0; k < placeholder.length; k++) {
+    out[from + k] = placeholder[k];
+  }
+}
+
 export function maskLatexForProseRegions(text: string): ProseMask {
   const out = text.split("");
   const masked: MaskSpan[] = [];
@@ -457,32 +487,11 @@ export function maskLatexForProseRegions(text: string): ProseMask {
     applied = region.to;
     masked.push({ from, to: region.to });
     if (region.kind === "block") {
-      for (const span of region.blanks) {
-        const start = Math.max(span.from, from);
-        if (span.to > start) blankInto(out, start, span.to);
-      }
+      blankRegionSpans(out, region.blanks, from);
       continue;
     }
-    const span = region.to - from;
     blankInto(out, from, region.to);
-    const placeholder =
-      span >= PROSE_PLACEHOLDER.length
-        ? PROSE_PLACEHOLDER
-        : PROSE_SHORT_PLACEHOLDER;
-    const before = from > 0 ? text[from - 1] : " ";
-    const after =
-      span === placeholder.length ? (text[region.to] ?? " ") : " ";
-    if (
-      span < placeholder.length ||
-      /[\p{L}\p{N}]/u.test(before) ||
-      /[\p{L}\p{N}]/u.test(after) ||
-      text.slice(from, from + placeholder.length).includes("\n")
-    ) {
-      continue;
-    }
-    for (let k = 0; k < placeholder.length; k++) {
-      out[from + k] = placeholder[k];
-    }
+    writeProsePlaceholder(out, text, from, region.to);
   }
   return { prose: out.join(""), masked };
 }

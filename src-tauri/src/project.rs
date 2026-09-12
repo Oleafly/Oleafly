@@ -638,7 +638,7 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<FileEntry>, depth: usize) -> Resu
     let mut items: Vec<_> = entries
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
-    items.sort_by_key(|e| e.file_name());
+    items.sort_by_key(std::fs::DirEntry::file_name);
     for entry in items {
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
@@ -763,7 +763,7 @@ fn bounded_list_walk(
             items.push(entry);
         }
     }
-    items.sort_by_key(|entry| entry.file_name());
+    items.sort_by_key(std::fs::DirEntry::file_name);
     for entry in items {
         if scan_should_stop(cancelled, limits.deadline) || out.entries.len() >= limits.max_results {
             out.truncated = true;
@@ -1081,7 +1081,7 @@ fn mutation_registry() -> &'static Mutex<MutationRegistry> {
 fn lock_unpoisoned<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     mutex
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn project_mutation_coordinator(
@@ -2062,18 +2062,18 @@ fn unique_destination(path: &Path, is_dir: bool) -> Result<PathBuf, String> {
         .ok_or_else(|| "destination has no parent folder".to_string())?;
     let name = path
         .file_name()
-        .and_then(|name| name.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| "destination name is not valid Unicode".to_string())?;
     let (base, extension) = if is_dir {
         (name.to_string(), String::new())
     } else {
         let stem = path
             .file_stem()
-            .and_then(|stem| stem.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or(name);
         let extension = path
             .extension()
-            .and_then(|extension| extension.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .map(|extension| format!(".{extension}"))
             .unwrap_or_default();
         (stem.to_string(), extension)
@@ -2097,18 +2097,18 @@ fn unique_copy_destination(path: &Path, is_dir: bool) -> Result<PathBuf, String>
         .ok_or_else(|| "copy destination has no parent folder".to_string())?;
     let name = path
         .file_name()
-        .and_then(|value| value.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| "copy destination name is not valid Unicode".to_string())?;
     let (base, extension) = if is_dir {
         (name.to_string(), String::new())
     } else {
         let stem = path
             .file_stem()
-            .and_then(|value| value.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or(name);
         let extension = path
             .extension()
-            .and_then(|value| value.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .map(|value| format!(".{value}"))
             .unwrap_or_default();
         (stem.to_string(), extension)
@@ -2886,7 +2886,7 @@ fn project_main_file_is_usable(project_id: &str, main_doc: &str) -> bool {
 fn main_document_family(path: &str) -> u8 {
     match Path::new(path)
         .extension()
-        .and_then(|extension| extension.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .map(str::to_ascii_lowercase)
         .as_deref()
     {
@@ -3293,7 +3293,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
                 path: export.path.clone(),
                 format: Path::new(&export.filename)
                     .extension()
-                    .and_then(|extension| extension.to_str())
+                    .and_then(std::ffi::OsStr::to_str)
                     .unwrap_or_default()
                     .to_ascii_lowercase(),
             })
@@ -3602,7 +3602,7 @@ pub fn create_project_from_pdf_conversion(
                 && !figure.name.contains('\\')
                 && figure.name != "."
                 && figure.name != ".."
-                && figure_path.file_name().and_then(|value| value.to_str())
+                && figure_path.file_name().and_then(std::ffi::OsStr::to_str)
                     == Some(figure.name.as_str());
             if !portable_name {
                 return Err(format!("invalid imported figure name: {}", figure.name));
@@ -4559,7 +4559,7 @@ fn record_pdf_export(project_id: String, dest: String) -> Result<(), String> {
         let mut meta = read_meta(&project_id)?;
         let filename = Path::new(&dest)
             .file_name()
-            .and_then(|s| s.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or("export.pdf")
             .to_string();
         let date = std::time::SystemTime::now()
@@ -4753,7 +4753,7 @@ pub async fn export_document(
         let mut meta = read_meta(&project_id)?;
         let filename = Path::new(&dest)
             .file_name()
-            .and_then(|s| s.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or(dest.as_str())
             .to_string();
         let date = std::time::SystemTime::now()
@@ -4813,7 +4813,7 @@ fn validate_conversion_export(
     };
     if !Path::new(dest)
         .extension()
-        .and_then(|value| value.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .map(|value| value.eq_ignore_ascii_case(extension))
         .unwrap_or(false)
     {
@@ -4961,12 +4961,12 @@ pub async fn import_document(path: String, target: Option<String>) -> Result<Str
     }
     let extension = source
         .extension()
-        .and_then(|value| value.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()
         .to_ascii_lowercase();
     let name = source
         .file_stem()
-        .and_then(|value| value.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .filter(|value| !value.trim().is_empty())
         .unwrap_or("Imported document")
         .to_string();
@@ -5444,7 +5444,7 @@ fn bounded_search_walk(
             items.push(entry);
         }
     }
-    items.sort_by_key(|entry| entry.file_name());
+    items.sort_by_key(std::fs::DirEntry::file_name);
 
     for entry in items {
         if scan_should_stop(cancelled, limits.deadline) || out.hits.len() >= limits.max_results {
@@ -5901,7 +5901,7 @@ fn unique_import_dest(
     let available = |candidate: &Path, reserved: &HashSet<String>| -> Result<bool, String> {
         let key = candidate
             .file_name()
-            .and_then(|value| value.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .ok_or_else(|| "import destination name is not valid Unicode".to_string())?
             .to_lowercase();
         Ok(!reserved.contains(&key) && portable_collision(candidate)?.is_none())
@@ -5920,7 +5920,7 @@ fn unique_import_dest(
         if available(&candidate, reserved)? {
             let key = candidate
                 .file_name()
-                .and_then(|value| value.to_str())
+                .and_then(std::ffi::OsStr::to_str)
                 .ok_or_else(|| "import destination name is not valid Unicode".to_string())?
                 .to_lowercase();
             reserved.insert(key);
@@ -5981,7 +5981,7 @@ where
         }
         let name = source
             .file_name()
-            .and_then(|value| value.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .ok_or_else(|| format!("invalid source path: {}", source.display()))?;
         let destination = unique_import_dest(dest_parent, name, &mut reserved)?;
         let destination_rel = rel_slash(project_root, &destination);

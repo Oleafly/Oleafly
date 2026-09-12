@@ -12,8 +12,8 @@ export interface ComposerTokenSources {
   paths?: Iterable<string>;
 }
 
-const TRAILING_PUNCTUATION = /[.,;:!?)\]}'"]+$/u;
-const TRAILING_SLASHES = /\/+$/u;
+const TRAILING_PUNCTUATION = /(?<![.,;:!?)\]}'"])[.,;:!?)\]}'"]+$/u;
+const TRAILING_SLASHES = /(?<!\/)\/+$/u;
 const WHITESPACE = /\s/u;
 const MENTION_LOOKBACK = 256;
 
@@ -63,7 +63,7 @@ function mentionAt(
     if (!value || !known.has(value)) return null;
     return { end: close + 1, value };
   }
-  const raw = text.slice(index + 1).match(/^\S+/u)?.[0] ?? "";
+  const raw = /^\S+/u.exec(text.slice(index + 1))?.[0] ?? "";
   if (!raw) return null;
   for (const candidate of [raw, raw.replace(TRAILING_PUNCTUATION, "")]) {
     const value = normalizeMentionPath(candidate);
@@ -100,10 +100,16 @@ export function tokenizeComposer(
     index = skill.end;
   }
   if (known.size > 0) {
-    for (; index < text.length; index += 1) {
-      if (text.charAt(index) !== "@") continue;
+    while (index < text.length) {
+      if (text.charAt(index) !== "@") {
+        index += 1;
+        continue;
+      }
       const mention = mentionAt(text, index, known);
-      if (!mention) continue;
+      if (!mention) {
+        index += 1;
+        continue;
+      }
       pushText(index);
       tokens.push({
         kind: "mention",
@@ -112,7 +118,7 @@ export function tokenizeComposer(
         value: mention.value,
       });
       plainStart = mention.end;
-      index = mention.end - 1;
+      index = mention.end;
     }
   }
   pushText(text.length);
@@ -160,6 +166,6 @@ export function mentionTokenEnd(text: string, start: number): number {
     if (close >= 0) return close + 1;
     return text.length;
   }
-  const raw = text.slice(start + 1).match(/^\S*/u)?.[0] ?? "";
+  const raw = /^\S*/u.exec(text.slice(start + 1))?.[0] ?? "";
   return start + 1 + raw.length;
 }

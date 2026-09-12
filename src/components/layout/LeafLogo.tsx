@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export function LeafLogo({ className }: { className?: string }) {
+export function LeafLogo({ className }: Readonly<{ className?: string }>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

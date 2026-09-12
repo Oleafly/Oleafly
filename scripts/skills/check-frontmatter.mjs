@@ -58,7 +58,8 @@ async function shelfArchives(assetsRoot) {
 }
 
 function byCodeUnit(left, right) {
-  return left < right ? -1 : left > right ? 1 : 0;
+  if (left < right) return -1;
+  return left > right ? 1 : 0;
 }
 
 function pickSample(archives, size) {
@@ -117,7 +118,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   console.error(error.message ?? error);
   process.exit(1);
-});
+}

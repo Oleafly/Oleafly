@@ -127,6 +127,25 @@ function suggestionLabel(
     : i18n.t(($) => $.editor.visual.suggestionReplace);
 }
 
+function suggestionIcon(
+  kind: VisualProofreadingIssue["suggestions"][number]["kind"],
+) {
+  if (kind === 1) return Trash2;
+  if (kind === 2) return Plus;
+  return Check;
+}
+
+function nextActionIndex(
+  key: string,
+  current: number,
+  count: number,
+): number {
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  if (key === "ArrowDown") return (Math.max(current, -1) + 1) % count;
+  return (current <= 0 ? count : current) - 1;
+}
+
 function VisualProofreadingPopover({
   editor,
   issue,
@@ -139,7 +158,7 @@ function VisualProofreadingPopover({
   onNavigate: (issue: VisualProofreadingIssue) => void;
 }) {
   const { t } = useTranslation(["common", "editor"]);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDialogElement>(null);
   const [position, setPosition] =
     useState<ProofreadingPopoverPosition | null>(null);
   const issueGroup = visualProofreadingIssueGroup(editor, issue);
@@ -265,7 +284,7 @@ function VisualProofreadingPopover({
   };
 
   const moveActionFocus = (
-    event: ReactKeyboardEvent<HTMLDivElement>,
+    event: ReactKeyboardEvent<HTMLDialogElement>,
   ) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -289,26 +308,19 @@ function VisualProofreadingPopover({
     if (actions.length === 0) return;
     const active = document.activeElement;
     const current = actions.indexOf(active as HTMLButtonElement);
-    const next =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? actions.length - 1
-          : event.key === "ArrowDown"
-            ? (Math.max(current, -1) + 1) % actions.length
-            : (current <= 0 ? actions.length : current) - 1;
+    const next = nextActionIndex(event.key, current, actions.length);
     event.preventDefault();
     actions[next]?.focus({ preventScroll: true });
   };
 
   return createPortal(
-    <div
+    <dialog
       ref={panelRef}
-      role="dialog"
+      open
       aria-label={t(($) => $.editor.visual.proofreadingPanel)}
       data-proofreading-panel-issue={issue.id}
       tabIndex={-1}
-      className="fixed z-[70] w-80 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-xl outline-none"
+      className="fixed z-[70] m-0 w-80 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-xl outline-none"
       style={
         position
           ? { left: position.left, top: position.top }
@@ -391,12 +403,7 @@ function VisualProofreadingPopover({
         >
           <legend className="sr-only">{t(($) => $.editor.visual.suggestedFixes)}</legend>
           {suggestions.map((suggestion, index) => {
-            const Icon =
-              suggestion.kind === 1
-                ? Trash2
-                : suggestion.kind === 2
-                  ? Plus
-                  : Check;
+            const Icon = suggestionIcon(suggestion.kind);
             return (
               <Button
                 key={`${suggestion.kind}:${suggestion.text}`}
@@ -451,12 +458,12 @@ function VisualProofreadingPopover({
         </Button>
       </div>
       <p className="sr-only">{t(($) => $.editor.visual.keyboardHint)}</p>
-    </div>,
+    </dialog>,
     document.body,
   );
 }
 
-export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
+export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const synchronizeRef = useRef<() => void>(() => {});
   const projectId = useFilesStore((s) => s.projectId);
@@ -515,12 +522,12 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
 
   const flush = useCallback((
     editorInstance: Editor,
-    target = {
+    target?: { path: string | null; projectId: string | null },
+  ): boolean => {
+    const { path, projectId: targetProjectId } = target ?? {
       path: activePathRef.current,
       projectId: projectIdRef.current,
-    },
-  ): boolean => {
-    const { path, projectId: targetProjectId } = target;
+    };
     const filesState = useFilesStore.getState();
     if (
       !path ||
@@ -769,11 +776,9 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
       intelligenceRevisionRef.current,
     );
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: path, visibility and document version deliberately retrigger the imperative editor synchronization.
   useEffect(() => {
     if (!editor) return;
-    void activePath;
-    void wysiwyg;
-    void docVersion;
     synchronizeRef.current();
   }, [editor, activePath, wysiwyg, docVersion]);
 

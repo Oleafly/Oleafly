@@ -33,7 +33,7 @@ const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 * 60);
 const MAX_CONCURRENT_AGENT_REQUESTS: usize = 8;
 
 fn lock_or_recover<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
-    m.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 struct ActiveRequest {

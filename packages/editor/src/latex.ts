@@ -103,77 +103,77 @@ function cmd(
 
 function latexCommands(): Completion[] {
   return [
-    cmd("\\documentclass", "latex.command.documentclass", "\\documentclass{${1}}"),
-    cmd("\\begin", "latex.command.begin", "\\begin{${1}}\n  ${2}\n\\end{${1}}"),
-    cmd("\\end", "latex.command.end", "\\end{${1}}"),
-    cmd("\\textbf", "latex.command.textbf", "\\textbf{${1}}"),
-    cmd("\\textit", "latex.command.textit", "\\textit{${1}}"),
-    cmd("\\emph", "latex.command.emph", "\\emph{${1}}"),
-    cmd("\\underline", "latex.command.underline", "\\underline{${1}}"),
-    cmd("\\texttt", "latex.command.texttt", "\\texttt{${1}}"),
-    cmd("\\textsc", "latex.command.textsc", "\\textsc{${1}}"),
-    cmd("\\textsf", "latex.command.textsf", "\\textsf{${1}}"),
-    cmd("\\textrm", "latex.command.textrm", "\\textrm{${1}}"),
-    cmd("\\textcolor", "latex.command.textcolor", "\\textcolor{${1}}{${2}}"),
-    cmd("\\part", "latex.command.part", "\\part{${1}}"),
-    cmd("\\chapter", "latex.command.chapter", "\\chapter{${1}}"),
-    cmd("\\section", "latex.command.section", "\\section{${1}}"),
-    cmd("\\subsection", "latex.command.subsection", "\\subsection{${1}}"),
-    cmd("\\subsubsection", "latex.command.subsubsection", "\\subsubsection{${1}}"),
-    cmd("\\paragraph", "latex.command.paragraph", "\\paragraph{${1}}"),
-    cmd("\\subparagraph", "latex.command.subparagraph", "\\subparagraph{${1}}"),
-    cmd("\\item", "latex.command.item", "\\item ${1}"),
-    cmd("\\label", "latex.command.label", "\\label{${1}}"),
-    cmd("\\ref", "latex.command.ref", "\\ref{${1}}"),
-    cmd("\\eqref", "latex.command.eqref", "\\eqref{${1}}"),
-    cmd("\\pageref", "latex.command.pageref", "\\pageref{${1}}"),
-    cmd("\\autoref", "latex.command.autoref", "\\autoref{${1}}"),
-    cmd("\\cref", "latex.command.cref", "\\cref{${1}}"),
-    cmd("\\cite", "latex.command.cite", "\\cite{${1}}"),
-    cmd("\\parencite", "latex.command.parencite", "\\parencite{${1}}"),
-    cmd("\\textcite", "latex.command.textcite", "\\textcite{${1}}"),
-    cmd("\\footnote", "latex.command.footnote", "\\footnote{${1}}"),
-    cmd("\\usepackage", "latex.command.usepackage", "\\usepackage{${1}}"),
-    cmd("\\title", "latex.command.title", "\\title{${1}}"),
-    cmd("\\author", "latex.command.author", "\\author{${1}}"),
-    cmd("\\date", "latex.command.date", "\\date{${1}}"),
-    cmd("\\thanks", "latex.command.thanks", "\\thanks{${1}}"),
-    cmd("\\maketitle", "latex.command.maketitle"),
-    cmd("\\tableofcontents", "latex.command.tableofcontents"),
-    cmd("\\newpage", "latex.command.newpage"),
-    cmd("\\clearpage", "latex.command.clearpage"),
-    cmd("\\pagebreak", "latex.command.pagebreak"),
-    cmd("\\linebreak", "latex.command.linebreak"),
-    cmd("\\hspace", "latex.command.hspace", "\\hspace{${1}}"),
-    cmd("\\vspace", "latex.command.vspace", "\\vspace{${1}}"),
-    cmd("\\input", "latex.command.input", "\\input{${1}}"),
-    cmd("\\include", "latex.command.include", "\\include{${1}}"),
-    cmd("\\includegraphics", "latex.command.includegraphics", "\\includegraphics[width=${1}\\textwidth]{${2}}"),
-    cmd("\\caption", "latex.command.caption", "\\caption{${1}}"),
-    cmd("\\centering", "latex.command.centering"),
-    cmd("\\url", "latex.command.url", "\\url{${1}}"),
-    cmd("\\href", "latex.command.href", "\\href{${1}}{${2}}"),
-    cmd("\\addbibresource", "latex.command.addbibresource", "\\addbibresource{${1}}"),
-    cmd("\\bibliography", "latex.command.bibliography", "\\bibliography{${1}}"),
-    cmd("\\printbibliography", "latex.command.printbibliography"),
-    cmd("\\frac", "latex.command.frac", "\\frac{${1}}{${2}}"),
-    cmd("\\sqrt", "latex.command.sqrt", "\\sqrt{${1}}"),
-    cmd("\\overline", "latex.command.overline", "\\overline{${1}}"),
-    cmd("\\vec", "latex.command.vec", "\\vec{${1}}"),
-    cmd("\\hat", "latex.command.hat", "\\hat{${1}}"),
-    cmd("\\mathrm", "latex.command.mathrm", "\\mathrm{${1}}"),
-    cmd("\\mathbf", "latex.command.mathbf", "\\mathbf{${1}}"),
-    cmd("\\mathcal", "latex.command.mathcal", "\\mathcal{${1}}"),
-    cmd("\\mathbb", "latex.command.mathbb", "\\mathbb{${1}}"),
-    cmd("\\operatorname", "latex.command.operatorname", "\\operatorname{${1}}"),
-    cmd("\\sum", "latex.command.sum"),
-    cmd("\\prod", "latex.command.prod"),
-    cmd("\\int", "latex.command.int"),
-    cmd("\\lim", "latex.command.lim"),
-    cmd("\\itemize", "latex.command.itemize", "\\begin{itemize}\n  \\item ${1}\n\\end{itemize}"),
-    cmd("\\enumerate", "latex.command.enumerate", "\\begin{enumerate}\n  \\item ${1}\n\\end{enumerate}"),
-    cmd("\\equation", "latex.command.equation", "\\begin{equation}\n  ${1}\n\\end{equation}"),
-    cmd("\\align", "latex.command.align", "\\begin{align}\n  ${1}\n\\end{align}"),
+    cmd(String.raw`\documentclass`, "latex.command.documentclass", "\\documentclass{${1}}"),
+    cmd(String.raw`\begin`, "latex.command.begin", "\\begin{${1}}\n  ${2}\n\\end{${1}}"),
+    cmd(String.raw`\end`, "latex.command.end", "\\end{${1}}"),
+    cmd(String.raw`\textbf`, "latex.command.textbf", "\\textbf{${1}}"),
+    cmd(String.raw`\textit`, "latex.command.textit", "\\textit{${1}}"),
+    cmd(String.raw`\emph`, "latex.command.emph", "\\emph{${1}}"),
+    cmd(String.raw`\underline`, "latex.command.underline", "\\underline{${1}}"),
+    cmd(String.raw`\texttt`, "latex.command.texttt", "\\texttt{${1}}"),
+    cmd(String.raw`\textsc`, "latex.command.textsc", "\\textsc{${1}}"),
+    cmd(String.raw`\textsf`, "latex.command.textsf", "\\textsf{${1}}"),
+    cmd(String.raw`\textrm`, "latex.command.textrm", "\\textrm{${1}}"),
+    cmd(String.raw`\textcolor`, "latex.command.textcolor", "\\textcolor{${1}}{${2}}"),
+    cmd(String.raw`\part`, "latex.command.part", "\\part{${1}}"),
+    cmd(String.raw`\chapter`, "latex.command.chapter", "\\chapter{${1}}"),
+    cmd(String.raw`\section`, "latex.command.section", "\\section{${1}}"),
+    cmd(String.raw`\subsection`, "latex.command.subsection", "\\subsection{${1}}"),
+    cmd(String.raw`\subsubsection`, "latex.command.subsubsection", "\\subsubsection{${1}}"),
+    cmd(String.raw`\paragraph`, "latex.command.paragraph", "\\paragraph{${1}}"),
+    cmd(String.raw`\subparagraph`, "latex.command.subparagraph", "\\subparagraph{${1}}"),
+    cmd(String.raw`\item`, "latex.command.item", "\\item ${1}"),
+    cmd(String.raw`\label`, "latex.command.label", "\\label{${1}}"),
+    cmd(String.raw`\ref`, "latex.command.ref", "\\ref{${1}}"),
+    cmd(String.raw`\eqref`, "latex.command.eqref", "\\eqref{${1}}"),
+    cmd(String.raw`\pageref`, "latex.command.pageref", "\\pageref{${1}}"),
+    cmd(String.raw`\autoref`, "latex.command.autoref", "\\autoref{${1}}"),
+    cmd(String.raw`\cref`, "latex.command.cref", "\\cref{${1}}"),
+    cmd(String.raw`\cite`, "latex.command.cite", "\\cite{${1}}"),
+    cmd(String.raw`\parencite`, "latex.command.parencite", "\\parencite{${1}}"),
+    cmd(String.raw`\textcite`, "latex.command.textcite", "\\textcite{${1}}"),
+    cmd(String.raw`\footnote`, "latex.command.footnote", "\\footnote{${1}}"),
+    cmd(String.raw`\usepackage`, "latex.command.usepackage", "\\usepackage{${1}}"),
+    cmd(String.raw`\title`, "latex.command.title", "\\title{${1}}"),
+    cmd(String.raw`\author`, "latex.command.author", "\\author{${1}}"),
+    cmd(String.raw`\date`, "latex.command.date", "\\date{${1}}"),
+    cmd(String.raw`\thanks`, "latex.command.thanks", "\\thanks{${1}}"),
+    cmd(String.raw`\maketitle`, "latex.command.maketitle"),
+    cmd(String.raw`\tableofcontents`, "latex.command.tableofcontents"),
+    cmd(String.raw`\newpage`, "latex.command.newpage"),
+    cmd(String.raw`\clearpage`, "latex.command.clearpage"),
+    cmd(String.raw`\pagebreak`, "latex.command.pagebreak"),
+    cmd(String.raw`\linebreak`, "latex.command.linebreak"),
+    cmd(String.raw`\hspace`, "latex.command.hspace", "\\hspace{${1}}"),
+    cmd(String.raw`\vspace`, "latex.command.vspace", "\\vspace{${1}}"),
+    cmd(String.raw`\input`, "latex.command.input", "\\input{${1}}"),
+    cmd(String.raw`\include`, "latex.command.include", "\\include{${1}}"),
+    cmd(String.raw`\includegraphics`, "latex.command.includegraphics", "\\includegraphics[width=${1}\\textwidth]{${2}}"),
+    cmd(String.raw`\caption`, "latex.command.caption", "\\caption{${1}}"),
+    cmd(String.raw`\centering`, "latex.command.centering"),
+    cmd(String.raw`\url`, "latex.command.url", "\\url{${1}}"),
+    cmd(String.raw`\href`, "latex.command.href", "\\href{${1}}{${2}}"),
+    cmd(String.raw`\addbibresource`, "latex.command.addbibresource", "\\addbibresource{${1}}"),
+    cmd(String.raw`\bibliography`, "latex.command.bibliography", "\\bibliography{${1}}"),
+    cmd(String.raw`\printbibliography`, "latex.command.printbibliography"),
+    cmd(String.raw`\frac`, "latex.command.frac", "\\frac{${1}}{${2}}"),
+    cmd(String.raw`\sqrt`, "latex.command.sqrt", "\\sqrt{${1}}"),
+    cmd(String.raw`\overline`, "latex.command.overline", "\\overline{${1}}"),
+    cmd(String.raw`\vec`, "latex.command.vec", "\\vec{${1}}"),
+    cmd(String.raw`\hat`, "latex.command.hat", "\\hat{${1}}"),
+    cmd(String.raw`\mathrm`, "latex.command.mathrm", "\\mathrm{${1}}"),
+    cmd(String.raw`\mathbf`, "latex.command.mathbf", "\\mathbf{${1}}"),
+    cmd(String.raw`\mathcal`, "latex.command.mathcal", "\\mathcal{${1}}"),
+    cmd(String.raw`\mathbb`, "latex.command.mathbb", "\\mathbb{${1}}"),
+    cmd(String.raw`\operatorname`, "latex.command.operatorname", "\\operatorname{${1}}"),
+    cmd(String.raw`\sum`, "latex.command.sum"),
+    cmd(String.raw`\prod`, "latex.command.prod"),
+    cmd(String.raw`\int`, "latex.command.int"),
+    cmd(String.raw`\lim`, "latex.command.lim"),
+    cmd(String.raw`\itemize`, "latex.command.itemize", "\\begin{itemize}\n  \\item ${1}\n\\end{itemize}"),
+    cmd(String.raw`\enumerate`, "latex.command.enumerate", "\\begin{enumerate}\n  \\item ${1}\n\\end{enumerate}"),
+    cmd(String.raw`\equation`, "latex.command.equation", "\\begin{equation}\n  ${1}\n\\end{equation}"),
+    cmd(String.raw`\align`, "latex.command.align", "\\begin{align}\n  ${1}\n\\end{align}"),
   ];
 }
 
@@ -336,7 +336,7 @@ function parsedControlSequence(
 }
 
 function snippetDefault(value: string): string {
-  return value.trim().replace(/[\\$}]/gu, "\\$&");
+  return value.trim().replace(/[\\$}]/gu, String.raw`\$&`);
 }
 
 function argumentDetail(
@@ -370,7 +370,7 @@ function classicCommandDefinition(
   let count = 0;
   let defaultValue: string | null = null;
   const countGroup = parsedGroup(text, cursor, "[", "]");
-  if (countGroup && /^[0-9]$/u.test(countGroup.content.trim())) {
+  if (countGroup && /^\d$/u.test(countGroup.content.trim())) {
     count = Number(countGroup.content.trim());
     cursor = countGroup.to;
     const defaultGroup = parsedGroup(text, cursor, "[", "]");
@@ -426,6 +426,110 @@ function xparseDelimiter(
   };
 }
 
+interface XparseTemplateStep {
+  readonly cursor: number;
+  readonly snippet: string;
+}
+
+function xparseDefaultedOptional(
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep {
+  const defaultGroup = parsedGroup(specification, cursor);
+  const value = snippetDefault(defaultGroup?.content ?? "");
+  const suffix = value ? `:${value}` : "";
+  return {
+    cursor: defaultGroup?.to ?? cursor,
+    snippet: `[${"${"}${placeholder}${suffix}}]`,
+  };
+}
+
+function xparseSwitchArgument(
+  kind: string,
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep {
+  const next =
+    kind === "t" ? xparseDelimiter(specification, cursor).to : cursor;
+  return { cursor: next, snippet: `${"${"}${placeholder}}` };
+}
+
+function xparseDelimitedArgument(
+  kind: string,
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep {
+  const left = xparseDelimiter(specification, cursor);
+  const right = xparseDelimiter(specification, left.to);
+  const next =
+    kind === "R" || kind === "D"
+      ? (parsedGroup(specification, right.to)?.to ?? right.to)
+      : right.to;
+  return {
+    cursor: next,
+    snippet: `${left.value}${"${"}${placeholder}}${right.value}`,
+  };
+}
+
+function xparseEmbellishedArgument(
+  kind: string,
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep {
+  const afterKeys = parsedGroup(specification, cursor)?.to ?? cursor;
+  const next =
+    kind === "E" ? (parsedGroup(specification, afterKeys)?.to ?? afterKeys) : afterKeys;
+  return { cursor: next, snippet: `${"${"}${placeholder}}` };
+}
+
+function xparseTemplateStep(
+  kind: string,
+  specification: string,
+  cursor: number,
+  placeholder: number,
+): XparseTemplateStep | null {
+  switch (kind) {
+    case "+":
+    case "!":
+      return { cursor, snippet: "" };
+    case ">":
+      return {
+        cursor: parsedGroup(specification, cursor)?.to ?? cursor,
+        snippet: "",
+      };
+    case "m":
+    case "b":
+    case "v":
+      return { cursor, snippet: `{${"${"}${placeholder}}}` };
+    case "o":
+      return { cursor, snippet: `[${"${"}${placeholder}}]` };
+    case "O":
+      return xparseDefaultedOptional(specification, cursor, placeholder);
+    case "s":
+    case "t":
+      return xparseSwitchArgument(kind, specification, cursor, placeholder);
+    case "r":
+    case "R":
+    case "d":
+    case "D":
+      return xparseDelimitedArgument(kind, specification, cursor, placeholder);
+    case "e":
+    case "E":
+      return xparseEmbellishedArgument(
+        kind,
+        specification,
+        cursor,
+        placeholder,
+      );
+    default:
+      return null;
+  }
+}
+
 function xparseCommandTemplate(
   label: string,
   specification: string,
@@ -439,61 +543,11 @@ function xparseCommandTemplate(
     if (!kind) break;
     cursor += 1;
 
-    if (kind === "+" || kind === "!") continue;
-    if (kind === ">") {
-      const processor = parsedGroup(specification, cursor);
-      cursor = processor?.to ?? cursor;
-      continue;
-    }
-
-    if (kind === "m" || kind === "b" || kind === "v") {
-      template += `{${"${"}${placeholder}}}`;
-      placeholder += 1;
-      continue;
-    }
-    if (kind === "o") {
-      template += `[${"${"}${placeholder}}]`;
-      placeholder += 1;
-      continue;
-    }
-    if (kind === "O") {
-      const defaultGroup = parsedGroup(specification, cursor);
-      cursor = defaultGroup?.to ?? cursor;
-      const value = snippetDefault(defaultGroup?.content ?? "");
-      template += `[${"${"}${placeholder}${value ? `:${value}` : ""}}]`;
-      placeholder += 1;
-      continue;
-    }
-    if (kind === "s" || kind === "t") {
-      if (kind === "t") {
-        cursor = xparseDelimiter(specification, cursor).to;
-      }
-      template += `${"${"}${placeholder}}`;
-      placeholder += 1;
-      continue;
-    }
-    if (
-      kind === "r" ||
-      kind === "R" ||
-      kind === "d" ||
-      kind === "D"
-    ) {
-      const left = xparseDelimiter(specification, cursor);
-      const right = xparseDelimiter(specification, left.to);
-      cursor = right.to;
-      if (kind === "R" || kind === "D") {
-        cursor = parsedGroup(specification, cursor)?.to ?? cursor;
-      }
-      template += `${left.value}${"${"}${placeholder}}${right.value}`;
-      placeholder += 1;
-      continue;
-    }
-    if (kind === "e" || kind === "E") {
-      cursor = parsedGroup(specification, cursor)?.to ?? cursor;
-      if (kind === "E") {
-        cursor = parsedGroup(specification, cursor)?.to ?? cursor;
-      }
-      template += `${"${"}${placeholder}}`;
+    const step = xparseTemplateStep(kind, specification, cursor, placeholder);
+    if (!step) continue;
+    cursor = step.cursor;
+    if (step.snippet) {
+      template += step.snippet;
       placeholder += 1;
     }
   }
@@ -559,6 +613,92 @@ function collectPackageNames(
  * symbols, but completion must not disappear while that service starts or
  * while another file is malformed.
  */
+function collectClassicCommands(
+  catalogText: string,
+  commands: Map<string, LocalCommand>,
+): void {
+  for (const match of catalogText.matchAll(
+    /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand)\*?/gu,
+  )) {
+    const definition = classicCommandDefinition(
+      catalogText,
+      (match.index ?? 0) + match[0].length,
+    );
+    if (definition) commands.set(definition.label, definition);
+  }
+}
+
+function collectXparseCommands(
+  catalogText: string,
+  commands: Map<string, LocalCommand>,
+): void {
+  for (const match of catalogText.matchAll(
+    /\\(?:New|Renew|Provide|Declare)DocumentCommand\*?/gu,
+  )) {
+    const definition = xparseCommandDefinition(
+      catalogText,
+      (match.index ?? 0) + match[0].length,
+    );
+    if (definition) commands.set(definition.label, definition);
+  }
+}
+
+function primitiveDefinitionTemplate(
+  label: string,
+  argumentCount: number,
+): string {
+  let template = label;
+  for (let index = 1; index <= argumentCount; index += 1) {
+    template += `{${"${"}${index}}}`;
+  }
+  return template;
+}
+
+function collectPrimitiveDefinitions(
+  catalogText: string,
+  commands: Map<string, LocalCommand>,
+): void {
+  for (const match of catalogText.matchAll(
+    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[A-Za-z@]+|.))((?:\s*#[1-9])*)/gu,
+  )) {
+    const label = match[1];
+    if (!label) continue;
+    const bodyStart =
+      (match.index ?? 0) + match[0].length;
+    if (!parsedGroup(catalogText, bodyStart)) continue;
+    const argumentCount = commandArgumentCount(match[2] ?? "");
+    commands.set(label, {
+      label,
+      detail: argumentDetail(argumentCount, 0),
+      template: primitiveDefinitionTemplate(label, argumentCount),
+    });
+  }
+}
+
+const ENVIRONMENT_DEFINITION_PATTERNS = [
+  /\\(?:newenvironment|renewenvironment)\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
+  /\\(?:New|Renew|Provide|Declare)DocumentEnvironment\s*\{\s*([^{}\s]+)\s*\}/gu,
+  /\\newtheorem\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
+];
+
+function collectEnvironmentNames(
+  catalogText: string,
+  environments: Set<string>,
+): void {
+  for (const pattern of ENVIRONMENT_DEFINITION_PATTERNS) {
+    for (const match of catalogText.matchAll(pattern)) {
+      if (match[1]) environments.add(match[1]);
+    }
+  }
+}
+
+function collectLabelNames(catalogText: string, labels: Set<string>): void {
+  for (const match of catalogText.matchAll(/\\label\s*\{([^}]{1,500})\}/gu)) {
+    const label = match[1]?.trim();
+    if (label) labels.add(label);
+  }
+}
+
 function latexCatalog(state: {
   doc: { toString: () => string };
 }): LocalLatexCatalog {
@@ -573,64 +713,11 @@ function latexCatalog(state: {
   const labels = new Set<string>();
   const packages = new Set<string>();
 
-  for (const match of catalogText.matchAll(
-    /\\(?:newcommand|renewcommand|providecommand|DeclareRobustCommand)\*?/gu,
-  )) {
-    const definition = classicCommandDefinition(
-      catalogText,
-      (match.index ?? 0) + match[0].length,
-    );
-    if (definition) commands.set(definition.label, definition);
-  }
-  for (const match of catalogText.matchAll(
-    /\\(?:New|Renew|Provide|Declare)DocumentCommand\*?/gu,
-  )) {
-    const definition = xparseCommandDefinition(
-      catalogText,
-      (match.index ?? 0) + match[0].length,
-    );
-    if (definition) commands.set(definition.label, definition);
-  }
-  for (const match of catalogText.matchAll(
-    /\\(?:def|gdef|edef|xdef)\s*(\\(?:[A-Za-z@]+|.))((?:\s*#[1-9])*)/gu,
-  )) {
-    const label = match[1];
-    if (!label) continue;
-    const bodyStart =
-      (match.index ?? 0) + match[0].length;
-    if (!parsedGroup(catalogText, bodyStart)) continue;
-    const argumentCount = commandArgumentCount(match[2] ?? "");
-    let template = label;
-    for (let index = 1; index <= argumentCount; index += 1) {
-      template += `{${"${"}${index}}}`;
-    }
-    commands.set(label, {
-      label,
-      detail: argumentDetail(argumentCount, 0),
-      template,
-    });
-  }
-
-  for (const match of catalogText.matchAll(
-    /\\(?:newenvironment|renewenvironment)\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
-  )) {
-    if (match[1]) environments.add(match[1]);
-  }
-  for (const match of catalogText.matchAll(
-    /\\(?:New|Renew|Provide|Declare)DocumentEnvironment\s*\{\s*([^{}\s]+)\s*\}/gu,
-  )) {
-    if (match[1]) environments.add(match[1]);
-  }
-  for (const match of catalogText.matchAll(
-    /\\newtheorem\*?\s*\{\s*([^{}\s]+)\s*\}/gu,
-  )) {
-    if (match[1]) environments.add(match[1]);
-  }
-
-  for (const match of catalogText.matchAll(/\\label\s*\{([^}]{1,500})\}/gu)) {
-    const label = match[1]?.trim();
-    if (label) labels.add(label);
-  }
+  collectClassicCommands(catalogText, commands);
+  collectXparseCommands(catalogText, commands);
+  collectPrimitiveDefinitions(catalogText, commands);
+  collectEnvironmentNames(catalogText, environments);
+  collectLabelNames(catalogText, labels);
   collectPackageNames(catalogText, packages);
 
   const catalog = {
@@ -738,28 +825,28 @@ function localCommandCompletions(
 function packageCommands(): Record<string, Completion[]> {
   return {
     amsmath: [
-      cmd("\\dfrac", "latex.packageCommand.dfrac", "\\dfrac{${1}}{${2}}"),
+      cmd(String.raw`\dfrac`, "latex.packageCommand.dfrac", "\\dfrac{${1}}{${2}}"),
       cmd(
-        "\\DeclareMathOperator",
+        String.raw`\DeclareMathOperator`,
         "latex.packageCommand.declareMathOperator",
         "\\DeclareMathOperator{${1}}{${2}}",
       ),
     ],
-    amssymb: [cmd("\\mathbb", "latex.packageCommand.mathbb")],
+    amssymb: [cmd(String.raw`\mathbb`, "latex.packageCommand.mathbb")],
     graphicx: [
-      cmd("\\rotatebox", "latex.packageCommand.rotatebox", "\\rotatebox{${1}}{${2}}"),
+      cmd(String.raw`\rotatebox`, "latex.packageCommand.rotatebox", "\\rotatebox{${1}}{${2}}"),
     ],
     hyperref: [
-      cmd("\\hypersetup", "latex.packageCommand.hypersetup", "\\hypersetup{${1}}"),
+      cmd(String.raw`\hypersetup`, "latex.packageCommand.hypersetup", "\\hypersetup{${1}}"),
     ],
     booktabs: [
-      cmd("\\toprule", "latex.packageCommand.toprule"),
-      cmd("\\midrule", "latex.packageCommand.midrule"),
-      cmd("\\bottomrule", "latex.packageCommand.bottomrule"),
+      cmd(String.raw`\toprule`, "latex.packageCommand.toprule"),
+      cmd(String.raw`\midrule`, "latex.packageCommand.midrule"),
+      cmd(String.raw`\bottomrule`, "latex.packageCommand.bottomrule"),
     ],
     siunitx: [
-      cmd("\\SI", "latex.packageCommand.si", "\\SI{${1}}{${2}}"),
-      cmd("\\num", "latex.packageCommand.num", "\\num{${1}}"),
+      cmd(String.raw`\SI`, "latex.packageCommand.si", "\\SI{${1}}{${2}}"),
+      cmd(String.raw`\num`, "latex.packageCommand.num", "\\num{${1}}"),
     ],
   };
 }
@@ -797,6 +884,53 @@ interface OpenCommandArgument {
   readonly text: string;
 }
 
+function controlWordEnd(prefix: string, start: number): number {
+  let cursor = start;
+  while (/[A-Za-z@]/u.test(prefix[cursor] ?? "")) cursor += 1;
+  return cursor;
+}
+
+function skipOptionalGroups(
+  prefix: string,
+  start: number,
+  groups: number,
+): number | null {
+  let cursor = start;
+  for (let group = 0; group < groups && prefix[cursor] === "["; group += 1) {
+    const groupEnd = latexBalancedGroupEnd(prefix, cursor, "[", "]");
+    if (groupEnd === null) return null;
+    cursor = skipWhitespace(prefix, groupEnd);
+  }
+  return cursor;
+}
+
+function openArgumentStartsAt(
+  prefix: string,
+  commandStart: number,
+  commands: ReadonlySet<string>,
+  options: {
+    readonly allowStar?: boolean;
+    readonly optionalGroups?: number;
+  },
+): boolean {
+  let cursor = controlWordEnd(prefix, commandStart + 1);
+  if (!commands.has(prefix.slice(commandStart + 1, cursor))) return false;
+  if (options.allowStar && prefix[cursor] === "*") cursor += 1;
+  const afterGroups = skipOptionalGroups(
+    prefix,
+    skipWhitespace(prefix, cursor),
+    options.optionalGroups ?? 0,
+  );
+  if (afterGroups === null) return false;
+  if (prefix[afterGroups] !== "{") return false;
+  const argument = prefix.slice(afterGroups + 1);
+  return (
+    argument.length <= 500 &&
+    !argument.includes("{") &&
+    !argument.includes("}")
+  );
+}
+
 function openCommandArgument(
   context: CompletionContext,
   commands: ReadonlySet<string>,
@@ -811,37 +945,8 @@ function openCommandArgument(
   let commandStart = prefix.lastIndexOf("\\");
 
   while (commandStart >= 0) {
-    let cursor = commandStart + 1;
-    while (/[A-Za-z@]/u.test(prefix[cursor] ?? "")) cursor += 1;
-    const command = prefix.slice(commandStart + 1, cursor);
-    if (commands.has(command)) {
-      if (options.allowStar && prefix[cursor] === "*") cursor += 1;
-      cursor = skipWhitespace(prefix, cursor);
-
-      let valid = true;
-      for (
-        let group = 0;
-        group < (options.optionalGroups ?? 0) && prefix[cursor] === "[";
-        group += 1
-      ) {
-        const groupEnd = latexBalancedGroupEnd(prefix, cursor, "[", "]");
-        if (groupEnd === null) {
-          valid = false;
-          break;
-        }
-        cursor = skipWhitespace(prefix, groupEnd);
-      }
-
-      if (valid && prefix[cursor] === "{") {
-        const argument = prefix.slice(cursor + 1);
-        if (
-          argument.length <= 500 &&
-          !argument.includes("{") &&
-          !argument.includes("}")
-        ) {
-          return { text: prefix.slice(commandStart) };
-        }
-      }
+    if (openArgumentStartsAt(prefix, commandStart, commands, options)) {
+      return { text: prefix.slice(commandStart) };
     }
     if (commandStart === 0) break;
     commandStart = prefix.lastIndexOf("\\", commandStart - 1);
@@ -875,7 +980,7 @@ function structuralArgumentCompletions(
     /\\(?:begin|end)\s*\{[^{}]{0,500}$/u,
   );
   if (environmentMatch) {
-    const opening = /^\\begin/u.test(environmentMatch.text);
+    const opening = environmentMatch.text.startsWith(String.raw`\begin`);
     const query = currentArgumentQuery(environmentMatch.text);
     const local = latexCatalog(context.state).environments.map((name) =>
       opening
@@ -1072,7 +1177,7 @@ export function slashCompletions(
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   const guard = createCompletionRequestGuard(context);
   const before = boundedCompletionContext(context.state, context.pos);
-  const m = before.match(/\/([a-zA-Z]*)$/);
+  const m = /\/([a-zA-Z]*)$/.exec(before);
   if (!m) return null;
   const slash: Completion[] = [
     { label: "/section", type: "snippet", detail: editorMessage("latex.snippet.section"), apply: snippet("\\section{${1}}") },

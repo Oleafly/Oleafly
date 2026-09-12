@@ -644,7 +644,8 @@ pub async fn compile_isolated(
     }
     let fig_dir = paths::figure_build_dir(&project_id)?;
     let entry_path = fig_dir.join("_figure.tex");
-    std::fs::write(&entry_path, source)
+    tokio::fs::write(&entry_path, source)
+        .await
         .map_err(|e| format!("failed to write figure source: {e}"))?;
     let result = crate::document_engine::compile(CompileRequest {
         app: &app,

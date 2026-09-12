@@ -47,7 +47,7 @@ export function useBookColorLabels(): Record<string, string> {
 }
 
 function shade(hex: string, amt: number) {
-  const n = parseInt(hex.slice(1), 16);
+  const n = Number.parseInt(hex.slice(1), 16);
   let r = (n >> 16) & 255;
   let g = (n >> 8) & 255;
   let b = n & 255;
@@ -58,7 +58,7 @@ function shade(hex: string, amt: number) {
 }
 
 function isLight(hex: string) {
-  const n = parseInt(hex.slice(1), 16);
+  const n = Number.parseInt(hex.slice(1), 16);
   const r = (n >> 16) & 255;
   const g = (n >> 8) & 255;
   const b = n & 255;
@@ -83,7 +83,7 @@ export function Book({
   menu,
   preview,
   onPreviewRequest,
-}: {
+}: Readonly<{
   title: string;
   color?: string;
   textColor?: string;
@@ -101,7 +101,7 @@ export function Book({
   menu?: ReactNode;
   preview?: string | null;
   onPreviewRequest?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["library"]);
   const coverColor = color ?? DEFAULT_BOOK_COLOR;
   const ink = textColor ?? (isLight(coverColor) ? "#1f2937" : "#ffffff");

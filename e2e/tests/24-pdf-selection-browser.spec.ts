@@ -67,7 +67,12 @@ async function dragAcrossProductionPdf(page: Page) {
     steps: 24,
   });
   await page.mouse.up();
-  await page.waitForTimeout(50);
+  await page.waitForFunction(() => {
+    const selection = document.getSelection();
+    return (
+      selection !== null && selection.rangeCount > 0 && !selection.isCollapsed
+    );
+  });
 
   const result = await page.evaluate(() => {
     const layer = document.querySelector(".textLayer");
@@ -191,6 +196,7 @@ const crossBrowserTargets: ReadonlyArray<readonly [string, BrowserType]> = [
 for (const [name, browserType] of crossBrowserTargets) {
   test(`production PdfViewer keeps trusted selection exact in ${name}`, async () => {
     const executable = browserType.executablePath();
+    // Ignored on purpose when that Playwright browser was never downloaded on this runner.
     test.skip(
       !existsSync(executable),
       `${name} Playwright browser is not installed on this runner`,

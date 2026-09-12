@@ -5,11 +5,11 @@ export function MarkdownBlock({
   children,
   kind,
   source,
-}: {
+}: Readonly<{
   children: ReactNode;
   kind: "code" | "diagram";
   source: string;
-}) {
+}>) {
   const [copied, setCopied] = useState(false);
   const resetTimer = useRef<number | null>(null);
   const copyLabel = kind === "code" ? "Copy code" : "Copy diagram source";

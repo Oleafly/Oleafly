@@ -106,20 +106,27 @@ export function submissionProfile(id: SubmissionProfileId): SubmissionProfile {
   return SUBMISSION_PROFILES[id];
 }
 
+function skipWhitespace(source: string, from: number): number {
+  let cursor = from;
+  while (cursor < source.length && /\s/.test(source[cursor])) cursor++;
+  return cursor;
+}
+
+function skipClassOptions(source: string, from: number): number | null {
+  if (source[from] !== "[") return from;
+  const optionsEnd = source.indexOf("]", from + 1);
+  if (optionsEnd < 0) return null;
+  return skipWhitespace(source, optionsEnd + 1);
+}
+
 export function extractDocumentClass(source: string): string | null {
-  const command = "\\documentclass";
+  const command = String.raw`\documentclass`;
   let searchFrom = 0;
   while (searchFrom < source.length) {
     const commandAt = source.indexOf(command, searchFrom);
     if (commandAt < 0) return null;
-    let cursor = commandAt + command.length;
-    while (cursor < source.length && /\s/.test(source[cursor])) cursor++;
-    if (source[cursor] === "[") {
-      const optionsEnd = source.indexOf("]", cursor + 1);
-      if (optionsEnd < 0) return null;
-      cursor = optionsEnd + 1;
-      while (cursor < source.length && /\s/.test(source[cursor])) cursor++;
-    }
+    const cursor = skipClassOptions(source, skipWhitespace(source, commandAt + command.length));
+    if (cursor === null) return null;
     if (source[cursor] === "{") {
       const classEnd = source.indexOf("}", cursor + 1);
       if (classEnd < 0) return null;

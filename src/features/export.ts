@@ -52,6 +52,11 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
   }
 }
 
+function errorDetail(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return typeof e === "string" ? e : "";
+}
+
 /** Show in Finder/Explorer; never flip a successful save into a failure toast. */
 function revealExportedFile(dest: string): void {
   void revealInDir(dest).catch(() => {
@@ -91,7 +96,7 @@ export async function exportCurrentPdf(): Promise<void> {
     // Destination path is known and the file was published — always success.
     exportSuccessToast("PDF", dest);
   } catch (e) {
-    const detail = e instanceof Error ? e.message : typeof e === "string" ? e : "";
+    const detail = errorDetail(e);
     notifyError(
       "export pdf",
       e,
@@ -131,7 +136,7 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
     await exportProjectImage(projectId, dest, dataUrl.slice(dataUrl.indexOf(",") + 1));
     exportSuccessToast("PNG", dest);
   } catch (e) {
-    const detail = e instanceof Error ? e.message : typeof e === "string" ? e : "";
+    const detail = errorDetail(e);
     notifyError(
       "export png",
       e,

@@ -8,7 +8,7 @@ const OVERRIDES = { python3: process.env.OLEAFLY_SKILLS_PYTHON };
 
 function absoluteOverride(name) {
   const value = OVERRIDES[name];
-  if (!value || !value.startsWith("/")) return null;
+  if (!value?.startsWith("/")) return null;
   try {
     accessSync(value, constants.X_OK);
     return value;

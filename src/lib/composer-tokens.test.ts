@@ -102,7 +102,7 @@ describe("tokenizeComposer", () => {
   it("reports offsets that slice back to the original text", () => {
     const text = "read @main.tex please";
     for (const token of tokenizeComposer(text, { paths: PATHS })) {
-      expect(text.slice(token.start, token.end).length).toBe(token.end - token.start);
+      expect(text.slice(token.start, token.end)).toHaveLength(token.end - token.start);
     }
     expect(tokenizeComposer(text, { paths: PATHS }).map((t) => t.end - t.start).reduce(
       (sum, size) => sum + size,

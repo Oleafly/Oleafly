@@ -34,7 +34,7 @@ function withOccurrenceKeys(values: string[]) {
   });
 }
 
-function ReviewMarkdown({ text }: { text: string }) {
+function ReviewMarkdown({ text }: Readonly<{ text: string }>) {
   const blocks = withOccurrenceKeys(text.split(/\n{2,}/));
   return (
     <div className="space-y-3 text-sm leading-relaxed">
@@ -42,7 +42,7 @@ function ReviewMarkdown({ text }: { text: string }) {
         const trimmed = block.trim();
         if (!trimmed) return null;
         if (/^#{1,3}\s+/.test(trimmed)) {
-          const level = (trimmed.match(/^#+/)?.[0].length ?? 1) as 1 | 2 | 3;
+          const level = (/^#+/.exec(trimmed)?.[0].length ?? 1) as 1 | 2 | 3;
           const title = trimmed.replace(/^#{1,3}\s+/, "");
           const Tag = (`h${Math.min(level + 1, 4)}` as "h2" | "h3" | "h4");
           return (

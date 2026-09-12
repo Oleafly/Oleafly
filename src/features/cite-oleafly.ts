@@ -16,7 +16,7 @@ function citationMarkup(): string {
   const profile = useFilesStore.getState().engine.capabilities.formatting_profile;
   if (profile === "typst") return `@${OLEAFLY_CITATION_KEY}`;
   if (profile === "markdown") return `[@${OLEAFLY_CITATION_KEY}]`;
-  return `\\cite{${OLEAFLY_CITATION_KEY}}`;
+  return String.raw`\cite{${OLEAFLY_CITATION_KEY}}`;
 }
 
 export async function citeOleafly(options: { path?: string } = {}): Promise<CiteOleaflyOutcome> {

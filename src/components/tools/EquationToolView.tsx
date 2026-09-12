@@ -90,7 +90,7 @@ export function EquationToolView() {
   if (activePage !== "equation") return null;
 
   const rendered = renderEquation(input, display);
-  const wrapped = display ? `\\[ ${input} \\]` : `$${input}$`;
+  const wrapped = display ? String.raw`\[ ${input} \]` : `$${input}$`;
 
   const downloadBlob = (content: string | Blob, type: string, filename: string) => {
     const blob = content instanceof Blob ? content : new Blob([content], { type });

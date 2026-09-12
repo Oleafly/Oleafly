@@ -7,10 +7,12 @@ import {
   JsonRpcRemoteError,
   parseJsonRpcMessage,
   toJsonValue,
+  type JsonRpcErrorResponse,
   type JsonRpcId,
   type JsonRpcMessage,
   type JsonRpcNotification,
   type JsonRpcRequest,
+  type JsonRpcSuccessResponse,
   type JsonValue,
 } from "./json-rpc";
 import {
@@ -296,7 +298,7 @@ function cloneCapabilities(
 }
 
 function fileUriForWorkspaceRoot(workspaceRoot: string): string {
-  const normalized = workspaceRoot.replace(/\\/g, "/");
+  const normalized = workspaceRoot.replaceAll("\\", "/");
   const absolute = normalized.startsWith("/") ? normalized : `/${normalized}`;
   return `file://${absolute
     .split("/")
@@ -698,6 +700,31 @@ export class LanguageServiceClient {
     await this.start(options);
   }
 
+  private async shutdownHandshake(
+    session: LanguageServiceRuntimeSession,
+    wasReady: boolean,
+  ): Promise<Error | null> {
+    let shutdownError: Error | null = null;
+    if (wasReady) {
+      try {
+        await this.sendRequest("shutdown", null, {
+          trackFreshness: false,
+        });
+      } catch (error) {
+        shutdownError = errorFromUnknown(error);
+      }
+    }
+
+    if (this.isCurrentSession(session)) {
+      try {
+        await this.sendNotification("exit");
+      } catch (error) {
+        shutdownError ??= errorFromUnknown(error);
+      }
+    }
+    return shutdownError;
+  }
+
   async stop(): Promise<void> {
     this.lifecycleOperation += 1;
     const session = this.activeSession;
@@ -716,22 +743,8 @@ export class LanguageServiceClient {
       ),
     );
     let shutdownError: Error | null = null;
-    if (session && wasReady) {
-      try {
-        await this.sendRequest("shutdown", null, {
-          trackFreshness: false,
-        });
-      } catch (error) {
-        shutdownError = errorFromUnknown(error);
-      }
-    }
-
-    if (session && this.isCurrentSession(session)) {
-      try {
-        await this.sendNotification("exit");
-      } catch (error) {
-        shutdownError ??= errorFromUnknown(error);
-      }
+    if (session) {
+      shutdownError = await this.shutdownHandshake(session, wasReady);
     }
 
     this.rejectAll(
@@ -1259,6 +1272,47 @@ export class LanguageServiceClient {
     return identity;
   }
 
+  private handleResponseMessage(
+    message: JsonRpcSuccessResponse | JsonRpcErrorResponse,
+    generation: number,
+  ): void {
+    if (message.id === null) {
+      this.emit({
+        type: "discarded",
+        reason: "response had a null id",
+        generation,
+      });
+      return;
+    }
+    const pending = this.pending.get(message.id);
+    if (!pending) {
+      this.emit({
+        type: "discarded",
+        reason: `response id ${String(message.id)} is not pending`,
+        generation,
+      });
+      return;
+    }
+    if (!this.identityIsCurrent(pending.identity)) {
+      this.rejectPending(
+        message.id,
+        new StaleLanguageServiceResultError(
+          pending.identity,
+          "response identity no longer matches",
+        ),
+      );
+      return;
+    }
+    if (isJsonRpcErrorResponse(message)) {
+      this.rejectPending(
+        message.id,
+        new JsonRpcRemoteError(message.error),
+      );
+    } else {
+      this.resolvePending(message.id, message.result);
+    }
+  }
+
   private handleTransportEvent(event: LanguageServiceTransportEvent): void {
     if (!this.eventMatchesCurrentSession(event)) return;
     if (event.type === "log") {
@@ -1295,41 +1349,7 @@ export class LanguageServiceClient {
       isJsonRpcSuccessResponse(message) ||
       isJsonRpcErrorResponse(message)
     ) {
-      if (message.id === null) {
-        this.emit({
-          type: "discarded",
-          reason: "response had a null id",
-          generation: event.generation,
-        });
-        return;
-      }
-      const pending = this.pending.get(message.id);
-      if (!pending) {
-        this.emit({
-          type: "discarded",
-          reason: `response id ${String(message.id)} is not pending`,
-          generation: event.generation,
-        });
-        return;
-      }
-      if (!this.identityIsCurrent(pending.identity)) {
-        this.rejectPending(
-          message.id,
-          new StaleLanguageServiceResultError(
-            pending.identity,
-            "response identity no longer matches",
-          ),
-        );
-        return;
-      }
-      if (isJsonRpcErrorResponse(message)) {
-        this.rejectPending(
-          message.id,
-          new JsonRpcRemoteError(message.error),
-        );
-      } else {
-        this.resolvePending(message.id, message.result);
-      }
+      this.handleResponseMessage(message, event.generation);
       return;
     }
     if (isJsonRpcRequest(message)) {
@@ -1341,70 +1361,70 @@ export class LanguageServiceClient {
     }
   }
 
+  private handlePublishDiagnostics(notification: JsonRpcNotification): void {
+    if (!isPublishDiagnosticsParams(notification.params)) {
+      this.emit({
+        type: "discarded",
+        reason: "publishDiagnostics payload is malformed",
+        method: notification.method,
+        generation: this.generationValue,
+      });
+      return;
+    }
+    const document = this.documents.get(notification.params.uri);
+    if (!document) {
+      this.emit({
+        type: "discarded",
+        reason: "diagnostics target is not an open document",
+        method: notification.method,
+        generation: this.generationValue,
+      });
+      return;
+    }
+    const epoch = this.diagnosticEpochs.get(notification.params.uri);
+    if (
+      !epoch ||
+      !this.diagnosticEpochIsCurrent(notification.params.uri, epoch)
+    ) {
+      this.emit({
+        type: "discarded",
+        reason: "diagnostics have no current synchronization epoch",
+        method: notification.method,
+        generation: this.generationValue,
+      });
+      return;
+    }
+    if (notification.params.version === undefined) {
+      // Both pinned servers publish unversioned diagnostics. Keep only the
+      // latest candidate for this document epoch. A response to a request
+      // serialized after didOpen/didChange acknowledges the epoch, and a
+      // quiet window lets any older in-flight publication be replaced.
+      epoch.candidate = { params: notification.params };
+      if (epoch.barrierAcknowledged) {
+        this.scheduleDiagnosticCandidate(notification.params.uri, epoch);
+      }
+      return;
+    }
+    if (notification.params.version !== document.version) {
+      this.emit({
+        type: "discarded",
+        reason: "diagnostics document version is stale",
+        method: notification.method,
+        generation: this.generationValue,
+      });
+      return;
+    }
+    epoch.candidate = null;
+    if (epoch.quietTimer) {
+      clearTimeout(epoch.quietTimer);
+      epoch.quietTimer = null;
+    }
+    this.emitAcknowledgedDiagnostics(notification.params, document, epoch);
+  }
+
   private handleNotification(notification: JsonRpcNotification): void {
     if (notification.method === "textDocument/publishDiagnostics") {
-      if (!isPublishDiagnosticsParams(notification.params)) {
-        this.emit({
-          type: "discarded",
-          reason: "publishDiagnostics payload is malformed",
-          method: notification.method,
-          generation: this.generationValue,
-        });
-        return;
-      }
-      const document = this.documents.get(notification.params.uri);
-      if (!document) {
-        this.emit({
-          type: "discarded",
-          reason: "diagnostics target is not an open document",
-          method: notification.method,
-          generation: this.generationValue,
-        });
-        return;
-      }
-      const epoch = this.diagnosticEpochs.get(notification.params.uri);
-      if (
-        !epoch ||
-        !this.diagnosticEpochIsCurrent(notification.params.uri, epoch)
-      ) {
-        this.emit({
-          type: "discarded",
-          reason: "diagnostics have no current synchronization epoch",
-          method: notification.method,
-          generation: this.generationValue,
-        });
-        return;
-      }
-      if (notification.params.version !== undefined) {
-        if (notification.params.version !== document.version) {
-          this.emit({
-            type: "discarded",
-            reason: "diagnostics document version is stale",
-            method: notification.method,
-            generation: this.generationValue,
-          });
-          return;
-        }
-        epoch.candidate = null;
-        if (epoch.quietTimer) {
-          clearTimeout(epoch.quietTimer);
-          epoch.quietTimer = null;
-        }
-        this.emitAcknowledgedDiagnostics(
-          notification.params,
-          document,
-          epoch,
-        );
-      } else {
-        // Both pinned servers publish unversioned diagnostics. Keep only the
-        // latest candidate for this document epoch. A response to a request
-        // serialized after didOpen/didChange acknowledges the epoch, and a
-        // quiet window lets any older in-flight publication be replaced.
-        epoch.candidate = { params: notification.params };
-        if (epoch.barrierAcknowledged) {
-          this.scheduleDiagnosticCandidate(notification.params.uri, epoch);
-        }
-      }
+      this.handlePublishDiagnostics(notification);
       return;
     }
     this.emit({
@@ -1576,7 +1596,7 @@ export class LanguageServiceClient {
   }
 
   private clearDiagnosticEpochs(): void {
-    for (const uri of [...this.diagnosticEpochs.keys()]) {
+    for (const uri of this.diagnosticEpochs.keys()) {
       this.clearDiagnosticEpoch(uri);
     }
   }
@@ -1627,7 +1647,7 @@ export class LanguageServiceClient {
     this.pending.delete(id);
     pending.reject(error);
     const session = this.activeSession;
-    if (!session || session.generation !== pending.identity.generation) {
+    if (session?.generation !== pending.identity.generation) {
       return;
     }
     void this.transport
@@ -1658,7 +1678,7 @@ export class LanguageServiceClient {
   }
 
   private rejectAll(error: Error): void {
-    for (const id of [...this.pending.keys()]) {
+    for (const id of this.pending.keys()) {
       this.rejectPending(id, error);
     }
   }
@@ -1667,7 +1687,7 @@ export class LanguageServiceClient {
     predicate: (pending: PendingRequest) => boolean,
     createError: (pending: PendingRequest) => Error,
   ): void {
-    for (const pending of [...this.pending.values()]) {
+    for (const pending of this.pending.values()) {
       if (predicate(pending)) {
         this.rejectPending(pending.id, createError(pending));
       }
@@ -1722,10 +1742,9 @@ export class LanguageServiceClient {
   ): boolean {
     const session = this.activeSession;
     return Boolean(
-      session &&
-        event.session === session.session &&
-        event.kind === session.kind &&
-        event.generation === session.generation,
+      event.session === session?.session &&
+        event.kind === session?.kind &&
+        event.generation === session?.generation,
     );
   }
 

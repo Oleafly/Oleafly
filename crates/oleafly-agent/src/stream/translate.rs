@@ -251,6 +251,65 @@ impl Translator {
         out
     }
 
+    fn openai_arguments_done(&mut self, index: i64, value: &Value, out: &mut Vec<AgentEvent>) {
+        if let Some(arguments) = value.get("arguments").and_then(|args| args.as_str()) {
+            let existing = self
+                .open
+                .get(&index)
+                .map(|call| call.arguments.as_str())
+                .unwrap_or_default();
+            if let Some(remainder) = arguments.strip_prefix(existing) {
+                if !remainder.is_empty() {
+                    out.extend(self.push_args(index, remainder));
+                }
+            }
+        }
+        out.extend(self.close_call(index));
+    }
+
+    fn openai_response_finished(&mut self, kind: &str, value: &Value, out: &mut Vec<AgentEvent>) {
+        if self.response_items.is_empty() {
+            if let Some(items) = value
+                .pointer("/response/output")
+                .and_then(|output| output.as_array())
+            {
+                self.response_items.extend(
+                    items
+                        .iter()
+                        .enumerate()
+                        .map(|(index, item)| (index as i64, item.clone())),
+                );
+            }
+        }
+        if let Some(usage) = value
+            .pointer("/response/usage")
+            .filter(|value| value.is_object())
+        {
+            self.usage.merge_snapshot(Usage {
+                input: u32_at(usage, "input_tokens"),
+                output: u32_at(usage, "output_tokens"),
+                input_known: Some(optional_u32_at(usage, "input_tokens").is_some()),
+                output_known: Some(optional_u32_at(usage, "output_tokens").is_some()),
+                cache_read: optional_u32_at_path(usage, "/input_tokens_details/cached_tokens"),
+                cache_write: (optional_u32_at(usage, "input_tokens").is_some()
+                    || optional_u32_at(usage, "output_tokens").is_some())
+                .then_some(0),
+                input_semantics: InputTokenSemantics::Inclusive,
+            });
+            out.push(AgentEvent::Usage { usage: self.usage });
+        }
+        self.stop_reason = Some(if kind == "response.completed" {
+            "completed".into()
+        } else {
+            value
+                .pointer("/response/incomplete_details/reason")
+                .and_then(|reason| reason.as_str())
+                .unwrap_or("incomplete")
+                .to_string()
+        });
+        out.extend(self.finish());
+    }
+
     fn openai_responses(&mut self, event: &SseEvent) -> Vec<AgentEvent> {
         if event.data.trim() == "[DONE]" {
             return self.finish();
@@ -313,19 +372,7 @@ impl Translator {
                 }
             }
             "response.function_call_arguments.done" => {
-                if let Some(arguments) = value.get("arguments").and_then(|args| args.as_str()) {
-                    let existing = self
-                        .open
-                        .get(&index)
-                        .map(|call| call.arguments.as_str())
-                        .unwrap_or_default();
-                    if let Some(remainder) = arguments.strip_prefix(existing) {
-                        if !remainder.is_empty() {
-                            out.extend(self.push_args(index, remainder));
-                        }
-                    }
-                }
-                out.extend(self.close_call(index));
+                self.openai_arguments_done(index, &value, &mut out);
             }
             "response.output_item.done" => {
                 if let Some(item) = value.get("item") {
@@ -334,49 +381,7 @@ impl Translator {
                 out.extend(self.close_call(index));
             }
             "response.completed" | "response.incomplete" => {
-                if self.response_items.is_empty() {
-                    if let Some(items) = value
-                        .pointer("/response/output")
-                        .and_then(|output| output.as_array())
-                    {
-                        self.response_items.extend(
-                            items
-                                .iter()
-                                .enumerate()
-                                .map(|(index, item)| (index as i64, item.clone())),
-                        );
-                    }
-                }
-                if let Some(usage) = value
-                    .pointer("/response/usage")
-                    .filter(|value| value.is_object())
-                {
-                    self.usage.merge_snapshot(Usage {
-                        input: u32_at(usage, "input_tokens"),
-                        output: u32_at(usage, "output_tokens"),
-                        input_known: Some(optional_u32_at(usage, "input_tokens").is_some()),
-                        output_known: Some(optional_u32_at(usage, "output_tokens").is_some()),
-                        cache_read: optional_u32_at_path(
-                            usage,
-                            "/input_tokens_details/cached_tokens",
-                        ),
-                        cache_write: (optional_u32_at(usage, "input_tokens").is_some()
-                            || optional_u32_at(usage, "output_tokens").is_some())
-                        .then_some(0),
-                        input_semantics: InputTokenSemantics::Inclusive,
-                    });
-                    out.push(AgentEvent::Usage { usage: self.usage });
-                }
-                self.stop_reason = Some(if kind == "response.completed" {
-                    "completed".into()
-                } else {
-                    value
-                        .pointer("/response/incomplete_details/reason")
-                        .and_then(|reason| reason.as_str())
-                        .unwrap_or("incomplete")
-                        .to_string()
-                });
-                out.extend(self.finish());
+                self.openai_response_finished(kind, &value, &mut out);
             }
             "response.failed" | "error" => {
                 let message = value

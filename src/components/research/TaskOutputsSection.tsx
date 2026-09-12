@@ -46,6 +46,12 @@ interface OpenPreview {
   error: string | null;
 }
 
+function fileNote(exists: boolean, binary: boolean): string | null {
+  if (!exists) return i18n.t(($) => $.researchTools.outputs.deleted);
+  if (binary) return i18n.t(($) => $.researchTools.outputs.binaryFile);
+  return null;
+}
+
 function hasOutputs(task: ResearchTask): boolean {
   const result = task.result;
   if (!result) return false;
@@ -128,11 +134,7 @@ export function TaskOutputsSection() {
       settle(request, {
         text: result.after.text,
         truncated: result.after.truncated,
-        note: !result.after.exists
-          ? i18n.t(($) => $.researchTools.outputs.deleted)
-          : result.after.binary
-            ? i18n.t(($) => $.researchTools.outputs.binaryFile)
-            : null,
+        note: fileNote(result.after.exists, result.after.binary),
       });
     } catch (cause) {
       settle(request, { error: failure(cause) });
@@ -154,6 +156,27 @@ export function TaskOutputsSection() {
     } catch (cause) {
       settle(request, { error: failure(cause) });
     }
+  };
+
+  const previewBody = () => {
+    if (preview?.loading) {
+      return (
+        <output className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
+        </output>
+      );
+    }
+    if (preview?.note) return <p className="text-sm text-muted-foreground">{preview.note}</p>;
+    return (
+      <>
+        <pre className="whitespace-pre-wrap break-words text-xs">{preview?.text ?? ""}</pre>
+        {preview?.truncated ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t(($) => $.researchTools.outputs.previewTruncated)}
+          </p>
+        ) : null}
+      </>
+    );
   };
 
   return (
@@ -261,21 +284,8 @@ export function TaskOutputsSection() {
               <p role="alert" className="text-sm text-destructive">
                 {preview.error}
               </p>
-            ) : preview?.loading ? (
-              <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-              </p>
-            ) : preview?.note ? (
-              <p className="text-sm text-muted-foreground">{preview.note}</p>
             ) : (
-              <>
-                <pre className="whitespace-pre-wrap break-words text-xs">{preview?.text ?? ""}</pre>
-                {preview?.truncated ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {t(($) => $.researchTools.outputs.previewTruncated)}
-                  </p>
-                ) : null}
-              </>
+              previewBody()
             )}
           </div>
           <DialogFooter>

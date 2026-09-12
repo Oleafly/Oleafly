@@ -152,16 +152,21 @@ function collectVisibleNodeIds(
   return branchHasMatch;
 }
 
+type FlattenScope = Readonly<{
+  visibleIds: ReadonlySet<string>;
+  queryActive: boolean;
+  collapsedByUser: ReadonlySet<string>;
+  expandedByUser: ReadonlySet<string>;
+}>;
+
 function flattenVisibleRows(
   nodes: readonly IntelligenceTreeNode[],
-  visibleIds: ReadonlySet<string>,
-  queryActive: boolean,
-  collapsedByUser: ReadonlySet<string>,
-  expandedByUser: ReadonlySet<string>,
+  scope: FlattenScope,
   level = 1,
   parentId: string | null = null,
   rows: VisibleTreeRow[] = [],
 ): VisibleTreeRow[] {
+  const { visibleIds, queryActive, collapsedByUser, expandedByUser } = scope;
   const siblings = nodes.filter((node) => visibleIds.has(node.id));
   const setSize = siblings.length;
 
@@ -184,16 +189,7 @@ function flattenVisibleRows(
     });
 
     if (expanded && node.children) {
-      flattenVisibleRows(
-        node.children,
-        visibleIds,
-        queryActive,
-        collapsedByUser,
-        expandedByUser,
-        level + 1,
-        node.id,
-        rows,
-      );
+      flattenVisibleRows(node.children, scope, level + 1, node.id, rows);
     }
   });
 
@@ -223,6 +219,89 @@ function toneClasses(tone: IntelligenceNodeTone | undefined): string {
   }
 }
 
+function TreeRowMarker({
+  row,
+  onToggle,
+}: Readonly<{
+  row: VisibleTreeRow;
+  onToggle: (id: string, expanded: boolean) => void;
+}>) {
+  if (!row.expandable) {
+    return (
+      <span
+        aria-hidden
+        className="-ml-1.5 -mr-1.5 flex size-7 shrink-0 items-center justify-center"
+      >
+        <CircleDot className="size-2 text-muted-foreground/45" />
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-label={row.expanded ? "Collapse" : "Expand"}
+      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+        event.stopPropagation();
+        onToggle(row.node.id, row.expanded);
+      }}
+      className="-ml-1.5 -mr-1.5 flex size-7 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground hover:bg-sidebar-accent-foreground/10"
+    >
+      <ChevronRight
+        aria-hidden
+        className={cn(
+          "size-3.5 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none",
+          row.expanded && "rotate-90",
+        )}
+      />
+    </button>
+  );
+}
+
+function TreeRowIcon({
+  node,
+  isGroup,
+}: Readonly<{ node: IntelligenceTreeNode; isGroup: boolean }>) {
+  if (node.kind === "file") {
+    return <FileIcon name={fileNameOf(node)} className="size-4 shrink-0" />;
+  }
+  const Icon = KIND_ICON[node.kind];
+  return (
+    <Icon
+      aria-hidden
+      className={cn("size-4 shrink-0", isGroup ? "text-muted-foreground" : "opacity-80")}
+    />
+  );
+}
+
+function TreeRowTrailing({ node }: Readonly<{ node: IntelligenceTreeNode }>) {
+  if (node.badge) {
+    return (
+      <span
+        aria-hidden
+        className={cn(
+          "max-w-[42%] shrink-0 truncate rounded-sm bg-muted px-1 py-px font-mono text-[9px] font-normal leading-4 text-muted-foreground",
+          node.tone === "warning" && "bg-amber-500/12 text-amber-700 dark:text-amber-300",
+          node.tone === "danger" && "bg-destructive/10 text-destructive",
+        )}
+      >
+        {node.badge}
+      </span>
+    );
+  }
+  if (node.provenance) {
+    return (
+      <span
+        aria-hidden
+        className="max-w-[42%] shrink-0 truncate font-mono text-[9px] text-muted-foreground/80"
+      >
+        {node.provenance}
+      </span>
+    );
+  }
+  return null;
+}
+
 const TreeRow = memo(function TreeRow({
   row,
   treeId,
@@ -232,7 +311,7 @@ const TreeRow = memo(function TreeRow({
   onToggle,
   onActivate,
   onKeyDown,
-}: {
+}: Readonly<{
   row: VisibleTreeRow;
   treeId: string;
   focused: boolean;
@@ -241,8 +320,7 @@ const TreeRow = memo(function TreeRow({
   onToggle: (id: string, expanded: boolean) => void;
   onActivate: (node: IntelligenceTreeNode) => void;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>, row: VisibleTreeRow) => void;
-}) {
-  const Icon = KIND_ICON[row.node.kind];
+}>) {
   const isGroup = row.node.kind === "group";
   const linePrefix = row.node.provenance ? `${row.node.provenance}. ` : "";
   const description = row.node.description
@@ -251,6 +329,10 @@ const TreeRow = memo(function TreeRow({
   const accessibleDescription = [row.node.badge, description]
     .filter(Boolean)
     .join(". ");
+  const activateRow = () => {
+    if (row.node.target) onActivate(row.node);
+    else if (row.expandable) onToggle(row.node.id, row.expanded);
+  };
 
   const rowElement = (
     <div
@@ -280,76 +362,14 @@ const TreeRow = memo(function TreeRow({
       style={{ paddingLeft: `${Math.max(6, row.level * 11 - 5)}px` }}
       onFocus={() => onFocus(row.node.id)}
       onKeyDown={(event) => onKeyDown(event, row)}
-      onClick={() => {
-        if (row.node.target) {
-          onActivate(row.node);
-        } else if (row.expandable) {
-          onToggle(row.node.id, row.expanded);
-        }
-      }}
+      onClick={activateRow}
     >
-      {row.expandable ? (
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label={row.expanded ? "Collapse" : "Expand"}
-          onClick={(event: MouseEvent<HTMLButtonElement>) => {
-            event.stopPropagation();
-            onToggle(row.node.id, row.expanded);
-          }}
-          className="-ml-1.5 -mr-1.5 flex size-7 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground hover:bg-sidebar-accent-foreground/10"
-        >
-          <ChevronRight
-            aria-hidden
-            className={cn(
-              "size-3.5 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none",
-              row.expanded && "rotate-90",
-            )}
-          />
-        </button>
-      ) : (
-        <span
-          aria-hidden
-          className="-ml-1.5 -mr-1.5 flex size-7 shrink-0 items-center justify-center"
-        >
-          <CircleDot className="size-2 text-muted-foreground/45" />
-        </span>
-      )}
-      {row.node.kind === "file" ? (
-        <FileIcon name={fileNameOf(row.node)} className="size-4 shrink-0" />
-      ) : (
-        <Icon
-          aria-hidden
-          className={cn(
-            "size-4 shrink-0",
-            isGroup ? "text-muted-foreground" : "opacity-80",
-          )}
-        />
-      )}
+      <TreeRowMarker row={row} onToggle={onToggle} />
+      <TreeRowIcon node={row.node} isGroup={isGroup} />
       <span className="min-w-0 flex-1 truncate text-[13px] leading-5">
         {row.node.label}
       </span>
-      {row.node.badge ? (
-        <span
-          aria-hidden
-          className={cn(
-            "max-w-[42%] shrink-0 truncate rounded-sm bg-muted px-1 py-px font-mono text-[9px] font-normal leading-4 text-muted-foreground",
-            row.node.tone === "warning" &&
-              "bg-amber-500/12 text-amber-700 dark:text-amber-300",
-            row.node.tone === "danger" &&
-              "bg-destructive/10 text-destructive",
-          )}
-        >
-          {row.node.badge}
-        </span>
-      ) : row.node.provenance ? (
-        <span
-          aria-hidden
-          className="max-w-[42%] shrink-0 truncate font-mono text-[9px] text-muted-foreground/80"
-        >
-          {row.node.provenance}
-        </span>
-      ) : null}
+      <TreeRowTrailing node={row.node} />
     </div>
   );
 
@@ -371,14 +391,14 @@ export function IntelligenceTree({
   emptyMessage,
   onActivate,
   className,
-}: {
+}: Readonly<{
   label: string;
   nodes: readonly IntelligenceTreeNode[];
   query: string;
   emptyMessage: string;
   onActivate: (node: IntelligenceTreeNode) => void;
   className?: string;
-}) {
+}>) {
   const reactId = useId();
   const treeId = reactId.replaceAll(":", "");
   const normalizedQuery = useDeferredValue(query.trim().toLocaleLowerCase());
@@ -394,13 +414,12 @@ export function IntelligenceTree({
   const visibleRows = useMemo(() => {
     const visibleIds = new Set<string>();
     collectVisibleNodeIds(nodes, normalizedQuery, false, visibleIds);
-    return flattenVisibleRows(
-      nodes,
+    return flattenVisibleRows(nodes, {
       visibleIds,
-      normalizedQuery.length > 0,
+      queryActive: normalizedQuery.length > 0,
       collapsedByUser,
       expandedByUser,
-    );
+    });
   }, [collapsedByUser, expandedByUser, nodes, normalizedQuery]);
 
   const rowIndex = useMemo(
@@ -454,6 +473,33 @@ export function IntelligenceTree({
     });
   }, []);
 
+  const expandOrEnter = useCallback(
+    (row: VisibleTreeRow, next: VisibleTreeRow | undefined) => {
+      if (!row.expanded) {
+        toggle(row.node.id, false);
+        return;
+      }
+      if (next?.parentId === row.node.id) focusRow(next.node.id);
+    },
+    [focusRow, toggle],
+  );
+
+  const collapseOrLeave = useCallback(
+    (row: VisibleTreeRow) => {
+      if (row.expandable && row.expanded) toggle(row.node.id, true);
+      else if (row.parentId) focusRow(row.parentId);
+    },
+    [focusRow, toggle],
+  );
+
+  const activateOrToggle = useCallback(
+    (row: VisibleTreeRow) => {
+      if (row.node.target) onActivate(row.node);
+      else if (row.expandable) toggle(row.node.id, row.expanded);
+    },
+    [onActivate, toggle],
+  );
+
   const onKeyDown = useCallback(
     (
       event: KeyboardEvent<HTMLDivElement>,
@@ -481,48 +527,34 @@ export function IntelligenceTree({
         case "ArrowRight":
           if (!row.expandable) return;
           event.preventDefault();
-          if (!row.expanded) {
-            toggle(row.node.id, false);
-          } else {
-            const child = visibleRows[index + 1];
-            if (child?.parentId === row.node.id) focusRow(child.node.id);
-          }
+          expandOrEnter(row, visibleRows[index + 1]);
           return;
         case "ArrowLeft":
           event.preventDefault();
-          if (row.expandable && row.expanded) {
-            toggle(row.node.id, true);
-          } else if (row.parentId) {
-            focusRow(row.parentId);
-          }
+          collapseOrLeave(row);
           return;
         case "Enter":
         case " ":
           event.preventDefault();
-          if (row.node.target) {
-            onActivate(row.node);
-          } else if (row.expandable) {
-            toggle(row.node.id, row.expanded);
-          }
+          activateOrToggle(row);
           return;
         default:
           return;
       }
     },
-    [focusRow, onActivate, rowIndex, toggle, visibleRows],
+    [activateOrToggle, collapseOrLeave, expandOrEnter, focusRow, rowIndex, visibleRows],
   );
 
   if (visibleRows.length === 0) {
     return (
-      <div
-        role="status"
+      <output
         className={cn(
           "flex min-h-24 items-center justify-center px-5 py-7 text-center text-[11px] leading-relaxed text-muted-foreground",
           className,
         )}
       >
         {emptyMessage}
-      </div>
+      </output>
     );
   }
 
@@ -555,13 +587,13 @@ export function IntelligenceFilter({
   placeholder,
   label,
   inputRef,
-}: {
+}: Readonly<{
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   label: string;
   inputRef?: Ref<HTMLInputElement>;
-}) {
+}>) {
   const { t } = useTranslation(["workspace"]);
   const inputId = useId();
   return (
@@ -599,40 +631,47 @@ export function IntelligenceFilter({
 export function PanelBreadcrumb({
   project,
   path,
-}: {
+}: Readonly<{
   project?: string | null;
   path?: string | null;
-}) {
+}>) {
   const { t } = useTranslation(["workspace"]);
   const segments = path?.split("/").filter(Boolean) ?? [];
-  const visibleSegments: readonly { id: string; label: string }[] =
-    segments.length > 2
-      ? [
-          { id: `root:${segments[0]}`, label: segments[0] ?? "" },
-          { id: "collapsed-path", label: "…" },
-          {
-            id: `leaf:${segments.at(-1) ?? ""}`,
-            label: segments.at(-1) ?? "",
-          },
-        ]
-      : segments.length === 2
-        ? [
-            { id: `root:${segments[0]}`, label: segments[0] ?? "" },
-            { id: `leaf:${segments[1]}`, label: segments[1] ?? "" },
-          ]
-        : segments.length === 1
-          ? [{ id: `leaf:${segments[0]}`, label: segments[0] ?? "" }]
-          : [];
+  const visibleSegmentsFor = (): readonly { id: string; label: string }[] => {
+    if (segments.length > 2) {
+      return [
+        { id: `root:${segments[0]}`, label: segments[0] ?? "" },
+        { id: "collapsed-path", label: "…" },
+        {
+          id: `leaf:${segments.at(-1) ?? ""}`,
+          label: segments.at(-1) ?? "",
+        },
+      ];
+    }
+    if (segments.length === 2) {
+      return [
+        { id: `root:${segments[0]}`, label: segments[0] ?? "" },
+        { id: `leaf:${segments[1]}`, label: segments[1] ?? "" },
+      ];
+    }
+    if (segments.length === 1) {
+      return [{ id: `leaf:${segments[0]}`, label: segments[0] ?? "" }];
+    }
+    return [];
+  };
+  const visibleSegments = visibleSegmentsFor();
+  const breadcrumbLabel = (): string => {
+    if (path) {
+      return project
+        ? t(($) => $.workspace.tree.breadcrumbWithProject, { project, path })
+        : path;
+    }
+    return project ?? t(($) => $.workspace.tree.noProject);
+  };
 
   return (
     <nav
-      aria-label={
-        path
-          ? project
-            ? t(($) => $.workspace.tree.breadcrumbWithProject, { project, path })
-            : path
-          : (project ?? t(($) => $.workspace.tree.noProject))
-      }
+      aria-label={breadcrumbLabel()}
       className="flex min-w-0 items-center gap-1 overflow-hidden text-[10px] text-muted-foreground"
     >
       {project ? (
@@ -667,21 +706,20 @@ export function PanelState({
   title,
   detail,
   action,
-}: {
+}: Readonly<{
   state: "pending" | "partial" | "error" | "unsupported" | "empty";
   title: string;
   detail: string;
   action?: ReactNode;
-}) {
+}>) {
   const isPending = state === "pending";
-  const StateIcon =
-    state === "error" || state === "partial"
-      ? CircleAlert
-      : state === "unsupported"
-        ? Tags
-        : state === "empty"
-          ? FolderTree
-          : CircleDot;
+  const stateIconFor = () => {
+    if (state === "error" || state === "partial") return CircleAlert;
+    if (state === "unsupported") return Tags;
+    if (state === "empty") return FolderTree;
+    return CircleDot;
+  };
+  const StateIcon = stateIconFor();
 
   return (
     <div

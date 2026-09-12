@@ -237,6 +237,24 @@ export function isLanguageServiceSetupRequiredError(
   );
 }
 
+function backendErrorFromRecord(
+  value: Record<string, unknown>,
+): LanguageServiceBackendError {
+  const metadata = isRecord(value.metadata) ? value.metadata : value;
+  const code = typeof value.code === "string" ? value.code : "backend_error";
+  const message =
+    typeof value.message === "string"
+      ? value.message
+      : "Language-service backend command failed";
+  const kind = isLanguageServiceKind(metadata.kind) ? metadata.kind : undefined;
+  const version =
+    typeof metadata.version === "string" ? metadata.version : undefined;
+  return new LanguageServiceBackendError(code, message, {
+    ...(kind ? { kind } : {}),
+    ...(version ? { version } : {}),
+  });
+}
+
 function backendError(value: unknown): Error {
   if (value instanceof LanguageServiceBackendError) return value;
   if (typeof value === "string") {
@@ -246,28 +264,7 @@ function backendError(value: unknown): Error {
       return new Error(value);
     }
   }
-  if (isRecord(value)) {
-    const metadata = isRecord(value.metadata)
-      ? value.metadata
-      : value;
-    const code =
-      typeof value.code === "string" ? value.code : "backend_error";
-    const message =
-      typeof value.message === "string"
-        ? value.message
-        : "Language-service backend command failed";
-    const kind = isLanguageServiceKind(metadata.kind)
-      ? metadata.kind
-      : undefined;
-    const version =
-      typeof metadata.version === "string"
-        ? metadata.version
-        : undefined;
-    return new LanguageServiceBackendError(code, message, {
-      ...(kind ? { kind } : {}),
-      ...(version ? { version } : {}),
-    });
-  }
+  if (isRecord(value)) return backendErrorFromRecord(value);
   return value instanceof Error ? value : new Error(String(value));
 }
 
@@ -328,10 +325,9 @@ function sameSession(
   right: LanguageServiceSession,
 ): boolean {
   return Boolean(
-    left &&
-      left.session === right.session &&
-      left.kind === right.kind &&
-      left.generation === right.generation,
+    left?.session === right.session &&
+      left?.kind === right.kind &&
+      left?.generation === right.generation,
   );
 }
 
@@ -546,6 +542,152 @@ function parseInstallStatus(
   };
 }
 
+type BackendEventBase = LanguageServiceSession & { sequence: number };
+
+const EVENT_ENVELOPE_KEYS = [
+  "session",
+  "kind",
+  "generation",
+  "sequence",
+  "event",
+];
+
+function parseStartedEvent(
+  value: Record<string, unknown>,
+  base: BackendEventBase,
+): BackendEvent {
+  if (
+    !hasExactKeys(value, [
+      ...EVENT_ENVELOPE_KEYS,
+      "projectId",
+      "workspaceRoot",
+    ]) ||
+    !isNonEmptyString(value.projectId) ||
+    !isNonEmptyString(value.workspaceRoot)
+  ) {
+    throw new Error("Malformed language-service started event");
+  }
+  return {
+    ...base,
+    event: "started",
+    projectId: value.projectId,
+    workspaceRoot: value.workspaceRoot,
+  };
+}
+
+function parseMessageEvent(
+  value: Record<string, unknown>,
+  base: BackendEventBase,
+): BackendEvent {
+  if (!hasExactKeys(value, [...EVENT_ENVELOPE_KEYS, "message"])) {
+    throw new Error("Malformed language-service message event");
+  }
+  return {
+    ...base,
+    event: "message",
+    message: parseJsonRpcMessage(value.message),
+  };
+}
+
+function parseStderrEvent(
+  value: Record<string, unknown>,
+  base: BackendEventBase,
+): BackendEvent {
+  if (
+    !hasExactKeys(value, [...EVENT_ENVELOPE_KEYS, "text"]) ||
+    typeof value.text !== "string"
+  ) {
+    throw new Error("Malformed language-service stderr event");
+  }
+  return { ...base, event: "stderr", text: value.text };
+}
+
+function parseStderrTruncatedEvent(
+  value: Record<string, unknown>,
+  base: BackendEventBase,
+): BackendEvent {
+  if (
+    !hasExactKeys(value, [...EVENT_ENVELOPE_KEYS, "limitBytes"]) ||
+    !isSafeNonNegativeInteger(value.limitBytes)
+  ) {
+    throw new Error("Malformed language-service stderr_truncated event");
+  }
+  return {
+    ...base,
+    event: "stderr_truncated",
+    limitBytes: value.limitBytes,
+  };
+}
+
+function parseProtocolErrorEvent(
+  value: Record<string, unknown>,
+  base: BackendEventBase,
+): BackendEvent {
+  if (
+    !hasExactKeys(value, [...EVENT_ENVELOPE_KEYS, "code", "message"]) ||
+    !isBackendProtocolErrorCode(value.code) ||
+    !isNonEmptyString(value.message)
+  ) {
+    throw new Error("Malformed language-service protocol_error event");
+  }
+  return {
+    ...base,
+    event: "protocol_error",
+    code: value.code,
+    message: value.message,
+  };
+}
+
+function parseTransportErrorEvent(
+  value: Record<string, unknown>,
+  base: BackendEventBase,
+): BackendEvent {
+  if (
+    !hasExactKeys(value, [...EVENT_ENVELOPE_KEYS, "stream", "message"]) ||
+    (value.stream !== "stdin" &&
+      value.stream !== "stdout" &&
+      value.stream !== "stderr") ||
+    !isNonEmptyString(value.message)
+  ) {
+    throw new Error("Malformed language-service transport_error event");
+  }
+  return {
+    ...base,
+    event: "transport_error",
+    stream: value.stream,
+    message: value.message,
+  };
+}
+
+function parseExitedEvent(
+  value: Record<string, unknown>,
+  base: BackendEventBase,
+): BackendEvent {
+  if (
+    !hasExactKeys(value, [
+      ...EVENT_ENVELOPE_KEYS,
+      "status",
+      "exitCode",
+      "signal",
+      "reason",
+    ]) ||
+    !isTerminalBackendStatus(value.status) ||
+    !isNullableInteger(value.exitCode) ||
+    !isNullableInteger(value.signal) ||
+    typeof value.reason !== "string"
+  ) {
+    throw new Error("Malformed language-service exited event");
+  }
+  return {
+    ...base,
+    event: "exited",
+    status: value.status,
+    exitCode: value.exitCode,
+    signal: value.signal,
+    reason: value.reason,
+  };
+}
+
 function parseBackendEvent(value: unknown): BackendEvent {
   const session = parseSession(value);
   if (
@@ -558,159 +700,19 @@ function parseBackendEvent(value: unknown): BackendEvent {
   const base = { ...session, sequence: value.sequence };
   switch (value.event) {
     case "started":
-      if (
-        !hasExactKeys(value, [
-          "session",
-          "kind",
-          "generation",
-          "sequence",
-          "event",
-          "projectId",
-          "workspaceRoot",
-        ]) ||
-        !isNonEmptyString(value.projectId) ||
-        !isNonEmptyString(value.workspaceRoot)
-      ) {
-        throw new Error("Malformed language-service started event");
-      }
-      return {
-        ...base,
-        event: "started",
-        projectId: value.projectId,
-        workspaceRoot: value.workspaceRoot,
-      };
+      return parseStartedEvent(value, base);
     case "message":
-      if (
-        !hasExactKeys(value, [
-          "session",
-          "kind",
-          "generation",
-          "sequence",
-          "event",
-          "message",
-        ])
-      ) {
-        throw new Error("Malformed language-service message event");
-      }
-      return {
-        ...base,
-        event: "message",
-        message: parseJsonRpcMessage(value.message),
-      };
+      return parseMessageEvent(value, base);
     case "stderr":
-      if (
-        !hasExactKeys(value, [
-          "session",
-          "kind",
-          "generation",
-          "sequence",
-          "event",
-          "text",
-        ]) ||
-        typeof value.text !== "string"
-      ) {
-        throw new Error("Malformed language-service stderr event");
-      }
-      return { ...base, event: "stderr", text: value.text };
+      return parseStderrEvent(value, base);
     case "stderr_truncated":
-      if (
-        !hasExactKeys(value, [
-          "session",
-          "kind",
-          "generation",
-          "sequence",
-          "event",
-          "limitBytes",
-        ]) ||
-        !isSafeNonNegativeInteger(value.limitBytes)
-      ) {
-        throw new Error(
-          "Malformed language-service stderr_truncated event",
-        );
-      }
-      return {
-        ...base,
-        event: "stderr_truncated",
-        limitBytes: value.limitBytes,
-      };
+      return parseStderrTruncatedEvent(value, base);
     case "protocol_error":
-      if (
-        !hasExactKeys(value, [
-          "session",
-          "kind",
-          "generation",
-          "sequence",
-          "event",
-          "code",
-          "message",
-        ]) ||
-        !isBackendProtocolErrorCode(value.code) ||
-        !isNonEmptyString(value.message)
-      ) {
-        throw new Error(
-          "Malformed language-service protocol_error event",
-        );
-      }
-      return {
-        ...base,
-        event: "protocol_error",
-        code: value.code,
-        message: value.message,
-      };
+      return parseProtocolErrorEvent(value, base);
     case "transport_error":
-      if (
-        !hasExactKeys(value, [
-          "session",
-          "kind",
-          "generation",
-          "sequence",
-          "event",
-          "stream",
-          "message",
-        ]) ||
-        (value.stream !== "stdin" &&
-          value.stream !== "stdout" &&
-          value.stream !== "stderr") ||
-        !isNonEmptyString(value.message)
-      ) {
-        throw new Error(
-          "Malformed language-service transport_error event",
-        );
-      }
-      return {
-        ...base,
-        event: "transport_error",
-        stream: value.stream,
-        message: value.message,
-      };
+      return parseTransportErrorEvent(value, base);
     case "exited":
-      if (
-        !hasExactKeys(value, [
-          "session",
-          "kind",
-          "generation",
-          "sequence",
-          "event",
-          "status",
-          "exitCode",
-          "signal",
-          "reason",
-        ]) ||
-        !isTerminalBackendStatus(value.status) ||
-        !isNullableInteger(value.exitCode) ||
-        !isNullableInteger(value.signal) ||
-        typeof value.reason !== "string"
-      ) {
-        throw new Error("Malformed language-service exited event");
-      }
-      return {
-        ...base,
-        event: "exited",
-        status: value.status,
-        exitCode: value.exitCode,
-        signal: value.signal,
-        reason: value.reason,
-      };
+      return parseExitedEvent(value, base);
     default:
       throw new Error(
         `Unknown language-service event: ${value.event}`,
@@ -873,10 +875,7 @@ export class TauriLanguageServiceTransport
     }
   }
 
-  async start(
-    options: LanguageServiceStartOptions,
-    sink: LanguageServiceEventSink,
-  ): Promise<LanguageServiceRuntimeSession> {
+  private assertStartable(options: LanguageServiceStartOptions): void {
     if (this.activeSession || this.transportStatus.state === "starting") {
       throw new Error("Language-service transport is already active");
     }
@@ -886,28 +885,67 @@ export class TauriLanguageServiceTransport
     if (!isNonEmptyString(options.projectId)) {
       throw new Error("Language-service project id is required");
     }
+  }
+
+  private async clearFailedStartSession(attempt: number): Promise<void> {
+    if (!this.failedStartSession) return;
+    const retained = this.failedStartSession;
+    const cleanupFailure = await this.stopBackendSession(retained);
+    if (cleanupFailure) {
+      const failure = new Error(
+        `A failed language-service startup could not be cleaned up: ${cleanupFailure.message}`,
+      );
+      if (attempt === this.startAttempt) {
+        this.transportStatus = {
+          state: "error",
+          session: null,
+          error: failure.message,
+        };
+      }
+      throw failure;
+    }
+    this.failedStartSession = null;
+  }
+
+  private async failStart(
+    error: unknown,
+    startedSession: BackendCleanupSession | null,
+    attempt: number,
+  ): Promise<never> {
+    const primaryFailure = backendError(error);
+    let cleanupFailure: Error | null = null;
+    if (startedSession) {
+      this.failedStartSession = startedSession;
+      cleanupFailure = await this.stopBackendSession(startedSession);
+      if (!cleanupFailure) {
+        this.failedStartSession = null;
+      }
+    }
+    const failure = cleanupFailure
+      ? new Error(
+          `${primaryFailure.message}. Backend cleanup also failed: ${cleanupFailure.message}`,
+        )
+      : primaryFailure;
+    if (attempt === this.startAttempt) {
+      this.activeSession = null;
+      this.transportStatus = {
+        state: "error",
+        session: null,
+        error: failure.message,
+      };
+    }
+    throw failure;
+  }
+
+  async start(
+    options: LanguageServiceStartOptions,
+    sink: LanguageServiceEventSink,
+  ): Promise<LanguageServiceRuntimeSession> {
+    this.assertStartable(options);
 
     const attempt = ++this.startAttempt;
     this.transportStatus = { state: "starting", session: null };
-    if (this.failedStartSession) {
-      const retained = this.failedStartSession;
-      const cleanupFailure =
-        await this.stopBackendSession(retained);
-      if (cleanupFailure) {
-        const failure = new Error(
-          `A failed language-service startup could not be cleaned up: ${cleanupFailure.message}`,
-        );
-        if (attempt === this.startAttempt) {
-          this.transportStatus = {
-            state: "error",
-            session: null,
-            error: failure.message,
-          };
-        }
-        throw failure;
-      }
-      this.failedStartSession = null;
-    }
+    await this.clearFailedStartSession(attempt);
 
     const queuedEvents: unknown[] = [];
     let queuedEventsOverflowed = false;
@@ -980,30 +1018,7 @@ export class TauriLanguageServiceTransport
       return { ...session };
     } catch (error) {
       responseReceived = true;
-      const primaryFailure = backendError(error);
-      let cleanupFailure: Error | null = null;
-      if (startedSession) {
-        this.failedStartSession = startedSession;
-        cleanupFailure =
-          await this.stopBackendSession(startedSession);
-        if (!cleanupFailure) {
-          this.failedStartSession = null;
-        }
-      }
-      const failure = cleanupFailure
-        ? new Error(
-            `${primaryFailure.message}. Backend cleanup also failed: ${cleanupFailure.message}`,
-          )
-        : primaryFailure;
-      if (attempt === this.startAttempt) {
-        this.activeSession = null;
-        this.transportStatus = {
-          state: "error",
-          session: null,
-          error: failure.message,
-        };
-      }
-      throw failure;
+      return await this.failStart(error, startedSession, attempt);
     }
   }
 

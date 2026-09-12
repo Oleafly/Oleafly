@@ -14,8 +14,12 @@ import {
 const memory = new Map<string, string>();
 const memoryStorage: StateStorage = {
   getItem: (k) => memory.get(k) ?? null,
-  setItem: (k, v) => void memory.set(k, v),
-  removeItem: (k) => void memory.delete(k),
+  setItem: (k, v) => {
+    memory.set(k, v);
+  },
+  removeItem: (k) => {
+    memory.delete(k);
+  },
 };
 
 // Words can be ignored just for one project or everywhere. Persisted to the
@@ -132,6 +136,19 @@ function canStoreSuppression(key: string): boolean {
   );
 }
 
+function sanitizeSuppressionKeys(raw: readonly unknown[]): string[] {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of raw) {
+    if (typeof candidate !== "string") continue;
+    if (!canStoreSuppression(candidate) || seen.has(candidate)) continue;
+    seen.add(candidate);
+    keys.push(candidate);
+    if (keys.length >= DICTIONARY_LIMITS.suppressionsPerProject) break;
+  }
+  return keys;
+}
+
 function sanitizeSuppressions(value: unknown): Record<string, string[]> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const output: Record<string, string[]> = {};
@@ -139,15 +156,7 @@ function sanitizeSuppressions(value: unknown): Record<string, string[]> {
   for (const [projectId, raw] of Object.entries(value)) {
     if (scopes >= DICTIONARY_LIMITS.projectScopes) break;
     if (!canStoreProjectId(projectId) || !Array.isArray(raw)) continue;
-    const keys: string[] = [];
-    const seen = new Set<string>();
-    for (const candidate of raw) {
-      if (typeof candidate !== "string") continue;
-      if (!canStoreSuppression(candidate) || seen.has(candidate)) continue;
-      seen.add(candidate);
-      keys.push(candidate);
-      if (keys.length >= DICTIONARY_LIMITS.suppressionsPerProject) break;
-    }
+    const keys = sanitizeSuppressionKeys(raw);
     if (keys.length === 0) continue;
     output[projectId] = keys;
     scopes++;

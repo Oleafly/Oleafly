@@ -31,7 +31,10 @@ export function parseCrossrefSearch(json: string): CitationHit[] {
     doi: it.DOI ?? null,
     title: Array.isArray(it.title) ? it.title[0] ?? "" : it.title ?? "",
     authors: (it.author ?? [])
-      .map((a) => (a.family ? `${a.family}${a.given ? `, ${a.given}` : ""}` : a.name ?? ""))
+      .map((a) => {
+        const given = a.given ? `, ${a.given}` : "";
+        return a.family ? `${a.family}${given}` : a.name ?? "";
+      })
       .filter(Boolean),
     year: it.issued?.["date-parts"]?.[0]?.[0]?.toString() ?? null,
     venue: Array.isArray(it["container-title"]) ? it["container-title"][0] ?? null : it["container-title"] ?? null,

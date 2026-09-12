@@ -218,7 +218,7 @@ pub fn list_threads(sessions_root: &Path) -> Result<Vec<String>, String> {
         Err(_) => return Ok(Vec::new()),
     };
     let mut found: Vec<(std::time::SystemTime, String)> = entries
-        .filter_map(|entry| entry.ok())
+        .filter_map(Result::ok)
         .filter_map(|entry| {
             let name = entry.file_name().into_string().ok()?;
             let modified = entry

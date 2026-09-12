@@ -44,7 +44,8 @@ const SHELF_COPYRIGHT = "K-Dense Inc.";
 const BLOCK_SCALAR_INDICATOR_SET = new Set(BLOCK_SCALAR_INDICATORS);
 
 function byCodeUnit(left, right) {
-  return left < right ? -1 : left > right ? 1 : 0;
+  if (left < right) return -1;
+  return left > right ? 1 : 0;
 }
 
 function parseArgs(argv) {
@@ -111,7 +112,7 @@ async function copySkillTree(srcDir, destDir, excludeRegexes, maxFileBytes) {
   let byteCount = 0;
   const relPaths = [];
   for (const filePath of files) {
-    const rel = relative(srcDir, filePath).split("\\").join("/");
+    const rel = relative(srcDir, filePath).replaceAll("\\", "/");
     if (isExcluded(rel, excludeRegexes)) continue;
     const st = await stat(filePath);
     if (st.size > maxFileBytes) continue;
@@ -203,8 +204,8 @@ function buildUstarTar(rootName, relPaths, readFileSync) {
     const content = readFileSync(f);
     chunks.push(
       ustarHeader({ name: `${rootName}/${f}`, size: content.length, typeflag: "0", mtime: 0, mode: "0000644" }),
+      padTo512(content),
     );
-    chunks.push(padTo512(content));
   }
   chunks.push(Buffer.alloc(1024, 0));
   return Buffer.concat(chunks);
@@ -298,7 +299,7 @@ async function main() {
     }
 
     const stageDir = join(stagingRoot, entry.id);
-    const { fileCount, byteCount, relPaths } = await copySkillTree(
+    const { fileCount, relPaths } = await copySkillTree(
       skillSrcDir,
       stageDir,
       excludeRegexes,
@@ -390,7 +391,9 @@ async function main() {
   console.log(`generatedAt: shelf ${generatedAt} > bundled floor ${floorGeneratedAt}`);
 }
 
-main().catch((err) => {
+try {
+  await main();
+} catch (err) {
   console.error(err.stack ?? err.message ?? err);
   process.exit(1);
-});
+}

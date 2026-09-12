@@ -1444,83 +1444,13 @@ async fn run_session(runtime: SessionRuntime) {
     drop(containment);
 
     if !stdout_joined {
-        if *stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
-            outcome.status = LanguageServiceStatus::Stopped;
-            outcome.reason = "stop requested".into();
-        }
-        match tokio::time::timeout(PIPE_DRAIN_TIMEOUT, &mut stdout_task).await {
-            Ok(result) => {
-                if *stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
-                    outcome.status = LanguageServiceStatus::Stopped;
-                    outcome.reason = "stop requested".into();
-                } else if outcome.status != LanguageServiceStatus::Stopped {
-                    if let Some(reason) = handle_stdout_completion(&record.events, result) {
-                        outcome.status = LanguageServiceStatus::Failed;
-                        outcome.reason = reason;
-                    }
-                }
-            }
-            Err(_) => {
-                stdout_task.abort();
-                if *stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
-                    outcome.status = LanguageServiceStatus::Stopped;
-                    outcome.reason = "stop requested".into();
-                } else if outcome.status != LanguageServiceStatus::Stopped {
-                    let _ = record
-                        .events
-                        .emit(LanguageServiceEventPayload::TransportError {
-                            stream: TransportStream::Stdout,
-                            message: "stdout pipe did not close after the language server exited"
-                                .into(),
-                        });
-                    let pid = record.pid.load(Ordering::Acquire);
-                    if pid != 0 {
-                        let _ =
-                            tokio::time::timeout(PROCESS_KILL_TIMEOUT, terminate_process_tree(pid))
-                                .await;
-                    }
-                    outcome.status = LanguageServiceStatus::Failed;
-                    outcome.reason =
-                        "stdout pipe remained open after the language server exited".into();
-                }
-            }
-        }
+        drain_stdout_task(&record, &stop_rx, &mut stdout_task, &mut outcome).await;
     }
     if !writer_joined {
         writer_task.abort();
     }
     if !stderr_joined {
-        match tokio::time::timeout(PIPE_DRAIN_TIMEOUT, &mut stderr_task).await {
-            Ok(result) => {
-                if !*stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
-                    if let Some(reason) = handle_stderr_completion(&record.events, result) {
-                        outcome.status = LanguageServiceStatus::Failed;
-                        outcome.reason = reason;
-                    }
-                }
-            }
-            Err(_) => {
-                stderr_task.abort();
-                if !*stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
-                    let _ = record
-                        .events
-                        .emit(LanguageServiceEventPayload::TransportError {
-                            stream: TransportStream::Stderr,
-                            message: "stderr pipe did not close after the language server exited"
-                                .into(),
-                        });
-                    let pid = record.pid.load(Ordering::Acquire);
-                    if pid != 0 {
-                        let _ =
-                            tokio::time::timeout(PROCESS_KILL_TIMEOUT, terminate_process_tree(pid))
-                                .await;
-                    }
-                    outcome.status = LanguageServiceStatus::Failed;
-                    outcome.reason =
-                        "stderr pipe remained open after the language server exited".into();
-                }
-            }
-        }
+        drain_stderr_task(&record, &stop_rx, &mut stderr_task, &mut outcome).await;
     }
 
     record.pid.store(0, Ordering::Release);
@@ -1572,6 +1502,92 @@ where
         {
             if !events.emit(LanguageServiceEventPayload::Message { message }) {
                 return Err(StdoutFailure::ChannelClosed);
+            }
+        }
+    }
+}
+
+async fn drain_stdout_task(
+    record: &SessionRecord,
+    stop_rx: &watch::Receiver<bool>,
+    stdout_task: &mut tokio::task::JoinHandle<Result<(), StdoutFailure>>,
+    outcome: &mut ProcessOutcome,
+) {
+    if *stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
+        outcome.status = LanguageServiceStatus::Stopped;
+        outcome.reason = "stop requested".into();
+    }
+    match tokio::time::timeout(PIPE_DRAIN_TIMEOUT, &mut *stdout_task).await {
+        Ok(result) => {
+            if *stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
+                outcome.status = LanguageServiceStatus::Stopped;
+                outcome.reason = "stop requested".into();
+            } else if outcome.status != LanguageServiceStatus::Stopped {
+                if let Some(reason) = handle_stdout_completion(&record.events, result) {
+                    outcome.status = LanguageServiceStatus::Failed;
+                    outcome.reason = reason;
+                }
+            }
+        }
+        Err(_) => {
+            stdout_task.abort();
+            if *stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
+                outcome.status = LanguageServiceStatus::Stopped;
+                outcome.reason = "stop requested".into();
+            } else if outcome.status != LanguageServiceStatus::Stopped {
+                let _ = record
+                    .events
+                    .emit(LanguageServiceEventPayload::TransportError {
+                        stream: TransportStream::Stdout,
+                        message: "stdout pipe did not close after the language server exited"
+                            .into(),
+                    });
+                let pid = record.pid.load(Ordering::Acquire);
+                if pid != 0 {
+                    let _ = tokio::time::timeout(PROCESS_KILL_TIMEOUT, terminate_process_tree(pid))
+                        .await;
+                }
+                outcome.status = LanguageServiceStatus::Failed;
+                outcome.reason =
+                    "stdout pipe remained open after the language server exited".into();
+            }
+        }
+    }
+}
+
+async fn drain_stderr_task(
+    record: &SessionRecord,
+    stop_rx: &watch::Receiver<bool>,
+    stderr_task: &mut tokio::task::JoinHandle<Result<(), StderrFailure>>,
+    outcome: &mut ProcessOutcome,
+) {
+    match tokio::time::timeout(PIPE_DRAIN_TIMEOUT, &mut *stderr_task).await {
+        Ok(result) => {
+            if !*stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
+                if let Some(reason) = handle_stderr_completion(&record.events, result) {
+                    outcome.status = LanguageServiceStatus::Failed;
+                    outcome.reason = reason;
+                }
+            }
+        }
+        Err(_) => {
+            stderr_task.abort();
+            if !*stop_rx.borrow() && outcome.status != LanguageServiceStatus::Stopped {
+                let _ = record
+                    .events
+                    .emit(LanguageServiceEventPayload::TransportError {
+                        stream: TransportStream::Stderr,
+                        message: "stderr pipe did not close after the language server exited"
+                            .into(),
+                    });
+                let pid = record.pid.load(Ordering::Acquire);
+                if pid != 0 {
+                    let _ = tokio::time::timeout(PROCESS_KILL_TIMEOUT, terminate_process_tree(pid))
+                        .await;
+                }
+                outcome.status = LanguageServiceStatus::Failed;
+                outcome.reason =
+                    "stderr pipe remained open after the language server exited".into();
             }
         }
     }
@@ -2147,7 +2163,7 @@ fn status_label(status: LanguageServiceStatus) -> &'static str {
 fn lock_unpoisoned<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 #[cfg(windows)]

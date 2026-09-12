@@ -4,7 +4,7 @@ import type {
   CommandContribution,
 } from "@oleafly/registry";
 import type { ProjectInfo } from "@/lib/tauri";
-import { projectMatches, slashAliasesFor } from "./SearchOmnibar";
+import { parse, projectMatches, slashAliasesFor } from "./SearchOmnibar";
 
 const project: ProjectInfo = {
   id: "project-1",
@@ -71,5 +71,30 @@ describe("registered slash commands", () => {
       "literature-search",
       "pdf-to-latex",
     ]);
+  });
+});
+
+describe("omnibar slash query parsing", () => {
+  const entries = [{ keys: ["docs"], mode: "docs" as const, hint: "documents" }];
+
+  it("leaves a non-slash query untouched", () => {
+    expect(parse("plain text", [])).toEqual({ mode: "all", term: "plain text", cmd: "" });
+  });
+
+  it("splits the command from the term across spacing shapes", () => {
+    expect(parse("/docs", entries).term).toBe("");
+    expect(parse("/docs", entries).cmd).toBe("docs");
+    expect(parse("/docs   ", entries).term).toBe("");
+    expect(parse("/docs  alpha beta ", entries).term).toBe("alpha beta ");
+    expect(parse("/DOCS one", entries).cmd).toBe("docs");
+    expect(parse("/docs\tone\ttwo", entries).term).toBe("one\ttwo");
+    expect(parse("/  leading", entries).cmd).toBe("");
+    expect(parse("/docs\n\nrest", entries).term).toBe("rest");
+  });
+
+  it("stays linear on long whitespace runs", () => {
+    const started = Date.now();
+    expect(parse(`/docs${" ".repeat(200000)}`, entries).term).toBe("");
+    expect(Date.now() - started).toBeLessThan(1000);
   });
 });

@@ -26,10 +26,10 @@ export interface RefsContext {
 const GRAPHICS_EXT = ["", ".pdf", ".png", ".jpg", ".jpeg", ".eps", ".svg"];
 const INPUT_EXT = ["", ".tex"];
 
-const CITE = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
+const CITE = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
 const REF = /\\(?:ref|eqref|autoref|cref|Cref|cpageref|pageref|vref|labelcref)\s*\{([^}]*)\}/g;
 const LABEL = /\\label\s*\{([^}]*)\}/g;
-const GRAPHICS = /\\includegraphics\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
+const GRAPHICS = /\\includegraphics\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
 const INPUT = /\\(?:input|include)\s*\{([^}]*)\}/g;
 
 function resolves(ref: string, files: string[], exts: string[]): boolean {
@@ -72,50 +72,50 @@ function requiredFields(entry: NonNullable<RefsContext["bibEntries"]>[number]): 
   return missing;
 }
 
-function bibliographyQuality(ctx: RefsContext): Finding[] {
-  const entries = ctx.bibEntries ?? [];
-  if (entries.length === 0) return [];
-  const out: Finding[] = [];
+type BibEntries = NonNullable<RefsContext["bibEntries"]>;
 
+function incompleteMetadataFinding(entries: BibEntries): Finding | null {
   const incomplete = entries
     .map((entry) => ({ key: entry.key, missing: requiredFields(entry) }))
     .filter((entry) => entry.missing.length > 0);
-  if (incomplete.length > 0) {
-    const examples = incomplete.slice(0, 5).map((entry) => `${entry.key}: ${entry.missing.join(", ")}`).join("; ");
-    out.push({
-      id: "refs-incomplete-metadata",
-      lens: "refs",
-      severity: "warning",
-      title: message("rules.refs-incomplete-metadata.title", { count: incomplete.length }),
-      detail: message(
-        incomplete.length > 5
-          ? "rules.refs-incomplete-metadata.detailTruncated"
-          : "rules.refs-incomplete-metadata.detail",
-        { examples },
-      ),
-      certainty: "verified",
-    });
-  }
+  if (incomplete.length === 0) return null;
+  const examples = incomplete.slice(0, 5).map((entry) => `${entry.key}: ${entry.missing.join(", ")}`).join("; ");
+  return {
+    id: "refs-incomplete-metadata",
+    lens: "refs",
+    severity: "warning",
+    title: message("rules.refs-incomplete-metadata.title", { count: incomplete.length }),
+    detail: message(
+      incomplete.length > 5
+        ? "rules.refs-incomplete-metadata.detailTruncated"
+        : "rules.refs-incomplete-metadata.detail",
+      { examples },
+    ),
+    certainty: "verified",
+  };
+}
 
+function malformedDoiFinding(entries: BibEntries): Finding | null {
   const malformedDois = entries.filter((entry) => {
     const raw = entry.fields.doi?.trim();
     if (!raw) return false;
     const doi = raw.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "");
     return !/^10\.\d{4,9}\/\S+$/i.test(doi);
   });
-  if (malformedDois.length > 0) {
-    out.push({
-      id: "refs-malformed-doi",
-      lens: "refs",
-      severity: "warning",
-      title: message("rules.refs-malformed-doi.title", { count: malformedDois.length }),
-      detail: message("rules.refs-malformed-doi.detail", {
-        keys: malformedDois.slice(0, 8).map((entry) => entry.key).join(", "),
-      }),
-      certainty: "verified",
-    });
-  }
+  if (malformedDois.length === 0) return null;
+  return {
+    id: "refs-malformed-doi",
+    lens: "refs",
+    severity: "warning",
+    title: message("rules.refs-malformed-doi.title", { count: malformedDois.length }),
+    detail: message("rules.refs-malformed-doi.detail", {
+      keys: malformedDois.slice(0, 8).map((entry) => entry.key).join(", "),
+    }),
+    certainty: "verified",
+  };
+}
 
+function duplicateTitleFinding(entries: BibEntries): Finding | null {
   const titleMap = new Map<string, string[]>();
   for (const entry of entries) {
     const title = plain(entry.fields.title ?? "");
@@ -123,39 +123,48 @@ function bibliographyQuality(ctx: RefsContext): Finding[] {
     titleMap.set(title, [...(titleMap.get(title) ?? []), entry.key]);
   }
   const duplicateTitles = [...titleMap.values()].filter((keys) => keys.length > 1);
-  if (duplicateTitles.length > 0) {
-    out.push({
-      id: "refs-duplicate-title",
-      lens: "refs",
-      severity: "warning",
-      title: message("rules.refs-duplicate-title.title", { count: duplicateTitles.length }),
-      detail: message("rules.refs-duplicate-title.detail", {
-        groups: duplicateTitles.slice(0, 5).map((keys) => keys.join(" / ")).join("; "),
-      }),
-      certainty: "verified",
-    });
-  }
+  if (duplicateTitles.length === 0) return null;
+  return {
+    id: "refs-duplicate-title",
+    lens: "refs",
+    severity: "warning",
+    title: message("rules.refs-duplicate-title.title", { count: duplicateTitles.length }),
+    detail: message("rules.refs-duplicate-title.detail", {
+      groups: duplicateTitles.slice(0, 5).map((keys) => keys.join(" / ")).join("; "),
+    }),
+    certainty: "verified",
+  };
+}
 
-  if (ctx.allCitedKeys && !ctx.allCitedKeys.includes("*")) {
-    const cited = new Set(ctx.allCitedKeys);
-    const uncited = entries.filter((entry) => !["xdata", "string", "preamble", "comment"].includes(entry.type) && !cited.has(entry.key));
-    if (uncited.length > 0) {
-      out.push({
-        id: "refs-uncited-entries",
-        lens: "refs",
-        severity: "info",
-        title: message("rules.refs-uncited-entries.title", { count: uncited.length }),
-        detail: message(
-          uncited.length > 8
-            ? "rules.refs-uncited-entries.detailTruncated"
-            : "rules.refs-uncited-entries.detail",
-          { keys: uncited.slice(0, 8).map((entry) => entry.key).join(", ") },
-        ),
-        certainty: "verified",
-      });
-    }
-  }
-  return out;
+function uncitedEntriesFinding(ctx: RefsContext, entries: BibEntries): Finding | null {
+  if (!ctx.allCitedKeys || ctx.allCitedKeys.includes("*")) return null;
+  const cited = new Set(ctx.allCitedKeys);
+  const uncited = entries.filter((entry) => !["xdata", "string", "preamble", "comment"].includes(entry.type) && !cited.has(entry.key));
+  if (uncited.length === 0) return null;
+  return {
+    id: "refs-uncited-entries",
+    lens: "refs",
+    severity: "info",
+    title: message("rules.refs-uncited-entries.title", { count: uncited.length }),
+    detail: message(
+      uncited.length > 8
+        ? "rules.refs-uncited-entries.detailTruncated"
+        : "rules.refs-uncited-entries.detail",
+      { keys: uncited.slice(0, 8).map((entry) => entry.key).join(", ") },
+    ),
+    certainty: "verified",
+  };
+}
+
+function bibliographyQuality(ctx: RefsContext): Finding[] {
+  const entries = ctx.bibEntries ?? [];
+  if (entries.length === 0) return [];
+  return [
+    incompleteMetadataFinding(entries),
+    malformedDoiFinding(entries),
+    duplicateTitleFinding(entries),
+    uncitedEntriesFinding(ctx, entries),
+  ].filter((finding): finding is Finding => finding !== null);
 }
 
 function projectLabelQuality(ctx: RefsContext): Finding[] {
@@ -237,46 +246,43 @@ function missingBibliography(
   );
 }
 
-export function runRefsRules(
-  rawSource: string,
-  ctx: RefsContext,
-  options: { includeProjectQuality?: boolean; file?: string } = {},
-): Finding[] {
-  const out: Finding[] = [];
-  let m: RegExpExecArray | null;
-  // Blank out commented-out LaTeX so a commented `\cite`/`\ref`/`\label` does
-  // not raise a false finding. Offsets are preserved (comments become spaces).
-  const source = maskComments(rawSource);
-
-  const labels = new Set(ctx.definedLabels.map((l) => l.trim()));
+function collectLabels(source: string, defined: readonly string[]): Set<string> {
+  const labels = new Set(defined.map((l) => l.trim()));
   const labelRe = new RegExp(LABEL.source, "g");
+  let m: RegExpExecArray | null;
   while ((m = labelRe.exec(source))) labels.add(m[1].trim());
+  return labels;
+}
 
-  const bibKeys = new Set(ctx.bibKeys.map((k) => k.trim()));
-
-  if (ctx.bibLoaded) {
-    const re = new RegExp(CITE.source, "g");
-    while ((m = re.exec(source))) {
-      const from = m.index;
-      const to = m.index + m[0].length;
-      for (const key of m[1].split(",").map((k) => k.trim())) {
-        if (!key || key === "*") continue;
-        if (!bibKeys.has(key)) {
-          out.push({
-            id: "refs-undefined-cite",
-            lens: "refs",
-            severity: "error",
-            title: message("rules.refs-undefined-cite.title", { key }),
-            detail: message("rules.refs-undefined-cite.detail"),
-            from,
-            to,
-          });
-        }
+function undefinedCiteFindings(source: string, bibKeys: ReadonlySet<string>): Finding[] {
+  const out: Finding[] = [];
+  const re = new RegExp(CITE.source, "g");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(source))) {
+    const from = m.index;
+    const to = m.index + m[0].length;
+    for (const key of m[1].split(",").map((k) => k.trim())) {
+      if (!key || key === "*") continue;
+      if (!bibKeys.has(key)) {
+        out.push({
+          id: "refs-undefined-cite",
+          lens: "refs",
+          severity: "error",
+          title: message("rules.refs-undefined-cite.title", { key }),
+          detail: message("rules.refs-undefined-cite.detail"),
+          from,
+          to,
+        });
       }
     }
   }
+  return out;
+}
 
+function undefinedRefFindings(source: string, labels: ReadonlySet<string>): Finding[] {
+  const out: Finding[] = [];
   const refRe = new RegExp(REF.source, "g");
+  let m: RegExpExecArray | null;
   while ((m = refRe.exec(source))) {
     const from = m.index;
     const to = m.index + m[0].length;
@@ -295,9 +301,14 @@ export function runRefsRules(
       }
     }
   }
+  return out;
+}
 
+function duplicateLabelFindings(source: string): Finding[] {
+  const out: Finding[] = [];
   const seen = new Map<string, number>();
   const dupRe = new RegExp(LABEL.source, "g");
+  let m: RegExpExecArray | null;
   while ((m = dupRe.exec(source))) {
     const key = m[1].trim();
     if (seen.has(key)) {
@@ -314,8 +325,13 @@ export function runRefsRules(
       seen.set(key, m.index);
     }
   }
+  return out;
+}
 
+function missingGraphicsFindings(source: string, ctx: RefsContext): Finding[] {
+  const out: Finding[] = [];
   const gRe = new RegExp(GRAPHICS.source, "g");
+  let m: RegExpExecArray | null;
   while ((m = gRe.exec(source))) {
     if (!resolves(m[1], ctx.projectFiles, GRAPHICS_EXT)) {
       out.push({
@@ -329,8 +345,13 @@ export function runRefsRules(
       });
     }
   }
+  return out;
+}
 
+function missingInputFindings(source: string, ctx: RefsContext): Finding[] {
+  const out: Finding[] = [];
   const iRe = new RegExp(INPUT.source, "g");
+  let m: RegExpExecArray | null;
   while ((m = iRe.exec(source))) {
     if (!resolves(m[1], ctx.projectFiles, INPUT_EXT)) {
       out.push({
@@ -344,10 +365,18 @@ export function runRefsRules(
       });
     }
   }
+  return out;
+}
 
+function missingBibliographyFindings(
+  source: string,
+  ctx: RefsContext,
+  file: string | undefined,
+): Finding[] {
+  const out: Finding[] = [];
   for (const declaration of bibliographyDeclarations(source)) {
     const engine = bibliographyEngineForCommand(declaration.command);
-    if (!missingBibliography(declaration.raw, ctx, options.file, engine)) continue;
+    if (!missingBibliography(declaration.raw, ctx, file, engine)) continue;
     out.push({
       id: "refs-bib-missing",
       lens: "refs",
@@ -361,16 +390,40 @@ export function runRefsRules(
       to: declaration.to,
     });
   }
+  return out;
+}
 
-  for (const dup of ctx.duplicateDois) {
-    out.push({
-      id: "refs-duplicate-bib",
-      lens: "refs",
-      severity: "warning",
-      title: message("rules.refs-duplicate-bib.title", { keys: dup.keys.join(", ") }),
-      detail: message("rules.refs-duplicate-bib.detail", { doi: dup.doi }),
-    });
-  }
+function duplicateDoiFindings(ctx: RefsContext): Finding[] {
+  return ctx.duplicateDois.map((dup) => ({
+    id: "refs-duplicate-bib",
+    lens: "refs" as const,
+    severity: "warning" as const,
+    title: message("rules.refs-duplicate-bib.title", { keys: dup.keys.join(", ") }),
+    detail: message("rules.refs-duplicate-bib.detail", { doi: dup.doi }),
+  }));
+}
+
+export function runRefsRules(
+  rawSource: string,
+  ctx: RefsContext,
+  options: { includeProjectQuality?: boolean; file?: string } = {},
+): Finding[] {
+  // Blank out commented-out LaTeX so a commented `\cite`/`\ref`/`\label` does
+  // not raise a false finding. Offsets are preserved (comments become spaces).
+  const source = maskComments(rawSource);
+
+  const labels = collectLabels(source, ctx.definedLabels);
+  const bibKeys = new Set(ctx.bibKeys.map((k) => k.trim()));
+
+  const out: Finding[] = [
+    ...(ctx.bibLoaded ? undefinedCiteFindings(source, bibKeys) : []),
+    ...undefinedRefFindings(source, labels),
+    ...duplicateLabelFindings(source),
+    ...missingGraphicsFindings(source, ctx),
+    ...missingInputFindings(source, ctx),
+    ...missingBibliographyFindings(source, ctx, options.file),
+    ...duplicateDoiFindings(ctx),
+  ];
 
   if (options.includeProjectQuality !== false) {
     out.push(...bibliographyQuality(ctx), ...projectLabelQuality(ctx));

@@ -23,7 +23,7 @@ const make = (
 ): Finding => ({ id, lens, severity, title, detail, ...range, ...(certainty ? { certainty } : {}) });
 
 function documentClass(text: string): { opts: string; name: string; from: number; to: number } | null {
-  const m = /\\documentclass\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/.exec(text);
+  const m = /\\documentclass\s*(?:\[([^\]]*)\]\s*)?\{([^}]*)\}/.exec(text);
   if (!m) return null;
   return { opts: m[1] ?? "", name: m[2].trim(), from: m.index, to: m.index + m[0].length };
 }
@@ -184,7 +184,7 @@ const contactInHeader: Rule = (text) => {
 
 const figureAlt: Rule = (text) => {
   const out: Finding[] = [];
-  const re = /\\includegraphics\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/g;
+  const re = /\\includegraphics\s*(?:\[([^\]]*)\]\s*)?\{([^}]*)\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     const opts = m[1] ?? "";
@@ -279,7 +279,7 @@ const HEADING_LEVEL: Record<string, number> = {
 
 const headingSkip: Rule = (text) => {
   const out: Finding[] = [];
-  const re = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\s*\*?\s*\{/g;
+  const re = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\s*(?:\*\s*)?\{/g;
   let m: RegExpExecArray | null;
   let prev: number | null = null;
   while ((m = re.exec(text))) {
@@ -302,7 +302,7 @@ const headingSkip: Rule = (text) => {
 };
 
 const nonstandardHeadings: Rule = (text) => {
-  const re = /\\(?:section|subsection)\s*\*?\s*\{([^}]*)\}/g;
+  const re = /\\(?:section|subsection)\s*(?:\*\s*)?\{([^}]*)\}/g;
   const titles: { label: string; from: number; to: number }[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
@@ -436,7 +436,7 @@ const tableHeaderRows: Rule = (text) => {
   const re = /\\begin\{(tabular\*?|tabularx|longtable)\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    const end = text.indexOf(`\\end{${m[1]}}`, m.index);
+    const end = text.indexOf(String.raw`\end{${m[1]}}`, m.index);
     const body = text.slice(m.index + m[0].length, end === -1 ? text.length : end);
     const firstRowEnd = body.indexOf("\\\\");
     if (firstRowEnd === -1) continue;

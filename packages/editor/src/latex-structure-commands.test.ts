@@ -353,33 +353,32 @@ describe("closeEnvironmentAtCursor", () => {
     expect(result.head).toBe(result.doc.length);
   });
 
-  it("closes the innermost environment of a nested pair", () => {
-    const state = stateAt("\\begin{a}\n  \\begin{b}\n    x|");
-    const result = applied(state, closeEnvironmentAtCursor(state)!);
-    // Indent adopted from \begin{b}'s line.
-    expect(result.doc).toBe("\\begin{a}\n  \\begin{b}\n    x\n  \\end{b}");
-  });
-
-  it("keeps the starred environment name", () => {
-    const state = stateAt("\\begin{align*}\n  x = y|");
-    const result = applied(state, closeEnvironmentAtCursor(state)!);
-    expect(result.doc).toBe("\\begin{align*}\n  x = y\n\\end{align*}");
-  });
-
-  it("skips environments that are already balanced", () => {
-    const state = stateAt(
+  it.each([
+    [
+      // Indent adopted from \begin{b}'s line.
+      "closes the innermost environment of a nested pair",
+      "\\begin{a}\n  \\begin{b}\n    x|",
+      "\\begin{a}\n  \\begin{b}\n    x\n  \\end{b}",
+    ],
+    [
+      "keeps the starred environment name",
+      "\\begin{align*}\n  x = y|",
+      "\\begin{align*}\n  x = y\n\\end{align*}",
+    ],
+    [
+      "skips environments that are already balanced",
       "\\begin{outer}\n\\begin{inner}\nx\n\\end{inner}\ny|",
-    );
-    const result = applied(state, closeEnvironmentAtCursor(state)!);
-    expect(result.doc).toBe(
       "\\begin{outer}\n\\begin{inner}\nx\n\\end{inner}\ny\n\\end{outer}",
-    );
-  });
-
-  it("adopts the \\begin line's indent when the cursor line is empty", () => {
-    const state = stateAt("  \\begin{quote}\n|");
+    ],
+    [
+      "adopts the \\begin line's indent when the cursor line is empty",
+      "  \\begin{quote}\n|",
+      "  \\begin{quote}\n  \\end{quote}",
+    ],
+  ])("%s", (_case, source, expected) => {
+    const state = stateAt(source);
     const result = applied(state, closeEnvironmentAtCursor(state)!);
-    expect(result.doc).toBe("  \\begin{quote}\n  \\end{quote}");
+    expect(result.doc).toBe(expected);
   });
 
   it("returns null when everything is balanced", () => {

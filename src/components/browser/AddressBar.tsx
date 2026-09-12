@@ -40,12 +40,12 @@ function ToolButton({
   onClick,
   disabled,
   children,
-}: {
+}: Readonly<{
   label: string;
   onClick: () => void;
   disabled?: boolean;
   children: ReactNode;
-}) {
+}>) {
   return (
     <Tooltip label={label} side="top">
       <Button
@@ -75,7 +75,7 @@ export function AddressBar({
   onSetHomePage,
   onNewTab,
   addressRef,
-}: AddressBarProps) {
+}: Readonly<AddressBarProps>) {
   const { t } = useTranslation(["shell"]);
   const addressFieldLabel = t(($) => $.shell.browser.address);
   const url = tab?.url ?? "";

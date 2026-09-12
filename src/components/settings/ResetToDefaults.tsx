@@ -16,7 +16,7 @@ export function ResetToDefaults({
   onReset,
   disabled = false,
   confirmationDescription,
-}: ResetToDefaultsProps) {
+}: Readonly<ResetToDefaultsProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
 

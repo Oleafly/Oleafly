@@ -191,7 +191,7 @@ pub fn read_manifest(dir: &Path) -> Result<TemplateManifest, String> {
 }
 
 fn validate_manifest_dir(dir: &Path, manifest: &TemplateManifest) -> Result<(), String> {
-    if dir.file_name().and_then(|name| name.to_str()) != Some(manifest.id.as_str()) {
+    if dir.file_name().and_then(std::ffi::OsStr::to_str) != Some(manifest.id.as_str()) {
         return Err("template directory name does not match manifest id".into());
     }
     let main = Path::new(&manifest.main_doc);

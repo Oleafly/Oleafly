@@ -44,7 +44,7 @@ const ROUTINGS: { value: string; key: DiagramMessageKey }[] = [
   { value: "curved", key: "inspector.routingCurved" },
 ];
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
   return (
     <div className="flex items-center justify-between gap-2 text-xs">
       <span className="text-muted-foreground">{label}</span>
@@ -53,7 +53,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function ColorInput({ value, onChange }: { value?: string; onChange: (v: string) => void }) {
+function ColorInput({
+  value,
+  onChange,
+}: Readonly<{ value?: string; onChange: (v: string) => void }>) {
   const { ColorInput: ColorControl } = useDiagramKit();
   return (
     <ColorControl
@@ -68,12 +71,12 @@ function Pick({
   onChange,
   options,
   width = "w-28",
-}: {
+}: Readonly<{
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
   width?: string;
-}) {
+}>) {
   const { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } = useDiagramKit();
   return (
     <Select value={value} onValueChange={onChange}>
@@ -97,13 +100,13 @@ export function Inspector({
   onNodeChange,
   onEdgeChange,
   onReorder,
-}: {
+}: Readonly<{
   node: DiagNode | null;
   edge: DiagEdge | null;
   onNodeChange: (patch: Partial<DiagNode>) => void;
   onEdgeChange: (patch: Partial<DiagEdge>) => void;
   onReorder?: (dir: ReorderDir) => void;
-}) {
+}>) {
   const { Input, Tooltip, t } = useDiagramKit();
   if (!node && !edge) return null;
   const labelled = (options: { value: string; key: DiagramMessageKey }[]) =>

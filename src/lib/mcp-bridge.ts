@@ -46,6 +46,8 @@ export interface McpResult {
   isError?: boolean;
 }
 
+type McpScalarArgument = string | number | boolean;
+
 export interface McpToolEntry {
   description: string;
   inputSchema: unknown;
@@ -296,7 +298,7 @@ function createSkillTools(): Record<string, McpToolEntry> {
         additionalProperties: false,
       },
       execute: async (input) => {
-        const id = String(input.id ?? "");
+        const id = String((input.id ?? "") as McpScalarArgument);
         try {
           const skill = validSkills(await loadSkills()).find((entry) => entry.id === id);
           if (!skill) return { error: `no skill named ${id} is installed` };
@@ -328,7 +330,10 @@ function createSkillTools(): Record<string, McpToolEntry> {
       },
       execute: async (input) => {
         try {
-          return await readSkillFile(String(input.id ?? ""), String(input.path ?? ""));
+          return await readSkillFile(
+            String((input.id ?? "") as McpScalarArgument),
+            String((input.path ?? "") as McpScalarArgument),
+          );
         } catch (e) {
           return { error: String(e) };
         }
@@ -699,146 +704,146 @@ async function handleCall(payload: {
 }
 
 async function ensureMcpListeners(): Promise<void> {
-  if (!rendererRuntime.listenersReady) {
-    rendererRuntime.listenersReady = (async () => {
-      const unlisteners: UnlistenFn[] = [];
-      const install = async <T>(name: string, handler: EventCallback<T>) => {
-        unlisteners.push(await listen<T>(name, handler));
-      };
-      try {
-        await install<{
-          callId: number;
-          epoch: number;
-          rendererSession: number;
-          name: string;
-          arguments: Record<string, unknown>;
-        }>("mcp:tool-call", (event) => {
-          if (event.payload.rendererSession !== rendererSession) return;
-          const generation = bridgeCalls.generation;
-          if (!bridgeCalls.registryReady || bridgeCalls.queuedCalls >= MAX_QUEUED_CALLS) {
-            void mcpToolResult(
-              event.payload.callId,
-              toMcpResult(
-                {
-                  error: bridgeCalls.registryReady
-                    ? "MCP tool queue is full. Retry after current calls finish."
-                    : "MCP tools are being refreshed. Retry shortly.",
-                },
-                [],
-              ),
-              event.payload.rendererSession,
-            ).catch(() => {});
-            return;
-          }
-          const callKey = toolCallKey(
-            event.payload.rendererSession,
-            event.payload.epoch,
+  rendererRuntime.listenersReady ??= (async () => {
+    const unlisteners: UnlistenFn[] = [];
+    const install = async <T>(name: string, handler: EventCallback<T>) => {
+      unlisteners.push(await listen<T>(name, handler));
+    };
+    try {
+      await install<{
+        callId: number;
+        epoch: number;
+        rendererSession: number;
+        name: string;
+        arguments: Record<string, unknown>;
+      }>("mcp:tool-call", (event) => {
+        if (event.payload.rendererSession !== rendererSession) return;
+        const generation = bridgeCalls.generation;
+        if (!bridgeCalls.registryReady || bridgeCalls.queuedCalls >= MAX_QUEUED_CALLS) {
+          void mcpToolResult(
             event.payload.callId,
-          );
-          bridgeCalls.admittedKeys.add(callKey);
-          bridgeCalls.queuedCalls += 1;
-          bridgeCalls.executionChain = bridgeCalls.executionChain
-            .then(() => handleCall(event.payload, generation))
-            .catch(() => {})
-            .finally(() => {
-              bridgeCalls.queuedCalls -= 1;
-              bridgeCalls.admittedKeys.delete(callKey);
-              bridgeCalls.cancelledKeys.delete(callKey);
-            });
-        });
-        await install<{
-          callId: number;
-          epoch: number;
-          rendererSession: number;
-          reason: "client-disconnected" | "timeout";
-        }>("mcp:tool-call-cancelled", (event) => {
-          if (event.payload.rendererSession !== rendererSession) return;
-          const callKey = toolCallKey(
+            toMcpResult(
+              {
+                error: bridgeCalls.registryReady
+                  ? "MCP tool queue is full. Retry after current calls finish."
+                  : "MCP tools are being refreshed. Retry shortly.",
+              },
+              [],
+            ),
             event.payload.rendererSession,
-            event.payload.epoch,
-            event.payload.callId,
-          );
-          if (!bridgeCalls.admittedKeys.has(callKey)) return;
-          bridgeCalls.cancelledKeys.add(callKey);
-          if (bridgeCalls.activeKey === callKey) {
-            bridgeCalls.activeGeneration = null;
-            bridgeCalls.activeKey = null;
-            bridgeCalls.pendingImages = [];
-            bridgeCalls.pendingImageChars = 0;
-            useMcpApprovalStore.getState().cancelAll();
-          }
-        });
-        await install<{ epoch: number }>("mcp:server-started", (event) => {
-          if (event.payload.epoch < rendererRuntime.latestServerEpoch) return;
-          rendererRuntime.latestServerEpoch = event.payload.epoch;
-          useMcpActivityStore.getState().setServerRunning(true);
-        });
-        await install<{ epoch: number }>("mcp:server-stopped", (event) => {
-          if (event.payload.epoch < rendererRuntime.latestServerEpoch) return;
-          rendererRuntime.latestServerEpoch = event.payload.epoch;
-          revokeMcpBridgeCalls();
-          cancelNativeActivityLogs(event.payload.epoch);
-          useMcpActivityStore.getState().setServerRunning(false);
-        });
-        await install<{
-          epoch: number;
-          rendererSession: number;
-          reason:
-            | "renderer-session-changed"
-            | "renderer-lease-expired"
-            | "tool-registry-changed"
-            | "credential-regenerated";
-        }>("mcp:requests-revoked", (event) => {
-          const { reason, rendererSession: eventSession } = event.payload;
-          if (reason === "renderer-session-changed") {
-            if (rendererSession !== null && eventSession !== rendererSession) {
-              supersedeRendererSession();
-            }
-            return;
-          }
-          if (eventSession !== rendererSession) return;
-          if (reason === "tool-registry-changed") return;
-          if (reason === "renderer-lease-expired") {
-            invalidateMcpBridgeCalls(true);
-            return;
-          }
-          revokeMcpBridgeCalls();
-        });
-        await install<{ activityId: string; epoch: number; name: string }>(
-          "mcp:native-tool-started",
-          (event) => {
-            const { activityId, epoch, name } = event.payload;
-            const key = nativeActivityKey(epoch, activityId);
-            if (bridgeCalls.nativeActivityLogs.has(key)) return;
-            bridgeCalls.nativeActivityLogs.set(key, useMcpActivityStore.getState().beginCall(name, {}));
-          },
+          ).catch(() => {});
+          return;
+        }
+        const callKey = toolCallKey(
+          event.payload.rendererSession,
+          event.payload.epoch,
+          event.payload.callId,
         );
-        await install<{
-          activityId: string;
-          epoch: number;
-          name: string;
-          ok: boolean;
-          cancelled: boolean;
-        }>("mcp:native-tool-finished", (event) => {
-          const { activityId, epoch, ok, cancelled } = event.payload;
-          const key = nativeActivityKey(epoch, activityId);
-          const logId = bridgeCalls.nativeActivityLogs.get(key);
-          if (logId === undefined) return;
-          bridgeCalls.nativeActivityLogs.delete(key);
-          useMcpActivityStore.getState().endCall(logId, {
-            ok,
-            summary: cancelled ? "cancelled" : ok ? "ok" : "error",
+        bridgeCalls.admittedKeys.add(callKey);
+        bridgeCalls.queuedCalls += 1;
+        bridgeCalls.executionChain = bridgeCalls.executionChain
+          .then(() => handleCall(event.payload, generation))
+          .catch(() => {})
+          .finally(() => {
+            bridgeCalls.queuedCalls -= 1;
+            bridgeCalls.admittedKeys.delete(callKey);
+            bridgeCalls.cancelledKeys.delete(callKey);
           });
+      });
+      await install<{
+        callId: number;
+        epoch: number;
+        rendererSession: number;
+        reason: "client-disconnected" | "timeout";
+      }>("mcp:tool-call-cancelled", (event) => {
+        if (event.payload.rendererSession !== rendererSession) return;
+        const callKey = toolCallKey(
+          event.payload.rendererSession,
+          event.payload.epoch,
+          event.payload.callId,
+        );
+        if (!bridgeCalls.admittedKeys.has(callKey)) return;
+        bridgeCalls.cancelledKeys.add(callKey);
+        if (bridgeCalls.activeKey === callKey) {
+          bridgeCalls.activeGeneration = null;
+          bridgeCalls.activeKey = null;
+          bridgeCalls.pendingImages = [];
+          bridgeCalls.pendingImageChars = 0;
+          useMcpApprovalStore.getState().cancelAll();
+        }
+      });
+      await install<{ epoch: number }>("mcp:server-started", (event) => {
+        if (event.payload.epoch < rendererRuntime.latestServerEpoch) return;
+        rendererRuntime.latestServerEpoch = event.payload.epoch;
+        useMcpActivityStore.getState().setServerRunning(true);
+      });
+      await install<{ epoch: number }>("mcp:server-stopped", (event) => {
+        if (event.payload.epoch < rendererRuntime.latestServerEpoch) return;
+        rendererRuntime.latestServerEpoch = event.payload.epoch;
+        revokeMcpBridgeCalls();
+        cancelNativeActivityLogs(event.payload.epoch);
+        useMcpActivityStore.getState().setServerRunning(false);
+      });
+      await install<{
+        epoch: number;
+        rendererSession: number;
+        reason:
+          | "renderer-session-changed"
+          | "renderer-lease-expired"
+          | "tool-registry-changed"
+          | "credential-regenerated";
+      }>("mcp:requests-revoked", (event) => {
+        const { reason, rendererSession: eventSession } = event.payload;
+        if (reason === "renderer-session-changed") {
+          if (rendererSession !== null && eventSession !== rendererSession) {
+            supersedeRendererSession();
+          }
+          return;
+        }
+        if (eventSession !== rendererSession) return;
+        if (reason === "tool-registry-changed") return;
+        if (reason === "renderer-lease-expired") {
+          invalidateMcpBridgeCalls(true);
+          return;
+        }
+        revokeMcpBridgeCalls();
+      });
+      await install<{ activityId: string; epoch: number; name: string }>(
+        "mcp:native-tool-started",
+        (event) => {
+          const { activityId, epoch, name } = event.payload;
+          const key = nativeActivityKey(epoch, activityId);
+          if (bridgeCalls.nativeActivityLogs.has(key)) return;
+          bridgeCalls.nativeActivityLogs.set(key, useMcpActivityStore.getState().beginCall(name, {}));
+        },
+      );
+      await install<{
+        activityId: string;
+        epoch: number;
+        name: string;
+        ok: boolean;
+        cancelled: boolean;
+      }>("mcp:native-tool-finished", (event) => {
+        const { activityId, epoch, ok, cancelled } = event.payload;
+        const key = nativeActivityKey(epoch, activityId);
+        const logId = bridgeCalls.nativeActivityLogs.get(key);
+        if (logId === undefined) return;
+        bridgeCalls.nativeActivityLogs.delete(key);
+        const completedSummary = ok ? "ok" : "error";
+        useMcpActivityStore.getState().endCall(logId, {
+          ok,
+          summary: cancelled ? "cancelled" : completedSummary,
         });
-      } catch (error) {
-        for (const unlisten of unlisteners.reverse()) unlisten();
-        throw error;
-      }
-    })().catch((error) => {
-      rendererRuntime.listenersReady = null;
+      });
+    } catch (error) {
+      unlisteners.reverse();
+      for (const unlisten of unlisteners) unlisten();
       throw error;
-    });
-  }
+    }
+  })().catch((error) => {
+    rendererRuntime.listenersReady = null;
+    throw error;
+  });
   await rendererRuntime.listenersReady;
 }
 
@@ -940,12 +945,10 @@ export async function startMcpBridge(): Promise<() => void> {
     w.__mcpStopHeartbeat = stopRendererHeartbeat;
   }
 
-  if (!rendererRuntime.startupReady) {
-    rendererRuntime.startupReady = initializeMcpBridge().catch((error) => {
-      rendererRuntime.startupReady = null;
-      throw error;
-    });
-  }
+  rendererRuntime.startupReady ??= initializeMcpBridge().catch((error) => {
+    rendererRuntime.startupReady = null;
+    throw error;
+  });
   await rendererRuntime.startupReady;
   return () => {};
 }

@@ -58,7 +58,7 @@ export function installIntersectionObserverStub(
   return {
     setVisible(next) {
       predicate = next;
-      for (const observer of [...observers]) observer.notify(observer.targets);
+      for (const observer of observers) observer.notify(observer.targets);
     },
     observed() {
       return [...observers].flatMap((observer) => [...observer.targets]);

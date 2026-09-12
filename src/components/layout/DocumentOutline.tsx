@@ -116,13 +116,12 @@ export function DocumentOutline({
           <List aria-hidden className="size-3.5" />
           <span className="truncate">{t(($) => $.workspace.outline.title)}</span>
           {items.length > 0 ? (
-            <span
-              role="status"
+            <output
               aria-label={t(($) => $.workspace.outline.entryCount, { count: items.length })}
               className="ml-auto shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
             >
               {items.length}
-            </span>
+            </output>
           ) : null}
         </button>
       </div>

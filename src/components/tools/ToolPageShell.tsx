@@ -18,7 +18,7 @@ export function ToolPageShell({
   showTheme = false,
   testId,
   children,
-}: {
+}: Readonly<{
   page: HomePage;
   title: string;
   subtitle?: string;
@@ -28,7 +28,7 @@ export function ToolPageShell({
   showTheme?: boolean;
   testId: string;
   children: ReactNode;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);

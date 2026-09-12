@@ -1,4 +1,9 @@
-import { LanguageSupport, StreamLanguage, type StreamParser } from "@codemirror/language";
+import {
+  LanguageSupport,
+  StreamLanguage,
+  type StreamParser,
+  type StringStream,
+} from "@codemirror/language";
 
 type Mode =
   | "top"
@@ -20,6 +25,214 @@ interface BibtexState {
   directive: Directive;
   entryOpen: "{" | "(";
 }
+
+type BibtexModeToken = (
+  stream: StringStream,
+  state: BibtexState,
+) => string | null;
+
+function bibtexTop(stream: StringStream, state: BibtexState): string | null {
+  const match = stream.match(/^@([a-zA-Z]+)/);
+  if (match) {
+    const name =
+      typeof match === "boolean" ? "" : (match[1] ?? "").toLowerCase();
+    state.directive =
+      name === "string" || name === "preamble" || name === "comment"
+        ? name
+        : "entry";
+    state.mode = "afterType";
+    return state.directive === "comment" ? "comment" : "keyword";
+  }
+  stream.next();
+  return null;
+}
+
+function bibtexEntryBodyMode(directive: Directive): Mode {
+  if (directive === "comment") return "commentBody";
+  if (directive === "string") return "fieldName";
+  if (directive === "preamble") return "value";
+  return "key";
+}
+
+function bibtexAfterType(
+  stream: StringStream,
+  state: BibtexState,
+): string | null {
+  const ch = stream.next();
+  if (ch === "{" || ch === "(") {
+    state.entryOpen = ch;
+    state.mode = bibtexEntryBodyMode(state.directive);
+    if (state.directive === "comment") state.braceDepth = 1;
+    return state.directive === "comment" ? "comment" : "bracket";
+  }
+  return null;
+}
+
+function bibtexKey(stream: StringStream, state: BibtexState): string | null {
+  if (stream.match(/^[^,{}()]+/)) {
+    state.mode = "fieldName";
+    return "variableName";
+  }
+  if (stream.peek() === ",") {
+    stream.next();
+    state.mode = "fieldName";
+    return null;
+  }
+  const ch = stream.next();
+  if (ch === "}" || ch === ")") state.mode = "top";
+  return ch === "}" || ch === ")" ? "bracket" : null;
+}
+
+function bibtexFieldName(
+  stream: StringStream,
+  state: BibtexState,
+): string | null {
+  if (stream.match(/^[a-zA-Z][a-zA-Z0-9_-]*/)) {
+    state.mode = "eq";
+    return "property";
+  }
+  const ch = stream.next();
+  if (ch === "}" || ch === ")") {
+    state.mode = "top";
+    return "bracket";
+  }
+  return null;
+}
+
+function bibtexEq(stream: StringStream, state: BibtexState): string | null {
+  const ch = stream.next();
+  if (ch === "=") {
+    state.mode = "value";
+    return "operator";
+  }
+  if (ch === "}" || ch === ")") {
+    state.mode = "top";
+    return "bracket";
+  }
+  if (ch === ",") state.mode = "fieldName";
+  return null;
+}
+
+function bibtexValue(stream: StringStream, state: BibtexState): string | null {
+  if (stream.eat('"')) {
+    state.mode = "quoteString";
+    return "string";
+  }
+  if (stream.eat("{")) {
+    state.mode = "braceString";
+    state.braceDepth = 1;
+    return "string";
+  }
+  if (stream.match(/^\d+/)) {
+    state.mode = "afterValue";
+    return "number";
+  }
+  if (stream.match(/^[a-zA-Z][a-zA-Z0-9_:-]*/)) {
+    state.mode = "afterValue";
+    return "variableName";
+  }
+  if (stream.eat("#")) {
+    return "operator";
+  }
+  const ch = stream.next();
+  if (ch === "}" || ch === ")") state.mode = "top";
+  return ch === "}" || ch === ")" ? "bracket" : null;
+}
+
+function bibtexQuoteString(
+  stream: StringStream,
+  state: BibtexState,
+): string | null {
+  while (!stream.eol()) {
+    const ch = stream.next();
+    if (ch === "\\") {
+      if (!stream.eol()) stream.next();
+      continue;
+    }
+    if (ch === '"') {
+      state.mode = "afterValue";
+      break;
+    }
+  }
+  return "string";
+}
+
+function bibtexBraceString(
+  stream: StringStream,
+  state: BibtexState,
+): string | null {
+  while (!stream.eol()) {
+    const ch = stream.next();
+    if (ch === "{") state.braceDepth++;
+    else if (ch === "}") {
+      state.braceDepth--;
+      if (state.braceDepth === 0) {
+        state.mode = "afterValue";
+        break;
+      }
+    }
+  }
+  return "string";
+}
+
+function bibtexAfterValue(
+  stream: StringStream,
+  state: BibtexState,
+): string | null {
+  const ch = stream.next();
+  if (ch === "#") {
+    state.mode = "value";
+    return "operator";
+  }
+  if (ch === ",") {
+    state.mode = "fieldName";
+    return null;
+  }
+  if (ch === "}" || ch === ")") {
+    state.mode = "top";
+    return "bracket";
+  }
+  return null;
+}
+
+function bibtexCommentBody(
+  stream: StringStream,
+  state: BibtexState,
+): string | null {
+  const opening = state.entryOpen;
+  const closing = opening === "{" ? "}" : ")";
+  while (!stream.eol()) {
+    const ch = stream.next();
+    if (ch === "\\") {
+      if (!stream.eol()) stream.next();
+      continue;
+    }
+    if (ch === opening) {
+      state.braceDepth += 1;
+    } else if (ch === closing) {
+      state.braceDepth -= 1;
+      if (state.braceDepth === 0) {
+        state.mode = "top";
+        state.directive = "entry";
+        break;
+      }
+    }
+  }
+  return "comment";
+}
+
+const BIBTEX_MODE_TOKENS: Record<Mode, BibtexModeToken> = {
+  top: bibtexTop,
+  afterType: bibtexAfterType,
+  key: bibtexKey,
+  fieldName: bibtexFieldName,
+  eq: bibtexEq,
+  value: bibtexValue,
+  quoteString: bibtexQuoteString,
+  braceString: bibtexBraceString,
+  afterValue: bibtexAfterValue,
+  commentBody: bibtexCommentBody,
+};
 
 const bibtexParser: StreamParser<BibtexState> = {
   startState: () => ({
@@ -51,182 +264,13 @@ const bibtexParser: StreamParser<BibtexState> = {
       }
     }
 
-    switch (state.mode) {
-      case "top": {
-        const match = stream.match(/^@([a-zA-Z]+)/);
-        if (match) {
-          const name =
-            typeof match === "boolean"
-              ? ""
-              : (match[1] ?? "").toLowerCase();
-          state.directive =
-            name === "string" ||
-            name === "preamble" ||
-            name === "comment"
-              ? name
-              : "entry";
-          state.mode = "afterType";
-          return state.directive === "comment"
-            ? "comment"
-            : "keyword";
-        }
-        stream.next();
-        return null;
-      }
-      case "afterType": {
-        const ch = stream.next();
-        if (ch === "{" || ch === "(") {
-          state.entryOpen = ch;
-          if (state.directive === "comment") {
-            state.mode = "commentBody";
-            state.braceDepth = 1;
-          } else if (state.directive === "string") {
-            state.mode = "fieldName";
-          } else if (state.directive === "preamble") {
-            state.mode = "value";
-          } else {
-            state.mode = "key";
-          }
-          return state.directive === "comment"
-            ? "comment"
-            : "bracket";
-        }
-        return null;
-      }
-      case "key": {
-        if (stream.match(/^[^,{}()]+/)) {
-          state.mode = "fieldName";
-          return "variableName";
-        }
-        if (stream.peek() === ",") {
-          stream.next();
-          state.mode = "fieldName";
-          return null;
-        }
-        const ch = stream.next();
-        if (ch === "}" || ch === ")") state.mode = "top";
-        return ch === "}" || ch === ")" ? "bracket" : null;
-      }
-      case "fieldName": {
-        if (stream.match(/^[a-zA-Z][a-zA-Z0-9_-]*/)) {
-          state.mode = "eq";
-          return "property";
-        }
-        const ch = stream.next();
-        if (ch === "}" || ch === ")") {
-          state.mode = "top";
-          return "bracket";
-        }
-        return null;
-      }
-      case "eq": {
-        const ch = stream.next();
-        if (ch === "=") {
-          state.mode = "value";
-          return "operator";
-        }
-        if (ch === "}" || ch === ")") {
-          state.mode = "top";
-          return "bracket";
-        }
-        if (ch === ",") state.mode = "fieldName";
-        return null;
-      }
-      case "value": {
-        if (stream.eat('"')) {
-          state.mode = "quoteString";
-          return "string";
-        }
-        if (stream.eat("{")) {
-          state.mode = "braceString";
-          state.braceDepth = 1;
-          return "string";
-        }
-        if (stream.match(/^\d+/)) {
-          state.mode = "afterValue";
-          return "number";
-        }
-        if (stream.match(/^[a-zA-Z][a-zA-Z0-9_:-]*/)) {
-          state.mode = "afterValue";
-          return "variableName";
-        }
-        if (stream.eat("#")) {
-          return "operator";
-        }
-        const ch = stream.next();
-        if (ch === "}" || ch === ")") state.mode = "top";
-        return ch === "}" || ch === ")" ? "bracket" : null;
-      }
-      case "quoteString": {
-        while (!stream.eol()) {
-          const ch = stream.next();
-          if (ch === "\\") {
-            if (!stream.eol()) stream.next();
-            continue;
-          }
-          if (ch === '"') {
-            state.mode = "afterValue";
-            break;
-          }
-        }
-        return "string";
-      }
-      case "braceString": {
-        while (!stream.eol()) {
-          const ch = stream.next();
-          if (ch === "{") state.braceDepth++;
-          else if (ch === "}") {
-            state.braceDepth--;
-            if (state.braceDepth === 0) {
-              state.mode = "afterValue";
-              break;
-            }
-          }
-        }
-        return "string";
-      }
-      case "afterValue": {
-        const ch = stream.next();
-        if (ch === "#") {
-          state.mode = "value";
-          return "operator";
-        }
-        if (ch === ",") {
-          state.mode = "fieldName";
-          return null;
-        }
-        if (ch === "}" || ch === ")") {
-          state.mode = "top";
-          return "bracket";
-        }
-        return null;
-      }
-      case "commentBody": {
-        const opening = state.entryOpen;
-        const closing = opening === "{" ? "}" : ")";
-        while (!stream.eol()) {
-          const ch = stream.next();
-          if (ch === "\\") {
-            if (!stream.eol()) stream.next();
-            continue;
-          }
-          if (ch === opening) {
-            state.braceDepth += 1;
-          } else if (ch === closing) {
-            state.braceDepth -= 1;
-            if (state.braceDepth === 0) {
-              state.mode = "top";
-              state.directive = "entry";
-              break;
-            }
-          }
-        }
-        return "comment";
-      }
-      default:
-        stream.next();
-        return null;
+    const modeToken: BibtexModeToken | undefined =
+      BIBTEX_MODE_TOKENS[state.mode];
+    if (!modeToken) {
+      stream.next();
+      return null;
     }
+    return modeToken(stream, state);
   },
 };
 

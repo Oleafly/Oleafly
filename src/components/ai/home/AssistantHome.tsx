@@ -86,7 +86,7 @@ function AssistantHomeView({
   showSkills = true,
   before,
   children,
-}: {
+}: Readonly<{
   heading?: string;
   accent?: string;
   subtitle?: ReactNode;
@@ -98,7 +98,7 @@ function AssistantHomeView({
   showSkills?: boolean;
   before?: ReactNode;
   children?: ReactNode;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const resolvedHeading = heading ?? t(($) => $.ai.home.heading);
   const resolvedAccent = accent ?? t(($) => $.ai.home.headingAccent);

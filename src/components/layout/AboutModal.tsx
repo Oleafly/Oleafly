@@ -51,7 +51,7 @@ const COMMUNITY_LINKS = [
   },
 ] as const;
 
-export function AboutModal({ open: isOpen, onClose }: { open: boolean; onClose: () => void }) {
+export function AboutModal({ open: isOpen, onClose }: Readonly<{ open: boolean; onClose: () => void }>) {
   const { t } = useTranslation(["shell"]);
   const [version, setVersion] = useState("");
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(isOpen, onClose);

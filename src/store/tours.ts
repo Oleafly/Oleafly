@@ -111,8 +111,12 @@ export function migrateLegacyTourState(storage: Pick<SyncStateStorage, "getItem"
 const fallbackValues = new Map<string, string>();
 const fallbackStorage: SyncStateStorage = {
   getItem: (key) => fallbackValues.get(key) ?? null,
-  setItem: (key, value) => void fallbackValues.set(key, value),
-  removeItem: (key) => void fallbackValues.delete(key),
+  setItem: (key, value) => {
+    fallbackValues.set(key, value);
+  },
+  removeItem: (key) => {
+    fallbackValues.delete(key);
+  },
 };
 
 export function resilientTourStorage(primary: SyncStateStorage): SyncStateStorage {

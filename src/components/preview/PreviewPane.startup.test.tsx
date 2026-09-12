@@ -29,6 +29,7 @@ import {
   PdfOutlineItems,
   PdfStateMessage,
   previewWindowState,
+  trimEdgeCharacter,
   type DocumentStartupStage,
   type DocumentStartupState,
 } from "./PreviewPane";
@@ -566,5 +567,21 @@ describe("PdfOutlineItems", () => {
     expect(screen.getByRole("button", { name: "Blocked" })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "Introduction" }));
     expect(onActivate).toHaveBeenCalledWith("a");
+  });
+});
+
+describe("trimEdgeCharacter", () => {
+  it("strips the character from both ends only", () => {
+    expect(trimEdgeCharacter("__a_b__", "_")).toBe("a_b");
+    expect(trimEdgeCharacter("--paper--", "-")).toBe("paper");
+    expect(trimEdgeCharacter("paper", "-")).toBe("paper");
+    expect(trimEdgeCharacter("", "-")).toBe("");
+    expect(trimEdgeCharacter("____", "_")).toBe("");
+  });
+
+  it("stays linear on long runs", () => {
+    const started = Date.now();
+    expect(trimEdgeCharacter("_".repeat(200000), "_")).toBe("");
+    expect(Date.now() - started).toBeLessThan(1000);
   });
 });

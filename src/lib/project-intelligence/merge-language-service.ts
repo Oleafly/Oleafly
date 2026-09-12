@@ -139,12 +139,12 @@ function deduplicateUses(
   const signatures = new Set(local.map(useSignature));
   const definitionsByKey = new Map<string, ProjectDefinition[]>();
   for (const definition of definitions) {
+    const nonReferenceNamespace =
+      definition.kind === "bibentry" ? "citation" : definition.kind;
     const namespace =
       definition.kind === "label" || definition.kind === "anchor"
         ? "reference"
-        : definition.kind === "bibentry"
-          ? "citation"
-          : definition.kind;
+        : nonReferenceNamespace;
     if (
       namespace !== "reference" &&
       namespace !== "citation" &&

@@ -76,7 +76,7 @@ function placeCursorAtContextPoint(event: MouseEvent<HTMLDivElement>) {
   }
 }
 
-export function EditorContextMenu({ children }: EditorContextMenuProps) {
+export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>) {
   const { t } = useTranslation(["common", "editor"]);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const isTypst = useFilesStore((s) => s.engineLoaded && s.engine.capabilities.formatting_profile === "typst");

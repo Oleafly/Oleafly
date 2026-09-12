@@ -67,7 +67,7 @@ export const IMPORT_COMPAT_CATALOG = {
     level: "warning",
     title: "Shell-escape commands",
     detail:
-      "The source uses \\write18 or another shell escape. Switch to system LaTeX, then allow external commands on this computer only if you trust every project file and the required host tools are installed.",
+      String.raw`The source uses \write18 or another shell escape. Switch to system LaTeX, then allow external commands on this computer only if you trust every project file and the required host tools are installed.`,
     latexmkFixes: true,
   },
   fontspec: {
@@ -206,37 +206,51 @@ export function stripLineComments(tex: string): string {
  * name equals `pkg` or appears in a comma-separated package list.
  * Scans with indexOf only — no nested quantifiers.
  */
+const USEPACKAGE = String.raw`\usepackage`;
+
+function skipBlanks(tex: string, from: number): number {
+  let j = from;
+  while (j < tex.length && (tex[j] === " " || tex[j] === "\t")) j += 1;
+  return j;
+}
+
+function packageListMatches(list: string, pkg: string): boolean {
+  for (const part of list.split(",")) {
+    if (part.trim() === pkg) return true;
+  }
+  return false;
+}
+
+function scanUsepackageAt(
+  tex: string,
+  idx: number,
+  pkg: string,
+): { found: boolean; next: number | null } {
+  let j = skipBlanks(tex, idx + USEPACKAGE.length);
+  if (tex[j] === "[") {
+    const closeOpt = tex.indexOf("]", j + 1);
+    if (closeOpt === -1) return { found: false, next: idx + 1 };
+    // Optional args can contain backend=biber etc.
+    const opts = tex.slice(j + 1, closeOpt);
+    if (pkg === "biber" && opts.includes("backend=biber")) return { found: true, next: null };
+    j = skipBlanks(tex, closeOpt + 1);
+  }
+  if (tex[j] !== "{") return { found: false, next: idx + 1 };
+  const close = tex.indexOf("}", j + 1);
+  if (close === -1) return { found: false, next: null };
+  if (packageListMatches(tex.slice(j + 1, close), pkg)) return { found: true, next: null };
+  return { found: false, next: close + 1 };
+}
+
 export function loadsPackage(tex: string, pkg: string): boolean {
-  const needle = "\\usepackage";
   let from = 0;
   while (from < tex.length) {
-    const idx = tex.indexOf(needle, from);
+    const idx = tex.indexOf(USEPACKAGE, from);
     if (idx === -1) return false;
-    let j = idx + needle.length;
-    while (j < tex.length && (tex[j] === " " || tex[j] === "\t")) j += 1;
-    if (tex[j] === "[") {
-      const closeOpt = tex.indexOf("]", j + 1);
-      if (closeOpt === -1) {
-        from = idx + 1;
-        continue;
-      }
-      // Optional args can contain backend=biber etc.
-      const opts = tex.slice(j + 1, closeOpt);
-      if (pkg === "biber" && opts.includes("backend=biber")) return true;
-      j = closeOpt + 1;
-      while (j < tex.length && (tex[j] === " " || tex[j] === "\t")) j += 1;
-    }
-    if (tex[j] !== "{") {
-      from = idx + 1;
-      continue;
-    }
-    const close = tex.indexOf("}", j + 1);
-    if (close === -1) return false;
-    const list = tex.slice(j + 1, close);
-    for (const part of list.split(",")) {
-      if (part.trim() === pkg) return true;
-    }
-    from = close + 1;
+    const scan = scanUsepackageAt(tex, idx, pkg);
+    if (scan.found) return true;
+    if (scan.next === null) return false;
+    from = scan.next;
   }
   return false;
 }
@@ -262,7 +276,7 @@ export function scanImportCompatibility(sources: {
 
   const usesBiblatex =
     loadsPackage(tex, "biblatex") ||
-    includesLiteral(tex, "\\addbibresource{") ||
+    includesLiteral(tex, String.raw`\addbibresource{`) ||
     includesLiteral(tex, "backend=biber") ||
     latexmkrc.toLowerCase().includes("biber");
 
@@ -270,7 +284,7 @@ export function scanImportCompatibility(sources: {
     findings.push(findingFor("biblatex-biber"));
   }
 
-  if (loadsPackage(tex, "minted") || includesLiteral(tex, "\\begin{minted}")) {
+  if (loadsPackage(tex, "minted") || includesLiteral(tex, String.raw`\begin{minted}`)) {
     findings.push(findingFor("minted"));
   }
 
@@ -278,33 +292,33 @@ export function scanImportCompatibility(sources: {
     loadsPackage(tex, "glossaries") ||
     loadsPackage(tex, "imakeidx") ||
     loadsPackage(tex, "makeidx") ||
-    includesLiteral(tex, "\\makeglossaries") ||
-    includesLiteral(tex, "\\printglossar")
+    includesLiteral(tex, String.raw`\makeglossaries`) ||
+    includesLiteral(tex, String.raw`\printglossar`)
   ) {
     findings.push(findingFor("glossaries-index"));
   }
 
-  if (loadsPackage(tex, "pythontex") || includesLiteral(tex, "\\begin{pycode}")) {
+  if (loadsPackage(tex, "pythontex") || includesLiteral(tex, String.raw`\begin{pycode}`)) {
     findings.push(findingFor("pythontex"));
   }
 
   if (
-    includesLiteral(tex, "\\write18") ||
-    includesLiteral(tex, "\\ShellEscape") ||
-    includesLiteral(tex, "\\input{|")
+    includesLiteral(tex, String.raw`\write18`) ||
+    includesLiteral(tex, String.raw`\ShellEscape`) ||
+    includesLiteral(tex, String.raw`\input{|`)
   ) {
     findings.push(findingFor("shell-escape"));
   }
 
-  if (loadsPackage(tex, "fontspec") || includesLiteral(tex, "\\setmainfont{")) {
+  if (loadsPackage(tex, "fontspec") || includesLiteral(tex, String.raw`\setmainfont{`)) {
     findings.push(findingFor("fontspec"));
   }
 
   if (
     loadsPackage(tex, "cmap") ||
     loadsPackage(tex, "inputenc") ||
-    includesLiteral(tex, "\\pdfoutput") ||
-    includesLiteral(tex, "\\pdfliteral")
+    includesLiteral(tex, String.raw`\pdfoutput`) ||
+    includesLiteral(tex, String.raw`\pdfliteral`)
   ) {
     findings.push(findingFor("pdftex-only"));
   }
@@ -321,14 +335,111 @@ const MAX_CLASSIFY_CHARS = 1024 * 1024;
  * compile-failure modal and the import toast tell one consistent story.
  * Plain `includes` scans only — logs are attacker-influenced text.
  */
+function matchesMinted(log: string): boolean {
+  return (
+    log.includes("Package minted Error") ||
+    log.includes("minted Error") ||
+    log.includes("pygmentize")
+  );
+}
+
+function matchesShellEscape(log: string): boolean {
+  return (
+    log.includes("-shell-escape") ||
+    log.includes("shell escape is disabled") ||
+    log.includes("Shell escape disabled") ||
+    log.includes(String.raw`\write18 disabled`) ||
+    log.includes("runsystem(")
+  );
+}
+
+function matchesGlossaries(log: string): boolean {
+  return (
+    log.includes("Package glossaries") ||
+    hasMissingFileWithExtension(log, [".gls.", ".glo.", ".ind.", ".idx.", ".acr."]) ||
+    log.includes("makeglossaries")
+  );
+}
+
+function matchesFontspec(log: string): boolean {
+  return (
+    log.includes("Package fontspec Error") ||
+    (log.includes("cannot be found") && log.includes("font"))
+  );
+}
+
+// Journal classes (e.g. Springer's sn-jnl) hit pdfTeX-only internals under
+// XeTeX: "Undefined control sequence" pointing at \pdf@... primitives.
+// Real pdfLaTeX via latexmk is the fix, exactly like Overleaf.
+function matchesPdftexOnly(log: string): boolean {
+  return (
+    log.includes("Undefined control sequence") &&
+    [String.raw`\pdf@`, String.raw`\pdfoutput`, String.raw`\pdfliteral`, String.raw`\pdftexversion`, String.raw`\pdfpageattr`].some(
+      (primitive) => log.includes(primitive),
+    )
+  );
+}
+
+function collectPackageFindings(log: string): ImportCompatFinding[] {
+  const findings: ImportCompatFinding[] = [];
+  if (matchesMinted(log)) {
+    findings.push(findingFor("minted"));
+  }
+  if (matchesShellEscape(log) && !findings.some((f) => f.id === "minted")) {
+    findings.push(findingFor("shell-escape"));
+  }
+  if (matchesGlossaries(log)) {
+    findings.push(findingFor("glossaries-index"));
+  }
+  if (log.includes("pythontex") || log.includes("PythonTeX")) {
+    findings.push(findingFor("pythontex"));
+  }
+  // Appended by the Rust compile layer only when the pinned Biber pass could
+  // not produce a usable .bbl — the case a full latexmk toolchain resolves.
+  if (log.includes("[Oleafly] Bibliography needs Biber")) {
+    findings.push(findingFor("biblatex-biber"));
+  }
+  return findings;
+}
+
+function collectEngineFindings(log: string, findings: ImportCompatFinding[]): void {
+  if (matchesFontspec(log)) {
+    findings.push(findingFor("fontspec"));
+  }
+  if (matchesPdftexOnly(log)) {
+    findings.push(findingFor("pdftex-only"));
+  }
+  if (hasWrongDriverOption(log, "pdftex")) {
+    findings.push(findingFor("hyperref-pdftex-driver"));
+  }
+  const eps = epsImageFile(log);
+  if (eps !== null) {
+    findings.push(
+      withDetail(
+        findingFor("eps-image"),
+        eps ? `The compile stopped on ${eps}.` : "",
+      ),
+    );
+  }
+}
+
+function collectMissingFileFindings(log: string, findings: ImportCompatFinding[]): void {
+  const missing = missingLatexFiles(log);
+  if (missing.length === 0) return;
+  findings.push(
+    withDetail(
+      findingFor("missing-sty-on-bundled-engine"),
+      `The compile could not find ${missing.join(", ")}.`,
+    ),
+  );
+}
+
 export function classifyCompileFailure(
   logRaw: string,
   options: { bundledEngine?: boolean } = {},
 ): ImportCompatFinding[] {
   const log =
     logRaw.length > MAX_CLASSIFY_CHARS ? logRaw.slice(0, MAX_CLASSIFY_CHARS) : logRaw;
-  const findings: ImportCompatFinding[] = [];
-  const bundledEngine = options.bundledEngine !== false;
 
   const bundleStatus = bundleFetchStatus(log);
   if (bundleStatus !== null) {
@@ -340,89 +451,11 @@ export function classifyCompileFailure(
     ];
   }
 
-  if (
-    log.includes("Package minted Error") ||
-    log.includes("minted Error") ||
-    log.includes("pygmentize")
-  ) {
-    findings.push(findingFor("minted"));
+  const findings = collectPackageFindings(log);
+  collectEngineFindings(log, findings);
+  if (options.bundledEngine !== false) {
+    collectMissingFileFindings(log, findings);
   }
-
-  if (
-    log.includes("-shell-escape") ||
-    log.includes("shell escape is disabled") ||
-    log.includes("Shell escape disabled") ||
-    log.includes("\\write18 disabled") ||
-    log.includes("runsystem(")
-  ) {
-    if (!findings.some((f) => f.id === "minted")) {
-      findings.push(findingFor("shell-escape"));
-    }
-  }
-
-  if (
-    log.includes("Package glossaries") ||
-    hasMissingFileWithExtension(log, [".gls.", ".glo.", ".ind.", ".idx.", ".acr."]) ||
-    log.includes("makeglossaries")
-  ) {
-    findings.push(findingFor("glossaries-index"));
-  }
-
-  if (log.includes("pythontex") || log.includes("PythonTeX")) {
-    findings.push(findingFor("pythontex"));
-  }
-
-  // Appended by the Rust compile layer only when the pinned Biber pass could
-  // not produce a usable .bbl — the case a full latexmk toolchain resolves.
-  if (log.includes("[Oleafly] Bibliography needs Biber")) {
-    findings.push(findingFor("biblatex-biber"));
-  }
-
-  if (
-    log.includes("Package fontspec Error") ||
-    log.includes("cannot be found") && log.includes("font")
-  ) {
-    findings.push(findingFor("fontspec"));
-  }
-
-  // Journal classes (e.g. Springer's sn-jnl) hit pdfTeX-only internals under
-  // XeTeX: "Undefined control sequence" pointing at \pdf@... primitives.
-  // Real pdfLaTeX via latexmk is the fix, exactly like Overleaf.
-  if (
-    log.includes("Undefined control sequence") &&
-    ["\\pdf@", "\\pdfoutput", "\\pdfliteral", "\\pdftexversion", "\\pdfpageattr"].some(
-      (primitive) => log.includes(primitive),
-    )
-  ) {
-    findings.push(findingFor("pdftex-only"));
-  }
-
-  if (hasWrongDriverOption(log, "pdftex")) {
-    findings.push(findingFor("hyperref-pdftex-driver"));
-  }
-
-  const eps = epsImageFile(log);
-  if (eps !== null) {
-    findings.push(
-      withDetail(
-        findingFor("eps-image"),
-        eps ? `The compile stopped on ${eps}.` : "",
-      ),
-    );
-  }
-
-  if (bundledEngine) {
-    const missing = missingLatexFiles(log);
-    if (missing.length > 0) {
-      findings.push(
-        withDetail(
-          findingFor("missing-sty-on-bundled-engine"),
-          `The compile could not find ${missing.join(", ")}.`,
-        ),
-      );
-    }
-  }
-
   return findings;
 }
 
@@ -522,6 +555,25 @@ function epsImageFile(log: string): string | null {
   return null;
 }
 
+function isMissingStyleFile(file: string): boolean {
+  const dot = file.lastIndexOf(".");
+  const ext = dot === -1 ? "" : file.slice(dot + 1).toLowerCase();
+  if (ext !== "sty" && ext !== "cls") return false;
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(file);
+}
+
+function missingFileAt(
+  log: string,
+  marker: string,
+  idx: number,
+): { file: string | null; next: number } {
+  const start = idx + marker.length;
+  const quote = log.indexOf(marker.endsWith('"') ? '"' : "'", start);
+  if (quote === -1 || quote - start > 128) return { file: null, next: start };
+  const file = log.slice(start, quote).trim();
+  return { file: isMissingStyleFile(file) ? file : null, next: quote + 1 };
+}
+
 export function missingLatexFiles(logRaw: string): string[] {
   const log =
     logRaw.length > MAX_CLASSIFY_CHARS ? logRaw.slice(0, MAX_CLASSIFY_CHARS) : logRaw;
@@ -532,19 +584,9 @@ export function missingLatexFiles(logRaw: string): string[] {
     while (from < log.length && found.size < 8) {
       const idx = log.indexOf(marker, from);
       if (idx === -1) break;
-      const start = idx + marker.length;
-      const quote = log.indexOf(marker.endsWith('"') ? '"' : "'", start);
-      if (quote === -1 || quote - start > 128) {
-        from = start;
-        continue;
-      }
-      const file = log.slice(start, quote).trim();
-      const dot = file.lastIndexOf(".");
-      const ext = dot === -1 ? "" : file.slice(dot + 1).toLowerCase();
-      if (ext === "sty" || ext === "cls") {
-        if (/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(file)) found.add(file);
-      }
-      from = quote + 1;
+      const read = missingFileAt(log, marker, idx);
+      if (read.file !== null) found.add(read.file);
+      from = read.next;
     }
   }
   return [...found];

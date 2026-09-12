@@ -34,12 +34,12 @@ export function ProjectImportMenu({
   onImportSelected,
   trigger,
   triggerTooltip,
-}: {
+}: Readonly<{
   align?: "start" | "center" | "end";
   onImportSelected?: () => void;
   trigger: (busy: boolean) => ReactElement;
   triggerTooltip?: ReactNode;
-}) {
+}>) {
   const { t } = useTranslation(["library"]);
   const sourceLabels: Record<ProjectImportFileKind, string> = {
     project: t(($) => $.library.import.sources.project.title),
@@ -134,6 +134,115 @@ export function ProjectImportMenu({
     onImportSelected?.();
   };
 
+  const renderRepositoryItems = () => {
+    if (githubStatus === "disconnected") {
+      return (
+        <DropdownMenuItem onSelect={openGithubSettings}>
+          <Github className="size-4 shrink-0 text-muted-foreground" />
+          {t(($) => $.library.import.menu.connect)}
+        </DropdownMenuItem>
+      );
+    }
+    if (githubStatus === "unknown" || loadingRepositories) {
+      return (
+        <DropdownMenuItem disabled>
+          <Loader2 className="size-3.5 animate-spin" />{" "}
+          {t(($) => $.library.import.loadingRepositories)}
+        </DropdownMenuItem>
+      );
+    }
+    if (repositoryLoadFailed) {
+      return (
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault();
+            setRepositoryAttempt((attempt) => attempt + 1);
+          }}
+        >
+          {t(($) => $.library.import.menu.repositoriesRetry)}
+        </DropdownMenuItem>
+      );
+    }
+    if (repositories.length === 0) {
+      return (
+        <DropdownMenuItem disabled>
+          {t(($) => $.library.import.noRepositories)}
+        </DropdownMenuItem>
+      );
+    }
+    return (
+      repositories.map((repository) => (
+        <DropdownMenuItem
+          key={repository.full_name}
+          onSelect={(event) => {
+            if (openingExternalRef.current) {
+              openingExternalRef.current = false;
+              event.preventDefault();
+              return;
+            }
+            void importRepository(repository);
+          }}
+          className="group gap-2"
+        >
+          <Github className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate">
+            {repository.full_name}
+          </span>
+          {repository.private ? (
+            <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
+              <span
+                role="img"
+                aria-label={t(($) => $.library.import.privateRepository)}
+                className="inline-flex shrink-0"
+              >
+                <Lock aria-hidden className="size-3 text-muted-foreground" />
+              </span>
+            </Tooltip>
+          ) : null}
+          <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
+            <button
+              type="button"
+              aria-label={t(($) => $.library.import.openRepository, {
+                name: repository.full_name,
+              })}
+              // The row imports the repository; this opens it in the
+              // browser. Radix selects the item on pointerdown, so
+              // both events have to stop here or the click would do
+              // one thing and then the other.
+              // Opened from pointerdown, not click: selecting the item
+              // closes the menu and unmounts this button, so a click
+              // handler is not guaranteed to run at all. That is why
+              // the first attempt imported the repository and never
+              // opened the page.
+              onPointerDown={(event) => {
+                openingExternalRef.current = true;
+                event.stopPropagation();
+                openExternal(repository.html_url).catch((error) => {
+                  notifyError("open repository", error);
+                });
+              }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                event.stopPropagation();
+                void openExternal(repository.html_url).catch((error) => {
+                  notifyError("open repository", error);
+                });
+              }}
+              className="shrink-0 text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
+            >
+              <ExternalLink className="size-3.5" />
+            </button>
+          </Tooltip>
+        </DropdownMenuItem>
+      ))
+    );
+  };
+
   return (
     <>
     <DropdownMenu
@@ -184,93 +293,7 @@ export function ProjectImportMenu({
         <DropdownMenuSub open={githubOpen} onOpenChange={setGithubOpen}>
           <DropdownMenuSubTrigger>GitHub</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="max-h-72 min-w-64 overflow-y-auto">
-            {githubStatus === "disconnected" ? (
-              <DropdownMenuItem onSelect={openGithubSettings}>
-                <Github className="size-4 shrink-0 text-muted-foreground" />
-                {t(($) => $.library.import.menu.connect)}
-              </DropdownMenuItem>
-            ) : githubStatus === "unknown" || loadingRepositories ? (
-              <DropdownMenuItem disabled>
-                <Loader2 className="size-3.5 animate-spin" />{" "}
-                {t(($) => $.library.import.loadingRepositories)}
-              </DropdownMenuItem>
-            ) : repositoryLoadFailed ? (
-              <DropdownMenuItem onSelect={(event) => { event.preventDefault(); setRepositoryAttempt((attempt) => attempt + 1); }}>{t(($) => $.library.import.menu.repositoriesRetry)}</DropdownMenuItem>
-            ) : repositories.length === 0 ? (
-              <DropdownMenuItem disabled>
-                {t(($) => $.library.import.noRepositories)}
-              </DropdownMenuItem>
-            ) : (
-              repositories.map((repository) => (
-                <DropdownMenuItem
-                  key={repository.full_name}
-                  onSelect={(event) => {
-                    if (openingExternalRef.current) {
-                      openingExternalRef.current = false;
-                      event.preventDefault();
-                      return;
-                    }
-                    void importRepository(repository);
-                  }}
-                  className="group gap-2"
-                >
-                  <Github className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="min-w-0 flex-1 truncate">
-                    {repository.full_name}
-                  </span>
-                  {repository.private ? (
-                    <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
-                      <span
-                        role="img"
-                        aria-label={t(($) => $.library.import.privateRepository)}
-                        className="inline-flex shrink-0"
-                      >
-                        <Lock aria-hidden className="size-3 text-muted-foreground" />
-                      </span>
-                    </Tooltip>
-                  ) : null}
-                  <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
-                    <button
-                      type="button"
-                      aria-label={t(($) => $.library.import.openRepository, {
-                        name: repository.full_name,
-                      })}
-                      // The row imports the repository; this opens it in the
-                      // browser. Radix selects the item on pointerdown, so
-                      // both events have to stop here or the click would do
-                      // one thing and then the other.
-                      // Opened from pointerdown, not click: selecting the item
-                      // closes the menu and unmounts this button, so a click
-                      // handler is not guaranteed to run at all. That is why
-                      // the first attempt imported the repository and never
-                      // opened the page.
-                      onPointerDown={(event) => {
-                        openingExternalRef.current = true;
-                        event.stopPropagation();
-                        openExternal(repository.html_url).catch((error) => {
-                          notifyError("open repository", error);
-                        });
-                      }}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        void openExternal(repository.html_url).catch((error) => {
-                          notifyError("open repository", error);
-                        });
-                      }}
-                      className="shrink-0 text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
-                    >
-                      <ExternalLink className="size-3.5" />
-                    </button>
-                  </Tooltip>
-                </DropdownMenuItem>
-              ))
-            )}
+            {renderRepositoryItems()}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuContent>

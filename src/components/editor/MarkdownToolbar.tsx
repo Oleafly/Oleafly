@@ -63,7 +63,7 @@ import {
 } from "@/components/editor/markdown-commands";
 import { shortcut } from "@/lib/utils";
 
-function MarkdownHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
+function MarkdownHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
@@ -119,7 +119,7 @@ function TargetPopover({
   onApply,
   removeLabel,
   menuRow,
-}: {
+}: Readonly<{
   icon: React.ReactNode;
   label: string;
   placeholder: string;
@@ -127,7 +127,7 @@ function TargetPopover({
   onApply: (value: string) => void;
   removeLabel?: string;
   menuRow?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   const [value, setValue] = useState("");
   return (
@@ -195,7 +195,7 @@ function TargetPopover({
   );
 }
 
-function MarkdownListDropdown({ variant }: { variant: "bar" | "menu" }) {
+function MarkdownListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
@@ -240,13 +240,13 @@ export function MarkdownToolbar({
   onToggleWysiwyg,
   showVisualToggle = true,
   showProjectInfo = true,
-}: {
+}: Readonly<{
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
   showVisualToggle?: boolean;
   /** Project statistics describe the compiled document, so hide them for stray .md files in other projects. */
   showProjectInfo?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [

@@ -133,7 +133,7 @@ fn validate_archive_dest(dest: &std::path::Path) -> Result<(), String> {
     }
     let zip = dest
         .extension()
-        .and_then(|ext| ext.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"));
     if !zip {
         return Err("log archive destination must end in .zip".to_string());

@@ -1,4 +1,7 @@
-use super::types::*;
+use super::{
+    new_id, AgentDefinition, AgentStatus, CliStatus, CommandDistribution, Distribution,
+    PackageDistribution,
+};
 use futures_util::StreamExt;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -444,20 +447,33 @@ pub fn validate(definition: &AgentDefinition) -> Result<(), String> {
     {
         return Err("Add an npm, uv, binary or installed-command distribution.".into());
     }
+    validate_packages(dist)?;
+    validate_binaries(dist)?;
+    validate_installed_command(dist)
+}
+
+fn validate_packages(dist: &Distribution) -> Result<(), String> {
     for (package, npm) in [(dist.npx.as_ref(), true), (dist.uvx.as_ref(), false)] {
-        if let Some(package) = package {
-            package_parts(&package.package, npm)?;
-            validate_args(&package.args)?;
-            if !package.env.is_empty() {
-                return Err("Environment values cannot be stored in agent definitions. Configure authentication in the CLI.".into());
-            }
-            if let Some(cmd) = &package.cmd {
-                if !valid_command_name(cmd) {
-                    return Err("The package command must be a simple executable name.".into());
-                }
-            }
+        let Some(package) = package else {
+            continue;
+        };
+        package_parts(&package.package, npm)?;
+        validate_args(&package.args)?;
+        if !package.env.is_empty() {
+            return Err("Environment values cannot be stored in agent definitions. Configure authentication in the CLI.".into());
+        }
+        if package
+            .cmd
+            .as_ref()
+            .is_some_and(|cmd| !valid_command_name(cmd))
+        {
+            return Err("The package command must be a simple executable name.".into());
         }
     }
+    Ok(())
+}
+
+fn validate_binaries(dist: &Distribution) -> Result<(), String> {
     if dist.binary.len() > 12 {
         return Err("An agent definition has too many platforms.".into());
     }
@@ -470,47 +486,56 @@ pub fn validate(definition: &AgentDefinition) -> Result<(), String> {
         if url.scheme() != "https" || !url.username().is_empty() || url.password().is_some() {
             return Err("Binary downloads require an HTTPS URL without credentials.".into());
         }
-        if let Some(hash) = &binary.sha256 {
-            if hash.len() != 64 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
-                return Err("The binary SHA-256 must contain 64 hexadecimal characters.".into());
-            }
+        let invalid_hash = binary
+            .sha256
+            .as_ref()
+            .is_some_and(|hash| hash.len() != 64 || !hash.bytes().all(|b| b.is_ascii_hexdigit()));
+        if invalid_hash {
+            return Err("The binary SHA-256 must contain 64 hexadecimal characters.".into());
         }
     }
-    if let Some(command) = &dist.command {
-        validate_args(&command.args)?;
-        if command.executable.is_empty()
-            || command.executable.len() > 4096
-            || command.executable.contains(['\0', '\n', '\r'])
-        {
-            return Err("The executable path is invalid.".into());
-        }
-        if !Path::new(&command.executable).is_absolute() && !valid_command_name(&command.executable)
-        {
-            return Err("Use an absolute executable path or a command name from PATH.".into());
-        }
-        if cfg!(windows)
-            && Path::new(&command.executable)
-                .extension()
-                .and_then(|value| value.to_str())
-                .is_some_and(|extension| {
-                    matches!(
-                        extension.to_ascii_lowercase().as_str(),
-                        "cmd" | "bat" | "ps1" | "js" | "py"
-                    )
-                })
-        {
-            return Err("Use a native executable with argument arrays, or a pinned package, instead of a Windows command script.".into());
-        }
-        let stem = Path::new(&command.executable)
-            .file_stem()
-            .and_then(|v| v.to_str())
-            .unwrap_or_default();
-        if matches!(
-            stem,
-            "npx" | "npm" | "pnpm" | "yarn" | "uvx" | "uv" | "bunx"
-        ) {
-            return Err("Use a pinned package distribution instead of a package launcher.".into());
-        }
+    Ok(())
+}
+
+fn windows_command_script(executable: &str) -> bool {
+    cfg!(windows)
+        && Path::new(executable)
+            .extension()
+            .and_then(std::ffi::OsStr::to_str)
+            .is_some_and(|extension| {
+                matches!(
+                    extension.to_ascii_lowercase().as_str(),
+                    "cmd" | "bat" | "ps1" | "js" | "py"
+                )
+            })
+}
+
+fn validate_installed_command(dist: &Distribution) -> Result<(), String> {
+    let Some(command) = &dist.command else {
+        return Ok(());
+    };
+    validate_args(&command.args)?;
+    if command.executable.is_empty()
+        || command.executable.len() > 4096
+        || command.executable.contains(['\0', '\n', '\r'])
+    {
+        return Err("The executable path is invalid.".into());
+    }
+    if !Path::new(&command.executable).is_absolute() && !valid_command_name(&command.executable) {
+        return Err("Use an absolute executable path or a command name from PATH.".into());
+    }
+    if windows_command_script(&command.executable) {
+        return Err("Use a native executable with argument arrays, or a pinned package, instead of a Windows command script.".into());
+    }
+    let stem = Path::new(&command.executable)
+        .file_stem()
+        .and_then(std::ffi::OsStr::to_str)
+        .unwrap_or_default();
+    if matches!(
+        stem,
+        "npx" | "npm" | "pnpm" | "yarn" | "uvx" | "uv" | "bunx"
+    ) {
+        return Err("Use a pinned package distribution instead of a package launcher.".into());
     }
     Ok(())
 }
@@ -1501,14 +1526,16 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
         return Ok(());
     }
     let parent = root.join("agents").join(&definition.id);
-    std::fs::create_dir_all(&parent)
+    tokio::fs::create_dir_all(&parent)
+        .await
         .map_err(|_| "The agent installation directory could not be created.")?;
     let destination = receipt_dir(root, definition);
     if destination.exists() {
         return Err("An incomplete installation already exists for this version. Remove it before retrying.".into());
     }
     let temporary = parent.join(format!("install-{}", new_id()));
-    std::fs::create_dir(&temporary)
+    tokio::fs::create_dir(&temporary)
+        .await
         .map_err(|_| "The agent installation directory could not be created.")?;
     struct Cleanup(Option<PathBuf>);
     impl Drop for Cleanup {
@@ -1521,7 +1548,8 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
     let _cleanup = Cleanup(Some(temporary.clone()));
     let (relative, node) = if let Some(package) = &definition.distribution.npx {
         check_node(package.node_major.unwrap_or(20)).await?;
-        std::fs::write(temporary.join("package.json"), b"{\"private\":true}")
+        tokio::fs::write(temporary.join("package.json"), b"{\"private\":true}")
+            .await
             .map_err(|_| "The package manifest could not be written.")?;
         let mut command =
             tokio::process::Command::new(discover("node").ok_or("Node.js was not found.")?);
@@ -1543,11 +1571,11 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
         bounded_command(command, Duration::from_secs(300)).await?;
         let (name, _) = package_parts(&package.package, true)?;
         let package_root = temporary.join("node_modules").join(name);
-        let manifest: Value = serde_json::from_slice(
-            &std::fs::read(package_root.join("package.json"))
-                .map_err(|_| "The installed package has no manifest.")?,
-        )
-        .map_err(|_| "The installed package manifest is invalid.")?;
+        let manifest_bytes = tokio::fs::read(package_root.join("package.json"))
+            .await
+            .map_err(|_| "The installed package has no manifest.")?;
+        let manifest: Value = serde_json::from_slice(&manifest_bytes)
+            .map_err(|_| "The installed package manifest is invalid.")?;
         let bin = if let Some(bin) = manifest["bin"].as_str() {
             Some(bin)
         } else if let Some(cmd) = &package.cmd {
@@ -1575,8 +1603,11 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
             .map_err(|_| "The package executable escapes its installation.")?
             .to_path_buf();
         let mut header = [0u8; 128];
-        let n = std::fs::File::open(&executable)
-            .and_then(|mut f| f.read(&mut header))
+        let mut handle = tokio::fs::File::open(&executable)
+            .await
+            .map_err(|_| "The package executable could not be read.")?;
+        let n = tokio::io::AsyncReadExt::read(&mut handle, &mut header)
+            .await
             .map_err(|_| "The package executable could not be read.")?;
         let node = String::from_utf8_lossy(&header[..n])
             .lines()
@@ -1587,7 +1618,8 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
                 .is_some_and(|v| v == "js" || v == "mjs" || v == "cjs");
         (relative, node)
     } else if let Some(package) = &definition.distribution.uvx {
-        std::fs::create_dir(&destination)
+        tokio::fs::create_dir(&destination)
+            .await
             .map_err(|_| "The Python agent directory could not be created.")?;
         let mut cleanup = Cleanup(Some(destination.clone()));
         let mut command = tokio::process::Command::new(discover("uv").ok_or("uv was not found.")?);
@@ -1653,13 +1685,15 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
     #[cfg(unix)]
     if !node {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(
+        tokio::fs::set_permissions(
             temporary.join(&relative),
             std::fs::Permissions::from_mode(0o700),
         )
+        .await
         .map_err(|_| "The agent executable permissions could not be set.")?;
     }
-    std::fs::rename(&temporary, &destination)
+    tokio::fs::rename(&temporary, &destination)
+        .await
         .map_err(|_| "The agent installation could not be finalized.")?;
     write_receipt(&destination, &definition.version, relative, node)
 }

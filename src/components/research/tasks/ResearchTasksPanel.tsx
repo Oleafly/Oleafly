@@ -64,7 +64,7 @@ export function ResearchTasksPanel({
   agents,
   onOpenSession,
   onApplied,
-}: ResearchTasksPanelProps) {
+}: Readonly<ResearchTasksPanelProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const tasks = useResearchTasksStore((state) => state.tasks);
   const selectedTaskId = useResearchTasksStore((state) => state.selectedTaskId);
@@ -223,6 +223,133 @@ export function ResearchTasksPanel({
     }
   };
 
+  const taskListBody = () =>
+    tasks.length === 0 ? (
+      <div className="flex flex-1 items-center justify-center p-8 text-center">
+        <div>
+          <h3 className="text-sm font-semibold">
+            {t(($) => $.researchTools.tasks.panel.emptyTitle)}
+          </h3>
+          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+            {t(($) => $.researchTools.tasks.panel.emptyBody)}
+          </p>
+          <Button className="mt-4" disabled={agents.length === 0} onClick={() => openComposer()}>
+            <Plus /> {t(($) => $.researchTools.tasks.panel.createTask)}
+          </Button>
+          {agents.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t(($) => $.researchTools.tasks.panel.configureAgent)}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    ) : (
+      <nav
+        aria-label={t(($) => $.researchTools.tasks.panel.listLabel)}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <div className="shrink-0 px-3 pt-3">
+          <Tabs value={filter} onValueChange={(next) => setFilter(next as TaskFilter)}>
+            <TabsList size="sm" className="flex w-full overflow-x-auto">
+              {FILTERS.map((entry) => (
+                <TabsTrigger
+                  key={entry.id}
+                  value={entry.id}
+                  size="sm"
+                  className="min-w-0 flex-1 gap-1 px-1.5"
+                >
+                  <span className="min-w-0 truncate">{entry.label()}</span>
+                  <Badge
+                    variant="quiet"
+                    data-testid={`research-task-filter-count-${entry.id}`}
+                    className={cn(
+                      "min-w-[1.125rem] border-transparent px-1 py-0 text-[10px] tabular-nums",
+                      filter === entry.id
+                        ? "bg-primary/15 text-primary"
+                        : "bg-muted-foreground/10 text-muted-foreground",
+                    )}
+                  >
+                    {counts[entry.id]}
+                  </Badge>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+        <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3">
+          {visibleTasks.length === 0 ? (
+            <li className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+              {t(($) => $.researchTools.tasks.panel.emptyFilter)}
+            </li>
+          ) : null}
+          {visibleTasks.map((task) => {
+            const selected = task.id === selectedTaskId;
+            const blocked = task.dependencyIds.some(
+              (dependencyId) =>
+                tasks.find((candidate) => candidate.id === dependencyId)?.status !== "completed",
+            );
+            return (
+              <li key={task.id}>
+                <div
+                  data-selected={selected ? "true" : undefined}
+                  className="min-w-0 rounded-lg border bg-card shadow-sm transition-colors hover:bg-accent has-[button:active]:border-primary/40 has-[button:active]:bg-primary/5"
+                >
+                  <button
+                    type="button"
+                    aria-current={selected ? "page" : undefined}
+                    onClick={() => openTaskDetail(task.id)}
+                    className="block w-full rounded-t-lg px-3 pb-1.5 pt-2.5 text-left"
+                  >
+                    <Tooltip label={task.title} className="max-w-full">
+                      <span className="block w-full truncate text-sm font-medium">
+                        {task.title}
+                      </span>
+                    </Tooltip>
+                    <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
+                      {task.prompt}
+                    </span>
+                  </button>
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5">
+                    <TaskStatusBadge status={task.status} />
+                    <TaskAgentChip
+                      task={task}
+                      agentName={agentNameFor(task)}
+                      modelName={modelNameFor(task)}
+                      className="max-w-[13rem]"
+                    />
+                    {task.dependencyIds.length > 0 ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Link2 aria-hidden="true" className="size-3" />
+                        {task.dependencyIds.length}
+                      </Badge>
+                    ) : null}
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {relativeTime(task.updatedAt)}
+                    </span>
+                    {blocked && task.status === "queued" ? (
+                      <span className="text-[11px] text-muted-foreground">
+                        {t(($) => $.researchTools.tasks.panel.waiting)}
+                      </span>
+                    ) : null}
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      className="ml-auto shrink-0"
+                      onClick={() => openTaskDetail(task.id)}
+                    >
+                      {task.status === "running"
+                        ? t(($) => $.researchTools.tasks.panel.viewProgress)
+                        : t(($) => $.researchTools.tasks.panel.viewTask)}
+                    </Button>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    );
+
   const cancelDelete = () => {
     setPendingDeleteId(null);
     if (reopenDetail) setDetailOpen(true);
@@ -300,135 +427,11 @@ export function ResearchTasksPanel({
       ) : null}
 
       {loading && tasks.length === 0 ? (
-        <div role="status" className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+        <output className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />{" "}
           {t(($) => $.researchTools.tasks.panel.loading)}
-        </div>
-      ) : tasks.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center p-8 text-center">
-          <div>
-            <h3 className="text-sm font-semibold">
-              {t(($) => $.researchTools.tasks.panel.emptyTitle)}
-            </h3>
-            <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-              {t(($) => $.researchTools.tasks.panel.emptyBody)}
-            </p>
-            <Button className="mt-4" disabled={agents.length === 0} onClick={() => openComposer()}>
-              <Plus /> {t(($) => $.researchTools.tasks.panel.createTask)}
-            </Button>
-            {agents.length === 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {t(($) => $.researchTools.tasks.panel.configureAgent)}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : (
-        <nav
-          aria-label={t(($) => $.researchTools.tasks.panel.listLabel)}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <div className="shrink-0 px-3 pt-3">
-            <Tabs value={filter} onValueChange={(next) => setFilter(next as TaskFilter)}>
-              <TabsList size="sm" className="flex w-full overflow-x-auto">
-                {FILTERS.map((entry) => (
-                  <TabsTrigger
-                    key={entry.id}
-                    value={entry.id}
-                    size="sm"
-                    className="min-w-0 flex-1 gap-1 px-1.5"
-                  >
-                    <span className="min-w-0 truncate">{entry.label()}</span>
-                    <Badge
-                      variant="quiet"
-                      data-testid={`research-task-filter-count-${entry.id}`}
-                      className={cn(
-                        "min-w-[1.125rem] border-transparent px-1 py-0 text-[10px] tabular-nums",
-                        filter === entry.id
-                          ? "bg-primary/15 text-primary"
-                          : "bg-muted-foreground/10 text-muted-foreground",
-                      )}
-                    >
-                      {counts[entry.id]}
-                    </Badge>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
-          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3">
-            {visibleTasks.length === 0 ? (
-              <li className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-                {t(($) => $.researchTools.tasks.panel.emptyFilter)}
-              </li>
-            ) : null}
-            {visibleTasks.map((task) => {
-              const selected = task.id === selectedTaskId;
-              const blocked = task.dependencyIds.some(
-                (dependencyId) =>
-                  tasks.find((candidate) => candidate.id === dependencyId)?.status !== "completed",
-              );
-              return (
-                <li key={task.id}>
-                  <div
-                    data-selected={selected ? "true" : undefined}
-                    className="min-w-0 rounded-lg border bg-card shadow-sm transition-colors hover:bg-accent has-[button:active]:border-primary/40 has-[button:active]:bg-primary/5"
-                  >
-                    <button
-                      type="button"
-                      aria-current={selected ? "page" : undefined}
-                      onClick={() => openTaskDetail(task.id)}
-                      className="block w-full rounded-t-lg px-3 pb-1.5 pt-2.5 text-left"
-                    >
-                      <Tooltip label={task.title} className="max-w-full">
-                        <span className="block w-full truncate text-sm font-medium">
-                          {task.title}
-                        </span>
-                      </Tooltip>
-                      <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
-                        {task.prompt}
-                      </span>
-                    </button>
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5">
-                      <TaskStatusBadge status={task.status} />
-                      <TaskAgentChip
-                        task={task}
-                        agentName={agentNameFor(task)}
-                        modelName={modelNameFor(task)}
-                        className="max-w-[13rem]"
-                      />
-                      {task.dependencyIds.length > 0 ? (
-                        <Badge variant="outline" className="gap-1">
-                          <Link2 aria-hidden="true" className="size-3" />
-                          {task.dependencyIds.length}
-                        </Badge>
-                      ) : null}
-                      <span className="text-[11px] tabular-nums text-muted-foreground">
-                        {relativeTime(task.updatedAt)}
-                      </span>
-                      {blocked && task.status === "queued" ? (
-                        <span className="text-[11px] text-muted-foreground">
-                          {t(($) => $.researchTools.tasks.panel.waiting)}
-                        </span>
-                      ) : null}
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        className="ml-auto shrink-0"
-                        onClick={() => openTaskDetail(task.id)}
-                      >
-                        {task.status === "running"
-                          ? t(($) => $.researchTools.tasks.panel.viewProgress)
-                          : t(($) => $.researchTools.tasks.panel.viewTask)}
-                      </Button>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-      )}
+        </output>
+      ) : taskListBody()}
 
       {selectedTask ? (
         <TaskDetailDialog

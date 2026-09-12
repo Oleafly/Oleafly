@@ -3,7 +3,7 @@ import {
   matchResumeSectionHeading,
 } from "./resume-sections";
 
-const RESUME_CLASS = /\\documentclass(?:\[[^\]]{0,500}\])?\{\s{0,20}(moderncv|altacv|deedy[\w-]{0,50}|awesome-cv|[\w-]{0,50}resume[\w-]{0,50}|[\w-]{0,50}cv)\s{0,20}\}/i;
+const RESUME_CLASS = /\\documentclass(?:\[[^\]]{0,500}\])?\{\s{0,20}(deedy[\w-]{0,50}|[\w-]{0,50}resume[\w-]{0,50}|[\w-]{0,50}cv)\s{0,20}\}/i;
 
 const SOURCE_HEADING =
   /\\(?:section|subsection|cvsection|resumeSection)\*?\s*\{([^{}]{1,200})\}/giu;

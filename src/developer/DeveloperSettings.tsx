@@ -40,7 +40,7 @@ export const DEVELOPER_NAV_ITEM = {
 type ConfirmAction = "clear-projects" | "reset-browser" | "reset-and-seed";
 
 export function isDevelopmentLibraryRoot(path: string): boolean {
-  const normalized = path.trim().replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase();
+  const normalized = path.trim().replaceAll("\\", "/").replace(/(?<!\/)\/+$/, "").toLowerCase();
   return normalized.endsWith("/.oleafly-dev/projects");
 }
 
@@ -52,7 +52,7 @@ function SettingAction({
   buttonLabel,
   disabled,
   destructive = false,
-}: {
+}: Readonly<{
   title: string;
   description: string;
   icon: typeof Wrench;
@@ -60,7 +60,7 @@ function SettingAction({
   buttonLabel?: string;
   disabled?: boolean;
   destructive?: boolean;
-}) {
+}>) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
       <div className="flex min-w-0 items-start gap-3">

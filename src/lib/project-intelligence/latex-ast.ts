@@ -87,40 +87,55 @@ function trimmedRaw(
  * Collect the brace-group arguments following an unknown macro, skipping an
  * optional leading `[...]` written as loose string tokens.
  */
+function optionalBracketState(
+  content: string,
+  inOptional: boolean,
+): boolean | null {
+  if (content === "[") return true;
+  if (content === "]" && inOptional) return false;
+  return null;
+}
+
+type SiblingStep =
+  | { kind: "skip" }
+  | { kind: "stop" }
+  | { kind: "collect"; group: GroupLike };
+
+function siblingStep(
+  node: LatexNode,
+  state: { inOptional: boolean },
+): SiblingStep {
+  if (node.type === "whitespace" || node.type === "parbreak") {
+    return { kind: "skip" };
+  }
+  if (node.type === "string") {
+    const optional = optionalBracketState(node.content, state.inOptional);
+    if (optional !== null) {
+      state.inOptional = optional;
+      return { kind: "skip" };
+    }
+    if (!state.inOptional) return { kind: "stop" };
+  }
+  if (state.inOptional) return { kind: "skip" };
+  if (isGroup(node)) return { kind: "collect", group: node };
+  return { kind: "stop" };
+}
+
 function siblingGroups(
   siblings: readonly LatexNode[],
   start: number,
   count: number,
 ): GroupLike[] {
   const groups: GroupLike[] = [];
-  let inOptional = false;
+  const state = { inOptional: false };
   for (
     let cursor = start;
     cursor < siblings.length && groups.length < count;
     cursor++
   ) {
-    const node = siblings[cursor];
-    if (node.type === "whitespace" || node.type === "parbreak") {
-      continue;
-    }
-    if (node.type === "string") {
-      if (node.content === "[") {
-        inOptional = true;
-        continue;
-      }
-      if (node.content === "]" && inOptional) {
-        inOptional = false;
-        continue;
-      }
-      if (inOptional) continue;
-      break;
-    }
-    if (inOptional) continue;
-    if (isGroup(node)) {
-      groups.push(node);
-      continue;
-    }
-    break;
+    const step = siblingStep(siblings[cursor], state);
+    if (step.kind === "stop") break;
+    if (step.kind === "collect") groups.push(step.group);
   }
   return groups;
 }

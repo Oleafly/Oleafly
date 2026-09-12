@@ -243,10 +243,11 @@ export function standardChips(refs: readonly StandardRef[] = []): StandardChip[]
     chips.set(label, chip);
   }
   return [...chips].map(([label, chip]) => {
+    const techniqueWord = chip.techniques.length > 1 ? "techniques" : "technique";
     const parts = [
       chip.name,
       chip.rules.length > 0 ? `veraPDF ${chip.rules.join(", ")}` : null,
-      chip.techniques.length > 0 ? `technique${chip.techniques.length > 1 ? "s" : ""} ${chip.techniques.join(", ")}` : null,
+      chip.techniques.length > 0 ? `${techniqueWord} ${chip.techniques.join(", ")}` : null,
     ].filter((part): part is string => Boolean(part));
     return { label, url: chip.url, detail: parts.length > 0 ? `${label}: ${parts.join(", ")}` : label };
   });

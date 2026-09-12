@@ -20,7 +20,7 @@ const ITEM_TYPE_MAP: Record<string, string> = {
 // Extracts the raw inner markup of a namespaced or bare tag (namespace prefix
 // ignored, since Zotero's exact prefixes have varied across versions).
 function rawBlock(source: string, localName: string): string {
-  const re = new RegExp(`<(?:[\\w.-]+:)?${localName}[^>]*>([\\s\\S]*?)<\\/(?:[\\w.-]+:)?${localName}>`);
+  const re = new RegExp(String.raw`<(?:[\w.-]+:)?${localName}[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?${localName}>`);
   return re.exec(source)?.[1] ?? "";
 }
 
@@ -30,7 +30,7 @@ function textOf(source: string, localName: string): string {
 }
 
 function rawBlockAll(source: string, localName: string): string[] {
-  const re = new RegExp(`<(?:[\\w.-]+:)?${localName}[^>]*>([\\s\\S]*?)<\\/(?:[\\w.-]+:)?${localName}>`, "g");
+  const re = new RegExp(String.raw`<(?:[\w.-]+:)?${localName}[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?${localName}>`, "g");
   return [...source.matchAll(re)].map((m) => m[1]);
 }
 
@@ -64,7 +64,7 @@ export function parseZoteroRdf(rdf: string): ParsedBib[] {
 
     const authors = extractAuthors(body);
     const date = textOf(body, "date");
-    const year = (date.match(/\d{4}/) ?? [])[0] ?? "";
+    const year = (/\d{4}/.exec(date) ?? [])[0] ?? "";
     const journal = textOf(rawBlock(body, "isPartOf"), "title");
     const identifier = textOf(body, "identifier");
     const doi = /DOI\s+(\S+)/i.exec(identifier)?.[1] ?? "";

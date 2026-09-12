@@ -37,7 +37,8 @@ async function compactProjectMap(): Promise<string> {
       .slice(0, MAX_SECTIONS)
       .map((d) => {
         const indent = "  ".repeat(Math.max(0, (d.level ?? 1) - 1));
-        return `${indent}- ${d.name}${d.file ? ` (${d.file}:${d.line ?? "?"})` : ""}`;
+        const where = d.file ? ` (${d.file}:${d.line ?? "?"})` : "";
+        return `${indent}- ${d.name}${where}`;
       });
 
     const files = of("file").map((d) => d.name).slice(0, 60);
@@ -92,19 +93,25 @@ export async function buildWorkspaceContext(): Promise<string> {
     .slice(0, MAX_ERRORS)
     .map((e) => {
       const loc = [e.file, e.line].filter(Boolean).join(":");
-      return `- ${loc ? `${loc}: ` : ""}${e.message ?? String(e)}`;
+      const prefix = loc ? `${loc}: ` : "";
+      return `- ${prefix}${e.message ?? String(e)}`;
     });
 
   const map = await compactProjectMap();
   const memory = useAgentMemoryStore.getState().asPromptBlock();
 
+  const cursorSuffix = line != null ? ` · cursor line ${line}` : "";
+  const lastCompiledSuffix = compile.lastCompiledAt
+    ? ` · last ${new Date(compile.lastCompiledAt).toISOString()}`
+    : "";
+
   return [
     "### Live workspace context (auto-injected and possibly slightly stale)",
     `You are currently in the ${view} view.`,
     `Project: ${files.projectName ?? "?"} · kind: ${files.projectKind ?? "tex"} · main: ${mainDoc}`,
-    `Active file: ${activePath ?? "(none)"}${line != null ? ` · cursor line ${line}` : ""}`,
+    `Active file: ${activePath ?? "(none)"}${cursorSuffix}`,
     `Open tabs: ${(files.openTabs ?? []).slice(0, 12).map(basename).join(", ") || "(none)"}`,
-    `Compile: status=${compile.status}${compile.lastCompiledAt ? ` · last ${new Date(compile.lastCompiledAt).toISOString()}` : ""}`,
+    `Compile: status=${compile.status}${lastCompiledSuffix}`,
     errLines.length
       ? `Recent compile errors (${errLines.length}):\n${errLines.join("\n")}`
       : "Recent compile errors: (none in UI state)",

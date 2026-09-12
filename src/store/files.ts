@@ -97,6 +97,89 @@ export function texGapSignature(missing: readonly string[]): string {
     .join(",");
 }
 
+type ProjectTexStatus = NonNullable<Awaited<ReturnType<typeof projectTexStatus>>>;
+
+const MAX_ONE_CLICK_INSTALL = 25;
+
+function rememberTexNotice(key: string, value: string): boolean {
+  try {
+    if (localStorage.getItem(key) === value) return false;
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+// A handful of missing packages gets a one-click install. A huge gap means
+// the project was pinned on a much larger distribution (for example a full
+// TeX Live against TinyTeX), where installing thousands of packages one by
+// one is the wrong tool. Point at the distribution mismatch instead.
+function reportBulkTexGap(
+  projectId: string,
+  status: ProjectTexStatus,
+  missing: readonly string[],
+): boolean {
+  if (missing.length <= MAX_ONE_CLICK_INSTALL) return false;
+  if (!status.pinned_label || !status.local_label) return false;
+  const fresh = rememberTexNotice(
+    `oleafly.texGap.${projectId}`,
+    `bulk|${status.pinned_label}|${status.local_label}|${missing.length}`,
+  );
+  if (fresh) {
+    toast.info(
+      i18n.t(($) => $.core.tex.distributionGap, {
+        pinned: status.pinned_label,
+        local: status.local_label,
+        count: missing.length,
+      }),
+    );
+  }
+  return true;
+}
+
+function offerPinnedPackageInstall(projectId: string, missing: string[]): void {
+  const fresh = rememberTexNotice(`oleafly.texGap.${projectId}`, texGapSignature(missing));
+  if (!fresh) return;
+  toast.info(
+    i18n.t(($) => $.core.tex.pinnedPackagesMissing, { count: missing.length }),
+    {
+      label: i18n.t(($) => $.core.tex.installPinned, { count: missing.length }),
+      onClick: () => {
+        void (async () => {
+          toast.info(i18n.t(($) => $.core.tex.installingPinned, { count: missing.length }));
+          try {
+            await tlmgrInstall(missing);
+            toast.success(i18n.t(($) => $.core.tex.pinnedPackagesInstalled));
+          } catch (error) {
+            notifyError(
+              "install pinned packages",
+              error,
+              i18n.t(($) => $.core.tex.pinnedPackagesFailed),
+            );
+          }
+        })();
+      },
+    },
+    true,
+  );
+}
+
+function reportTexDistributionSkew(projectId: string, status: ProjectTexStatus): void {
+  if (!status.distribution_differs || !status.local_label) return;
+  const fresh = rememberTexNotice(
+    `oleafly.texSkew.${projectId}`,
+    `${status.pinned_label}|${status.local_label}`,
+  );
+  if (!fresh) return;
+  toast.info(
+    i18n.t(($) => $.core.tex.distributionSkew, {
+      pinned: status.pinned_label,
+      local: status.local_label,
+    }),
+  );
+}
+
 // packages get an actionable toast; a differing distribution gets a one-time
 // heads-up. Both remember what was shown so reopening a project stays quiet.
 async function checkTexPinStatus(
@@ -105,78 +188,13 @@ async function checkTexPinStatus(
 ): Promise<void> {
   const status = await projectTexStatus(projectId).catch(() => null);
   if (!status || !stillCurrent()) return;
-  const remember = (key: string, value: string): boolean => {
-    try {
-      if (localStorage.getItem(key) === value) return false;
-      localStorage.setItem(key, value);
-      return true;
-    } catch {
-      return true;
-    }
-  };
   const missing = status.missing_packages;
-  // A handful of missing packages gets a one-click install. A huge gap means
-  // the project was pinned on a much larger distribution (for example a full
-  // TeX Live against TinyTeX), where installing thousands of packages one by
-  // one is the wrong tool. Point at the distribution mismatch instead.
-  const MAX_ONE_CLICK_INSTALL = 25;
-  if (
-    missing.length > MAX_ONE_CLICK_INSTALL &&
-    status.pinned_label &&
-    status.local_label
-  ) {
-    const fresh = remember(
-      `oleafly.texGap.${projectId}`,
-      `bulk|${status.pinned_label}|${status.local_label}|${missing.length}`,
-    );
-    if (!fresh) return;
-    toast.info(
-      i18n.t(($) => $.core.tex.distributionGap, {
-        pinned: status.pinned_label,
-        local: status.local_label,
-        count: missing.length,
-      }),
-    );
+  if (reportBulkTexGap(projectId, status, missing)) return;
+  if (missing.length > 0 && status.can_install_missing) {
+    offerPinnedPackageInstall(projectId, missing);
     return;
   }
-  if (missing.length > 0 && status.can_install_missing) {
-    const fresh = remember(`oleafly.texGap.${projectId}`, texGapSignature(missing));
-    if (!fresh) return;
-    toast.info(
-      i18n.t(($) => $.core.tex.pinnedPackagesMissing, { count: missing.length }),
-      {
-        label: i18n.t(($) => $.core.tex.installPinned, { count: missing.length }),
-        onClick: () => {
-          void (async () => {
-            toast.info(i18n.t(($) => $.core.tex.installingPinned, { count: missing.length }));
-            try {
-              await tlmgrInstall(missing);
-              toast.success(i18n.t(($) => $.core.tex.pinnedPackagesInstalled));
-            } catch (error) {
-              notifyError(
-                "install pinned packages",
-                error,
-                i18n.t(($) => $.core.tex.pinnedPackagesFailed),
-              );
-            }
-          })();
-        },
-      },
-      true,
-    );
-  } else if (status.distribution_differs && status.local_label) {
-    const fresh = remember(
-      `oleafly.texSkew.${projectId}`,
-      `${status.pinned_label}|${status.local_label}`,
-    );
-    if (!fresh) return;
-    toast.info(
-      i18n.t(($) => $.core.tex.distributionSkew, {
-        pinned: status.pinned_label,
-        local: status.local_label,
-      }),
-    );
-  }
+  reportTexDistributionSkew(projectId, status);
 }
 
 interface FileState {
@@ -401,6 +419,38 @@ function scheduleAutosave(get: () => FilesStore) {
   }, 1500);
 }
 
+function fileOpenSuperseded(
+  projectId: string,
+  epoch: number,
+  key: string,
+  requestSeq: number,
+  get: () => FilesStore,
+): boolean {
+  return (
+    get().projectId !== projectId ||
+    fileOpenEpoch !== epoch ||
+    pendingFileOpens.get(key) !== requestSeq
+  );
+}
+
+function releasePendingFileOpen(key: string, requestSeq: number): void {
+  if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
+}
+
+function prunePendingSaves(files: FilesStore["files"]): void {
+  for (const path of pendingSaves) {
+    if (!files[path]?.dirty) pendingSaves.delete(path);
+  }
+}
+
+function requeueDirtyPaths(projectId: string, get: () => FilesStore): void {
+  const current = get();
+  if (current.projectId !== projectId) return;
+  for (const [path, file] of Object.entries(current.files)) {
+    if (file.dirty) pendingSaves.add(path);
+  }
+}
+
 async function flushDirtyBuffers(projectId: string, get: () => FilesStore, assertCurrent: () => void = () => {}): Promise<void> {
   stopAutosaveTimer();
 
@@ -416,9 +466,7 @@ async function flushDirtyBuffers(projectId: string, get: () => FilesStore, asser
       .filter(([, file]) => file.dirty)
       .map(([path]) => path);
     if (paths.length === 0) {
-      for (const path of [...pendingSaves]) {
-        if (!state.files[path]?.dirty) pendingSaves.delete(path);
-      }
+      prunePendingSaves(state.files);
       return;
     }
 
@@ -428,12 +476,7 @@ async function flushDirtyBuffers(projectId: string, get: () => FilesStore, asser
       (result): result is PromiseRejectedResult => result.status === "rejected",
     );
     if (failure) {
-      const current = get();
-      if (current.projectId === projectId) {
-        for (const [path, file] of Object.entries(current.files)) {
-          if (file.dirty) pendingSaves.add(path);
-        }
-      }
+      requeueDirtyPaths(projectId, get);
       throw failure.reason;
     }
   }
@@ -462,7 +505,7 @@ function discardQueuedSavesUnder(
 ): { discardedPending: Set<string>; writes: Promise<number>[] } {
   stopAutosaveTimer();
   const discardedPending = new Set<string>();
-  for (const pendingPath of [...pendingSaves]) {
+  for (const pendingPath of pendingSaves) {
     if (isDeletedPath(pendingPath)) {
       pendingSaves.delete(pendingPath);
       discardedPending.add(pendingPath);
@@ -572,9 +615,11 @@ async function loadCompatibilityInputs(
   const texPaths = tree
     .filter((entry) => !entry.is_dir && isTexSourcePath(entry.path))
     .map((entry) => entry.path)
-    .sort((left, right) =>
-      left === mainPath ? -1 : right === mainPath ? 1 : depth(left) - depth(right),
-    )
+    .sort((left, right) => {
+      if (left === mainPath) return -1;
+      if (right === mainPath) return 1;
+      return depth(left) - depth(right);
+    })
     .slice(0, 40);
   const texFiles: Array<{ path: string; content: string }> = [];
   for (const path of texPaths) {
@@ -759,14 +804,14 @@ async function loadOpenedProjectEngine(
   try {
     const engine = await getProjectEngine(id);
     return { state: { engine, engineLoaded: true, engineError: null }, failure: null };
-  } catch (failure) {
+  } catch (error_) {
     return {
       state: {
         engine: UNKNOWN_ENGINE,
         engineLoaded: false,
         engineError: "loadFailed",
       },
-      failure,
+      failure: error_,
     };
   }
 }
@@ -1125,31 +1170,29 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     // Binary files (PDFs/images) aren't readable as text - skip the text load
     // and just open the tab; the editor renders them via a binary viewer.
     const isBinary = /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz|ttf|otf|woff2?)$/i.test(path);
-    if (!files[path] && !isBinary) {
+    const superseded = () =>
+      fileOpenSuperseded(projectId, epoch, key, requestSeq, get);
+    const loadContent = async (): Promise<boolean> => {
       try {
         const content = await readCanonicalFileContent(projectId, path);
-        if (
-          get().projectId !== projectId ||
-          fileOpenEpoch !== epoch ||
-          pendingFileOpens.get(key) !== requestSeq
-        ) {
-          if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
-          return;
+        if (superseded()) {
+          releasePendingFileOpen(key, requestSeq);
+          return false;
         }
         set((s) => ({
           files: { ...s.files, [path]: { content, dirty: false } },
         }));
+        return true;
       } catch {
-        if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
-        return;
+        releasePendingFileOpen(key, requestSeq);
+        return false;
       }
+    };
+    if (!files[path] && !isBinary) {
+      if (!(await loadContent())) return;
     }
-    if (
-      get().projectId !== projectId ||
-      fileOpenEpoch !== epoch ||
-      pendingFileOpens.get(key) !== requestSeq
-    ) {
-      if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
+    if (superseded()) {
+      releasePendingFileOpen(key, requestSeq);
       return;
     }
     // Opening a file makes it the active view, so unfocus any git diff (otherwise
@@ -1163,7 +1206,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         activePath: path,
       };
     });
-    if (pendingFileOpens.get(key) === requestSeq) pendingFileOpens.delete(key);
+    releasePendingFileOpen(key, requestSeq);
   },
 
   setActive: (path) => {
@@ -1312,12 +1355,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     // Follow the moved/renamed path in memory so an open tab, its buffer, the
     // active file, and the main-doc pointer don't go stale (also handles folder
     // moves, which carry every descendant path with them).
-    const remap = (p: string) =>
-      p === from
-        ? destination
-        : p.startsWith(`${from}/`)
-          ? `${destination}${p.slice(from.length)}`
-          : p;
+    const remap = (p: string) => {
+      if (p === from) return destination;
+      return p.startsWith(`${from}/`)
+        ? `${destination}${p.slice(from.length)}`
+        : p;
+    };
     const isWithin = (p: string, root: string) => p === root || p.startsWith(`${root}/`);
     set((s) => {
       const files: Record<string, FileState> = {};
@@ -1661,7 +1704,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const preserved = Object.entries(get().files).filter(
       ([candidate, file]) => isDeletedPath(candidate) && file.dirty,
     );
-    for (const pending of [...pendingSaves]) {
+    for (const pending of pendingSaves) {
       if (isDeletedPath(pending)) pendingSaves.delete(pending);
     }
     set((s) => {
@@ -1722,8 +1765,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (get().projectId !== projectId) return false;
     void refreshMutationGeneration(projectId).catch(() => {});
     invalidateAllPendingFileOpens();
-    const remap = (path: string) =>
-      path === from ? to : path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : path;
+    const remap = (path: string) => {
+      if (path === from) return to;
+      return path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : path;
+    };
+    const remappedActivePath = (path: string | null) =>
+      path?.startsWith(`${from}/`) ? to + path.slice(from.length) : path;
     const renamedPending = [...pendingSaves].map(remap);
     pendingSaves.clear();
     for (const path of renamedPending) pendingSaves.add(path);
@@ -1741,12 +1788,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         files,
         tabOrder,
         openTabs: s.openTabs.map(remap),
-        activePath:
-          s.activePath === from
-            ? to
-            : s.activePath?.startsWith(`${from}/`)
-            ? to + s.activePath?.slice(from.length)
-            : s.activePath,
+        activePath: s.activePath === from ? to : remappedActivePath(s.activePath),
         mainDoc,
         docVersion: s.activePath === from || s.activePath?.startsWith(`${from}/`) ? s.docVersion + 1 : s.docVersion,
       };

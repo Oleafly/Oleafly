@@ -105,7 +105,7 @@ export type UsageSessionDetail = {
   unmeasuredRecords: number;
   unpricedRecords: number;
   planRecords: number;
-  scope: UsageSessionScope | string;
+  scope: string;
   status: string;
   measurement: string;
   billingMode: string;
@@ -156,6 +156,12 @@ export function msFromIsoDay(day: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function quickRangeDays(range: UsageQuickRange): number {
+  if (range === "7d") return 7;
+  if (range === "30d") return 30;
+  return 90;
+}
+
 export function usageQuickRange(
   range: UsageQuickRange,
   now = Date.now(),
@@ -166,7 +172,7 @@ export function usageQuickRange(
     const date = new Date(today);
     return { startMs: Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1), endMs };
   }
-  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  const days = quickRangeDays(range);
   return { startMs: today - (days - 1) * DAY_MS, endMs };
 }
 

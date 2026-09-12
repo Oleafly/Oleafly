@@ -12,14 +12,14 @@ cd "$(dirname "$0")/.."
 SUITE_MAX_FAILURES=0
 SHARD=""
 PLAYWRIGHT_ARGS=()
-while [ "$#" -gt 0 ]; do
+while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --suite-max-failures=*)
       SUITE_MAX_FAILURES="${1#*=}"
       ;;
     --suite-max-failures)
       shift
-      [ "$#" -gt 0 ] || { echo "e2e: --suite-max-failures requires a value" >&2; exit 2; }
+      [[ "$#" -gt 0 ]] || { echo "e2e: --suite-max-failures requires a value" >&2; exit 2; }
       SUITE_MAX_FAILURES="$1"
       ;;
     --shard=*)
@@ -38,7 +38,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ -n "$SHARD" ]; then
+if [[ -n "$SHARD" ]]; then
   case "$SHARD" in
     */*) ;;
     *)
@@ -53,6 +53,7 @@ case "$SUITE_MAX_FAILURES" in
     echo "e2e: --suite-max-failures must be a non-negative integer" >&2
     exit 2
     ;;
+  *) ;;
 esac
 
 set -- "${PLAYWRIGHT_ARGS[@]}"
@@ -72,11 +73,11 @@ CLEANED=0
 
 # A packaged custom-protocol smoke can point this runner at a binary built
 # with `tauri build --features e2e-testing`. Default runs remain Vite-backed.
-if [ -n "$APP_BINARY" ] && [ ! -x "$APP_BINARY" ]; then
+if [[ -n "$APP_BINARY" ]] && [[ ! -x "$APP_BINARY" ]]; then
   echo "e2e: OLEAFLY_E2E_APP_BINARY is not executable: $APP_BINARY" >&2
   exit 2
 fi
-if [ -n "$APP_BINARY" ]; then
+if [[ -n "$APP_BINARY" ]]; then
   export OLEAFLY_E2E_PRODUCTION="${OLEAFLY_E2E_PRODUCTION:-1}"
 fi
 
@@ -91,18 +92,18 @@ terminate_app_group() {
 }
 
 cleanup() {
-  [ "$CLEANED" -eq 0 ] || return 0
+  [[ "$CLEANED" -eq 0 ]] || return 0
   CLEANED=1
-  if [ -n "$APP_PID" ]; then
+  if [[ -n "$APP_PID" ]]; then
     terminate_app_group "$APP_PID"
   fi
-  [ -z "$HEARTBEAT_PID" ] || kill "$HEARTBEAT_PID" 2>/dev/null || true
-  [ -z "$LOG_STREAM_PID" ] || kill "$LOG_STREAM_PID" 2>/dev/null || true
+  [[ -z "$HEARTBEAT_PID" ]] || kill "$HEARTBEAT_PID" 2>/dev/null || true
+  [[ -z "$LOG_STREAM_PID" ]] || kill "$LOG_STREAM_PID" 2>/dev/null || true
   remove_owned_e2e_socket "$SOCK" "$SOCK_ID"
-  if [ -n "$LOG" ]; then
+  if [[ -n "$LOG" ]]; then
     mkdir -p test-results && cp "$LOG" test-results/app.log 2>/dev/null || true
   fi
-  if [ -n "$DATA_DIR" ] && [ -f "$DATA_DIR/app.log" ]; then
+  if [[ -n "$DATA_DIR" ]] && [[ -f "$DATA_DIR/app.log" ]]; then
     mkdir -p test-results && cp "$DATA_DIR/app.log" test-results/user-app.log 2>/dev/null || true
   fi
   # The per-run data dir is ~200MB of disposable app data; leaking one per
@@ -110,7 +111,7 @@ cleanup() {
   if [[ -n "$DATA_DIR" && -z "${OLEAFLY_E2E_REUSE_DATA_DIR:-}" ]]; then
     rm -rf "$DATA_DIR" 2>/dev/null || true
   fi
-  if [ -n "$LOG" ]; then
+  if [[ -n "$LOG" ]]; then
     rm -f "$LOG" 2>/dev/null || true
   fi
   release_e2e_lock
@@ -140,7 +141,7 @@ stream_app_log() {
   while true; do
     local available
     available="$(wc -l < "$LOG" | tr -d ' ')"
-    if [ "$available" -gt "$shown" ]; then
+    if [[ "$available" -gt "$shown" ]]; then
       sed -n "$((shown + 1)),${available}p" "$LOG" | sed -u 's/^/[app] /'
       shown="$available"
     fi
@@ -162,7 +163,7 @@ start_heartbeat() {
 }
 
 stop_heartbeat() {
-  if [ -n "$HEARTBEAT_PID" ]; then
+  if [[ -n "$HEARTBEAT_PID" ]]; then
     kill "$HEARTBEAT_PID" 2>/dev/null || true
     wait "$HEARTBEAT_PID" 2>/dev/null || true
     HEARTBEAT_PID=""
@@ -189,12 +190,12 @@ run_playwright() {
   # so out loud instead of letting "0 failed" imply everything was exercised.
   local skipped
   skipped="$(grep -oE '[0-9]+ skipped' "$captured" | tail -1 | grep -oE '[0-9]+' || true)"
-  if [ -n "$skipped" ] && [ "$skipped" -gt 0 ]; then
+  if [[ -n "$skipped" ]] && [[ "$skipped" -gt 0 ]]; then
     SKIPPED_TOTAL=$((SKIPPED_TOTAL + skipped))
     grep -E '^[[:space:]]+-[[:space:]]+[0-9]+ ' "$captured" >>"$SKIPPED_LIST" || true
   fi
   rm -f "$captured"
-  if [ "$status" -eq 0 ]; then
+  if [[ "$status" -eq 0 ]]; then
     echo "e2e: completed ${label}"
   else
     echo "e2e: failed ${label} with exit code ${status}" >&2
@@ -208,7 +209,7 @@ preserve_run_artifacts() {
   local result_dir="e2e-artifacts/$safe_label"
   rm -rf "$result_dir"
   mkdir -p "$result_dir"
-  if [ -d test-results ]; then
+  if [[ -d test-results ]]; then
     while IFS= read -r file; do
       local relative="${file#test-results/}"
       local destination="$result_dir/playwright/$relative"
@@ -216,8 +217,8 @@ preserve_run_artifacts() {
       cp "$file" "$destination"
     done < <(find test-results -type f \( -name error-context.md -o -name trace.zip -o -name '*.log' \))
   fi
-  [ -z "$LOG" ] || cp "$LOG" "$result_dir/app.log" 2>/dev/null || true
-  if [ -n "$DATA_DIR" ] && [ -f "$DATA_DIR/app.log" ]; then
+  [[ -z "$LOG" ]] || cp "$LOG" "$result_dir/app.log" 2>/dev/null || true
+  if [[ -n "$DATA_DIR" ]] && [[ -f "$DATA_DIR/app.log" ]]; then
     cp "$DATA_DIR/app.log" "$result_dir/user-app.log" 2>/dev/null || true
   fi
 }
@@ -226,24 +227,24 @@ preserve_run_artifacts() {
 # port 1420 yet, the next launch dies and - before this waited - `set -e` tore
 # the whole run down, leaving later spec files silently unexecuted.
 wait_for_port_free() {
-  [ -n "$APP_BINARY" ] && return 0
+  [[ -n "$APP_BINARY" ]] && return 0
   local waited=0
   while lsof -ti :1420 >/dev/null 2>&1; do
-    if [ "$waited" -ge 30 ]; then
+    if [[ "$waited" -ge 30 ]]; then
       echo "e2e: port 1420 still held after ${waited}s by pid(s): $(lsof -ti :1420 | tr '\n' ' ')" >&2
       return 1
     fi
     sleep 2
     waited=$((waited + 2))
   done
-  [ "$waited" -gt 0 ] && echo "e2e: port 1420 cleared after ${waited}s"
+  [[ "$waited" -gt 0 ]] && echo "e2e: port 1420 cleared after ${waited}s"
   return 0
 }
 
 stream_app_log &
 LOG_STREAM_PID=$!
 
-if [ -z "$APP_BINARY" ] && lsof -ti :1420 >/dev/null 2>&1; then
+if [[ -z "$APP_BINARY" ]] && lsof -ti :1420 >/dev/null 2>&1; then
   echo "e2e: port 1420 is already owned by pid(s): $(lsof -ti :1420 | tr '\n' ' ')" >&2
   exit 1
 fi
@@ -258,6 +259,7 @@ boot_seed_for() {
   local locale="en"
   case "$spec" in
     *97-locale-zh-hans*) locale="zh-Hans" ;;
+    *) ;;
   esac
   local flags='"oleafly.locale":"'"$locale"'","oleafly.shortcuts":null,"oleafly.visualEditor":"1","oleafly.latexTools":"1","oleafly.webBrowser":"1","oleafly.openInTree":"0","oleafly:compile:mode":"normal","oleafly.appFontSize":"16","oleafly.appFont":"","oleafly.assistant-runtime.v1":"{\"state\":{\"runtime\":\"built-in\"},\"version\":0}"'
   case "$spec" in
@@ -274,10 +276,12 @@ configure_checkpoints_for_spec() {
   local enabled=false
   case "$specs" in
     *66-checkpoints*|*24-synctex-inverse*) enabled=true ;;
+    *) ;;
   esac
   local ui_locale="en"
   case "$specs" in
     *97-locale-zh-hans*) ui_locale="zh-Hans" ;;
+    *) ;;
   esac
   CHECKPOINTS_ENABLED="$enabled" UI_LOCALE="$ui_locale" CONFIG_PATH="$DATA_DIR/config.json" node -e '
     const fs = require("node:fs");
@@ -299,7 +303,7 @@ start_app() {
   rm -f "$SOCK"
   local spec_hint="${1:-}"
   configure_checkpoints_for_spec "$spec_hint"
-  if [ -n "$APP_BINARY" ]; then
+  if [[ -n "$APP_BINARY" ]]; then
     OLEAFLY_DATA_DIR="$DATA_DIR" \
       OLEAFLY_E2E_BOOT_LOCALSTORAGE="$(boot_seed_for "$spec_hint")" \
       "$APP_BINARY" >>"$LOG" 2>&1 &
@@ -309,7 +313,7 @@ start_app() {
   APP_PID=$!
   echo "e2e: waiting for the bridge socket (first build can take minutes)..."
   for _ in $(seq 1 900); do
-    [ -S "$SOCK" ] && break
+    [[ -S "$SOCK" ]] && break
     if ! kill -0 "$APP_PID" 2>/dev/null; then
       echo "e2e: app process exited early; last log lines:" >&2
       tail -20 "$LOG" >&2
@@ -317,12 +321,12 @@ start_app() {
     fi
     sleep 1
   done
-  [ -S "$SOCK" ] || { echo "e2e: bridge socket never appeared; log tail:" >&2; tail -20 "$LOG" >&2; return 1; }
+  [[ -S "$SOCK" ]] || { echo "e2e: bridge socket never appeared; log tail:" >&2; tail -20 "$LOG" >&2; return 1; }
   SOCK_ID="$(e2e_socket_identity "$SOCK")"
 }
 
 stop_app() {
-  if [ -n "$APP_PID" ]; then
+  if [[ -n "$APP_PID" ]]; then
     terminate_app_group "$APP_PID"
     APP_PID=""
   fi
@@ -343,13 +347,13 @@ for arg in "$@"; do
   esac
 done
 
-if [ "$has_spec" -eq 1 ]; then
+if [[ "$has_spec" -eq 1 ]]; then
   # A locale spec needs a different native config and pre-boot localStorage
   # seed from the English suite. Playwright can accept several spec paths in a
   # single invocation, but one already-running app cannot boot in two locales.
   # Match the full-suite behavior and give every explicitly selected spec its
   # own app process so multi-spec commands remain hermetic.
-  if [ "${#SELECTED_SPECS[@]}" -gt 1 ]; then
+  if [[ "${#SELECTED_SPECS[@]}" -gt 1 ]]; then
     selection_status=0
     for spec in "${SELECTED_SPECS[@]}"; do
       CHECKPOINT_HINTS="$spec"
@@ -370,7 +374,7 @@ else
   suite_status=0
   suite_failures=0
   SUITE_SPECS=()
-  if [ -n "$SHARD" ]; then
+  if [[ -n "$SHARD" ]]; then
     # Duration-weighted split for parallel CI runners: the four heaviest specs
     # (multi-minute book compiles, chaos suites, long WYSIWYG flows) are dealt
     # to distinct shards first, then everything else round-robins. Plain
@@ -391,25 +395,25 @@ else
     is_heavy() {
       local candidate="$1" heavy
       for heavy in "${HEAVY_SPECS[@]}"; do
-        [ "$candidate" = "$heavy" ] && return 0
+        [[ "$candidate" = "$heavy" ]] && return 0
       done
       return 1
     }
     SUITE_SPECS+=("e2e/tests/02-create-compile.spec.ts")
     position=0
     for spec in "${HEAVY_SPECS[@]}"; do
-      [ -f "$spec" ] || continue
-      if [ $(( position % shard_total )) -eq $(( shard_index - 1 )) ]; then
+      [[ -f "$spec" ]] || continue
+      if [[ $(( position % shard_total )) -eq $(( shard_index - 1 )) ]]; then
         SUITE_SPECS+=("$spec")
       fi
       position=$((position + 1))
     done
     position=0
     for spec in e2e/tests/*.spec.ts; do
-      if [ "$spec" = "e2e/tests/02-create-compile.spec.ts" ] || is_heavy "$spec"; then
+      if [[ "$spec" = "e2e/tests/02-create-compile.spec.ts" ]] || is_heavy "$spec"; then
         continue
       fi
-      if [ $(( position % shard_total )) -eq $(( shard_index - 1 )) ]; then
+      if [[ $(( position % shard_total )) -eq $(( shard_index - 1 )) ]]; then
         SUITE_SPECS+=("$spec")
       fi
       position=$((position + 1))
@@ -425,7 +429,7 @@ else
   # subject is Playwright's own Chromium/WebKit (platform-independent), and
   # scripts/e2e-browser-harness.sh runs them in their own CI job — skipping
   # here loses no coverage, and the log says so out loud.
-  if [ -n "$APP_BINARY" ]; then
+  if [[ -n "$APP_BINARY" ]]; then
     filtered=()
     for spec in "${SUITE_SPECS[@]}"; do
       case "$spec" in
@@ -466,7 +470,7 @@ else
       suite_failures=$((suite_failures + 1))
     fi
     stop_app
-    if [ "$SUITE_MAX_FAILURES" -gt 0 ] && [ "$suite_failures" -ge "$SUITE_MAX_FAILURES" ]; then
+    if [[ "$SUITE_MAX_FAILURES" -gt 0 ]] && [[ "$suite_failures" -ge "$SUITE_MAX_FAILURES" ]]; then
       echo "e2e: stopping after ${suite_failures} failed spec(s)" >&2
       stopped_early=1
       break
@@ -478,16 +482,16 @@ else
   echo "e2e: spec files expected : ${#SUITE_SPECS[@]}"
   echo "e2e: spec files executed : ${#SPECS_RAN[@]}"
   echo "e2e: spec files failed   : ${#SPECS_FAILED[@]}"
-  for spec in "${SPECS_FAILED[@]:-}"; do [ -n "$spec" ] && echo "e2e:   FAILED  $spec"; done
-  if [ "${#SPECS_NOT_RUN[@]}" -gt 0 ]; then
+  for spec in "${SPECS_FAILED[@]:-}"; do [[ -n "$spec" ]] && echo "e2e:   FAILED  $spec"; done
+  if [[ "${#SPECS_NOT_RUN[@]}" -gt 0 ]]; then
     echo "e2e: spec files NOT RUN  : ${#SPECS_NOT_RUN[@]} (treated as failure)"
     for spec in "${SPECS_NOT_RUN[@]}"; do echo "e2e:   NOT RUN $spec"; done
   fi
-  if [ "$stopped_early" -eq 1 ]; then
+  if [[ "$stopped_early" -eq 1 ]]; then
     remaining=$(( ${#SUITE_SPECS[@]} - ${#SPECS_RAN[@]} - ${#SPECS_NOT_RUN[@]} ))
     echo "e2e: stopped early, ${remaining} spec file(s) were never reached"
   fi
-  if [ "$SKIPPED_TOTAL" -gt 0 ]; then
+  if [[ "$SKIPPED_TOTAL" -gt 0 ]]; then
     echo "e2e: individual tests skipped: ${SKIPPED_TOTAL} (skipped is not coverage)"
     sort -u "$SKIPPED_LIST" | sed 's/^/e2e:   SKIPPED /' || true
   fi

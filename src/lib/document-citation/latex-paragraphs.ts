@@ -165,13 +165,13 @@ export function splitIntoParagraphs(
 
   let text = source;
 
-  const beginDocMatch = text.match(/\\begin\{document\}/);
-  if (beginDocMatch && beginDocMatch.index !== undefined) {
+  const beginDocMatch = /\\begin\{document\}/.exec(text);
+  if (beginDocMatch?.index !== undefined) {
     text = text.slice(beginDocMatch.index + beginDocMatch[0].length);
   }
 
-  const endDocMatch = text.match(/\\end\{document\}/);
-  if (endDocMatch && endDocMatch.index !== undefined) {
+  const endDocMatch = /\\end\{document\}/.exec(text);
+  if (endDocMatch?.index !== undefined) {
     text = text.slice(0, endDocMatch.index);
   }
 
@@ -198,7 +198,7 @@ export function splitIntoParagraphs(
  */
 export function extractKeywords(text: string, maxTerms: number = DEFAULT_MAX_TERMS): string {
   let cleaned = text;
-  cleaned = cleaned.replace(/%.*$/gm, "");
+  cleaned = cleaned.replace(/%[^\n\r\u2028\u2029]*/g, "");
   cleaned = cleaned.replace(/\$\$[\s\S]*?\$\$/g, " ");
   cleaned = cleaned.replace(/\\\[[\s\S]*?\\\]/g, " ");
   cleaned = cleaned.replace(/\$[^$]*\$/g, " ");
@@ -236,7 +236,7 @@ export function extractKeywords(text: string, maxTerms: number = DEFAULT_MAX_TER
 /** Strip simple LaTeX markup to plain text. */
 export function cleanLatex(text: string): string {
   let cleaned = text;
-  cleaned = cleaned.replace(/%.*$/gm, "");
+  cleaned = cleaned.replace(/%[^\n\r\u2028\u2029]*/g, "");
   cleaned = cleaned.replace(/\$[^$]*\$/g, " ");
   cleaned = cleaned.replace(/\\(cite[tp]?|ref|label)\{[^}]*\}/g, " ");
   cleaned = cleaned.replace(/\\(textbf|textit|emph)\{([^}]*)\}/g, "$2");

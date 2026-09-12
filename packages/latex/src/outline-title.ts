@@ -1,5 +1,5 @@
 const SIMPLE_TEXT_COMMANDS =
-  /\\(?:emph|footnotesize|Huge|huge|LARGE|Large|large|mathbf|mathit|mathrm|mathsf|scriptsize|small|textbf|textit|textnormal|textrm|textsf|texttt|tiny)\s*\{([^{}]*)\}/gu;
+  /\\(?:emph|footnotesize|[Hh]uge|LARGE|[Ll]arge|mathbf|mathit|mathrm|mathsf|scriptsize|small|textbf|textit|textnormal|textrm|textsf|texttt|tiny)\s*\{([^{}]*)\}/gu;
 
 function maskComments(text: string): string {
   return text
@@ -41,7 +41,7 @@ function matchingBrace(text: string, open: number): number {
 
 function collectNewCommands(text: string, macros: Map<string, string>): void {
   const command =
-    /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([A-Za-z@]+)(?:\s*\})?\s*(?:\[(\d+)\])?\s*\{/gu;
+    /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([A-Za-z@]+)\s*(?:\}\s*)?(?:\[(\d+)\]\s*)?\{/gu;
   for (let match = command.exec(text); match; match = command.exec(text)) {
     if (match[2] && match[2] !== "0") continue;
     const open = command.lastIndex - 1;
@@ -118,14 +118,14 @@ export function renderLatexOutlineTitle(
     .replace(/\\textasciicircum\s*\{\s*\}/gu, "^")
     .replace(/\\textbackslash\s*\{\s*\}/gu, "\\")
     .replace(/\\(?:centering|protect|relax|xspace)\b/gu, "")
-    .replace(/\{\\(?:bf|it|rm|sf|tt)\s+([^{}]*)\}/gu, "$1")
+    .replace(/\{\\(?:bf|it|rm|sf|tt)\s+([^\s{}][^{}]*|)\}/gu, "$1")
     .replace(/\\(?:,|;|:|!|\s)/gu, " ")
     .replace(/\\pm\b/gu, "±")
     .replace(/\\times\b/gu, "×")
     .replace(/\\to\b/gu, "→")
     .replace(/\\([%$&#_{}])/gu, "$1")
     .replace(/\{\s*\}/gu, "")
-    .replace(/~/gu, " ")
+    .replaceAll("~", " ")
     .replace(/``|''/gu, '"')
     .replace(/\s+/gu, " ")
     .trim();

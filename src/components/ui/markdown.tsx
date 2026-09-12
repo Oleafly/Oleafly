@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 let rendererModule: Promise<typeof import("./markdown-renderer")> | null = null;
 
 function loadMarkdownRenderer() {
-  if (!rendererModule) rendererModule = import("./markdown-renderer");
+  rendererModule ??= import("./markdown-renderer");
   return rendererModule;
 }
 
@@ -25,12 +25,12 @@ export function Markdown({
   className,
   inverted = false,
   streaming = false,
-}: {
+}: Readonly<{
   children: string;
   className?: string;
   inverted?: boolean;
   streaming?: boolean;
-}) {
+}>) {
   return (
     <Suspense
       fallback={

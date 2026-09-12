@@ -17,13 +17,13 @@ export function InlineDiffPreview({
   className,
   // 1-based; fallback scroll target if merge chunks aren't available yet.
   scrollToLine,
-}: {
+}: Readonly<{
   path: string;
   oldText: string;
   newText: string;
   className?: string;
   scrollToLine?: number;
-}) {
+}>) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

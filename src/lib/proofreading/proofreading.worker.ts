@@ -257,7 +257,7 @@ function plaintextToProse(text: string): {
   const characters = text.split("");
   const patterns = [
     /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
+    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
   ];
   for (const pattern of patterns) {
     for (const match of text.matchAll(pattern)) {
@@ -446,8 +446,19 @@ async function getSpellchecker(locale = "en_US"): Promise<Hunspell> {
   return spellcheckerPromise;
 }
 
+function characterLimitFor(mode: ProofreadingRequest["mode"]): number {
+  if (mode === "spelling") return PROOFREADING_LIMITS.spellingCharacters;
+  if (mode === "grammar") return PROOFREADING_LIMITS.grammarCharacters;
+  return Math.min(
+    PROOFREADING_LIMITS.grammarCharacters,
+    PROOFREADING_LIMITS.spellingCharacters,
+  );
+}
+
 function mapSuggestionKind(value: number): 0 | 1 | 2 {
-  return value === 1 ? 1 : value === 2 ? 2 : 0;
+  if (value === 1) return 1;
+  if (value === 2) return 2;
+  return 0;
 }
 
 function freeHarperObjects(
@@ -491,6 +502,137 @@ async function organizedGrammarLints(
   return lints.map((lint) => ({ rule: null, lint }));
 }
 
+type GrammarLintContext = {
+  readonly request: ProofreadingRequest;
+  readonly prose: string;
+  readonly map: number[] | null;
+  readonly masked: readonly MaskSpan[];
+  readonly ignored: ReadonlySet<string>;
+  readonly suppressed: ReadonlySet<string>;
+  readonly suppressionKey: ReturnType<typeof createGrammarSuppressionKeyer>;
+};
+
+type GrammarLintOutcome =
+  | { kind: "diagnostic"; diagnostic: ProofreadingDiagnostic }
+  | { kind: "skip" }
+  | { kind: "malformed" };
+
+function lintRange(
+  span: Span,
+  prose: string,
+  map: number[] | null,
+  textLength: number,
+): { from: number; to: number } | null {
+  const proseFrom = Math.max(0, Math.min(span.start, prose.length));
+  const proseTo = Math.max(proseFrom + 1, Math.min(span.end, prose.length));
+  let from: number;
+  let to: number;
+  if (map) {
+    if (proseFrom >= map.length) return null;
+    from = map[proseFrom];
+    to = (map[Math.min(proseTo, map.length) - 1] ?? from) + 1;
+  } else {
+    from = proseFrom;
+    to = proseTo;
+  }
+  if (to <= from || to > textLength) return null;
+  return { from, to };
+}
+
+function lintKindFiltered(
+  kind: string,
+  request: ProofreadingRequest,
+): boolean {
+  // Harper classifies dialect mismatches such as colour/color as
+  // "Spelling". Preserve those findings in Harper-only mode so the
+  // selected English dialect and Regionalism setting have an observable
+  // effect. In combined mode Hunspell remains the spelling authority,
+  // avoiding duplicate findings and respecting its selected locale.
+  if (
+    kind === "Spelling" &&
+    (request.mode !== "grammar" || !request.preferences.showRegionalism)
+  ) {
+    return true;
+  }
+  if (!request.preferences.showRegionalism && /regional/iu.test(kind)) {
+    return true;
+  }
+  if (!request.preferences.showWordChoice && /word.?choice/iu.test(kind)) {
+    return true;
+  }
+  return false;
+}
+
+function mappedSuggestionList(
+  suggestions: readonly Suggestion[],
+): ProofreadingSuggestion[] {
+  const mapped: ProofreadingSuggestion[] = [];
+  for (const suggestion of suggestions.slice(0, 8)) {
+    const suggestionKind = mapSuggestionKind(suggestion.kind());
+    const text = suggestion.get_replacement_text();
+    if (!text && suggestionKind !== 1) continue;
+    mapped.push({ text, kind: suggestionKind });
+  }
+  return mapped;
+}
+
+function grammarLintOutcome(
+  row: { rule: string | null; lint: Lint },
+  context: GrammarLintContext,
+): GrammarLintOutcome {
+  const { lint, rule } = row;
+  let span: Span | null = null;
+  let suggestions: Suggestion[] = [];
+  try {
+    span = lint.span();
+    const range = lintRange(
+      span,
+      context.prose,
+      context.map,
+      context.request.text.length,
+    );
+    if (!range) return { kind: "malformed" };
+    const { from, to } = range;
+    if (
+      context.masked.length > 0 &&
+      intersectsMaskedRegion(context.masked, from, to)
+    ) {
+      return { kind: "skip" };
+    }
+    if (
+      context.suppressed.size > 0 &&
+      context.suppressed.has(context.suppressionKey(rule, from))
+    ) {
+      return { kind: "skip" };
+    }
+    const kind = lint.lint_kind();
+    if (lintKindFiltered(kind, context.request)) return { kind: "skip" };
+    const word = context.request.text.slice(from, to);
+    if (isIgnoredToken(word, context.ignored)) return { kind: "skip" };
+    suggestions = lint.suggestions();
+    const mappedSuggestions = mappedSuggestionList(suggestions);
+    return {
+      kind: "diagnostic",
+      diagnostic: {
+        from,
+        to,
+        message: lint.message(),
+        kind,
+        source: "harper",
+        word,
+        suggestions: mappedSuggestions,
+        rule,
+      },
+    };
+  } catch {
+    // Retain other valid diagnostics, but report the incomplete analysis to
+    // the UI instead of silently claiming a fully successful pass.
+    return { kind: "malformed" };
+  } finally {
+    freeHarperObjects(lint, span, suggestions);
+  }
+}
+
 async function grammarDiagnostics(
   request: ProofreadingRequest,
   ignored: ReadonlySet<string>,
@@ -507,93 +649,21 @@ async function grammarDiagnostics(
   await syncGrammarLintConfig(linter, request.preferences);
   await syncGrammarDictionary(linter, ignored);
   const rows = await organizedGrammarLints(linter, input);
-  const suppressionKey = createGrammarSuppressionKeyer(request.text);
+  const context: GrammarLintContext = {
+    request,
+    prose,
+    map,
+    masked: input.masked,
+    ignored,
+    suppressed,
+    suppressionKey: createGrammarSuppressionKeyer(request.text),
+  };
   const diagnostics: ProofreadingDiagnostic[] = [];
   let malformedLintCount = 0;
-  for (const { rule, lint } of rows) {
-    let span: Span | null = null;
-    let suggestions: Suggestion[] = [];
-    try {
-      span = lint.span();
-      const proseFrom = Math.max(0, Math.min(span.start, prose.length));
-      const proseTo = Math.max(
-        proseFrom + 1,
-        Math.min(span.end, prose.length),
-      );
-      let from: number;
-      let to: number;
-      if (map) {
-        if (proseFrom >= map.length) {
-          malformedLintCount += 1;
-          continue;
-        }
-        from = map[proseFrom];
-        to = (map[Math.min(proseTo, map.length) - 1] ?? from) + 1;
-      } else {
-        from = proseFrom;
-        to = proseTo;
-      }
-      if (to <= from || to > request.text.length) {
-        malformedLintCount += 1;
-        continue;
-      }
-      if (
-        input.masked.length > 0 &&
-        intersectsMaskedRegion(input.masked, from, to)
-      ) {
-        continue;
-      }
-      if (suppressed.size > 0 && suppressed.has(suppressionKey(rule, from))) {
-        continue;
-      }
-      const kind = lint.lint_kind();
-      // Harper classifies dialect mismatches such as colour/color as
-      // "Spelling". Preserve those findings in Harper-only mode so the
-      // selected English dialect and Regionalism setting have an observable
-      // effect. In combined mode Hunspell remains the spelling authority,
-      // avoiding duplicate findings and respecting its selected locale.
-      if (
-        kind === "Spelling" &&
-        (request.mode !== "grammar" ||
-          !request.preferences.showRegionalism)
-      ) {
-        continue;
-      }
-      if (
-        (!request.preferences.showRegionalism &&
-          /regional/iu.test(kind)) ||
-        (!request.preferences.showWordChoice &&
-          /word.?choice/iu.test(kind))
-      ) {
-        continue;
-      }
-      const word = request.text.slice(from, to);
-      if (isIgnoredToken(word, ignored)) continue;
-      suggestions = lint.suggestions();
-      const mappedSuggestions: ProofreadingSuggestion[] = [];
-      for (const suggestion of suggestions.slice(0, 8)) {
-        const suggestionKind = mapSuggestionKind(suggestion.kind());
-        const text = suggestion.get_replacement_text();
-        if (!text && suggestionKind !== 1) continue;
-        mappedSuggestions.push({ text, kind: suggestionKind });
-      }
-      diagnostics.push({
-        from,
-        to,
-        message: lint.message(),
-        kind,
-        source: "harper",
-        word,
-        suggestions: mappedSuggestions,
-        rule,
-      });
-    } catch {
-      // Retain other valid diagnostics, but report the incomplete analysis to
-      // the UI instead of silently claiming a fully successful pass.
-      malformedLintCount += 1;
-    } finally {
-      freeHarperObjects(lint, span, suggestions);
-    }
+  for (const row of rows) {
+    const outcome = grammarLintOutcome(row, context);
+    if (outcome.kind === "malformed") malformedLintCount += 1;
+    else if (outcome.kind === "diagnostic") diagnostics.push(outcome.diagnostic);
   }
   diagnostics.sort(
     (left, right) => left.from - right.from || left.to - right.to,
@@ -696,7 +766,7 @@ function readCache(
   ignored: string,
 ): ProofreadingDiagnostic[] | null {
   const cached = cache.get(key);
-  if (!cached || cached.text !== text || cached.ignored !== ignored) {
+  if (cached?.text !== text || cached?.ignored !== ignored) {
     return null;
   }
   cache.delete(key);
@@ -736,115 +806,109 @@ function writeCache(
   }
 }
 
-async function analyze(
+type AnalyzeKeys = {
+  readonly key: string;
+  readonly ignoredKey: string;
+  readonly ignored: ReadonlySet<string>;
+  readonly suppressed: ReadonlySet<string>;
+};
+
+function activeDictionaryLocaleFor(request: ProofreadingRequest): string {
+  return request.preferences.dictionaryLocale?.replace("-", "_") ?? "en_US";
+}
+
+function malformedGrammarPhrase(count: number): string {
+  return `${count.toLocaleString()} malformed grammar finding${count === 1 ? " was" : "s were"} skipped`;
+}
+
+async function analyzeGrammarMode(
   request: ProofreadingRequest,
+  keys: AnalyzeKeys,
 ): Promise<ProofreadingResult | ProofreadingError> {
-  const validationFailure = validateRequest(request);
-  if (validationFailure) {
+  try {
+    const grammar = await grammarDiagnostics(
+      request,
+      keys.ignored,
+      keys.suppressed,
+    );
+    const guarded = guardProofreadingDiagnostics(
+      grammar.diagnostics,
+      request.text,
+    );
+    if (grammar.malformedLintCount > 0) {
+      return resultResponse(request, "partial", guarded, {
+        message: `${malformedGrammarPhrase(grammar.malformedLintCount)}. All valid findings are shown.`,
+      });
+    }
+    writeCache(keys.key, request.text, keys.ignoredKey, guarded);
+    return resultResponse(request, "ready", guarded);
+  } catch (error) {
     return errorResponse(
       request,
-      "invalid_request",
-      validationFailure,
-      false,
+      "analysis_failed",
+      error instanceof Error
+        ? `Grammar checking failed: ${error.message}`
+        : "Grammar checking could not finish.",
+      true,
     );
   }
-  const limit =
-    request.mode === "spelling"
-      ? PROOFREADING_LIMITS.spellingCharacters
-      : request.mode === "grammar"
-      ? PROOFREADING_LIMITS.grammarCharacters
-      : Math.min(
-          PROOFREADING_LIMITS.grammarCharacters,
-          PROOFREADING_LIMITS.spellingCharacters,
-        );
-  if (request.text.length > limit) {
-    return resultResponse(request, "too_large", [], {
-      message: `Proofreading paused for this ${request.text.length.toLocaleString()}-character document (limit ${limit.toLocaleString()}).`,
+}
+
+async function analyzeSpellingMode(
+  request: ProofreadingRequest,
+  keys: AnalyzeKeys,
+): Promise<ProofreadingResult | ProofreadingError> {
+  try {
+    const diagnostics = guardProofreadingDiagnostics(
+      await spellingDiagnostics(request, keys.ignored),
+      request.text,
+    );
+    writeCache(keys.key, request.text, keys.ignoredKey, diagnostics);
+    return resultResponse(request, "ready", diagnostics, {
+      activeDictionaryLocale: activeDictionaryLocaleFor(request),
     });
+  } catch (error) {
+    return errorResponse(
+      request,
+      "initialization_failed",
+      error instanceof Error
+        ? error.message
+        : `The requested ${
+            request.preferences.dictionaryLocale ?? "en_US"
+          } spelling dictionary could not start.`,
+      true,
+    );
   }
+}
 
-  const normalizedIgnored = [
-    ...new Set(request.ignoredWords.map(normalizeWord).filter(Boolean)),
-  ].sort((a, b) => Number(a > b) - Number(a < b));
-  const ignoredKey = normalizedIgnored.join("\0");
-  const suppressed = new Set(request.suppressions ?? []);
-  const suppressedKey = [...suppressed]
-    .sort((a, b) => Number(a > b) - Number(a < b))
-    .join("\0");
-  const key = cacheKey(request, ignoredKey, suppressedKey);
-  const cached = readCache(key, request.text, ignoredKey);
-  if (cached) {
-    return resultResponse(request, "ready", cached, {
-      ...(request.mode !== "grammar"
-        ? {
-            activeDictionaryLocale:
-              request.preferences.dictionaryLocale?.replace("-", "_") ??
-              "en_US",
-          }
-        : {}),
-    });
+function partialProofreadingReasons(
+  request: ProofreadingRequest,
+  grammarRejected: boolean,
+  spellingRejected: boolean,
+  malformedLintCount: number,
+): string[] {
+  const reasons: string[] = [];
+  if (grammarRejected) reasons.push("grammar checking did not finish");
+  if (spellingRejected) {
+    reasons.push(
+      `the requested ${
+        request.preferences.dictionaryLocale ?? "en_US"
+      } spelling dictionary could not start`,
+    );
   }
-
-  const ignored = new Set(normalizedIgnored);
-  if (request.mode === "grammar") {
-    try {
-      const grammar = await grammarDiagnostics(
-        request,
-        ignored,
-        suppressed,
-      );
-      const guarded = guardProofreadingDiagnostics(
-        grammar.diagnostics,
-        request.text,
-      );
-      if (grammar.malformedLintCount > 0) {
-        return resultResponse(request, "partial", guarded, {
-          message: `${grammar.malformedLintCount.toLocaleString()} malformed grammar finding${grammar.malformedLintCount === 1 ? " was" : "s were"} skipped. All valid findings are shown.`,
-        });
-      }
-      writeCache(key, request.text, ignoredKey, guarded);
-      return resultResponse(request, "ready", guarded);
-    } catch (error) {
-      return errorResponse(
-        request,
-        "analysis_failed",
-        error instanceof Error
-          ? `Grammar checking failed: ${error.message}`
-          : "Grammar checking could not finish.",
-        true,
-      );
-    }
+  if (malformedLintCount > 0) {
+    reasons.push(malformedGrammarPhrase(malformedLintCount));
   }
+  return reasons;
+}
 
-  if (request.mode === "spelling") {
-    try {
-      const diagnostics = guardProofreadingDiagnostics(
-        await spellingDiagnostics(request, ignored),
-        request.text,
-      );
-      writeCache(key, request.text, ignoredKey, diagnostics);
-      return resultResponse(request, "ready", diagnostics, {
-        activeDictionaryLocale:
-          request.preferences.dictionaryLocale?.replace("-", "_") ??
-          "en_US",
-      });
-    } catch (error) {
-      return errorResponse(
-        request,
-        "initialization_failed",
-        error instanceof Error
-          ? error.message
-          : `The requested ${
-              request.preferences.dictionaryLocale ?? "en_US"
-            } spelling dictionary could not start.`,
-        true,
-      );
-    }
-  }
-
+async function analyzeCombinedMode(
+  request: ProofreadingRequest,
+  keys: AnalyzeKeys,
+): Promise<ProofreadingResult | ProofreadingError> {
   const [grammarResult, spellingResult] = await Promise.allSettled([
-    grammarDiagnostics(request, ignored, suppressed),
-    spellingDiagnostics(request, ignored),
+    grammarDiagnostics(request, keys.ignored, keys.suppressed),
+    spellingDiagnostics(request, keys.ignored),
   ]);
   if (
     grammarResult.status === "rejected" &&
@@ -877,40 +941,72 @@ async function analyze(
     grammarResult.status === "fulfilled"
       ? grammarResult.value.malformedLintCount
       : 0;
-  const partialReasons: string[] = [];
-  if (grammarResult.status === "rejected") {
-    partialReasons.push("grammar checking did not finish");
-  }
-  if (spellingResult.status === "rejected") {
-    partialReasons.push(
-      `the requested ${
-        request.preferences.dictionaryLocale ?? "en_US"
-      } spelling dictionary could not start`,
-    );
-  }
-  if (malformedLintCount > 0) {
-    partialReasons.push(
-      `${malformedLintCount.toLocaleString()} malformed grammar finding${malformedLintCount === 1 ? " was" : "s were"} skipped`,
-    );
-  }
-  if (partialReasons.length > 0) {
+  const reasons = partialProofreadingReasons(
+    request,
+    grammarResult.status === "rejected",
+    spellingResult.status === "rejected",
+    malformedLintCount,
+  );
+  if (reasons.length > 0) {
     return resultResponse(request, "partial", diagnostics, {
-      message: `Partial proofreading: ${partialReasons.join(", ")}. Valid findings are still shown.`,
+      message: `Partial proofreading: ${reasons.join(", ")}. Valid findings are still shown.`,
       ...(spellingResult.status === "fulfilled"
-        ? {
-            activeDictionaryLocale:
-              request.preferences.dictionaryLocale?.replace("-", "_") ??
-              "en_US",
-          }
+        ? { activeDictionaryLocale: activeDictionaryLocaleFor(request) }
         : {}),
     });
   }
-  writeCache(key, request.text, ignoredKey, diagnostics);
+  writeCache(keys.key, request.text, keys.ignoredKey, diagnostics);
   return resultResponse(request, "ready", diagnostics, {
-    activeDictionaryLocale:
-      request.preferences.dictionaryLocale?.replace("-", "_") ??
-      "en_US",
+    activeDictionaryLocale: activeDictionaryLocaleFor(request),
   });
+}
+
+async function analyze(
+  request: ProofreadingRequest,
+): Promise<ProofreadingResult | ProofreadingError> {
+  const validationFailure = validateRequest(request);
+  if (validationFailure) {
+    return errorResponse(
+      request,
+      "invalid_request",
+      validationFailure,
+      false,
+    );
+  }
+  const limit = characterLimitFor(request.mode);
+  if (request.text.length > limit) {
+    return resultResponse(request, "too_large", [], {
+      message: `Proofreading paused for this ${request.text.length.toLocaleString()}-character document (limit ${limit.toLocaleString()}).`,
+    });
+  }
+
+  const normalizedIgnored = [
+    ...new Set(request.ignoredWords.map(normalizeWord).filter(Boolean)),
+  ].sort((a, b) => Number(a > b) - Number(a < b));
+  const ignoredKey = normalizedIgnored.join("\0");
+  const suppressed = new Set(request.suppressions ?? []);
+  const suppressedKey = [...suppressed]
+    .sort((a, b) => Number(a > b) - Number(a < b))
+    .join("\0");
+  const key = cacheKey(request, ignoredKey, suppressedKey);
+  const cached = readCache(key, request.text, ignoredKey);
+  if (cached) {
+    return resultResponse(request, "ready", cached, {
+      ...(request.mode !== "grammar"
+        ? { activeDictionaryLocale: activeDictionaryLocaleFor(request) }
+        : {}),
+    });
+  }
+
+  const keys: AnalyzeKeys = {
+    key,
+    ignoredKey,
+    ignored: new Set(normalizedIgnored),
+    suppressed,
+  };
+  if (request.mode === "grammar") return analyzeGrammarMode(request, keys);
+  if (request.mode === "spelling") return analyzeSpellingMode(request, keys);
+  return analyzeCombinedMode(request, keys);
 }
 
 async function drainQueue() {

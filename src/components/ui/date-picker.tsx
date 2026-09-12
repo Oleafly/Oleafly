@@ -49,7 +49,7 @@ export function DatePicker({
   displayFormat = "MMM d, yyyy",
   clearable = false,
   ...rest
-}: DatePickerProps) {
+}: Readonly<DatePickerProps>) {
   const { t } = useTranslation(["common", "shell"]);
   const [open, setOpen] = React.useState(false);
   const selected = parseIsoDate(value);

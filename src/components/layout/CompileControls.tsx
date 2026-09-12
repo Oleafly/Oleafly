@@ -129,6 +129,11 @@ export function CompileControls() {
   const compileLabel = hasCompileResult
     ? t(($) => $.shell.compile.recompile)
     : t(($) => $.shell.compile.compile);
+  const renderCompileIcon = () => {
+    if (compiling) return <Loader2 className="size-3.5 animate-spin" />;
+    if (hasCompileResult) return <RefreshCw className="size-3.5" />;
+    return <Play className="size-3.5" />;
+  };
 
   return (
   <>
@@ -167,13 +172,7 @@ export function CompileControls() {
         }}
         aria-label={compileLabel}
       >
-        {compiling ? (
-          <Loader2 className="size-3.5 animate-spin" />
-        ) : hasCompileResult ? (
-          <RefreshCw className="size-3.5" />
-        ) : (
-          <Play className="size-3.5" />
-        )}
+        {renderCompileIcon()}
         <span className="text-xs font-medium">{compileLabel}</span>
       </Button>
     </Tooltip>

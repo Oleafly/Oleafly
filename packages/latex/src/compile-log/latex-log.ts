@@ -22,19 +22,18 @@ const latexUnderfullBoxAlt = /^(Underfull \\[vh]box \([^)]*\)) detected at line 
 const latexUnderfullBoxOutput =
   /^(Underfull \\[vh]box \([^)]*\)) has occurred while \\output is active(?: \[(\d+)\])?/;
 const latexInfo =
-  /^((?:(?:Class|Package|Module) \S*)|LaTeX(?: \S*)?|LaTeX3) (Info):\s+(.*?)(?: on(?: input)? line (\d+))?(\.|\?|)$/;
+  /^((?:(?:Class|Package|Module) \S*)|LaTeX(?: \S*)?|LaTeX3) (Info):\s+(.*?)(?: on(?: input)? line (\d+))?([.?]?)$/;
 const latexWarn =
-  /^((?:(?:Class|Package|Module) \S*)|LaTeX(?: \S*)?|LaTeX3) (Warning):\s+(.*?)(?: on(?: input)? line (\d+))?(\.|\?|)$/;
+  /^((?:(?:Class|Package|Module) \S*)|LaTeX(?: \S*)?|LaTeX3) (Warning):\s+(.*?)(?: on(?: input)? line (\d+))?([.?]?)$/;
 const latexPackageWarningExtraLines = /^\((.*)\)\s+(.*?)(?: +on input line (\d+))?(\.)?$/;
 const latexMissChar = /^\s*(Missing character:.*?!)/;
 const latexNoPageOutput = /^No pages of output\.$/;
-const bibEmpty = /^Empty `thebibliography' environment/;
 const biberWarn = /^Biber warning:.*WARN - I didn't find a database entry for '([^']+)'/;
-const biblatexRerunBiber =
-  /^Package biblatex Warning: Please \(re\)run Biber on the file:/;
-const oleaflyBiberModeA = /^\[Oleafly\] Biber was not found \(mode A\)/;
-const oleaflyBiberModeB = /^\[Oleafly\] Biber\/biblatex version mismatch \(mode B\)/;
-const oleaflyBiberGap = /^\[Oleafly\] Bibliography needs Biber/;
+const bibEmptyPrefix = "Empty `thebibliography' environment";
+const biblatexRerunBiber = "Package biblatex Warning: Please (re)run Biber on the file:";
+const oleaflyBiberModeA = "[Oleafly] Biber was not found (mode A)";
+const oleaflyBiberModeB = "[Oleafly] Biber/biblatex version mismatch (mode B)";
+const oleaflyBiberGap = "[Oleafly] Bibliography needs Biber";
 
 // LaTeX Warning: Reference `non-exist' on page 1 undefined on input line 10.
 // LaTeX Warning: Citation `also-nothing' on page 1 undefined on input line 12.
@@ -92,7 +91,7 @@ function pushCurrent(state: ParserState) {
 }
 
 function currentFile(state: ParserState): string | null {
-  return state.fileStack[state.fileStack.length - 1] ?? state.rootFile ?? null;
+  return state.fileStack.at(-1) ?? state.rootFile ?? null;
 }
 
 /**
@@ -120,7 +119,7 @@ export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
       parseLine(line, state);
     }
     // Push the final result
-    if (state.current !== null && !state.current.text.match(bibEmpty)) {
+    if (state.current !== null && !state.current.text.startsWith(bibEmptyPrefix)) {
       state.out.push(finalize(state.current));
     }
   } catch {
@@ -136,59 +135,12 @@ function parseLine(line: string, state: ParserState) {
     state.insideBoxWarn = false;
     return;
   }
-  // Oleafly annotations must not be absorbed into a multi-line package warning.
-  if (
-    oleaflyBiberModeA.test(line) ||
-    oleaflyBiberModeB.test(line) ||
-    oleaflyBiberGap.test(line)
-  ) {
-    pushCurrent(state);
-    state.searchEmptyLine = false;
-    state.insideError = false;
-    state.current = {
-      severity: "error",
-      category: "biber",
-      file: null,
-      line: null,
-      text: line.replace(/^\[Oleafly\]\s*/, "").trim(),
-    };
+  if (parseOleaflyAnnotation(line, state)) {
     return;
   }
   // Append the read line, since we have a corresponding result in the matching
   if (state.searchEmptyLine) {
-    const context = state.insideError ? state.current?.contextLines : undefined;
-    if (line.trim() === "" || (state.insideError && line.match(/^\s/))) {
-      if (state.current !== null) {
-        state.current.text = `${state.current.text}\n`;
-      }
-      state.searchEmptyLine = false;
-      state.insideError = false;
-    } else {
-      const packageExtraLineResult = line.match(latexPackageWarningExtraLines);
-      if (packageExtraLineResult && state.current !== null) {
-        state.current.text += `\n(${packageExtraLineResult[1]})\t${packageExtraLineResult[2]}${packageExtraLineResult[4] ? "." : ""}`;
-        state.current.line = packageExtraLineResult[3]
-          ? parseInt(packageExtraLineResult[3], 10)
-          : null;
-      } else if (state.insideError) {
-        if (context && context.length < MAX_ERROR_CONTEXT_LINES) {
-          context.push(line);
-        }
-        const match = messageLine.exec(line);
-        if (match && match.length >= 2) {
-          // The `l.<n>` excerpt ends the error message; skip the rest.
-          if (state.current !== null && state.current.line === null) {
-            state.current.line = parseInt(match[1], 10);
-          }
-          state.searchEmptyLine = false;
-          state.insideError = false;
-        } else if (state.current !== null) {
-          state.current.text = `${state.current.text}\n${line}`;
-        }
-      } else if (state.current !== null) {
-        state.current.text = `${state.current.text}\n${line}`;
-      }
-    }
+    continueCurrentEntry(line, state);
     return;
   }
   if (parseUndefinedReference(line, filename, state)) {
@@ -197,100 +149,22 @@ function parseLine(line: string, state: ParserState) {
   if (parseBadBox(line, filename, state)) {
     return;
   }
-  let result = line.match(latexNoPageOutput);
-  if (result) {
-    pushCurrent(state);
-    state.current = {
-      severity: "error",
-      category: "error",
-      file: filename,
-      line: null,
-      text: result[1],
-    };
-    state.searchEmptyLine = true;
-    state.insideError = true;
+  if (parseNoPageOutput(line, filename, state)) {
     return;
   }
-  result = line.match(latexMissChar);
-  if (result) {
-    pushCurrent(state);
-    state.current = {
-      severity: "warning",
-      category: "missing-character",
-      file: filename,
-      line: null,
-      text: result[1],
-    };
-    state.searchEmptyLine = false;
+  if (parseMissingCharacter(line, filename, state)) {
     return;
   }
-  result = line.match(latexInfo);
-  if (result) {
-    pushCurrent(state);
-    state.current = {
-      severity: "info",
-      category: "info",
-      file: filename,
-      line: result[4] ? parseInt(result[4], 10) : null,
-      text: `${result[1]}: ${result[3]}${result[5]}`,
-    };
-    state.searchEmptyLine = true;
+  if (parseLatexInfo(line, filename, state)) {
     return;
   }
-  result = line.match(latexWarn);
-  if (result) {
-    // Prefer the dedicated Biber diagnostic over a generic package warning.
-    if (biblatexRerunBiber.test(line)) {
-      pushCurrent(state);
-      state.current = {
-        severity: "warning",
-        category: "biber",
-        file: null,
-        line: null,
-        text: "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically. If citations stay undefined, see [Oleafly] notes in this log.",
-      };
-      state.searchEmptyLine = false;
-      return;
-    }
-    pushCurrent(state);
-    state.current = {
-      severity: "warning",
-      category: "package-warning",
-      file: filename,
-      line: result[4] ? parseInt(result[4], 10) : null,
-      text: `${result[1]}: ${result[3]}${result[5]}`,
-    };
-    state.searchEmptyLine = true;
+  if (parseLatexWarning(line, filename, state)) {
     return;
   }
-  result = line.match(biberWarn);
-  if (result) {
-    pushCurrent(state);
-    state.current = {
-      severity: "warning",
-      category: "biber",
-      file: null,
-      line: null,
-      text: `No bib entry found for '${result[1]}'`,
-    };
-    state.searchEmptyLine = false;
-    parseLine(line.substring(result[0].length), state);
+  if (parseBiberWarning(line, state)) {
     return;
   }
-
-  result = line.match(latexError);
-  if (result) {
-    pushCurrent(state);
-    state.current = {
-      severity: "error",
-      category: "error",
-      text: result[3] && result[3] !== "LaTeX" ? `${result[3]}: ${result[4]}` : result[4],
-      file: result[1] ? result[1] : filename,
-      line: result[2] ? parseInt(result[2], 10) : null,
-      contextLines: [line],
-    };
-    state.searchEmptyLine = true;
-    state.insideError = true;
+  if (parseLatexError(line, filename, state)) {
     return;
   }
   state.nested = parseLaTeXFileStack(line, state.fileStack, state.nested);
@@ -299,11 +173,200 @@ function parseLine(line: string, state: ParserState) {
   }
 }
 
+// Oleafly annotations must not be absorbed into a multi-line package warning.
+function parseOleaflyAnnotation(line: string, state: ParserState): boolean {
+  if (
+    !line.startsWith(oleaflyBiberModeA) &&
+    !line.startsWith(oleaflyBiberModeB) &&
+    !line.startsWith(oleaflyBiberGap)
+  ) {
+    return false;
+  }
+  pushCurrent(state);
+  state.searchEmptyLine = false;
+  state.insideError = false;
+  state.current = {
+    severity: "error",
+    category: "biber",
+    file: null,
+    line: null,
+    text: line.replace(/^\[Oleafly\]\s*/, "").trim(),
+  };
+  return true;
+}
+
+function applyPackageExtraLine(current: MutableEntry, match: RegExpExecArray) {
+  const period = match[4] ? "." : "";
+  current.text += `\n(${match[1]})\t${match[2]}${period}`;
+  current.line = match[3] ? Number.parseInt(match[3], 10) : null;
+}
+
+function continueCurrentEntry(line: string, state: ParserState) {
+  if (line.trim() === "" || (state.insideError && /^\s/.test(line))) {
+    if (state.current !== null) {
+      state.current.text = `${state.current.text}\n`;
+    }
+    state.searchEmptyLine = false;
+    state.insideError = false;
+    return;
+  }
+  const packageExtraLineResult = latexPackageWarningExtraLines.exec(line);
+  if (packageExtraLineResult && state.current !== null) {
+    applyPackageExtraLine(state.current, packageExtraLineResult);
+    return;
+  }
+  if (state.insideError) {
+    continueErrorContext(line, state);
+    return;
+  }
+  if (state.current !== null) {
+    state.current.text = `${state.current.text}\n${line}`;
+  }
+}
+
+function continueErrorContext(line: string, state: ParserState) {
+  const context = state.current?.contextLines;
+  if (context && context.length < MAX_ERROR_CONTEXT_LINES) {
+    context.push(line);
+  }
+  const match = messageLine.exec(line);
+  if (match && match.length >= 2) {
+    // The `l.<n>` excerpt ends the error message; skip the rest.
+    if (state.current !== null && state.current.line === null) {
+      state.current.line = Number.parseInt(match[1], 10);
+    }
+    state.searchEmptyLine = false;
+    state.insideError = false;
+    return;
+  }
+  if (state.current !== null) {
+    state.current.text = `${state.current.text}\n${line}`;
+  }
+}
+
+function parseNoPageOutput(line: string, filename: string | null, state: ParserState): boolean {
+  const result = latexNoPageOutput.exec(line);
+  if (result === null) {
+    return false;
+  }
+  pushCurrent(state);
+  state.current = {
+    severity: "error",
+    category: "error",
+    file: filename,
+    line: null,
+    text: result[1],
+  };
+  state.searchEmptyLine = true;
+  state.insideError = true;
+  return true;
+}
+
+function parseMissingCharacter(line: string, filename: string | null, state: ParserState): boolean {
+  const result = latexMissChar.exec(line);
+  if (result === null) {
+    return false;
+  }
+  pushCurrent(state);
+  state.current = {
+    severity: "warning",
+    category: "missing-character",
+    file: filename,
+    line: null,
+    text: result[1],
+  };
+  state.searchEmptyLine = false;
+  return true;
+}
+
+function parseLatexInfo(line: string, filename: string | null, state: ParserState): boolean {
+  const result = latexInfo.exec(line);
+  if (result === null) {
+    return false;
+  }
+  pushCurrent(state);
+  state.current = {
+    severity: "info",
+    category: "info",
+    file: filename,
+    line: result[4] ? Number.parseInt(result[4], 10) : null,
+    text: `${result[1]}: ${result[3]}${result[5]}`,
+  };
+  state.searchEmptyLine = true;
+  return true;
+}
+
+function parseLatexWarning(line: string, filename: string | null, state: ParserState): boolean {
+  const result = latexWarn.exec(line);
+  if (result === null) {
+    return false;
+  }
+  pushCurrent(state);
+  // Prefer the dedicated Biber diagnostic over a generic package warning.
+  if (line.startsWith(biblatexRerunBiber)) {
+    state.current = {
+      severity: "warning",
+      category: "biber",
+      file: null,
+      line: null,
+      text: "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically. If citations stay undefined, see [Oleafly] notes in this log.",
+    };
+    state.searchEmptyLine = false;
+    return true;
+  }
+  state.current = {
+    severity: "warning",
+    category: "package-warning",
+    file: filename,
+    line: result[4] ? Number.parseInt(result[4], 10) : null,
+    text: `${result[1]}: ${result[3]}${result[5]}`,
+  };
+  state.searchEmptyLine = true;
+  return true;
+}
+
+function parseBiberWarning(line: string, state: ParserState): boolean {
+  const result = biberWarn.exec(line);
+  if (result === null) {
+    return false;
+  }
+  pushCurrent(state);
+  state.current = {
+    severity: "warning",
+    category: "biber",
+    file: null,
+    line: null,
+    text: `No bib entry found for '${result[1]}'`,
+  };
+  state.searchEmptyLine = false;
+  parseLine(line.substring(result[0].length), state);
+  return true;
+}
+
+function parseLatexError(line: string, filename: string | null, state: ParserState): boolean {
+  const result = latexError.exec(line);
+  if (result === null) {
+    return false;
+  }
+  pushCurrent(state);
+  state.current = {
+    severity: "error",
+    category: "error",
+    text: result[3] && result[3] !== "LaTeX" ? `${result[3]}: ${result[4]}` : result[4],
+    file: result[1] ? result[1] : filename,
+    line: result[2] ? Number.parseInt(result[2], 10) : null,
+    contextLines: [line],
+  };
+  state.searchEmptyLine = true;
+  state.insideError = true;
+  return true;
+}
+
 function parseUndefinedReference(line: string, filename: string | null, state: ParserState): boolean {
   if (line === "LaTeX Warning: There were undefined references.") {
     return true;
   }
-  const match = line.match(UNDEFINED_REFERENCE);
+  const match = UNDEFINED_REFERENCE.exec(line);
   if (match === null) {
     return false;
   }
@@ -313,7 +376,7 @@ function parseUndefinedReference(line: string, filename: string | null, state: P
     severity: "warning",
     category: match[1] === "Citation" ? "undefined-citation" : "undefined-reference",
     file: filename,
-    line: match[3] ? parseInt(match[3], 10) : null,
+    line: match[3] ? Number.parseInt(match[3], 10) : null,
     text: `Cannot find ${match[1].toLowerCase()} \`${match[2]}\`.`,
   };
   state.searchEmptyLine = false;
@@ -330,7 +393,7 @@ function parseBadBox(line: string, filename: string | null, state: ParserState):
     [underfullBoxRegexes, "underfull-box"],
   ] as const) {
     for (const regex of regexes) {
-      const result = line.match(regex);
+      const result = regex.exec(line);
       if (result === null) {
         continue;
       }
@@ -349,7 +412,7 @@ function parseBadBox(line: string, filename: string | null, state: ParserState):
           severity: "typesetting",
           category,
           file: filename,
-          line: parseInt(result[2], 10),
+          line: Number.parseInt(result[2], 10),
           text: result[1],
         };
         state.insideBoxWarn = true;
@@ -367,15 +430,15 @@ function parseBadBox(line: string, filename: string | null, state: ParserState):
 function parseLaTeXFileStack(line: string, fileStack: string[], nested: number): number {
   let rest = line;
   for (;;) {
-    const result = rest.match(/[()]/);
-    if (result === null || result.index === undefined) {
+    const result = /[()]/.exec(rest);
+    if (result?.index === undefined) {
       return nested;
     }
     const paren = result[0];
     rest = rest.substring(result.index + 1);
     if (paren === "(") {
-      const pathResult = rest.match(/^"?((?:(?:[a-zA-Z]:|\.|\/)?(?:\/|\\\\?))[^"()[\]]*)/);
-      const mikTeXPathResult = rest.match(/^"?([^"()[\]]*\.[a-z]{3,})/);
+      const pathResult = /^"?((?:(?:[a-zA-Z]:|\.|\/)?(?:\/|\\\\?))[^"()[\]]*)/.exec(rest);
+      const mikTeXPathResult = /^"?([^"()[\]]*\.[a-z]{3,})/.exec(rest);
       if (pathResult) {
         fileStack.push(pathResult[1].trim());
       } else if (mikTeXPathResult) {
@@ -383,12 +446,10 @@ function parseLaTeXFileStack(line: string, fileStack: string[], nested: number):
       } else {
         nested += 1;
       }
+    } else if (nested > 0) {
+      nested -= 1;
     } else {
-      if (nested > 0) {
-        nested -= 1;
-      } else {
-        fileStack.pop();
-      }
+      fileStack.pop();
     }
   }
 }

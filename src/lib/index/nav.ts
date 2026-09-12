@@ -19,7 +19,7 @@ import type {
   ProjectUse,
 } from "@/lib/project-intelligence/types";
 import { toast } from "@/lib/toast";
-import type { DefKind, Sym } from "./types";
+import type { DefKind, Edit, Sym } from "./types";
 import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reason";
 
 const RENAMABLE = new Set<DefKind>(["label", "macro", "bibentry", "theorem", "glossary", "environment"]);
@@ -179,6 +179,43 @@ export function startRename(view: EditorView): boolean {
   return true;
 }
 
+function groupEditsByFile(edits: readonly Edit[]): Map<string, Edit[]> {
+  const byFile = new Map<string, Edit[]>();
+  for (const e of edits) {
+    const arr = byFile.get(e.file) ?? [];
+    arr.push(e);
+    byFile.set(e.file, arr);
+  }
+  return byFile;
+}
+
+function applyEditsToText(base: string, edits: readonly Edit[]): string {
+  let text = base;
+  for (const e of [...edits].sort((a, b) => b.from - a.from)) {
+    text = text.slice(0, e.from) + e.newText + text.slice(e.to);
+  }
+  return text;
+}
+
+async function writeRenamedFile(
+  files: ReturnType<typeof useFilesStore.getState>,
+  projectId: string | null,
+  file: string,
+  text: string,
+): Promise<"edited" | "ignored" | "failed"> {
+  if (files.files[file] !== undefined) {
+    files.setContent(file, text);
+    return "edited";
+  }
+  if (!projectId) return "ignored";
+  try {
+    await useFilesStore.getState().writeProjectFile(projectId, file, text);
+    return "edited";
+  } catch {
+    return "failed";
+  }
+}
+
 // Edits are applied against the exact text the index was built from (the cache), so
 // offsets are always valid. The active file is edited through the editor (so it
 // updates live); other files via the store / disk.
@@ -200,12 +237,7 @@ export async function applyRename(view: EditorView, sym: Sym, newName: string): 
   const id = files.projectId;
   const activePath = files.activePath;
 
-  const byFile = new Map<string, typeof plan.edits>();
-  for (const e of plan.edits) {
-    const arr = byFile.get(e.file) ?? [];
-    arr.push(e);
-    byFile.set(e.file, arr);
-  }
+  const byFile = groupEditsByFile(plan.edits);
 
   const unwritten: string[] = [];
   let editedFiles = 0;
@@ -221,22 +253,16 @@ export async function applyRename(view: EditorView, sym: Sym, newName: string): 
     }
     const base = store.texts[file];
     if (base === undefined) continue;
-    let text = base;
-    for (const e of [...edits].sort((a, b) => b.from - a.from)) {
-      text = text.slice(0, e.from) + e.newText + text.slice(e.to);
-    }
-    if (files.files[file] !== undefined) {
-      files.setContent(file, text);
+    const outcome = await writeRenamedFile(
+      files,
+      id,
+      file,
+      applyEditsToText(base, edits),
+    );
+    if (outcome === "failed") unwritten.push(file);
+    else if (outcome === "edited") {
       editedFiles++;
       editedCount += edits.length;
-    } else if (id) {
-      try {
-        await useFilesStore.getState().writeProjectFile(id, file, text);
-        editedFiles++;
-        editedCount += edits.length;
-      } catch {
-        unwritten.push(file);
-      }
     }
   }
 

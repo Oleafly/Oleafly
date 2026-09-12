@@ -3,6 +3,23 @@ import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
+function textContentToPageText(items: readonly unknown[]): string {
+  const line: string[] = [];
+  let lastY: number | null = null;
+  for (const raw of items) {
+    const item = raw as { str?: unknown; transform?: number[] };
+    if (!("str" in item)) continue;
+    const str = typeof item?.str === "string" ? item.str : "";
+    const y = item?.transform?.[5];
+    if (lastY !== null && y !== undefined && Math.abs(y - lastY) > 2) {
+      line.push("\n");
+    }
+    line.push(str);
+    if (y !== undefined) lastY = y;
+  }
+  return line.join("").replace(/(?<![ \t])[ \t]+\n/g, "\n").trim();
+}
+
 export async function extractPdfText(
   bytes: Uint8Array
 ): Promise<{ pages: string[]; numPages: number }> {
@@ -16,19 +33,7 @@ export async function extractPdfText(
       const page = await doc.getPage(p);
       try {
         const tc = await page.getTextContent();
-        const line: string[] = [];
-        let lastY: number | null = null;
-        for (const item of tc.items) {
-          if (!("str" in item)) continue;
-          const str = typeof item?.str === "string" ? item.str : "";
-          const y = item?.transform?.[5];
-          if (lastY !== null && y !== undefined && Math.abs(y - lastY) > 2) {
-            line.push("\n");
-          }
-          line.push(str);
-          if (y !== undefined) lastY = y;
-        }
-        pages.push(line.join("").replace(/[ \t]+\n/g, "\n").trim());
+        pages.push(textContentToPageText(tc.items));
       } finally {
         try {
           page.cleanup();

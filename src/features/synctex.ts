@@ -210,6 +210,34 @@ export async function openFileAndGotoLine(file: string | null, line: number) {
 // In a multi-file project the click may land on content from a different file
 // (an `\input` child), so switch to that file before jumping. `hit.file` is a
 // basename; resolve it against the project tree.
+async function resolveInverseTarget(
+  context: SyncTexContext,
+  hitFile: string,
+  hitLine: number,
+): Promise<{ path: string | null; line: number } | null> {
+  if (!context[1]) {
+    const path = hitFile
+      ? resolvePath(hitFile, currentProjectSourcePaths())
+      : useFilesStore.getState().activePath;
+    return { path, line: hitLine };
+  }
+  const mapped = await mapStaleLine(context, hitFile, hitLine, false);
+  if (!mapped) return null;
+  return { path: mapped[1], line: mapped[2] };
+}
+
+async function focusInverseTarget(
+  store: ReturnType<typeof useFilesStore.getState>,
+  context: SyncTexContext,
+  targetPath: string | null,
+): Promise<boolean> {
+  const activePath = useFilesStore.getState().activePath;
+  if (!targetPath || targetPath === activePath) return true;
+  await store.openFile(targetPath);
+  await nextFrames(2); // let the editor mount the new file
+  return contextStillValid(context);
+}
+
 export async function inverseFromClick(
   page: number,
   x: number,
@@ -231,30 +259,11 @@ export async function inverseFromClick(
     if (!contextStillValid(context)) return;
     if (!hit) return;
 
-    let targetPath: string | null = null;
-    let targetLine = hit.line;
-    if (!context[1]) {
-      targetPath = hit.file
-        ? resolvePath(hit.file, currentProjectSourcePaths())
-        : useFilesStore.getState().activePath;
-    } else {
-      const mapped = await mapStaleLine(
-        context,
-        hit.file,
-        hit.line,
-        false,
-      );
-      if (!mapped) return;
-      targetPath = mapped[1];
-      targetLine = mapped[2];
-    }
+    const target = await resolveInverseTarget(context, hit.file, hit.line);
+    if (!target) return;
+    const targetLine = target.line;
 
-    const activePath = useFilesStore.getState().activePath;
-    if (targetPath && targetPath !== activePath) {
-      await store.openFile(targetPath);
-      await nextFrames(2); // let the editor mount the new file
-      if (!contextStillValid(context)) return;
-    }
+    if (!(await focusInverseTarget(store, context, target.path))) return;
     // SyncTeX only resolves to a line (its column is coarse and often lands on a
     // `\begin`/`\end`). If we know the word that was clicked, place the cursor on
     // the nearest matching word; otherwise fall back to the line start.

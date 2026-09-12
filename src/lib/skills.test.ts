@@ -565,6 +565,24 @@ describe("recorded skill drafts", () => {
     expect(draft?.instructions).not.toContain("The third claim has a gap");
   });
 
+  it("keeps procedure steps that a greedy whitespace run precedes", () => {
+    const draft = draftSkillFromChat({
+      messages: [
+        { role: "user", content: "Audit this proof." },
+        {
+          role: "assistant",
+          content:
+            "##\u00a0\u00a0Approach\n\n-   Map each claim to its dependencies.\n1)\tTest every dependency.\n\n## Findings\n\n- The third claim has a gap.",
+        },
+      ],
+      todos: [],
+    });
+
+    expect(draft?.instructions).toContain("1. Map each claim to its dependencies.");
+    expect(draft?.instructions).toContain("2. Test every dependency.");
+    expect(draft?.instructions).not.toContain("The third claim has a gap");
+  });
+
   it("keeps multibyte recorded drafts within backend validation limits", () => {
     const draft = draftSkillFromChat({
       messages: [

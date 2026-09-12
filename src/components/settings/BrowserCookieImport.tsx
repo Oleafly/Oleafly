@@ -216,9 +216,9 @@ export function BrowserCookieImport() {
           </Button>
         </div>
         {summary ? (
-          <p role="status" className="mt-3 text-xs text-muted-foreground">
+          <output className="block mt-3 text-xs text-muted-foreground">
             {summaryLabel(summary)}
-          </p>
+          </output>
         ) : null}
       </div>
 
@@ -239,18 +239,16 @@ export function BrowserCookieImport() {
             </DialogDescription>
           </DialogHeader>
 
-          <div
-            role="status"
+          <output
             aria-live="polite"
             aria-atomic="true"
-            className="text-sm text-muted-foreground"
+            className="block text-sm text-muted-foreground"
           >
-            {detecting
-              ? t(($) => $.settings.integrations.cookies.detecting)
-              : !detectionError && sources.length === 0
-                ? t(($) => $.settings.integrations.cookies.empty)
-                : null}
-          </div>
+            {detecting ? t(($) => $.settings.integrations.cookies.detecting) : null}
+            {!detecting && !detectionError && sources.length === 0
+              ? t(($) => $.settings.integrations.cookies.empty)
+              : null}
+          </output>
 
           {detectionError ? (
             <div className="space-y-3 rounded-md border border-destructive/40 p-3">

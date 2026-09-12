@@ -23,7 +23,7 @@ pub fn runtime_reads(root: &Path, definition: &AgentDefinition, launch: &Launch)
     let executable_name = launch
         .executable
         .file_stem()
-        .and_then(|value| value.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()
         .to_ascii_lowercase();
     if executable_name == "node" || executable_name.starts_with("python") {
@@ -56,8 +56,8 @@ pub fn runtime_reads(root: &Path, definition: &AgentDefinition, launch: &Launch)
         }
         let interpreter = candidate
             .file_name()
-            .and_then(|name| name.to_str())
-            .map(|name| name.to_ascii_lowercase())
+            .and_then(std::ffi::OsStr::to_str)
+            .map(str::to_ascii_lowercase)
             .is_some_and(|name| name == "node" || name == "node.exe" || name.starts_with("python"));
         if interpreter {
             if let Some(prefix) = candidate

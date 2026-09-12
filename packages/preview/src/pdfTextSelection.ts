@@ -33,7 +33,95 @@ function moveEndOfContentToLayerBoundary(
   const contentChildren = children.filter((child) => child !== endOfContent);
   const reference =
     contentChildren[Math.max(0, Math.min(contentOffset, contentChildren.length))] ?? null;
-  textLayer.insertBefore(endOfContent, reference);
+  if (reference) reference.before(endOfContent);
+  else textLayer.append(endOfContent);
+}
+
+function activeTextLayersFor(selection: Selection): Set<HTMLDivElement> {
+  const active = new Set<HTMLDivElement>();
+  for (let index = 0; index < selection.rangeCount; index++) {
+    const range = selection.getRangeAt(index);
+    for (const textLayer of textLayers.keys()) {
+      try {
+        if (range.intersectsNode(textLayer)) active.add(textLayer);
+      } catch {
+        // A page can be evicted while selectionchange is queued.
+      }
+    }
+  }
+  return active;
+}
+
+function applySelectionClasses(active: ReadonlySet<HTMLDivElement>): void {
+  for (const [textLayer, { endOfContent }] of textLayers) {
+    if (active.has(textLayer)) {
+      textLayer.classList.add("selecting");
+    } else {
+      resetTextLayer(textLayer, endOfContent);
+    }
+  }
+}
+
+function compareSelectionBoundaries(
+  range: Range,
+  previous: Range | null,
+): { modifyStart: boolean; stale: boolean } {
+  if (!previous) return { modifyStart: false, stale: false };
+  try {
+    return {
+      modifyStart:
+        range.compareBoundaryPoints(Range.END_TO_END, previous) === 0 ||
+        range.compareBoundaryPoints(Range.START_TO_END, previous) === 0,
+      stale: false,
+    };
+  } catch {
+    // A selected virtualized page can disappear between selectionchange
+    // events. Never compare a live range with a stale/different tree.
+    return { modifyStart: false, stale: true };
+  }
+}
+
+function directTextLayerOf(endpointContainer: Node): HTMLDivElement | null {
+  return endpointContainer instanceof HTMLDivElement &&
+    endpointContainer.classList.contains("textLayer") &&
+    textLayers.has(endpointContainer)
+    ? endpointContainer
+    : null;
+}
+
+function selectionAnchor(endpointContainer: Node, modifyStart: boolean, range: Range): Node | null {
+  let anchor: Node | null = endpointContainer;
+  if (anchor.nodeType === Node.TEXT_NODE) anchor = anchor.parentNode;
+  if (anchor instanceof Element && anchor.classList.contains("highlight")) {
+    anchor = anchor.parentNode;
+  }
+  if (!modifyStart && range.endOffset === 0 && anchor) {
+    while (anchor && !anchor.previousSibling) anchor = anchor.parentNode;
+    anchor = anchor?.previousSibling ?? anchor;
+    while (anchor && !anchor.childNodes.length) {
+      anchor = anchor.previousSibling ?? anchor.parentNode;
+    }
+  }
+  return anchor;
+}
+
+function placeSentinelNearAnchor(anchor: Node | null, modifyStart: boolean): void {
+  const parentTextLayer =
+    anchor instanceof Element
+      ? anchor.closest<HTMLDivElement>(".textLayer")
+      : anchor?.parentElement?.closest<HTMLDivElement>(".textLayer");
+  const registered = parentTextLayer ? textLayers.get(parentTextLayer) : undefined;
+  if (!parentTextLayer || !registered || !anchor?.parentNode) return;
+  const { endOfContent } = registered;
+  endOfContent.style.width = parentTextLayer.style.width;
+  endOfContent.style.height = parentTextLayer.style.height;
+  endOfContent.style.userSelect = "text";
+  const insertionParent = anchor.parentNode;
+  if (insertionParent === parentTextLayer || parentTextLayer.contains(insertionParent)) {
+    insertionParent.insertBefore(endOfContent, modifyStart ? anchor : anchor.nextSibling);
+  } else {
+    parentTextLayer.append(endOfContent);
+  }
 }
 
 function enableGlobalSelectionHandling(): void {
@@ -77,24 +165,7 @@ function enableGlobalSelectionHandling(): void {
         return;
       }
 
-      const activeTextLayers = new Set<HTMLDivElement>();
-      for (let index = 0; index < selection.rangeCount; index++) {
-        const range = selection.getRangeAt(index);
-        for (const textLayer of textLayers.keys()) {
-          try {
-            if (range.intersectsNode(textLayer)) activeTextLayers.add(textLayer);
-          } catch {
-            // A page can be evicted while selectionchange is queued.
-          }
-        }
-      }
-      for (const [textLayer, { endOfContent }] of textLayers) {
-        if (activeTextLayers.has(textLayer)) {
-          textLayer.classList.add("selecting");
-        } else {
-          resetTextLayer(textLayer, endOfContent);
-        }
-      }
+      applySelectionClasses(activeTextLayersFor(selection));
 
       const firstRegistration = textLayers.values().next().value;
       if (firstRegistration) {
@@ -112,26 +183,12 @@ function enableGlobalSelectionHandling(): void {
       if (usesFirefoxSelectionBehavior) return;
 
       const range = selection.getRangeAt(0);
-      let modifyStart = false;
-      if (previousRange) {
-        try {
-          modifyStart =
-            range.compareBoundaryPoints(Range.END_TO_END, previousRange) === 0 ||
-            range.compareBoundaryPoints(Range.START_TO_END, previousRange) === 0;
-        } catch {
-          // A selected virtualized page can disappear between selectionchange
-          // events. Never compare a live range with a stale/different tree.
-          previousRange = null;
-        }
-      }
+      const boundaries = compareSelectionBoundaries(range, previousRange);
+      if (boundaries.stale) previousRange = null;
+      const modifyStart = boundaries.modifyStart;
       const endpointContainer = modifyStart ? range.startContainer : range.endContainer;
       const endpointOffset = modifyStart ? range.startOffset : range.endOffset;
-      const directTextLayer =
-        endpointContainer instanceof HTMLDivElement &&
-        endpointContainer.classList.contains("textLayer") &&
-        textLayers.has(endpointContainer)
-          ? endpointContainer
-          : null;
+      const directTextLayer = directTextLayerOf(endpointContainer);
       if (directTextLayer) {
         const { endOfContent } = textLayers.get(directTextLayer)!;
         endOfContent.style.width = directTextLayer.style.width;
@@ -142,36 +199,7 @@ function enableGlobalSelectionHandling(): void {
         return;
       }
 
-      let anchor: Node | null = endpointContainer;
-      if (anchor.nodeType === Node.TEXT_NODE) anchor = anchor.parentNode;
-      if (anchor instanceof Element && anchor.classList.contains("highlight")) {
-        anchor = anchor.parentNode;
-      }
-      if (!modifyStart && range.endOffset === 0 && anchor) {
-        while (anchor && !anchor.previousSibling) anchor = anchor.parentNode;
-        anchor = anchor?.previousSibling ?? anchor;
-        while (anchor && !anchor.childNodes.length) {
-          anchor = anchor.previousSibling ?? anchor.parentNode;
-        }
-      }
-
-      const parentTextLayer =
-        anchor instanceof Element
-          ? anchor.closest<HTMLDivElement>(".textLayer")
-          : anchor?.parentElement?.closest<HTMLDivElement>(".textLayer");
-      const registered = parentTextLayer ? textLayers.get(parentTextLayer) : undefined;
-      if (parentTextLayer && registered && anchor?.parentNode) {
-        const { endOfContent } = registered;
-        endOfContent.style.width = parentTextLayer.style.width;
-        endOfContent.style.height = parentTextLayer.style.height;
-        endOfContent.style.userSelect = "text";
-        const insertionParent = anchor.parentNode;
-        if (insertionParent === parentTextLayer || parentTextLayer.contains(insertionParent)) {
-          insertionParent.insertBefore(endOfContent, modifyStart ? anchor : anchor.nextSibling);
-        } else {
-          parentTextLayer.append(endOfContent);
-        }
-      }
+      placeSentinelNearAnchor(selectionAnchor(endpointContainer, modifyStart, range), modifyStart);
       previousRange = range.cloneRange();
     },
     { signal },

@@ -107,7 +107,7 @@ export function TerminalPane({
   active = true,
   autoStart = false,
   onExit,
-}: TerminalPaneProps) {
+}: Readonly<TerminalPaneProps>) {
   const { t } = useTranslation(["workspace"]);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);

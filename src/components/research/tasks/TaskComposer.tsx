@@ -96,11 +96,20 @@ function selectedAgentKey(agent: Pick<ResearchTaskAgentOption, "runtimeId" | "ag
   return `${agent.runtimeId}\u0000${agent.agentId}\u0000${agent.modelId}`;
 }
 
+function initialAgentKey(
+  editingTask: ResearchTask | null,
+  firstAvailable: ResearchTaskAgentOption | undefined,
+): string {
+  if (editingTask) return selectedAgentKey(editingTask);
+  if (firstAvailable) return selectedAgentKey(firstAvailable);
+  return "";
+}
+
 export function composerDraftKey(projectId: string, editingTaskId: string | null): string {
   return `${projectId}\u0000${editingTaskId ?? ""}`;
 }
 
-export function TaskComposer(props: TaskComposerProps) {
+export function TaskComposer(props: Readonly<TaskComposerProps>) {
   return <TaskComposerDraft key={JSON.stringify([props.projectId, props.editingTask?.id ?? null])} {...props} />;
 }
 
@@ -114,7 +123,7 @@ function TaskComposerDraft({
   onDismiss,
   onCreate,
   onSave,
-}: TaskComposerProps) {
+}: Readonly<TaskComposerProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const draftId = composerDraftKey(projectId, editingTask?.id ?? null);
   const saveDraft = useResearchTasksStore((state) => state.saveComposerDraft);
@@ -129,10 +138,7 @@ function TaskComposerDraft({
   const [starterId, setStarterId] = useState(restored?.starterId ?? BLANK_STARTER_ID);
   const [title, setTitle] = useState(restored?.title ?? editingTask?.title ?? "");
   const [prompt, setPrompt] = useState(restored?.prompt ?? editingTask?.prompt ?? "");
-  const [agentKey, setAgentKey] = useState(() => restored?.agentKey
-    ?? (editingTask
-      ? selectedAgentKey(editingTask)
-      : firstAvailable ? selectedAgentKey(firstAvailable) : ""));
+  const [agentKey, setAgentKey] = useState(() => restored?.agentKey ?? initialAgentKey(editingTask, firstAvailable));
   const [skillIds, setSkillIds] = useState<string[]>(restored?.skillIds ?? editingTask?.skillIds ?? []);
   const [dependencyIds, setDependencyIds] = useState<string[]>(
     restored?.dependencyIds ?? editingTask?.dependencyIds ?? [],
@@ -201,6 +207,12 @@ function TaskComposerDraft({
     Boolean(chosenAgent) &&
     chosenAgent?.available !== false &&
     !busy;
+
+  const submitLabel = () => {
+    if (busy) return t(($) => $.researchTools.tasks.composer.saving);
+    if (editingTask) return t(($) => $.researchTools.tasks.composer.saveTask);
+    return t(($) => $.researchTools.tasks.composer.createTask);
+  };
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) dismiss(); }}>
@@ -384,11 +396,7 @@ function TaskComposerDraft({
             {t(($) => $.common.actions.cancel)}
           </Button>
           <Button disabled={!canSubmit} onClick={() => void submit()}>
-            {busy
-              ? t(($) => $.researchTools.tasks.composer.saving)
-              : editingTask
-                ? t(($) => $.researchTools.tasks.composer.saveTask)
-                : t(($) => $.researchTools.tasks.composer.createTask)}
+            {submitLabel()}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -400,11 +408,11 @@ function AgentSummary({
   agent,
   showReason = false,
   compact = false,
-}: {
+}: Readonly<{
   agent: ResearchTaskAgentOption;
   showReason?: boolean;
   compact?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const detail = [
     agent.modelLabel,

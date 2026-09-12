@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
+import { getConfig, setConfig as saveConfig, type AppConfig } from "@/lib/tauri";
 import {
   PROVIDERS,
   hasConfiguredProvider,
@@ -26,13 +26,13 @@ export function InlineEditPanel() {
   const { t } = useTranslation(["common", "editor"]);
   const session = useInlineEditStore((s) => s.session);
   const [providerReady, setProviderReady] = useState(true);
-  const [config, setLocalConfig] = useState<AppConfig | null>(null);
+  const [config, setConfig] = useState<AppConfig | null>(null);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const apply = (c: AppConfig) => {
-      setLocalConfig(c);
+      setConfig(c);
       setProviderReady(hasConfiguredProvider(c));
     };
     const check = (event?: Event) => {
@@ -191,12 +191,12 @@ export function InlineEditPanel() {
   const selectModel = async (providerId: string, modelId: string) => {
     const current = config ?? (await getConfig());
     const next = { ...current, ai_provider: providerId, ai_model: modelId };
-    setLocalConfig(next);
-    await setConfig(next);
+    setConfig(next);
+    await saveConfig(next);
     window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
   };
 
-  const keys = { ...(config?.ai_keys ?? {}) };
+  const keys = { ...config?.ai_keys };
   if (config?.ai_api_key && config.ai_provider && !keys[config.ai_provider]) {
     keys[config.ai_provider] = config.ai_api_key;
   }
@@ -222,9 +222,9 @@ export function InlineEditPanel() {
     },
   );
 
-  return (
-    <div className="my-1 w-full">
-      {!providerReady ? (
+  const renderPanel = () => {
+    if (!providerReady) {
+      return (
         <AiChrome
           borderVariant="primary"
           className="w-full"
@@ -244,30 +244,37 @@ export function InlineEditPanel() {
             {t(($) => $.editor.inlineAi.openAiSettings)}
           </button>
         </AiChrome>
-      ) : session.phase === "error" ? (
-        <DiffErrorBar message={session.error ?? ""} onRetry={retry} onDismiss={reset} />
-      ) : session.phase === "reviewing" ? (
+      );
+    }
+    if (session.phase === "error") {
+      return <DiffErrorBar message={session.error ?? ""} onRetry={retry} onDismiss={reset} />;
+    }
+    if (session.phase === "reviewing") {
+      return (
         <DiffActionBar
           onAccept={accept}
           onReject={reject}
           onRetry={retry}
           onOpenInAgent={openInAgent}
         />
-      ) : (
-        <PromptPopover
-          instruction={session.instruction}
-          onInstruction={(v) => useInlineEditStore.getState().setInstruction(v)}
-          onSubmit={() => void run()}
-          onPreset={(instr) => void run(instr)}
-          onClose={dismiss}
-          streaming={session.phase === "streaming"}
-          onStop={stop}
-          providerId={active?.providerId ?? ""}
-          modelId={active?.modelId ?? ""}
-          modelGroups={modelGroups}
-          onModelChange={(providerId, modelId) => void selectModel(providerId, modelId)}
-        />
-      )}
-    </div>
-  );
+      );
+    }
+    return (
+      <PromptPopover
+        instruction={session.instruction}
+        onInstruction={(v) => useInlineEditStore.getState().setInstruction(v)}
+        onSubmit={() => void run()}
+        onPreset={(instr) => void run(instr)}
+        onClose={dismiss}
+        streaming={session.phase === "streaming"}
+        onStop={stop}
+        providerId={active?.providerId ?? ""}
+        modelId={active?.modelId ?? ""}
+        modelGroups={modelGroups}
+        onModelChange={(providerId, modelId) => void selectModel(providerId, modelId)}
+      />
+    );
+  };
+
+  return <div className="my-1 w-full">{renderPanel()}</div>;
 }

@@ -147,14 +147,14 @@ const TerminalDock = lazy(() =>
 );
 
 // fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
-function LazyModals({ children }: { children: ReactNode }) {
+function LazyModals({ children }: Readonly<{ children: ReactNode }>) {
   return <Suspense fallback={null}>{children}</Suspense>;
 }
 
 // One-chunk-fetch placeholder for the lazy editor/preview surfaces: quiet,
 // centered, and shaped like the boot progress card so loading reads as one
 // continuous system.
-function SurfaceLoading({ label }: { label: string }) {
+function SurfaceLoading({ label }: Readonly<{ label: string }>) {
   return (
     <div className="flex h-full min-h-0 items-center justify-center">
       <div
@@ -173,11 +173,11 @@ function VHandle({
   id,
   children,
   placement = "center",
-}: {
+}: Readonly<{
   id: string;
   children?: ReactNode;
   placement?: "top" | "center" | "bottom";
-}) {
+}>) {
   return (
     <div className="resize-handle-col relative flex w-1.5 shrink-0 bg-background">
       <PanelResizeHandle

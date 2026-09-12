@@ -17,11 +17,11 @@ export function GithubMenu({
   githubUrl,
   onOpenInGithub,
   onCopyLink,
-}: {
+}: Readonly<{
   githubUrl: string | null;
   onOpenInGithub: () => void;
   onCopyLink: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["shell"]);
   const status = useGithubStore((s) => s.status);
   const user = useGithubStore((s) => s.user);

@@ -205,7 +205,7 @@ const URGENCY_STYLE = {
 
 function formatUpdated(raw: string | null): string | null {
   if (!raw) return null;
-  const legacy = raw.match(/^epoch:(\d+)$/);
+  const legacy = /^epoch:(\d+)$/.exec(raw);
   const timestamp = raw.replace(/\s+\(bundled seed\)$/, "");
   const date = legacy
     ? new Date(Number(legacy[1]) * 1000)
@@ -225,9 +225,9 @@ function formatDeadlineMoment(venue: Venue, when: Date): string {
     (deadline) =>
       deadlineInstant(deadline.at, venue.timezone).getTime() === when.getTime(),
   );
-  const match = entry?.at.match(
-    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):\d{2}$/,
-  );
+  const match = entry
+    ? /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):\d{2}$/.exec(entry.at)
+    : null;
   if (!match) return venue.timezone;
   const months = [
     "Jan",
@@ -252,10 +252,10 @@ function formatDeadlineMoment(venue: Venue, when: Date): string {
 function HelpDialog({
   open,
   onOpenChange,
-}: {
+}: Readonly<{
   open: boolean;
   onOpenChange: (value: boolean) => void;
-}) {
+}>) {
   const { t } = useTranslation(["library"]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -296,11 +296,11 @@ function CountdownUnit({
   unit,
   value,
   label,
-}: {
+}: Readonly<{
   unit: string;
   value: number;
   label: string;
-}) {
+}>) {
   return (
     <div
       className="min-w-0"
@@ -317,11 +317,19 @@ function CountdownUnit({
   );
 }
 
-function DeadlineCountdown({ venue, now }: { venue: Venue; now: Date }) {
+function DeadlineCountdown({ venue, now }: Readonly<{ venue: Venue; now: Date }>) {
   const { t } = useTranslation(["library"]);
   const next = nextDeadline(venue, now);
   const urgencyKey = next ? urgency(next.when, now) : "passed";
   const style = URGENCY_STYLE[urgencyKey];
+  let urgencyLabel: string;
+  if (urgencyKey === "critical") {
+    urgencyLabel = t(($) => $.library.deadlines.urgency.critical);
+  } else if (urgencyKey === "soon") {
+    urgencyLabel = t(($) => $.library.deadlines.urgency.soon);
+  } else {
+    urgencyLabel = t(($) => $.library.deadlines.urgency.comfortable);
+  }
   if (!next) {
     return (
       <div className={cn("rounded-lg border p-3.5", style.panel)}>
@@ -347,11 +355,7 @@ function DeadlineCountdown({ venue, now }: { venue: Venue; now: Date }) {
             style.text,
           )}
         >
-          {urgencyKey === "critical"
-            ? t(($) => $.library.deadlines.urgency.critical)
-            : urgencyKey === "soon"
-              ? t(($) => $.library.deadlines.urgency.soon)
-              : t(($) => $.library.deadlines.urgency.comfortable)}
+          {urgencyLabel}
         </span>
       </div>
       <div className={cn("mt-2.5 grid grid-cols-4 gap-3", style.text)}>
@@ -388,7 +392,7 @@ function DeadlineCountdown({ venue, now }: { venue: Venue; now: Date }) {
   );
 }
 
-function DeadlineCard({ venue, now }: { venue: Venue; now: Date }) {
+function DeadlineCard({ venue, now }: Readonly<{ venue: Venue; now: Date }>) {
   const { t } = useTranslation(["library"]);
   const fieldStyle = FIELD_STYLES[venue.sub] ?? DEFAULT_FIELD_STYLE;
   return (
@@ -519,11 +523,11 @@ function DeadlineStat({
   label,
   value,
   tone,
-}: {
+}: Readonly<{
   label: string;
   value: number;
   tone: "red" | "amber" | "violet";
-}) {
+}>) {
   const toneClass = {
     red: "border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-300",
     amber:
@@ -616,6 +620,36 @@ export function DeadlinesView() {
     setSub(null);
     setShowPassed(false);
     setSortKey("deadline");
+  };
+
+  const loadedVenues = () => {
+    if (shown.length === 0) {
+      return (
+        <Empty className="min-h-[24rem]">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <CalendarX2 className="size-6" />
+            </EmptyMedia>
+            <EmptyTitle>{t(($) => $.library.deadlines.emptyTitle)}</EmptyTitle>
+            <EmptyDescription>
+              {t(($) => $.library.deadlines.emptyDescription)}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+              {t(($) => $.library.deadlines.clearFilters)}
+            </Button>
+          </EmptyContent>
+        </Empty>
+      );
+    }
+    return (
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        {shown.map((venue) => (
+          <DeadlineCard key={venue.id} venue={venue} now={now} />
+        ))}
+      </div>
+    );
   };
 
   if (!active) return null;
@@ -856,38 +890,8 @@ export function DeadlinesView() {
 
               {venues === null ? (
                 <DeadlineSkeleton />
-              ) : shown.length === 0 ? (
-                <Empty className="min-h-[24rem]">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <CalendarX2 className="size-6" />
-                    </EmptyMedia>
-                    <EmptyTitle>{t(($) => $.library.deadlines.emptyTitle)}</EmptyTitle>
-                    <EmptyDescription>
-                      {t(($) => $.library.deadlines.emptyDescription)}
-                    </EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={clearFilters}
-                    >
-                      {t(($) => $.library.deadlines.clearFilters)}
-                    </Button>
-                  </EmptyContent>
-                </Empty>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                  {shown.map((venue) => (
-                    <DeadlineCard
-                      key={venue.id}
-                      venue={venue}
-                      now={now}
-                    />
-                  ))}
-                </div>
+                loadedVenues()
               )}
             </div>
           </div>

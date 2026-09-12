@@ -193,6 +193,36 @@ function projectMetadataText(project: ProjectInfo) {
     .toLowerCase();
 }
 
+function projectMatchesText(project: ProjectInfo, metadata: string) {
+  const needle = metadata.trim().toLowerCase();
+  if (!needle) return true;
+  return projectMetadataText(project).includes(needle);
+}
+
+function projectMatchesEngine(project: ProjectInfo, engine: ProjectFilters["engine"]) {
+  if (engine === "all") return true;
+  return projectEngineLabel(project.engine, project.main_doc).toLowerCase() === engine;
+}
+
+function projectPassesFilters(
+  project: ProjectInfo,
+  filters: ProjectFilters,
+  favs: readonly string[],
+) {
+  if (project.recovery_pending) return true;
+  const bookmarked = favs.includes(project.id);
+  if (!projectMatchesText(project, filters.metadata)) return false;
+  if (!projectMatchesEngine(project, filters.engine)) return false;
+  const kind = project.kind || "document";
+  if (filters.kind !== "all" && kind !== filters.kind) return false;
+  if (filters.bookmark === "yes" && !bookmarked) return false;
+  if (filters.bookmark === "no" && bookmarked) return false;
+  if (filters.preview === "yes" && !project.has_preview) return false;
+  if (filters.preview === "no" && project.has_preview) return false;
+  if (!isWithinDays(project.created_at, filters.created)) return false;
+  return isWithinDays(project.updated_at, filters.modified);
+}
+
 type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
 
 function projectKindLabel(t: Translate, kind: string | undefined): string {
@@ -214,13 +244,13 @@ function FilterSelect({
   value,
   options,
   onChange,
-}: {
+}: Readonly<{
   name: string;
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
-}) {
+}>) {
   const id = `project-filter-${name}`;
   return (
     <label
@@ -476,32 +506,7 @@ export function Library() {
   const bookmarkIsOnlyActiveFilter =
     bookmarkedOnly && activeFilterCount === 1 && !filters.metadata.trim();
   const visibleProjects = useMemo(
-    () =>
-      projects.filter((project) => {
-        if (project.recovery_pending) return true;
-        const bookmarked = favs.includes(project.id);
-        if (
-          filters.metadata.trim() &&
-          !projectMetadataText(project).includes(filters.metadata.trim().toLowerCase())
-        ) {
-          return false;
-        }
-        if (
-          filters.engine !== "all" &&
-          projectEngineLabel(project.engine, project.main_doc).toLowerCase() !== filters.engine
-        ) {
-          return false;
-        }
-        const kind = project.kind || "document";
-        if (filters.kind !== "all" && kind !== filters.kind) return false;
-        if (filters.bookmark === "yes" && !bookmarked) return false;
-        if (filters.bookmark === "no" && bookmarked) return false;
-        if (filters.preview === "yes" && !project.has_preview) return false;
-        if (filters.preview === "no" && project.has_preview) return false;
-        if (!isWithinDays(project.created_at, filters.created)) return false;
-        if (!isWithinDays(project.updated_at, filters.modified)) return false;
-        return true;
-      }),
+    () => projects.filter((project) => projectPassesFilters(project, filters, favs)),
     [projects, favs, filters],
   );
 
@@ -533,6 +538,869 @@ export function Library() {
   };
 
   if (page !== "library") return null;
+  const renderLayoutSwitcher = () => (
+    <div data-tauri-drag-region className="flex min-w-max items-center">
+      {projects.length > 0 ? (
+        <fieldset
+          aria-label={t(($) => $.library.home.layoutGroup)}
+          className={cn(
+            "flex items-center rounded-xl border border-white/20 bg-background/75 p-1 shadow-sm backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-background/65",
+            isWindows && "mr-3",
+          )}
+        >
+          {([
+            { mode: "list", label: t(($) => $.library.home.listView), icon: List },
+            { mode: "grid", label: t(($) => $.library.home.gridView), icon: LayoutGrid },
+          ] as const).map(({ mode, label, icon: Icon }) => (
+            <Tooltip key={mode} label={label} side="bottom">
+              <button
+                type="button"
+                onClick={() => setProjectLayout(mode)}
+                aria-label={label}
+                aria-pressed={projectLayout === mode}
+                className={cn(
+                  "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors focus-visible:ring-1 focus-visible:ring-ring",
+                  projectLayout === mode
+                    ? "bg-white/15 text-foreground shadow-sm dark:bg-white/10"
+                    : "hover:text-foreground",
+                )}
+              >
+                <Icon aria-hidden className="size-4" />
+              </button>
+            </Tooltip>
+          ))}
+        </fieldset>
+      ) : null}
+      <WindowControls />
+    </div>
+  );
+
+  const renderProjectCollection = () => (
+    projects.length > 0 && visibleProjects.length > 0 && (
+    projectLayout === "grid" ? (
+    <div
+      data-testid="project-grid"
+      className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16 2xl:grid-cols-5"
+    >
+      {visibleProjects.map((p) => (
+        <ContextMenu key={p.id}>
+          <ContextMenuTrigger asChild>
+            <div className="flex justify-center">
+              <Book
+                title={p.name}
+                color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
+                date={
+                  p.recovery_pending
+                    ? t(($) => $.library.projects.openToRecover)
+                    : projectModifiedLabel(p.updated_at)
+                }
+                engine={
+                  p.recovery_pending
+                    ? t(($) => $.library.projects.recoveryRequired)
+                    : projectEngineLabel(p.engine, p.main_doc)
+                }
+                forkedFrom={p.forked_from}
+                kind={
+                  p.recovery_pending
+                    ? t(($) => $.library.projects.openToRecover)
+                    : projectKindLabel(t, p.kind)
+                }
+                openLabel={
+                  p.recovery_pending
+                    ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
+                    : undefined
+                }
+                starred={favs.includes(p.id)}
+                onStarToggle={
+                  p.recovery_pending ? undefined : () => toggleFav(p.id)
+                }
+                menu={
+                  p.recovery_pending ? null : <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={t(($) => $.library.projects.actions, { name: p.name })}
+                        onClick={(event) => event.stopPropagation()}
+                        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                      >
+                        <Info className="size-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      {projectMenuItems(p, {
+                        Item: DropdownMenuItem,
+                        Sub: DropdownMenuSub,
+                        SubTrigger: DropdownMenuSubTrigger,
+                        SubContent: DropdownMenuSubContent,
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                }
+                onClick={() => void openProject(p.id)}
+                onPreviewRequest={
+                  p.recovery_pending
+                    ? undefined
+                    : () => hoverPreview && loadThumb(p.id, p.updated_at)
+                }
+                preview={
+                  !p.recovery_pending && hoverPreview
+                    ? thumbs[p.id]
+                    : undefined
+                }
+                width={180}
+              />
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-52">
+            {projectMenuItems(p, {
+              Item: ContextMenuItem,
+              Sub: ContextMenuSub,
+              SubTrigger: ContextMenuSubTrigger,
+              SubContent: ContextMenuSubContent,
+            })}
+          </ContextMenuContent>
+        </ContextMenu>
+      ))}
+    </div>
+    ) : (
+    <div data-testid="project-list" className="border-b border-border/70">
+      <div
+        aria-hidden="true"
+        className="hidden min-h-10 grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] items-center gap-4 border-b border-border/70 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:grid"
+      >
+        <span>{t(($) => $.library.home.columns.name)}</span>
+        <span>{t(($) => $.library.home.columns.type)}</span>
+        <span>{t(($) => $.library.home.columns.engine)}</span>
+        <span>{t(($) => $.library.home.columns.modified)}</span>
+        <span />
+      </div>
+      {visibleProjects.map((p) => {
+        const recoveryPending = p.recovery_pending;
+        const color = projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR);
+        const starred = favs.includes(p.id);
+        const forkSource = p.forked_from
+          ? projects.find((project) => project.id === p.forked_from)?.name ??
+            p.forked_from
+          : null;
+        const renderFavoriteToggle = () => (
+          !recoveryPending ? <Tooltip
+            label={
+              starred
+                ? t(($) => $.library.projects.favoriteRemove)
+                : t(($) => $.library.projects.favoriteAdd)
+            }
+          >
+            <button
+              type="button"
+              onClick={() => toggleFav(p.id)}
+              aria-label={
+                starred
+                  ? t(($) => $.library.projects.favoriteRemove)
+                  : t(($) => $.library.projects.favoriteAdd)
+              }
+              className={cn(
+                "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring",
+                starred && "text-amber-500 hover:text-amber-500",
+              )}
+              style={starred ? { color: "#f59e0b" } : undefined}
+            >
+              {starred ? (
+                <BookmarkCheck
+                  aria-hidden
+                  className="size-4 fill-current"
+                />
+              ) : (
+                <Bookmark aria-hidden className="size-4" />
+              )}
+            </button>
+          </Tooltip> : null
+        );
+
+        const renderProjectRowActions = () => (
+          <span className="flex items-center justify-end gap-0.5">
+            {recoveryPending ? (
+              <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                {t(($) => $.library.projects.recoveryRequired)}
+              </span>
+            ) : null}
+            {!recoveryPending && forkSource ? (
+              <Tooltip
+                label={t(($) => $.library.projects.forkedFrom, { name: forkSource })}
+              >
+                <span
+                  role="img"
+                  aria-label={t(($) => $.library.projects.forkedFrom, {
+                    name: forkSource,
+                  })}
+                  className="flex size-7 items-center justify-center text-muted-foreground"
+                >
+                  <GitFork aria-hidden className="size-4" />
+                </span>
+              </Tooltip>
+            ) : null}
+            {!recoveryPending ? <Tooltip
+              label={
+                p.has_preview
+                  ? t(($) => $.library.projects.previewPdf)
+                  : t(($) => $.library.projects.previewUnavailable)
+              }
+            >
+              <button
+                type="button"
+                disabled={!p.has_preview}
+                onClick={() => void openProjectPreview(p)}
+                aria-label={t(($) => $.library.projects.previewNamed, { name: p.name })}
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <Eye aria-hidden className="size-4" />
+              </button>
+            </Tooltip> : null}
+            {renderFavoriteToggle()}
+            {!recoveryPending ? <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t(($) => $.library.projects.actions, { name: p.name })}
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100"
+                >
+                  <Info aria-hidden className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {projectMenuItems(p, {
+                  Item: DropdownMenuItem,
+                  Sub: DropdownMenuSub,
+                  SubTrigger: DropdownMenuSubTrigger,
+                  SubContent: DropdownMenuSubContent,
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu> : null}
+          </span>
+        );
+
+        return (
+          <ContextMenu key={p.id}>
+            <ContextMenuTrigger asChild>
+              <div className="group grid min-h-[5.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-3 transition-colors last:border-b-0 hover:bg-accent/35 sm:grid-cols-[minmax(0,1fr)_9rem_auto] lg:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] lg:gap-4 lg:px-4">
+                <button
+                  type="button"
+                  aria-label={
+                    recoveryPending
+                      ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
+                      : t(($) => $.library.projects.open, { name: p.name })
+                  }
+                  onClick={() => void openProject(p.id)}
+                  onMouseEnter={() => {
+                    if (recoveryPending || !hoverPreview) return;
+                    setPreviewProjectId(p.id);
+                    loadThumb(p.id, p.updated_at);
+                  }}
+                  onMouseLeave={() =>
+                    setPreviewProjectId((current) =>
+                      current === p.id ? null : current,
+                    )
+                  }
+                  onFocus={() => {
+                    if (recoveryPending || !hoverPreview) return;
+                    setPreviewProjectId(p.id);
+                    loadThumb(p.id, p.updated_at);
+                  }}
+                  onBlur={() =>
+                    setPreviewProjectId((current) =>
+                      current === p.id ? null : current,
+                    )
+                  }
+                  className="flex min-w-0 items-center gap-3 rounded-md py-3 text-left focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-inset ring-black/10 shadow-sm"
+                    style={{ backgroundColor: color }}
+                  >
+                    {hoverPreview &&
+                    !recoveryPending &&
+                    previewProjectId === p.id &&
+                    thumbs[p.id] ? (
+                      <img
+                        src={thumbs[p.id] ?? undefined}
+                        alt=""
+                        draggable={false}
+                        className="size-full object-cover object-top"
+                      />
+                    ) : null}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {p.name}
+                    </span>
+                    {recoveryPending ? (
+                      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
+                        {t(($) => $.library.projects.openToRecover)}
+                      </span>
+                    ) : (
+                      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
+                        {projectEngineLabel(p.engine, p.main_doc)} · {projectKindLabel(t, p.kind)}
+                      </span>
+                    )}
+                  </span>
+                </button>
+                <span className="hidden text-xs capitalize text-muted-foreground lg:block">
+                  {recoveryPending
+                    ? t(($) => $.library.projects.recoveryShort)
+                    : projectKindLabel(t, p.kind)}
+                </span>
+                <span className="hidden text-xs text-muted-foreground lg:block">
+                  {recoveryPending
+                    ? t(($) => $.library.projects.recoveryMetadata)
+                    : projectEngineLabel(p.engine, p.main_doc)}
+                </span>
+                <span className="hidden text-xs text-muted-foreground sm:block">
+                  {recoveryPending
+                    ? t(($) => $.library.projects.recoveryModified)
+                    : projectModifiedLabel(p.updated_at)}
+                </span>
+                {renderProjectRowActions()}
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent className="w-52">
+              {projectMenuItems(p, {
+                Item: ContextMenuItem,
+                Sub: ContextMenuSub,
+                SubTrigger: ContextMenuSubTrigger,
+                SubContent: ContextMenuSubContent,
+              })}
+            </ContextMenuContent>
+          </ContextMenu>
+        );
+      })}
+    </div>
+    )
+    )
+  );
+
+  const renderPreviewDialog = () => (
+    previewProject && (
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open) closeProjectPreview();
+        }}
+      >
+        <DialogContent className="h-[min(88vh,56rem)] max-w-[54rem] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+          <DialogHeader className="px-5 py-4 pr-12">
+            <DialogTitle>
+              {t(($) => $.library.projects.preview.title, { name: previewProject.name })}
+            </DialogTitle>
+            <DialogDescription>
+              {t(($) => $.library.projects.preview.description)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative min-h-0 overflow-hidden border-t bg-sidebar">
+            {previewError ? (
+              <div
+                role="alert"
+                className="flex h-full items-center justify-center p-8 text-sm text-destructive"
+              >
+                {previewError}
+              </div>
+            ) : null}
+            {!previewError && (previewBytes ? (
+              <section
+                data-pdf-scroll-root
+                aria-label={t(($) => $.library.projects.preview.region, {
+                  name: previewProject.name,
+                })}
+                className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <PdfViewer
+                  data={previewBytes}
+                  documentIdentity={`library:${previewProject.id}:${previewProject.updated_at}`}
+                  scale={1}
+                  layout="single"
+                />
+              </section>
+            ) : (
+              <output
+                aria-live="polite"
+                className="flex h-full items-center justify-center gap-2 p-8 text-sm text-muted-foreground"
+              >
+                <Loader2
+                  aria-hidden
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                />
+                {t(($) => $.library.projects.preview.loading)}
+              </output>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  );
+
+  const renderDetailsDialog = () => (
+    detailsProject && <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          setDetailsProject(null);
+          releasePointerLock();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $.library.projects.detailsDialog.title)}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $.library.projects.detailsDialog.description)}
+          </DialogDescription>
+        </DialogHeader>
+        {currentDetailsProject && (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.name)}
+            </dt>
+            <dd className="min-w-0 break-words font-medium">{currentDetailsProject.name}</dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.id)}
+            </dt>
+            <dd className="min-w-0 break-all font-mono text-xs">{currentDetailsProject.id}</dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.engine)}
+            </dt>
+            <dd>{projectEngineLabel(currentDetailsProject.engine, currentDetailsProject.main_doc)}</dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.kind)}
+            </dt>
+            <dd className="capitalize">{projectKindLabel(t, currentDetailsProject.kind)}</dd>
+            {currentDetailsProject.forked_from && (
+              <>
+                <dt className="text-muted-foreground">
+                  {t(($) => $.library.projects.detailsDialog.forkedFrom)}
+                </dt>
+                <dd className="min-w-0 break-words">{currentDetailsProject.forked_from}</dd>
+              </>
+            )}
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.mainDocument)}
+            </dt>
+            <dd className="min-w-0 break-all font-mono text-xs">
+              {currentDetailsProject.main_doc}
+            </dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.created)}
+            </dt>
+            <dd>{projectDateTime(currentDetailsProject.created_at)}</dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.modified)}
+            </dt>
+            <dd>{projectDateTime(currentDetailsProject.updated_at)}</dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.color)}
+            </dt>
+            <dd className="flex items-center gap-2">
+              <span
+                className="size-3.5 rounded-full border"
+                style={{ background: currentDetailsProject.color || DEFAULT_BOOK_COLOR }}
+              />
+              <span className="font-mono text-xs">
+                {currentDetailsProject.color || DEFAULT_BOOK_COLOR}
+              </span>
+            </dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.bookmarked)}
+            </dt>
+            <dd>
+              {favs.includes(currentDetailsProject.id)
+                ? t(($) => $.common.actions.yes)
+                : t(($) => $.common.actions.no)}
+            </dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.preview)}
+            </dt>
+            <dd>
+              {currentDetailsProject.has_preview
+                ? t(($) => $.library.projects.detailsDialog.previewAvailable)
+                : t(($) => $.library.projects.detailsDialog.previewUnavailable)}
+            </dd>
+            <dt className="text-muted-foreground">
+              {t(($) => $.library.projects.detailsDialog.exports)}
+            </dt>
+            <dd>{currentDetailsProject.exports.length}</dd>
+          </dl>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
+  const renderHistoryDialog = () => (
+    historyProject && <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          setHistoryProject(null);
+          releasePointerLock();
+        }
+      }}
+    >
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $.library.projects.exportsDialog.title)}</DialogTitle>
+          <DialogDescription asChild>
+            <p>
+              {currentHistoryProject ? (
+                <Trans
+                  ns="library"
+                  i18nKey={($) => $.library.projects.exportsDialog.from}
+                  values={{ name: currentHistoryProject.name }}
+                  components={{
+                    name: <strong className="font-medium text-foreground" />,
+                  }}
+                />
+              ) : (
+                t(($) => $.library.projects.exportsDialog.fromUnknown)
+              )}
+            </p>
+          </DialogDescription>
+        </DialogHeader>
+        {currentHistoryProject &&
+          (currentHistoryProject.exports.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {t(($) => $.library.projects.exportsDialog.empty)}
+            </p>
+          ) : (
+            <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
+              {keyedExports(currentHistoryProject.exports).map(({ item, key }) => (
+                <div
+                  key={key}
+                  className="flex flex-col gap-1 rounded-lg border bg-card p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 break-words text-sm font-medium">
+                      {item.filename}
+                    </span>
+                    <span className="shrink-0 text-xs font-medium uppercase text-muted-foreground">
+                      {item.format || t(($) => $.library.projects.exportsDialog.fallbackFormat)}
+                    </span>
+                  </div>
+                  <span className="break-all font-mono text-xs text-muted-foreground">
+                    {item.path}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock3 className="size-3" />
+                    {projectDateTime(item.date)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+      </DialogContent>
+    </Dialog>
+  );
+
+  const renderFirstRunWelcome = () => (
+    projects.length === 0 && (
+      // Until the first listProjects resolves we don't know whether the
+      // library is empty, so don't flash the first-run welcome.
+      projectsLoaded ? (
+      <Empty className="min-h-[60vh] py-10">
+        <EmptyHeader className="max-w-2xl">
+          <EmptyMedia className="size-16 overflow-hidden rounded-2xl border-white/20 bg-white p-0 shadow-sm sm:size-20">
+            <img
+              src="/oleafly-tile-gradient.png"
+              alt={t(($) => $.library.home.appIconAlt)}
+              className="size-full object-cover"
+            />
+          </EmptyMedia>
+          <EmptyTitle>{t(($) => $.library.home.welcomeTitle)}</EmptyTitle>
+          <EmptyDescription className="max-w-xl leading-relaxed">
+            {t(($) => $.library.home.welcomeDescription)}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent className="max-w-2xl">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button
+              data-testid="create-first-project"
+              data-tour="new-project"
+              className="bg-primary text-white hover:bg-primary"
+              onClick={() => setNewProjectOpen(true)}
+            >
+              <Plus className="size-4" /> {t(($) => $.library.home.createFirstProject)}
+            </Button>
+          </div>
+        </EmptyContent>
+      </Empty>
+      ) : (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <output
+            aria-live="polite"
+            className="flex flex-col items-center gap-3"
+          >
+            <LeafLogo className="size-8 opacity-80" />
+            <span className="ai-shimmer text-sm text-muted-foreground">
+              {t(($) => $.library.home.loading)}
+            </span>
+          </output>
+        </div>
+      )
+    )
+  );
+
+  const renderNoMatchesEmpty = () => (
+    projects.length > 0 && visibleProjects.length === 0 ? (
+      <Empty className="min-h-[60vh]">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            {bookmarkIsOnlyActiveFilter ? (
+              <BookmarkX className="size-6" />
+            ) : (
+              <SearchX className="size-6" />
+            )}
+          </EmptyMedia>
+          <EmptyTitle>
+            {bookmarkIsOnlyActiveFilter
+              ? t(($) => $.library.home.noBookmarksTitle)
+              : t(($) => $.library.home.noMatchesTitle)}
+          </EmptyTitle>
+          <EmptyDescription>
+            {bookmarkIsOnlyActiveFilter
+              ? t(($) => $.library.home.noBookmarksDescription)
+              : t(($) => $.library.home.noMatchesDescription)}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    ) : null
+  );
+
+  const renderLibraryToolbar = () => (
+    <div className="flex w-full min-w-0 max-w-[42rem] items-center gap-1.5 justify-self-center">
+    {projects.length > 0 ? (
+      <div className="relative min-w-0 flex-1">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          type="search"
+          aria-label={t(($) => $.library.home.searchLabel)}
+          placeholder={t(($) => $.library.home.searchPlaceholder, {
+            count: projects.length,
+            total: formatNumber(projects.length),
+          })}
+          value={filters.metadata}
+          onChange={(event) =>
+            setFilters((current) => ({
+              ...current,
+              metadata: event.target.value,
+            }))
+          }
+          className={cn(
+            HOME_DOCK_GLASS_SURFACE,
+            "h-11 rounded-2xl !bg-background/75 py-0 pl-10 pr-10 shadow-sm dark:!bg-background/65 dark:shadow-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
+          )}
+        />
+        {filters.metadata ? (
+          <button
+            type="button"
+            aria-label={t(($) => $.library.home.clearSearch)}
+            onClick={() =>
+              setFilters((current) => ({ ...current, metadata: "" }))
+            }
+            className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <X aria-hidden className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
+    ) : (
+      <span />
+    )}
+    <div
+      data-tauri-drag-region
+      className="flex shrink-0 items-center gap-1.5"
+    >
+    {projects.length > 0 ? (
+      <div className="order-2">
+        <ProjectImportMenu
+          align="end"
+          triggerTooltip={t(($) => $.library.home.import)}
+          trigger={(busy) => (
+            <Button
+              data-testid="import-project-button"
+              variant="ghost"
+              size="icon"
+              disabled={busy}
+              aria-label={t(($) => $.library.home.import)}
+              className={cn(
+                HOME_DOCK_GLASS_SURFACE,
+                "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground dark:!bg-background/65 dark:shadow-sm",
+              )}
+            >
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FolderInput className="size-4" />
+              )}
+            </Button>
+          )}
+        />
+      </div>
+    ) : null}
+    {projects.length > 0 && (
+      <Tooltip label={t(($) => $.library.home.advancedFilters)} className="order-1">
+          <Popover
+            ariaLabel={t(($) => $.library.home.advancedFilters)}
+            align="right"
+            closeOnClick={false}
+            className={cn(
+              HOME_DOCK_GLASS_SURFACE,
+              "relative flex w-96 flex-col gap-3 overflow-hidden rounded-2xl !border-white/25 !bg-background/70 p-4 ring-1 ring-inset ring-white/10 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:!border-white/15 dark:!bg-background/65 [&>*]:relative [&>*]:z-[1]",
+            )}
+            triggerClassName={cn(
+              HOME_DOCK_GLASS_SURFACE,
+              "size-10 rounded-2xl !bg-background/75 p-0 shadow-sm dark:!bg-background/65 dark:shadow-sm",
+            )}
+            trigger={
+              <span className="relative inline-flex">
+                <SlidersHorizontal className="size-4" />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-primary" />
+                )}
+              </span>
+            }
+          >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-sm font-semibold">
+                {t(($) => $.library.home.filtersTitle)}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {t(($) => $.library.home.filtersHint)}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={activeFilterCount === 0}
+              onClick={() =>
+                setFilters((current) => ({
+                  ...DEFAULT_PROJECT_FILTERS,
+                  metadata: current.metadata,
+                }))
+              }
+            >
+              {t(($) => $.library.home.resetFilters)}
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <FilterSelect
+              name="engine"
+              label={t(($) => $.library.home.filters.engine)}
+              value={filters.engine}
+              onChange={(engine) =>
+                setFilters((current) => ({
+                  ...current,
+                  engine: engine as ProjectFilters["engine"],
+                }))
+              }
+              options={[
+                { value: "all", label: t(($) => $.library.home.filters.engineAll) },
+                { value: "tectonic", label: "Tectonic" },
+                { value: "typst", label: "Typst" },
+                { value: "markdown", label: "Markdown" },
+              ]}
+            />
+            <FilterSelect
+              name="kind"
+              label={t(($) => $.library.home.filters.kind)}
+              value={filters.kind}
+              onChange={(kind) =>
+                setFilters((current) => ({
+                  ...current,
+                  kind: kind as ProjectFilters["kind"],
+                }))
+              }
+              options={[
+                { value: "all", label: t(($) => $.library.home.filters.kindAll) },
+                { value: "document", label: t(($) => $.library.home.filters.kindDocument) },
+                { value: "image", label: t(($) => $.library.home.filters.kindImage) },
+                { value: "diagram", label: t(($) => $.library.home.filters.kindDiagram) },
+              ]}
+            />
+            <FilterSelect
+              name="bookmark"
+              label={t(($) => $.library.home.filters.bookmark)}
+              value={filters.bookmark}
+              onChange={(bookmark) =>
+                setFilters((current) => ({
+                  ...current,
+                  bookmark: bookmark as ProjectFilters["bookmark"],
+                }))
+              }
+              options={[
+                { value: "all", label: t(($) => $.library.home.filters.bookmarkAll) },
+                { value: "yes", label: t(($) => $.library.home.filters.bookmarkYes) },
+                { value: "no", label: t(($) => $.library.home.filters.bookmarkNo) },
+              ]}
+            />
+            <FilterSelect
+              name="preview"
+              label={t(($) => $.library.home.filters.preview)}
+              value={filters.preview}
+              onChange={(preview) =>
+                setFilters((current) => ({
+                  ...current,
+                  preview: preview as ProjectFilters["preview"],
+                }))
+              }
+              options={[
+                { value: "all", label: t(($) => $.library.home.filters.previewAll) },
+                { value: "yes", label: t(($) => $.library.home.filters.previewYes) },
+                { value: "no", label: t(($) => $.library.home.filters.previewNo) },
+              ]}
+            />
+            <FilterSelect
+              name="created"
+              label={t(($) => $.library.home.filters.created)}
+              value={filters.created}
+              onChange={(created) =>
+                setFilters((current) => ({
+                  ...current,
+                  created: created as ProjectFilters["created"],
+                }))
+              }
+              options={[
+                { value: "all", label: t(($) => $.library.home.filters.anyTime) },
+                { value: "7", label: t(($) => $.library.home.filters.last7Days) },
+                { value: "30", label: t(($) => $.library.home.filters.last30Days) },
+                { value: "365", label: t(($) => $.library.home.filters.lastYear) },
+              ]}
+            />
+            <FilterSelect
+              name="modified"
+              label={t(($) => $.library.home.filters.modified)}
+              value={filters.modified}
+              onChange={(modified) =>
+                setFilters((current) => ({
+                  ...current,
+                  modified: modified as ProjectFilters["modified"],
+                }))
+              }
+              options={[
+                { value: "all", label: t(($) => $.library.home.filters.anyTime) },
+                { value: "7", label: t(($) => $.library.home.filters.last7Days) },
+                { value: "30", label: t(($) => $.library.home.filters.last30Days) },
+                { value: "365", label: t(($) => $.library.home.filters.lastYear) },
+              ]}
+            />
+          </div>
+          </Popover>
+      </Tooltip>
+    )}
+    </div>
+    </div>
+  );
+
 
   return (
     <div
@@ -541,9 +1409,8 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-[var(--home-background)]"
     >
-      {bgPattern === "grid" ? (
-        <GridPattern width={22} height={22} />
-      ) : bgPattern === "dots" ? (
+      {bgPattern === "grid" ? <GridPattern width={22} height={22} /> : null}
+      {bgPattern === "dots" ? (
         <>
           <DotPattern width={22} height={22} radius={1} className="dark:hidden" />
           <div
@@ -574,267 +1441,8 @@ export function Library() {
           ) : (
             <span data-tauri-drag-region />
           )}
-          <div className="flex w-full min-w-0 max-w-[42rem] items-center gap-1.5 justify-self-center">
-          {projects.length > 0 ? (
-            <div className="relative min-w-0 flex-1">
-              <Search
-                aria-hidden
-                className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                type="search"
-                aria-label={t(($) => $.library.home.searchLabel)}
-                placeholder={t(($) => $.library.home.searchPlaceholder, {
-                  count: projects.length,
-                  total: formatNumber(projects.length),
-                })}
-                value={filters.metadata}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    metadata: event.target.value,
-                  }))
-                }
-                className={cn(
-                  HOME_DOCK_GLASS_SURFACE,
-                  "h-11 rounded-2xl !bg-background/75 py-0 pl-10 pr-10 shadow-sm dark:!bg-background/65 dark:shadow-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
-                )}
-              />
-              {filters.metadata ? (
-                <button
-                  type="button"
-                  aria-label={t(($) => $.library.home.clearSearch)}
-                  onClick={() =>
-                    setFilters((current) => ({ ...current, metadata: "" }))
-                  }
-                  className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <X aria-hidden className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            <span />
-          )}
-          <div
-            data-tauri-drag-region
-            className="flex shrink-0 items-center gap-1.5"
-          >
-          {projects.length > 0 ? (
-            <div className="order-2">
-              <ProjectImportMenu
-                align="end"
-                triggerTooltip={t(($) => $.library.home.import)}
-                trigger={(busy) => (
-                  <Button
-                    data-testid="import-project-button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={busy}
-                    aria-label={t(($) => $.library.home.import)}
-                    className={cn(
-                      HOME_DOCK_GLASS_SURFACE,
-                      "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground dark:!bg-background/65 dark:shadow-sm",
-                    )}
-                  >
-                    {busy ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <FolderInput className="size-4" />
-                    )}
-                  </Button>
-                )}
-              />
-            </div>
-          ) : null}
-          {projects.length > 0 && (
-            <Tooltip label={t(($) => $.library.home.advancedFilters)} className="order-1">
-                <Popover
-                  ariaLabel={t(($) => $.library.home.advancedFilters)}
-                  align="right"
-                  closeOnClick={false}
-                  className={cn(
-                    HOME_DOCK_GLASS_SURFACE,
-                    "relative flex w-96 flex-col gap-3 overflow-hidden rounded-2xl !border-white/25 !bg-background/70 p-4 ring-1 ring-inset ring-white/10 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:!border-white/15 dark:!bg-background/65 [&>*]:relative [&>*]:z-[1]",
-                  )}
-                  triggerClassName={cn(
-                    HOME_DOCK_GLASS_SURFACE,
-                    "size-10 rounded-2xl !bg-background/75 p-0 shadow-sm dark:!bg-background/65 dark:shadow-sm",
-                  )}
-                  trigger={
-                    <span className="relative inline-flex">
-                      <SlidersHorizontal className="size-4" />
-                      {activeFilterCount > 0 && (
-                        <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-primary" />
-                      )}
-                    </span>
-                  }
-                >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col gap-0.5">
-                    <h2 className="text-sm font-semibold">
-                      {t(($) => $.library.home.filtersTitle)}
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {t(($) => $.library.home.filtersHint)}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={activeFilterCount === 0}
-                    onClick={() =>
-                      setFilters((current) => ({
-                        ...DEFAULT_PROJECT_FILTERS,
-                        metadata: current.metadata,
-                      }))
-                    }
-                  >
-                    {t(($) => $.library.home.resetFilters)}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <FilterSelect
-                    name="engine"
-                    label={t(($) => $.library.home.filters.engine)}
-                    value={filters.engine}
-                    onChange={(engine) =>
-                      setFilters((current) => ({
-                        ...current,
-                        engine: engine as ProjectFilters["engine"],
-                      }))
-                    }
-                    options={[
-                      { value: "all", label: t(($) => $.library.home.filters.engineAll) },
-                      { value: "tectonic", label: "Tectonic" },
-                      { value: "typst", label: "Typst" },
-                      { value: "markdown", label: "Markdown" },
-                    ]}
-                  />
-                  <FilterSelect
-                    name="kind"
-                    label={t(($) => $.library.home.filters.kind)}
-                    value={filters.kind}
-                    onChange={(kind) =>
-                      setFilters((current) => ({
-                        ...current,
-                        kind: kind as ProjectFilters["kind"],
-                      }))
-                    }
-                    options={[
-                      { value: "all", label: t(($) => $.library.home.filters.kindAll) },
-                      { value: "document", label: t(($) => $.library.home.filters.kindDocument) },
-                      { value: "image", label: t(($) => $.library.home.filters.kindImage) },
-                      { value: "diagram", label: t(($) => $.library.home.filters.kindDiagram) },
-                    ]}
-                  />
-                  <FilterSelect
-                    name="bookmark"
-                    label={t(($) => $.library.home.filters.bookmark)}
-                    value={filters.bookmark}
-                    onChange={(bookmark) =>
-                      setFilters((current) => ({
-                        ...current,
-                        bookmark: bookmark as ProjectFilters["bookmark"],
-                      }))
-                    }
-                    options={[
-                      { value: "all", label: t(($) => $.library.home.filters.bookmarkAll) },
-                      { value: "yes", label: t(($) => $.library.home.filters.bookmarkYes) },
-                      { value: "no", label: t(($) => $.library.home.filters.bookmarkNo) },
-                    ]}
-                  />
-                  <FilterSelect
-                    name="preview"
-                    label={t(($) => $.library.home.filters.preview)}
-                    value={filters.preview}
-                    onChange={(preview) =>
-                      setFilters((current) => ({
-                        ...current,
-                        preview: preview as ProjectFilters["preview"],
-                      }))
-                    }
-                    options={[
-                      { value: "all", label: t(($) => $.library.home.filters.previewAll) },
-                      { value: "yes", label: t(($) => $.library.home.filters.previewYes) },
-                      { value: "no", label: t(($) => $.library.home.filters.previewNo) },
-                    ]}
-                  />
-                  <FilterSelect
-                    name="created"
-                    label={t(($) => $.library.home.filters.created)}
-                    value={filters.created}
-                    onChange={(created) =>
-                      setFilters((current) => ({
-                        ...current,
-                        created: created as ProjectFilters["created"],
-                      }))
-                    }
-                    options={[
-                      { value: "all", label: t(($) => $.library.home.filters.anyTime) },
-                      { value: "7", label: t(($) => $.library.home.filters.last7Days) },
-                      { value: "30", label: t(($) => $.library.home.filters.last30Days) },
-                      { value: "365", label: t(($) => $.library.home.filters.lastYear) },
-                    ]}
-                  />
-                  <FilterSelect
-                    name="modified"
-                    label={t(($) => $.library.home.filters.modified)}
-                    value={filters.modified}
-                    onChange={(modified) =>
-                      setFilters((current) => ({
-                        ...current,
-                        modified: modified as ProjectFilters["modified"],
-                      }))
-                    }
-                    options={[
-                      { value: "all", label: t(($) => $.library.home.filters.anyTime) },
-                      { value: "7", label: t(($) => $.library.home.filters.last7Days) },
-                      { value: "30", label: t(($) => $.library.home.filters.last30Days) },
-                      { value: "365", label: t(($) => $.library.home.filters.lastYear) },
-                    ]}
-                  />
-                </div>
-                </Popover>
-            </Tooltip>
-          )}
-          </div>
-          </div>
-          <div data-tauri-drag-region className="flex min-w-max items-center">
-            {projects.length > 0 ? (
-              <fieldset
-                aria-label={t(($) => $.library.home.layoutGroup)}
-                className={cn(
-                  "flex items-center rounded-xl border border-white/20 bg-background/75 p-1 shadow-sm backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-background/65",
-                  isWindows && "mr-3",
-                )}
-              >
-                {([
-                  { mode: "list", label: t(($) => $.library.home.listView), icon: List },
-                  { mode: "grid", label: t(($) => $.library.home.gridView), icon: LayoutGrid },
-                ] as const).map(({ mode, label, icon: Icon }) => (
-                  <Tooltip key={mode} label={label} side="bottom">
-                    <button
-                      type="button"
-                      onClick={() => setProjectLayout(mode)}
-                      aria-label={label}
-                      aria-pressed={projectLayout === mode}
-                      className={cn(
-                        "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors focus-visible:ring-1 focus-visible:ring-ring",
-                        projectLayout === mode
-                          ? "bg-white/15 text-foreground shadow-sm dark:bg-white/10"
-                          : "hover:text-foreground",
-                      )}
-                    >
-                      <Icon aria-hidden className="size-4" />
-                    </button>
-                  </Tooltip>
-                ))}
-              </fieldset>
-            ) : null}
-            <WindowControls />
-          </div>
+          {renderLibraryToolbar()}
+          {renderLayoutSwitcher()}
         </div>
       </header>
 
@@ -853,583 +1461,19 @@ export function Library() {
               : "max-w-4xl xl:max-w-5xl 2xl:max-w-7xl",
           )}
         >
-          {projects.length === 0 ? (
-            // Until the first listProjects resolves we don't know whether the
-            // library is empty, so don't flash the first-run welcome.
-            projectsLoaded ? (
-            <Empty className="min-h-[60vh] py-10">
-              <EmptyHeader className="max-w-2xl">
-                <EmptyMedia className="size-16 overflow-hidden rounded-2xl border-white/20 bg-white p-0 shadow-sm sm:size-20">
-                  <img
-                    src="/oleafly-tile-gradient.png"
-                    alt={t(($) => $.library.home.appIconAlt)}
-                    className="size-full object-cover"
-                  />
-                </EmptyMedia>
-                <EmptyTitle>{t(($) => $.library.home.welcomeTitle)}</EmptyTitle>
-                <EmptyDescription className="max-w-xl leading-relaxed">
-                  {t(($) => $.library.home.welcomeDescription)}
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent className="max-w-2xl">
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button
-                    data-testid="create-first-project"
-                    data-tour="new-project"
-                    className="bg-primary text-white hover:bg-primary"
-                    onClick={() => setNewProjectOpen(true)}
-                  >
-                    <Plus className="size-4" /> {t(($) => $.library.home.createFirstProject)}
-                  </Button>
-                </div>
-              </EmptyContent>
-            </Empty>
-            ) : (
-              <div className="flex min-h-[60vh] items-center justify-center">
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="flex flex-col items-center gap-3"
-                >
-                  <LeafLogo className="size-8 opacity-80" />
-                  <span className="ai-shimmer text-sm text-muted-foreground">
-                    {t(($) => $.library.home.loading)}
-                  </span>
-                </div>
-              </div>
-            )
-          ) : (
-          visibleProjects.length === 0 ? (
-            <Empty className="min-h-[60vh]">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  {bookmarkIsOnlyActiveFilter ? (
-                    <BookmarkX className="size-6" />
-                  ) : (
-                    <SearchX className="size-6" />
-                  )}
-                </EmptyMedia>
-                <EmptyTitle>
-                  {bookmarkIsOnlyActiveFilter
-                    ? t(($) => $.library.home.noBookmarksTitle)
-                    : t(($) => $.library.home.noMatchesTitle)}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {bookmarkIsOnlyActiveFilter
-                    ? t(($) => $.library.home.noBookmarksDescription)
-                    : t(($) => $.library.home.noMatchesDescription)}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-          projectLayout === "grid" ? (
-          <div
-            data-testid="project-grid"
-            className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16 2xl:grid-cols-5"
-          >
-            {visibleProjects.map((p) => (
-              <ContextMenu key={p.id}>
-                <ContextMenuTrigger asChild>
-                  <div className="flex justify-center">
-                    <Book
-                      title={p.name}
-                      color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
-                      date={
-                        p.recovery_pending
-                          ? t(($) => $.library.projects.openToRecover)
-                          : projectModifiedLabel(p.updated_at)
-                      }
-                      engine={
-                        p.recovery_pending
-                          ? t(($) => $.library.projects.recoveryRequired)
-                          : projectEngineLabel(p.engine, p.main_doc)
-                      }
-                      forkedFrom={p.forked_from}
-                      kind={
-                        p.recovery_pending
-                          ? t(($) => $.library.projects.openToRecover)
-                          : projectKindLabel(t, p.kind)
-                      }
-                      openLabel={
-                        p.recovery_pending
-                          ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
-                          : undefined
-                      }
-                      starred={favs.includes(p.id)}
-                      onStarToggle={
-                        p.recovery_pending ? undefined : () => toggleFav(p.id)
-                      }
-                      menu={
-                        p.recovery_pending ? null : <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              aria-label={t(($) => $.library.projects.actions, { name: p.name })}
-                              onClick={(event) => event.stopPropagation()}
-                              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-                            >
-                              <Info className="size-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52">
-                            {projectMenuItems(p, {
-                              Item: DropdownMenuItem,
-                              Sub: DropdownMenuSub,
-                              SubTrigger: DropdownMenuSubTrigger,
-                              SubContent: DropdownMenuSubContent,
-                            })}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      }
-                      onClick={() => void openProject(p.id)}
-                      onPreviewRequest={
-                        p.recovery_pending
-                          ? undefined
-                          : () => hoverPreview && loadThumb(p.id, p.updated_at)
-                      }
-                      preview={
-                        !p.recovery_pending && hoverPreview
-                          ? thumbs[p.id]
-                          : undefined
-                      }
-                      width={180}
-                    />
-                  </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent className="w-52">
-                  {projectMenuItems(p, {
-                    Item: ContextMenuItem,
-                    Sub: ContextMenuSub,
-                    SubTrigger: ContextMenuSubTrigger,
-                    SubContent: ContextMenuSubContent,
-                  })}
-                </ContextMenuContent>
-              </ContextMenu>
-            ))}
-          </div>
-          ) : (
-          <div data-testid="project-list" className="border-b border-border/70">
-            <div
-              aria-hidden="true"
-              className="hidden min-h-10 grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] items-center gap-4 border-b border-border/70 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:grid"
-            >
-              <span>{t(($) => $.library.home.columns.name)}</span>
-              <span>{t(($) => $.library.home.columns.type)}</span>
-              <span>{t(($) => $.library.home.columns.engine)}</span>
-              <span>{t(($) => $.library.home.columns.modified)}</span>
-              <span />
-            </div>
-            {visibleProjects.map((p) => {
-              const recoveryPending = p.recovery_pending;
-              const color = projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR);
-              const starred = favs.includes(p.id);
-              const forkSource = p.forked_from
-                ? projects.find((project) => project.id === p.forked_from)?.name ??
-                  p.forked_from
-                : null;
-              return (
-                <ContextMenu key={p.id}>
-                  <ContextMenuTrigger asChild>
-                    <div className="group grid min-h-[5.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-3 transition-colors last:border-b-0 hover:bg-accent/35 sm:grid-cols-[minmax(0,1fr)_9rem_auto] lg:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] lg:gap-4 lg:px-4">
-                      <button
-                        type="button"
-                        aria-label={
-                          recoveryPending
-                            ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
-                            : t(($) => $.library.projects.open, { name: p.name })
-                        }
-                        onClick={() => void openProject(p.id)}
-                        onMouseEnter={() => {
-                          if (recoveryPending || !hoverPreview) return;
-                          setPreviewProjectId(p.id);
-                          loadThumb(p.id, p.updated_at);
-                        }}
-                        onMouseLeave={() =>
-                          setPreviewProjectId((current) =>
-                            current === p.id ? null : current,
-                          )
-                        }
-                        onFocus={() => {
-                          if (recoveryPending || !hoverPreview) return;
-                          setPreviewProjectId(p.id);
-                          loadThumb(p.id, p.updated_at);
-                        }}
-                        onBlur={() =>
-                          setPreviewProjectId((current) =>
-                            current === p.id ? null : current,
-                          )
-                        }
-                        className="flex min-w-0 items-center gap-3 rounded-md py-3 text-left focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-inset ring-black/10 shadow-sm"
-                          style={{ backgroundColor: color }}
-                        >
-                          {hoverPreview &&
-                          !recoveryPending &&
-                          previewProjectId === p.id &&
-                          thumbs[p.id] ? (
-                            <img
-                              src={thumbs[p.id] ?? undefined}
-                              alt=""
-                              draggable={false}
-                              className="size-full object-cover object-top"
-                            />
-                          ) : null}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium text-foreground">
-                            {p.name}
-                          </span>
-                          {recoveryPending ? (
-                            <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
-                              {t(($) => $.library.projects.openToRecover)}
-                            </span>
-                          ) : (
-                            <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
-                              {projectEngineLabel(p.engine, p.main_doc)} · {projectKindLabel(t, p.kind)}
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                      <span className="hidden text-xs capitalize text-muted-foreground lg:block">
-                        {recoveryPending
-                          ? t(($) => $.library.projects.recoveryShort)
-                          : projectKindLabel(t, p.kind)}
-                      </span>
-                      <span className="hidden text-xs text-muted-foreground lg:block">
-                        {recoveryPending
-                          ? t(($) => $.library.projects.recoveryMetadata)
-                          : projectEngineLabel(p.engine, p.main_doc)}
-                      </span>
-                      <span className="hidden text-xs text-muted-foreground sm:block">
-                        {recoveryPending
-                          ? t(($) => $.library.projects.recoveryModified)
-                          : projectModifiedLabel(p.updated_at)}
-                      </span>
-                      <span className="flex items-center justify-end gap-0.5">
-                        {recoveryPending ? (
-                          <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-                            {t(($) => $.library.projects.recoveryRequired)}
-                          </span>
-                        ) : forkSource ? (
-                          <Tooltip
-                            label={t(($) => $.library.projects.forkedFrom, { name: forkSource })}
-                          >
-                            <span
-                              role="img"
-                              aria-label={t(($) => $.library.projects.forkedFrom, {
-                                name: forkSource,
-                              })}
-                              className="flex size-7 items-center justify-center text-muted-foreground"
-                            >
-                              <GitFork aria-hidden className="size-4" />
-                            </span>
-                          </Tooltip>
-                        ) : null}
-                        {!recoveryPending ? <Tooltip
-                          label={
-                            p.has_preview
-                              ? t(($) => $.library.projects.previewPdf)
-                              : t(($) => $.library.projects.previewUnavailable)
-                          }
-                        >
-                          <button
-                            type="button"
-                            disabled={!p.has_preview}
-                            onClick={() => void openProjectPreview(p)}
-                            aria-label={t(($) => $.library.projects.previewNamed, { name: p.name })}
-                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
-                          >
-                            <Eye aria-hidden className="size-4" />
-                          </button>
-                        </Tooltip> : null}
-                        {!recoveryPending ? <Tooltip
-                          label={
-                            starred
-                              ? t(($) => $.library.projects.favoriteRemove)
-                              : t(($) => $.library.projects.favoriteAdd)
-                          }
-                        >
-                          <button
-                            type="button"
-                            onClick={() => toggleFav(p.id)}
-                            aria-label={
-                              starred
-                                ? t(($) => $.library.projects.favoriteRemove)
-                                : t(($) => $.library.projects.favoriteAdd)
-                            }
-                            className={cn(
-                              "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring",
-                              starred && "text-amber-500 hover:text-amber-500",
-                            )}
-                            style={starred ? { color: "#f59e0b" } : undefined}
-                          >
-                            {starred ? (
-                              <BookmarkCheck
-                                aria-hidden
-                                className="size-4 fill-current"
-                              />
-                            ) : (
-                              <Bookmark aria-hidden className="size-4" />
-                            )}
-                          </button>
-                        </Tooltip> : null}
-                        {!recoveryPending ? <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              aria-label={t(($) => $.library.projects.actions, { name: p.name })}
-                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100"
-                            >
-                              <Info aria-hidden className="size-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52">
-                            {projectMenuItems(p, {
-                              Item: DropdownMenuItem,
-                              Sub: DropdownMenuSub,
-                              SubTrigger: DropdownMenuSubTrigger,
-                              SubContent: DropdownMenuSubContent,
-                            })}
-                          </DropdownMenuContent>
-                        </DropdownMenu> : null}
-                      </span>
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="w-52">
-                    {projectMenuItems(p, {
-                      Item: ContextMenuItem,
-                      Sub: ContextMenuSub,
-                      SubTrigger: ContextMenuSubTrigger,
-                      SubContent: ContextMenuSubContent,
-                    })}
-                  </ContextMenuContent>
-                </ContextMenu>
-              );
-            })}
-          </div>
-          )
-          )
-          )}
+          {renderFirstRunWelcome()}
+          {renderNoMatchesEmpty()}
+          {renderProjectCollection()}
         </div>
       </div>
       </div>
 
       {/* New Project gallery is mounted globally (GlobalNewProject), not here. */}
-      {previewProject && (
-        <Dialog
-          open
-          onOpenChange={(open) => {
-            if (!open) closeProjectPreview();
-          }}
-        >
-          <DialogContent className="h-[min(88vh,56rem)] max-w-[54rem] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
-            <DialogHeader className="px-5 py-4 pr-12">
-              <DialogTitle>
-                {t(($) => $.library.projects.preview.title, { name: previewProject.name })}
-              </DialogTitle>
-              <DialogDescription>
-                {t(($) => $.library.projects.preview.description)}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="relative min-h-0 overflow-hidden border-t bg-sidebar">
-              {previewError ? (
-                <div
-                  role="alert"
-                  className="flex h-full items-center justify-center p-8 text-sm text-destructive"
-                >
-                  {previewError}
-                </div>
-              ) : previewBytes ? (
-                <section
-                  data-pdf-scroll-root
-                  aria-label={t(($) => $.library.projects.preview.region, {
-                    name: previewProject.name,
-                  })}
-                  className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                >
-                  <PdfViewer
-                    data={previewBytes}
-                    documentIdentity={`library:${previewProject.id}:${previewProject.updated_at}`}
-                    scale={1}
-                    layout="single"
-                  />
-                </section>
-              ) : (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="flex h-full items-center justify-center gap-2 p-8 text-sm text-muted-foreground"
-                >
-                  <Loader2
-                    aria-hidden
-                    className="size-4 animate-spin motion-reduce:animate-none"
-                  />
-                  {t(($) => $.library.projects.preview.loading)}
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {renderPreviewDialog()}
 
-      {detailsProject && <Dialog
-        open
-        onOpenChange={(open) => {
-          if (!open) {
-            setDetailsProject(null);
-            releasePointerLock();
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t(($) => $.library.projects.detailsDialog.title)}</DialogTitle>
-            <DialogDescription>
-              {t(($) => $.library.projects.detailsDialog.description)}
-            </DialogDescription>
-          </DialogHeader>
-          {currentDetailsProject && (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.name)}
-              </dt>
-              <dd className="min-w-0 break-words font-medium">{currentDetailsProject.name}</dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.id)}
-              </dt>
-              <dd className="min-w-0 break-all font-mono text-xs">{currentDetailsProject.id}</dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.engine)}
-              </dt>
-              <dd>{projectEngineLabel(currentDetailsProject.engine, currentDetailsProject.main_doc)}</dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.kind)}
-              </dt>
-              <dd className="capitalize">{projectKindLabel(t, currentDetailsProject.kind)}</dd>
-              {currentDetailsProject.forked_from && (
-                <>
-                  <dt className="text-muted-foreground">
-                    {t(($) => $.library.projects.detailsDialog.forkedFrom)}
-                  </dt>
-                  <dd className="min-w-0 break-words">{currentDetailsProject.forked_from}</dd>
-                </>
-              )}
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.mainDocument)}
-              </dt>
-              <dd className="min-w-0 break-all font-mono text-xs">
-                {currentDetailsProject.main_doc}
-              </dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.created)}
-              </dt>
-              <dd>{projectDateTime(currentDetailsProject.created_at)}</dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.modified)}
-              </dt>
-              <dd>{projectDateTime(currentDetailsProject.updated_at)}</dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.color)}
-              </dt>
-              <dd className="flex items-center gap-2">
-                <span
-                  className="size-3.5 rounded-full border"
-                  style={{ background: currentDetailsProject.color || DEFAULT_BOOK_COLOR }}
-                />
-                <span className="font-mono text-xs">
-                  {currentDetailsProject.color || DEFAULT_BOOK_COLOR}
-                </span>
-              </dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.bookmarked)}
-              </dt>
-              <dd>
-                {favs.includes(currentDetailsProject.id)
-                  ? t(($) => $.common.actions.yes)
-                  : t(($) => $.common.actions.no)}
-              </dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.preview)}
-              </dt>
-              <dd>
-                {currentDetailsProject.has_preview
-                  ? t(($) => $.library.projects.detailsDialog.previewAvailable)
-                  : t(($) => $.library.projects.detailsDialog.previewUnavailable)}
-              </dd>
-              <dt className="text-muted-foreground">
-                {t(($) => $.library.projects.detailsDialog.exports)}
-              </dt>
-              <dd>{currentDetailsProject.exports.length}</dd>
-            </dl>
-          )}
-        </DialogContent>
-      </Dialog>}
+      {renderDetailsDialog()}
 
-      {historyProject && <Dialog
-        open
-        onOpenChange={(open) => {
-          if (!open) {
-            setHistoryProject(null);
-            releasePointerLock();
-          }
-        }}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t(($) => $.library.projects.exportsDialog.title)}</DialogTitle>
-            <DialogDescription asChild>
-              <p>
-                {currentHistoryProject ? (
-                  <Trans
-                    ns="library"
-                    i18nKey={($) => $.library.projects.exportsDialog.from}
-                    values={{ name: currentHistoryProject.name }}
-                    components={{
-                      name: <strong className="font-medium text-foreground" />,
-                    }}
-                  />
-                ) : (
-                  t(($) => $.library.projects.exportsDialog.fromUnknown)
-                )}
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-          {currentHistoryProject &&
-            (currentHistoryProject.exports.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                {t(($) => $.library.projects.exportsDialog.empty)}
-              </p>
-            ) : (
-              <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
-                {keyedExports(currentHistoryProject.exports).map(({ item, key }) => (
-                  <div
-                    key={key}
-                    className="flex flex-col gap-1 rounded-lg border bg-card p-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="min-w-0 break-words text-sm font-medium">
-                        {item.filename}
-                      </span>
-                      <span className="shrink-0 text-xs font-medium uppercase text-muted-foreground">
-                        {item.format || t(($) => $.library.projects.exportsDialog.fallbackFormat)}
-                      </span>
-                    </div>
-                    <span className="break-all font-mono text-xs text-muted-foreground">
-                      {item.path}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock3 className="size-3" />
-                      {projectDateTime(item.date)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ))}
-        </DialogContent>
-      </Dialog>}
+      {renderHistoryDialog()}
 
       {forkTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">

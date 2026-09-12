@@ -20,7 +20,7 @@ async function walkFiles(dir, baseDir) {
     if (entry.isDirectory()) {
       files.push(...(await walkFiles(full, baseDir)));
     } else if (entry.isFile()) {
-      const rel = relative(baseDir, full).split("\\").join("/");
+      const rel = relative(baseDir, full).replaceAll("\\", "/");
       if (rel === "pack.json") continue;
       files.push({ abs: full, rel });
     }
@@ -29,9 +29,10 @@ async function walkFiles(dir, baseDir) {
 }
 
 async function computeTreeSha256(skillDir) {
-  const files = (await walkFiles(skillDir, skillDir)).sort((a, b) =>
-    a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0,
-  );
+  const files = (await walkFiles(skillDir, skillDir)).sort((a, b) => {
+    if (a.rel < b.rel) return -1;
+    return a.rel > b.rel ? 1 : 0;
+  });
   const hash = createHash("sha256");
   let totalBytes = 0;
   for (const file of files) {
@@ -83,7 +84,9 @@ async function main() {
   );
 }
 
-main().catch((err) => {
+try {
+  await main();
+} catch (err) {
   console.error(err.message ?? err);
   process.exit(1);
-});
+}

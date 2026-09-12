@@ -15,7 +15,7 @@ const TABLE_SIZES = Array.from({ length: MAX_ROWS }, (_, row) =>
   })),
 ).flat();
 
-export function TableSizePicker({ menuRow }: { menuRow?: boolean }) {
+export function TableSizePicker({ menuRow }: Readonly<{ menuRow?: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [hover, setHover] = useState<{ row: number; col: number } | null>(null);
 

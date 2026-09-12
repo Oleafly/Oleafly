@@ -55,4 +55,4 @@ while :; do
   echo "compile failed (transient bundle fetch?); attempt $attempt after 75s" >&2
   sleep 75
 done
-test -s "$TMP/smoke.pdf"
+[[ -s "$TMP/smoke.pdf" ]]

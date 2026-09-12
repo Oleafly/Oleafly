@@ -23,6 +23,7 @@ import {
   type ResearchToolStatus,
   type ResearchToolView,
 } from "@/lib/chat-activity";
+import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { usePersistentExpansion } from "./expansion-state";
@@ -30,7 +31,7 @@ import { ToolPicture } from "./ToolPicture";
 
 const PREVIEW_LIMIT = 4_000;
 
-function ToolIcon({ view, className }: { view: ResearchToolView; className?: string }) {
+function ToolIcon({ view, className }: Readonly<{ view: ResearchToolView; className?: string }>) {
   const classes = cn("size-3.5 shrink-0 text-muted-foreground", className);
   if (view.kind === "command") return <Terminal className={classes} />;
   if (view.kind === "literature") return <BookOpen className={classes} />;
@@ -40,7 +41,7 @@ function ToolIcon({ view, className }: { view: ResearchToolView; className?: str
   return <Wrench className={classes} />;
 }
 
-function LeadingIcon({ view, expandable, expanded }: { view: ResearchToolView; expandable: boolean; expanded: boolean }) {
+function LeadingIcon({ view, expandable, expanded }: Readonly<{ view: ResearchToolView; expandable: boolean; expanded: boolean }>) {
   if (!expandable) return <ToolIcon view={view} />;
   if (expanded) return <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />;
   return (
@@ -51,7 +52,7 @@ function LeadingIcon({ view, expandable, expanded }: { view: ResearchToolView; e
   );
 }
 
-function StatusIcon({ status }: { status: ResearchToolStatus }) {
+function StatusIcon({ status }: Readonly<{ status: ResearchToolStatus }>) {
   if (status === "running") return <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />;
   if (status === "completed") return <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />;
   if (status === "cancelled" || status === "interrupted")
@@ -59,7 +60,7 @@ function StatusIcon({ status }: { status: ResearchToolStatus }) {
   return <XCircle className="size-3 shrink-0 text-destructive" />;
 }
 
-function LiteratureResults({ view, actions }: { view: ResearchToolView; actions?: ResearchChatActions }) {
+function LiteratureResults({ view, actions }: Readonly<{ view: ResearchToolView; actions?: ResearchChatActions }>) {
   const { t } = useTranslation(["common", "ai"]);
   if (!view.results?.length) return null;
   return (
@@ -103,10 +104,124 @@ function LiteratureResults({ view, actions }: { view: ResearchToolView; actions?
   );
 }
 
+function execStatusAttr(view: ResearchToolView): string | undefined {
+  if (view.kind !== "command") return undefined;
+  return view.status === "completed" ? view.statusLabel : view.statusLabel.toLowerCase();
+}
+
 function toolResult(tc: ToolEntry): "success" | "error" | undefined {
   if (tc.output?.includes('"success": true')) return "success";
   if (tc.output?.includes('"error"')) return "error";
   return undefined;
+}
+
+type ExpansionSetter = (value: boolean | ((current: boolean) => boolean)) => void;
+
+function toolCardHeader({
+  tc,
+  view,
+  expandable,
+  expanded,
+  regionId,
+  setExpanded,
+}: Readonly<{
+  tc: ToolEntry & { interrupted?: boolean };
+  view: ResearchToolView;
+  expandable: boolean;
+  expanded: boolean;
+  regionId: string;
+  setExpanded: ExpansionSetter;
+}>) {
+  return (
+    <button
+      type="button"
+      aria-controls={expandable ? regionId : undefined}
+      aria-expanded={expandable ? expanded : undefined}
+      onClick={() => expandable && setExpanded((value) => !value)}
+      className={cn("group flex w-full items-center gap-2 py-1 text-left", expandable && "cursor-pointer")}
+    >
+      <LeadingIcon view={view} expandable={expandable} expanded={expanded} />
+      <span className={cn("min-w-0 truncate text-sm text-foreground/90", view.kind === "command" && "font-mono text-[12px]")}>{view.kind === "command" ? `$ ${view.command || tc.name}` : view.label}</span>
+      <StatusIcon status={view.status} />
+      <span className="sr-only">{view.statusLabel}</span>
+      {tc.approval && (
+        <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium", tc.approval === "approved" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-destructive/15 text-destructive")}>{tc.approval === "approved"
+            ? i18n.t(($) => $.ai.toolCard.approved)
+            : i18n.t(($) => $.ai.toolCard.rejected)}</span>
+      )}
+      {view.summary && (
+        <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", view.verified === false && "text-destructive")}>{view.summary}</span>
+      )}
+    </button>
+  );
+}
+
+function diagnosticsList(view: ResearchToolView) {
+  if (!view.diagnostics?.length) return null;
+  return (
+    <ul className="space-y-1 py-1 text-[11px] text-destructive">
+      {[...new Set(view.diagnostics)].slice(0, 20).map((diagnostic) => <li key={diagnostic}>{diagnostic}</li>)}
+    </ul>
+  );
+}
+
+function artifactPreviewBody(preview: ResearchArtifactPreview) {
+  return (
+    <div className="py-1">
+      <p className="mb-1 truncate text-[10px] font-medium">{preview.relativePath}</p>
+      {preview.isBinary ? (
+        <p className="text-[10px] text-muted-foreground">{i18n.t(($) => $.ai.toolCard.binaryPreview)}</p>
+      ) : (
+        <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-muted-foreground">{preview.content}</pre>
+      )}
+      {preview.truncated && <p className="mt-1 text-[10px] text-muted-foreground">{i18n.t(($) => $.ai.toolCard.previewTruncated)}</p>}
+    </div>
+  );
+}
+
+function toolCardActions({
+  view,
+  actions,
+  truncated,
+  full,
+  setFull,
+  canOpenArtifact,
+  canOpenSource,
+  canOpenSession,
+  artifactLoading,
+  onOpenArtifact,
+  artifactButtonLabel,
+}: Readonly<{
+  view: ResearchToolView;
+  actions?: ResearchChatActions;
+  truncated: boolean;
+  full: boolean;
+  setFull: ExpansionSetter;
+  canOpenArtifact: boolean;
+  canOpenSource: boolean;
+  canOpenSession: boolean;
+  artifactLoading: boolean;
+  onOpenArtifact: () => void;
+  artifactButtonLabel: () => string;
+}>) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {truncated && (
+        <button type="button" className="rounded px-1.5 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setFull((value) => !value)}>{full ? i18n.t(($) => $.common.actions.showLess) : i18n.t(($) => $.ai.toolCard.showAll, { characters: formatNumber(view.output.length) })}</button>
+      )}
+      {canOpenArtifact && (
+        <button type="button" disabled={artifactLoading} className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent disabled:opacity-50" onClick={onOpenArtifact}>{artifactButtonLabel()}</button>
+      )}
+      {canOpenSource && (
+        <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => actions?.openSource?.({ url: view.url, doi: view.doi, page: view.page })}>{i18n.t(($) => $.ai.toolCard.openSource)}</button>
+      )}
+      {canOpenSession && (
+        <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => {
+          if (view.threadId) actions?.openSession?.({ threadId: view.threadId });
+        }}>{i18n.t(($) => $.ai.toolCard.openTask)}</button>
+      )}
+    </div>
+  );
 }
 
 export function ResearchToolCard({
@@ -114,12 +229,12 @@ export function ResearchToolCard({
   actions,
   expansionKey,
   live = false,
-}: {
+}: Readonly<{
   tc: ToolEntry & { interrupted?: boolean };
   actions?: ResearchChatActions;
   expansionKey?: string;
   live?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const view = projectToolEntry(tc);
   const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
@@ -137,6 +252,20 @@ export function ResearchToolCard({
   const canOpenArtifact = Boolean(actions?.openArtifact && view.artifactTarget);
   const canOpenSource = Boolean(actions?.openSource && (view.url || view.doi));
   const canOpenSession = Boolean(actions?.openSession && view.threadId);
+  const artifactButtonLabel = () => {
+    if (view.artifactTarget?.scope !== "linked") return t(($) => $.ai.toolCard.openFile);
+    return artifactLoading
+      ? t(($) => $.ai.toolCard.loadingSource)
+      : t(($) => $.ai.toolCard.inspectSource);
+  };
+  const openArtifact = () => {
+    if (!view.artifactTarget || !actions?.openArtifact) return;
+    setArtifactLoading(true);
+    setArtifactError(false);
+    Promise.resolve(actions.openArtifact(view.artifactTarget)).then((result) => {
+      if (result) setArtifactPreview(result);
+    }).catch(() => setArtifactError(true)).finally(() => setArtifactLoading(false));
+  };
   return (
     <div
       data-tool-name={tc.name}
@@ -144,29 +273,10 @@ export function ResearchToolCard({
       data-tool-result={toolResult(tc)}
       data-research-status={view.status}
       data-testid={view.kind === "command" ? "exec-card" : "research-tool-card"}
-      data-exec-status={view.kind === "command" ? (view.status === "completed" ? view.statusLabel : view.statusLabel.toLowerCase()) : undefined}
+      data-exec-status={execStatusAttr(view)}
       className="max-w-[85%] text-xs"
     >
-      <button
-        type="button"
-        aria-controls={expandable ? regionId : undefined}
-        aria-expanded={expandable ? expanded : undefined}
-        onClick={() => expandable && setExpanded((value) => !value)}
-        className={cn("group flex w-full items-center gap-2 py-1 text-left", expandable && "cursor-pointer")}
-      >
-        <LeadingIcon view={view} expandable={expandable} expanded={expanded} />
-        <span className={cn("min-w-0 truncate text-sm text-foreground/90", view.kind === "command" && "font-mono text-[12px]")}>{view.kind === "command" ? `$ ${view.command || tc.name}` : view.label}</span>
-        <StatusIcon status={view.status} />
-        <span className="sr-only">{view.statusLabel}</span>
-        {tc.approval && (
-          <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium", tc.approval === "approved" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-destructive/15 text-destructive")}>{tc.approval === "approved"
-              ? t(($) => $.ai.toolCard.approved)
-              : t(($) => $.ai.toolCard.rejected)}</span>
-        )}
-        {view.summary && (
-          <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", view.verified === false && "text-destructive")}>{view.summary}</span>
-        )}
-      </button>
+      {toolCardHeader({ tc, view, expandable, expanded, regionId, setExpanded })}
       {hasPicture && (live || expanded) && (
         <div className="ml-[0.4375rem] border-l pl-3">
           <ToolPicture tc={tc} />
@@ -175,49 +285,25 @@ export function ResearchToolCard({
       {expanded && (
         <div id={regionId} className="ml-[0.4375rem] space-y-2 border-l pl-3 pb-1">
           <LiteratureResults view={view} actions={actions} />
-          {view.diagnostics?.length ? (
-            <ul className="space-y-1 py-1 text-[11px] text-destructive">
-              {[...new Set(view.diagnostics)].slice(0, 20).map((diagnostic) => <li key={diagnostic}>{diagnostic}</li>)}
-            </ul>
-          ) : null}
+          {diagnosticsList(view)}
           {preview && (
             <pre className="max-h-80 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 px-2.5 py-2 font-mono text-[10px] text-muted-foreground">{preview}</pre>
           )}
-          {artifactPreview && (
-            <div className="py-1">
-              <p className="mb-1 truncate text-[10px] font-medium">{artifactPreview.relativePath}</p>
-              {artifactPreview.isBinary ? (
-                <p className="text-[10px] text-muted-foreground">{t(($) => $.ai.toolCard.binaryPreview)}</p>
-              ) : (
-                <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-muted-foreground">{artifactPreview.content}</pre>
-              )}
-              {artifactPreview.truncated && <p className="mt-1 text-[10px] text-muted-foreground">{t(($) => $.ai.toolCard.previewTruncated)}</p>}
-            </div>
-          )}
+          {artifactPreview && artifactPreviewBody(artifactPreview)}
           {artifactError && <p className="py-1 text-[10px] text-destructive">{t(($) => $.ai.toolCard.previewFailed)}</p>}
-          <div className="flex flex-wrap items-center gap-1">
-            {truncated && (
-              <button type="button" className="rounded px-1.5 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setFull((value) => !value)}>{full ? t(($) => $.common.actions.showLess) : t(($) => $.ai.toolCard.showAll, { characters: formatNumber(view.output.length) })}</button>
-            )}
-            {canOpenArtifact && (
-              <button type="button" disabled={artifactLoading} className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent disabled:opacity-50" onClick={() => {
-                if (!view.artifactTarget || !actions?.openArtifact) return;
-                setArtifactLoading(true);
-                setArtifactError(false);
-                Promise.resolve(actions.openArtifact(view.artifactTarget)).then((result) => {
-                  if (result) setArtifactPreview(result);
-                }).catch(() => setArtifactError(true)).finally(() => setArtifactLoading(false));
-              }}>{view.artifactTarget?.scope === "linked" ? (artifactLoading ? t(($) => $.ai.toolCard.loadingSource) : t(($) => $.ai.toolCard.inspectSource)) : t(($) => $.ai.toolCard.openFile)}</button>
-            )}
-            {canOpenSource && (
-              <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => actions?.openSource?.({ url: view.url, doi: view.doi, page: view.page })}>{t(($) => $.ai.toolCard.openSource)}</button>
-            )}
-            {canOpenSession && (
-              <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => {
-                if (view.threadId) actions?.openSession?.({ threadId: view.threadId });
-              }}>{t(($) => $.ai.toolCard.openTask)}</button>
-            )}
-          </div>
+          {toolCardActions({
+            view,
+            actions,
+            truncated,
+            full,
+            setFull,
+            canOpenArtifact,
+            canOpenSource,
+            canOpenSession,
+            artifactLoading,
+            onOpenArtifact: openArtifact,
+            artifactButtonLabel,
+          })}
         </div>
       )}
     </div>

@@ -57,7 +57,7 @@ const BY_NAME: Record<string, { Icon: LucideIcon; cls: string }> = {
   "makefile": { Icon: FileCode, cls: "text-green-500" },
 };
 
-export function FileIcon({ name, className }: { name: string; className?: string }) {
+export function FileIcon({ name, className }: Readonly<{ name: string; className?: string }>) {
   const lower = name.toLowerCase();
   const dot = lower.lastIndexOf(".");
   const ext = dot > 0 ? lower.slice(dot + 1) : "";

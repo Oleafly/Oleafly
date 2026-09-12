@@ -112,11 +112,79 @@ const PALETTE: {
   },
   { shape: "text", id: "text", key: "palette.text", icon: <TypeIcon className="size-4" /> },
   { shape: "text", id: "math", key: "palette.math", icon: <Sigma className="size-4" />, seed: "$E = mc^2$" },
-  { shape: "text", id: "code", key: "palette.code", icon: <Code2 className="size-4" />, seed: "\\texttt{print(x)}" },
+  { shape: "text", id: "code", key: "palette.code", icon: <Code2 className="size-4" />, seed: String.raw`\texttt{print(x)}` },
 ];
 
-const routingToType = (r: DiagEdge["routing"]) =>
-  r === "orthogonal" ? "diagramOrthogonal" : r === "curved" ? "default" : "straight";
+const routingToType = (r: DiagEdge["routing"]) => {
+  if (r === "orthogonal") return "diagramOrthogonal";
+  if (r === "curved") return "default";
+  return "straight";
+};
+
+function edgeStrokeStyle(style: DiagEdge["style"]): Edge["style"] {
+  if (style === "dashed") return { strokeDasharray: "6 4" };
+  if (style === "dotted") return { strokeDasharray: "1.5 4", strokeLinecap: "round" };
+  return undefined;
+}
+
+interface CanvasKeyHandlers {
+  cancelDraw: () => void;
+  undo: () => void;
+  redo: () => void;
+}
+
+function isTypingTarget(target: EventTarget | null, allowContentEditable: boolean): boolean {
+  const element = target as HTMLElement;
+  if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") return true;
+  return allowContentEditable && element.isContentEditable;
+}
+
+function handleCanvasKeyDown(e: KeyboardEvent, handlers: CanvasKeyHandlers): void {
+  if (e.key === "Escape") {
+    handlers.cancelDraw();
+    return;
+  }
+  // Keep Space from scrolling the page while panning the canvas.
+  if (e.code === "Space") {
+    if (isTypingTarget(e.target, true)) return;
+    e.preventDefault();
+  }
+  if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+  if (isTypingTarget(e.target, false)) return;
+  e.preventDefault();
+  if (e.shiftKey) handlers.redo();
+  else handlers.undo();
+}
+
+function rememberNodeStyleDefaults(
+  defaults: NodeStyleDefaults,
+  patch: Partial<DiagNode>,
+  nodeData: unknown,
+  canvasDark: boolean,
+): void {
+  if (patch.fill !== undefined) defaults.fill = patch.fill;
+  if (patch.stroke !== undefined) defaults.stroke = patch.stroke;
+  if (patch.strokeStyle !== undefined) defaults.strokeStyle = patch.strokeStyle;
+  if (patch.strokeWidth !== undefined) defaults.strokeWidth = patch.strokeWidth;
+  if (patch.fontSize !== undefined) defaults.fontSize = patch.fontSize;
+  if (patch.fontFamily !== undefined) defaults.fontFamily = patch.fontFamily;
+  if (patch.radius !== undefined) {
+    defaults.radius = patch.radius;
+    defaults.radiusCustomized = true;
+  }
+  if (patch.textColor === undefined) return;
+  const data = nodeData as Record<string, unknown>;
+  if (data.shape !== "text") {
+    defaults.shapeTextColor = patch.textColor;
+    return;
+  }
+  if (canvasDark) defaults.darkTextColor = patch.textColor;
+  else defaults.lightTextColor = patch.textColor;
+}
+
+function standaloneTextColor(dark: boolean, defaults: NodeStyleDefaults): string {
+  return dark ? defaults.darkTextColor : defaults.lightTextColor;
+}
 
 const positionHandle: Record<Position, DiagramHandle> = {
   [Position.Top]: "t",
@@ -205,7 +273,7 @@ function DiagramOrthogonalEdge({
       5,
     );
   }
-  const last = route.points[route.points.length - 1];
+  const last = route.points.at(-1)!;
   path += `L${last.x} ${last.y}`;
   return (
     <BaseEdge
@@ -258,12 +326,7 @@ function modelEdgeToRf(e: DiagEdge): Edge {
     label: e.label,
     markerEnd: e.arrow !== "none" ? marker : undefined,
     markerStart: e.arrow === "both" ? marker : undefined,
-    style:
-      e.style === "dashed"
-        ? { strokeDasharray: "6 4" }
-        : e.style === "dotted"
-          ? { strokeDasharray: "1.5 4", strokeLinecap: "round" }
-          : undefined,
+    style: edgeStrokeStyle(e.style),
     // Allow dragging either end onto a new shape handle.
     reconnectable: true,
     data: { routing: e.routing, arrow: e.arrow, style: e.style, label: e.label },
@@ -312,13 +375,13 @@ function CanvasInner({
   showPreviewAction,
   onShowPreview,
   readOnly = false,
-}: {
+}: Readonly<{
   model: DiagramModel;
   onChange: (m: DiagramModel) => void;
   showPreviewAction?: boolean;
   onShowPreview?: () => void;
   readOnly?: boolean;
-}) {
+}>) {
   const { Tooltip, useThemeMode, t } = useDiagramKit();
   const themeMode = useThemeMode();
   const { screenToFlowPosition } = useReactFlow();
@@ -327,6 +390,7 @@ function CanvasInner({
   // compiled figure is unaffected.
   const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(themeMode);
   const canvasDark = canvasTheme === "dark";
+  const minimapActiveClass = canvasDark ? "bg-white/15" : "bg-black/10";
   const nodeStyleDefaultsRef = useRef<NodeStyleDefaults>({
     fill: "#ffffff",
     stroke: "#6b7280",
@@ -433,29 +497,15 @@ function CanvasInner({
   }, [restore]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (drawRef.current) {
-          const id = drawRef.current.id;
-          drawRef.current = null;
-          setNodes((ns) => ns.filter((n) => n.id !== id));
-        }
-        setPending(null);
-        return;
+    const cancelDraw = () => {
+      const drawing = drawRef.current;
+      if (drawing) {
+        drawRef.current = null;
+        setNodes((ns) => ns.filter((n) => n.id !== drawing.id));
       }
-      // Keep Space from scrolling the page while panning the canvas.
-      if (e.code === "Space") {
-        const t = e.target as HTMLElement;
-        if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
-        e.preventDefault();
-      }
-      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
-      const t = e.target as HTMLElement;
-      if (t.tagName === "INPUT" || t.tagName === "TEXTAREA") return;
-      e.preventDefault();
-      if (e.shiftKey) redo();
-      else undo();
+      setPending(null);
     };
+    const onKey = (e: KeyboardEvent) => handleCanvasKeyDown(e, { cancelDraw, undo, redo });
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, setNodes]);
@@ -480,9 +530,7 @@ function CanvasInner({
         strokeStyle: defaults.strokeStyle,
         strokeWidth: defaults.strokeWidth,
         textColor: standaloneText
-          ? canvasDark
-            ? defaults.darkTextColor
-            : defaults.lightTextColor
+          ? standaloneTextColor(canvasDark, defaults)
           : defaults.shapeTextColor,
         fontSize: defaults.fontSize,
         fontFamily: defaults.fontFamily,
@@ -659,26 +707,7 @@ function CanvasInner({
       setNodes((ns) =>
         ns.map((n) => {
           if (n.id !== selNode) return n;
-          const defaults = nodeStyleDefaultsRef.current;
-          const data = n.data as Record<string, unknown>;
-          if (patch.fill !== undefined) defaults.fill = patch.fill;
-          if (patch.stroke !== undefined) defaults.stroke = patch.stroke;
-          if (patch.strokeStyle !== undefined) defaults.strokeStyle = patch.strokeStyle;
-          if (patch.strokeWidth !== undefined) defaults.strokeWidth = patch.strokeWidth;
-          if (patch.fontSize !== undefined) defaults.fontSize = patch.fontSize;
-          if (patch.fontFamily !== undefined) defaults.fontFamily = patch.fontFamily;
-          if (patch.radius !== undefined) {
-            defaults.radius = patch.radius;
-            defaults.radiusCustomized = true;
-          }
-          if (patch.textColor !== undefined) {
-            if (data.shape === "text") {
-              if (canvasDark) defaults.darkTextColor = patch.textColor;
-              else defaults.lightTextColor = patch.textColor;
-            } else {
-              defaults.shapeTextColor = patch.textColor;
-            }
-          }
+          rememberNodeStyleDefaults(nodeStyleDefaultsRef.current, patch, n.data, canvasDark);
           return { ...n, data: { ...n.data, ...patch } };
         }),
       );
@@ -730,25 +759,107 @@ function CanvasInner({
   else if (pending) canvasHint = t("canvas.hintDrawing");
   else if (spacePressed) canvasHint = t("canvas.hintPanning");
 
+  const renderCanvasActions = () => (
+    <div
+      style={chromeStyle}
+      className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-full border p-1 shadow-md backdrop-blur-sm"
+    >
+      {showPreviewAction && onShowPreview && (
+        <Tooltip label={t("preview.showTooltip")}>
+          <button
+            type="button"
+            aria-label={t("preview.showLabel")}
+            onClick={onShowPreview}
+            className={cn(
+              "mr-0.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
+              chromeHover,
+            )}
+          >
+            <PanelRightOpen className="size-3.5" />
+            {t("preview.label")}
+          </button>
+        </Tooltip>
+      )}
+      <Tooltip label={canvasTheme === "dark" ? t("canvas.lightCanvas") : t("canvas.darkCanvas")}>
+        <button
+          type="button"
+          aria-label={t("canvas.toggleTheme")}
+          onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
+          className={cn(
+            "flex size-6 items-center justify-center rounded-full transition-colors",
+            chromeHover,
+          )}
+        >
+          {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+        </button>
+      </Tooltip>
+      <Tooltip label={showMinimap ? t("canvas.hideMinimap") : t("canvas.showMinimap")}>
+        <button
+          type="button"
+          aria-label={t("canvas.toggleMinimap")}
+          aria-pressed={showMinimap}
+          onClick={() => setShowMinimap((v) => !v)}
+          className={cn(
+            "flex size-6 items-center justify-center rounded-full transition-colors",
+            showMinimap ? minimapActiveClass : chromeHover,
+          )}
+        >
+          <MapIcon className="size-3.5" />
+        </button>
+      </Tooltip>
+    </div>
+  );
+
+  const renderInspectorPanel = () => (
+    !readOnly && (selectedNode || selectedEdge) && (
+      <div
+        data-tour="diagram-inspector"
+        role="complementary"
+        aria-label={t("canvas.shapeStyle")}
+        style={chromeStyle}
+        className="absolute right-2 top-12 z-10 max-h-[calc(100%-3.5rem)] w-56 overflow-y-auto rounded-lg border shadow-md backdrop-blur-sm"
+      >
+        <Inspector
+          node={selectedNode ? rfNodeToModel(selectedNode) : null}
+          edge={selectedEdge ? rfEdgeToModel(selectedEdge) : null}
+          onNodeChange={patchNode}
+          onEdgeChange={patchEdge}
+          onReorder={reorder}
+        />
+      </div>
+    )
+  );
+
+  const canvasSelectionFlag = () => (selectedNode || selectedEdge ? "true" : "false");
+  const canvasClassName = () =>
+    cn(
+      canvasDark ? "dark" : "light",
+      "relative min-h-0 flex-1",
+      pending && !spacePressed && "[&_.react-flow__pane]:cursor-crosshair",
+      spacePressed && !isPanning && "[&_.react-flow__pane]:cursor-grab",
+      spacePressed && isPanning && "[&_.react-flow__pane]:cursor-grabbing",
+    );
+  const canvasStyle = () => ({
+    background: canvasDark ? "#121212" : "#ffffff",
+    color: canvasDark ? "#e5e7eb" : "#0f172a",
+  });
+  const canvasPointerHandlers = () => ({
+    onPointerDown: readOnly ? undefined : onFlowPointerDown,
+    onPointerMove: readOnly ? undefined : onFlowPointerMove,
+    onPointerUp: readOnly ? undefined : onFlowPointerUp,
+    onPointerCancel: readOnly ? undefined : onFlowPointerUp,
+  });
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div
         data-tour="diagram-canvas"
-        data-tour-selection={selectedNode || selectedEdge ? "true" : "false"}
-        className={cn(
-          canvasDark ? "dark" : "light",
-          "relative min-h-0 flex-1",
-          pending && !spacePressed && "[&_.react-flow__pane]:cursor-crosshair",
-          spacePressed && !isPanning && "[&_.react-flow__pane]:cursor-grab",
-          spacePressed && isPanning && "[&_.react-flow__pane]:cursor-grabbing",
-        )}
-        style={{ background: canvasDark ? "#121212" : "#ffffff", color: canvasDark ? "#e5e7eb" : "#0f172a" }}
+        data-tour-selection={canvasSelectionFlag()}
+        className={canvasClassName()}
+        style={canvasStyle()}
         // Block the app-wide dev context menu on the canvas.
         onContextMenu={(e) => e.preventDefault()}
-        onPointerDown={readOnly ? undefined : onFlowPointerDown}
-        onPointerMove={readOnly ? undefined : onFlowPointerMove}
-        onPointerUp={readOnly ? undefined : onFlowPointerUp}
-        onPointerCancel={readOnly ? undefined : onFlowPointerUp}
+        {...canvasPointerHandlers()}
       >
         {!readOnly && <div
           data-tour="diagram-palette"
@@ -792,72 +903,9 @@ function CanvasInner({
             {canvasHint}
           </span>
         </div>
-        <div
-          style={chromeStyle}
-          className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-full border p-1 shadow-md backdrop-blur-sm"
-        >
-          {showPreviewAction && onShowPreview && (
-            <Tooltip label={t("preview.showTooltip")}>
-              <button
-                type="button"
-                aria-label={t("preview.showLabel")}
-                onClick={onShowPreview}
-                className={cn(
-                  "mr-0.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
-                  chromeHover,
-                )}
-              >
-                <PanelRightOpen className="size-3.5" />
-                {t("preview.label")}
-              </button>
-            </Tooltip>
-          )}
-          <Tooltip label={canvasTheme === "dark" ? t("canvas.lightCanvas") : t("canvas.darkCanvas")}>
-            <button
-              type="button"
-              aria-label={t("canvas.toggleTheme")}
-              onClick={() => setCanvasTheme((t) => (t === "dark" ? "light" : "dark"))}
-              className={cn(
-                "flex size-6 items-center justify-center rounded-full transition-colors",
-                chromeHover,
-              )}
-            >
-              {canvasTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-            </button>
-          </Tooltip>
-          <Tooltip label={showMinimap ? t("canvas.hideMinimap") : t("canvas.showMinimap")}>
-            <button
-              type="button"
-              aria-label={t("canvas.toggleMinimap")}
-              aria-pressed={showMinimap}
-              onClick={() => setShowMinimap((v) => !v)}
-              className={cn(
-                "flex size-6 items-center justify-center rounded-full transition-colors",
-                showMinimap ? (canvasDark ? "bg-white/15" : "bg-black/10") : chromeHover,
-              )}
-            >
-              <MapIcon className="size-3.5" />
-            </button>
-          </Tooltip>
-        </div>
+        {renderCanvasActions()}
 
-        {!readOnly && (selectedNode || selectedEdge) && (
-          <div
-            data-tour="diagram-inspector"
-            role="complementary"
-            aria-label={t("canvas.shapeStyle")}
-            style={chromeStyle}
-            className="absolute right-2 top-12 z-10 max-h-[calc(100%-3.5rem)] w-56 overflow-y-auto rounded-lg border shadow-md backdrop-blur-sm"
-          >
-            <Inspector
-              node={selectedNode ? rfNodeToModel(selectedNode) : null}
-              edge={selectedEdge ? rfEdgeToModel(selectedEdge) : null}
-              onNodeChange={patchNode}
-              onEdgeChange={patchEdge}
-              onReorder={reorder}
-            />
-          </div>
-        )}
+        {renderInspectorPanel()}
 
         <DiagramEditContext.Provider value={editApi}>
           <ReactFlow
@@ -924,13 +972,15 @@ function CanvasInner({
   );
 }
 
-export function DiagramCanvas(props: {
-  model: DiagramModel;
-  onChange: (m: DiagramModel) => void;
-  showPreviewAction?: boolean;
-  onShowPreview?: () => void;
-  readOnly?: boolean;
-}) {
+export function DiagramCanvas(
+  props: Readonly<{
+    model: DiagramModel;
+    onChange: (m: DiagramModel) => void;
+    showPreviewAction?: boolean;
+    onShowPreview?: () => void;
+    readOnly?: boolean;
+  }>,
+) {
   return (
     <ReactFlowProvider>
       <CanvasInner {...props} />

@@ -51,16 +51,15 @@ function searchableDate(timestamp: number) {
 function searchableEngine(project: ProjectInfo) {
   const raw = project.engine?.trim().toLowerCase() ?? "";
   const path = project.main_doc.toLowerCase();
+  const isMarkdown =
+    raw === "markdown" ||
+    raw === "md" ||
+    raw === "pandoc" ||
+    path.endsWith(".md") ||
+    path.endsWith(".markdown");
+  const nonTypstLabel = isMarkdown ? "markdown" : "tectonic";
   const label =
-    raw === "typst" || raw === "typ" || path.endsWith(".typ")
-      ? "typst"
-      : raw === "markdown" ||
-          raw === "md" ||
-          raw === "pandoc" ||
-          path.endsWith(".md") ||
-          path.endsWith(".markdown")
-        ? "markdown"
-        : "tectonic";
+    raw === "typst" || raw === "typ" || path.endsWith(".typ") ? "typst" : nonTypstLabel;
   return `${raw} ${label}`.trim();
 }
 
@@ -213,7 +212,7 @@ export function slashAliasesFor(
   return commandSlashEntries(commands, ctx).flatMap((entry) => [...entry.keys]);
 }
 
-function parse(
+export function parse(
   q: string,
   slashEntries: SlashEntry[],
 ): {
@@ -225,9 +224,10 @@ function parse(
   if (!q.startsWith("/")) {
     return { mode: "all", term: q, cmd: "" };
   }
-  const m = q.slice(1).match(/^(\S*)\s*([\s\S]*)$/);
-  const cmd = (m?.[1] ?? "").toLowerCase();
-  const term = m?.[2] ?? "";
+  const rest = q.slice(1);
+  const boundary = rest.search(/\s/u);
+  const cmd = (boundary === -1 ? rest : rest.slice(0, boundary)).toLowerCase();
+  const term = boundary === -1 ? "" : rest.slice(boundary).trimStart();
   const found = slashEntries.find((entry) => entry.keys.includes(cmd));
   if (found) {
     return {
@@ -389,12 +389,12 @@ export function SearchOmnibar() {
     fn();
   };
 
-  const placeholder =
-    mode === "projects"
-      ? t(($) => $.shell.omnibar.placeholderProjects)
-      : mode === "docs"
-        ? t(($) => $.shell.omnibar.placeholderDocuments)
-        : t(($) => $.shell.omnibar.placeholder);
+  const placeholderFor = (): string => {
+    if (mode === "projects") return t(($) => $.shell.omnibar.placeholderProjects);
+    if (mode === "docs") return t(($) => $.shell.omnibar.placeholderDocuments);
+    return t(($) => $.shell.omnibar.placeholder);
+  };
+  const placeholder = placeholderFor();
 
   return (
     <Command.Dialog
@@ -612,7 +612,7 @@ export function SearchOmnibar() {
   );
 }
 
-function Group({ heading, children }: { heading: string; children: ReactNode }) {
+function Group({ heading, children }: Readonly<{ heading: string; children: ReactNode }>) {
   return (
     <Command.Group
       heading={heading}
@@ -629,13 +629,13 @@ function Row({
   hint,
   starred,
   onSelect,
-}: {
+}: Readonly<{
   icon: ReactNode;
   title: string;
   hint?: string;
   starred?: boolean;
   onSelect: () => void;
-}) {
+}>) {
   return (
     <Command.Item
       value={title}
@@ -655,11 +655,11 @@ function Row({
   );
 }
 
-function Hint({ children }: { children: ReactNode }) {
+function Hint({ children }: Readonly<{ children: ReactNode }>) {
   return <div className="px-3 py-6 text-center text-sm text-muted-foreground">{children}</div>;
 }
 
-function SlashHelp({ entries }: { entries: SlashEntry[] }) {
+function SlashHelp({ entries }: Readonly<{ entries: SlashEntry[] }>) {
   const { t } = useTranslation(["shell"]);
   return (
     <div className="px-2 py-2">
@@ -676,7 +676,7 @@ function SlashHelp({ entries }: { entries: SlashEntry[] }) {
   );
 }
 
-function PreviewLine({ preview, query }: { preview: string; query: string }) {
+function PreviewLine({ preview, query }: Readonly<{ preview: string; query: string }>) {
   if (!query.trim()) return <span className="truncate text-xs text-muted-foreground">{preview}</span>;
   const idx = preview.toLowerCase().indexOf(query.toLowerCase());
   if (idx < 0)

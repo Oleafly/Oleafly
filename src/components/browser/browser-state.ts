@@ -30,6 +30,16 @@ function patchTab(
   };
 }
 
+function firstKnownLabel(
+  tabs: readonly BrowserTab[],
+  candidates: readonly (string | null)[],
+): string | null {
+  for (const candidate of candidates) {
+    if (candidate && tabs.some((tab) => tab.label === candidate)) return candidate;
+  }
+  return tabs[0]?.label ?? null;
+}
+
 export function reduceBrowser(
   state: BrowserChromeState,
   action: BrowserAction,
@@ -39,12 +49,7 @@ export function reduceBrowser(
       const known = new Set(action.tabs.map((tab) => tab.label));
       const extra = state.tabs.filter((tab) => !known.has(tab.label));
       const tabs = [...action.tabs, ...extra];
-      const active =
-        action.active && tabs.some((tab) => tab.label === action.active)
-          ? action.active
-          : state.active && tabs.some((tab) => tab.label === state.active)
-            ? state.active
-            : (tabs[0]?.label ?? null);
+      const active = firstKnownLabel(tabs, [action.active, state.active]);
       return { tabs, active };
     }
     case "tab-opened": {
@@ -66,12 +71,10 @@ export function reduceBrowser(
       const tabs = state.tabs.filter((tab) => tab.label !== action.label);
       if (tabs.length === state.tabs.length) return state;
       const requested = action.active;
-      const active =
-        requested && tabs.some((tab) => tab.label === requested)
-          ? requested
-          : state.active && state.active !== action.label && tabs.some((tab) => tab.label === state.active)
-            ? state.active
-            : (tabs[0]?.label ?? null);
+      const active = firstKnownLabel(tabs, [
+        requested,
+        state.active === action.label ? null : state.active,
+      ]);
       return { tabs, active };
     }
     case "tab-activated":

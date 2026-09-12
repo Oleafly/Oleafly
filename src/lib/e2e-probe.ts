@@ -141,6 +141,130 @@ function flattenOutline(
   return titles;
 }
 
+type PdfPageProxy = import("pdfjs-dist").PDFPageProxy;
+type PdfTextContent = Awaited<ReturnType<PdfPageProxy["getTextContent"]>>;
+type PdfAnnotations = Awaited<ReturnType<PdfPageProxy["getAnnotations"]>>;
+type PdfOperatorList = Awaited<ReturnType<PdfPageProxy["getOperatorList"]>>;
+
+function asProbeString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function probeFontNames(
+  page: PdfPageProxy,
+  fontName: string,
+): { pdfFontName: string | null; loadedFontName: string | null } {
+  try {
+    const font = page.commonObjs.get(fontName) as {
+      name?: unknown;
+      loadedName?: unknown;
+    };
+    return {
+      pdfFontName: asProbeString(font?.name),
+      loadedFontName: asProbeString(font?.loadedName),
+    };
+  } catch {
+    // Font identity from the text item remains useful even when an
+    // engine keeps the internal common object unavailable.
+    return { pdfFontName: null, loadedFontName: null };
+  }
+}
+
+function probeTextItems(
+  page: PdfPageProxy,
+  textContent: PdfTextContent,
+): { items: E2ePdfTextItem[]; text: string } {
+  const items: E2ePdfTextItem[] = [];
+  const lineParts: string[] = [];
+  let previousY: number | null = null;
+
+  for (const rawItem of textContent.items) {
+    if (!("str" in rawItem)) continue;
+    const item = rawItem;
+    const x = item.transform[4] ?? 0;
+    const y = item.transform[5] ?? 0;
+    if (previousY !== null && Math.abs(y - previousY) > 2) lineParts.push("\n");
+    lineParts.push(item.str);
+    previousY = y;
+
+    const style = textContent.styles[item.fontName];
+    items.push({
+      str: item.str,
+      x,
+      y,
+      width: item.width,
+      height: item.height,
+      fontName: item.fontName,
+      fontFamily: style?.fontFamily ?? null,
+      ...probeFontNames(page, item.fontName),
+      hasEol: item.hasEOL,
+    });
+  }
+
+  return {
+    items,
+    text: lineParts.join("").replace(/(?<![ \t])[ \t]+\n/g, "\n").trim(),
+  };
+}
+
+function probeAnnotations(annotations: PdfAnnotations): E2ePdfAnnotation[] {
+  return annotations.map((annotation) => ({
+    id: asProbeString(annotation.id),
+    subtype: asProbeString(annotation.subtype),
+    url: asProbeString(annotation.url),
+    unsafeUrl: asProbeString(annotation.unsafeUrl),
+    action: asProbeString(annotation.action),
+    destination: destinationLabel(annotation.dest),
+    rect: Array.isArray(annotation.rect)
+      ? annotation.rect.filter(
+          (coordinate: unknown): coordinate is number =>
+            typeof coordinate === "number",
+        )
+      : [],
+  }));
+}
+
+function probeOperatorCounts(
+  operatorList: PdfOperatorList,
+  operatorNames: Map<number, string>,
+): Record<string, number> {
+  const operatorCounts: Record<string, number> = {};
+  for (const operator of operatorList.fnArray) {
+    const name = operatorNames.get(operator) ?? `op:${operator}`;
+    operatorCounts[name] = (operatorCounts[name] ?? 0) + 1;
+  }
+  return operatorCounts;
+}
+
+async function probePage(
+  page: PdfPageProxy,
+  pageNumber: number,
+  operatorNames: Map<number, string>,
+): Promise<E2ePdfPageProbe> {
+  const [textContent, annotations, operatorList] = await Promise.all([
+    page.getTextContent({
+      includeMarkedContent: true,
+      disableNormalization: true,
+    }),
+    page.getAnnotations({ intent: "display" }),
+    page.getOperatorList(),
+  ]);
+  const viewport = page.getViewport({ scale: 1 });
+  const { items, text } = probeTextItems(page, textContent);
+
+  return {
+    pageNumber,
+    text,
+    width: viewport.width,
+    height: viewport.height,
+    rotation: viewport.rotation,
+    userUnit: viewport.userUnit,
+    items,
+    annotations: probeAnnotations(annotations),
+    operatorCounts: probeOperatorCounts(operatorList, operatorNames),
+  };
+}
+
 async function readCompiledPdfProbe(): Promise<E2ePdfProbe> {
   const projectId = useFilesStore.getState().projectId;
   if (!projectId) throw new Error("no active project");
@@ -164,93 +288,7 @@ async function readCompiledPdfProbe(): Promise<E2ePdfProbe> {
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
       const page = await document.getPage(pageNumber);
       try {
-        const [textContent, annotations, operatorList] = await Promise.all([
-          page.getTextContent({
-            includeMarkedContent: true,
-            disableNormalization: true,
-          }),
-          page.getAnnotations({ intent: "display" }),
-          page.getOperatorList(),
-        ]);
-        const viewport = page.getViewport({ scale: 1 });
-        const items: E2ePdfTextItem[] = [];
-        const lineParts: string[] = [];
-        let previousY: number | null = null;
-
-        for (const rawItem of textContent.items) {
-          if (!("str" in rawItem)) continue;
-          const item = rawItem;
-          const x = item.transform[4] ?? 0;
-          const y = item.transform[5] ?? 0;
-          if (previousY !== null && Math.abs(y - previousY) > 2) lineParts.push("\n");
-          lineParts.push(item.str);
-          previousY = y;
-
-          const style = textContent.styles[item.fontName];
-          let pdfFontName: string | null = null;
-          let loadedFontName: string | null = null;
-          try {
-            const font = page.commonObjs.get(item.fontName) as {
-              name?: unknown;
-              loadedName?: unknown;
-            };
-            pdfFontName = typeof font?.name === "string" ? font.name : null;
-            loadedFontName =
-              typeof font?.loadedName === "string" ? font.loadedName : null;
-          } catch {
-            // Font identity from the text item remains useful even when an
-            // engine keeps the internal common object unavailable.
-          }
-
-          items.push({
-            str: item.str,
-            x,
-            y,
-            width: item.width,
-            height: item.height,
-            fontName: item.fontName,
-            fontFamily: style?.fontFamily ?? null,
-            pdfFontName,
-            loadedFontName,
-            hasEol: item.hasEOL,
-          });
-        }
-
-        const operatorCounts: Record<string, number> = {};
-        for (const operator of operatorList.fnArray) {
-          const name = operatorNames.get(operator) ?? `op:${operator}`;
-          operatorCounts[name] = (operatorCounts[name] ?? 0) + 1;
-        }
-
-        pages.push({
-          pageNumber,
-          text: lineParts.join("").replace(/[ \t]+\n/g, "\n").trim(),
-          width: viewport.width,
-          height: viewport.height,
-          rotation: viewport.rotation,
-          userUnit: viewport.userUnit,
-          items,
-          annotations: annotations.map((annotation) => ({
-            id: typeof annotation.id === "string" ? annotation.id : null,
-            subtype:
-              typeof annotation.subtype === "string" ? annotation.subtype : null,
-            url: typeof annotation.url === "string" ? annotation.url : null,
-            unsafeUrl:
-              typeof annotation.unsafeUrl === "string"
-                ? annotation.unsafeUrl
-                : null,
-            action:
-              typeof annotation.action === "string" ? annotation.action : null,
-            destination: destinationLabel(annotation.dest),
-            rect: Array.isArray(annotation.rect)
-              ? annotation.rect.filter(
-                  (coordinate: unknown): coordinate is number =>
-                    typeof coordinate === "number",
-                )
-              : [],
-          })),
-          operatorCounts,
-        });
+        pages.push(await probePage(page, pageNumber, operatorNames));
       } finally {
         page.cleanup();
       }

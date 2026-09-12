@@ -11,7 +11,7 @@ export function parseDiff(text: string): DiffRow[] {
   let newLine = 0;
   for (const raw of text.split("\n")) {
     if (raw.startsWith("@@")) {
-      const m = raw.match(/@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/);
+      const m = /@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/.exec(raw);
       if (m) {
         oldLine = +m[1];
         newLine = +m[2];

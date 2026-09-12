@@ -16,14 +16,17 @@ import {
   useShortcutStore,
 } from "@/store/shortcuts";
 
-function ShortcutKeys({ binding }: { binding: ShortcutBinding }) {
+function ShortcutKeys({ binding }: Readonly<{ binding: ShortcutBinding }>) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  const modSymbol = mac ? "⌘" : "Ctrl";
+  const altSymbol = mac ? "⌥" : "Alt";
+  const namedKey = binding.key.length === 1 ? binding.key.toUpperCase() : binding.key;
   const keys = [...new Set([
-    binding.mod ? (mac ? "⌘" : "Ctrl") : null,
+    binding.mod ? modSymbol : null,
     binding.ctrl && (mac || !binding.mod) ? "Ctrl" : null,
     binding.shift ? "Shift" : null,
-    binding.alt ? (mac ? "⌥" : "Alt") : null,
-    binding.key === " " ? "Space" : binding.key.length === 1 ? binding.key.toUpperCase() : binding.key,
+    binding.alt ? altSymbol : null,
+    binding.key === " " ? "Space" : namedKey,
   ].filter((key): key is string => Boolean(key)))];
 
   return (
@@ -87,8 +90,9 @@ const CATEGORY_TEST_IDS: Record<BuiltInCategory, string> = {
   pdf: "shortcuts-tab-pdf",
 };
 
-function BuiltInKeys({ keys }: { keys: readonly string[] }) {
+function BuiltInKeys({ keys }: Readonly<{ keys: readonly string[] }>) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  const modSymbol = mac ? "⌘" : "Ctrl";
   return (
     <KbdGroup>
       {keys.map((key) => (
@@ -96,7 +100,7 @@ function BuiltInKeys({ keys }: { keys: readonly string[] }) {
           key={key}
           className="h-8 min-w-8 rounded-md border px-2 text-sm text-foreground"
         >
-          {key === "Mod" ? (mac ? "⌘" : "Ctrl") : key}
+          {key === "Mod" ? modSymbol : key}
         </Kbd>
       ))}
     </KbdGroup>
@@ -107,8 +111,9 @@ function builtInBinding(keys: readonly string[]): ShortcutBinding | null {
   if (!keys.includes("Mod") && !keys.includes("Ctrl")) return null;
   const key = keys.find((value) => !["Mod", "Ctrl", "Shift", "Alt"].includes(value));
   if (!key || key === "Click") return null;
+  const normalizedKey = key.length === 1 ? key.toLowerCase() : key;
   return {
-    key: key === "Space" ? " " : key.length === 1 ? key.toLowerCase() : key,
+    key: key === "Space" ? " " : normalizedKey,
     mod: keys.includes("Mod"),
     ctrl: keys.includes("Ctrl"),
     shift: keys.includes("Shift"),

@@ -98,7 +98,7 @@ export function requestThemeToggle(): void {
   window.dispatchEvent(new CustomEvent(TOGGLE_THEME_EVENT));
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<ThemePreference>(getStoredPreference);
   const [theme, setTheme] = useState<Theme>(() => resolveTheme(preference));
 

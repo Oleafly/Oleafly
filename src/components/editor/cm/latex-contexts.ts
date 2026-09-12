@@ -29,18 +29,41 @@ export interface FileTargetContext {
   readonly query: string;
 }
 
-const GLOSSARY_KEY_RE =
-  /\\(?:glssymbol|glsdesc|glslink|glspl|Glspl|GLSpl|gls|Gls|GLS|acrshort|acrlong|acrfull|acs|acl|acf|Acs|Acl|Acf|ac|Ac)\*?\s*\{[^{}]*?(?:,\s*)?([^,{}]*)$/u;
+const GLOSSARY_COMMANDS: ReadonlySet<string> = new Set([
+  "glssymbol",
+  "glsdesc",
+  "glslink",
+  "glspl",
+  "Glspl",
+  "GLSpl",
+  "gls",
+  "Gls",
+  "GLS",
+  "acrshort",
+  "acrlong",
+  "acrfull",
+  "acs",
+  "acl",
+  "acf",
+  "Acs",
+  "Acl",
+  "Acf",
+  "ac",
+  "Ac",
+]);
+
+const GLOSSARY_KEY_RE = /\\([A-Za-z]+)\*?\s*\{(?:[^{}]*,)?([^,{}]*)$/u;
 
 export function recognizeGlossaryKey(
   before: string,
 ): GlossaryKeyContext | null {
   const match = GLOSSARY_KEY_RE.exec(before);
-  return match ? { query: (match[1] ?? "").trimStart() } : null;
+  if (!match || !GLOSSARY_COMMANDS.has(match[1])) return null;
+  return { query: (match[2] ?? "").trimStart() };
 }
 
 const PACKAGE_OPTION_BEFORE_RE =
-  /\\(usepackage|RequirePackage|documentclass)\s*\[[^\]]*?(?:,\s*)?([^,\]]*)$/u;
+  /\\(usepackage|RequirePackage|documentclass)\s*\[(?:[^\]]*,)?([^,\]]*)$/u;
 const PACKAGE_OPTION_AFTER_RE = /^[^\]]*\]\s*\{([^{},]+)\}/u;
 
 /** `\usepackage[<cursor>]{name}` — the target name is read after the cursor. */
@@ -71,19 +94,25 @@ export function recognizeKeyval(before: string): KeyvalContext | null {
 const IMPORT_PATH_RE =
   /\\(?:import|subimport|inputfrom|subinputfrom|includefrom|subincludefrom)\*?\s*\{([^{}]*)\}\s*\{([^{}]*)$/u;
 
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+  return value.slice(0, end);
+}
+
 export function recognizeImportPath(
   before: string,
 ): ImportPathContext | null {
   const match = IMPORT_PATH_RE.exec(before);
   if (!match) return null;
   return {
-    directory: match[1].trim().replace(/\/+$/u, ""),
+    directory: withoutTrailingSlashes(match[1].trim()),
     query: match[2] ?? "",
   };
 }
 
 const FILE_TARGET_RE =
-  /\\(input|include|subfile|includegraphics|includesvg|includepdf|bibliography|addbibresource)\*?\s*(?:\[[^\]]*\])?\s*\{([^{}]*)$/u;
+  /\\(input|include|subfile|includegraphics|includesvg|includepdf|bibliography|addbibresource)\*?\s*(?:\[[^\]]*\]\s*)?\{([^{}]*)$/u;
 
 export function recognizeFileTarget(
   before: string,
@@ -133,8 +162,8 @@ export function optionKeysForCatalog(
 ): string[] {
   const marker =
     kind === "class"
-      ? `\\documentclass/${name}`
-      : `\\usepackage/${name}`;
+      ? String.raw`\documentclass/${name}`
+      : String.raw`\usepackage/${name}`;
   const keys = keysForLookup(catalog, (lookup) =>
     lookup.startsWith(marker),
   );

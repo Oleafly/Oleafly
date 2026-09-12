@@ -96,7 +96,7 @@ export function McpServerImportDialog({
   existingNames,
   onClose,
   onImport,
-}: McpServerImportDialogProps) {
+}: Readonly<McpServerImportDialogProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [candidates, setCandidates] = useState<SourceCandidates>({});
   const [sourceErrors, setSourceErrors] = useState<SourceErrors>({});
@@ -214,9 +214,9 @@ export function McpServerImportDialog({
         </DialogHeader>
 
         {detecting ? (
-          <p role="status" className="text-sm text-muted-foreground">
+          <output className="block text-sm text-muted-foreground">
             {t(($) => $.settings.mcp.import.detecting)}
-          </p>
+          </output>
         ) : null}
 
         {IMPORT_SOURCES.map((source) =>

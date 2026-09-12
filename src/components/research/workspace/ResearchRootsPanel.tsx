@@ -83,7 +83,7 @@ const HEALTH_ICONS: Record<ResearchRootAvailability, typeof CircleCheck> = {
 };
 
 function folderName(path: string): string {
-  const parts = path.replace(/\\/g, "/").split("/").filter(Boolean);
+  const parts = path.replaceAll("\\", "/").split("/").filter(Boolean);
   return parts.at(-1) ?? i18n.t(($) => $.researchTools.roots.card.defaultLabel);
 }
 
@@ -91,7 +91,7 @@ function detail(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
-function HealthBadge({ health }: { health: ResearchRootHealth | undefined }) {
+function HealthBadge({ health }: Readonly<{ health: ResearchRootHealth | undefined }>) {
   useTranslation(["common", "researchTools"]);
   const availability = health?.availability ?? "available";
   const Icon = HEALTH_ICONS[availability];
@@ -115,14 +115,14 @@ function LinkFolderDialog({
   error,
   onClose,
   onSubmit,
-}: {
+}: Readonly<{
   open: boolean;
   editing: LinkedResearchRoot | null;
   busy: boolean;
   error: string | null;
   onClose: () => void;
   onSubmit: (values: { path: string; label: string; role: ResearchRootRole }) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const [path, setPath] = useState("");
   const [label, setLabel] = useState("");
@@ -265,13 +265,13 @@ function RootCard({
   health,
   onEdit,
   onUnlink,
-}: {
+}: Readonly<{
   projectId: string;
   root: LinkedResearchRoot;
   health: ResearchRootHealth | undefined;
   onEdit: () => void;
   onUnlink: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const [files, setFiles] = useState<ResearchRootFileEntry[] | null>(null);
   const [selected, setSelected] = useState<ResearchRootFileContent | null>(null);
@@ -280,6 +280,23 @@ function RootCard({
   const previewRequest = useRef(0);
 
   useEffect(() => () => { previewRequest.current += 1; }, []);
+
+  const selectedPreview = (file: ResearchRootFileContent) =>
+    file.isBinary ? (
+      <p className="text-sm text-muted-foreground">
+        {t(($) => $.researchTools.roots.card.binary)}
+      </p>
+    ) : (
+      <>
+        <p className="mb-2 truncate text-xs font-medium">{file.relativePath}</p>
+        <pre className="whitespace-pre-wrap break-words text-xs">{file.content}</pre>
+        {file.truncated && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t(($) => $.researchTools.roots.card.previewTruncated)}
+          </p>
+        )}
+      </>
+    );
 
   const browse = async () => {
     const request = ++previewRequest.current;
@@ -412,20 +429,8 @@ function RootCard({
               <p className="text-sm text-muted-foreground">
                 {t(($) => $.researchTools.roots.card.chooseFile)}
               </p>
-            ) : selected.isBinary ? (
-              <p className="text-sm text-muted-foreground">
-                {t(($) => $.researchTools.roots.card.binary)}
-              </p>
             ) : (
-              <>
-                <p className="mb-2 truncate text-xs font-medium">{selected.relativePath}</p>
-                <pre className="whitespace-pre-wrap break-words text-xs">{selected.content}</pre>
-                {selected.truncated && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {t(($) => $.researchTools.roots.card.previewTruncated)}
-                  </p>
-                )}
-              </>
+              selectedPreview(selected)
             )}
           </div>
         </div>
@@ -439,7 +444,7 @@ function RootCard({
   );
 }
 
-export function ResearchRootsPanel({ projectId }: { projectId: string }) {
+export function ResearchRootsPanel({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const [workspace, setWorkspace] = useState<ResearchWorkspace | null>(null);
   const [health, setHealth] = useState<Record<string, ResearchRootHealth>>({});

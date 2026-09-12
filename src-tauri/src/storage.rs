@@ -146,7 +146,7 @@ fn classify_file(relative: &Path, in_projects: bool) -> FileClass {
     }
     let extension = relative
         .extension()
-        .and_then(|value| value.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()
         .to_ascii_lowercase();
     if matches!(
@@ -497,7 +497,7 @@ fn cleanup_job_path(root: &Path, project_id: &str, recycle_id: &str) -> Result<P
 fn cleanup_job_filename_identity(path: &Path) -> Result<(String, String), String> {
     let name = path
         .file_name()
-        .and_then(|value| value.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| "cleanup metadata name is not valid Unicode".to_string())?;
     let stem = name
         .strip_suffix(CHECKPOINT_CLEANUP_SUFFIX)
@@ -778,6 +778,64 @@ fn valid_active_project_owner_exists(project_id: &str) -> Result<bool, String> {
     Ok(true)
 }
 
+fn recycle_owner_directory(
+    root: &Path,
+    entry: &std::fs::DirEntry,
+) -> Result<Option<PathBuf>, String> {
+    let path = entry.path();
+    let metadata = std::fs::symlink_metadata(&path)
+        .map_err(|error| format!("failed to inspect recycle owner path: {error}"))?;
+    if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+        return Err("cannot reconcile an unsafe recycle owner".into());
+    }
+    if !metadata.is_dir() {
+        return Ok(None);
+    }
+    let path = path
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve recycle owner: {error}"))?;
+    if path.parent() != Some(root) {
+        return Err("recycle owner escapes the recycle bin".into());
+    }
+    Ok(Some(path))
+}
+
+fn recycle_owner_has_manifest(path: &Path) -> Result<bool, String> {
+    match std::fs::symlink_metadata(path.join(RECYCLE_MANIFEST)) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            if std::fs::symlink_metadata(path.join(RECYCLED_PROJECT_DIRECTORY)).is_ok() {
+                return Err("a recycle owner has project files without identity metadata".into());
+            }
+            Ok(false)
+        }
+        Err(error) => Err(format!("failed to inspect recycle owner metadata: {error}")),
+        Ok(_) => Ok(true),
+    }
+}
+
+fn recycle_owner_has_payload(path: &Path) -> Result<bool, String> {
+    let project = path.join(RECYCLED_PROJECT_DIRECTORY);
+    match std::fs::symlink_metadata(&project) {
+        Ok(metadata) => {
+            if !metadata.is_dir()
+                || metadata.file_type().is_symlink()
+                || is_reparse_point(&metadata)
+            {
+                return Err("recycle owner project is not a real directory".into());
+            }
+            let resolved = project
+                .canonicalize()
+                .map_err(|error| format!("failed to resolve recycle owner project: {error}"))?;
+            if resolved.parent() != Some(path) {
+                return Err("recycle owner project escapes its entry".into());
+            }
+            Ok(true)
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(format!("failed to inspect recycle owner project: {error}")),
+    }
+}
+
 fn reconcile_manifest_only_recycle_entries(project_id: &str) -> Result<(), String> {
     crate::paths::validate_project_id(project_id)?;
     let root = crate::paths::recycle_bin_root()?;
@@ -787,61 +845,20 @@ fn reconcile_manifest_only_recycle_entries(project_id: &str) -> Result<(), Strin
         .map_err(|error| format!("failed to inspect recycle owners: {error}"))?
     {
         let entry = entry.map_err(|error| format!("failed to inspect recycle owner: {error}"))?;
-        let path = entry.path();
-        let metadata = std::fs::symlink_metadata(&path)
-            .map_err(|error| format!("failed to inspect recycle owner path: {error}"))?;
-        if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
-            return Err("cannot reconcile an unsafe recycle owner".into());
-        }
-        if !metadata.is_dir() {
+        let Some(path) = recycle_owner_directory(&root, &entry)? else {
             continue;
-        }
-        let path = path
-            .canonicalize()
-            .map_err(|error| format!("failed to resolve recycle owner: {error}"))?;
-        if path.parent() != Some(root.as_path()) {
-            return Err("recycle owner escapes the recycle bin".into());
-        }
-        let manifest_path = path.join(RECYCLE_MANIFEST);
-        match std::fs::symlink_metadata(&manifest_path) {
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                if std::fs::symlink_metadata(path.join(RECYCLED_PROJECT_DIRECTORY)).is_ok() {
-                    return Err(
-                        "a recycle owner has project files without identity metadata".into(),
-                    );
-                }
-                continue;
-            }
-            Err(error) => return Err(format!("failed to inspect recycle owner metadata: {error}")),
-            Ok(_) => {}
+        };
+        if !recycle_owner_has_manifest(&path)? {
+            continue;
         }
         let manifest = read_recycle_manifest(&path)?;
         if manifest.project_id != project_id {
             continue;
         }
-        let project = path.join(RECYCLED_PROJECT_DIRECTORY);
-        match std::fs::symlink_metadata(&project) {
-            Ok(metadata) => {
-                if !metadata.is_dir()
-                    || metadata.file_type().is_symlink()
-                    || is_reparse_point(&metadata)
-                {
-                    return Err("recycle owner project is not a real directory".into());
-                }
-                let resolved = project
-                    .canonicalize()
-                    .map_err(|error| format!("failed to resolve recycle owner project: {error}"))?;
-                if resolved.parent() != Some(path.as_path()) {
-                    return Err("recycle owner project escapes its entry".into());
-                }
-                payload_owner = true;
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                manifest_only.push(path);
-            }
-            Err(error) => {
-                return Err(format!("failed to inspect recycle owner project: {error}"));
-            }
+        if recycle_owner_has_payload(&path)? {
+            payload_owner = true;
+        } else {
+            manifest_only.push(path);
         }
     }
 
@@ -1841,7 +1858,7 @@ mod tests {
             .map(|entry| entry.unwrap().path())
             .find(|path| {
                 path.file_name()
-                    .and_then(|name| name.to_str())
+                    .and_then(std::ffi::OsStr::to_str)
                     .is_some_and(|name| name.starts_with(".detached-paper.deleting."))
             })
             .expect("Store::destroy keeps its detached directory on failure");

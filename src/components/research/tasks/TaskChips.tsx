@@ -9,10 +9,10 @@ import { STATUS_ICONS, statusBadgeClass, statusLabel } from "./task-status";
 export function TaskStatusBadge({
   status,
   className,
-}: {
+}: Readonly<{
   status: ResearchTaskStatus;
   className?: string;
-}) {
+}>) {
   useTranslation(["common", "researchTools"]);
   const Icon = STATUS_ICONS[status];
   return (
@@ -32,13 +32,13 @@ export function TaskAgentChip({
   modelName,
   showAgent = false,
   className,
-}: {
+}: Readonly<{
   task: Pick<ResearchTask, "runtimeId" | "agentId" | "modelId">;
   agentName?: string;
   modelName?: string;
   showAgent?: boolean;
   className?: string;
-}) {
+}>) {
   const agent = agentName?.trim() || task.agentId;
   const model = modelName?.trim() || task.modelId || null;
   const primary = showAgent ? agent : (model ?? agent);

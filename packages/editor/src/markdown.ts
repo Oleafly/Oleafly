@@ -8,11 +8,53 @@ import type {
   MarkdownExtension,
 } from "@lezer/markdown";
 
-const DOLLAR = "$".charCodeAt(0);
-const BACKSLASH = "\\".charCodeAt(0);
+const DOLLAR = "$".codePointAt(0);
+const BACKSLASH = "\\".codePointAt(0);
 
 const whitespace = (code: number): boolean =>
   code === 9 || code === 10 || code === 13 || code === 32;
+
+function precedingBackslashCount(
+  context: InlineContext,
+  position: number,
+): number {
+  let count = 0;
+  let cursor = position - 1;
+  while (cursor >= context.offset && context.char(cursor) === BACKSLASH) {
+    count += 1;
+    cursor -= 1;
+  }
+  return count;
+}
+
+function pandocMathClose(
+  context: InlineContext,
+  contentStart: number,
+  delimiterWidth: number,
+): number {
+  let cursor = contentStart;
+  while (cursor + delimiterWidth <= context.end) {
+    if (delimiterWidth === 1 && context.char(cursor) === 10) {
+      return -1;
+    }
+    if (context.char(cursor) === BACKSLASH) {
+      cursor += 2;
+      continue;
+    }
+    const closes =
+      context.char(cursor) === DOLLAR &&
+      (delimiterWidth === 1 ||
+        context.char(cursor + 1) === DOLLAR);
+    if (
+      closes &&
+      !(delimiterWidth === 1 && whitespace(context.char(cursor - 1)))
+    ) {
+      return cursor;
+    }
+    cursor += 1;
+  }
+  return -1;
+}
 
 function parsePandocMath(
   context: InlineContext,
@@ -20,16 +62,7 @@ function parsePandocMath(
   position: number,
 ): number {
   if (next !== DOLLAR) return -1;
-
-  let precedingBackslashes = 0;
-  for (
-    let cursor = position - 1;
-    cursor >= context.offset && context.char(cursor) === BACKSLASH;
-    cursor -= 1
-  ) {
-    precedingBackslashes += 1;
-  }
-  if (precedingBackslashes % 2 === 1) return -1;
+  if (precedingBackslashCount(context, position) % 2 === 1) return -1;
 
   const delimiterWidth =
     context.char(position + 1) === DOLLAR ? 2 : 1;
@@ -41,47 +74,24 @@ function parsePandocMath(
     return -1;
   }
 
-  for (
-    let cursor = contentStart;
-    cursor + delimiterWidth <= context.end;
-    cursor += 1
-  ) {
-    if (delimiterWidth === 1 && context.char(cursor) === 10) {
-      return -1;
-    }
-    if (context.char(cursor) === BACKSLASH) {
-      cursor += 1;
-      continue;
-    }
-    const closes =
-      context.char(cursor) === DOLLAR &&
-      (delimiterWidth === 1 ||
-        context.char(cursor + 1) === DOLLAR);
-    if (
-      !closes ||
-      (delimiterWidth === 1 &&
-        whitespace(context.char(cursor - 1)))
-    ) {
-      continue;
-    }
+  const close = pandocMathClose(context, contentStart, delimiterWidth);
+  if (close < 0) return -1;
 
-    const end = cursor + delimiterWidth;
-    return context.addElement(
-      context.elt("PandocMath", position, end, [
-        context.elt(
-          "PandocMathMark",
-          position,
-          position + delimiterWidth,
-        ),
-        context.elt(
-          "PandocMathMark",
-          cursor,
-          end,
-        ),
-      ]),
-    );
-  }
-  return -1;
+  const end = close + delimiterWidth;
+  return context.addElement(
+    context.elt("PandocMath", position, end, [
+      context.elt(
+        "PandocMathMark",
+        position,
+        position + delimiterWidth,
+      ),
+      context.elt(
+        "PandocMathMark",
+        close,
+        end,
+      ),
+    ]),
+  );
 }
 
 const pandocMarkdownExtensions: MarkdownExtension = {

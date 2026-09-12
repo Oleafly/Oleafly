@@ -68,7 +68,7 @@ function boundedText(
   limit: number,
 ): string | null {
   if (typeof value !== "string") return null;
-  const normalized = value.replace(/\0/g, "");
+  const normalized = value.replaceAll("\0", "");
   if (!normalized) return null;
   return normalized.slice(0, limit);
 }
@@ -92,7 +92,8 @@ function currentDocument(
     return null;
   }
   const document = session.documentForPath(path);
-  if (!document || document.text !== text) return null;
+  if (!document) return null;
+  if (document.text !== text) return null;
   return { session, document };
 }
 
@@ -102,13 +103,13 @@ function requestStillCurrent(
   text: string,
 ): boolean {
   const current = currentDocument(document.path, text);
-  return Boolean(
-    current &&
-      current.session.owner === session.owner &&
-      current.session.projectRevision === session.projectRevision &&
-      current.session.client.generation === session.client.generation &&
-      current.document.uri === document.uri &&
-      current.document.version === document.version,
+  if (!current) return false;
+  return (
+    current.session.owner === session.owner &&
+    current.session.projectRevision === session.projectRevision &&
+    current.session.client.generation === session.client.generation &&
+    current.document.uri === document.uri &&
+    current.document.version === document.version
   );
 }
 
@@ -175,29 +176,58 @@ function completionDocumentation(value: unknown): string | undefined {
  * Server defaults are retained, while tabstop/control syntax is removed so a
  * completion can never insert raw `${1:...}` markers into the document.
  */
+function escapedSnippetChar(input: string, cursor: number): string | null {
+  if (input[cursor] !== "\\" || cursor + 1 >= input.length) return null;
+  const next = input[cursor + 1];
+  return next === "$" || next === "}" || next === "\\" ? next : null;
+}
+
+function endOfTabstopDigits(input: string, cursor: number): number {
+  let next = cursor;
+  while (/\d/.test(input[next] ?? "")) next += 1;
+  return next;
+}
+
+function snippetPlaceholderText(placeholder: string): string {
+  const defaultSeparator = placeholder.indexOf(":");
+  if (defaultSeparator >= 0) {
+    return placeholder.slice(defaultSeparator + 1);
+  }
+  const choiceSeparator = placeholder.indexOf("|");
+  if (choiceSeparator >= 0 && placeholder.endsWith("|")) {
+    return (
+      placeholder
+        .slice(choiceSeparator + 1, -1)
+        .split(",", 1)[0] ?? ""
+    );
+  }
+  return "";
+}
+
 function plainTextFromLspSnippet(value: string): string {
   const input = value.slice(0, MAX_COMPLETION_TEXT);
   let output = "";
-  for (let cursor = 0; cursor < input.length; cursor += 1) {
-    const char = input[cursor];
-    if (char === "\\" && cursor + 1 < input.length) {
-      const next = input[cursor + 1];
-      if (next === "$" || next === "}" || next === "\\") {
-        output += next;
-        cursor += 1;
-        continue;
-      }
+  let cursor = 0;
+  while (cursor < input.length) {
+    const escaped = escapedSnippetChar(input, cursor);
+    if (escaped !== null) {
+      output += escaped;
+      cursor += 2;
+      continue;
     }
+    const char = input[cursor];
     if (char !== "$") {
       output += char;
+      cursor += 1;
       continue;
     }
     if (/\d/.test(input[cursor + 1] ?? "")) {
-      while (/\d/.test(input[cursor + 1] ?? "")) cursor += 1;
+      cursor = endOfTabstopDigits(input, cursor + 1);
       continue;
     }
     if (input[cursor + 1] !== "{") {
       output += char;
+      cursor += 1;
       continue;
     }
     const close = input.indexOf("}", cursor + 2);
@@ -205,21 +235,8 @@ function plainTextFromLspSnippet(value: string): string {
       output += input.slice(cursor);
       break;
     }
-    const placeholder = input.slice(cursor + 2, close);
-    const defaultSeparator = placeholder.indexOf(":");
-    const choiceSeparator = placeholder.indexOf("|");
-    if (defaultSeparator >= 0) {
-      output += placeholder.slice(defaultSeparator + 1);
-    } else if (
-      choiceSeparator >= 0 &&
-      placeholder.endsWith("|")
-    ) {
-      output +=
-        placeholder
-          .slice(choiceSeparator + 1, -1)
-          .split(",", 1)[0] ?? "";
-    }
-    cursor = close;
+    output += snippetPlaceholderText(input.slice(cursor + 2, close));
+    cursor = close + 1;
   }
   return output;
 }
@@ -382,14 +399,15 @@ function guardedCompletionApply(
       );
       return;
     }
+    const orderedEdits = [...edits].sort(
+      (left, right) => left.from - right.from,
+    );
     view.dispatch({
-      changes: edits
-        .sort((left, right) => left.from - right.from)
-        .map((edit) => ({
-          from: edit.from,
-          to: edit.to,
-          insert: edit.insert,
-        })),
+      changes: orderedEdits.map((edit) => ({
+        from: edit.from,
+        to: edit.to,
+        insert: edit.insert,
+      })),
       userEvent: "input.complete",
     });
   };
@@ -401,6 +419,80 @@ function completionItems(value: unknown): unknown[] {
     return value.items;
   }
   return [];
+}
+
+interface PreparedCompletion {
+  label: string;
+  mainEdit: TextEdit;
+  additionalEdits: TextEdit[];
+  snippetTemplate: string | null;
+}
+
+interface CompletionRequestContext {
+  index: TextPositionIndex;
+  session: InteractiveLanguageServiceSession;
+  text: string;
+  fallbackFrom: number;
+  position: number;
+  environmentArgument: boolean;
+}
+
+function prepareCompletion(
+  raw: Record<string, unknown>,
+  request: CompletionRequestContext,
+): PreparedCompletion | null {
+  const { index, session, text, fallbackFrom, position } = request;
+  const label = boundedText(raw.label, 500);
+  if (!label) return null;
+  if (request.environmentArgument && isStandardLatexEnvironment(label)) {
+    return null;
+  }
+  const snippetFormat = raw.insertTextFormat === 2;
+  const insertedValue =
+    boundedText(raw.insertText, MAX_COMPLETION_TEXT) ?? label;
+  const textEditValue = isRecord(raw.textEdit)
+    ? boundedText(raw.textEdit.newText, MAX_COMPLETION_TEXT)
+    : null;
+  const snippetTemplate = snippetFormat
+    ? codeMirrorSnippetFromLsp(
+        textEditValue ?? insertedValue,
+      )
+    : null;
+  const inserted = snippetFormat
+    ? plainTextFromLspSnippet(insertedValue)
+    : insertedValue;
+  const mainEdit =
+    editFromValue(
+      raw.textEdit,
+      index,
+      session.positionEncoding,
+      snippetFormat,
+    ) ?? {
+      from: fallbackFrom,
+      to: position,
+      insert: inserted,
+    };
+  if (
+    mainEdit.from < 0 ||
+    mainEdit.to < mainEdit.from ||
+    mainEdit.to > text.length
+  ) {
+    return null;
+  }
+  const additionalEdits = Array.isArray(raw.additionalTextEdits)
+    ? raw.additionalTextEdits
+        .slice(0, 50)
+        .map((edit) =>
+          editFromValue(
+            edit,
+            index,
+            session.positionEncoding,
+            false,
+          ),
+        )
+        .filter((edit): edit is TextEdit => edit !== null)
+    : [];
+  return { label, mainEdit, additionalEdits, snippetTemplate };
 }
 
 function normalizeCompletion(
@@ -419,54 +511,16 @@ function normalizeCompletion(
   );
   for (const raw of completionItems(value)) {
     if (options.length >= MAX_COMPLETION_ITEMS || !isRecord(raw)) break;
-    const label = boundedText(raw.label, 500);
-    if (!label) continue;
-    if (environmentArgument && isStandardLatexEnvironment(label)) continue;
-    const snippetFormat = raw.insertTextFormat === 2;
-    const insertedValue =
-      boundedText(raw.insertText, MAX_COMPLETION_TEXT) ?? label;
-    const textEditValue = isRecord(raw.textEdit)
-      ? boundedText(raw.textEdit.newText, MAX_COMPLETION_TEXT)
-      : null;
-    const snippetTemplate = snippetFormat
-      ? codeMirrorSnippetFromLsp(
-          textEditValue ?? insertedValue,
-        )
-      : null;
-    const inserted = snippetFormat
-      ? plainTextFromLspSnippet(insertedValue)
-      : insertedValue;
-    const mainEdit =
-      editFromValue(
-        raw.textEdit,
-        index,
-        session.positionEncoding,
-        snippetFormat,
-      ) ?? {
-        from: fallbackFrom,
-        to: position,
-        insert: inserted,
-      };
-    if (
-      mainEdit.from < 0 ||
-      mainEdit.to < mainEdit.from ||
-      mainEdit.to > text.length
-    ) {
-      continue;
-    }
-    const additionalEdits = Array.isArray(raw.additionalTextEdits)
-      ? raw.additionalTextEdits
-          .slice(0, 50)
-          .map((edit) =>
-            editFromValue(
-              edit,
-              index,
-              session.positionEncoding,
-              false,
-            ),
-          )
-          .filter((edit): edit is TextEdit => edit !== null)
-      : [];
+    const prepared = prepareCompletion(raw, {
+      index,
+      session,
+      text,
+      fallbackFrom,
+      position,
+      environmentArgument,
+    });
+    if (!prepared) continue;
+    const { label, mainEdit, additionalEdits, snippetTemplate } = prepared;
     const key = `${label}\0${mainEdit.from}\0${mainEdit.to}\0${mainEdit.insert}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -502,7 +556,7 @@ function shouldRequestCompletion(
     context.pos,
   );
   if (/\.typ$/i.test(path)) {
-    return /(?:#|@|<)[\p{L}\p{N}_:.-]*$/u.test(before);
+    return /[#@<][\p{L}\p{N}_:.-]*$/u.test(before);
   }
   return (
     /\\[\p{L}@]*$/u.test(before) ||
@@ -530,7 +584,7 @@ export const languageServiceCompletion: CompletionSource = async (
     return null;
   }
   const token = context.matchBefore(
-    /[\\#@<]?(?:[\p{L}\p{N}_:./@-]*)$/u,
+    /[\\#<]?[\p{L}\p{N}_:./@-]*$/u,
   );
   const fallbackFrom = token?.from ?? context.pos;
   const positions = new TextPositionIndex(text);
@@ -620,6 +674,16 @@ function hoverText(value: unknown): string | null {
   return null;
 }
 
+const PACKAGE_NAME_CHAR_RE = /[A-Za-z0-9@_+-]/u;
+
+function packageNameBefore(text: string): string {
+  let start = text.length;
+  while (start > 0 && PACKAGE_NAME_CHAR_RE.test(text[start - 1])) {
+    start -= 1;
+  }
+  return text.slice(start);
+}
+
 /**
  * The hovered `\usepackage`/`\documentclass` argument doubles as a CTAN
  * package id, which gives the hover card a stable documentation link.
@@ -629,10 +693,8 @@ function hoverCtanUrl(
   position: number,
 ): string | null {
   const lineStart = text.lastIndexOf("\n", position - 1) + 1;
-  const lineEnd =
-    text.indexOf("\n", position) === -1
-      ? text.length
-      : text.indexOf("\n", position);
+  const lineBreak = text.indexOf("\n", position);
+  const lineEnd = lineBreak === -1 ? text.length : lineBreak;
   const line = text.slice(lineStart, lineEnd);
   if (
     !/\\(?:usepackage|RequirePackage|documentclass)/u.test(line)
@@ -640,8 +702,7 @@ function hoverCtanUrl(
     return null;
   }
   const column = position - lineStart;
-  const head =
-    /[A-Za-z0-9@_+-]*$/u.exec(line.slice(0, column))?.[0] ?? "";
+  const head = packageNameBefore(line.slice(0, column));
   const tail =
     /^[A-Za-z0-9@_+-]*/u.exec(line.slice(column))?.[0] ?? "";
   const name = `${head}${tail}`;

@@ -30,7 +30,9 @@ const MAX_SKILL_BYTES: usize = 192 * 1024;
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(120);
 
 fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    value.lock().unwrap_or_else(|error| error.into_inner())
+    value
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn relative_path(value: &str, allow_root: bool) -> Result<PathBuf, String> {

@@ -126,29 +126,31 @@ function assistantReply(messageIndex: number, total: number) {
   const diagrams = share(HEAVY_CONVERSATION_COUNTS.mermaidDiagrams, messageIndex, total);
   const codes = share(HEAVY_CONVERSATION_COUNTS.codeBlocks, messageIndex, total);
   const parts: string[] = [];
-  parts.push(`## Section ${messageIndex + 1}: derivation and setup`);
   parts.push(
-    `Here is the derivation you asked for, with the intermediate steps kept explicit so each line is checkable. The inline form $x_i^{(t)}$ refers to the running estimate and $\\ell_i^{(t)}$ to the normalizer.`,
+    `## Section ${messageIndex + 1}: derivation and setup`,
+    String.raw`Here is the derivation you asked for, with the intermediate steps kept explicit so each line is checkable. The inline form $x_i^{(t)}$ refers to the running estimate and $\ell_i^{(t)}$ to the normalizer.`,
   );
   let diagram = diagrams.from;
   let code = codes.from;
   for (let equation = equations.from; equation < equations.to; equation++) {
     const step = equation - equations.from;
-    parts.push(`**Step ${step + 1}.** Substituting the previous bound and simplifying gives`);
-    parts.push(equationBlock(equation));
+    parts.push(
+      `**Step ${step + 1}.** Substituting the previous bound and simplifying gives`,
+      equationBlock(equation),
+    );
     if ((step === 3 || step === 8) && diagram < diagrams.to) {
-      parts.push("The data flow for this stage is:");
-      parts.push(diagramFence(diagram++));
+      parts.push("The data flow for this stage is:", diagramFence(diagram++));
     }
     if ((step === 6 || step === 10) && code < codes.to) {
-      parts.push("The corresponding source is:");
-      parts.push(codeFence(code++));
+      parts.push("The corresponding source is:", codeFence(code++));
     }
   }
   while (diagram < diagrams.to) parts.push(diagramFence(diagram++));
   while (code < codes.to) parts.push(codeFence(code++));
-  parts.push("| Quantity | Symbol | Notes |\n| --- | --- | --- |\n| Learning rate | $\\eta$ | warm up over 4k steps |\n| Batch size | $B$ | tokens per step |");
-  parts.push("- Verify the tagged equation numbers match the manuscript.\n- Recompile after the table edit.\n- Re-run `verify_pdf_pages` on the affected pages.");
+  parts.push(
+    "| Quantity | Symbol | Notes |\n| --- | --- | --- |\n| Learning rate | $\\eta$ | warm up over 4k steps |\n| Batch size | $B$ | tokens per step |",
+    "- Verify the tagged equation numbers match the manuscript.\n- Recompile after the table edit.\n- Re-run `verify_pdf_pages` on the affected pages.",
+  );
   return parts.join("\n\n");
 }
 
@@ -157,24 +159,26 @@ export function buildHeavyConversation(): ChatMessage[] {
   const messages: ChatMessage[] = [];
   const base = Date.UTC(2026, 8, 1, 9, 0, 0);
   for (let index = 0; index < total; index++) {
-    messages.push({
-      id: `user-${index}`,
-      role: "user",
-      content: `Walk me through section ${index + 1} with every step written out, and include the diagrams and source.`,
-      createdAt: base + index * 120_000,
-    });
-    messages.push({
-      id: `assistant-${index}`,
-      role: "assistant",
-      content: assistantReply(index, total),
-      createdAt: base + index * 120_000 + 60_000,
-      reasoningBlocks: [
-        { id: `reasoning-${index}`, text: "Check the bound, then write the steps.", ms: 1400, beforeTool: 0 },
-      ],
-      toolCalls: [
-        { id: `tool-${index}`, name: "read_file", status: "done", output: '{"success": true, "content": "..."}' },
-      ],
-    });
+    messages.push(
+      {
+        id: `user-${index}`,
+        role: "user",
+        content: `Walk me through section ${index + 1} with every step written out, and include the diagrams and source.`,
+        createdAt: base + index * 120_000,
+      },
+      {
+        id: `assistant-${index}`,
+        role: "assistant",
+        content: assistantReply(index, total),
+        createdAt: base + index * 120_000 + 60_000,
+        reasoningBlocks: [
+          { id: `reasoning-${index}`, text: "Check the bound, then write the steps.", ms: 1400, beforeTool: 0 },
+        ],
+        toolCalls: [
+          { id: `tool-${index}`, name: "read_file", status: "done", output: '{"success": true, "content": "..."}' },
+        ],
+      },
+    );
   }
   return messages;
 }

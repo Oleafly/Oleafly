@@ -86,7 +86,7 @@ impl Default for AgentServerState {
 }
 
 fn lock_or_recover<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    m.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Capability handshake. Shells call this once at startup and pass the

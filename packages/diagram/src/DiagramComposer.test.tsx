@@ -88,7 +88,7 @@ vi.mock("./CmCodeEditor", () => ({
   }),
 }));
 
-import { DiagramComposer } from "./DiagramComposer";
+import { DiagramComposer, safeName } from "./DiagramComposer";
 
 const PNG = "data:image/png;base64,AAAA";
 
@@ -140,6 +140,28 @@ async function openProjectPicker() {
   const row = await screen.findByTestId("diagram-save-to-project");
   fireEvent.mouseEnter(row.parentElement as HTMLElement);
 }
+
+describe("diagram file stem", () => {
+  it.each([
+    ["Figure 1", "Figure-1"],
+    ["  spaced  name  ", "spaced-name"],
+    ["---", ""],
+    ["-lead", "lead"],
+    ["trail-", "trail"],
+    ["--both--", "both"],
+    ["", ""],
+    ["...", ""],
+    ["a", "a"],
+    ["flow: chart (v2)", "flow-chart-v2"],
+    ["under_score-keep", "under_score-keep"],
+  ])("reduces %j to %j", (input, expected) => {
+    expect(safeName(input)).toBe(expected);
+  });
+
+  it("truncates to sixty-four characters after trimming", () => {
+    expect(safeName(`-${"a".repeat(80)}-`)).toBe("a".repeat(64));
+  });
+});
 
 describe("DiagramComposer", () => {
   beforeEach(() => {

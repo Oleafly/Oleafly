@@ -33,7 +33,7 @@ type State =
   | { kind: "downloading"; percent: number }
   | { kind: "error" };
 
-export function UpdateChecker({ className }: { className?: string }) {
+export function UpdateChecker({ className }: Readonly<{ className?: string }>) {
   const { t } = useTranslation(["shell"]);
   // Snapshot once: in the browser dev server there is no updater at all, so we
   // render an "unsupported" note instead of a misleading "up to date".

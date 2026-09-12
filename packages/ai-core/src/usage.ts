@@ -30,6 +30,40 @@ function counter(value: number | null | undefined, field: string): number | null
   return value;
 }
 
+function normalizedInputTotal(
+  inputKnown: boolean,
+  inputSemantics: InputTokenSemantics,
+  input: number,
+  cacheRead: number | null,
+  cacheWrite: number | null,
+): number | null {
+  if (!inputKnown) return null;
+  if (inputSemantics !== "exclusive") return input;
+  if (cacheRead === null || cacheWrite === null) return null;
+  return input + cacheRead + cacheWrite;
+}
+
+function normalizedInputFresh(
+  inputKnown: boolean,
+  inputSemantics: InputTokenSemantics,
+  input: number,
+  cacheRead: number | null,
+  cacheWrite: number | null,
+  inclusiveCacheIsValid: boolean,
+): number | null {
+  if (!inputKnown) return null;
+  if (inputSemantics === "exclusive") return input;
+  if (
+    inputSemantics === "inclusive" &&
+    cacheRead !== null &&
+    cacheWrite !== null &&
+    inclusiveCacheIsValid
+  ) {
+    return input - cacheRead - cacheWrite;
+  }
+  return null;
+}
+
 export function normalizeAgentUsage(usage: AgentUsage): NormalizedAgentUsage {
   const input = counter(usage.input, "input") as number;
   const output = counter(usage.output, "output") as number;
@@ -48,13 +82,13 @@ export function normalizeAgentUsage(usage: AgentUsage): NormalizedAgentUsage {
   const inputKnown = usage.inputKnown ?? hasLegacyObservation;
   const outputKnown = usage.outputKnown ?? hasLegacyObservation;
 
-  const inputTotal = !inputKnown
-    ? null
-    : inputSemantics === "exclusive"
-      ? cacheRead === null || cacheWrite === null
-        ? null
-        : input + cacheRead + cacheWrite
-      : input;
+  const inputTotal = normalizedInputTotal(
+    inputKnown,
+    inputSemantics,
+    input,
+    cacheRead,
+    cacheWrite,
+  );
   if (inputTotal !== null && !Number.isSafeInteger(inputTotal)) {
     throw new Error("normalized input total must be a nonnegative safe integer");
   }
@@ -63,17 +97,14 @@ export function normalizeAgentUsage(usage: AgentUsage): NormalizedAgentUsage {
     cacheRead === null ||
     cacheWrite === null ||
     cacheRead + cacheWrite <= input;
-  const inputFresh =
-    !inputKnown
-      ? null
-      : inputSemantics === "exclusive"
-      ? input
-      : inputSemantics === "inclusive" &&
-          cacheRead !== null &&
-          cacheWrite !== null &&
-          inclusiveCacheIsValid
-        ? input - cacheRead - cacheWrite
-        : null;
+  const inputFresh = normalizedInputFresh(
+    inputKnown,
+    inputSemantics,
+    input,
+    cacheRead,
+    cacheWrite,
+    inclusiveCacheIsValid,
+  );
   const comparableCacheInput =
     inputSemantics === "unknown" ||
     cacheRead === null ||

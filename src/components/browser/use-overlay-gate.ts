@@ -8,7 +8,7 @@ export interface OverlayGate {
 export function useOverlayGate(
   setContentVisible: (visible: boolean) => Promise<void>,
 ): OverlayGate {
-  const [open, setOpenState] = useState(false);
+  const [openState, setOpenState] = useState(false);
   const ticket = useRef(0);
   const openRef = useRef(false);
 
@@ -39,5 +39,5 @@ export function useOverlayGate(
     [setContentVisible],
   );
 
-  return { open, setOpen };
+  return { open: openState, setOpen };
 }

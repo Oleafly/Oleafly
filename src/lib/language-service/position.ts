@@ -48,9 +48,9 @@ function buildLineSpans(text: string): LineSpan[] {
   const lines: LineSpan[] = [];
   let start = 0;
   for (let offset = 0; offset < text.length; offset++) {
-    if (text.charCodeAt(offset) !== 10) continue;
+    if (text.codePointAt(offset) !== 10) continue;
     const contentEnd =
-      offset > start && text.charCodeAt(offset - 1) === 13
+      offset > start && text.codePointAt(offset - 1) === 13
         ? offset - 1
         : offset;
     lines.push({ start, contentEnd, end: offset + 1 });

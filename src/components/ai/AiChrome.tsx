@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export const AI_GRADIENT = "from-[#4285F4] via-[#9B72CB] to-[#D96570]";
 export const AI_PROMPT_SURFACE = "ai-prompt-surface";
 
-export function AiMark({ className }: { className?: string }) {
+export function AiMark({ className }: Readonly<{ className?: string }>) {
   return (
     <span
       className={cn("flex size-7 shrink-0 items-center justify-center text-primary", className)}
@@ -21,12 +21,12 @@ export function AiChrome({
   className,
   contentClassName,
   borderVariant = "gradient",
-}: {
+}: Readonly<{
   children: ReactNode;
   className?: string;
   contentClassName?: string;
   borderVariant?: "gradient" | "primary" | "animated";
-}) {
+}>) {
   return (
     <div
       className={cn(

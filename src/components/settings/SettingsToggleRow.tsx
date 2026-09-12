@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export function SettingsSwitchIndicator({ checked }: { checked: boolean }) {
+export function SettingsSwitchIndicator({ checked }: Readonly<{ checked: boolean }>) {
   return (
     <span
       aria-hidden
@@ -24,12 +24,12 @@ export function SettingsToggleRow({
   description,
   checked,
   onChange,
-}: {
+}: Readonly<{
   label: string;
   description?: string;
   checked: boolean;
   onChange: (value: boolean) => void;
-}) {
+}>) {
   return (
     <div
       role="switch"

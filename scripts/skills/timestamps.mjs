@@ -38,7 +38,8 @@ export function assertShelfNewerThanFloor(shelfGenerated, floorGenerated) {
   }
   const shelfMs = Date.parse(shelfGenerated);
   const floorMs = Date.parse(floorGenerated);
-  if (!(shelfMs > floorMs) || !(shelfGenerated > floorGenerated)) {
+  const shelfIsStrictlyNewer = shelfMs > floorMs && shelfGenerated > floorGenerated;
+  if (!shelfIsStrictlyNewer) {
     throw new Error(
       `shelf catalog generatedAt ${shelfGenerated} is not strictly newer than the bundled floor ${floorGenerated}; the app would discard the shelf catalog and show only bundled skills`,
     );

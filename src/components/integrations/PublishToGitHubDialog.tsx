@@ -252,6 +252,36 @@ export function PublishToGitHubDialog({
     .filter((r) => r.full_name.toLowerCase().includes(query.toLowerCase()))
     .slice(0, 60);
 
+  const repoList = () =>
+    filtered.length === 0 ? (
+      <div className="p-6 text-center text-xs text-muted-foreground">
+        {t(($) => $.library.github.noRepositories)}
+      </div>
+    ) : (
+      filtered.map((r) => (
+        <button type="button"
+          key={r.full_name}
+          onClick={() => setSelected(r.clone_url)}
+          className={cn(
+            "flex w-full items-center gap-2 border-b px-3 py-2 text-left text-xs last:border-0 hover:bg-accent/60",
+            selected === r.clone_url && "bg-accent"
+          )}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-mono">
+              {r.full_name}
+            </span>
+          </span>
+          {r.private && (
+            <Lock className="size-3 shrink-0 text-muted-foreground" />
+          )}
+          {selected === r.clone_url && (
+            <Check className="size-3.5 shrink-0 text-emerald-500" />
+          )}
+        </button>
+      ))
+    );
+
   return createPortal(
     <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <button
@@ -376,34 +406,7 @@ export function PublishToGitHubDialog({
                       <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
                         <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
                       </div>
-                    ) : filtered.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-muted-foreground">
-                        {t(($) => $.library.github.noRepositories)}
-                      </div>
-                    ) : (
-                      filtered.map((r) => (
-                        <button type="button"
-                          key={r.full_name}
-                          onClick={() => setSelected(r.clone_url)}
-                          className={cn(
-                            "flex w-full items-center gap-2 border-b px-3 py-2 text-left text-xs last:border-0 hover:bg-accent/60",
-                            selected === r.clone_url && "bg-accent"
-                          )}
-                        >
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-mono">
-                              {r.full_name}
-                            </span>
-                          </span>
-                          {r.private && (
-                            <Lock className="size-3 shrink-0 text-muted-foreground" />
-                          )}
-                          {selected === r.clone_url && (
-                            <Check className="size-3.5 shrink-0 text-emerald-500" />
-                          )}
-                        </button>
-                      ))
-                    )}
+                    ) : repoList()}
                   </div>
                   <Tooltip label={t(($) => $.library.github.linkHint)}>
                     <Button

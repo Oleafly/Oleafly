@@ -70,6 +70,7 @@ async function stageAllAndCommit(page: Page, message: string) {
 test("git panel opens on the remote section while GitHub is disconnected", async ({
   tauriPage,
 }) => {
+  // Ignored on purpose when a GitHub token is configured, because this case asserts the disconnected panel.
   test.skip(
     !!process.env.E2E_GITHUB_TOKEN,
     "asserts the disconnected panel; a saved token leaves the account connected",
@@ -202,6 +203,7 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
 // the test tells you to delete manually. Opt in with E2E_GIT_PUSH=1 alongside
 // E2E_GITHUB_TOKEN.
 test("publish to GitHub creates a real repo and pushes the project", async ({ tauriPage }) => {
+  // Ignored on purpose without the opt-in push credentials, because the run creates a real remote repository.
   test.skip(
     process.env.E2E_GIT_PUSH !== "1" || !process.env.E2E_GITHUB_TOKEN,
     "set E2E_GIT_PUSH=1 and E2E_GITHUB_TOKEN to run",

@@ -130,18 +130,20 @@ export function ThemeCustomization() {
     try {
       const { customization: imported, skippedTokens } = parseThemeCustomizationImport(await file.text());
       const shownTokens = skippedTokens.slice(0, 6).join(", ");
+      const skippedNotice =
+        skippedTokens.length > 6
+          ? t(($) => $.settings.appearance.customTheme.importedSkippedMore, {
+              count: skippedTokens.length,
+              tokens: shownTokens,
+            })
+          : t(($) => $.settings.appearance.customTheme.importedSkipped, {
+              count: skippedTokens.length,
+              tokens: shownTokens,
+            });
       const notice =
         skippedTokens.length === 0
           ? t(($) => $.settings.appearance.customTheme.imported)
-          : skippedTokens.length > 6
-            ? t(($) => $.settings.appearance.customTheme.importedSkippedMore, {
-                count: skippedTokens.length,
-                tokens: shownTokens,
-              })
-            : t(($) => $.settings.appearance.customTheme.importedSkipped, {
-                count: skippedTokens.length,
-                tokens: shownTokens,
-              });
+          : skippedNotice;
       save(imported, notice);
       setTokenDrafts({ light: {}, dark: {} });
       setRadiusDraft(null);
@@ -318,7 +320,7 @@ export function ThemeCustomization() {
           onChange={(event) => void importTheme(event.currentTarget.files?.[0])}
         />
       </div>
-      {message ? <p role="status" className="text-xs text-muted-foreground">{message}</p> : null}
+      {message ? <output className="block text-xs text-muted-foreground">{message}</output> : null}
     </CollapsibleSection>
   );
 }

@@ -5,6 +5,8 @@ import {
   useEffect,
   useRef,
   useState,
+  type Dispatch,
+  type SetStateAction,
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
@@ -209,6 +211,43 @@ export interface DocumentStartupState {
 const ANALYSIS_IN_PROGRESS_REASON_KEYS: ReadonlySet<AnalysisReasonKey> =
   new Set(["indexRebuilding"]);
 
+function zoomKeyAction(
+  key: string,
+  setScale: Dispatch<SetStateAction<number>>,
+): (() => void) | null {
+  if (key === "+" || key === "=") {
+    return () => setScale((current) => Math.min(MAX_PREVIEW_SCALE, current + 0.2));
+  }
+  if (key === "-") {
+    return () => setScale((current) => Math.max(MIN_PREVIEW_SCALE, current - 0.2));
+  }
+  if (key === "0") return () => setScale(1);
+  return null;
+}
+
+function downloadThroughBrowser(bytes: Uint8Array, mimeType: string, filename: string) {
+  const objectUrl = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: mimeType }));
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.rel = "noopener";
+    anchor.click();
+  } finally {
+    // WebKit resolves the download asynchronously; defer revocation by
+    // one task, but never leave the object URL alive beyond it.
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  }
+}
+
+export function trimEdgeCharacter(value: string, character: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === character) start += 1;
+  while (end > start && value[end - 1] === character) end -= 1;
+  return value.slice(start, end);
+}
+
 function languageServiceStartupStage(
   state: DocumentStartupState,
 ): DocumentStartupStage {
@@ -405,12 +444,14 @@ function compileStartupStage(
     };
   }
   if (state.compileStatus === "compiling") {
+    const nonSavingDetail =
+      state.compilePhase === "downloading"
+        ? i18n.t(($) => $.preview.startup.compile.downloading)
+        : i18n.t(($) => $.preview.startup.compile.producing);
     const detail =
       state.compilePhase === "saving"
         ? i18n.t(($) => $.preview.startup.compile.saving)
-        : state.compilePhase === "downloading"
-          ? i18n.t(($) => $.preview.startup.compile.downloading)
-          : i18n.t(($) => $.preview.startup.compile.producing);
+        : nonSavingDetail;
     return {
       id: "compile",
       label: i18n.t(($) => $.preview.startup.compile.label),
@@ -617,8 +658,7 @@ export function previewWindowState(
       ? "not_run"
       : status;
   const exactCheckpoint =
-    checkpoint &&
-    checkpoint.projectId === resolvedIdentity.projectId &&
+    checkpoint?.projectId === resolvedIdentity.projectId &&
     checkpoint.mainDocument === resolvedIdentity.mainDocument &&
     checkpoint.projectRevision ===
       resolvedIdentity.projectRevision &&
@@ -833,24 +873,27 @@ export function PreviewPane() {
     setRetainedLoadFailure(null);
   }, [compileCheckpoint, pdfBytes]);
 
-  const displayedCheckpoint = viewerDocument?.checkpoint ?? null;
-  const pdfIsCurrent =
-    viewerDocument !== null &&
-    displayedCheckpoint !== null &&
-    isCompileCheckpointCurrent(displayedCheckpoint);
-  const pdfIsStale = viewerDocument !== null && !pdfIsCurrent;
-  const syncTexAvailable =
-    canUseSyncTexForCheckpoint(displayedCheckpoint);
-  const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
-  const displayedBytes = viewerDocument?.bytes ?? null;
-  const currentRevisionExplanation = pdfIsStale
-    ? displayedCheckpoint
+  const derivePreviewDocumentFacts = () => {
+    const displayedCheckpoint = viewerDocument?.checkpoint ?? null;
+    const pdfIsCurrent =
+      viewerDocument !== null &&
+      displayedCheckpoint !== null &&
+      isCompileCheckpointCurrent(displayedCheckpoint);
+    const pdfIsStale = viewerDocument !== null && !pdfIsCurrent;
+    const syncTexAvailable =
+      canUseSyncTexForCheckpoint(displayedCheckpoint);
+    const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
+    const displayedBytes = viewerDocument?.bytes ?? null;
+    const staleRevisionExplanation = displayedCheckpoint
       ? t(($) => $.preview.stale.revisionExplanation, {
           displayed: displayedCheckpoint.projectRevision,
           active: projectRevision,
         })
-      : t(($) => $.preview.stale.noIdentity)
-    : null;
+      : t(($) => $.preview.stale.noIdentity);
+    const currentRevisionExplanation = pdfIsStale ? staleRevisionExplanation : null;
+    return { displayedCheckpoint, pdfIsCurrent, pdfIsStale, syncTexAvailable, staleSyncTexAvailable, displayedBytes, currentRevisionExplanation };
+  };
+  const { displayedCheckpoint, pdfIsCurrent, pdfIsStale, syncTexAvailable, staleSyncTexAvailable, displayedBytes, currentRevisionExplanation } = derivePreviewDocumentFacts();
   const languageReason = analysisReasonText(languageReasonSource) ?? "";
   const analysisReason =
     analysisReasonText(analysisReasonSource) ?? analysisFailureMessage;
@@ -889,8 +932,8 @@ export function PreviewPane() {
   }, []);
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    else void rootRef.current?.requestFullscreen?.().catch(() => {});
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else rootRef.current?.requestFullscreen?.().catch(() => {});
   };
 
   useEffect(() => {
@@ -1047,27 +1090,10 @@ export function PreviewPane() {
       ) {
         return;
       }
-      if (
-        pdfZoomShortcuts &&
-        modifier &&
-        (event.key === "+" || event.key === "=")
-      ) {
+      const zoom = zoomKeyAction(event.key, setScale);
+      if (pdfZoomShortcuts && modifier && zoom) {
         event.preventDefault();
-        userZoom(() =>
-          setScale((current) =>
-            Math.min(MAX_PREVIEW_SCALE, current + 0.2),
-          ),
-        );
-      } else if (pdfZoomShortcuts && modifier && event.key === "-") {
-        event.preventDefault();
-        userZoom(() =>
-          setScale((current) =>
-            Math.max(MIN_PREVIEW_SCALE, current - 0.2),
-          ),
-        );
-      } else if (pdfZoomShortcuts && modifier && event.key === "0") {
-        event.preventDefault();
-        userZoom(() => setScale(1));
+        userZoom(zoom);
       } else if (
         modifier &&
         event.shiftKey &&
@@ -1117,13 +1143,28 @@ export function PreviewPane() {
     }
   };
 
+  const reportExportFailure = (error: unknown) => {
+    const nonErrorDetail = typeof error === "string" ? error : "";
+    const detail = error instanceof Error ? error.message : nonErrorDetail;
+    const withDetail = isImage
+      ? t(($) => $.preview.download.imageFailedDetail, { detail })
+      : t(($) => $.preview.download.pdfFailedDetail, { detail });
+    const withoutDetail = isImage
+      ? t(($) => $.preview.download.imageFailed)
+      : t(($) => $.preview.download.pdfFailed);
+    notifyError("download preview", error, detail ? withDetail : withoutDetail);
+  };
+
+  const exportBaseName = () => {
+    const fallback = isImage ? "figure" : "document";
+    return (
+      trimEdgeCharacter((projectName || fallback).replace(/[^\w.-]+/g, "_"), "_") || fallback
+    );
+  };
+
   const exportDisplayedPreview = async () => {
     if (!displayedBytes || exporting) return;
-    const baseName =
-      (projectName || (isImage ? "figure" : "document"))
-        .replace(/[^\w.-]+/g, "_")
-        .replace(/^_+|_+$/g, "") ||
-      (isImage ? "figure" : "document");
+    const baseName = exportBaseName();
     setExporting(true);
     try {
       let exportBytes = displayedBytes;
@@ -1134,7 +1175,7 @@ export function PreviewPane() {
         const dataUrl = await pdfPageToPng(displayedBytes, 1, 3);
         exportBytes = Uint8Array.from(
           atob(dataUrl.slice(dataUrl.indexOf(",") + 1)),
-          (character) => character.charCodeAt(0),
+          (character) => character.codePointAt(0) ?? 0,
         );
         extension = "png";
         mimeType = "image/png";
@@ -1142,20 +1183,7 @@ export function PreviewPane() {
       const filename = `${baseName}.${extension}`;
 
       if (!isTauri()) {
-        const objectUrl = URL.createObjectURL(
-          new Blob([exportBytes.slice().buffer], { type: mimeType }),
-        );
-        try {
-          const anchor = document.createElement("a");
-          anchor.href = objectUrl;
-          anchor.download = filename;
-          anchor.rel = "noopener";
-          anchor.click();
-        } finally {
-          // WebKit resolves the download asynchronously; defer revocation by
-          // one task, but never leave the object URL alive beyond it.
-          window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-        }
+        downloadThroughBrowser(exportBytes, mimeType, filename);
         return;
       }
 
@@ -1172,34 +1200,23 @@ export function PreviewPane() {
       await writeBytesFile(destination, uint8ToBase64(exportBytes));
       const fileName =
         destination.split(/[/\\]/).pop() || (isImage ? "image.png" : "document.pdf");
+      const revealAction = {
+        label: t(($) => $.preview.download.showInFolder),
+        onClick: () => {
+          revealInDir(destination).catch(() => {
+            toast.info(t(($) => $.preview.download.folderUnavailable));
+          });
+        },
+      };
       toast.success(
         isImage
           ? t(($) => $.preview.download.imageSaved, { name: fileName })
           : t(($) => $.preview.download.pdfSaved, { name: fileName }),
-        {
-          label: t(($) => $.preview.download.showInFolder),
-          onClick: () => {
-            void revealInDir(destination).catch(() => {
-              toast.info(t(($) => $.preview.download.folderUnavailable));
-            });
-          },
-        },
+        revealAction,
         true,
       );
     } catch (error) {
-      const detail =
-        error instanceof Error ? error.message : typeof error === "string" ? error : "";
-      notifyError(
-        "download preview",
-        error,
-        detail
-          ? isImage
-            ? t(($) => $.preview.download.imageFailedDetail, { detail })
-            : t(($) => $.preview.download.pdfFailedDetail, { detail })
-          : isImage
-            ? t(($) => $.preview.download.imageFailed)
-            : t(($) => $.preview.download.pdfFailed),
-      );
+      reportExportFailure(error);
     } finally {
       setExporting(false);
     }
@@ -1277,12 +1294,54 @@ export function PreviewPane() {
   }, [activeTourId, tab]);
 
   const compiling = status === "compiling";
-  const hasError =
-    status === "error" ||
-    status === "unavailable" ||
-    errors.some((error) => error.kind === "error");
-  const hasWarning = !hasError && errors.some((e) => e.kind === "warning");
-  const severity: "error" | "warning" | "ok" = hasError ? "error" : hasWarning ? "warning" : "ok";
+  const derivePreviewSeverity = () => {
+    const hasError =
+      status === "error" ||
+      status === "unavailable" ||
+      errors.some((error) => error.kind === "error");
+    const hasWarning = !hasError && errors.some((e) => e.kind === "warning");
+    const nonErrorSeverity: "warning" | "ok" = hasWarning ? "warning" : "ok";
+    const severity: "error" | "warning" | "ok" = hasError ? "error" : nonErrorSeverity;
+    return { hasError, severity };
+  };
+  const { hasError, severity } = derivePreviewSeverity();
+  const severityToneClass = () => {
+    if (severity === "error") return "text-red-500";
+    if (severity === "warning") return "text-amber-500";
+    return "text-emerald-500";
+  };
+  const severityTitle = (): string => {
+    if (severity === "error") return t(($) => $.preview.toolbar.compiledWithErrors);
+    if (severity === "warning") return t(($) => $.preview.toolbar.compiledWithWarnings);
+    return t(($) => $.preview.toolbar.compiledSuccessfully);
+  };
+  const renderSeverityIcon = () => {
+    if (severity === "error") return <XCircle className="size-3.5" />;
+    if (severity === "warning") return <AlertTriangle className="size-3.5" />;
+    return <CheckCircle2 className="size-3.5" />;
+  };
+  const pageAnnouncement = (): string =>
+    numPages > 0 ? t(($) => $.preview.a11y.page, { page, total: numPages }) : "";
+  const pdfLoadFailureTitle = (): string => {
+    if (pdfLoadState.status === "invalid") return t(($) => $.preview.viewer.invalidTitle);
+    if (pdfLoadState.status === "empty") return t(($) => $.preview.viewer.emptyTitle);
+    if (pdfLoadState.status === "unavailable") {
+      return t(($) => $.preview.viewer.unavailableTitle);
+    }
+    return t(($) => $.preview.viewer.loadFailedTitle);
+  };
+  const searchCounterLabel = (): string => {
+    if (searchState.status === "searching") {
+      return `${searchState.scannedPages}/${searchState.totalPages}`;
+    }
+    if (searchInput.trim()) return `${searchState.current}/${searchState.total}`;
+    return "0/0";
+  };
+  const downloadActionLabel = (): string => {
+    if (isImage) return t(($) => $.preview.actions.downloadImage);
+    if (pdfIsStale) return t(($) => $.preview.actions.downloadStalePdf);
+    return t(($) => $.preview.actions.downloadPdf);
+  };
 
   const { containerRef: pdfToolbarRef, availableWidth: pdfToolbarWidth } =
     useAvailableWidth();
@@ -1388,71 +1447,158 @@ export function PreviewPane() {
 
   // Grouped so the bar reads in a fixed order and the dividers fall out of
   // which groups actually have controls, rather than being placed by hand.
-  const layoutGroup: ToolbarControl[] = [];
-  const pageGroup: ToolbarControl[] = [];
-  const viewGroup: ToolbarControl[] = [];
-  const zoomGroup: ToolbarControl[] = [];
-  const inkGroup: ToolbarControl[] = [];
-  const fileGroup: ToolbarControl[] = [];
-  const windowGroup: ToolbarControl[] = [];
-  if (numPages > 0 && !isImage) {
-    // A one-page document has nothing to lay out: hide the toggles entirely.
-    if (numPages > 1) {
-      layoutGroup.push(
+  const buildPreviewToolbarGroups = () => {
+    const layoutGroup: ToolbarControl[] = [];
+    const pageGroup: ToolbarControl[] = [];
+    const viewGroup: ToolbarControl[] = [];
+    const zoomGroup: ToolbarControl[] = [];
+    const inkGroup: ToolbarControl[] = [];
+    const fileGroup: ToolbarControl[] = [];
+    const windowGroup: ToolbarControl[] = [];
+    if (numPages > 0 && !isImage) {
+      // A one-page document has nothing to lay out: hide the toggles entirely.
+      if (numPages > 1) {
+        layoutGroup.push(
+          {
+            id: "layout",
+            // Two segments inside one padded track.
+            width: 62,
+            // One page layout is in effect at a time, so the two options are a
+            // radio group rather than two independently pressed buttons.
+            render: () => (
+              <div
+                role="radiogroup"
+                aria-label={t(($) => $.preview.pageLayout.group)}
+                className="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/70 p-0.5"
+              >
+                {PAGE_LAYOUTS.map(({ value, label, icon: Icon }) => (
+                  <Tooltip key={value} label={label()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      role="radio"
+                      className={cn(
+                        "size-6 rounded-[4px]",
+                        layout === value &&
+                          "bg-background text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.08)]",
+                      )}
+                      onClick={() => setLayout(value)}
+                      aria-label={label()}
+                      aria-checked={layout === value}
+                    >
+                      <Icon className="size-3.5" />
+                    </Button>
+                  </Tooltip>
+                ))}
+              </div>
+            ),
+            renderMenu: () => (
+              <DropdownMenuSub key="layout">
+                <DropdownMenuSubTrigger>
+                  <RectangleVertical className="size-4" />
+                  {t(($) => $.preview.pageLayout.group)}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="min-w-44">
+                    <DropdownMenuRadioGroup
+                      value={layout}
+                      onValueChange={(value) =>
+                        setLayout(value === "double" ? "double" : "single")
+                      }
+                    >
+                      {PAGE_LAYOUTS.map(({ value, label, icon: Icon }) => (
+                        <DropdownMenuRadioItem key={value} value={value}>
+                          <Icon className="size-4" />
+                          {label()}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            ),
+          },
+        );
+      }
+      pageGroup.push(
         {
-          id: "layout",
-          // Two segments inside one padded track.
-          width: 62,
-          // One page layout is in effect at a time, so the two options are a
-          // radio group rather than two independently pressed buttons.
+          id: "page-nav",
+          // Two buttons plus the page field and its "of N" label. Estimates are
+          // rounded up: overshooting collapses one control early, undershooting
+          // clips the bar.
+          width: 140,
           render: () => (
-            <div
-              role="radiogroup"
-              aria-label={t(($) => $.preview.pageLayout.group)}
-              className="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/70 p-0.5"
-            >
-              {PAGE_LAYOUTS.map(({ value, label, icon: Icon }) => (
-                <Tooltip key={value} label={label()}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    role="radio"
-                    className={cn(
-                      "size-6 rounded-[4px]",
-                      layout === value &&
-                        "bg-background text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.08)]",
-                    )}
-                    onClick={() => setLayout(value)}
-                    aria-label={label()}
-                    aria-checked={layout === value}
-                  >
-                    <Icon className="size-3.5" />
-                  </Button>
-                </Tooltip>
-              ))}
-            </div>
+            <>
+              <Tooltip label={t(($) => $.preview.pages.previous)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  disabled={page <= 1}
+                  onClick={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
+                  aria-label={t(($) => $.preview.pages.previous)}
+                >
+                  <ChevronUp className="size-3.5" />
+                </Button>
+              </Tooltip>
+              <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
+                <Input
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      jumpToPage();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  onBlur={jumpToPage}
+                  onFocus={(e) => e.target.select()}
+                  aria-label={t(($) => $.preview.pages.number)}
+                  className="h-6 w-7 rounded border border-input bg-background px-0.5 py-0 text-center text-[11px] leading-none text-foreground outline-none focus:border-primary"
+                />
+                <span>{t(($) => $.preview.pages.ofTotal, { total: numPages })}</span>
+              </div>
+              <Tooltip label={t(($) => $.preview.pages.next)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  disabled={page >= numPages}
+                  onClick={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
+                  aria-label={t(($) => $.preview.pages.next)}
+                >
+                  <ChevronDown className="size-3.5" />
+                </Button>
+              </Tooltip>
+            </>
           ),
+          // The page field cannot live in a menu row, so the collapsed form keeps
+          // the navigation and reports where the reader currently is.
           renderMenu: () => (
-            <DropdownMenuSub key="layout">
+            <DropdownMenuSub key="page-nav">
               <DropdownMenuSubTrigger>
-                <RectangleVertical className="size-4" />
-                {t(($) => $.preview.pageLayout.group)}
+                <FileText className="size-4" />
+                {t(($) => $.preview.pages.pageOfTotal, {
+                  page,
+                  total: numPages,
+                })}
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="min-w-44">
-                  <DropdownMenuRadioGroup
-                    value={layout}
-                    onValueChange={(value) =>
-                      setLayout(value === "double" ? "double" : "single")
-                    }
+                  <DropdownMenuItem
+                    disabled={page <= 1}
+                    onSelect={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
                   >
-                    {PAGE_LAYOUTS.map(({ value, label, icon: Icon }) => (
-                      <DropdownMenuRadioItem key={value} value={value}>
-                        <Icon className="size-4" />
-                        {label()}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
+                    <ChevronUp className="size-4" />
+                    {t(($) => $.preview.pages.previous)}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={page >= numPages}
+                    onSelect={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
+                  >
+                    <ChevronDown className="size-4" />
+                    {t(($) => $.preview.pages.next)}
+                  </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
@@ -1460,352 +1606,266 @@ export function PreviewPane() {
         },
       );
     }
-    pageGroup.push(
-      {
-        id: "page-nav",
-        // Two buttons plus the page field and its "of N" label. Estimates are
-        // rounded up: overshooting collapses one control early, undershooting
-        // clips the bar.
-        width: 140,
-        render: () => (
-          <>
-            <Tooltip label={t(($) => $.preview.pages.previous)}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                disabled={page <= 1}
-                onClick={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
-                aria-label={t(($) => $.preview.pages.previous)}
-              >
-                <ChevronUp className="size-3.5" />
-              </Button>
-            </Tooltip>
-            <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
-              <Input
-                value={pageInput}
-                onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ""))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    jumpToPage();
-                    (e.target as HTMLInputElement).blur();
-                  }
-                }}
-                onBlur={jumpToPage}
-                onFocus={(e) => e.target.select()}
-                aria-label={t(($) => $.preview.pages.number)}
-                className="h-6 w-7 rounded border border-input bg-background px-0.5 py-0 text-center text-[11px] leading-none text-foreground outline-none focus:border-primary"
-              />
-              <span>{t(($) => $.preview.pages.ofTotal, { total: numPages })}</span>
-            </div>
-            <Tooltip label={t(($) => $.preview.pages.next)}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                disabled={page >= numPages}
-                onClick={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
-                aria-label={t(($) => $.preview.pages.next)}
-              >
-                <ChevronDown className="size-3.5" />
-              </Button>
-            </Tooltip>
-          </>
+    if (displayedBytes && !isImage) {
+      viewGroup.push(
+        iconControl(
+          "outline",
+          ListTree,
+          t(($) => $.preview.outline.open),
+          () => setOutlineOpen((open) => !open),
+          { active: outlineOpen },
         ),
-        // The page field cannot live in a menu row, so the collapsed form keeps
-        // the navigation and reports where the reader currently is.
-        renderMenu: () => (
-          <DropdownMenuSub key="page-nav">
-            <DropdownMenuSubTrigger>
-              <FileText className="size-4" />
-              {t(($) => $.preview.pages.pageOfTotal, {
-                page,
-                total: numPages,
-              })}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent className="min-w-44">
-                <DropdownMenuItem
-                  disabled={page <= 1}
-                  onSelect={() => pdfRef.current?.gotoPage(page - (layout === "double" ? 2 : 1))}
-                >
-                  <ChevronUp className="size-4" />
-                  {t(($) => $.preview.pages.previous)}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={page >= numPages}
-                  onSelect={() => pdfRef.current?.gotoPage(page + (layout === "double" ? 2 : 1))}
-                >
-                  <ChevronDown className="size-4" />
-                  {t(($) => $.preview.pages.next)}
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-        ),
-      },
-    );
-  }
-  if (displayedBytes && !isImage) {
-    viewGroup.push(
-      iconControl(
-        "outline",
-        ListTree,
-        t(($) => $.preview.outline.open),
-        () => setOutlineOpen((open) => !open),
-        { active: outlineOpen },
-      ),
-      iconControl("search", Search, t(($) => $.preview.search.open), () => {
-        setSearchOpen((open) => {
-          const next = !open;
-          if (next) {
-            requestAnimationFrame(() =>
-              searchInputRef.current?.focus({ preventScroll: true }),
-            );
-          } else {
-            setSearchInput("");
-          }
-          return next;
-        });
-      }, { active: searchOpen }),
-    );
-  }
-  zoomGroup.push({
-    id: "zoom",
-    // Zoom out, the percentage trigger, and zoom in.
-    width: 128,
-    render: () => (
-      <>
-        <Tooltip label={t(($) => $.preview.zoom.out)}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            disabled={scale <= MIN_PREVIEW_SCALE}
-            onClick={zoomOut}
-            aria-label={t(($) => $.preview.zoom.out)}
-          >
-            <ZoomOut className="size-3.5" />
-          </Button>
-        </Tooltip>
-        <DropdownMenu open={zoomMenuOpen} onOpenChange={setZoomMenuOpen}>
-          <DropdownMenuTrigger asChild>
+        iconControl("search", Search, t(($) => $.preview.search.open), () => {
+          setSearchOpen((open) => {
+            const next = !open;
+            if (next) {
+              requestAnimationFrame(() =>
+                searchInputRef.current?.focus({ preventScroll: true }),
+              );
+            } else {
+              setSearchInput("");
+            }
+            return next;
+          });
+        }, { active: searchOpen }),
+      );
+    }
+    zoomGroup.push({
+      id: "zoom",
+      // Zoom out, the percentage trigger, and zoom in.
+      width: 128,
+      render: () => (
+        <>
+          <Tooltip label={t(($) => $.preview.zoom.out)}>
             <Button
               variant="ghost"
-              size="sm"
-              className="h-7 min-w-14 gap-1 px-1.5 text-xs tabular-nums text-muted-foreground"
-              aria-label={t(($) => $.preview.zoom.percentLabel, {
-                percent: Math.round(scale * 100),
-              })}
-              disabled={!displayedBytes}
+              size="icon"
+              className="size-7"
+              disabled={scale <= MIN_PREVIEW_SCALE}
+              onClick={zoomOut}
+              aria-label={t(($) => $.preview.zoom.out)}
             >
-              {t(($) => $.preview.zoom.percent, { percent: Math.round(scale * 100) })}
-              <ChevronDown data-icon="inline-end" />
+              <ZoomOut className="size-3.5" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="min-w-40">
-            {zoomMenuItems()}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Tooltip label={t(($) => $.preview.zoom.in)}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            disabled={scale >= MAX_PREVIEW_SCALE}
-            onClick={zoomIn}
-            aria-label={t(($) => $.preview.zoom.in)}
-          >
-            <ZoomIn className="size-3.5" />
-          </Button>
-        </Tooltip>
-      </>
-    ),
-    renderMenu: () => (
-      <DropdownMenuSub key="zoom">
-        <DropdownMenuSubTrigger>
-          <ZoomIn className="size-4" />
-          {t(($) => $.preview.zoom.menuLabel, {
-            percent: Math.round(scale * 100),
-          })}
-        </DropdownMenuSubTrigger>
-        <DropdownMenuPortal>
-          <DropdownMenuSubContent className="min-w-40">
-            {zoomMenuItems()}
-          </DropdownMenuSubContent>
-        </DropdownMenuPortal>
-      </DropdownMenuSub>
-    ),
-  });
-  fileGroup.push(
-    {
-      id: "download",
-      width: ICON_BUTTON_WIDTH,
-      render: () => (
-        <Tooltip
-          label={
-            isImage
-              ? t(($) => $.preview.actions.downloadImage)
-              : t(($) => $.preview.actions.downloadDisplayedPdf)
-          }
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            disabled={!displayedBytes || exporting}
-            onClick={() => void exportDisplayedPreview()}
-            aria-label={
-              isImage
-                ? t(($) => $.preview.actions.downloadImage)
-                : pdfIsStale
-                  ? t(($) => $.preview.actions.downloadStalePdf)
-                  : t(($) => $.preview.actions.downloadPdf)
-            }
-          >
-            {exporting ? (
-              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-            ) : (
-              <Download className="size-3.5" />
-            )}
-          </Button>
-        </Tooltip>
+          </Tooltip>
+          <DropdownMenu open={zoomMenuOpen} onOpenChange={setZoomMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 min-w-14 gap-1 px-1.5 text-xs tabular-nums text-muted-foreground"
+                aria-label={t(($) => $.preview.zoom.percentLabel, {
+                  percent: Math.round(scale * 100),
+                })}
+                disabled={!displayedBytes}
+              >
+                {t(($) => $.preview.zoom.percent, { percent: Math.round(scale * 100) })}
+                <ChevronDown data-icon="inline-end" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="min-w-40">
+              {zoomMenuItems()}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Tooltip label={t(($) => $.preview.zoom.in)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              disabled={scale >= MAX_PREVIEW_SCALE}
+              onClick={zoomIn}
+              aria-label={t(($) => $.preview.zoom.in)}
+            >
+              <ZoomIn className="size-3.5" />
+            </Button>
+          </Tooltip>
+        </>
       ),
       renderMenu: () => (
-        <DropdownMenuItem
-          key="download"
-          disabled={!displayedBytes || exporting}
-          onSelect={() => void exportDisplayedPreview()}
-        >
-          <Download className="size-4" />
-          {isImage
-            ? t(($) => $.preview.actions.downloadImage)
-            : t(($) => $.preview.actions.downloadPdf)}
-        </DropdownMenuItem>
+        <DropdownMenuSub key="zoom">
+          <DropdownMenuSubTrigger>
+            <ZoomIn className="size-4" />
+            {t(($) => $.preview.zoom.menuLabel, {
+              percent: Math.round(scale * 100),
+            })}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="min-w-40">
+              {zoomMenuItems()}
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
       ),
-    },
-    iconControl(
-      "save",
-      Save,
-      isImage
-        ? t(($) => $.preview.actions.saveImage)
-        : t(($) => $.preview.actions.savePdf),
-      () => {
-        if (isImage) {
-          const base =
-            (projectName || "figure").replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "") ||
-            "figure";
-          setSaveName(`${base}.png`);
-        } else {
-          setSaveName(`${mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document"}.pdf`);
-        }
-        setSaveOpen(true);
-      },
-      { disabled: !displayedBytes },
-    ),
-  );
-  inkGroup.push(
-    iconControl(
-      "invert",
-      Contrast,
-      t(($) => $.preview.actions.invert),
-      () => setInverted(!inverted),
+    });
+    fileGroup.push(
       {
-        disabled: !displayedBytes,
-        active: inverted,
-        tooltip: inverted
-          ? t(($) => $.preview.actions.restoreColors)
-          : t(($) => $.preview.actions.invert),
+        id: "download",
+        width: ICON_BUTTON_WIDTH,
+        render: () => (
+          <Tooltip
+            label={
+              isImage
+                ? t(($) => $.preview.actions.downloadImage)
+                : t(($) => $.preview.actions.downloadDisplayedPdf)
+            }
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              disabled={!displayedBytes || exporting}
+              onClick={() => void exportDisplayedPreview()}
+              aria-label={downloadActionLabel()}
+            >
+              {exporting ? (
+                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+              ) : (
+                <Download className="size-3.5" />
+              )}
+            </Button>
+          </Tooltip>
+        ),
+        renderMenu: () => (
+          <DropdownMenuItem
+            key="download"
+            disabled={!displayedBytes || exporting}
+            onSelect={() => void exportDisplayedPreview()}
+          >
+            <Download className="size-4" />
+            {isImage
+              ? t(($) => $.preview.actions.downloadImage)
+              : t(($) => $.preview.actions.downloadPdf)}
+          </DropdownMenuItem>
+        ),
       },
-    ),
-  );
-  inkGroup.push(
-    iconControl(
-      "screen-reader",
-      Accessibility,
-      t(($) => $.preview.actions.readerView),
-      () => setScreenReaderMode(!screenReaderMode),
-      {
-        disabled: !displayedBytes || isImage,
-        active: screenReaderMode,
-        tooltip: screenReaderMode
-          ? t(($) => $.preview.actions.exitReaderView)
-          : t(($) => $.preview.actions.readerView),
-      },
-    ),
-  );
-  if (!isImage) {
+      iconControl(
+        "save",
+        Save,
+        isImage
+          ? t(($) => $.preview.actions.saveImage)
+          : t(($) => $.preview.actions.savePdf),
+        () => {
+          if (isImage) {
+            const base =
+              trimEdgeCharacter(
+                (projectName || "figure").replace(/[^\w.-]+/g, "-"),
+                "-",
+              ) || "figure";
+            setSaveName(`${base}.png`);
+          } else {
+            setSaveName(`${mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document"}.pdf`);
+          }
+          setSaveOpen(true);
+        },
+        { disabled: !displayedBytes },
+      ),
+    );
     inkGroup.push(
       iconControl(
-        "rotate",
-        RotateCw,
-        t(($) => $.preview.actions.rotate),
-        () => {
-          setRotationPending(true);
-          setRotation((current) => ((current + 90) % 360) as PdfRotation);
-        },
+        "invert",
+        Contrast,
+        t(($) => $.preview.actions.invert),
+        () => setInverted(!inverted),
         {
           disabled: !displayedBytes,
-          busy: rotationPending,
-          tooltip: t(($) => $.preview.actions.rotateTooltip, {
-            degrees: rotation,
-          }),
+          active: inverted,
+          tooltip: inverted
+            ? t(($) => $.preview.actions.restoreColors)
+            : t(($) => $.preview.actions.invert),
+        },
+      ),
+      iconControl(
+        "screen-reader",
+        Accessibility,
+        t(($) => $.preview.actions.readerView),
+        () => setScreenReaderMode(!screenReaderMode),
+        {
+          disabled: !displayedBytes || isImage,
+          active: screenReaderMode,
+          tooltip: screenReaderMode
+            ? t(($) => $.preview.actions.exitReaderView)
+            : t(($) => $.preview.actions.readerView),
         },
       ),
     );
-  }
-  if (!isFs) {
-    windowGroup.push(
+    if (!isImage) {
+      inkGroup.push(
+        iconControl(
+          "rotate",
+          RotateCw,
+          t(($) => $.preview.actions.rotate),
+          () => {
+            setRotationPending(true);
+            setRotation((current) => ((current + 90) % 360) as PdfRotation);
+          },
+          {
+            disabled: !displayedBytes,
+            busy: rotationPending,
+            tooltip: t(($) => $.preview.actions.rotateTooltip, {
+              degrees: rotation,
+            }),
+          },
+        ),
+      );
+    }
+    const pushPreviewWindowControls = () => {
+      if (!isFs) {
+        windowGroup.push(
+          iconControl(
+            "open-window",
+            SquareArrowOutUpRight,
+            t(($) => $.preview.actions.openWindow),
+            () => {
+              if (!projectId) return;
+              openPreviewWindow(
+                projectId,
+                projectName,
+                previewWindowState(
+                  status,
+                  lastAttemptIdentity,
+                  compileCheckpoint,
+                  compileFailureReason,
+                ),
+              );
+            },
+            { disabled: !projectId || !displayedBytes },
+          ),
+        );
+      } else {
+        windowGroup.push(
+          iconControl(
+            "hide-toolbar",
+            PanelTopClose,
+            t(($) => $.preview.actions.hideToolbar),
+            () =>
+              setFsToolbarHidden(true),
+          ),
+        );
+      }
+      windowGroup.push(
+        iconControl(
+          "pdf-settings",
+          Settings2,
+          t(($) => $.preview.actions.settings),
+          () => useSettingsStore.getState().openSettingsAt("appearance", "pdf"),
+        ),
+      );
+    };
+    pushPreviewWindowControls();
+    viewGroup.push(
       iconControl(
-        "open-window",
-        SquareArrowOutUpRight,
-        t(($) => $.preview.actions.openWindow),
-        () => {
-          if (!projectId) return;
-          void openPreviewWindow(
-            projectId,
-            projectName,
-            previewWindowState(
-              status,
-              lastAttemptIdentity,
-              compileCheckpoint,
-              compileFailureReason,
-            ),
-          );
-        },
-        { disabled: !projectId || !displayedBytes },
+        "fullscreen",
+        isFs ? Minimize : Maximize,
+        isFs
+          ? t(($) => $.preview.actions.exitFullscreen)
+          : t(($) => $.preview.actions.fullscreen),
+        toggleFullscreen,
+        { disabled: !displayedBytes },
       ),
     );
-  } else {
-    windowGroup.push(
-      iconControl(
-        "hide-toolbar",
-        PanelTopClose,
-        t(($) => $.preview.actions.hideToolbar),
-        () =>
-          setFsToolbarHidden(true),
-      ),
-    );
-  }
-  windowGroup.push(
-    iconControl(
-      "pdf-settings",
-      Settings2,
-      t(($) => $.preview.actions.settings),
-      () => useSettingsStore.getState().openSettingsAt("appearance", "pdf"),
-    ),
-  );
-  viewGroup.push(
-    iconControl(
-      "fullscreen",
-      isFs ? Minimize : Maximize,
-      isFs
-        ? t(($) => $.preview.actions.exitFullscreen)
-        : t(($) => $.preview.actions.fullscreen),
-      toggleFullscreen,
-      { disabled: !displayedBytes },
-    ),
-  );
+    return { layoutGroup, pageGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup };
+  };
+  const { layoutGroup, pageGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup } = buildPreviewToolbarGroups();
 
   const pdfControls: ToolbarControl[] = [
     viewGroup,
@@ -1824,6 +1884,514 @@ export function PreviewPane() {
   const pdfVisibleCount = fitCount(pdfControls, pdfToolbarWidth);
   const pdfVisibleControls = pdfControls.slice(0, pdfVisibleCount);
   const pdfOverflowControls = pdfControls.slice(pdfVisibleCount);
+
+  const renderPreviewToolbar = () => (
+    <div
+      className={cn(
+        "flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0",
+        isFs && fsToolbarHidden && "hidden",
+      )}
+    >
+      {viewMode === "pdf" && <SidebarCollapseToggle />}
+      <div
+        data-tour="project-compile-logs"
+        className="flex items-center gap-1"
+      >
+        <button
+          type="button"
+          onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
+          aria-label={
+            tab === "logs"
+              ? t(($) => $.preview.toolbar.showPdf)
+              : t(($) => $.preview.toolbar.showLogs)
+          }
+          aria-pressed={tab === "logs"}
+          className={cn(
+            "flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
+            tab === "logs"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <ScrollText className="size-3.5" />
+          {t(($) => $.preview.toolbar.logs)}
+          {errors.length > 0 && (
+            <span
+              className={cn(
+                "rounded-full px-1.5 text-[10px] font-semibold text-white",
+                severity === "error" ? "bg-red-500" : "bg-amber-500"
+              )}
+            >
+              {errors.length}
+            </span>
+          )}
+        </button>
+
+        {!compiling && status !== "idle" && (
+          <span
+            className={cn(
+              "flex items-center gap-1 text-[10px] font-medium tabular-nums",
+              severityToneClass()
+            )}
+            title={severityTitle()}
+            data-testid="compile-status"
+            data-severity={severity}
+          >
+            {renderSeverityIcon()}
+            {severity === "error" || compileTimeMs == null
+              ? t(($) => $.preview.toolbar.failed)
+              : t(($) => $.preview.toolbar.duration, {
+                  seconds: (compileTimeMs / 1000).toFixed(1),
+                })}
+          </span>
+        )}
+
+      </div>
+
+      {tab === "logs" && hasError && (
+        <div className="ml-auto flex items-center">
+          <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
+            <Sparkles data-icon="inline-start" />
+            {t(($) => $.preview.toolbar.askAi)}
+          </Button>
+        </div>
+      )}
+
+      {tab === "pdf" && (
+        <div
+          data-tour="project-preview-zoom"
+          ref={pdfToolbarRef}
+          className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-0.5 overflow-hidden"
+        >
+          {pdfVisibleControls.map((control) => (
+            <Fragment key={control.id}>{control.render()}</Fragment>
+          ))}
+          {pdfOverflowControls.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label={t(($) => $.preview.toolbar.more)}
+                >
+                  <MoreHorizontal className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-48">
+                {pdfOverflowControls.map((control) => control.renderMenu())}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderSavePdfDialog = () => (
+    saveOpen && (
+      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+        <button type="button" aria-label={t(($) => $.preview.save.close)} className="absolute inset-0" onMouseDown={onSaveBackdropMouseDown} />
+        <div
+          ref={saveDialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="save-preview-title"
+          tabIndex={-1}
+          className="relative w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <h2 id="save-preview-title" className="text-sm font-semibold">
+              {isImage
+                ? t(($) => $.preview.save.imageTitle)
+                : t(($) => $.preview.save.title)}
+            </h2>
+            <button
+              type="button"
+              onClick={closeSave}
+              aria-label={t(($) => $.preview.save.close)}
+              className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+          <p className="mb-3 text-xs text-muted-foreground">
+            {pdfIsStale
+              ? t(($) => $.preview.save.staleDescription)
+              : t(($) => $.preview.save.description)}
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              data-modal-initial-focus
+              aria-label={t(($) => $.preview.save.nameLabel)}
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !saving) submitSavePdf(); }}
+              placeholder={t(($) => $.preview.save.namePlaceholder)}
+              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
+            />
+            <Button
+              onClick={() => void submitSavePdf()}
+              disabled={saving || !displayedBytes}
+            >
+              {saving
+                ? t(($) => $.common.state.saving)
+                : t(($) => $.common.actions.save)}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  );
+
+  const renderOutlinePanel = () => (
+    (
+      <aside
+        id="pdf-outline-panel"
+        aria-label={t(($) => $.preview.outline.panel)}
+        inert={!outlineOpen}
+        className={cn(
+          "absolute inset-y-2 left-2 z-30 flex w-[min(19rem,calc(100%-1rem))] flex-col overflow-hidden rounded-lg border bg-popover/80 text-popover-foreground shadow-xl backdrop-blur-xl supports-[not(backdrop-filter:blur(0))]:bg-popover",
+          "transition-transform duration-200 ease-out motion-reduce:transition-none",
+          outlineOpen
+            ? "translate-x-0"
+            : "-translate-x-[calc(100%_+_1rem)]",
+        )}
+      >
+        <div className="flex min-h-11 items-center justify-between px-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <TableOfContents
+              aria-hidden
+              className="size-4 text-muted-foreground"
+            />
+            {t(($) => $.preview.outline.title)}
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={() => setOutlineOpen(false)}
+            aria-label={t(($) => $.preview.outline.close)}
+          >
+            <X className="size-3.5" />
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto p-2">
+          {outlineState.status === "loading" ? (
+            <output
+              className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground"
+            >
+              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+              {t(($) => $.preview.outline.loading)}
+            </output>
+          ) : null}
+          {outlineState.status !== "loading" && (outlineState.items.length ? (
+            <PdfOutlineItems
+              items={outlineState.items}
+              onActivate={(id) => {
+                pdfRef.current?.activateOutlineItem(id);
+                setOutlineOpen(false);
+              }}
+            />
+          ) : (
+            <p className="px-2 py-3 text-xs text-muted-foreground">
+              {outlineState.message ??
+                t(($) => $.preview.outline.empty)}
+            </p>
+          ))}
+        </div>
+      </aside>
+    )
+  );
+
+  const renderStaleMarker = () => (
+    (pdfIsStale || retainedLoadFailure) && (
+      // Tooltip wraps its child in a `relative` span, so the marker is
+      // positioned by this wrapper rather than by the button itself.
+      <div className="absolute bottom-3 right-3 z-30">
+      <Tooltip
+        label={t(($) => $.preview.stale.tooltip, {
+          explanation:
+            retainedLoadFailure ??
+            currentRevisionExplanation ??
+            t(($) => $.preview.stale.explanation),
+          syncTex: staleSyncTexAvailable
+            ? t(($) => $.preview.stale.syncTexAvailable)
+            : t(($) => $.preview.stale.syncTexUnavailable),
+        })}
+        side="left"
+      >
+        <button
+          type="button"
+          onClick={() => void recompile()}
+          data-testid="preview-stale-badge"
+          aria-label={t(($) => $.preview.stale.badgeLabel)}
+          className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-100 px-2.5 text-[11px] font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-[#181818] dark:text-neutral-300 dark:hover:bg-[#222222]"
+        >
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-amber-500 dark:bg-amber-400"
+          />
+          {t(($) => $.preview.stale.badge)}
+        </button>
+      </Tooltip>
+      </div>
+    )
+  );
+
+  const renderPdfScrollArea = (viewer: NonNullable<typeof viewerDocument>) => (
+    <section
+      ref={scrollBoxRef}
+      data-pdf-scroll-root
+      aria-label={t(($) => $.preview.viewer.scrollArea)}
+      className="h-full overflow-auto bg-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      style={
+        inverted && !screenReaderMode
+          ? { filter: "invert(1) hue-rotate(180deg)" }
+          : undefined
+      }
+    >
+      <ErrorBoundary
+        resetKey={`${viewer.identity}:${pdfReloadGeneration}`}
+        fallback={
+          <PdfStateMessage
+            kind="error"
+            title={t(($) => $.preview.viewer.crashedTitle)}
+            detail={t(($) => $.preview.viewer.crashedDetail)}
+            onRetry={retryPdfLoad}
+          />
+        }
+      >
+        <PdfViewer
+          // Deliberately NOT keyed on the document identity. That
+          // remounted the whole viewer on every recompile, tearing the
+          // rendered canvases out before a replacement existed - the
+          // blank flash between builds. The viewer already reloads on
+          // a `documentIdentity` change and now swaps its pages only
+          // once the new layout is ready. `pdfReloadGeneration` stays:
+          // retry-after-failure does want a clean instance.
+          key={pdfReloadGeneration}
+          ref={pdfRef}
+          data={displayedBytes}
+          documentIdentity={viewer.identity}
+          password={pdfPassword || undefined}
+          rotation={rotation}
+          scale={scale}
+          layout={layout}
+          expectText={!isImage}
+          screenReaderMode={screenReaderMode && !isImage}
+          searchQuery={searchOpen ? deferredSearch : ""}
+          onLoadStateChange={handlePdfLoadState}
+          onSearchStateChange={setSearchState}
+          onOutlineStateChange={setOutlineState}
+          onInverse={
+            syncTexAvailable
+              ? (pageNumber, clickX, clickY, word) =>
+                  void inverseFromClick(
+                    pageNumber,
+                    clickX,
+                    clickY,
+                    word,
+                    displayedCheckpoint,
+                  )
+              : undefined
+          }
+          onPageChange={(current, total) => {
+            setPage(current);
+            setNumPages(total);
+            usePdfViewStore.getState().setPage(current);
+          }}
+        />
+      </ErrorBoundary>
+    </section>
+  );
+
+  const renderPdfLoadOverlay = (viewer: NonNullable<typeof viewerDocument>) => (
+    pdfLoadState.documentIdentity ===
+      viewer.identity &&
+      pdfLoadState.status !== "ready" &&
+      pdfLoadState.status !== "idle" &&
+      // Once a page has been rendered, a reload (recompile, rotate,
+      // password retry) keeps that page on screen. Covering it with
+      // the startup panel and uncovering it a moment later is the
+      // flicker; failures still take over, because then there is
+      // something the user has to act on.
+      (!hasRendered || pdfLoadState.status !== "loading") && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-sidebar/90 p-6 backdrop-blur-[1px]">
+          {pdfLoadState.status === "password_required" ? (
+            <form
+              className="w-full max-w-xs space-y-3 text-center"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitPdfPassword();
+              }}
+            >
+              <LockKeyhole className="mx-auto size-8 text-muted-foreground" />
+              <div>
+                <h2 className="text-sm font-semibold">
+                  {t(($) => $.preview.password.title)}
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {pdfLoadState.message}
+                </p>
+              </div>
+              <Input
+                autoFocus
+                type="password"
+                autoComplete="off"
+                value={passwordDraft}
+                onChange={(event) =>
+                  setPasswordDraft(event.target.value)
+                }
+                aria-label={t(($) => $.preview.password.label)}
+                placeholder={t(($) => $.preview.password.placeholder)}
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!passwordDraft}
+              >
+                {t(($) => $.preview.password.submit)}
+              </Button>
+            </form>
+          ) : null}
+          {pdfLoadState.status === "loading" ? (
+            <DocumentStartupProgress stages={startupStages} />
+          ) : null}
+          {pdfLoadState.status !== "password_required" &&
+          pdfLoadState.status !== "loading" ? (
+            <PdfStateMessage
+              kind="error"
+              title={pdfLoadFailureTitle()}
+              detail={
+                pdfLoadState.message ??
+                t(($) => $.preview.viewer.loadFailedDetail)
+              }
+              onRetry={retryPdfLoad}
+            />
+          ) : null}
+        </div>
+      )
+  );
+
+  const renderPreviewBody = () => (
+    tab !== "logs" && (displayedBytes && viewerDocument ? (
+      <div className="flex h-full min-h-0 flex-col bg-sidebar">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          {/* Editing while a PDF is on screen is the normal case, so
+              staleness is a standing condition rather than news: a quiet
+              marker over the document that recompiles on click, not a
+              banner or a toolbar chip competing with the controls. */}
+          {renderStaleMarker()}
+          {/* Kept mounted so closing animates too, not just opening. The
+              clipped parent hides it off-canvas and `inert` keeps a closed
+              panel out of the tab order and the accessibility tree. */}
+          {renderOutlinePanel()}
+
+          {searchOpen && (
+            <search
+              id="pdf-search-panel"
+              aria-label={t(($) => $.preview.search.panel)}
+              className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
+            >
+              <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                value={searchInput}
+                onChange={(event) =>
+                  setSearchInput(event.target.value)
+                }
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    searchState.status === "success"
+                  ) {
+                    if (event.shiftKey) {
+                      pdfRef.current?.findPrevious();
+                    } else {
+                      pdfRef.current?.findNext();
+                    }
+                  }
+                }}
+                placeholder={t(($) => $.preview.search.placeholder)}
+                aria-label={t(($) => $.preview.search.input)}
+                className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
+              />
+              <span
+                className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"
+                aria-live="polite"
+              >
+                {searchCounterLabel()}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                disabled={
+                  searchState.status !== "success" ||
+                  searchState.total === 0
+                }
+                onClick={() => pdfRef.current?.findPrevious()}
+                aria-label={t(($) => $.preview.search.previous)}
+              >
+                <ChevronLeft className="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                disabled={
+                  searchState.status !== "success" ||
+                  searchState.total === 0
+                }
+                onClick={() => pdfRef.current?.findNext()}
+                aria-label={t(($) => $.preview.search.next)}
+              >
+                <ChevronRight className="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={() => {
+                  setSearchOpen(false);
+                  setSearchInput("");
+                }}
+                aria-label={t(($) => $.preview.search.close)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </search>
+          )}
+
+          {renderPdfScrollArea(viewerDocument)}
+
+          {renderPdfLoadOverlay(viewerDocument)}
+        </div>
+      </div>
+    ) : (
+      <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">
+        {status === "error" || status === "unavailable" ? (
+          <div className="space-y-3 text-center text-muted-foreground">
+            <FileText className="mx-auto size-10 opacity-30" />
+            <p className="max-w-xs text-sm" role="alert">
+              {compileFailureReason ??
+                (status === "unavailable"
+                  ? t(($) => $.preview.empty.compileUnavailable)
+                  : t(($) => $.preview.empty.compileFailed))}
+            </p>
+            <Button size="sm" onClick={() => void recompile()}>
+              {t(($) => $.preview.actions.retryCompile)}
+            </Button>
+          </div>
+        ) : (
+          <DocumentStartupProgress
+            stages={startupStages}
+          />
+        )}
+      </div>
+    ))
+  );
 
   return (
     <div
@@ -1848,476 +2416,20 @@ export function PreviewPane() {
           </button>
         </Tooltip>
       )}
-      <div
-        className={cn(
-          "flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0",
-          isFs && fsToolbarHidden && "hidden",
-        )}
-      >
-        {viewMode === "pdf" && <SidebarCollapseToggle />}
-        <div
-          data-tour="project-compile-logs"
-          className="flex items-center gap-1"
-        >
-          <button
-            type="button"
-            onClick={() => setTab(tab === "logs" ? "pdf" : "logs")}
-            aria-label={
-              tab === "logs"
-                ? t(($) => $.preview.toolbar.showPdf)
-                : t(($) => $.preview.toolbar.showLogs)
-            }
-            aria-pressed={tab === "logs"}
-            className={cn(
-              "flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
-              tab === "logs"
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <ScrollText className="size-3.5" />
-            {t(($) => $.preview.toolbar.logs)}
-            {errors.length > 0 && (
-              <span
-                className={cn(
-                  "rounded-full px-1.5 text-[10px] font-semibold text-white",
-                  severity === "error" ? "bg-red-500" : "bg-amber-500"
-                )}
-              >
-                {errors.length}
-              </span>
-            )}
-          </button>
-
-          {!compiling && status !== "idle" && (
-            <span
-              className={cn(
-                "flex items-center gap-1 text-[10px] font-medium tabular-nums",
-                severity === "error"
-                  ? "text-red-500"
-                  : severity === "warning"
-                  ? "text-amber-500"
-                  : "text-emerald-500"
-              )}
-              title={
-                severity === "error"
-                  ? t(($) => $.preview.toolbar.compiledWithErrors)
-                  : severity === "warning"
-                  ? t(($) => $.preview.toolbar.compiledWithWarnings)
-                  : t(($) => $.preview.toolbar.compiledSuccessfully)
-              }
-              data-testid="compile-status"
-              data-severity={severity}
-            >
-              {severity === "error" ? (
-                <XCircle className="size-3.5" />
-              ) : severity === "warning" ? (
-                <AlertTriangle className="size-3.5" />
-              ) : (
-                <CheckCircle2 className="size-3.5" />
-              )}
-              {severity === "error" || compileTimeMs == null
-                ? t(($) => $.preview.toolbar.failed)
-                : t(($) => $.preview.toolbar.duration, {
-                    seconds: (compileTimeMs / 1000).toFixed(1),
-                  })}
-            </span>
-          )}
-
-        </div>
-
-        {tab === "logs" && hasError && (
-          <div className="ml-auto flex items-center">
-            <Button variant="ghostPrimary" size="xs" onClick={() => void askAiAboutCompileErrors()}>
-              <Sparkles data-icon="inline-start" />
-              {t(($) => $.preview.toolbar.askAi)}
-            </Button>
-          </div>
-        )}
-
-        {tab === "pdf" && (
-          <div
-            data-tour="project-preview-zoom"
-            ref={pdfToolbarRef}
-            className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-0.5 overflow-hidden"
-          >
-            {pdfVisibleControls.map((control) => (
-              <Fragment key={control.id}>{control.render()}</Fragment>
-            ))}
-            {pdfOverflowControls.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7"
-                    aria-label={t(($) => $.preview.toolbar.more)}
-                  >
-                    <MoreHorizontal className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-48">
-                  {pdfOverflowControls.map((control) => control.renderMenu())}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        )}
-      </div>
+      {renderPreviewToolbar()}
 
       <div
         data-tour="project-preview-content"
         className="relative min-h-0 flex-1 overflow-hidden"
       >
-        {tab === "logs" ? (
-          <LogPane />
-        ) : displayedBytes && viewerDocument ? (
-          <div className="flex h-full min-h-0 flex-col bg-sidebar">
-            <div className="relative min-h-0 flex-1 overflow-hidden">
-              {/* Editing while a PDF is on screen is the normal case, so
-                  staleness is a standing condition rather than news: a quiet
-                  marker over the document that recompiles on click, not a
-                  banner or a toolbar chip competing with the controls. */}
-              {(pdfIsStale || retainedLoadFailure) && (
-                // Tooltip wraps its child in a `relative` span, so the marker is
-                // positioned by this wrapper rather than by the button itself.
-                <div className="absolute bottom-3 right-3 z-30">
-                <Tooltip
-                  label={t(($) => $.preview.stale.tooltip, {
-                    explanation:
-                      retainedLoadFailure ??
-                      currentRevisionExplanation ??
-                      t(($) => $.preview.stale.explanation),
-                    syncTex: staleSyncTexAvailable
-                      ? t(($) => $.preview.stale.syncTexAvailable)
-                      : t(($) => $.preview.stale.syncTexUnavailable),
-                  })}
-                  side="left"
-                >
-                  <button
-                    type="button"
-                    onClick={() => void recompile()}
-                    data-testid="preview-stale-badge"
-                    aria-label={t(($) => $.preview.stale.badgeLabel)}
-                    className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-100 px-2.5 text-[11px] font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-[#181818] dark:text-neutral-300 dark:hover:bg-[#222222]"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="size-1.5 rounded-full bg-amber-500 dark:bg-amber-400"
-                    />
-                    {t(($) => $.preview.stale.badge)}
-                  </button>
-                </Tooltip>
-                </div>
-              )}
-              {/* Kept mounted so closing animates too, not just opening. The
-                  clipped parent hides it off-canvas and `inert` keeps a closed
-                  panel out of the tab order and the accessibility tree. */}
-              {(
-                <aside
-                  id="pdf-outline-panel"
-                  aria-label={t(($) => $.preview.outline.panel)}
-                  inert={!outlineOpen}
-                  className={cn(
-                    "absolute inset-y-2 left-2 z-30 flex w-[min(19rem,calc(100%-1rem))] flex-col overflow-hidden rounded-lg border bg-popover/80 text-popover-foreground shadow-xl backdrop-blur-xl supports-[not(backdrop-filter:blur(0))]:bg-popover",
-                    "transition-transform duration-200 ease-out motion-reduce:transition-none",
-                    outlineOpen
-                      ? "translate-x-0"
-                      : "-translate-x-[calc(100%_+_1rem)]",
-                  )}
-                >
-                  <div className="flex min-h-11 items-center justify-between px-3">
-                    <h2 className="flex items-center gap-2 text-sm font-semibold">
-                      <TableOfContents
-                        aria-hidden
-                        className="size-4 text-muted-foreground"
-                      />
-                      {t(($) => $.preview.outline.title)}
-                    </h2>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      onClick={() => setOutlineOpen(false)}
-                      aria-label={t(($) => $.preview.outline.close)}
-                    >
-                      <X className="size-3.5" />
-                    </Button>
-                  </div>
-                  <div className="min-h-0 flex-1 overflow-auto p-2">
-                    {outlineState.status === "loading" ? (
-                      <p
-                        className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground"
-                        role="status"
-                      >
-                        <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-                        {t(($) => $.preview.outline.loading)}
-                      </p>
-                    ) : outlineState.items.length ? (
-                      <PdfOutlineItems
-                        items={outlineState.items}
-                        onActivate={(id) => {
-                          pdfRef.current?.activateOutlineItem(id);
-                          setOutlineOpen(false);
-                        }}
-                      />
-                    ) : (
-                      <p className="px-2 py-3 text-xs text-muted-foreground">
-                        {outlineState.message ??
-                          t(($) => $.preview.outline.empty)}
-                      </p>
-                    )}
-                  </div>
-                </aside>
-              )}
-
-              {searchOpen && (
-                <search
-                  id="pdf-search-panel"
-                  aria-label={t(($) => $.preview.search.panel)}
-                  className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
-                >
-                  <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
-                  <Input
-                    ref={searchInputRef}
-                    value={searchInput}
-                    onChange={(event) =>
-                      setSearchInput(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "Enter" &&
-                        searchState.status === "success"
-                      ) {
-                        if (event.shiftKey) {
-                          pdfRef.current?.findPrevious();
-                        } else {
-                          pdfRef.current?.findNext();
-                        }
-                      }
-                    }}
-                    placeholder={t(($) => $.preview.search.placeholder)}
-                    aria-label={t(($) => $.preview.search.input)}
-                    className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
-                  />
-                  <span
-                    className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"
-                    aria-live="polite"
-                  >
-                    {searchState.status === "searching"
-                      ? `${searchState.scannedPages}/${searchState.totalPages}`
-                      : searchInput.trim()
-                        ? `${searchState.current}/${searchState.total}`
-                        : "0/0"}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7"
-                    disabled={
-                      searchState.status !== "success" ||
-                      searchState.total === 0
-                    }
-                    onClick={() => pdfRef.current?.findPrevious()}
-                    aria-label={t(($) => $.preview.search.previous)}
-                  >
-                    <ChevronLeft className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7"
-                    disabled={
-                      searchState.status !== "success" ||
-                      searchState.total === 0
-                    }
-                    onClick={() => pdfRef.current?.findNext()}
-                    aria-label={t(($) => $.preview.search.next)}
-                  >
-                    <ChevronRight className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7"
-                    onClick={() => {
-                      setSearchOpen(false);
-                      setSearchInput("");
-                    }}
-                    aria-label={t(($) => $.preview.search.close)}
-                  >
-                    <X className="size-3.5" />
-                  </Button>
-                </search>
-              )}
-
-              <section
-                ref={scrollBoxRef}
-                data-pdf-scroll-root
-                aria-label={t(($) => $.preview.viewer.scrollArea)}
-                className="h-full overflow-auto bg-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                style={
-                  inverted && !screenReaderMode
-                    ? { filter: "invert(1) hue-rotate(180deg)" }
-                    : undefined
-                }
-              >
-                <ErrorBoundary
-                  resetKey={`${viewerDocument.identity}:${pdfReloadGeneration}`}
-                  fallback={
-                    <PdfStateMessage
-                      kind="error"
-                      title={t(($) => $.preview.viewer.crashedTitle)}
-                      detail={t(($) => $.preview.viewer.crashedDetail)}
-                      onRetry={retryPdfLoad}
-                    />
-                  }
-                >
-                  <PdfViewer
-                    // Deliberately NOT keyed on the document identity. That
-                    // remounted the whole viewer on every recompile, tearing the
-                    // rendered canvases out before a replacement existed - the
-                    // blank flash between builds. The viewer already reloads on
-                    // a `documentIdentity` change and now swaps its pages only
-                    // once the new layout is ready. `pdfReloadGeneration` stays:
-                    // retry-after-failure does want a clean instance.
-                    key={pdfReloadGeneration}
-                    ref={pdfRef}
-                    data={displayedBytes}
-                    documentIdentity={viewerDocument.identity}
-                    password={pdfPassword || undefined}
-                    rotation={rotation}
-                    scale={scale}
-                    layout={layout}
-                    expectText={!isImage}
-                    screenReaderMode={screenReaderMode && !isImage}
-                    searchQuery={searchOpen ? deferredSearch : ""}
-                    onLoadStateChange={handlePdfLoadState}
-                    onSearchStateChange={setSearchState}
-                    onOutlineStateChange={setOutlineState}
-                    onInverse={
-                      syncTexAvailable
-                        ? (pageNumber, clickX, clickY, word) =>
-                            void inverseFromClick(
-                              pageNumber,
-                              clickX,
-                              clickY,
-                              word,
-                              displayedCheckpoint,
-                            )
-                        : undefined
-                    }
-                    onPageChange={(current, total) => {
-                      setPage(current);
-                      setNumPages(total);
-                      usePdfViewStore.getState().setPage(current);
-                    }}
-                  />
-                </ErrorBoundary>
-              </section>
-
-              {pdfLoadState.documentIdentity ===
-                viewerDocument.identity &&
-                pdfLoadState.status !== "ready" &&
-                pdfLoadState.status !== "idle" &&
-                // Once a page has been rendered, a reload (recompile, rotate,
-                // password retry) keeps that page on screen. Covering it with
-                // the startup panel and uncovering it a moment later is the
-                // flicker; failures still take over, because then there is
-                // something the user has to act on.
-                (!hasRendered || pdfLoadState.status !== "loading") && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-sidebar/90 p-6 backdrop-blur-[1px]">
-                    {pdfLoadState.status === "password_required" ? (
-                      <form
-                        className="w-full max-w-xs space-y-3 text-center"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          submitPdfPassword();
-                        }}
-                      >
-                        <LockKeyhole className="mx-auto size-8 text-muted-foreground" />
-                        <div>
-                          <h2 className="text-sm font-semibold">
-                            {t(($) => $.preview.password.title)}
-                          </h2>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {pdfLoadState.message}
-                          </p>
-                        </div>
-                        <Input
-                          autoFocus
-                          type="password"
-                          autoComplete="off"
-                          value={passwordDraft}
-                          onChange={(event) =>
-                            setPasswordDraft(event.target.value)
-                          }
-                          aria-label={t(($) => $.preview.password.label)}
-                          placeholder={t(($) => $.preview.password.placeholder)}
-                        />
-                        <Button
-                          type="submit"
-                          size="sm"
-                          disabled={!passwordDraft}
-                        >
-                          {t(($) => $.preview.password.submit)}
-                        </Button>
-                      </form>
-                    ) : pdfLoadState.status === "loading" ? (
-                      <DocumentStartupProgress stages={startupStages} />
-                    ) : (
-                      <PdfStateMessage
-                        kind="error"
-                        title={
-                          pdfLoadState.status === "invalid"
-                            ? t(($) => $.preview.viewer.invalidTitle)
-                            : pdfLoadState.status === "empty"
-                              ? t(($) => $.preview.viewer.emptyTitle)
-                              : pdfLoadState.status === "unavailable"
-                                ? t(($) => $.preview.viewer.unavailableTitle)
-                                : t(($) => $.preview.viewer.loadFailedTitle)
-                        }
-                        detail={
-                          pdfLoadState.message ??
-                          t(($) => $.preview.viewer.loadFailedDetail)
-                        }
-                        onRetry={retryPdfLoad}
-                      />
-                    )}
-                  </div>
-                )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">
-            {status === "error" || status === "unavailable" ? (
-              <div className="space-y-3 text-center text-muted-foreground">
-                <FileText className="mx-auto size-10 opacity-30" />
-                <p className="max-w-xs text-sm" role="alert">
-                  {compileFailureReason ??
-                    (status === "unavailable"
-                      ? t(($) => $.preview.empty.compileUnavailable)
-                      : t(($) => $.preview.empty.compileFailed))}
-                </p>
-                <Button size="sm" onClick={() => void recompile()}>
-                  {t(($) => $.preview.actions.retryCompile)}
-                </Button>
-              </div>
-            ) : (
-              <DocumentStartupProgress
-                stages={startupStages}
-              />
-            )}
-          </div>
-        )}
+        {tab === "logs" ? <LogPane /> : null}
+        {renderPreviewBody()}
         <div className="sr-only" aria-live="polite">
           {pdfIsStale
             ? t(($) => $.preview.a11y.stale, {
                 explanation: currentRevisionExplanation ?? "",
               })
-            : numPages > 0
-              ? t(($) => $.preview.a11y.page, { page, total: numPages })
-              : ""}
+            : pageAnnouncement()}
           {searchState.status === "success" && searchInput.trim()
             ? ` ${t(($) => $.preview.a11y.searchResult, {
                 current: searchState.current,
@@ -2327,59 +2439,7 @@ export function PreviewPane() {
         </div>
       </div>
 
-      {saveOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <button type="button" aria-label={t(($) => $.preview.save.close)} className="absolute inset-0" onMouseDown={onSaveBackdropMouseDown} />
-          <div
-            ref={saveDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="save-preview-title"
-            tabIndex={-1}
-            className="relative w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 id="save-preview-title" className="text-sm font-semibold">
-                {isImage
-                  ? t(($) => $.preview.save.imageTitle)
-                  : t(($) => $.preview.save.title)}
-              </h2>
-              <button
-                type="button"
-                onClick={closeSave}
-                aria-label={t(($) => $.preview.save.close)}
-                className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <p className="mb-3 text-xs text-muted-foreground">
-              {pdfIsStale
-                ? t(($) => $.preview.save.staleDescription)
-                : t(($) => $.preview.save.description)}
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                data-modal-initial-focus
-                aria-label={t(($) => $.preview.save.nameLabel)}
-                value={saveName}
-                onChange={(e) => setSaveName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !saving) void submitSavePdf(); }}
-                placeholder={t(($) => $.preview.save.namePlaceholder)}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
-              />
-              <Button
-                onClick={() => void submitSavePdf()}
-                disabled={saving || !displayedBytes}
-              >
-                {saving
-                  ? t(($) => $.common.state.saving)
-                  : t(($) => $.common.actions.save)}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderSavePdfDialog()}
     </div>
   );
 }
@@ -2390,11 +2450,11 @@ export function PdfOutlineItems({
   items,
   onActivate,
   depth = 0,
-}: {
+}: Readonly<{
   items: OutlineItem[];
   onActivate: (id: string) => void;
   depth?: number;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   return (
     <ul className="space-y-0.5">
@@ -2436,12 +2496,12 @@ export function PdfStateMessage({
   title,
   detail,
   onRetry,
-}: {
+}: Readonly<{
   kind: "loading" | "error";
   title: string;
   detail: string;
   onRetry?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   return (
     <div
@@ -2505,10 +2565,10 @@ const STARTUP_STATUS_FILL: Record<StartupStageStatus, string> = {
 function StartupStageIcon({
   status,
   compact,
-}: {
+}: Readonly<{
   status: StartupStageStatus;
   compact: boolean;
-}) {
+}>) {
   const size = compact ? "size-3.5" : "size-4";
   if (status === "complete") {
     return <CheckCircle2 className={cn(size, "text-emerald-500")} />;
@@ -2541,15 +2601,79 @@ function StartupStageIcon({
   );
 }
 
+function StartupStageRow({
+  stage,
+  compact,
+}: Readonly<{ stage: DocumentStartupStage; compact: boolean }>) {
+  return (
+    <li
+      className={cn(
+        "flex min-w-0 items-center gap-3",
+        compact ? "py-1.5" : "py-2.5",
+      )}
+      aria-current={stage.status === "running" ? "step" : undefined}
+    >
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center",
+          compact ? "size-4" : "size-5",
+        )}
+      >
+        <StartupStageIcon status={stage.status} compact={compact} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block truncate font-medium",
+            compact ? "text-[11px]" : "text-xs",
+            (stage.status === "pending" || stage.status === "skipped") &&
+              "text-muted-foreground",
+            stage.status === "error" && "text-destructive",
+          )}
+        >
+          {stage.label}
+        </span>
+        {!compact && (
+          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+            {stage.detail}
+          </span>
+        )}
+      </span>
+      <span
+        className={cn(
+          "shrink-0 font-mono uppercase tracking-wide",
+          compact ? "text-[9px]" : "text-[10px]",
+          STARTUP_STATUS_TEXT[stage.status],
+        )}
+      >
+        {startupStatusLabel(stage.status)}
+      </span>
+    </li>
+  );
+}
+
+function countStagesWithStatus(
+  stages: readonly DocumentStartupStage[],
+  status: DocumentStartupStage["status"],
+): number {
+  return stages.filter((stage) => stage.status === status).length;
+}
+
+function countSettledStages(stages: readonly DocumentStartupStage[]): number {
+  return stages.filter(
+    (stage) => stage.status === "complete" || stage.status === "skipped",
+  ).length;
+}
+
 export function DocumentStartupProgress({
   stages,
   compact = false,
   onCompile,
-}: {
+}: Readonly<{
   stages: DocumentStartupStage[];
   compact?: boolean;
   onCompile?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   const activeStage = [...stages]
     .reverse()
@@ -2557,19 +2681,10 @@ export function DocumentStartupProgress({
   const failedStage = stages.find((stage) => stage.status === "error");
   const waitingStage = stages.find((stage) => stage.status === "pending");
   const currentStage = activeStage ?? failedStage ?? waitingStage;
-  const completedCount = stages.filter(
-    (stage) =>
-      stage.status === "complete" || stage.status === "skipped",
-  ).length;
-  const runningCount = stages.filter(
-    (stage) => stage.status === "running",
-  ).length;
-  const queuedCount = stages.filter(
-    (stage) => stage.status === "pending",
-  ).length;
-  const failedCount = stages.filter(
-    (stage) => stage.status === "error",
-  ).length;
+  const completedCount = countSettledStages(stages);
+  const runningCount = countStagesWithStatus(stages, "running");
+  const queuedCount = countStagesWithStatus(stages, "pending");
+  const failedCount = countStagesWithStatus(stages, "error");
   const meta = [
     runningCount > 0
       ? t(($) => $.preview.startup.metaRunning, { stages: runningCount })
@@ -2584,15 +2699,20 @@ export function DocumentStartupProgress({
     .filter(Boolean)
     .join(" · ");
 
+  const inactiveHeading = (): string => {
+    if (failedStage) return t(($) => $.preview.startup.headingAttention);
+    if (completedCount === stages.length) return t(($) => $.preview.startup.headingReady);
+    return t(($) => $.preview.startup.headingPreparing);
+  };
+
   return (
-    <div
+    <output
       className={cn(
-        "w-full text-left text-foreground",
+        "block w-full text-left text-foreground",
         compact
           ? "max-w-[22rem] rounded-lg bg-background/75 px-3 py-2.5 shadow-sm ring-1 ring-border/40 backdrop-blur-sm"
           : "max-w-lg",
       )}
-      role="status"
       aria-live="polite"
       aria-label={t(($) => $.preview.startup.progressLabel, {
         completed: completedCount,
@@ -2613,13 +2733,7 @@ export function DocumentStartupProgress({
             activeStage && "ai-shimmer",
           )}
         >
-          {activeStage
-            ? activeStage.label
-            : failedStage
-              ? t(($) => $.preview.startup.headingAttention)
-              : completedCount === stages.length
-                ? t(($) => $.preview.startup.headingReady)
-                : t(($) => $.preview.startup.headingPreparing)}
+          {activeStage ? activeStage.label : inactiveHeading()}
         </h2>
         {activeStage && (
           <span
@@ -2669,50 +2783,7 @@ export function DocumentStartupProgress({
 
       <ol className={cn("divide-y divide-border/50", compact ? "mt-2" : "mt-3")}>
         {stages.map((stage) => (
-          <li
-            key={stage.id}
-            className={cn(
-              "flex min-w-0 items-center gap-3",
-              compact ? "py-1.5" : "py-2.5",
-            )}
-            aria-current={stage.status === "running" ? "step" : undefined}
-          >
-            <span
-              className={cn(
-                "flex shrink-0 items-center justify-center",
-                compact ? "size-4" : "size-5",
-              )}
-            >
-              <StartupStageIcon status={stage.status} compact={compact} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  "block truncate font-medium",
-                  compact ? "text-[11px]" : "text-xs",
-                  (stage.status === "pending" || stage.status === "skipped") &&
-                    "text-muted-foreground",
-                  stage.status === "error" && "text-destructive",
-                )}
-              >
-                {stage.label}
-              </span>
-              {!compact && (
-                <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
-                  {stage.detail}
-                </span>
-              )}
-            </span>
-            <span
-              className={cn(
-                "shrink-0 font-mono uppercase tracking-wide",
-                compact ? "text-[9px]" : "text-[10px]",
-                STARTUP_STATUS_TEXT[stage.status],
-              )}
-            >
-              {startupStatusLabel(stage.status)}
-            </span>
-          </li>
+          <StartupStageRow key={stage.id} stage={stage} compact={compact} />
         ))}
       </ol>
 
@@ -2742,6 +2813,6 @@ export function DocumentStartupProgress({
           </span>
         </div>
       )}
-    </div>
+    </output>
   );
 }

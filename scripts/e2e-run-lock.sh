@@ -6,7 +6,7 @@ e2e_recovery_dir="${e2e_lock_dir}.recovery"
 acquire_e2e_lock() {
   local attempt owner
   for attempt in 1 2 3; do
-    if [ -d "$e2e_recovery_dir" ]; then
+    if [[ -d "$e2e_recovery_dir" ]]; then
       sleep 1
       continue
     fi
@@ -56,6 +56,7 @@ e2e_descendants() {
     printf '%s\n' "$child"
     e2e_descendants "$child"
   done < <(pgrep -P "$parent" 2>/dev/null || true)
+  return "$?"
 }
 
 terminate_e2e_tree() {
@@ -77,6 +78,7 @@ terminate_e2e_tree() {
   for child in $descendants $remaining $parent; do
     kill -KILL "$child" 2>/dev/null || true
   done
+  return "$?"
 }
 
 release_e2e_lock() {
@@ -86,6 +88,7 @@ release_e2e_lock() {
     rm -f "$e2e_lock_dir/owner" 2>/dev/null || true
     rmdir "$e2e_lock_dir" 2>/dev/null || true
   fi
+  return "$?"
 }
 
 e2e_socket_identity() {
@@ -95,14 +98,15 @@ e2e_socket_identity() {
   else
     stat -c '%d:%i' "$path" 2>/dev/null
   fi
+  return "$?"
 }
 
 remove_owned_e2e_socket() {
   local path="$1" expected="$2" current
-  [ -n "$expected" ] || return 0
-  [ -S "$path" ] || return 0
+  [[ -n "$expected" ]] || return 0
+  [[ -S "$path" ]] || return 0
   current="$(e2e_socket_identity "$path" 2>/dev/null || true)"
-  if [ "$current" = "$expected" ]; then
+  if [[ "$current" = "$expected" ]]; then
     rm -f "$path"
   fi
 }

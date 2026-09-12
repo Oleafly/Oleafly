@@ -61,6 +61,16 @@ describe("parseEntry", () => {
   it("returns null for non-bibtex", () => {
     expect(parseEntry("not bibtex")).toBeNull();
   });
+  it("reads quoted and bare values and skips junk before a field name", () => {
+    const p = required(
+      parseEntry('@misc{k, junk 9 note = "quoted", year = 2020}'),
+    );
+    expect(p.fields).toEqual({ note: "quoted", year: "2020" });
+  });
+  it("starts a field name at the beginning of a letter run", () => {
+    const p = required(parseEntry("@misc{k, abctitle = {T}}"));
+    expect(p.fields).toEqual({ abctitle: "T" });
+  });
 });
 
 describe("stringifyBibEntry", () => {

@@ -98,18 +98,23 @@ export function tokensFromRawInline(source: string): readonly VisualToken[] {
   }));
 }
 
+function acceptedUseKinds(
+  kind: VisualToken["kind"],
+): Set<ProjectUse["kind"]> {
+  if (kind === "citation") return new Set<ProjectUse["kind"]>(["citation"]);
+  if (kind === "reference") {
+    return new Set<ProjectUse["kind"]>(["reference", "link"]);
+  }
+  return new Set<ProjectUse["kind"]>(["citation", "reference", "link"]);
+}
+
 function usesForToken(
   snapshot: ProjectIntelligenceSnapshot,
   path: string,
   token: VisualToken,
 ): readonly ProjectUse[] {
   const lookup = lookupFor(snapshot);
-  const acceptedKinds =
-    token.kind === "citation"
-      ? new Set<ProjectUse["kind"]>(["citation"])
-      : token.kind === "reference"
-        ? new Set<ProjectUse["kind"]>(["reference", "link"])
-        : new Set<ProjectUse["kind"]>(["citation", "reference", "link"]);
+  const acceptedKinds = acceptedUseKinds(token.kind);
   return [...(lookup.usesByFileAndName.get(lookupKey(path, token.key)) ?? [])]
     .filter((use) => acceptedKinds.has(use.kind))
     .sort(
@@ -130,6 +135,27 @@ function resolvedToken(
   return use ? { ...token, useId: use.id } : token;
 }
 
+function acceptedDefinitionKinds(
+  kind: VisualToken["kind"],
+): Set<ProjectDefinition["kind"]> {
+  if (kind === "citation") {
+    return new Set<ProjectDefinition["kind"]>(["bibentry"]);
+  }
+  if (kind === "reference") {
+    return new Set<ProjectDefinition["kind"]>([
+      "label",
+      "anchor",
+      "section",
+    ]);
+  }
+  return new Set<ProjectDefinition["kind"]>([
+    "bibentry",
+    "label",
+    "anchor",
+    "section",
+  ]);
+}
+
 function definitionsForToken(
   snapshot: ProjectIntelligenceSnapshot,
   path: string,
@@ -145,21 +171,7 @@ function definitionsForToken(
       }) ?? [];
     if (definitions.length > 0) return definitions;
   }
-  const kinds =
-    token.kind === "citation"
-      ? new Set<ProjectDefinition["kind"]>(["bibentry"])
-      : token.kind === "reference"
-        ? new Set<ProjectDefinition["kind"]>([
-            "label",
-            "anchor",
-            "section",
-          ])
-        : new Set<ProjectDefinition["kind"]>([
-            "bibentry",
-            "label",
-            "anchor",
-            "section",
-          ]);
+  const kinds = acceptedDefinitionKinds(token.kind);
   const candidates = (
     lookup.definitionsByName.get(token.key) ?? []
   ).filter((definition) => kinds.has(definition.kind));
@@ -185,6 +197,26 @@ function resolutionFor(
   return "resolved";
 }
 
+function tokenNoun(kind: VisualToken["kind"]): string {
+  if (kind === "citation") return i18n.t(($) => $.intelligence.token.citation);
+  if (kind === "reference") {
+    return i18n.t(($) => $.intelligence.token.reference);
+  }
+  return i18n.t(($) => $.intelligence.token.citationOrReference);
+}
+
+function tokenStateLabel(
+  resolution: "resolved" | "unresolved" | "duplicate",
+): string {
+  if (resolution === "duplicate") {
+    return i18n.t(($) => $.intelligence.token.stateDuplicate);
+  }
+  if (resolution === "unresolved") {
+    return i18n.t(($) => $.intelligence.token.stateUnresolved);
+  }
+  return i18n.t(($) => $.intelligence.token.stateResolved);
+}
+
 function tokenAttributes(
   snapshot: ProjectIntelligenceSnapshot,
   path: string,
@@ -192,18 +224,8 @@ function tokenAttributes(
 ): Record<string, string> {
   const token = resolvedToken(snapshot, path, input);
   const resolution = resolutionFor(snapshot, path, token);
-  const noun =
-    token.kind === "citation"
-      ? i18n.t(($) => $.intelligence.token.citation)
-      : token.kind === "reference"
-        ? i18n.t(($) => $.intelligence.token.reference)
-        : i18n.t(($) => $.intelligence.token.citationOrReference);
-  const state =
-    resolution === "duplicate"
-      ? i18n.t(($) => $.intelligence.token.stateDuplicate)
-      : resolution === "unresolved"
-        ? i18n.t(($) => $.intelligence.token.stateUnresolved)
-        : i18n.t(($) => $.intelligence.token.stateResolved);
+  const noun = tokenNoun(token.kind);
+  const state = tokenStateLabel(resolution);
   return {
     class: `wysiwyg-project-intelligence is-${resolution}`,
     role: "link",
@@ -465,10 +487,10 @@ function showQuery(
   openReferencesPanel();
 }
 
-function activateVisualToken(
+function runVisualTokenActivation(
   token: VisualToken,
   findAllReferences: boolean,
-): boolean {
+): void {
   const current = currentProjectIntelligence();
   if (!current) {
     const state = useIndexStore.getState().intelligenceState;
@@ -480,7 +502,7 @@ function activateVisualToken(
     } else {
       toast.info(i18n.t(($) => $.intelligence.references.updating));
     }
-    return true;
+    return;
   }
 
   const resolved = resolvedToken(current.snapshot, current.path, token);
@@ -495,7 +517,7 @@ function activateVisualToken(
 
   if (definitions.length === 0) {
     toast.info(i18n.t(($) => $.intelligence.references.noDefinition, { name: resolved.key }));
-    return true;
+    return;
   }
   if (definitions.length > 1) {
     if (use) {
@@ -514,7 +536,7 @@ function activateVisualToken(
       );
       openReferencesPanel();
     }
-    return true;
+    return;
   }
 
   const definition = definitions[0];
@@ -522,7 +544,7 @@ function activateVisualToken(
     const uses = referencesFor(current.snapshot, definition.id);
     if (uses.length === 0) {
       toast.info(i18n.t(($) => $.intelligence.references.noReferences, { name: definition.name }));
-      return true;
+      return;
     }
     showQuery(
       current.snapshot,
@@ -530,7 +552,7 @@ function activateVisualToken(
       definition.id,
       i18n.t(($) => $.intelligence.references.referencesTo, { name: definition.name }),
     );
-    return true;
+    return;
   }
 
   void navigateToProjectRange({
@@ -538,6 +560,13 @@ function activateVisualToken(
     range: definition.location.range,
     source: "editor",
   });
+}
+
+function activateVisualToken(
+  token: VisualToken,
+  findAllReferences: boolean,
+): boolean {
+  runVisualTokenActivation(token, findAllReferences);
   return true;
 }
 

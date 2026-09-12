@@ -126,7 +126,7 @@ function withRefreshStamp(
   providerId: string,
   refreshedAt: number,
 ): AppConfig["ai_model_lists_refreshed_at"] {
-  return { ...(config.ai_model_lists_refreshed_at ?? {}), [providerId]: refreshedAt };
+  return { ...config.ai_model_lists_refreshed_at, [providerId]: refreshedAt };
 }
 
 type CustomDialogState =
@@ -208,7 +208,7 @@ export function AISection() {
   useEffect(() => {
     void getConfig().then((c) => {
       // One-time migration from the old single ai_api_key field to the per-provider map.
-      const merged: Record<string, string> = { ...(c.ai_keys ?? {}) };
+      const merged: Record<string, string> = { ...c.ai_keys };
       const legacy = c.ai_provider || "openai";
       if (Object.keys(merged).length === 0 && c.ai_api_key) {
         merged[legacy] = c.ai_api_key;
@@ -248,12 +248,9 @@ export function AISection() {
     meta: { silent: true },
   });
   const [startingOllama, setStartingOllama] = useState(false);
+  const ollamaReachability = ollamaQuery.isError ? ("down" as const) : ("ok" as const);
   const ollama = {
-    status: ollamaQuery.isPending
-      ? ("loading" as const)
-      : ollamaQuery.isError
-        ? ("down" as const)
-        : ("ok" as const),
+    status: ollamaQuery.isPending ? ("loading" as const) : ollamaReachability,
     models: ollamaQuery.data ?? [],
     installed: ollamaInstalledQuery.data === true,
     starting: startingOllama,
@@ -352,11 +349,13 @@ export function AISection() {
       const existingModels = cfg.ai_provider_models[id] ?? seedProviderModels(id);
       const mergedModels = mergeFetchedModels(existingModels, res.ok ? res.models : null);
       const nextProvider = cfg.ai_provider || id;
-      const nextModel = !cfg.ai_provider
-        ? pickActiveModel(mergedModels, defaultModel(id))
-        : cfg.ai_provider === id
+      const modelForKnownProvider =
+        cfg.ai_provider === id
           ? reconcileActiveModel(mergedModels, cfg.ai_model, defaultModel(id))
           : cfg.ai_model;
+      const nextModel = !cfg.ai_provider
+        ? pickActiveModel(mergedModels, defaultModel(id))
+        : modelForKnownProvider;
       const next: AppConfig = {
         ...cfg,
         ai_keys: nextKeys,
@@ -372,14 +371,15 @@ export function AISection() {
       setStatus((s) => ({ ...s, [id]: "valid" }));
       const label = provider?.name ?? custom?.name ?? id;
       const validated = res.ok && supportsModelDiscovery(id, Boolean(custom));
+      const validatedText = validated
+        ? t(($) => $.settings.ai.section.messages.providerConnected, { provider: label })
+        : t(($) => $.settings.ai.section.messages.keySavedCheckedOnUse, { provider: label });
       setMsg({
         ok: true,
         text:
           custom && !res.ok
             ? t(($) => $.settings.ai.section.messages.keySavedAddModels, { provider: custom.name })
-            : validated
-              ? t(($) => $.settings.ai.section.messages.providerConnected, { provider: label })
-              : t(($) => $.settings.ai.section.messages.keySavedCheckedOnUse, { provider: label }),
+            : validatedText,
       });
     } catch (e) {
       setStatus((s) => ({ ...s, [id]: "error" }));

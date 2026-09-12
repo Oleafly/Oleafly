@@ -133,6 +133,69 @@ async function readIndividually(
   await Promise.all(readers);
 }
 
+function applyFreshFiles(
+  files: ProjectSourcesResult["files"],
+  requested: ReadonlySet<string>,
+  seen: Set<string>,
+  into: ProjectSourcesBatch,
+): void {
+  for (const file of files) {
+    if (!requested.has(file.path)) continue;
+    const text = normalizeSourceText(file.text);
+    stats.transferredCharacters += file.text.length;
+    remember(file.path, file.hash, text);
+    into.texts[file.path] = text;
+    seen.add(file.path);
+  }
+}
+
+function applyUnchangedFiles(
+  paths: readonly string[],
+  requested: ReadonlySet<string>,
+  seen: Set<string>,
+  into: ProjectSourcesBatch,
+  missing: string[],
+): void {
+  for (const path of paths) {
+    if (!requested.has(path) || seen.has(path)) continue;
+    const entry = cache.get(path);
+    if (entry) {
+      into.texts[path] = entry.text;
+      seen.add(path);
+    } else {
+      missing.push(path);
+    }
+  }
+}
+
+function applyUnreadableFiles(
+  entries: ProjectSourcesResult["unreadable"],
+  requested: ReadonlySet<string>,
+  seen: Set<string>,
+  into: ProjectSourcesBatch,
+): void {
+  for (const entry of entries) {
+    if (!requested.has(entry.path) || seen.has(entry.path)) continue;
+    forget(entry.path);
+    into.unreadable.add(entry.path);
+    seen.add(entry.path);
+  }
+}
+
+function applyOversizedFiles(
+  paths: readonly string[],
+  requested: ReadonlySet<string>,
+  seen: Set<string>,
+  missing: string[],
+): void {
+  for (const path of paths) {
+    if (!requested.has(path) || seen.has(path)) continue;
+    forget(path);
+    missing.push(path);
+    seen.add(path);
+  }
+}
+
 async function readThroughBatch(
   binding: BatchBinding,
   projectId: string,
@@ -150,37 +213,11 @@ async function readThroughBatch(
   const result: ProjectSourcesResult = await binding(projectId, request);
   const requested = new Set(paths);
   const seen = new Set<string>();
-  for (const file of result.files) {
-    if (!requested.has(file.path)) continue;
-    const text = normalizeSourceText(file.text);
-    stats.transferredCharacters += file.text.length;
-    remember(file.path, file.hash, text);
-    into.texts[file.path] = text;
-    seen.add(file.path);
-  }
+  applyFreshFiles(result.files, requested, seen, into);
   const missing: string[] = [];
-  for (const path of result.unchanged) {
-    if (!requested.has(path) || seen.has(path)) continue;
-    const entry = cache.get(path);
-    if (entry) {
-      into.texts[path] = entry.text;
-      seen.add(path);
-    } else {
-      missing.push(path);
-    }
-  }
-  for (const entry of result.unreadable) {
-    if (!requested.has(entry.path) || seen.has(entry.path)) continue;
-    forget(entry.path);
-    into.unreadable.add(entry.path);
-    seen.add(entry.path);
-  }
-  for (const path of result.oversized ?? []) {
-    if (!requested.has(path) || seen.has(path)) continue;
-    forget(path);
-    missing.push(path);
-    seen.add(path);
-  }
+  applyUnchangedFiles(result.unchanged, requested, seen, into, missing);
+  applyUnreadableFiles(result.unreadable, requested, seen, into);
+  applyOversizedFiles(result.oversized ?? [], requested, seen, missing);
   for (const path of paths) {
     if (!seen.has(path) && !into.unreadable.has(path)) missing.push(path);
   }
