@@ -3,12 +3,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-SPECS=(
-  "e2e/tests/24-pdf-selection-browser.spec.ts"
-  "e2e/tests/27-markdown-rendering-browser.spec.ts"
-  "e2e/tests/56-preview-window-browser.spec.ts"
-  "e2e/tests/84-settings-install-browser.spec.ts"
-)
+SPECS=(e2e/tests/*-browser.spec.ts)
+if [ "${#SPECS[@]}" -eq 0 ] || [ ! -f "${SPECS[0]}" ]; then
+  echo "e2e-browser-harness: no e2e/tests/*-browser.spec.ts files found" >&2
+  exit 1
+fi
 PROBE_URL="http://localhost:1420/e2e/settings-install-harness.html"
 
 if lsof -ti :1420 >/dev/null 2>&1; then
@@ -46,6 +45,7 @@ if [ "$ready" -ne 1 ]; then
   exit 1
 fi
 echo "e2e-browser-harness: Vite is serving $PROBE_URL"
+printf 'e2e-browser-harness: spec %s\n' "${SPECS[@]}"
 
 status=0
 pnpm exec playwright test -c e2e/playwright.config.ts "${SPECS[@]}" "$@" || status=$?
