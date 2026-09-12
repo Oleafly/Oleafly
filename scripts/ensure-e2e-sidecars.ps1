@@ -36,9 +36,9 @@ function Install-Sidecar($name, $version, $asset, $sha256, $member, $url) {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [System.IO.Compression.ZipFile]::OpenRead($archive)
     try {
-      $matches = @($zip.Entries | Where-Object { $_.FullName -eq $member.Replace('\', '/') -and $_.Name.Length -gt 0 })
-      if ($matches.Count -ne 1) { throw "$name archive member is missing or duplicated: $member" }
-      $source = $matches[0].Open()
+      $members = @($zip.Entries | Where-Object { $_.FullName -eq $member.Replace('\', '/') -and $_.Name.Length -gt 0 })
+      if ($members.Count -ne 1) { throw "$name archive member is missing or duplicated: $member" }
+      $source = $members[0].Open()
       $destination = [System.IO.File]::Create($staged)
       try { $source.CopyTo($destination) } finally { $destination.Dispose(); $source.Dispose() }
     } finally {

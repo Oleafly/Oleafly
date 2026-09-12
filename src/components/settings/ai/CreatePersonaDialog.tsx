@@ -35,7 +35,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { name: "", color: PERSONA_COLORS[0].key, prompt: "" };
 
-export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: CreatePersonaDialogProps) {
+export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: Readonly<CreatePersonaDialogProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);

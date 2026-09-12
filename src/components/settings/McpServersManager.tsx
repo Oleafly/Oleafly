@@ -136,17 +136,16 @@ function liveStatus(record: McpManagedServer) {
   return i18n.t(($) => $.settings.mcp.servers.live.disabled, { name });
 }
 
-function StatusBadge({ record }: { record: McpManagedServer }) {
+function StatusBadge({ record }: Readonly<{ record: McpManagedServer }>) {
   const { t } = useTranslation(["common", "settings"]);
   const status = record.config.enabled ? record.validation.status : "disabled";
-  const label =
-    status === "connected"
-      ? t(($) => $.settings.mcp.servers.status.connected)
-      : status === "error"
-        ? t(($) => $.settings.mcp.servers.status.error)
-        : status === "disabled"
-          ? t(($) => $.settings.mcp.servers.status.disabled)
-          : t(($) => $.settings.mcp.servers.status.checking);
+  const labelFor = (): string => {
+    if (status === "connected") return t(($) => $.settings.mcp.servers.status.connected);
+    if (status === "error") return t(($) => $.settings.mcp.servers.status.error);
+    if (status === "disabled") return t(($) => $.settings.mcp.servers.status.disabled);
+    return t(($) => $.settings.mcp.servers.status.checking);
+  };
+  const label = labelFor();
   return (
     <Badge
       variant="outline"
@@ -185,11 +184,11 @@ function PairEditor({
   kind,
   rows,
   onChange,
-}: {
+}: Readonly<{
   kind: "Environment" | "Header";
   rows: PairValue[];
   onChange: (rows: PairValue[]) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const nextId = useRef(Math.max(1, ...rows.map((row) => row.id)) + 1);
   const environment = kind === "Environment";
@@ -304,13 +303,13 @@ function ServerEditor({
   error,
   onClose,
   onSubmit,
-}: {
+}: Readonly<{
   state: EditorState | null;
   busy: boolean;
   error: string | null;
   onClose: () => void;
   onSubmit: (originalName: string | null, config: McpServerConfig) => Promise<void>;
-}) {
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const [config, setConfig] = useState<McpServerConfig>(state?.config ?? emptyStdioConfig());
   const [argsText, setArgsText] = useState(
@@ -395,6 +394,14 @@ function ServerEditor({
         (config.transport === "stdio"
           ? config.command.trim().length > 0
           : config.url.trim().length > 0);
+
+  const submitLabel = (): string => {
+    if (state?.mode === "edit" && !config.enabled) {
+      return t(($) => $.settings.mcp.servers.editor.saveChanges);
+    }
+    if (state?.mode === "edit") return t(($) => $.settings.mcp.servers.editor.saveAndValidate);
+    return t(($) => $.settings.mcp.servers.editor.addAndValidate);
+  };
 
   return (
     <Dialog open={state !== null} onOpenChange={(open) => !open && onClose()}>
@@ -608,11 +615,7 @@ function ServerEditor({
             </Button>
             <Button type="submit" disabled={!valid || busy}>
               {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
-              {state?.mode === "edit" && !config.enabled
-                ? t(($) => $.settings.mcp.servers.editor.saveChanges)
-                : state?.mode === "edit"
-                  ? t(($) => $.settings.mcp.servers.editor.saveAndValidate)
-                  : t(($) => $.settings.mcp.servers.editor.addAndValidate)}
+              {submitLabel()}
             </Button>
           </DialogFooter>
         </form>
@@ -900,10 +903,9 @@ export function McpServersManager() {
       ) : null}
 
       {importSummary ? (
-        <div
-          role="status"
+        <output
           aria-live="polite"
-          className="space-y-1 rounded-md border bg-card px-3 py-2 text-xs"
+          className="block space-y-1 rounded-md border bg-card px-3 py-2 text-xs"
         >
           <p>
             {t(($) => $.settings.mcp.servers.importSummary, {
@@ -924,7 +926,7 @@ export function McpServersManager() {
               ))}
             </ul>
           ) : null}
-        </div>
+        </output>
       ) : null}
 
       {loading ? (
@@ -991,9 +993,9 @@ export function McpServersManager() {
                 </p>
               ) : null}
 
-              <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+              <output aria-live="polite" aria-atomic="true" className="sr-only">
                 {liveStatus(record)}
-              </p>
+              </output>
 
               {record.validation.tools.length > 0 ? (
                 <div className="space-y-1.5">
@@ -1015,7 +1017,9 @@ export function McpServersManager() {
                     ))}
                   </ul>
                 </div>
-              ) : record.validation.status === "connected" ? (
+              ) : null}
+              {record.validation.tools.length === 0 &&
+              record.validation.status === "connected" ? (
                 <p className="text-[11px] text-muted-foreground">
                   {t(($) => $.settings.mcp.servers.card.noTools)}
                 </p>

@@ -151,7 +151,7 @@ impl Workspace {
         }
         let default_name = root
             .file_name()
-            .and_then(|value| value.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .filter(|value| !value.is_empty())
             .unwrap_or("Oleafly project")
             .to_string();

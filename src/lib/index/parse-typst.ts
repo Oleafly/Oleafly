@@ -1,23 +1,29 @@
 import type { FileSymbols, Sym, SymKind } from "./types";
 
+function maskTypstBlockStep(
+  text: string,
+  i: number,
+  blockDepth: number,
+): { out: string; next: number; depth: number } {
+  if (text.startsWith("/*", i)) {
+    return { out: "  ", next: i + 2, depth: blockDepth + 1 };
+  }
+  if (text.startsWith("*/", i)) {
+    return { out: "  ", next: i + 2, depth: blockDepth - 1 };
+  }
+  return { out: text[i] === "\n" ? "\n" : " ", next: i + 1, depth: blockDepth };
+}
+
 function maskTypstComments(text: string): string {
   let out = "";
   let i = 0;
   let blockDepth = 0;
   while (i < text.length) {
     if (blockDepth > 0) {
-      if (text.startsWith("/*", i)) {
-        blockDepth++;
-        out += "  ";
-        i += 2;
-      } else if (text.startsWith("*/", i)) {
-        blockDepth--;
-        out += "  ";
-        i += 2;
-      } else {
-        out += text[i] === "\n" ? "\n" : " ";
-        i++;
-      }
+      const step = maskTypstBlockStep(text, i, blockDepth);
+      out += step.out;
+      i = step.next;
+      blockDepth = step.depth;
     } else if (text.startsWith("//", i)) {
       const end = text.indexOf("\n", i);
       const stop = end < 0 ? text.length : end;
@@ -47,7 +53,7 @@ function maskStrings(text: string): string {
   const frames: Frame[] = [{ mode: "markup", close: false, brackets: 0 }];
   let i = 0;
   while (i < text.length) {
-    const frame = frames[frames.length - 1];
+    const frame = frames.at(-1) as Frame;
     const char = text[i];
     if (frame.mode === "markup") {
       if (frame.close && char === "]" && frame.brackets === 0) {
@@ -65,7 +71,7 @@ function maskStrings(text: string): string {
         const line = ["let", "set", "show", "import", "include"].some((word) => {
           if (!text.startsWith(word, start)) return false;
           const next = text[start + word.length];
-          return next === undefined || !/[A-Za-z0-9_]/.test(next);
+          return next === undefined || !/\w/.test(next);
         });
         frames.push({
           mode: "code",
@@ -166,7 +172,7 @@ export function parseTypstFile(path: string, rawText: string): FileSymbols {
 
   const heading = /^(={1,6})[ \t]+([^\n]+)$/gm;
   for (const match of text.matchAll(heading)) {
-    const rawTitle = match[2].replace(/[ \t]+<[^>]+>[ \t]*$/, "").trim();
+    const rawTitle = match[2].replace(/(?<![ \t])[ \t]+<[^>]+>[ \t]*$/, "").trim();
     if (!rawTitle) continue;
     const nameFrom = match.index + match[0].indexOf(match[2]) + match[2].indexOf(rawTitle);
     push(defs, "section", rawTitle, match.index, match.index + match[0].length, nameFrom,

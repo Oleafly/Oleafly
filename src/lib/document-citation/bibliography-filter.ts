@@ -29,7 +29,7 @@ function normalizeArxivId(id: string): string {
 
 function extractArxivFromUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  const match = url.match(/arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/i);
+  const match = /arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/i.exec(url);
   if (!match) return null;
   // pdf URLs often end with .pdf (e.g. /pdf/2001.12345.pdf)
   const id = match[1].replace(/\.pdf$/i, "");

@@ -278,7 +278,7 @@ impl Drop for AcpChild {
         let bridge = self
             .bridge
             .get_mut()
-            .unwrap_or_else(|error| error.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .take();
         tauri::async_runtime::spawn(async move {
             runtime.close_owner(&owner).await;

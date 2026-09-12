@@ -21,7 +21,7 @@ function timeLabel(ts: number): string {
   }
 }
 
-function StatusIcon({ status }: { status: McpLogEntry["status"] }) {
+function StatusIcon({ status }: Readonly<{ status: McpLogEntry["status"] }>) {
   if (status === "running") {
     return <Loader2 className="size-3.5 shrink-0 animate-spin text-primary" aria-hidden />;
   }
@@ -31,7 +31,7 @@ function StatusIcon({ status }: { status: McpLogEntry["status"] }) {
   return <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />;
 }
 
-function LogRow({ entry }: { entry: McpLogEntry }) {
+function LogRow({ entry }: Readonly<{ entry: McpLogEntry }>) {
   const { t } = useTranslation(["shell"]);
   const args = useMemo(() => formatMcpArgs(entry.args), [entry.args]);
   return (

@@ -39,7 +39,7 @@ function monoColor(id: string): string {
   return MONO_COLORS[h % MONO_COLORS.length];
 }
 
-export function ProviderLogo({ providerId, size = 18 }: { providerId: string; size?: number }) {
+export function ProviderLogo({ providerId, size = 18 }: Readonly<{ providerId: string; size?: number }>) {
   const Icon = ICONS[providerId];
   if (Icon) return <Icon size={size} />;
   const letter = (providerId.trim()[0] ?? "?").toUpperCase();

@@ -12,10 +12,10 @@ export interface PendingAttachment {
 export function AttachmentChips({
   items,
   onRemove,
-}: {
+}: Readonly<{
   items: PendingAttachment[];
   onRemove: (id: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   if (items.length === 0) return null;
   return (

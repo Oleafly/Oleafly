@@ -172,7 +172,6 @@ export class ManualScheduler implements FlushScheduler {
   }
 
   scheduleInterval(flush: () => void, _intervalMs: number): () => void {
-    void _intervalMs;
     this.intervalCallbacks.push(flush);
     return () => {
       this.intervalCallbacks = this.intervalCallbacks.filter((cb) => cb !== flush);
@@ -192,7 +191,7 @@ export class ManualScheduler implements FlushScheduler {
   }
 
   runInterval(): void {
-    for (const callback of [...this.intervalCallbacks]) {
+    for (const callback of this.intervalCallbacks) {
       callback();
     }
   }

@@ -150,10 +150,10 @@ async function copyBibtex(value: string) {
 function SourceBadge({
   source,
   compact = false,
-}: {
+}: Readonly<{
   source: LiteratureSource;
   compact?: boolean;
-}) {
+}>) {
   const definition = SOURCE_LABEL.get(source);
   return (
     <span
@@ -223,10 +223,10 @@ function SourceInformation() {
 function SourceSelector({
   selected,
   onToggle,
-}: {
+}: Readonly<{
   selected: LiteratureSource[];
   onToggle: (source: LiteratureSource) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -285,8 +285,19 @@ function SourceSelector({
   );
 }
 
-function SourceRunSummary({ runs }: { runs: LiteratureSourceRun[] }) {
+function SourceRunSummary({ runs }: Readonly<{ runs: LiteratureSourceRun[] }>) {
   const { t } = useTranslation(["common", "researchTools"]);
+  const runSummaryLabel = (run: LiteratureSourceRun) =>
+    run.total != null
+      ? t(($) => $.researchTools.literature.runSummaryIndexed, {
+          results: run.count,
+          indexed: formatCount(run.total),
+          duration: run.durationMs,
+        })
+      : t(($) => $.researchTools.literature.runSummary, {
+          results: run.count,
+          duration: run.durationMs,
+        });
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       {runs.map((run) => {
@@ -294,20 +305,7 @@ function SourceRunSummary({ runs }: { runs: LiteratureSourceRun[] }) {
         return (
           <Tooltip
             key={run.source}
-            label={
-              run.status === "error"
-                ? sourceError(run)
-                : run.total != null
-                  ? t(($) => $.researchTools.literature.runSummaryIndexed, {
-                      results: run.count,
-                      indexed: formatCount(run.total),
-                      duration: run.durationMs,
-                    })
-                  : t(($) => $.researchTools.literature.runSummary, {
-                      results: run.count,
-                      duration: run.durationMs,
-                    })
-            }
+            label={run.status === "error" ? sourceError(run) : runSummaryLabel(run)}
             wide
           >
             <span
@@ -339,13 +337,13 @@ function ResultRow({
   onSave,
   onRemove,
   bibtex,
-}: {
+}: Readonly<{
   record: LiteratureRecord;
   saved: boolean;
   onSave?: () => void;
   onRemove?: () => void;
   bibtex?: string;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const copyRecordBibtex = () =>
     void copyBibtex(bibtex ?? bibtexForLiteratureRecord(record));
@@ -469,9 +467,8 @@ function ResultRow({
 function ResultSkeleton() {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
-    <div
-      className="space-y-0"
-      role="status"
+    <output
+      className="block space-y-0"
       aria-label={t(($) => $.researchTools.literature.loadingAria)}
     >
       {[0, 1, 2, 3].map((index) => (
@@ -485,17 +482,17 @@ function ResultSkeleton() {
           <div className="mt-4 h-6 w-40 rounded bg-muted" />
         </div>
       ))}
-    </div>
+    </output>
   );
 }
 
 function EmptySearch({
   onTry,
   noResults,
-}: {
+}: Readonly<{
   onTry: (query: string) => void;
   noResults: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
     <div className="mx-auto grid min-h-[23rem] max-w-4xl place-items-center px-6 py-10">
@@ -555,10 +552,10 @@ function EmptySearch({
 function SavedLibrary({
   saved,
   onRemove,
-}: {
+}: Readonly<{
   saved: SavedLiteratureCitation[];
   onRemove: (id: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   if (saved.length === 0) {
     return (
@@ -606,13 +603,13 @@ function PublicationYearSelect({
   onValueChange,
   minimum,
   maximum,
-}: {
+}: Readonly<{
   id: string;
   value: string;
   onValueChange: (value: string) => void;
   minimum?: number;
   maximum?: number;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   return (
     <Select value={value} onValueChange={onValueChange}>
@@ -1026,9 +1023,9 @@ export function LiteratureSearchPanel() {
             </TabsContent>
           </Tabs>
         </div>
-      ) : mode === "review" ? (
-        <PaperReviewPanel />
-      ) : (
+      ) : null}
+      {mode !== "document" && mode === "review" ? <PaperReviewPanel /> : null}
+      {mode !== "document" && mode !== "review" && (
         <Tabs
           value={tab}
           onValueChange={setTab}
@@ -1088,7 +1085,8 @@ export function LiteratureSearchPanel() {
               <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                 <ResultSkeleton />
               </div>
-            ) : !response ? (
+            ) : null}
+            {!loading && !response ? (
               <EmptySearch
                 noResults={false}
                 onTry={(suggestion) => {
@@ -1096,7 +1094,8 @@ export function LiteratureSearchPanel() {
                   void runSearch(suggestion);
                 }}
               />
-            ) : response.results.length === 0 ? (
+            ) : null}
+            {!loading && response && (response.results.length === 0 ? (
               <div>
                 {sourceErrors.length > 0 && (
                   <div className="mx-auto mt-5 flex max-w-3xl items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
@@ -1157,7 +1156,7 @@ export function LiteratureSearchPanel() {
                   );
                 })}
               </div>
-            )}
+            ))}
           </TabsContent>
 
           <TabsContent

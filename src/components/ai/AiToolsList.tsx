@@ -162,7 +162,7 @@ const RISK_CLASS: Record<ToolRisk, string> = {
   network: "bg-sky-500/10 text-sky-700 dark:text-sky-400",
 };
 
-export function AiToolsTable({ className }: { className?: string }) {
+export function AiToolsTable({ className }: Readonly<{ className?: string }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
     <div className={cn("overflow-x-auto rounded-md border", className)} data-testid="ai-tools-table">
@@ -228,10 +228,10 @@ export function AiToolsTable({ className }: { className?: string }) {
 export function AiToolsGrid({
   columns = 2,
   className,
-}: {
+}: Readonly<{
   columns?: 1 | 2;
   className?: string;
-}) {
+}>) {
   useTranslation(["common", "ai"]);
   return (
     <div

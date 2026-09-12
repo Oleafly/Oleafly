@@ -79,11 +79,11 @@ export function ProjectImportDialog({
   open,
   onClose,
   onImportStarted,
-}: {
+}: Readonly<{
   open: boolean;
   onClose: () => void;
   onImportStarted?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["library"]);
   const sourceCopy: Record<ProjectImportFileKind, { title: string; description: string }> = {
     project: {
@@ -169,6 +169,90 @@ export function ProjectImportDialog({
     settings.setSettingsScrollTarget("github");
     settings.setSettingsOpen(true);
     onImportStarted?.();
+  };
+
+  const renderRepositoryList = () => {
+    if (githubStatus === "disconnected") {
+      return (
+        <div className="space-y-3 rounded-lg border bg-card p-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            {t(($) => $.library.import.connectPrompt)}
+          </p>
+          <Button type="button" size="sm" onClick={openGithubSettings}>
+            <Github aria-hidden="true" className="size-3.5" />
+            {t(($) => $.library.import.connect)}
+          </Button>
+        </div>
+      );
+    }
+    if (githubStatus === "unknown" || loadingRepositories) {
+      return (
+        <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+          <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+          {t(($) => $.library.import.loadingRepositories)}
+        </p>
+      );
+    }
+    if (repositoryLoadFailed) {
+      return (
+        <p className="p-3 text-sm text-muted-foreground">
+          {t(($) => $.library.import.repositoriesFailed)}
+        </p>
+      );
+    }
+    if (repositories.length === 0) {
+      return (
+        <p className="p-3 text-sm text-muted-foreground">
+          {t(($) => $.library.import.noRepositories)}
+        </p>
+      );
+    }
+    return (
+      repositories.map((repository) => (
+        <div
+          key={repository.full_name}
+          className="group flex items-center gap-2 rounded-lg px-1 transition-colors hover:bg-accent"
+        >
+          <button
+            type="button"
+            disabled={busy}
+            data-testid={`project-import-repository-${repository.full_name}`}
+            onClick={() => void importRepository(repository)}
+            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
+          >
+            <Github aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate text-sm">{repository.full_name}</span>
+            {repository.private ? (
+              <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
+                <span
+                  role="img"
+                  aria-label={t(($) => $.library.import.privateRepository)}
+                  className="inline-flex shrink-0"
+                >
+                  <Lock aria-hidden="true" className="size-3 text-muted-foreground" />
+                </span>
+              </Tooltip>
+            ) : null}
+          </button>
+          <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
+            <button
+              type="button"
+              aria-label={t(($) => $.library.import.openRepository, {
+                name: repository.full_name,
+              })}
+              onClick={() => {
+                openExternal(repository.html_url).catch((error) => {
+                  notifyError("open repository", error);
+                });
+              }}
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
+            >
+              <ExternalLink aria-hidden="true" className="size-3.5" />
+            </button>
+          </Tooltip>
+        </div>
+      ))
+    );
   };
 
   return (
@@ -271,75 +355,7 @@ export function ProjectImportDialog({
           </div>
         ) : (
           <div className="max-h-80 space-y-1 overflow-y-auto">
-            {githubStatus === "disconnected" ? (
-              <div className="space-y-3 rounded-lg border bg-card p-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {t(($) => $.library.import.connectPrompt)}
-                </p>
-                <Button type="button" size="sm" onClick={openGithubSettings}>
-                  <Github aria-hidden="true" className="size-3.5" />
-                  {t(($) => $.library.import.connect)}
-                </Button>
-              </div>
-            ) : githubStatus === "unknown" || loadingRepositories ? (
-              <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
-                <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-                {t(($) => $.library.import.loadingRepositories)}
-              </p>
-            ) : repositoryLoadFailed ? (
-              <p className="p-3 text-sm text-muted-foreground">
-                {t(($) => $.library.import.repositoriesFailed)}
-              </p>
-            ) : repositories.length === 0 ? (
-              <p className="p-3 text-sm text-muted-foreground">
-                {t(($) => $.library.import.noRepositories)}
-              </p>
-            ) : (
-              repositories.map((repository) => (
-                <div
-                  key={repository.full_name}
-                  className="group flex items-center gap-2 rounded-lg px-1 transition-colors hover:bg-accent"
-                >
-                  <button
-                    type="button"
-                    disabled={busy}
-                    data-testid={`project-import-repository-${repository.full_name}`}
-                    onClick={() => void importRepository(repository)}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
-                  >
-                    <Github aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate text-sm">{repository.full_name}</span>
-                    {repository.private ? (
-                      <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
-                        <span
-                          role="img"
-                          aria-label={t(($) => $.library.import.privateRepository)}
-                          className="inline-flex shrink-0"
-                        >
-                          <Lock aria-hidden="true" className="size-3 text-muted-foreground" />
-                        </span>
-                      </Tooltip>
-                    ) : null}
-                  </button>
-                  <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
-                    <button
-                      type="button"
-                      aria-label={t(($) => $.library.import.openRepository, {
-                        name: repository.full_name,
-                      })}
-                      onClick={() => {
-                        openExternal(repository.html_url).catch((error) => {
-                          notifyError("open repository", error);
-                        });
-                      }}
-                      className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
-                    >
-                      <ExternalLink aria-hidden="true" className="size-3.5" />
-                    </button>
-                  </Tooltip>
-                </div>
-              ))
-            )}
+            {renderRepositoryList()}
           </div>
         )}
       </DialogContent>

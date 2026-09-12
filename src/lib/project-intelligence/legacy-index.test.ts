@@ -55,7 +55,7 @@ describe("lazy legacy project index", () => {
     vi.mocked(indexFromSymbols).mockClear();
     const lazy = lazyLegacyIndex(value);
     expect(indexFromSymbols).not.toHaveBeenCalled();
-    expect(lazyLegacyIndex(value) === lazy).toBe(true);
+    expect(lazyLegacyIndex(value)).toBe(lazy);
     expect(indexFromSymbols).not.toHaveBeenCalled();
 
     const defs = lazy.defs;

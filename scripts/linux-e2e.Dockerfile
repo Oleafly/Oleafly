@@ -23,14 +23,19 @@ ENV PATH=/opt/cargo/bin:$PATH
 ENV CARGO_TARGET_DIR=/opt/target
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      libwebkit2gtk-4.1-dev \
+      build-essential \
+      ca-certificates \
+      curl \
+      file \
+      git \
       libappindicator3-dev \
       librsvg2-dev \
-      patchelf \
+      libwebkit2gtk-4.1-dev \
       libxdo-dev \
-      build-essential \
+      patchelf \
+      wget \
       xvfb \
-      curl wget file git ca-certificates xz-utils \
+      xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Node 22 (the repo's engines field wants >=22.13 <25) and pnpm via corepack.

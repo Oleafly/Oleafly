@@ -15,12 +15,12 @@ export function AgentPickerRow({
   selectedId,
   disabled,
   onSelect,
-}: {
+}: Readonly<{
   agents: readonly AgentPickerEntry[];
   selectedId: string | null;
   disabled?: boolean;
   onSelect: (id: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   if (agents.length === 0) return null;
   return (

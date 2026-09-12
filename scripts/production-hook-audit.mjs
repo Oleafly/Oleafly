@@ -1,8 +1,11 @@
-const DEV_HOOK_TOKEN =
-  /oleafly-developer-settings-v1|oleafly-real-research-seed-v1|data-e2e-[a-z0-9-]+|__(?:agent[A-Za-z0-9_]*|chat[A-Za-z0-9_]*|e2e[A-Za-z0-9_]*|mcp[A-Za-z0-9_]*|gitCommitCount|importFile|importCitationFile|hasPandoc|setNextTikzImport|aiConnect)/g;
+const DEV_HOOK_MARKER =
+  /oleafly-developer-settings-v1|oleafly-real-research-seed-v1|data-e2e-[a-z0-9-]+/g;
+const DEV_HOOK_INTERNAL =
+  /__(?:agent\w*|chat\w*|e2e\w*|mcp\w*|gitCommitCount|importFile|importCitationFile|hasPandoc|setNextTikzImport|aiConnect)/g;
 
 export function findProductionDevHookTokens(source) {
-  return [...new Set(source.match(DEV_HOOK_TOKEN) ?? [])].sort((a, b) => Number(a > b) - Number(a < b));
+  const found = [...(source.match(DEV_HOOK_MARKER) ?? []), ...(source.match(DEV_HOOK_INTERNAL) ?? [])];
+  return [...new Set(found)].sort((a, b) => Number(a > b) - Number(a < b));
 }
 
 export function assertNoProductionDevHookTokens(artifacts) {

@@ -34,11 +34,12 @@ function edge(model: DiagramModel, source: string, target: string) {
 }
 
 describe("parseTikz on the reported snippet", () => {
-  const model = parseTikz(ISSUE_SNIPPET);
+  const parsed = parseTikz(ISSUE_SNIPPET);
+  if (!parsed) throw new Error("parseTikz returned null for the reported snippet");
+  const model = parsed;
 
   it("reads every node with its shape, label and explicit size", () => {
     expect(model).not.toBeNull();
-    if (!model) return;
     expect(model.nodes.map((n) => n.id)).toEqual(["input", "process", "output", "decision"]);
     expect(node(model, "input").label).toBe("Input");
     expect(node(model, "decision").shape).toBe("diamond");
@@ -50,13 +51,11 @@ describe("parseTikz on the reported snippet", () => {
   });
 
   it("resolves the mixed fills the styles declare", () => {
-    if (!model) return;
     expect(node(model, "input").fill).toBe("#e6e6ff");
     expect(node(model, "decision").fill).toBe("#fff2e6");
   });
 
   it("lays the chain out from the relative placements", () => {
-    if (!model) return;
     const input = node(model, "input");
     const process = node(model, "process");
     const output = node(model, "output");
@@ -70,7 +69,6 @@ describe("parseTikz on the reported snippet", () => {
   });
 
   it("reads the arrows, including the orthogonal ones and their labels", () => {
-    if (!model) return;
     expect(model.edges).toHaveLength(5);
     expect(edge(model, "input", "process")).toMatchObject({
       routing: "straight",

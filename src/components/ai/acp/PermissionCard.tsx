@@ -17,11 +17,11 @@ export function PermissionCard({
   request,
   agentName,
   onChoose,
-}: {
+}: Readonly<{
   request: AcpPermission;
   agentName?: string;
   onChoose: (id: string, option: string | null) => Promise<void>;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const [busy, setBusy] = useState(false);
   const [expired, setExpired] = useState(request.expiresAt <= Date.now());

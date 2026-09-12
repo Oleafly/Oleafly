@@ -100,6 +100,41 @@ function readOptionValue(argv, index, flag) {
   return value;
 }
 
+const BOOLEAN_FLAGS = new Map([
+  ["-h", "help"],
+  ["--help", "help"],
+  ["--check", "check"],
+  ["--offline", "offline"],
+  ["--force", "force"],
+]);
+
+const VALUE_FLAGS = new Map([
+  ["--target", "target"],
+  ["--server", "server"],
+  ["--install-mode", "installMode"],
+]);
+
+function applyOption(options, argv, index) {
+  const argument = argv[index];
+  const booleanKey = BOOLEAN_FLAGS.get(argument);
+  if (booleanKey) {
+    options[booleanKey] = true;
+    return index;
+  }
+  const valueKey = VALUE_FLAGS.get(argument);
+  if (valueKey) {
+    options[valueKey] = readOptionValue(argv, index, argument);
+    return index + 1;
+  }
+  for (const [flag, key] of VALUE_FLAGS) {
+    if (argument.startsWith(`${flag}=`)) {
+      options[key] = argument.slice(`${flag}=`.length);
+      return index;
+    }
+  }
+  throw new Error(`unknown option: ${argument}`);
+}
+
 export function parseArgs(argv) {
   const options = {
     target: "current",
@@ -114,38 +149,15 @@ export function parseArgs(argv) {
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--") {
+    if (argument === "--") continue;
+    if (argument.startsWith("-")) {
+      index = applyOption(options, argv, index);
       continue;
-    } else if (argument === "-h" || argument === "--help") {
-      options.help = true;
-    } else if (argument === "--check") {
-      options.check = true;
-    } else if (argument === "--offline") {
-      options.offline = true;
-    } else if (argument === "--force") {
-      options.force = true;
-    } else if (argument === "--target") {
-      options.target = readOptionValue(argv, index, argument);
-      index += 1;
-    } else if (argument.startsWith("--target=")) {
-      options.target = argument.slice("--target=".length);
-    } else if (argument === "--server") {
-      options.server = readOptionValue(argv, index, argument);
-      index += 1;
-    } else if (argument.startsWith("--server=")) {
-      options.server = argument.slice("--server=".length);
-    } else if (argument === "--install-mode") {
-      options.installMode = readOptionValue(argv, index, argument);
-      index += 1;
-    } else if (argument.startsWith("--install-mode=")) {
-      options.installMode = argument.slice("--install-mode=".length);
-    } else if (argument.startsWith("-")) {
-      throw new Error(`unknown option: ${argument}`);
-    } else if (positionalTarget) {
-      throw new Error(`unexpected positional argument: ${argument}`);
-    } else {
-      positionalTarget = argument;
     }
+    if (positionalTarget) {
+      throw new Error(`unexpected positional argument: ${argument}`);
+    }
+    positionalTarget = argument;
   }
 
   if (positionalTarget) {
@@ -545,11 +557,10 @@ async function inspectRegularFile(path, options = {}) {
     const bytes = options.bytes
       ? await readHandleBytes(handle, Number(opened.size))
       : undefined;
-    const digest = options.digest
-      ? bytes
-        ? sha256(bytes)
-        : await readHandleSha256(handle)
-      : undefined;
+    let digest;
+    if (options.digest) {
+      digest = bytes ? sha256(bytes) : await readHandleSha256(handle);
+    }
     const after = await inspectRegularLeaf(path, directorySnapshot);
     if (!sameIdentity(opened, after)) {
       throw new Error(`file changed during secure read: ${path}`);
@@ -986,11 +997,9 @@ function tarString(block, start, length) {
 }
 
 function tarOctal(block, start, length, fieldName) {
-  const raw = block
-    .subarray(start, start + length)
-    .toString("ascii")
-    .replace(/\0.*$/s, "")
-    .trim();
+  const ascii = block.subarray(start, start + length).toString("ascii");
+  const terminator = ascii.indexOf("\0");
+  const raw = (terminator === -1 ? ascii : ascii.slice(0, terminator)).trim();
   if (raw === "") return 0;
   if (!/^[0-7]+$/.test(raw)) throw new Error(`invalid tar ${fieldName}: ${JSON.stringify(raw)}`);
   return Number.parseInt(raw, 8);
@@ -1025,7 +1034,7 @@ function extractTarGz(archive, expectedMember, maxOutputLength) {
     if (names.has(fullName)) throw new Error(`duplicate tar entry: ${fullName}`);
     names.add(fullName);
 
-    const type = String.fromCharCode(header[156] || 0x30);
+    const type = String.fromCodePoint(header[156] || 0x30);
     if (!["0", "5"].includes(type)) throw new Error(`unsupported tar entry type for ${fullName}`);
     const size = tarOctal(header, 124, 12, "size");
     const dataStart = offset + 512;
@@ -1064,7 +1073,7 @@ function extractZip(archive, expectedMember, maxOutputLength) {
   if (disk !== 0 || centralDisk !== 0 || entriesOnDisk !== entryCount) {
     throw new Error("multi-disk ZIP archives are not supported");
   }
-  if (entryCount === 0xffff || centralSize === 0xffff_ffff || centralOffset === 0xffff_ffff) {
+  if (entryCount === 0xffff || centralSize === 0xff_ff_ff_ff || centralOffset === 0xff_ff_ff_ff) {
     throw new Error("ZIP64 archives are not supported");
   }
   if (centralOffset + centralSize > eocd) throw new Error("invalid ZIP central directory bounds");
@@ -1144,14 +1153,14 @@ export function extractPinnedBinary(archive, targetEntry) {
     throw new Error(`unsafe archive member: ${targetEntry.archiveMember}`);
   }
   const maxOutputLength = targetEntry.binarySize + 1024 * 1024;
-  const binary =
-    targetEntry.archiveType === "tar.gz"
-      ? extractTarGz(archive, targetEntry.archiveMember, maxOutputLength)
-      : targetEntry.archiveType === "zip"
-        ? extractZip(archive, targetEntry.archiveMember, maxOutputLength)
-        : (() => {
-            throw new Error(`unsupported archive type: ${targetEntry.archiveType}`);
-          })();
+  let binary;
+  if (targetEntry.archiveType === "tar.gz") {
+    binary = extractTarGz(archive, targetEntry.archiveMember, maxOutputLength);
+  } else if (targetEntry.archiveType === "zip") {
+    binary = extractZip(archive, targetEntry.archiveMember, maxOutputLength);
+  } else {
+    throw new Error(`unsupported archive type: ${targetEntry.archiveType}`);
+  }
   if (binary.length !== targetEntry.binarySize) {
     throw new Error(
       `binary size mismatch: expected ${targetEntry.binarySize}, got ${binary.length}`,
@@ -1351,8 +1360,10 @@ export async function main(argv = process.argv.slice(2)) {
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
 if (invokedPath === import.meta.url) {
-  main().catch((error) => {
+  try {
+    await main();
+  } catch (error) {
     console.error(`language-server fetch failed: ${error.message}`);
     process.exitCode = 1;
-  });
+  }
 }

@@ -148,6 +148,43 @@ function catalogUaFindings(ua: PdfUaFacts): Finding[] {
   return out;
 }
 
+function taggedNodeFindings(node: StructNode): Finding[] {
+  const out: Finding[] = [];
+  if (node.role === "Figure" && !node.alt?.trim()) {
+    out.push(
+      observed({
+        id: "output-figure-alt",
+        severity: "error",
+        title: message("rules.output-figure-alt.title"),
+        detail: message("rules.output-figure-alt.detail"),
+      }),
+    );
+  }
+
+  if (node.role === "Formula" && !node.alt?.trim()) {
+    out.push(
+      observed({
+        id: "output-formula-alt",
+        severity: "warning",
+        title: message("rules.output-formula-alt.title"),
+        detail: message("rules.output-formula-alt.detail"),
+      }),
+    );
+  }
+
+  if (node.role === "Table" && !hasRole(node, "TH")) {
+    out.push(
+      observed({
+        id: "output-table-headers",
+        severity: "warning",
+        title: message("rules.output-table-headers.title"),
+        detail: message("rules.output-table-headers.detail"),
+      }),
+    );
+  }
+  return out;
+}
+
 export function verifyStructure(
   doc: StructDoc,
   structureFailedPages: readonly number[] = [],
@@ -202,39 +239,7 @@ export function verifyStructure(
   walk(doc.root, (n) => {
     const h = /^H([1-6])$/.exec(n.role);
     if (h) headingLevels.push(Number(h[1]));
-
-    if (n.role === "Figure" && (!n.alt || !n.alt.trim())) {
-      out.push(
-        observed({
-          id: "output-figure-alt",
-          severity: "error",
-          title: message("rules.output-figure-alt.title"),
-          detail: message("rules.output-figure-alt.detail"),
-        }),
-      );
-    }
-
-    if (n.role === "Formula" && (!n.alt || !n.alt.trim())) {
-      out.push(
-        observed({
-          id: "output-formula-alt",
-          severity: "warning",
-          title: message("rules.output-formula-alt.title"),
-          detail: message("rules.output-formula-alt.detail"),
-        }),
-      );
-    }
-
-    if (n.role === "Table" && !hasRole(n, "TH")) {
-      out.push(
-        observed({
-          id: "output-table-headers",
-          severity: "warning",
-          title: message("rules.output-table-headers.title"),
-          detail: message("rules.output-table-headers.detail"),
-        }),
-      );
-    }
+    out.push(...taggedNodeFindings(n));
   });
 
   for (let i = 1; i < headingLevels.length; i++) {

@@ -151,7 +151,7 @@ function typedPrefixStart(before: string): number {
 
 function typedPrefixMinimum(text: string): number | null {
   if (!text) return null;
-  if (text[0] === "\\") return MIN_COMMAND_LETTERS + 1;
+  if (text.startsWith("\\")) return MIN_COMMAND_LETTERS + 1;
   if (isAsciiLetter(text[0])) return MIN_WORD_LETTERS;
   return null;
 }

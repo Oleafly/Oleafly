@@ -61,6 +61,21 @@ describe("parseBiberLog", () => {
     expect(d.message).toBe('syntax error: found "author", expected ","');
   });
 
+  it("keeps the whole warning when the citation key itself contains a quote", () => {
+    const log = [
+      "INFO - Found BibTeX data source 'refs.bib'",
+      "WARN - I didn't find a database entry for 'o'brien2020' (section 0)",
+      "WARN - I didn't find a database entry for 'plain2021'",
+      "WARN - I didn't find a database entry for 'unterminated",
+    ].join("\n");
+
+    const diags = parseBiberLog(log);
+    expect(diags).toHaveLength(2);
+    expect(diags[0].category).toBe("undefined-citation");
+    expect(diags[0].message).toBe("I didn't find a database entry for 'o'brien2020' (section 0)");
+    expect(diags[1].message).toBe("I didn't find a database entry for 'plain2021'");
+  });
+
   it("attributes warnings to null when no data source has been announced", () => {
     const log = "WARN - I didn't find a database entry for 'orphan' (section 0)";
 

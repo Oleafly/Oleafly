@@ -309,7 +309,7 @@ fn kill_all_sessions() {
         let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
         sessions
             .as_mut()
-            .map(|registry| registry.drain_all())
+            .map(SessionRegistry::drain_all)
             .unwrap_or_default()
     };
     for session in drained {
@@ -754,7 +754,7 @@ fn resize_terminal(owner: &SessionOwner, id: &str, cols: u16, rows: u16) -> Resu
     // resize must not make every later resize of that terminal fail.
     let master = master
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     master
         .resize(PtySize {
             rows,

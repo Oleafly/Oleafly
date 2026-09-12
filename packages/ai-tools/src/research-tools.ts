@@ -92,7 +92,7 @@ export function createResearchTools(
       execute: async (input) => {
         const keyOrError = await requireKey(host, "alphaxiv", "alphaXiv");
         if (typeof keyOrError !== "string") return keyOrError;
-        const query = String(input.query ?? "");
+        const query = String((input.query as string | undefined) ?? "");
         if (!query.trim()) return { error: "query must not be empty" };
         if (
           confirm &&
@@ -165,7 +165,7 @@ export function createResearchTools(
         additionalProperties: false,
       },
       execute: async (input) => {
-        const query = String(input.query ?? "");
+        const query = String((input.query as string | undefined) ?? "");
         if (!query.trim()) return { error: "query must not be empty" };
         const limit = Math.min(Math.max(1, Math.floor(Number(input.limit) || 10)), 25);
         if (
@@ -245,7 +245,7 @@ export function createResearchTools(
         additionalProperties: false,
       },
       execute: async (input) => {
-        const query = String(input.query ?? "");
+        const query = String((input.query as string | undefined) ?? "");
         if (!query.trim()) return { error: "query must not be empty" };
         try {
           const chunks = await host.retrieveProjectChunks(query, { topK: 5 });

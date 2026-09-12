@@ -113,6 +113,45 @@ export function subagentDisplayStatus(kind: string): "active" | "updated" | "int
   }
 }
 
+type TimelineMetaItem = Extract<
+  StoreItem,
+  {
+    type:
+      | "worktreeInit"
+      | "userMessage"
+      | "steeringUserMessage"
+      | "steered"
+      | "imageGeneration"
+      | "imageView"
+      | "enteredReviewMode"
+      | "exitedReviewMode"
+      | "sleep";
+  }
+>;
+
+function toTimelineMetaViewItem(item: TimelineMetaItem, itemId: string): ViewItem {
+  switch (item.type) {
+    case "worktreeInit":
+      return { type: "worktree-init", itemId, outcome: item.outcome };
+    case "userMessage":
+      return { type: "user-message", itemId, text: item.text };
+    case "steeringUserMessage":
+      return { type: "steering-user-message", itemId, text: item.text, status: item.status };
+    case "steered":
+      return { type: "steered", itemId };
+    case "imageGeneration":
+      return { type: "generated-image", itemId, status: item.status, path: item.path };
+    case "imageView":
+      return { type: "image-view", itemId, imagePaths: item.imagePaths };
+    case "enteredReviewMode":
+    case "exitedReviewMode":
+      // Review-mode transitions are metadata, not timeline entries.
+      return { type: "steered", itemId };
+    case "sleep":
+      return { type: "sleep", itemId, durationMs: item.durationMs };
+  }
+}
+
 /** Map one store item into its view model. */
 export function toViewItem(recorded: RecordedStoreItem, interrupted: boolean): ViewItem {
   const item: StoreItem = recorded.item;
@@ -242,23 +281,15 @@ export function toViewItem(recorded: RecordedStoreItem, interrupted: boolean): V
         reason: item.reason,
       };
     case "worktreeInit":
-      return { type: "worktree-init", itemId, outcome: item.outcome };
     case "userMessage":
-      return { type: "user-message", itemId, text: item.text };
     case "steeringUserMessage":
-      return { type: "steering-user-message", itemId, text: item.text, status: item.status };
     case "steered":
-      return { type: "steered", itemId };
     case "imageGeneration":
-      return { type: "generated-image", itemId, status: item.status, path: item.path };
     case "imageView":
-      return { type: "image-view", itemId, imagePaths: item.imagePaths };
     case "enteredReviewMode":
     case "exitedReviewMode":
-      // Review-mode transitions are metadata, not timeline entries.
-      return { type: "steered", itemId };
     case "sleep":
-      return { type: "sleep", itemId, durationMs: item.durationMs };
+      return toTimelineMetaViewItem(item, itemId);
   }
 }
 

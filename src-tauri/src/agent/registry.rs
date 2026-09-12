@@ -2,7 +2,10 @@ use std::future::Future;
 
 use futures_util::future::{AbortHandle, AbortRegistration, Abortable};
 
-use super::*;
+use super::{
+    drop_pending_tools, lock_or_recover, tagged, ActiveRequest, AgentState,
+    MAX_CONCURRENT_AGENT_REQUESTS, MAX_EARLY_CANCELLATIONS,
+};
 
 pub(super) fn begin_request(
     state: &AgentState,

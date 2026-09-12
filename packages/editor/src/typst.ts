@@ -30,6 +30,34 @@ function consumeBlockComment(
   return "comment";
 }
 
+function consumeRawFence(stream: StringStream, state: TypstState): string {
+  const fence = "`".repeat(state.rawFence);
+  if (stream.match(fence)) {
+    state.rawFence = 0;
+    return "string";
+  }
+  if (stream.skipTo(fence)) {
+    stream.match(fence);
+    state.rawFence = 0;
+  } else {
+    stream.skipToEnd();
+  }
+  return "string";
+}
+
+function consumeHeadingLine(stream: StringStream, state: TypstState): string {
+  if (stream.match(/^<[^>\n]+>/)) {
+    state.headingLine = false;
+    return "labelName";
+  }
+  if (stream.match(/^.+?(?=<[^>\n]+>(?:\s|$))/)) {
+    return "heading";
+  }
+  stream.skipToEnd();
+  state.headingLine = false;
+  return "heading";
+}
+
 const typstMode: StreamParser<TypstState> = {
   startState: () => ({
     blockCommentDepth: 0,
@@ -38,35 +66,11 @@ const typstMode: StreamParser<TypstState> = {
   }),
   token(stream, state) {
     if (stream.sol()) state.headingLine = false;
-    if (state.rawFence > 0) {
-      const fence = "`".repeat(state.rawFence);
-      if (stream.match(fence)) {
-        state.rawFence = 0;
-        return "string";
-      }
-      if (stream.skipTo(fence)) {
-        stream.match(fence);
-        state.rawFence = 0;
-      } else {
-        stream.skipToEnd();
-      }
-      return "string";
-    }
+    if (state.rawFence > 0) return consumeRawFence(stream, state);
     if (state.blockCommentDepth > 0) {
       return consumeBlockComment(stream, state);
     }
-    if (state.headingLine) {
-      if (stream.match(/^<[^>\n]+>/)) {
-        state.headingLine = false;
-        return "labelName";
-      }
-      if (stream.match(/^.+?(?=<[^>\n]+>(?:\s|$))/)) {
-        return "heading";
-      }
-      stream.skipToEnd();
-      state.headingLine = false;
-      return "heading";
-    }
+    if (state.headingLine) return consumeHeadingLine(stream, state);
     if (stream.match("//")) {
       stream.skipToEnd();
       return "comment";

@@ -65,7 +65,7 @@ import {
   X,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -228,7 +228,6 @@ import {
   formatError,
   formatToolOutput,
 } from "@/components/ai/chat-parts";
-import type { EngineFeature } from "@/lib/tauri";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
@@ -485,7 +484,7 @@ function textDataUrl(text: string): string {
   const bytes = new TextEncoder().encode(text);
   let binary = "";
   for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    binary += String.fromCodePoint(...bytes.subarray(offset, offset + 0x8000));
   }
   return `data:text/plain;base64,${btoa(binary)}`;
 }
@@ -587,6 +586,30 @@ function describeProbeFailure(error: unknown): string {
   return detail
     ? i18n.t(($) => $.ai.models.probeFailedWithDetail, { detail })
     : i18n.t(($) => $.ai.models.probeFailed);
+}
+
+function sourceVocabularyFor(profile: string): string {
+  if (profile === "typst") return "Typst markup and scripting";
+  if (profile === "markdown") return "Pandoc Markdown and YAML front matter";
+  if (profile === "latex") return "LaTeX";
+  return "engine-neutral prose";
+}
+
+function composerControlsId(mentionOpen: boolean, slashOpen: boolean): string | undefined {
+  if (mentionOpen) return "ai-mention-menu";
+  if (slashOpen) return "ai-slash-command-menu";
+  return undefined;
+}
+
+function composerActiveDescendant(
+  mentionOpen: boolean,
+  mentionPath: string | null,
+  slashOpen: boolean,
+  slashCommandId: string | null,
+): string | undefined {
+  if (mentionOpen && mentionPath) return `ai-mention-${mentionPath}`;
+  if (slashOpen && slashCommandId) return `ai-slash-command-${slashCommandId}`;
+  return undefined;
 }
 
 export function modelNoticeRole(notice: ModelNotice | null): "alert" | "status" {
@@ -891,11 +914,11 @@ export function ChatCore() {
     const frame = requestAnimationFrame(() => goalInputRef.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [goalEditorOpen]);
-  const inputPlaceholder = !engineLoaded
-    ? t(($) => $.ai.composer.placeholderEngineUnavailable)
-    : planApprovalStatus === "awaiting"
-      ? t(($) => $.ai.composer.planRevisionPlaceholder)
-      : t(($) => $.ai.composer.placeholderDefault);
+  let inputPlaceholder: string;
+  if (!engineLoaded) inputPlaceholder = t(($) => $.ai.composer.placeholderEngineUnavailable);
+  else if (planApprovalStatus === "awaiting")
+    inputPlaceholder = t(($) => $.ai.composer.planRevisionPlaceholder);
+  else inputPlaceholder = t(($) => $.ai.composer.placeholderDefault);
   useAutoSizeTextarea(
     textareaRef,
     inputShellRef,
@@ -1197,7 +1220,7 @@ export function ChatCore() {
     modelProbes[probeKey(provider, model)],
   );
   const visibleModelNotice =
-    modelNotice && modelNotice.providerId === provider && modelNotice.modelId === model
+    modelNotice?.providerId === provider && modelNotice?.modelId === model
       ? modelNotice
       : null;
   const modelNoticeLine = modelNoticeText(visibleModelNotice, activeModelChatOnly);
@@ -1566,11 +1589,12 @@ export function ChatCore() {
     const prev = messagesRef.current;
     if (!prev.length) return;
     const copy = [...prev];
-    let last = copy[copy.length - 1];
+    let last = copy.at(-1);
+    if (last === undefined) return;
     for (const patch of patches) last = patch.apply(last);
     copy[copy.length - 1] = last;
     setMessages(copy);
-    const chatId = patches[patches.length - 1].chatId;
+    const chatId = patches.at(-1)?.chatId ?? null;
     if (chatId) useChatsStore.getState().setLive(chatId, copy);
     persistDebounced(chatId, copy);
   }, [persistDebounced, setMessages]);
@@ -2013,13 +2037,13 @@ export function ChatCore() {
       updateChatRun(runHandle, { chatId });
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
-    const planTurn: PlanTurn | null = !runPlanMode
-      ? null
-      : options?.approvedPlan
-        ? "execution"
-        : usePlanApprovalStore.getState().status(runChatId) === "awaiting"
-          ? "revision"
-          : "planning";
+    let planTurn: PlanTurn | null = null;
+    if (runPlanMode) {
+      if (options?.approvedPlan) planTurn = "execution";
+      else if (usePlanApprovalStore.getState().status(runChatId) === "awaiting")
+        planTurn = "revision";
+      else planTurn = "planning";
+    }
     const planGated = planTurn === "planning" || planTurn === "revision";
 
     // Optimistic turn + thread scoping: the record exists before any
@@ -2114,11 +2138,9 @@ USER_CUSTOM_INSTRUCTIONS`
       ),
     });
     const enabledTools = filterResolvedTools(resolvedToolsForRun, enabledToolsForRun).tools;
-    const tools: ToolSet = chatOnly
-      ? {}
-      : planGated
-        ? planModeTools(enabledTools)
-        : enabledTools;
+    let tools: ToolSet = enabledTools;
+    if (chatOnly) tools = {};
+    else if (planGated) tools = planModeTools(enabledTools);
     const runSkillCatalog =
       !chatOnly && isToolEnabled(enabledToolsForRun, "load_skill")
         ? skillCatalogPrompt(runSkills)
@@ -2126,27 +2148,35 @@ USER_CUSTOM_INSTRUCTIONS`
     const requestedSkillBlock = requestedSkillPrompt(
       skillCommand ? [skillCommand.skill] : [],
     );
-    const sourceVocabulary = documentEngine.capabilities.formatting_profile === "typst"
-      ? "Typst markup and scripting"
-      : documentEngine.capabilities.formatting_profile === "markdown"
-        ? "Pandoc Markdown and YAML front matter"
-        : documentEngine.capabilities.formatting_profile === "latex"
-          ? "LaTeX"
-          : "engine-neutral prose";
+    const sourceVocabulary = sourceVocabularyFor(documentEngine.capabilities.formatting_profile);
     const toolInventory = buildAiToolInventory(
       documentEngine.capabilities.features,
       enabledToolsForRun,
       Object.keys(tools),
     );
     const figureBlock = figureGuidance(Object.keys(tools));
-    const systemPrompt = `You are Oleafly AI, a fully agentic writing partner inside Oleafly, a local-first technical document editor.
-Available tools for this run: ${toolInventory.length > 0 ? toolInventory.join(", ") : "none"}.
-The current project is "${projectName}" (ID: ${projectId}). Main document: ${mainDocument}. The document engine is ${documentEngine.label}. Use only valid ${sourceVocabulary} source rules.${
+    const imageProjectBlock =
       projectKind === "image"
         ? `
 This is an IMAGE project, not a text document. The main document is a standalone TikZ/LaTeX figure that compiles to a single cropped image (not a paper). Your job is to build, edit, and fix that ONE figure: shapes, arrows, labels, colors, and layout. Do not add prose, sections, abstracts, bibliographies, or multi-page document structure. Keep the standalone document class and its tikzpicture. When you compile, success means the figure renders cleanly; the "PDF" here is the image.`
-        : ""
-    }${activeGoalLine ? `\n${activeGoalLine}` : ""}
+        : "";
+    const goalBlock = activeGoalLine ? `\n${activeGoalLine}` : "";
+    const researchRulesBlock =
+      projectKind === "image"
+        ? ""
+        : String.raw`
+Research rules:
+- Never invent a reference, a bibliography entry, an author list, or a DOI. If you cannot verify a source, say so plainly.
+- Every \cite key must resolve to an entry in the project bibliography. Check unresolvedCites in project_map, or search the .bib file with search_project, before you add a citation.
+- Verify a DOI with verify_citation before you rely on it.
+- Keep sources under research/sources/, notes under research/notes/, the reading list at research/reading-list.md, claims at research/claims.md, and reviews under review/. That is the layout the research skills read and write.
+- Compile after each section you write, and fix what breaks before you move on.
+- Never delete a file the user wrote without asking first.
+- When the user asks for a review, report your findings and leave the files alone unless they ask you to edit.
+`;
+    const systemPrompt = `You are Oleafly AI, a fully agentic writing partner inside Oleafly, a local-first technical document editor.
+Available tools for this run: ${toolInventory.length > 0 ? toolInventory.join(", ") : "none"}.
+The current project is "${projectName}" (ID: ${projectId}). Main document: ${mainDocument}. The document engine is ${documentEngine.label}. Use only valid ${sourceVocabulary} source rules.${imageProjectBlock}${goalBlock}
 
 Voice and style:
 - Talk like a warm, encouraging human collaborator, not a manual. Be concise but personable, and let a little personality show.
@@ -2172,29 +2202,19 @@ Workflow for "fix errors" requests:
 3. compile again until success is true with empty errors.
 4. verify_pdf_pages or get_pdf_text when layout/content must look right.
 Do not stop until the task is genuinely complete, then explain what you did in a friendly, human way.
-${projectKind === "image" ? "" : `
-Research rules:
-- Never invent a reference, a bibliography entry, an author list, or a DOI. If you cannot verify a source, say so plainly.
-- Every \\cite key must resolve to an entry in the project bibliography. Check unresolvedCites in project_map, or search the .bib file with search_project, before you add a citation.
-- Verify a DOI with verify_citation before you rely on it.
-- Keep sources under research/sources/, notes under research/notes/, the reading list at research/reading-list.md, claims at research/claims.md, and reviews under review/. That is the layout the research skills read and write.
-- Compile after each section you write, and fix what breaks before you move on.
-- Never delete a file the user wrote without asking first.
-- When the user asks for a review, report your findings and leave the files alone unless they ask you to edit.
-`}${figureBlock}
+${researchRulesBlock}${figureBlock}
 ${workspaceCtx}
 ${sandboxedCustom}`;
 
-    const effectiveSystem = `${systemPrompt}${agentDelegationPrompt(runText, delegationTargetsRef.current)}${
-      runSkillCatalog ? `\n\n${runSkillCatalog}` : ""
-    }${requestedSkillBlock ? `\n\n${requestedSkillBlock}` : ""}\n\n${approvalPostureLine(runApprovalMode)}${
-      planTurn
-        ? `\n\n${planTurnPrompt(
-            planTurn,
-            runChatId ? useAgentTodoStore.getState().todosForChat(runChatId) : [],
-          )}`
-        : ""
-    }`;
+    const skillCatalogBlock = runSkillCatalog ? `\n\n${runSkillCatalog}` : "";
+    const requestedSkillSuffix = requestedSkillBlock ? `\n\n${requestedSkillBlock}` : "";
+    const planTurnBlock = planTurn
+      ? `\n\n${planTurnPrompt(
+          planTurn,
+          runChatId ? useAgentTodoStore.getState().todosForChat(runChatId) : [],
+        )}`
+      : "";
+    const effectiveSystem = `${systemPrompt}${agentDelegationPrompt(runText, delegationTargetsRef.current)}${skillCatalogBlock}${requestedSkillSuffix}\n\n${approvalPostureLine(runApprovalMode)}${planTurnBlock}`;
 
     // Conversation history: packed (recent + truncated) so long chats fit context.
     const packedPrior = packChatHistory(priorMessages);
@@ -2405,7 +2425,7 @@ ${sandboxedCustom}`;
           }
         }
         if (call.name === "compile") {
-          if (record && record.success === true) assistantOutputs.openPdf();
+          if (record?.success === true) assistantOutputs.openPdf();
         }
         if (
           (call.name === "run_command" && record?.exec === true && record.exit_code === 0) ||
@@ -2491,8 +2511,9 @@ ${sandboxedCustom}`;
           onReasoningDelta: (chunk) =>
             updateRunLastText((m) => {
               const blocks = [...(m.reasoningBlocks ?? [])];
-              if (!blocks.length) return m;
-              const last = { ...blocks[blocks.length - 1] };
+              const previous = blocks.at(-1);
+              if (!previous) return m;
+              const last = { ...previous };
               last.text += chunk;
               blocks[blocks.length - 1] = last;
               return { ...m, reasoningBlocks: blocks };
@@ -2503,9 +2524,10 @@ ${sandboxedCustom}`;
             reasoningStartedAt = null;
             updateRunLast((m) => {
               const blocks = [...(m.reasoningBlocks ?? [])];
-              if (!blocks.length) return m;
-              const last = { ...blocks[blocks.length - 1] };
-              if (last.ms === undefined) last.ms = ms;
+              const previous = blocks.at(-1);
+              if (!previous) return m;
+              const last = { ...previous };
+              last.ms ??= ms;
               blocks[blocks.length - 1] = last;
               return { ...m, reasoningBlocks: blocks };
             });
@@ -2921,19 +2943,23 @@ ${sandboxedCustom}`;
           chatUsage.outputTokens > 0 ||
           chatUsage.steps > 0)),
   );
-  const usageSummary = runUsage
-    ? runUsage.input === null || runUsage.output === null
-      ? t(($) => $.ai.usage.summaryRunNoTokens, { count: runUsage.steps })
-      : t(($) => $.ai.usage.summaryRunWithTokens, {
-          count: runUsage.steps,
-          tokens: formatNumber(runUsage.input + runUsage.output),
-        })
-    : chatUsage
-      ? t(($) => $.ai.usage.summaryChat, {
-          steps: chatUsage.steps,
-          tokens: formatNumber(chatTotal),
-        })
-      : t(($) => $.ai.usage.summaryFallback);
+  let usageSummary: string;
+  if (runUsage) {
+    usageSummary =
+      runUsage.input === null || runUsage.output === null
+        ? t(($) => $.ai.usage.summaryRunNoTokens, { count: runUsage.steps })
+        : t(($) => $.ai.usage.summaryRunWithTokens, {
+            count: runUsage.steps,
+            tokens: formatNumber(runUsage.input + runUsage.output),
+          });
+  } else if (chatUsage) {
+    usageSummary = t(($) => $.ai.usage.summaryChat, {
+      steps: chatUsage.steps,
+      tokens: formatNumber(chatTotal),
+    });
+  } else {
+    usageSummary = t(($) => $.ai.usage.summaryFallback);
+  }
 
   return (
     <div
@@ -3305,14 +3331,13 @@ ${sandboxedCustom}`;
                         item.attachments.map((attachment) => attachment.name).join(", ");
                       const awaitingSafePoint = steeringFollowUpIds.has(item.id);
                       const beingSent = sendingFollowUpId === item.id;
-                      const chipText =
-                        item.status === "steered"
-                          ? t(($) => $.ai.followUps.steered, { summary })
-                          : beingSent
-                            ? t(($) => $.ai.followUps.sending, { summary })
-                            : awaitingSafePoint
-                              ? t(($) => $.ai.followUps.waiting, { summary })
-                              : t(($) => $.ai.followUps.queued, { summary });
+                      let chipText: string;
+                      if (item.status === "steered")
+                        chipText = t(($) => $.ai.followUps.steered, { summary });
+                      else if (beingSent) chipText = t(($) => $.ai.followUps.sending, { summary });
+                      else if (awaitingSafePoint)
+                        chipText = t(($) => $.ai.followUps.waiting, { summary });
+                      else chipText = t(($) => $.ai.followUps.queued, { summary });
                       return (
                       <div
                         key={item.id}
@@ -3519,7 +3544,7 @@ ${sandboxedCustom}`;
                       command.kind === "insert" ? (command.insertText ?? "") : "";
                     setInput(inserted);
                     setComposerCaret(inserted.length);
-                    setSlashMenuDismissedInput(inserted ? inserted : null);
+                    setSlashMenuDismissedInput(inserted || null);
                     setActiveSlashCommandId(null);
                     if (inserted) {
                       requestAnimationFrame(() =>
@@ -3557,22 +3582,15 @@ ${sandboxedCustom}`;
                 data-tour="ai-input"
                 role="combobox"
                 aria-autocomplete="list"
-                aria-controls={
-                  mentionMenuOpen
-                    ? "ai-mention-menu"
-                    : slashMenuOpen
-                      ? "ai-slash-command-menu"
-                      : undefined
-                }
+                aria-controls={composerControlsId(mentionMenuOpen, slashMenuOpen)}
                 aria-expanded={mentionMenuOpen || slashMenuOpen}
                 aria-haspopup="listbox"
-                aria-activedescendant={
-                  mentionMenuOpen && activeMentionPath
-                    ? `ai-mention-${activeMentionPath}`
-                    : slashMenuOpen && activeSlashCommandId
-                      ? `ai-slash-command-${activeSlashCommandId}`
-                      : undefined
-                }
+                aria-activedescendant={composerActiveDescendant(
+                  mentionMenuOpen,
+                  activeMentionPath,
+                  slashMenuOpen,
+                  activeSlashCommandId,
+                )}
                 value={input}
                 onChange={(e) => {
                   setSlashMenuDismissedInput(null);

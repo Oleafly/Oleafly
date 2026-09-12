@@ -249,8 +249,8 @@ function statusLabel(status: ResearchToolStatus, value: unknown): string {
 }
 
 export function stripAnsi(value: string): string {
-  const escapeSequence = String.fromCharCode(27);
-  return value.replace(new RegExp(`${escapeSequence}\\[[0-?]*[ -/]*[@-~]`, "g"), "");
+  const escapeSequence = String.fromCodePoint(27);
+  return value.replace(new RegExp(String.raw`${escapeSequence}\[[0-?]*[ -/]*[@-~]`, "g"), "");
 }
 
 function readableOutput(raw: string | undefined, value: unknown): string {
@@ -277,10 +277,8 @@ function abstractFromIndex(value: unknown): string | undefined {
       if (typeof position === "number") words.push({ word, position });
     }
   }
-  return words
-    .sort((left, right) => left.position - right.position)
-    .map((entry) => entry.word)
-    .join(" ") || undefined;
+  words.sort((left, right) => left.position - right.position);
+  return words.map((entry) => entry.word).join(" ") || undefined;
 }
 
 function literatureResult(value: unknown): LiteratureResultView | null {
@@ -344,7 +342,7 @@ function kindFor(name: string): ResearchToolView["kind"] {
 }
 
 function normalizedToolName(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|(?<!_)_+$/g, "");
 }
 
 function artifactTarget(
@@ -459,11 +457,8 @@ export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
   const status = explicitStatus(entry, value);
   const name = normalizedToolName(entry.name);
   const kind = kindFor(name);
-  const rawResults = Array.isArray(data?.results)
-    ? data.results
-    : Array.isArray(data?.works)
-      ? data.works
-      : [];
+  const fallbackResults = Array.isArray(data?.works) ? data.works : [];
+  const rawResults = Array.isArray(data?.results) ? data.results : fallbackResults;
   const results = rawResults
     .map(literatureResult)
     .filter((result): result is LiteratureResultView => result !== null);

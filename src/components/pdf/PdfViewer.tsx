@@ -1,9 +1,13 @@
 import { forwardRef, lazy, Suspense, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
-import type {
-  PdfViewerHandle,
-  PdfViewerProps,
+import type { PdfViewerHandle, PdfViewerProps } from "@oleafly/preview";
+import { safePdfExternalUrl } from "@oleafly/preview/controller";
+// Ensure the package's SyncTeX diagnostics logger is installed.
+import "@/components/pdf/pdfController";
+
+export type { PdfViewerHandle };
+export type {
   PdfLayout,
   PdfRotation,
   PdfLoadState,
@@ -11,19 +15,6 @@ import type {
   PdfOutlineState,
   PdfOutlineItem,
 } from "@oleafly/preview";
-import { safePdfExternalUrl } from "@oleafly/preview/controller";
-// Ensure the package's SyncTeX diagnostics logger is installed.
-import "@/components/pdf/pdfController";
-
-export type {
-  PdfViewerHandle,
-  PdfLayout,
-  PdfRotation,
-  PdfLoadState,
-  PdfSearchState,
-  PdfOutlineState,
-  PdfOutlineItem,
-};
 
 const PdfViewerCore = lazy(() =>
   import("@oleafly/preview").then((module) => ({
@@ -45,13 +36,12 @@ export const PdfViewer = forwardRef<PdfViewerHandle, Omit<PdfViewerProps, "onOpe
     return (
       <Suspense
         fallback={
-          <div
+          <output
             className="flex min-h-48 items-center justify-center p-6 text-sm text-muted-foreground"
-            role="status"
             aria-live="polite"
           >
             {t(($) => $.editor.preview.loading)}
-          </div>
+          </output>
         }
       >
         <PdfViewerCore

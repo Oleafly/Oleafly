@@ -3,11 +3,11 @@ set -euo pipefail
 
 archive="${1:-}"
 dest="${2:-}"
-if [ -z "$archive" ] || [ -z "$dest" ]; then
+if [[ -z "$archive" ]] || [[ -z "$dest" ]]; then
   echo "usage: $0 <archive.tar.gz> <dest-dir>" >&2
   exit 2
 fi
-if [ ! -f "$archive" ]; then
+if [[ ! -f "$archive" ]]; then
   echo "unpack: $archive is missing" >&2
   exit 1
 fi
@@ -17,13 +17,13 @@ tar -xzf "$archive" -C "$dest"
 
 app=""
 for candidate in "$dest"/*.exe; do
-  [ -f "$candidate" ] || continue
+  [[ -f "$candidate" ]] || continue
   base="$(basename "$candidate" | tr '[:upper:]' '[:lower:]')"
-  if [ "$base" = "oleafly.exe" ]; then
+  if [[ "$base" = "oleafly.exe" ]]; then
     app="$candidate"
   fi
 done
-if [ -z "$app" ]; then
+if [[ -z "$app" ]]; then
   echo "unpack: no oleafly.exe inside $archive" >&2
   ls -la "$dest" >&2 || true
   exit 1

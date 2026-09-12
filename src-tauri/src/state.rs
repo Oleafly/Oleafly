@@ -50,7 +50,10 @@ struct CompileCancelState {
 
 impl CompileCancel {
     pub fn begin(&self) {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if state.active_scopes == 0 {
             *state = CompileCancelState::default();
         }
@@ -59,7 +62,10 @@ impl CompileCancel {
 
     /// Records a stop request and returns the pid to terminate, if one is running.
     pub fn request(&self) -> Option<u32> {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if state.active_scopes == 0 || state.publication_cutoff_crossed {
             return None;
         }
@@ -70,7 +76,10 @@ impl CompileCancel {
     /// Registers a freshly spawned compiler. Returns `false` when a stop already
     /// landed, meaning the caller must terminate the child it just started.
     pub fn attach(&self, pid: u32) -> bool {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if state.active_scopes == 0 || state.publication_cutoff_crossed {
             return false;
         }
@@ -79,20 +88,29 @@ impl CompileCancel {
     }
 
     pub fn unregister(&self, pid: u32) {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if state.pid == Some(pid) {
             state.pid = None;
         }
     }
 
     pub fn is_requested(&self) -> bool {
-        let state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         state.active_scopes > 0 && state.requested && !state.publication_cutoff_crossed
     }
 
     /// Unregisters the compiler and reports whether it was stopped on request.
     pub fn detach(&self) -> bool {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if state.active_scopes == 0 {
             return false;
         }
@@ -115,7 +133,10 @@ impl oleafly_history::PublicationGate for CompileCancel {
         &self,
         commit: &mut dyn FnMut() -> oleafly_history::Result<()>,
     ) -> oleafly_history::Result<bool> {
-        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if state.active_scopes > 0 && state.requested {
             return Ok(false);
         }

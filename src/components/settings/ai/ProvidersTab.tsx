@@ -383,7 +383,7 @@ export function ProvidersTab({
   onAddCustomProvider,
   onEditCustomProvider,
   deleteCustomProvider,
-}: ProvidersTabProps) {
+}: Readonly<ProvidersTabProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const activeProvider = cfg.ai_provider;
   const allProviders = mergeCustomProviders(cfg.ai_custom_providers);
@@ -479,7 +479,7 @@ export function ProvidersTab({
                 </div>
               </div>
 
-              {!isOpen ? null : p.id === "ollama" ? (
+              {isOpen && (p.id === "ollama" ? (
                 <div className="px-3 pb-3">
                   <OllamaSetup
                     active={isActive}
@@ -592,7 +592,8 @@ export function ProvidersTab({
                           </button>
                         </Tooltip>
                       </>
-                    ) : hasSaved ? (
+                    ) : null}
+                    {!isCustom && hasSaved ? (
                       <Tooltip label={t(($) => $.settings.ai.providers.deleteKeyTooltip)}>
                         <button type="button"
                           data-testid={`ai-provider-delete-${p.id}`}
@@ -611,26 +612,30 @@ export function ProvidersTab({
                   {(() => {
                     const providerStatus = status[p.id] ?? "idle";
                     if (providerStatus === "idle") return null;
+                    const nonValidClass =
+                      providerStatus === "error"
+                        ? "mt-1.5 text-[11px] text-destructive"
+                        : "mt-1.5 text-[11px] text-muted-foreground";
+                    const nonValidatingText =
+                      providerStatus === "valid"
+                        ? t(($) => $.settings.ai.providers.status.valid)
+                        : t(($) => $.settings.ai.providers.status.error, {
+                            message:
+                              errorMsg[p.id] ??
+                              t(($) => $.settings.ai.providers.status.errorFallback),
+                          });
                     return (
                       <p
                         data-testid={`ai-provider-status-${p.id}`}
                         className={
                           providerStatus === "valid"
                             ? "mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-500"
-                            : providerStatus === "error"
-                              ? "mt-1.5 text-[11px] text-destructive"
-                              : "mt-1.5 text-[11px] text-muted-foreground"
+                            : nonValidClass
                         }
                       >
                         {providerStatus === "validating"
                           ? t(($) => $.settings.ai.providers.status.validating)
-                          : providerStatus === "valid"
-                            ? t(($) => $.settings.ai.providers.status.valid)
-                            : t(($) => $.settings.ai.providers.status.error, {
-                                message:
-                                  errorMsg[p.id] ??
-                                  t(($) => $.settings.ai.providers.status.errorFallback),
-                              })}
+                          : nonValidatingText}
                       </p>
                     );
                   })()}
@@ -647,7 +652,7 @@ export function ProvidersTab({
                     />
                   )}
                 </div>
-              )}
+              ))}
             </div>
           );
         })}

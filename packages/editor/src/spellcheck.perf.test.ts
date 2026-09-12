@@ -131,7 +131,7 @@ describe("presentation refresh perf (large doc)", () => {
       console.log(
         `sync: ${syncMs.toFixed(1)}ms, settled: ${settleMs.toFixed(1)}ms, dispatches: ${dispatchCount}, proofread calls: ${proofread.mock.calls.length}`,
       );
-      expect(proofread.mock.calls.length).toBe(1); // no worker re-run
+      expect(proofread.mock.calls).toHaveLength(1); // no worker re-run
     });
 
     it("stale lint results landing after a page flip cannot loop", { timeout: 30_000 }, async () => {
@@ -334,6 +334,6 @@ describe("presentation refresh perf (large doc)", () => {
       );
       expect(syncMs).toBeLessThan(500);
       // The repaint is served from the retained cache, never a worker re-run.
-      expect(proofread.mock.calls.length).toBe(1);
+      expect(proofread.mock.calls).toHaveLength(1);
     });
 });

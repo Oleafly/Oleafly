@@ -16,6 +16,7 @@ import {
 import type {
   ProofreadingDiagnostic,
   ProofreadingFormat,
+  ProofreadingMode,
   ProofreadingSuggestion,
 } from "@oleafly/editor";
 import {
@@ -99,6 +100,14 @@ let issueListener:
   | ((issue: VisualProofreadingIssue | null) => void)
   | null = null;
 
+function proofreadingMode(
+  harper: boolean,
+  spellcheck: boolean,
+): ProofreadingMode {
+  if (!harper) return "spelling";
+  return spellcheck ? "combined" : "grammar";
+}
+
 function formatForPath(path: string): ProofreadingFormat | null {
   if (/\.(?:tex|latex|ltx)$/iu.test(path)) return "latex";
   if (/\.(?:md|markdown)$/iu.test(path)) return "markdown";
@@ -125,103 +134,99 @@ function currentIdentity(): {
     : null;
 }
 
-export function extractVisualProofreadingProse(
-  doc: ProseMirrorNode,
+interface ProseAccumulator {
+  text: string;
+  map: number[];
+  rawBlockIndex: number[];
+  rawSourceOffset: number[];
+  rawBlocks: ExtractedProse["rawBlocks"];
+  blocked: boolean[];
+  previousEnd: number;
+}
+
+function appendStructuralGap(
+  accumulator: ProseAccumulator,
+  position: number,
+): void {
+  if (!accumulator.text || position <= accumulator.previousEnd) return;
+  accumulator.text += "\n";
+  accumulator.map.push(position);
+  accumulator.rawBlockIndex.push(-1);
+  accumulator.rawSourceOffset.push(-1);
+  accumulator.blocked.push(true);
+}
+
+function appendRawBlockProse(
+  accumulator: ProseAccumulator,
+  node: ProseMirrorNode,
+  position: number,
+): void {
+  const source = String(node.attrs.source ?? "");
+  const prose = maskToProse(source);
+  if (!prose.prose.trim()) return;
+  appendStructuralGap(accumulator, position);
+  const region = accumulator.rawBlocks.push({
+    nodeFrom: position,
+    nodeTo: position + node.nodeSize,
+    source,
+  }) - 1;
+  for (let index = 0; index < prose.prose.length; index++) {
+    accumulator.text += prose.prose[index];
+    accumulator.map.push(position);
+    accumulator.rawBlockIndex.push(region);
+    accumulator.rawSourceOffset.push(prose.map[index] ?? -1);
+    accumulator.blocked.push(false);
+  }
+  accumulator.previousEnd = position + node.nodeSize;
+}
+
+function appendTextProse(
+  accumulator: ProseAccumulator,
+  visibleText: string,
+  position: number,
   format: ProofreadingFormat,
-): ExtractedProse {
-  let text = "";
-  const map: number[] = [];
-  const rawBlockIndex: number[] = [];
-  const rawSourceOffset: number[] = [];
-  const rawBlocks: ExtractedProse["rawBlocks"] = [];
-  const blocked: boolean[] = [];
-  let previousEnd = -1;
-
-  doc.descendants((node, position, parent) => {
-    if (node.type.name === "rawBlock") {
-      const source = String(node.attrs.source ?? "");
-      const prose = maskToProse(source);
-      if (!prose.prose.trim()) return false;
-      if (text && position > previousEnd) {
-        text += "\n";
-        map.push(position);
-        rawBlockIndex.push(-1);
-        rawSourceOffset.push(-1);
-        blocked.push(true);
-      }
-      const region = rawBlocks.push({
-        nodeFrom: position,
-        nodeTo: position + node.nodeSize,
-        source,
-      }) - 1;
-      for (let index = 0; index < prose.prose.length; index++) {
-        text += prose.prose[index];
-        map.push(position);
-        rawBlockIndex.push(region);
-        rawSourceOffset.push(prose.map[index] ?? -1);
-        blocked.push(false);
-      }
-      previousEnd = position + node.nodeSize;
-      return false;
-    }
-    if (
-      node.type.name === "rawInline" ||
-      node.type.name === "codeBlock" ||
-      (node.isAtom && !node.isText)
-    ) {
-      return false;
-    }
-    if (!node.isText || !node.text) return true;
-    if (
-      parent?.type.name === "codeBlock" ||
-      node.marks.some((mark) => mark.type.name === "code")
-    ) {
-      return false;
-    }
-
-    if (text && position > previousEnd) {
-      text += "\n";
-      map.push(position);
-      rawBlockIndex.push(-1);
-      rawSourceOffset.push(-1);
-      blocked.push(true);
-    }
-    const visibleText = node.text;
-    const mathRanges = scanMathExpressions(visibleText, {
-      format: format === "latex" ? "latex" : "markdown",
-    });
-    let mathRangeIndex = 0;
-    for (let index = 0; index < visibleText.length; index++) {
-      while (
-        mathRangeIndex < mathRanges.length &&
-        mathRanges[mathRangeIndex].to <= index
-      ) {
-        mathRangeIndex++;
-      }
-      const mathRange = mathRanges[mathRangeIndex];
-      const hidden =
-        mathRange !== undefined &&
-        index >= mathRange.from &&
-        index < mathRange.to;
-      // Keep one UTF-16 code unit for every visible document position.
-      // Opaque inline math becomes whitespace so neighboring prose cannot be
-      // joined into a false word while worker ranges still map exactly back
-      // to ProseMirror positions.
-      text += hidden ? " " : visibleText[index];
-      map.push(position + index);
-      rawBlockIndex.push(-1);
-      rawSourceOffset.push(-1);
-      blocked.push(hidden);
-    }
-    previousEnd = position + visibleText.length;
-    return true;
+): void {
+  appendStructuralGap(accumulator, position);
+  const mathRanges = scanMathExpressions(visibleText, {
+    format: format === "latex" ? "latex" : "markdown",
   });
+  let mathRangeIndex = 0;
+  for (let index = 0; index < visibleText.length; index++) {
+    while (
+      mathRangeIndex < mathRanges.length &&
+      mathRanges[mathRangeIndex].to <= index
+    ) {
+      mathRangeIndex++;
+    }
+    const mathRange = mathRanges[mathRangeIndex];
+    const hidden =
+      mathRange !== undefined &&
+      index >= mathRange.from &&
+      index < mathRange.to;
+    // Keep one UTF-16 code unit for every visible document position.
+    // Opaque inline math becomes whitespace so neighboring prose cannot be
+    // joined into a false word while worker ranges still map exactly back
+    // to ProseMirror positions.
+    accumulator.text += hidden ? " " : visibleText[index];
+    accumulator.map.push(position + index);
+    accumulator.rawBlockIndex.push(-1);
+    accumulator.rawSourceOffset.push(-1);
+    accumulator.blocked.push(hidden);
+  }
+  accumulator.previousEnd = position + visibleText.length;
+}
+
+const PROTECTED_PROSE_PATTERNS = [
+  /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
+  /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
+];
+
+function maskProtectedSpans(
+  text: string,
+  blocked: boolean[],
+): string[] {
   const characters = text.split("");
-  const protectedPatterns = [
-    /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
-  ];
-  for (const pattern of protectedPatterns) {
+  for (const pattern of PROTECTED_PROSE_PATTERNS) {
     for (const match of text.matchAll(pattern)) {
       if (match.index === undefined) continue;
       const end = Math.min(
@@ -234,7 +239,14 @@ export function extractVisualProofreadingProse(
       }
     }
   }
+  return characters;
+}
 
+function proseBoundaryPrefixes(accumulator: ProseAccumulator): {
+  blockedPrefix: number[];
+  gapPrefix: number[];
+} {
+  const { map, rawBlockIndex, rawSourceOffset, blocked } = accumulator;
   const blockedPrefix = new Array<number>(map.length + 1).fill(0);
   const gapPrefix = new Array<number>(map.length + 1).fill(0);
   for (let index = 0; index < map.length; index++) {
@@ -254,14 +266,146 @@ export function extractVisualProofreadingProse(
       gapPrefix[index] +
       (index > 0 && !sameRawBlock && !contiguousDocumentText ? 1 : 0);
   }
+  return { blockedPrefix, gapPrefix };
+}
+
+export function extractVisualProofreadingProse(
+  doc: ProseMirrorNode,
+  format: ProofreadingFormat,
+): ExtractedProse {
+  const accumulator: ProseAccumulator = {
+    text: "",
+    map: [],
+    rawBlockIndex: [],
+    rawSourceOffset: [],
+    rawBlocks: [],
+    blocked: [],
+    previousEnd: -1,
+  };
+
+  doc.descendants((node, position, parent) => {
+    if (node.type.name === "rawBlock") {
+      appendRawBlockProse(accumulator, node, position);
+      return false;
+    }
+    if (
+      node.type.name === "rawInline" ||
+      node.type.name === "codeBlock" ||
+      (node.isAtom && !node.isText)
+    ) {
+      return false;
+    }
+    if (!node.isText || !node.text) return true;
+    if (
+      parent?.type.name === "codeBlock" ||
+      node.marks.some((mark) => mark.type.name === "code")
+    ) {
+      return false;
+    }
+    appendTextProse(accumulator, node.text, position, format);
+    return true;
+  });
+  const characters = maskProtectedSpans(
+    accumulator.text,
+    accumulator.blocked,
+  );
+  const { blockedPrefix, gapPrefix } = proseBoundaryPrefixes(accumulator);
   return {
     text: characters.join(""),
-    map,
-    rawBlockIndex,
-    rawSourceOffset,
-    rawBlocks,
+    map: accumulator.map,
+    rawBlockIndex: accumulator.rawBlockIndex,
+    rawSourceOffset: accumulator.rawSourceOffset,
+    rawBlocks: accumulator.rawBlocks,
     blockedPrefix,
     gapPrefix,
+  };
+}
+
+interface VisualDiagnosticContext {
+  doc: ProseMirrorNode;
+  extraction: ExtractedProse;
+  identity: {
+    path: string;
+    projectId: string | null;
+    documentVersion: number;
+  };
+  revision: number;
+  requestGeneration: number;
+  sequence: number;
+}
+
+function mapVisualDiagnostic(
+  diagnostic: ProofreadingDiagnostic,
+  context: VisualDiagnosticContext,
+): {
+  issue: VisualProofreadingIssue;
+  rawBlockKey: number | null;
+  from: number;
+  to: number;
+} | null {
+  const { doc, extraction, identity, revision, requestGeneration } = context;
+  if (
+    diagnostic.from < 0 ||
+    diagnostic.to <= diagnostic.from ||
+    diagnostic.from >= extraction.map.length ||
+    diagnostic.to > extraction.map.length
+  ) {
+    return null;
+  }
+  const blocked =
+    extraction.blockedPrefix[diagnostic.to] -
+    extraction.blockedPrefix[diagnostic.from];
+  const firstInternalIndex = Math.min(
+    diagnostic.from + 1,
+    diagnostic.to,
+  );
+  const structuralGaps =
+    extraction.gapPrefix[diagnostic.to] -
+    extraction.gapPrefix[firstInternalIndex];
+  // Never underline or mutate through an opaque/math/URL span or across a
+  // ProseMirror structural boundary. A suggestion must apply to one exact,
+  // contiguous, editable range.
+  if (blocked > 0 || structuralGaps > 0) return null;
+  const mappedRawBlock = extraction.rawBlockIndex[diagnostic.from];
+  const rawBlock =
+    mappedRawBlock >= 0
+      ? extraction.rawBlocks[mappedRawBlock]
+      : undefined;
+  const from = rawBlock?.nodeFrom ?? extraction.map[diagnostic.from];
+  const to =
+    rawBlock?.nodeTo ??
+    (extraction.map[
+      Math.min(diagnostic.to, extraction.map.length) - 1
+    ] ?? from) + 1;
+  if (to <= from || to > doc.content.size) return null;
+  const issue: VisualProofreadingIssue = {
+    ...diagnostic,
+    id: `${revision}:${requestGeneration}:${context.sequence}`,
+    from,
+    to,
+    path: identity.path,
+    projectId: identity.projectId,
+    documentVersion: identity.documentVersion,
+    revision,
+    requestGeneration,
+    ...(rawBlock
+      ? {
+          rawBlockSource: {
+            nodePosition: rawBlock.nodeFrom,
+            sourceFrom:
+              extraction.rawSourceOffset[diagnostic.from],
+            sourceTo:
+              extraction.rawSourceOffset[diagnostic.to - 1] + 1,
+            sourceSnapshot: rawBlock.source,
+          },
+        }
+      : {}),
+  };
+  return {
+    issue,
+    rawBlockKey: rawBlock ? mappedRawBlock : null,
+    from,
+    to,
   };
 }
 
@@ -308,81 +452,36 @@ export function mapVisualProofreadingDiagnostics(
     title: issue.message,
   });
   for (const diagnostic of diagnostics) {
-    if (
-      diagnostic.from < 0 ||
-      diagnostic.to <= diagnostic.from ||
-      diagnostic.from >= extraction.map.length ||
-      diagnostic.to > extraction.map.length
-    ) {
-      continue;
-    }
-    const blocked =
-      extraction.blockedPrefix[diagnostic.to] -
-      extraction.blockedPrefix[diagnostic.from];
-    const firstInternalIndex = Math.min(
-      diagnostic.from + 1,
-      diagnostic.to,
-    );
-    const structuralGaps =
-      extraction.gapPrefix[diagnostic.to] -
-      extraction.gapPrefix[firstInternalIndex];
-    // Never underline or mutate through an opaque/math/URL span or across a
-    // ProseMirror structural boundary. A suggestion must apply to one exact,
-    // contiguous, editable range.
-    if (blocked > 0 || structuralGaps > 0) continue;
-    const mappedRawBlock = extraction.rawBlockIndex[diagnostic.from];
-    const rawBlock =
-      mappedRawBlock >= 0
-        ? extraction.rawBlocks[mappedRawBlock]
-        : undefined;
-    const from = rawBlock?.nodeFrom ?? extraction.map[diagnostic.from];
-    const to =
-      rawBlock?.nodeTo ??
-      (extraction.map[
-        Math.min(diagnostic.to, extraction.map.length) - 1
-      ] ?? from) + 1;
-    if (to <= from || to > doc.content.size) continue;
-    const id = `${revision}:${requestGeneration}:${issues.length}`;
-    const issue: VisualProofreadingIssue = {
-      ...diagnostic,
-      id,
-      from,
-      to,
-      path: identity.path,
-      projectId: identity.projectId,
-      documentVersion: identity.documentVersion,
+    const mapped = mapVisualDiagnostic(diagnostic, {
+      doc,
+      extraction,
+      identity,
       revision,
       requestGeneration,
-      ...(rawBlock
-        ? {
-            rawBlockSource: {
-              nodePosition: rawBlock.nodeFrom,
-              sourceFrom:
-                extraction.rawSourceOffset[diagnostic.from],
-              sourceTo:
-                extraction.rawSourceOffset[diagnostic.to - 1] + 1,
-              sourceSnapshot: rawBlock.source,
-            },
-          }
-        : {}),
-    };
-    issues.push(issue);
-    if (rawBlock) {
-      const existing = rawBlockDecorations.get(mappedRawBlock);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        rawBlockDecorations.set(mappedRawBlock, {
-          from,
-          to,
-          firstIssue: issue,
-          count: 1,
-        });
-      }
-    } else {
+      sequence: issues.length,
+    });
+    if (!mapped) continue;
+    issues.push(mapped.issue);
+    if (mapped.rawBlockKey === null) {
       decorations.push(
-        Decoration.inline(from, to, decorationAttributes(issue)),
+        Decoration.inline(
+          mapped.from,
+          mapped.to,
+          decorationAttributes(mapped.issue),
+        ),
       );
+      continue;
+    }
+    const existing = rawBlockDecorations.get(mapped.rawBlockKey);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      rawBlockDecorations.set(mapped.rawBlockKey, {
+        from: mapped.from,
+        to: mapped.to,
+        firstIssue: mapped.issue,
+        count: 1,
+      });
     }
   }
   for (const rawBlock of rawBlockDecorations.values()) {
@@ -582,11 +681,10 @@ export const VisualProofreading = Extension.create({
                 return;
               }
 
-              const mode = settings.harper
-                ? settings.spellcheck
-                  ? "combined"
-                  : "grammar"
-                : "spelling";
+              const mode = proofreadingMode(
+                settings.harper,
+                settings.spellcheck,
+              );
               const extraction = extractVisualProofreadingProse(
                 doc,
                 identity.format,
@@ -841,9 +939,8 @@ function currentIssue(
 ): VisualProofreadingIssue | null {
   const state = visualProofreadingKey.getState(editor.state);
   const identity = currentIdentity();
+  if (!state || !identity) return null;
   if (
-    !state ||
-    !identity ||
     identity.path !== issue.path ||
     identity.projectId !== issue.projectId ||
     identity.documentVersion !== issue.documentVersion ||
@@ -906,6 +1003,15 @@ export function isVisualProofreadingIssueCurrent(
   issue: VisualProofreadingIssue,
 ): boolean {
   return currentIssue(editor, issue) !== null;
+}
+
+function cursorAfterSuggestion(
+  suggestion: ProofreadingSuggestion,
+  active: { from: number; to: number },
+): number {
+  if (suggestion.kind === 1) return active.from;
+  if (suggestion.kind === 2) return active.to + suggestion.text.length;
+  return active.from + suggestion.text.length;
 }
 
 export function applyVisualProofreadingSuggestion(
@@ -974,12 +1080,7 @@ export function applyVisualProofreadingSuggestion(
       active.to,
     );
   }
-  const cursor =
-    suggestion.kind === 1
-      ? active.from
-      : suggestion.kind === 2
-        ? active.to + suggestion.text.length
-        : active.from + suggestion.text.length;
+  const cursor = cursorAfterSuggestion(suggestion, active);
   transaction.setSelection(
     TextSelection.near(
       transaction.doc.resolve(

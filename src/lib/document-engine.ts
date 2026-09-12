@@ -85,13 +85,18 @@ export function formattingForEngine(
   if (!engineLoaded || engine.capabilities.formatting_profile === "none") return null;
   const typst = engine.capabilities.formatting_profile === "typst";
   const markdown = engine.capabilities.formatting_profile === "markdown";
+  const byProfile = (typstText: string, markdownText: string, latexText: string): string => {
+    if (typst) return typstText;
+    if (markdown) return markdownText;
+    return latexText;
+  };
   switch (action) {
     case "bold":
-      return { kind: "wrap", before: typst ? "*" : markdown ? "**" : "\\textbf{", after: typst ? "*" : markdown ? "**" : "}" };
+      return { kind: "wrap", before: byProfile("*", "**", String.raw`\textbf{`), after: byProfile("*", "**", "}") };
     case "italic":
-      return { kind: "wrap", before: typst ? "_" : markdown ? "*" : "\\textit{", after: typst ? "_" : markdown ? "*" : "}" };
+      return { kind: "wrap", before: byProfile("_", "*", String.raw`\textit{`), after: byProfile("_", "*", "}") };
     case "section":
-      return { kind: "insert", text: typst ? "= Heading\n" : markdown ? "# Heading\n" : "\\section{}\n" };
+      return { kind: "insert", text: byProfile("= Heading\n", "# Heading\n", "\\section{}\n") };
     case "list":
       return {
         kind: "insert",

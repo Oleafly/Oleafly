@@ -8,15 +8,15 @@ export function DotPattern({
   x = 0,
   y = 0,
   className,
-}: {
+}: Readonly<{
   width?: number;
   height?: number;
   radius?: number;
   x?: number;
   y?: number;
   className?: string;
-}) {
-  const id = useId().replace(/[:]/g, "");
+}>) {
+  const id = useId().replaceAll(":", "");
   return (
     <svg
       aria-hidden="true"

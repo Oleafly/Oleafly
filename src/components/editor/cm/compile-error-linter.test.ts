@@ -38,7 +38,7 @@ describe("createCompileErrorLinter", () => {
     const view = makeView("line one\nline two\nline three\n");
     await runLinting(view);
 
-    expect(view.dom.querySelectorAll(".cm-lint-marker-error").length).toBe(1);
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(1);
     expect(view.dom.querySelectorAll(".cm-lintRange-error").length).toBeGreaterThan(0);
     view.destroy();
   });
@@ -54,7 +54,7 @@ describe("createCompileErrorLinter", () => {
     const view = makeView("line one\nline two\nline three\n");
     await runLinting(view);
 
-    expect(view.dom.querySelectorAll(".cm-lint-marker-error").length).toBe(0);
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(0);
     view.destroy();
   });
 
@@ -67,8 +67,8 @@ describe("createCompileErrorLinter", () => {
     const view = makeView("line one\n");
     await runLinting(view);
 
-    expect(view.dom.querySelectorAll(".cm-lint-marker-warning").length).toBe(1);
-    expect(view.dom.querySelectorAll(".cm-lint-marker-error").length).toBe(0);
+    expect(view.dom.querySelectorAll(".cm-lint-marker-warning")).toHaveLength(1);
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(0);
     view.destroy();
   });
 
@@ -77,7 +77,7 @@ describe("createCompileErrorLinter", () => {
     const view = makeView("line one\n");
     await runLinting(view);
 
-    expect(view.dom.querySelectorAll(".cm-lint-marker-error").length).toBe(0);
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(0);
     view.destroy();
   });
 });

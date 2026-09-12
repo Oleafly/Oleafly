@@ -5,14 +5,17 @@ import {
 } from "@/features/assistant-handoff";
 import { preflightDetailInEnglish, preflightMessageInEnglish } from "@/components/preflight/message";
 
+function severityLabel(severity: Finding["severity"]): string {
+  if (severity === "error") return "Error";
+  if (severity === "warning") return "Warning";
+  return "Note";
+}
+
 function describeFinding(finding: Finding): string {
-  const sev =
-    finding.severity === "error" ? "Error" : finding.severity === "warning" ? "Warning" : "Note";
-  const where = finding.file
-    ? ` (${finding.file}${finding.page != null ? `, p.${finding.page}` : ""})`
-    : finding.page != null
-      ? ` (p.${finding.page})`
-      : "";
+  const sev = severityLabel(finding.severity);
+  const pageSuffix = finding.page != null ? `, p.${finding.page}` : "";
+  const pageOnly = finding.page != null ? ` (p.${finding.page})` : "";
+  const where = finding.file ? ` (${finding.file}${pageSuffix})` : pageOnly;
   return `- [${sev}] ${preflightMessageInEnglish(finding.title)}${where}\n  ${preflightDetailInEnglish(finding)}`;
 }
 

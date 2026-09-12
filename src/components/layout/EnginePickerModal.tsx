@@ -161,6 +161,28 @@ export function EnginePickerModal() {
     close();
   };
 
+  const tinytexActionLabel = () => {
+    if (installing) {
+      return installPhaseLabel(installPhase, progress);
+    }
+    if (partialDownloadBytes > 0) {
+      return t(($) => $.shell.enginePicker.tinytex.resume, {
+        megabytes: Math.round(partialDownloadBytes / 1_000_000),
+      });
+    }
+    return t(($) => $.shell.enginePicker.tinytex.download);
+  };
+
+  const systemTexActionLabel = () => {
+    if (alreadyLatexmk) {
+      return t(($) => $.shell.enginePicker.systemTex.alreadySelected);
+    }
+    if (needsPdflatex) {
+      return t(($) => $.shell.enginePicker.systemTex.switchPdflatex);
+    }
+    return t(($) => $.shell.enginePicker.systemTex.use);
+  };
+
   return (
     <div className="pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <button
@@ -288,16 +310,9 @@ export function EnginePickerModal() {
                 onClick={() => void pinLatexmk(false)}
                 data-modal-initial-focus={hasSystemTex || undefined}
               >
-                {switching ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : alreadyLatexmk ? (
-                  <Check className="size-3.5" />
-                ) : null}
-                {alreadyLatexmk
-                  ? t(($) => $.shell.enginePicker.systemTex.alreadySelected)
-                  : needsPdflatex
-                    ? t(($) => $.shell.enginePicker.systemTex.switchPdflatex)
-                    : t(($) => $.shell.enginePicker.systemTex.use)}
+                {switching ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                {!switching && alreadyLatexmk ? <Check className="size-3.5" /> : null}
+                {systemTexActionLabel()}
               </Button>
             </div>
           </div>
@@ -322,13 +337,7 @@ export function EnginePickerModal() {
                   onClick={() => void installThenPin()}
                 >
                   {installing ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                  {installing
-                    ? installPhaseLabel(installPhase, progress)
-                    : partialDownloadBytes > 0
-                      ? t(($) => $.shell.enginePicker.tinytex.resume, {
-                          megabytes: Math.round(partialDownloadBytes / 1_000_000),
-                        })
-                      : t(($) => $.shell.enginePicker.tinytex.download)}
+                  {tinytexActionLabel()}
                 </Button>
               </div>
             </div>

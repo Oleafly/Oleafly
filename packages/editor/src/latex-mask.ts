@@ -97,7 +97,7 @@ interface MaskRegion {
 }
 
 function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return s.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 function findEnvEnd(text: string, from: number, env: string): number {
@@ -148,7 +148,7 @@ function collectLatexRegions(text: string): MaskRegion[] {
 
   for (const pattern of [
     /(?:https?:\/\/|www\.)[^\s<>{}\\]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
+    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
   ]) {
     for (const match of text.matchAll(pattern)) {
       if (match.index === undefined) continue;
@@ -243,27 +243,25 @@ function collectLatexRegions(text: string): MaskRegion[] {
     return at === -1 ? n : at;
   };
 
+  const mathCloseAt = (k: number, mode: 1 | 2 | 3 | 4): number | null => {
+    const ch = chars[k];
+    if (ch === "\n") return mode === 1 ? k : null;
+    if (ch === "\\" && (chars[k + 1] === ")" || chars[k + 1] === "]")) {
+      return k + 2;
+    }
+    if (ch === "$") {
+      if (mode === 2 && chars[k + 1] === "$") return k + 2;
+      if (mode === 1) return k + 1;
+    }
+    return null;
+  };
+
   const endOfMath = (start: number, mode: 1 | 2 | 3 | 4): number => {
     let k = start;
     while (k < n) {
-      const ch = chars[k];
-      if (ch === "\n") {
-        if (mode === 1) return k;
-        k++;
-        continue;
-      }
-      if (ch === "%") {
-        k = endOfLine(k);
-        continue;
-      }
-      if (ch === "\\" && (chars[k + 1] === ")" || chars[k + 1] === "]")) {
-        return k + 2;
-      }
-      if (ch === "$") {
-        if (mode === 2 && chars[k + 1] === "$") return k + 2;
-        if (mode === 1) return k + 1;
-      }
-      k++;
+      const close = mathCloseAt(k, mode);
+      if (close !== null) return close;
+      k = chars[k] === "%" ? endOfLine(k) : k + 1;
     }
     return n;
   };
@@ -447,6 +445,43 @@ export interface ProseMask {
   masked: MaskSpan[];
 }
 
+function blankRegionSpans(
+  out: string[],
+  blanks: readonly MaskSpan[],
+  from: number,
+): void {
+  for (const span of blanks) {
+    const start = Math.max(span.from, from);
+    if (span.to > start) blankInto(out, start, span.to);
+  }
+}
+
+function writeProsePlaceholder(
+  out: string[],
+  text: string,
+  from: number,
+  to: number,
+): void {
+  const span = to - from;
+  const placeholder =
+    span >= PROSE_PLACEHOLDER.length
+      ? PROSE_PLACEHOLDER
+      : PROSE_SHORT_PLACEHOLDER;
+  const before = from > 0 ? text[from - 1] : " ";
+  const after = span === placeholder.length ? (text[to] ?? " ") : " ";
+  if (
+    span < placeholder.length ||
+    /[\p{L}\p{N}]/u.test(before) ||
+    /[\p{L}\p{N}]/u.test(after) ||
+    text.slice(from, from + placeholder.length).includes("\n")
+  ) {
+    return;
+  }
+  for (let k = 0; k < placeholder.length; k++) {
+    out[from + k] = placeholder[k];
+  }
+}
+
 export function maskLatexForProseRegions(text: string): ProseMask {
   const out = text.split("");
   const masked: MaskSpan[] = [];
@@ -457,32 +492,11 @@ export function maskLatexForProseRegions(text: string): ProseMask {
     applied = region.to;
     masked.push({ from, to: region.to });
     if (region.kind === "block") {
-      for (const span of region.blanks) {
-        const start = Math.max(span.from, from);
-        if (span.to > start) blankInto(out, start, span.to);
-      }
+      blankRegionSpans(out, region.blanks, from);
       continue;
     }
-    const span = region.to - from;
     blankInto(out, from, region.to);
-    const placeholder =
-      span >= PROSE_PLACEHOLDER.length
-        ? PROSE_PLACEHOLDER
-        : PROSE_SHORT_PLACEHOLDER;
-    const before = from > 0 ? text[from - 1] : " ";
-    const after =
-      span === placeholder.length ? (text[region.to] ?? " ") : " ";
-    if (
-      span < placeholder.length ||
-      /[\p{L}\p{N}]/u.test(before) ||
-      /[\p{L}\p{N}]/u.test(after) ||
-      text.slice(from, from + placeholder.length).includes("\n")
-    ) {
-      continue;
-    }
-    for (let k = 0; k < placeholder.length; k++) {
-      out[from + k] = placeholder[k];
-    }
+    writeProsePlaceholder(out, text, from, region.to);
   }
   return { prose: out.join(""), masked };
 }

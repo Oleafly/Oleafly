@@ -79,7 +79,7 @@ export function ModelManager({
   refreshedAt,
   probes,
   discoverable = true,
-}: ModelManagerProps) {
+}: Readonly<ModelManagerProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [newId, setNewId] = useState("");
   const [addError, setAddError] = useState<AddError>("");
@@ -191,6 +191,26 @@ export function ModelManager({
     setNewId("");
   }
 
+    const noticeLabel = (current: NonNullable<typeof notice>): string => {
+    if (current.kind === "unreadable") return t(($) => $.settings.ai.models.unreadableList);
+    if (current.added === 0 && current.removed === 0) {
+      return t(($) => $.settings.ai.models.noChanges);
+    }
+    return t(($) => $.settings.ai.models.changeSummary, {
+      added: current.added,
+      removed: current.removed,
+    });
+  };
+  const addErrorLabel = () => {
+    if (addError === "empty") {
+      return t(($) => $.settings.ai.models.addError.empty);
+    }
+    if (addError === "spaces") {
+      return t(($) => $.settings.ai.models.addError.spaces);
+    }
+    return t(($) => $.settings.ai.models.addError.duplicate);
+  };
+
   return (
     <div className="mt-3 space-y-1.5 border-t pt-3">
       <div className="flex items-center justify-between gap-2">
@@ -258,14 +278,7 @@ export function ModelManager({
               : "text-[11px] text-muted-foreground"
           }
         >
-          {notice.kind === "unreadable"
-            ? t(($) => $.settings.ai.models.unreadableList)
-            : notice.added === 0 && notice.removed === 0
-              ? t(($) => $.settings.ai.models.noChanges)
-              : t(($) => $.settings.ai.models.changeSummary, {
-                  added: notice.added,
-                  removed: notice.removed,
-                })}
+          {noticeLabel(notice)}
         </p>
       )}
 
@@ -347,11 +360,7 @@ export function ModelManager({
         </div>
         {addError && (
           <p data-testid={`ai-add-model-error-${providerId}`} className="mt-1 text-[11px] text-destructive">
-            {addError === "empty"
-              ? t(($) => $.settings.ai.models.addError.empty)
-              : addError === "spaces"
-                ? t(($) => $.settings.ai.models.addError.spaces)
-                : t(($) => $.settings.ai.models.addError.duplicate)}
+            {addErrorLabel()}
           </p>
         )}
       </div>
@@ -395,17 +404,23 @@ export function ModelMetadataStatusLine() {
     ? t(($) => $.settings.ai.models.metadata.unknownDate)
     : formatDate(generated);
   const source = status.data.source;
+  const metadataLabel = () => {
+    if (source === "bundled") {
+      return t(($) => $.settings.ai.models.metadata.updatedBundled, { date });
+    }
+    if (source === "cache") {
+      return t(($) => $.settings.ai.models.metadata.updatedFromCache, { date });
+    }
+    return t(($) => $.settings.ai.models.metadata.updated, { date });
+  };
+
   return (
     <div
       data-testid="ai-model-metadata-status"
       className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground"
     >
       <span>
-        {source === "bundled"
-          ? t(($) => $.settings.ai.models.metadata.updatedBundled, { date })
-          : source === "cache"
-            ? t(($) => $.settings.ai.models.metadata.updatedFromCache, { date })
-            : t(($) => $.settings.ai.models.metadata.updated, { date })}
+        {metadataLabel()}
       </span>
       <Button
         size="sm"

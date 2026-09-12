@@ -30,7 +30,7 @@ export function GitHubSection() {
     { ok: boolean; kind: "connected"; login: string } | { ok: boolean; kind: "disconnected" } | null
   >(null);
 
-  const [config, setConfigState] = useState<AppConfig | null>(null);
+  const [configState, setConfigState] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<"load" | "save" | null>(null);
   const configRequest = useRef(0);
   const configWrites = useRef<Promise<void>>(Promise.resolve());
@@ -53,8 +53,8 @@ export function GitHubSection() {
   }, []);
 
   const writeGitAutoInit = (value: boolean) => {
-    if (!config) return;
-    setConfigState({ ...config, git_auto_init: value });
+    if (!configState) return;
+    setConfigState({ ...configState, git_auto_init: value });
     setConfigError(null);
     configWrites.current = configWrites.current
       .then(() => getConfig())
@@ -96,6 +96,25 @@ export function GitHubSection() {
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+  // Poll loop runs in JS: cancellable, and each Rust call is async + short
+  // so it never freezes the webview.
+  const pollDeviceToken = async (
+    dc: Awaited<ReturnType<typeof requestDeviceCode>>,
+    cancelled: () => boolean,
+  ): Promise<string | null> => {
+    let wait = Math.max(dc.interval, 5) * 1000;
+    const deadline = Date.now() + 16 * 60 * 1000;
+    while (Date.now() < deadline && !cancelled()) {
+      await sleep(wait);
+      if (cancelled()) return null;
+      const res = await checkDeviceToken(GITHUB_OAUTH_CLIENT_ID, dc.device_code);
+      if (cancelled()) return null;
+      if (res.status === "token") return res.token;
+      if (res.status === "slow_down") wait = res.interval * 1000;
+    }
+    return null;
+  };
+
   const connectDeviceFlow = async () => {
     if (!GITHUB_OAUTH_CLIENT_ID) {
       // No OAuth app configured yet - direct the user to the PAT route.
@@ -113,22 +132,7 @@ export function GitHubSection() {
       setFlow(dc);
       void open(dc.verification_uri);
 
-      // Poll loop runs in JS: cancellable, and each Rust call is async + short
-      // so it never freezes the webview.
-      let wait = Math.max(dc.interval, 5) * 1000;
-      const deadline = Date.now() + 16 * 60 * 1000;
-      let token: string | null = null;
-      while (Date.now() < deadline && !cancelled()) {
-        await sleep(wait);
-        if (cancelled()) return;
-        const res = await checkDeviceToken(GITHUB_OAUTH_CLIENT_ID, dc.device_code);
-        if (cancelled()) return;
-        if (res.status === "token") {
-          token = res.token;
-          break;
-        }
-        if (res.status === "slow_down") wait = res.interval * 1000;
-      }
+      const token = await pollDeviceToken(dc, cancelled);
       if (cancelled()) return;
 
       if (!token) {
@@ -196,7 +200,7 @@ export function GitHubSection() {
         <SettingsToggleRow
           label={t(($) => $.settings.github.autoInit.label)}
           description={t(($) => $.settings.github.autoInit.description)}
-          checked={gitAutoInitEnabled(config)}
+          checked={gitAutoInitEnabled(configState)}
           onChange={writeGitAutoInit}
         />
         {configError ? (
@@ -207,7 +211,7 @@ export function GitHubSection() {
           </p>
         ) : null}
       </div>
-      {connected ? (
+      {connected && (
         <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
           {ghUser?.avatar_url ? (
             <img
@@ -240,7 +244,8 @@ export function GitHubSection() {
             {t(($) => $.settings.github.account.disconnect)}
           </Button>
         </div>
-      ) : flow ? (
+      )}
+      {!connected && (flow ? (
         <div className="space-y-3 rounded-lg border bg-background p-4">
           <div>
             <div className="text-sm font-semibold">
@@ -342,7 +347,7 @@ export function GitHubSection() {
               : t(($) => $.settings.github.hint.token)}
           </p>
         </>
-      )}
+      ))}
 
       {msg && (
         <div

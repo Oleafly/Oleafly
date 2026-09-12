@@ -421,7 +421,7 @@ export const VisualMathPreview = Extension.create({
             typeof ResizeObserver === "function"
               ? new ResizeObserver((entries) => {
                   const width =
-                    entries[entries.length - 1]?.contentRect.width ??
+                    entries.at(-1)?.contentRect.width ??
                     editorView.dom.getBoundingClientRect().width;
                   if (Math.abs(width - observedWidth) < 1) return;
                   observedWidth = width;

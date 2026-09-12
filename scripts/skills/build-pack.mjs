@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { readFile, readdir, stat, lstat } from "node:fs/promises";
+import { readFile, readdir, lstat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { writeFile } from "node:fs/promises";
 import { parseFrontmatterMapping } from "./frontmatter.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -35,7 +34,7 @@ async function walkFiles(dir, baseDir) {
     if (entry.isDirectory()) {
       files.push(...(await walkFiles(full, baseDir)));
     } else if (entry.isFile()) {
-      const rel = relative(baseDir, full).split("\\").join("/");
+      const rel = relative(baseDir, full).replaceAll("\\", "/");
       if (rel === "pack.json") continue;
       files.push({ abs: full, rel });
     }
@@ -44,9 +43,10 @@ async function walkFiles(dir, baseDir) {
 }
 
 async function computeTreeSha256(skillDir) {
-  const files = (await walkFiles(skillDir, skillDir)).sort((a, b) =>
-    a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0,
-  );
+  const files = (await walkFiles(skillDir, skillDir)).sort((a, b) => {
+    if (a.rel < b.rel) return -1;
+    return a.rel > b.rel ? 1 : 0;
+  });
   const hash = createHash("sha256");
   let totalBytes = 0;
   for (const file of files) {
@@ -75,7 +75,13 @@ function mappingOf(value) {
 
 async function main() {
   const entries = await readdir(SKILLS_ROOT, { withFileTypes: true });
-  const skillDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const skillDirs = entries
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort((a, b) => {
+      if (a < b) return -1;
+      return a > b ? 1 : 0;
+    });
 
   const skills = [];
   for (const id of skillDirs) {
@@ -126,7 +132,10 @@ async function main() {
     skills.push(record);
   }
 
-  skills.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  skills.sort((a, b) => {
+    if (a.id < b.id) return -1;
+    return a.id > b.id ? 1 : 0;
+  });
 
   const pack = {
     schemaVersion: 1,
@@ -140,8 +149,10 @@ async function main() {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
-  main().catch((err) => {
+  try {
+    await main();
+  } catch (err) {
     console.error(err.message ?? err);
     process.exit(1);
-  });
+  }
 }

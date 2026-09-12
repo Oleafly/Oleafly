@@ -50,14 +50,14 @@ export function dataUrlToBase64(dataUrl: string): string {
 }
 
 function base64ToBytes(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return Uint8Array.from(atob(b64), (c) => c.codePointAt(0) ?? 0);
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
   let bin = "";
   const CHUNK = 0x8000;
   for (let i = 0; i < bytes.length; i += CHUNK) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    bin += String.fromCodePoint(...bytes.subarray(i, i + CHUNK));
   }
   return btoa(bin);
 }

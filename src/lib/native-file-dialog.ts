@@ -24,12 +24,10 @@ declare global {
 
 function e2eState(): E2eFileDialogState | null {
   if (typeof window === "undefined" || !E2E_HOOKS) return null;
-  if (!window.__e2eFileDialogState) {
-    window.__e2eFileDialogState = {
-      openRequests: 0,
-      saveRequests: 0,
-    };
-  }
+  window.__e2eFileDialogState ??= {
+    openRequests: 0,
+    saveRequests: 0,
+  };
   return window.__e2eFileDialogState;
 }
 
@@ -59,14 +57,12 @@ export async function pickOpenPath<T extends OpenDialogOptions>(
     if (Object.hasOwn(state, "nextImportPaths")) {
       const paths = state.nextImportPaths ?? null;
       delete state.nextImportPaths;
-      const result =
-        paths === null
-          ? null
-          : options?.directory
-            ? (paths[0] ?? null)
-            : options?.multiple
-              ? paths
-              : (paths[0] ?? null);
+      let result: string | string[] | null = null;
+      if (paths !== null) {
+        if (options?.directory) result = paths[0] ?? null;
+        else if (options?.multiple) result = paths;
+        else result = paths[0] ?? null;
+      }
       return result as OpenDialogReturn<T>;
     }
   }

@@ -81,7 +81,7 @@ export function currentSourceProjectIntelligence(
   editorText: string,
 ): CurrentProjectIntelligence | null {
   const current = currentProjectIntelligence(editorText);
-  return current && getEditorDocumentPath() === current.path
+  return getEditorDocumentPath() === current?.path
     ? current
     : null;
 }

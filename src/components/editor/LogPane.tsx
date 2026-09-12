@@ -31,7 +31,7 @@ function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
 type Cat = "error" | "warn" | "lineref" | "register" | "normal";
 
 function category(line: string): Cat {
-  if (/^!/.test(line)) return "error";
+  if (line.startsWith("!")) return "error";
   if (/^Runaway argument|Emergency stop|^<inserted text>/.test(line)) return "warn";
   if (/^l\.\d+/.test(line)) return "lineref";
   if (/^\\[a-zA-Z@]+=/.test(line)) return "register";
@@ -64,8 +64,8 @@ function inline(line: string): ReactNode[] {
   return out;
 }
 
-function LogText({ text }: { text: string }) {
-  const lines = text.replace(/\r/g, "").split("\n");
+function LogText({ text }: Readonly<{ text: string }>) {
+  const lines = text.replaceAll("\r", "").split("\n");
   let depth = 0;
   return (
     <>
@@ -81,7 +81,7 @@ function LogText({ text }: { text: string }) {
         if (cat === "error") body = <span className="text-red-500 font-semibold">{ln}</span>;
         else if (cat === "warn") body = <span className="text-red-400">{ln}</span>;
         else if (cat === "lineref") {
-          const m = ln.match(/^(l\.\d+)(.*)$/);
+          const m = /^(l\.\d+)(?!\d)(.*)$/.exec(ln);
           body = m ? (
             <>
               <span className="font-semibold text-primary">{m[1]}</span>
@@ -113,7 +113,7 @@ function LogText({ text }: { text: string }) {
 }
 
 function extractErrorExcerpt(log: string, message: string): string {
-  const lines = log.replace(/\r/g, "").split("\n");
+  const lines = log.replaceAll("\r", "").split("\n");
   const startIndex = lines.indexOf(`! ${message}`);
   if (startIndex === -1) return "";
   const excerpt: string[] = [lines[startIndex]];
@@ -126,20 +126,22 @@ function extractErrorExcerpt(log: string, message: string): string {
   return excerpt.join("\n").trimEnd();
 }
 
-function ErrorCard({ err, log }: { err: CompileError; log: string }) {
+function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [expanded, setExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const excerpt = extractErrorExcerpt(log, err.message);
   const collapsible = Boolean(excerpt);
   const title = err.explanation ?? err.message;
-  const location = err.file
-    ? err.line != null
-      ? t(($) => $.editor.log.locationFileLine, { file: err.file, line: err.line })
-      : err.file
-    : err.line != null
-      ? t(($) => $.editor.log.locationLine, { line: err.line })
-      : "";
+  let location = "";
+  if (err.file) {
+    location =
+      err.line != null
+        ? t(($) => $.editor.log.locationFileLine, { file: err.file, line: err.line })
+        : err.file;
+  } else if (err.line != null) {
+    location = t(($) => $.editor.log.locationLine, { line: err.line });
+  }
 
   const copyError = async () => {
     const text = [title, location, excerpt].filter(Boolean).join("\n");
@@ -226,14 +228,15 @@ const SEVERITY_DOT: Record<LogDiagnostic["severity"], string> = {
   info: "bg-muted-foreground/50",
 };
 
-function DiagnosticCard({ d }: { d: LogDiagnostic }) {
+function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
   const { t } = useTranslation(["common", "editor"]);
   const hasLocation = d.file != null && d.line != null;
-  const location = d.file
-    ? `${d.file}${d.line != null ? `:${d.line}` : ""}`
-    : d.line != null
-      ? t(($) => $.editor.log.locationLine, { line: d.line })
-      : "";
+  let location = "";
+  if (d.file) {
+    location = d.line != null ? `${d.file}:${d.line}` : d.file;
+  } else if (d.line != null) {
+    location = t(($) => $.editor.log.locationLine, { line: d.line });
+  }
 
   return (
     <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
@@ -275,7 +278,7 @@ function DiagnosticCard({ d }: { d: LogDiagnostic }) {
   );
 }
 
-function DiagnosticGroup({ label, items }: { label: string; items: LogDiagnostic[] }) {
+function DiagnosticGroup({ label, items }: Readonly<{ label: string; items: LogDiagnostic[] }>) {
   const [open, setOpen] = useState(false);
   if (items.length === 0) return null;
   return (
@@ -303,7 +306,7 @@ function DiagnosticGroup({ label, items }: { label: string; items: LogDiagnostic
   );
 }
 
-function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean }) {
+function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [open, setOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
@@ -405,7 +408,7 @@ export function LogPane() {
   }, [log]);
 
   useEffect(() => {
-    void log;
+    log;
     if (!followTailRef.current || tailFrameRef.current !== null) return;
     tailFrameRef.current = requestAnimationFrame(() => {
       tailFrameRef.current = null;

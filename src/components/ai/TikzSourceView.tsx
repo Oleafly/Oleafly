@@ -1,6 +1,6 @@
 import { ReadOnlyLatex } from "@/components/editor/cm/ReadOnlyLatex";
 
-export function TikzSourceView({ source }: { source: string }) {
+export function TikzSourceView({ source }: Readonly<{ source: string }>) {
   return (
     <ReadOnlyLatex
       source={source}

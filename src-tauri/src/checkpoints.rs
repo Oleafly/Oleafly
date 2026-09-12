@@ -169,7 +169,7 @@ pub(crate) fn checkpoint_operation_lock(
     let mut operations = OPERATIONS
         .get_or_init(|| Mutex::new(HashMap::new()))
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     operations.retain(|_, operation| operation.strong_count() > 0);
     if let Some(operation) = operations.get(project_id).and_then(Weak::upgrade) {
         return Ok(operation);
@@ -189,12 +189,12 @@ impl ActiveRestore {
         let mut active = coordination
             .active
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         while active.contains(project_id) {
             active = coordination
                 .changed
                 .wait(active)
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
         }
         active.insert(project_id.to_string());
         Self {
@@ -209,7 +209,7 @@ impl Drop for ActiveRestore {
         coordination
             .active
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(&self.project_id);
         coordination.changed.notify_all();
     }

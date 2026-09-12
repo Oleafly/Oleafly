@@ -90,7 +90,7 @@ export function ResearchProjectSetup({
   onFinished,
   onCreated,
   ensureInitialTask,
-}: {
+}: Readonly<{
   open: boolean;
   onClose: () => void;
   onFinished?: () => void;
@@ -101,7 +101,7 @@ export function ResearchProjectSetup({
     prompt: string;
     starter: ResearchStarter;
   }) => void | Promise<void>;
-}) {
+}>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const [name, setName] = useState("");
   const [engine, setEngine] = useState<ResearchDocumentEngine>("latex");
@@ -188,8 +188,8 @@ export function ResearchProjectSetup({
         if (cause.projectId) {
           try {
             await onCreated(cause.projectId);
-          } catch (openCause) {
-            const openDetail = openCause instanceof Error ? openCause.message : String(openCause);
+          } catch (error_) {
+            const openDetail = error_ instanceof Error ? error_.message : String(error_);
             setError(
               t(($) => $.researchTools.setup.errorProjectOnly, { detail, openDetail }),
             );
@@ -206,6 +206,81 @@ export function ResearchProjectSetup({
       setCreating(false);
     }
   };
+
+  const previewPane = () =>
+    preview && selectedPreviewPath ? (
+      <pre className="whitespace-pre-wrap break-words px-4 py-3 text-xs leading-relaxed">
+        <HighlightedCode
+          language={previewLanguage(selectedPreviewPath)}
+          source={
+            preview.files.find((file) => file.path === selectedPreviewPath)
+              ?.content ?? ""
+          }
+        />
+      </pre>
+    ) : null;
+
+  const previewTree = () =>
+    !preview ? (
+      <p className="p-2 text-sm text-muted-foreground">
+        {t(($) => $.researchTools.setup.previewEmpty)}
+      </p>
+    ) : (
+      <ul
+        aria-label={t(($) => $.researchTools.setup.previewFiles)}
+        className="space-y-px"
+      >
+        {preview.files.map((file) => {
+          const depth = file.path.split("/").length - 1;
+          const name = file.path.split("/").pop() ?? file.path;
+          const isMain = file.path === preview.mainDocument;
+          const selected = selectedPreviewPath === file.path;
+          const indent = { paddingLeft: `${depth * 12 + 8}px` };
+          if (file.kind === "directory") {
+            return (
+              <li key={file.path}>
+                <div
+                  className="flex items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground"
+                  style={indent}
+                >
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="size-3.5 shrink-0 rotate-90 text-muted-foreground"
+                  />
+                  <FolderOpen aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{name}</span>
+                </div>
+              </li>
+            );
+          }
+          return (
+            <li key={file.path}>
+              <button
+                type="button"
+                aria-pressed={selected}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
+                  selected && "bg-sidebar-accent",
+                )}
+                style={indent}
+                onClick={() => setSelectedPreviewPath(file.path)}
+              >
+                <span className="flex w-3.5 shrink-0 items-center justify-center">
+                  {isMain ? (
+                    <Star
+                      aria-hidden="true"
+                      className="size-3 shrink-0 fill-foreground text-foreground"
+                    />
+                  ) : null}
+                </span>
+                <FileIcon name={name} className="size-4 shrink-0" />
+                <span className="truncate">{name}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    );
 
   const selectedStarter = STARTERS.find((item) => item.value === starter);
 
@@ -319,66 +394,7 @@ export function ResearchProjectSetup({
                       />
                     ))}
                   </ul>
-                ) : !preview ? (
-                  <p className="p-2 text-sm text-muted-foreground">
-                    {t(($) => $.researchTools.setup.previewEmpty)}
-                  </p>
-                ) : (
-                  <ul
-                    aria-label={t(($) => $.researchTools.setup.previewFiles)}
-                    className="space-y-px"
-                  >
-                    {preview.files.map((file) => {
-                      const depth = file.path.split("/").length - 1;
-                      const name = file.path.split("/").pop() ?? file.path;
-                      const isMain = file.path === preview.mainDocument;
-                      const selected = selectedPreviewPath === file.path;
-                      const indent = { paddingLeft: `${depth * 12 + 8}px` };
-                      if (file.kind === "directory") {
-                        return (
-                          <li key={file.path}>
-                            <div
-                              className="flex items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground"
-                              style={indent}
-                            >
-                              <ChevronRight
-                                aria-hidden="true"
-                                className="size-3.5 shrink-0 rotate-90 text-muted-foreground"
-                              />
-                              <FolderOpen aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                              <span className="truncate">{name}</span>
-                            </div>
-                          </li>
-                        );
-                      }
-                      return (
-                        <li key={file.path}>
-                          <button
-                            type="button"
-                            aria-pressed={selected}
-                            className={cn(
-                              "flex w-full cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
-                              selected && "bg-sidebar-accent",
-                            )}
-                            style={indent}
-                            onClick={() => setSelectedPreviewPath(file.path)}
-                          >
-                            <span className="flex w-3.5 shrink-0 items-center justify-center">
-                              {isMain ? (
-                                <Star
-                                  aria-hidden="true"
-                                  className="size-3 shrink-0 fill-foreground text-foreground"
-                                />
-                              ) : null}
-                            </span>
-                            <FileIcon name={name} className="size-4 shrink-0" />
-                            <span className="truncate">{name}</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                ) : previewTree()}
               </div>
               <div className="flex min-w-0 flex-col overflow-hidden">
                 {preview && selectedPreviewPath ? (
@@ -403,17 +419,7 @@ export function ResearchProjectSetup({
                         />
                       ))}
                     </div>
-                  ) : preview && selectedPreviewPath ? (
-                    <pre className="whitespace-pre-wrap break-words px-4 py-3 text-xs leading-relaxed">
-                      <HighlightedCode
-                        language={previewLanguage(selectedPreviewPath)}
-                        source={
-                          preview.files.find((file) => file.path === selectedPreviewPath)
-                            ?.content ?? ""
-                        }
-                      />
-                    </pre>
-                  ) : null}
+                  ) : previewPane()}
                 </div>
               </div>
             </div>

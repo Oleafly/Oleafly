@@ -4549,7 +4549,7 @@ fn sync_materialized_directory_tree_with(
             ));
         }
         let mut entries = fs::read_dir(directory)?.collect::<std::io::Result<Vec<_>>>()?;
-        entries.sort_by_key(|entry| entry.file_name());
+        entries.sort_by_key(std::fs::DirEntry::file_name);
         for entry in entries {
             let metadata = fs::symlink_metadata(entry.path())?;
             if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {

@@ -79,6 +79,7 @@ async function waitForRun(page: Page, timeoutMs = REPLY_TIMEOUT) {
 
 test.describe("local Ollama", () => {
   test.beforeEach(() => {
+    // Ignored on purpose when no local Ollama daemon serves the model.
     test.skip(!available, `no Ollama daemon at ${HOST} serving ${MODEL}`);
   });
 

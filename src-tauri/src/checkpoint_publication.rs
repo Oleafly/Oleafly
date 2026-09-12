@@ -225,7 +225,7 @@ fn lock_publication_lanes() -> std::sync::MutexGuard<'static, HashMap<String, Pu
     publication_registry()
         .lanes
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn stop_in_flight_publication(lane: &mut PublicationLane) {
@@ -262,7 +262,7 @@ fn finish_publication(
     let mut lanes = registry
         .lanes
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _ = finished.detach();
     let next = lanes.get_mut(project_id).and_then(|lane| {
         lane.successor.take().map(|request| {
@@ -315,7 +315,7 @@ pub(crate) fn cancel_project_publications_and_wait(project_id: &str) {
     let mut lanes = registry
         .lanes
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     while request_publication_cancel(&mut lanes, project_id) {
         let now = std::time::Instant::now();
         if now >= deadline {
@@ -324,7 +324,7 @@ pub(crate) fn cancel_project_publications_and_wait(project_id: &str) {
         lanes = registry
             .idle
             .wait_timeout(lanes, (deadline - now).min(PUBLICATION_DRAIN_POLL))
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .0;
     }
 }

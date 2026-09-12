@@ -1067,6 +1067,55 @@ pub(crate) fn legacy_default_skills() -> &'static [(&'static str, &'static str, 
     &LEGACY_DEFAULT_SKILLS
 }
 
+type NormalizedSkillSets = (BTreeSet<String>, BTreeSet<String>, BTreeSet<String>);
+
+fn normalize_skill_sets(records: &[SkillRecord], state: &SkillsState) -> NormalizedSkillSets {
+    let mut normalized_enabled: BTreeSet<String> = BTreeSet::new();
+    let mut normalized_seen: BTreeSet<String> = BTreeSet::new();
+    let mut valid_ids: BTreeSet<String> = BTreeSet::new();
+    for record in records {
+        if !matches!(&record.validation, SkillValidation::Valid) {
+            continue;
+        }
+        valid_ids.insert(record.id.clone());
+        normalized_seen.insert(record.id.clone());
+        let wanted = if state.seen.contains(&record.id) {
+            state.enabled.contains(&record.id)
+        } else {
+            true
+        };
+        if wanted {
+            normalized_enabled.insert(record.id.clone());
+        }
+    }
+    (normalized_enabled, normalized_seen, valid_ids)
+}
+
+fn consume_staging_entry(
+    root: &Path,
+    state: &mut SkillsState,
+    id: &str,
+    entry: &std::fs::DirEntry,
+) -> Result<bool, String> {
+    if id.starts_with(".skill-import-") {
+        return Ok(true);
+    }
+    if id.starts_with(STALE_STAGING_PREFIX) {
+        let _ = std::fs::remove_dir_all(entry.path());
+        return Ok(true);
+    }
+    if !id.starts_with(REMOVAL_STAGING_PREFIX) {
+        return Ok(false);
+    }
+    if let Some(skill_id) = staged_removal_skill_id(id) {
+        if state.enabled.remove(skill_id) {
+            write_state(root, state)?;
+        }
+    }
+    let _ = std::fs::remove_dir_all(entry.path());
+    Ok(true)
+}
+
 fn list_unlocked(
     root: &Path,
     pack_root: Option<&Path>,
@@ -1098,20 +1147,7 @@ fn list_unlocked(
     {
         let entry = entry.map_err(|error| format!("Could not read a skill entry: {error}"))?;
         let id = entry.file_name().to_string_lossy().to_string();
-        if id.starts_with(".skill-import-") {
-            continue;
-        }
-        if id.starts_with(STALE_STAGING_PREFIX) {
-            let _ = std::fs::remove_dir_all(entry.path());
-            continue;
-        }
-        if id.starts_with(REMOVAL_STAGING_PREFIX) {
-            if let Some(skill_id) = staged_removal_skill_id(&id) {
-                if state.enabled.remove(skill_id) {
-                    write_state(root, &state)?;
-                }
-            }
-            let _ = std::fs::remove_dir_all(entry.path());
+        if consume_staging_entry(root, &mut state, &id, &entry)? {
             continue;
         }
         let file_type = entry
@@ -1139,24 +1175,7 @@ fn list_unlocked(
         }
     }
     records.sort_by(|left, right| left.id.cmp(&right.id));
-    let mut normalized_enabled: BTreeSet<String> = BTreeSet::new();
-    let mut normalized_seen: BTreeSet<String> = BTreeSet::new();
-    let mut valid_ids: BTreeSet<String> = BTreeSet::new();
-    for record in records.iter() {
-        if !matches!(&record.validation, SkillValidation::Valid) {
-            continue;
-        }
-        valid_ids.insert(record.id.clone());
-        normalized_seen.insert(record.id.clone());
-        let wanted = if state.seen.contains(&record.id) {
-            state.enabled.contains(&record.id)
-        } else {
-            true
-        };
-        if wanted {
-            normalized_enabled.insert(record.id.clone());
-        }
-    }
+    let (normalized_enabled, normalized_seen, valid_ids) = normalize_skill_sets(&records, &state);
     let normalized_projects = prune_project_scope(&state.project_enabled, &valid_ids);
     let normalized_project_off = prune_project_scope(&state.project_disabled, &valid_ids);
     if upgraded
@@ -1905,7 +1924,7 @@ const SCRIPT_PROGRAM_DIRECTORIES: [&str; 4] =
 fn script_program(relative: &str) -> Option<&'static str> {
     match Path::new(relative)
         .extension()
-        .and_then(|extension| extension.to_str())
+        .and_then(std::ffi::OsStr::to_str)
     {
         Some("py") => Some("python3"),
         Some("sh" | "bash") => Some("bash"),

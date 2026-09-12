@@ -78,6 +78,7 @@ async function waitForRun(page: Page, timeoutMs = REPLY_TIMEOUT) {
 }
 
 test.describe("live provider", () => {
+  // Ignored on purpose without a live AI token, because the run calls a real provider.
   test.skip(!TOKEN, "set E2E_AI_TOKEN in e2e/.env to run against a real provider");
 
   test("lists the models the key actually has access to", async ({ tauriPage }) => {
@@ -119,6 +120,7 @@ test.describe("live provider", () => {
   });
 
   test("streams the thinking phase separately from the answer", async ({ tauriPage }) => {
+    // Ignored on purpose for providers that never emit reasoning tokens.
     test.skip(!EXPECT_REASONING, `${PROVIDER} is not configured to expose reasoning tokens`);
     test.setTimeout(REPLY_TIMEOUT);
     await openLiveProject(tauriPage);
@@ -190,6 +192,7 @@ test.describe("live provider", () => {
   });
 
   test("the same key works through a custom provider entry", async ({ tauriPage }) => {
+    // Ignored on purpose for providers that do not speak the OpenAI-compatible wire protocol.
     test.skip(
       !OPENAI_COMPATIBLE,
       "custom provider entries use the OpenAI-compatible wire protocol",
@@ -281,6 +284,7 @@ test.describe("live provider", () => {
   });
 
   test("a rejected key surfaces the provider's own message", async ({ tauriPage }) => {
+    // Ignored on purpose for providers that do not speak the OpenAI-compatible wire protocol.
     test.skip(
       !OPENAI_COMPATIBLE,
       "the custom-base invalid-key probe uses the OpenAI-compatible wire protocol",

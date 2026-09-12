@@ -51,6 +51,18 @@
   --cm-meta: #6639ba;
   --cm-tag: #116329;
   --cm-operator: #0550ae;
+
+  /* Selection for the default ("system") editor theme, where --cm-selection is
+   * unset. --primary is the user's accent (App.tsx sets it), so this has to
+   * hold for any hue: mix the accent into the surface rather than washing it
+   * over the surface with alpha, which desaturates toward grey on a near-black
+   * editor.
+   *
+   * `in srgb`, NOT `in oklch`: --background is achromatic, Chrome resolves its
+   * oklch hue as 0deg (red), and oklch interpolation then drags a blue accent
+   * around the hue wheel - the mix comes out magenta. sRGB has no hue to
+   * rotate. */
+  --cm-selection-default: color-mix(in srgb, var(--primary) 30%, var(--background));
 }
 
 .dark {
@@ -90,6 +102,14 @@
   --cm-meta: #d2a8ff;
   --cm-tag: #7ee787;
   --cm-operator: #79c0ff;
+
+  /* Dark mode darkens the surface first, so a stronger accent share buys
+   * chroma without lifting the selection band off the page. */
+  --cm-selection-default: color-mix(
+    in srgb,
+    var(--primary) 28%,
+    color-mix(in srgb, var(--background) 74%, #000)
+  );
 }
 
 .dark [role="dialog"],
@@ -101,29 +121,6 @@
 .dark [data-testid="template-gallery"],
 .dark [data-testid="latex-tools-view"] {
   background-color: #181818;
-}
-
-/* Selection for the default ("system") editor theme, where --cm-selection is
- * unset. --primary is the user's accent (App.tsx sets it), so this has to hold
- * for any hue: mix the accent into the surface rather than washing it over the
- * surface with alpha, which desaturates toward grey on a near-black editor.
- *
- * `in srgb`, NOT `in oklch`: --background is achromatic, Chrome resolves its
- * oklch hue as 0deg (red), and oklch interpolation then drags a blue accent
- * around the hue wheel - the mix comes out magenta. sRGB has no hue to rotate.
- *
- * Dark mode also darkens the surface first, so a stronger accent share buys
- * chroma without lifting the band off the page. */
-:root,
-.light {
-  --cm-selection-default: color-mix(in srgb, var(--primary) 30%, var(--background));
-}
-.dark {
-  --cm-selection-default: color-mix(
-    in srgb,
-    var(--primary) 28%,
-    color-mix(in srgb, var(--background) 74%, #000)
-  );
 }
 
 /* Editor color themes: independent of the app's light/dark mode. Each
@@ -1361,12 +1358,6 @@ body[data-tour-active] [data-tour-hide] {
   flex: 0 0 auto;
   opacity: 0.75;
 }
-.cm-proofread-ignore:hover,
-.cm-proofread-ignore:focus-visible {
-  color: var(--popover-foreground);
-  outline: none;
-}
-
 /* Hover label for the fold gutter marker, replacing the native `title` tooltip
    so it matches the app's tooltips. */
 .cm-fold-label {

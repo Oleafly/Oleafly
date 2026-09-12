@@ -239,9 +239,8 @@ export function createProjectIntelligenceWorker(
         );
       }
       if (
-        prior &&
-        upsert.sourceRevision === prior.sourceRevision &&
-        prior.text !== upsert.text
+        upsert.sourceRevision === prior?.sourceRevision &&
+        prior?.text !== upsert.text
       ) {
         return errorResponse(
           request,
@@ -302,7 +301,7 @@ export function createProjectIntelligenceWorker(
     }
 
     const known = new Set(request.knownFiles);
-    for (const file of [...cache.keys()]) {
+    for (const file of cache.keys()) {
       if (!known.has(file)) cache.delete(file);
     }
     for (const file of known) {

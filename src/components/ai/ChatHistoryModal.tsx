@@ -39,7 +39,7 @@ export function ChatHistoryModal({
   onClose,
   onOpen,
   onDelete,
-}: {
+}: Readonly<{
   open: boolean;
   chats: StoredChat[];
   activeId: string | null;
@@ -47,7 +47,7 @@ export function ChatHistoryModal({
   onClose: () => void;
   onOpen: (chat: StoredChat) => void;
   onDelete: (chatId: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -72,6 +72,95 @@ export function ChatHistoryModal({
           matchedIds.has(chat.id),
       )
     : chats;
+
+  const chatRows = () =>
+    visibleChats.length === 0 ? (
+      <p className="px-3 py-10 text-center text-sm text-muted-foreground">
+        {t(($) => $.ai.history.emptySearch)}
+      </p>
+    ) : (
+      visibleChats.map((chat) => {
+        const stale =
+          chat.headOid && currentHead && chat.headOid !== currentHead;
+        const isActive = chat.id === activeId;
+        return (
+          <div
+            key={chat.id}
+            className={cn(
+              "group mb-1 flex items-start gap-2 rounded-md px-2.5 py-2 hover:bg-accent/60",
+              isActive && "bg-accent"
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => onOpen(chat)}
+              className="min-w-0 flex-1 text-left"
+            >
+              <div className="flex items-center gap-1.5">
+                <MessageSquareQuote className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate text-sm font-medium">
+                  {chat.title || t(($) => $.ai.history.untitled)}
+                </span>
+                {stale && (
+                  <span
+                    title={t(($) => $.ai.history.staleTitle)}
+                    className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                  >
+                    {t(($) => $.ai.history.staleBadge)}
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
+                {relativeTime(chat.updatedAt)} ·{" "}
+                {t(($) => $.ai.history.messages, { count: chat.messages.length })}
+                {chat.usage &&
+                chat.usage.inputTokens + chat.usage.outputTokens > 0
+                  ? ` · ${t(($) => $.ai.history.tokens, {
+                      amount: formatNumber(chat.usage.inputTokens + chat.usage.outputTokens),
+                    })}`
+                  : ""}
+                {chat.usage && (chat.usage.estimatedUsd ?? 0) > 0
+                  ? ` · ${formatUsd(chat.usage.estimatedUsd ?? 0)}`
+                  : ""}
+              </div>
+            </button>
+            {confirmId === chat.id ? (
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete(chat.id);
+                    setConfirmId(null);
+                  }}
+                  className="rounded bg-destructive px-1.5 py-0.5 text-[11px] font-medium text-destructive-foreground hover:opacity-90"
+                >
+                  {t(($) => $.common.actions.delete)}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmId(null)}
+                  className="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+                >
+                  {t(($) => $.common.actions.cancel)}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                aria-label={t(($) => $.ai.history.deleteAriaLabel, {
+                  title: chat.title || t(($) => $.ai.history.deleteFallbackTitle),
+                })}
+                onClick={() => setConfirmId(chat.id)}
+                title={t(($) => $.ai.history.deleteTitle)}
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            )}
+          </div>
+        );
+      })
+    );
 
   return (
     <div
@@ -125,93 +214,7 @@ export function ChatHistoryModal({
             <p className="px-3 py-10 text-center text-sm text-muted-foreground">
               {t(($) => $.ai.history.emptyProject)}
             </p>
-          ) : visibleChats.length === 0 ? (
-            <p className="px-3 py-10 text-center text-sm text-muted-foreground">
-              {t(($) => $.ai.history.emptySearch)}
-            </p>
-          ) : (
-            visibleChats.map((chat) => {
-              const stale =
-                chat.headOid && currentHead && chat.headOid !== currentHead;
-              const isActive = chat.id === activeId;
-              return (
-                <div
-                  key={chat.id}
-                  className={cn(
-                    "group mb-1 flex items-start gap-2 rounded-md px-2.5 py-2 hover:bg-accent/60",
-                    isActive && "bg-accent"
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onOpen(chat)}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <MessageSquareQuote className="size-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate text-sm font-medium">
-                        {chat.title || t(($) => $.ai.history.untitled)}
-                      </span>
-                      {stale && (
-                        <span
-                          title={t(($) => $.ai.history.staleTitle)}
-                          className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
-                        >
-                          {t(($) => $.ai.history.staleBadge)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
-                      {relativeTime(chat.updatedAt)} ·{" "}
-                      {t(($) => $.ai.history.messages, { count: chat.messages.length })}
-                      {chat.usage &&
-                      chat.usage.inputTokens + chat.usage.outputTokens > 0
-                        ? ` · ${t(($) => $.ai.history.tokens, {
-                            amount: formatNumber(chat.usage.inputTokens + chat.usage.outputTokens),
-                          })}`
-                        : ""}
-                      {chat.usage && (chat.usage.estimatedUsd ?? 0) > 0
-                        ? ` · ${formatUsd(chat.usage.estimatedUsd ?? 0)}`
-                        : ""}
-                    </div>
-                  </button>
-                  {confirmId === chat.id ? (
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onDelete(chat.id);
-                          setConfirmId(null);
-                        }}
-                        className="rounded bg-destructive px-1.5 py-0.5 text-[11px] font-medium text-destructive-foreground hover:opacity-90"
-                      >
-                        {t(($) => $.common.actions.delete)}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmId(null)}
-                        className="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
-                      >
-                        {t(($) => $.common.actions.cancel)}
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      aria-label={t(($) => $.ai.history.deleteAriaLabel, {
-                        title: chat.title || t(($) => $.ai.history.deleteFallbackTitle),
-                      })}
-                      onClick={() => setConfirmId(chat.id)}
-                      title={t(($) => $.ai.history.deleteTitle)}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  )}
-                </div>
-              );
-            })
-          )}
+          ) : chatRows()}
         </div>
       </div>
     </div>

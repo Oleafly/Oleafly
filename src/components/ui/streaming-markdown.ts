@@ -89,14 +89,36 @@ function continuationContainerLine(
   };
 }
 
+interface OpenFence {
+  char: "`" | "~";
+  from: number;
+  length: number;
+  container: OpenContainer;
+}
+
+function fenceCloses(line: string, open: OpenFence): boolean {
+  const logical = continuationContainerLine(line, open.container);
+  const close = logical
+    ? /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/u.exec(logical.content)
+    : null;
+  return close?.[1].startsWith(open.char) === true && close[1].length >= open.length;
+}
+
+function fenceOpensAt(line: string, lineFrom: number): OpenFence | null {
+  const logical = openingContainerLine(line);
+  const start = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u.exec(logical.content);
+  if (!start || (start[1].startsWith("`") && start[2].includes("`"))) return null;
+  return {
+    char: start[1][0] as "`" | "~",
+    from: lineFrom + logical.offset + logical.content.indexOf(start[1]),
+    length: start[1].length,
+    container: logical,
+  };
+}
+
 function scanFences(source: string): SourceRange[] {
   const ranges: SourceRange[] = [];
-  let open: {
-    char: "`" | "~";
-    from: number;
-    length: number;
-    container: OpenContainer;
-  } | null = null;
+  let open: OpenFence | null = null;
   let lineFrom = 0;
 
   while (lineFrom <= source.length) {
@@ -105,32 +127,12 @@ function scanFences(source: string): SourceRange[] {
     const line = source.slice(lineFrom, lineTo).replace(/\r$/u, "");
 
     if (open) {
-      const logical = continuationContainerLine(line, open.container);
-      const close = logical
-        ? /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/u.exec(logical.content)
-        : null;
-      if (
-        close &&
-        close[1][0] === open.char &&
-        close[1].length >= open.length
-      ) {
+      if (fenceCloses(line, open)) {
         ranges.push({ from: open.from, to: lineTo, complete: true });
         open = null;
       }
     } else {
-      const logical = openingContainerLine(line);
-      const start = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u.exec(logical.content);
-      if (
-        start &&
-        (start[1][0] !== "`" || !start[2].includes("`"))
-      ) {
-        open = {
-          char: start[1][0] as "`" | "~",
-          from: lineFrom + logical.offset + logical.content.indexOf(start[1]),
-          length: start[1].length,
-          container: logical,
-        };
-      }
+      open = fenceOpensAt(line, lineFrom);
     }
 
     if (lineBreak < 0) break;
@@ -141,42 +143,55 @@ function scanFences(source: string): SourceRange[] {
   return ranges;
 }
 
+interface OpenFlowMath {
+  from: number;
+  length: number;
+  container: OpenContainer;
+}
+
+function flowMathCloses(line: string, open: OpenFlowMath): boolean {
+  const logical = continuationContainerLine(line, open.container);
+  const close = logical
+    ? /^[ \t]{0,3}(\${2,})[ \t]*$/u.exec(logical.content)
+    : null;
+  return (close?.[1].length ?? 0) >= open.length;
+}
+
+function flowMathOpensAt(line: string, lineFrom: number): OpenFlowMath | null {
+  const logical = openingContainerLine(line);
+  const start = /^[ \t]{0,3}(\${2,})([^$]*)$/u.exec(logical.content);
+  if (!start) return null;
+  return {
+    from: lineFrom + logical.offset + logical.content.indexOf(start[1]),
+    length: start[1].length,
+    container: logical,
+  };
+}
+
+function lineInsideFence(
+  fences: readonly SourceRange[],
+  lineFrom: number,
+  lineTo: number,
+): boolean {
+  return fences.some((fence) => fence.from < lineTo && fence.to >= lineFrom);
+}
+
 function scanFlowMath(source: string, fences: readonly SourceRange[]): SourceRange[] {
   const ranges: SourceRange[] = [];
-  let open: {
-    from: number;
-    length: number;
-    container: OpenContainer;
-  } | null = null;
+  let open: OpenFlowMath | null = null;
   let lineFrom = 0;
 
   while (lineFrom <= source.length) {
     const lineBreak = source.indexOf("\n", lineFrom);
     const lineTo = lineBreak < 0 ? source.length : lineBreak;
     const line = source.slice(lineFrom, lineTo).replace(/\r$/u, "");
-    const insideFence = fences.some(
-      (fence) => fence.from < lineTo && fence.to >= lineFrom,
-    );
+    const insideFence = lineInsideFence(fences, lineFrom, lineTo);
 
-    if (!insideFence && open) {
-      const logical = continuationContainerLine(line, open.container);
-      const close = logical
-        ? /^[ \t]{0,3}(\${2,})[ \t]*$/u.exec(logical.content)
-        : null;
-      if (close && close[1].length >= open.length) {
-        ranges.push({ from: open.from, to: lineTo, complete: true });
-        open = null;
-      }
-    } else if (!insideFence) {
-      const logical = openingContainerLine(line);
-      const start = /^[ \t]{0,3}(\${2,})([^$]*)$/u.exec(logical.content);
-      if (start) {
-        open = {
-          from: lineFrom + logical.offset + logical.content.indexOf(start[1]),
-          length: start[1].length,
-          container: logical,
-        };
-      }
+    if (!insideFence && open && flowMathCloses(line, open)) {
+      ranges.push({ from: open.from, to: lineTo, complete: true });
+      open = null;
+    } else if (!insideFence && !open) {
+      open = flowMathOpensAt(line, lineFrom);
     }
 
     if (lineBreak < 0) break;
@@ -205,7 +220,7 @@ function referencePinnedFrom(source: string) {
 // HTML) or begins indented may be continued by what follows a blank line.
 const STICKY_BLOCK = [
   /^(?:[ \t]{0,3}>|[ \t]{0,3}(?:[*+-]|\d{1,9}[.)])[ \t]+)/mu,
-  /^(?:[ ]{4}|\t|[ \t]{0,3}<(?:!--|\/?[A-Za-z]|[!?]))/mu,
+  /^(?: {4}|\t|[ \t]{0,3}<(?:!--|\/?[A-Za-z]|[!?]))/mu,
   /^[ \t]/u,
 ];
 
@@ -239,7 +254,7 @@ function blockBoundaries(source: string, ranges: readonly SourceRange[]) {
     while (sortedRanges[rangeIndex]?.to <= matchFrom) rangeIndex++;
     const range = sortedRanges[rangeIndex];
     const protectedRange = Boolean(
-      range && range.from < boundary && range.to > matchFrom,
+      range !== undefined && range.from < boundary && range.to > matchFrom,
     );
     // A boundary between a container block and a continuation-shaped next
     // line would split one construct (a loose list, a multi-block quote)

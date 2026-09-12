@@ -34,10 +34,10 @@ export const shiftKey = isMac ? "⇧" : "Shift";
 export function shortcut(mac: string, onMac: boolean = isMac): string {
   if (onMac) return mac;
   return mac
-    .replace(/⌘/g, "Ctrl+")
-    .replace(/⌃/g, "Ctrl+")
-    .replace(/⌥/g, "Alt+")
-    .replace(/⇧/g, "Shift+")
-    .replace(/↵|⏎/g, "Enter");
+    .replaceAll(/⌘/g, "Ctrl+")
+    .replaceAll(/⌃/g, "Ctrl+")
+    .replaceAll(/⌥/g, "Alt+")
+    .replaceAll(/⇧/g, "Shift+")
+    .replaceAll(/[↵⏎]/g, "Enter");
 }
 

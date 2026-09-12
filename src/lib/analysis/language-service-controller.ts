@@ -182,9 +182,9 @@ interface ActiveRuntime {
   protocolReady: boolean;
   failed: boolean;
   cleanupFailed: boolean;
-  restartHandle: unknown | null;
-  stableHandle: unknown | null;
-  intelligenceHandle: unknown | null;
+  restartHandle: unknown;
+  stableHandle: unknown;
+  intelligenceHandle: unknown;
   intelligenceIdentityKey: string | null;
   deactivateInteractive: (() => void) | null;
 }
@@ -401,8 +401,8 @@ export function fileUriForProjectPath(
   workspaceRoot: string,
   path = "",
 ): string {
-  const normalizedRoot = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
-  const normalizedPath = path.replace(/\\/g, "/").replace(/^\/+/, "");
+  const normalizedRoot = workspaceRoot.replaceAll(/\\/g, "/").replace(/(?<!\/)\/+$/, "");
+  const normalizedPath = path.replaceAll(/\\/g, "/").replace(/^\/+/, "");
   const absolute = normalizedPath
     ? `${normalizedRoot}/${normalizedPath}`
     : normalizedRoot;
@@ -521,7 +521,7 @@ export class LanguageServiceController {
         building: boolean;
       }
     | null = null;
-  private localDocuments = new Map<
+  private readonly localDocuments = new Map<
     string,
     { uri: string; text: string; version: number }
   >();
@@ -611,9 +611,8 @@ export class LanguageServiceController {
         : computedEffectiveTexts;
     const revisionChanged =
       projectChanged ||
-      !previous ||
-      previous.engineId !== snapshot.engineId ||
-      previous.mainDoc !== snapshot.mainDoc ||
+      previous?.engineId !== snapshot.engineId ||
+      previous?.mainDoc !== snapshot.mainDoc ||
       treeChanged ||
       contentsChanged;
     const lifecycleChanged =
@@ -1378,7 +1377,7 @@ export class LanguageServiceController {
         .getState()
         .setLocalDocument(next.uri, next.version, reason);
     }
-    for (const [path, document] of [...this.localDocuments]) {
+    for (const [path, document] of this.localDocuments) {
       if (wanted.has(path)) continue;
       this.localDocuments.delete(path);
       this.store.getState().removeDocument(document.uri);
@@ -1491,10 +1490,10 @@ export class LanguageServiceController {
           positionEncoding: runtime.client.positionEncoding,
           client: runtime.client,
           documentForPath: (path) => {
-            const normalizedPath = path.replace(/\\/g, "/");
+            const normalizedPath = path.replaceAll(/\\/g, "/");
             for (const document of runtime.documents.values()) {
               if (
-                document.path.replace(/\\/g, "/") === normalizedPath
+                document.path.replaceAll(/\\/g, "/") === normalizedPath
               ) {
                 return { ...document };
               }
@@ -1542,9 +1541,8 @@ export class LanguageServiceController {
       runtime !== this.runtime ||
       runtime.expectedStop ||
       !runtime.ready ||
-      !desired ||
-      desired.projectId !== runtime.projectId ||
-      desired.revision !== runtime.projectRevision ||
+      desired?.projectId !== runtime.projectId ||
+      desired?.revision !== runtime.projectRevision ||
       !runtime.root ||
       !requestWorkspaceSymbols ||
       !runtime.client.supports("workspaceSymbols")
@@ -1553,7 +1551,7 @@ export class LanguageServiceController {
     }
     const identity =
       useIndexStore.getState().intelligenceState.identity;
-    if (!identity || identity.projectId !== runtime.projectId) {
+    if (identity?.projectId !== runtime.projectId) {
       return;
     }
     const identityKey = [
@@ -1615,11 +1613,10 @@ export class LanguageServiceController {
         !runtime.ready ||
         this.desired !== desired ||
         desired.revision !== runtime.projectRevision ||
-        !latestIdentity ||
-        latestIdentity.projectId !== identity.projectId ||
-        latestIdentity.projectRevision !==
+        latestIdentity?.projectId !== identity.projectId ||
+        latestIdentity?.projectRevision !==
           identity.projectRevision ||
-        latestIdentity.requestGeneration !==
+        latestIdentity?.requestGeneration !==
           identity.requestGeneration
       ) {
         return;

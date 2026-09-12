@@ -1,4 +1,5 @@
 use super::*;
+use crate::acp::types::BinaryDistribution;
 use std::io::{Cursor, Write};
 
 fn binary_definition() -> AgentDefinition {

@@ -77,7 +77,7 @@ export function parseBib(src: string): { entries: BibEntry[]; parseErrors: strin
   while (i < src.length) {
     const at = src.indexOf("@", i);
     if (at < 0) break;
-    const typeMatch = src.slice(at + 1).match(/^([a-zA-Z]+)\s*\{/);
+    const typeMatch = /^([a-zA-Z]+)\s*\{/.exec(src.slice(at + 1));
     if (!typeMatch) {
       i = at + 1;
       continue;
@@ -104,14 +104,13 @@ export function parseBib(src: string): { entries: BibEntry[]; parseErrors: strin
         p++;
         break;
       }
-      const nameMatch = src.slice(p).match(/^([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*/);
+      const nameMatch = /^([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*/.exec(src.slice(p));
       if (!nameMatch) {
         const close = src.indexOf("}", p);
         parseErrors.push(
           i18n.t(($) => $.core.bibtex.unreadableFields, { entry: key || type }),
         );
         p = close < 0 ? src.length : close + 1;
-        depth = 0;
         break;
       }
       const name = nameMatch[1].toLowerCase();
@@ -216,30 +215,27 @@ export function buildLatexTable(
   const colSpec = aligns.join("");
   const row = (r: string[]) => `    ${r.map(escapeLatex).join(" & ")} \\\\`;
   const lines: string[] = [];
-  lines.push("\\begin{table}[htbp]");
-  lines.push("  \\centering");
-  if (opts.caption) lines.push(`  \\caption{${escapeLatex(opts.caption)}}`);
-  lines.push(`  \\begin{tabular}{${colSpec}}`);
+  lines.push(String.raw`\begin{table}[htbp]`, String.raw`  \centering`);
+  if (opts.caption) lines.push(String.raw`  \caption{${escapeLatex(opts.caption)}}`);
+  lines.push(String.raw`  \begin{tabular}{${colSpec}}`);
   if (opts.booktabs) {
-    lines.push("    \\toprule");
+    lines.push(String.raw`    \toprule`);
     if (opts.headerRow && cells.length > 0) {
-      lines.push(row(cells[0]));
-      lines.push("    \\midrule");
+      lines.push(row(cells[0]), String.raw`    \midrule`);
       for (const r of cells.slice(1)) lines.push(row(r));
     } else {
       for (const r of cells) lines.push(row(r));
     }
-    lines.push("    \\bottomrule");
+    lines.push(String.raw`    \bottomrule`);
   } else {
-    lines.push("    \\hline");
+    lines.push(String.raw`    \hline`);
     for (const [i, r] of cells.entries()) {
       lines.push(row(r));
-      if (i === 0 && opts.headerRow) lines.push("    \\hline");
+      if (i === 0 && opts.headerRow) lines.push(String.raw`    \hline`);
     }
-    lines.push("    \\hline");
+    lines.push(String.raw`    \hline`);
   }
-  lines.push("  \\end{tabular}");
-  lines.push("\\end{table}");
+  lines.push(String.raw`  \end{tabular}`, String.raw`\end{table}`);
   return lines.join("\n");
 }
 

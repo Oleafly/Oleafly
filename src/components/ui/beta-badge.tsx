@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
-export function BetaBadge({ className }: { className?: string }) {
+export function BetaBadge({ className }: Readonly<{ className?: string }>) {
   const { t } = useTranslation(["common"]);
   return (
     <span

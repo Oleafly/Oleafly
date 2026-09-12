@@ -538,20 +538,12 @@ describe("typing brackets after a backslash", () => {
 });
 
 describe("latexPairKeymap", () => {
-  it("row 14: deletes both halves of an empty math pair", () => {
-    const target = editor("x $|$");
-    expect(latexPairKeymap[0].run?.(target)).toBe(true);
-    expect(marked(target)).toBe("x |");
-  });
-
-  it("row 14: deletes both halves of an empty inline delimiter pair", () => {
-    const target = editor("x \\(|\\)");
-    expect(latexPairKeymap[0].run?.(target)).toBe(true);
-    expect(marked(target)).toBe("x |");
-  });
-
-  it("row 14: deletes both halves of an empty display delimiter pair", () => {
-    const target = editor("x \\[|\\]");
+  it.each([
+    ["math", "x $|$"],
+    ["inline delimiter", String.raw`x \(|\)`],
+    ["display delimiter", String.raw`x \[|\]`],
+  ])("row 14: deletes both halves of an empty %s pair", (_kind, source) => {
+    const target = editor(source);
     expect(latexPairKeymap[0].run?.(target)).toBe(true);
     expect(marked(target)).toBe("x |");
   });

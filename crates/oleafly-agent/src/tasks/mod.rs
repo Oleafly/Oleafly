@@ -136,7 +136,7 @@ fn is_cancelled_deep(inner: &CancelInner) -> bool {
     inner
         .parent
         .as_ref()
-        .and_then(|parent| parent.upgrade())
+        .and_then(std::sync::Weak::upgrade)
         .is_some_and(|parent| is_cancelled_deep(&parent))
 }
 
@@ -144,7 +144,7 @@ fn lock_children(inner: &CancelInner) -> std::sync::MutexGuard<'_, Vec<Weak<Canc
     inner
         .children
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 #[cfg(test)]

@@ -129,7 +129,7 @@ export function parseFile(path: string, rawText: string): FileSymbols {
   }
 
   // Macros: \newcommand / \renewcommand / \providecommand (braced or bare).
-  const cmd = /\\(?:newcommand|renewcommand|providecommand)\*?\s*\{?\s*\\([a-zA-Z@]+)/g;
+  const cmd = /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([a-zA-Z@]+)/g;
   for (const m of text.matchAll(cmd)) {
     const nameStart = m.index + m[0].lastIndexOf(`\\${m[1]}`) + 1;
     push(defs, "macro", m[1], m.index, m.index + m[0].length, nameStart, nameStart + m[1].length);
@@ -150,8 +150,8 @@ export function parseFile(path: string, rawText: string): FileSymbols {
     [/\\newtheorem\*?\s*\{([^}]*)\}/g, "theorem"],
     [/\\(?:newenvironment|renewenvironment)\s*\{([^}]*)\}/g, "environment"],
     [/\\newglossaryentry\s*\{([^}]*)\}/g, "glossary"],
-    [/\\newacronym\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g, "glossary"],
-    [/\\bibitem\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g, "bibentry"],
+    [/\\newacronym\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g, "glossary"],
+    [/\\bibitem\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g, "bibentry"],
   ];
   for (const [re, kind] of braceDef) {
     for (const m of text.matchAll(re)) {
@@ -179,7 +179,7 @@ export function parseFile(path: string, rawText: string): FileSymbols {
   const ref = /\\(?:ref|eqref|autoref|cref|Cref|cpageref|pageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{([^}]*)\}/g;
   for (const m of text.matchAll(ref)) pushKeys(m[0], m.index, m[1], "ref");
 
-  const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
+  const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
   for (const m of text.matchAll(cite)) pushKeys(m[0], m.index, m[1], "cite");
 
   const gls = /\\(?:gls|Gls|GLS|glspl|Glspl|acrshort|acrlong|acrfull|acs|acl|ac)\s*\{([^}]*)\}/g;

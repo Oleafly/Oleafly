@@ -10,7 +10,7 @@ export interface BibliographyDeclaration {
 }
 
 const DECLARATION =
-  /\\(bibliography|addbibresource)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
+  /\\(bibliography|addbibresource)\*?\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
 
 const HAS_EXTENSION = /\.[a-z0-9]+$/i;
 const BIB_SUFFIX = /\.bib$/i;
@@ -114,11 +114,14 @@ export function bibliographyCandidatePaths(
   const relative = raw.replace(/^\.\//, "");
   const directory = directoryOf(fromFile);
   const rootFirst = engine === "latex" || engine === "biblatex";
-  const bases = directory
-    ? rootFirst
-      ? [relative, `${directory}/${relative}`]
-      : [`${directory}/${relative}`, relative]
-    : [relative];
+  let bases: string[];
+  if (!directory) {
+    bases = [relative];
+  } else if (rootFirst) {
+    bases = [relative, `${directory}/${relative}`];
+  } else {
+    bases = [`${directory}/${relative}`, relative];
+  }
   const candidates: string[] = [];
   for (const base of bases) {
     for (const spelling of spellingsFor(base, engine)) {

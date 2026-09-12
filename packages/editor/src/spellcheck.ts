@@ -409,8 +409,7 @@ function spellingDismissEntries(
         dismissRange(view, from, to);
       },
     },
-  });
-  entries.push({
+  }, {
     label: h.t("spellcheck.ignoreForNow"),
     icon: "now",
     action: {
@@ -580,22 +579,13 @@ function proofreadingDiagnostic(
   const spelling = isSpellingDiagnosticKind(meta.kind);
   const actions = actionHost;
   const suppressionKey = meta.suppressionKey ?? "";
-  const ignoreList = !actions
-    ? ignoreEntries(h, projectId, word)
-    : spelling
-      ? spellingDismissEntries(
-          h,
-          actions,
-          projectId,
-          meta.path ?? "",
-          word,
-        )
-      : grammarDismissEntries(
-          h,
-          actions,
-          meta.rule ?? null,
-          suppressionKey,
-        );
+  const dismissList = (host: NonNullable<typeof actions>) =>
+    spelling
+      ? spellingDismissEntries(h, host, projectId, meta.path ?? "", word)
+      : grammarDismissEntries(h, host, meta.rule ?? null, suppressionKey);
+  const ignoreList = actions
+    ? dismissList(actions)
+    : ignoreEntries(h, projectId, word);
   return attachProofreadingCard(
     {
       ...diagnostic,
@@ -691,6 +681,57 @@ function presentedProofreadingDiagnostics(
  * requested page. Syntax, compile, reference, and language-service
  * diagnostics keep their existing objects and ranges.
  */
+function retainedPresentationCache(
+  h: SpellHost,
+  view: EditorView,
+  identity: {
+    contextKey: string;
+    path: string;
+    preferredMode: ProofreadingMode | undefined;
+    projectId: string | null;
+  },
+): PresentedProofreadingCache | undefined {
+  const { contextKey, path, preferredMode, projectId } = identity;
+  const text = view.state.doc.toString();
+  const modes: ProofreadingMode[] = [
+    ...(preferredMode ? [preferredMode] : []),
+    "combined",
+    "grammar",
+    "spelling",
+  ];
+  const visited = new Set<ProofreadingMode>();
+  for (const mode of modes) {
+    if (visited.has(mode)) continue;
+    visited.add(mode);
+    const result =
+      h.getRetainedProofreading?.({
+        contextKey,
+        projectId,
+        path,
+        text,
+        mode,
+      }) ?? null;
+    if (
+      !result ||
+      (result.status !== "ready" && result.status !== "partial") ||
+      result.identity.projectId !== projectId ||
+      result.identity.path !== path ||
+      result.identity.surface !== "source"
+    ) {
+      continue;
+    }
+    return {
+      contextKey,
+      document: view.state.doc,
+      mode,
+      path,
+      projectId,
+      result,
+    };
+  }
+  return undefined;
+}
+
 function repaintCachedProofreadingPresentation(
   view: EditorView,
 ): boolean {
@@ -707,48 +748,13 @@ function repaintCachedProofreadingPresentation(
     cached.path === path &&
     cached.contextKey === contextKey;
   if (!cacheIsCurrent) {
-    const text = view.state.doc.toString();
-    const preferredMode = cached?.mode;
-    const modes: ProofreadingMode[] = [
-      ...(preferredMode ? [preferredMode] : []),
-      "combined",
-      "grammar",
-      "spelling",
-    ];
-    const visited = new Set<ProofreadingMode>();
-    cached = undefined;
-    for (const mode of modes) {
-      if (visited.has(mode)) continue;
-      visited.add(mode);
-      const result =
-        h.getRetainedProofreading?.({
-          contextKey,
-          projectId,
-          path,
-          text,
-          mode,
-        }) ?? null;
-      if (
-        !result ||
-        (result.status !== "ready" &&
-          result.status !== "partial") ||
-        result.identity.projectId !== projectId ||
-        result.identity.path !== path ||
-        result.identity.surface !== "source"
-      ) {
-        continue;
-      }
-      cached = {
-        contextKey,
-        document: view.state.doc,
-        mode,
-        path,
-        projectId,
-        result,
-      };
-      presentedProofreadingCache.set(view, cached);
-      break;
-    }
+    cached = retainedPresentationCache(h, view, {
+      contextKey,
+      path,
+      preferredMode: cached?.mode,
+      projectId,
+    });
+    if (cached) presentedProofreadingCache.set(view, cached);
   }
   if (!cached) return false;
   const retainedDiagnostics: Diagnostic[] = [];
@@ -934,11 +940,14 @@ async function proofreadWithWorker(
     );
     return promise;
   };
-  const result = canReusePresentedResult
-    ? cached.result
-    : (canReusePendingResult
-      ? await pending.promise
-      : (retainedResult ?? (await requestWorker())));
+  let result: ProofreadingResult;
+  if (canReusePresentedResult) {
+    result = cached.result;
+  } else if (canReusePendingResult) {
+    result = await pending.promise;
+  } else {
+    result = retainedResult ?? (await requestWorker());
+  }
   if (
     (result.status !== "ready" && result.status !== "partial") ||
     view.state.doc !== document ||
@@ -1029,13 +1038,13 @@ function suggestionActions(
   return sugs.slice(0, 8).map<Action>((s) => {
     const preview =
       s.text.length > 44 ? `${s.text.slice(0, 43)}…` : s.text;
+    const changeName =
+      s.kind === 2
+        ? h.t("spellcheck.suggestionAdd", { text: preview })
+        : h.t("spellcheck.suggestionReplace", { text: preview });
     return {
       name:
-        s.kind === 1
-          ? h.t("spellcheck.suggestionRemove")
-          : s.kind === 2
-            ? h.t("spellcheck.suggestionAdd", { text: preview })
-            : h.t("spellcheck.suggestionReplace", { text: preview }),
+        s.kind === 1 ? h.t("spellcheck.suggestionRemove") : changeName,
       apply: (view, from, to) => {
         if (s.kind === 2) {
           view.dispatch({ changes: { from: to, insert: s.text } });
@@ -1082,7 +1091,7 @@ function localGrammarFallback(
     });
   };
 
-  for (const match of masked.prose.matchAll(/\b([\p{L}][\p{L}'’-]*)\s+\1\b/giu)) {
+  for (const match of masked.prose.matchAll(/\b(\p{L}[\p{L}'’-]*)\s+\1\b/giu)) {
     if (match.index === undefined) continue;
     const from = masked.map[match.index];
     const to = masked.map[match.index + match[0].length - 1];
@@ -1259,10 +1268,10 @@ export function diagnosticPresentationExtensions(): Extension[] {
       const generation = presentationRefreshGenerations.get(view) ?? 0;
       const tally = presentationRepairs.get(view);
       const next =
-        tally && tally.generation === generation
+        tally?.generation === generation
           ? { generation, count: tally.count + 1 }
           : { generation, count: 1 };
-      if (tally && tally.generation === generation && tally.count >= 8) {
+      if (tally?.generation === generation && tally.count >= 8) {
         return;
       }
       presentationRepairs.set(view, next);

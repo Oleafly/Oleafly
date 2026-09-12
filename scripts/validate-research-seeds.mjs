@@ -1,7 +1,7 @@
 import { cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execFile } from "node:child_process";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -109,8 +109,10 @@ async function main() {
   // fixture can be proven to compile while it is still being authored.
   const adHocDir = flagValue("dir");
   if (adHocDir) {
+    let normalizedDir = adHocDir;
+    while (normalizedDir.endsWith("/")) normalizedDir = normalizedDir.slice(0, -1);
     const project = {
-      slug: adHocDir.replace(/\/+$/, "").split("/").pop(),
+      slug: normalizedDir.split("/").pop(),
       name: adHocDir,
       engine: flagValue("engine") ?? "xetex",
       mainDoc: flagValue("main") ?? "main.tex",
@@ -166,4 +168,5 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import
   await main();
 }
 
-export { repositoryRoot, homedir };
+export { repositoryRoot };
+export { homedir } from "node:os";

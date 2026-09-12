@@ -86,9 +86,9 @@ export function parseAuxLabels(aux: string): Map<string, LabelNumber> {
   const out = new Map<string, LabelNumber>();
   const text = aux.length > MAX_AUX_CHARS ? aux.slice(0, MAX_AUX_CHARS) : aux;
   for (const line of text.split("\n")) {
-    const at = line.indexOf("\\newlabel");
+    const at = line.indexOf(String.raw`\newlabel`);
     if (at < 0) continue;
-    let i = at + "\\newlabel".length;
+    let i = at + String.raw`\newlabel`.length;
     while (i < line.length && (line[i] === " " || line[i] === "\t")) i++;
     const name = readBalancedGroup(line, i);
     if (!name || name.content.length === 0) continue;

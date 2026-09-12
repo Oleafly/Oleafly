@@ -5,15 +5,6 @@ import {
   agentExecAuthorize,
   agentExecCwd,
   agentExecRegisterExternal,
-} from "@/lib/tauri";
-import {
-  createOleaflyTools as createOleaflyToolsCore,
-  createFigureTools as createFigureToolsCore,
-  type AiToolsHost,
-  type ProjectIndexView,
-  type ConfirmFn,
-} from "@oleafly/ai-tools";
-import {
   readFileContent,
   writeFileContent,
   createFile,
@@ -27,6 +18,13 @@ import {
   writeProjectBytes,
   projectMutationGeneration,
 } from "@/lib/tauri";
+import {
+  createOleaflyTools as createOleaflyToolsCore,
+  createFigureTools as createFigureToolsCore,
+  type AiToolsHost,
+  type ProjectIndexView,
+  type ConfirmFn,
+} from "@oleafly/ai-tools";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
@@ -84,7 +82,7 @@ const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
   const expectedGeneration = await files.prepareExternalMutation(projectId);
   const current = await currentDiskContent(projectId, path);
   if (!mutationAllowed(projectId, allowed)) return false;
-  const documentEnd = current.lastIndexOf("\\end{document}");
+  const documentEnd = current.lastIndexOf(String.raw`\end{document}`);
   const at = documentEnd >= 0 ? documentEnd : current.length;
   const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
   const result = await writeFileContent(projectId, path, next, expectedGeneration);

@@ -67,13 +67,14 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   await tauriPage.click('[aria-label="Close settings"]');
 
   const dataDir = process.env.OLEAFLY_DATA_DIR;
+  // Ignored on purpose outside the harness, because the discovery file lives in the throwaway data dir.
   test.skip(!dataDir, "requires the e2e data-dir override");
   const { url, token } = JSON.parse(readFileSync(join(dataDir!, "mcp.json"), "utf8")) as {
     url: string;
     token: string;
   };
   expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
-  expect(token.length).toBe(64);
+  expect(token).toHaveLength(64);
 
   await openOleaflyMcpSettings(tauriPage);
   const discoveryPath = join(dataDir!, "mcp.json");

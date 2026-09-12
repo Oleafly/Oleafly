@@ -237,6 +237,24 @@ export function isLanguageServiceSetupRequiredError(
   );
 }
 
+function backendErrorFromRecord(
+  value: Record<string, unknown>,
+): LanguageServiceBackendError {
+  const metadata = isRecord(value.metadata) ? value.metadata : value;
+  const code = typeof value.code === "string" ? value.code : "backend_error";
+  const message =
+    typeof value.message === "string"
+      ? value.message
+      : "Language-service backend command failed";
+  const kind = isLanguageServiceKind(metadata.kind) ? metadata.kind : undefined;
+  const version =
+    typeof metadata.version === "string" ? metadata.version : undefined;
+  return new LanguageServiceBackendError(code, message, {
+    ...(kind ? { kind } : {}),
+    ...(version ? { version } : {}),
+  });
+}
+
 function backendError(value: unknown): Error {
   if (value instanceof LanguageServiceBackendError) return value;
   if (typeof value === "string") {
@@ -246,28 +264,7 @@ function backendError(value: unknown): Error {
       return new Error(value);
     }
   }
-  if (isRecord(value)) {
-    const metadata = isRecord(value.metadata)
-      ? value.metadata
-      : value;
-    const code =
-      typeof value.code === "string" ? value.code : "backend_error";
-    const message =
-      typeof value.message === "string"
-        ? value.message
-        : "Language-service backend command failed";
-    const kind = isLanguageServiceKind(metadata.kind)
-      ? metadata.kind
-      : undefined;
-    const version =
-      typeof metadata.version === "string"
-        ? metadata.version
-        : undefined;
-    return new LanguageServiceBackendError(code, message, {
-      ...(kind ? { kind } : {}),
-      ...(version ? { version } : {}),
-    });
-  }
+  if (isRecord(value)) return backendErrorFromRecord(value);
   return value instanceof Error ? value : new Error(String(value));
 }
 
@@ -328,10 +325,9 @@ function sameSession(
   right: LanguageServiceSession,
 ): boolean {
   return Boolean(
-    left &&
-      left.session === right.session &&
-      left.kind === right.kind &&
-      left.generation === right.generation,
+    left?.session === right.session &&
+      left?.kind === right.kind &&
+      left?.generation === right.generation,
   );
 }
 

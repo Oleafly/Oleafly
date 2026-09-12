@@ -30,6 +30,30 @@ export function RenameDialog() {
     if (view && valid) await applyRename(view, sym, name.trim());
   };
 
+  const renameSummary = () => {
+    if (plan?.collision) {
+      return (
+        <span className="text-red-500">
+          {t(($) => $.shell.renameDialog.collision, {
+            kind: t(($) => $.shell.renameDialog.symbolKinds[sym.kind]),
+            name,
+          })}
+        </span>
+      );
+    }
+    if (plan) {
+      return (
+        t(($) => $.shell.renameDialog.planSummary, {
+          count: plan.edits.length,
+          files: plan.fileCount,
+        })
+      );
+    }
+    return (
+      ""
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[20vh] backdrop-blur-sm">
       <button
@@ -66,21 +90,7 @@ export function RenameDialog() {
           className="mt-2 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
         />
         <p className="mt-2 h-4 text-[11px] text-muted-foreground">
-          {plan?.collision ? (
-            <span className="text-red-500">
-              {t(($) => $.shell.renameDialog.collision, {
-                kind: t(($) => $.shell.renameDialog.symbolKinds[sym.kind]),
-                name,
-              })}
-            </span>
-          ) : plan ? (
-            t(($) => $.shell.renameDialog.planSummary, {
-              count: plan.edits.length,
-              files: plan.fileCount,
-            })
-          ) : (
-            ""
-          )}
+          {renameSummary()}
         </p>
         <div className="mt-3 flex justify-end gap-2">
           <button type="button" onClick={close} className="rounded-md border border-input px-3 py-1.5 text-xs hover:bg-accent">

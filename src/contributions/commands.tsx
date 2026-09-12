@@ -509,7 +509,7 @@ export function registerPaletteCommands() {
     icon: () => <Tag className="size-4" />,
     order: 470,
     when: activeIsLatexSource,
-    run: ins("\\label{}"),
+    run: ins(String.raw`\label{}`),
   });
 
   palette({

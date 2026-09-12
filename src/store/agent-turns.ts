@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import type { AgentEvent } from "@oleafly/ai-core";
 import {
   DeltaQueues,
   TurnFold,
+  type AgentEvent,
   type RecordedStoreItem,
   type StoreItem,
   type TurnRecord,
@@ -97,7 +97,7 @@ function streamingSnapshot(previous: TurnRecord, current: TurnRecord): TurnRecor
     ...current,
     items: current.items.map((recorded, index) => {
       const prior = previous.items[index];
-      if (!prior || prior.id !== recorded.id) return cloneStreamingItem(recorded);
+      if (prior?.id !== recorded.id) return cloneStreamingItem(recorded);
       if (prior.completed !== recorded.completed) return cloneStreamingItem(recorded);
       if (itemCanStillChange(prior, index, previous.items.length)) {
         return cloneStreamingItem(recorded);
@@ -116,7 +116,7 @@ function republish(
   fold: TurnFold,
 ): Partial<AgentTurnsState> {
   const previous = state.recordsByChat[chatId] ?? [];
-  const previousRecord = previous[previous.length - 1];
+  const previousRecord = previous.at(-1);
   const current = fold.snapshot();
   const snapshot = previousRecord
     ? streamingSnapshot(previousRecord, current)

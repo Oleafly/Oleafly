@@ -8,9 +8,9 @@ const HEADING_MACRO: Record<number, string> = {
 
 function escapeLatexText(text: string): string {
   return text.replace(/([\\{}&%$#_^~])/g, (ch) => {
-    if (ch === "\\") return "\\textbackslash{}";
-    if (ch === "^") return "\\textasciicircum{}";
-    if (ch === "~") return "\\textasciitilde{}";
+    if (ch === "\\") return String.raw`\textbackslash{}`;
+    if (ch === "^") return String.raw`\textasciicircum{}`;
+    if (ch === "~") return String.raw`\textasciitilde{}`;
     return `\\${ch}`;
   });
 }
@@ -23,12 +23,12 @@ function inlineToLatex(nodes: JSONContent[] = []): string {
       const escaped = escapeLatexText(node.text ?? "");
       const marks = node.marks ?? [];
       const link = marks.find((m) => m.type === "link");
-      const base = link ? `\\href{${link.attrs?.href ?? ""}}{${escaped}}` : escaped;
+      const base = link ? String.raw`\href{${link.attrs?.href ?? ""}}{${escaped}}` : escaped;
       return marks.reduceRight((acc, mark) => {
-        if (mark.type === "bold") return `\\textbf{${acc}}`;
-        if (mark.type === "italic") return `\\textit{${acc}}`;
-        if (mark.type === "underline") return `\\underline{${acc}}`;
-        if (mark.type === "code") return `\\texttt{${acc}}`;
+        if (mark.type === "bold") return String.raw`\textbf{${acc}}`;
+        if (mark.type === "italic") return String.raw`\textit{${acc}}`;
+        if (mark.type === "underline") return String.raw`\underline{${acc}}`;
+        if (mark.type === "code") return String.raw`\texttt{${acc}}`;
         return acc;
       }, base);
     })
@@ -52,7 +52,8 @@ function blockToLatex(node: JSONContent): string {
     const items = (node.content ?? [])
       .map((item) => {
         const paragraph = item.content?.[0];
-        return `  \\item ${inlineToLatex(paragraph?.content)}`;
+        return String.raw`  \item ${inlineToLatex(paragraph?.content)}`;
+
       })
       .join("\n");
     return `\\begin{${env}}\n${items}\n\\end{${env}}`;

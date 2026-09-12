@@ -81,7 +81,7 @@ export function scatter(index: number, offset: number): number {
   return ((index + 1) * GOLDEN_RATIO_CONJUGATE + offset) % 1;
 }
 
-function ChordHint({ variant, back }: { variant?: "primary"; back?: boolean }) {
+function ChordHint({ variant, back }: Readonly<{ variant?: "primary"; back?: boolean }>) {
   const chipClass =
     variant === "primary"
       ? `${KBD_CHIP} bg-primary-foreground/20 text-primary-foreground`
@@ -107,7 +107,7 @@ export function tourDotWindowStart(index: number, size: number) {
   return Math.max(0, Math.min(centered, size - DOT_WINDOW));
 }
 
-function TourProgress({ index, size }: { index: number; size: number }) {
+function TourProgress({ index, size }: Readonly<{ index: number; size: number }>) {
   const slots = Math.min(size, DOT_WINDOW);
   const start = tourDotWindowStart(index, size);
   return (
@@ -396,35 +396,35 @@ export function isAiStepApplicable(stepId: string, root: HTMLElement) {
   return true;
 }
 
-function SeamlessArrow({ base, placement, size }: ArrowRenderProps) {
+function arrowPoints(side: string, base: number, size: number) {
+  if (side === "top") return `0,0 ${base / 2},${size} ${base},0`;
+  if (side === "bottom") return `${base},${size} ${base / 2},0 0,${size}`;
+  if (side === "left") return `0,0 ${size},${base / 2} 0,${base}`;
+  return `${size},${base} ${size},0 0,${base / 2}`;
+}
+
+function arrowExposedEdge(side: string, base: number, size: number) {
+  if (side === "top") return `0,0 ${base / 2},${size} ${base},0`;
+  if (side === "bottom") return `${base},${size} ${base / 2},0 0,${size}`;
+  if (side === "left") return `0,0 ${size},${base / 2} 0,${base}`;
+  return `${size},${base} 0,${base / 2} ${size},0`;
+}
+
+function arrowOverlap(side: string) {
+  if (side === "top") return "translateY(-1px)";
+  if (side === "bottom") return "translateY(1px)";
+  if (side === "left") return "translateX(-1px)";
+  return "translateX(1px)";
+}
+
+function SeamlessArrow({ base, placement, size }: Readonly<ArrowRenderProps>) {
   const { t } = useTranslation(["shell"]);
   const side = tourArrowSide(placement);
-  const points =
-    side === "top"
-      ? `0,0 ${base / 2},${size} ${base},0`
-      : side === "bottom"
-        ? `${base},${size} ${base / 2},0 0,${size}`
-        : side === "left"
-          ? `0,0 ${size},${base / 2} 0,${base}`
-          : `${size},${base} ${size},0 0,${base / 2}`;
+  const points = arrowPoints(side, base, size);
   const width = side === "top" || side === "bottom" ? base : size;
   const height = side === "top" || side === "bottom" ? size : base;
-  const exposedEdge =
-    side === "top"
-      ? `0,0 ${base / 2},${size} ${base},0`
-      : side === "bottom"
-        ? `${base},${size} ${base / 2},0 0,${size}`
-        : side === "left"
-          ? `0,0 ${size},${base / 2} 0,${base}`
-          : `${size},${base} 0,${base / 2} ${size},0`;
-  const overlap =
-    side === "top"
-      ? "translateY(-1px)"
-      : side === "bottom"
-        ? "translateY(1px)"
-        : side === "left"
-          ? "translateX(-1px)"
-          : "translateX(1px)";
+  const exposedEdge = arrowExposedEdge(side, base, size);
+  const overlap = arrowOverlap(side);
   return (
     <svg
       aria-hidden
@@ -480,14 +480,14 @@ export function measureTourPlacement(
   step: TourStepDefinition,
   element: Element | null,
   tooltip: TourTooltipMetrics | null,
-  viewport: TourViewportSize = { width: window.innerWidth, height: window.innerHeight },
+  viewport?: TourViewportSize,
 ): TourPlacementFit | null {
   if (!stepNeedsReachableTarget(step) || !element || !tooltip) return null;
   const target = element.getBoundingClientRect();
   if (target.width === 0 && target.height === 0) return null;
   return fitTourTooltip({
     target,
-    viewport,
+    viewport: viewport ?? { width: window.innerWidth, height: window.innerHeight },
     tooltip,
     standoff: TOUR_TOOLTIP_STANDOFF,
     shiftPadding: TOUR_SHIFT_PADDING,
@@ -603,7 +603,7 @@ export function autoSkipAction(
   return isFinalStep ? "complete" : "advance";
 }
 
-function Welcome({ onStart }: { onStart: () => void }) {
+function Welcome({ onStart }: Readonly<{ onStart: () => void }>) {
   const { t } = useTranslation(["shell"]);
   const dialogRef = useRef<HTMLDivElement>(null);
   const onStartRef = useRef(onStart);
@@ -1274,17 +1274,14 @@ export function TourGuide() {
       // Guessing which tour was meant is hopeless with a diagram open behind
       // Settings, but a caller that names one has already answered that.
       if (!requestedId && diagramOpen && settingsOpen) return;
-      const id =
-        requestedId ??
-        (diagramOpen
-          ? "diagram"
-          : settingsOpen
-            ? "settings"
-            : projectId && (chatFloating || assistantOpen)
-              ? "ai"
-              : projectId
-                ? "workspace"
-                : "home");
+      const contextualId = () => {
+        if (diagramOpen) return "diagram";
+        if (settingsOpen) return "settings";
+        if (projectId && (chatFloating || assistantOpen)) return "ai";
+        if (projectId) return "workspace";
+        return "home";
+      };
+      const id = requestedId ?? contextualId();
       setWelcomeAccepted(true);
       useTourStore.getState().stop();
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
@@ -1386,7 +1383,7 @@ export function TourGuide() {
       useTourStore.getState()[action](action === "dismiss" || action === "complete" ? tourId : undefined);
     };
     const armFallback = () => {
-      if (fallback === null) fallback = window.setTimeout(skipMissingTarget, MISSING_TARGET_GRACE_MS);
+      fallback ??= window.setTimeout(skipMissingTarget, MISSING_TARGET_GRACE_MS);
     };
     observer.observe(document.body, { childList: true, subtree: true });
     if (useFilesStore.getState().loading) {
@@ -1406,12 +1403,12 @@ export function TourGuide() {
     let lastReadiness =
       document
         .querySelector<HTMLElement>('[data-tour="ai-assistant"]')
-        ?.getAttribute("data-tour-ready") ?? null;
+        ?.dataset.tourReady ?? null;
     const observer = new MutationObserver(() => {
       const readiness =
         document
           .querySelector<HTMLElement>('[data-tour="ai-assistant"]')
-          ?.getAttribute("data-tour-ready") ?? null;
+          ?.dataset.tourReady ?? null;
       if (readiness === lastReadiness) return;
       lastReadiness = readiness;
       setAiReadinessRevision((value) => value + 1);

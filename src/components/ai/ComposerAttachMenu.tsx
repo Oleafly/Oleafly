@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ComposerCommand } from "./composer-command-registry";
 
-export function ComposerAttachMenu({ commands }: { commands: ComposerCommand[] }) {
+export function ComposerAttachMenu({ commands }: Readonly<{ commands: ComposerCommand[] }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
     <DropdownMenu>

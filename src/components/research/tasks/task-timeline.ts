@@ -151,7 +151,7 @@ export function buildTaskTimeline(
   if (!running) {
     for (const id of unresolved) {
       const tool = byCall.get(id);
-      if (tool && tool.status === "running") tool.interrupted = true;
+      if (tool?.status === "running") tool.interrupted = true;
     }
   }
 

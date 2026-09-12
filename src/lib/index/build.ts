@@ -64,7 +64,7 @@ export function assembleIndex(
   const macroNames = [...new Set(defs.filter((d) => d.kind === "macro").map((d) => d.name))];
   if (macroNames.length > 0) {
     macroNames.sort((a, b) => b.length - a.length);
-    const alt = macroNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const alt = macroNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)).join("|");
     const macroDefSpans = new Map<string, [number, number][]>();
     for (const d of defs) {
       if (d.kind !== "macro") continue;
@@ -77,7 +77,7 @@ export function assembleIndex(
       const text = maskComments(rawText);
       const spans = macroDefSpans.get(path) ?? [];
       const lineAt = lineCounter(text);
-      const re = new RegExp(`\\\\(${alt})(?![a-zA-Z@])`, "g");
+      const re = new RegExp(String.raw`\\(${alt})(?![a-zA-Z@])`, "g");
       for (const m of text.matchAll(re)) {
         const at = m.index;
         if (spans.some(([f, t]) => at >= f && at < t)) continue;

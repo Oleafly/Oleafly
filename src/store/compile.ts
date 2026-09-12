@@ -873,6 +873,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       files.engine,
       useSettingsStore.getState().offline,
     );
+    const offlineNoticePrefix = offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "";
     const seq = ++compileSeq;
     // True once this compile's result is no longer the one the UI should show
     // (project switched, or a newer compile started).
@@ -953,12 +954,10 @@ export const useCompileStore = create<CompileState>((set, get) => ({
           e.payload,
           pendingPhase ?? get().phase,
         );
-        if (logFrame === null) {
-          logFrame = requestAnimationFrame(() => {
-            logFrame = null;
-            flushPendingLog();
-          });
-        }
+        logFrame ??= requestAnimationFrame(() => {
+          logFrame = null;
+          flushPendingLog();
+        });
       });
       if (identityStale() || checkpointAdvanced()) return undefined;
       const result = await compileProject(
@@ -1062,7 +1061,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
               "Compilation did not produce a valid current PDF.",
           errors: result.errors,
           diagnostics: result.diagnostics ?? null,
-          log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}${result.log}${outputIdentityError}`,
+          log: `${offlineNoticePrefix}${result.log}${outputIdentityError}`,
           lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
           lastCompileCheckpoint:
             checkpoint ?? state.lastCompileCheckpoint,
@@ -1115,7 +1114,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         return {
           status: "error",
           phase: "idle",
-          log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}Compile failed: ${String(e)}`,
+          log: `${offlineNoticePrefix}Compile failed: ${String(e)}`,
           failureReason: `Compile failed: ${String(e)}`,
         };
       });

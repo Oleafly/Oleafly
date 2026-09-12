@@ -1,7 +1,7 @@
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import { modalCoordinator, visibleFocusable } from "@oleafly/templates/modal-coordinator";
 
-export const appModalCoordinator = modalCoordinator;
+export { modalCoordinator as appModalCoordinator } from "@oleafly/templates/modal-coordinator";
 
 const FOCUSABLE = [
   "button:not([disabled])",

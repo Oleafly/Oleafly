@@ -73,6 +73,19 @@ export function TexPackagesSection() {
         p.texLivePackage?.includes(normalized),
     );
 
+  const resultsSummary = (): string => {
+    if (!results) return t(($) => $.settings.engine.packages.suggested);
+    if (results.length === 200) {
+      return t(($) => $.settings.engine.packages.resultsCapped, {
+        total: formatNumber(results.length),
+      });
+    }
+    return t(($) => $.settings.engine.packages.results, { count: results.length });
+  };
+
+  const toggleLabel = (on: boolean): string =>
+    on ? t(($) => $.common.actions.remove) : t(($) => $.common.actions.add);
+
   return (
     <section aria-label={t(($) => $.settings.engine.packages.ariaLabel)}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -87,7 +100,7 @@ export function TexPackagesSection() {
         className="mb-2 flex gap-2"
         onSubmit={(event) => {
           event.preventDefault();
-          void search();
+          search();
         }}
       >
         <Input
@@ -134,18 +147,12 @@ export function TexPackagesSection() {
         </div>
       )}
       {packageNotice && (
-        <p role="status" className="mb-2 rounded-md border bg-muted/30 p-2 text-xs">
+        <output className="block mb-2 rounded-md border bg-muted/30 p-2 text-xs">
           {packageNotice}
-        </p>
+        </output>
       )}
       <p className="mb-2 text-xs text-muted-foreground">
-        {!results
-          ? t(($) => $.settings.engine.packages.suggested)
-          : results.length === 200
-            ? t(($) => $.settings.engine.packages.resultsCapped, {
-                total: formatNumber(results.length),
-              })
-            : t(($) => $.settings.engine.packages.results, { count: results.length })}
+        {resultsSummary()}
       </p>
       <div className="max-h-72 overflow-auto rounded-md border">
         {rows.length === 0 && (
@@ -160,13 +167,13 @@ export function TexPackagesSection() {
           const on = installed.includes(packageName);
           const inUserTree = userInstalled.includes(packageName);
           const inSystemTree = systemInstalled.includes(packageName);
-          const tree = !on
-            ? null
-            : inUserTree && inSystemTree
-              ? t(($) => $.settings.engine.packages.tree.both)
-              : inUserTree
-                ? t(($) => $.settings.engine.packages.tree.user)
-                : t(($) => $.settings.engine.packages.tree.system);
+          const treeFor = (): string | null => {
+            if (!on) return null;
+            if (inUserTree && inSystemTree) return t(($) => $.settings.engine.packages.tree.both);
+            if (inUserTree) return t(($) => $.settings.engine.packages.tree.user);
+            return t(($) => $.settings.engine.packages.tree.system);
+          };
+          const tree = treeFor();
           const badge = p.tagging ? TAG_BADGE[p.tagging] : null;
           const busy = busyPkg === packageName;
           return (
@@ -208,8 +215,9 @@ export function TexPackagesSection() {
                 disabled={!available || !!busyPkg || searching}
                 className="inline-flex w-16 items-center justify-center gap-1 rounded border border-input px-2 py-1 text-xs hover:bg-accent disabled:opacity-40"
               >
-                {busy ? <Loader2 className="size-3 animate-spin" /> : on ? <X className="size-3" /> : null}
-                {busy ? "" : on ? t(($) => $.common.actions.remove) : t(($) => $.common.actions.add)}
+                {busy ? <Loader2 className="size-3 animate-spin" /> : null}
+                {!busy && on ? <X className="size-3" /> : null}
+                {busy ? "" : toggleLabel(on)}
               </button>
             </div>
           );

@@ -172,8 +172,7 @@ function guardedApply(
     );
     if (
       !completionRequestIsCurrent(guard.request, view.state) ||
-      !current ||
-      current.path !== guard.path ||
+      current?.path !== guard.path ||
       current.snapshot !== guard.snapshot
     ) {
       closeCompletion(view);
@@ -199,6 +198,14 @@ function basename(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
 }
 
+function definitionCompletionType(
+  kind: ProjectDefinition["kind"],
+): string {
+  if (kind === "bibentry") return "constant";
+  if (kind === "macro") return "function";
+  return "variable";
+}
+
 function definitionOptions(
   snapshot: ProjectIntelligenceSnapshot,
   guard: CompletionGuard,
@@ -218,7 +225,7 @@ function definitionOptions(
     counts.set(candidate.name, (counts.get(candidate.name) ?? 0) + 1);
   }
 
-  return candidates
+  return [...candidates]
     .sort((left, right) => {
       const leftPrefix = left.name.toLocaleLowerCase().startsWith(normalizedQuery);
       const rightPrefix = right.name.toLocaleLowerCase().startsWith(normalizedQuery);
@@ -255,19 +262,15 @@ function definitionOptions(
         definition.kind === "environment" &&
         includeEnvironmentArguments &&
         argumentsSnippet.length === 0;
-      const insertion = environmentWithArguments
-        ? `${definition.name}}${argumentsSnippet}`
-        : environmentSkeleton
-          ? environmentSnippet(definition.name)
-          : `${definition.name}${argumentsSnippet}`;
+      let insertion = `${definition.name}${argumentsSnippet}`;
+      if (environmentWithArguments) {
+        insertion = `${definition.name}}${argumentsSnippet}`;
+      } else if (environmentSkeleton) {
+        insertion = environmentSnippet(definition.name);
+      }
       return {
         label: definition.name,
-        type:
-          definition.kind === "bibentry"
-            ? "constant"
-            : definition.kind === "macro"
-              ? "function"
-              : "variable",
+        type: definitionCompletionType(definition.kind),
         detail: `${kindNoun(definition.kind)}${duplicateDetail} · ${basename(definition.location.file)}:${definition.location.range.startLine}`,
         info: definition.detail,
         apply: guardedApply(
@@ -378,12 +381,43 @@ function completionResult(
   };
 }
 
-function latexCompletion(
-  context: CompletionContext,
-  snapshot: ProjectIntelligenceSnapshot,
-  guard: CompletionGuard,
-  before: string,
-): CompletionResult | null {
+const CITATION_ARGUMENT_RE =
+  /\\([A-Za-z]+)\*?(?:\[[^\]]*\])*\{(?:[^{}]*,)?([^,{}]*)$/u;
+
+const REFERENCE_ARGUMENT_RE =
+  /\\([A-Za-z]+)\*?\s*\{(?:[^{}]*,)?([^,{}]*)$/u;
+
+const REFERENCE_COMMANDS: ReadonlySet<string> = new Set([
+  "ref",
+  "eqref",
+  "pageref",
+  "autoref",
+  "cref",
+  "Cref",
+  "cpageref",
+  "vref",
+  "Vref",
+  "labelcref",
+  "nameref",
+  "namecref",
+  "fref",
+  "sref",
+  "labelref",
+]);
+
+interface LatexCompletionArgs {
+  context: CompletionContext;
+  snapshot: ProjectIntelligenceSnapshot;
+  guard: CompletionGuard;
+  before: string;
+}
+
+type LatexCompletionOutcome = CompletionResult | null | undefined;
+
+function environmentCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, snapshot, guard, before } = args;
   const environment =
     /\\(begin|end)\s*\{([^{}]*)$/u.exec(before);
   if (environment) {
@@ -430,7 +464,7 @@ function latexCompletion(
         detail: i18n.t(($) => $.intelligence.completion.standardEnvironment),
         boost:
           environment[1] === "end" &&
-          before.includes(`\\begin{${name}}`)
+          before.includes(String.raw`\begin{${name}}`)
             ? 50
             : undefined,
         apply:
@@ -447,6 +481,13 @@ function latexCompletion(
     );
   }
 
+  return undefined;
+}
+
+function packageOptionCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, guard, before } = args;
   const packageOption = recognizePackageOption(
     before,
     context.state.sliceDoc(
@@ -493,8 +534,15 @@ function latexCompletion(
     }
   }
 
+  return undefined;
+}
+
+function packageNameCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, guard, before } = args;
   const packageName =
-    /\\usepackage\s*(?:\[[^\]]*\])?\{[^{}]*?(?:,\s*)?([^,{}]*)$/u.exec(
+    /\\usepackage\s*(?:\[[^\]]*\])?\{(?:[^{}]*,)?([^,{}]*)$/u.exec(
       before,
     );
   if (packageName) {
@@ -521,6 +569,13 @@ function latexCompletion(
     );
   }
 
+  return undefined;
+}
+
+function documentClassCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, guard, before } = args;
   const documentClass =
     /\\documentclass\s*(?:\[[^\]]*\])?\{([^{}]*)$/u.exec(before);
   if (documentClass) {
@@ -548,6 +603,13 @@ function latexCompletion(
     );
   }
 
+  return undefined;
+}
+
+function importPathCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, snapshot, guard, before } = args;
   const importPath = recognizeImportPath(before);
   if (importPath) {
     const query = importPath.query;
@@ -567,6 +629,13 @@ function latexCompletion(
     );
   }
 
+  return undefined;
+}
+
+function fileTargetCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, snapshot, guard, before } = args;
   const fileTarget = recognizeFileTarget(before);
   if (fileTarget) {
     const query = fileTarget.query;
@@ -583,22 +652,32 @@ function latexCompletion(
     );
   }
 
-  const citation = /\\(?:[A-Za-z]*cite[A-Za-z]*|nocite)\*?(?:\[[^\]]*\])*\{[^{}]*?(?:,\s*)?([^,{}]*)$/u.exec(
-    before,
-  );
-  if (citation) {
-    const query = (citation[1] ?? "").trimStart();
+  return undefined;
+}
+
+function citationCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, snapshot, guard, before } = args;
+  const citation = CITATION_ARGUMENT_RE.exec(before);
+  if (citation?.[1].includes("cite")) {
+    const query = (citation[2] ?? "").trimStart();
     return completionResult(
       context.pos - query.length,
       citationOptions(snapshot, guard, query),
     );
   }
 
-  const reference = /\\(?:ref|eqref|pageref|autoref|[cC]ref|cpageref|vref|Vref|labelcref|nameref|namecref|fref|sref|labelref)\*?\s*\{[^{}]*?(?:,\s*)?([^,{}]*)$/u.exec(
-    before,
-  );
-  if (reference) {
-    const query = (reference[1] ?? "").trimStart();
+  return undefined;
+}
+
+function referenceCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, snapshot, guard, before } = args;
+  const reference = REFERENCE_ARGUMENT_RE.exec(before);
+  if (reference && REFERENCE_COMMANDS.has(reference[1])) {
+    const query = (reference[2] ?? "").trimStart();
     return completionResult(
       context.pos - query.length,
       definitionOptions(
@@ -610,6 +689,13 @@ function latexCompletion(
     );
   }
 
+  return undefined;
+}
+
+function glossaryCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, snapshot, guard, before } = args;
   const glossaryKey = recognizeGlossaryKey(before);
   if (glossaryKey) {
     return completionResult(
@@ -623,6 +709,13 @@ function latexCompletion(
     );
   }
 
+  return undefined;
+}
+
+function keyvalCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, snapshot, guard, before } = args;
   const keyval = recognizeKeyval(before);
   if (keyval) {
     const keys = keyvalKeysForCommand(
@@ -652,6 +745,13 @@ function latexCompletion(
     }
   }
 
+  return undefined;
+}
+
+function commandCompletion(
+  args: LatexCompletionArgs,
+): LatexCompletionOutcome {
+  const { context, snapshot, guard, before } = args;
   const command = /\\([A-Za-z@]*)$/u.exec(before);
   if (command) {
     const query = command[1] ?? "";
@@ -715,6 +815,36 @@ function latexCompletion(
       ),
     );
   }
+  return undefined;
+}
+
+const LATEX_COMPLETION_STEPS: readonly ((
+  args: LatexCompletionArgs,
+) => LatexCompletionOutcome)[] = [
+  environmentCompletion,
+  packageOptionCompletion,
+  packageNameCompletion,
+  documentClassCompletion,
+  importPathCompletion,
+  fileTargetCompletion,
+  citationCompletion,
+  referenceCompletion,
+  glossaryCompletion,
+  keyvalCompletion,
+  commandCompletion,
+];
+
+function latexCompletion(
+  context: CompletionContext,
+  snapshot: ProjectIntelligenceSnapshot,
+  guard: CompletionGuard,
+  before: string,
+): CompletionResult | null {
+  const args = { context, snapshot, guard, before };
+  for (const step of LATEX_COMPLETION_STEPS) {
+    const result = step(args);
+    if (result !== undefined) return result;
+  }
   return null;
 }
 
@@ -739,7 +869,7 @@ function markdownCompletion(
   }
 
   const at = /(?:^|[[(\s;,])@([\p{L}\p{N}_:.+/-]*)$/u.exec(before);
-  if (!at || before.endsWith("\\@")) return null;
+  if (!at || before.endsWith(String.raw`\@`)) return null;
   const query = at[1] ?? "";
   const definitions = definitionOptions(
     snapshot,
@@ -904,8 +1034,7 @@ const CURRENT_FILE_FALLBACK_MAX_SYNTAX_MARKERS = 2_000;
 
 function exceedsFallbackSyntaxBudget(text: string): boolean {
   let markers = 0;
-  for (let index = 0; index < text.length; index++) {
-    const character = text[index];
+  for (const character of text) {
     if (
       character !== "\\" &&
       character !== "@" &&
@@ -1060,6 +1189,56 @@ function citationCount(
   );
 }
 
+function referenceNoun(use: ProjectUse): string {
+  if (use.syntax === "typst-at") {
+    return i18n.t(($) => $.intelligence.diagnostics.typstLabelOrCitation);
+  }
+  if (use.kind === "citation") {
+    return i18n.t(($) => $.intelligence.diagnostics.citation);
+  }
+  return i18n.t(($) => $.intelligence.diagnostics.reference);
+}
+
+function referenceDiagnosticFor(
+  use: ProjectUse,
+  path: string,
+  definitions: readonly ProjectDefinition[],
+  lookup: FallbackLookup,
+): Diagnostic | null {
+  if (use.kind !== "reference" && use.kind !== "citation") return null;
+  const references =
+    use.kind === "reference"
+      ? referenceCount(use, path, definitions, lookup)
+      : 0;
+  const citations =
+    use.kind === "citation" || use.syntax === "typst-at"
+      ? citationCount(use, path, definitions, lookup)
+      : 0;
+  const candidates = references + citations;
+  if (candidates === 1) return null;
+  const noun = referenceNoun(use);
+  return {
+    from: use.location.range.from,
+    to: Math.max(
+      use.location.range.from + 1,
+      use.location.range.to,
+    ),
+    severity: "warning",
+    message:
+      candidates === 0
+        ? i18n.t(($) => $.intelligence.diagnostics.unresolved, {
+            noun: noun.toLocaleLowerCase("en-US"),
+            name: use.name,
+          })
+        : i18n.t(($) => $.intelligence.diagnostics.ambiguous, {
+            noun,
+            name: use.name,
+            count: candidates,
+          }),
+    source: "live references · current file",
+  };
+}
+
 export function currentFileReferenceDiagnostics(
   path: string,
   text: string,
@@ -1104,43 +1283,13 @@ export function currentFileReferenceDiagnostics(
   const lookup = fallbackLookup(snapshot);
   const diagnostics: Diagnostic[] = [];
   for (const use of currentFile.uses) {
-    if (use.kind !== "reference" && use.kind !== "citation") continue;
-    const references =
-      use.kind === "reference"
-        ? referenceCount(use, path, currentFile.definitions, lookup)
-        : 0;
-    const citations =
-      use.kind === "citation" || use.syntax === "typst-at"
-        ? citationCount(use, path, currentFile.definitions, lookup)
-        : 0;
-    const candidates = references + citations;
-    if (candidates === 1) continue;
-    const noun =
-      use.syntax === "typst-at"
-        ? i18n.t(($) => $.intelligence.diagnostics.typstLabelOrCitation)
-        : use.kind === "citation"
-          ? i18n.t(($) => $.intelligence.diagnostics.citation)
-          : i18n.t(($) => $.intelligence.diagnostics.reference);
-    diagnostics.push({
-      from: use.location.range.from,
-      to: Math.max(
-        use.location.range.from + 1,
-        use.location.range.to,
-      ),
-      severity: "warning",
-      message:
-        candidates === 0
-          ? i18n.t(($) => $.intelligence.diagnostics.unresolved, {
-              noun: noun.toLocaleLowerCase("en-US"),
-              name: use.name,
-            })
-          : i18n.t(($) => $.intelligence.diagnostics.ambiguous, {
-              noun,
-              name: use.name,
-              count: candidates,
-            }),
-      source: "live references · current file",
-    });
+    const diagnostic = referenceDiagnosticFor(
+      use,
+      path,
+      currentFile.definitions,
+      lookup,
+    );
+    if (diagnostic) diagnostics.push(diagnostic);
   }
   return diagnostics;
 }

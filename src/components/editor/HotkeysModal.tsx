@@ -13,32 +13,37 @@ import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 // Leaves rows that already spell out both conventions (e.g. "Ctrl-Space") untouched.
 const keyLabel = (keys: string) => (keys.includes("Ctrl") ? keys : shortcut(keys));
 
-function ShortcutKeys({ keys }: { keys: string }) {
-  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-  let tokens: string[];
-  if (keys === "⌘/Ctrl-click") {
-    tokens = [mac ? "⌘" : "Ctrl", "Click"];
-  } else if (keys.includes("Toolbar →")) {
-    tokens = keys.split(" → ");
-  } else {
-    const normalized = keyLabel(keys);
-    const [combination, command] = normalized.split(" → ");
-    if (combination.includes("+")) {
-      tokens = combination.split("+");
-    } else if (combination.includes("-")) {
-      tokens = combination.split("-");
-    } else {
-      tokens = [];
-      let remaining = combination;
-      for (const modifier of ["⌘", "⇧", "⌥"]) {
-        if (!remaining.startsWith(modifier)) continue;
-        tokens.push(modifier === "⇧" ? "Shift" : modifier);
-        remaining = remaining.slice(modifier.length);
-      }
-      if (remaining) tokens.push(remaining === "↵" ? "Enter" : remaining);
-    }
-    if (command) tokens.push("→", command);
+function modifierTokens(combination: string): string[] {
+  const tokens: string[] = [];
+  let remaining = combination;
+  for (const modifier of ["⌘", "⇧", "⌥"]) {
+    if (!remaining.startsWith(modifier)) continue;
+    tokens.push(modifier === "⇧" ? "Shift" : modifier);
+    remaining = remaining.slice(modifier.length);
   }
+  if (remaining) tokens.push(remaining === "↵" ? "Enter" : remaining);
+  return tokens;
+}
+
+function combinationTokens(combination: string): string[] {
+  if (combination.includes("+")) return combination.split("+");
+  if (combination.includes("-")) return combination.split("-");
+  return modifierTokens(combination);
+}
+
+function shortcutTokens(keys: string, mac: boolean): string[] {
+  if (keys === "⌘/Ctrl-click") return [mac ? "⌘" : "Ctrl", "Click"];
+  if (keys.includes("Toolbar →")) return keys.split(" → ");
+  const normalized = keyLabel(keys);
+  const [combination, command] = normalized.split(" → ");
+  const tokens = combinationTokens(combination);
+  if (command) tokens.push("→", command);
+  return tokens;
+}
+
+function ShortcutKeys({ keys }: Readonly<{ keys: string }>) {
+  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  const tokens = shortcutTokens(keys, mac);
 
   return (
     <KbdGroup className="shrink-0">

@@ -159,34 +159,45 @@ function scanStructure(text: string): StructureScan {
   let figures = 0;
   let displayMathEnvs = 0;
 
-  for (let i = 0; i < text.length; i++) {
+  let i = 0;
+  while (i < text.length) {
     const ch = text[i];
 
     if (ch === "%" && (i === 0 || text[i - 1] !== "\\")) {
       const lineEnd = text.indexOf("\n", i);
-      i = lineEnd < 0 ? text.length : lineEnd;
+      i = (lineEnd < 0 ? text.length : lineEnd) + 1;
       continue;
     }
-    if (ch !== "\\") continue;
+    if (ch !== "\\") {
+      i++;
+      continue;
+    }
 
     const name = /^[a-zA-Z]+/.exec(text.slice(i + 1, i + 32))?.[0];
     if (!name) {
-      i++; // An escaped character (\\, \{, \%) — never the start of a command.
+      // An escaped character (\\, \{, \%) — never the start of a command.
+      i += 2;
       continue;
     }
     let cursor = i + 1 + name.length;
 
     if (name === "begin" || name === "end") {
       const open = skipSpace(text, cursor);
-      if (text[open] !== "{") continue;
+      if (text[open] !== "{") {
+        i++;
+        continue;
+      }
       const close = groupEnd(text, open);
-      if (close < 0) continue;
+      if (close < 0) {
+        i++;
+        continue;
+      }
       const env = text.slice(open + 1, close - 1).trim();
       if (name === "begin") {
         if (FIGURE_ENVS.has(env)) figures++;
         if (DISPLAY_MATH_ENVS.has(env)) displayMathEnvs++;
       }
-      i = close - 1;
+      i = close;
       continue;
     }
 
@@ -194,7 +205,10 @@ function scanStructure(text: string): StructureScan {
     if (starred) cursor++;
     const heading = HEADING_CMDS.has(name);
     const outside = OUTSIDE_TEXT_CMDS.has(name);
-    if (!heading && !outside) continue;
+    if (!heading && !outside) {
+      i++;
+      continue;
+    }
 
     // \captionof{figure}{prose} names its float type first; the prose is the
     // second group. Every other command here takes prose in its first group.
@@ -221,7 +235,7 @@ function scanStructure(text: string): StructureScan {
       cursor = close;
       break;
     }
-    i = cursor - 1;
+    i = cursor;
   }
 
   headerArgs.sort((a, b) => a.from - b.from);

@@ -83,6 +83,25 @@ function skipWhitespace(text: string, start: number): number {
   return cursor;
 }
 
+function optionalArgumentEnd(text: string, opening: number): number | null {
+  let braceDepth = 0;
+  let cursor = opening + 1;
+  while (cursor < text.length) {
+    const char = text[cursor];
+    if (char === "\\") {
+      cursor += Math.min(2, text.length - cursor);
+      continue;
+    }
+    if (char === "{") braceDepth += 1;
+    else if (char === "}" && braceDepth > 0) braceDepth -= 1;
+    else if (char === "]" && braceDepth === 0) {
+      return skipWhitespace(text, cursor + 1);
+    }
+    cursor += 1;
+  }
+  return null;
+}
+
 function afterOptionalArguments(
   text: string,
   start: number,
@@ -94,30 +113,14 @@ function afterOptionalArguments(
 
   while (text[cursor] === "[") {
     const opening = cursor;
-    let braceDepth = 0;
-    cursor += 1;
-    let closed = false;
-    while (cursor < text.length) {
-      const char = text[cursor];
-      if (char === "\\") {
-        cursor += Math.min(2, text.length - cursor);
-        continue;
-      }
-      if (char === "{") braceDepth += 1;
-      else if (char === "}" && braceDepth > 0) braceDepth -= 1;
-      else if (char === "]" && braceDepth === 0) {
-        cursor = skipWhitespace(text, cursor + 1);
-        closed = true;
-        break;
-      }
-      cursor += 1;
-    }
-    if (!closed) {
+    const closed = optionalArgumentEnd(text, opening);
+    if (closed === null) {
       return {
-        start: cursor,
+        start: text.length,
         unclosedOptionalFrom: opening,
       };
     }
+    cursor = closed;
   }
 
   return {
@@ -219,8 +222,8 @@ function diagnostic(
 function matchingMathClose(
   delimiter: OpenMath["delimiter"],
 ): string {
-  if (delimiter === "\\(") return "\\)";
-  if (delimiter === "\\[") return "\\]";
+  if (delimiter === String.raw`\(`) return String.raw`\)`;
+  if (delimiter === String.raw`\[`) return String.raw`\]`;
   return delimiter;
 }
 
@@ -401,7 +404,7 @@ function validateDefinition(
     );
     if (count === null) return;
     if (count) {
-      if (!/^[0-9]$/u.test(count.content.trim())) {
+      if (!/^\d$/u.test(count.content.trim())) {
         diagnostics.push(
           diagnostic(
             count.from + 1,
@@ -533,8 +536,8 @@ export function lintLatexText(text: string): Diagnostic[] {
       continue;
     }
     if (next === ")" || next === "]") {
-      const close = next === ")" ? "\\)" : "\\]";
-      const expectedOpen = next === ")" ? "\\(" : "\\[";
+      const close = next === ")" ? String.raw`\)` : String.raw`\]`;
+      const expectedOpen = next === ")" ? String.raw`\(` : String.raw`\[`;
       const top = math.at(-1);
       if (top?.delimiter === expectedOpen) {
         math.pop();

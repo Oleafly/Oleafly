@@ -63,10 +63,10 @@ const TOOL_TONES: Record<
 function ToolCard({
   tool,
   onOpen,
-}: {
+}: Readonly<{
   tool: ToolDefinition;
   onOpen: () => void;
-}) {
+}>) {
   const tone = TOOL_TONES[tool.tone];
   const name = toolName(tool.id);
   const description = toolDescription(tool.id);
@@ -124,10 +124,10 @@ function ToolCard({
 function ToolsGallery({
   search,
   onOpenTool,
-}: {
+}: Readonly<{
   search: string;
   onOpenTool: (id: ToolId) => void;
-}) {
+}>) {
   const { t: translate } = useTranslation(["common", "researchTools"]);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

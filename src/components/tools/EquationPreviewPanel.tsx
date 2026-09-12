@@ -16,57 +16,57 @@ export const EQUATION_EXAMPLES: { id: string; label: () => string; latex: string
   {
     id: "quadratic",
     label: () => i18n.t(($) => $.researchTools.equation.example.quadratic),
-    latex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+    latex: String.raw`x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}`,
   },
   {
     id: "euler",
     label: () => i18n.t(($) => $.researchTools.equation.example.euler),
-    latex: "e^{i\\pi} + 1 = 0",
+    latex: String.raw`e^{i\pi} + 1 = 0`,
   },
   {
     id: "integral",
     label: () => i18n.t(($) => $.researchTools.equation.example.integral),
-    latex: "\\int_{a}^{b} f(x)\\,dx",
+    latex: String.raw`\int_{a}^{b} f(x)\,dx`,
   },
   {
     id: "matrix",
     label: () => i18n.t(($) => $.researchTools.equation.example.matrix),
-    latex: "A = \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}",
+    latex: String.raw`A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}`,
   },
   {
     id: "cases",
     label: () => i18n.t(($) => $.researchTools.equation.example.cases),
-    latex: "f(x) = \\begin{cases} x^2 & x \\ge 0 \\\\ -x & x < 0 \\end{cases}",
+    latex: String.raw`f(x) = \begin{cases} x^2 & x \ge 0 \\ -x & x < 0 \end{cases}`,
   },
   {
     id: "aligned",
     label: () => i18n.t(($) => $.researchTools.equation.example.aligned),
     latex:
-      "\\begin{aligned} (a+b)^2 &= a^2 + 2ab + b^2 \\\\ &= a^2 + b^2 + 2ab \\end{aligned}",
+      String.raw`\begin{aligned} (a+b)^2 &= a^2 + 2ab + b^2 \\ &= a^2 + b^2 + 2ab \end{aligned}`,
   },
   {
     id: "series",
     label: () => i18n.t(($) => $.researchTools.equation.example.series),
-    latex: "\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}",
+    latex: String.raw`\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}`,
   },
   {
     id: "limit",
     label: () => i18n.t(($) => $.researchTools.equation.example.limit),
-    latex: "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1",
+    latex: String.raw`\lim_{x \to 0} \frac{\sin x}{x} = 1`,
   },
   {
     id: "binomial",
     label: () => i18n.t(($) => $.researchTools.equation.example.binomial),
-    latex: "\\binom{n}{k} = \\frac{n!}{k!\\,(n-k)!}",
+    latex: String.raw`\binom{n}{k} = \frac{n!}{k!\,(n-k)!}`,
   },
   {
     id: "chemistry",
     label: () => i18n.t(($) => $.researchTools.equation.example.chemistry),
-    latex: "\\ce{2H2 + O2 -> 2H2O}",
+    latex: String.raw`\ce{2H2 + O2 -> 2H2O}`,
   },
 ];
 
-function InlineFormula({ html }: { html: string }) {
+function InlineFormula({ html }: Readonly<{ html: string }>) {
   // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
 }
@@ -117,7 +117,7 @@ export function EquationPreviewPanel({
   zoom,
   onZoomChange,
   editorTheme,
-}: EquationPreviewPanelProps) {
+}: Readonly<EquationPreviewPanelProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const previewCardRef = useRef<HTMLDivElement>(null);
 
@@ -255,22 +255,23 @@ export function EquationPreviewPanel({
             >
               {rendered.error ? (
                 <p className="max-w-sm text-sm text-destructive">{rendered.error}</p>
-              ) : rendered.html ? (
-                display ? (
-                  // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
-                  <div dangerouslySetInnerHTML={{ __html: rendered.html }} />
-                ) : (
-                  <p className="max-w-md text-base leading-relaxed">
-                    <Trans
-                      ns="researchTools"
-                      i18nKey={($) => $.researchTools.equation.inlineSample}
-                      components={{ formula: <InlineFormula html={rendered.html} /> }}
-                    />
-                  </p>
-                )
-              ) : (
+              ) : null}
+              {!rendered.error && rendered.html && display ? (
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
+                <div dangerouslySetInnerHTML={{ __html: rendered.html }} />
+              ) : null}
+              {!rendered.error && rendered.html && !display ? (
+                <p className="max-w-md text-base leading-relaxed">
+                  <Trans
+                    ns="researchTools"
+                    i18nKey={($) => $.researchTools.equation.inlineSample}
+                    components={{ formula: <InlineFormula html={rendered.html} /> }}
+                  />
+                </p>
+              ) : null}
+              {!rendered.error && !rendered.html ? (
                 <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.empty)}</p>
-              )}
+              ) : null}
             </div>
           </div>
 

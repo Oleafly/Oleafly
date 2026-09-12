@@ -78,6 +78,12 @@ function looksLikeEntryStart(source: string, offset: number): boolean {
   );
 }
 
+function nextFieldBoundary(comma: number, end: number): number {
+  if (comma < 0) return end;
+  if (end < 0) return comma;
+  return Math.min(comma, end);
+}
+
 function findDirectiveEnd(
   source: string,
   openOffset: number,
@@ -391,8 +397,7 @@ export function parseBibtexIntelligence(
           position = source.length;
           break;
         }
-        position =
-          comma < 0 ? end : end < 0 ? comma : Math.min(comma, end);
+        position = nextFieldBoundary(comma, end);
         continue;
       }
       position++;

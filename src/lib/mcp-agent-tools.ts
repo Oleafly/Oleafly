@@ -89,7 +89,7 @@ function sanitizePreviewValue(
   ) {
     return value;
   }
-  if (typeof value !== "object") return String(value);
+  if (typeof value !== "object") return String(value as string | number | bigint | boolean | symbol | undefined);
   if (seen.has(value)) return TRUNCATED_VALUE;
   if (depth >= MCP_ARGUMENT_PREVIEW_MAX_DEPTH) return TRUNCATED_VALUE;
   seen.add(value);

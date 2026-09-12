@@ -124,7 +124,7 @@ export function ApprovalsFileEditor() {
     if (!view) return;
     const current = view.state.doc.toString();
     const example = approvalsExample(projectId);
-    const next = current.trim() ? `${current.replace(/\s+$/, "")}\n\n${example}` : example;
+    const next = current.trim() ? `${current.trimEnd()}\n\n${example}` : example;
     view.dispatch({ changes: { from: 0, to: current.length, insert: next } });
     view.focus();
   };

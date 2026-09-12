@@ -126,20 +126,22 @@ export const useMcpActivityStore = create<McpActivityState>((set) => ({
   clearUnread: () => set({ unread: 0 }),
 }));
 
+function summarizeMcpObject(raw: object, isError?: boolean): string {
+  const o = raw as Record<string, unknown>;
+  if (typeof o.error === "string") return o.error;
+  try {
+    const s = JSON.stringify(raw);
+    return s.length > 160 ? `${s.slice(0, 157)}…` : s;
+  } catch {
+    return isError ? "error" : "ok";
+  }
+}
+
 export function summarizeMcpResult(raw: unknown, isError?: boolean): string {
   if (raw == null) return isError ? "error" : "ok";
   if (typeof raw === "string") {
     return raw.length > 160 ? `${raw.slice(0, 157)}…` : raw;
   }
-  if (typeof raw === "object") {
-    const o = raw as Record<string, unknown>;
-    if (typeof o.error === "string") return o.error;
-    try {
-      const s = JSON.stringify(raw);
-      return s.length > 160 ? `${s.slice(0, 157)}…` : s;
-    } catch {
-      return isError ? "error" : "ok";
-    }
-  }
-  return String(raw);
+  if (typeof raw === "object") return summarizeMcpObject(raw, isError);
+  return String(raw as string | number | bigint | boolean | symbol);
 }

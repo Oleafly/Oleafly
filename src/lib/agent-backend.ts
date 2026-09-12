@@ -1,5 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import type { AgentUsage } from "@oleafly/ai-core";
+import type { AgentEvent, AgentUsage } from "@oleafly/ai-core";
 
 export type AgentContentPart =
   | { type: "text"; text: string }
@@ -130,7 +130,6 @@ export async function completeViaBackend(
 }
 
 export type { AgentEvent } from "@oleafly/ai-core";
-import type { AgentEvent } from "@oleafly/ai-core";
 
 export class AgentStreamError extends Error {
   readonly retryable: boolean;

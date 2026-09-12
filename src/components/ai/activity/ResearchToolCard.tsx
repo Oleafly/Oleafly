@@ -30,7 +30,7 @@ import { ToolPicture } from "./ToolPicture";
 
 const PREVIEW_LIMIT = 4_000;
 
-function ToolIcon({ view, className }: { view: ResearchToolView; className?: string }) {
+function ToolIcon({ view, className }: Readonly<{ view: ResearchToolView; className?: string }>) {
   const classes = cn("size-3.5 shrink-0 text-muted-foreground", className);
   if (view.kind === "command") return <Terminal className={classes} />;
   if (view.kind === "literature") return <BookOpen className={classes} />;
@@ -40,7 +40,7 @@ function ToolIcon({ view, className }: { view: ResearchToolView; className?: str
   return <Wrench className={classes} />;
 }
 
-function LeadingIcon({ view, expandable, expanded }: { view: ResearchToolView; expandable: boolean; expanded: boolean }) {
+function LeadingIcon({ view, expandable, expanded }: Readonly<{ view: ResearchToolView; expandable: boolean; expanded: boolean }>) {
   if (!expandable) return <ToolIcon view={view} />;
   if (expanded) return <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />;
   return (
@@ -51,7 +51,7 @@ function LeadingIcon({ view, expandable, expanded }: { view: ResearchToolView; e
   );
 }
 
-function StatusIcon({ status }: { status: ResearchToolStatus }) {
+function StatusIcon({ status }: Readonly<{ status: ResearchToolStatus }>) {
   if (status === "running") return <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />;
   if (status === "completed") return <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />;
   if (status === "cancelled" || status === "interrupted")
@@ -59,7 +59,7 @@ function StatusIcon({ status }: { status: ResearchToolStatus }) {
   return <XCircle className="size-3 shrink-0 text-destructive" />;
 }
 
-function LiteratureResults({ view, actions }: { view: ResearchToolView; actions?: ResearchChatActions }) {
+function LiteratureResults({ view, actions }: Readonly<{ view: ResearchToolView; actions?: ResearchChatActions }>) {
   const { t } = useTranslation(["common", "ai"]);
   if (!view.results?.length) return null;
   return (
@@ -103,6 +103,11 @@ function LiteratureResults({ view, actions }: { view: ResearchToolView; actions?
   );
 }
 
+function execStatusAttr(view: ResearchToolView): string | undefined {
+  if (view.kind !== "command") return undefined;
+  return view.status === "completed" ? view.statusLabel : view.statusLabel.toLowerCase();
+}
+
 function toolResult(tc: ToolEntry): "success" | "error" | undefined {
   if (tc.output?.includes('"success": true')) return "success";
   if (tc.output?.includes('"error"')) return "error";
@@ -114,12 +119,12 @@ export function ResearchToolCard({
   actions,
   expansionKey,
   live = false,
-}: {
+}: Readonly<{
   tc: ToolEntry & { interrupted?: boolean };
   actions?: ResearchChatActions;
   expansionKey?: string;
   live?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const view = projectToolEntry(tc);
   const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
@@ -137,6 +142,12 @@ export function ResearchToolCard({
   const canOpenArtifact = Boolean(actions?.openArtifact && view.artifactTarget);
   const canOpenSource = Boolean(actions?.openSource && (view.url || view.doi));
   const canOpenSession = Boolean(actions?.openSession && view.threadId);
+  const artifactButtonLabel = () => {
+    if (view.artifactTarget?.scope !== "linked") return t(($) => $.ai.toolCard.openFile);
+    return artifactLoading
+      ? t(($) => $.ai.toolCard.loadingSource)
+      : t(($) => $.ai.toolCard.inspectSource);
+  };
   return (
     <div
       data-tool-name={tc.name}
@@ -144,7 +155,7 @@ export function ResearchToolCard({
       data-tool-result={toolResult(tc)}
       data-research-status={view.status}
       data-testid={view.kind === "command" ? "exec-card" : "research-tool-card"}
-      data-exec-status={view.kind === "command" ? (view.status === "completed" ? view.statusLabel : view.statusLabel.toLowerCase()) : undefined}
+      data-exec-status={execStatusAttr(view)}
       className="max-w-[85%] text-xs"
     >
       <button
@@ -207,7 +218,7 @@ export function ResearchToolCard({
                 Promise.resolve(actions.openArtifact(view.artifactTarget)).then((result) => {
                   if (result) setArtifactPreview(result);
                 }).catch(() => setArtifactError(true)).finally(() => setArtifactLoading(false));
-              }}>{view.artifactTarget?.scope === "linked" ? (artifactLoading ? t(($) => $.ai.toolCard.loadingSource) : t(($) => $.ai.toolCard.inspectSource)) : t(($) => $.ai.toolCard.openFile)}</button>
+              }}>{artifactButtonLabel()}</button>
             )}
             {canOpenSource && (
               <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => actions?.openSource?.({ url: view.url, doi: view.doi, page: view.page })}>{t(($) => $.ai.toolCard.openSource)}</button>

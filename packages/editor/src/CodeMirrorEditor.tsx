@@ -109,6 +109,12 @@ const isLatexDocumentPath = (path: string | null): boolean =>
 const isMarkdownDocumentPath = (path: string | null): boolean =>
   !!path && /\.(?:md|markdown)$/i.test(path);
 
+function mathPreviewForPath(path: string | null): Extension[] {
+  if (isLatexDocumentPath(path)) return [liveMathPreview("latex")];
+  if (isMarkdownDocumentPath(path)) return [liveMathPreview("markdown")];
+  return [];
+}
+
 function sourceToolsForPath(
   path: string | null,
   completionSyntax: CompletionSyntax,
@@ -121,11 +127,7 @@ function sourceToolsForPath(
   const gatedCompletionSources = completionSources.map((source) =>
     synchronousSources.has(source) ? gateCompletionSource(source, completionSyntax) : source,
   );
-  const mathPreview = isLatexDocumentPath(path)
-    ? [liveMathPreview("latex")]
-    : isMarkdownDocumentPath(path)
-      ? [liveMathPreview("markdown")]
-      : [];
+  const mathPreview = mathPreviewForPath(path);
 
   if (isLatexSourcePath(path)) {
     const staticLatexSource =
@@ -177,8 +179,8 @@ function sourceToolsForPath(
 
 // Sticky scroll reads LaTeX sectioning and environments, so it has nothing to
 // pin in a Markdown, BibTeX, or JSON buffer.
-function stickyScrollFor(path: string | null, enabled: boolean): Extension[] {
-  return enabled && isLatexSourcePath(path) ? [stickyScroll()] : [];
+function stickyScrollFor(path: string | null): Extension[] {
+  return isLatexSourcePath(path) ? [stickyScroll()] : [];
 }
 
 // Bracket auto-closing and cursor rendering, both user preferences that must
@@ -212,7 +214,7 @@ export function CodeMirrorEditor({
   extraCompletionSourcesForPath,
   extraGhostCompletionSourcesForPath,
   extraKeymap,
-}: {
+}: Readonly<{
   active?: boolean;
   host: EditorHost;
   extraExtensions?: Extension[];
@@ -222,7 +224,7 @@ export function CodeMirrorEditor({
   // Checked before the default keymaps (CodeMirror keymap precedence: earlier
   // extensions in the array win).
   extraKeymap?: KeyBinding[];
-}) {
+}>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const vimCompartmentRef = useRef<Compartment | null>(null);
@@ -311,7 +313,7 @@ export function CodeMirrorEditor({
           ),
         ),
         stickyCompartment.of(
-          stickyScrollFor(initialPath, stickyScrollEnabled),
+          stickyScrollEnabled ? stickyScrollFor(initialPath) : [],
         ),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
@@ -324,7 +326,7 @@ export function CodeMirrorEditor({
         highlightSelectionMatches(),
         ...diagnosticPresentationExtensions(),
         EditorView.lineWrapping,
-        langCompartment.of(initialLang ? initialLang : []),
+        langCompartment.of(initialLang ?? []),
         editorTheme(),
         historyCompartment.of(history()),
         vscodeSearch(host.t),
@@ -458,7 +460,7 @@ export function CodeMirrorEditor({
       extraCompletionSourcesForPath?.(activePath) ?? [];
     const ghostCompletionSources =
       extraGhostCompletionSourcesForPath?.(activePath) ?? [];
-    const effects = [langCompartmentRef.current!.reconfigure(lang ? lang : [])];
+    const effects = [langCompartmentRef.current!.reconfigure(lang ?? [])];
     effects.push(
       sourceToolsCompartmentRef.current!.reconfigure(
         sourceToolsForPath(
@@ -470,11 +472,7 @@ export function CodeMirrorEditor({
           ghostCompletionEnabled,
         ),
       ),
-    );
-    effects.push(
       hostToolsCompartmentRef.current!.reconfigure(extraExtensionsForPath?.(activePath) ?? []),
-    );
-    effects.push(
       spellCompartmentRef.current!.reconfigure(
         isProseSourcePath(activePath) && (spellcheck || harper)
           ? spellLintExtensions({ spell: spellcheck, harper })
@@ -518,7 +516,7 @@ export function CodeMirrorEditor({
     if (!view || !compartment) return;
     view.dispatch({
       effects: compartment.reconfigure(
-        stickyScrollFor(activePath, stickyScrollEnabled),
+        stickyScrollEnabled ? stickyScrollFor(activePath) : [],
       ),
     });
   }, [activePath, stickyScrollEnabled]);

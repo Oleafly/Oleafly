@@ -2108,7 +2108,7 @@ fn collect_project_files(root: &Path, directory: &Path, out: &mut Vec<String>, d
         return;
     };
     let mut items: Vec<_> = entries.flatten().collect();
-    items.sort_by_key(|entry| entry.file_name());
+    items.sort_by_key(std::fs::DirEntry::file_name);
     for entry in items {
         let name = entry.file_name();
         let name = name.to_string_lossy();

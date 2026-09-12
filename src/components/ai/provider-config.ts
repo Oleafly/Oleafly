@@ -16,15 +16,15 @@ export interface ProviderState {
 
 export function deriveProviderState(cfg: AppConfig): ProviderState {
   const saved = cfg.ai_provider || "openai";
-  const keys = { ...(cfg.ai_keys ?? {}) };
+  const keys = { ...cfg.ai_keys };
   if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
   const customs = cfg.ai_custom_providers ?? [];
   const keyOptionalIds = customs.filter((c) => c.keyOptional).map((c) => c.id);
-  const configured = Object.keys(keys).filter((k) => (keys[k] ?? "").trim());
+  const firstConfigured = Object.keys(keys).find((k) => (keys[k] ?? "").trim());
   const provider =
     (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved)
       ? saved
-      : configured[0] ?? saved;
+      : firstConfigured ?? saved;
   return {
     provider,
     model: provider === saved && cfg.ai_model ? cfg.ai_model : defaultModel(provider),

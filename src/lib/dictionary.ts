@@ -14,8 +14,12 @@ import {
 const memory = new Map<string, string>();
 const memoryStorage: StateStorage = {
   getItem: (k) => memory.get(k) ?? null,
-  setItem: (k, v) => void memory.set(k, v),
-  removeItem: (k) => void memory.delete(k),
+  setItem: (k, v) => {
+    memory.set(k, v);
+  },
+  removeItem: (k) => {
+    memory.delete(k);
+  },
 };
 
 // Words can be ignored just for one project or everywhere. Persisted to the

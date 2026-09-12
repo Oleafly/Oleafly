@@ -14,11 +14,11 @@ export function ReaderViewDialog({
   open,
   pages,
   onClose,
-}: {
+}: Readonly<{
   open: boolean;
   pages: string[];
   onClose: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preflight"]);
   const [activePage, setActivePage] = useState(0);
 

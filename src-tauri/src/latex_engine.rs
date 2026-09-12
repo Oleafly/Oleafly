@@ -1161,10 +1161,10 @@ async fn write_tinytex_download(
     resuming: bool,
 ) -> Result<(), String> {
     use futures_util::StreamExt as _;
-    use std::io::Write as _;
     use tauri::Emitter as _;
+    use tokio::io::AsyncWriteExt as _;
 
-    let mut file = open_download_file(path, resuming)?;
+    let mut file = open_download_file(path, resuming).await?;
     let mut received = if resuming { already } else { 0 };
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
@@ -1174,10 +1174,12 @@ async fn write_tinytex_download(
         received = checked_received_bytes(received, chunk.len())?;
         if received > asset.expected_bytes {
             drop(file);
-            let _ = std::fs::remove_file(path);
+            let _ = tokio::fs::remove_file(path).await;
             return Err("TinyTeX download exceeded its pinned size and was discarded.".into());
         }
-        file.write_all(&chunk).map_err(|error| error.to_string())?;
+        file.write_all(&chunk)
+            .await
+            .map_err(|error| error.to_string())?;
         let _ = app.emit(
             "tinytex-install-progress",
             EngineProgress {
@@ -1187,7 +1189,7 @@ async fn write_tinytex_download(
             },
         );
     }
-    file.flush().map_err(|error| error.to_string())?;
+    file.flush().await.map_err(|error| error.to_string())?;
     if received == asset.expected_bytes {
         Ok(())
     } else {
@@ -1198,14 +1200,17 @@ async fn write_tinytex_download(
     }
 }
 
-fn open_download_file(path: &Path, resuming: bool) -> Result<std::fs::File, String> {
+async fn open_download_file(path: &Path, resuming: bool) -> Result<tokio::fs::File, String> {
     if resuming {
-        std::fs::OpenOptions::new()
+        tokio::fs::OpenOptions::new()
             .append(true)
             .open(path)
+            .await
             .map_err(|error| error.to_string())
     } else {
-        std::fs::File::create(path).map_err(|error| error.to_string())
+        tokio::fs::File::create(path)
+            .await
+            .map_err(|error| error.to_string())
     }
 }
 
@@ -1220,11 +1225,12 @@ async fn download_tinytex(
     path: &Path,
     asset: &TinytexAsset,
 ) -> Result<(), String> {
-    let mut already = std::fs::metadata(path)
+    let mut already = tokio::fs::metadata(path)
+        .await
         .map(|metadata| metadata.len())
         .unwrap_or(0);
     if already > asset.expected_bytes {
-        let _ = std::fs::remove_file(path);
+        let _ = tokio::fs::remove_file(path).await;
         already = 0;
     }
     if already == asset.expected_bytes {
@@ -1243,7 +1249,7 @@ async fn verify_download(path: &Path, asset: &TinytexAsset) -> Result<(), String
     .await
     .map_err(|error| error.to_string())?;
     if let Err(error) = result {
-        let _ = std::fs::remove_file(path);
+        let _ = tokio::fs::remove_file(path).await;
         return Err(format!(
             "{error} The download was discarded. Retry to download a clean copy."
         ));
@@ -1384,7 +1390,7 @@ async fn install_prepared_tinytex(
     validate_staged_tinytex(app, &paths.staging, asset).await?;
     let installed = publish_tinytex(state, &paths, asset).await;
     if installed.is_ok() {
-        let _ = std::fs::remove_file(&paths.download);
+        let _ = tokio::fs::remove_file(&paths.download).await;
     }
     installed
 }
@@ -1882,7 +1888,9 @@ async fn prepare_tagged_compile(
     if !tex_path.exists() {
         return Err(format!("main document not found: {main_doc}"));
     }
-    std::fs::create_dir_all(&build_dir).map_err(|error| error.to_string())?;
+    tokio::fs::create_dir_all(&build_dir)
+        .await
+        .map_err(|error| error.to_string())?;
     let pdf = build_dir.join(format!("{}.pdf", paths::ENTRY_STEM));
     remove_stale_tagged_pdf(&pdf)?;
     let args = tagged_lualatex_args(&build_dir.to_string_lossy(), &main_doc);

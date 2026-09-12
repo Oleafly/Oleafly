@@ -245,7 +245,7 @@ impl Drop for SubagentManager {
             let agents = self
                 .agents
                 .get_mut()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             for entry in agents.values() {
                 entry.token.cancel();
                 owners.push(entry.exec_owner.clone());
@@ -954,7 +954,7 @@ fn find_entry<'a>(
 }
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    m.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn lock_status<'a>(

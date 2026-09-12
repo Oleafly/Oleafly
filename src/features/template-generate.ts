@@ -40,6 +40,16 @@ export interface ParsedTemplate {
 
 const ENGINES = new Set(["xetex", "typst", "markdown"]);
 
+function defaultMainDoc(engine: string): string {
+  if (engine === "typst") return "main.typ";
+  if (engine === "markdown") return "main.md";
+  return "main.tex";
+}
+
+function asText(value: unknown, fallback: string): string {
+  return String((value ?? fallback) as string | number | boolean);
+}
+
 export function parseGeneratedTemplate(text: string): ParsedTemplate {
   const stripped = text
     .replace(/^```[a-zA-Z]*\n?/gm, "")
@@ -49,25 +59,25 @@ export function parseGeneratedTemplate(text: string): ParsedTemplate {
   const end = stripped.lastIndexOf("}");
   if (start < 0 || end <= start) throw new Error("no JSON object in response");
   const raw = JSON.parse(stripped.slice(start, end + 1)) as Record<string, unknown>;
-  const engine = String(raw.engine ?? "");
+  const engine = asText(raw.engine, "");
   if (!ENGINES.has(engine)) throw new Error(`unsupported engine: ${engine}`);
-  const slug = String(raw.slug ?? "")
+  const slug = asText(raw.slug, "")
     .toLowerCase()
     .replace(/[^a-z0-9-_]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-+|(?<!-)-+$/g, "");
   if (!slug) throw new Error("missing slug");
-  const source = String(raw.source ?? "");
+  const source = asText(raw.source, "");
   if (!source.trim()) throw new Error("missing source");
   return {
     slug,
-    name: String(raw.name ?? slug),
-    description: String(raw.description ?? ""),
-    category: String(raw.category ?? "Custom"),
+    name: asText(raw.name, slug),
+    description: asText(raw.description, ""),
+    category: asText(raw.category, "Custom"),
     tags: Array.isArray(raw.tags)
       ? raw.tags.filter((t): t is string => typeof t === "string").slice(0, 4)
       : [],
     engine: engine as ParsedTemplate["engine"],
-    mainDoc: String(raw.main_doc ?? (engine === "typst" ? "main.typ" : engine === "markdown" ? "main.md" : "main.tex")),
+    mainDoc: asText(raw.main_doc, defaultMainDoc(engine)),
     source,
   };
 }

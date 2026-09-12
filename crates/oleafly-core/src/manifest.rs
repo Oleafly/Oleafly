@@ -41,7 +41,7 @@ impl Engine {
     pub fn infer(main_document: &str) -> Result<Self> {
         let extension = Path::new(main_document)
             .extension()
-            .and_then(|value| value.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or_default();
         match extension.to_ascii_lowercase().as_str() {
             "tex" | "ltx" | "latex" => Ok(Self::Tectonic),
@@ -57,7 +57,7 @@ impl Engine {
     pub fn accepts(self, main_document: &str) -> bool {
         let extension = Path::new(main_document)
             .extension()
-            .and_then(|value| value.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or_default();
         match self {
             Self::Tectonic | Self::Latexmk => {

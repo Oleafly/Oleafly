@@ -91,7 +91,7 @@ fn save_to_path(path: &std::path::Path, json: &str) -> Result<(), String> {
         .ok_or_else(|| "chats path has no parent".to_string())?;
     let name = path
         .file_name()
-        .and_then(|value| value.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| "chats path has no file name".to_string())?;
     let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let tmp = dir.join(format!(".{name}.{}.{}.tmp", std::process::id(), sequence));

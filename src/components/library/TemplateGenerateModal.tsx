@@ -41,7 +41,7 @@ const ENGINE_LABELS: Record<ParsedTemplate["engine"], string> = {
   markdown: "PANDOC",
 };
 
-function SkeletonPage({ dim }: { dim?: boolean }) {
+function SkeletonPage({ dim }: Readonly<{ dim?: boolean }>) {
   return (
     <div
       className={cn(
@@ -67,11 +67,11 @@ export function TemplateGenerateModal({
   open,
   onClose,
   onSaved,
-}: {
+}: Readonly<{
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "library"]);
   const examples = [
     t(($) => $.library.generate.examples.workshopPaper),
@@ -94,7 +94,7 @@ export function TemplateGenerateModal({
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("preview");
   const [previewPng, setPreviewPng] = useState<string | null>(null);
-  const [, setCompileLog] = useState("");
+  const [_compileLog, setCompileLog] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [using, setUsing] = useState(false);
@@ -165,6 +165,32 @@ export function TemplateGenerateModal({
 
   if (!open) return null;
 
+  const compilePreview = async (
+    result: Awaited<ReturnType<typeof generateTemplateSource>>,
+  ): Promise<{ png: string | null; log: string }> => {
+    try {
+      const compiled = await compileGeneratedTemplate(result);
+      return { png: compiled.png, log: compiled.log };
+    } catch (e) {
+      return { png: null, log: e instanceof Error ? e.message : String(e) };
+    }
+  };
+
+  const reportGenerateFailure = (e: unknown) => {
+    clearStepTimers();
+    setPhase("prompt");
+    const raw = e instanceof Error ? e.message : String(e);
+    const hint = friendlyHint(raw, undefined, "settings");
+    setError(hint ?? raw);
+  };
+
+  const startLoadingSteps = (live: () => boolean) => {
+    stepTimersRef.current = [
+      window.setTimeout(() => live() && setLoadingStep((s) => Math.max(s, 1)), 1_100),
+      window.setTimeout(() => live() && setLoadingStep((s) => Math.max(s, 2)), 2_600),
+    ];
+  };
+
   const generate = async (prompt: string) => {
     const text = prompt.trim();
     if (!text || phase === "loading") return;
@@ -172,9 +198,7 @@ export function TemplateGenerateModal({
     const live = () => runSeqRef.current === seq;
     setError(null);
     if (!(await generateTemplateAvailable())) {
-      if (live()) {
-        setError(t(($) => $.library.generate.noProvider));
-      }
+      if (live()) setError(t(($) => $.library.generate.noProvider));
       return;
     }
     if (!live()) return;
@@ -187,10 +211,7 @@ export function TemplateGenerateModal({
     setSaved(false);
     setEditingDescription(false);
     clearStepTimers();
-    stepTimersRef.current = [
-      window.setTimeout(() => live() && setLoadingStep((s) => Math.max(s, 1)), 1_100),
-      window.setTimeout(() => live() && setLoadingStep((s) => Math.max(s, 2)), 2_600),
-    ];
+    startLoadingSteps(live);
     try {
       const result = await generateTemplateSource(
         text,
@@ -199,15 +220,7 @@ export function TemplateGenerateModal({
       if (!live()) return;
       clearStepTimers();
       setLoadingStep(3);
-      let png: string | null = null;
-      let log = "";
-      try {
-        const compiled = await compileGeneratedTemplate(result);
-        png = compiled.png;
-        log = compiled.log;
-      } catch (e) {
-        log = e instanceof Error ? e.message : String(e);
-      }
+      const { png, log } = await compilePreview(result);
       if (!live()) return;
       setParsed(result);
       setPreviewPng(png);
@@ -215,12 +228,7 @@ export function TemplateGenerateModal({
       setView(png ? "preview" : "code");
       setPhase("result");
     } catch (e) {
-      if (!live()) return;
-      clearStepTimers();
-      setPhase("prompt");
-      const raw = e instanceof Error ? e.message : String(e);
-      const hint = friendlyHint(raw, undefined, "settings");
-      setError(hint ?? raw);
+      if (live()) reportGenerateFailure(e);
     }
   };
 
@@ -489,7 +497,8 @@ export function TemplateGenerateModal({
                     <pre className="h-full overflow-auto whitespace-pre-wrap rounded-xl border bg-background p-4 font-mono text-xs leading-relaxed text-muted-foreground">
                       {parsed.source}
                     </pre>
-                  ) : previewPng ? (
+                  ) : null}
+                  {view !== "code" && (previewPng ? (
                     <div className="flex h-full items-start justify-center overflow-auto rounded-xl bg-zinc-200 p-6">
                       <img
                         src={previewPng}
@@ -506,7 +515,7 @@ export function TemplateGenerateModal({
                           : t(($) => $.library.generate.previewUnsupported)}
                       </p>
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
 

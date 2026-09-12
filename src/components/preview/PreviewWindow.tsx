@@ -230,11 +230,11 @@ function OutlineItems({
   items,
   onActivate,
   depth = 0,
-}: {
+}: Readonly<{
   items: PdfOutlineItem[];
   onActivate: (id: string) => void;
   depth?: number;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   return (
     <ul className={cn(depth > 0 && "ml-3 border-l pl-1")}>
@@ -272,12 +272,12 @@ function PreviewMessage({
   detail,
   loading = false,
   onRetry,
-}: {
+}: Readonly<{
   title: string;
   detail: string;
   loading?: boolean;
   onRetry?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   return (
     <div
@@ -319,7 +319,7 @@ export interface PreviewWindowProps {
 export function PreviewWindow({
   harnessBytes,
   disableNativeBridge = false,
-}: PreviewWindowProps = {}) {
+}: Readonly<PreviewWindowProps> = {}) {
   const { t } = useTranslation(["common", "preview"]);
   const [initialContext] = useState(readInitialPreviewContext);
   const harnessDocument = harnessBytes
@@ -538,9 +538,9 @@ export function PreviewWindow({
     );
     return () => {
       ++artifactLoadGenerationRef.current;
-      void refreshListener.then((unlisten) => unlisten());
-      void projectListener.then((unlisten) => unlisten());
-      void projectStateListener.then((unlisten) => unlisten());
+      refreshListener.then((unlisten) => unlisten());
+      projectListener.then((unlisten) => unlisten());
+      projectStateListener.then((unlisten) => unlisten());
     };
   }, [acceptCompileState, disableNativeBridge, retargetProject]);
 
@@ -570,7 +570,7 @@ export function PreviewWindow({
     const expectedStateKey = previewStateKey(compileState);
     setArtifactLoading(true);
     setArtifactFailure(null);
-    void (async () => {
+    (async () => {
       try {
         const bytes = new Uint8Array(
           await readCompiledPdf(checkpoint.projectId),
@@ -770,7 +770,7 @@ export function PreviewWindow({
       .then(projectTitleFromWindowTitle)
       .catch(() => null);
     const apply = () => {
-      void projectTitle
+      projectTitle
         .then((title) =>
           active && title !== null
             ? getCurrentWindow().setTitle(previewWindowTitle(title))
@@ -914,23 +914,50 @@ export function PreviewWindow({
     previewDocument !== null &&
     !displayedIsCurrent &&
     !disableNativeBridge;
+  const searchCounterLabel = (): string => {
+    if (searchState.status === "searching") {
+      return `${searchState.scannedPages}/${searchState.totalPages}`;
+    }
+    if (searchInput.trim()) return `${searchState.current}/${searchState.total}`;
+    return "0/0";
+  };
+  const placeholderTitle = (): string => {
+    if (compileState?.status === "compiling") return t(($) => $.preview.window.compilingTitle);
+    if (compileState?.status === "error") return t(($) => $.preview.window.compileFailedTitle);
+    if (compileState?.status === "unavailable") {
+      return t(($) => $.preview.window.compileUnavailableTitle);
+    }
+    if (artifactFailure) return t(($) => $.preview.window.artifactUnavailableTitle);
+    return t(($) => $.preview.window.noVerifiedTitle);
+  };
+  const pdfLoadTitle = (): string => {
+    if (pdfLoadState.status === "loading") return t(($) => $.preview.window.loadingTitle);
+    if (pdfLoadState.status === "invalid") return t(($) => $.preview.viewer.invalidTitle);
+    if (pdfLoadState.status === "empty") return t(($) => $.preview.viewer.emptyTitle);
+    if (pdfLoadState.status === "unavailable") {
+      return t(($) => $.preview.viewer.unavailableTitle);
+    }
+    return t(($) => $.preview.viewer.loadFailedTitle);
+  };
+
+  const staleCompileExplanation = () => {
+    if (compileState?.status === "compiling") {
+      return t(($) => $.preview.window.staleCompiling, {
+        revision:
+          previewDocument?.checkpoint?.projectRevision ??
+          t(($) => $.preview.window.staleUnknownRevision),
+      });
+    }
+    if (compileState?.status === "error" || compileState?.status === "unavailable") {
+      return t(($) => $.preview.window.staleCompileFailed, {
+        detail:
+          compileState.message ?? t(($) => $.preview.window.staleCompileFailedDetail),
+      });
+    }
+    return t(($) => $.preview.window.staleIdentity);
+  };
   const staleExplanation =
-    retainedLoadFailure ??
-    artifactFailure ??
-    (compileState?.status === "compiling"
-      ? t(($) => $.preview.window.staleCompiling, {
-          revision:
-            previewDocument?.checkpoint?.projectRevision ??
-            t(($) => $.preview.window.staleUnknownRevision),
-        })
-      : compileState?.status === "error" ||
-          compileState?.status === "unavailable"
-        ? t(($) => $.preview.window.staleCompileFailed, {
-            detail:
-              compileState.message ??
-              t(($) => $.preview.window.staleCompileFailedDetail),
-          })
-        : t(($) => $.preview.window.staleIdentity));
+    retainedLoadFailure ?? artifactFailure ?? staleCompileExplanation();
 
   const rotateClockwise = () => {
     if (!previewDocument) return;
@@ -1048,7 +1075,7 @@ export function PreviewWindow({
                 value={pageInput}
                 onChange={(event) =>
                   setPageInput(
-                    event.target.value.replace(/[^0-9]/gu, ""),
+                    event.target.value.replace(/\D/gu, ""),
                   )
                 }
                 onKeyDown={(event) => {
@@ -1215,9 +1242,8 @@ export function PreviewWindow({
 
       {(displayedIsStale || retainedLoadFailure || artifactFailure) &&
         previewDocument && (
-          <div
+          <output
             className="flex shrink-0 items-start gap-2 border-b border-amber-500/40 bg-amber-500/15 px-3 py-2 text-amber-950 dark:text-amber-100"
-            role="status"
             aria-live="polite"
           >
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -1237,7 +1263,7 @@ export function PreviewWindow({
                 {t(($) => $.common.actions.retry)}
               </Button>
             )}
-          </div>
+          </output>
         )}
 
       <div className="relative min-h-0 flex-1 overflow-hidden bg-sidebar">
@@ -1273,14 +1299,14 @@ export function PreviewWindow({
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-2">
               {outlineState.status === "loading" ? (
-                <p
+                <output
                   className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground"
-                  role="status"
                 >
                   <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
                   {t(($) => $.preview.outline.loading)}
-                </p>
-              ) : outlineState.items.length ? (
+                </output>
+              ) : null}
+              {outlineState.status !== "loading" && (outlineState.items.length ? (
                 <OutlineItems
                   items={outlineState.items}
                   onActivate={(id) => {
@@ -1292,7 +1318,7 @@ export function PreviewWindow({
                 <p className="px-2 py-3 text-xs text-muted-foreground">
                   {outlineState.message ?? t(($) => $.preview.outline.empty)}
                 </p>
-              )}
+              ))}
             </div>
           </aside>
         )}
@@ -1328,11 +1354,7 @@ export function PreviewWindow({
               className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"
               aria-live="polite"
             >
-              {searchState.status === "searching"
-                ? `${searchState.scannedPages}/${searchState.totalPages}`
-                : searchInput.trim()
-                  ? `${searchState.current}/${searchState.total}`
-                  : "0/0"}
+              {searchCounterLabel()}
             </span>
             <Button
               variant="ghost"
@@ -1426,17 +1448,7 @@ export function PreviewWindow({
                 loading={
                   artifactLoading || compileState?.status === "compiling"
                 }
-                title={
-                  compileState?.status === "compiling"
-                    ? t(($) => $.preview.window.compilingTitle)
-                    : compileState?.status === "error"
-                      ? t(($) => $.preview.window.compileFailedTitle)
-                      : compileState?.status === "unavailable"
-                        ? t(($) => $.preview.window.compileUnavailableTitle)
-                        : artifactFailure
-                          ? t(($) => $.preview.window.artifactUnavailableTitle)
-                          : t(($) => $.preview.window.noVerifiedTitle)
-                }
+                title={placeholderTitle()}
                 detail={
                   artifactFailure ??
                   compileState?.message ??
@@ -1498,17 +1510,7 @@ export function PreviewWindow({
               ) : (
                 <PreviewMessage
                   loading={pdfLoadState.status === "loading"}
-                  title={
-                    pdfLoadState.status === "loading"
-                      ? t(($) => $.preview.window.loadingTitle)
-                      : pdfLoadState.status === "invalid"
-                        ? t(($) => $.preview.viewer.invalidTitle)
-                        : pdfLoadState.status === "empty"
-                          ? t(($) => $.preview.viewer.emptyTitle)
-                          : pdfLoadState.status === "unavailable"
-                            ? t(($) => $.preview.viewer.unavailableTitle)
-                            : t(($) => $.preview.viewer.loadFailedTitle)
-                  }
+                  title={pdfLoadTitle()}
                   detail={
                     pdfLoadState.status === "loading" &&
                     pdfLoadState.progress !== undefined

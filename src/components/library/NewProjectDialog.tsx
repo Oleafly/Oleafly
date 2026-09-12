@@ -43,14 +43,14 @@ function KitSelect({
   className,
   "aria-label": ariaLabel,
   "data-testid": testId,
-}: {
+}: Readonly<{
   value: string;
   onValueChange: (value: string) => void;
   options: { value: string; label: string }[];
   className?: string;
   "aria-label"?: string;
   "data-testid"?: string;
-}) {
+}>) {
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger className={className} aria-label={ariaLabel} data-testid={testId}>
@@ -88,7 +88,7 @@ const HOST: TemplatesHost = {
 
 const FOCUS_RESTORE_FRAMES = 12;
 
-export function NewProjectDialog(props: {
+export function NewProjectDialog(props: Readonly<{
   open: boolean;
   templates: TemplateInfo[];
   busy?: boolean;
@@ -97,7 +97,7 @@ export function NewProjectDialog(props: {
   onTemplatesChanged?: () => void;
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["templates"]);
   const kit = useMemo<TemplatesKit>(
     () => ({

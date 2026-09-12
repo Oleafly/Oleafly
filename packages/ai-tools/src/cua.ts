@@ -140,6 +140,49 @@ function unavailable(surface: CuaSurface): CuaResult {
 // Executes a single validated action against the sandbox surface. The caller
 // is responsible for having obtained approval for confirm-risk actions before
 // calling this.
+function cuaScroll(surface: CuaSurface, action: CuaAction): CuaResult {
+  const doc = surfaceDocument(surface);
+  if (!doc) return unavailable(surface);
+  const target = doc.defaultView;
+  if (target) target.scrollBy?.(0, action.amount ?? 400);
+  return { ok: true, message: "Scrolled", observation: observe(surface) };
+}
+
+function cuaClick(surface: CuaSurface, action: CuaAction): CuaResult {
+  const doc = surfaceDocument(surface);
+  if (!doc) return unavailable(surface);
+  const el = action.selector
+    ? doc.querySelector<HTMLElement>(action.selector)
+    : null;
+  if (!el) return { ok: false, message: `No element matches ${action.selector}` };
+  el.click();
+  return { ok: true, message: `Clicked ${action.selector}`, observation: observe(surface) };
+}
+
+function cuaType(surface: CuaSurface, action: CuaAction): CuaResult {
+  const doc = surfaceDocument(surface);
+  if (!doc) return unavailable(surface);
+  const el = action.selector
+    ? doc.querySelector<HTMLInputElement | HTMLTextAreaElement>(action.selector)
+    : null;
+  if (!el) return { ok: false, message: `No field matches ${action.selector}` };
+  el.value = action.text ?? "";
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  return { ok: true, message: `Typed into ${action.selector}` };
+}
+
+function cuaSubmit(surface: CuaSurface, action: CuaAction): CuaResult {
+  const doc = surfaceDocument(surface);
+  if (!doc) return unavailable(surface);
+  const el = action.selector
+    ? doc.querySelector<HTMLFormElement>(action.selector)
+    : null;
+  const form = el ?? doc.querySelector<HTMLFormElement>("form");
+  if (!form) return { ok: false, message: "No form to submit" };
+  form.requestSubmit?.();
+  return { ok: true, message: "Submitted the form", observation: observe(surface) };
+}
+
 export async function runCuaAction(
   surface: CuaSurface,
   action: CuaAction,
@@ -168,50 +211,19 @@ export async function runCuaAction(
         observation: observe(surface),
       };
     }
-    case "scroll": {
-      const doc = surfaceDocument(surface);
-      if (!doc) return unavailable(surface);
-      const target = doc.defaultView;
-      if (target) target.scrollBy?.(0, action.amount ?? 400);
-      return { ok: true, message: "Scrolled", observation: observe(surface) };
-    }
+    case "scroll":
+      return cuaScroll(surface, action);
     case "wait":
       await new Promise((resolve) =>
         setTimeout(resolve, Math.min(5000, Math.max(0, action.amount ?? 500))),
       );
       return { ok: true, message: "Waited" };
-    case "click": {
-      const doc = surfaceDocument(surface);
-      if (!doc) return unavailable(surface);
-      const el = action.selector
-        ? doc.querySelector<HTMLElement>(action.selector)
-        : null;
-      if (!el) return { ok: false, message: `No element matches ${action.selector}` };
-      el.click();
-      return { ok: true, message: `Clicked ${action.selector}`, observation: observe(surface) };
-    }
-    case "type": {
-      const doc = surfaceDocument(surface);
-      if (!doc) return unavailable(surface);
-      const el = action.selector
-        ? doc.querySelector<HTMLInputElement | HTMLTextAreaElement>(action.selector)
-        : null;
-      if (!el) return { ok: false, message: `No field matches ${action.selector}` };
-      el.value = action.text ?? "";
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      return { ok: true, message: `Typed into ${action.selector}` };
-    }
-    case "submit": {
-      const doc = surfaceDocument(surface);
-      if (!doc) return unavailable(surface);
-      const el = action.selector
-        ? doc.querySelector<HTMLFormElement>(action.selector)
-        : null;
-      const form = el ?? doc.querySelector<HTMLFormElement>("form");
-      if (!form) return { ok: false, message: "No form to submit" };
-      form.requestSubmit?.();
-      return { ok: true, message: "Submitted the form", observation: observe(surface) };
-    }
+    case "click":
+      return cuaClick(surface, action);
+    case "type":
+      return cuaType(surface, action);
+    case "submit":
+      return cuaSubmit(surface, action);
     default:
       return { ok: false, message: `Unknown action ${(action as CuaAction).type}` };
   }

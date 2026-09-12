@@ -224,7 +224,7 @@ async function readCompiledPdfProbe(): Promise<E2ePdfProbe> {
 
         pages.push({
           pageNumber,
-          text: lineParts.join("").replace(/[ \t]+\n/g, "\n").trim(),
+          text: lineParts.join("").replace(/(?<![ \t])[ \t]+\n/g, "\n").trim(),
           width: viewport.width,
           height: viewport.height,
           rotation: viewport.rotation,

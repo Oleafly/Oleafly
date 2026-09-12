@@ -180,8 +180,12 @@ pub async fn refresh_pack_catalog() -> Result<(), String> {
     parse_catalog(&body)?;
     let cache = cache_path()?;
     let tmp = cache.with_extension("json.part");
-    std::fs::write(&tmp, &body).map_err(|e| e.to_string())?;
-    std::fs::rename(&tmp, &cache).map_err(|e| e.to_string())?;
+    tokio::fs::write(&tmp, &body)
+        .await
+        .map_err(|e| e.to_string())?;
+    tokio::fs::rename(&tmp, &cache)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -190,8 +194,8 @@ pub async fn refresh_pack_catalog() -> Result<(), String> {
 #[tauri::command]
 pub async fn install_template_pack(app: AppHandle, id: String) -> Result<(), String> {
     use futures_util::StreamExt;
-    use std::io::Write as _;
     use tauri::Emitter;
+    use tokio::io::AsyncWriteExt as _;
 
     let pack = catalog(&app)?
         .into_iter()
@@ -208,7 +212,9 @@ pub async fn install_template_pack(app: AppHandle, id: String) -> Result<(), Str
             continue;
         }
         if let Some(parent) = dest.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| e.to_string())?;
         }
         let tmp = dest.with_extension("part");
         let resp = reqwest::get(&f.url)
@@ -217,13 +223,15 @@ pub async fn install_template_pack(app: AppHandle, id: String) -> Result<(), Str
             .error_for_status()
             .map_err(|e| format!("download failed: {e}"))?;
         let file_total = resp.content_length();
-        let mut out = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
+        let mut out = tokio::fs::File::create(&tmp)
+            .await
+            .map_err(|e| e.to_string())?;
         let mut stream = resp.bytes_stream();
         let mut received: u64 = 0;
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| format!("download interrupted: {e}"))?;
             received += chunk.len() as u64;
-            out.write_all(&chunk).map_err(|e| e.to_string())?;
+            out.write_all(&chunk).await.map_err(|e| e.to_string())?;
             let _ = app.emit(
                 "asset-progress",
                 crate::assets::AssetProgress {
@@ -237,9 +245,11 @@ pub async fn install_template_pack(app: AppHandle, id: String) -> Result<(), Str
                 },
             );
         }
-        out.flush().map_err(|e| e.to_string())?;
+        out.flush().await.map_err(|e| e.to_string())?;
         drop(out);
-        std::fs::rename(&tmp, &dest).map_err(|e| e.to_string())?;
+        tokio::fs::rename(&tmp, &dest)
+            .await
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }

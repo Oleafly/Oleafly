@@ -8,15 +8,15 @@ export function GridPattern({
   y = -1,
   strokeDasharray = "0",
   className,
-}: {
+}: Readonly<{
   width?: number;
   height?: number;
   x?: number;
   y?: number;
   strokeDasharray?: string;
   className?: string;
-}) {
-  const id = useId().replace(/[:]/g, "");
+}>) {
+  const id = useId().replaceAll(":", "");
   return (
     <svg
       aria-hidden="true"

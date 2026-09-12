@@ -21,7 +21,7 @@ describe("packChatHistory", () => {
       content: `m${i}`,
     }));
     const packed = packChatHistory(msgs, { maxTurns: 4 });
-    expect(packed.length).toBe(4);
+    expect(packed).toHaveLength(4);
     expect(packed[0].content).toBe("m36");
   });
 });

@@ -44,6 +44,12 @@ const USER_SKILL_CHIP_CLASS =
 const USER_MENTION_CHIP_CLASS =
   "rounded bg-teal-300/35 px-1 py-px font-medium text-white";
 
+function userTokenChipClass(kind: string): string | undefined {
+  if (kind === "skill") return USER_SKILL_CHIP_CLASS;
+  if (kind === "mention") return USER_MENTION_CHIP_CLASS;
+  return undefined;
+}
+
 export function userTokenChips(msg: ChatMessage): React.ReactNode | null {
   const skillIds = msg.skillId ? [msg.skillId] : [];
   const mentions = msg.mentions ?? [];
@@ -56,13 +62,7 @@ export function userTokenChips(msg: ChatMessage): React.ReactNode | null {
         <span
           key={`${token.kind}-${token.start}`}
           data-token={token.kind}
-          className={
-            token.kind === "skill"
-              ? USER_SKILL_CHIP_CLASS
-              : token.kind === "mention"
-                ? USER_MENTION_CHIP_CLASS
-                : undefined
-          }
+          className={userTokenChipClass(token.kind)}
         >
           {msg.content.slice(token.start, token.end)}
         </span>
@@ -71,12 +71,12 @@ export function userTokenChips(msg: ChatMessage): React.ReactNode | null {
   );
 }
 
-export function Shimmer({ text }: { text?: string }) {
+export function Shimmer({ text }: Readonly<{ text?: string }>) {
   return text ? <span className="ai-shimmer text-xs">{text}</span> : null;
 }
 
 // Used for low-urgency notices we don't want to spend a full banner on.
-export function InfoHint({ message }: { message: string }) {
+export function InfoHint({ message }: Readonly<{ message: string }>) {
   return (
     <Popover ariaLabel={message} trigger={<Info className="size-4" />} className="w-60 p-2.5">
       <p className="text-[11px] leading-relaxed text-muted-foreground">{message}</p>
@@ -104,7 +104,7 @@ function todoStatusLabel(status: AgentTodo["status"]): string {
   }
 }
 
-function AgentTodoList({ todos }: { todos: readonly AgentTodo[] }) {
+function AgentTodoList({ todos }: Readonly<{ todos: readonly AgentTodo[] }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
     <ul className="space-y-1">
@@ -161,7 +161,7 @@ function AgentTodoList({ todos }: { todos: readonly AgentTodo[] }) {
   );
 }
 
-function AgentPlanStatusBadge({ status }: { status: AgentPlanApproval["status"] }) {
+function AgentPlanStatusBadge({ status }: Readonly<{ status: AgentPlanApproval["status"] }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
     <span
@@ -186,11 +186,11 @@ export function AgentStatusPill({
   todos,
   turn,
   approval,
-}: {
+}: Readonly<{
   todos: readonly AgentTodo[];
   turn: AgentFileChangeTurn | null;
   approval?: AgentPlanApproval;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -400,10 +400,10 @@ export function AgentStatusPill({
 function FileChangeRow({
   file,
   state,
-}: {
+}: Readonly<{
   file: AgentFileChange;
   state: "changed" | "committed";
-}) {
+}>) {
   return (
     <span
       data-file-change-state={state}
@@ -417,7 +417,7 @@ function FileChangeRow({
   );
 }
 
-function FileChangeDetails({ turn }: { turn: AgentFileChangeTurn }) {
+function FileChangeDetails({ turn }: Readonly<{ turn: AgentFileChangeTurn }>) {
   const { t } = useTranslation(["common", "ai"]);
   const changed = Object.values(turn.changedFiles);
   const committed = new Map<string, AgentFileChange[]>();
@@ -462,11 +462,11 @@ export function AgentRunSummary({
   todos,
   turn,
   plan = false,
-}: {
+}: Readonly<{
   todos: readonly AgentTodo[];
   turn: AgentFileChangeTurn | null;
   plan?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const progress = agentTodoProgress(todos);
   const totals = agentFileChangeTotals(turn);
@@ -507,7 +507,7 @@ export function AgentRunSummary({
   );
 }
 
-export function CopyMessageButton({ text }: { text: string }) {
+export function CopyMessageButton({ text }: Readonly<{ text: string }>) {
   const { t } = useTranslation(["common", "ai"]);
   const [copied, setCopied] = useState(false);
   const resetTimerRef = useRef<number | null>(null);
@@ -590,11 +590,11 @@ export function ExplorationGroup({
   tools,
   actions,
   expansionKey,
-}: {
+}: Readonly<{
   tools: ToolEntry[];
   actions?: ResearchChatActions;
   expansionKey?: string;
-}) {
+}>) {
   useTranslation(["common", "ai"]);
   const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
@@ -636,12 +636,12 @@ export function ToolBadge({
   actions,
   expansionKey,
   live = false,
-}: {
+}: Readonly<{
   tc: ToolEntry;
   actions?: ResearchChatActions;
   expansionKey?: string;
   live?: boolean;
-}) {
+}>) {
   return <ResearchToolCard tc={tc} actions={actions} expansionKey={expansionKey} live={live} />;
 }
 
@@ -659,6 +659,41 @@ export function formatToolOutput(output: unknown): string {
 
 export type AiHintSurface = "chat" | "settings";
 
+const ERROR_HINTS: ReadonlyArray<{
+  codes?: readonly number[];
+  pattern?: RegExp;
+  hint: (where: string) => string;
+}> = [
+  {
+    codes: [402],
+    pattern: /insufficient balance|no resource package|recharge|out of credit|insufficient[_ ]?quota|exceeded your current quota|billing|payment required/,
+    hint: (where) => i18n.t(($) => $.ai.chat.errorHints.outOfCredits, { where }),
+  },
+  {
+    codes: [401, 403],
+    pattern: /invalid api key|incorrect api key|unauthorized|invalid[_ ]?api[_ ]?key|authentication|no api key/,
+    hint: (where) => i18n.t(($) => $.ai.chat.errorHints.invalidKey, { where }),
+  },
+  {
+    codes: [429],
+    pattern: /rate limit|too many requests|\b429\b/,
+    hint: (where) => i18n.t(($) => $.ai.chat.errorHints.rateLimited, { where }),
+  },
+  {
+    pattern: /no longer available|has been retired|model.{0,40}(deprecated|discontinued|not found|does not exist)|unknown model|model_not_found/,
+    hint: (where) => i18n.t(($) => $.ai.chat.errorHints.retiredModel, { where }),
+  },
+  {
+    codes: [503],
+    pattern: /high demand|overloaded|over capacity|service unavailable|\b503\b/,
+    hint: (where) => i18n.t(($) => $.ai.chat.errorHints.overloaded, { where }),
+  },
+  {
+    pattern: /econnrefused|failed to fetch|fetch failed|load failed|network error|not reachable|connection refused/,
+    hint: () => i18n.t(($) => $.ai.chat.errorHints.unreachable),
+  },
+];
+
 export function friendlyHint(
   text: string,
   statusCode?: number,
@@ -669,34 +704,10 @@ export function friendlyHint(
     surface === "settings"
       ? i18n.t(($) => $.ai.chat.errorHints.where.inSettings)
       : i18n.t(($) => $.ai.chat.errorHints.where.modelMenu);
-  if (
-    statusCode === 402 ||
-    /insufficient balance|no resource package|recharge|out of credit|insufficient[_ ]?quota|exceeded your current quota|billing|payment required/.test(t)
-  ) {
-    return i18n.t(($) => $.ai.chat.errorHints.outOfCredits, { where });
-  }
-  if (
-    statusCode === 401 ||
-    statusCode === 403 ||
-    /invalid api key|incorrect api key|unauthorized|invalid[_ ]?api[_ ]?key|authentication|no api key/.test(t)
-  ) {
-    return i18n.t(($) => $.ai.chat.errorHints.invalidKey, { where });
-  }
-  if (statusCode === 429 || /rate limit|too many requests|\b429\b/.test(t)) {
-    return i18n.t(($) => $.ai.chat.errorHints.rateLimited, { where });
-  }
-  if (
-    /no longer available|has been retired|model.{0,40}(deprecated|discontinued|not found|does not exist)|unknown model|model_not_found/.test(
-      t,
-    )
-  ) {
-    return i18n.t(($) => $.ai.chat.errorHints.retiredModel, { where });
-  }
-  if (statusCode === 503 || /high demand|overloaded|over capacity|service unavailable|\b503\b/.test(t)) {
-    return i18n.t(($) => $.ai.chat.errorHints.overloaded, { where });
-  }
-  if (/econnrefused|failed to fetch|fetch failed|load failed|network error|not reachable|connection refused/.test(t)) {
-    return i18n.t(($) => $.ai.chat.errorHints.unreachable);
+  for (const rule of ERROR_HINTS) {
+    const matched =
+      (statusCode !== undefined && rule.codes?.includes(statusCode)) || rule.pattern?.test(t);
+    if (matched) return rule.hint(where);
   }
   return null;
 }
@@ -718,12 +729,13 @@ export function formatError(e: unknown, providerLabel?: string): string {
   }
   // Always keep a compact raw detail (status + provider message) for diagnosis.
   const who = providerLabel ? `${providerLabel}: ` : "";
-  const rawDetail =
-    bodyMsg && bodyMsg !== err?.message
-      ? ` (${bodyMsg.slice(0, 160)}${statusCode ? `, HTTP ${statusCode}` : ""})`
-      : statusCode
-        ? ` (HTTP ${statusCode})`
-        : "";
+  const statusSuffix = statusCode ? `, HTTP ${statusCode}` : "";
+  let rawDetail = "";
+  if (bodyMsg && bodyMsg !== err?.message) {
+    rawDetail = ` (${bodyMsg.slice(0, 160)}${statusSuffix})`;
+  } else if (statusCode) {
+    rawDetail = ` (HTTP ${statusCode})`;
+  }
   const message = typeof err.message === "string" ? err.message : String(e);
   const name = typeof err.name === "string" ? err.name : "";
   const hint = friendlyHint(`${message} ${bodyMsg}`, statusCode);
@@ -743,12 +755,12 @@ export function ReasoningBlock({
   active,
   durationMs,
   expansionKey,
-}: {
+}: Readonly<{
   text: string;
   active?: boolean;
   durationMs?: number;
   expansionKey?: string;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -760,13 +772,16 @@ export function ReasoningBlock({
     }
   }, [text, active, open]);
 
-  const label = active
-    ? t(($) => $.ai.chat.reasoning.thinking)
-    : durationMs
-      ? t(($) => $.ai.chat.reasoning.thoughtFor, {
-          seconds: Math.max(1, Math.round(durationMs / 1000)),
-        })
-      : t(($) => $.ai.chat.reasoning.label);
+  let label: string;
+  if (active) {
+    label = t(($) => $.ai.chat.reasoning.thinking);
+  } else if (durationMs) {
+    label = t(($) => $.ai.chat.reasoning.thoughtFor, {
+      seconds: Math.max(1, Math.round(durationMs / 1000)),
+    });
+  } else {
+    label = t(($) => $.ai.chat.reasoning.label);
+  }
 
   // A finished reasoning block with no text carries nothing to read; hide it
   // rather than render an empty "Reasoning" collapsible.
@@ -813,7 +828,7 @@ export function ReasoningBlock({
 
 const SUBAGENT_PREVIEW_HEIGHT = 176;
 
-function SubagentIdentity({ entry }: { entry: SubagentEntry }) {
+function SubagentIdentity({ entry }: Readonly<{ entry: SubagentEntry }>) {
   if (entry.runtime === "acp" && entry.agentId) {
     return <AgentLogo agentId={entry.agentId} size={14} />;
   }
@@ -821,7 +836,7 @@ function SubagentIdentity({ entry }: { entry: SubagentEntry }) {
   return <Bot aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />;
 }
 
-function SubagentStatusIcon({ state }: { state: string }) {
+function SubagentStatusIcon({ state }: Readonly<{ state: string }>) {
   if (state === "done") return <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />;
   if (state === "error") return <XCircle className="size-3.5 shrink-0 text-destructive" />;
   if (state === "interrupted") {
@@ -835,10 +850,10 @@ function SubagentStatusIcon({ state }: { state: string }) {
 export function SubagentCard({
   entry,
   actions,
-}: {
+}: Readonly<{
   entry: SubagentEntry;
   actions?: ResearchChatActions;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const settled =
     entry.state === "done" || entry.state === "error" || entry.state === "interrupted";
@@ -871,16 +886,18 @@ export function SubagentCard({
           }
         }
       : null;
-  const statusLabel =
-    entry.state === "done"
-      ? t(($) => $.ai.chat.subagent.finished)
-      : entry.state === "error"
-        ? t(($) => $.ai.chat.subagent.failed)
-        : entry.state === "interrupted"
-          ? t(($) => $.ai.chat.subagent.stopped)
-          : entry.state === "tool" && detail.text
-            ? t(($) => $.ai.chat.subagent.usingTool, { tool: detail.text })
-            : t(($) => $.ai.chat.subagent.working);
+  let statusLabel: string;
+  if (entry.state === "done") {
+    statusLabel = t(($) => $.ai.chat.subagent.finished);
+  } else if (entry.state === "error") {
+    statusLabel = t(($) => $.ai.chat.subagent.failed);
+  } else if (entry.state === "interrupted") {
+    statusLabel = t(($) => $.ai.chat.subagent.stopped);
+  } else if (entry.state === "tool" && detail.text) {
+    statusLabel = t(($) => $.ai.chat.subagent.usingTool, { tool: detail.text });
+  } else {
+    statusLabel = t(($) => $.ai.chat.subagent.working);
+  }
 
   return (
     <div
@@ -987,11 +1004,11 @@ function WorkedSteps({
   rows,
   totalMs,
   expansionKey,
-}: {
+}: Readonly<{
   rows: React.ReactNode[];
   totalMs: number;
   expansionKey?: string;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
@@ -1034,12 +1051,12 @@ export const MessageItem = memo(function MessageItem({
   live,
   actions,
   expansionScope,
-}: {
+}: Readonly<{
   msg: ChatMessage;
   live?: boolean;
   actions?: ResearchChatActions;
   expansionScope?: string;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const tools = msg.toolCalls ?? [];
   const attachmentOccurrences = new Map<string, number>();
@@ -1051,7 +1068,8 @@ export const MessageItem = memo(function MessageItem({
   // Each block renders before the tool call whose index it recorded, to
   // interleave thinking phases and tool badges in arrival order.
   const rows: React.ReactNode[] = [];
-  for (let i = 0; i <= tools.length; i++) {
+  let i = 0;
+  while (i <= tools.length) {
     blocks.forEach((b, blockIndex) => {
       if (Math.min(b.beforeTool, tools.length) === i) {
         rows.push(
@@ -1088,7 +1106,7 @@ export const MessageItem = memo(function MessageItem({
               expansionKey={expansionScope ? `${expansionScope}:exploration:${tools[i].id ?? i}` : undefined}
             />,
           );
-          i = j;
+          i = j + 1;
           continue;
         }
       }
@@ -1104,6 +1122,7 @@ export const MessageItem = memo(function MessageItem({
         />,
       );
     }
+    i++;
   }
   for (const entry of msg.subagents ?? []) {
     rows.push(<SubagentCard key={entry.id} entry={entry} actions={actions} />);

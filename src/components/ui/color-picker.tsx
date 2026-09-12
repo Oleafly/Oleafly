@@ -10,12 +10,12 @@ export function ColorPicker({
   onChange,
   allowTransparent,
   ariaLabel,
-}: {
+}: Readonly<{
   value: string;
   onChange: (value: string) => void;
   allowTransparent?: boolean;
   ariaLabel: string;
-}) {
+}>) {
   const { t } = useTranslation(["core"]);
   const [open, setOpen] = useState(false);
   return (

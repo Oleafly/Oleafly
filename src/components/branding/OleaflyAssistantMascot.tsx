@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
-export function OleaflyAssistantMascot({ className }: { className?: string }) {
+export function OleaflyAssistantMascot({ className }: Readonly<{ className?: string }>) {
   const { t } = useTranslation(["shell"]);
   return (
     <span

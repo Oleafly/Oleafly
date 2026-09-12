@@ -26,7 +26,7 @@ const TRANSCRIBE_PROMPT = "Transcribe this image to LaTeX.";
 export async function imageToLatex(file: File): Promise<void> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
+    r.onload = () => resolve(typeof r.result === "string" ? r.result : "");
     r.onerror = () => reject(new Error("could not read image"));
     r.readAsDataURL(file);
   });

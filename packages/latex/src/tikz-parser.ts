@@ -24,9 +24,9 @@ const HANDLE_TOLERANCE = 6;
 // the engine backtrack over it.
 const NUMBER = String.raw`[+-]?(?:\d+(?:\.\d+)?|\.\d+)`;
 const DIMENSION = new RegExp(`^(${NUMBER})([a-z]{0,4})$`, "i");
-const POLAR = new RegExp(`^(${NUMBER})\\s*:\\s*(${NUMBER})([a-z]{0,4})$`, "i");
-const DASH_ON = new RegExp(`on\\s+(${NUMBER})\\s*([a-z]{0,4})`, "i");
-const FONT_SIZE = new RegExp(`\\\\fontsize\\{\\s*(${NUMBER})\\s*[a-z]{0,4}\\s*\\}`);
+const POLAR = new RegExp(String.raw`^(${NUMBER})\s*:\s*(${NUMBER})([a-z]{0,4})$`, "i");
+const DASH_ON = new RegExp(String.raw`on\s+(${NUMBER})\s*([a-z]{0,4})`, "i");
+const FONT_SIZE = new RegExp(String.raw`\\fontsize\{\s*(${NUMBER})\s*[a-z]{0,4}\s*\}`);
 const LABEL_TOLERANCE = 8;
 
 export interface TikzImport {
@@ -36,9 +36,11 @@ export interface TikzImport {
 
 type OptionPair = [string, string | null];
 
+type PlacementDirection = -1 | 0 | 1;
+
 interface Placement {
-  dirX: -1 | 0 | 1;
-  dirY: -1 | 0 | 1;
+  dirX: PlacementDirection;
+  dirY: PlacementDirection;
   distX: number | null;
   distY: number | null;
   ref: string;
@@ -249,7 +251,7 @@ function unwrapBraces(value: string): string {
   const trimmed = value.trim();
   if (!trimmed.startsWith("{")) return trimmed;
   const balanced = readBalanced(trimmed, 0);
-  if (balanced && balanced.end === trimmed.length) return balanced.body.trim();
+  if (balanced?.end === trimmed.length) return balanced.body.trim();
   return trimmed;
 }
 
@@ -324,9 +326,9 @@ function parseCoordinate(text: string): { x: number; y: number } | null {
 
 function unescapeLabel(text: string): string {
   return text
-    .replace(/\\\\/g, "\n")
+    .replaceAll("\\\\", "\n")
     .replace(/\\([&%#_${}])/g, "$1")
-    .replace(/\s*\n\s*/g, "\n")
+    .replace(/[^\S\n]*\n\s*/g, "\n")
     .replace(/[ \t]+/g, " ")
     .trim();
 }
@@ -438,8 +440,8 @@ function fontOf(options: OptionPair[]): { size: number; family: DiagramFontFamil
   let size = DEFAULT_FONT_PT;
   let family: DiagramFontFamily = "serif";
   if (typeof font === "string") {
-    if (font.includes("\\sffamily")) family = "sans";
-    else if (font.includes("\\ttfamily")) family = "mono";
+    if (font.includes(String.raw`\sffamily`)) family = "sans";
+    else if (font.includes(String.raw`\ttfamily`)) family = "mono";
     const explicit = FONT_SIZE.exec(font);
     if (explicit) size = Number.parseFloat(explicit[1]);
     else if (/\\tiny/.test(font)) size = 5;
@@ -467,7 +469,7 @@ function labelHeightPx(label: string, fontSize: number): number {
 
 function splitDistance(text: string, fallback: { x: number; y: number }): { x: number; y: number } {
   const parts = text
-    .split(/\s+and\s+/)
+    .split(/(?<!\s)\s+and\s+/)
     .map((part) => part.trim())
     .filter(Boolean);
   if (parts.length === 0) return fallback;
@@ -478,7 +480,7 @@ function splitDistance(text: string, fallback: { x: number; y: number }): { x: n
   return { x: second, y: first };
 }
 
-const PLACEMENT_DIRECTIONS: Record<string, { dirX: -1 | 0 | 1; dirY: -1 | 0 | 1 }> = {
+const PLACEMENT_DIRECTIONS: Record<string, { dirX: PlacementDirection; dirY: PlacementDirection }> = {
   right: { dirX: 1, dirY: 0 },
   left: { dirX: -1, dirY: 0 },
   above: { dirX: 0, dirY: 1 },
@@ -528,12 +530,14 @@ function parsePlacement(options: OptionPair[], distance: { x: number; y: number 
   return null;
 }
 
+const DEFAULT_NODE_DISTANCE = {
+  x: DEFAULT_NODE_DISTANCE_CM,
+  y: DEFAULT_NODE_DISTANCE_CM,
+};
+
 function nodeDistance(
   options: OptionPair[],
-  fallback: { x: number; y: number } = {
-    x: DEFAULT_NODE_DISTANCE_CM,
-    y: DEFAULT_NODE_DISTANCE_CM,
-  },
+  fallback: { x: number; y: number } = DEFAULT_NODE_DISTANCE,
 ): { x: number; y: number } {
   const raw = lookup(options, "node distance");
   if (typeof raw !== "string") return fallback;
@@ -572,13 +576,23 @@ const ARROW_TIPS = new Set([
 
 type TipKind = "none" | "bar" | "arrow" | "unknown";
 
+function stripTrailingBracketGroup(text: string): string {
+  if (!text.endsWith("]")) return text;
+  let start = -1;
+  for (let i = text.length - 2; i >= 0; i--) {
+    if (text[i] === "]") break;
+    if (text[i] === "[") start = i;
+  }
+  return start < 0 ? text : text.slice(0, start);
+}
+
 function tipKind(spec: string): TipKind {
   const text = spec.trim();
   if (!text) return "none";
   if (/^\|+$/.test(text)) return "bar";
   if (/^[<>]+$/.test(text)) return "arrow";
   if (text.startsWith("{")) return "arrow";
-  const name = text.replace(/\[[^\]]*\]$/, "").trim().toLowerCase();
+  const name = stripTrailingBracketGroup(text).trim().toLowerCase();
   if (ARROW_TIPS.has(name)) return "arrow";
   return "unknown";
 }
@@ -688,65 +702,81 @@ function freshId(state: ScanState): string {
   return candidate;
 }
 
-function readNodeStatement(statement: string, order: number, state: ScanState): RawNode | null {
-  void order;
-  const options: OptionPair[] = [];
-  let name: string | null = null;
-  let at: { x: number; y: number } | null = null;
-  let atRef: string | null = null;
-  let label = "";
-  let index = statement.indexOf("\\node") >= 0 ? statement.indexOf("\\node") + 5 : statement.indexOf("\\coordinate") + 11;
-  let expectPosition = false;
-  while (index < statement.length) {
-    const ch = statement[index];
-    if (ch === " " || ch === "\n" || ch === "\t") {
-      index += 1;
-      continue;
-    }
-    if (ch === "[") {
-      const balanced = readBalanced(statement, index);
-      if (!balanced) break;
-      options.push(...parseOptions(balanced.body));
-      index = balanced.end;
-      continue;
-    }
-    if (ch === "(") {
-      const balanced = readBalanced(statement, index);
-      if (!balanced) break;
-      if (expectPosition) {
-        at = parseCoordinate(balanced.body);
-        if (!at) atRef = balanced.body.trim();
-        expectPosition = false;
-      } else if (name === null) {
-        name = balanced.body.trim();
-      }
-      index = balanced.end;
-      continue;
-    }
-    if (ch === "{") {
-      const balanced = readBalanced(statement, index);
-      if (!balanced) break;
-      label = balanced.body;
-      index = balanced.end;
-      continue;
-    }
-    if (statement.startsWith("at", index)) {
-      expectPosition = true;
-      index += 2;
-      continue;
-    }
-    index += 1;
+interface NodeScan {
+  options: OptionPair[];
+  name: string | null;
+  at: { x: number; y: number } | null;
+  atRef: string | null;
+  label: string;
+  expectPosition: boolean;
+}
+
+function readNodeParen(body: string, scan: NodeScan): void {
+  if (scan.expectPosition) {
+    scan.at = parseCoordinate(body);
+    if (!scan.at) scan.atRef = body.trim();
+    scan.expectPosition = false;
+    return;
   }
-  const expanded = state.styles.expand([...state.styles.everyNode(), ...options]);
+  scan.name ??= body.trim();
+}
+
+function readNodeToken(statement: string, index: number, scan: NodeScan): number | null {
+  const ch = statement[index];
+  if (ch === " " || ch === "\n" || ch === "\t") return index + 1;
+  if (ch === "[") {
+    const balanced = readBalanced(statement, index);
+    if (!balanced) return null;
+    scan.options.push(...parseOptions(balanced.body));
+    return balanced.end;
+  }
+  if (ch === "(") {
+    const balanced = readBalanced(statement, index);
+    if (!balanced) return null;
+    readNodeParen(balanced.body, scan);
+    return balanced.end;
+  }
+  if (ch === "{") {
+    const balanced = readBalanced(statement, index);
+    if (!balanced) return null;
+    scan.label = balanced.body;
+    return balanced.end;
+  }
+  if (statement.startsWith("at", index)) {
+    scan.expectPosition = true;
+    return index + 2;
+  }
+  return index + 1;
+}
+
+function readNodeStatement(statement: string, order: number, state: ScanState): RawNode | null {
+  const scan: NodeScan = {
+    options: [],
+    name: null,
+    at: null,
+    atRef: null,
+    label: "",
+    expectPosition: false,
+  };
+  let index = statement.includes(String.raw`\node`)
+    ? statement.indexOf(String.raw`\node`) + 5
+    : statement.indexOf(String.raw`\coordinate`) + 11;
+  while (index < statement.length) {
+    const next = readNodeToken(statement, index, scan);
+    if (next === null) break;
+    index = next;
+  }
+  const name = scan.name;
+  const expanded = state.styles.expand([...state.styles.everyNode(), ...scan.options]);
   const usable = name !== null && /^[\w :.-]+$/.test(name) && name.trim().length > 0;
   return {
     id: usable && name ? name : freshId(state),
     named: usable,
     midpoint: null,
-    atRef,
-    label: unescapeLabel(label),
+    atRef: scan.atRef,
+    label: unescapeLabel(scan.label),
     options: expanded,
-    at,
+    at: scan.at,
     placement: parsePlacement(expanded, state.distance),
     order,
   };
@@ -755,144 +785,163 @@ function readNodeStatement(statement: string, order: number, state: ScanState): 
 const PATH_OPERATORS = ["--", "-|", "|-", "to", "edge", "cycle"];
 const SHAPE_OPERATORS = ["rectangle", "circle", "ellipse", "arc", "grid", "parabola", "sin", "cos"];
 
+interface PathNodeScan {
+  options: OptionPair[];
+  name: string | null;
+  text: string;
+}
+
+function readPathNodeToken(
+  statement: string,
+  index: number,
+  scan: PathNodeScan,
+): { next: number; done: boolean } {
+  const ch = statement[index];
+  if (ch === " " || ch === "\n" || ch === "\t") return { next: index + 1, done: false };
+  if (ch === "[") {
+    const balanced = readBalanced(statement, index);
+    if (!balanced) return { next: index, done: true };
+    scan.options.push(...parseOptions(balanced.body));
+    return { next: balanced.end, done: false };
+  }
+  if (ch === "(") {
+    if (scan.name !== null) return { next: index, done: true };
+    const balanced = readBalanced(statement, index);
+    if (!balanced) return { next: index, done: true };
+    scan.name = balanced.body.trim();
+    return { next: balanced.end, done: false };
+  }
+  if (ch === "{") {
+    const balanced = readBalanced(statement, index);
+    if (!balanced) return { next: index, done: true };
+    scan.text = balanced.body;
+    return { next: balanced.end, done: true };
+  }
+  return { next: index, done: true };
+}
+
 function readPathNode(
   statement: string,
   from: number,
 ): { item: PathItem; end: number } {
   let index = from;
-  const options: OptionPair[] = [];
-  let name: string | null = null;
-  let text = "";
+  const scan: PathNodeScan = { options: [], name: null, text: "" };
   while (index < statement.length) {
-    const next = statement[index];
-    if (next === " " || next === "\n" || next === "\t") {
-      index += 1;
-      continue;
-    }
-    if (next === "[") {
-      const balanced = readBalanced(statement, index);
-      if (!balanced) break;
-      options.push(...parseOptions(balanced.body));
-      index = balanced.end;
-      continue;
-    }
-    if (next === "(") {
-      if (name !== null) break;
-      const balanced = readBalanced(statement, index);
-      if (!balanced) break;
-      name = balanced.body.trim();
-      index = balanced.end;
-      continue;
-    }
-    if (next === "{") {
-      const balanced = readBalanced(statement, index);
-      if (!balanced) break;
-      text = balanced.body;
-      index = balanced.end;
-    }
-    break;
+    const step = readPathNodeToken(statement, index, scan);
+    index = step.next;
+    if (step.done) break;
   }
   return {
-    item: { kind: "label", text: unescapeLabel(text), name, options },
+    item: { kind: "label", text: unescapeLabel(scan.text), name: scan.name, options: scan.options },
     end: index,
   };
 }
 
-function readPathStatement(statement: string, state: ScanState): RawPath | null {
+interface PathScan {
+  options: OptionPair[];
+  items: PathItem[];
+}
+
+function lastPathOp(items: PathItem[]): { kind: "op"; op: string; options: OptionPair[] } | null {
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i].kind === "point") return null;
+    if (items[i].kind === "op") return items[i] as { kind: "op"; op: string; options: OptionPair[] };
+  }
+  return null;
+}
+
+function readPathOptions(statement: string, index: number, scan: PathScan): number | null {
+  const balanced = readBalanced(statement, index);
+  if (!balanced) return null;
+  const owner = lastPathOp(scan.items);
+  if (owner) owner.options.push(...parseOptions(balanced.body));
+  else scan.options.push(...parseOptions(balanced.body));
+  return balanced.end;
+}
+
+function readRelativePoint(statement: string, index: number, scan: PathScan): number | null {
+  const relative = statement.startsWith("++", index) ? "move" : "offset";
+  const offset = relative === "move" ? 2 : 1;
+  const balanced = readBalanced(statement, index + offset);
+  if (!balanced) return null;
+  scan.items.push({
+    kind: "point",
+    point: { ref: null, anchor: null, coord: parseCoordinate(balanced.body), relative },
+  });
+  return balanced.end;
+}
+
+function readAbsolutePoint(statement: string, index: number, scan: PathScan): number | null {
+  const balanced = readBalanced(statement, index);
+  if (!balanced) return null;
+  const body = balanced.body.trim();
+  const coord = parseCoordinate(body);
+  if (coord) {
+    scan.items.push({ kind: "point", point: { ref: null, anchor: null, coord, relative: "none" } });
+    return balanced.end;
+  }
+  const [ref, ...anchor] = body.split(".");
+  scan.items.push({
+    kind: "point",
+    point: {
+      ref: ref.trim(),
+      anchor: anchor.length ? anchor.join(".").trim() : null,
+      coord: null,
+      relative: "none",
+    },
+  });
+  return balanced.end;
+}
+
+function readPathOperator(statement: string, index: number, scan: PathScan): number {
+  const shape = SHAPE_OPERATORS.find((candidate) => statement.startsWith(candidate, index));
+  if (shape) {
+    scan.items.push({ kind: "op", op: shape, options: [] });
+    return index + shape.length;
+  }
+  const operator = PATH_OPERATORS.find((candidate) => statement.startsWith(candidate, index));
+  if (operator) {
+    scan.items.push({ kind: "op", op: operator, options: [] });
+    return index + operator.length;
+  }
+  return index + 1;
+}
+
+function readPathToken(statement: string, index: number, scan: PathScan): number | null {
+  const ch = statement[index];
+  if (ch === " " || ch === "\n" || ch === "\t") return index + 1;
+  if (ch === "[") return readPathOptions(statement, index, scan);
+  if (statement.startsWith("++", index) || statement.startsWith("+(", index)) {
+    return readRelativePoint(statement, index, scan);
+  }
+  if (ch === "(") return readAbsolutePoint(statement, index, scan);
+  if (statement.startsWith("node", index)) {
+    const read = readPathNode(statement, index + 4);
+    scan.items.push(read.item);
+    return read.end;
+  }
+  if (statement.startsWith("coordinate", index)) {
+    return readPathNode(statement, index + 10).end;
+  }
+  if (statement.startsWith("..", index)) {
+    scan.items.push({ kind: "op", op: "..controls", options: [] });
+    const rest = /^\.\.\s*(controls)?/.exec(statement.slice(index));
+    return index + (rest ? rest[0].length : 2);
+  }
+  return readPathOperator(statement, index, scan);
+}
+
+function readPathStatement(statement: string, _state: ScanState): RawPath | null {
   const head = /\\(draw|path|filldraw|fill)\b/.exec(statement);
   if (!head) return null;
   let index = head.index + head[0].length;
-  const options: OptionPair[] = [];
-  const items: PathItem[] = [];
-  const lastOp = () => {
-    for (let i = items.length - 1; i >= 0; i--) {
-      if (items[i].kind === "point") return null;
-      if (items[i].kind === "op") return items[i] as { kind: "op"; op: string; options: OptionPair[] };
-    }
-    return null;
-  };
+  const scan: PathScan = { options: [], items: [] };
   while (index < statement.length) {
-    const ch = statement[index];
-    if (ch === " " || ch === "\n" || ch === "\t") {
-      index += 1;
-      continue;
-    }
-    if (ch === "[") {
-      const balanced = readBalanced(statement, index);
-      if (!balanced) break;
-      const owner = lastOp();
-      if (owner) owner.options.push(...parseOptions(balanced.body));
-      else options.push(...parseOptions(balanced.body));
-      index = balanced.end;
-      continue;
-    }
-    if (statement.startsWith("++", index) || statement.startsWith("+(", index)) {
-      const relative = statement.startsWith("++", index) ? "move" : "offset";
-      const offset = relative === "move" ? 2 : 1;
-      const balanced = readBalanced(statement, index + offset);
-      if (!balanced) break;
-      items.push({
-        kind: "point",
-        point: { ref: null, anchor: null, coord: parseCoordinate(balanced.body), relative },
-      });
-      index = balanced.end;
-      continue;
-    }
-    if (ch === "(") {
-      const balanced = readBalanced(statement, index);
-      if (!balanced) break;
-      const body = balanced.body.trim();
-      const coord = parseCoordinate(body);
-      if (coord) {
-        items.push({ kind: "point", point: { ref: null, anchor: null, coord, relative: "none" } });
-      } else {
-        const [ref, ...anchor] = body.split(".");
-        items.push({
-          kind: "point",
-          point: {
-            ref: ref.trim(),
-            anchor: anchor.length ? anchor.join(".").trim() : null,
-            coord: null,
-            relative: "none",
-          },
-        });
-      }
-      index = balanced.end;
-      continue;
-    }
-    if (statement.startsWith("node", index)) {
-      const read = readPathNode(statement, index + 4);
-      items.push(read.item);
-      index = read.end;
-      continue;
-    }
-    if (statement.startsWith("coordinate", index)) {
-      const read = readPathNode(statement, index + 10);
-      index = read.end;
-      continue;
-    }
-    if (statement.startsWith("..", index)) {
-      items.push({ kind: "op", op: "..controls", options: [] });
-      const rest = /^\.\.\s*(controls)?/.exec(statement.slice(index));
-      index += rest ? rest[0].length : 2;
-      continue;
-    }
-    const shape = SHAPE_OPERATORS.find((candidate) => statement.startsWith(candidate, index));
-    if (shape) {
-      items.push({ kind: "op", op: shape, options: [] });
-      index += shape.length;
-      continue;
-    }
-    const operator = PATH_OPERATORS.find((candidate) => statement.startsWith(candidate, index));
-    if (operator) {
-      items.push({ kind: "op", op: operator, options: [] });
-      index += operator.length;
-      continue;
-    }
-    index += 1;
+    const next = readPathToken(statement, index, scan);
+    if (next === null) break;
+    index = next;
   }
-  void state;
-  return { command: head[1], options, items };
+  return { command: head[1], options: scan.options, items: scan.items };
 }
 
 function refAt(items: PathItem[], from: number, step: number): string | null {
@@ -936,29 +985,30 @@ function readMacroCalls(source: string, state: ScanState): void {
   let index = 0;
   while (index < source.length) {
     const next = readMacroCall(source, index, state);
-    index = next === null ? index + 1 : next;
+    index = next ?? index + 1;
   }
 }
 
-function readMacroCall(body: string, index: number, state: ScanState): number | null {
-  if (body.startsWith("\\definecolor", index)) {
-    let cursor = index + "\\definecolor".length;
-    for (let group = 0; group < 3; group++) {
-      const brace = body.indexOf("{", cursor);
-      const balanced = brace >= 0 ? readBalanced(body, brace) : null;
-      if (!balanced) return null;
-      cursor = balanced.end;
-    }
-    return body[cursor] === ";" ? cursor + 1 : cursor;
-  }
-  if (body.startsWith("\\tikzset", index)) {
-    const brace = body.indexOf("{", index);
+function readDefineColorCall(body: string, index: number): number | null {
+  let cursor = index + String.raw`\definecolor`.length;
+  for (let group = 0; group < 3; group++) {
+    const brace = body.indexOf("{", cursor);
     const balanced = brace >= 0 ? readBalanced(body, brace) : null;
     if (!balanced) return null;
-    state.styles.define(parseOptions(balanced.body));
-    return body[balanced.end] === ";" ? balanced.end + 1 : balanced.end;
+    cursor = balanced.end;
   }
-  if (!body.startsWith("\\tikzstyle", index)) return null;
+  return body[cursor] === ";" ? cursor + 1 : cursor;
+}
+
+function readTikzsetCall(body: string, index: number, state: ScanState): number | null {
+  const brace = body.indexOf("{", index);
+  const balanced = brace >= 0 ? readBalanced(body, brace) : null;
+  if (!balanced) return null;
+  state.styles.define(parseOptions(balanced.body));
+  return body[balanced.end] === ";" ? balanced.end + 1 : balanced.end;
+}
+
+function readTikzstyleCall(body: string, index: number, state: ScanState): number | null {
   const brace = body.indexOf("{", index);
   const nameBlock = brace >= 0 ? readBalanced(body, brace) : null;
   if (!nameBlock) return null;
@@ -969,21 +1019,28 @@ function readMacroCall(body: string, index: number, state: ScanState): number | 
   return body[optionBlock.end] === ";" ? optionBlock.end + 1 : optionBlock.end;
 }
 
+function readMacroCall(body: string, index: number, state: ScanState): number | null {
+  if (body.startsWith(String.raw`\definecolor`, index)) return readDefineColorCall(body, index);
+  if (body.startsWith(String.raw`\tikzset`, index)) return readTikzsetCall(body, index, state);
+  if (body.startsWith(String.raw`\tikzstyle`, index)) return readTikzstyleCall(body, index, state);
+  return null;
+}
+
 function readScopeMarker(body: string, index: number, scopes: OptionPair[][]): number | null {
-  if (body.startsWith("\\end{scope}", index)) {
+  if (body.startsWith(String.raw`\end{scope}`, index)) {
     if (scopes.length > 1) scopes.pop();
-    return index + "\\end{scope}".length;
+    return index + String.raw`\end{scope}`.length;
   }
-  if (!body.startsWith("\\begin{scope}", index)) return null;
-  const after = index + "\\begin{scope}".length;
+  if (!body.startsWith(String.raw`\begin{scope}`, index)) return null;
+  const after = index + String.raw`\begin{scope}`.length;
   const balanced = body[after] === "[" ? readBalanced(body, after) : null;
   scopes.push(balanced ? parseOptions(balanced.body) : []);
   return balanced ? balanced.end : after;
 }
 
 function readEnvironmentMarker(body: string, index: number, state: ScanState): number | null {
-  const opening = body.startsWith("\\begin{", index);
-  if (!opening && !body.startsWith("\\end{", index)) return null;
+  const opening = body.startsWith(String.raw`\begin{`, index);
+  if (!opening && !body.startsWith(String.raw`\end{`, index)) return null;
   const brace = body.indexOf("{", index);
   const balanced = brace >= 0 ? readBalanced(body, brace) : null;
   if (!balanced) return index + 1;
@@ -997,7 +1054,7 @@ function applyNodeOrCoordinate(trimmed: string, scopeOptions: OptionPair[], stat
   if (!node) return;
   node.options = state.styles.expand([...scopeOptions, ...node.options]);
   node.placement = parsePlacement(node.options, nodeDistance(node.options, state.distance));
-  if (!trimmed.startsWith("\\coordinate")) {
+  if (!trimmed.startsWith(String.raw`\coordinate`)) {
     state.nodes.push(node);
     return;
   }
@@ -1007,7 +1064,7 @@ function applyNodeOrCoordinate(trimmed: string, scopeOptions: OptionPair[], stat
 }
 
 function applyStatement(trimmed: string, scopeOptions: OptionPair[], state: ScanState): void {
-  if (trimmed.startsWith("\\node") || trimmed.startsWith("\\coordinate")) {
+  if (trimmed.startsWith(String.raw`\node`) || trimmed.startsWith(String.raw`\coordinate`)) {
     applyNodeOrCoordinate(trimmed, scopeOptions, state);
     return;
   }
@@ -1060,37 +1117,64 @@ function scan(body: string, state: ScanState, inherited: OptionPair[]): void {
   }
 }
 
-function findStatementEnd(body: string, start: number): number {
-  let depth = 0;
-  let escaped = false;
-  let firstSemicolon = -1;
-  for (let i = start; i < body.length; i++) {
-    const ch = body[i];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (ch === "{" || ch === "[" || ch === "(") depth += 1;
-    else if (ch === "}" || ch === "]" || ch === ")") depth = Math.max(0, depth - 1);
-    else if (ch === ";") {
-      if (depth === 0) return i;
-      if (firstSemicolon < 0) firstSemicolon = i;
-    }
-    else if (depth === 0 && (body.startsWith("\\begin{scope}", i) || body.startsWith("\\end{scope}", i)) && i > start) {
-      return i - 1;
-    }
+interface StatementScan {
+  depth: number;
+  escaped: boolean;
+  firstSemicolon: number;
+}
+
+function isScopeBoundary(body: string, i: number, start: number, depth: number): boolean {
+  if (depth !== 0 || i <= start) return false;
+  return (
+    body.startsWith(String.raw`\begin{scope}`, i) || body.startsWith(String.raw`\end{scope}`, i)
+  );
+}
+
+function stepStatementScan(
+  body: string,
+  i: number,
+  start: number,
+  scan: StatementScan,
+): number | null {
+  const ch = body[i];
+  if (scan.escaped) {
+    scan.escaped = false;
+    return null;
   }
-  return firstSemicolon >= 0 ? firstSemicolon : body.length;
+  if (ch === "\\") {
+    scan.escaped = true;
+    return null;
+  }
+  if (ch === "{" || ch === "[" || ch === "(") {
+    scan.depth += 1;
+    return null;
+  }
+  if (ch === "}" || ch === "]" || ch === ")") {
+    scan.depth = Math.max(0, scan.depth - 1);
+    return null;
+  }
+  if (ch === ";") {
+    if (scan.depth === 0) return i;
+    if (scan.firstSemicolon < 0) scan.firstSemicolon = i;
+    return null;
+  }
+  if (isScopeBoundary(body, i, start, scan.depth)) return i - 1;
+  return null;
+}
+
+function findStatementEnd(body: string, start: number): number {
+  const scan: StatementScan = { depth: 0, escaped: false, firstSemicolon: -1 };
+  for (let i = start; i < body.length; i++) {
+    const end = stepStatementScan(body, i, start, scan);
+    if (end !== null) return end;
+  }
+  return scan.firstSemicolon >= 0 ? scan.firstSemicolon : body.length;
 }
 
 export function extractPictureBody(source: string): { body: string; options: string } | null {
-  const begin = source.indexOf("\\begin{tikzpicture}");
+  const begin = source.indexOf(String.raw`\begin{tikzpicture}`);
   if (begin < 0) return null;
-  let index = begin + "\\begin{tikzpicture}".length;
+  let index = begin + String.raw`\begin{tikzpicture}`.length;
   let options = "";
   const optionStart = source.slice(index).search(/\S/);
   if (optionStart >= 0 && source[index + optionStart] === "[") {
@@ -1103,17 +1187,17 @@ export function extractPictureBody(source: string): { body: string; options: str
   let depth = 1;
   let cursor = index;
   while (cursor < source.length && depth > 0) {
-    const nextBegin = source.indexOf("\\begin{tikzpicture}", cursor);
-    const nextEnd = source.indexOf("\\end{tikzpicture}", cursor);
+    const nextBegin = source.indexOf(String.raw`\begin{tikzpicture}`, cursor);
+    const nextEnd = source.indexOf(String.raw`\end{tikzpicture}`, cursor);
     if (nextEnd < 0) break;
     if (nextBegin >= 0 && nextBegin < nextEnd) {
       depth += 1;
-      cursor = nextBegin + "\\begin{tikzpicture}".length;
+      cursor = nextBegin + String.raw`\begin{tikzpicture}`.length;
       continue;
     }
     depth -= 1;
     if (depth === 0) return { body: source.slice(index, nextEnd), options };
-    cursor = nextEnd + "\\end{tikzpicture}".length;
+    cursor = nextEnd + String.raw`\end{tikzpicture}`.length;
   }
   return { body: source.slice(index), options };
 }
@@ -1175,59 +1259,89 @@ function anchorOffset(node: PlacedNode, anchor: string | null): { x: number; y: 
   return map[key] ?? { x: 0, y: 0 };
 }
 
+function resolveAtRef(
+  node: PlacedNode,
+  atRef: string,
+  byId: Map<string, PlacedNode>,
+  anchors: Map<string, { x: number; y: number }>,
+): boolean {
+  const [refName, ...anchorParts] = atRef.split(".");
+  const reference = byId.get(refName.trim());
+  const point = anchors.get(refName.trim());
+  if (reference?.placed) {
+    const offset = anchorOffset(reference, anchorParts.join(".") || null);
+    node.cx = reference.cx + offset.x;
+    node.cy = reference.cy + offset.y;
+    node.placed = true;
+    return true;
+  }
+  if (point) {
+    node.cx = point.x;
+    node.cy = point.y;
+    node.placed = true;
+    return true;
+  }
+  return false;
+}
+
+function resolveMidpoint(
+  node: PlacedNode,
+  midpoint: [string, string],
+  byId: Map<string, PlacedNode>,
+): boolean {
+  const from = byId.get(midpoint[0]);
+  const to = byId.get(midpoint[1]);
+  if (!from?.placed || !to?.placed) return false;
+  node.cx = (from.cx + to.cx) / 2;
+  node.cy = (from.cy + to.cy) / 2;
+  node.placed = true;
+  return true;
+}
+
+function resolvePlacement(
+  node: PlacedNode,
+  placement: Placement,
+  byId: Map<string, PlacedNode>,
+  anchors: Map<string, { x: number; y: number }>,
+): boolean {
+  const reference = byId.get(placement.ref);
+  const anchorPoint = anchors.get(placement.ref);
+  if (!reference?.placed && !anchorPoint) return false;
+  const gapX = (placement.distX ?? DEFAULT_NODE_DISTANCE_CM) * PX_PER_CM;
+  const gapY = (placement.distY ?? DEFAULT_NODE_DISTANCE_CM) * PX_PER_CM;
+  const base = reference?.placed
+    ? { x: reference.cx, y: reference.cy }
+    : { x: anchorPoint?.x ?? 0, y: anchorPoint?.y ?? 0 };
+  const anchored = placement.refAnchor && reference?.placed;
+  const offset = anchored
+    ? anchorOffset(reference as PlacedNode, placement.refAnchor)
+    : { x: 0, y: 0 };
+  const referenceHalfX = anchored || !reference?.placed ? 0 : reference.w / 2;
+  const referenceHalfY = anchored || !reference?.placed ? 0 : reference.h / 2;
+  const halfSpanX = placement.centred ? 0 : referenceHalfX + node.w / 2;
+  const halfSpanY = placement.centred ? 0 : referenceHalfY + node.h / 2;
+  node.cx = base.x + offset.x + placement.dirX * (gapX + halfSpanX);
+  node.cy = base.y + offset.y - placement.dirY * (gapY + halfSpanY);
+  node.placed = true;
+  return true;
+}
+
+function resolveNode(
+  node: PlacedNode,
+  byId: Map<string, PlacedNode>,
+  anchors: Map<string, { x: number; y: number }>,
+): boolean {
+  if (node.atRef) return resolveAtRef(node, node.atRef, byId, anchors);
+  if (node.midpoint) return resolveMidpoint(node, node.midpoint, byId);
+  if (!node.placement) return false;
+  return resolvePlacement(node, node.placement, byId, anchors);
+}
+
 function resolveRound(nodes: PlacedNode[], byId: Map<string, PlacedNode>, anchors: Map<string, { x: number; y: number }>): boolean {
   let progress = false;
   for (const node of nodes) {
     if (node.placed) continue;
-    if (node.atRef) {
-      const [refName, ...anchorParts] = node.atRef.split(".");
-      const reference = byId.get(refName.trim());
-      const point = anchors.get(refName.trim());
-      if (reference?.placed) {
-        const offset = anchorOffset(reference, anchorParts.join(".") || null);
-        node.cx = reference.cx + offset.x;
-        node.cy = reference.cy + offset.y;
-        node.placed = true;
-        progress = true;
-      } else if (point) {
-        node.cx = point.x;
-        node.cy = point.y;
-        node.placed = true;
-        progress = true;
-      }
-      continue;
-    }
-    if (node.midpoint) {
-      const from = byId.get(node.midpoint[0]);
-      const to = byId.get(node.midpoint[1]);
-      if (!from?.placed || !to?.placed) continue;
-      node.cx = (from.cx + to.cx) / 2;
-      node.cy = (from.cy + to.cy) / 2;
-      node.placed = true;
-      progress = true;
-      continue;
-    }
-    if (!node.placement) continue;
-    const reference = byId.get(node.placement.ref);
-    const anchorPoint = anchors.get(node.placement.ref);
-    if (!reference?.placed && !anchorPoint) continue;
-    const gapX = (node.placement.distX ?? DEFAULT_NODE_DISTANCE_CM) * PX_PER_CM;
-    const gapY = (node.placement.distY ?? DEFAULT_NODE_DISTANCE_CM) * PX_PER_CM;
-    const base = reference?.placed
-      ? { x: reference.cx, y: reference.cy }
-      : { x: anchorPoint?.x ?? 0, y: anchorPoint?.y ?? 0 };
-    const anchored = node.placement.refAnchor && reference?.placed;
-    const offset = anchored
-      ? anchorOffset(reference as PlacedNode, node.placement.refAnchor)
-      : { x: 0, y: 0 };
-    const referenceHalfX = anchored || !reference?.placed ? 0 : reference.w / 2;
-    const referenceHalfY = anchored || !reference?.placed ? 0 : reference.h / 2;
-    const halfSpanX = node.placement.centred ? 0 : referenceHalfX + node.w / 2;
-    const halfSpanY = node.placement.centred ? 0 : referenceHalfY + node.h / 2;
-    node.cx = base.x + offset.x + node.placement.dirX * (gapX + halfSpanX);
-    node.cy = base.y + offset.y - node.placement.dirY * (gapY + halfSpanY);
-    node.placed = true;
-    progress = true;
+    if (resolveNode(node, byId, anchors)) progress = true;
   }
   return progress;
 }
@@ -1468,7 +1582,7 @@ function connectSegment(walk: PathWalk, from: PathEnd, to: PathEnd): void {
     anchorToHandle(from.anchor) ?? exitHandle(segment, source, segment.vias[0] ?? target);
   const targetHandle =
     anchorToHandle(to.anchor) ??
-    entryHandle(segment, segment.vias[segment.vias.length - 1] ?? source, target);
+    entryHandle(segment, segment.vias.at(-1) ?? source, target);
   const routing = routingOf(segment);
   const label =
     routing === "orthogonal"
@@ -1548,7 +1662,7 @@ function applyNodeReference(walk: PathWalk, point: PathPoint): void {
 function connectCoordinateTrail(walk: PathWalk): void {
   if (walk.previous || walk.trail.length < 2) return;
   const start = matchHandle(walk.trail[0], walk.nodes);
-  const finish = matchHandle(walk.trail[walk.trail.length - 1], walk.nodes);
+  const finish = matchHandle(walk.trail.at(-1) ?? walk.trail[0], walk.nodes);
   if (!start || !finish || start.node.id === finish.node.id) return;
   const { arrow, reversed } = arrowOf(walk.path.options);
   const labelNode = findTrailLabel(walk.trail, walk.nodes);
@@ -1712,7 +1826,7 @@ export function importTikz(source: string): TikzImport {
     unsupported,
   };
   if (picture) {
-    readMacroCalls(clean.slice(0, clean.indexOf("\\begin{tikzpicture}")), state);
+    readMacroCalls(clean.slice(0, clean.indexOf(String.raw`\begin{tikzpicture}`)), state);
   }
   state.distance = nodeDistance(styles.expand(pictureOptions));
   scan(body, state, styles.expand(pictureOptions));
@@ -1724,19 +1838,25 @@ export function importTikz(source: string): TikzImport {
   );
   normalizeOrigin(modelNodes);
   const known = new Set(modelNodes.map((node) => node.id));
-  const pageColor = /\\pagecolor\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/.exec(clean);
-  const standalone = clean.includes("\\begin{document}");
+  const pageColor = /\\pagecolor\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/.exec(clean);
+  const standalone = clean.includes(String.raw`\begin{document}`);
   const model: DiagramModel = {
     version: 1,
     nodes: modelNodes,
     edges: edges.filter((edge) => known.has(edge.source) && known.has(edge.target)),
-    ...(pageColor
-      ? { background: resolveColor(pageColor[1], colors) ?? "" }
-      : standalone
-        ? { background: "" }
-        : {}),
+    ...backgroundEntry(pageColor, standalone, colors),
   };
   return { model, unsupported: [...unsupported] };
+}
+
+function backgroundEntry(
+  pageColor: RegExpExecArray | null,
+  standalone: boolean,
+  colors: Map<string, string>,
+): { background?: string } {
+  if (pageColor) return { background: resolveColor(pageColor[1], colors) ?? "" };
+  if (standalone) return { background: "" };
+  return {};
 }
 
 export function parseTikz(source: string): DiagramModel | null {

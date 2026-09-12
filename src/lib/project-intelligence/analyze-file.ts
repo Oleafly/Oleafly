@@ -294,14 +294,12 @@ function latexCommandKeyTokensFromMasked(
     const braced = groups.filter((group) => group.open === "{");
     if (braced.length === 0) continue;
     const command = match[1].toLocaleLowerCase("en-US");
-    const selected =
-      command.includes("volcite")
-        ? command.endsWith("cites")
-          ? braced.filter((_group, index) => index % 2 === 1)
-          : braced.slice(-1)
-        : command.endsWith("cites")
-          ? braced
-          : braced.slice(0, 1);
+    const allCites = command.endsWith("cites");
+    const volciteGroups = allCites
+      ? braced.filter((_group, index) => index % 2 === 1)
+      : braced.slice(-1);
+    const plainGroups = allCites ? braced : braced.slice(0, 1);
+    const selected = command.includes("volcite") ? volciteGroups : plainGroups;
     for (const group of selected) {
       for (const token of latexLogicalGroupTokens(source, group)) {
         tokens.push({
@@ -387,12 +385,10 @@ function addDelimiterDiagnostics(
   engine: ProjectIntelligenceEngine,
   diagnostics: ProjectDiagnostic[],
 ): boolean {
+  const nonLatexPairs: Record<string, string> =
+    engine === "typst" ? { "{": "}", "[": "]", "(": ")" } : {};
   const pairs: Record<string, string> =
-    engine === "latex"
-      ? { "{": "}" }
-      : engine === "typst"
-        ? { "{": "}", "[": "]", "(": ")" }
-        : {};
+    engine === "latex" ? { "{": "}" } : nonLatexPairs;
   const closers = new Set(Object.values(pairs));
   const stack: { char: string; offset: number }[] = [];
   let quote = false;
@@ -519,38 +515,45 @@ function typstCommentDiagnostics(
 ): boolean {
   const stack: number[] = [];
   let quoted = false;
-  for (let offset = 0; offset < source.length; offset++) {
+  let offset = 0;
+  while (offset < source.length) {
     if (stack.length > 0) {
       if (source.startsWith("/*", offset)) {
         stack.push(offset);
-        offset++;
+        offset += 2;
       } else if (source.startsWith("*/", offset)) {
         stack.pop();
-        offset++;
+        offset += 2;
+      } else {
+        offset += 1;
       }
       continue;
     }
     if (quoted) {
       if (source[offset] === "\\") {
-        offset++;
-      } else if (source[offset] === '"') {
-        quoted = false;
+        offset += 2;
+      } else {
+        if (source[offset] === '"') quoted = false;
+        offset += 1;
       }
       continue;
     }
     if (source[offset] === '"') {
       quoted = true;
+      offset += 1;
       continue;
     }
     if (source.startsWith("//", offset)) {
       const newline = source.indexOf("\n", offset + 2);
       if (newline < 0) break;
-      offset = newline;
+      offset = newline + 1;
       continue;
     }
     if (source.startsWith("/*", offset)) {
       stack.push(offset);
-      offset++;
+      offset += 2;
+    } else {
+      offset += 1;
     }
   }
   for (const offset of stack.slice(-32)) {
@@ -607,13 +610,13 @@ function latexEnvironmentDiagnostics(
         ? {
             key: "expectedEndBefore" as const,
             params: {
-              expected: `\\end{${open.name}}`,
-              found: `\\end{${name}}`,
+              expected: String.raw`\end{${open.name}}`,
+              found: String.raw`\end{${name}}`,
             },
           }
         : {
             key: "endWithoutBegin" as const,
-            params: { command: `\\end{${name}}` },
+            params: { command: String.raw`\end{${name}}` },
           },
       location: location(
         file,
@@ -626,7 +629,7 @@ function latexEnvironmentDiagnostics(
             {
               message: {
                 key: "beginIsHere" as const,
-                params: { command: `\\begin{${open.name}}` },
+                params: { command: String.raw`\begin{${open.name}}` },
               },
               location: location(file, starts, open.from, open.to),
             },
@@ -643,7 +646,7 @@ function latexEnvironmentDiagnostics(
       code: "malformed-source",
       message: {
         key: "beginWithoutEnd" as const,
-        params: { command: `\\begin{${open.name}}` },
+        params: { command: String.raw`\begin{${open.name}}` },
       },
       location: location(file, starts, open.from, open.to),
       related: [],
@@ -758,11 +761,11 @@ function outlineForDefinitions(
   const sectionStack: { level: number; id: string }[] = [];
   for (const definition of ordered) {
     const isSection = definition.kind === "section";
+    const enclosingLevel =
+      sectionStack.length > 0 ? sectionStack.at(-1)?.level ?? 0 : 0;
     const level = isSection
       ? Math.max(0, definition.level ?? 0)
-      : sectionStack.length > 0
-        ? sectionStack.at(-1)?.level ?? 0
-        : 0;
+      : enclosingLevel;
     if (isSection) {
       while (
         sectionStack.length > 0 &&
@@ -848,7 +851,7 @@ function latexDefinitionName(
       group.contentTo,
     );
     const match = /\\([A-Za-z@]+|.)/u.exec(content.trim());
-    if (!match || match[0] !== content.trim()) return null;
+    if (match?.[0] !== content.trim()) return null;
     const slash = source.indexOf("\\", group.contentFrom);
     return {
       name: match[1],
@@ -874,7 +877,7 @@ function snippetPlaceholder(
 ): string {
   const escaped = defaultValue
     ?.trim()
-    .replace(/[\\$}]/gu, "\\$&");
+    .replace(/[\\$}]/gu, String.raw`\$&`);
   return escaped
     ? `\${${index}:${escaped}}`
     : `\${${index}}`;
@@ -891,7 +894,7 @@ function classicLatexArguments(
   const count = latexGroup(masked, cursor, "[", "]");
   if (
     count &&
-    /^[0-9]$/u.test(
+    /^\d$/u.test(
       source.slice(count.contentFrom, count.contentTo).trim(),
     )
   ) {
@@ -1457,7 +1460,7 @@ function latexAdditionalSyntax(
   const imports =
     /\\(import|subimport|inputfrom|subinputfrom|includefrom|subincludefrom)\*?\s*\{([^}]*)\}\s*\{([^}]*)\}/gi;
   for (const match of masked.matchAll(imports)) {
-    const raw = `${match[2].trim().replace(/\/+$/, "")}/${match[3].trim()}`;
+    const raw = `${match[2].trim().replace(/(?<!\/)\/+$/, "")}/${match[3].trim()}`;
     const nameOffset =
       match.index + match[0].lastIndexOf("{") + 1;
     const target = resolveProjectPath(file, raw);
@@ -1696,11 +1699,11 @@ function markdownAdditionalSyntax(
       if (declaration) {
         yamlBibliographyList = declaration[1].trim().length === 0;
         const rawValue = declaration[1].trim();
-        const values = rawValue.startsWith("[") && rawValue.endsWith("]")
-          ? rawValue.slice(1, -1).split(",")
-          : rawValue
-            ? [rawValue]
-            : [];
+        const singleValue = rawValue ? [rawValue] : [];
+        const values =
+          rawValue.startsWith("[") && rawValue.endsWith("]")
+            ? rawValue.slice(1, -1).split(",")
+            : singleValue;
         for (const value of values) {
           const raw = value.trim().replace(/^["']|["']$/g, "");
           if (!raw) continue;
@@ -1831,7 +1834,7 @@ function markdownAdditionalSyntax(
   const pandocCitation =
     /(?:^|[^\p{Letter}\p{Number}_\\])(-?@)([\p{Letter}\p{Number}_:.#$%&+?~/-]+)/gu;
   for (const match of visible.matchAll(pandocCitation)) {
-    const key = match[2].replace(/[.,;!?]+$/u, "");
+    const key = match[2].replace(/(?<![.,;!?])[.,;!?]+$/u, "");
     if (!key) continue;
     const keyOffset =
       match.index + match[0].lastIndexOf(match[1]) + match[1].length;
@@ -1879,7 +1882,7 @@ function markdownAdditionalSyntax(
   )) {
     const lineText =
       lines[heading.location.range.startLine - 1] ?? heading.name;
-    const explicit = /\{#([A-Za-z][A-Za-z0-9_.:-]*)\}\s*#*\s*$/.exec(
+    const explicit = /\{#([A-Za-z][A-Za-z0-9_.:-]*)\}\s*(?:#+\s*)?$/.exec(
       lineText,
     )?.[1];
     const name = explicit ?? markdownSlug(heading.name);

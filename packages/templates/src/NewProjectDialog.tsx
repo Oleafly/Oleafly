@@ -166,17 +166,55 @@ function useTemplatePreview(t: TemplateInfo, host: TemplatesHost): string | null
   return uri;
 }
 
+interface TemplateFilters {
+  category: string;
+  atsOnly: boolean;
+  offlineOnly: boolean;
+  engine: string;
+  q: string;
+}
+
+function matchesTemplateFilters(t: TemplateInfo, filters: TemplateFilters): boolean {
+  if (filters.category !== "All" && (t.category || "Other") !== filters.category) return false;
+  if (filters.atsOnly && t.ats_profile !== "friendly") return false;
+  if (filters.offlineOnly && !t.assets_ready) return false;
+  if (filters.engine !== "all" && t.document_engine !== filters.engine) return false;
+  if (
+    filters.q &&
+    !`${t.name} ${t.description} ${t.category}`.toLowerCase().includes(filters.q)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function trapDialogTab(event: KeyboardEvent, elements: HTMLElement[]): void {
+  if (!elements.length) return;
+  const first = elements[0];
+  const last = elements.at(-1)!;
+  const wrap = wrappedModalFocus(document.activeElement, first, last, event.shiftKey);
+  if (!wrap) return;
+  event.preventDefault();
+  (wrap === "first" ? first : last).focus({ preventScroll: true });
+}
+
+function engineIcon(engine: TemplateInfo["document_engine"]) {
+  if (engine === "markdown") return Hash;
+  if (engine === "typst") return Sparkles;
+  return FileText;
+}
+
 function Preview({
   template,
   host,
   className,
   t,
-}: {
+}: Readonly<{
   template: TemplateInfo;
   host: TemplatesHost;
   className?: string;
   t: TemplatesTranslator;
-}) {
+}>) {
   const uri = useTemplatePreview(template, host);
   if (uri) {
     // Diagram/figure previews are a standalone cropped image, not a document
@@ -203,12 +241,7 @@ function Preview({
   const tint = /^#[0-9a-fA-F]{6}$/.test(template.default_color ?? "")
     ? (template.default_color as string)
     : null;
-  const Icon =
-    template.document_engine === "markdown"
-      ? Hash
-      : template.document_engine === "typst"
-        ? Sparkles
-        : FileText;
+  const Icon = engineIcon(template.document_engine);
   return (
     <div
       className={cn("flex h-full w-full flex-col items-center justify-center gap-2 bg-white", className)}
@@ -238,10 +271,10 @@ function Preview({
 function AtsBadge({
   profile,
   t,
-}: {
+}: Readonly<{
   profile: TemplateInfo["ats_profile"];
   t: TemplatesTranslator;
-}) {
+}>) {
   if (profile === "friendly")
     return (
       <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
@@ -273,7 +306,7 @@ export function NewProjectDialog({
   defaultColor,
   allowEnterSubmit = true,
   allowClose = true,
-}: {
+}: Readonly<{
   open: boolean;
   templates: TemplateInfo[];
   busy?: boolean;
@@ -291,7 +324,7 @@ export function NewProjectDialog({
   defaultColor: string;
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
-}) {
+}>) {
   const { Button, Input, Tooltip, Select, t } = kit;
   const [step, setStep] = useState<1 | 2>(1);
   const createChordRef = useRef<{ enabled: boolean; submit: () => Promise<void> }>({
@@ -381,19 +414,7 @@ export function NewProjectDialog({
         event.stopPropagation();
         if (allowCloseRef.current) onCloseRef.current();
       }
-      if (event.key === "Tab") {
-        const elements = focusable();
-        if (!elements.length) return;
-        const first = elements[0];
-        const last = elements[elements.length - 1];
-        const wrap = wrappedModalFocus(document.activeElement, first, last, event.shiftKey);
-        if (wrap) {
-          event.preventDefault();
-          (wrap === "first" ? first : last).focus({
-            preventScroll: true,
-          });
-        }
-      }
+      if (event.key === "Tab") trapDialogTab(event, focusable());
     };
     const onFocus = (event: FocusEvent) => {
       if (!isTopmost() || dialogRef.current?.contains(event.target as Node)) return;
@@ -431,14 +452,9 @@ export function NewProjectDialog({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return templates.filter((t) => {
-      if (category !== "All" && (t.category || "Other") !== category) return false;
-      if (atsOnly && t.ats_profile !== "friendly") return false;
-      if (offlineOnly && !t.assets_ready) return false;
-      if (engine !== "all" && t.document_engine !== engine) return false;
-      if (q && !`${t.name} ${t.description} ${t.category}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
+    return templates.filter((t) =>
+      matchesTemplateFilters(t, { category, atsOnly, offlineOnly, engine, q }),
+    );
   }, [templates, search, category, atsOnly, offlineOnly, engine]);
 
   const selected = useMemo(
@@ -478,6 +494,7 @@ export function NewProjectDialog({
   };
 
   const working = busy || setup.active;
+  const createLabel = busy ? t("dialog.creating") : t("dialog.create");
   createChordRef.current = {
     enabled: step === 2 && !working && Boolean(name.trim()),
     submit,
@@ -831,11 +848,7 @@ export function NewProjectDialog({
                     onClick={() => void submit()}
                     disabled={working || !name.trim()}
                   >
-                    {setup.active
-                      ? setup.label
-                      : busy
-                        ? t("dialog.creating")
-                        : t("dialog.create")}
+                    {setup.active ? setup.label : createLabel}
                     {!working && <ArrowRight className="size-4" />}
                     {!working && (
                       <span className="inline-flex items-center gap-1">

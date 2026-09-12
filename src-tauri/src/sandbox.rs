@@ -145,7 +145,7 @@ impl AtomicFile {
             .map_err(|error| format!("failed to bind file destination folder: {error}"))?;
         let name = destination
             .file_name()
-            .and_then(|value| value.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .ok_or_else(|| "file destination name is not valid Unicode".to_string())?;
         let destination = parent.join(name);
 

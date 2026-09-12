@@ -8,7 +8,7 @@ import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { AgentLogo } from "./AgentLogo";
 import { readinessDetail } from "./agent-copy";
 
-export function ReadinessBadge({ readiness }: { readiness: AcpReadiness }) {
+export function ReadinessBadge({ readiness }: Readonly<{ readiness: AcpReadiness }>) {
   const label = acpReadinessLabel(readiness);
   if (readiness === "ready") {
     return (
@@ -47,11 +47,11 @@ export function BridgeInstallCard({
   agent,
   onInstalled,
   onError,
-}: {
+}: Readonly<{
   agent: AcpAgentStatus;
   onInstalled?: () => void;
   onError?: (message: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const { installing, install } = useBridgeInstall();
   const readiness = acpReadiness(agent);

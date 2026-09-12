@@ -50,6 +50,19 @@ function toolOutput(data: Data): string {
   }).filter(Boolean).join("\n");
 }
 
+function chunkText(content: Data): string {
+  if (content.type === "text") return text(content.text);
+  if (content.type === "image") return i18n.t(($) => $.ai.acp.agentImage);
+  return "";
+}
+
+function toolStatus(status: unknown, previous: ToolEntry["status"] | undefined): ToolEntry["status"] {
+  if (status === "completed") return "done";
+  if (status === "failed") return "error";
+  if (status === "in_progress" || status === "pending") return "running";
+  return previous ?? "running";
+}
+
 export function createAcpProjector() {
   let previousEvents: readonly AcpEvent[] = [];
   let rows: Row[] = [];
@@ -69,7 +82,7 @@ export function createAcpProjector() {
         append("user", { role: "user", content: text(data.text), attachments: Array.isArray(data.images) ? data.images.map((image: unknown, index) => ({ name: i18n.t(($) => $.ai.acp.imageAttachmentName, { index: index + 1 }), mediaType: text(object(image).mimeType) })) : undefined });
       } else if (event.kind === "agent_message_chunk" || event.kind === "agent_thought_chunk") {
         const content = object(data.content);
-        const chunk = content.type === "text" ? text(content.text) : content.type === "image" ? i18n.t(($) => $.ai.acp.agentImage) : "";
+        const chunk = chunkText(content);
         if (!chunk) continue;
         const previous = rows.at(-1);
         const reasoning = event.kind === "agent_thought_chunk";
@@ -92,7 +105,7 @@ export function createAcpProjector() {
         const key = `${event.turnId}:${toolId}`;
         const index = tools.get(key);
         const previous = index === undefined ? undefined : rows[index].msg.toolCalls?.[0];
-        const status = data.status === "completed" ? "done" : data.status === "failed" ? "error" : data.status === "in_progress" || data.status === "pending" ? "running" : previous?.status ?? "running";
+        const status = toolStatus(data.status, previous?.status);
         const tool: ToolEntry = { id: toolId, name: text(data.title) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback), status, output: data.content ? toolOutput(data) : previous?.output };
         if (index === undefined) { tools.set(key, rows.length); append("tool", { role: "assistant", content: "", toolCalls: [tool] }); }
         else rows[index].msg = { ...rows[index].msg, toolCalls: [tool] };

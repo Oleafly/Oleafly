@@ -99,7 +99,7 @@ export function AddCitationDialog() {
     setAdding(false);
     if ("key" in r) {
       close();
-      toast.success(i18n.t(($) => $.shell.addCitation.added, { cite: `\\cite{${r.key}}` }));
+      toast.success(i18n.t(($) => $.shell.addCitation.added, { cite: String.raw`\cite{${r.key}}` }));
     } else {
       setError(r.error);
     }

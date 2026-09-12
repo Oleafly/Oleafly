@@ -88,7 +88,7 @@ function buildPanelSet(state: EditorState): DecorationSet {
 
 const inlineDiffSubscriber = ViewPlugin.fromClass(
   class {
-    private unsub: () => void;
+    private readonly unsub: () => void;
     constructor(readonly view: EditorView) {
       this.unsub = useInlineEditStore.subscribe(() => this.repaint());
     }

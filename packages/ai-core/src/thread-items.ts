@@ -193,7 +193,7 @@ function toolOutcome(output: string): { status: ExecutionStatus; exitCode: numbe
       record.timed_out === true ||
       (typeof record.status === "string" && record.status.toLowerCase().includes("timed out"));
     const failed =
-      Object.prototype.hasOwnProperty.call(record, "error") ||
+      Object.hasOwn(record, "error") ||
       timedOut ||
       (exitCode !== null && exitCode !== 0) ||
       (record.exec === true && exitCode === null);
@@ -249,38 +249,69 @@ export class TurnFold {
     return this;
   }
 
+  private push(item: StoreItem, completed: boolean): number {
+    const record = this.record;
+    record.items.push({
+      id: `${record.turnId}:${record.items.length}`,
+      item,
+      completed,
+    });
+    return record.items.length - 1;
+  }
+
+  private appendTextDelta(text: string): void {
+    const last = this.record.items.at(-1);
+    if (last && !last.completed && last.item.type === "agentMessage") {
+      last.item.text += text;
+      return;
+    }
+    this.push({ type: "agentMessage", text }, false);
+  }
+
+  private appendReasoningDelta(text: string): void {
+    const last = this.record.items.at(-1);
+    if (!last || last.completed || last.item.type !== "reasoning") {
+      this.push({ type: "reasoning", summary: [], content: [text] }, false);
+      return;
+    }
+    if (last.item.content.length > 0) {
+      last.item.content[last.item.content.length - 1] += text;
+    } else {
+      last.item.content.push(text);
+    }
+  }
+
+  private applyToolOutcome(id: string, output: string): void {
+    const index = this.openCalls.get(id);
+    if (index === undefined) return;
+    this.openCalls.delete(id);
+    const recorded = this.record.items[index];
+    recorded.completed = true;
+    const outcome = toolOutcome(output);
+    const item = recorded.item;
+    if (item.type === "commandExecution") {
+      item.aggregatedOutput += output;
+      item.exitCode = outcome.exitCode;
+      item.status = outcome.status;
+    } else if (item.type === "fileChange" || item.type === "mcpToolCall") {
+      item.status = outcome.status;
+    } else if (item.type === "dynamicToolCall") {
+      item.output = output;
+      item.status = outcome.status;
+    }
+  }
+
   apply(event: AgentEvent): this {
     const record = this.record;
-    const push = (item: StoreItem, completed: boolean): number => {
-      record.items.push({
-        id: `${record.turnId}:${record.items.length}`,
-        item,
-        completed,
-      });
-      return record.items.length - 1;
-    };
+    const push = (item: StoreItem, completed: boolean): number => this.push(item, completed);
 
     switch (event.kind) {
       case "textDelta": {
-        const last = record.items[record.items.length - 1];
-        if (last && !last.completed && last.item.type === "agentMessage") {
-          last.item.text += event.text;
-        } else {
-          push({ type: "agentMessage", text: event.text }, false);
-        }
+        this.appendTextDelta(event.text);
         break;
       }
       case "reasoningDelta": {
-        const last = record.items[record.items.length - 1];
-        if (last && !last.completed && last.item.type === "reasoning") {
-          if (last.item.content.length > 0) {
-            last.item.content[last.item.content.length - 1] += event.text;
-          } else {
-            last.item.content.push(event.text);
-          }
-        } else {
-          push({ type: "reasoning", summary: [], content: [event.text] }, false);
-        }
+        this.appendReasoningDelta(event.text);
         break;
       }
       case "toolCallStart": {
@@ -303,24 +334,7 @@ export class TurnFold {
         break;
       }
       case "toolOutcome": {
-        const index = this.openCalls.get(event.id);
-        if (index !== undefined) {
-          this.openCalls.delete(event.id);
-          const recorded = record.items[index];
-          recorded.completed = true;
-          const outcome = toolOutcome(event.output);
-          const item = recorded.item;
-          if (item.type === "commandExecution") {
-            item.aggregatedOutput += event.output;
-            item.exitCode = outcome.exitCode;
-            item.status = outcome.status;
-          } else if (item.type === "fileChange" || item.type === "mcpToolCall") {
-            item.status = outcome.status;
-          } else if (item.type === "dynamicToolCall") {
-            item.output = event.output;
-            item.status = outcome.status;
-          }
-        }
+        this.applyToolOutcome(event.id, event.output);
         break;
       }
       case "subagentUpdate": {

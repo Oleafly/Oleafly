@@ -376,14 +376,14 @@ function textDocumentSyncCapabilities(
       "Language server advertised malformed textDocumentSync save capability",
     );
   }
-  const save = saveValue === true
-    ? { enabled: true, includeText: false }
-    : isRecord(saveValue)
-      ? {
-          enabled: true,
-          includeText: saveValue.includeText === true,
-        }
-      : { enabled: false, includeText: false };
+  const recordSave = isRecord(saveValue)
+    ? {
+        enabled: true,
+        includeText: saveValue.includeText === true,
+      }
+    : { enabled: false, includeText: false };
+  const save =
+    saveValue === true ? { enabled: true, includeText: false } : recordSave;
   return {
     openClose: value.openClose === true,
     change,
@@ -402,13 +402,15 @@ export function negotiateServerCapabilities(
   }
   const capabilities = initializeResult.capabilities;
   const advertisedEncoding = capabilities.positionEncoding;
+  const negotiatedEncoding =
+    isPositionEncoding(advertisedEncoding) &&
+    offeredPositionEncodings.includes(advertisedEncoding)
+      ? advertisedEncoding
+      : null;
   const positionEncoding =
     advertisedEncoding === undefined
       ? DEFAULT_POSITION_ENCODING
-      : isPositionEncoding(advertisedEncoding) &&
-          offeredPositionEncodings.includes(advertisedEncoding)
-        ? advertisedEncoding
-        : null;
+      : negotiatedEncoding;
   if (!positionEncoding) {
     throw new JsonRpcProtocolError(
       `Language server selected unsupported position encoding: ${String(advertisedEncoding)}`,

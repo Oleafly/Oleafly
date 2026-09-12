@@ -8,12 +8,12 @@ import {
 export const PX_PER_CM = 40;
 
 const px2cm = (v: number) => +(v / PX_PER_CM).toFixed(3);
+const DASH_PATTERNS = {
+  dashed: "dash pattern=on 0.15cm off 0.1cm",
+  dotted: "dash pattern=on 0.038cm off 0.1cm, line cap=round",
+} as const;
 const dash = (style: "solid" | "dashed" | "dotted" | undefined) =>
-  style === "dashed"
-    ? "dash pattern=on 0.15cm off 0.1cm"
-    : style === "dotted"
-      ? "dash pattern=on 0.038cm off 0.1cm, line cap=round"
-      : null;
+  style === "dashed" || style === "dotted" ? DASH_PATTERNS[style] : null;
 
 function escapeLatex(text: string): string {
   return text.replace(/[&%#]/g, (ch) => `\\${ch}`);
@@ -28,68 +28,74 @@ function colorRef(hex: string | undefined): { name: string | null; def?: string 
   const h = hex.replace("#", "").toUpperCase();
   if (!/^[0-9A-F]{6}$/.test(h)) return { name: null };
   const name = `c${h}`;
-  return { name, def: `\\definecolor{${name}}{HTML}{${h}}` };
+  return { name, def: String.raw`\definecolor{${name}}{HTML}{${h}}` };
 }
 
 const ROUNDABLE = new Set<NodeShape>(["rectangle", "roundrect", "text"]);
 
-function nodeToTikz(n: DiagNode, defs: Set<string>): string {
-  const c = center(n);
-  const opts: string[] = [];
-  // Shape (rectangle is TikZ's default, so it needs no keyword). "text" is a
-  // rectangle with no border/fill unless the user styles it.
-  if (n.shape === "circle") opts.push("circle");
-  else if (n.shape === "ellipse") opts.push("ellipse");
-  else if (n.shape === "diamond") opts.push("diamond");
+// Shape (rectangle is TikZ's default, so it needs no keyword). "text" is a
+// rectangle with no border/fill unless the user styles it.
+function shapeOptions(n: DiagNode): string[] {
+  if (n.shape === "circle") return ["circle"];
+  if (n.shape === "ellipse") return ["ellipse"];
+  if (n.shape === "diamond") return ["diamond"];
   // Flowchart I/O box: a trapezium with equal-and-supplementary side angles is a
   // parallelogram. `trapezium stretches` lets minimum width/height set the box.
-  else if (n.shape === "parallelogram") {
+  if (n.shape === "parallelogram") {
     const angle = +((Math.atan2(n.h, n.w * 0.22) * 180) / Math.PI).toFixed(3);
-    opts.push(
+    return [
       "trapezium",
       `trapezium left angle=${angle}`,
       `trapezium right angle=${180 - angle}`,
       "trapezium stretches",
-    );
+    ];
   }
+  return [];
+}
 
-  const stroke = colorRef(n.stroke);
-  if (stroke.name) {
-    if (stroke.def) defs.add(stroke.def);
-    opts.push(`draw=${stroke.name}`);
+function fontFamilyMacro(fontFamily: DiagNode["fontFamily"]): string {
+  if (fontFamily === "sans") return String.raw`\sffamily`;
+  if (fontFamily === "mono") return String.raw`\ttfamily`;
+  return String.raw`\rmfamily`;
+}
+
+function applyColor(
+  opts: string[],
+  defs: Set<string>,
+  ref: { name: string | null; def?: string },
+  option: string,
+): boolean {
+  if (!ref.name) return false;
+  if (ref.def) defs.add(ref.def);
+  opts.push(`${option}=${ref.name}`);
+  return true;
+}
+
+function nodeToTikz(n: DiagNode, defs: Set<string>): string {
+  const c = center(n);
+  const opts: string[] = shapeOptions(n);
+
+  if (applyColor(opts, defs, colorRef(n.stroke), "draw")) {
     const strokeDash = dash(n.strokeStyle);
     if (strokeDash) opts.push(strokeDash);
     opts.push(`line width=${px2cm(n.strokeWidth ?? 1)}cm`);
   }
-  const fill = colorRef(n.fill);
-  if (fill.name) {
-    if (fill.def) defs.add(fill.def);
-    opts.push(`fill=${fill.name}`);
-  }
+  applyColor(opts, defs, colorRef(n.fill), "fill");
   const r = n.radius ?? (n.shape === "roundrect" ? 6 : 0);
   if (r > 0 && ROUNDABLE.has(n.shape)) opts.push(`rounded corners=${px2cm(r)}cm`);
 
-  const text = colorRef(n.textColor);
-  if (text.name) {
-    if (text.def) defs.add(text.def);
-    opts.push(`text=${text.name}`);
-  }
-  const family =
-    n.fontFamily === "sans"
-      ? "\\sffamily"
-      : n.fontFamily === "mono"
-        ? "\\ttfamily"
-        : "\\rmfamily";
+  applyColor(opts, defs, colorRef(n.textColor), "text");
+  const family = fontFamilyMacro(n.fontFamily);
   const size = n.fontSize ?? 10;
   opts.push(
-    `font=${family}\\fontsize{${size}}{${+(size * 1.2).toFixed(1)}}\\selectfont`,
+    String.raw`font=${family}\fontsize{${size}}{${+(size * 1.2).toFixed(1)}}\selectfont`,
+    "inner sep=0pt",
+    "outer sep=0pt",
+    `minimum width=${px2cm(n.w)}cm`,
+    `minimum height=${px2cm(n.h)}cm`,
   );
-  opts.push("inner sep=0pt");
-  opts.push("outer sep=0pt");
-  opts.push(`minimum width=${px2cm(n.w)}cm`);
-  opts.push(`minimum height=${px2cm(n.h)}cm`);
   const optStr = opts.length ? `[${opts.join(", ")}] ` : "";
-  return `\\node (${n.id}) at (${c.x},${c.y}) ${optStr}{${escapeLatex(n.label)}};`;
+  return String.raw`\node (${n.id}) at (${c.x},${c.y}) ${optStr}{${escapeLatex(n.label)}};`;
 }
 
 const ARROW_OPT: Record<DiagEdge["arrow"], string> = {
@@ -155,15 +161,15 @@ function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>, sourceVersion: Di
       const label = e.label
         ? `\n    \\node[fill=white, font=\\small] at ${pointToTikz(route.label)} {${escapeLatex(e.label)}};`
         : "";
-      return `\\draw${optStr} ${path};${label}`;
+      return String.raw`\draw${optStr} ${path};${label}`;
     }
   }
   const connector =
     e.routing === "curved"
       ? `to[out=${angle[sourceHandle]}, in=${angle[targetHandle]}]`
       : "--";
-  const mid = e.label ? ` node[midway, fill=white, font=\\small] {${escapeLatex(e.label)}}` : "";
-  return `\\draw${optStr} (${source}) ${connector}${mid} (${target});`;
+  const mid = e.label ? String.raw` node[midway, fill=white, font=\small] {${escapeLatex(e.label)}}` : "";
+  return String.raw`\draw${optStr} (${source}) ${connector}${mid} (${target});`;
 }
 
 export const DIAGRAM_LIBS = [
@@ -197,8 +203,9 @@ export function modelToTikz(model: DiagramModel, sourceVersion: DiagramSourceVer
   const defLines = [...defs].sort((a, b) => Number(a > b) - Number(a < b));
   const nodeBody = nodes.map((l) => `  ${l}`).join("\n");
   const backgroundLines = [...containers, ...edges];
+  const backgroundBody = backgroundLines.map((l) => `    ${l}`).join("\n");
   const edgeBody = backgroundLines.length
-    ? `\n  \\begin{scope}[on background layer]\n${backgroundLines.map((l) => `    ${l}`).join("\n")}\n  \\end{scope}`
+    ? `\n  \\begin{scope}[on background layer]\n${backgroundBody}\n  \\end{scope}`
     : "";
   const pre = defLines.length ? `${defLines.join("\n")}\n` : "";
   return `${pre}\\begin{tikzpicture}[>={Triangle[length=0.313cm,width=0.313cm]}]\n${nodeBody}${edgeBody}\n\\end{tikzpicture}`;
@@ -209,13 +216,13 @@ const MARK = "% oleafly-diagram-v1:";
 function b64encode(obj: unknown): string {
   const bytes = new TextEncoder().encode(JSON.stringify(obj));
   let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
+  for (const b of bytes) bin += String.fromCodePoint(b);
   return btoa(bin);
 }
 
 function b64decode(b64: string): unknown {
   const bin = atob(b64);
-  const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+  const bytes = Uint8Array.from(bin, (ch) => ch.codePointAt(0) ?? 0);
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
@@ -229,7 +236,7 @@ export function parseEmbeddedModel(tikz: string): DiagramModel | null {
   try {
     const b64 = line.slice(line.indexOf(MARK) + MARK.length).trim();
     const model = b64decode(b64) as DiagramModel;
-    if (model && model.version === 1 && Array.isArray(model.nodes)) return model;
+    if (model?.version === 1 && Array.isArray(model.nodes)) return model;
     return null;
   } catch {
     return null;

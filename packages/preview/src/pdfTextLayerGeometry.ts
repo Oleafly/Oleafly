@@ -101,12 +101,10 @@ export function calibratedPdfTextScaleX(
  * against the DOM's actual untransformed advance so selection boundaries
  * remain aligned with the PDF text item across browser font engines.
  */
-export function calibratePdfTextLayerWidths(
-  container: HTMLElement,
+function collectCalibrationCandidates(
   textDivs: readonly HTMLElement[],
   textContent: PdfTextContentGeometry,
-  viewport: PdfTextViewportGeometry,
-): number {
+): CalibrationCandidate[] {
   const candidates: CalibrationCandidate[] = [];
   let textDivIndex = 0;
 
@@ -133,6 +131,16 @@ export function calibratePdfTextLayerWidths(
       transform: snapshotInlineProperty(div, "transform"),
     });
   }
+  return candidates;
+}
+
+export function calibratePdfTextLayerWidths(
+  container: HTMLElement,
+  textDivs: readonly HTMLElement[],
+  textContent: PdfTextContentGeometry,
+  viewport: PdfTextViewportGeometry,
+): number {
+  const candidates = collectCalibrationCandidates(textDivs, textContent);
 
   if (candidates.length === 0) return 0;
 

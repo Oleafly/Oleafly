@@ -97,23 +97,22 @@ export function MessageList({
   nearBottomRef,
   renderExtras,
   actions,
-}: {
+}: Readonly<{
   messages: readonly RenderedMessage[];
   chatId: string | null;
   scrollRef: RefObject<HTMLDivElement | null>;
   nearBottomRef: MutableRefObject<boolean>;
   renderExtras?: (entry: RenderedMessage) => ReactNode;
   actions?: ResearchChatActions;
-}) {
+}>) {
   const heightsRef = useRef(new Map<string, number>());
-  const [measureVersion, bumpMeasureVersion] = useReducer((value) => value + 1, 0);
+  const [, bumpMeasureVersion] = useReducer((value) => value + 1, 0);
   const [windowRange, setWindowRange] = useState(() => ({
     start: initialMountIndex(messages),
     end: messages.length,
   }));
   const previousChatRef = useRef<string | null | undefined>(undefined);
   const previousCountRef = useRef(messages.length);
-  void measureVersion;
   const offsets = messageOffsets(messages, heightsRef.current);
   const offsetsRef = useRef(offsets);
   offsetsRef.current = offsets;

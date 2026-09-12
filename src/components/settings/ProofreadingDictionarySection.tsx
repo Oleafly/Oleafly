@@ -39,10 +39,10 @@ import { useSettingsStore } from "@/store/settings";
 function AddWord({
   label,
   onAdd,
-}: {
+}: Readonly<{
   label: string;
   onAdd: (word: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const [value, setValue] = useState("");
   const normalized = normalizeDictionaryWord(value);
@@ -88,13 +88,13 @@ function WordChips({
   onRemove,
   emptyDescription,
   compactEmpty = false,
-}: {
+}: Readonly<{
   words: string[];
   query: string;
   onRemove: (word: string) => void;
   emptyDescription: string;
   compactEmpty?: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const visible = useMemo(() => {
     const normalizedQuery = query.toLocaleLowerCase("en-US").trim();
@@ -169,7 +169,7 @@ type ClearTarget =
   | { type: "project"; id: string; name: string }
   | { type: "suppressed"; id: string; name: string };
 
-function HelpTip({ label }: { readonly label: string }) {
+function HelpTip({ label }: Readonly<{ readonly label: string }>) {
   return (
     <Tooltip label={<span className="block max-w-72 text-left leading-relaxed">{label}</span>} side="bottom">
       <button
@@ -267,12 +267,12 @@ function TurnedOffFindings({
   projectName,
   suppressedCount,
   onClearSuppressed,
-}: {
+}: Readonly<{
   projectId: string | null;
   projectName: string;
   suppressedCount: number;
   onClearSuppressed: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const disabledRules = useSettingsStore((state) => state.harperDisabledRules);
   const enableHarperRule = useSettingsStore(
@@ -443,18 +443,23 @@ export function ProofreadingDictionarySection() {
     ? (suppressed[activeProjectId]?.length ?? 0)
     : 0;
 
-  const clearDescription =
-    clearTarget?.type === "project"
-      ? t(($) => $.settings.proofreading.clear.descriptionProject, {
-          project: clearTarget.name,
-        })
-      : clearTarget?.type === "suppressed"
-        ? t(($) => $.settings.proofreading.clear.descriptionSuppressed, {
-            project: clearTarget.name,
-          })
-        : clearTarget?.type === "global"
-          ? t(($) => $.settings.proofreading.clear.descriptionGlobal)
-          : t(($) => $.settings.proofreading.clear.descriptionFallback);
+  const clearDescriptionFor = (): string => {
+    if (clearTarget?.type === "project") {
+      return t(($) => $.settings.proofreading.clear.descriptionProject, {
+        project: clearTarget.name,
+      });
+    }
+    if (clearTarget?.type === "suppressed") {
+      return t(($) => $.settings.proofreading.clear.descriptionSuppressed, {
+        project: clearTarget.name,
+      });
+    }
+    if (clearTarget?.type === "global") {
+      return t(($) => $.settings.proofreading.clear.descriptionGlobal);
+    }
+    return t(($) => $.settings.proofreading.clear.descriptionFallback);
+  };
+  const clearDescription = clearDescriptionFor();
 
   return (
     <div className="space-y-4 text-sm">

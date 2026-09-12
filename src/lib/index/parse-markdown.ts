@@ -26,19 +26,19 @@ export function parseMarkdownFile(path: string, text: string): FileSymbols {
       const heading = /^(#{1,6})\s+/.exec(visible);
       if (heading) {
         const titleStart = heading[0].length;
-        const name = line.slice(titleStart).replace(/\s+#+\s*$/, "").replace(/\s+\{[^{}]*\}\s*$/, "").trimEnd();
+        const name = line.slice(titleStart).replace(/(?<!\s)\s+#+\s*$/, "").replace(/(?<!\s)\s+\{[^{}]*\}\s*$/, "").trimEnd();
         const nameFrom = offset + titleStart;
         defs.push({ kind: "section", name, file: path, line: index + 1, from: offset, to: offset + line.length, nameFrom, nameTo: nameFrom + name.length, level: heading[1].length - 1 });
       }
       if (index + 1 < lines.length && /^\s*(?:={2,}|-{2,})\s*$/.test(lines[index + 1]) && visible.trim()) {
         const leading = line.length - line.trimStart().length;
-        const name = line.trim().replace(/\s+\{[^{}]*\}\s*$/, "").trimEnd();
+        const name = line.trim().replace(/(?<!\s)\s+\{[^{}]*\}\s*$/, "").trimEnd();
         const nameFrom = offset + leading;
         defs.push({ kind: "section", name, file: path, line: index + 1, from: offset, to: offset + line.length, nameFrom, nameTo: nameFrom + name.length, level: lines[index + 1].trimStart().startsWith("=") ? 0 : 1 });
       }
       const citations = /(?:^|[^\w])@([A-Za-z0-9_:.#$%&+?<>~/-]+)/g;
       for (const match of visible.matchAll(citations)) {
-        const name = match[1].replace(/[.,;!?]+$/, "");
+        const name = match[1].replace(/(?<![.,;!?])[.,;!?]+$/, "");
         if (!name) continue;
         const at = offset + match.index + match[0].lastIndexOf("@");
         uses.push({ kind: "cite", name, file: path, line: index + 1, from: at, to: at + name.length + 1, nameFrom: at + 1, nameTo: at + name.length + 1 });

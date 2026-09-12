@@ -222,7 +222,7 @@ test("the unified import chooser exposes every supported project source", async 
       `document.querySelector('[data-testid="import-project-button"]')`,
     ),
   );
-  if (!opened) throw new Error("import trigger unavailable");
+  expect(opened, "import trigger unavailable").toBe(true);
   await waitLong(
     tauriPage,
     `['Existing project (.zip)', 'Word document', 'Markdown document', 'GitHub'].every(

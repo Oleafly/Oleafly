@@ -814,7 +814,7 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
       ),
     );
     await waitFor(() =>
-      expect(view.container.querySelectorAll(".pdf-canvas").length).toBe(14),
+      expect(view.container.querySelectorAll(".pdf-canvas")).toHaveLength(14),
     );
 
     for (const pageNumber of [30, 29, 28, 27, 26, 25, 24, 23]) {

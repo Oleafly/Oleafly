@@ -72,6 +72,18 @@ function closingMath(text: string, from: number): number {
   return text.length;
 }
 
+// Escapes, strings, block comments, raw spans, and math are opaque to the
+// bracket and statement scanners: each returns the offset just past the span,
+// or null when the cursor is on ordinary code.
+function opaqueSpanEnd(text: string, cursor: number): number | null {
+  if (text[cursor] === "\\") return cursor + 2;
+  if (text[cursor] === '"') return closingQuote(text, cursor + 1);
+  if (text.startsWith("/*", cursor)) return closingBlockComment(text, cursor);
+  if (text[cursor] === "`") return closingRawSpan(text, cursor);
+  if (text[cursor] === "$") return closingMath(text, cursor);
+  return null;
+}
+
 function closingBalanced(
   text: string,
   from: number,
@@ -79,36 +91,24 @@ function closingBalanced(
   close: string,
 ): number {
   let depth = 0;
-  for (let cursor = from; cursor < text.length; cursor += 1) {
-    if (text[cursor] === "\\") {
-      cursor += 1;
-      continue;
-    }
-    if (text[cursor] === '"') {
-      cursor = closingQuote(text, cursor + 1) - 1;
-      continue;
-    }
+  let cursor = from;
+  while (cursor < text.length) {
     if (text.startsWith("//", cursor)) {
       const newline = text.indexOf("\n", cursor + 2);
-      cursor = (newline < 0 ? text.length : newline) - 1;
+      cursor = newline < 0 ? text.length : newline;
       continue;
     }
-    if (text.startsWith("/*", cursor)) {
-      cursor = closingBlockComment(text, cursor) - 1;
-      continue;
-    }
-    if (text[cursor] === "`") {
-      cursor = closingRawSpan(text, cursor) - 1;
-      continue;
-    }
-    if (text[cursor] === "$") {
-      cursor = closingMath(text, cursor) - 1;
+    const opaque = opaqueSpanEnd(text, cursor);
+    if (opaque !== null) {
+      cursor = opaque;
       continue;
     }
     if (text[cursor] === open) depth += 1;
-    if (text[cursor] !== close) continue;
-    depth -= 1;
-    if (depth === 0) return cursor + 1;
+    if (text[cursor] === close) {
+      depth -= 1;
+      if (depth === 0) return cursor + 1;
+    }
+    cursor += 1;
   }
   return text.length;
 }
@@ -122,51 +122,26 @@ function statementEnd(text: string, from: number): number {
   let parentheses = 0;
   let braces = 0;
   let brackets = 0;
-  for (let cursor = from; cursor < text.length; cursor += 1) {
-    if (text[cursor] === "\\") {
-      cursor += 1;
-      continue;
-    }
-    if (text[cursor] === '"') {
-      cursor = closingQuote(text, cursor + 1) - 1;
-      continue;
-    }
+  let cursor = from;
+  while (cursor < text.length) {
     if (text.startsWith("//", cursor)) {
       return endOfLine(text, cursor);
     }
-    if (text.startsWith("/*", cursor)) {
-      cursor = closingBlockComment(text, cursor) - 1;
+    const opaque = opaqueSpanEnd(text, cursor);
+    if (opaque !== null) {
+      cursor = opaque;
       continue;
     }
-    if (text[cursor] === "`") {
-      cursor = closingRawSpan(text, cursor) - 1;
-      continue;
-    }
-    if (text[cursor] === "$") {
-      cursor = closingMath(text, cursor) - 1;
-      continue;
-    }
+    const balanced = parentheses === 0 && braces === 0 && brackets === 0;
     if (text[cursor] === "(") parentheses += 1;
     else if (text[cursor] === ")") parentheses = Math.max(0, parentheses - 1);
     else if (text[cursor] === "{") braces += 1;
     else if (text[cursor] === "}") braces = Math.max(0, braces - 1);
     else if (text[cursor] === "[") brackets += 1;
     else if (text[cursor] === "]") brackets = Math.max(0, brackets - 1);
-    else if (
-      text[cursor] === ";" &&
-      parentheses === 0 &&
-      braces === 0 &&
-      brackets === 0
-    ) {
-      return cursor + 1;
-    } else if (
-      text[cursor] === "\n" &&
-      parentheses === 0 &&
-      braces === 0 &&
-      brackets === 0
-    ) {
-      return cursor;
-    }
+    else if (text[cursor] === ";" && balanced) return cursor + 1;
+    else if (text[cursor] === "\n" && balanced) return cursor;
+    cursor += 1;
   }
   return text.length;
 }
@@ -174,28 +149,14 @@ function statementEnd(text: string, from: number): number {
 function contentBlockStart(text: string, from: number): number {
   let parentheses = 0;
   let braces = 0;
-  for (let cursor = from; cursor < text.length; cursor += 1) {
-    if (text[cursor] === "\\") {
-      cursor += 1;
-      continue;
-    }
-    if (text[cursor] === '"') {
-      cursor = closingQuote(text, cursor + 1) - 1;
-      continue;
-    }
+  let cursor = from;
+  while (cursor < text.length) {
     if (text.startsWith("//", cursor) || text[cursor] === "\n") {
       return -1;
     }
-    if (text.startsWith("/*", cursor)) {
-      cursor = closingBlockComment(text, cursor) - 1;
-      continue;
-    }
-    if (text[cursor] === "`") {
-      cursor = closingRawSpan(text, cursor) - 1;
-      continue;
-    }
-    if (text[cursor] === "$") {
-      cursor = closingMath(text, cursor) - 1;
+    const opaque = opaqueSpanEnd(text, cursor);
+    if (opaque !== null) {
+      cursor = opaque;
       continue;
     }
     if (text[cursor] === "(") parentheses += 1;
@@ -210,6 +171,7 @@ function contentBlockStart(text: string, from: number): number {
     ) {
       return cursor;
     }
+    cursor += 1;
   }
   return -1;
 }
@@ -250,8 +212,8 @@ function maskIfElseBranches(
 function maskRemoteTargets(characters: string[]): void {
   const text = characters.join("");
   const patterns = [
-    /(?:https?:\/\/|www\.)[^\s<>()\[\]{}]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
+    /(?:https?:\/\/|www\.)[^\s<>()[\]{}]+/giu,
+    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
   ];
   for (const pattern of patterns) {
     for (const match of text.matchAll(pattern)) {

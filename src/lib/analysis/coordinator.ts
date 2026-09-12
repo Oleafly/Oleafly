@@ -698,12 +698,11 @@ export class ProjectAnalysisCoordinator {
     }
     const pending = this.pendingDiagnostics.get(event.params.uri);
     if (
-      !pending ||
-      pending.diagnosticEpoch !== event.diagnosticEpoch ||
-      pending.request.projectRevision !== request.projectRevision ||
-      pending.request.languageServiceGeneration !==
+      pending?.diagnosticEpoch !== event.diagnosticEpoch ||
+      pending?.request.projectRevision !== request.projectRevision ||
+      pending?.request.languageServiceGeneration !==
         request.languageServiceGeneration ||
-      pending.request.documentVersion !== request.documentVersion
+      pending?.request.documentVersion !== request.documentVersion
     ) {
       return;
     }

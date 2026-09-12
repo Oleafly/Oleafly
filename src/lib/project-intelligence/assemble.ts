@@ -135,6 +135,12 @@ function diagnosticForUse(
 ): ProjectDiagnostic {
   const duplicate = definitions.length > 1;
   const citation = use.kind === "citation";
+  const duplicateCode = citation
+    ? "duplicate-citation-key"
+    : "duplicate-definition";
+  const unresolvedCode = citation
+    ? "unresolved-citation"
+    : "unresolved-reference";
   return {
     id: stableId(
       "diag",
@@ -146,13 +152,7 @@ function diagnosticForUse(
     ),
     source: "project-intelligence",
     severity: "error",
-    code: duplicate
-      ? citation
-        ? "duplicate-citation-key"
-        : "duplicate-definition"
-      : citation
-        ? "unresolved-citation"
-        : "unresolved-reference",
+    code: duplicate ? duplicateCode : unresolvedCode,
     message: duplicate
       ? {
           key: citation
@@ -171,8 +171,37 @@ function diagnosticForUse(
   };
 }
 
+function resolutionForCandidateCount(count: number): ResolutionStatus {
+  if (count === 0) return "unresolved";
+  if (count === 1) return "resolved";
+  return "duplicate";
+}
+
+function hierarchyStatusFor(
+  status: ProjectFileState["status"],
+): ProjectHierarchyNode["status"] {
+  if (status === "success") return "available";
+  if (status === "partial") return "partial";
+  return "unreadable";
+}
+
 function diagnosticForEdge(edge: ProjectEdge): ProjectDiagnostic {
   const duplicate = edge.resolution === "duplicate";
+  const unresolvedMessage: ProjectDiagnosticMessage =
+    edge.kind === "bibliography"
+      ? {
+          key: "bibliographyFileMissing" as const,
+          params: {
+            file: bibliographyDisplayName(
+              edge.rawTarget,
+              bibliographyEngineFor(edge),
+            ),
+          },
+        }
+      : {
+          key: "targetUnresolved" as const,
+          params: { kind: edge.kind, target: edge.rawTarget },
+        };
   return {
     id: stableId(
       "diag",
@@ -193,20 +222,7 @@ function diagnosticForEdge(edge: ProjectEdge): ProjectDiagnostic {
             count: edge.candidateFiles.length,
           },
         }
-      : edge.kind === "bibliography"
-        ? {
-            key: "bibliographyFileMissing" as const,
-            params: {
-              file: bibliographyDisplayName(
-                edge.rawTarget,
-                bibliographyEngineFor(edge),
-              ),
-            },
-          }
-        : {
-            key: "targetUnresolved" as const,
-            params: { kind: edge.kind, target: edge.rawTarget },
-          },
+      : unresolvedMessage,
     location: edge.location,
     related: duplicate
       ? edge.candidateFiles.map((file) => ({
@@ -307,12 +323,9 @@ function resolveEdge(
 ): ProjectEdge {
   if (edge.resolution === "external" || !edge.targetFile) return edge;
   const candidates = candidateTargetFiles(edge, known, knownByLower);
-  const resolution: ResolutionStatus =
-    candidates.length === 0
-      ? "unresolved"
-      : candidates.length === 1
-        ? "resolved"
-        : "duplicate";
+  const resolution: ResolutionStatus = resolutionForCandidateCount(
+    candidates.length,
+  );
   return {
     ...edge,
     targetFile: candidates.length === 1 ? candidates[0] : edge.targetFile,
@@ -417,12 +430,7 @@ function resolvedUse(
   return {
     ...original,
     kind,
-    resolution:
-      candidates.length === 0
-        ? "unresolved"
-        : candidates.length === 1
-          ? "resolved"
-          : "duplicate",
+    resolution: resolutionForCandidateCount(candidates.length),
     definitionIds: candidates.map((definition) => definition.id),
   };
 }
@@ -508,12 +516,7 @@ function hierarchyFor(
         title: file.file.split("/").at(-1) ?? file.file,
         engine: file.engine,
         range: firstRange,
-        status:
-          file.status === "success"
-            ? "available"
-            : file.status === "partial"
-              ? "partial"
-              : "unreadable",
+        status: hierarchyStatusFor(file.status),
       } satisfies ProjectHierarchyNode;
     })
     .sort((left, right) => left.file.localeCompare(right.file));

@@ -63,7 +63,7 @@ export function insertBold() {
       return;
     }
   }
-  wrapSelectionOrPlaceholder("\\textbf{", "}", "text");
+  wrapSelectionOrPlaceholder(String.raw`\textbf{`, "}", "text");
 }
 export function insertItalic() {
   if (isWysiwygActive()) {
@@ -73,10 +73,10 @@ export function insertItalic() {
       return;
     }
   }
-  wrapSelectionOrPlaceholder("\\textit{", "}", "text");
+  wrapSelectionOrPlaceholder(String.raw`\textit{`, "}", "text");
 }
 export function insertUnderline() {
-  wrapSelectionOrPlaceholder("\\underline{", "}", "text");
+  wrapSelectionOrPlaceholder(String.raw`\underline{`, "}", "text");
 }
 export function insertCode() {
   if (isWysiwygActive()) {
@@ -86,27 +86,27 @@ export function insertCode() {
       return;
     }
   }
-  wrapSelectionOrPlaceholder("\\texttt{", "}", "text");
+  wrapSelectionOrPlaceholder(String.raw`\texttt{`, "}", "text");
 }
 export function insertFootnote() {
-  wrapSelectionOrPlaceholder("\\footnote{", "}", "note text");
+  wrapSelectionOrPlaceholder(String.raw`\footnote{`, "}", "note text");
 }
 export function insertRef() {
-  wrapSelectionOrPlaceholder("\\ref{", "}", "label");
+  wrapSelectionOrPlaceholder(String.raw`\ref{`, "}", "label");
 }
 export function insertLabel() {
-  wrapSelectionOrPlaceholder("\\label{", "}", "label");
+  wrapSelectionOrPlaceholder(String.raw`\label{`, "}", "label");
 }
 
 export function insertLink() {
-  const template = "\\href{url}{link text}";
-  const start = "\\href{".length;
+  const template = String.raw`\href{url}{link text}`;
+  const start = String.raw`\href{`.length;
   insertTemplate(template, start, start + "url".length);
 }
 
 export function insertFraction() {
-  const template = "\\frac{numerator}{denominator}";
-  const start = "\\frac{".length;
+  const template = String.raw`\frac{numerator}{denominator}`;
+  const start = String.raw`\frac{`.length;
   insertTemplate(template, start, start + "numerator".length);
 }
 
@@ -134,7 +134,7 @@ export function insertBlockquote() {
   insertEnvironment("quote");
 }
 function insertFirstItem(template: string): void {
-  const cursor = template.indexOf("\\item ") + "\\item ".length;
+  const cursor = template.indexOf(String.raw`\item `) + String.raw`\item `.length;
   insertTemplate(template, cursor, cursor);
 }
 export function insertItemize() {
@@ -163,6 +163,6 @@ export function insertTable(rows: number, cols: number) {
   const body = Array.from({ length: Math.max(1, rows) }, () => `    ${cells} \\\\`).join("\n");
   const colsSpec = Array.from({ length: Math.max(1, cols) }, () => "l").join("");
   const template = `\\begin{table}[htbp]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{${colsSpec}}\n${body}\n  \\end{tabular}\n\\end{table}\n`;
-  const cursor = template.indexOf("\\caption{}") + "\\caption{".length;
+  const cursor = template.indexOf(String.raw`\caption{}`) + String.raw`\caption{`.length;
   insertTemplate(template, cursor, cursor);
 }

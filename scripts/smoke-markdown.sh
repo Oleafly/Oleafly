@@ -10,10 +10,11 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 checksum() {
+  local file="$1"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | awk '{print $1}'
+    sha256sum "$file" | awk '{print $1}'
   else
-    shasum -a 256 "$1" | awk '{print $1}'
+    shasum -a 256 "$file" | awk '{print $1}'
   fi
 }
 
@@ -90,4 +91,4 @@ while :; do
   echo "compile failed (transient bundle fetch?); attempt $attempt after 75s" >&2
   sleep 75
 done
-test -s "$TMP/smoke.pdf"
+[[ -s "$TMP/smoke.pdf" ]]

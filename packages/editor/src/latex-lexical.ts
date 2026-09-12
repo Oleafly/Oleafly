@@ -99,6 +99,23 @@ export function latexInlineVerbatimSpan(
   start: number,
   limits?: LexLimits,
 ): LatexInlineVerbatimSpan | null {
+  const head = inlineVerbatimHead(text, start);
+  if (!head) return null;
+  const { command } = head;
+
+  if (command === "verb") {
+    const body = delimitedBodyEnd(text, head.cursor);
+    if (!body) return null;
+    return { from: start, to: body.to, command, complete: body.complete };
+  }
+
+  return listingsVerbatimSpan(text, start, head.cursor, command, limits);
+}
+
+function inlineVerbatimHead(
+  text: string,
+  start: number,
+): { command: LatexInlineVerbatimSpan["command"]; cursor: number } | null {
   if (text[start] !== "\\") return null;
   let commandEnd = start + 1;
   while (commandCharacter(text[commandEnd])) commandEnd += 1;
@@ -110,17 +127,18 @@ export function latexInlineVerbatimSpan(
   ) {
     return null;
   }
+  const cursor = text[commandEnd] === "*" ? commandEnd + 1 : commandEnd;
+  return { command, cursor };
+}
 
-  let cursor = commandEnd;
-  if (text[cursor] === "*") cursor += 1;
-
-  if (command === "verb") {
-    const body = delimitedBodyEnd(text, cursor);
-    if (!body) return null;
-    return { from: start, to: body.to, command, complete: body.complete };
-  }
-
-  cursor = skipInlineWhitespace(text, cursor);
+function listingsVerbatimSpan(
+  text: string,
+  start: number,
+  from: number,
+  command: "lstinline" | "mintinline",
+  limits?: LexLimits,
+): LatexInlineVerbatimSpan | null {
+  let cursor = skipInlineWhitespace(text, from);
   if (text[cursor] === "[") {
     const optionEnd = latexBalancedGroupEnd(text, cursor, "[", "]", limits);
     if (optionEnd === null) {
@@ -200,6 +218,98 @@ interface LexPass {
   truncated: boolean;
 }
 
+function resumesAt(
+  text: string,
+  base: number,
+  cursor: number,
+  baseStartsLine: boolean,
+  resumable: ((position: number) => boolean) | null,
+): boolean {
+  if (!resumable) return false;
+  const startsLine = cursor === 0 ? baseStartsLine : text[cursor - 1] === "\n";
+  return startsLine && resumable(base + cursor);
+}
+
+function opaqueEnvironmentRange(
+  text: string,
+  base: number,
+  cursor: number,
+  commandEnd: number,
+  limits: LexLimits,
+): { range: LatexIgnoredRange; to: number } | null {
+  const environment = simpleBracedValue(text, commandEnd, limits);
+  if (!environment || !OPAQUE_ENVIRONMENTS.has(environment.value)) return null;
+  const closing = `\\end{${environment.value}}`;
+  const to = verbatimEnvironmentEnd(text, environment.to, environment.value);
+  return {
+    range: {
+      from: base + cursor,
+      to: base + to,
+      kind: "verbatim-environment",
+      complete: text.slice(to - closing.length, to) === closing,
+    },
+    to,
+  };
+}
+
+function lexIgnoredStep(
+  text: string,
+  base: number,
+  cursor: number,
+  limits: LexLimits,
+): { range: LatexIgnoredRange | null; cursor: number } {
+  const character = text[cursor];
+  if (character === "%") {
+    const to = lineEnd(text, cursor + 1);
+    return {
+      range: {
+        from: base + cursor,
+        to: base + to,
+        kind: "comment",
+        complete: text[to] === "\n",
+      },
+      cursor: to,
+    };
+  }
+  if (character !== "\\") return { range: null, cursor: cursor + 1 };
+
+  const inline = latexInlineVerbatimSpan(text, cursor, limits);
+  if (inline) {
+    return {
+      range: {
+        from: base + inline.from,
+        to: base + inline.to,
+        kind: "inline-verbatim",
+        complete: inline.complete,
+      },
+      cursor: Math.max(cursor + 1, inline.to),
+    };
+  }
+
+  let commandEnd = cursor + 1;
+  while (commandCharacter(text[commandEnd])) commandEnd += 1;
+  if (text.slice(cursor + 1, commandEnd) === "begin") {
+    const opaque = opaqueEnvironmentRange(
+      text,
+      base,
+      cursor,
+      commandEnd,
+      limits,
+    );
+    if (opaque) return { range: opaque.range, cursor: opaque.to };
+  }
+
+  // Skip a control sequence/control symbol as a unit. In particular, this
+  // prevents an escaped percent sign from being mistaken for a comment.
+  return {
+    range: null,
+    cursor:
+      commandEnd > cursor + 1
+        ? commandEnd
+        : Math.min(text.length, cursor + 2),
+  };
+}
+
 function lexIgnoredRanges(
   text: string,
   base: number,
@@ -211,75 +321,12 @@ function lexIgnoredRanges(
   let cursor = 0;
 
   while (cursor < text.length) {
-    if (
-      resumable &&
-      (cursor === 0 ? baseStartsLine : text[cursor - 1] === "\n") &&
-      resumable(base + cursor)
-    ) {
+    if (resumesAt(text, base, cursor, baseStartsLine, resumable)) {
       return { ranges, resumedAt: base + cursor, truncated: limits.truncated };
     }
-
-    const character = text[cursor];
-    if (character === "%") {
-      const to = lineEnd(text, cursor + 1);
-      ranges.push({
-        from: base + cursor,
-        to: base + to,
-        kind: "comment",
-        complete: text[to] === "\n",
-      });
-      cursor = to;
-      continue;
-    }
-    if (character !== "\\") {
-      cursor += 1;
-      continue;
-    }
-
-    const inline = latexInlineVerbatimSpan(text, cursor, limits);
-    if (inline) {
-      ranges.push({
-        from: base + inline.from,
-        to: base + inline.to,
-        kind: "inline-verbatim",
-        complete: inline.complete,
-      });
-      cursor = Math.max(cursor + 1, inline.to);
-      continue;
-    }
-
-    let commandEnd = cursor + 1;
-    while (commandCharacter(text[commandEnd])) commandEnd += 1;
-    const command = text.slice(cursor + 1, commandEnd);
-    if (command === "begin") {
-      const environment = simpleBracedValue(text, commandEnd, limits);
-      if (
-        environment &&
-        OPAQUE_ENVIRONMENTS.has(environment.value)
-      ) {
-        const closing = `\\end{${environment.value}}`;
-        const to = verbatimEnvironmentEnd(
-          text,
-          environment.to,
-          environment.value,
-        );
-        ranges.push({
-          from: base + cursor,
-          to: base + to,
-          kind: "verbatim-environment",
-          complete: text.slice(to - closing.length, to) === closing,
-        });
-        cursor = to;
-        continue;
-      }
-    }
-
-    // Skip a control sequence/control symbol as a unit. In particular, this
-    // prevents an escaped percent sign from being mistaken for a comment.
-    cursor =
-      commandEnd > cursor + 1
-        ? commandEnd
-        : Math.min(text.length, cursor + 2);
+    const step = lexIgnoredStep(text, base, cursor, limits);
+    if (step.range) ranges.push(step.range);
+    cursor = step.cursor;
   }
 
   return { ranges, resumedAt: null, truncated: limits.truncated };
@@ -569,8 +616,8 @@ function openMathTokens(text: string): OpenMath[] {
         continue;
       }
       if (next === ")" || next === "]") {
-        const opener = next === ")" ? "\\(" : "\\[";
-        if (stack[stack.length - 1]?.token === opener) stack.pop();
+        const opener = next === ")" ? String.raw`\(` : String.raw`\[`;
+        if (stack.at(-1)?.token === opener) stack.pop();
         cursor += 2;
         continue;
       }
@@ -587,7 +634,7 @@ function openMathTokens(text: string): OpenMath[] {
                 at: cursor,
                 width: environment.to - cursor,
               });
-            } else if (stack[stack.length - 1]?.token === "env") {
+            } else if (stack.at(-1)?.token === "env") {
               stack.pop();
             }
             cursor = environment.to;
@@ -603,7 +650,7 @@ function openMathTokens(text: string): OpenMath[] {
 
     if (character === "$") {
       const doubled = text[cursor + 1] === "$";
-      const open = stack[stack.length - 1];
+      const open = stack.at(-1);
       if (open && (open.token === "$" || open.token === "$$")) {
         stack.pop();
         cursor += open.token === "$$" && doubled ? 2 : 1;
@@ -635,7 +682,7 @@ export function mathContextAt(
 ): LatexMathContext {
   const from = Math.max(0, pos - MATH_CONTEXT_WINDOW);
   const stack = openMathTokens(latexMaskedSlice(state, from, pos));
-  const open = stack[stack.length - 1];
+  const open = stack.at(-1);
   if (!open) return { inMath: false, delimiter: null, from: null, width: 0 };
   return {
     inMath: true,

@@ -60,7 +60,6 @@ export function GlobalNewProject() {
         ) {
           window.clearTimeout(timeout);
           observer?.disconnect();
-          return;
         }
       };
       observer = new MutationObserver(chainWorkspace);

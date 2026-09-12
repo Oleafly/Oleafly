@@ -165,13 +165,13 @@ export function splitIntoParagraphs(
 
   let text = source;
 
-  const beginDocMatch = text.match(/\\begin\{document\}/);
-  if (beginDocMatch && beginDocMatch.index !== undefined) {
+  const beginDocMatch = /\\begin\{document\}/.exec(text);
+  if (beginDocMatch?.index !== undefined) {
     text = text.slice(beginDocMatch.index + beginDocMatch[0].length);
   }
 
-  const endDocMatch = text.match(/\\end\{document\}/);
-  if (endDocMatch && endDocMatch.index !== undefined) {
+  const endDocMatch = /\\end\{document\}/.exec(text);
+  if (endDocMatch?.index !== undefined) {
     text = text.slice(0, endDocMatch.index);
   }
 

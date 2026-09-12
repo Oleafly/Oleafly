@@ -71,7 +71,7 @@ function findUnclosedBegin(
   }
   let innermost: OpenBegin | null = null;
   for (const stack of stacks.values()) {
-    const top = stack[stack.length - 1];
+    const top = stack.at(-1);
     if (top && (!innermost || top.bodyFrom > innermost.bodyFrom)) innermost = top;
   }
   return innermost;
@@ -86,8 +86,8 @@ function findMatchingEnd(
   searchFrom: number,
   limit: number,
 ): number | null {
-  const beginToken = `\\begin{${env}}`;
-  const endToken = `\\end{${env}}`;
+  const beginToken = String.raw`\begin{${env}}`;
+  const endToken = String.raw`\end{${env}}`;
   let depth = 1;
   let cursor = searchFrom;
   while (cursor < limit) {

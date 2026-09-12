@@ -24,7 +24,7 @@ export function frontmatterText(text) {
 function toLines(text) {
   return text.split("\n").map((raw, index) => {
     const stripped = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
-    const trimmedStart = stripped.replace(/^[ ]*/, "");
+    const trimmedStart = stripped.replace(/^ */, "");
     return {
       lineNo: index + 1,
       raw: stripped,
@@ -74,9 +74,7 @@ function looksLikeKey(content) {
   return matchKey(content) !== null;
 }
 
-function parseBlockScalar(state, indicator, parentIndent) {
-  const style = indicator[0];
-  const chomp = indicator.includes("-") ? "strip" : indicator.includes("+") ? "keep" : "clip";
+function collectBlockLines(state, parentIndent) {
   const collected = [];
   let blockIndent = null;
   while (state.index < state.lines.length) {
@@ -91,22 +89,31 @@ function parseBlockScalar(state, indicator, parentIndent) {
     collected.push(line.raw.slice(Math.min(blockIndent, line.indent)));
     state.index++;
   }
-  while (collected.length > 0 && collected[collected.length - 1] === "") collected.pop();
-  let value;
-  if (style === "|") {
-    value = collected.join("\n");
-  } else {
-    value = "";
-    for (let i = 0; i < collected.length; i++) {
-      const current = collected[i];
-      if (current === "") {
-        value += "\n";
-        continue;
-      }
-      if (i > 0 && collected[i - 1] !== "" && !value.endsWith("\n")) value += " ";
-      value += current;
+  while (collected.length > 0 && collected.at(-1) === "") collected.pop();
+  return collected;
+}
+
+function foldBlockLines(collected) {
+  let value = "";
+  for (let i = 0; i < collected.length; i++) {
+    const current = collected[i];
+    if (current === "") {
+      value += "\n";
+      continue;
     }
+    if (i > 0 && collected[i - 1] !== "" && !value.endsWith("\n")) value += " ";
+    value += current;
   }
+  return value;
+}
+
+function parseBlockScalar(state, indicator, parentIndent) {
+  const style = indicator[0];
+  let chomp = "clip";
+  if (indicator.includes("-")) chomp = "strip";
+  else if (indicator.includes("+")) chomp = "keep";
+  const collected = collectBlockLines(state, parentIndent);
+  let value = style === "|" ? collected.join("\n") : foldBlockLines(collected);
   if (chomp === "clip" || chomp === "keep") value += "\n";
   return value;
 }
@@ -155,40 +162,53 @@ const DOUBLE_QUOTE_ESCAPES = {
   "\\": "\\",
 };
 
-function parseQuoted(rest) {
-  const quote = rest[0];
+const ESCAPE_DIGIT_WIDTHS = new Map([
+  ["x", 2],
+  ["u", 4],
+]);
+
+function parseSingleQuoted(rest) {
   let index = 1;
   let out = "";
   while (index < rest.length) {
     const char = rest[index];
-    if (quote === "'") {
-      if (char === "'") {
-        if (rest[index + 1] === "'") {
-          out += "'";
-          index += 2;
-          continue;
-        }
-        return out;
-      }
-      out += char;
-      index++;
-      continue;
-    }
-    if (char === "\\") {
-      const escape = rest[index + 1];
-      if (escape === "u" || escape === "x" || escape === "U") {
-        const width = escape === "x" ? 2 : escape === "u" ? 4 : 8;
-        const digits = rest.slice(index + 2, index + 2 + width);
-        out += String.fromCodePoint(Number.parseInt(digits, 16));
-        index += 2 + width;
-        continue;
-      }
-      if (escape in DOUBLE_QUOTE_ESCAPES) {
-        out += DOUBLE_QUOTE_ESCAPES[escape];
+    if (char === "'") {
+      if (rest[index + 1] === "'") {
+        out += "'";
         index += 2;
         continue;
       }
-      throw new YamlSubsetError(`unsupported escape \\${escape} in a double-quoted scalar`);
+      return out;
+    }
+    out += char;
+    index++;
+  }
+  throw new YamlSubsetError("unterminated quoted scalar");
+}
+
+function readDoubleQuoteEscape(rest, index) {
+  const escape = rest[index + 1];
+  if (escape === "u" || escape === "x" || escape === "U") {
+    const width = ESCAPE_DIGIT_WIDTHS.get(escape) ?? 8;
+    const digits = rest.slice(index + 2, index + 2 + width);
+    return { text: String.fromCodePoint(Number.parseInt(digits, 16)), length: 2 + width };
+  }
+  if (escape in DOUBLE_QUOTE_ESCAPES) {
+    return { text: DOUBLE_QUOTE_ESCAPES[escape], length: 2 };
+  }
+  throw new YamlSubsetError(`unsupported escape \\${escape} in a double-quoted scalar`);
+}
+
+function parseDoubleQuoted(rest) {
+  let index = 1;
+  let out = "";
+  while (index < rest.length) {
+    const char = rest[index];
+    if (char === "\\") {
+      const escaped = readDoubleQuoteEscape(rest, index);
+      out += escaped.text;
+      index += escaped.length;
+      continue;
     }
     if (char === '"') return out;
     out += char;
@@ -197,8 +217,12 @@ function parseQuoted(rest) {
   throw new YamlSubsetError("unterminated quoted scalar");
 }
 
+function parseQuoted(rest) {
+  return rest[0] === "'" ? parseSingleQuoted(rest) : parseDoubleQuoted(rest);
+}
+
 function parseScalarValue(state, rest, parentIndent) {
-  if (/^[|>][-+]?[0-9]*$/.test(rest)) {
+  if (/^[|>][-+]?\d*$/.test(rest)) {
     return parseBlockScalar(state, rest, parentIndent);
   }
   if (rest.startsWith('"') || rest.startsWith("'")) {
@@ -230,18 +254,24 @@ function parseNestedNode(state, parentIndent) {
   return parseNode(state, parentIndent + 1);
 }
 
+function nextSequenceEntry(state, indent) {
+  skipIgnorable(state);
+  if (state.index >= state.lines.length) return null;
+  const line = state.lines[state.index];
+  if (line.indent < indent) return null;
+  if (line.indent > indent) {
+    throw new YamlSubsetError(`bad indentation of a sequence entry (line ${line.lineNo})`);
+  }
+  if (line.content !== "-" && !line.content.startsWith("- ")) return null;
+  return { line, rest: line.content === "-" ? "" : line.content.slice(2).trim() };
+}
+
 function parseSequence(state, indent) {
   const items = [];
   while (true) {
-    skipIgnorable(state);
-    if (state.index >= state.lines.length) break;
-    const line = state.lines[state.index];
-    if (line.indent < indent) break;
-    if (line.indent > indent) {
-      throw new YamlSubsetError(`bad indentation of a sequence entry (line ${line.lineNo})`);
-    }
-    if (line.content !== "-" && !line.content.startsWith("- ")) break;
-    const rest = line.content === "-" ? "" : line.content.slice(2).trim();
+    const entry = nextSequenceEntry(state, indent);
+    if (!entry) break;
+    const { line, rest } = entry;
     if (rest === "") {
       state.index++;
       items.push(parseNode(state, indent + 1));
@@ -333,7 +363,7 @@ function findMetadataBlock(lines) {
       break;
     }
     if (childIndent === null) {
-      childIndent = lines[i].length - lines[i].replace(/^[ ]*/, "").length;
+      childIndent = lines[i].length - lines[i].replace(/^ */, "").length;
     }
   }
   while (end > start + 1 && lines[end - 1].trim() === "") end--;
@@ -345,8 +375,7 @@ function renderBlock(value, indentWidth, depth) {
   const out = [];
   for (const [key, entry] of Object.entries(value)) {
     if (entry !== null && typeof entry === "object") {
-      out.push(`${pad}${key}:`);
-      out.push(...renderBlock(entry, indentWidth, depth + 1));
+      out.push(`${pad}${key}:`, ...renderBlock(entry, indentWidth, depth + 1));
     } else {
       out.push(`${pad}${key}: ${entry}`);
     }
@@ -395,7 +424,7 @@ export function validateSkillMarkdown(text, label = "SKILL.md") {
       throw new Error(`${label}: front matter is missing the field "${field}"`);
     }
     if (typeof value !== "string") {
-      throw new Error(`${label}: front matter field "${field}" must be a non-empty string`);
+      throw new TypeError(`${label}: front matter field "${field}" must be a non-empty string`);
     }
     const trimmed = value.trim();
     if (trimmed === "" || /[\r\n]/.test(trimmed) || [...trimmed].length > max) {

@@ -416,7 +416,7 @@ async function flushDirtyBuffers(projectId: string, get: () => FilesStore, asser
       .filter(([, file]) => file.dirty)
       .map(([path]) => path);
     if (paths.length === 0) {
-      for (const path of [...pendingSaves]) {
+      for (const path of pendingSaves) {
         if (!state.files[path]?.dirty) pendingSaves.delete(path);
       }
       return;
@@ -462,7 +462,7 @@ function discardQueuedSavesUnder(
 ): { discardedPending: Set<string>; writes: Promise<number>[] } {
   stopAutosaveTimer();
   const discardedPending = new Set<string>();
-  for (const pendingPath of [...pendingSaves]) {
+  for (const pendingPath of pendingSaves) {
     if (isDeletedPath(pendingPath)) {
       pendingSaves.delete(pendingPath);
       discardedPending.add(pendingPath);
@@ -572,9 +572,11 @@ async function loadCompatibilityInputs(
   const texPaths = tree
     .filter((entry) => !entry.is_dir && isTexSourcePath(entry.path))
     .map((entry) => entry.path)
-    .sort((left, right) =>
-      left === mainPath ? -1 : right === mainPath ? 1 : depth(left) - depth(right),
-    )
+    .sort((left, right) => {
+      if (left === mainPath) return -1;
+      if (right === mainPath) return 1;
+      return depth(left) - depth(right);
+    })
     .slice(0, 40);
   const texFiles: Array<{ path: string; content: string }> = [];
   for (const path of texPaths) {
@@ -759,14 +761,14 @@ async function loadOpenedProjectEngine(
   try {
     const engine = await getProjectEngine(id);
     return { state: { engine, engineLoaded: true, engineError: null }, failure: null };
-  } catch (failure) {
+  } catch (error_) {
     return {
       state: {
         engine: UNKNOWN_ENGINE,
         engineLoaded: false,
         engineError: "loadFailed",
       },
-      failure,
+      failure: error_,
     };
   }
 }
@@ -1312,12 +1314,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     // Follow the moved/renamed path in memory so an open tab, its buffer, the
     // active file, and the main-doc pointer don't go stale (also handles folder
     // moves, which carry every descendant path with them).
-    const remap = (p: string) =>
-      p === from
-        ? destination
-        : p.startsWith(`${from}/`)
-          ? `${destination}${p.slice(from.length)}`
-          : p;
+    const remap = (p: string) => {
+      if (p === from) return destination;
+      return p.startsWith(`${from}/`)
+        ? `${destination}${p.slice(from.length)}`
+        : p;
+    };
     const isWithin = (p: string, root: string) => p === root || p.startsWith(`${root}/`);
     set((s) => {
       const files: Record<string, FileState> = {};
@@ -1661,7 +1663,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const preserved = Object.entries(get().files).filter(
       ([candidate, file]) => isDeletedPath(candidate) && file.dirty,
     );
-    for (const pending of [...pendingSaves]) {
+    for (const pending of pendingSaves) {
       if (isDeletedPath(pending)) pendingSaves.delete(pending);
     }
     set((s) => {
@@ -1722,8 +1724,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (get().projectId !== projectId) return false;
     void refreshMutationGeneration(projectId).catch(() => {});
     invalidateAllPendingFileOpens();
-    const remap = (path: string) =>
-      path === from ? to : path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : path;
+    const remap = (path: string) => {
+      if (path === from) return to;
+      return path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : path;
+    };
+    const remappedActivePath = (path: string | null) =>
+      path?.startsWith(`${from}/`) ? to + path.slice(from.length) : path;
     const renamedPending = [...pendingSaves].map(remap);
     pendingSaves.clear();
     for (const path of renamedPending) pendingSaves.add(path);
@@ -1741,12 +1747,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         files,
         tabOrder,
         openTabs: s.openTabs.map(remap),
-        activePath:
-          s.activePath === from
-            ? to
-            : s.activePath?.startsWith(`${from}/`)
-            ? to + s.activePath?.slice(from.length)
-            : s.activePath,
+        activePath: s.activePath === from ? to : remappedActivePath(s.activePath),
         mainDoc,
         docVersion: s.activePath === from || s.activePath?.startsWith(`${from}/`) ? s.docVersion + 1 : s.docVersion,
       };

@@ -30,8 +30,8 @@ const LINE_WINDOW = 2 * 1024;
 const MATH_PAIRS: readonly (readonly [string, string])[] = [
   ["$$", "$$"],
   ["$", "$"],
-  ["\\(", "\\)"],
-  ["\\[", "\\]"],
+  [String.raw`\(`, String.raw`\)`],
+  [String.raw`\[`, String.raw`\]`],
 ];
 
 function escapedAt(state: EditorState, pos: number): boolean {
@@ -123,6 +123,18 @@ function wrapSelection(
   };
 }
 
+function promoteToDisplayMath(
+  state: EditorState,
+  pos: number,
+): RangeChange {
+  const ownLine = lineIsBlankAround(state, pos);
+  const insert = ownLine ? "$\n\n$" : "$$";
+  return {
+    changes: [{ from: pos, insert }],
+    range: EditorSelection.cursor(pos + (ownLine ? 2 : 1)),
+  };
+}
+
 function dollarForRange(
   state: EditorState,
   range: SelectionRange,
@@ -150,27 +162,19 @@ function dollarForRange(
     math.from === pos - 1 &&
     runAfter === 1
   ) {
-    const ownLine = lineIsBlankAround(state, pos);
-    const insert = ownLine ? "$\n\n$" : "$$";
-    return {
-      changes: [{ from: pos, insert }],
-      range: EditorSelection.cursor(pos + (ownLine ? 2 : 1)),
-    };
+    return promoteToDisplayMath(state, pos);
   }
 
   if (inlineMath && after === "$") {
     return { changes: [], range: EditorSelection.cursor(pos + 1) };
   }
 
-  if (runBefore > 0 || runAfter > 0) return plainInsert(range, "$");
-  if (math.inMath) return plainInsert(range, "$");
   if (
-    after === "\\" &&
-    isWordCharacter(state, pos, characterAt(state, pos + 1))
-  ) {
-    return plainInsert(range, "$");
-  }
-  if (
+    runBefore > 0 ||
+    runAfter > 0 ||
+    math.inMath ||
+    (after === "\\" &&
+      isWordCharacter(state, pos, characterAt(state, pos + 1))) ||
     isWordCharacter(state, pos, before) ||
     isWordCharacter(state, pos, after)
   ) {
@@ -205,7 +209,7 @@ function afterCommandBackslash(
 function inlineDelimiterChange(range: SelectionRange): RangeChange {
   const pos = range.head;
   return {
-    changes: [{ from: pos, insert: "(\\)" }],
+    changes: [{ from: pos, insert: String.raw`(\)` }],
     range: EditorSelection.cursor(pos + 1),
   };
 }
@@ -312,7 +316,7 @@ function deleteMathPairBackward(view: EditorView): boolean {
   const pairs = state.selection.ranges.map((range) =>
     range.empty ? emptyPairAt(state, range.head) : null,
   );
-  if (pairs.some((pair) => pair === null)) return false;
+  if (pairs.includes(null)) return false;
   let index = 0;
   const spec = state.changeByRange((range) => {
     const pair = pairs[index++]!;

@@ -193,6 +193,36 @@ function projectMetadataText(project: ProjectInfo) {
     .toLowerCase();
 }
 
+function projectMatchesText(project: ProjectInfo, metadata: string) {
+  const needle = metadata.trim().toLowerCase();
+  if (!needle) return true;
+  return projectMetadataText(project).includes(needle);
+}
+
+function projectMatchesEngine(project: ProjectInfo, engine: ProjectFilters["engine"]) {
+  if (engine === "all") return true;
+  return projectEngineLabel(project.engine, project.main_doc).toLowerCase() === engine;
+}
+
+function projectPassesFilters(
+  project: ProjectInfo,
+  filters: ProjectFilters,
+  favs: readonly string[],
+) {
+  if (project.recovery_pending) return true;
+  const bookmarked = favs.includes(project.id);
+  if (!projectMatchesText(project, filters.metadata)) return false;
+  if (!projectMatchesEngine(project, filters.engine)) return false;
+  const kind = project.kind || "document";
+  if (filters.kind !== "all" && kind !== filters.kind) return false;
+  if (filters.bookmark === "yes" && !bookmarked) return false;
+  if (filters.bookmark === "no" && bookmarked) return false;
+  if (filters.preview === "yes" && !project.has_preview) return false;
+  if (filters.preview === "no" && project.has_preview) return false;
+  if (!isWithinDays(project.created_at, filters.created)) return false;
+  return isWithinDays(project.updated_at, filters.modified);
+}
+
 type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
 
 function projectKindLabel(t: Translate, kind: string | undefined): string {
@@ -214,13 +244,13 @@ function FilterSelect({
   value,
   options,
   onChange,
-}: {
+}: Readonly<{
   name: string;
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
-}) {
+}>) {
   const id = `project-filter-${name}`;
   return (
     <label
@@ -476,32 +506,7 @@ export function Library() {
   const bookmarkIsOnlyActiveFilter =
     bookmarkedOnly && activeFilterCount === 1 && !filters.metadata.trim();
   const visibleProjects = useMemo(
-    () =>
-      projects.filter((project) => {
-        if (project.recovery_pending) return true;
-        const bookmarked = favs.includes(project.id);
-        if (
-          filters.metadata.trim() &&
-          !projectMetadataText(project).includes(filters.metadata.trim().toLowerCase())
-        ) {
-          return false;
-        }
-        if (
-          filters.engine !== "all" &&
-          projectEngineLabel(project.engine, project.main_doc).toLowerCase() !== filters.engine
-        ) {
-          return false;
-        }
-        const kind = project.kind || "document";
-        if (filters.kind !== "all" && kind !== filters.kind) return false;
-        if (filters.bookmark === "yes" && !bookmarked) return false;
-        if (filters.bookmark === "no" && bookmarked) return false;
-        if (filters.preview === "yes" && !project.has_preview) return false;
-        if (filters.preview === "no" && project.has_preview) return false;
-        if (!isWithinDays(project.created_at, filters.created)) return false;
-        if (!isWithinDays(project.updated_at, filters.modified)) return false;
-        return true;
-      }),
+    () => projects.filter((project) => projectPassesFilters(project, filters, favs)),
     [projects, favs, filters],
   );
 
@@ -541,9 +546,8 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-[var(--home-background)]"
     >
-      {bgPattern === "grid" ? (
-        <GridPattern width={22} height={22} />
-      ) : bgPattern === "dots" ? (
+      {bgPattern === "grid" ? <GridPattern width={22} height={22} /> : null}
+      {bgPattern === "dots" ? (
         <>
           <DotPattern width={22} height={22} radius={1} className="dark:hidden" />
           <div
@@ -853,7 +857,7 @@ export function Library() {
               : "max-w-4xl xl:max-w-5xl 2xl:max-w-7xl",
           )}
         >
-          {projects.length === 0 ? (
+          {projects.length === 0 && (
             // Until the first listProjects resolves we don't know whether the
             // library is empty, so don't flash the first-run welcome.
             projectsLoaded ? (
@@ -886,8 +890,7 @@ export function Library() {
             </Empty>
             ) : (
               <div className="flex min-h-[60vh] items-center justify-center">
-                <div
-                  role="status"
+                <output
                   aria-live="polite"
                   className="flex flex-col items-center gap-3"
                 >
@@ -895,11 +898,11 @@ export function Library() {
                   <span className="ai-shimmer text-sm text-muted-foreground">
                     {t(($) => $.library.home.loading)}
                   </span>
-                </div>
+                </output>
               </div>
             )
-          ) : (
-          visibleProjects.length === 0 ? (
+          )}
+          {projects.length > 0 && visibleProjects.length === 0 ? (
             <Empty className="min-h-[60vh]">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -921,7 +924,8 @@ export function Library() {
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
-          ) : (
+          ) : null}
+          {projects.length > 0 && visibleProjects.length > 0 && (
           projectLayout === "grid" ? (
           <div
             data-testid="project-grid"
@@ -1113,7 +1117,8 @@ export function Library() {
                           <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
                             {t(($) => $.library.projects.recoveryRequired)}
                           </span>
-                        ) : forkSource ? (
+                        ) : null}
+                        {!recoveryPending && forkSource ? (
                           <Tooltip
                             label={t(($) => $.library.projects.forkedFrom, { name: forkSource })}
                           >
@@ -1211,7 +1216,6 @@ export function Library() {
             })}
           </div>
           )
-          )
           )}
         </div>
       </div>
@@ -1242,7 +1246,8 @@ export function Library() {
                 >
                   {previewError}
                 </div>
-              ) : previewBytes ? (
+              ) : null}
+              {!previewError && (previewBytes ? (
                 <section
                   data-pdf-scroll-root
                   aria-label={t(($) => $.library.projects.preview.region, {
@@ -1258,8 +1263,7 @@ export function Library() {
                   />
                 </section>
               ) : (
-                <div
-                  role="status"
+                <output
                   aria-live="polite"
                   className="flex h-full items-center justify-center gap-2 p-8 text-sm text-muted-foreground"
                 >
@@ -1268,8 +1272,8 @@ export function Library() {
                     className="size-4 animate-spin motion-reduce:animate-none"
                   />
                   {t(($) => $.library.projects.preview.loading)}
-                </div>
-              )}
+                </output>
+              ))}
             </div>
           </DialogContent>
         </Dialog>

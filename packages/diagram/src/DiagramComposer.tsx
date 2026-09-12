@@ -51,7 +51,67 @@ import {
 import { useDiagramKit } from "./kit";
 import type { DiagramHost } from "./host";
 import { cn } from "./cn";
-import type { DiagramMessageKey } from "./messages";
+import type { DiagramMessageKey, DiagramTranslator } from "./messages";
+
+function CompileIcon({ busy, hasCompiled }: Readonly<{ busy: boolean; hasCompiled: boolean }>) {
+  if (busy) return <Loader2 className="compile-shimmer-icon size-3.5" />;
+  if (hasCompiled) return <RefreshCw className="size-3.5" />;
+  return <Play className="size-3.5" />;
+}
+
+function compileLabel(t: DiagramTranslator, busy: boolean, hasCompiled: boolean): string {
+  if (busy) return t("composer.compiling");
+  if (hasCompiled) return t("composer.recompile");
+  return t("composer.compile");
+}
+
+function PreviewBody({
+  busy,
+  png,
+  log,
+  background,
+  t,
+}: Readonly<{
+  busy: boolean;
+  png: string | null;
+  log: string;
+  background: string;
+  t: DiagramTranslator;
+}>) {
+  if (busy && !png && !log) {
+    return (
+      <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+        <Loader2 className="mr-2 size-4 animate-spin" />
+        {t("composer.compiling")}
+      </div>
+    );
+  }
+  if (png) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <img
+          src={png}
+          alt={t("preview.alt")}
+          className={cn(
+            "max-h-full max-w-full object-contain",
+            background === "" &&
+              "bg-[length:16px_16px] bg-[linear-gradient(45deg,#252525_25%,transparent_25%,transparent_75%,#252525_75%,#252525),linear-gradient(45deg,#252525_25%,#333_25%,#333_75%,#252525_75%,#252525)] bg-[position:0_0,8px_8px]",
+          )}
+        />
+      </div>
+    );
+  }
+  if (log) {
+    return (
+      <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
+    );
+  }
+  return (
+    <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+      {t("preview.empty")}
+    </div>
+  );
+}
 
 function starterModel(): DiagramModel {
   const STROKE = "#1e293b";
@@ -241,7 +301,8 @@ function safeName(name: string): string {
   return name
     .trim()
     .replace(/[^A-Za-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "")
     .slice(0, 64);
 }
 
@@ -261,7 +322,7 @@ export function DiagramComposer({
   forcePreviewOpen = false,
   brand,
   windowControls,
-}: {
+}: Readonly<{
   open: boolean;
   projectId: string | null;
   projectName?: string | null;
@@ -280,7 +341,7 @@ export function DiagramComposer({
   // App-supplied OS window controls (min/max/close), rendered at the far right
   // of the toolbar on platforms that draw a frameless window (e.g. Windows).
   windowControls?: ReactNode;
-}) {
+}>) {
   const { Button, Input, ColorPicker, Tooltip, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, toast, t } =
     useDiagramKit();
 
@@ -385,7 +446,7 @@ export function DiagramComposer({
     if (!projectId || busy) return;
     // In draw mode the code is debounced; compile the freshest generated TikZ.
     const raw = overrideCode ?? sourceToCompile(syncRef.current, mode, model, code);
-    const nextBackground = overrideBackground !== undefined ? overrideBackground : background;
+    const nextBackground = overrideBackground ?? background;
     const source = buildStandaloneDoc({
       code: raw,
       libraries: DIAGRAM_LIBS,
@@ -822,15 +883,9 @@ export function DiagramComposer({
             </Tooltip>
           )}
           <Button data-tour="diagram-compile" data-testid="diagram-compile" size="sm" onClick={() => void compile()} disabled={busy}>
-            {busy ? (
-              <Loader2 className="compile-shimmer-icon size-3.5" />
-            ) : hasCompiled ? (
-              <RefreshCw className="size-3.5" />
-            ) : (
-              <Play className="size-3.5" />
-            )}
+            <CompileIcon busy={busy} hasCompiled={hasCompiled} />
             <span className={busy ? "ai-shimmer" : undefined}>
-              {busy ? t("composer.compiling") : hasCompiled ? t("composer.recompile") : t("composer.compile")}
+              {compileLabel(t, busy, hasCompiled)}
             </span>
           </Button>
           <div className="relative" ref={savePickerRef}>
@@ -1020,30 +1075,7 @@ export function DiagramComposer({
             </div>
 
             <div className="min-h-0 flex-1 overflow-auto bg-sidebar p-3">
-              {busy && !png && !log ? (
-                <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  {t("composer.compiling")}
-                </div>
-              ) : png ? (
-                <div className="flex h-full items-center justify-center">
-                  <img
-                    src={png}
-                    alt={t("preview.alt")}
-                    className={cn(
-                      "max-h-full max-w-full object-contain",
-                      background === "" &&
-                        "bg-[length:16px_16px] bg-[linear-gradient(45deg,#252525_25%,transparent_25%,transparent_75%,#252525_75%,#252525),linear-gradient(45deg,#252525_25%,#333_25%,#333_75%,#252525_75%,#252525)] bg-[position:0_0,8px_8px]",
-                    )}
-                  />
-                </div>
-              ) : log ? (
-                <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
-              ) : (
-                <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
-                  {t("preview.empty")}
-                </div>
-              )}
+              <PreviewBody busy={busy} png={png} log={log} background={background} t={t} />
             </div>
           </div>
         )}

@@ -30,7 +30,7 @@ const OUT = path.resolve(here, "../packages/preflight/src/tagging-status.json");
 function unquote(value) {
   const text = value.trim();
   if (text.length >= 2 && ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'")))) {
-    return text.slice(1, -1).replace(/\\"/g, '"').replace(/''/g, "'");
+    return text.slice(1, -1).replaceAll(/\\"/g, '"').replaceAll(/''/g, "'");
   }
   return text;
 }
@@ -45,37 +45,50 @@ function entryFromFields(fields) {
   return entry;
 }
 
+function parseTaggingLine(line) {
+  if (line.startsWith("- name:")) {
+    return { kind: "name", value: line.slice("- name:".length).replace(/^\s+/, "") };
+  }
+  const field = /^ {2}([a-z-]+):(.*)$/.exec(line);
+  if (field) {
+    const rest = field[2].replace(/^\s+/, "");
+    return { kind: "field", key: field[1], value: rest === ">" || rest === "|" ? "" : rest };
+  }
+  if (/^ {3,}\S/.test(line)) return { kind: "continuation", value: line.trim() };
+  return null;
+}
+
+function applyTaggingLine(state, line, lineNumber) {
+  const parsed = parseTaggingLine(line);
+  if (parsed?.kind === "name") {
+    if (state.current) state.entries.push(entryFromFields(state.current));
+    state.current = new Map([["name", parsed.value]]);
+    state.lastKey = "name";
+    return;
+  }
+  if (parsed?.kind === "field" && state.current) {
+    state.current.set(parsed.key, parsed.value);
+    state.lastKey = parsed.key;
+    return;
+  }
+  if (parsed?.kind === "continuation" && state.current && state.lastKey) {
+    const carried = state.current.get(state.lastKey);
+    state.current.set(state.lastKey, carried ? `${carried} ${parsed.value}` : parsed.value);
+    return;
+  }
+  throw new Error(`update-tagging-status: unparsed line ${lineNumber}: ${line}`);
+}
+
 export function parseTaggingStatusYaml(text) {
-  const entries = [];
+  const state = { entries: [], current: null, lastKey: null };
   const lines = text.split("\n");
-  let current = null;
-  let lastKey = null;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (/^\s*#/.test(line) || !line.trim()) continue;
-    const start = /^- name:\s*(.*)$/.exec(line);
-    if (start) {
-      if (current) entries.push(entryFromFields(current));
-      current = new Map([["name", start[1]]]);
-      lastKey = "name";
-      continue;
-    }
-    const field = /^ {2}([a-z-]+):\s*(.*)$/.exec(line);
-    if (field && current) {
-      const [, key, rest] = field;
-      current.set(key, rest === ">" || rest === "|" ? "" : rest);
-      lastKey = key;
-      continue;
-    }
-    if (/^ {3,}\S/.test(line) && current && lastKey) {
-      const carried = current.get(lastKey);
-      current.set(lastKey, carried ? `${carried} ${line.trim()}` : line.trim());
-      continue;
-    }
-    throw new Error(`update-tagging-status: unparsed line ${i + 1}: ${line}`);
+    applyTaggingLine(state, line, i + 1);
   }
-  if (current) entries.push(entryFromFields(current));
-  return entries;
+  if (state.current) state.entries.push(entryFromFields(state.current));
+  return state.entries;
 }
 
 function trimNote(entry) {
@@ -86,35 +99,37 @@ function trimNote(entry) {
 
 const byName = (left, right) => left.localeCompare(right, "en");
 
+function entryRejection(entry, seen) {
+  if (typeof entry.name !== "string" || !NAME_PATTERN.test(entry.name)) {
+    return { kind: "names", problem: `unusable entry name ${JSON.stringify(entry.name ?? null)}` };
+  }
+  if (!ALLOWED_TYPES.includes(entry.type)) {
+    return {
+      kind: "types",
+      problem: `unknown type ${JSON.stringify(entry.type ?? null)} on ${entry.name}`,
+    };
+  }
+  if (!KEPT_STATUSES.includes(entry.status)) {
+    return {
+      kind: "statuses",
+      problem: `unknown status ${JSON.stringify(entry.status ?? null)} on ${entry.name}`,
+    };
+  }
+  const key = `${entry.type}:${entry.name}`;
+  if (seen.has(key)) return { kind: "duplicates", problem: `duplicate entry ${key}` };
+  seen.add(key);
+  return null;
+}
+
 export function validateEntries(entries) {
   const problems = [];
   if (entries.length < 1500) problems.push(`only ${entries.length} entries parsed`);
   const seen = new Set();
-  let badNames = 0;
-  let badTypes = 0;
-  let badStatuses = 0;
-  let duplicates = 0;
+  const counted = { names: 0, types: 0, statuses: 0, duplicates: 0 };
   for (const entry of entries) {
-    if (typeof entry.name !== "string" || !NAME_PATTERN.test(entry.name)) {
-      if (badNames++ === 0) problems.push(`unusable entry name ${JSON.stringify(entry.name ?? null)}`);
-      continue;
-    }
-    if (!ALLOWED_TYPES.includes(entry.type)) {
-      if (badTypes++ === 0) problems.push(`unknown type ${JSON.stringify(entry.type ?? null)} on ${entry.name}`);
-      continue;
-    }
-    if (!KEPT_STATUSES.includes(entry.status)) {
-      if (badStatuses++ === 0) problems.push(`unknown status ${JSON.stringify(entry.status ?? null)} on ${entry.name}`);
-      continue;
-    }
-    const key = `${entry.type}:${entry.name}`;
-    if (seen.has(key)) {
-      if (duplicates++ === 0) problems.push(`duplicate entry ${key}`);
-      continue;
-    }
-    seen.add(key);
+    const rejected = entryRejection(entry, seen);
+    if (rejected && counted[rejected.kind]++ === 0) problems.push(rejected.problem);
   }
-  const counted = { names: badNames, types: badTypes, statuses: badStatuses, duplicates };
   for (const [label, count] of Object.entries(counted)) {
     if (count > 1) problems.push(`${count} entries with rejected ${label}`);
   }
@@ -122,7 +137,7 @@ export function validateEntries(entries) {
   return entries;
 }
 
-export function validateCatalog(catalog, entries) {
+function catalogCountProblems(catalog, entries) {
   const problems = [];
   for (const [key, minimum] of Object.entries(MINIMUM_COUNTS)) {
     const count = catalog.counts[key] ?? 0;
@@ -137,6 +152,11 @@ export function validateCatalog(catalog, entries) {
     const kept = catalog.packages[status]?.length ?? 0;
     if (kept !== expected) problems.push(`kept ${kept} of ${expected} ${status} packages`);
   }
+  return problems;
+}
+
+function catalogDuplicateProblems(catalog) {
+  const problems = [];
   const names = catalog.classes.map((entry) => entry.name);
   if (new Set(names).size !== names.length) problems.push("duplicate class names in the catalog");
   for (const [status, kept] of Object.entries(catalog.packages)) {
@@ -150,6 +170,14 @@ export function validateCatalog(catalog, entries) {
       else assigned.set(name, status);
     }
   }
+  return problems;
+}
+
+export function validateCatalog(catalog, entries) {
+  const problems = [
+    ...catalogCountProblems(catalog, entries),
+    ...catalogDuplicateProblems(catalog),
+  ];
   if (!catalog.classes.some((entry) => entry.name === "IEEEtran")) problems.push("IEEEtran missing");
   if (!catalog.packages["currently-incompatible"].includes("float")) problems.push("float missing");
   if (!catalog.packages.compatible.includes("booktabs")) problems.push("booktabs missing");
@@ -221,8 +249,10 @@ async function main() {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main().catch((error) => {
+  try {
+    await main();
+  } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
-  });
+  }
 }

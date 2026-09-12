@@ -8,9 +8,9 @@ const SELECTION_MARGIN_PX = 48;
  * lives inside its own `.wysiwyg-content` scroller, so only that element may
  * move. Returning true tells ProseMirror the request is fully handled.
  */
-export function scrollVisualSelectionLocally(view: EditorView): boolean {
+function applyLocalSelectionScroll(view: EditorView): void {
   const scroller = view.dom.closest<HTMLElement>(".wysiwyg-content");
-  if (!scroller) return true;
+  if (!scroller) return;
 
   let selectionRect: {
     top: number;
@@ -21,7 +21,7 @@ export function scrollVisualSelectionLocally(view: EditorView): boolean {
   try {
     selectionRect = view.coordsAtPos(view.state.selection.head, 1);
   } catch {
-    return true;
+    return;
   }
 
   const viewport = scroller.getBoundingClientRect();
@@ -54,5 +54,9 @@ export function scrollVisualSelectionLocally(view: EditorView): boolean {
 
   if (deltaY) scroller.scrollTop += deltaY;
   if (deltaX) scroller.scrollLeft += deltaX;
+}
+
+export function scrollVisualSelectionLocally(view: EditorView): boolean {
+  applyLocalSelectionScroll(view);
   return true;
 }

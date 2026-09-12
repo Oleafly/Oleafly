@@ -221,26 +221,30 @@ function sanitizeKatexHtml(html: string): string {
   const template = document.createElement("template");
   template.innerHTML = html;
 
-  for (const element of [...template.content.querySelectorAll("*")]) {
+  for (const element of template.content.querySelectorAll("*")) {
     const tag = element.localName.toLowerCase();
     if (!SAFE_KATEX_ELEMENTS.has(tag)) {
       element.replaceWith(document.createTextNode(element.textContent ?? ""));
       continue;
     }
-    for (const attribute of [...element.attributes]) {
-      const name = attribute.name.toLowerCase();
-      if (!SAFE_KATEX_ATTRIBUTES.has(name) || name.startsWith("on")) {
-        element.removeAttribute(attribute.name);
-        continue;
-      }
-      if (name === "style") {
-        const safeStyle = sanitizeStyle(attribute.value);
-        if (safeStyle) element.setAttribute("style", safeStyle);
-        else element.removeAttribute("style");
-      }
-    }
+    sanitizeKatexAttributes(element);
   }
   return template.innerHTML;
+}
+
+function sanitizeKatexAttributes(element: Element): void {
+  for (const attribute of [...element.attributes]) {
+    const name = attribute.name.toLowerCase();
+    if (!SAFE_KATEX_ATTRIBUTES.has(name) || name.startsWith("on")) {
+      element.removeAttribute(attribute.name);
+      continue;
+    }
+    if (name === "style") {
+      const safeStyle = sanitizeStyle(attribute.value);
+      if (safeStyle) element.setAttribute("style", safeStyle);
+      else element.removeAttribute("style");
+    }
+  }
 }
 
 export function renderMathExpression(
@@ -306,15 +310,16 @@ export function renderMathExpression(
   return result;
 }
 
+function closingDelimiter(delimiter: MathExpression["delimiter"]): string {
+  if (delimiter === String.raw`\(`) return String.raw`\)`;
+  if (delimiter === String.raw`\[`) return String.raw`\]`;
+  return delimiter;
+}
+
 function previewErrorMessage(expression: MathExpression): string {
   return expression.status === "incomplete"
     ? editorMessage("math.missingClosing", {
-        delimiter:
-          expression.delimiter === "\\("
-            ? "\\)"
-            : expression.delimiter === "\\["
-              ? "\\]"
-              : expression.delimiter,
+        delimiter: closingDelimiter(expression.delimiter),
       })
     : editorMessage("math.notRendered");
 }
@@ -357,24 +362,22 @@ function observePreviewVisibility(
     return () => clearTimeout(timer);
   }
 
-  if (!visibilityObserver) {
-    visibilityObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const callback = visibilityCallbacks.get(entry.target);
-          visibilityCallbacks.delete(entry.target);
-          visibilityObserver?.unobserve(entry.target);
-          callback?.();
-        }
-        if (visibilityCallbacks.size === 0) {
-          visibilityObserver?.disconnect();
-          visibilityObserver = null;
-        }
-      },
-      { rootMargin: "240px" },
-    );
-  }
+  visibilityObserver ??= new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const callback = visibilityCallbacks.get(entry.target);
+        visibilityCallbacks.delete(entry.target);
+        visibilityObserver?.unobserve(entry.target);
+        callback?.();
+      }
+      if (visibilityCallbacks.size === 0) {
+        visibilityObserver?.disconnect();
+        visibilityObserver = null;
+      }
+    },
+    { rootMargin: "240px" },
+  );
 
   visibilityCallbacks.set(element, onVisible);
   visibilityObserver.observe(element);

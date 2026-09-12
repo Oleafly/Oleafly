@@ -81,7 +81,7 @@ function isErrorMilestone(text: string, error: string | null): boolean {
   return /^error\b/i.test(value);
 }
 
-function ReasoningRow({ text }: { text: string }) {
+function ReasoningRow({ text }: Readonly<{ text: string }>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const [open, setOpen] = useState(false);
   return (
@@ -102,17 +102,30 @@ function ReasoningRow({ text }: { text: string }) {
   );
 }
 
+function autoTabFor(task: ResearchTask): string {
+  if (task.status === "awaiting_review") return "review";
+  if (task.status === "queued" || task.status === "running") return "activity";
+  if (task.result) return "output";
+  return "activity";
+}
+
+function timelineDotTone(kind: TaskTimelineItem["kind"]): string {
+  if (kind === "message") return "bg-primary";
+  if (kind === "tool") return "bg-foreground/40";
+  return "bg-muted-foreground/40";
+}
+
 function TimelineDot({
   item,
   live,
   tall,
   failing,
-}: {
+}: Readonly<{
   item: TaskTimelineItem;
   live: boolean;
   tall: boolean;
   failing: boolean;
-}) {
+}>) {
   const label = timestamp(item.createdAt);
   const cell = cn("flex items-center justify-center", tall ? "h-9" : "h-6");
   const dot = failing ? (
@@ -124,11 +137,7 @@ function TimelineDot({
         "size-2 rounded-full",
         live
           ? "animate-pulse bg-primary motion-reduce:animate-none"
-          : item.kind === "message"
-            ? "bg-primary"
-            : item.kind === "tool"
-              ? "bg-foreground/40"
-              : "bg-muted-foreground/40",
+          : timelineDotTone(item.kind),
       )}
     />
   );
@@ -162,17 +171,16 @@ export function TaskDetailDialog({
   onOpenSession,
   error,
   onDismissError,
-}: TaskDetailDialogProps) {
+}: Readonly<TaskDetailDialogProps>) {
   const { t, i18n: instance } = useTranslation(["common", "researchTools"]);
   const language = instance.language;
   const tokenCount = (value: number | null): string =>
     value === null ? t(($) => $.researchTools.tasks.detail.unknownTokens) : formatCompactCount(value);
-  const changeKindLabel = (kind: "added" | "modified" | "deleted"): string =>
-    kind === "added"
-      ? t(($) => $.researchTools.tasks.detail.changeAdded)
-      : kind === "modified"
-        ? t(($) => $.researchTools.tasks.detail.changeModified)
-        : t(($) => $.researchTools.tasks.detail.changeDeleted);
+  const changeKindLabel = (kind: "added" | "modified" | "deleted"): string => {
+    if (kind === "added") return t(($) => $.researchTools.tasks.detail.changeAdded);
+    if (kind === "modified") return t(($) => $.researchTools.tasks.detail.changeModified);
+    return t(($) => $.researchTools.tasks.detail.changeDeleted);
+  };
   const taskRunKey = `${task.id}:${task.executionGeneration}`;
   const activeTaskRun = useRef(taskRunKey);
   activeTaskRun.current = taskRunKey;
@@ -200,15 +208,7 @@ export function TaskDetailDialog({
     if (initialTab) setChosenTab(initialTab);
   }, [initialTab]);
 
-  const autoTab =
-    task.status === "awaiting_review"
-      ? "review"
-      : task.status === "queued" || task.status === "running"
-        ? "activity"
-        : task.result
-          ? "output"
-          : "activity";
-  const tab = chosenTab ?? autoTab;
+  const tab = chosenTab ?? autoTabFor(task);
   const timelineCount = timeline.items.length;
 
   useEffect(() => {
@@ -231,9 +231,9 @@ export function TaskDetailDialog({
       if (preview.baseIsCurrent === false) {
         setSelectedPaths((current) => current.filter((candidate) => candidate !== path));
       }
-    } catch (failure) {
+    } catch (error_) {
       if (activeTaskRun.current !== requestRunKey) return;
-      setPreviewError(failure instanceof Error ? failure.message : String(failure));
+      setPreviewError(error_ instanceof Error ? error_.message : String(error_));
     } finally {
       if (activeTaskRun.current === requestRunKey) setPreviewingPath(null);
     }
@@ -247,9 +247,9 @@ export function TaskDetailDialog({
       const preview = await previewResearchTaskArtifact(task.id, artifact.path);
       if (activeTaskRun.current !== requestRunKey) return;
       setArtifactPreview(preview);
-    } catch (failure) {
+    } catch (error_) {
       if (activeTaskRun.current !== requestRunKey) return;
-      setPreviewError(failure instanceof Error ? failure.message : String(failure));
+      setPreviewError(error_ instanceof Error ? error_.message : String(error_));
     } finally {
       if (activeTaskRun.current === requestRunKey) setPreviewingPath(null);
     }
@@ -276,6 +276,49 @@ export function TaskDetailDialog({
     setChosenTab("output");
     void previewArtifact(artifact);
   };
+
+  const startButtonLabel = () => {
+    if (task.startRequested) return t(($) => $.researchTools.tasks.detail.waiting);
+    if (blocked) return t(($) => $.researchTools.tasks.detail.startWhenReady);
+    return t(($) => $.researchTools.tasks.detail.start);
+  };
+
+  const previewButtonLabel = (path: string, hasPreview: boolean) => {
+    if (previewingPath === path) return t(($) => $.researchTools.tasks.detail.loading);
+    if (hasPreview) return t(($) => $.researchTools.tasks.detail.refreshPreview);
+    return t(($) => $.researchTools.tasks.detail.preview);
+  };
+
+  const artifactBinaryPreview = (preview: TaskArtifactPreview) =>
+    preview.content.base64 && preview.content.mediaType ? (
+      <img
+        className="mt-2 max-h-72 max-w-full rounded border object-contain"
+        alt={preview.artifact.label}
+        src={`data:${preview.content.mediaType};base64,${preview.content.base64}`}
+      />
+    ) : (
+      <p className="mt-2 text-xs text-muted-foreground">
+        {t(($) => $.researchTools.tasks.detail.binaryArtifact, {
+          size: preview.content.size ?? 0,
+        })}
+      </p>
+    );
+
+  const reviewEmptyState = () =>
+    task.status === "awaiting_review" ? (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+        <p className="text-sm text-muted-foreground">
+          {t(($) => $.researchTools.tasks.detail.noFilesChanged)}
+        </p>
+        <Button disabled={busy} onClick={() => void onAccept().catch(() => {})}>
+          {t(($) => $.researchTools.tasks.detail.markReviewed)}
+        </Button>
+      </div>
+    ) : (
+      <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+        {t(($) => $.researchTools.tasks.detail.nothingToReview)}
+      </p>
+    );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -315,11 +358,7 @@ export function TaskDetailDialog({
                       disabled={busy || task.startRequested}
                       onClick={() => void onStart().catch(() => {})}
                     >
-                      {task.startRequested
-                        ? t(($) => $.researchTools.tasks.detail.waiting)
-                        : blocked
-                          ? t(($) => $.researchTools.tasks.detail.startWhenReady)
-                          : t(($) => $.researchTools.tasks.detail.start)}
+                      {startButtonLabel()}
                     </Button>
                     <Button
                       size="sm"
@@ -650,11 +689,7 @@ export function TaskDetailDialog({
                               disabled={previewingPath === change.path}
                               onClick={() => void previewFile(change.path)}
                             >
-                              {previewingPath === change.path
-                                ? t(($) => $.researchTools.tasks.detail.loading)
-                                : preview
-                                  ? t(($) => $.researchTools.tasks.detail.refreshPreview)
-                                  : t(($) => $.researchTools.tasks.detail.preview)}
+                              {previewButtonLabel(change.path, Boolean(preview))}
                             </Button>
                           </div>
                           {preview ? (
@@ -720,19 +755,8 @@ export function TaskDetailDialog({
                     </div>
                   ) : null}
                 </div>
-              ) : task.status === "awaiting_review" ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-                  <p className="text-sm text-muted-foreground">
-                    {t(($) => $.researchTools.tasks.detail.noFilesChanged)}
-                  </p>
-                  <Button disabled={busy} onClick={() => void onAccept().catch(() => {})}>
-                    {t(($) => $.researchTools.tasks.detail.markReviewed)}
-                  </Button>
-                </div>
               ) : (
-                <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                  {t(($) => $.researchTools.tasks.detail.nothingToReview)}
-                </p>
+                reviewEmptyState()
               )}
             </TabsContent>
 
@@ -788,18 +812,8 @@ export function TaskDetailDialog({
                         <pre className="mt-2 max-h-80 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all text-xs">
                           {artifactPreview.content.text}
                         </pre>
-                      ) : artifactPreview.content.base64 && artifactPreview.content.mediaType ? (
-                        <img
-                          className="mt-2 max-h-72 max-w-full rounded border object-contain"
-                          alt={artifactPreview.artifact.label}
-                          src={`data:${artifactPreview.content.mediaType};base64,${artifactPreview.content.base64}`}
-                        />
                       ) : (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {t(($) => $.researchTools.tasks.detail.binaryArtifact, {
-                            size: artifactPreview.content.size ?? 0,
-                          })}
-                        </p>
+                        artifactBinaryPreview(artifactPreview)
                       )}
                     </div>
                   ) : null}

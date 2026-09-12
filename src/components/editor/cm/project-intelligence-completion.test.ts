@@ -160,6 +160,58 @@ describe("project LaTeX completion revisions and argument parity", () => {
     expect(result?.from).toBe(source.length - "edge".length);
   });
 
+  it("completes the trailing key of a multi-key citation list", () => {
+    const source = String.raw`CompletionAnchor \citep[see][]{first-source, edge`;
+    installProject({
+      "main.tex": source,
+      "refs.bib":
+        "@article{first-source, title={First}}\n@article{edge-source, title={Stable source}}",
+    });
+    setBibKeysProvider(() => ["first-source", "edge-source"]);
+    const state = EditorState.create({ doc: source });
+    const result = synchronousProjectCompletion(
+      new CompletionContext(state, state.doc.length, false),
+    );
+
+    expect(option(result, "edge-source")).toBeTruthy();
+    expect(result?.from).toBe(source.length - "edge".length);
+  });
+
+  it("completes a label inside a capitalized cleveref command", () => {
+    const source = String.raw`\section{Intro}\label{sec:intro} \Cref{sec:`;
+    installProject({ "main.tex": source });
+    const state = EditorState.create({ doc: source });
+    const result = synchronousProjectCompletion(
+      new CompletionContext(state, state.doc.length, false),
+    );
+
+    expect(option(result, "sec:intro")).toBeTruthy();
+    expect(result?.from).toBe(source.length - "sec:".length);
+  });
+
+  it("does not treat a command that merely ends in ref as a reference", () => {
+    const source = String.raw`\section{Intro}\label{sec:intro} \myref{sec:`;
+    installProject({ "main.tex": source });
+    const state = EditorState.create({ doc: source });
+    const result = synchronousProjectCompletion(
+      new CompletionContext(state, state.doc.length, false),
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it("completes the trailing name of a multi-package usepackage list", () => {
+    const source = String.raw`\usepackage{amsmath, geo`;
+    installProject({ "main.tex": source });
+    const state = EditorState.create({ doc: source });
+    const result = synchronousProjectCompletion(
+      new CompletionContext(state, state.doc.length, false),
+    );
+
+    expect(option(result, "geometry")).toBeTruthy();
+    expect(result?.from).toBe(source.length - "geo".length);
+  });
+
   it("keeps a project macro valid through later app-order override sources", () => {
     const source = "\\clas";
     installProject({

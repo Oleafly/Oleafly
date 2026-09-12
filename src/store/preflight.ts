@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import { CHECK_IDS, detectSubmissionProfile, maskComments, runPreflight } from "@oleafly/preflight";
-import type { CheckId, PreflightEngine, ProjectContext, RefsContext, SubmissionProfileId } from "@oleafly/preflight";
-import type { PreflightReport } from "@oleafly/preflight";
+import type {
+  CheckId,
+  PreflightEngine,
+  PreflightReport,
+  ProjectContext,
+  RefsContext,
+  SubmissionProfileId,
+} from "@oleafly/preflight";
 import {
   type BibliographyEngine,
   bibliographyDeclarations,
@@ -95,7 +101,7 @@ function buildRefsContext(files: ReturnType<typeof useFilesStore.getState>): Ref
     .map(([doi, keys]) => ({ doi, keys }));
 
   const allCitedKeys: string[] = [];
-  const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
+  const cite = /\\(?:cite|citep|citet|citeauthor|citeyear|citealt|parencite|textcite|autocite|nocite)\*?\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
   for (const [path, content] of Object.entries(projectTexts)) {
     if (!/\.(?:tex|ltx)$/i.test(path)) continue;
     for (const match of maskComments(content).matchAll(cite)) {
@@ -225,12 +231,12 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
       const submissionProfile = state.submissionProfile ?? detectSubmissionProfile(profileSource);
       const compileState = useCompileStore.getState();
       const outputIsCurrent = isCompileCheckpointCurrent(compileState.lastCompileCheckpoint);
+      const settledStatus =
+        compileState.status === "success" && outputIsCurrent ? "success" : "idle";
       const compileStatus =
         compileState.status === "error" || compileState.status === "unavailable"
           ? compileState.status
-          : compileState.status === "success" && outputIsCurrent
-            ? "success"
-          : "idle";
+          : settledStatus;
       const compile = { status: compileStatus, log: compileStatus === "idle" ? "" : compileState.log } as const;
 
       const engine = preflightEngineFor(files.engine.id, files.engine.tex_flavor);

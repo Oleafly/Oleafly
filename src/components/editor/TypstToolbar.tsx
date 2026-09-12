@@ -52,7 +52,7 @@ import {
 } from "@/components/editor/typst-commands";
 import { shortcut } from "@/lib/utils";
 
-function TypstHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
+function TypstHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover
@@ -89,7 +89,7 @@ function TypstHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
   );
 }
 
-function TypstListDropdown({ variant }: { variant: "bar" | "menu" }) {
+function TypstListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <Popover

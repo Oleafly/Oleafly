@@ -22,12 +22,12 @@ export function ProjectKindChooser({
   allowClose = true,
   onClose,
   onChoose,
-}: {
+}: Readonly<{
   open: boolean;
   allowClose?: boolean;
   onClose: () => void;
   onChoose: (kind: ProjectKind) => void;
-}) {
+}>) {
   const { t } = useTranslation(["library"]);
   const copy: Record<ProjectKind, { title: string; description: string }> = {
     research: {

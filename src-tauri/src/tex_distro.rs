@@ -527,7 +527,7 @@ fn push_texlive_year_bins(dirs: &mut Vec<PathBuf>, root: &Path) {
             path.is_dir()
                 && path
                     .file_name()
-                    .and_then(|name| name.to_str())
+                    .and_then(std::ffi::OsStr::to_str)
                     .is_some_and(|name| name.len() == 4 && name.chars().all(|c| c.is_ascii_digit()))
         })
         .collect();

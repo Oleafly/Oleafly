@@ -23,6 +23,11 @@ export interface MathScanOptions {
 
 const MAX_SCANNED_EXPRESSIONS = 10_000;
 
+const OPEN_INLINE = String.raw`\(`;
+const CLOSE_INLINE = String.raw`\)`;
+const OPEN_DISPLAY = String.raw`\[`;
+const CLOSE_DISPLAY = String.raw`\]`;
+
 function isEscaped(text: string, index: number): boolean {
   let slashes = 0;
   for (let i = index - 1; i >= 0 && text[i] === "\\"; i--) slashes++;
@@ -58,8 +63,7 @@ function afterMarkdownFence(
     const line = text.slice(cursor, end);
     const match = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/u.exec(line);
     if (
-      match &&
-      match[1][0] === fence.char &&
+      match?.[1].startsWith(fence.char) &&
       match[1].length >= fence.length
     ) {
       return end < limit ? end + 1 : end;
@@ -187,6 +191,31 @@ function isInLatexComment(
   return false;
 }
 
+function closingDelimiter(delimiter: MathDelimiter): string {
+  if (delimiter === OPEN_INLINE) return CLOSE_INLINE;
+  if (delimiter === OPEN_DISPLAY) return CLOSE_DISPLAY;
+  return delimiter;
+}
+
+function closesMath(
+  text: string,
+  found: number,
+  close: string,
+  format: MathSourceFormat,
+): boolean {
+  if (close === "$") {
+    return (
+      text[found - 1] !== "$" &&
+      text[found + 1] !== "$" &&
+      (format !== "markdown" || markdownDollarCanClose(text, found))
+    );
+  }
+  if (close === "$$") {
+    return text[found - 1] !== "$" && text[found + 2] !== "$";
+  }
+  return true;
+}
+
 function findClosingDelimiter(
   text: string,
   start: number,
@@ -195,8 +224,7 @@ function findClosingDelimiter(
   format: MathSourceFormat,
   excluded: readonly { from: number; to: number }[],
 ): number {
-  const close =
-    delimiter === "\\(" ? "\\)" : delimiter === "\\[" ? "\\]" : delimiter;
+  const close = closingDelimiter(delimiter);
   let cursor = start;
   while (cursor < limit) {
     const found = text.indexOf(close, cursor);
@@ -207,21 +235,10 @@ function findClosingDelimiter(
     if (
       !protectedDelimiter &&
       !isEscaped(text, found) &&
-      (format !== "latex" || !isInLatexComment(text, found, start))
+      (format !== "latex" || !isInLatexComment(text, found, start)) &&
+      closesMath(text, found, close, format)
     ) {
-      if (close === "$") {
-        if (
-          text[found - 1] !== "$" &&
-          text[found + 1] !== "$" &&
-          (format !== "markdown" || markdownDollarCanClose(text, found))
-        ) {
-          return found;
-        }
-      } else if (close === "$$") {
-        if (text[found - 1] !== "$" && text[found + 2] !== "$") return found;
-      } else {
-        return found;
-      }
+      return found;
     }
     cursor = found + Math.max(1, close.length);
   }
@@ -353,7 +370,7 @@ export function scanMathExpressions(
       continue;
     }
 
-    const display = delimiter === "$$" || delimiter === "\\[";
+    const display = delimiter === "$$" || delimiter === OPEN_DISPLAY;
     const bodyFrom = cursor + openerLength;
     const closeAt = findClosingDelimiter(
       text,

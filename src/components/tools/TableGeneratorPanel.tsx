@@ -8,7 +8,9 @@ import { toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 
 function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" {
-  return align === "l" ? "left" : align === "r" ? "right" : "center";
+  if (align === "l") return "left";
+  if (align === "r") return "right";
+  return "center";
 }
 
 export function TableGeneratorPanel() {
@@ -36,6 +38,14 @@ export function TableGeneratorPanel() {
     setCells((prev) => resizeTable(prev, rows, cols));
     setAligns((prev) => Array.from({ length: cols }, (_, i) => prev[i] ?? "c"));
   }, [rows, cols]);
+
+  const updateCell = (rowIndex: number, columnIndex: number, value: string) => {
+    setCells((prev) =>
+      prev.map((row, i) =>
+        i === rowIndex ? row.map((cell, j) => (j === columnIndex ? value : cell)) : row,
+      ),
+    );
+  };
 
   const code = useMemo(
     () => buildLatexTable(cells, aligns, { booktabs, headerRow, caption }),
@@ -127,13 +137,7 @@ export function TableGeneratorPanel() {
                           row: ri + 1,
                           column: ci + 1,
                         })}
-                        onChange={(e) =>
-                          setCells((prev) =>
-                            prev.map((row, i) =>
-                              i === ri ? row.map((cell, j) => (j === ci ? e.target.value : cell)) : row,
-                            ),
-                          )
-                        }
+                        onChange={(e) => updateCell(ri, ci, e.target.value)}
                         className="h-8 w-28 text-xs"
                       />
                     </td>

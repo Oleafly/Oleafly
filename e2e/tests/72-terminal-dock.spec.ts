@@ -316,7 +316,5 @@ test("configured terminal and browser shortcut routes toggle their docks", async
   await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible();
 });
 
-test.skip(
-  "native Ctrl dock accelerator keystrokes cannot be synthesized through the app bridge",
-  async () => {},
-);
+// Native Ctrl dock accelerator keystrokes cannot be synthesized through the app bridge, so there is no
+// automated case for them here.

@@ -48,11 +48,11 @@ export function ChatMinimap({
   scrollRef,
   messages,
   visible,
-}: {
+}: Readonly<{
   scrollRef: RefObject<HTMLDivElement | null>;
   messages: ChatMessage[];
   visible: boolean;
-}) {
+}>) {
   const { t } = useTranslation(["common", "ai"]);
   const prompts = useMemo(
     () =>

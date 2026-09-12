@@ -181,6 +181,41 @@ function occurrenceCount(text: string, needle: string, replaceAll: boolean): num
   return count;
 }
 
+const declined = (tool: string) => ({
+  message: "The user declined this change.",
+  declined: true as const,
+  status: "declined" as const,
+  tool,
+});
+
+function positiveInteger(
+  value: unknown,
+  name: string,
+): number | { error: string } | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    return { error: `${name} must be a whole number of 1 or more` };
+  }
+  return value;
+}
+
+function mutationGuards(host: AiToolsHost, mutationAllowedOpt?: () => boolean) {
+  const pid = () => host.getProjectId();
+  const mutationAllowed = () => mutationAllowedOpt?.() ?? true;
+  const assertMutationAllowed = (projectId: string) => {
+    if (pid() !== projectId || !mutationAllowed()) {
+      throw new Error("Project changed or the external request was cancelled before mutation.");
+    }
+  };
+  const prepareMutation = async (projectId: string) => {
+    assertMutationAllowed(projectId);
+    const generation = await host.prepareExternalMutation(projectId);
+    assertMutationAllowed(projectId);
+    return generation;
+  };
+  return { pid, mutationAllowed, assertMutationAllowed, prepareMutation };
+}
+
 export function createOleaflyTools(
   host: AiToolsHost,
   opts?: {
@@ -223,25 +258,10 @@ export function createOleaflyTools(
     searchProject,
     extractPdfText,
   } = host;
-  const pid = () => host.getProjectId();
-  const mutationAllowed = () => opts?.mutationAllowed?.() ?? true;
-  const assertMutationAllowed = (projectId: string) => {
-    if (pid() !== projectId || !mutationAllowed()) {
-      throw new Error("Project changed or the external request was cancelled before mutation.");
-    }
-  };
-  const prepareMutation = async (projectId: string) => {
-    assertMutationAllowed(projectId);
-    const generation = await host.prepareExternalMutation(projectId);
-    assertMutationAllowed(projectId);
-    return generation;
-  };
-  const declined = (tool: string) => ({
-    message: "The user declined this change.",
-    declined: true as const,
-    status: "declined" as const,
-    tool,
-  });
+  const { pid, mutationAllowed, assertMutationAllowed, prepareMutation } = mutationGuards(
+    host,
+    opts?.mutationAllowed,
+  );
   const approveStateMutation = async (tool: string, summary: string): Promise<boolean> => {
     if (!opts?.mutationAllowed) return true;
     const projectId = pid();
@@ -531,7 +551,7 @@ export function createOleaflyTools(
         if (!id) return { error: "No project open" };
         if (!find) return { error: "find must not be empty" };
         try {
-          let expectedGeneration = await prepareMutation(id);
+          await prepareMutation(id);
           const original = await readFileContent(id, path);
           const count = occurrenceCount(original, find, !!replace_all);
           if (count === 0) {
@@ -559,7 +579,7 @@ export function createOleaflyTools(
           }))) {
             return declined("replace_in_file");
           }
-          expectedGeneration = await prepareMutation(id);
+          const expectedGeneration = await prepareMutation(id);
           const latest = await readFileContent(id, path);
           if (latest !== original) {
             return { error: `${path} changed while approval was pending. Review and retry.` };
@@ -868,16 +888,9 @@ export function createOleaflyTools(
             return { error: "path must be a string" };
           }
           const path = typeof rawPath === "string" ? rawPath.trim() : undefined;
-          const positive = (value: unknown, name: string): number | { error: string } | undefined => {
-            if (value === undefined || value === null) return undefined;
-            if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
-              return { error: `${name} must be a whole number of 1 or more` };
-            }
-            return value;
-          };
-          const line = positive(rawLine, "line");
+          const line = positiveInteger(rawLine, "line");
           if (line !== undefined && typeof line !== "number") return line;
-          const page = positive(rawPage, "page");
+          const page = positiveInteger(rawPage, "page");
           if (page !== undefined && typeof page !== "number") return page;
           if (!path && page === undefined) {
             return { error: "Pass a path to reveal in the editor, a page to show in the PDF, or both." };
@@ -970,7 +983,7 @@ export function createOleaflyTools(
         const raw = (input.todos as { id: string; content: string; status: string }[]) ?? [];
         const allowed = new Set(["pending", "in_progress", "completed", "cancelled"]);
         const todos = raw
-          .filter((t) => t && t.id && t.content)
+          .filter((t) => t?.id && t.content)
           .slice(0, 30)
           .map((t) => ({
             id: String(t.id).slice(0, 64),
@@ -1008,7 +1021,7 @@ export function createOleaflyTools(
         if (!(await approveStateMutation("remember_note", "Save a project memory note"))) {
           return declined("remember_note");
         }
-        return host.rememberNote(String(input.content ?? ""));
+        return host.rememberNote(String((input.content as string | undefined) ?? ""));
       },
     },
 
@@ -1026,7 +1039,7 @@ export function createOleaflyTools(
         if (!(await approveStateMutation("forget_note", "Remove a project memory note"))) {
           return declined("forget_note");
         }
-        return host.forgetNote(String(input.id ?? ""));
+        return host.forgetNote(String((input.id as string | undefined) ?? ""));
       },
     },
 
@@ -1148,7 +1161,7 @@ export function createOleaflyTools(
         additionalProperties: false,
       },
       execute: async (input) => {
-        const command = String(input.command ?? "").trim();
+        const command = String((input.command as string | undefined) ?? "").trim();
         if (!command) return { error: "command is required" };
         const projectId = pid();
         if (!projectId) return { error: "No project open" };
@@ -1223,9 +1236,10 @@ export function createOleaflyTools(
         };
         if (opts.alwaysConfirmComputerUse || cuaActionRisk(action.type) === "confirm") {
           if (!confirm) return declined("computer_use");
+          const detail = action.selector || action.text || "";
           if (!(await confirm({
             tool: "computer_use",
-            summary: `${action.type}${action.selector ? ` ${action.selector}` : action.text ? ` ${action.text}` : ""}`,
+            summary: detail ? `${action.type} ${detail}` : action.type,
           }))) {
             return declined("computer_use");
           }
@@ -1335,25 +1349,7 @@ export function createFigureTools(
     insertAtCursor,
     replaceRange,
   } = host;
-  const pid = () => host.getProjectId();
-  const mutationAllowed = () => opts?.mutationAllowed?.() ?? true;
-  const assertMutationAllowed = (projectId: string) => {
-    if (pid() !== projectId || !mutationAllowed()) {
-      throw new Error("Project changed or the external request was cancelled before mutation.");
-    }
-  };
-  const prepareMutation = async (projectId: string) => {
-    assertMutationAllowed(projectId);
-    const generation = await host.prepareExternalMutation(projectId);
-    assertMutationAllowed(projectId);
-    return generation;
-  };
-  const declined = (tool: string) => ({
-    message: "The user declined this change.",
-    declined: true as const,
-    status: "declined" as const,
-    tool,
-  });
+  const { pid, mutationAllowed, prepareMutation } = mutationGuards(host, opts?.mutationAllowed);
 
   const tools: Record<string, RawToolDef> = {
     preview_figure: {
@@ -1364,7 +1360,7 @@ export function createFigureTools(
         properties: {
           code: {
             type: "string",
-            description: "The figure body, e.g. a \\begin{tikzpicture}...\\end{tikzpicture}",
+            description: String.raw`The figure body, e.g. a \begin{tikzpicture}...\end{tikzpicture}`,
           },
           packages: {
             type: "array",
@@ -1446,12 +1442,11 @@ export function createFigureTools(
         const id = pid();
         if (!id) return { error: "No project open" };
         const normalizedCode = normalizeFigureCode(code);
+        const captionLine = caption ? `\\caption{${caption}}\n` : "";
+        const labelLine = label ? `\\label{${label}}\n` : "";
         const latex = raw
           ? normalizedCode
-          : `\\begin{figure}[htbp]\n\\centering\n${normalizedCode}\n` +
-            (caption ? `\\caption{${caption}}\n` : "") +
-            (label ? `\\label{${label}}\n` : "") +
-            `\\end{figure}`;
+          : `\\begin{figure}[htbp]\n\\centering\n${normalizedCode}\n${captionLine}${labelLine}\\end{figure}`;
         // Render the compiled figure so the user sees what they are approving.
         const preview = getLastFigurePreview();
         let png: string | null = null;

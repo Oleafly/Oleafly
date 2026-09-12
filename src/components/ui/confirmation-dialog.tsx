@@ -24,7 +24,7 @@ export function ConfirmationDialog({
   onConfirm,
   onCancel,
   destructive = false,
-}: ConfirmationDialogProps) {
+}: Readonly<ConfirmationDialogProps>) {
   const { t } = useTranslation(["common", "shell"]);
   const titleId = useId();
   const descriptionId = useId();

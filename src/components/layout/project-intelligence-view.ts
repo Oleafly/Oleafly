@@ -267,12 +267,10 @@ function fileNodeForProject(
   }
 
   const status = hierarchyNode?.status ?? fileData?.status ?? "error";
+  const nonFatalTone: IntelligenceNodeTone =
+    status === "partial" ? "warning" : "default";
   const statusTone: IntelligenceNodeTone =
-    status === "unreadable" || status === "error"
-      ? "danger"
-      : status === "partial"
-        ? "warning"
-        : "default";
+    status === "unreadable" || status === "error" ? "danger" : nonFatalTone;
   const line = hierarchyNode?.range.startLine ?? 1;
   const column = hierarchyNode?.range.startColumn ?? 0;
   const range = hierarchyNode?.range ?? {
@@ -513,6 +511,10 @@ export function buildCitationNodes(
       children: entries.map((entry) => {
         const metadata = bibliographyMetadata(entry);
         const entryCitations = citationsByKey.get(entry.key) ?? [];
+        const completeBadge = entry.complete
+          ? metadata.badge
+          : i18n.t(($) => $.workspace.intelligence.badges.incomplete);
+        const completeTone = entry.complete ? ("default" as const) : ("warning" as const);
         return {
           id: `citations:entry:${entry.id}`,
           label: entry.key,
@@ -525,16 +527,8 @@ export function buildCitationNodes(
             .filter(Boolean)
             .join(" "),
           provenance: `${basename(entry.file)}:${entry.range.startLine}:${entry.range.startColumn + 1}`,
-          badge: entry.duplicate
-            ? `${entry.duplicateIndex + 1}/${entry.duplicateCount}`
-            : entry.complete
-              ? metadata.badge
-              : i18n.t(($) => $.workspace.intelligence.badges.incomplete),
-          tone: entry.duplicate
-            ? ("warning" as const)
-            : entry.complete
-              ? ("default" as const)
-              : ("warning" as const),
+          badge: entry.duplicate ? `${entry.duplicateIndex + 1}/${entry.duplicateCount}` : completeBadge,
+          tone: entry.duplicate ? ("warning" as const) : completeTone,
           searchText: `${entry.file} ${entry.type} ${entry.display}`,
           target: rangeTarget(entry.file, entry.keyRange),
           defaultExpanded: false,

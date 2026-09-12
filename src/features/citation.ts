@@ -2,11 +2,10 @@ import { fetchDoiBibtex, fetchArxiv, crossrefSearch, readFileContent } from "@/l
 import { detectInput } from "@/lib/citation/detect";
 import { i18n } from "@/i18n";
 import { parseEntry, generateCiteKey, setKey, stringifyBibEntry } from "@/lib/citation/bibtex";
-import type { ParsedBib } from "@/lib/citation/types";
+import type { CitationHit, ParsedBib } from "@/lib/citation/types";
 import { parseCrossrefSearch } from "@/lib/citation/crossref";
 import { arxivXmlToBibtex } from "@/lib/citation/arxiv";
 import { findKeyByDoi } from "@/lib/citation/dedup";
-import type { CitationHit } from "@/lib/citation/types";
 import { parseBib } from "@/lib/latex-tools";
 import {
   type BibliographyEngine,
@@ -69,7 +68,7 @@ export async function bibtexForHit(hit: CitationHit): Promise<string> {
 
 export function ensureTypstBibliography(source: string, path: string): string {
   if (/#bibliography\s*\(/.test(source)) return source;
-  const safePath = path.replaceAll("\\", "/").replaceAll('"', '\\"');
+  const safePath = path.replaceAll("\\", "/").replaceAll('"', String.raw`\"`);
   return `${source.trimEnd()}\n\n#bibliography("${safePath}")\n`;
 }
 
@@ -84,7 +83,7 @@ export function ensureMarkdownBibliography(source: string, path: string): string
 }
 
 function unquoteYamlScalar(value: string): string | null {
-  const withoutComment = value.replace(/\s+#.*$/, "").trim();
+  const withoutComment = value.replace(/(?<!\s)\s+#.*$/, "").trim();
   if (!withoutComment) return null;
   if (withoutComment.startsWith('"') && withoutComment.endsWith('"')) {
     try {
@@ -467,6 +466,12 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
   };
 }
 
+function citationSnippet(profile: string, key: string): string {
+  if (profile === "typst") return `@${key}`;
+  if (profile === "markdown") return `[@${key}]`;
+  return String.raw`\cite{${key}}`;
+}
+
 function insertCite(key: string) {
   const v = getEditorView();
   if (!v) return;
@@ -474,5 +479,5 @@ function insertCite(key: string) {
   const extension = files.activePath?.split(".").pop()?.toLowerCase();
   if (!extension || !files.engine.source_extensions.includes(extension)) return;
   const profile = files.engine.capabilities.formatting_profile;
-  insertAtCursor(profile === "typst" ? `@${key}` : profile === "markdown" ? `[@${key}]` : `\\cite{${key}}`);
+  insertAtCursor(citationSnippet(profile, key));
 }

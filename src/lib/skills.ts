@@ -247,11 +247,12 @@ export function skillCatalogPrompt(skills: readonly SkillEntry[]): string {
     "Never say you are using a skill before you have loaded it with load_skill.",
     "Vendored skills ship reference files and scripts. Read a listed file with read_skill_file, and run a script through run_command using the absolute dir that load_skill reports.",
   ];
+  const ruleLines = rules.map((rule) => `- ${rule}`).join("\n");
   return `Research workflow map. Oleafly runs research writing as a loop: research, then authoring, then figures, then review, then submission, then communication, with tooling skills available at any stage. The skills enabled for this run are grouped below by phase.
 <enabled_skills>
 ${blocks.join("\n")}
 </enabled_skills>
-${rules.map((rule) => `- ${rule}`).join("\n")}`;
+${ruleLines}`;
 }
 
 export function skillDirectiveLine(skill: SkillEntry): string {
@@ -357,7 +358,7 @@ export interface SkillScriptCommand {
 }
 
 export function skillScriptCommands(skill: SkillEntry): SkillScriptCommand[] {
-  const dir = skill.dir.trim().replace(/[/\\]+$/u, "");
+  const dir = skill.dir.trim().replace(/(?<![/\\])[/\\]+$/u, "");
   if (!dir) return [];
   return skill.files
     .filter((file) => file.path.startsWith("scripts/"))
@@ -544,14 +545,14 @@ function assistantProcedureSteps(content: string): string[] {
   let captured = false;
   for (const line of content.split(/\r?\n/u)) {
     const trimmed = line.trim();
-    const heading = trimmed.match(/^#{1,6}\s+(.+)$/u);
+    const heading = /^#{1,6}\s+(.+)$/u.exec(trimmed);
     if (heading) {
       if (captured) break;
       inProcedure = /^(?:approach|steps|procedure|process|workflow)\b/iu.test(heading[1]);
       continue;
     }
     if (!inProcedure) continue;
-    const item = trimmed.match(/^(?:[-*+]\s+|\d+[.)]\s+)(.+)$/u);
+    const item = /^(?:[-*+]\s+|\d+[.)]\s+)(.+)$/u.exec(trimmed);
     if (item?.[1]?.trim()) {
       steps.push(item[1].trim());
       captured = true;

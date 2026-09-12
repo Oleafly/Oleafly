@@ -114,11 +114,11 @@ function SkillEditorDialog({
   target,
   onOpenChange,
   onSubmit,
-}: {
+}: Readonly<{
   target: EditorTarget;
   onOpenChange: (open: boolean) => void;
   onSubmit: (form: EditorForm) => Promise<string | null>;
-}) {
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const [form, setForm] = useState<EditorForm>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
@@ -444,14 +444,16 @@ export function SkillsTab() {
           <Loader2 className="size-3.5 animate-spin" />
           {t(($) => $.settings.ai.skills.loading)}
         </div>
-      ) : query.isError && skills.length === 0 ? (
+      ) : null}
+      {!query.isPending && query.isError && skills.length === 0 ? (
         <div
           role="alert"
           className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive"
         >
           {t(($) => $.settings.ai.skills.loadFailed, { message: describeError(query.error) })}
         </div>
-      ) : skills.length === 0 ? (
+      ) : null}
+      {!query.isPending && !(query.isError && skills.length === 0) && (skills.length === 0 ? (
         <div className="rounded-md border px-3 py-4 text-xs text-muted-foreground">
           {t(($) => $.settings.ai.skills.empty)}
         </div>
@@ -700,7 +702,7 @@ export function SkillsTab() {
             </div>
           ))}
         </div>
-      )}
+      ))}
 
       <SkillCatalogList />
 

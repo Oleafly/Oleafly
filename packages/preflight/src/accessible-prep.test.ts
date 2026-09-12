@@ -20,7 +20,7 @@ describe("prepareAccessibleSource: DocumentMetadata", () => {
   it("merges missing keys into an existing DocumentMetadata rather than duplicating it", () => {
     const src = "\\DocumentMetadata{lang=en-US}\n" + DOC;
     const { output } = prepareAccessibleSource(src);
-    expect((output.match(/\\DocumentMetadata/g) ?? []).length).toBe(1);
+    expect(output.match(/\\DocumentMetadata/g) ?? []).toHaveLength(1);
     expect(output).toMatch(/tagging\s*=\s*on/);
   });
 
@@ -46,7 +46,7 @@ describe("prepareAccessibleSource: unicode-math", () => {
   it("does not add unicode-math twice", () => {
     const src = "\\documentclass{article}\n\\usepackage{unicode-math}\n\\begin{document}x\\end{document}";
     const { output } = prepareAccessibleSource(src, { engine: "lualatex" });
-    expect((output.match(/\\usepackage\{unicode-math\}/g) ?? []).length).toBe(1);
+    expect(output.match(/\\usepackage\{unicode-math\}/g) ?? []).toHaveLength(1);
   });
 });
 
@@ -66,7 +66,7 @@ describe("prepareAccessibleSource: tables", () => {
   it("merges header rows into an existing DocumentMetadata and stays stable", () => {
     const src = `\\DocumentMetadata{lang=en-US}\n${WITH_TABLE}`;
     const once = prepareAccessibleSource(src).output;
-    expect((once.match(/\\DocumentMetadata/g) ?? []).length).toBe(1);
+    expect(once.match(/\\DocumentMetadata/g) ?? []).toHaveLength(1);
     expect(once).toMatch(/tagging-setup=\{table\/header-rows=\{1\}\}/);
     expect(prepareAccessibleSource(once).output).toBe(once);
   });
@@ -115,7 +115,7 @@ describe("prepareAccessibleSource: image alt stubs", () => {
   it("leaves an image that already has alt text alone", () => {
     const src = DOC.replace("Hello", "\\includegraphics[alt={A headshot}]{photo.png}");
     const { output } = prepareAccessibleSource(src);
-    expect((output.match(/alt=/g) ?? []).length).toBe(1);
+    expect(output.match(/alt=/g) ?? []).toHaveLength(1);
   });
 });
 
@@ -185,7 +185,7 @@ describe("prepareAccessibleSource: idempotence", () => {
     const once = prepareAccessibleSource(DOC, { engine: "lualatex" }).output;
     const twice = prepareAccessibleSource(once, { engine: "lualatex" }).output;
     expect(twice).toBe(once);
-    expect((twice.match(/\\DocumentMetadata/g) ?? []).length).toBe(1);
-    expect((twice.match(/\\usepackage\{unicode-math\}/g) ?? []).length).toBe(1);
+    expect(twice.match(/\\DocumentMetadata/g) ?? []).toHaveLength(1);
+    expect(twice.match(/\\usepackage\{unicode-math\}/g) ?? []).toHaveLength(1);
   });
 });

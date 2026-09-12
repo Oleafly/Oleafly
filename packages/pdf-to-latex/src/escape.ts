@@ -1,14 +1,14 @@
 const MAP: Record<string, string> = {
-  "\\": "\\textbackslash{}",
-  "%": "\\%",
-  $: "\\$",
-  "&": "\\&",
-  "#": "\\#",
-  _: "\\_",
-  "{": "\\{",
-  "}": "\\}",
-  "~": "\\textasciitilde{}",
-  "^": "\\textasciicircum{}",
+  "\\": String.raw`\textbackslash{}`,
+  "%": String.raw`\%`,
+  $: String.raw`\$`,
+  "&": String.raw`\&`,
+  "#": String.raw`\#`,
+  _: String.raw`\_`,
+  "{": String.raw`\{`,
+  "}": String.raw`\}`,
+  "~": String.raw`\textasciitilde{}`,
+  "^": String.raw`\textasciicircum{}`,
 };
 
 export function escapeLatex(s: string): string {
@@ -21,12 +21,12 @@ const ESCAPED_URL_RE =
 
 function unescapeLatex(s: string): string {
   return s
-    .replace(/\\textasciitilde\{\}/g, "~")
-    .replace(/\\textasciicircum\{\}/g, "^")
-    .replace(/\\textbackslash\{\}/g, "\\")
+    .replaceAll(String.raw`\textasciitilde{}`, "~")
+    .replaceAll(String.raw`\textasciicircum{}`, "^")
+    .replaceAll(String.raw`\textbackslash{}`, "\\")
     .replace(/\\([%$&#_{}])/g, "$1");
 }
 
 export function restoreUrlsInTex(tex: string): string {
-  return tex.replace(ESCAPED_URL_RE, (m) => `\\url{${unescapeLatex(m)}}`);
+  return tex.replace(ESCAPED_URL_RE, (m) => String.raw`\url{${unescapeLatex(m)}}`);
 }

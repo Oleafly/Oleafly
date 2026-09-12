@@ -12,30 +12,21 @@ function blank(chars: string[], from: number, to: number) {
   for (let i = from; i < to; i++) if (chars[i] !== "\n") chars[i] = " ";
 }
 
-export function maskMarkdown(text: string): string {
-  const chars = text.split("");
-
-  // YAML frontmatter is metadata, not document prose. Only recognize it at the
-  // start of the document so a horizontal rule later in the body is untouched.
-  const frontmatter = /^(?:\uFEFF)?---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/u.exec(
-    text,
-  );
-  if (frontmatter) blank(chars, 0, frontmatter[0].length);
-
+function maskBlockLines(chars: string[], text: string): void {
   const lines = text.split(/(?<=\n)/);
   let offset = 0;
   let fence: { char: string; length: number } | null = null;
   let footnoteContinuation = false;
   for (const line of lines) {
-    const marker = line.match(
-      /^(?:(?:[ \t]{0,3}>[ \t]?)+)?[ \t]{0,3}(`{3,}|~{3,})/u,
+    const marker = /^(?:(?:[ \t]{0,3}>[ \t]?)+)?[ \t]{0,3}(`{3,}|~{3,})/u.exec(
+      line,
     );
     const footnote = /^[ \t]{0,3}\[\^[^\]\n]+\]:[ \t]*/u.exec(
       line,
     );
     if (fence) {
       blank(chars, offset, offset + line.length);
-      if (marker && marker[1][0] === fence.char && marker[1].length >= fence.length) fence = null;
+      if (marker?.[1].startsWith(fence.char) && marker[1].length >= fence.length) fence = null;
     } else if (marker) {
       fence = { char: marker[1][0], length: marker[1].length };
       blank(chars, offset, offset + line.length);
@@ -51,36 +42,28 @@ export function maskMarkdown(text: string): string {
       // Indented footnote continuations remain visible prose.
     } else {
       footnoteContinuation = false;
-      if (/^(?: {4}|\t)\S/u.test(line)) {
-        // Standard indented code block. Keeping newlines preserves all offsets.
-        blank(chars, offset, offset + line.length);
-      } else if (
+      // Standard indented code blocks, and reference-link definitions (an
+      // identifier, target, and optional title): neither is rendered body
+      // prose. Keeping newlines preserves all offsets.
+      if (
+        /^(?: {4}|\t)\S/u.test(line) ||
         /^[ \t]{0,3}\[(?!\^)[^\]\n]+\]:[ \t]*\S+/u.test(line)
       ) {
-        // Reference-link definitions contain an identifier, target, and optional
-        // title; none are rendered body prose.
         blank(chars, offset, offset + line.length);
       }
     }
     offset += line.length;
   }
+}
 
-  for (const match of chars.join("").matchAll(/<!--[\s\S]*?-->/gu)) {
-    blank(chars, match.index!, match.index! + match[0].length);
-  }
-  for (const match of chars
-    .join("")
-    .matchAll(
-      /<(script|style|pre)\b[^>]*>[\s\S]*?<\/\1\s*>/giu,
-    )) {
-    blank(chars, match.index!, match.index! + match[0].length);
-  }
-  for (const match of chars.join("").matchAll(/<\/?[A-Za-z][^>\n]*>/gu)) {
-    blank(chars, match.index!, match.index! + match[0].length);
-  }
+function maskInlineCode(chars: string[]): void {
   const codeSource = chars.join("");
-  for (let index = 0; index < codeSource.length; index++) {
-    if (codeSource[index] !== "`") continue;
+  let index = 0;
+  while (index < codeSource.length) {
+    if (codeSource[index] !== "`") {
+      index++;
+      continue;
+    }
     let runEnd = index + 1;
     while (codeSource[runEnd] === "`") runEnd++;
     const delimiter = codeSource.slice(index, runEnd);
@@ -93,16 +76,23 @@ export function maskMarkdown(text: string): string {
       close = codeSource.indexOf(delimiter, close + delimiter.length);
     }
     if (close < 0) {
-      index = runEnd - 1;
+      index = runEnd;
       continue;
     }
     const end = close + delimiter.length;
     blank(chars, index, end);
-    index = end - 1;
+    index = end;
   }
+}
+
+function maskLinkDestinations(chars: string[]): void {
   const links = chars.join("");
-  for (let index = 0; index < links.length - 1; index++) {
-    if (links[index] !== "]" || links[index + 1] !== "(") continue;
+  let index = 0;
+  while (index < links.length - 1) {
+    if (links[index] !== "]" || links[index + 1] !== "(") {
+      index++;
+      continue;
+    }
     let depth = 1;
     let cursor = index + 2;
     while (cursor < links.length && links[cursor] !== "\n") {
@@ -118,8 +108,37 @@ export function maskMarkdown(text: string): string {
       cursor++;
     }
     blank(chars, index + 1, cursor);
-    index = Math.max(index, cursor - 1);
+    index = Math.max(index, cursor - 1) + 1;
   }
+}
+
+export function maskMarkdown(text: string): string {
+  const chars = text.split("");
+
+  // YAML frontmatter is metadata, not document prose. Only recognize it at the
+  // start of the document so a horizontal rule later in the body is untouched.
+  const frontmatter = /^(?:﻿)?---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/u.exec(
+    text,
+  );
+  if (frontmatter) blank(chars, 0, frontmatter[0].length);
+
+  maskBlockLines(chars, text);
+
+  for (const match of chars.join("").matchAll(/<!--[\s\S]*?-->/gu)) {
+    blank(chars, match.index!, match.index! + match[0].length);
+  }
+  for (const match of chars
+    .join("")
+    .matchAll(
+      /<(script|style|pre)\b[^>]*>[\s\S]*?<\/\1\s*>/giu,
+    )) {
+    blank(chars, match.index!, match.index! + match[0].length);
+  }
+  for (const match of chars.join("").matchAll(/<\/?[A-Za-z][^>\n]*>/gu)) {
+    blank(chars, match.index!, match.index! + match[0].length);
+  }
+  maskInlineCode(chars);
+  maskLinkDestinations(chars);
   for (const match of chars.join("").matchAll(/!?\[[^\]\n]*\]\[[^\]\n]*\]/gu)) {
     const separator = match[0].lastIndexOf("[");
     blank(
@@ -130,9 +149,9 @@ export function maskMarkdown(text: string): string {
   }
   for (const pattern of [
     /<(?:https?:\/\/|mailto:)[^>\n]+>/giu,
-    /<[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}>/giu,
+    /<[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}>/giu,
     /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
+    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
   ]) {
     for (const match of chars.join("").matchAll(pattern)) {
       blank(chars, match.index!, match.index! + match[0].length);
@@ -143,12 +162,14 @@ export function maskMarkdown(text: string): string {
   // bare @key citations. E-mail addresses have already been masked above.
   for (const match of chars
     .join("")
-    .matchAll(/\[[^\]\n]*@[-\p{L}\p{N}_:.#/+]+[^\]\n]*\]/gu)) {
+    .matchAll(
+      /\[[^\]\n]*@[-\p{L}\p{N}_:.#/+]+(?![-\p{L}\p{N}_:.#/+])[^\]\n]*\]/gu,
+    )) {
     blank(chars, match.index!, match.index! + match[0].length);
   }
   for (const match of chars
     .join("")
-    .matchAll(/(^|[^\p{L}\p{N}._%+\-])@[-\p{L}\p{N}_:.#/+]+/gmu)) {
+    .matchAll(/(^|[^\p{L}\p{N}._%+-])@[-\p{L}\p{N}_:.#/+]+/gmu)) {
     const prefix = match[1]?.length ?? 0;
     blank(
       chars,

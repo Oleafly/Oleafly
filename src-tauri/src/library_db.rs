@@ -300,10 +300,10 @@ pub fn reindex_all(root: &Path) -> Result<usize, String> {
     let mut indexed = 0;
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+        if path.extension().and_then(std::ffi::OsStr::to_str) != Some("json") {
             continue;
         }
-        let Some(project_id) = path.file_stem().and_then(|s| s.to_str()) else {
+        let Some(project_id) = path.file_stem().and_then(std::ffi::OsStr::to_str) else {
             continue;
         };
         let Ok(json) = std::fs::read_to_string(&path) else {

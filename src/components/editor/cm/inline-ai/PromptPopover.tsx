@@ -18,7 +18,7 @@ export function PromptPopover({
   modelId,
   modelGroups,
   onModelChange,
-}: {
+}: Readonly<{
   instruction: string;
   onInstruction: (v: string) => void;
   onSubmit: () => void;
@@ -30,7 +30,7 @@ export function PromptPopover({
   modelId: string;
   modelGroups: ModelSelectorGroup[];
   onModelChange: (providerId: string, modelId: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {

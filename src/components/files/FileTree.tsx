@@ -95,9 +95,10 @@ function buildTree(paths: { path: string; is_dir: boolean }[]): TreeNode[] {
     });
   }
   const sortRec = (n: TreeNode) => {
-    n.children.sort((a, b) =>
-      a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1
-    );
+    n.children.sort((a, b) => {
+      if (a.isDir === b.isDir) return a.name.localeCompare(b.name);
+      return a.isDir ? -1 : 1;
+    });
     n.children.forEach(sortRec);
   };
   sortRec(root);
@@ -561,6 +562,22 @@ export function FileTree() {
   );
 }
 
+function useFinalizeOnce(onSubmit: () => void, onCancel: () => void) {
+  const finalizedRef = useRef(false);
+  return {
+    submitOnce: () => {
+      if (finalizedRef.current) return;
+      finalizedRef.current = true;
+      onSubmit();
+    },
+    cancelOnce: () => {
+      if (finalizedRef.current) return;
+      finalizedRef.current = true;
+      onCancel();
+    },
+  };
+}
+
 export function NewEntryInput({
   mode,
   value,
@@ -569,7 +586,7 @@ export function NewEntryInput({
   onChange,
   onSubmit,
   onCancel,
-}: {
+}: Readonly<{
   mode: "file" | "dir";
   value: string;
   depth: number;
@@ -577,31 +594,25 @@ export function NewEntryInput({
   onChange: (v: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["workspace"]);
   const inputRef = useInitialFocus<HTMLInputElement>();
   const inputId = useId();
-  const finalizedRef = useRef(false);
-  const submitOnce = () => {
-    if (finalizedRef.current) return;
-    finalizedRef.current = true;
-    onSubmit();
-  };
-  const cancelOnce = () => {
-    if (finalizedRef.current) return;
-    finalizedRef.current = true;
-    onCancel();
+  const { submitOnce, cancelOnce } = useFinalizeOnce(onSubmit, onCancel);
+  const newEntryLabel = () => {
+    if (parentPath) {
+      return mode === "dir"
+        ? t(($) => $.workspace.files.newEntry.folderInFolder, { folder: parentPath })
+        : t(($) => $.workspace.files.newEntry.fileInFolder, { folder: parentPath });
+    }
+    return mode === "dir"
+      ? t(($) => $.workspace.files.newEntry.folderInRoot)
+      : t(($) => $.workspace.files.newEntry.fileInRoot);
   };
   return (
     <div style={{ paddingLeft: `${depth * 12 + 8}px` }} className="py-0.5">
       <label htmlFor={inputId} className="sr-only">
-        {parentPath
-          ? mode === "dir"
-            ? t(($) => $.workspace.files.newEntry.folderInFolder, { folder: parentPath })
-            : t(($) => $.workspace.files.newEntry.fileInFolder, { folder: parentPath })
-          : mode === "dir"
-            ? t(($) => $.workspace.files.newEntry.folderInRoot)
-            : t(($) => $.workspace.files.newEntry.fileInRoot)}
+        {newEntryLabel()}
       </label>
       <Input
         id={inputId}
@@ -630,26 +641,16 @@ export function RenameEntryInput({
   onChange,
   onSubmit,
   onCancel,
-}: {
+}: Readonly<{
   value: string;
   depth: number;
   onChange: (v: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["workspace"]);
   const inputRef = useInitialFocus<HTMLInputElement>();
-  const finalizedRef = useRef(false);
-  const submitOnce = () => {
-    if (finalizedRef.current) return;
-    finalizedRef.current = true;
-    onSubmit();
-  };
-  const cancelOnce = () => {
-    if (finalizedRef.current) return;
-    finalizedRef.current = true;
-    onCancel();
-  };
+  const { submitOnce, cancelOnce } = useFinalizeOnce(onSubmit, onCancel);
 
   return (
     <div style={{ paddingLeft: `${depth * 12 + 0}px` }} className="py-0.5">
@@ -670,7 +671,7 @@ export function RenameEntryInput({
   );
 }
 
-function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: TreeCtx }) {
+function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number; ctx: TreeCtx }>) {
   const { t } = useTranslation(["common", "workspace"]);
   const isOpen = ctx.expanded.has(node.path) || !node.isDir;
   const isActive = ctx.activePath === node.path;
@@ -698,17 +699,18 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
 
   const activate = () => {
     ctx.onSelect(node.path, node.isDir);
-    node.isDir ? ctx.toggle(node.path) : void ctx.onOpen(node.path);
+    node.isDir ? ctx.toggle(node.path) : ctx.onOpen(node.path);
   };
 
   const onRowKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       activate();
-    } else if (e.key === "ArrowRight" && node.isDir && !ctx.expanded.has(node.path)) {
-      e.preventDefault();
-      ctx.toggle(node.path);
-    } else if (e.key === "ArrowLeft" && node.isDir && ctx.expanded.has(node.path)) {
+    } else if (
+      node.isDir &&
+      ((e.key === "ArrowRight" && !ctx.expanded.has(node.path)) ||
+        (e.key === "ArrowLeft" && ctx.expanded.has(node.path)))
+    ) {
       e.preventDefault();
       ctx.toggle(node.path);
     } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -740,7 +742,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
     e.stopPropagation();
     const from = e.dataTransfer.getData("text/plain");
     ctx.setDragOver(null);
-    if (from) void ctx.onMove(from, dropDir);
+    if (from) ctx.onMove(from, dropDir);
   };
 
   const content = (
@@ -852,7 +854,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
             <ContextMenuItem onClick={() => ctx.onStartRename(node.path, node.name)}>
               <Pencil className="mr-2 size-4" /> {t(($) => $.common.actions.rename)}
             </ContextMenuItem>
-            <ContextMenuItem onClick={() => void ctx.onCopy(node.path, node.isDir)}>
+            <ContextMenuItem onClick={() => ctx.onCopy(node.path, node.isDir)}>
               <CopyPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.makeCopy)}
             </ContextMenuItem>
             <ContextMenuSeparator />
@@ -864,7 +866,7 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
                     t(($) => $.workspace.files.confirmDelete, { path: node.path }),
                   )
                 )
-                  void ctx.onDelete(node.path);
+                  ctx.onDelete(node.path);
               }}
             >
               <Trash2 className="mr-2 size-4" /> {t(($) => $.common.actions.delete)}

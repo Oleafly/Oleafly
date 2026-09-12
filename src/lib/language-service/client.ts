@@ -296,7 +296,7 @@ function cloneCapabilities(
 }
 
 function fileUriForWorkspaceRoot(workspaceRoot: string): string {
-  const normalized = workspaceRoot.replace(/\\/g, "/");
+  const normalized = workspaceRoot.replaceAll(/\\/g, "/");
   const absolute = normalized.startsWith("/") ? normalized : `/${normalized}`;
   return `file://${absolute
     .split("/")
@@ -1576,7 +1576,7 @@ export class LanguageServiceClient {
   }
 
   private clearDiagnosticEpochs(): void {
-    for (const uri of [...this.diagnosticEpochs.keys()]) {
+    for (const uri of this.diagnosticEpochs.keys()) {
       this.clearDiagnosticEpoch(uri);
     }
   }
@@ -1627,7 +1627,7 @@ export class LanguageServiceClient {
     this.pending.delete(id);
     pending.reject(error);
     const session = this.activeSession;
-    if (!session || session.generation !== pending.identity.generation) {
+    if (session?.generation !== pending.identity.generation) {
       return;
     }
     void this.transport
@@ -1658,7 +1658,7 @@ export class LanguageServiceClient {
   }
 
   private rejectAll(error: Error): void {
-    for (const id of [...this.pending.keys()]) {
+    for (const id of this.pending.keys()) {
       this.rejectPending(id, error);
     }
   }
@@ -1667,7 +1667,7 @@ export class LanguageServiceClient {
     predicate: (pending: PendingRequest) => boolean,
     createError: (pending: PendingRequest) => Error,
   ): void {
-    for (const pending of [...this.pending.values()]) {
+    for (const pending of this.pending.values()) {
       if (predicate(pending)) {
         this.rejectPending(pending.id, createError(pending));
       }
@@ -1722,10 +1722,9 @@ export class LanguageServiceClient {
   ): boolean {
     const session = this.activeSession;
     return Boolean(
-      session &&
-        event.session === session.session &&
-        event.kind === session.kind &&
-        event.generation === session.generation,
+      event.session === session?.session &&
+        event.kind === session?.kind &&
+        event.generation === session?.generation,
     );
   }
 

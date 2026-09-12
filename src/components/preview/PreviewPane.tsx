@@ -5,6 +5,8 @@ import {
   useEffect,
   useRef,
   useState,
+  type Dispatch,
+  type SetStateAction,
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
@@ -209,6 +211,43 @@ export interface DocumentStartupState {
 const ANALYSIS_IN_PROGRESS_REASON_KEYS: ReadonlySet<AnalysisReasonKey> =
   new Set(["indexRebuilding"]);
 
+function zoomKeyAction(
+  key: string,
+  setScale: Dispatch<SetStateAction<number>>,
+): (() => void) | null {
+  if (key === "+" || key === "=") {
+    return () => setScale((current) => Math.min(MAX_PREVIEW_SCALE, current + 0.2));
+  }
+  if (key === "-") {
+    return () => setScale((current) => Math.max(MIN_PREVIEW_SCALE, current - 0.2));
+  }
+  if (key === "0") return () => setScale(1);
+  return null;
+}
+
+function downloadThroughBrowser(bytes: Uint8Array, mimeType: string, filename: string) {
+  const objectUrl = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: mimeType }));
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.rel = "noopener";
+    anchor.click();
+  } finally {
+    // WebKit resolves the download asynchronously; defer revocation by
+    // one task, but never leave the object URL alive beyond it.
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  }
+}
+
+export function trimEdgeCharacter(value: string, character: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === character) start += 1;
+  while (end > start && value[end - 1] === character) end -= 1;
+  return value.slice(start, end);
+}
+
 function languageServiceStartupStage(
   state: DocumentStartupState,
 ): DocumentStartupStage {
@@ -405,12 +444,14 @@ function compileStartupStage(
     };
   }
   if (state.compileStatus === "compiling") {
+    const nonSavingDetail =
+      state.compilePhase === "downloading"
+        ? i18n.t(($) => $.preview.startup.compile.downloading)
+        : i18n.t(($) => $.preview.startup.compile.producing);
     const detail =
       state.compilePhase === "saving"
         ? i18n.t(($) => $.preview.startup.compile.saving)
-        : state.compilePhase === "downloading"
-          ? i18n.t(($) => $.preview.startup.compile.downloading)
-          : i18n.t(($) => $.preview.startup.compile.producing);
+        : nonSavingDetail;
     return {
       id: "compile",
       label: i18n.t(($) => $.preview.startup.compile.label),
@@ -617,8 +658,7 @@ export function previewWindowState(
       ? "not_run"
       : status;
   const exactCheckpoint =
-    checkpoint &&
-    checkpoint.projectId === resolvedIdentity.projectId &&
+    checkpoint?.projectId === resolvedIdentity.projectId &&
     checkpoint.mainDocument === resolvedIdentity.mainDocument &&
     checkpoint.projectRevision ===
       resolvedIdentity.projectRevision &&
@@ -843,14 +883,13 @@ export function PreviewPane() {
     canUseSyncTexForCheckpoint(displayedCheckpoint);
   const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
   const displayedBytes = viewerDocument?.bytes ?? null;
-  const currentRevisionExplanation = pdfIsStale
-    ? displayedCheckpoint
-      ? t(($) => $.preview.stale.revisionExplanation, {
-          displayed: displayedCheckpoint.projectRevision,
-          active: projectRevision,
-        })
-      : t(($) => $.preview.stale.noIdentity)
-    : null;
+  const staleRevisionExplanation = displayedCheckpoint
+    ? t(($) => $.preview.stale.revisionExplanation, {
+        displayed: displayedCheckpoint.projectRevision,
+        active: projectRevision,
+      })
+    : t(($) => $.preview.stale.noIdentity);
+  const currentRevisionExplanation = pdfIsStale ? staleRevisionExplanation : null;
   const languageReason = analysisReasonText(languageReasonSource) ?? "";
   const analysisReason =
     analysisReasonText(analysisReasonSource) ?? analysisFailureMessage;
@@ -889,8 +928,8 @@ export function PreviewPane() {
   }, []);
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    else void rootRef.current?.requestFullscreen?.().catch(() => {});
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else rootRef.current?.requestFullscreen?.().catch(() => {});
   };
 
   useEffect(() => {
@@ -1047,27 +1086,10 @@ export function PreviewPane() {
       ) {
         return;
       }
-      if (
-        pdfZoomShortcuts &&
-        modifier &&
-        (event.key === "+" || event.key === "=")
-      ) {
+      const zoom = zoomKeyAction(event.key, setScale);
+      if (pdfZoomShortcuts && modifier && zoom) {
         event.preventDefault();
-        userZoom(() =>
-          setScale((current) =>
-            Math.min(MAX_PREVIEW_SCALE, current + 0.2),
-          ),
-        );
-      } else if (pdfZoomShortcuts && modifier && event.key === "-") {
-        event.preventDefault();
-        userZoom(() =>
-          setScale((current) =>
-            Math.max(MIN_PREVIEW_SCALE, current - 0.2),
-          ),
-        );
-      } else if (pdfZoomShortcuts && modifier && event.key === "0") {
-        event.preventDefault();
-        userZoom(() => setScale(1));
+        userZoom(zoom);
       } else if (
         modifier &&
         event.shiftKey &&
@@ -1117,13 +1139,28 @@ export function PreviewPane() {
     }
   };
 
+  const reportExportFailure = (error: unknown) => {
+    const nonErrorDetail = typeof error === "string" ? error : "";
+    const detail = error instanceof Error ? error.message : nonErrorDetail;
+    const withDetail = isImage
+      ? t(($) => $.preview.download.imageFailedDetail, { detail })
+      : t(($) => $.preview.download.pdfFailedDetail, { detail });
+    const withoutDetail = isImage
+      ? t(($) => $.preview.download.imageFailed)
+      : t(($) => $.preview.download.pdfFailed);
+    notifyError("download preview", error, detail ? withDetail : withoutDetail);
+  };
+
+  const exportBaseName = () => {
+    const fallback = isImage ? "figure" : "document";
+    return (
+      trimEdgeCharacter((projectName || fallback).replace(/[^\w.-]+/g, "_"), "_") || fallback
+    );
+  };
+
   const exportDisplayedPreview = async () => {
     if (!displayedBytes || exporting) return;
-    const baseName =
-      (projectName || (isImage ? "figure" : "document"))
-        .replace(/[^\w.-]+/g, "_")
-        .replace(/^_+|_+$/g, "") ||
-      (isImage ? "figure" : "document");
+    const baseName = exportBaseName();
     setExporting(true);
     try {
       let exportBytes = displayedBytes;
@@ -1134,7 +1171,7 @@ export function PreviewPane() {
         const dataUrl = await pdfPageToPng(displayedBytes, 1, 3);
         exportBytes = Uint8Array.from(
           atob(dataUrl.slice(dataUrl.indexOf(",") + 1)),
-          (character) => character.charCodeAt(0),
+          (character) => character.codePointAt(0) ?? 0,
         );
         extension = "png";
         mimeType = "image/png";
@@ -1142,20 +1179,7 @@ export function PreviewPane() {
       const filename = `${baseName}.${extension}`;
 
       if (!isTauri()) {
-        const objectUrl = URL.createObjectURL(
-          new Blob([exportBytes.slice().buffer], { type: mimeType }),
-        );
-        try {
-          const anchor = document.createElement("a");
-          anchor.href = objectUrl;
-          anchor.download = filename;
-          anchor.rel = "noopener";
-          anchor.click();
-        } finally {
-          // WebKit resolves the download asynchronously; defer revocation by
-          // one task, but never leave the object URL alive beyond it.
-          window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-        }
+        downloadThroughBrowser(exportBytes, mimeType, filename);
         return;
       }
 
@@ -1172,34 +1196,23 @@ export function PreviewPane() {
       await writeBytesFile(destination, uint8ToBase64(exportBytes));
       const fileName =
         destination.split(/[/\\]/).pop() || (isImage ? "image.png" : "document.pdf");
+      const revealAction = {
+        label: t(($) => $.preview.download.showInFolder),
+        onClick: () => {
+          revealInDir(destination).catch(() => {
+            toast.info(t(($) => $.preview.download.folderUnavailable));
+          });
+        },
+      };
       toast.success(
         isImage
           ? t(($) => $.preview.download.imageSaved, { name: fileName })
           : t(($) => $.preview.download.pdfSaved, { name: fileName }),
-        {
-          label: t(($) => $.preview.download.showInFolder),
-          onClick: () => {
-            void revealInDir(destination).catch(() => {
-              toast.info(t(($) => $.preview.download.folderUnavailable));
-            });
-          },
-        },
+        revealAction,
         true,
       );
     } catch (error) {
-      const detail =
-        error instanceof Error ? error.message : typeof error === "string" ? error : "";
-      notifyError(
-        "download preview",
-        error,
-        detail
-          ? isImage
-            ? t(($) => $.preview.download.imageFailedDetail, { detail })
-            : t(($) => $.preview.download.pdfFailedDetail, { detail })
-          : isImage
-            ? t(($) => $.preview.download.imageFailed)
-            : t(($) => $.preview.download.pdfFailed),
-      );
+      reportExportFailure(error);
     } finally {
       setExporting(false);
     }
@@ -1282,7 +1295,45 @@ export function PreviewPane() {
     status === "unavailable" ||
     errors.some((error) => error.kind === "error");
   const hasWarning = !hasError && errors.some((e) => e.kind === "warning");
-  const severity: "error" | "warning" | "ok" = hasError ? "error" : hasWarning ? "warning" : "ok";
+  const nonErrorSeverity: "warning" | "ok" = hasWarning ? "warning" : "ok";
+  const severity: "error" | "warning" | "ok" = hasError ? "error" : nonErrorSeverity;
+  const severityToneClass = () => {
+    if (severity === "error") return "text-red-500";
+    if (severity === "warning") return "text-amber-500";
+    return "text-emerald-500";
+  };
+  const severityTitle = (): string => {
+    if (severity === "error") return t(($) => $.preview.toolbar.compiledWithErrors);
+    if (severity === "warning") return t(($) => $.preview.toolbar.compiledWithWarnings);
+    return t(($) => $.preview.toolbar.compiledSuccessfully);
+  };
+  const renderSeverityIcon = () => {
+    if (severity === "error") return <XCircle className="size-3.5" />;
+    if (severity === "warning") return <AlertTriangle className="size-3.5" />;
+    return <CheckCircle2 className="size-3.5" />;
+  };
+  const pageAnnouncement = (): string =>
+    numPages > 0 ? t(($) => $.preview.a11y.page, { page, total: numPages }) : "";
+  const pdfLoadFailureTitle = (): string => {
+    if (pdfLoadState.status === "invalid") return t(($) => $.preview.viewer.invalidTitle);
+    if (pdfLoadState.status === "empty") return t(($) => $.preview.viewer.emptyTitle);
+    if (pdfLoadState.status === "unavailable") {
+      return t(($) => $.preview.viewer.unavailableTitle);
+    }
+    return t(($) => $.preview.viewer.loadFailedTitle);
+  };
+  const searchCounterLabel = (): string => {
+    if (searchState.status === "searching") {
+      return `${searchState.scannedPages}/${searchState.totalPages}`;
+    }
+    if (searchInput.trim()) return `${searchState.current}/${searchState.total}`;
+    return "0/0";
+  };
+  const downloadActionLabel = (): string => {
+    if (isImage) return t(($) => $.preview.actions.downloadImage);
+    if (pdfIsStale) return t(($) => $.preview.actions.downloadStalePdf);
+    return t(($) => $.preview.actions.downloadPdf);
+  };
 
   const { containerRef: pdfToolbarRef, availableWidth: pdfToolbarWidth } =
     useAvailableWidth();
@@ -1484,7 +1535,7 @@ export function PreviewPane() {
             <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
               <Input
                 value={pageInput}
-                onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ""))}
+                onChange={(e) => setPageInput(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     jumpToPage();
@@ -1655,13 +1706,7 @@ export function PreviewPane() {
             className="size-7"
             disabled={!displayedBytes || exporting}
             onClick={() => void exportDisplayedPreview()}
-            aria-label={
-              isImage
-                ? t(($) => $.preview.actions.downloadImage)
-                : pdfIsStale
-                  ? t(($) => $.preview.actions.downloadStalePdf)
-                  : t(($) => $.preview.actions.downloadPdf)
-            }
+            aria-label={downloadActionLabel()}
           >
             {exporting ? (
               <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
@@ -1693,8 +1738,10 @@ export function PreviewPane() {
       () => {
         if (isImage) {
           const base =
-            (projectName || "figure").replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "") ||
-            "figure";
+            trimEdgeCharacter(
+              (projectName || "figure").replace(/[^\w.-]+/g, "-"),
+              "-",
+            ) || "figure";
           setSaveName(`${base}.png`);
         } else {
           setSaveName(`${mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document"}.pdf`);
@@ -1718,8 +1765,6 @@ export function PreviewPane() {
           : t(($) => $.preview.actions.invert),
       },
     ),
-  );
-  inkGroup.push(
     iconControl(
       "screen-reader",
       Accessibility,
@@ -1762,7 +1807,7 @@ export function PreviewPane() {
         t(($) => $.preview.actions.openWindow),
         () => {
           if (!projectId) return;
-          void openPreviewWindow(
+          openPreviewWindow(
             projectId,
             projectName,
             previewWindowState(
@@ -1893,29 +1938,13 @@ export function PreviewPane() {
             <span
               className={cn(
                 "flex items-center gap-1 text-[10px] font-medium tabular-nums",
-                severity === "error"
-                  ? "text-red-500"
-                  : severity === "warning"
-                  ? "text-amber-500"
-                  : "text-emerald-500"
+                severityToneClass()
               )}
-              title={
-                severity === "error"
-                  ? t(($) => $.preview.toolbar.compiledWithErrors)
-                  : severity === "warning"
-                  ? t(($) => $.preview.toolbar.compiledWithWarnings)
-                  : t(($) => $.preview.toolbar.compiledSuccessfully)
-              }
+              title={severityTitle()}
               data-testid="compile-status"
               data-severity={severity}
             >
-              {severity === "error" ? (
-                <XCircle className="size-3.5" />
-              ) : severity === "warning" ? (
-                <AlertTriangle className="size-3.5" />
-              ) : (
-                <CheckCircle2 className="size-3.5" />
-              )}
+              {renderSeverityIcon()}
               {severity === "error" || compileTimeMs == null
                 ? t(($) => $.preview.toolbar.failed)
                 : t(($) => $.preview.toolbar.duration, {
@@ -1969,9 +1998,8 @@ export function PreviewPane() {
         data-tour="project-preview-content"
         className="relative min-h-0 flex-1 overflow-hidden"
       >
-        {tab === "logs" ? (
-          <LogPane />
-        ) : displayedBytes && viewerDocument ? (
+        {tab === "logs" ? <LogPane /> : null}
+        {tab !== "logs" && (displayedBytes && viewerDocument ? (
           <div className="flex h-full min-h-0 flex-col bg-sidebar">
             <div className="relative min-h-0 flex-1 overflow-hidden">
               {/* Editing while a PDF is on screen is the normal case, so
@@ -2046,14 +2074,14 @@ export function PreviewPane() {
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto p-2">
                     {outlineState.status === "loading" ? (
-                      <p
+                      <output
                         className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground"
-                        role="status"
                       >
                         <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
                         {t(($) => $.preview.outline.loading)}
-                      </p>
-                    ) : outlineState.items.length ? (
+                      </output>
+                    ) : null}
+                    {outlineState.status !== "loading" && (outlineState.items.length ? (
                       <PdfOutlineItems
                         items={outlineState.items}
                         onActivate={(id) => {
@@ -2066,7 +2094,7 @@ export function PreviewPane() {
                         {outlineState.message ??
                           t(($) => $.preview.outline.empty)}
                       </p>
-                    )}
+                    ))}
                   </div>
                 </aside>
               )}
@@ -2104,11 +2132,7 @@ export function PreviewPane() {
                     className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"
                     aria-live="polite"
                   >
-                    {searchState.status === "searching"
-                      ? `${searchState.scannedPages}/${searchState.totalPages}`
-                      : searchInput.trim()
-                        ? `${searchState.current}/${searchState.total}`
-                        : "0/0"}
+                    {searchCounterLabel()}
                   </span>
                   <Button
                     variant="ghost"
@@ -2263,27 +2287,22 @@ export function PreviewPane() {
                           {t(($) => $.preview.password.submit)}
                         </Button>
                       </form>
-                    ) : pdfLoadState.status === "loading" ? (
+                    ) : null}
+                    {pdfLoadState.status === "loading" ? (
                       <DocumentStartupProgress stages={startupStages} />
-                    ) : (
+                    ) : null}
+                    {pdfLoadState.status !== "password_required" &&
+                    pdfLoadState.status !== "loading" ? (
                       <PdfStateMessage
                         kind="error"
-                        title={
-                          pdfLoadState.status === "invalid"
-                            ? t(($) => $.preview.viewer.invalidTitle)
-                            : pdfLoadState.status === "empty"
-                              ? t(($) => $.preview.viewer.emptyTitle)
-                              : pdfLoadState.status === "unavailable"
-                                ? t(($) => $.preview.viewer.unavailableTitle)
-                                : t(($) => $.preview.viewer.loadFailedTitle)
-                        }
+                        title={pdfLoadFailureTitle()}
                         detail={
                           pdfLoadState.message ??
                           t(($) => $.preview.viewer.loadFailedDetail)
                         }
                         onRetry={retryPdfLoad}
                       />
-                    )}
+                    ) : null}
                   </div>
                 )}
             </div>
@@ -2309,15 +2328,13 @@ export function PreviewPane() {
               />
             )}
           </div>
-        )}
+        ))}
         <div className="sr-only" aria-live="polite">
           {pdfIsStale
             ? t(($) => $.preview.a11y.stale, {
                 explanation: currentRevisionExplanation ?? "",
               })
-            : numPages > 0
-              ? t(($) => $.preview.a11y.page, { page, total: numPages })
-              : ""}
+            : pageAnnouncement()}
           {searchState.status === "success" && searchInput.trim()
             ? ` ${t(($) => $.preview.a11y.searchResult, {
                 current: searchState.current,
@@ -2364,7 +2381,7 @@ export function PreviewPane() {
                 aria-label={t(($) => $.preview.save.nameLabel)}
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !saving) void submitSavePdf(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !saving) submitSavePdf(); }}
                 placeholder={t(($) => $.preview.save.namePlaceholder)}
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
               />
@@ -2390,11 +2407,11 @@ export function PdfOutlineItems({
   items,
   onActivate,
   depth = 0,
-}: {
+}: Readonly<{
   items: OutlineItem[];
   onActivate: (id: string) => void;
   depth?: number;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   return (
     <ul className="space-y-0.5">
@@ -2436,12 +2453,12 @@ export function PdfStateMessage({
   title,
   detail,
   onRetry,
-}: {
+}: Readonly<{
   kind: "loading" | "error";
   title: string;
   detail: string;
   onRetry?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   return (
     <div
@@ -2505,10 +2522,10 @@ const STARTUP_STATUS_FILL: Record<StartupStageStatus, string> = {
 function StartupStageIcon({
   status,
   compact,
-}: {
+}: Readonly<{
   status: StartupStageStatus;
   compact: boolean;
-}) {
+}>) {
   const size = compact ? "size-3.5" : "size-4";
   if (status === "complete") {
     return <CheckCircle2 className={cn(size, "text-emerald-500")} />;
@@ -2541,15 +2558,79 @@ function StartupStageIcon({
   );
 }
 
+function StartupStageRow({
+  stage,
+  compact,
+}: Readonly<{ stage: DocumentStartupStage; compact: boolean }>) {
+  return (
+    <li
+      className={cn(
+        "flex min-w-0 items-center gap-3",
+        compact ? "py-1.5" : "py-2.5",
+      )}
+      aria-current={stage.status === "running" ? "step" : undefined}
+    >
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center",
+          compact ? "size-4" : "size-5",
+        )}
+      >
+        <StartupStageIcon status={stage.status} compact={compact} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block truncate font-medium",
+            compact ? "text-[11px]" : "text-xs",
+            (stage.status === "pending" || stage.status === "skipped") &&
+              "text-muted-foreground",
+            stage.status === "error" && "text-destructive",
+          )}
+        >
+          {stage.label}
+        </span>
+        {!compact && (
+          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+            {stage.detail}
+          </span>
+        )}
+      </span>
+      <span
+        className={cn(
+          "shrink-0 font-mono uppercase tracking-wide",
+          compact ? "text-[9px]" : "text-[10px]",
+          STARTUP_STATUS_TEXT[stage.status],
+        )}
+      >
+        {startupStatusLabel(stage.status)}
+      </span>
+    </li>
+  );
+}
+
+function countStagesWithStatus(
+  stages: readonly DocumentStartupStage[],
+  status: DocumentStartupStage["status"],
+): number {
+  return stages.filter((stage) => stage.status === status).length;
+}
+
+function countSettledStages(stages: readonly DocumentStartupStage[]): number {
+  return stages.filter(
+    (stage) => stage.status === "complete" || stage.status === "skipped",
+  ).length;
+}
+
 export function DocumentStartupProgress({
   stages,
   compact = false,
   onCompile,
-}: {
+}: Readonly<{
   stages: DocumentStartupStage[];
   compact?: boolean;
   onCompile?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "preview"]);
   const activeStage = [...stages]
     .reverse()
@@ -2557,19 +2638,10 @@ export function DocumentStartupProgress({
   const failedStage = stages.find((stage) => stage.status === "error");
   const waitingStage = stages.find((stage) => stage.status === "pending");
   const currentStage = activeStage ?? failedStage ?? waitingStage;
-  const completedCount = stages.filter(
-    (stage) =>
-      stage.status === "complete" || stage.status === "skipped",
-  ).length;
-  const runningCount = stages.filter(
-    (stage) => stage.status === "running",
-  ).length;
-  const queuedCount = stages.filter(
-    (stage) => stage.status === "pending",
-  ).length;
-  const failedCount = stages.filter(
-    (stage) => stage.status === "error",
-  ).length;
+  const completedCount = countSettledStages(stages);
+  const runningCount = countStagesWithStatus(stages, "running");
+  const queuedCount = countStagesWithStatus(stages, "pending");
+  const failedCount = countStagesWithStatus(stages, "error");
   const meta = [
     runningCount > 0
       ? t(($) => $.preview.startup.metaRunning, { stages: runningCount })
@@ -2584,15 +2656,20 @@ export function DocumentStartupProgress({
     .filter(Boolean)
     .join(" · ");
 
+  const inactiveHeading = (): string => {
+    if (failedStage) return t(($) => $.preview.startup.headingAttention);
+    if (completedCount === stages.length) return t(($) => $.preview.startup.headingReady);
+    return t(($) => $.preview.startup.headingPreparing);
+  };
+
   return (
-    <div
+    <output
       className={cn(
-        "w-full text-left text-foreground",
+        "block w-full text-left text-foreground",
         compact
           ? "max-w-[22rem] rounded-lg bg-background/75 px-3 py-2.5 shadow-sm ring-1 ring-border/40 backdrop-blur-sm"
           : "max-w-lg",
       )}
-      role="status"
       aria-live="polite"
       aria-label={t(($) => $.preview.startup.progressLabel, {
         completed: completedCount,
@@ -2613,13 +2690,7 @@ export function DocumentStartupProgress({
             activeStage && "ai-shimmer",
           )}
         >
-          {activeStage
-            ? activeStage.label
-            : failedStage
-              ? t(($) => $.preview.startup.headingAttention)
-              : completedCount === stages.length
-                ? t(($) => $.preview.startup.headingReady)
-                : t(($) => $.preview.startup.headingPreparing)}
+          {activeStage ? activeStage.label : inactiveHeading()}
         </h2>
         {activeStage && (
           <span
@@ -2669,50 +2740,7 @@ export function DocumentStartupProgress({
 
       <ol className={cn("divide-y divide-border/50", compact ? "mt-2" : "mt-3")}>
         {stages.map((stage) => (
-          <li
-            key={stage.id}
-            className={cn(
-              "flex min-w-0 items-center gap-3",
-              compact ? "py-1.5" : "py-2.5",
-            )}
-            aria-current={stage.status === "running" ? "step" : undefined}
-          >
-            <span
-              className={cn(
-                "flex shrink-0 items-center justify-center",
-                compact ? "size-4" : "size-5",
-              )}
-            >
-              <StartupStageIcon status={stage.status} compact={compact} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  "block truncate font-medium",
-                  compact ? "text-[11px]" : "text-xs",
-                  (stage.status === "pending" || stage.status === "skipped") &&
-                    "text-muted-foreground",
-                  stage.status === "error" && "text-destructive",
-                )}
-              >
-                {stage.label}
-              </span>
-              {!compact && (
-                <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
-                  {stage.detail}
-                </span>
-              )}
-            </span>
-            <span
-              className={cn(
-                "shrink-0 font-mono uppercase tracking-wide",
-                compact ? "text-[9px]" : "text-[10px]",
-                STARTUP_STATUS_TEXT[stage.status],
-              )}
-            >
-              {startupStatusLabel(stage.status)}
-            </span>
-          </li>
+          <StartupStageRow key={stage.id} stage={stage} compact={compact} />
         ))}
       </ol>
 
@@ -2742,6 +2770,6 @@ export function DocumentStartupProgress({
           </span>
         </div>
       )}
-    </div>
+    </output>
   );
 }

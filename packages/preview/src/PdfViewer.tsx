@@ -78,6 +78,14 @@ class PdfPasswordRequiredError extends Error {
   }
 }
 
+const ignoreRejection = () => {};
+
+function errorName(error: unknown): string {
+  if (error instanceof Error) return error.name;
+  if (typeof error === "object" && error && "name" in error) return String(error.name);
+  return "";
+}
+
 function pdfLoadFailure(
   error: unknown,
   t: PreviewTranslator,
@@ -97,12 +105,7 @@ function pdfLoadFailure(
       message: error.message,
     };
   }
-  const name =
-    error instanceof Error
-      ? error.name
-      : typeof error === "object" && error && "name" in error
-        ? String(error.name)
-        : "";
+  const name = errorName(error);
   if (
     name === "InvalidPDFException" ||
     name === "FormatError" ||
@@ -130,17 +133,16 @@ function pdfLoadFailure(
 }
 
 async function forceMainThreadWorker(): Promise<void> {
-  if (!mainThreadWorkerInstall) {
-    mainThreadWorkerInstall = installMainThreadPdfWorker().catch((error) => {
-      mainThreadWorkerInstall = null;
-      throw error;
-    });
-  }
+  mainThreadWorkerInstall ??= installMainThreadPdfWorker().catch((error) => {
+    mainThreadWorkerInstall = null;
+    throw error;
+  });
   await mainThreadWorkerInstall;
 }
 
 function loadPdfViewerRuntime(): Promise<PdfViewerRuntime> {
-  return (pdfViewerRuntimePromise ??= import("pdfjs-dist/web/pdf_viewer.mjs"));
+  pdfViewerRuntimePromise ??= import("pdfjs-dist/web/pdf_viewer.mjs");
+  return pdfViewerRuntimePromise;
 }
 
 function destroyPdfWorker(worker: pdfjsLib.PDFWorker): void {
@@ -270,7 +272,7 @@ function wordAtPoint(
       offset = pos.offset;
     }
   }
-  if (!node || node.nodeType !== Node.TEXT_NODE || (containingSpan && !containingSpan.contains(node))) {
+  if (!node || node.nodeType !== Node.TEXT_NODE || containingSpan?.contains(node) === false) {
     const fallbackText =
       containingSpan?.textContent?.trim() ??
       document.elementFromPoint(clientX, clientY)?.closest(".textLayer span")?.textContent?.trim() ??
@@ -404,6 +406,100 @@ function firstTextNode(element: HTMLElement): Text | null {
   return node instanceof Text ? node : null;
 }
 
+function createSearchHighlightMarker(
+  rect: DOMRect,
+  wrapRect: DOMRect,
+  active: boolean,
+  hidden: boolean,
+): HTMLElement {
+  const marker = document.createElement("div");
+  marker.className = active
+    ? "pdf-search-highlight pdf-search-highlight-current"
+    : "pdf-search-highlight";
+  marker.setAttribute("aria-hidden", "true");
+  marker.hidden = hidden;
+  Object.assign(marker.style, {
+    position: "absolute",
+    left: `${rect.left - wrapRect.left}px`,
+    top: `${rect.top - wrapRect.top}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    pointerEvents: "none",
+    zIndex: "2",
+    borderRadius: "2px",
+    background: active ? "rgba(245, 158, 11, 0.56)" : "rgba(250, 204, 21, 0.32)",
+    boxShadow: active ? "0 0 0 1px rgba(180, 83, 9, 0.82)" : "none",
+  } as Partial<CSSStyleDeclaration>);
+  return marker;
+}
+
+function paintPdfSearchMatch(
+  wrap: HTMLElement,
+  wrapRect: DOMRect,
+  state: RenderState,
+  textDivs: HTMLElement[],
+  match: PdfSearchMatch,
+  active: boolean,
+): void {
+  const first = textDivs[match.startItem];
+  const last = textDivs[match.endItem];
+  if (!first || !last) return;
+  const firstNode = firstTextNode(first);
+  const lastNode = firstTextNode(last);
+  if (!firstNode || !lastNode) return;
+  const range = document.createRange();
+  try {
+    range.setStart(
+      firstNode,
+      Math.max(0, Math.min(firstNode.length, match.startOffset)),
+    );
+    range.setEnd(
+      lastNode,
+      Math.max(0, Math.min(lastNode.length, match.endOffset)),
+    );
+    const hidden = wrap.dataset.pdfScreenReader === "true";
+    for (const rect of range.getClientRects()) {
+      if (rect.width <= 0 || rect.height <= 0) continue;
+      const marker = createSearchHighlightMarker(rect, wrapRect, active, hidden);
+      wrap.appendChild(marker);
+      state.searchNodes.push(marker);
+    }
+  } catch {
+    // A virtualized text layer may be released while range geometry is
+    // resolving. The next page render/search navigation repaints it.
+  }
+}
+
+function recalibrateRenderedTextLayer(
+  wrap: HTMLElement,
+  state: RenderState,
+  textContent: PageTextContent,
+  viewport: pdfjsLib.PageViewport,
+  matches: Array<{ match: PdfSearchMatch; index: number }>,
+  activeIndex: number,
+): void {
+  const { textLayer, renderedTextLayer } = state;
+  if (!textLayer || !renderedTextLayer) return;
+  try {
+    // `--scale-factor` changes each span's font size immediately. Font
+    // engines do not promise that a glyph run at 2x has exactly twice
+    // its 1x advance (notably Pango on WebKitGTK), so the old --scale-x
+    // can leave the selectable boundary a CSS pixel away from the PDF
+    // item during the debounce window. Re-measure the capped set of live
+    // layers in this frame; the later crisp render calibrates again.
+    calibratePdfTextLayerWidths(
+      renderedTextLayer.div,
+      textLayer.textDivs,
+      textContent,
+      viewport,
+    );
+    paintPdfSearchHighlights(wrap, state, textLayer.textDivs, matches, activeIndex);
+  } catch {
+    // Preserve pdf.js' previous calibration if synchronous layout is
+    // temporarily unavailable during a browser resize.
+  }
+}
+
 function paintPdfSearchHighlights(
   wrap: HTMLElement,
   state: RenderState,
@@ -415,58 +511,7 @@ function paintPdfSearchHighlights(
   if (!matches.length) return;
   const wrapRect = wrap.getBoundingClientRect();
   for (const { match, index } of matches) {
-    const first = textDivs[match.startItem];
-    const last = textDivs[match.endItem];
-    if (!first || !last) continue;
-    const firstNode = firstTextNode(first);
-    const lastNode = firstTextNode(last);
-    if (!firstNode || !lastNode) continue;
-    const range = document.createRange();
-    try {
-      range.setStart(
-        firstNode,
-        Math.max(0, Math.min(firstNode.length, match.startOffset)),
-      );
-      range.setEnd(
-        lastNode,
-        Math.max(0, Math.min(lastNode.length, match.endOffset)),
-      );
-      for (const rect of range.getClientRects()) {
-        if (rect.width <= 0 || rect.height <= 0) continue;
-        const marker = document.createElement("div");
-        marker.className =
-          index === activeIndex
-            ? "pdf-search-highlight pdf-search-highlight-current"
-            : "pdf-search-highlight";
-        marker.setAttribute("aria-hidden", "true");
-        marker.hidden = wrap.dataset.pdfScreenReader === "true";
-        Object.assign(marker.style, {
-          position: "absolute",
-          left: `${rect.left - wrapRect.left}px`,
-          top: `${rect.top - wrapRect.top}px`,
-          width: `${rect.width}px`,
-          height: `${rect.height}px`,
-          pointerEvents: "none",
-          zIndex: "2",
-          borderRadius: "2px",
-          background:
-            index === activeIndex
-              ? "rgba(245, 158, 11, 0.56)"
-              : "rgba(250, 204, 21, 0.32)",
-          boxShadow:
-            index === activeIndex
-              ? "0 0 0 1px rgba(180, 83, 9, 0.82)"
-              : "none",
-        } as Partial<CSSStyleDeclaration>);
-        wrap.appendChild(marker);
-        state.searchNodes.push(marker);
-      }
-    } catch {
-      // A virtualized text layer may be released while range geometry is
-      // resolving. The next page render/search navigation repaints it.
-    } finally {
-      range.detach();
-    }
+    paintPdfSearchMatch(wrap, wrapRect, state, textDivs, match, index === activeIndex);
   }
 }
 
@@ -496,6 +541,17 @@ export interface PdfPagePosition {
  * nearest-distance fallback also handles a callback arriving between two
  * actually visible pages.
  */
+function viewportDistanceOf(
+  rect: { top: number; bottom: number },
+  overlap: number,
+  viewportTop: number,
+  viewportBottom: number,
+): number {
+  if (overlap > 0) return 0;
+  if (rect.bottom < viewportTop) return viewportTop - rect.bottom;
+  return rect.top - viewportBottom;
+}
+
 export function selectCurrentPdfPage(
   pages: Iterable<PdfPagePosition>,
   viewportTop: number,
@@ -520,12 +576,7 @@ export function selectCurrentPdfPage(
     Math.min(best.bottom, viewportBottom) - Math.max(best.top, viewportTop),
   );
   let bestTopDistance = Math.abs(best.top - viewportTop);
-  let bestViewportDistance =
-    bestOverlap > 0
-      ? 0
-      : best.bottom < viewportTop
-        ? viewportTop - best.bottom
-        : best.top - viewportBottom;
+  let bestViewportDistance = viewportDistanceOf(best, bestOverlap, viewportTop, viewportBottom);
 
   for (const candidate of candidates.slice(1)) {
     const overlap = Math.max(
@@ -534,12 +585,7 @@ export function selectCurrentPdfPage(
         Math.max(candidate.top, viewportTop),
     );
     const topDistance = Math.abs(candidate.top - viewportTop);
-    const viewportDistance =
-      overlap > 0
-        ? 0
-        : candidate.bottom < viewportTop
-          ? viewportTop - candidate.bottom
-          : candidate.top - viewportBottom;
+    const viewportDistance = viewportDistanceOf(candidate, overlap, viewportTop, viewportBottom);
     if (
       overlap > bestOverlap ||
       (overlap === bestOverlap &&
@@ -1195,7 +1241,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       return;
     }
     const existing = renderedRef.current.get(pageNo);
-    if (existing && existing.renderScale === renderScale) return; // already correct
+    if (existing?.renderScale === renderScale) return; // already correct
     if (existing) cancelRenderState(existing);
     else reserveRenderSlot(pageNo);
 
@@ -1526,7 +1572,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     // When more than 14 pages fit inside the observer margin, keep the pages
     // nearest the current viewport and leave the rest as exact placeholders.
     // Scroll reconciliation rotates that bounded window as the reader moves.
-    for (const pageNumber of [...renderedRef.current.keys()]) {
+    for (const pageNumber of renderedRef.current.keys()) {
       if (visibleRef.current.has(pageNumber) && !desired.has(pageNumber)) {
         unrenderPage(pageNumber);
       }
@@ -1597,13 +1643,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       // zoom remains under the preview toolbar's control.
       const destination = request.destArray;
       const destinationType = destination?.[1] as { name?: string } | undefined;
-      const pdfY =
-        destinationType?.name === "XYZ"
-          ? destination?.[3]
-          : destinationType?.name === "FitH" ||
-              destinationType?.name === "FitBH"
-            ? destination?.[2]
-            : null;
+      const fitWidthY =
+        destinationType?.name === "FitH" || destinationType?.name === "FitBH"
+          ? destination?.[2]
+          : null;
+      const pdfY = destinationType?.name === "XYZ" ? destination?.[3] : fitWidthY;
       if (typeof pdfY !== "number") return;
 
       void ensurePageGeometry(pageNumber).then((baseViewport) => {
@@ -1781,7 +1825,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         if (matches.length) {
           scrollPageIntoView({ pageNumber: matches[0].pageNumber });
         }
-      } catch (error) {
+      } catch {
         if (
           controller.signal.aborted ||
           sequence !== searchSequenceRef.current ||
@@ -2193,7 +2237,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD,
             tRef.current,
           );
-          void nextTask.destroy().catch(() => {});
+          void nextTask.destroy().catch(ignoreRejection);
         };
         nextTask.onProgress = ({
           loaded,
@@ -2323,7 +2367,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             optionalContentConfigPromiseRef.current = promise;
             queueMicrotask(() => {
               if (cancelled || docRef.current !== doc) return;
-              for (const pageNumber of [...renderedRef.current.keys()]) {
+              for (const pageNumber of renderedRef.current.keys()) {
                 unrenderPage(pageNumber);
               }
               reconcileVisiblePages();
@@ -2498,31 +2542,15 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         canvas.style.height = geometry.cssHeight;
       }
       const textContent = textContentRef.current.get(pageNo);
-      if (state.textLayer && state.renderedTextLayer && textContent) {
-        try {
-          // `--scale-factor` changes each span's font size immediately. Font
-          // engines do not promise that a glyph run at 2x has exactly twice
-          // its 1x advance (notably Pango on WebKitGTK), so the old --scale-x
-          // can leave the selectable boundary a CSS pixel away from the PDF
-          // item during the debounce window. Re-measure the capped set of live
-          // layers in this frame; the later crisp render calibrates again.
-          calibratePdfTextLayerWidths(
-            state.renderedTextLayer.div,
-            state.textLayer.textDivs,
-            textContent,
-            viewport,
-          );
-          paintPdfSearchHighlights(
-            wrap,
-            state,
-            state.textLayer.textDivs,
-            searchMatchesByPageRef.current.get(pageNo) ?? [],
-            searchActiveIndexRef.current,
-          );
-        } catch {
-          // Preserve pdf.js' previous calibration if synchronous layout is
-          // temporarily unavailable during a browser resize.
-        }
+      if (textContent) {
+        recalibrateRenderedTextLayer(
+          wrap,
+          state,
+          textContent,
+          viewport,
+          searchMatchesByPageRef.current.get(pageNo) ?? [],
+          searchActiveIndexRef.current,
+        );
       }
     }
 
@@ -2566,7 +2594,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     if (rasterTimerRef.current) window.clearTimeout(rasterTimerRef.current);
     rasterTimerRef.current = window.setTimeout(() => {
       const target = scaleRef.current;
-      for (const p of [...renderedRef.current.keys()]) {
+      for (const p of renderedRef.current.keys()) {
         if (!visibleRef.current.has(p)) unrenderPage(p);
       }
       reconcileVisiblePages();

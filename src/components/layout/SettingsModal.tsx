@@ -295,7 +295,7 @@ export function SettingsModal() {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     let active = true;
-    void import("@/developer/DeveloperSettings").then((module) => {
+    import("@/developer/DeveloperSettings").then((module) => {
       if (active) setDeveloperSettings(module);
     });
     return () => {
@@ -309,7 +309,7 @@ export function SettingsModal() {
       ? (settingsInitialSection as Section)
       : "general";
     setSection(next);
-    void libraryRoot().then(setLibRoot).catch(() => {});
+    libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
 
   useEffect(() => {
@@ -318,7 +318,7 @@ export function SettingsModal() {
     let cancelled = false;
     setStorageLoading(true);
     setStorageError("");
-    void Promise.all([libraryStorageSummary(), listRecycledProjects()])
+    Promise.all([libraryStorageSummary(), listRecycledProjects()])
       .then(([summary, recycled]) => {
         if (!cancelled) {
           setStorageSummary(summary);
@@ -440,6 +440,187 @@ export function SettingsModal() {
   };
 
   if (!open) return null;
+
+  const renderStorageSummary = () => {
+    if (storageError) {
+      return (
+        <p role="alert" className="px-4 py-5 text-sm text-destructive">
+          {storageError}
+        </p>
+      );
+    }
+    if (storageLoading && !storageSummary) {
+      return (
+        <output
+          className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
+        >
+          <RefreshCw
+            aria-hidden
+            className="size-4 animate-spin motion-reduce:animate-none"
+          />
+          {t(($) => $.shell.settings.data.storage.calculating)}
+        </output>
+      );
+    }
+    if (storageSummary) {
+      return (
+        <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
+          {[
+            {
+              id: "projects",
+              label: t(($) => $.shell.settings.data.storage.stats.projects),
+              value: formatNumber(storageSummary.project_count),
+              detail: formatBytes(storageSummary.projects_bytes),
+            },
+            {
+              id: "files",
+              label: t(($) => $.shell.settings.data.storage.stats.files),
+              value: formatNumber(storageSummary.file_count),
+              detail: t(($) => $.shell.settings.data.storage.stats.folders, {
+                count: storageSummary.directory_count,
+              }),
+            },
+            {
+              id: "images",
+              label: t(($) => $.shell.settings.data.storage.stats.images),
+              value: formatNumber(storageSummary.image_count),
+              detail: formatBytes(storageSummary.image_bytes),
+            },
+            {
+              id: "pdfs",
+              label: t(($) => $.shell.settings.data.storage.stats.pdfs),
+              value: formatNumber(storageSummary.pdf_count),
+              detail: formatBytes(storageSummary.pdf_bytes),
+            },
+            {
+              id: "sources",
+              label: t(($) => $.shell.settings.data.storage.stats.projectFiles),
+              value: formatBytes(storageSummary.source_bytes),
+              detail: t(($) => $.shell.settings.data.storage.stats.projectFilesDetail),
+            },
+            {
+              id: "git",
+              label: t(($) => $.shell.settings.data.storage.stats.gitHistory),
+              value: formatBytes(storageSummary.git_bytes),
+              detail: t(($) => $.shell.settings.data.storage.stats.gitHistoryDetail),
+            },
+            {
+              id: "build",
+              label: t(($) => $.shell.settings.data.storage.stats.buildCache),
+              value: formatBytes(storageSummary.build_bytes),
+              detail: t(($) => $.shell.settings.data.storage.stats.buildCacheDetail),
+            },
+            {
+              id: "appData",
+              label: t(($) => $.shell.settings.data.storage.stats.appData),
+              value: formatBytes(storageSummary.app_data_bytes),
+              detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
+            },
+          ].map((item) => (
+            <div key={item.id} className="min-w-0 bg-card px-3 py-3">
+              <dt className="text-muted-foreground">{item.label}</dt>
+              <dd className="mt-1 truncate text-sm font-semibold text-foreground">
+                {item.value}
+              </dd>
+              <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                {item.detail}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      );
+    }
+    return (
+      <p className="px-4 py-5 text-sm text-muted-foreground">
+        {t(($) => $.shell.settings.data.storage.desktopOnly)}
+      </p>
+    );
+  };
+
+  const renderRecycleBin = () => {
+    if (storageLoading && !storageSummary) {
+      return (
+        <output
+          className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
+        >
+          <RefreshCw
+            aria-hidden
+            className="size-4 animate-spin motion-reduce:animate-none"
+          />
+          {t(($) => $.shell.settings.data.recycleBin.loading)}
+        </output>
+      );
+    }
+    if (recycledProjects.length === 0) {
+      return (
+        <p className="px-4 py-5 text-sm text-muted-foreground">
+          {t(($) => $.shell.settings.data.recycleBin.empty)}
+        </p>
+      );
+    }
+    return (
+      <ul className="divide-y">
+        {recycledProjects.map((project) => {
+          const busy = recycleActionId === project.id;
+          return (
+            <li
+              key={project.id}
+              className="flex items-center justify-between gap-3 px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {project.name}
+                </p>
+                <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                  {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
+                    date: formatDateTime(project.deleted_at * 1000),
+                    size: formatBytes(project.size_bytes),
+                  })}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={recycleActionId !== null || clearingRecycleBin}
+                  onClick={() => void restoreProject(project)}
+                >
+                  <RotateCcw
+                    aria-hidden
+                    className={cn(
+                      "size-3.5",
+                      busy && "animate-spin motion-reduce:animate-none",
+                    )}
+                  />
+                  {t(($) => $.shell.settings.data.recycleBin.restore)}
+                </Button>
+                <Tooltip
+                  label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
+                    name: project.name,
+                  })}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-muted-foreground hover:text-destructive"
+                    disabled={recycleActionId !== null || clearingRecycleBin}
+                    aria-label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
+                      name: project.name,
+                    })}
+                    onClick={() => setPermanentDeleteTarget(project)}
+                  >
+                    <Trash2 aria-hidden className="size-3.5" />
+                  </Button>
+                </Tooltip>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
 
   return (
     <div
@@ -860,91 +1041,7 @@ export function SettingsModal() {
                       </Button>
                     </Tooltip>
                   </div>
-                  {storageError ? (
-                    <p role="alert" className="px-4 py-5 text-sm text-destructive">
-                      {storageError}
-                    </p>
-                  ) : storageLoading && !storageSummary ? (
-                    <div
-                      role="status"
-                      className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
-                    >
-                      <RefreshCw
-                        aria-hidden
-                        className="size-4 animate-spin motion-reduce:animate-none"
-                      />
-                      {t(($) => $.shell.settings.data.storage.calculating)}
-                    </div>
-                  ) : storageSummary ? (
-                    <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
-                      {[
-                        {
-                          id: "projects",
-                          label: t(($) => $.shell.settings.data.storage.stats.projects),
-                          value: formatNumber(storageSummary.project_count),
-                          detail: formatBytes(storageSummary.projects_bytes),
-                        },
-                        {
-                          id: "files",
-                          label: t(($) => $.shell.settings.data.storage.stats.files),
-                          value: formatNumber(storageSummary.file_count),
-                          detail: t(($) => $.shell.settings.data.storage.stats.folders, {
-                            count: storageSummary.directory_count,
-                          }),
-                        },
-                        {
-                          id: "images",
-                          label: t(($) => $.shell.settings.data.storage.stats.images),
-                          value: formatNumber(storageSummary.image_count),
-                          detail: formatBytes(storageSummary.image_bytes),
-                        },
-                        {
-                          id: "pdfs",
-                          label: t(($) => $.shell.settings.data.storage.stats.pdfs),
-                          value: formatNumber(storageSummary.pdf_count),
-                          detail: formatBytes(storageSummary.pdf_bytes),
-                        },
-                        {
-                          id: "sources",
-                          label: t(($) => $.shell.settings.data.storage.stats.projectFiles),
-                          value: formatBytes(storageSummary.source_bytes),
-                          detail: t(($) => $.shell.settings.data.storage.stats.projectFilesDetail),
-                        },
-                        {
-                          id: "git",
-                          label: t(($) => $.shell.settings.data.storage.stats.gitHistory),
-                          value: formatBytes(storageSummary.git_bytes),
-                          detail: t(($) => $.shell.settings.data.storage.stats.gitHistoryDetail),
-                        },
-                        {
-                          id: "build",
-                          label: t(($) => $.shell.settings.data.storage.stats.buildCache),
-                          value: formatBytes(storageSummary.build_bytes),
-                          detail: t(($) => $.shell.settings.data.storage.stats.buildCacheDetail),
-                        },
-                        {
-                          id: "appData",
-                          label: t(($) => $.shell.settings.data.storage.stats.appData),
-                          value: formatBytes(storageSummary.app_data_bytes),
-                          detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
-                        },
-                      ].map((item) => (
-                        <div key={item.id} className="min-w-0 bg-card px-3 py-3">
-                          <dt className="text-muted-foreground">{item.label}</dt>
-                          <dd className="mt-1 truncate text-sm font-semibold text-foreground">
-                            {item.value}
-                          </dd>
-                          <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                            {item.detail}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  ) : (
-                    <p className="px-4 py-5 text-sm text-muted-foreground">
-                      {t(($) => $.shell.settings.data.storage.desktopOnly)}
-                    </p>
-                  )}
+                  {renderStorageSummary()}
                   {storageSummary && storageSummary.unreadable_entries > 0 ? (
                     <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
                       {t(($) => $.shell.settings.data.storage.unreadable, {
@@ -997,83 +1094,7 @@ export function SettingsModal() {
                       </div>
                     ) : null}
                   </div>
-                  {storageLoading && !storageSummary ? (
-                    <div
-                      role="status"
-                      className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
-                    >
-                      <RefreshCw
-                        aria-hidden
-                        className="size-4 animate-spin motion-reduce:animate-none"
-                      />
-                      {t(($) => $.shell.settings.data.recycleBin.loading)}
-                    </div>
-                  ) : recycledProjects.length === 0 ? (
-                    <p className="px-4 py-5 text-sm text-muted-foreground">
-                      {t(($) => $.shell.settings.data.recycleBin.empty)}
-                    </p>
-                  ) : (
-                    <ul className="divide-y">
-                      {recycledProjects.map((project) => {
-                        const busy = recycleActionId === project.id;
-                        return (
-                          <li
-                            key={project.id}
-                            className="flex items-center justify-between gap-3 px-4 py-3"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">
-                                {project.name}
-                              </p>
-                              <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                                {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
-                                  date: formatDateTime(project.deleted_at * 1000),
-                                  size: formatBytes(project.size_bytes),
-                                })}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                disabled={recycleActionId !== null || clearingRecycleBin}
-                                onClick={() => void restoreProject(project)}
-                              >
-                                <RotateCcw
-                                  aria-hidden
-                                  className={cn(
-                                    "size-3.5",
-                                    busy && "animate-spin motion-reduce:animate-none",
-                                  )}
-                                />
-                                {t(($) => $.shell.settings.data.recycleBin.restore)}
-                              </Button>
-                              <Tooltip
-                                label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
-                                  name: project.name,
-                                })}
-                              >
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-8 text-muted-foreground hover:text-destructive"
-                                  disabled={recycleActionId !== null || clearingRecycleBin}
-                                  aria-label={t(($) => $.shell.settings.data.recycleBin.deleteOne, {
-                                    name: project.name,
-                                  })}
-                                  onClick={() => setPermanentDeleteTarget(project)}
-                                >
-                                  <Trash2 aria-hidden className="size-3.5" />
-                                </Button>
-                              </Tooltip>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
+                  {renderRecycleBin()}
                 </section>
                 {githubStatus === "disconnected" ? (
                 <div className="flex items-start gap-2 rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">
@@ -1285,11 +1306,11 @@ function HelpSection() {
   const [copied, setCopied] = useState(false);
   const [repoStats, setRepoStats] = useState<GitHubRepoStats | null>(null);
   useEffect(() => {
-    void appVersion().then(setVersion).catch(() => setVersion(""));
+    appVersion().then(setVersion).catch(() => setVersion(""));
   }, []);
   useEffect(() => {
     let active = true;
-    void githubGetPublicRepoStats("Oleafly/Oleafly")
+    githubGetPublicRepoStats("Oleafly/Oleafly")
       .then((stats) => {
         if (active) setRepoStats(stats);
       })

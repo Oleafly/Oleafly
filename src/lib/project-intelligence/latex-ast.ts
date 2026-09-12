@@ -87,6 +87,15 @@ function trimmedRaw(
  * Collect the brace-group arguments following an unknown macro, skipping an
  * optional leading `[...]` written as loose string tokens.
  */
+function optionalBracketState(
+  content: string,
+  inOptional: boolean,
+): boolean | null {
+  if (content === "[") return true;
+  if (content === "]" && inOptional) return false;
+  return null;
+}
+
 function siblingGroups(
   siblings: readonly LatexNode[],
   start: number,
@@ -104,16 +113,12 @@ function siblingGroups(
       continue;
     }
     if (node.type === "string") {
-      if (node.content === "[") {
-        inOptional = true;
+      const optional = optionalBracketState(node.content, inOptional);
+      if (optional !== null) {
+        inOptional = optional;
         continue;
       }
-      if (node.content === "]" && inOptional) {
-        inOptional = false;
-        continue;
-      }
-      if (inOptional) continue;
-      break;
+      if (!inOptional) break;
     }
     if (inOptional) continue;
     if (isGroup(node)) {

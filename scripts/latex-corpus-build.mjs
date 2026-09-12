@@ -40,7 +40,7 @@ const CONTROL_WORD = /^(?:[A-Za-z@]+|.)$/;
 
 /** Escape a name for regex interpolation: \[ and \, are legal macro names. */
 function reEscape(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return s.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 /** Drop comments so a commented-out declaration is never read as a real one. */
@@ -127,7 +127,7 @@ function looksUnusual(name, source) {
   const n = reEscape(name);
   return (
     new RegExp(`\\\\newlength\\s*\\{?\\\\${n}(?![A-Za-z@])`).test(source) ||
-    new RegExp(`\\\\newcounter\\s*\\{${n}\\}`).test(source) ||
+    new RegExp(String.raw`\\newcounter\s*\{${n}\}`).test(source) ||
     new RegExp(`\\\\newdimen\\s*\\\\${n}(?![A-Za-z@])`).test(source)
   );
 }
@@ -195,7 +195,7 @@ export function extract(source, pkgName) {
   // Plain TeX: \def\foo#1#2{...}, including the \long/\global/\protected forms
   // that many packages use for their entire public interface.
   const defRe =
-    /\\(?:long\s*|global\s*|outer\s*|protected\s*)*\\?(?:def|gdef|edef|xdef)\s*\\([A-Za-z@]+)((?:#\d|[^{\n]){0,40}?)\{/g;
+    /\\(?:long\s*|global\s*|outer\s*|protected\s*)*\\?[gex]?def\s*\\([A-Za-z@]+)((?:#\d|[^{\n]){0,40}?)\{/g;
   for (let m = defRe.exec(text); m; m = defRe.exec(text)) {
     const name = m[1];
     const count = ((m[2] ?? "").match(/#\d/g) ?? []).length;
@@ -209,10 +209,10 @@ export function extract(source, pkgName) {
   }
 
   // \let aliases expose a usable name too.
-  const letRe = /\\let\s*\\([A-Za-z@]+)\s*=?\s*\\[A-Za-z@]+/g;
+  const letRe = /\\let\s*\\([A-Za-z@]+)\s*(?:=\s*)?\\[A-Za-z@]+/g;
   for (let m = letRe.exec(text); m; m = letRe.exec(text)) addMacro(m[1], { name: m[1] });
 
-  const opRe = /\\DeclareMathOperator\s*\*?\s*\{\\([A-Za-z@]+)\}/g;
+  const opRe = /\\DeclareMathOperator\s*(?:\*\s*)?\{\\([A-Za-z@]+)\}/g;
   for (let m = opRe.exec(text); m; m = opRe.exec(text)) addMacro(m[1], { name: m[1] });
 
   // Symbol declarations — how the maths font packages name hundreds of glyphs.
@@ -248,12 +248,12 @@ export function extract(source, pkgName) {
   }
 
   const envRe =
-    /\\(?:newenvironment|renewenvironment|NewDocumentEnvironment|DeclareDocumentEnvironment|newtheorem)\s*\*?\s*\{([A-Za-z@*]+)\}/g;
+    /\\(?:newenvironment|renewenvironment|NewDocumentEnvironment|DeclareDocumentEnvironment|newtheorem)\s*(?:\*\s*)?\{([A-Za-z@*]+)\}/g;
   for (let m = envRe.exec(text); m; m = envRe.exec(text)) {
     if (!m[1].includes("@")) envs.add(m[1]);
   }
 
-  const reqRe = /\\RequirePackage\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/g;
+  const reqRe = /\\RequirePackage\s*(?:\[[^\]]*\]\s*)?\{([^}]+)\}/g;
   for (let m = reqRe.exec(text); m; m = reqRe.exec(text)) {
     for (const d of m[1].split(",")) {
       const name = d.trim();
@@ -284,20 +284,20 @@ export function extract(source, pkgName) {
   // \hypersetup{} offers the same keys as \usepackage[...]{hyperref}.
   const consumers = new Map();
   const consumerRe =
-    /\\(?:newcommand|providecommand|DeclareRobustCommand|def|gdef)\s*\*?\s*\{?\\([A-Za-z@]+)\}?[^\n]{0,80}?\{([\s\S]{0,400}?)(?:\n|\})/g;
+    /\\(?:newcommand|providecommand|DeclareRobustCommand|def|gdef)\s*(?:\*\s*)?\{?\\([A-Za-z@]+)\}?[^\n]{0,80}?\{([\s\S]{0,400}?)[\n}]/g;
   for (let m = consumerRe.exec(text); m; m = consumerRe.exec(text)) {
     const name = m[1];
     if (name.includes("@")) continue;
     const body = m[2] ?? "";
     // The captured body may stop mid-group, so the closing brace is optional.
-    const fam = /\\(?:kv)?setkeys\s*(?:\[[^\]]*\])?\s*\{([^}\s]+)\}?/.exec(body);
+    const fam = /\\(?:kv)?setkeys\s*(?:\[[^\]]*\]\s*)?\{([^}\s]+)\}?/.exec(body);
     if (fam && byFamily.has(fam[1].trim())) {
       consumers.set(name, fam[1].trim());
     }
   }
 
   if (optNames.length) {
-    const pkgId = `\\usepackage/${pkgName}#c`;
+    const pkgId = String.raw`\usepackage/${pkgName}#c`;
     const all = [...new Set(optNames)].sort((a, b) => Number(a > b) - Number(a < b));
     const consumerNames = [...consumers.keys()].map((n) => `\\${n}`);
     const id = consumerNames.length ? `${consumerNames.join(",")},${pkgId}` : pkgId;
@@ -410,6 +410,23 @@ async function readPackageSources(styPath, byBundle, pkgName) {
   return parts.join("\n");
 }
 
+async function writeCatalogFor(name, { sty, cls, byBundle, toStdout, outDir }) {
+  const isClass = name.startsWith("class-");
+  const realName = isClass ? name.slice("class-".length) : name;
+  const path = isClass ? cls.get(realName) : sty.get(realName);
+  if (!path) {
+    process.stderr.write(`  no source for ${name}\n`);
+    return null;
+  }
+  const source = await readPackageSources(path, byBundle, realName);
+  if (source === null) return null;
+  const catalog = extract(source, realName);
+  if (!catalog.macros.length && !catalog.envs.length) return null;
+  if (toStdout) process.stdout.write(`${JSON.stringify(catalog, null, 1)}\n`);
+  else await writeFile(join(outDir, `${name}.json`), `${JSON.stringify(catalog)}\n`);
+  return catalog;
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const arg = (flag) => {
@@ -434,21 +451,10 @@ async function main() {
   let macros = 0;
   let envs = 0;
   for (const name of targets) {
-    const isClass = name.startsWith("class-");
-    const realName = isClass ? name.slice("class-".length) : name;
-    const path = isClass ? cls.get(realName) : sty.get(realName);
-    if (!path) {
-      process.stderr.write(`  no source for ${name}\n`);
-      continue;
-    }
-    const source = await readPackageSources(path, byBundle, realName);
-    if (source === null) continue;
-    const catalog = extract(source, realName);
-    if (!catalog.macros.length && !catalog.envs.length) continue;
+    const catalog = await writeCatalogFor(name, { sty, cls, byBundle, toStdout, outDir });
+    if (catalog === null) continue;
     macros += catalog.macros.length;
     envs += catalog.envs.length;
-    if (toStdout) process.stdout.write(`${JSON.stringify(catalog, null, 1)}\n`);
-    else await writeFile(join(outDir, `${name}.json`), `${JSON.stringify(catalog)}\n`);
     written += 1;
   }
   process.stderr.write(`wrote ${written} catalogs: ${macros} macros, ${envs} environments\n`);

@@ -47,6 +47,32 @@ describe("recognizeGlossaryKey", () => {
   it("does not match a glossary command without an opening brace", () => {
     expect(recognizeGlossaryKey(String.raw`\gls`)).toBeNull();
   });
+
+  it("takes the last entry of a longer comma list and trims its leading space", () => {
+    expect(recognizeGlossaryKey(String.raw`\gls{a,b, c`)).toEqual({
+      query: "c",
+    });
+  });
+
+  it("does not match a command whose name only extends a glossary command", () => {
+    expect(recognizeGlossaryKey(String.raw`\glsx{a`)).toBeNull();
+    expect(recognizeGlossaryKey(String.raw`\acronym{q`)).toBeNull();
+  });
+
+  it("matches the starred form and tolerates space before the brace", () => {
+    expect(recognizeGlossaryKey(String.raw`\gls*{y`)).toEqual({ query: "y" });
+    expect(recognizeGlossaryKey(String.raw`\gls {z`)).toEqual({ query: "z" });
+  });
+
+  it("skips an earlier closed group and matches the open one", () => {
+    expect(recognizeGlossaryKey(String.raw`\textbf{bold} \gls{x`)).toEqual({
+      query: "x",
+    });
+  });
+
+  it("does not match when the argument is already closed", () => {
+    expect(recognizeGlossaryKey(String.raw`\ac{x}`)).toBeNull();
+  });
 });
 
 describe("recognizePackageOption", () => {
@@ -81,6 +107,24 @@ describe("recognizePackageOption", () => {
     expect(
       recognizePackageOption(String.raw`\usepackage[marg`, "]{}"),
     ).toBeNull();
+  });
+
+  it("recognizes an empty query right after the opening bracket", () => {
+    expect(recognizePackageOption(String.raw`\usepackage[`, "]{geometry}")).toEqual(
+      { kind: "package", name: "geometry", query: "" },
+    );
+  });
+
+  it("recognizes an option list broken across lines", () => {
+    expect(
+      recognizePackageOption("\\usepackage[a4paper,\n  marg", "]{geometry}"),
+    ).toEqual({ kind: "package", name: "geometry", query: "marg" });
+  });
+
+  it("tolerates space between the command and the bracket", () => {
+    expect(recognizePackageOption(String.raw`\usepackage [x`, "]{geometry}")).toEqual(
+      { kind: "package", name: "geometry", query: "x" },
+    );
   });
 });
 
@@ -128,6 +172,20 @@ describe("recognizeImportPath", () => {
   it("does not match while the first (directory) argument is still open", () => {
     expect(recognizeImportPath(String.raw`\import{chap`)).toBeNull();
   });
+
+  it("strips every trailing slash from the directory", () => {
+    expect(recognizeImportPath(String.raw`\import{a/b///}{c`)).toEqual({
+      directory: "a/b",
+      query: "c",
+    });
+  });
+
+  it("keeps a directory that is only slashes empty", () => {
+    expect(recognizeImportPath(String.raw`\import{//}{c`)).toEqual({
+      directory: "",
+      query: "c",
+    });
+  });
 });
 
 describe("recognizeFileTarget and fileTargetAccepts", () => {
@@ -156,6 +214,19 @@ describe("recognizeFileTarget and fileTargetAccepts", () => {
       expect(fileTargetAccepts(command, "refs.tex")).toBe(false);
       expect(fileTargetAccepts(command, "refs.pdf")).toBe(false);
     }
+  });
+
+  it("recognizes a target after an optional argument, with or without spaces", () => {
+    expect(
+      recognizeFileTarget(String.raw`\includegraphics[width=1]{fi`),
+    ).toEqual({ command: "includegraphics", query: "fi" });
+    expect(
+      recognizeFileTarget(String.raw`\includegraphics [width=1] {fi`),
+    ).toEqual({ command: "includegraphics", query: "fi" });
+    expect(recognizeFileTarget(String.raw`\input  {a`)).toEqual({
+      command: "input",
+      query: "a",
+    });
   });
 
   it("filters \\includepdf to .pdf files only", () => {

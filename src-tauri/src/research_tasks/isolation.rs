@@ -107,7 +107,7 @@ fn prepare_at(
         "{}-baseline",
         generation_root
             .file_name()
-            .and_then(|name| name.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .ok_or_else(|| "The task workspace name is invalid.".to_string())?
     ));
     reject_existing(&baseline_root)?;
@@ -281,7 +281,7 @@ fn collect_directory(
         .map_err(|error| format!("could not read {}: {error}", directory.display()))?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| format!("could not read {}: {error}", directory.display()))?;
-    children.sort_by_key(|entry| entry.file_name());
+    children.sort_by_key(std::fs::DirEntry::file_name);
     for child in children {
         let path = child.path();
         let relative = path
@@ -654,7 +654,7 @@ fn allowed_paths(manifest: &[ManifestEntry]) -> Vec<String> {
             }
         }
     }
-    paths.extend(OUTPUT_DIRECTORIES.iter().map(|path| path.to_string()));
+    paths.extend(OUTPUT_DIRECTORIES.iter().map(ToString::to_string));
     paths.into_iter().collect()
 }
 
@@ -685,7 +685,7 @@ fn manifest_hash(entries: &[ManifestEntry]) -> String {
 fn allowed_file(path: &str) -> bool {
     let file_name = Path::new(path)
         .file_name()
-        .and_then(|name| name.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default();
     let lower = file_name.to_ascii_lowercase();
     if is_sensitive_component(&lower) {
@@ -696,7 +696,7 @@ fn allowed_file(path: &str) -> bool {
     }
     Path::new(&lower)
         .extension()
-        .and_then(|extension| extension.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|extension| ALLOWED_EXTENSIONS.contains(&extension))
 }
 
@@ -727,7 +727,7 @@ fn is_sensitive_component(component: &str) -> bool {
         || matches!(
             Path::new(&lower)
                 .extension()
-                .and_then(|value| value.to_str()),
+                .and_then(std::ffi::OsStr::to_str),
             Some("key" | "pem" | "p12" | "pfx")
         )
 }

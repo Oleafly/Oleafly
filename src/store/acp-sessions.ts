@@ -116,9 +116,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       grouped.set(event.sessionId, group);
       const session = sessions[event.sessionId];
       if (session && event.sequence > session.lastSequence) {
-        const status = event.kind === "user_message" ? "running"
-          : event.kind === "turn_complete" ? "ready"
-          : event.kind === "status" && typeof event.data.status === "string" ? event.data.status as AcpSession["status"] : session.status;
+        const status = statusForEvent(event, session.status);
         sessions[event.sessionId] = { ...session, status, turnId: event.turnId, updatedAt: event.timestamp, lastSequence: event.sequence };
       }
       if (event.kind === "permission") {
@@ -142,31 +140,41 @@ let listenerPromise: Promise<void> | undefined;
 let queued: AcpEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
 
+function statusForEvent(
+  event: AcpEvent,
+  current: AcpSession["status"],
+): AcpSession["status"] {
+  if (event.kind === "user_message") return "running";
+  if (event.kind === "turn_complete") return "ready";
+  if (event.kind === "status" && typeof event.data.status === "string") {
+    return event.data.status as AcpSession["status"];
+  }
+  return current;
+}
+
 export async function attachAcpListeners(): Promise<() => void> {
   listenerCount++;
-  if (!listenerPromise) {
-    listenerPromise = (async () => {
-      const stopEvent = await onAcpEvent((event) => {
-        queued.push(event);
-        if (flushTimer) return;
-        flushTimer = setTimeout(() => {
-          const batch = queued; queued = []; flushTimer = undefined;
-          useAcpSessionsStore.getState().ingest(batch);
-          for (const event of batch) if (event.kind === "controls" || event.kind === "status" || event.kind === "turn_complete") {
-            void acpSnapshot(event.projectId, event.sessionId).then(useAcpSessionsStore.getState().setSnapshot).catch(() => {});
-          }
-        }, 32);
-      });
-      const stopResync = await onAcpResync(() => {
-        const state = useAcpSessionsStore.getState();
-        for (const [project, id] of Object.entries(state.activeByProject)) if (id) void state.resync(project, id).catch(() => {});
-      });
-      stopListeners = () => { stopEvent(); stopResync(); };
-    })().catch((error: unknown) => { listenerPromise = undefined; throw error; });
-  }
+  listenerPromise ??= (async () => {
+    const stopEvent = await onAcpEvent((event) => {
+      queued.push(event);
+      if (flushTimer) return;
+      flushTimer = setTimeout(() => {
+        const batch = queued; queued = []; flushTimer = undefined;
+        useAcpSessionsStore.getState().ingest(batch);
+        for (const event of batch) if (event.kind === "controls" || event.kind === "status" || event.kind === "turn_complete") {
+          void acpSnapshot(event.projectId, event.sessionId).then(useAcpSessionsStore.getState().setSnapshot).catch(() => {});
+        }
+      }, 32);
+    });
+    const stopResync = await onAcpResync(() => {
+      const state = useAcpSessionsStore.getState();
+      for (const [project, id] of Object.entries(state.activeByProject)) if (id) void state.resync(project, id).catch(() => {});
+    });
+    stopListeners = () => { stopEvent(); stopResync(); };
+  })().catch((error: unknown) => { listenerPromise = undefined; throw error; });
   try { await listenerPromise; } catch (error) { listenerCount--; throw error; }
   return () => {
     listenerCount--;
-    if (listenerCount === 0) { stopListeners?.(); stopListeners = undefined; listenerPromise = undefined; if (flushTimer) clearTimeout(flushTimer); flushTimer = undefined; queued = []; }
+    if (listenerCount === 0) { stopListeners?.(); stopListeners = undefined; listenerPromise = undefined; if (flushTimer) { clearTimeout(flushTimer); } flushTimer = undefined; queued = []; }
   };
 }

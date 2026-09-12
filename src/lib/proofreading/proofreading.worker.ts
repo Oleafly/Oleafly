@@ -257,7 +257,7 @@ function plaintextToProse(text: string): {
   const characters = text.split("");
   const patterns = [
     /(?:https?:\/\/|www\.)[^\s<>()]+/giu,
-    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
+    /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.\p{L}{2,}\b/giu,
   ];
   for (const pattern of patterns) {
     for (const match of text.matchAll(pattern)) {
@@ -446,8 +446,19 @@ async function getSpellchecker(locale = "en_US"): Promise<Hunspell> {
   return spellcheckerPromise;
 }
 
+function characterLimitFor(mode: ProofreadingRequest["mode"]): number {
+  if (mode === "spelling") return PROOFREADING_LIMITS.spellingCharacters;
+  if (mode === "grammar") return PROOFREADING_LIMITS.grammarCharacters;
+  return Math.min(
+    PROOFREADING_LIMITS.grammarCharacters,
+    PROOFREADING_LIMITS.spellingCharacters,
+  );
+}
+
 function mapSuggestionKind(value: number): 0 | 1 | 2 {
-  return value === 1 ? 1 : value === 2 ? 2 : 0;
+  if (value === 1) return 1;
+  if (value === 2) return 2;
+  return 0;
 }
 
 function freeHarperObjects(
@@ -696,7 +707,7 @@ function readCache(
   ignored: string,
 ): ProofreadingDiagnostic[] | null {
   const cached = cache.get(key);
-  if (!cached || cached.text !== text || cached.ignored !== ignored) {
+  if (cached?.text !== text || cached?.ignored !== ignored) {
     return null;
   }
   cache.delete(key);
@@ -748,15 +759,7 @@ async function analyze(
       false,
     );
   }
-  const limit =
-    request.mode === "spelling"
-      ? PROOFREADING_LIMITS.spellingCharacters
-      : request.mode === "grammar"
-      ? PROOFREADING_LIMITS.grammarCharacters
-      : Math.min(
-          PROOFREADING_LIMITS.grammarCharacters,
-          PROOFREADING_LIMITS.spellingCharacters,
-        );
+  const limit = characterLimitFor(request.mode);
   if (request.text.length > limit) {
     return resultResponse(request, "too_large", [], {
       message: `Proofreading paused for this ${request.text.length.toLocaleString()}-character document (limit ${limit.toLocaleString()}).`,

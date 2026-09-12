@@ -107,7 +107,7 @@ export function SourceControl() {
   const [credentialCleanupRequired, setCredentialCleanupRequired] = useState(false);
   const githubUrl = remote ? toGithubWebUrl(remote) : null;
   const openInGithub = () => {
-    if (githubUrl) void open(githubUrl);
+    if (githubUrl) open(githubUrl);
   };
   const shareGithub = async () => {
     if (!githubUrl) return;
@@ -166,7 +166,7 @@ export function SourceControl() {
     useFilesStore.getState().projectId === action.projectId;
 
   const openSourceFile = (path: string) => {
-    void openFile(path);
+    openFile(path);
     clearActiveDiff();
   };
 
@@ -213,7 +213,7 @@ export function SourceControl() {
       setRemote(rem);
       setAheadBehind(ab);
       setCredentialCleanupRequired(cleanupRequired);
-      void useGitStatusStore.getState().refresh(targetProjectId);
+      useGitStatusStore.getState().refresh(targetProjectId);
     } catch {
       /* ignore */
     }
@@ -269,7 +269,7 @@ export function SourceControl() {
   };
 
   useEffect(() => {
-    void refresh();
+    refresh();
     // Refresh when an editable diff (or other action) mutates the working tree.
     const onChanged = () => void refresh();
     window.addEventListener("oleafly:git-changed", onChanged);
@@ -376,19 +376,54 @@ export function SourceControl() {
   };
   const stageFile = (path: string) => {
     const action = beginProjectAction();
-    if (action) void runGit(action, () => gitStage(action.projectId, path));
+    if (action) runGit(action, () => gitStage(action.projectId, path));
   };
   const unstageFile = (path: string) => {
     const action = beginProjectAction();
-    if (action) void runGit(action, () => gitUnstage(action.projectId, path));
+    if (action) runGit(action, () => gitUnstage(action.projectId, path));
   };
   const stageAll = () => {
     const action = beginProjectAction();
-    if (action) void runGit(action, () => gitStageAll(action.projectId));
+    if (action) runGit(action, () => gitStageAll(action.projectId));
   };
   const unstageAll = () => {
     const action = beginProjectAction();
-    if (action) void runGit(action, () => gitUnstageAll(action.projectId));
+    if (action) runGit(action, () => gitUnstageAll(action.projectId));
+  };
+
+  const clearStatusLater = (action: ProjectActionToken) => {
+    window.setTimeout(() => {
+      if (isCurrentProjectAction(action)) setStatus(null);
+    }, 1500);
+  };
+
+  const finishCommit = async (
+    action: ProjectActionToken,
+    andPush: boolean,
+    parts: string[],
+  ) => {
+    setStatus({ ok: true, text: parts.join("\n") });
+    setTitle("");
+    setDescription("");
+    await refresh();
+    if (!isCurrentProjectAction(action)) return;
+    await refreshTree();
+    if (!isCurrentProjectAction(action)) return;
+    notifyGitChanged();
+    if (!andPush) clearStatusLater(action);
+  };
+
+  const appendPushResult = async (parts: string[], projectId: string) => {
+    if (!hasToken) {
+      parts.push(t(($) => $.shell.sourceControl.pushSkippedNoToken));
+      return false;
+    }
+    if (!remote) {
+      parts.push(t(($) => $.shell.sourceControl.pushSkippedNoRemote));
+      return false;
+    }
+    parts.push(await gitPush(projectId));
+    return true;
   };
 
   const submit = async (andPush: boolean) => {
@@ -414,28 +449,10 @@ export function SourceControl() {
           : t(($) => $.shell.sourceControl.nothingStaged),
       ];
       if (andPush) {
-        if (!hasToken) {
-          parts.push(t(($) => $.shell.sourceControl.pushSkippedNoToken));
-        } else if (!remote) {
-          parts.push(t(($) => $.shell.sourceControl.pushSkippedNoRemote));
-        } else {
-          parts.push(await gitPush(action.projectId));
-          if (!isCurrentProjectAction(action)) return;
-        }
+        const pushed = await appendPushResult(parts, action.projectId);
+        if (pushed && !isCurrentProjectAction(action)) return;
       }
-      setStatus({ ok: true, text: parts.join("\n") });
-      setTitle("");
-      setDescription("");
-      await refresh();
-      if (!isCurrentProjectAction(action)) return;
-      await refreshTree();
-      if (!isCurrentProjectAction(action)) return;
-      notifyGitChanged();
-      if (!andPush) {
-        window.setTimeout(() => {
-          if (isCurrentProjectAction(action)) setStatus(null);
-        }, 1500);
-      }
+      await finishCommit(action, andPush, parts);
     } catch (e) {
       if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
@@ -452,7 +469,7 @@ export function SourceControl() {
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
     event.preventDefault();
     if (!canCommit) return;
-    void submit(false);
+    submit(false);
   };
 
   const openPublish = () => {
@@ -499,7 +516,7 @@ export function SourceControl() {
               <button type="button"
                 onClick={() => {
                   setConfirmDiscard(null);
-                  void discard(c.path);
+                  discard(c.path);
                 }}
                 aria-label={t(($) => $.shell.sourceControl.confirmDiscard)}
                 title={t(($) => $.shell.sourceControl.confirmDiscardTitle)}
@@ -546,6 +563,16 @@ export function SourceControl() {
     );
   };
 
+  const commitBlockedReason = () => {
+    if (staged.length === 0) {
+      return t(($) => $.shell.sourceControl.stageFirst);
+    }
+    if (!title.trim()) {
+      return t(($) => $.shell.sourceControl.enterTitle);
+    }
+    return undefined;
+  };
+
   const commitPanel = (
     <div className="flex flex-col gap-2">
       <Input
@@ -584,13 +611,7 @@ export function SourceControl() {
           data-testid="commit-button"
           onClick={() => void submit(false)}
           disabled={busy || staged.length === 0 || !title.trim()}
-          title={
-            staged.length === 0
-              ? t(($) => $.shell.sourceControl.stageFirst)
-              : !title.trim()
-                ? t(($) => $.shell.sourceControl.enterTitle)
-                : undefined
-          }
+          title={commitBlockedReason()}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
@@ -689,6 +710,102 @@ export function SourceControl() {
       )}
     </div>
   );
+
+  const renderChangeList = () => {
+    if (initialized === false) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-3 px-5 text-center">
+          <GitBranch className="size-8 text-muted-foreground/60" />
+          <div>
+            <p className="text-xs font-medium">
+              {t(($) => $.shell.sourceControl.notInitialized)}
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              {t(($) => $.shell.sourceControl.notInitializedHint)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void initialize()}
+            disabled={busy}
+            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
+          >
+            {t(($) => $.shell.sourceControl.initialize)}
+          </button>
+          <button
+            type="button"
+            onClick={openPublish}
+            disabled={busy}
+            className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-40"
+          >
+            <Github className="size-3.5" /> {t(($) => $.shell.sourceControl.publish)}
+          </button>
+        </div>
+      );
+    }
+    if (initialized === null) {
+      return (
+        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+          {t(($) => $.shell.sourceControl.checking)}
+        </div>
+      );
+    }
+    if (changes.length === 0) {
+      return (
+        <p className="px-2 py-8 text-center text-xs text-muted-foreground">
+          {t(($) => $.shell.sourceControl.clean)}
+        </p>
+      );
+    }
+    return (
+      <>
+        {staged.length > 0 && (
+          <div className="mb-2">
+            <div className="group/hdr flex items-center gap-1.5 px-2 pb-1">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                {t(($) => $.shell.sourceControl.staged)}
+              </span>
+              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                {staged.length}
+              </span>
+              <button type="button"
+                onClick={() => void unstageAll()}
+                disabled={busy}
+                title={t(($) => $.shell.sourceControl.unstageAll)}
+                aria-label={t(($) => $.shell.sourceControl.unstageAll)}
+                className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
+              >
+                <Minus className="size-3.5" />
+              </button>
+            </div>
+            {staged.map(renderRow)}
+          </div>
+        )}
+        {unstaged.length > 0 && (
+          <div className="group/hdr">
+            <div className="flex items-center gap-1.5 px-2 pb-1">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                {t(($) => $.shell.sourceControl.changes)}
+              </span>
+              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                {unstaged.length}
+              </span>
+              <button type="button"
+                onClick={() => void stageAll()}
+                disabled={busy}
+                title={t(($) => $.shell.sourceControl.stageAll)}
+                aria-label={t(($) => $.shell.sourceControl.stageAll)}
+                className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </div>
+            {unstaged.map(renderRow)}
+          </div>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
@@ -801,90 +918,7 @@ export function SourceControl() {
             </div>
           </div>
         )}
-        {initialized === false ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 px-5 text-center">
-            <GitBranch className="size-8 text-muted-foreground/60" />
-            <div>
-              <p className="text-xs font-medium">
-                {t(($) => $.shell.sourceControl.notInitialized)}
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                {t(($) => $.shell.sourceControl.notInitializedHint)}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void initialize()}
-              disabled={busy}
-              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
-            >
-              {t(($) => $.shell.sourceControl.initialize)}
-            </button>
-            <button
-              type="button"
-              onClick={openPublish}
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-40"
-            >
-              <Github className="size-3.5" /> {t(($) => $.shell.sourceControl.publish)}
-            </button>
-          </div>
-        ) : initialized === null ? (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-            {t(($) => $.shell.sourceControl.checking)}
-          </div>
-        ) : changes.length === 0 ? (
-          <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-            {t(($) => $.shell.sourceControl.clean)}
-          </p>
-        ) : (
-          <>
-            {staged.length > 0 && (
-              <div className="mb-2">
-                <div className="group/hdr flex items-center gap-1.5 px-2 pb-1">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                    {t(($) => $.shell.sourceControl.staged)}
-                  </span>
-                  <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
-                    {staged.length}
-                  </span>
-                  <button type="button"
-                    onClick={() => void unstageAll()}
-                    disabled={busy}
-                    title={t(($) => $.shell.sourceControl.unstageAll)}
-                    aria-label={t(($) => $.shell.sourceControl.unstageAll)}
-                    className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
-                  >
-                    <Minus className="size-3.5" />
-                  </button>
-                </div>
-                {staged.map(renderRow)}
-              </div>
-            )}
-            {unstaged.length > 0 && (
-              <div className="group/hdr">
-                <div className="flex items-center gap-1.5 px-2 pb-1">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                    {t(($) => $.shell.sourceControl.changes)}
-                  </span>
-                  <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
-                    {unstaged.length}
-                  </span>
-                  <button type="button"
-                    onClick={() => void stageAll()}
-                    disabled={busy}
-                    title={t(($) => $.shell.sourceControl.stageAll)}
-                    aria-label={t(($) => $.shell.sourceControl.stageAll)}
-                    className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
-                  >
-                    <Plus className="size-3.5" />
-                  </button>
-                </div>
-                {unstaged.map(renderRow)}
-              </div>
-            )}
-          </>
-        )}
+        {renderChangeList()}
       </div>
 
       {initialized === true && (
@@ -914,7 +948,7 @@ export function SourceControl() {
         projectId={projectId}
         projectName={projectName}
         onPublished={(url) => {
-          void refresh();
+          refresh();
           setStatus({
             ok: true,
             text: t(($) => $.shell.sourceControl.published, { url }),

@@ -81,7 +81,7 @@ export function Tooltip({
   wide = false,
   role,
   suppressed = false,
-}: {
+}: Readonly<{
   label: ReactNode;
   children: ReactNode;
   side?: Side;
@@ -98,7 +98,7 @@ export function Tooltip({
    * break a required parent/child relationship, such as tree → treeitem.
    */
   role?: "none";
-}) {
+}>) {
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -15,12 +15,12 @@ function DiffAction({
   label,
   keyShortcut,
   onClick,
-}: {
+}: Readonly<{
   icon: ComponentType<{ className?: string }>;
   label: string;
   keyShortcut?: string;
   onClick: () => void;
-}) {
+}>) {
   return (
     <Tooltip label={label}>
       <button
@@ -44,12 +44,12 @@ export function DiffActionBar({
   onReject,
   onRetry,
   onOpenInAgent,
-}: {
+}: Readonly<{
   onAccept: () => void;
   onReject: () => void;
   onRetry: () => void;
   onOpenInAgent?: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <AiChrome
@@ -96,11 +96,11 @@ export function DiffErrorBar({
   message,
   onRetry,
   onDismiss,
-}: {
+}: Readonly<{
   message: string;
   onRetry: () => void;
   onDismiss: () => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     // Primary border, labelled buttons: the animated outline and the icon-only

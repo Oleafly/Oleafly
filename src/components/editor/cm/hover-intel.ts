@@ -212,57 +212,72 @@ export function kindNoun(kind: string): string {
   }
 }
 
+interface HoverCard {
+  title: string;
+  detail: string;
+  extras?: HoverExtras;
+}
+
+function describeAsset(symbol: ProjectUse): HoverCard | null {
+  const target =
+    symbol.resolution === "resolved" && symbol.target
+      ? symbol.target
+      : null;
+  if (target && THUMBNAIL_TARGET_RE.test(target)) {
+    return {
+      title: i18n.t(($) => $.intelligence.hover.figure, { name: basename(target) }),
+      detail: target,
+      extras: { assetPath: target },
+    };
+  }
+  return null;
+}
+
+function describeUse(
+  snapshot: ProjectIntelligenceSnapshot,
+  symbol: ProjectUse,
+): HoverCard {
+  const definitions = definitionsForUse(snapshot, symbol.id);
+  const noun =
+    symbol.kind === "citation" || symbol.kind === "macro" || symbol.kind === "environment"
+      ? kindNoun(symbol.kind)
+      : kindNoun("reference");
+  if (definitions.length === 0) {
+    return {
+      title: i18n.t(($) => $.intelligence.hover.unresolved, { kind: noun, name: symbol.name }),
+      detail: i18n.t(($) => $.intelligence.hover.unresolvedDetail),
+    };
+  }
+  if (definitions.length > 1) {
+    return {
+      title: i18n.t(($) => $.intelligence.hover.duplicate, { kind: noun, name: symbol.name }),
+      detail: i18n.t(($) => $.intelligence.hover.duplicateDetail, {
+        count: definitions.length,
+      }),
+    };
+  }
+  const texts = useIndexStore.getState().texts;
+  const definition = definitions[0];
+  return {
+    title: i18n.t(($) => $.intelligence.hover.definition, {
+      kind: kindNoun(definition.kind),
+      name: definition.name,
+    }),
+    detail: definitionDetail(definition, texts),
+    extras: {
+      math: mathBodyForDefinition(definition),
+      aux: auxNumberFor(definition.name) ?? undefined,
+    },
+  };
+}
+
 function describe(
   snapshot: ProjectIntelligenceSnapshot,
   symbol: ProjectSymbol,
-): { title: string; detail: string; extras?: HoverExtras } | null {
-  if (isUse(symbol) && symbol.kind === "asset") {
-    const target =
-      symbol.resolution === "resolved" && symbol.target
-        ? symbol.target
-        : null;
-    if (target && THUMBNAIL_TARGET_RE.test(target)) {
-      return {
-        title: i18n.t(($) => $.intelligence.hover.figure, { name: basename(target) }),
-        detail: target,
-        extras: { assetPath: target },
-      };
-    }
-    return null;
-  }
+): HoverCard | null {
   if (isUse(symbol)) {
-    const definitions = definitionsForUse(snapshot, symbol.id);
-    const noun =
-      symbol.kind === "citation" || symbol.kind === "macro" || symbol.kind === "environment"
-        ? kindNoun(symbol.kind)
-        : kindNoun("reference");
-    if (definitions.length === 0) {
-      return {
-        title: i18n.t(($) => $.intelligence.hover.unresolved, { kind: noun, name: symbol.name }),
-        detail: i18n.t(($) => $.intelligence.hover.unresolvedDetail),
-      };
-    }
-    if (definitions.length > 1) {
-      return {
-        title: i18n.t(($) => $.intelligence.hover.duplicate, { kind: noun, name: symbol.name }),
-        detail: i18n.t(($) => $.intelligence.hover.duplicateDetail, {
-          count: definitions.length,
-        }),
-      };
-    }
-    const texts = useIndexStore.getState().texts;
-    const definition = definitions[0];
-    return {
-      title: i18n.t(($) => $.intelligence.hover.definition, {
-        kind: kindNoun(definition.kind),
-        name: definition.name,
-      }),
-      detail: definitionDetail(definition, texts),
-      extras: {
-        math: mathBodyForDefinition(definition),
-        aux: auxNumberFor(definition.name) ?? undefined,
-      },
-    };
+    if (symbol.kind === "asset") return describeAsset(symbol);
+    return describeUse(snapshot, symbol);
   }
 
   const count = referencesFor(snapshot, symbol.id).length;

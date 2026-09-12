@@ -2,9 +2,9 @@ import type { BrowserSearchEngineId } from "@/store/settings";
 
 export function SearchEngineIcon({
   engine,
-}: {
+}: Readonly<{
   engine: BrowserSearchEngineId;
-}) {
+}>) {
   if (engine === "google") {
     return (
       <svg

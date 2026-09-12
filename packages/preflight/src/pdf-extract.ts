@@ -89,39 +89,49 @@ interface MarkedScope {
   mcid: string | null;
 }
 
+function pushMarkedScope(scopes: MarkedScope[], record: Record<string, unknown>): void {
+  const tag = typeof record.tag === "string" ? record.tag : null;
+  const id = typeof record.id === "string" ? record.id : null;
+  const parent = scopes.at(-1);
+  scopes.push({
+    artifact: (parent?.artifact ?? false) || tag === "Artifact",
+    mcid: id ?? parent?.mcid ?? null,
+  });
+}
+
+function countRun(
+  counts: RunCounts,
+  scope: MarkedScope | undefined,
+  record: Record<string, unknown>,
+  structIds: ReadonlySet<string>,
+): void {
+  if (typeof record.str !== "string" || !record.str.trim()) return;
+  if (scope?.artifact) {
+    counts.artifact++;
+    return;
+  }
+  if (scope?.mcid && structIds.has(scope.mcid)) counts.tagged++;
+  else counts.untagged++;
+}
+
 function countTextRuns(items: readonly unknown[], structIds: ReadonlySet<string>): RunCounts {
   const scopes: MarkedScope[] = [];
-  let tagged = 0;
-  let untagged = 0;
-  let artifact = 0;
+  const counts: RunCounts = { tagged: 0, untagged: 0, artifact: 0 };
   for (const item of items) {
     const record = recordOf(item);
     if (!record) continue;
     const type = typeof record.type === "string" ? record.type : null;
     if (type === "beginMarkedContent" || type === "beginMarkedContentProps") {
-      const tag = typeof record.tag === "string" ? record.tag : null;
-      const id = typeof record.id === "string" ? record.id : null;
-      const parent = scopes[scopes.length - 1];
-      scopes.push({
-        artifact: (parent?.artifact ?? false) || tag === "Artifact",
-        mcid: id ?? parent?.mcid ?? null,
-      });
+      pushMarkedScope(scopes, record);
       continue;
     }
     if (type === "endMarkedContent") {
       scopes.pop();
       continue;
     }
-    if (typeof record.str !== "string" || !record.str.trim()) continue;
-    const scope = scopes[scopes.length - 1];
-    if (scope?.artifact) {
-      artifact++;
-      continue;
-    }
-    if (scope?.mcid && structIds.has(scope.mcid)) tagged++;
-    else untagged++;
+    countRun(counts, scopes.at(-1), record, structIds);
   }
-  return { tagged, untagged, artifact };
+  return counts;
 }
 
 function collectStructIds(node: StructNode, into: Set<string>): Set<string> {
@@ -175,7 +185,7 @@ function repeatsAcrossPages(carried: StructNode, node: StructNode): boolean {
 function continuesElement(carried: StructNode, node: StructNode): boolean {
   if (!sameElement(carried, node)) return false;
   if (REPEATED_ON_EVERY_PAGE.has(node.role)) return repeatsAcrossPages(carried, node);
-  const last = carried.children[carried.children.length - 1];
+  const last = carried.children.at(-1);
   const first = node.children[0];
   return last !== undefined && first !== undefined && continuesElement(last, first);
 }
@@ -221,6 +231,30 @@ function mergeStructNodes(
   return target;
 }
 
+function normStructChildren(raw: readonly unknown[], ids: string[], children: StructNode[]): void {
+  for (const child of raw) {
+    const leaf = recordOf(child);
+    if (leaf && typeof leaf.type === "string") {
+      if (typeof leaf.id === "string" && leaf.id) ids.push(leaf.id);
+      continue;
+    }
+    const normalized = normStruct(child);
+    if (normalized) children.push(normalized);
+  }
+}
+
+function taggedState(
+  hasStructChildren: boolean,
+  markInfoStatus: PdfExtractionStatus["markInfo"],
+  markedFlag: boolean | null,
+  structureStatus: PdfExtractionStatus["structure"],
+): boolean | null {
+  if (hasStructChildren) return true;
+  if (markInfoStatus === "ok") return markedFlag === true;
+  if (structureStatus === "ok") return false;
+  return null;
+}
+
 function normStruct(node: unknown): StructNode | null {
   const record = recordOf(node);
   if (!record) return null;
@@ -228,15 +262,7 @@ function normStruct(node: unknown): StructNode | null {
   const ids: string[] = [];
   const children: StructNode[] = [];
   if (Array.isArray(record.children)) {
-    for (const child of record.children) {
-      const leaf = recordOf(child);
-      if (leaf && typeof leaf.type === "string") {
-        if (typeof leaf.id === "string" && leaf.id) ids.push(leaf.id);
-        continue;
-      }
-      const normalized = normStruct(child);
-      if (normalized) children.push(normalized);
-    }
+    normStructChildren(record.children, ids, children);
   }
   return {
     role: typeof record.role === "string" ? record.role : "",
@@ -380,14 +406,12 @@ export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract
     );
     const structureStatus: PdfExtractionStatus["structure"] =
       structureFailedPages.length > 0 ? "failed" : "ok";
-    const tagged =
-      structChildren.length > 0
-        ? true
-        : markInfoStatus === "ok"
-          ? markedFlag === true
-          : structureStatus === "ok"
-            ? false
-            : null;
+    const tagged = taggedState(
+      structChildren.length > 0,
+      markInfoStatus,
+      markedFlag,
+      structureStatus,
+    );
     const ua: PdfUaFacts = {
       displayDocTitle,
       suspects,

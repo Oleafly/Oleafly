@@ -82,6 +82,21 @@ export function normalizeThemeTokenName(value: string): ThemeTokenName | null {
 
 type ThemeTokenScope = "tokens" | "light" | "dark";
 
+function acceptedTokenName(
+  key: string,
+  options: { skipUnknown?: boolean; skipped?: string[] },
+): ThemeTokenName | null {
+  const token = typeof key === "string" && key.length <= 64 ? normalizeThemeTokenName(key) : null;
+  if (token) return token;
+  if (options.skipUnknown) {
+    options.skipped?.push(key.slice(0, 64));
+    return null;
+  }
+  throw new Error(
+    i18n.t(($) => $.core.theme.unsupportedToken, { token: key.slice(0, 64) }),
+  );
+}
+
 export function validateThemeTokenOverrides(
   value: unknown,
   options: { skipUnknown?: boolean; skipped?: string[]; scope?: ThemeTokenScope } = {},
@@ -97,16 +112,8 @@ export function validateThemeTokenOverrides(
   const output: ThemeTokenOverrides = {};
   for (const [key, rawValue] of entries) {
     if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
-    const token = typeof key === "string" && key.length <= 64 ? normalizeThemeTokenName(key) : null;
-    if (!token) {
-      if (options.skipUnknown) {
-        options.skipped?.push(key.slice(0, 64));
-        continue;
-      }
-      throw new Error(
-        i18n.t(($) => $.core.theme.unsupportedToken, { token: key.slice(0, 64) }),
-      );
-    }
+    const token = acceptedTokenName(key, options);
+    if (!token) continue;
     if (rawValue === null || rawValue === undefined || rawValue === "") continue;
     if (!validColorValue(rawValue)) {
       throw new Error(i18n.t(($) => $.core.theme.invalidColor, { token }));
@@ -124,6 +131,26 @@ export function validateRadius(value: unknown): string | null {
   return value.trim();
 }
 
+function acceptedDeclaration(row: string): string {
+  const separator = row.indexOf(":");
+  if (separator <= 0 || row.includes(":", separator + 1)) {
+    throw new Error(i18n.t(($) => $.core.theme.cssNotSimple));
+  }
+  const property = row.slice(0, separator).trim().toLowerCase();
+  const value = row.slice(separator + 1).trim();
+  if ((!customPropertyPattern.test(property) && !scopedPropertyPattern.test(property)) || !value) {
+    throw new Error(
+      i18n.t(($) => $.core.theme.cssPropertyNotAllowed, {
+        property: property || i18n.t(($) => $.core.theme.unknownProperty),
+      }),
+    );
+  }
+  if (value.length > 512 || forbiddenCssPattern.test(value)) {
+    throw new Error(i18n.t(($) => $.core.theme.cssUnsafeValue));
+  }
+  return `${property}: ${value}`;
+}
+
 function declarations(css: string) {
   const trimmed = css.trim();
   if (!trimmed) return "";
@@ -136,25 +163,7 @@ function declarations(css: string) {
   const rows = trimmed.split(";").map((row) => row.trim()).filter(Boolean);
   if (rows.length > 64) throw new Error(i18n.t(($) => $.core.theme.cssTooManyDeclarations));
   const accepted: string[] = [];
-  for (const row of rows) {
-    const separator = row.indexOf(":");
-    if (separator <= 0 || row.indexOf(":", separator + 1) !== -1) {
-      throw new Error(i18n.t(($) => $.core.theme.cssNotSimple));
-    }
-    const property = row.slice(0, separator).trim().toLowerCase();
-    const value = row.slice(separator + 1).trim();
-    if ((!customPropertyPattern.test(property) && !scopedPropertyPattern.test(property)) || !value) {
-      throw new Error(
-        i18n.t(($) => $.core.theme.cssPropertyNotAllowed, {
-          property: property || i18n.t(($) => $.core.theme.unknownProperty),
-        }),
-      );
-    }
-    if (value.length > 512 || forbiddenCssPattern.test(value)) {
-      throw new Error(i18n.t(($) => $.core.theme.cssUnsafeValue));
-    }
-    accepted.push(`${property}: ${value}`);
-  }
+  for (const row of rows) accepted.push(acceptedDeclaration(row));
   return accepted.join("; ");
 }
 

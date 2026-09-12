@@ -63,11 +63,11 @@ function ascii(s: string): string {
 }
 
 function firstAuthorFamily(author: string): string {
-  const first = author.split(/\s+and\s+/i)[0]?.trim() ?? "";
+  const first = author.split(/(?<!\s)\s+and\s+/i)[0]?.trim() ?? "";
   if (!first) return "";
   if (first.includes(",")) return first.split(",")[0].trim();
   const parts = first.split(/\s+/);
-  return parts[parts.length - 1] ?? "";
+  return parts.at(-1) ?? "";
 }
 
 function firstTitleWord(title: string): string {
@@ -85,7 +85,7 @@ function collisionSuffix(n: number): string {
   let s = "";
   let i = n;
   do {
-    s = String.fromCharCode(97 + (i % 26)) + s;
+    s = String.fromCodePoint(97 + (i % 26)) + s;
     i = Math.floor(i / 26) - 1;
   } while (i >= 0);
   return s;
@@ -93,7 +93,7 @@ function collisionSuffix(n: number): string {
 
 export function generateCiteKey(fields: Record<string, string>, existing: Set<string>): string {
   const family = ascii(firstAuthorFamily(fields.author ?? ""));
-  const year = (fields.year ?? "").match(/\d{4}/)?.[0] ?? "";
+  const year = /\d{4}/.exec(fields.year ?? "")?.[0] ?? "";
   const word = firstTitleWord(fields.title ?? "");
   let base = `${family}${year}${word}`;
   if (!base) base = `ref${year}`;
