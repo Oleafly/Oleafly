@@ -8,6 +8,7 @@ import {
   SearchCode,
   Upload,
   X,
+  Quote,
 } from "lucide-react";
 import {
   useCallback,
@@ -26,6 +27,7 @@ import { ImportReferenceLibraryDialog } from "@/components/layout/ImportReferenc
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -524,6 +526,19 @@ export function ReferencesPanel() {
           />
         )}
         </div>
+        {view === "citations" && projectId ? (
+          <div className="shrink-0 border-t border-sidebar-border/65 px-2 py-1.5">
+            <button
+              type="button"
+              data-testid="cite-oleafly-row"
+              onClick={() => void runCiteOleaflyAction()}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Quote aria-hidden className="size-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">Cite Oleafly in this paper</span>
+            </button>
+          </div>
+        ) : null}
       </section>
       <ImportReferenceLibraryDialog
         open={importOpen}

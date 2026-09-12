@@ -246,6 +246,18 @@ async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState
   return { target, content, main };
 }
 
+export async function bibliographyTargetForProject(): Promise<
+  { path: string; exists: boolean; content: string } | null
+> {
+  const files = useFilesStore.getState();
+  if (!files.projectId) return null;
+  const loaded = await loadCitationFiles(files);
+  const exists = files.tree.some(
+    (entry) => !entry.is_dir && entry.path === loaded.target.path,
+  );
+  return { path: loaded.target.path, exists, content: loaded.content };
+}
+
 export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
   const parsed = parseEntry(bibtex);
   if (!parsed) return { error: "Could not parse the citation." };

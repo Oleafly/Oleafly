@@ -1,3 +1,4 @@
+import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
 import {
   Fragment,
   lazy,
@@ -759,6 +760,7 @@ function AppContent() {
         )}
         <LazyModals>
           <SettingsModal />
+          <CiteOleaflyDialog />
           <HotkeysModal />
           <DiagramComposer />
           <TourGuide />
@@ -960,6 +962,7 @@ function AppContent() {
         )}
         <LazyModals>
           <SettingsModal />
+          <CiteOleaflyDialog />
           <WordCountModal />
           <VersioningModal />
           <HotkeysModal />

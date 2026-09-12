@@ -4,7 +4,6 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useDictionary } from "@/lib/dictionary";
 import {
-  ACADEMIC_DISABLED_RULES,
   ACADEMIC_PROFILE_RULES,
   buildLintConfig,
 } from "@/lib/proofreading/lint-profile";
@@ -24,11 +23,7 @@ describe("Grammar rules and dismissed findings", () => {
   it("says what the writer turned off without denying the profile defaults", () => {
     render(<ProofreadingDictionarySection />);
 
-    expect(
-      screen.getByText(
-        `You have not turned off any rules. The ${ACADEMIC_DISABLED_RULES.length} rules below are off because the academic profile keeps them off. Turn on any you want.`,
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("You have not turned off any rules.")).toBeInTheDocument();
     expect(screen.queryByText("No grammar rules are turned off.")).toBeNull();
   });
 
@@ -167,7 +162,7 @@ describe("Grammar rules and dismissed findings", () => {
     useDictionary.getState().suppress("project-a", "RepeatedWords:one.");
 
     render(<ProofreadingDictionarySection />);
-    fireEvent.click(screen.getByRole("button", { name: /Show again/u }));
+    fireEvent.click(screen.getByRole("button", { name: "Show them again" }));
 
     const confirmation = screen.getByRole("alertdialog", {
       name: /Show dismissed findings again/u,

@@ -1,5 +1,8 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { BookMarked, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { BookMarked, Plus, RotateCcw, Search, Trash2, X,
+  Eye,
+  CircleHelp,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Empty,
@@ -10,6 +13,7 @@ import {
 } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { Switch } from "@/components/ui/switch";
@@ -26,7 +30,6 @@ import {
 } from "@/lib/dictionary";
 import {
   ACADEMIC_PROFILE_RULES,
-  ACADEMIC_DISABLED_RULES,
 } from "@/lib/proofreading/lint-profile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -156,7 +159,21 @@ type ClearTarget =
   | { type: "project"; id: string; label: string }
   | { type: "suppressed"; id: string; label: string };
 
-const NOTHING_TURNED_OFF = `You have not turned off any rules. The ${ACADEMIC_DISABLED_RULES.length} rules below are off because the academic profile keeps them off. Turn on any you want.`;
+function HelpTip({ label }: { readonly label: string }) {
+  return (
+    <Tooltip label={<span className="block max-w-72 text-left leading-relaxed">{label}</span>} side="bottom">
+      <button
+        type="button"
+        aria-label={label}
+        className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <CircleHelp aria-hidden className="size-3.5" />
+      </button>
+    </Tooltip>
+  );
+}
+
+const NOTHING_TURNED_OFF = "You have not turned off any rules.";
 
 function ProfileRules() {
   const enabledRules = useSettingsStore(
@@ -191,18 +208,17 @@ function ProfileRules() {
   return (
     <div className="space-y-2">
       <div>
-        <h5
-          id="proofreading-profile-rules"
-          className="text-xs font-medium text-foreground"
-        >
-          Rules the academic profile keeps off
-        </h5>
+        <div className="flex items-center gap-1.5">
+          <h5
+            id="proofreading-profile-rules"
+            className="text-xs font-medium text-foreground"
+          >
+            Rules the academic profile keeps off
+          </h5>
+          <HelpTip label="Harper is tuned for chat and email. These rules either push a style papers do not follow, such as spelling out kB and min, or trip over the placeholders that stand in for LaTeX markup, so Oleafly keeps them off. Each one shows what it would flag. Turn it on if you want those findings." />
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Harper is tuned for chat and email. These rules either push a style
-          papers do not follow, such as spelling out kB and min, or trip over
-          the placeholders that stand in for LaTeX markup, so Oleafly keeps them
-          off. Each one shows what it would flag. Turn it on if you want those
-          findings.
+          Off by default because they get in the way of papers. Turn on any you want.
         </p>
       </div>
       <ul
@@ -257,17 +273,17 @@ function TurnedOffFindings({
       aria-labelledby="proofreading-turned-off"
     >
       <div>
-        <h4
-          id="proofreading-turned-off"
-          className="text-xs font-medium text-foreground"
-        >
-          Grammar rules and dismissed findings
-        </h4>
+        <div className="flex items-center gap-1.5">
+          <h4
+            id="proofreading-turned-off"
+            className="text-xs font-medium text-foreground"
+          >
+            Grammar rules and dismissed findings
+          </h4>
+          <HelpTip label="Hover an underlined word or sentence in the editor and a small card shows what Harper found, with actions to fix it or ignore it. Rules you turned off from that card and findings you ignored in this project are listed here, so you can bring any of them back." />
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Hover an underlined word or sentence in the editor and a small card
-          shows what Harper found, with actions to fix it or ignore it. Rules
-          you turned off from that card and findings you ignored in this
-          project are listed here, so you can bring any of them back.
+          Rules you turned off and findings you ignored in this project.
         </p>
       </div>
       {disabledRules.length === 0 ? (
@@ -301,32 +317,42 @@ function TurnedOffFindings({
         </ul>
       )}
       <ProfileRules />
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">
-            {projectId
-              ? `Dismissed findings in ${projectName}`
-              : "Dismissed findings"}
-          </span>
-          <Badge
-            variant="primaryGhost"
-            className="text-[10px] tabular-nums"
-            data-testid="dictionary-suppressed-count"
-          >
-            {suppressedCount.toLocaleString()} /{" "}
-            {DICTIONARY_LIMITS.suppressionsPerProject.toLocaleString()}
-          </Badge>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-medium text-foreground">
+              {projectId
+                ? `Dismissed findings in ${projectName}`
+                : "Dismissed findings"}
+            </span>
+            <Badge
+              variant="primaryGhost"
+              className="text-[10px] tabular-nums"
+              data-testid="dictionary-suppressed-count"
+              title={`${suppressedCount.toLocaleString()} dismissed, out of ${DICTIONARY_LIMITS.suppressionsPerProject.toLocaleString()} the project can remember`}
+            >
+              {suppressedCount.toLocaleString()} /{" "}
+              {DICTIONARY_LIMITS.suppressionsPerProject.toLocaleString()}
+            </Badge>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {suppressedCount === 0
+              ? "Nothing is dismissed. When you choose Ignore in this project on a grammar finding, it is listed here."
+              : `${suppressedCount.toLocaleString()} grammar ${suppressedCount === 1 ? "finding is" : "findings are"} hidden in this project because you chose Ignore in this project. Showing them again underlines them once more.`}
+          </p>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={suppressedCount === 0}
-          onClick={onClearSuppressed}
-        >
-          <Trash2 className="size-3.5" aria-hidden />
-          Show again
-        </Button>
+        {suppressedCount > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={onClearSuppressed}
+          >
+            <Eye className="size-3.5" aria-hidden />
+            Show them again
+          </Button>
+        )}
       </div>
     </section>
   );
