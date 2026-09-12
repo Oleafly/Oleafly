@@ -21,6 +21,20 @@ fn sanitize_openalex_email(raw: &str) -> Option<&str> {
     }
 }
 
+/// The configured OpenAlex API key, if any. Keys became mandatory for
+/// meaningful daily volumes in February 2026, so searches work without one
+/// but degrade quickly.
+fn openalex_api_key() -> Option<String> {
+    crate::secrets::read_connector_secrets()
+        .ok()
+        .and_then(|secrets| {
+            secrets
+                .get("openalex-api-key")
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        })
+}
+
 /// User-Agent for OpenAlex only: appends mailto when a contact email is configured.
 fn literature_user_agent() -> String {
     let mut ua = UA.to_string();
@@ -103,14 +117,25 @@ async fn search_openalex(
     if !filters.is_empty() {
         params.push(("filter".to_string(), filters.join(",")));
     }
-    response_text(
+    let has_key = openalex_api_key().is_some();
+    if let Some(key) = openalex_api_key() {
+        params.push(("api_key".to_string(), key));
+    }
+    let result = response_text(
         "OpenAlex",
         client()?
             .get("https://api.openalex.org/works")
             .header("User-Agent", literature_user_agent())
             .query(&params),
     )
-    .await
+    .await;
+    if result.is_err() && !has_key {
+        // Keyless requests share a tiny daily pool; say what to do about it.
+        return result.map_err(|error| {
+            format!("{error} Without an OpenAlex API key this source is heavily limited. Add one in Settings, Integrations.")
+        });
+    }
+    result
 }
 
 async fn search_semantic_scholar(
