@@ -3,10 +3,12 @@ import * as XLSX from "xlsx";
 
 const mocks = vi.hoisted(() => ({
   readPickedFileBase64: vi.fn(),
+  registerPickedFileForE2E: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
   readPickedFileBase64: mocks.readPickedFileBase64,
+  registerPickedFileForE2E: mocks.registerPickedFileForE2E,
 }));
 vi.mock("xlsx", async (importOriginal) => {
   const actual = await importOriginal<typeof import("xlsx")>();

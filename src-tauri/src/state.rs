@@ -25,6 +25,7 @@ pub struct AppState {
     /// Absolute paths the user has just written via a native save/export dialog.
     /// `reveal_in_dir` may open these even when they sit outside `~/.oleafly`.
     pub reveal_allowlist: Mutex<VecDeque<PathBuf>>,
+    pub table_import_allowlist: Mutex<VecDeque<PathBuf>>,
     /// Reaches the running main-document compiler process so "Stop compilation"
     /// can end it. Figure compiles use their own lane and are never stopped by it.
     pub compile_cancel: CompileCancel,
@@ -162,6 +163,7 @@ impl Default for AppState {
             project_state_revision: AtomicU64::new(0),
             latest_compile: Mutex::new(HashMap::new()),
             reveal_allowlist: Mutex::new(VecDeque::new()),
+            table_import_allowlist: Mutex::new(VecDeque::new()),
             compile_cancel: CompileCancel::default(),
         }
     }

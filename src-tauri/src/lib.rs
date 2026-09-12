@@ -502,6 +502,8 @@ pub fn run() {
             project::save_file_base64,
             project::read_file_base64,
             project::read_picked_file_base64,
+            project::pick_table_import_file,
+            project::register_picked_file_for_e2e,
             project::append_app_log,
             project::read_app_log,
             project::has_pandoc,

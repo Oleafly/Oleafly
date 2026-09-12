@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { pickOpenPath } from "@/lib/native-file-dialog";
+import { pickTableImportPath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useTableImportStore } from "@/store/table-import";
@@ -96,16 +96,7 @@ export function TableImportDialog() {
     setBusy(true);
     setError(null);
     try {
-      const selection = await pickOpenPath({
-        multiple: false,
-        filters: [
-          {
-            name: t(($) => $.editor.tableImport.spreadsheetFilter),
-            extensions: ["csv", "tsv", "xlsx", "xls"],
-          },
-        ],
-        title: t(($) => $.editor.tableImport.title),
-      });
+      const selection = await pickTableImportPath();
       if (typeof selection !== "string") return;
       if (!contextMatches(context)) {
         throw new Error(t(($) => $.editor.tableImport.activeChangedPicker));

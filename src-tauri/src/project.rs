@@ -2432,29 +2432,116 @@ pub async fn read_file_base64(project_id: String, path: String) -> Result<String
     .map_err(|e| e.to_string())?
 }
 
-/// Read a user-picked spreadsheet (CSV/TSV/XLS/XLSX) as base64 so the webview
-/// can parse it with SheetJS. The UI obtains the path from a file dialog; the
-/// backend still accepts only the table formats it knows how to parse and
-/// reads through an open file handle with a hard cap.
+const TABLE_IMPORT_ALLOWLIST_LIMIT: usize = 64;
+
 #[tauri::command]
-pub async fn read_picked_file_base64(path: String) -> Result<String, String> {
+pub async fn pick_table_import_file(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .set_title(crate::i18n::t("dialog.tableImport.title"))
+        .add_filter(
+            crate::i18n::t("dialog.tableImport.filter"),
+            &["csv", "tsv", "xlsx", "xls"],
+        )
+        .pick_file(move |selection| {
+            let _ = sender.send(selection);
+        });
+    let Some(selection) = receiver
+        .await
+        .map_err(|_| "The spreadsheet picker closed unexpectedly.".to_string())?
+    else {
+        return Ok(None);
+    };
+    let picked = selection
+        .into_path()
+        .map_err(|_| "That location is not a file Oleafly can read.".to_string())?;
+    let canonical = canonical_table_import_path(&picked)?;
+    let display = canonical.to_string_lossy().into_owned();
+    allow_table_import_path(canonical, &state).await;
+    Ok(Some(display))
+}
+
+#[tauri::command]
+pub async fn register_picked_file_for_e2e(
+    path: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<String, String> {
+    if !cfg!(feature = "e2e-testing") {
+        return Err("Spreadsheet registration is available only in e2e builds.".into());
+    }
+    let canonical = canonical_table_import_path(Path::new(&path))?;
+    let display = canonical.to_string_lossy().into_owned();
+    allow_table_import_path(canonical, &state).await;
+    Ok(display)
+}
+
+/// Read a spreadsheet (CSV/TSV/XLS/XLSX) the user picked through
+/// `pick_table_import_file` as base64, so the webview can parse it with
+/// SheetJS. Only allowlisted paths are readable, and the read still goes
+/// through an open file handle with a hard cap.
+#[tauri::command]
+pub async fn read_picked_file_base64(
+    path: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<String, String> {
     const MAX_PICKED_BYTES: usize = 16 * 1024 * 1024;
-    let read_path = PathBuf::from(&path);
-    let extension = read_path
+    let canonical = canonical_table_import_path(Path::new(&path))?;
+    {
+        let allowlist = state.table_import_allowlist.lock().await;
+        assert_table_import_allowed(&canonical, &allowlist)?;
+    }
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        let bytes = read_picked_file_bytes(&canonical, MAX_PICKED_BYTES)
+            .map_err(|error| format!("failed to read {path}: {error}"))?;
+        Ok(STANDARD.encode(&bytes))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn canonical_table_import_path(path: &Path) -> Result<PathBuf, String> {
+    let canonical = path
+        .canonicalize()
+        .map_err(|error| format!("failed to read {}: {error}", path.display()))?;
+    let extension = canonical
         .extension()
         .and_then(|value| value.to_str())
         .map(|value| value.to_ascii_lowercase());
     if !is_table_import_extension(extension.as_deref()) {
         return Err("Choose a CSV, TSV, XLS, or XLSX spreadsheet.".into());
     }
-    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
-        use base64::{engine::general_purpose::STANDARD, Engine};
-        let bytes = read_picked_file_bytes(&read_path, MAX_PICKED_BYTES)
-            .map_err(|error| format!("failed to read {path}: {error}"))?;
-        Ok(STANDARD.encode(&bytes))
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    Ok(canonical)
+}
+
+async fn allow_table_import_path(canonical: PathBuf, state: &crate::state::AppState) {
+    let mut allowlist = state.table_import_allowlist.lock().await;
+    if allowlist.iter().any(|entry| entry == &canonical) {
+        return;
+    }
+    if allowlist.len() >= TABLE_IMPORT_ALLOWLIST_LIMIT {
+        allowlist.pop_front();
+    }
+    allowlist.push_back(canonical);
+}
+
+fn assert_table_import_allowed(
+    canonical: &Path,
+    allowlist: &std::collections::VecDeque<PathBuf>,
+) -> Result<(), String> {
+    if allowlist.iter().any(|entry| entry == canonical) {
+        return Ok(());
+    }
+    Err(
+        "Choose the spreadsheet again: Oleafly reads only files picked in its own import dialog."
+            .into(),
+    )
 }
 
 fn is_table_import_extension(extension: Option<&str>) -> bool {
@@ -3444,8 +3531,18 @@ fn safe_ad_hoc_project_path(path: &str) -> Result<PathBuf, String> {
 /// Publish converter output as one complete project. A normal text conversion
 /// supplies `text` and media under assets/. A source bundle supplies
 /// `mainFile` plus every file, as produced by the bounded arXiv extractor.
-#[tauri::command(async)]
-pub fn create_project_from_ad_hoc(request: CreateAdHocProjectRequest) -> Result<String, String> {
+#[tauri::command]
+pub async fn create_project_from_ad_hoc(
+    request: CreateAdHocProjectRequest,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || create_project_from_ad_hoc_blocking(request))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn create_project_from_ad_hoc_blocking(
+    request: CreateAdHocProjectRequest,
+) -> Result<String, String> {
     use base64::{engine::general_purpose::STANDARD, Engine as _};
 
     const MAX_FILES: usize = 5000;
@@ -3575,8 +3672,20 @@ pub fn create_project_from_ad_hoc(request: CreateAdHocProjectRequest) -> Result<
 /// Publish a converted PDF as one complete project. The library never observes
 /// a project containing only `main.tex` (or only some figures): every payload
 /// is validated and staged in a sibling directory before the final rename.
-#[tauri::command(async)]
-pub fn create_project_from_pdf_conversion(
+#[tauri::command]
+pub async fn create_project_from_pdf_conversion(
+    name: String,
+    tex: String,
+    figures: Vec<PdfConversionFigure>,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        create_project_from_pdf_conversion_blocking(name, tex, figures)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+fn create_project_from_pdf_conversion_blocking(
     name: String,
     tex: String,
     figures: Vec<PdfConversionFigure>,
@@ -6138,10 +6247,11 @@ async fn recycle_project_synchronized(
 #[cfg(test)]
 mod tests {
     use super::{
+        allow_table_import_path, assert_table_import_allowed, canonical_table_import_path,
         copy_path_in_project, create_diagram_project, create_image_project_in,
-        create_markdown_project_in, create_path_in_project, create_project_from_ad_hoc,
-        create_project_from_pdf_conversion, create_project_transaction, create_typst_project_in,
-        download_project_zip, duplicate_project, engine_for_main_document,
+        create_markdown_project_in, create_path_in_project, create_project_from_ad_hoc_blocking,
+        create_project_from_pdf_conversion_blocking, create_project_transaction,
+        create_typst_project_in, download_project_zip, duplicate_project, engine_for_main_document,
         export_would_write_inside_project, extract_pandoc, flatten_single_root_folder,
         get_or_create_scratch_project_blocking, import_paths_transactional,
         import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
@@ -6152,7 +6262,7 @@ mod tests {
         tex_root_magic_target, try_reserve_project_directory, validate_conversion_export,
         validate_tex_flavor, write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest,
         CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
-        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
+        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -6183,6 +6293,72 @@ mod tests {
         assert!(read_picked_file_bytes(&path, 4)
             .unwrap_err()
             .contains("table-import limit"));
+    }
+
+    #[test]
+    fn picked_table_paths_resolve_to_canonical_spreadsheets() {
+        let directory = tempfile::tempdir().unwrap();
+        let spreadsheet = directory.path().join("results.CSV");
+        std::fs::write(&spreadsheet, b"a,b").unwrap();
+        let nested = directory.path().join("nested");
+        std::fs::create_dir(&nested).unwrap();
+
+        let canonical = canonical_table_import_path(&spreadsheet).unwrap();
+        assert_eq!(
+            canonical,
+            canonical_table_import_path(&nested.join("../results.CSV")).unwrap()
+        );
+
+        let notes = directory.path().join("notes.txt");
+        std::fs::write(&notes, b"secret").unwrap();
+        assert!(canonical_table_import_path(&notes)
+            .unwrap_err()
+            .contains("CSV, TSV, XLS, or XLSX"));
+        assert!(canonical_table_import_path(&directory.path().join("missing.csv")).is_err());
+    }
+
+    #[test]
+    fn picked_table_reads_are_refused_outside_the_allowlist() {
+        let directory = tempfile::tempdir().unwrap();
+        let picked = directory.path().join("picked.csv");
+        let sibling = directory.path().join("sibling.csv");
+        std::fs::write(&picked, b"a,b").unwrap();
+        std::fs::write(&sibling, b"c,d").unwrap();
+        let picked = canonical_table_import_path(&picked).unwrap();
+        let sibling = canonical_table_import_path(&sibling).unwrap();
+
+        let mut allowlist = std::collections::VecDeque::new();
+        assert!(assert_table_import_allowed(&picked, &allowlist).is_err());
+
+        allowlist.push_back(picked.clone());
+        assert!(assert_table_import_allowed(&picked, &allowlist).is_ok());
+        assert!(assert_table_import_allowed(&sibling, &allowlist)
+            .unwrap_err()
+            .contains("its own import dialog"));
+
+        allowlist.pop_front();
+        assert!(assert_table_import_allowed(&picked, &allowlist).is_err());
+    }
+
+    #[test]
+    fn the_table_import_allowlist_is_bounded_and_free_of_duplicates() {
+        let state = crate::state::AppState::default();
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        tauri::async_runtime::block_on(async {
+            let first = root.join("first.csv");
+            std::fs::write(&first, b"a").unwrap();
+            allow_table_import_path(first.clone(), &state).await;
+            allow_table_import_path(first.clone(), &state).await;
+            assert_eq!(state.table_import_allowlist.lock().await.len(), 1);
+
+            for index in 0..TABLE_IMPORT_ALLOWLIST_LIMIT {
+                allow_table_import_path(root.join(format!("bulk-{index}.csv")), &state).await;
+            }
+            let allowlist = state.table_import_allowlist.lock().await;
+            assert_eq!(allowlist.len(), TABLE_IMPORT_ALLOWLIST_LIMIT);
+            assert!(assert_table_import_allowed(&first, &allowlist).is_err());
+        });
     }
 
     #[test]
@@ -6395,7 +6571,8 @@ mod tests {
 
         let latex = super::create_project("Paper".into()).unwrap();
         let converted =
-            create_project_from_pdf_conversion("Converted".into(), tex.clone(), vec![]).unwrap();
+            create_project_from_pdf_conversion_blocking("Converted".into(), tex.clone(), vec![])
+                .unwrap();
         let imported = import_project_zip_bytes("Imported".into(), &bytes).unwrap();
         let markdown = super::create_markdown_project("Notes".into()).unwrap();
         let typst = super::create_typst_project("Typst".into()).unwrap();
@@ -6421,7 +6598,8 @@ mod tests {
         write_git_auto_init(false);
         let plain = super::create_project("Plain".into()).unwrap();
         let plain_converted =
-            create_project_from_pdf_conversion("Plain converted".into(), tex, vec![]).unwrap();
+            create_project_from_pdf_conversion_blocking("Plain converted".into(), tex, vec![])
+                .unwrap();
         let plain_imported = import_project_zip_bytes("Plain imported".into(), &bytes).unwrap();
         for project_id in [&plain, &plain_converted, &plain_imported] {
             assert!(
@@ -7437,7 +7615,7 @@ mod tests {
         let data = test_dir("converted-project");
         std::env::set_var("OLEAFLY_DATA_DIR", &data);
 
-        let id = create_project_from_pdf_conversion(
+        let id = create_project_from_pdf_conversion_blocking(
             "Imported".into(),
             "\\documentclass{article}\\begin{document}Ready\\end{document}".into(),
             vec![PdfConversionFigure {
@@ -7455,7 +7633,7 @@ mod tests {
         );
 
         let visible_before = std::fs::read_dir(data.join("projects")).unwrap().count();
-        let error = create_project_from_pdf_conversion(
+        let error = create_project_from_pdf_conversion_blocking(
             "Broken".into(),
             "partial".into(),
             vec![PdfConversionFigure {
@@ -9589,7 +9767,7 @@ mod tests {
         let root = test_dir("ad-hoc-project");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
 
-        let id = create_project_from_ad_hoc(CreateAdHocProjectRequest {
+        let id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
             name: "Converted notes".into(),
             target: "latex".into(),
             text: Some("\\documentclass{article}\\begin{document}Ready\\end{document}".into()),
@@ -9626,7 +9804,7 @@ mod tests {
             ("markdown", "main.md", "markdown", "# Converted"),
             ("typst", "main.typ", "typst", "= Converted"),
         ] {
-            let id = create_project_from_ad_hoc(CreateAdHocProjectRequest {
+            let id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
                 name: " ".into(),
                 target: target.into(),
                 text: Some(source.into()),
@@ -9648,7 +9826,7 @@ mod tests {
             );
         }
 
-        let bundle_id = create_project_from_ad_hoc(CreateAdHocProjectRequest {
+        let bundle_id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
             name: "Source bundle".into(),
             target: "latex".into(),
             text: None,
@@ -9679,7 +9857,7 @@ mod tests {
                        text: Option<&str>,
                        main_file: Option<&str>,
                        files: Vec<AdHocProjectFile>| {
-            create_project_from_ad_hoc(CreateAdHocProjectRequest {
+            create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
                 name: "Converted".into(),
                 target: target.into(),
                 text: text.map(str::to_string),

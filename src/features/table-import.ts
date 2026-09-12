@@ -11,7 +11,7 @@ import {
   parseDelimited,
   type TableOptions,
 } from "@oleafly/conversion-registry/table";
-import { readPickedFileBase64 } from "@/lib/tauri";
+import { readPickedFileBase64, registerPickedFileForE2E } from "@/lib/tauri";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 export type TableTarget = "latex" | "typst";
@@ -118,7 +118,7 @@ if (E2E_HOOKS && typeof window !== "undefined") {
     path: string,
     options: Partial<TableImportOptions> & { target: TableTarget },
   ) => {
-    const rows = await readTableRows(path);
+    const rows = await readTableRows(await registerPickedFileForE2E(path));
     return emitTable(rows, {
       header: options.header ?? true,
       caption: options.caption,

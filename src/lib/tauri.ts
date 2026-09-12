@@ -440,6 +440,9 @@ export const readFileBase64 = (projectId: string, path: string) =>
   invoke<string>("read_file_base64", { projectId, path });
 export const readPickedFileBase64 = (path: string) =>
   invoke<string>("read_picked_file_base64", { path });
+export const pickTableImportFile = () => invoke<string | null>("pick_table_import_file");
+export const registerPickedFileForE2E = (path: string) =>
+  invoke<string>("register_picked_file_for_e2e", { path });
 
 export interface AdHocArtifact {
   path: string;
