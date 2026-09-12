@@ -1,6 +1,6 @@
 # Conversion matrix
 
-Every document conversion Oleafy ships or has deliberately deferred,
+Every document conversion Oleafly ships or has deliberately deferred,
 generated from `packages/conversion-registry` by `pnpm gen:conversion-matrix`.
 Edit the registry, not this file. Deferred routes carry a gap id; the
 [conversion roadmap](conversion-roadmap.md) lists everything deliberately
@@ -497,12 +497,12 @@ Zotero RDF export files import into the reference library.
 
 ### bibtex-clean
 
-Normalize keys, drop DOI and fuzzy-title duplicates, and report missing fields with a dry-run diff.
+Preview citation-key changes, remove DOI duplicates when every field is preserved, and flag similar titles for review. Applying checks the saved preview and backs up changed files.
 
 - **Direction:** tool
 - **Engine:** internal
 - **Status:** available
-- **Surface:** References panel, BibTeX tool
+- **Surface:** References panel
 - **Gap:** G6
 
 ## Deferred

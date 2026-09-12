@@ -5,6 +5,7 @@ import { cn, isMac } from "@/lib/utils";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
+import { ThemeMenu } from "@/components/layout/ThemeControls";
 
 export function ToolPageShell({
   page,
@@ -12,6 +13,8 @@ export function ToolPageShell({
   subtitle,
   icon: Icon,
   actions,
+  status,
+  showTheme = false,
   testId,
   children,
 }: {
@@ -20,6 +23,8 @@ export function ToolPageShell({
   subtitle?: string;
   icon?: ComponentType<{ className?: string }>;
   actions?: ReactNode;
+  status?: ReactNode;
+  showTheme?: boolean;
   testId: string;
   children: ReactNode;
 }) {
@@ -28,11 +33,11 @@ export function ToolPageShell({
   const fullscreen = useFullscreen();
   if (activePage !== page) return null;
   return (
-    <div data-testid={testId} className="flex h-full flex-col bg-background">
+    <div data-testid={testId} className="flex h-full min-w-0 flex-col bg-background">
       <div
         data-tauri-drag-region
         className={cn(
-          "flex items-center gap-3 border-b px-4 py-2.5",
+          "flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b px-4 py-2.5",
           isMac && !fullscreen && "pl-20",
         )}
       >
@@ -59,10 +64,12 @@ export function ToolPageShell({
           )}
         </div>
         <div className="flex-1" />
+        {status}
+        {showTheme && <ThemeMenu testId={`${testId}-theme-menu`} contentClassName="z-[80]" />}
         {actions}
         <WindowControls />
       </div>
-      <div className="flex min-h-0 flex-1">{children}</div>
+      <div className="flex min-h-0 min-w-0 flex-1">{children}</div>
     </div>
   );
 }

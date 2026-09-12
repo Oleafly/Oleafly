@@ -43,36 +43,18 @@ import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
-import { exportCurrentPdf, exportCurrentImagePng } from "@/features/export";
-import { ensurePandoc } from "@/features/pandoc";
+import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
 import { exportRoutesFor } from "@oleafly/conversion-registry";
 import {
-  downloadProjectZip,
   duplicateProject,
-  exportDocument,
-  revealInDir,
 } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac } from "@/lib/utils";
-import { pickSavePath } from "@/lib/native-file-dialog";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
-const FMT_LABEL: Record<string, string> = {
-  zip: "Zip",
-  pdf: "PDF",
-  docx: "Docx",
-  html: "html",
-  md: "Md",
-  pptx: "PowerPoint",
-  epub: "EPUB",
-  txt: "Text",
-  typst: "Typst",
-  tex: "TeX",
-};
-
-type DocFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
+type DocFormat = DocumentExportFormat;
 
 /** Backend export format id for a registry target ("md"/"tex" are the ids). */
 function formatForTarget(target: string): DocFormat {
@@ -255,6 +237,7 @@ export function TopToolbar() {
 
   // Imperative read (not a subscription) to avoid re-rendering on every keystroke.
   const setExportMenuOpen = (open: boolean) => {
+    if (open && exporting) return;
     if (open) {
       const f = useFilesStore.getState();
       // Classify the document that would actually be exported, which a
@@ -264,55 +247,20 @@ export function TopToolbar() {
     }
     setDlOpen(open);
   };
-  const safeName = () => (projectName || "document").replace(/[^\w.-]+/g, "_");
-
-  const doDownloadZip = async () => {
-    if (!projectId) return;
+  const exportBusyRef = useRef(false);
+  const doExportFormat = async (format: DocFormat | "zip") => {
+    if (exportBusyRef.current) return;
+    exportBusyRef.current = true;
     setDlOpen(false);
-    const dest = await pickSavePath({
-      defaultPath: `${safeName()}.zip`,
-      filters: [{ name: "Zip", extensions: ["zip"] }],
-    });
-    if (!dest) return;
-    setExporting("zip");
-    try {
-      await downloadProjectZip(projectId, dest);
-      toast.success(
-        "Export Zip complete",
-        { label: "View File", onClick: () => void revealInDir(dest) },
-        true,
-      );
-    } catch (e) {
-      notifyError("export zip", e, "Couldn't export the project zip");
-    } finally {
-      setExporting(null);
-    }
-  };
-
-  const doExportFormat = async (format: DocFormat) => {
-    if (!projectId) return;
-    setDlOpen(false);
-    const ext = format;
-    const dest = await pickSavePath({
-      defaultPath: `${safeName()}.${ext}`,
-      filters: [{ name: format.toUpperCase(), extensions: [ext] }],
-    });
-    if (!dest) return;
     setExporting(format);
     try {
-      if (!(await ensurePandoc())) return;
-      await exportDocument(projectId, resolveEffectiveMainDoc().mainDoc, format, dest);
-      toast.success(
-        `Export ${FMT_LABEL[format] ?? format} complete`,
-        { label: "View File", onClick: () => void revealInDir(dest) },
-        true,
-      );
-    } catch (e) {
-      notifyError(`export ${format}`, e);
+      await exportCurrentDocument(format);
     } finally {
+      exportBusyRef.current = false;
       setExporting(null);
     }
   };
+  const doDownloadZip = () => doExportFormat("zip");
 
   const doDownloadPdf = async () => {
     setDlOpen(false);

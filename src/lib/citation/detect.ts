@@ -20,7 +20,7 @@ export function detectInput(raw: string): DetectedInput {
 
   // ISBN-10/13, with spaces or hyphens ("isbn:" prefix optional). A 13-digit
   // form must start 978/979; a 10-digit form may end in X.
-  const isbnCandidate = s.replace(/^[Ii][Ss][Bb][Nn]\s*:\s*/, "").replace(/[- ]/g, "");
+  const isbnCandidate = s.replace(/^isbn(?:-1[03])?\s*:\s*/i, "").replace(/[- ]/g, "").toUpperCase();
   if (
     /^\d{13}$/.test(isbnCandidate) && /^(978|979)/.test(isbnCandidate)
   ) {
@@ -31,7 +31,10 @@ export function detectInput(raw: string): DetectedInput {
   }
 
   // Bare integers in the modern PMID range are PubMed ids ("PMID:" optional).
-  const pmid = s.match(/^(?:pmid:)?\s*(\d{6,9})$/i);
+  const explicitPmid = s.match(/^pmid:\s*([1-9]\d{0,8})$/i)
+    ?? s.match(/^https?:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/([1-9]\d{0,8})\/?(?:[?#].*)?$/i);
+  if (explicitPmid) return { kind: "pmid", value: explicitPmid[1] };
+  const pmid = s.match(/^([1-9]\d{5,8})$/);
   if (pmid) return { kind: "pmid", value: pmid[1] };
 
   return { kind: "title", value: s };

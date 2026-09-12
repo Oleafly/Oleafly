@@ -1,9 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-import { BookOpenText, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpenText, Copy, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
+import {
+  ToolPane,
+  ToolPreviewSurface,
+  ToolSegmentedControl,
+  ToolSplitView,
+  ToolStatus,
+} from "@/components/tools/ToolWorkspace";
+import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
+import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 import { useHomeViewStore } from "@/store/home-view";
-import { insertAtCursor } from "@/components/editor/cm/controller";
+import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 interface SymbolEntry {
   command: string;
@@ -13,6 +25,7 @@ interface SymbolEntry {
 }
 
 type Category = "Greek" | "Arrows" | "Relations" | "Operators" | "Miscellaneous";
+type SymbolFilter = "All" | Category;
 
 const CATEGORY_ORDER: Category[] = [
   "Greek",
@@ -21,6 +34,7 @@ const CATEGORY_ORDER: Category[] = [
   "Operators",
   "Miscellaneous",
 ];
+const MAX_VISIBLE_SYMBOLS = 180;
 
 const GREEK = new Set([
   "alpha", "beta", "gamma", "delta", "epsilon", "varepsilon", "zeta", "eta",
@@ -48,12 +62,19 @@ function categoryFor(name: string): Category {
 
 /** First glyph character from a corpus detail like "𝔸 (\"mathbb\" command)". */
 function glyphFromDetail(detail: string): string {
-  const first = [...detail].find((ch) => /\p{L}|\p{S}|\p{N}/u.test(ch) && !/[a-zA-Z()"]/u.test(ch));
+  const first = [...detail].find((ch) => /\p{L}|\p{S}|\p{N}/u.test(ch) && !/[a-zA-Z()"]/.test(ch));
   return first ?? "";
 }
 
-async function loadSymbols(): Promise<SymbolEntry[]> {
+interface SymbolLoad {
+  entries: SymbolEntry[];
+  failed: boolean;
+}
+
+async function loadSymbols(): Promise<SymbolLoad> {
   const entries: SymbolEntry[] = [];
+  const commands = new Set<string>();
+  let failed = false;
   try {
     const unimath = (await fetch("/latex-intelligence/unimath.json").then((r) =>
       r.ok ? r.json() : {},
@@ -61,15 +82,18 @@ async function loadSymbols(): Promise<SymbolEntry[]> {
     for (const [name, value] of Object.entries(unimath)) {
       const glyph = value.detail ? glyphFromDetail(value.detail) : "";
       if (!glyph) continue;
+      const command = `\\${name}`;
+      if (commands.has(command)) continue;
+      commands.add(command);
       entries.push({
-        command: `\\${name}`,
+        command,
         glyph,
         note: value.documentation ?? "",
         category: categoryFor(name),
       });
     }
   } catch {
-    // The corpus is bundled with the app; a failure here is unexpected.
+    failed = true;
   }
   try {
     const core = (await fetch("/latex-intelligence/core.json").then((r) =>
@@ -77,117 +101,259 @@ async function loadSymbols(): Promise<SymbolEntry[]> {
     )) as { commands: { name: string; detail?: string; documentation?: string }[] };
     for (const command of core.commands) {
       const glyph = command.detail ? glyphFromDetail(command.detail) : "";
-      if (!glyph || entries.some((e) => e.command === `\\${command.name}`)) {
-        continue;
-      }
+      const name = `\\${command.name}`;
+      if (!glyph || commands.has(name)) continue;
+      commands.add(name);
       entries.push({
-        command: `\\${command.name}`,
+        command: name,
         glyph,
         note: command.documentation ?? command.detail ?? "",
         category: categoryFor(command.name),
       });
     }
   } catch {
-    // ignore; unimath alone is already a full cheatsheet
+    failed = true;
   }
-  return entries;
+  return { entries, failed: failed && entries.length === 0 };
+}
+
+function canInsertInOpenLatexEditor(): boolean {
+  const files = useFilesStore.getState();
+  const latexSource = files.activePath?.toLowerCase().endsWith(".tex")
+    && files.engine.capabilities.formatting_profile === "latex";
+  return Boolean(files.projectId && latexSource && (getEditorView() || isWysiwygActive()));
 }
 
 export function SymbolsToolView() {
-  const activePage = useHomeViewStore((s) => s.page);
+  const activePage = useHomeViewStore((state) => state.page);
+  const goTo = useHomeViewStore((state) => state.goTo);
+  const projectId = useFilesStore((state) => state.projectId);
+  const activePath = useFilesStore((state) => state.activePath);
+  const formattingProfile = useFilesStore((state) => state.engine.capabilities.formatting_profile);
   const [entries, setEntries] = useState<SymbolEntry[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<SymbolFilter>("All");
+  const [selectedCommand, setSelectedCommand] = useState<string | null>(null);
+  const request = useRef(0);
 
   useEffect(() => {
-    if (activePage === "symbols" && entries === null) {
-      void loadSymbols().then(setEntries);
-    }
+    if (activePage !== "symbols" || entries !== null) return;
+    const id = ++request.current;
+    void loadSymbols().then((loaded) => {
+      if (id !== request.current) return;
+      setEntries(loaded.entries);
+      setLoadFailed(loaded.failed);
+    });
   }, [activePage, entries]);
 
   const filtered = useMemo(() => {
     if (!entries) return null;
-    const q = query.trim().toLowerCase();
-    if (!q) return entries;
-    return entries.filter(
-      (entry) =>
-        entry.command.toLowerCase().includes(q) ||
-        entry.glyph === q ||
-        entry.note.toLowerCase().includes(q),
+    const normalizedQuery = query.trim().toLowerCase();
+    return entries.filter((entry) =>
+      (category === "All" || entry.category === category)
+      && (!normalizedQuery
+        || entry.command.toLowerCase().includes(normalizedQuery)
+        || entry.glyph === normalizedQuery
+        || entry.note.toLowerCase().includes(normalizedQuery)),
     );
-  }, [entries, query]);
+  }, [category, entries, query]);
+  const visible = useMemo(() => filtered?.slice(0, MAX_VISIBLE_SYMBOLS) ?? [], [filtered]);
+  const selected = visible.find((entry) => entry.command === selectedCommand) ?? visible[0] ?? null;
+  const insertionAvailable = Boolean(
+    projectId
+    && activePath?.toLowerCase().endsWith(".tex")
+    && formattingProfile === "latex"
+    && (getEditorView() || isWysiwygActive()),
+  );
+
+  useEffect(() => {
+    if (visible.length > 0 && !visible.some((entry) => entry.command === selectedCommand)) {
+      setSelectedCommand(visible[0].command);
+    }
+  }, [selectedCommand, visible]);
 
   if (activePage !== "symbols") return null;
 
-  const insert = (entry: SymbolEntry) => {
-    insertAtCursor(entry.command.endsWith("{}") ? entry.command : `${entry.command} `);
-    toast.success(`${entry.command} inserted at the cursor.`);
+  const retry = () => {
+    request.current += 1;
+    setLoadFailed(false);
+    setEntries(null);
   };
+
+  const copyCommand = async () => {
+    if (!selected) return;
+    try {
+      await navigator.clipboard.writeText(selected.command);
+      toast.success("Command copied.");
+    } catch {
+      toast.error("Oleafly could not copy the command. Try again.");
+    }
+  };
+
+  const insertCommand = () => {
+    if (!selected) return;
+    if (!canInsertInOpenLatexEditor()) return;
+    insertAtCursor(selected.command.endsWith("{}") ? selected.command : `${selected.command} `);
+    toast.success(`Inserted ${selected.command} in the open editor.`);
+    goTo("library");
+  };
+
+  const moveSelection = (
+    index: number,
+    direction: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+    columns: number,
+  ) => {
+    const offset = direction === "ArrowLeft" ? -1 : direction === "ArrowRight" ? 1 : direction === "ArrowUp" ? -columns : columns;
+    const next = Math.min(Math.max(index + offset, 0), visible.length - 1);
+    const entry = visible[next];
+    if (!entry) return;
+    setSelectedCommand(entry.command);
+    document.getElementById(`symbol-entry-${next}`)?.focus();
+  };
+
+  const status = entries === null
+    ? <ToolStatus state="busy">Loading symbols</ToolStatus>
+    : loadFailed
+      ? <ToolStatus state="error">Reference unavailable</ToolStatus>
+      : <ToolStatus state="ready">{entries.length} symbols</ToolStatus>;
 
   return (
     <ToolPageShell
       page="symbols"
-      title="Symbol Reference"
-      subtitle="Browse and insert LaTeX symbols from the completion corpus"
+      title="Symbols"
+      subtitle="Browse LaTeX commands and symbols"
       icon={BookOpenText}
+      showTheme
+      status={status}
       testId="symbols-tool-view"
     >
-      <div className="flex items-center gap-2">
-        <div className="relative max-w-sm flex-1">
-          <Search aria-hidden className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search a command, glyph, or description…"
-            aria-label="Search symbols"
-            data-testid="symbols-search"
-            className="h-9 w-full rounded-md border bg-transparent pl-8 pr-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-        </div>
-        <span className="text-xs text-muted-foreground" data-testid="symbols-count">
-          {filtered ? `${filtered.length} symbols` : "loading…"}
-        </span>
-      </div>
+      <ToolSplitView>
+        <ToolPane
+          title="Library"
+          badge={filtered ? `${filtered.length}` : undefined}
+          footer={(
+            <div className="space-y-2">
+              <ToolSegmentedControl
+                label="Symbol category"
+                value={category}
+                options={[
+                  { value: "All", label: "All", testId: "symbols-category-all" },
+                  ...CATEGORY_ORDER.map((value) => ({ value, label: value, testId: `symbols-category-${value.toLowerCase()}` })),
+                ]}
+                onChange={setCategory}
+              />
+              {filtered && filtered.length > MAX_VISIBLE_SYMBOLS ? (
+                <p className="text-xs text-muted-foreground">Showing the first {MAX_VISIBLE_SYMBOLS}. Search to narrow the list.</p>
+              ) : null}
+            </div>
+          )}
+        >
+          <div className="border-b px-4 py-3">
+            <div className="relative">
+              <Search aria-hidden className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search a command, glyph, or description"
+                aria-label="Search symbols"
+                data-testid="symbols-search"
+                className="pl-8"
+              />
+            </div>
+          </div>
+          {entries === null ? (
+            <div className="p-4 text-sm text-muted-foreground">Loading the symbol reference…</div>
+          ) : loadFailed ? (
+            <div className="space-y-3 p-4 text-sm text-muted-foreground">
+              <p>The symbol reference could not load.</p>
+              <Button variant="outline" size="sm" onClick={retry}>Try again</Button>
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground">No symbols match this search.</div>
+          ) : (
+            <div
+              role="listbox"
+              aria-label="Symbol results"
+              data-testid="symbols-grid"
+              className="grid grid-cols-3 gap-2 p-4 sm:grid-cols-4"
+            >
+              {visible.map((entry, index) => (
+                <button
+                  id={`symbol-entry-${index}`}
+                  key={`${entry.category}-${entry.command}`}
+                  type="button"
+                  role="option"
+                  aria-selected={selected?.command === entry.command}
+                  tabIndex={selected?.command === entry.command ? 0 : -1}
+                  data-testid={`symbol-entry-${entry.command.slice(1)}`}
+                  title={entry.note || entry.command}
+                  onClick={() => setSelectedCommand(entry.command)}
+                  onFocus={() => setSelectedCommand(entry.command)}
+                  onKeyDown={(event) => {
+                    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+                      event.preventDefault();
+                      const grid = event.currentTarget.parentElement;
+                      const gridColumns = grid
+                        ? getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length || 3
+                        : 3;
+                      moveSelection(
+                        index,
+                        event.key as "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+                        gridColumns,
+                      );
+                    }
+                  }}
+                  className={cn(
+                    "flex min-w-0 flex-col items-center gap-1 rounded-md border px-2 py-2 text-center transition-colors",
+                    selected?.command === entry.command
+                      ? "border-primary/40 bg-accent"
+                      : "bg-card hover:border-primary/40 hover:bg-accent",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  )}
+                >
+                  <span className="font-serif text-xl leading-none">{entry.glyph}</span>
+                  <span className="w-full truncate font-mono text-[11px] text-muted-foreground">{entry.command}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </ToolPane>
 
-      {filtered === null ? (
-        <p className="text-sm text-muted-foreground">Loading the symbol corpus…</p>
-      ) : (
-        <div className="space-y-6" data-testid="symbols-sections">
-          {CATEGORY_ORDER.map((category) => {
-            const rows = filtered.filter((entry) => entry.category === category);
-            if (rows.length === 0) return null;
-            return (
-              <section key={category} className="space-y-2">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {category} · {rows.length}
-                </h3>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {rows.slice(0, 400).map((entry) => (
-                    <button
-                      key={`${entry.category}-${entry.command}`}
-                      type="button"
-                      title={entry.note || entry.command}
-                      onClick={() => insert(entry)}
-                      className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <span className="w-6 shrink-0 text-center font-serif text-xl leading-none">
-                        {entry.glyph}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
-                        {entry.command}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                {rows.length > 400 ? (
-                  <p className="text-[10px] text-muted-foreground">
-                    {rows.length - 400} more in this category; search to narrow.
-                  </p>
-                ) : null}
-              </section>
-            );
-          })}
-        </div>
-      )}
+        <ToolPane
+          title="Preview"
+          badge={selected?.category}
+          actions={selected ? (
+            <Button variant="outline" size="sm" onClick={() => void copyCommand()}>
+              <Copy className="size-4" /> Copy command
+            </Button>
+          ) : undefined}
+          footer={selected ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                {insertionAvailable
+                  ? "Insert into the open LaTeX document."
+                  : "Copy the command into your LaTeX document."}
+              </p>
+              <Button size="sm" onClick={insertCommand} disabled={!insertionAvailable}>Insert in editor</Button>
+            </div>
+          ) : undefined}
+        >
+          <ToolPreviewSurface className="items-center justify-center text-center">
+            {selected ? (
+              <div className="flex max-w-lg flex-col items-center gap-4">
+                <span className="font-serif text-7xl leading-none" aria-hidden="true">{selected.glyph}</span>
+                <code data-testid="symbols-command" className="rounded-md border bg-background px-3 py-2 font-mono text-sm">{selected.command}</code>
+                <p className="text-sm text-muted-foreground">{selected.note || "No description is available for this command."}</p>
+              </div>
+            ) : entries === null ? (
+              <p className="text-sm text-muted-foreground">Loading a symbol to preview.</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Choose a symbol from the library.</p>
+            )}
+          </ToolPreviewSurface>
+        </ToolPane>
+      </ToolSplitView>
     </ToolPageShell>
   );
 }

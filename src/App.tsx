@@ -240,6 +240,7 @@ function AppContent() {
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const closeDocks = useSettingsStore((s) => s.closeDocks);
   const homePage = useHomeViewStore((state) => state.page);
+  const projectToolOpen = homePage === "generators" || homePage === "symbols";
   const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
@@ -783,11 +784,12 @@ function AppContent() {
 
   return (
     <ThemeProvider>
-      {/* Drives the gutter's horizontal metrics: the line-number column gives
-          back a few pixels only while the sidebar is competing for the width
-          (see globals.css). */}
       <div data-sidebar-open={showTree ? "true" : "false"} className="flex h-full flex-col">
-        <TopToolbar />
+        <div className="contents" inert={projectToolOpen || undefined}>
+          {/* Drives the gutter's horizontal metrics: the line-number column gives
+              back a few pixels only while the sidebar is competing for the width
+              (see globals.css). */}
+          <TopToolbar />
         <BackendProtocolBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
@@ -973,13 +975,23 @@ function AppContent() {
           </Suspense>
         )}
         <LazyModals>
-          <SettingsModal />
           <CiteOleaflyDialog />
           <WordCountModal />
           <VersioningModal />
           <HotkeysModal />
           <TourGuide />
         </LazyModals>
+        </div>
+        <LazyModals>
+          <SettingsModal />
+        </LazyModals>
+        {projectToolOpen && (
+          <Suspense fallback={null}>
+            <div className="fixed inset-0 z-[70]">
+              {homePage === "generators" ? <GeneratorsToolView /> : <SymbolsToolView />}
+            </div>
+          </Suspense>
+        )}
       </div>
     </ThemeProvider>
   );

@@ -8,7 +8,13 @@ vi.mock("@/lib/tauri", () => ({
   readPickedFileBase64: mocks.readPickedFileBase64,
 }));
 
-import { emitTable, readTableRows } from "./table-import";
+import {
+  MAX_TABLE_COLUMNS,
+  MAX_TABLE_ROWS,
+  emitTable,
+  hasValidTableLabel,
+  readTableRows,
+} from "./table-import";
 
 function csvBase64(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -38,6 +44,23 @@ describe("readTableRows", () => {
       new Error("that file is larger than the 16 MB table-import limit"),
     );
     await expect(readTableRows("/tmp/huge.csv")).rejects.toThrow(/16 MB/);
+  });
+
+  it("rejects table dimensions that would freeze the preview", async () => {
+    mocks.readPickedFileBase64.mockResolvedValue(
+      csvBase64(`${"a".repeat(1)}\n`.repeat(MAX_TABLE_ROWS + 1)),
+    );
+    await expect(readTableRows("/tmp/long.csv")).rejects.toThrow(/more than 10,000 rows/);
+
+    mocks.readPickedFileBase64.mockResolvedValue(
+      csvBase64(Array.from({ length: MAX_TABLE_COLUMNS + 1 }, (_, index) => String(index)).join(",")),
+    );
+    await expect(readTableRows("/tmp/wide.csv")).rejects.toThrow(/more than 100 columns/);
+  });
+
+  it("only accepts safe LaTex labels", () => {
+    expect(hasValidTableLabel("tab:results.v2")).toBe(true);
+    expect(hasValidTableLabel("tab:x}\\input{bad}")).toBe(false);
   });
 });
 

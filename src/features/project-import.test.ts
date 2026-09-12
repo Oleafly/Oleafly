@@ -40,6 +40,8 @@ import {
   importFileKind,
   importGitHubRepository,
   importSelectedFile,
+  importTargetsForKind,
+  normalizeArxivImportId,
 } from "./project-import";
 
 beforeEach(() => {
@@ -134,5 +136,29 @@ describe("GitHub repository import", () => {
     expect(mocks.githubImportRepo).toHaveBeenCalledWith(repository.full_name);
     expect(mocks.refreshProjects).toHaveBeenCalledOnce();
     expect(mocks.openProject).toHaveBeenCalledWith("github-project");
+  });
+});
+
+
+describe("import route and identifier validation", () => {
+  it("derives the supported target types from the registry", () => {
+    expect(importTargetsForKind("html").map((item) => item.target)).toEqual(["latex", "markdown", "typst"]);
+    expect(importTargetsForKind("typst").map((item) => item.target)).toEqual(["latex", "markdown"]);
+    expect(importTargetsForKind("project")).toEqual([]);
+  });
+  it.each([
+    ["https://arxiv.org/abs/2301.01234v2?context=cs", "2301.01234v2"],
+    ["https://arxiv.org/pdf/math.GT/0309136v1.pdf", "math.GT/0309136v1"],
+    [" arXiv: 2301.01234 ", "2301.01234"],
+  ])("accepts paper link or id %s", (input, expected) => {
+    expect(normalizeArxivImportId(input)).toBe(expected);
+  });
+  it.each(["https://arxiv.org.evil.test/abs/2301.01234", "https://example.com/2301.01234", "", "../2301.01234", "2301.01234v0"])("rejects invalid id %s", (input) => {
+    expect(() => normalizeArxivImportId(input)).toThrow("arXiv");
+  });
+  it("rejects unsupported target types before installing the converter", async () => {
+    await expect(importSelectedFile("/tmp/paper.typ", "typst")).rejects.toThrow("project types");
+    expect(mocks.ensurePandoc).not.toHaveBeenCalled();
+    expect(mocks.importDocument).not.toHaveBeenCalled();
   });
 });

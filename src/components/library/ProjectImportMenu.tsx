@@ -15,6 +15,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
+  IMPORT_FILE_SOURCES,
+  importPickerOptions,
   importGitHubRepository,
   importSelectedFile,
   importTargetsForKind,
@@ -24,59 +26,7 @@ import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
-
-function pickerOptions(kind: ProjectImportFileKind) {
-  switch (kind) {
-    case "project":
-      return {
-        multiple: false as const,
-        filters: [{ name: "ZIP archive", extensions: ["zip"] }],
-        title: "Import a project archive",
-      };
-    case "word":
-      return {
-        multiple: false as const,
-        filters: [{ name: "Word document", extensions: ["docx"] }],
-        title: "Import a Word document",
-      };
-    case "markdown":
-      return {
-        multiple: false as const,
-        filters: [{ name: "Markdown document", extensions: ["md", "markdown"] }],
-        title: "Import a Markdown document",
-      };
-    case "html":
-      return {
-        multiple: false as const,
-        filters: [{ name: "HTML page", extensions: ["html", "htm"] }],
-        title: "Import an HTML page",
-      };
-    case "typst":
-      return {
-        multiple: false as const,
-        filters: [{ name: "Typst document", extensions: ["typ"] }],
-        title: "Import a Typst document",
-      };
-  }
-}
-
-/** Conversion sources that offer more than one project type. */
-const CONVERTIBLE_KINDS: ProjectImportFileKind[] = ["word", "markdown", "html", "typst"];
-
-function kindLabel(kind: ProjectImportFileKind): string {
-  switch (kind) {
-    case "word":
-      return "Word document";
-    case "markdown":
-      return "Markdown document";
-    case "html":
-      return "HTML page";
-    case "typst":
-      return "Typst document";
-    case "project":
-      return "Existing project";
-  }
-}
+import { ProjectImportDialog } from "./ProjectImportDialog";
 
 export function ProjectImportMenu({
   align = "end",
@@ -99,10 +49,14 @@ export function ProjectImportMenu({
   // import while it is set.
   const openingExternalRef = useRef(false);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [arxivOpen, setArxivOpen] = useState(false);
+  const [repositoryAttempt, setRepositoryAttempt] = useState(0);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
   const [repositoryLoadFailed, setRepositoryLoadFailed] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the retry counter explicitly starts another request.
   useEffect(() => {
     if (!githubOpen) return;
     if (githubStatus === "unknown") {
@@ -127,33 +81,38 @@ export function ProjectImportMenu({
     return () => {
       cancelled = true;
     };
-  }, [githubOpen, githubStatus, refreshGithub, repositories.length]);
+  }, [githubOpen, githubStatus, refreshGithub, repositories.length, repositoryAttempt]);
 
   const importFile = async (
     kind: ProjectImportFileKind,
     target?: "latex" | "markdown" | "typst",
   ) => {
-    const selection = await pickOpenPath(pickerOptions(kind));
-    if (typeof selection !== "string") return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
-    onImportSelected?.();
     try {
-      await importSelectedFile(selection, target);
+      const selection = await pickOpenPath(importPickerOptions(kind));
+      if (typeof selection !== "string") return;
+      if (await importSelectedFile(selection, target)) onImportSelected?.();
     } catch (error) {
       notifyError("import", error);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   const importRepository = async (repository: GitHubRepo) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
-    onImportSelected?.();
     try {
       await importGitHubRepository(repository);
+      onImportSelected?.();
     } catch (error) {
       notifyError("import GitHub repository", error);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -167,9 +126,11 @@ export function ProjectImportMenu({
   };
 
   return (
+    <>
     <DropdownMenu
       open={open}
       onOpenChange={(nextOpen) => {
+        if (nextOpen && busyRef.current) return;
         setOpen(nextOpen);
         if (!nextOpen) setGithubOpen(false);
       }}
@@ -186,8 +147,7 @@ export function ProjectImportMenu({
         <DropdownMenuItem onSelect={() => void importFile("project")}>
           Existing project (.zip)
         </DropdownMenuItem>
-        {CONVERTIBLE_KINDS.map((kind) => {
-          const label = kindLabel(kind);
+        {IMPORT_FILE_SOURCES.filter((source) => source.kind !== "project").map(({ kind, title: label }) => {
           const targets = importTargetsForKind(kind);
           return (
             <DropdownMenuSub key={kind}>
@@ -210,6 +170,7 @@ export function ProjectImportMenu({
           );
         })}
         <DropdownMenuLabel>Cloud</DropdownMenuLabel>
+        <DropdownMenuItem data-testid="import-arxiv" onSelect={() => setArxivOpen(true)}>arXiv paper</DropdownMenuItem>
         <DropdownMenuSub open={githubOpen} onOpenChange={setGithubOpen}>
           <DropdownMenuSubTrigger>GitHub</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="max-h-72 min-w-64 overflow-y-auto">
@@ -223,7 +184,7 @@ export function ProjectImportMenu({
                 <Loader2 className="size-3.5 animate-spin" /> Loading repositories…
               </DropdownMenuItem>
             ) : repositoryLoadFailed ? (
-              <DropdownMenuItem disabled>Could not load repositories.</DropdownMenuItem>
+              <DropdownMenuItem onSelect={(event) => { event.preventDefault(); setRepositoryAttempt((attempt) => attempt + 1); }}>Could not load repositories. Try again</DropdownMenuItem>
             ) : repositories.length === 0 ? (
               <DropdownMenuItem disabled>No repositories found.</DropdownMenuItem>
             ) : (
@@ -275,6 +236,14 @@ export function ProjectImportMenu({
                         event.preventDefault();
                         event.stopPropagation();
                       }}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void openExternal(repository.html_url).catch((error) => {
+                          notifyError("open repository", error);
+                        });
+                      }}
                       className="shrink-0 text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
                     >
                       <ExternalLink className="size-3.5" />
@@ -287,5 +256,7 @@ export function ProjectImportMenu({
         </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
+    <ProjectImportDialog open={arxivOpen} initialView="arxiv" onClose={() => setArxivOpen(false)} onImported={onImportSelected} />
+    </>
   );
 }

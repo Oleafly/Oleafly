@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import {
   ChevronLeft,
@@ -25,6 +25,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
+  IMPORT_FILE_SOURCES,
+  importPickerOptions,
   importArxivPaper,
   importFileKind,
   importGitHubRepository,
@@ -38,106 +40,47 @@ import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-function pickerOptions(kind: ProjectImportFileKind) {
-  switch (kind) {
-    case "project":
-      return {
-        multiple: false as const,
-        filters: [{ name: "ZIP archive", extensions: ["zip"] }],
-        title: "Import a project archive",
-      };
-    case "word":
-      return {
-        multiple: false as const,
-        filters: [{ name: "Word document", extensions: ["docx"] }],
-        title: "Import a Word document",
-      };
-    case "markdown":
-      return {
-        multiple: false as const,
-        filters: [{ name: "Markdown document", extensions: ["md", "markdown"] }],
-        title: "Import a Markdown document",
-      };
-    case "html":
-      return {
-        multiple: false as const,
-        filters: [{ name: "HTML page", extensions: ["html", "htm"] }],
-        title: "Import an HTML page",
-      };
-    case "typst":
-      return {
-        multiple: false as const,
-        filters: [{ name: "Typst document", extensions: ["typ"] }],
-        title: "Import a Typst document",
-      };
-  }
-}
-
-const LOCAL_SOURCES: {
-  kind: ProjectImportFileKind;
-  title: string;
-  description: string;
-  icon: typeof Package;
-}[] = [
-  {
-    kind: "project",
-    title: "Existing project",
-    description: "A .zip archive of a project folder.",
-    icon: Package,
-  },
-  {
-    kind: "word",
-    title: "Word document",
-    description: "Convert .docx to a LaTeX, Markdown, or Typst project.",
-    icon: FileType2,
-  },
-  {
-    kind: "markdown",
-    title: "Markdown document",
-    description: "Convert .md to a LaTeX or Typst project.",
-    icon: FileText,
-  },
-  {
-    kind: "html",
-    title: "HTML page",
-    description: "Convert .html to a LaTeX, Markdown, or Typst project.",
-    icon: Globe,
-  },
-  {
-    kind: "typst",
-    title: "Typst document",
-    description: "Convert .typ to a LaTeX or Markdown project.",
-    icon: Sigma,
-  },
-];
+const SOURCE_ICONS = { project: Package, word: FileType2, markdown: FileText, html: Globe, typst: Sigma };
 
 export function ProjectImportDialog({
   open,
   onClose,
-  onImportStarted,
+  onImported,
+  initialView = "sources",
 }: {
   open: boolean;
   onClose: () => void;
-  onImportStarted?: () => void;
+  onImported?: () => void;
+  initialView?: "sources" | "arxiv";
 }) {
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
   const [view, setView] = useState<"sources" | "github" | "target" | "arxiv">(
-    "sources",
+    initialView,
   );
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [arxivId, setArxivId] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const sessionRef = useRef(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [repositoryAttempt, setRepositoryAttempt] = useState(0);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
   const [repositoryLoadFailed, setRepositoryLoadFailed] = useState(false);
 
   useEffect(() => {
-    if (!open) setView("sources");
-  }, [open]);
+    sessionRef.current += 1;
+    setView(initialView);
+    setPendingPath(null);
+    setErrorMessage(null);
+    if (!open) setArxivId("");
+    return () => { sessionRef.current += 1; };
+  }, [open, initialView]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the retry counter explicitly starts another request.
   useEffect(() => {
-    if (view !== "github") return;
+    if (!open || view !== "github") return;
     if (githubStatus === "unknown") {
       void refreshGithub();
       return;
@@ -160,54 +103,73 @@ export function ProjectImportDialog({
     return () => {
       cancelled = true;
     };
-  }, [view, githubStatus, refreshGithub, repositories.length]);
+  }, [open, view, githubStatus, refreshGithub, repositories.length, repositoryAttempt]);
 
-  const importFile = async (kind: ProjectImportFileKind) => {
-    const selection = await pickOpenPath(pickerOptions(kind));
-    if (typeof selection !== "string") return;
-    const fileKind = importFileKind(selection) ?? kind;
-    if (importTargetsForKind(fileKind).length > 1) {
-      setPendingPath(selection);
-      setView("target");
-      return;
-    }
-    await runImport(() => importSelectedFile(selection));
-  };
-
-  const importWithTarget = async (target: "latex" | "markdown" | "typst") => {
-    if (!pendingPath) return;
-    const path = pendingPath;
-    setPendingPath(null);
-    setView("sources");
-    await runImport(() => importSelectedFile(path, target));
+  const reportError = (error: unknown) => {
+    const detail = error instanceof Error ? error.message : typeof error === "string" ? error : "The import could not finish. Try again.";
+    setErrorMessage(detail);
+    void logError("project import", error);
   };
 
   const runImport = async (work: () => Promise<boolean>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
-    onImportStarted?.();
+    setErrorMessage(null);
     try {
-      await work();
+      const imported = await work();
+      if (imported === false) {
+        setErrorMessage("The document converter is unavailable. Check the download message, then try again.");
+      } else {
+        onImported?.();
+        onClose();
+      }
     } catch (error) {
-      notifyError("import", error);
+      reportError(error);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
+  };
+
+  const importFile = async (kind: ProjectImportFileKind) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setErrorMessage(null);
+    const session = sessionRef.current;
+    let selection: string | null = null;
+    try {
+      const picked = await pickOpenPath(importPickerOptions(kind));
+      if (session !== sessionRef.current || typeof picked !== "string") return;
+      selection = picked;
+      const fileKind = importFileKind(picked);
+      if (!fileKind) throw new Error("Choose one of the supported document types.");
+      if (importTargetsForKind(fileKind).length > 1) {
+        setPendingPath(picked);
+        setView("target");
+        selection = null;
+      }
+    } catch (error) {
+      reportError(error);
+      selection = null;
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+    if (selection) await runImport(() => importSelectedFile(selection));
+  };
+
+  const importWithTarget = async (target: "latex" | "markdown" | "typst") => {
+    if (pendingPath) await runImport(() => importSelectedFile(pendingPath, target));
   };
 
   const importFromArxiv = async () => {
-    await runImport(() => importArxivPaper(arxivId));
+    if (arxivId.trim()) await runImport(() => importArxivPaper(arxivId));
   };
 
   const importRepository = async (repository: GitHubRepo) => {
-    setBusy(true);
-    onImportStarted?.();
-    try {
-      await importGitHubRepository(repository);
-    } catch (error) {
-      notifyError("import GitHub repository", error);
-    } finally {
-      setBusy(false);
-    }
+    await runImport(async () => { await importGitHubRepository(repository); return true; });
   };
 
   const openGithubSettings = () => {
@@ -215,14 +177,14 @@ export function ProjectImportDialog({
     settings.setSettingsInitialSection("integrations");
     settings.setSettingsScrollTarget("github");
     settings.setSettingsOpen(true);
-    onImportStarted?.();
+    onClose();
   };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (!next && !busyRef.current) onClose();
       }}
     >
       <DialogContent data-testid="project-import-dialog" className="max-w-xl gap-4">
@@ -233,7 +195,8 @@ export function ProjectImportDialog({
                 type="button"
                 aria-label="Back to import sources"
                 data-testid="project-import-back"
-                onClick={() => setView("sources")}
+                disabled={busy}
+                onClick={() => { setView("sources"); setErrorMessage(null); setPendingPath(null); }}
                 className="rounded-md text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ChevronLeft aria-hidden="true" className="size-4" />
@@ -253,13 +216,16 @@ export function ProjectImportDialog({
               : view === "arxiv"
                 ? "Oleafly downloads the paper's LaTeX source and unpacks it as a project."
                 : view === "target"
-                  ? "The conversion route comes from the conversion registry."
+                  ? "Choose the format you want to edit. Images or included files stored beside the original may need to be added to the new project."
                   : "Oleafly copies what you choose into a new project. The original is left alone."}
           </DialogDescription>
         </DialogHeader>
 
+        {errorMessage && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
+        {busy && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />Importing your project…</p>}
         {view === "target" ? (
           <div className="grid gap-2">
+            <p className="break-all text-xs text-muted-foreground">{pendingPath?.split(/[/\\]/).pop()}</p>
             {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
               (target) => (
                 <button
@@ -292,9 +258,11 @@ export function ProjectImportDialog({
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Input
+                aria-label="arXiv id or paper link"
+                disabled={busy}
                 data-testid="project-import-arxiv-id"
                 value={arxivId}
-                placeholder="2301.01234 or math.GT/0309136"
+                placeholder="arXiv id or https://arxiv.org/abs/…"
                 onChange={(event) => setArxivId(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void importFromArxiv();
@@ -313,8 +281,7 @@ export function ProjectImportDialog({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Papers whose authors published a PDF only cannot be imported this
-              way; Oleafly says so instead of guessing.
+              Source files must be available on arXiv. For papers available only as a PDF, use the PDF import tool.
             </p>
           </div>
         ) : view === "sources" ? (
@@ -324,7 +291,9 @@ export function ProjectImportDialog({
                 On this computer
               </h3>
               <div className="grid gap-2">
-                {LOCAL_SOURCES.map((source) => (
+                {IMPORT_FILE_SOURCES.map((source) => {
+                  const Icon = SOURCE_ICONS[source.kind];
+                  return (
                   <button
                     key={source.kind}
                     type="button"
@@ -338,7 +307,7 @@ export function ProjectImportDialog({
                     )}
                   >
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <source.icon aria-hidden="true" className="size-4" />
+                      <Icon aria-hidden="true" className="size-4" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-foreground">
@@ -349,7 +318,7 @@ export function ProjectImportDialog({
                       </span>
                     </span>
                   </button>
-                ))}
+                ); })}
               </div>
             </section>
 
@@ -422,9 +391,10 @@ export function ProjectImportDialog({
                 Loading repositories…
               </p>
             ) : repositoryLoadFailed ? (
-              <p className="p-3 text-sm text-muted-foreground">
-                The repositories could not be loaded.
-              </p>
+              <div className="space-y-2 p-3">
+                <p role="alert" className="text-sm text-muted-foreground">The repositories could not be loaded.</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => setRepositoryAttempt((attempt) => attempt + 1)}>Try again</Button>
+              </div>
             ) : repositories.length === 0 ? (
               <p className="p-3 text-sm text-muted-foreground">No repositories found.</p>
             ) : (

@@ -86,7 +86,9 @@ const openHomePage = async (page: HomePage) => {
   const files = useFilesStore.getState();
   const home = useHomeViewStore.getState();
   home.closeTools();
-  if (!files.projectId) {
+  // Writing generators and symbols use the active document. They open over the existing
+  // workspace instead of closing it like the library-scoped tools do.
+  if (!files.projectId || page === "generators" || page === "symbols") {
     home.goTo(page);
     return;
   }

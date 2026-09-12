@@ -1,6 +1,6 @@
 # Conversion roadmap: what is deliberately not built yet
 
-The [conversion matrix](conversion-matrix.md) lists every route Oleafy ships
+The [conversion matrix](conversion-matrix.md) lists every route Oleafly ships
 today. This page is the other half of that contract: the conversions and
 tools we have chosen not to build yet, each with the internal gap id it is
 tracked under and the reason it waits. A deferred item here is a decision,
@@ -13,10 +13,15 @@ means a quarter or more.
 
 ## Import depth
 
+- **Local assets beside imported files (M).** Single-file Markdown, HTML,
+  and Typst conversion does not copy every sibling image or included file.
+  Add those files to the imported project and check their paths. A dependency
+  copier needs to limit total size, stay inside the chosen source folder,
+  and report missing files before it can run automatically.
+
 - **Scanned-PDF OCR (G2, M).** The PDF importer reports which pages have no
-  text layer and stops. Converting scans needs an OCR stage; tesseract.js as
-  the always-present fallback with an optional quality model is the planned
-  shape.
+  text layer and stops. An OCR stage needs an engine, a download plan, and
+  a way to review the recognized text.
 - **Local equation and handwriting recognition (G3, M).** Today a vision
   model transcribes one equation at the cursor. A local ONNX recognizer with
   detection for full photos and whiteboards is planned; until then this
@@ -26,15 +31,14 @@ means a quarter or more.
 
 ## Citation finishing
 
-- **CSL style picker (G4, S–M).** Bibliography styling comes from the LaTeX
-  class in use. Rendering the ten thousand CSL styles locally is solvable
-  in-core; not started.
+- **CSL style picker (G4, S–M).** Bibliography styles are configured
+  in the document source. A local CSL renderer and style picker have not been
+  implemented.
 - **Zotero live sync (G5, M).** The connector stores a key, and RDF exports
   import fine, but nothing calls the Zotero API yet.
 - **Word-import citation recovery (G8, M).** Importing a .docx flattens
   citations to plain text. Recovering them means parsing the reference list
-  and matching it against Crossref on the way in. Nobody ships this today;
-  it is a differentiator when built.
+  and matching it against Crossref on the way in. This needs confidence checks and a review step before recovered references are added.
 
 ## PDF pipeline quality
 
@@ -48,8 +52,7 @@ means a quarter or more.
 
 ## Assistant substrate
 
-- **Embedding retrieval (G20, M).** Project retrieval is lexical; no vector
-  index anywhere yet.
+- **Embedding retrieval (G20, M).** Project retrieval uses lexical search. Semantic retrieval needs an embedding model and an index.
 - **Generic web tools for the agent (G21, S).** The assistant reaches
   scholarly APIs and the user's browser, not the open web.
 - **Autonomous compile fixing (G22, M).** Diagnostics, one-click
@@ -63,11 +66,11 @@ means a quarter or more.
 - **Collaboration and comments (G27, L).** The standing roadmap item;
   checkpoints and Git cover history in the meantime.
 - **Typst parity beyond conversions (G28, M).** Typst now converts in and
-  out, but has no SyncTeX equivalent, no isolated compile, and no preflight
-  profile.
+  out. Source-to-preview navigation and a dedicated preflight profile remain
+  on the roadmap.
 - **Browser extension (G29, M).** Nothing shipped.
 - **Domain packs (G30–G38, S–M each).** Math, engineering, medical, and
-  biology tool packs; whitespace today.
+  biology tool packs have not been started.
 
 ## Editor niceties
 

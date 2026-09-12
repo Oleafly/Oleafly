@@ -2,7 +2,7 @@
 //! project. Most e-prints are a gzipped tar of the LaTeX source; some are a
 //! single gzipped file, and some papers ship no source at all (PDF only).
 
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
 
 const MAX_EPRINT_BYTES: u64 = 512 * 1024 * 1024; // 512 MB download cap
@@ -88,17 +88,44 @@ fn import_skip(rel: &str) -> bool {
 
 /// Extract a gzipped tar e-print into `dest`, enforcing the same import
 /// limits as ZIP imports. Returns the number of files written.
-fn extract_tar_gz(bytes: &[u8], dest: &Path) -> Result<usize, String> {
+#[derive(Debug)]
+enum TarExtractionError {
+    NotTar(String),
+    InvalidArchive(String),
+}
+
+impl TarExtractionError {
+    fn message(self) -> String {
+        match self {
+            Self::NotTar(message) | Self::InvalidArchive(message) => message,
+        }
+    }
+}
+
+fn extract_tar_gz_limited(
+    bytes: &[u8],
+    dest: &Path,
+    max_entries: usize,
+    max_total_bytes: u64,
+) -> Result<usize, TarExtractionError> {
     let gunzipped = flate2::read::GzDecoder::new(bytes);
     let mut archive = tar::Archive::new(gunzipped);
     archive.set_overwrite(false);
     let mut entries = 0usize;
+    let mut files = 0usize;
     let mut total = 0u64;
-    for entry in archive
-        .entries()
-        .map_err(|e| format!("the e-print is not a readable tar archive: {e}"))?
-    {
-        let mut entry = entry.map_err(|e| format!("the e-print archive is damaged: {e}"))?;
+    for entry in archive.entries().map_err(|e| {
+        TarExtractionError::NotTar(format!("the e-print is not a readable tar archive: {e}"))
+    })? {
+        entries += 1;
+        if entries > max_entries {
+            return Err(TarExtractionError::InvalidArchive(format!(
+                "the e-print has too many files (> {max_entries})"
+            )));
+        }
+        let mut entry = entry.map_err(|e| {
+            TarExtractionError::InvalidArchive(format!("the e-print archive is damaged: {e}"))
+        })?;
         let header = entry.header();
         let kind = header.entry_type();
         if !matches!(kind, tar::EntryType::Regular | tar::EntryType::Directory) {
@@ -120,34 +147,59 @@ fn extract_tar_gz(bytes: &[u8], dest: &Path) -> Result<usize, String> {
         if rel.is_empty() || import_skip(&rel) || rel.split('/').count() > 16 {
             continue;
         }
-        entries += 1;
-        if entries > MAX_EPRINT_ENTRIES {
-            return Err("the e-print has too many files (> 5000)".to_string());
-        }
         let out = dest.join(&rel);
         if kind == tar::EntryType::Directory {
-            std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
+            std::fs::create_dir_all(&out)
+                .map_err(|e| TarExtractionError::InvalidArchive(e.to_string()))?;
             continue;
         }
-        let size = header.size().map_err(|e| e.to_string())?;
+        files += 1;
+        let size = header
+            .size()
+            .map_err(|e| TarExtractionError::InvalidArchive(e.to_string()))?;
         total = total.saturating_add(size);
-        if total > MAX_EPRINT_TOTAL_BYTES {
-            return Err("the e-print unpacks to more than the 2 GB import limit".to_string());
+        if total > max_total_bytes {
+            return Err(TarExtractionError::InvalidArchive(format!(
+                "the e-print unpacks to more than the {} GB import limit",
+                max_total_bytes / (1024 * 1024 * 1024)
+            )));
         }
         if let Some(parent) = out.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| TarExtractionError::InvalidArchive(e.to_string()))?;
         }
-        let mut output = std::fs::File::create(&out).map_err(|e| e.to_string())?;
-        std::io::copy(&mut entry, &mut output).map_err(|e| e.to_string())?;
+        let mut output = std::fs::File::create(&out)
+            .map_err(|e| TarExtractionError::InvalidArchive(e.to_string()))?;
+        std::io::copy(&mut entry, &mut output)
+            .map_err(|e| TarExtractionError::InvalidArchive(e.to_string()))?;
     }
-    Ok(entries)
+    Ok(files)
 }
 
-fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), String> {
-    let file = std::fs::File::create(path).map_err(|e| e.to_string())?;
-    let mut writer = std::io::BufWriter::new(file);
-    std::io::Write::write_all(&mut writer, bytes).map_err(|e| e.to_string())?;
-    std::io::Write::flush(&mut writer).map_err(|e| e.to_string())
+fn extract_tar_gz(bytes: &[u8], dest: &Path) -> Result<usize, TarExtractionError> {
+    extract_tar_gz_limited(bytes, dest, MAX_EPRINT_ENTRIES, MAX_EPRINT_TOTAL_BYTES)
+}
+
+/// Write a source-only e-print without collecting its uncompressed contents
+/// in memory. arXiv sometimes stores a lone `.tex` file as gzip rather than a
+/// tarball, but it still has to obey the same unpacked size limit.
+fn write_gzipped_source_limited(bytes: &[u8], path: &Path, limit: u64) -> Result<(), String> {
+    let mut input = flate2::read::GzDecoder::new(bytes);
+    let file = std::fs::File::create(path).map_err(|error| error.to_string())?;
+    let mut output = std::io::BufWriter::new(file);
+    let copied = std::io::copy(&mut input.by_ref().take(limit), &mut output)
+        .map_err(|error| format!("the e-print source could not be unpacked: {error}"))?;
+    if copied == limit {
+        let mut extra = [0_u8; 1];
+        if input
+            .read(&mut extra)
+            .map_err(|error| format!("the e-print source could not be unpacked: {error}"))?
+            != 0
+        {
+            return Err("the e-print unpacks to more than the 2 GB import limit".to_string());
+        }
+    }
+    output.flush().map_err(|error| error.to_string())
 }
 
 /// Download an arXiv e-print and unpack it into a new project, inferring the
@@ -180,19 +232,18 @@ pub async fn import_arxiv_eprint(name: Option<String>, arxiv_id: String) -> Resu
         let result = (|| -> Result<usize, String> {
             match extract_tar_gz(&bytes, &staging) {
                 Ok(count) => Ok(count),
-                Err(tar_error) => {
-                    // Fall back to a single gzipped .tex before giving up.
-                    let mut probe = Vec::new();
-                    let decodable = flate2::read::GzDecoder::new(&bytes[..])
-                        .read_to_end(&mut probe)
-                        .is_ok();
-                    if decodable {
-                        atomic_write(&staging.join("main.tex"), &probe)?;
-                        Ok(1)
-                    } else {
-                        Err(tar_error)
-                    }
+                Err(TarExtractionError::NotTar(_)) => {
+                    // Fall back only when the decompressed stream is not a
+                    // tarball at all. A damaged tar must not be imported as
+                    // text after leaving a partially extracted tree behind.
+                    write_gzipped_source_limited(
+                        &bytes,
+                        &staging.join("main.tex"),
+                        MAX_EPRINT_TOTAL_BYTES,
+                    )?;
+                    Ok(1)
                 }
+                Err(error) => Err(error.message()),
             }
         })();
         if let Err(error) = result {
@@ -260,5 +311,40 @@ mod tests {
         assert!(dir.path().join("main.tex").is_file());
         assert!(!dir.path().join("__MACOSX").exists());
         assert!(!dir.path().join("../escape.tex").exists());
+    }
+
+    #[test]
+    fn tar_entry_limit_counts_skipped_entries_too() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut builder = tar::Builder::new(Vec::new());
+        for path in ["__MACOSX/junk", "main.tex"] {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(1);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder.append_data(&mut header, path, &b"x"[..]).unwrap();
+        }
+        let bytes = builder.into_inner().unwrap();
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        std::io::Write::write_all(&mut gz, &bytes).unwrap();
+        let tar_gz = gz.finish().unwrap();
+
+        assert!(matches!(
+            extract_tar_gz_limited(&tar_gz, dir.path(), 1, MAX_EPRINT_TOTAL_BYTES),
+            Err(TarExtractionError::InvalidArchive(_))
+        ));
+    }
+
+    #[test]
+    fn standalone_gzip_is_streamed_and_size_limited() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        std::io::Write::write_all(&mut gz, b"abcdef").unwrap();
+        let compressed = gz.finish().unwrap();
+        let output = dir.path().join("main.tex");
+
+        assert!(write_gzipped_source_limited(&compressed, &output, 5).is_err());
+        write_gzipped_source_limited(&compressed, &output, 6).unwrap();
+        assert_eq!(std::fs::read(&output).unwrap(), b"abcdef");
     }
 }

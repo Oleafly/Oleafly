@@ -315,6 +315,9 @@ export const writeProjectBytes = (
 export const writeBytesFile = (dest: string, dataBase64: string) =>
   invoke<void>("write_bytes_file", { dest, dataBase64 });
 
+export const exportProjectImage = (projectId: string, dest: string, dataBase64: string) =>
+  invoke<void>("export_project_image", { projectId, dest, dataBase64 });
+
 export const loadProjectChats = (projectId: string) =>
   invoke<string>("load_project_chats", { projectId });
 
@@ -774,10 +777,14 @@ export interface CleanLibraryOutcome {
   entriesAfter: number;
   actions: CleanAction[];
   applied: boolean;
+  previewToken: string;
+  changedFiles: string[];
+  backupPath?: string | null;
+  projectState?: ProjectStateChanged;
 }
 
-export const cleanBibtexLibrary = (projectId: string, bibPath: string, apply: boolean) =>
-  invoke<CleanLibraryOutcome>("clean_bibtex_library", { projectId, bibPath, apply });
+export const cleanBibtexLibrary = (projectId: string, bibPath: string, apply: boolean, previewToken?: string, expectedGeneration?: number) =>
+  invoke<CleanLibraryOutcome>("clean_bibtex_library", { projectId, bibPath, apply, previewToken, expectedGeneration });
 
 export interface StatsPValueResult {
   p: number;
@@ -815,6 +822,7 @@ export interface StatsConfidenceIntervalResult {
   criticalValue: number;
   criticalLabel: string;
   degreesOfFreedom?: number | null;
+  intervalMethod: string;
 }
 
 export const statsConfidenceInterval = (

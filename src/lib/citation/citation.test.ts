@@ -37,6 +37,15 @@ describe("detectInput", () => {
   it("does not read short numbers as PMIDs", () => {
     expect(detectInput("42")).toEqual({ kind: "title", value: "42" });
   });
+  it("accepts a historical PMID when explicitly identified", () => {
+    expect(detectInput("PMID: 42")).toEqual({ kind: "pmid", value: "42" });
+  });
+  it("accepts a PubMed paper URL", () => {
+    expect(detectInput("https://pubmed.ncbi.nlm.nih.gov/32172672/?source=share")).toEqual({ kind: "pmid", value: "32172672" });
+  });
+  it("accepts an ISBN-10 prefix and lowercase check digit", () => {
+    expect(detectInput("ISBN-10: 0-8044-2957-x")).toEqual({ kind: "isbn", value: "080442957X" });
+  });
 });
 
 describe("parseEntry", () => {

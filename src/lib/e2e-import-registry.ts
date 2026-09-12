@@ -14,6 +14,11 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/components/editor/SymbolPicker.tsx": () => import("@/components/editor/SymbolPicker"),
   "/src/components/editor/wysiwyg/controller.ts": () =>
     import("@/components/editor/wysiwyg/controller"),
+  "/src/features/project-import.ts": () => import("@/features/project-import"),
+  "/src/store/table-import.ts": () => import("@/store/table-import"),
+  "/src/store/home-view.ts": () => import("@/store/home-view"),
+  "/packages/pdf-to-latex/src/index.ts": () => import("@oleafly/pdf-to-latex"),
+  "/packages/pdf-to-latex/src/pdf-adapter.ts": () => import("../../packages/pdf-to-latex/src/pdf-adapter"),
   "/src/features/citation.ts": () => import("@/features/citation"),
   "/src/features/synctex.ts": () => import("@/features/synctex"),
   "/src/lib/ai-model-state.ts": () => import("@/lib/ai-model-state"),

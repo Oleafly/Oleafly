@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "../fixtures";
+import { scriptValue } from "../script-value";
 import {
   compileAndProbe,
   createBlankProject,
@@ -57,7 +58,7 @@ async function goHome(page: Page) {
 async function importFile(page: Page, path: string, target?: "latex" | "markdown" | "typst") {
   await page.evaluate(
     `import("/src/features/project-import.ts").then((m) =>
-      m.importSelectedFile(${JSON.stringify(path)}, ${JSON.stringify(target ?? null)}))`,
+      m.importSelectedFile(${scriptValue(path)}, ${scriptValue(target ?? null)}))`,
   );
   await waitLong(page, `!!document.querySelector('[data-tour="project-editor"] .cm-content')`, 60_000);
 }
@@ -75,7 +76,7 @@ async function exportThroughMenu(page: Page, label: string, destination: string)
   );
   await page.waitForFunction(
     `Array.from(document.querySelectorAll('[role="menuitem"]')).some(
-      item => item.textContent?.trim() === ${JSON.stringify(label)}
+      item => item.textContent?.trim() === ${scriptValue(label)}
     )`,
     10_000,
   );
@@ -90,7 +91,7 @@ async function exportThroughMenu(page: Page, label: string, destination: string)
 
 async function convertTable(page: Page, path: string, target: "latex" | "typst") {
   return page.evaluate<string>(
-    `window.__e2eConvertTableFile(${JSON.stringify(path)}, { header: true, target: ${JSON.stringify(target)} })`,
+    `window.__e2eConvertTableFile(${scriptValue(path)}, { header: true, target: ${scriptValue(target)} })`,
   );
 }
 
@@ -98,7 +99,7 @@ test.describe("LaTeX project exports (registry routes)", () => {
   test("imports the paper zip and compiles it", async ({ tauriPage }) => {
     test.setTimeout(300_000);
     await tauriPage.evaluate(
-      `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().importProject(${JSON.stringify(fixture("latex-paper.zip"))}))`,
+      `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().importProject(${scriptValue(fixture("latex-paper.zip"))}))`,
     );
     await waitLong(tauriPage, `!!document.querySelector('[data-tour="project-editor"] .cm-content')`, 60_000);
     const state = await projectState(tauriPage);
@@ -296,29 +297,52 @@ test.describe("equation export (G16)", () => {
 });
 
 test.describe("bibtex cleaner (G6)", () => {
-  test("dry run reports the plan and apply rewrites the library", async ({ tauriPage }) => {
+  test("preview preserves conflicting metadata and apply rewrites duplicate citations", async ({ tauriPage }) => {
     test.setTimeout(120_000);
     await createBlankProject(tauriPage, "cleaner-fixture");
     const dirty = readFileSync(fixture("dirty.bib"), "utf8");
-    await writeProjectText(tauriPage, "references.bib", dirty);
+    const firstEntry = dirty.match(/@article\{vaswani2023attention,[\s\S]*?\n\}/)?.[0];
+    if (!firstEntry) throw new Error("Cleaner fixture is missing its first entry");
+    const library = `${dirty}\n${firstEntry.replace("vaswani2023attention", "exactDuplicate")}\n`;
+    const citations = String.raw`\cite{vaswani2023attention,vaswani17,exactDuplicate}`;
+    await writeProjectText(tauriPage, "references.bib", library);
+    await writeProjectText(tauriPage, "citations.tex", citations);
 
-    const clean = (apply: boolean) =>
+    const clean = (apply: boolean, previewToken?: string) =>
       tauriPage.evaluate(
-        `import("/src/lib/tauri.ts").then((m) =>
-          import("/src/store/files.ts").then((f) =>
-            m.cleanBibtexLibrary(f.useFilesStore.getState().projectId, "references.bib", ${apply})))`,
+        `Promise.all([import("/src/lib/tauri.ts"), import("/src/store/files.ts")]).then(([m, f]) => {
+          const store = f.useFilesStore.getState();
+          if (!store.projectId) throw new Error("No active project");
+          if (!${apply}) return m.cleanBibtexLibrary(store.projectId, "references.bib", false);
+          return store.runExternalProjectMutation(store.projectId, async (generation) => {
+            const result = await m.cleanBibtexLibrary(store.projectId, "references.bib", true, ${scriptValue(previewToken ?? null)}, generation);
+            if (!result.projectState) throw new Error("Cleanup did not return project state");
+            return { ...result, projectState: result.projectState };
+          });
+        })`,
       );
     const outcome = await clean(false);
-    expect(outcome.entriesBefore).toBe(5);
-    expect(outcome.entriesAfter).toBe(3);
-    const kinds = outcome.actions.map((a: { kind: string }) => a.kind);
-    expect(kinds).toContain("removed-duplicate");
-    expect(kinds).toContain("renamed-key");
+    expect(outcome.entriesBefore).toBe(6);
+    expect(outcome.entriesAfter).toBe(5);
+    expect(outcome.previewToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(outcome.changedFiles).toContain("citations.tex");
+    expect(outcome.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "removed-duplicate", removed: "exactDuplicate" }),
+      expect.objectContaining({ kind: "advisory", key: "vaswani17" }),
+      expect.objectContaining({ kind: "renamed-key", old: "vaswani2023attention" }),
+    ]));
     expect(outcome.cleaned).toContain("Shazeer");
+    expect(outcome.cleaned).toContain("A Very Deep Study of Attention Mechanism}");
+    expect(outcome.cleaned).toContain("A Very Deep Study of Attention Mechanisms}");
+    expect(await readProjectText(tauriPage, "references.bib")).toBe(library);
+    expect(await readProjectText(tauriPage, "citations.tex")).toBe(citations);
 
-    const applied = await clean(true);
+    const applied = await clean(true, outcome.previewToken);
     expect(applied.applied).toBe(true);
-    expect(await readProjectText(tauriPage, "references.bib")).toContain("vaswani2017attention");
+    expect(await readProjectText(tauriPage, "references.bib")).toBe(outcome.cleaned);
+    expect(await readProjectText(tauriPage, "citations.tex")).not.toContain("exactDuplicate");
+    expect(await readProjectText(tauriPage, "citations.tex")).toContain("vaswani2017attention");
+    expect(await readProjectText(tauriPage, `${applied.backupPath}/references.bib`)).toBe(library);
   });
 });
 
@@ -347,7 +371,7 @@ test.describe("pdf fixtures", () => {
       tauriPage.evaluate(
         `import("/packages/pdf-to-latex/src/pdf-adapter.ts").then(async (adapter) => {
           const convert = await import("/packages/pdf-to-latex/src/index.ts");
-          const bytes = Uint8Array.from(atob(${JSON.stringify(
+          const bytes = Uint8Array.from(atob(${scriptValue(
             readFileSync(fixture(name)).toString("base64"),
           )}), (c) => c.charCodeAt(0));
           const { pages } = await adapter.extractPagesForConvert(bytes);

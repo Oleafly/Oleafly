@@ -57,11 +57,13 @@ export function ThemeMenu({
   side = "bottom",
   align = "end",
   triggerClassName,
+  contentClassName,
   testId = "theme-menu",
 }: Readonly<{
   side?: Side;
   align?: "start" | "center" | "end";
   triggerClassName?: string;
+  contentClassName?: string;
   testId?: string;
 }>) {
   const { preference, theme, setPreference } = useTheme();
@@ -96,7 +98,7 @@ export function ThemeMenu({
           </Button>
         </DropdownMenuTrigger>
       </Tooltip>
-      <DropdownMenuContent side={side} align={align} className="min-w-36">
+      <DropdownMenuContent side={side} align={align} className={cn("min-w-36", contentClassName)}>
         <DropdownMenuRadioGroup value={preference}>
           {THEME_PREFERENCES.map((value) => {
             const OptionIcon = THEME_ICONS[value];

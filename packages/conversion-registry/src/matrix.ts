@@ -143,7 +143,7 @@ export function generateMatrixMarkdown(): string {
   const header: string[] = [
     "# Conversion matrix",
     "",
-    "Every document conversion Oleafy ships or has deliberately deferred,",
+    "Every document conversion Oleafly ships or has deliberately deferred,",
     "generated from `packages/conversion-registry` by `pnpm gen:conversion-matrix`.",
     "Edit the registry, not this file. Deferred routes carry a gap id; the",
     "[conversion roadmap](conversion-roadmap.md) lists everything deliberately",

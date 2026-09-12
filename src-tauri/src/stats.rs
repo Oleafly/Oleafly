@@ -1,31 +1,53 @@
 //! Statistics calculators for the Tools panel: p-values, sample sizes, and
-//! confidence intervals. All distributions come from `statrs`; quantiles are
-//! solved by bisection on the CDF so the inverse functions need no extra
-//! trait plumbing and stay exactly testable against textbook values.
+//! confidence intervals. All distributions and their survival/inverse CDF
+//! functions come from `statrs`.
 
 use statrs::distribution::{ChiSquared, ContinuousCDF, Normal, StudentsT};
 
-/// Solve `cdf(x) = p` by bisection. The CDF is monotone, so ~100 halvings
-/// converge to double-precision resolution.
-fn quantile_by_bisection(cdf: impl Fn(f64) -> f64, p: f64, mut lo: f64, mut hi: f64) -> f64 {
-    for _ in 0..200 {
-        let mid = lo + (hi - lo) / 2.0;
-        if cdf(mid) < p {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
+fn normal_quantile(p: f64) -> Result<f64, String> {
+    if !p.is_finite() || !(0.0..1.0).contains(&p) {
+        return Err(
+            "the confidence level is too close to 0 or 100 percent to calculate a finite interval"
+                .into(),
+        );
     }
-    lo + (hi - lo) / 2.0
-}
-
-fn normal_quantile(p: f64) -> f64 {
-    quantile_by_bisection(|x| Normal::standard().cdf(x), p, -40.0, 40.0)
+    let quantile = Normal::standard().inverse_cdf(p);
+    if !quantile.is_finite() || quantile <= 0.0 {
+        return Err(
+            "the confidence level is too close to 0 or 100 percent to calculate a finite interval"
+                .into(),
+        );
+    }
+    Ok(quantile)
 }
 
 fn students_t_quantile(p: f64, df: f64) -> Result<f64, String> {
     let t = StudentsT::new(0.0, 1.0, df).map_err(|e| format!("invalid degrees of freedom: {e}"))?;
-    Ok(quantile_by_bisection(|x| t.cdf(x), p, -1e4, 1e4))
+    let quantile = t.inverse_cdf(p);
+    if !quantile.is_finite() || quantile <= 0.0 {
+        return Err(
+            "the confidence level is too close to 0 or 100 percent to calculate a finite interval"
+                .into(),
+        );
+    }
+    Ok(quantile)
+}
+
+fn two_sided_probability(confidence: f64) -> Result<f64, String> {
+    let probability = 0.5 + confidence / 200.0;
+    if !(0.5..1.0).contains(&probability) {
+        return Err(
+            "the confidence level is too close to 0 or 100 percent to calculate a finite interval"
+                .into(),
+        );
+    }
+    Ok(probability)
+}
+
+const MAX_EXACT_COUNT: f64 = 9_007_199_254_740_991.0;
+
+fn valid_count(value: f64, minimum: f64) -> bool {
+    value.is_finite() && value >= minimum && value <= MAX_EXACT_COUNT && value.fract() == 0.0
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -50,11 +72,11 @@ pub async fn stats_p_value(
     let df = df.unwrap_or(0.0);
     match test.as_str() {
         "z-two" => Ok(PValueResult {
-            p: 2.0 * (1.0 - Normal::standard().cdf(statistic.abs())),
+            p: 2.0 * Normal::standard().sf(statistic.abs()),
             label: "Two-tailed z-test".into(),
         }),
         "z-one" => Ok(PValueResult {
-            p: 1.0 - Normal::standard().cdf(statistic),
+            p: Normal::standard().sf(statistic),
             label: "One-tailed z-test (upper tail)".into(),
         }),
         "t-two" | "t-one" => {
@@ -65,11 +87,11 @@ pub async fn stats_p_value(
                 .map_err(|e| format!("invalid degrees of freedom: {e}"))?;
             if test == "t-two" {
                 Ok(PValueResult {
-                    p: 2.0 * (1.0 - t.cdf(statistic.abs())),
+                    p: 2.0 * t.sf(statistic.abs()),
                     label: format!("Two-tailed t-test ({df} df)"),
                 })
             } else {
-                let p = 1.0 - t.cdf(statistic);
+                let p = t.sf(statistic);
                 Ok(PValueResult {
                     p,
                     label: format!("One-tailed t-test, upper tail ({df} df)"),
@@ -86,7 +108,7 @@ pub async fn stats_p_value(
             let chi =
                 ChiSquared::new(df).map_err(|e| format!("invalid degrees of freedom: {e}"))?;
             Ok(PValueResult {
-                p: 1.0 - chi.cdf(statistic),
+                p: chi.sf(statistic),
                 label: format!("Chi-square, upper tail ({df} df)"),
             })
         }
@@ -113,25 +135,36 @@ pub async fn stats_sample_size(
     confidence: f64,
     population: Option<f64>,
 ) -> Result<SampleSizeResult, String> {
-    if !(0.0..=100.0).contains(&proportion) || proportion <= 0.0 || proportion >= 100.0 {
+    if !proportion.is_finite()
+        || !(0.0..=100.0).contains(&proportion)
+        || proportion <= 0.0
+        || proportion >= 100.0
+    {
         return Err("the expected proportion must be between 0 and 100 percent".into());
     }
-    if margin_error <= 0.0 || margin_error >= 100.0 {
+    if !margin_error.is_finite() || margin_error <= 0.0 || margin_error >= 100.0 {
         return Err("the margin of error must be between 0 and 100 percent".into());
     }
-    if confidence <= 0.0 || confidence >= 100.0 {
+    if !confidence.is_finite() || confidence <= 0.0 || confidence >= 100.0 {
         return Err("the confidence level must be between 0 and 100 percent".into());
     }
     if let Some(n) = population {
-        if !n.is_finite() || n < 1.0 {
-            return Err("the population size must be at least 1".into());
+        if !valid_count(n, 1.0) {
+            return Err(
+                "the population size must be a whole number between 1 and 9 quadrillion".into(),
+            );
         }
     }
     let p = proportion / 100.0;
     let e = margin_error / 100.0;
-    let z = normal_quantile(1.0 - (1.0 - confidence / 100.0) / 2.0);
+    let z = normal_quantile(two_sided_probability(confidence)?)?;
     let n0 = z * z * p * (1.0 - p) / (e * e);
-    let finite = population.map(|n| (n0 / (1.0 + (n0 - 1.0) / n)).ceil() as u64);
+    if !n0.is_finite() || n0 <= 0.0 || n0 > MAX_EXACT_COUNT {
+        return Err(
+            "these inputs require a sample size outside the supported numeric range".into(),
+        );
+    }
+    let finite = population.map(|n| (n * n0 / ((n - 1.0) + n0)).ceil().min(n) as u64);
     Ok(SampleSizeResult {
         z,
         infinite_population: n0.ceil() as u64,
@@ -150,11 +183,13 @@ pub struct ConfidenceIntervalResult {
     pub critical_value: f64,
     pub critical_label: String,
     pub degrees_of_freedom: Option<f64>,
+    pub interval_method: String,
 }
 
 /// Confidence interval for a mean (`mode = "mean"`: mean, sd, n) or a
 /// proportion (`mode = "proportion"`: successes out of n). `confidence` is a
-/// percent. Mean intervals use the t distribution; proportions use Wald.
+/// percent. Mean intervals use the t distribution; proportions use the Wilson
+/// score interval.
 #[tauri::command]
 pub async fn stats_confidence_interval(
     mode: String,
@@ -164,11 +199,11 @@ pub async fn stats_confidence_interval(
     n: Option<f64>,
     successes: Option<f64>,
 ) -> Result<ConfidenceIntervalResult, String> {
-    if confidence <= 0.0 || confidence >= 100.0 {
+    if !confidence.is_finite() || confidence <= 0.0 || confidence >= 100.0 {
         return Err("the confidence level must be between 0 and 100 percent".into());
     }
     let n = n.unwrap_or(0.0);
-    let alpha = 1.0 - confidence / 100.0;
+    let probability = two_sided_probability(confidence)?;
     match mode.as_str() {
         "mean" => {
             let mean = mean
@@ -184,48 +219,86 @@ pub async fn stats_confidence_interval(
             if sd < 0.0 {
                 return Err("the standard deviation cannot be negative".into());
             }
-            if n <= 1.0 || !n.is_finite() {
-                return Err("the sample size must be greater than 1".into());
+            if !valid_count(n, 2.0) {
+                return Err(
+                    "the sample size must be a whole number between 2 and 9 quadrillion".into(),
+                );
             }
             let df = n - 1.0;
-            let t = students_t_quantile(1.0 - alpha / 2.0, df)?;
+            let t = students_t_quantile(probability, df)?;
             let se = sd / n.sqrt();
             let moe = t * se;
+            if !se.is_finite() || !moe.is_finite() {
+                return Err("these inputs overflow the confidence interval calculation".into());
+            }
+            let lower = mean - moe;
+            let upper = mean + moe;
+            if !lower.is_finite() || !upper.is_finite() {
+                return Err("these inputs overflow the confidence interval calculation".into());
+            }
             Ok(ConfidenceIntervalResult {
                 point_estimate: mean,
-                lower: mean - moe,
-                upper: mean + moe,
+                lower,
+                upper,
                 standard_error: se,
                 margin_of_error: moe,
                 critical_value: t,
                 critical_label: "t".into(),
                 degrees_of_freedom: Some(df),
+                interval_method: "t interval for a mean".into(),
             })
         }
         "proportion" => {
             let successes = successes.ok_or_else(|| "enter the number of successes".to_string())?;
-            if !(successes.is_finite()) || successes < 0.0 {
-                return Err("the number of successes must be zero or more".into());
+            if !valid_count(successes, 0.0) {
+                return Err(
+                    "the number of successes must be a whole number between 0 and 9 quadrillion"
+                        .into(),
+                );
             }
-            if n <= 0.0 || !n.is_finite() {
-                return Err("the sample size must be greater than 0".into());
+            if !valid_count(n, 1.0) {
+                return Err(
+                    "the sample size must be a whole number between 1 and 9 quadrillion".into(),
+                );
             }
             if successes > n {
                 return Err("the number of successes cannot exceed the sample size".into());
             }
             let p_hat = successes / n;
-            let z = normal_quantile(1.0 - alpha / 2.0);
+            let z = normal_quantile(probability)?;
+            // Wilson's score interval remains informative for zero/all
+            // successes, unlike the Wald interval whose width collapses.
+            let z_squared = z * z;
+            let denominator = 1.0 + z_squared / n;
+            let center = (p_hat + z_squared / (2.0 * n)) / denominator;
+            let moe =
+                z / denominator * (p_hat * (1.0 - p_hat) / n + z_squared / (4.0 * n * n)).sqrt();
             let se = (p_hat * (1.0 - p_hat) / n).sqrt();
-            let moe = z * se;
+            if !denominator.is_finite()
+                || !center.is_finite()
+                || !moe.is_finite()
+                || !se.is_finite()
+            {
+                return Err("these inputs overflow the confidence interval calculation".into());
+            }
             Ok(ConfidenceIntervalResult {
                 point_estimate: p_hat,
-                lower: (p_hat - moe).max(0.0),
-                upper: (p_hat + moe).min(1.0),
+                lower: if successes == 0.0 {
+                    0.0
+                } else {
+                    (center - moe).max(0.0)
+                },
+                upper: if successes == n {
+                    1.0
+                } else {
+                    (center + moe).min(1.0)
+                },
                 standard_error: se,
                 margin_of_error: moe,
                 critical_value: z,
                 critical_label: "z".into(),
                 degrees_of_freedom: None,
+                interval_method: "Wilson score interval for a proportion".into(),
             })
         }
         _ => Err("unknown mode. Choose mean or proportion.".into()),
@@ -236,15 +309,23 @@ pub async fn stats_confidence_interval(
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn a_population_of_one_stays_one_at_low_confidence() {
+        let result = stats_sample_size(50.0, 99.0, 0.000_001, Some(1.0))
+            .await
+            .unwrap();
+        assert_eq!(result.infinite_population, 1);
+        assert_eq!(result.finite_population, Some(1));
+    }
+
     fn close(a: f64, b: f64, tol: f64) -> bool {
         (a - b).abs() <= tol
     }
 
     #[test]
     fn normal_quantile_matches_tables() {
-        assert!(close(normal_quantile(0.975), 1.959964, 1e-4));
-        assert!(close(normal_quantile(0.95), 1.644854, 1e-4));
-        assert!(close(normal_quantile(0.5), 0.0, 1e-9));
+        assert!(close(normal_quantile(0.975).unwrap(), 1.959964, 1e-4));
+        assert!(close(normal_quantile(0.95).unwrap(), 1.644854, 1e-4));
     }
 
     #[test]
@@ -264,6 +345,7 @@ mod tests {
             2.131847,
             1e-4
         ));
+        assert!(students_t_quantile(0.999_999_999_999, 1.0).unwrap() > 10_000.0);
     }
 
     #[tokio::test]
@@ -276,6 +358,8 @@ mod tests {
         // Two-tailed z with z=1.96.
         let r = stats_p_value("z-two".into(), 1.96, None).await.unwrap();
         assert!(close(r.p, 0.049996, 1e-4), "p = {}", r.p);
+        let r = stats_p_value("z-two".into(), 10.0, None).await.unwrap();
+        assert!(r.p > 0.0 && r.p < 2e-22, "p = {}", r.p);
         // Chi-square upper tail, chi2=11.07, df=5 -> p ~= 0.05.
         let r = stats_p_value("chi".into(), 11.0705, Some(5.0))
             .await
@@ -302,6 +386,69 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn rejects_non_finite_sample_size_inputs() {
+        assert!(stats_sample_size(f64::NAN, 5.0, 95.0, None).await.is_err());
+        assert!(stats_sample_size(50.0, f64::INFINITY, 95.0, None)
+            .await
+            .is_err());
+        assert!(stats_confidence_interval(
+            "mean".into(),
+            f64::NAN,
+            Some(1.0),
+            Some(1.0),
+            Some(2.0),
+            None
+        )
+        .await
+        .is_err());
+        assert!(stats_confidence_interval(
+            "proportion".into(),
+            95.0,
+            None,
+            None,
+            Some(10.5),
+            Some(2.0)
+        )
+        .await
+        .is_err());
+        assert!(stats_confidence_interval(
+            "proportion".into(),
+            95.0,
+            None,
+            None,
+            Some(10.0),
+            Some(2.5)
+        )
+        .await
+        .is_err());
+        // A finite percentage can still round to an unusable inverse-CDF
+        // probability at either endpoint.
+        assert!(stats_sample_size(50.0, 5.0, 99.999_999_999_999_99, None)
+            .await
+            .is_err());
+        assert!(stats_confidence_interval(
+            "mean".into(),
+            f64::MIN_POSITIVE,
+            Some(1.0),
+            Some(1.0),
+            Some(2.0),
+            None,
+        )
+        .await
+        .is_err());
+        assert!(stats_confidence_interval(
+            "mean".into(),
+            95.0,
+            Some(f64::MAX),
+            Some(1.0e307),
+            Some(100.0),
+            None,
+        )
+        .await
+        .is_err());
+    }
+
+    #[tokio::test]
     async fn confidence_intervals_match_reference_formula() {
         // Mean 100, sd 15, n 9, 95%: t(8) = 2.306004, moe = 11.53.
         let r = stats_confidence_interval(
@@ -321,7 +468,7 @@ mod tests {
             r.margin_of_error
         );
         assert!(close(r.lower, 88.470, 1e-3));
-        // Proportion 81/263, 95%: p̂ = 0.30798, Wald moe = 0.05568.
+        // Proportion 81/263, 95% Wilson score interval.
         let r = stats_confidence_interval(
             "proportion".into(),
             95.0,
@@ -333,11 +480,30 @@ mod tests {
         .await
         .unwrap();
         assert!(close(r.point_estimate, 0.307985, 1e-5));
-        assert!(
-            close(r.margin_of_error, 0.055795, 1e-5),
-            "moe = {}",
-            r.margin_of_error
-        );
-        assert!(r.lower >= 0.0 && r.upper <= 1.0);
+        assert!(r.lower < r.point_estimate && r.point_estimate < r.upper);
+        assert_eq!(r.interval_method, "Wilson score interval for a proportion");
+        assert!(close(
+            r.standard_error,
+            (r.point_estimate * (1.0 - r.point_estimate) / 263.0).sqrt(),
+            1e-12,
+        ));
+        let zero =
+            stats_confidence_interval("proportion".into(), 95.0, None, None, Some(10.0), Some(0.0))
+                .await
+                .unwrap();
+        assert!(close(zero.upper, 0.2775, 1e-4), "upper = {}", zero.upper);
+        assert_eq!(zero.lower, 0.0);
+        let all = stats_confidence_interval(
+            "proportion".into(),
+            95.0,
+            None,
+            None,
+            Some(10.0),
+            Some(10.0),
+        )
+        .await
+        .unwrap();
+        assert_eq!(all.upper, 1.0);
+        assert!(close(all.lower, 1.0 - zero.upper, 1e-12));
     }
 }

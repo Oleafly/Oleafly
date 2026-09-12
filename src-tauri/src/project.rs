@@ -2432,27 +2432,54 @@ pub async fn read_file_base64(project_id: String, path: String) -> Result<String
     .map_err(|e| e.to_string())?
 }
 
-/// Read a user-picked spreadsheet (CSV/TSV/XLSX) as base64 so the webview
-/// can parse it with SheetJS. The path always comes from our own file dialog,
-/// like `import_document`; size-capped to keep accidental picks harmless.
+/// Read a user-picked spreadsheet (CSV/TSV/XLS/XLSX) as base64 so the webview
+/// can parse it with SheetJS. The UI obtains the path from a file dialog; the
+/// backend still accepts only the table formats it knows how to parse and
+/// reads through an open file handle with a hard cap.
 #[tauri::command]
 pub async fn read_picked_file_base64(path: String) -> Result<String, String> {
-    const MAX_PICKED_BYTES: u64 = 16 * 1024 * 1024;
+    const MAX_PICKED_BYTES: usize = 16 * 1024 * 1024;
     let read_path = PathBuf::from(&path);
-    if !read_path.is_file() {
-        return Err(format!("file not found: {path}"));
+    let extension = read_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+    if !is_table_import_extension(extension.as_deref()) {
+        return Err("Choose a CSV, TSV, XLS, or XLSX spreadsheet.".into());
     }
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         use base64::{engine::general_purpose::STANDARD, Engine};
-        let metadata = std::fs::metadata(&read_path).map_err(|e| e.to_string())?;
-        if metadata.len() > MAX_PICKED_BYTES {
-            return Err("that file is larger than the 16 MB table-import limit".into());
-        }
-        let bytes = std::fs::read(&read_path).map_err(|e| format!("failed to read {path}: {e}"))?;
+        let bytes = read_picked_file_bytes(&read_path, MAX_PICKED_BYTES)
+            .map_err(|error| format!("failed to read {path}: {error}"))?;
         Ok(STANDARD.encode(&bytes))
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+fn is_table_import_extension(extension: Option<&str>) -> bool {
+    matches!(extension, Some("csv" | "tsv" | "xls" | "xlsx"))
+}
+
+fn read_picked_file_bytes(path: &Path, max_bytes: usize) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+
+    let file = std::fs::File::open(path).map_err(|error| error.to_string())?;
+    if !file
+        .metadata()
+        .map_err(|error| error.to_string())?
+        .is_file()
+    {
+        return Err("the selected path is not a file".into());
+    }
+    let mut bytes = Vec::with_capacity(max_bytes.min(64 * 1024));
+    file.take(max_bytes.saturating_add(1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if bytes.len() > max_bytes {
+        return Err("the file is larger than the 16 MB table-import limit".into());
+    }
+    Ok(bytes)
 }
 
 /// Append a line to the global app log at `~/.oleafly/app.log` (append-only,
@@ -4310,6 +4337,8 @@ pub async fn export_pdf(
 
 fn stage_exported_pdf(project_id: &str, dest: &str) -> Result<(), String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let root = paths::project_dir(project_id)?;
+    require_export_destination_outside_project(&root, dest)?;
     let transaction = AtomicFile::for_export(dest)?;
     let meta = read_meta(project_id)?;
     let pdf = crate::document_engine::compiled_pdf_path(project_id, &meta.engine, &meta.main_doc)?;
@@ -4460,7 +4489,8 @@ pub async fn export_document(
     }
     let writer = validate_conversion_export(&meta, &format, &dest)?;
     let root = paths::project_dir(&project_id)?;
-    resolve(&project_id, &main_doc)?;
+    resolve_export_main_document(&project_id, &main_doc)?;
+    require_export_destination_outside_project(&root, &dest)?;
     let found = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
         .map_err(|e| e.to_string())?;
@@ -4530,6 +4560,36 @@ pub async fn export_document(
         }
         write_meta(&project_id, &meta)
     });
+    Ok(())
+}
+
+fn export_would_write_inside_project(project_root: &Path, destination: &str) -> bool {
+    let Ok(project_root) = project_root.canonicalize() else {
+        return false;
+    };
+    let destination = Path::new(destination);
+    let canonical_destination = destination.canonicalize().ok().or_else(|| {
+        destination.parent().and_then(|parent| {
+            parent
+                .canonicalize()
+                .ok()
+                .and_then(|parent| destination.file_name().map(|name| parent.join(name)))
+        })
+    });
+    canonical_destination.is_some_and(|destination| destination.starts_with(&project_root))
+}
+
+fn resolve_export_main_document(project_id: &str, main_doc: &str) -> Result<PathBuf, String> {
+    resolve(project_id, main_doc)
+}
+
+pub(crate) fn require_export_destination_outside_project(
+    project_root: &Path,
+    destination: &str,
+) -> Result<(), String> {
+    if export_would_write_inside_project(project_root, destination) {
+        return Err("Choose an export destination outside this project.".into());
+    }
     Ok(())
 }
 
@@ -5433,8 +5493,9 @@ pub(crate) async fn search_project_bounded(
 pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let transaction = AtomicFile::for_export(&dest)?;
         let root = paths::project_dir(&project_id)?;
+        require_export_destination_outside_project(&root, &dest)?;
+        let transaction = AtomicFile::for_export(&dest)?;
         let file = std::fs::File::create(transaction.staging_path()).map_err(|e| e.to_string())?;
         let mut writer = zip::ZipWriter::new(file);
         let opts = zip::write::SimpleFileOptions::default()
@@ -5870,11 +5931,12 @@ mod tests {
         copy_path_in_project, create_diagram_project, create_image_project_in,
         create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
         create_project_transaction, create_typst_project_in, download_project_zip,
-        duplicate_project, engine_for_main_document, extract_pandoc, flatten_single_root_folder,
-        get_or_create_scratch_project_blocking, import_paths_transactional,
-        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
-        import_skip, infer_main_document, normalize_loaded_tex_flavor, normalize_relative,
-        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
+        duplicate_project, engine_for_main_document, export_would_write_inside_project,
+        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project_blocking,
+        import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
+        import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
+        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
         rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
         tex_root_magic_target, try_reserve_project_directory, validate_conversion_export,
         validate_tex_flavor, write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope,
@@ -5891,6 +5953,24 @@ mod tests {
             .tempdir()
             .unwrap()
             .keep()
+    }
+
+    #[test]
+    fn picked_table_reads_allow_only_supported_extensions_and_stay_bounded() {
+        assert!(is_table_import_extension(Some("csv")));
+        assert!(is_table_import_extension(Some("tsv")));
+        assert!(is_table_import_extension(Some("xls")));
+        assert!(is_table_import_extension(Some("xlsx")));
+        assert!(!is_table_import_extension(Some("ods")));
+        assert!(!is_table_import_extension(None));
+
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("table.csv");
+        std::fs::write(&path, b"a,b,c").unwrap();
+        assert_eq!(read_picked_file_bytes(&path, 5).unwrap(), b"a,b,c");
+        assert!(read_picked_file_bytes(&path, 4)
+            .unwrap_err()
+            .contains("table-import limit"));
     }
 
     #[test]
@@ -7221,6 +7301,31 @@ mod tests {
         std::fs::remove_dir_all(data).unwrap();
     }
 
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn zip_export_rejects_a_project_owned_destination_before_staging() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("zip-export-destination");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "zip-export";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        let destination = project.join("main.tex");
+        std::fs::write(&destination, "source").unwrap();
+
+        let error = download_project_zip(
+            project_id.into(),
+            destination.to_string_lossy().into_owned(),
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error, "Choose an export destination outside this project.");
+        assert_eq!(std::fs::read_to_string(&destination).unwrap(), "source");
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
     #[test]
     fn create_file_command_round_trips_conflict_and_keep_both() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -8154,6 +8259,76 @@ mod tests {
             validate_conversion_export(&markdown, "txt", "/tmp/out.txt").unwrap(),
             "plain"
         );
+    }
+
+    #[test]
+    fn export_rejects_destinations_inside_the_project() {
+        let directory = tempfile::tempdir().unwrap();
+        let project = directory.path().join("project");
+        std::fs::create_dir(&project).unwrap();
+        let main = project.join("main.tex");
+        let existing = project.join("references.bib");
+        let new = project.join("exports").join("paper.docx");
+        let outside = directory.path().join("paper.docx");
+        std::fs::write(&main, "source").unwrap();
+        std::fs::write(&existing, "references").unwrap();
+        std::fs::create_dir(project.join("exports")).unwrap();
+
+        assert!(export_would_write_inside_project(
+            &project,
+            &main.to_string_lossy()
+        ));
+        assert!(export_would_write_inside_project(
+            &project,
+            &existing.to_string_lossy()
+        ));
+        assert!(export_would_write_inside_project(
+            &project,
+            &new.to_string_lossy()
+        ));
+        assert!(!export_would_write_inside_project(
+            &project,
+            &outside.to_string_lossy()
+        ));
+    }
+
+    #[test]
+    fn export_main_document_cannot_escape_its_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("export-main-document");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "export-main-document";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        let outside = data.join("projects").join("outside.tex");
+        std::fs::write(&outside, "outside source").unwrap();
+        std::fs::write(project.join("main.tex"), "project source").unwrap();
+
+        assert!(super::resolve_export_main_document(project_id, "../outside.tex").is_err());
+        assert!(super::resolve_export_main_document(project_id, "main.tex").is_ok());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn pdf_export_rejects_a_project_owned_destination_before_staging() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("pdf-export-destination");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "pdf-export";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        let destination = project.join("main.tex");
+        std::fs::write(&destination, "source").unwrap();
+
+        let error =
+            super::stage_exported_pdf(project_id, &destination.to_string_lossy()).unwrap_err();
+        assert_eq!(error, "Choose an export destination outside this project.");
+        assert_eq!(std::fs::read_to_string(&destination).unwrap(), "source");
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]

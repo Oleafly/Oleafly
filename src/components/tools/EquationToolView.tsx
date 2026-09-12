@@ -50,7 +50,7 @@ export function EquationToolView() {
     a.href = url;
     a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   // True vector export: MathJax renders the equation to an SVG document with
@@ -86,7 +86,7 @@ export function EquationToolView() {
     }
   };
 
-  const copyMathML = () => {
+  const copyMathML = async () => {
     try {
       const markup = katex.renderToString(input, {
         displayMode: display,
@@ -95,17 +95,30 @@ export function EquationToolView() {
       });
       const math = new DOMParser().parseFromString(markup, "text/html").querySelector("math");
       if (!math) throw new Error("No MathML in output");
-      void navigator.clipboard.writeText(math.outerHTML);
+      await navigator.clipboard.writeText(math.outerHTML);
       toast.success("Copied MathML (pastes into Word)");
-    } catch {
-      toast.error("Couldn't convert this snippet to MathML");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't copy MathML from this snippet");
     }
   };
 
-  const copyHtml = () => {
+  const copyHtml = async () => {
     if (!rendered.html) return;
-    void navigator.clipboard.writeText(rendered.html);
-    toast.success("Copied KaTeX HTML (needs the KaTeX stylesheet)");
+    try {
+      await navigator.clipboard.writeText(rendered.html);
+      toast.success("Copied KaTeX HTML (needs the KaTeX stylesheet)");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't copy the KaTeX HTML");
+    }
+  };
+
+  const copyLatex = async () => {
+    try {
+      await navigator.clipboard.writeText(wrapped);
+      toast.success("Copied LaTeX source");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't copy LaTeX source");
+    }
   };
 
   return (
@@ -149,10 +162,7 @@ export function EquationToolView() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            void navigator.clipboard.writeText(wrapped);
-            toast.success("Copied LaTeX source");
-          }}
+          onClick={() => void copyLatex()}
         >
           <Copy className="size-4" /> Copy LaTeX
         </Button>
@@ -174,10 +184,10 @@ export function EquationToolView() {
             <PopoverItem onClick={exportSvg}>
               <FileCode2 className="size-4" /> Download SVG
             </PopoverItem>
-            <PopoverItem onClick={copyMathML}>
+            <PopoverItem onClick={() => void copyMathML()}>
               <Braces className="size-4" /> Copy MathML for Word
             </PopoverItem>
-            <PopoverItem onClick={copyHtml}>
+            <PopoverItem onClick={() => void copyHtml()}>
               <Copy className="size-4" /> Copy KaTeX HTML
             </PopoverItem>
           </Popover>

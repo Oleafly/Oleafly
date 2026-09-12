@@ -137,7 +137,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     id: "stats",
     name: "Statistics Calculators",
     description:
-      "p-values, sample sizes with the finite-population correction, and t or Wald confidence intervals.",
+      "p-values, sample sizes with the finite-population correction, and t or Wilson score confidence intervals.",
     icon: Calculator,
     tags: ["p-value", "Sample size", "Confidence interval", "Local"],
     category: "Statistics",

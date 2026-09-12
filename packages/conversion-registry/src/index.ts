@@ -638,14 +638,14 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "bibtex-clean",
     label: "Cleaned library",
-    blurb: "Normalize keys, drop DOI and fuzzy-title duplicates, and report missing fields with a dry-run diff.",
+    blurb: "Preview citation-key changes, remove DOI duplicates when every field is preserved, and flag similar titles for review. Applying checks the saved preview and backs up changed files.",
     source: "bibtex",
     target: "bibtex",
     direction: "tool",
     engine: "internal",
     status: "available",
     gapId: "G6",
-    surface: "References panel, BibTeX tool",
+    surface: "References panel",
   },
 ];
 

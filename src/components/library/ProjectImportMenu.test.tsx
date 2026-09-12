@@ -11,7 +11,8 @@ vi.mock("@/lib/github", () => ({
   githubListRepos: vi.fn(async () => []),
 }));
 
-vi.mock("@/features/project-import", () => ({
+vi.mock("@/features/project-import", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/features/project-import")>(),
   importGitHubRepository: vi.fn(),
   importSelectedFile: vi.fn(),
   importTargetsForKind: vi.fn((kind: string) => {

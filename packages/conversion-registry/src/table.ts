@@ -56,15 +56,33 @@ function splitRecord(line: string, delimiter: string): string[] {
   return cells;
 }
 
+function detectDelimiter(text: string): string {
+  let quoted = false;
+  let tabs = 0;
+  for (let index = 0; index < text.length; index++) {
+    const character = text[index];
+    if (character === '"') {
+      if (quoted && text[index + 1] === '"') {
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+    if (!quoted && character === "\n") break;
+    if (!quoted && character === "\t") tabs += 1;
+  }
+  return tabs > 0 ? "\t" : ",";
+}
+
 /**
  * Parse CSV or TSV text into rows of cells. Embedded newlines inside quoted
  * CSV cells are supported by stitching physical lines while quotes stay
- * open. Delimiter: tab when the first line contains one, else comma.
+ * open. The delimiter is chosen from unquoted cells in the first record.
  */
 export function parseDelimited(text: string): string[][] {
   const normalized = text.replace(/\r\n?/g, "\n");
-  const firstLine = normalized.slice(0, normalized.indexOf("\n") === -1 ? undefined : normalized.indexOf("\n"));
-  const delimiter = firstLine.includes("\t") ? "\t" : ",";
+  const delimiter = detectDelimiter(normalized);
   const physical = normalized.split("\n");
 
   // Stitch quoted cells that span physical lines: track whether quotes are
@@ -112,7 +130,68 @@ function padRows(rows: string[][]): { rows: string[][]; width: number } {
   };
 }
 
-const NUMBER = /^-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:[.,]\d+)?%?$/;
+/**
+ * Whether a cell is a plain decimal number, with optional grouping commas,
+ * decimal point, sign, and percent suffix. This deliberately uses a bounded
+ * character scan instead of a nested regular expression: tables are imported
+ * from untrusted files and this runs once for every populated cell.
+ */
+function isNumericCell(value: string): boolean {
+  let text = value;
+  if (text.endsWith("%")) text = text.slice(0, -1);
+  if (!text) return false;
+  if (text[0] === "-" || text[0] === "+") text = text.slice(1);
+  if (!text) return false;
+
+  let decimal = false;
+  let comma = false;
+  let digitsInGroup = 0;
+  let firstGroup = true;
+  for (const character of text) {
+    if (character >= "0" && character <= "9") {
+      digitsInGroup += 1;
+      continue;
+    }
+    if (character === ".") {
+      if (decimal || digitsInGroup === 0 || (comma && digitsInGroup !== 3)) return false;
+      decimal = true;
+      comma = false;
+      digitsInGroup = 0;
+      continue;
+    }
+    if (character === ",") {
+      if (decimal || digitsInGroup === 0 || (!firstGroup && digitsInGroup !== 3)) return false;
+      comma = true;
+      firstGroup = false;
+      digitsInGroup = 0;
+      continue;
+    }
+    return false;
+  }
+  return digitsInGroup > 0 && (!comma || digitsInGroup === 3);
+}
+
+function explicitAlignment(value: string | undefined, width: number): string | null {
+  if (!value || value === "auto") return null;
+  const alignment = value.trim().toLowerCase();
+  if (!alignment || ![...alignment].every((letter) => letter === "l" || letter === "c" || letter === "r")) {
+    return null;
+  }
+  return alignment.padEnd(width, "l").slice(0, width);
+}
+
+export function isValidLatexLabel(value: string): boolean {
+  if (!value) return false;
+  for (const character of value) {
+    const isLower = character >= "a" && character <= "z";
+    const isUpper = character >= "A" && character <= "Z";
+    const isDigit = character >= "0" && character <= "9";
+    if (!isLower && !isUpper && !isDigit && character !== ":" && character !== "-" && character !== "_" && character !== ".") {
+      return false;
+    }
+  }
+  return true;
+}
 
 /** Infer one alignment letter per column: r for numeric, l otherwise. */
 export function inferAlignment(rows: string[][], hasHeader: boolean): string {
@@ -121,7 +200,7 @@ export function inferAlignment(rows: string[][], hasHeader: boolean): string {
   let alignment = "";
   for (let column = 0; column < width; column++) {
     const values = body.map((row) => row[column]).filter((value) => value !== "");
-    const numeric = values.length > 0 && values.every((value) => NUMBER.test(value));
+    const numeric = values.length > 0 && values.every(isNumericCell);
     alignment += numeric ? "r" : "l";
   }
   return alignment || "l".repeat(width || 1);
@@ -129,7 +208,8 @@ export function inferAlignment(rows: string[][], hasHeader: boolean): string {
 
 function flattenCell(value: string): string {
   // A cell cannot contain a row break; join wrapped lines with a space.
-  return value.replace(/\s*\n\s*/g, " ");
+  const lines = value.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
+  return lines.length === 1 ? value : lines.map((line) => line.trim()).join(" ");
 }
 
 /** Escape one character exactly once; see the module comment. */
@@ -194,15 +274,15 @@ export function emitLatexTable(rowsInput: string[][], options: TableOptions): st
     return "";
   }
   const bold = options.boldHeader ?? true;
-  const alignment = options.alignment && options.alignment !== "auto"
-    ? options.alignment.padEnd(rows[0].length, "l").slice(0, rows[0].length)
-    : inferAlignment(rowsInput, options.header);
+  const alignment = explicitAlignment(options.alignment, rows[0].length)
+    ?? inferAlignment(rowsInput, options.header);
   const lines: string[] = ["\\begin{table}[htbp]", "  \\centering"];
   if (options.caption) {
-    lines.push(`  \\caption{${options.caption}}`);
+    lines.push(`  \\caption{${escapeLatexCell(options.caption)}}`);
   }
-  if (options.label) {
-    lines.push(`  \\label{${options.label}}`);
+  const label = options.label?.trim();
+  if (label && isValidLatexLabel(label)) {
+    lines.push(`  \\label{${label}}`);
   }
   lines.push(`  \\begin{tabular}{${alignment}}`, "    \\toprule");
   rows.forEach((row, index) => {
@@ -228,9 +308,8 @@ export function emitTypstTable(rowsInput: string[][], options: TableOptions): st
     return "";
   }
   const bold = options.boldHeader ?? true;
-  const alignment = options.alignment && options.alignment !== "auto"
-    ? options.alignment.padEnd(rows[0].length, "l").slice(0, rows[0].length)
-    : inferAlignment(rowsInput, options.header);
+  const alignment = explicitAlignment(options.alignment, rows[0].length)
+    ?? inferAlignment(rowsInput, options.header);
   const alignArg = alignment
     .split("")
     .map((letter) =>
@@ -254,7 +333,7 @@ export function emitTypstTable(rowsInput: string[][], options: TableOptions): st
   });
   lines.push(")");
   if (options.caption) {
-    lines.push(`  caption: [${options.caption}],`);
+    lines.push(`  caption: [${escapeTypstCell(options.caption)}],`);
     lines.push(")");
   }
   return lines.join("\n");

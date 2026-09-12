@@ -179,7 +179,6 @@ export function NewProjectDialog(props: {
       <ProjectImportDialog
         open={flowOpen && kind === "import"}
         onClose={props.onClose}
-        onImportStarted={props.onClose}
       />
       <ResearchProjectSetup
         open={flowOpen && kind === "research"}

@@ -3,6 +3,7 @@
 //! so it stays unit-testable. Only the identifier or query is ever sent.
 
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; citation lookup)";
+const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 
 fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
@@ -10,6 +11,37 @@ fn client() -> Result<reqwest::Client, String> {
         .timeout(std::time::Duration::from_secs(15))
         .build()
         .map_err(|e| e.to_string())
+}
+
+async fn response_bytes(response: reqwest::Response) -> Result<Vec<u8>, String> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
+    {
+        return Err("The citation service returned more than 2 MB of data.".to_string());
+    }
+    let mut body = Vec::new();
+    let mut stream = response.bytes_stream();
+    use futures_util::StreamExt;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| error.to_string())?;
+        if body.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
+            return Err("The citation service returned more than 2 MB of data.".to_string());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+async fn response_text(response: reqwest::Response) -> Result<String, String> {
+    let body = response_bytes(response).await?;
+    String::from_utf8(body).map_err(|_| "The citation service returned invalid text.".to_string())
+}
+
+async fn response_json(response: reqwest::Response) -> Result<serde_json::Value, String> {
+    let body = response_bytes(response).await?;
+    serde_json::from_slice(&body)
+        .map_err(|error| format!("The citation service returned invalid JSON: {error}"))
 }
 
 /// Canonical BibTeX for a DOI, via doi.org content negotiation.
@@ -33,7 +65,7 @@ pub async fn fetch_doi_bibtex(doi: String) -> Result<String, String> {
         .map_err(|e| format!("lookup failed: {e}"))?
         .error_for_status()
         .map_err(|_| "No entry found for that DOI.".to_string())?;
-    resp.text().await.map_err(|e| e.to_string())
+    response_text(resp).await
 }
 
 /// The arXiv Atom entry for an id (parsed to BibTeX in the frontend).
@@ -52,7 +84,7 @@ pub async fn fetch_arxiv(id: String) -> Result<String, String> {
         .map_err(|e| format!("lookup failed: {e}"))?
         .error_for_status()
         .map_err(|e| e.to_string())?;
-    resp.text().await.map_err(|e| e.to_string())
+    response_text(resp).await
 }
 
 /// Crossref bibliographic search (JSON parsed in the frontend).
@@ -74,24 +106,55 @@ pub async fn crossref_search(query: String) -> Result<String, String> {
         .map_err(|e| format!("search failed: {e}"))?
         .error_for_status()
         .map_err(|e| e.to_string())?;
-    resp.text().await.map_err(|e| e.to_string())
+    response_text(resp).await
 }
 
 // --- ISBN and PMID lookups ---------------------------------------------------
 
-/// Strip separator characters and validate the shape of an ISBN-10/13.
+/// Strip separator characters and validate an ISBN-10/13 with its check digit.
 fn normalize_isbn(raw: &str) -> Result<String, String> {
     let isbn: String = raw
         .trim()
         .trim_start_matches("isbn:")
         .chars()
         .filter(|c| c.is_ascii_alphanumeric())
-        .collect();
-    let shape = isbn.len() == 13 && isbn.chars().all(|c| c.is_ascii_digit())
-        || isbn.len() == 10
-            && isbn[..9].chars().all(|c| c.is_ascii_digit())
-            && (isbn[9..].chars().all(|c| c.is_ascii_digit()) || isbn.ends_with('X'));
-    if !shape {
+        .collect::<String>()
+        .to_ascii_uppercase();
+    let valid = if isbn.len() == 13 && isbn.chars().all(|c| c.is_ascii_digit()) {
+        isbn.bytes()
+            .enumerate()
+            .map(|(index, digit)| {
+                let value = u32::from(digit - b'0');
+                if index % 2 == 0 {
+                    value
+                } else {
+                    value * 3
+                }
+            })
+            .sum::<u32>()
+            % 10
+            == 0
+    } else if isbn.len() == 10
+        && isbn[..9].chars().all(|c| c.is_ascii_digit())
+        && matches!(isbn.as_bytes()[9], b'0'..=b'9' | b'X')
+    {
+        isbn.bytes()
+            .enumerate()
+            .map(|(index, digit)| {
+                let value = if digit == b'X' {
+                    10
+                } else {
+                    u32::from(digit - b'0')
+                };
+                value * (10 - index as u32)
+            })
+            .sum::<u32>()
+            % 11
+            == 0
+    } else {
+        false
+    };
+    if !valid {
         return Err("Not a valid ISBN-10 or ISBN-13.".to_string());
     }
     Ok(isbn)
@@ -184,10 +247,10 @@ pub(crate) fn cite_key(author: &str, year: &str, title: &str) -> String {
     key
 }
 
-/// The first 4-digit year found in a free-form date string ("2020 Mar 5").
+/// The first 4-digit year in a free-form or ISO date string.
 pub(crate) fn year_of(date: &str) -> String {
-    date.split_whitespace()
-        .find(|token| token.len() == 4 && token.chars().all(|c| c.is_ascii_digit()))
+    date.split(|c: char| !c.is_ascii_digit())
+        .find(|token| token.len() == 4)
         .unwrap_or_default()
         .to_string()
 }
@@ -266,10 +329,9 @@ pub async fn fetch_isbn_bibtex(isbn: String) -> Result<String, String> {
         .map_err(|e| format!("lookup failed: {e}"))?
         .error_for_status()
         .map_err(|_| "No book found for that ISBN.".to_string())?;
-    let data: serde_json::Value = resp
-        .json()
+    let data = response_json(resp)
         .await
-        .map_err(|e| format!("OpenLibrary returned an unreadable response: {e}"))?;
+        .map_err(|error| format!("OpenLibrary returned an unreadable response: {error}"))?;
     let entry = data
         .get(format!("ISBN:{isbn}"))
         .cloned()
@@ -358,7 +420,7 @@ pub(crate) fn pmid_bibtex(result: &serde_json::Value, pmid: &str) -> Result<Stri
 #[tauri::command]
 pub async fn fetch_pmid_bibtex(pmid: String) -> Result<String, String> {
     let pmid = pmid.trim().trim_start_matches("PMID:").trim();
-    if pmid.is_empty() || !pmid.chars().all(|c| c.is_ascii_digit()) {
+    if pmid.is_empty() || pmid.len() > 10 || !pmid.chars().all(|c| c.is_ascii_digit()) {
         return Err("Not a valid PubMed ID.".to_string());
     }
     let resp = client()?
@@ -369,10 +431,9 @@ pub async fn fetch_pmid_bibtex(pmid: String) -> Result<String, String> {
         .map_err(|e| format!("lookup failed: {e}"))?
         .error_for_status()
         .map_err(|_| "No record found for that PMID.".to_string())?;
-    let data: serde_json::Value = resp
-        .json()
+    let data = response_json(resp)
         .await
-        .map_err(|e| format!("PubMed returned an unreadable response: {e}"))?;
+        .map_err(|error| format!("PubMed returned an unreadable response: {error}"))?;
     let result = data
         .get("result")
         .cloned()
@@ -385,15 +446,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn year_accepts_iso_and_free_form_dates_without_truncating_numbers() {
+        for date in ["2020-01-05", "5 March 2020", "2020/2021", "(2020)"] {
+            assert_eq!(year_of(date), "2020");
+        }
+        for date in ["undated", "12345", "20200105"] {
+            assert_eq!(year_of(date), "");
+        }
+    }
+
+    #[test]
     fn isbn_normalization_accepts_separated_forms() {
         assert_eq!(
             normalize_isbn("978-0-13-468599-1").unwrap(),
             "9780134685991"
         );
         assert_eq!(normalize_isbn("0-201-63361-2").unwrap(), "0201633612");
-        assert_eq!(normalize_isbn("isbn:020163361X").unwrap(), "020163361X");
+        assert_eq!(normalize_isbn("isbn:080442957X").unwrap(), "080442957X");
+        assert!(normalize_isbn("isbn:020163361X").is_err());
         assert!(normalize_isbn("12345").is_err());
         assert!(normalize_isbn("978013468599X").is_err());
+        assert!(normalize_isbn("9780134685992").is_err());
+        assert!(normalize_isbn("0201633613").is_err());
     }
 
     #[test]
