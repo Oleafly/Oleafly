@@ -21,7 +21,6 @@ Oleafly is a free, open-source app for research writing. Use it for papers, thes
 · <a href="https://oleafly.com/docs/">Read the guides</a> · <a href="docs/development.md">Build from source</a>
 </p>
 
-<br />
 
 Free forever · Open source · No accounts · No sign-ups · No tracking
 
