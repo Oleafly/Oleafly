@@ -510,7 +510,7 @@ describe("FileTree toolbar", () => {
     );
   });
 
-  it("does not restore an in-flight rename into a different project", async () => {
+  it("keeps another project's in-flight rename from suppressing a new-file blur", async () => {
     const sourceTree = [
       { path: "main.tex", is_dir: false },
       { path: "chapters", is_dir: true },
@@ -572,21 +572,10 @@ describe("FileTree toolbar", () => {
     });
     await screen.findByText("next.tex");
 
-    if (!releaseRename) throw new Error("rename request was not started");
-    releaseRename({ status: "renamed", path: "renamed", generation: 1 });
-    await waitFor(() =>
-      expect(
-        mocks.invoke.mock.calls.some(
-          ([command, args]) =>
-            command === "list_files" &&
-            (args as { projectId?: string } | undefined)?.projectId === "next-project",
-        ),
-      ).toBe(true),
-    );
-
-    expect(screen.queryByText("intro.tex")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: files.newFileAriaLabel }));
-    await typeNewName("notes.tex");
+    const nextProjectDraft = await screen.findByPlaceholderText(files.newEntry.filePlaceholder);
+    fireEvent.change(nextProjectDraft, { target: { value: "notes.tex" } });
+    fireEvent.blur(nextProjectDraft);
 
     await waitFor(() =>
       expect(
@@ -598,6 +587,29 @@ describe("FileTree toolbar", () => {
         ),
       ).toBe(true),
     );
+
+    const nextProjectListCount = mocks.invoke.mock.calls.filter(
+      ([command, args]) =>
+        command === "list_files" &&
+        (args as { projectId?: string } | undefined)?.projectId === "next-project",
+    ).length;
+    if (!releaseRename) throw new Error("rename request was not started");
+    const resolveRename = releaseRename;
+    await act(async () => {
+      resolveRename({ status: "renamed", path: "renamed", generation: 1 });
+      await Promise.resolve();
+    });
+    await waitFor(() =>
+      expect(
+        mocks.invoke.mock.calls.filter(
+          ([command, args]) =>
+            command === "list_files" &&
+            (args as { projectId?: string } | undefined)?.projectId === "next-project",
+        ).length,
+      ).toBeGreaterThan(nextProjectListCount),
+    );
+
+    expect(screen.queryByText("intro.tex")).not.toBeInTheDocument();
   });
 
   it("expands only folders that remain visible after hidden-path filtering", () => {

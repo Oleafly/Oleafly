@@ -213,7 +213,7 @@ export function FileTree({
     parent: "",
     value: "",
   });
-  const renameOperationsInFlight = useRef(0);
+  const renameOperationsInFlight = useRef(new Map<number, number>());
   const [conflict, setConflict] = useState<
     | {
         op: "rename";
@@ -327,6 +327,11 @@ export function FileTree({
   }) =>
     token.session === projectSession.current &&
     useFilesStore.getState().projectId === token.projectId;
+  const trackRenameOperation = (session: number, delta: 1 | -1) => {
+    const count = (renameOperationsInFlight.current.get(session) ?? 0) + delta;
+    if (count > 0) renameOperationsInFlight.current.set(session, count);
+    else renameOperationsInFlight.current.delete(session);
+  };
 
   const restoreRemappedInteractionPaths = (
     from: string,
@@ -406,7 +411,7 @@ export function FileTree({
     const previousInteractionPaths = interactionPaths();
     const startedAt = currentInteractionRevision();
     const operation = { projectId, session: projectSession.current };
-    renameOperationsInFlight.current += 1;
+    trackRenameOperation(operation.session, 1);
     try {
       const destination = await renameEntry(from, to);
       if (!currentProjectOperation(operation)) return null;
@@ -435,7 +440,7 @@ export function FileTree({
       }
       return null;
     } finally {
-      renameOperationsInFlight.current -= 1;
+      trackRenameOperation(operation.session, -1);
     }
   };
 
@@ -452,12 +457,12 @@ export function FileTree({
       } else {
         const previousInteractionPaths = interactionPaths();
         const startedAt = currentInteractionRevision();
-        renameOperationsInFlight.current += 1;
+        trackRenameOperation(operation.session, 1);
         let destination: string;
         try {
           destination = await renameEntry(pending.from, pending.to, strategy);
         } finally {
-          renameOperationsInFlight.current -= 1;
+          trackRenameOperation(operation.session, -1);
         }
         if (!currentProjectOperation(operation)) return;
         setConflict(null);
@@ -538,7 +543,7 @@ export function FileTree({
     // request to create the old path, so let the rename restore and remap it.
     if (
       reason === "blur" &&
-      (renameOperationsInFlight.current > 0 ||
+      ((renameOperationsInFlight.current.get(projectSession.current) ?? 0) > 0 ||
         renderedParent !== draftIntent.current.parent)
     ) {
       return;

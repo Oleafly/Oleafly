@@ -163,6 +163,7 @@ export function SourceControl() {
 		setBranchFormOpen(false);
 		setRestoreCommit(null);
 		setCopiedOid(null);
+		setPublishOpen(false);
 	}, [projectId]);
 	const begin = useCallback(
 		(): ActionToken | null =>

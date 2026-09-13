@@ -8,6 +8,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
@@ -52,6 +53,23 @@ function mount(
   useIndexStore.setState({ index: index as never, texts });
   useFilesStore.setState({ projectId, activePath } as never);
   return render(<DocumentOutline />);
+}
+
+function ControlledOutline() {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        data-testid="expand-controlled-outline"
+        onClick={() => setCollapsed(false)}
+      />
+      <DocumentOutline
+        collapsed={collapsed}
+        onCollapsedChange={setCollapsed}
+      />
+    </>
+  );
 }
 
 afterEach(() => {
@@ -290,6 +308,92 @@ describe("DocumentOutline", () => {
       "items-center",
       "justify-center",
     );
+  });
+
+  it("reopens when the active empty document gains its first heading", async () => {
+    useIndexStore.setState({ index: indexWith([]) as never, texts: {} });
+    useFilesStore.setState({
+      projectId: "outline-project-a",
+      activePath: "main.tex",
+    } as never);
+    render(<ControlledOutline />);
+    const outlineToggle = screen.getByRole("button", { name: /outline/i });
+
+    await waitFor(() =>
+      expect(outlineToggle).toHaveAttribute("aria-expanded", "false"),
+    );
+
+    act(() => {
+      useIndexStore.setState({
+        index: indexWith([
+          { name: "Introduction", line: 3, from: 10, level: 1 },
+        ]) as never,
+      });
+    });
+
+    await waitFor(() => {
+      expect(outlineToggle).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByText("Introduction")).toBeInTheDocument();
+    });
+  });
+
+  it("keeps an empty controlled outline open after its owner expands it", async () => {
+    useIndexStore.setState({ index: indexWith([]) as never, texts: {} });
+    useFilesStore.setState({
+      projectId: "outline-project-a",
+      activePath: "main.tex",
+    } as never);
+    render(<ControlledOutline />);
+    const outlineToggle = screen.getByRole("button", { name: /outline/i });
+
+    await waitFor(() =>
+      expect(outlineToggle).toHaveAttribute("aria-expanded", "false"),
+    );
+
+    fireEvent.click(screen.getByTestId("expand-controlled-outline"));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(outlineToggle).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByText("No sections or includes in this document."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps automatic empty-outline ownership across empty documents", async () => {
+    mount(indexWith([]), "first.tex");
+    const outlineToggle = screen.getByRole("button", { name: /outline/i });
+
+    await waitFor(() =>
+      expect(outlineToggle).toHaveAttribute("aria-expanded", "false"),
+    );
+
+    act(() => {
+      useFilesStore.setState({ activePath: "second.tex" } as never);
+    });
+    await waitFor(() =>
+      expect(outlineToggle).toHaveAttribute("aria-expanded", "false"),
+    );
+
+    act(() => {
+      useIndexStore.setState({
+        index: indexWith([
+          {
+            name: "Results",
+            line: 8,
+            from: 60,
+            level: 1,
+            file: "second.tex",
+          },
+        ]) as never,
+      });
+    });
+
+    await waitFor(() => {
+      expect(outlineToggle).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByText("Results")).toBeInTheDocument();
+    });
   });
 
   it("keeps a manual collapse when an empty document is followed by headings", async () => {

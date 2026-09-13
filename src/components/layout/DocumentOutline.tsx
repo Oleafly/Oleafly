@@ -141,21 +141,37 @@ export function DocumentOutline({
   // hand without it immediately closing again. If that automatic collapse is
   // followed by a document that has headings, restore the normal open default.
   useEffect(() => {
-    if (
-      !resolvedDocumentKey ||
-      evaluatedDocumentKey.current === resolvedDocumentKey
-    ) {
-      return;
-    }
-    evaluatedDocumentKey.current = resolvedDocumentKey;
-    if (items.length === 0) {
-      if (!collapsed) {
-        autoCollapsedDocumentKey.current = resolvedDocumentKey;
-        setUncontrolledCollapsed(true);
-        onCollapsedChange?.(true);
+    if (!resolvedDocumentKey) return;
+
+    const isNewDocument = evaluatedDocumentKey.current !== resolvedDocumentKey;
+    if (isNewDocument) {
+      evaluatedDocumentKey.current = resolvedDocumentKey;
+      if (items.length === 0) {
+        if (!collapsed) {
+          autoCollapsedDocumentKey.current = resolvedDocumentKey;
+          setUncontrolledCollapsed(true);
+          onCollapsedChange?.(true);
+        } else if (autoCollapsedDocumentKey.current !== null) {
+          // Keep ownership of an automatic collapse while the reader moves
+          // through empty documents. That way the first heading in the current
+          // document restores the normal open default; a manual collapse has
+          // already cleared this marker in setOpen.
+          autoCollapsedDocumentKey.current = resolvedDocumentKey;
+        }
+        return;
       }
+    } else if (autoCollapsedDocumentKey.current !== resolvedDocumentKey) {
       return;
     }
+
+    // A controlled owner can open the section through its resize handle,
+    // bypassing setOpen. Treat that as a manual choice instead of immediately
+    // applying the empty-document default again.
+    if (items.length === 0) {
+      if (!collapsed) autoCollapsedDocumentKey.current = null;
+      return;
+    }
+
     if (autoCollapsedDocumentKey.current !== null) {
       autoCollapsedDocumentKey.current = null;
       if (collapsed) {

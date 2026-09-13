@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
 	refreshGit: vi.fn(),
 	openDiff: vi.fn(),
 	clearActiveDiff: vi.fn(),
+	publishDialog: vi.fn(),
 }));
 
 const projectState = { generation: 1, changed_paths: [], deleted_paths: [] };
@@ -106,7 +107,10 @@ vi.mock("@/store/git-status", () => ({
 }));
 
 vi.mock("@/components/integrations/PublishToGitHubDialog", () => ({
-	PublishToGitHubDialog: () => null,
+	PublishToGitHubDialog: (props: unknown) => {
+		mocks.publishDialog(props);
+		return null;
+	},
 }));
 
 vi.mock("@/components/layout/GithubMenu", () => ({
@@ -1012,6 +1016,34 @@ describe("SourceControl", () => {
 			),
 		);
 		expect(screen.queryByText("project-a.tex")).not.toBeInTheDocument();
+	});
+
+	it("closes the publish dialog when the project changes", async () => {
+		const user = userEvent.setup();
+		mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ remote: null }));
+		const view = render(<SourceControl />);
+
+		await user.click(
+			await screen.findByRole("button", { name: "More Source Control actions" }),
+		);
+		await user.click(
+			screen.getByRole("menuitem", { name: "Publish to GitHub" }),
+		);
+		await waitFor(() =>
+			expect(mocks.publishDialog).toHaveBeenLastCalledWith(
+				expect.objectContaining({ open: true, projectId: "project-1" }),
+			),
+		);
+
+		fileState.projectId = "project-2";
+		fileState.projectName = "Next project";
+		view.rerender(<SourceControl />);
+
+		await waitFor(() =>
+			expect(mocks.publishDialog).toHaveBeenLastCalledWith(
+				expect.objectContaining({ open: false, projectId: "project-2" }),
+			),
+		);
 	});
 
 	it("only removes a legacy credential after the user chooses the repair action", async () => {
