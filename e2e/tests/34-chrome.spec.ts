@@ -240,6 +240,17 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     );
     expect(fullyCollapsedSizes[3]).toBeGreaterThan(0);
 
+    // Re-enter Explorer with the all-collapsed layout restored from storage.
+    // The app mounts this stack in StrictMode, so opening Structure after the
+    // remount must still reclaim the filler instead of leaving its content at
+    // the minimum expanded height above a large blank area.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await openRailTab(tauriPage, "Search Project");
+    await openRailTab(tauriPage, "Explorer");
+    for (const id of sectionIds) {
+      await expect(sectionToggle(id)).toHaveAttribute("aria-expanded", "false");
+    }
+
     await setSectionOpen("project-structure", true);
     await tauriPage.waitForFunction(
       `Number(document.querySelector('[data-panel-id="explorer-filler-v"]')?.getAttribute('data-panel-size') ?? -1) < 0.2`,

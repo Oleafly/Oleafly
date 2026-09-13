@@ -168,6 +168,7 @@ export function FilesPanel() {
     () => () => {
       if (fillerResetFrame.current !== null) {
         window.cancelAnimationFrame(fillerResetFrame.current);
+        fillerResetFrame.current = null;
       }
     },
     [],
