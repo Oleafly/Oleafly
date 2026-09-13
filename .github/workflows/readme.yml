@@ -1,0 +1,56 @@
+name: README checks
+
+on:
+  push:
+    paths:
+      - README.md
+      - docs/assets/readme/**
+      - .github/workflows/readme.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - README.md
+      - docs/assets/readme/**
+      - .github/workflows/readme.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate README assets and paths
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check README formatting and local image references
+        run: |
+          set -euo pipefail
+          git diff --check
+          if rg -n '/Users/|prajwalsvenkatesh|SCR-20260913-mtbo|SCR-20260913-mtfw' README.md; then
+            echo 'README contains a personal absolute path or an excluded screenshot reference.' >&2
+            exit 1
+          fi
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+
+          const readme = fs.readFileSync("README.md", "utf8");
+          const refs = [...readme.matchAll(/docs\/assets\/readme\/[^\s)"']+/g)]
+            .map(([ref]) => ref.replace(/[.,]+$/, ""));
+          const uniqueRefs = [...new Set(refs)];
+          const missing = uniqueRefs.filter((ref) => !fs.existsSync(ref));
+
+          if (missing.length > 0) {
+            console.error("Missing README assets:");
+            console.error(missing.join("\n"));
+            process.exit(1);
+          }
+
+          if (uniqueRefs.length === 0) {
+            console.error("README does not reference any local screenshot assets.");
+            process.exit(1);
+          }
+
+          console.log(`Validated ${uniqueRefs.length} local README assets.`);
+          NODE

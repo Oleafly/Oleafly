@@ -29,7 +29,7 @@ Free forever · Open source · No accounts · No sign-ups · No tracking
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="Oleafly editing a research paper in LaTeX with the source tree, document outline, and compiled PDF open together" width="100%" />
+  <img src="docs/assets/readme/source-and-pdf.png" alt="Oleafly with a structured research project, source editor, and compiled PDF open together" width="100%" />
 </div>
 
 ## Start here
@@ -50,6 +50,11 @@ Free forever · Open source · No accounts · No sign-ups · No tracking
 | Linking papers, data, or analysis | Read-only linked research folders beside the manuscript |
 | Exporting or converting documents | PDF and source ZIPs, plus supported Word, HTML, Markdown, text, PPTX, or EPUB outputs |
 | Looking for a local toolchain | Bundled Tectonic and Typst, with optional system TeX and Pandoc |
+
+<div align="center">
+  <img src="docs/assets/readme/start-work.png" alt="Oleafly start-work menu with options for research projects, imports, and templates" width="100%" />
+</div>
+<p align="center"><em>Start from the kind of work you actually have: a new research project, an existing project, or a template.</em></p>
 
 ## Why Oleafly
 
@@ -84,9 +89,9 @@ The app reaches the network only for actions that need it: literature lookup, DO
 | Git history and automatic checkpoints | |
 
 <p align="center">
-  <img src="https://placehold.co/1600x900/0f172a/e2e8f0?text=Screenshot+needed%3A+local+data+and+integration+boundaries" alt="Placeholder for a screenshot of Oleafly's local-first and integration settings" width="100%" />
+  <img src="docs/assets/readme/provider-boundaries.png" alt="Oleafly provider settings showing explicit connections separate from project files" width="100%" />
 </p>
-<p align="center"><em>Screenshot needed: Settings showing local project storage, offline mode, provider boundaries, and integration controls.</em></p>
+<p align="center"><em>Provider connections are explicit and separate from the manuscript on disk.</em></p>
 
 ## Begin with a real project
 
@@ -97,7 +102,7 @@ Start with an article, journal paper, thesis, literature review, report, book, B
 The gallery filters by engine, category, offline readiness, and ATS suitability. Bundled templates work without a template account. Optional template packs, fonts, and assets download only after you select them.
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="The Oleafly template gallery with document previews and project starters" width="100%" />
+  <img src="docs/assets/readme/template-downloads.png" alt="Oleafly template downloads showing academic writing, Beamer, and conference starter packs" width="100%" />
 </div>
 
 ### Bring the work you already have
@@ -107,9 +112,9 @@ Import a project ZIP or GitHub repository, convert a DOCX with Pandoc, or use a 
 PDF reconstruction is deterministic. It extracts the text, layout, equations, and figures it can identify, reports its limits, and leaves you with editable LaTeX instead of an opaque document. If you connect a vision-capable provider, it can help refine an imported project afterward.
 
 <p align="center">
-  <img src="https://placehold.co/1600x900/1e293b/e2e8f0?text=Screenshot+needed%3A+import+and+reconstruction+flow" alt="Placeholder for a screenshot of the PDF, DOCX, ZIP, and repository import flow" width="100%" />
+  <img src="docs/assets/readme/import-project.png" alt="Oleafly import dialog with project, Word, Markdown, HTML, Typst, arXiv, and GitHub options" width="100%" />
 </p>
-<p align="center"><em>Screenshot needed: Import chooser, compatibility scan, editable source preview, and the resulting local project.</em></p>
+<p align="center"><em>Bring an existing project or document into an ordinary local workspace.</em></p>
 
 ### A project is just a folder
 
@@ -118,7 +123,7 @@ Oleafly's library tracks project identity, engine, document kind, bookmarks, pre
 The app keeps its own build artifacts and local metadata separate from the source. A project can carry its engine and main-document choices in `project.json`, so a clone or exported source archive can open with the same project settings.
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Research papers organized as projects in the Oleafly library" width="100%" />
+  <img src="docs/assets/readme/project-library.png" alt="Oleafly project library with research projects organized in a searchable list" width="100%" />
 </div>
 
 ## Write the paper and keep its structure
@@ -138,7 +143,7 @@ In LaTeX, Typst, Markdown, and BibTeX you get:
 - Hovers for compiled label numbers and pages, equation previews, and image thumbnails for `\\includegraphics` targets.
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="Oleafly showing a research paper with its LaTeX source and compiled PDF together" width="100%" />
+  <img src="docs/assets/readme/source-and-pdf.png" alt="Oleafly showing a manuscript source file and compiled PDF together" width="100%" />
 </div>
 
 ### Source view and visual view
@@ -148,9 +153,8 @@ Source view is the canonical representation. When the engine supports it, turn o
 Use the visual view for page-level editing. Return to source when you need exact control over commands, packages, environments, or layout.
 
 <p align="center">
-  <img src="https://placehold.co/1600x900/172554/dbeafe?text=Screenshot+needed%3A+visual+and+source+editor+toggle" alt="Placeholder for a screenshot of Oleafly's source and visual editor views" width="100%" />
+  <img src="docs/assets/readme/visual-editor.png" alt="Oleafly visual editor showing a page-oriented manuscript with its file tree and outline" width="100%" />
 </p>
-<p align="center"><em>Screenshot needed: The same LaTeX manuscript shown in source view and visual view, with the toggle and an equation or citation visible.</em></p>
 
 ### Proofread prose locally
 
@@ -158,19 +162,9 @@ Hunspell handles spelling with the selected dictionary pack and personal or proj
 
 The academic profile avoids rules that fight scholarly writing, and every finding has a local action: replace it, ignore it for the project, ignore it for the session, or adjust the rule in Settings. Proofreading runs locally and does not require an AI provider.
 
-<p align="center">
-  <img src="https://placehold.co/1600x900/3f1d3b/fce7f3?text=Screenshot+needed%3A+local+proofreading+findings" alt="Placeholder for a screenshot of local spelling and grammar findings in a manuscript" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: Inline spelling and grammar findings in LaTeX prose, with the academic profile and ignore controls visible.</em></p>
-
 ### Search across the project
 
 Search across the project from the rail or command palette. The project index connects source files, headings, labels, citations, macros, and included files, so a large multi-file thesis is easier to navigate than a stack of editor tabs.
-
-<p align="center">
-  <img src="https://placehold.co/1600x900/082f49/cffafe?text=Screenshot+needed%3A+file+tree%2C+outline%2C+and+project+search" alt="Placeholder for a screenshot of the file tree, document outline, and project search" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: File tree, project search results, document outline, and a cross-file reference open together.</em></p>
 
 ## Compile with LaTeX, Typst, or Markdown
 
@@ -187,11 +181,6 @@ LaTeX projects get a compatibility scan when they open. If a project needs more 
 
 The bundled Biber sidecar is matched to the Tectonic biblatex version. Compile logs distinguish a missing Biber executable, a version mismatch, and an ordinary LaTeX error so you can choose the right fix.
 
-<p align="center">
-  <img src="https://placehold.co/1600x900/312e81/e0e7ff?text=Screenshot+needed%3A+engine+picker+and+compile+diagnostics" alt="Placeholder for a screenshot of engine selection and compile diagnostics" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: Project engine picker, compatibility explanation, compile log, and a source-linked error.</em></p>
-
 ## Read the PDF beside the source
 
 The PDF viewer is built into the workspace and can also open in a detached preview window. It keeps the last accepted PDF visible while a newer compile is running or has failed, so one broken edit does not erase the last readable result.
@@ -200,10 +189,9 @@ Use continuous scroll or a one-page / two-page spread. Zoom, fit to width, fit t
 
 When valid SyncTeX data exists, forward navigation moves from source to PDF and inverse navigation moves from a PDF click back to the source line. Engines that do not support SyncTeX disable those controls.
 
-<p align="center">
-  <img src="https://placehold.co/1600x900/111827/e5e7eb?text=Screenshot+needed%3A+PDF+reader+controls+and+SyncTeX" alt="Placeholder for a screenshot of the PDF preview, page controls, and source navigation" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: Two-page PDF view, outline, search, zoom controls, compile status, and a SyncTeX jump from source to output.</em></p>
+<div align="center">
+  <img src="docs/assets/readme/pdf-preview.png" alt="Oleafly PDF preview beside the source editor" width="100%" />
+</div>
 
 ## Literature and citations
 
@@ -213,20 +201,11 @@ Citation Search queries arXiv, Semantic Scholar, Crossref, PubMed, and OpenAlex 
 
 You can also look up a citation by DOI, arXiv ID, URL, or title. Import an existing library from Zotero RDF, EndNote XML, RIS, or BibTeX. The project index provides citation-key completion, reference navigation, hover details, and diagnostics for undefined citations, duplicate keys, duplicate DOIs, and incomplete bibliography metadata.
 
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Search results from scholarly indexes in Oleafly" width="100%" />
-</div>
-
 ### Scan the document for missing support
 
 From document mode, Oleafly splits the current selection or manuscript into prose paragraphs, searches configured literature sources, removes papers already in the bibliography, and ranks the rest on a 0–100 scale. An AI provider can add short FOR / AGAINST reasoning. With AI off, the scan uses local heuristic ranking.
 
 Save results to the local citation library, copy BibTeX, or append a selected entry to a project bibliography and insert its citation.
-
-<p align="center">
-  <img src="https://placehold.co/1600x900/0c4a6e/e0f2fe?text=Screenshot+needed%3A+From+document+citation+scan" alt="Placeholder for a screenshot of paragraph-level citation suggestions" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: A manuscript paragraph, ranked citation suggestions, score badges, bibliography filtering, and the insert-citation action.</em></p>
 
 ### Review a paper in two voices
 
@@ -237,19 +216,9 @@ Review mode can use a configured AI provider to read the current document or a c
 
 The review is an optional assistant action. It is not a substitute for the venue's guidelines or a human coauthor.
 
-<p align="center">
-  <img src="https://placehold.co/1600x900/450a0a/fee2e2?text=Screenshot+needed%3A+Friendly+and+Fire+review+mode" alt="Placeholder for a screenshot of Oleafly's Friendly and Fire review modes" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: The same manuscript reviewed in Friendly and Fire modes, with evidence-linked findings and the provider status visible.</em></p>
-
 ### Keep research folders beside the manuscript
 
 Link a dataset, source library, analysis folder, or other research directory without moving it into the project. Oleafly reads linked folders and never writes to them. They stay out of compilation, project search, and Git, with clear missing and unreadable states when a path is unavailable.
-
-<p align="center">
-  <img src="https://placehold.co/1600x900/14532d/dcfce7?text=Screenshot+needed%3A+read-only+linked+research+folders" alt="Placeholder for a screenshot of linked read-only research folders" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: Linked folders labeled References, Data, Analysis, and Manuscript, with read-only state and file preview.</em></p>
 
 ### Search labs and deadlines
 
@@ -264,7 +233,7 @@ Draw a figure on a canvas with rectangles, circles, ellipses, diamonds, text, co
 The saved `.tikz` source keeps the diagram model for another edit. Insert the result as TikZ or as a generated image, with a caption and label. Optional AI repair can help with figure compile errors, and a vision-capable model can inspect a render and refine its layout.
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="The diagram workspace with editable source and a rendered figure" width="100%" />
+  <img src="docs/assets/readme/diagram-composer.png" alt="Oleafly Diagram Composer showing an editable research-system diagram on a canvas" width="100%" />
 </div>
 
 ### Equation and table output
@@ -273,10 +242,9 @@ The LaTeX to Image tool renders an equation and exports PNG or SVG. It can also 
 
 These tools are available from the gallery, the command palette, and slash commands where shown in the app.
 
-<p align="center">
-  <img src="https://placehold.co/1600x900/581c87/f3e8ff?text=Screenshot+needed%3A+Oleafly+Tools+gallery" alt="Placeholder for a screenshot of the Oleafly Tools gallery" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: Tools gallery with PDF to LaTeX, equation preview, BibTeX validation, table generation, and slash-command search.</em></p>
+<div align="center">
+  <img src="docs/assets/readme/tools-gallery.png" alt="Oleafly Tools gallery showing a catalog of built-in research and document tools" width="100%" />
+</div>
 
 ## Check the document before it leaves your machine
 
@@ -298,8 +266,9 @@ The accessibility checks reference PDF/UA, Matterhorn, and WCAG and report the m
 Preflight is a set of machine checks, not a conformance certificate. It cannot judge whether alt text is meaningful, whether reading order makes sense, or whether contrast is sufficient. For a formal accessibility conformance statement, validate the final PDF with the venue's required tool.
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="Preflight checks for a research paper before submission" width="100%" />
+  <img src="docs/assets/readme/preflight-accessibility.png" alt="Oleafly Preflight accessibility checks reporting machine-checkable findings" width="100%" />
 </div>
+<p align="center"><em>Preflight makes machine-checkable accessibility findings visible before submission; it does not claim conformance by itself.</em></p>
 
 ## Version and recover your work
 
@@ -309,11 +278,6 @@ Oleafly works with a normal Git repository. The Source Control panel can initial
 
 Saving, compiling, or closing a project never creates a commit. Oleafly does not hide the source from your terminal or edit the project's `.gitignore` just to make its own metadata disappear.
 
-<p align="center">
-  <img src="https://placehold.co/1600x900/164e63/cffafe?text=Screenshot+needed%3A+Git+source+control+panel" alt="Placeholder for a screenshot of Git status, diffs, staging, and commit controls" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: Changed files, inline or split diff, stage controls, commit message, and remote ahead / behind status.</em></p>
-
 ### Use checkpoints for quick recovery
 
 After a successful compile, Oleafly can save a local snapshot of the project. Checkpoints do not initialize a repository, create commits, or change a branch. Restore a previous state transactionally, label an important version, inspect stored files, trim old history, or move a complete history in an encrypted archive.
@@ -321,7 +285,7 @@ After a successful compile, Oleafly can save a local snapshot of the project. Ch
 Use Git for intentional commits, branches, remotes, and collaboration. Use checkpoints for quick local recovery while a paper is changing fast.
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="Saved project checkpoints in Oleafly" width="100%" />
+  <img src="docs/assets/readme/checkpoints.png" alt="Oleafly versioning panel showing saved checkpoints and Git history" width="100%" />
 </div>
 
 ## AI is optional
@@ -344,17 +308,14 @@ Every file change produces a visible diff. Settings can ask for approval on each
 Connect a hosted provider, an OpenAI-compatible endpoint, or a local Ollama model. Provider credentials live in encrypted app-managed storage and are not written into project files. The action you choose tells you when a hosted request will be made.
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="The AI assistant working alongside the open research project" width="100%" />
+  <img src="docs/assets/readme/ai-personas.png" alt="Oleafly AI Assistant persona choices for research writing and review" width="100%" />
 </div>
+<p align="center"><em>Choose a role for the task at hand, from research writing and document editing to critical review and figure work.</em></p>
 
 <details>
 <summary>Review an edit before it is applied</summary>
 
 In Ask for approval mode, read the proposed file diff and choose which changes to apply. Ordinary writes can be approved for the session; deletes remain separately visible and can require an explicit confirmation.
-
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="Approval controls for reviewing the assistant's proposed changes" width="100%" />
-</div>
 
 </details>
 
@@ -363,10 +324,6 @@ In Ask for approval mode, read the proposed file diff and choose which changes t
 Start a task for a literature review, evidence audit, analysis, manuscript revision, or response to reviewers. It runs in a separate Git worktree or staged copy while you continue in the original project.
 
 When the task finishes, inspect activity, outputs, and every changed file. Preview the diff, select the files worth keeping, and apply only those files. The original project stays unchanged until you apply reviewed results. If the project changed while the task was running, Oleafly detects the drift instead of applying an old diff over newer work.
-
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="The research workspace for tasks that run alongside the manuscript" width="100%" />
-</div>
 
 ### Use a CLI agent from the catalog
 
@@ -395,10 +352,6 @@ Open a conversation, sign in through the agent's own CLI when required, reconnec
 
 CLI agent support is in beta. Settings shows install readiness, platform limits, and resume support for each agent.
 
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="CLI agents connected to the Oleafly assistant" width="100%" />
-</div>
-
 ### Reuse a research workflow with skills
 
 Oleafly includes skills for literature work, authoring, figures, review, submission, communication, and tooling. Skills are ordinary `SKILL.md` folders that follow the Agent Skills shape.
@@ -406,20 +359,15 @@ Oleafly includes skills for literature work, authoring, figures, review, submiss
 Use a skill with a slash command, add your own folder, record a repeatable workflow from a completed chat, or install a domain skill from the shelf when you choose to download one. Skills can be shared with compatible CLI agents on the same computer. A skill already installed keeps working offline.
 
 <p align="center">
-  <img src="https://placehold.co/1600x900/422006/fef3c7?text=Screenshot+needed%3A+skills+and+repeatable+research+workflow" alt="Placeholder for a screenshot of Oleafly's skills shelf and saved workflow" width="100%" />
+  <img src="docs/assets/readme/skills.png" alt="Oleafly AI Assistant skills panel showing reusable research capabilities" width="100%" />
 </p>
-<p align="center"><em>Screenshot needed: Skills shelf, slash-command invocation, saved workflow, and the local folder used by a repeatable research task.</em></p>
+<p align="center"><em>Skills turn a useful research routine into something you can reuse and share with compatible agents.</em></p>
 
 ### Connect an external AI client with MCP
 
 Oleafly can run a local MCP server for an external client. It exposes the same project tools as the built-in assistant: list and read files, search the project, inspect its map, compile, read the log, extract PDF text, preview figures, and apply edits subject to Oleafly's approval policy.
 
 The server binds to `127.0.0.1` only, uses a short-lived bearer token, and runs only while the Oleafly process is open. A read-only mode removes mutating tools from the tool list. The external client brings its own model, so you do not need to put an AI API key into Oleafly for this route.
-
-<p align="center">
-  <img src="https://placehold.co/1600x900/1c1917/fef3c7?text=Screenshot+needed%3A+MCP+settings+and+approval+flow" alt="Placeholder for a screenshot of local MCP connection details and approvals" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: MCP toggle, live localhost URL, bearer-token controls, read-only mode, and an external request awaiting approval.</em></p>
 
 ## Tools in the gallery
 
@@ -488,20 +436,15 @@ Open shell tabs for the active project without leaving the workspace. Up to ten 
 Use a tab to run a script, inspect a dataset, check a generated file, or use another CLI tool. It is your shell, with the same project directory available to the commands you choose to run.
 
 <p align="center">
-  <img src="https://placehold.co/1600x900/0f172a/a7f3d0?text=Screenshot+needed%3A+terminal+dock+beside+the+editor" alt="Placeholder for a screenshot of the terminal dock beside a manuscript" width="100%" />
+  <img src="docs/assets/readme/project-terminal.png" alt="Oleafly terminal dock open beside a manuscript project" width="100%" />
 </p>
-<p align="center"><em>Screenshot needed: A named terminal tab running a project command beneath the editor and PDF preview.</em></p>
+<p align="center"><em>Run project commands in a terminal tab without leaving the editor and PDF workspace.</em></p>
 
 ## Browser for computer-use tasks
 
 The in-app browser is a separate OS window with tabs, an address bar, navigation controls, and isolated content webviews. It is mainly the computer-use surface: an agent can open a URL and wait for it to load while you keep the manuscript in the main window.
 
 The computer-use tool cannot read, capture, click, or script page content. Remote pages do not receive Oleafly IPC access, and external navigation follows the active approval policy. Use the literature tools when you need searchable metadata or citations.
-
-<p align="center">
-  <img src="https://placehold.co/1600x900/1f2937/e5e7eb?text=Screenshot+needed%3A+in-app+research+browser" alt="Placeholder for a screenshot of the in-app research browser" width="100%" />
-</p>
-<p align="center"><em>Screenshot needed: Browser tabs showing a paper or lab page, with the protected app toolbar and the manuscript still available in the main window.</em></p>
 
 ## Common research workflows
 
