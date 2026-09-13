@@ -12,8 +12,12 @@
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![الترخيص: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![النجوم](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+
+مجاني إلى الأبد · مفتوح المصدر · بلا حسابات · بلا تسجيل · بلا تتبع
 
 **اكتب ورقتك القادمة بأعمال روتينية أقل.**
 
@@ -24,7 +28,7 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="Oleafly يحرر ورقة LLaMA البحثية في LaTeX مع شجرة المصدر ومخطط المستند وملف PDF المجمّع مفتوحة معًا" width="100%" />
+  <img src="../assets/readme/hero.png" alt="مساحة عمل Oleafly تعرض مشروع LaTeX مع محرر المصدر ومعاينة PDF ولوحة تخطيط بالذكاء الاصطناعي" width="100%" />
 </div>
 
 ## الميزات
@@ -53,7 +57,8 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 لديك مخطوطة بالفعل؟ استورد ZIP لمشروع أو مستودع GitHub، أو أضف مستند Word، أو استخدم PDF نقطة بداية لـ LaTeX قابل للتحرير. يمكن أن يبدأ مشروعك التالي من عمل أنجزته بالفعل.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="مكتبة قوالب Oleafly مع معاينات المستندات ومشاريع البداية" width="100%" />
+<img src="../assets/readme/template-downloads.png" alt="تنزيلات القوالب في Oleafly، بما في ذلك حزم الكتابة الأكاديمية وBeamer" width="100%" />
+<img src="../assets/readme/import-project.png" alt="نافذة استيراد المشاريع في Oleafly" width="100%" />
 
 ### اكتب مع رؤية المستند كله
 
@@ -61,7 +66,7 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 اكتب مباشرة في المصدر أو استخدم المحرر المرئي لـ LaTeX وMarkdown. تبقى المعادلات والاستشهادات والأشكال في متناولك مع نمو المستند.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="Oleafly يعرض ورقة بحثية مع مصدر LaTeX وPDF المجمّع معًا" width="100%" />
+<img src="../assets/readme/visual-editor.png" alt="المحرر المرئي في Oleafly مع شجرة الملفات ومخطط المستند" width="100%" />
 
 ### اعثر على المصادر التي تحتاجها حجتك
 
@@ -69,7 +74,6 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 أحضر مكتبتك القائمة من Zotero RDF أو EndNote XML أو RIS أو BibTeX. ثم أضف مرجعًا عبر DOI أو العنوان وأدرج استشهاده من دون مغادرة الجملة.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="نتائج البحث في قواعد البيانات العلمية في Oleafly" width="100%" />
 
 ### امنح مساعدك المشروع الفعلي
 
@@ -77,14 +81,13 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 احتفظ بالنموذج الذي تفضله: صِل مزودًا مستضافًا أو استخدم Ollama محليًا أو اختر أحد وكلاء CLI أدناه. يظل المحرر قابلًا للاستخدام بالكامل مع إيقاف الذكاء الاصطناعي.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="المساعد بالذكاء الاصطناعي يعمل بجانب مشروع البحث المفتوح" width="100%" />
+<img src="../assets/readme/ai-personas.png" alt="اختيارات شخصيات مساعد الذكاء الاصطناعي في Oleafly" width="100%" />
 
 <details>
 <summary>شاهد تعديلًا مقترحًا قبل تطبيقه</summary>
 
 في وضع Ask for approval، اقرأ diff الملف المقترح واختر ما إذا كنت تريد تطبيقه. يمكنك أيضًا الموافقة على عمليات الكتابة العادية للجلسة أو اختيار سياسة موافقة مختلفة في Settings.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="عناصر الموافقة لمراجعة التغييرات التي يقترحها المساعد" width="100%" />
 
 </details>
 
@@ -94,7 +97,7 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 أدرج النتيجة مع تعليق توضيحي ووسم. احتفظ بالمصدر المتجهي القابل للتحرير في المشروع، جاهزًا للمراجعة القادمة أو لتعديلات المؤلف المشارك.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="مساحة عمل الرسوم البيانية مع مصدر قابل للتحرير وشكل معروض" width="100%" />
+<img src="../assets/readme/diagram-composer.png" alt="Diagram Composer في Oleafly مع مخطط قابل للتحرير على لوحة الرسم" width="100%" />
 
 ### واصل الكتابة بينما يتقدم البحث
 
@@ -102,7 +105,6 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 تأخذ مهارات البحث العمل أبعد: أنشئ قائمة قراءة، وتحقق من الادعاءات بالرجوع إلى المصادر، وأعد عرضًا من الورقة، أو اكتب ردًا على المراجعين. احفظ إجراءً خاصًا بك لتستخدمه مرة أخرى في المشروع التالي.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="مساحة عمل البحث للمهام التي تعمل بجانب المخطوطة" width="100%" />
 
 ### جهّز الورقة التي تريد تقديمها
 
@@ -110,7 +112,7 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 للسيرة الذاتية، تحقق من كيفية مرور نص PDF إلى محلل. وللورقة، اختر ملفًا تعريفيًا للنشر وراجع فحوصات التقديم الخاصة به. صدّر PDF أو احزم المصدر عندما تصبح مستعدًا لإرساله.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="فحوصات ما قبل الإرسال لورقة بحثية قبل تقديمها" width="100%" />
+<img src="../assets/readme/preflight-accessibility.png" alt="فحوصات إمكانية الوصول في Preflight داخل Oleafly" width="100%" />
 
 ### أبقِ كل مشروع ملكًا لك
 
@@ -118,7 +120,7 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 تحفظ عمليات التجميع الناجحة نقاط استعادة تلقائية، كي تعود إلى حالة أقدم من المشروع. استخدم Git عندما تريد commits وسجلًا مشتركًا. أنت من يقرر ما يحتفظ به ومتى ينشره.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="نقاط الاستعادة المحفوظة للمشروع في Oleafly" width="100%" />
+<img src="../assets/readme/checkpoints.png" alt="نقاط التحقق المحفوظة في Oleafly" width="100%" />
 
 ## وكلاء CLI المدعومون
 
@@ -143,7 +145,6 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 دعم وكلاء CLI في beta. اكتشف مزيدًا من الوكلاء المتوافقين من خلال السجل في Settings. يمكنك أيضًا وصل مساعد خارجي عبر [MCP](../mcp.md).
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Claude Code ووكلاء CLI الآخرون في مساعد Oleafly" width="100%" />
 
 ## مساحة عمل تنمو مع عملك
 
@@ -151,7 +152,7 @@ Oleafly مساحة عمل مجانية لسطح المكتب لكتابة الأ
 
 التالي في خارطة الطريق هو التعاون والتعليقات المباشرة، وواجهة متعددة اللغات، ودعم أعمق لـ Typst وMarkdown، ومزامنة اختيارية بين الأجهزة. تابع [سجل التغييرات](../../CHANGELOG.md) مع وصول هذا العمل.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="أوراق بحثية منظمة كمشاريع في مكتبة Oleafly" width="100%" />
+<img src="../assets/readme/project-library.png" alt="مكتبة مشاريع Oleafly التي تنظم الأعمال البحثية في قائمة" width="100%" />
 
 ## تنزيل Oleafly
 

@@ -12,8 +12,12 @@
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![ライセンス: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![スター](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+
+永久無料 · オープンソース · アカウント不要 · サインアップ不要 · トラッキングなし
 
 **面倒な作業を減らして、次の論文を書こう。**
 
@@ -24,7 +28,7 @@ Oleaflyは、LaTeX、Typst、Markdownで論文を書くための無料デスク�
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="ソースツリー、文書アウトライン、コンパイル済みPDFを同時に開き、OleaflyでLLaMAの研究論文をLaTeXで編集している画面" width="100%" />
+  <img src="../assets/readme/hero.png" alt="LaTeXプロジェクトのソースエディタ、PDFプレビュー、AI計画パネルを表示したOleaflyのワークスペース" width="100%" />
 </div>
 
 ## 機能
@@ -53,7 +57,8 @@ Oleaflyは、LaTeX、Typst、Markdownで論文を書くための無料デスク�
 
 すでに原稿がありますか？ プロジェクトZIPやGitHubリポジトリをインポートしたり、Word文書を取り込んだり、編集可能なLaTeXの出発点としてPDFを使ったりできます。次のプロジェクトは、すでに進めた作業から始められます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="文書プレビューとプロジェクトの出発点を備えたOleaflyのテンプレートギャラリー" width="100%" />
+<img src="../assets/readme/template-downloads.png" alt="学術執筆とBeamer向けのOleaflyテンプレートダウンロード" width="100%" />
+<img src="../assets/readme/import-project.png" alt="Oleaflyのプロジェクトインポート画面" width="100%" />
 
 ### 文書全体を見ながら書く
 
@@ -61,7 +66,7 @@ Oleaflyは、LaTeX、Typst、Markdownで論文を書くための無料デスク�
 
 ソースを直接書くことも、LaTeXとMarkdown用のビジュアルエディタを使うこともできます。文書が育っても、数式、引用、図はすぐ手の届くところにあります。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="LaTeXソースとコンパイル済みPDFを並べて研究論文を表示するOleafly" width="100%" />
+<img src="../assets/readme/visual-editor.png" alt="ファイルツリーと文書アウトラインを表示したOleaflyのビジュアルエディタ" width="100%" />
 
 ### 論旨に必要な文献を見つける
 
@@ -69,7 +74,6 @@ arXiv、Semantic Scholar、Crossref、PubMed、OpenAlexをまとめて検索で�
 
 Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り込めます。その後、DOIまたはタイトルで参考文献を追加し、文から離れずに引用を挿入できます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Oleaflyで学術データベースを検索した結果" width="100%" />
 
 ### 実際のプロジェクトをアシスタントに渡す
 
@@ -77,14 +81,13 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 好みのモデルを使えます。ホスト型のプロバイダーに接続する、Ollamaをローカルで使う、または以下のCLIエージェントから選べます。AIをオフにしても、エディタはすべて使えます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="開いている研究プロジェクトの横で作業するAIアシスタント" width="100%" />
+<img src="../assets/readme/ai-personas.png" alt="OleaflyのAIアシスタントに用意された執筆とレビューの役割" width="100%" />
 
 <details>
 <summary>提案された編集を適用する前に確認する</summary>
 
 「Ask for approval」モードでは、提案されたファイル差分を読み、適用するかどうかを選べます。通常の書き込みをそのセッションで許可することも、設定から別の承認ポリシーを選ぶこともできます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="アシスタントが提案した変更を確認するための承認コントロール" width="100%" />
 
 </details>
 
@@ -94,7 +97,7 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 結果にはキャプションとラベルを付けて挿入します。編集可能なベクターソースはプロジェクト内に残るため、次の改訂や共著者による変更にも対応できます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="編集可能なソースとレンダリング済みの図を備えたダイアグラムワークスペース" width="100%" />
+<img src="../assets/readme/diagram-composer.png" alt="編集可能な図をキャンバス上で扱うOleaflyのDiagram Composer" width="100%" />
 
 ### リサーチを進めながら書き続ける
 
@@ -102,7 +105,6 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 リサーチスキルは作業の幅を広げます。読書リストを作る、出典資料に照らして主張を確認する、論文から発表を準備する、査読者への回答を下書きするといったことができます。自分の手順を保存して、次のプロジェクトで再利用することもできます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="原稿と並行して実行するタスクのためのリサーチワークスペース" width="100%" />
 
 ### 提出したい論文を整える
 
@@ -110,7 +112,7 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 履歴書では、PDFのテキストがパーサーにどう読み取られるかを確認できます。論文では、出版プロファイルを選び、投稿前チェックを見直せます。送る準備ができたら、PDFを書き出すか、ソースをパッケージ化します。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="提出前の研究論文に対するPreflightチェック" width="100%" />
+<img src="../assets/readme/preflight-accessibility.png" alt="Oleafly Preflightのアクセシビリティ検査結果" width="100%" />
 
 ### どのプロジェクトもあなたのもの
 
@@ -118,7 +120,7 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 コンパイルが成功すると、自動チェックポイントが保存されるので、以前のプロジェクト状態に戻れます。コミットや共有履歴が必要なときはGitを使えます。何を残し、いつ公開するかはあなたが決めます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="Oleaflyに保存されたプロジェクトのチェックポイント" width="100%" />
+<img src="../assets/readme/checkpoints.png" alt="Oleaflyに保存されたプロジェクトのチェックポイント" width="100%" />
 
 ## 対応するCLIエージェント
 
@@ -143,7 +145,6 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 CLIエージェントのサポートはbetaです。設定のレジストリから、さらに対応するエージェントを見つけられます。[MCP](../mcp.md)を通じて外部アシスタントに接続することもできます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Oleaflyアシスタントで利用できるClaude CodeなどのCLIエージェント" width="100%" />
 
 ## 作業とともに育つワークスペース
 
@@ -151,7 +152,7 @@ Oleaflyが目指すのは、つながったリサーチワークスペースで�
 
 ロードマップの次の項目は、ライブコラボレーションとコメント、多言語インターフェース、TypstとMarkdownへのより深い対応、デバイス間の任意の同期です。進捗は[変更履歴](../../CHANGELOG.md)で確認できます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Oleaflyライブラリでプロジェクトとして整理された研究論文" width="100%" />
+<img src="../assets/readme/project-library.png" alt="Oleaflyライブラリでプロジェクトとして整理された研究論文" width="100%" />
 
 ## Oleaflyをダウンロード
 

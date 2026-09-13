@@ -12,8 +12,12 @@
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![Licence : AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Étoiles](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+
+Gratuit pour toujours · Open source · Aucun compte · Aucune inscription · Aucun suivi
 
 **Écrivez votre prochain article avec moins de tâches répétitives.**
 
@@ -24,7 +28,7 @@ Oleafly est un espace de travail de bureau gratuit pour écrire des articles en 
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="Oleafly modifiant l'article de recherche LLaMA en LaTeX, avec l'arborescence des sources, le plan du document et le PDF compilé ouverts ensemble" width="100%" />
+  <img src="../assets/readme/hero.png" alt="Espace de travail Oleafly avec un projet LaTeX, l’éditeur source, l’aperçu PDF et un panneau de planification IA" width="100%" />
 </div>
 
 ## Fonctionnalités
@@ -53,7 +57,8 @@ Choisissez un article de revue, une thèse, un exposé Beamer ou un CV à adapte
 
 Vous avez déjà un manuscrit ? Importez un ZIP de projet ou un dépôt GitHub, ajoutez un document Word, ou utilisez un PDF comme point de départ pour du LaTeX modifiable. Votre prochain projet peut partir d'un travail déjà accompli.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="La galerie de modèles Oleafly avec des aperçus de documents et des projets de départ" width="100%" />
+<img src="../assets/readme/template-downloads.png" alt="Téléchargements de modèles Oleafly pour l’écriture académique et les présentations Beamer" width="100%" />
+<img src="../assets/readme/import-project.png" alt="Boîte de dialogue d’importation de projet dans Oleafly" width="100%" />
 
 ### Écrivez en gardant tout le document sous les yeux
 
@@ -61,7 +66,7 @@ Gardez ensemble votre source, le plan des chapitres et le PDF compilé. Passez d
 
 Écrivez directement dans la source ou utilisez l'éditeur visuel pour LaTeX et Markdown. Équations, citations et figures restent à portée de main à mesure que le document s'étoffe.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="Oleafly affichant un article de recherche avec sa source LaTeX et son PDF compilé" width="100%" />
+<img src="../assets/readme/visual-editor.png" alt="Éditeur visuel Oleafly avec arborescence des fichiers et plan du document" width="100%" />
 
 ### Trouvez les sources dont votre argumentation a besoin
 
@@ -69,7 +74,6 @@ Recherchez ensemble dans arXiv, Semantic Scholar, Crossref, PubMed et OpenAlex. 
 
 Importez votre bibliothèque existante depuis Zotero RDF, EndNote XML, RIS ou BibTeX. Ajoutez ensuite une référence par DOI ou par titre et insérez sa citation sans quitter la phrase.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Résultats de recherche dans les bases de publications scientifiques d’Oleafly" width="100%" />
 
 ### Donnez à votre assistant le vrai projet
 
@@ -77,14 +81,13 @@ Demandez-lui de resserrer une section, d'expliquer une équation ou de corriger 
 
 Gardez le modèle que vous préférez : connectez un fournisseur hébergé, utilisez Ollama en local ou choisissez l'un des agents CLI ci-dessous. L'éditeur reste entièrement utilisable sans IA.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="L'assistant IA travaillant avec le projet de recherche ouvert" width="100%" />
+<img src="../assets/readme/ai-personas.png" alt="Rôles de l’assistant IA pour l’écriture et la relecture dans Oleafly" width="100%" />
 
 <details>
 <summary>Examinez une modification proposée avant de l'appliquer</summary>
 
 En mode Ask for approval, lisez le diff de fichier proposé et choisissez de l'appliquer ou non. Vous pouvez aussi autoriser les écritures ordinaires pendant la session ou choisir une autre politique d'approbation dans Settings.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="Les contrôles d'approbation pour examiner les modifications proposées par l'assistant" width="100%" />
 
 </details>
 
@@ -94,7 +97,7 @@ Décrivez un diagramme à l'assistant ou construisez-le sur le canevas. Modifiez
 
 Insérez le résultat avec une légende et une étiquette. Conservez la source vectorielle modifiable dans le projet, prête pour la prochaine révision ou les modifications d'un coauteur.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="L'espace de travail des diagrammes avec une source modifiable et une figure rendue" width="100%" />
+<img src="../assets/readme/diagram-composer.png" alt="Diagram Composer d’Oleafly avec un diagramme modifiable sur la toile" width="100%" />
 
 ### Continuez à écrire pendant que la recherche avance
 
@@ -102,7 +105,6 @@ Confiez à une tâche de recherche une revue de littérature, une analyse ou une
 
 Les compétences de recherche vont plus loin : constituez une liste de lecture, vérifiez des affirmations avec les sources, préparez un exposé à partir de l'article ou rédigez une réponse aux évaluateurs. Enregistrez votre propre procédure pour la réutiliser dans le prochain projet.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="L'espace de travail de recherche pour les tâches exécutées à côté du manuscrit" width="100%" />
 
 ### Préparez l'article que vous souhaitez soumettre
 
@@ -110,7 +112,7 @@ Vérifiez le manuscrit et son PDF compilé avant l'exportation. Les vérificatio
 
 Pour un CV, vérifiez comment le texte du PDF est lu par un analyseur. Pour un article, choisissez un profil de publication et examinez ses vérifications de soumission. Exportez le PDF ou empaquetez la source lorsque vous êtes prêt à l'envoyer.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="Vérifications préalables d'un article de recherche avant sa soumission" width="100%" />
+<img src="../assets/readme/preflight-accessibility.png" alt="Résultats des contrôles d’accessibilité de Preflight dans Oleafly" width="100%" />
 
 ### Gardez chaque projet à vous
 
@@ -118,7 +120,7 @@ Votre travail reste dans des fichiers ordinaires sur votre ordinateur. Modifiez-
 
 Les compilations réussies enregistrent automatiquement des points de restauration afin que vous puissiez revenir à un état antérieur du projet. Utilisez Git lorsque vous souhaitez des commits et un historique partagé. Vous décidez de ce que vous gardez et du moment où vous le publiez.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="Points de restauration de projet enregistrés dans Oleafly" width="100%" />
+<img src="../assets/readme/checkpoints.png" alt="Points de restauration enregistrés dans Oleafly" width="100%" />
 
 ## Agents CLI pris en charge
 
@@ -143,7 +145,6 @@ Ajoutez à l'assistant un agent que vous utilisez déjà et utilisez-le avec son
 
 La prise en charge des agents CLI est en bêta. Découvrez d'autres agents compatibles dans le registre de Settings. Vous pouvez aussi connecter un assistant externe via [MCP](../mcp.md).
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Claude Code et les autres agents CLI dans l’assistant Oleafly" width="100%" />
 
 ## Un espace de travail qui évolue avec vos travaux
 
@@ -151,7 +152,7 @@ Oleafly vise à relier les éléments de votre recherche : les lectures qui faç
 
 La feuille de route prévoit ensuite la collaboration en direct et les commentaires, une interface multilingue, une prise en charge plus poussée de Typst et Markdown, ainsi qu'une synchronisation facultative entre appareils. Suivez le [journal des modifications](../../CHANGELOG.md) au fil de ces avancées.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Des articles de recherche organisés en projets dans la bibliothèque Oleafly" width="100%" />
+<img src="../assets/readme/project-library.png" alt="Articles de recherche organisés en projets dans la bibliothèque Oleafly" width="100%" />
 
 ## Télécharger Oleafly
 

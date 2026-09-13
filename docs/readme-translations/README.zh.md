@@ -12,8 +12,12 @@
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![许可证：AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+
+永久免费 · 开源 · 无需账户 · 无需注册 · 无跟踪
 
 **写下一篇论文时，少做些琐事。**
 
@@ -24,7 +28,7 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="Oleafly 正在用 LaTeX 编辑 LLaMA 研究论文，源文件树、文档大纲和已编译的 PDF 同时打开" width="100%" />
+  <img src="../assets/readme/hero.png" alt="Oleafly 工作空间展示 LaTeX 项目、源文件编辑器、PDF 预览和 AI 计划面板" width="100%" />
 </div>
 
 ## 功能
@@ -53,7 +57,8 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 已经有手稿了吗？导入项目 ZIP 或 GitHub 仓库，带入 Word 文档，或将 PDF 作为可编辑 LaTeX 的起点。下一个项目可以从你已经完成的工作开始。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="带有文档预览和项目起始文件的 Oleafly 模板库" width="100%" />
+<img src="../assets/readme/template-downloads.png" alt="Oleafly 学术写作和 Beamer 模板下载" width="100%" />
+<img src="../assets/readme/import-project.png" alt="Oleafly 项目导入对话框" width="100%" />
 
 ### 查看整份文档并写作
 
@@ -61,7 +66,7 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 可以直接在源文件中写作，也可以使用 LaTeX 和 Markdown 的可视化编辑器。随着文档变长，公式、引文和图形仍随手可用。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="Oleafly 同时显示研究论文的 LaTeX 源文件和已编译的 PDF" width="100%" />
+<img src="../assets/readme/visual-editor.png" alt="Oleafly 可视化编辑器，同时显示文件树和文档大纲" width="100%" />
 
 ### 查找论证需要的资料
 
@@ -69,7 +74,6 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 从 Zotero RDF、EndNote XML、RIS 或 BibTeX 导入现有文献库。然后按 DOI 或标题添加参考文献，无须离开当前句子即可插入引文。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Oleafly 中的学术数据库搜索结果" width="100%" />
 
 ### 把真实项目交给助手
 
@@ -77,14 +81,13 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 继续使用你喜欢的模型：连接托管服务商、在本地使用 Ollama，或从下方选择一个 CLI 代理。关闭 AI 后，编辑器同样可以完整使用。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="AI 助手正在已打开的研究项目旁工作" width="100%" />
+<img src="../assets/readme/ai-personas.png" alt="Oleafly AI 助手的写作和审阅角色选择" width="100%" />
 
 <details>
 <summary>应用前查看建议的编辑</summary>
 
 在“请求批准”模式下，阅读建议的文件 diff 并决定是否应用。你还可以在当前会话中批准常规写入，或在设置中选择其他批准策略。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="用于审阅助手建议改动的批准控件" width="100%" />
 
 </details>
 
@@ -94,7 +97,7 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 插入结果时添加图注和标签。把可编辑的矢量源文件保留在项目中，为下一次修改或合作者的改动做好准备。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="带有可编辑源文件和渲染图形的图表工作空间" width="100%" />
+<img src="../assets/readme/diagram-composer.png" alt="Oleafly Diagram Composer 在画布上编辑图形" width="100%" />
 
 ### 研究推进时继续写作
 
@@ -102,7 +105,6 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 研究技能可以继续推进工作：建立阅读清单、根据原始资料核查主张、从论文准备演讲，或起草给审稿人的回复。也可以保存自己的流程，以便下一个项目再次使用。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="用于与手稿并行运行任务的研究工作空间" width="100%" />
 
 ### 准备要投稿的论文
 
@@ -110,7 +112,7 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 对于简历，检查 PDF 的文本如何进入解析器。对于论文，选择一个出版配置文件并审阅其投稿检查。准备发送时，导出 PDF 或打包源文件。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="研究论文投稿前的预检" width="100%" />
+<img src="../assets/readme/preflight-accessibility.png" alt="Oleafly Preflight 无障碍检查结果" width="100%" />
 
 ### 让每个项目始终属于你
 
@@ -118,7 +120,7 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 成功编译会保存自动检查点，因此可以回到项目的早期状态。需要提交和共享历史时，使用 Git。保留什么、何时发布，都由你决定。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="保存在 Oleafly 中的项目检查点" width="100%" />
+<img src="../assets/readme/checkpoints.png" alt="保存在 Oleafly 中的项目检查点" width="100%" />
 
 ## 支持的 CLI 代理
 
@@ -143,7 +145,6 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 CLI 代理支持处于 beta 阶段。可通过设置中的注册表发现更多兼容代理。还可以通过 [MCP](../mcp.md) 连接外部助手。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Oleafly 助手中的 Claude Code 和其他 CLI 智能体" width="100%" />
 
 ## 随工作一起成长的工作空间
 
@@ -151,7 +152,7 @@ Oleafly 希望成为一个相连的研究工作空间：塑造问题的阅读材
 
 路线图接下来包括实时协作与评论、多语言界面、更深入的 Typst 和 Markdown 支持，以及可选的跨设备同步。可在[更新日志](../../CHANGELOG.md)中关注这些工作的进展。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Oleafly 资料库中按项目整理的研究论文" width="100%" />
+<img src="../assets/readme/project-library.png" alt="Oleafly 资料库中按项目整理的研究论文" width="100%" />
 
 ## 下载 Oleafly
 

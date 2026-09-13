@@ -27,7 +27,7 @@ Free forever · Open source · No accounts · No sign-ups · No tracking
 </div>
 
 <div align="center">
-  <img src="docs/assets/readme/source-and-pdf.png" alt="Oleafly with a structured research project, source editor, and compiled PDF open together" width="100%" />
+  <img src="docs/assets/readme/hero.png" alt="Oleafly workspace showing a LaTeX project with the source editor, PDF preview, and AI planning panel" width="100%" />
 </div>
 
 ## Start here

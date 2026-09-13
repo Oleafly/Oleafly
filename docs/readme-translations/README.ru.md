@@ -12,8 +12,12 @@
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![Лицензия: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Звёзды](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+
+Бесплатно навсегда · Открытый исходный код · Без учётной записи · Без регистрации · Без отслеживания
 
 **Пишите следующую работу, тратя меньше времени на рутину.**
 
@@ -24,7 +28,7 @@ Oleafly — бесплатное десктопное рабочее прост�
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="Oleafly редактирует исследовательскую статью LLaMA в LaTeX: одновременно открыты дерево исходных файлов, структура документа и скомпилированный PDF" width="100%" />
+  <img src="../assets/readme/hero.png" alt="Рабочее пространство Oleafly с проектом LaTeX, редактором исходного кода, предпросмотром PDF и панелью планирования ИИ" width="100%" />
 </div>
 
 ## Возможности
@@ -53,7 +57,8 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 У вас уже есть рукопись? Импортируйте ZIP проекта или репозиторий GitHub, добавьте документ Word или используйте PDF как отправную точку для редактируемого LaTeX. Следующий проект можно начать с того, что вы уже сделали.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="Галерея шаблонов Oleafly с предпросмотрами документов и заготовками проектов" width="100%" />
+<img src="../assets/readme/template-downloads.png" alt="Загрузка шаблонов Oleafly для научного письма и презентаций Beamer" width="100%" />
+<img src="../assets/readme/import-project.png" alt="Диалог импорта проекта в Oleafly" width="100%" />
 
 ### Пишите, видя весь документ
 
@@ -61,7 +66,7 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 Пишите прямо в исходном тексте или используйте визуальный редактор для LaTeX и Markdown. По мере роста документа формулы, цитаты и рисунки остаются под рукой.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="Oleafly показывает исследовательскую статью вместе с её исходным кодом LaTeX и скомпилированным PDF" width="100%" />
+<img src="../assets/readme/visual-editor.png" alt="Визуальный редактор Oleafly с деревом файлов и структурой документа" width="100%" />
 
 ### Находите источники для своей аргументации
 
@@ -69,7 +74,6 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 Импортируйте существующую библиотеку из Zotero RDF, EndNote XML, RIS или BibTeX. Затем добавьте источник по DOI или названию и вставьте цитату, не выходя из предложения.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Результаты поиска по научным базам в Oleafly" width="100%" />
 
 ### Дайте ассистенту сам проект
 
@@ -77,14 +81,13 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 Используйте предпочитаемую модель: подключите облачного провайдера, запустите Ollama локально или выберите одного из CLI-агентов ниже. Редактор также полностью работает при отключённом ИИ.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="ИИ-ассистент работает рядом с открытым исследовательским проектом" width="100%" />
+<img src="../assets/readme/ai-personas.png" alt="Роли ИИ-ассистента для написания и рецензирования в Oleafly" width="100%" />
 
 <details>
 <summary>Посмотрите предложенное изменение до его применения</summary>
 
 В режиме Ask for approval прочитайте предложенное различие файлов и решите, применять ли его. Вы также можете разрешить обычные записи на время сеанса или выбрать другую политику одобрения в настройках.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="Элементы управления одобрением для проверки предложенных ассистентом изменений" width="100%" />
 
 </details>
 
@@ -94,7 +97,7 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 Вставьте результат с подписью и меткой. Редактируемый векторный исходный код останется в проекте и будет готов к следующей правке или изменениям соавтора.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="Рабочее пространство диаграмм с редактируемым исходным кодом и визуализированным рисунком" width="100%" />
+<img src="../assets/readme/diagram-composer.png" alt="Diagram Composer Oleafly с редактируемой диаграммой на рабочем поле" width="100%" />
 
 ### Продолжайте писать, пока исследование движется вперёд
 
@@ -102,7 +105,6 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 Исследовательские навыки помогают пойти дальше: составить список для чтения, проверить утверждения по исходным материалам, подготовить доклад на основе статьи или набросать ответ рецензентам. Сохраните собственную процедуру, чтобы использовать её в следующем проекте.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="Исследовательское рабочее пространство для задач, которые выполняются параллельно с рукописью" width="100%" />
 
 ### Подготовьте работу к отправке
 
@@ -110,7 +112,7 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 Для резюме проверьте, как текст PDF считывается парсером. Для статьи выберите профиль публикации и просмотрите его проверки перед отправкой. Когда будете готовы отправлять работу, экспортируйте PDF или упакуйте исходный код.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="Проверки Preflight для исследовательской статьи перед отправкой" width="100%" />
+<img src="../assets/readme/preflight-accessibility.png" alt="Результаты проверки доступности в Oleafly Preflight" width="100%" />
 
 ### Каждый проект остаётся вашим
 
@@ -118,7 +120,7 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 Успешные компиляции сохраняют автоматические контрольные точки, поэтому можно вернуться к более раннему состоянию проекта. Используйте Git, когда нужны коммиты и общая история. Вы сами решаете, что сохранять и когда публиковать.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="Сохранённые контрольные точки проекта в Oleafly" width="100%" />
+<img src="../assets/readme/checkpoints.png" alt="Сохранённые контрольные точки проекта в Oleafly" width="100%" />
 
 ## Поддерживаемые CLI-агенты
 
@@ -143,7 +145,6 @@ Oleafly — бесплатное десктопное рабочее прост�
 
 Поддержка CLI-агентов находится в beta. Находите больше совместимых агентов через реестр в настройках. Также можно подключить внешнего ассистента через [MCP](../mcp.md).
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Claude Code и другие CLI-агенты в ассистенте Oleafly" width="100%" />
 
 ## Рабочее пространство, которое растёт вместе с вашей работой
 
@@ -151,7 +152,7 @@ Oleafly движется к связанному исследовательск�
 
 Далее в дорожной карте — совместная работа в реальном времени и комментарии, многоязычный интерфейс, более глубокая поддержка Typst и Markdown, а также необязательная синхронизация между устройствами. Следите за ходом этой работы в [журнале изменений](../../CHANGELOG.md).
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Исследовательские статьи, организованные как проекты в библиотеке Oleafly" width="100%" />
+<img src="../assets/readme/project-library.png" alt="Исследовательские статьи, организованные как проекты в библиотеке Oleafly" width="100%" />
 
 ## Скачать Oleafly
 
