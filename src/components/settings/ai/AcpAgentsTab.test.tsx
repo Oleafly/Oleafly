@@ -323,6 +323,11 @@ describe("ACP agent setup acceptance", () => {
   });
 
   it("names the vendor CLI it found instead of reporting the agent as not installed", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
     catalog = [
       agent("claude", {
         definition: { ...agent().definition, id: "claude", name: "Claude Code", version: "0.74.0", builtin: true },
@@ -350,15 +355,32 @@ describe("ACP agent setup acceptance", () => {
     const command = within(card).getByTestId("acp-agent-sign-in-command-claude");
     expect(command).toHaveClass("min-h-12", "px-3", "py-2.5");
     expect(command).toHaveTextContent("claude auth login");
-    expect(
-      within(command).getByRole("button", { name: copy.copySignInCommand }),
-    ).toBeInTheDocument();
+    const copyButton = within(command).getByRole("button", {
+      name: copy.copySignInCommand,
+    });
+    fireEvent.click(copyButton);
+    expect(writeText).toHaveBeenCalledExactlyOnceWith("claude auth login");
+    const copiedButton = await within(command).findByRole("button", {
+      name: enCommon.actions.copied,
+    });
+    expect(copiedButton).toHaveAttribute("data-copied", "true");
+    expect(copiedButton).toHaveClass("text-emerald-600");
+    expect(copiedButton.querySelector("svg")).toHaveClass("size-3.5");
     const bridgeDetails = within(card).getByRole("region", {
       name: copy.bridgeTitle,
     });
     expect(bridgeDetails).toHaveTextContent(copy.bridgePathLabel);
     expect(bridgeDetails).toHaveTextContent(copy.bridgeSourceLabel);
     expect(bridgeDetails).toHaveTextContent(copy.platformLabel);
+    expect(
+      Array.from(bridgeDetails.querySelectorAll("dt")).map((term) => term.textContent),
+    ).toEqual([
+      copy.bridgePathLabel,
+      copy.versionLabel,
+      copy.platformLabel,
+      copy.bridgeSourceLabel,
+    ]);
+    expect(bridgeDetails.querySelector("dl")).toHaveClass("grid-cols-3");
     expect(within(card).getByRole("region", { name: copy.nextStepTitle })).toHaveTextContent(
       copy.installBridgeNextStep,
     );

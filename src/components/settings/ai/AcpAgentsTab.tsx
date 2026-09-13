@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -59,25 +60,51 @@ const example = JSON.stringify(
 function CopyValue({ value, label }: Readonly<{ value: string; label: string }>) {
   const { t } = useTranslation(["common"]);
   const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copiedLabel = t(($) => $.common.actions.copied);
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+    },
+    [],
+  );
+
   return (
-    <Tooltip label={copied ? t(($) => $.common.actions.copied) : label}>
+    <Tooltip label={copied ? copiedLabel : label}>
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="size-8 shrink-0"
-        aria-label={label}
+        className={
+          copied
+            ? "size-8 shrink-0 text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+            : "size-8 shrink-0"
+        }
+        aria-label={copied ? copiedLabel : label}
+        data-copied={copied ? "true" : undefined}
         onClick={() => {
           void navigator.clipboard
             ?.writeText(value)
             .then(() => {
+              if (resetTimer.current) clearTimeout(resetTimer.current);
               setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
+              resetTimer.current = setTimeout(() => {
+                setCopied(false);
+                resetTimer.current = null;
+              }, 1500);
             })
             .catch(() => setCopied(false));
         }}
       >
-        <Copy className="size-3" />
+        {copied ? (
+          <Check aria-hidden="true" className="size-3.5" />
+        ) : (
+          <Copy aria-hidden="true" className="size-3.5" />
+        )}
+        <span aria-live="polite" className="sr-only">
+          {copied ? copiedLabel : ""}
+        </span>
       </Button>
     </Tooltip>
   );
@@ -295,8 +322,8 @@ function AgentCard({
             <h5 id={bridgeTitleId} className="text-xs font-semibold text-foreground">
               {t(($) => $.settings.ai.agents.bridgeTitle)}
             </h5>
-            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-              <div className="min-w-0 sm:col-span-2">
+            <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
+              <div className="col-span-3 min-w-0">
                 <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.bridgePathLabel)}
                 </dt>
@@ -305,7 +332,7 @@ function AgentCard({
                     t(($) => $.settings.ai.agents.bridgeUnresolved)}
                 </dd>
               </div>
-              <div>
+              <div className="min-w-0">
                 <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.versionLabel)}
                 </dt>
@@ -313,20 +340,20 @@ function AgentCard({
                   {agent.installedVersion ?? agent.definition.version}
                 </dd>
               </div>
-              <div>
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {t(($) => $.settings.ai.agents.bridgeSourceLabel)}
-                </dt>
-                <dd className="mt-1 text-xs text-foreground">
-                  {bridgeSourceLabel(agent)}
-                </dd>
-              </div>
-              <div>
+              <div className="min-w-0">
                 <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.platformLabel)}
                 </dt>
                 <dd className="mt-1 break-all text-xs text-foreground">
                   {agent.platform}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.settings.ai.agents.bridgeSourceLabel)}
+                </dt>
+                <dd className="mt-1 text-xs text-foreground">
+                  {bridgeSourceLabel(agent)}
                 </dd>
               </div>
             </dl>
