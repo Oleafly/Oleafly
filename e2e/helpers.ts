@@ -340,6 +340,69 @@ export async function compileAndProbe(
  * this path so the measurement covers the product viewer, not an E2E-only
  * full-document semantic traversal on the WebView main thread.
  */
+type CompileSnapshot = {
+  status: string;
+  outputRevision: number;
+  disabled: boolean;
+};
+
+// A layout or panel re-render can unmount the toolbar for a frame; tolerate
+// a brief absence instead of failing the whole compile wait, while a button
+// that stays gone still throws.
+async function compileSnapshot(page: Page): Promise<CompileSnapshot> {
+  const absentDeadline = Date.now() + 3_000;
+  for (;;) {
+    try {
+      return await page.evaluate<CompileSnapshot>(
+        `(() => {
+          const button = document.querySelector('[data-testid="compile-button"]');
+          if (!(button instanceof HTMLButtonElement)) {
+            throw new Error("compile button is unavailable");
+          }
+          return {
+            status: button.dataset.e2eCompileStatus ?? "",
+            outputRevision: Number(button.dataset.e2eCompileRevision ?? "0"),
+            disabled: button.disabled,
+          };
+        })()`,
+      );
+    } catch (error) {
+      if (Date.now() > absentDeadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+}
+
+// A project that just opened schedules its first compile from a React
+// effect. The button can briefly be enabled before that effect starts, so
+// waiting only for "enabled" can click into a compile-store reset. Require a
+// short quiescent window before the caller touches the compile button.
+export async function waitForCompileIdle(
+  page: Page,
+  timeoutMs = 120_000,
+): Promise<void> {
+  const compileButton = page.locator(
+    '[data-testid="compile-button"]',
+  ) as unknown as LocatorLike;
+  const deadline = Date.now() + timeoutMs;
+  let quietSince = 0;
+  for (;;) {
+    await expect(compileButton).toBeEnabled({ timeout: 60_000 });
+    const state = await compileSnapshot(page);
+    if (state.disabled || state.status === "compiling") {
+      quietSince = 0;
+    } else if (quietSince === 0) {
+      quietSince = Date.now();
+    } else if (Date.now() - quietSince >= 750) {
+      return;
+    }
+    if (Date.now() > deadline) {
+      throw new Error("compile button never reached a stable ready state");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 export async function compileAndWait(
   page: Page,
   timeoutMs = 120_000,
@@ -347,59 +410,9 @@ export async function compileAndWait(
   const compileButton = page.locator(
     '[data-testid="compile-button"]',
   ) as unknown as LocatorLike;
-  type CompileSnapshot = {
-    status: string;
-    outputRevision: number;
-    disabled: boolean;
-  };
-  // A layout or panel re-render can unmount the toolbar for a frame; tolerate
-  // a brief absence instead of failing the whole compile wait, while a button
-  // that stays gone still throws.
-  const snapshot = async (): Promise<CompileSnapshot> => {
-    const absentDeadline = Date.now() + 3_000;
-    for (;;) {
-      try {
-        return await page.evaluate<CompileSnapshot>(
-          `(() => {
-            const button = document.querySelector('[data-testid="compile-button"]');
-            if (!(button instanceof HTMLButtonElement)) {
-              throw new Error("compile button is unavailable");
-            }
-            return {
-              status: button.dataset.e2eCompileStatus ?? "",
-              outputRevision: Number(button.dataset.e2eCompileRevision ?? "0"),
-              disabled: button.disabled,
-            };
-          })()`,
-        );
-      } catch (error) {
-        if (Date.now() > absentDeadline) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-  };
-
+  const snapshot = () => compileSnapshot(page);
   const deadline = Date.now() + timeoutMs;
-  // A project that just opened schedules its first compile from a React
-  // effect. The button can briefly be enabled before that effect starts, so
-  // waiting only for "enabled" can click into a compile-store reset. Require a
-  // short quiescent window before establishing the production checkpoint.
-  let quietSince = 0;
-  for (;;) {
-    await expect(compileButton).toBeEnabled({ timeout: 60_000 });
-    const state = await snapshot();
-    if (state.disabled || state.status === "compiling") {
-      quietSince = 0;
-    } else if (quietSince === 0) {
-      quietSince = Date.now();
-    } else if (Date.now() - quietSince >= 750) {
-      break;
-    }
-    if (Date.now() > deadline) {
-      throw new Error("compile button never reached a stable ready state");
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+  await waitForCompileIdle(page, timeoutMs);
 
   const before = await snapshot();
   let attempts = 1;

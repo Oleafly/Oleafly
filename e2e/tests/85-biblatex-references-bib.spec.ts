@@ -5,6 +5,7 @@ import {
   expectCompiledPdfContains,
   openRailTab,
   setEditorContent,
+  waitForCompileIdle,
 } from "../helpers";
 
 const MAIN = `\\documentclass{article}
@@ -72,6 +73,7 @@ test("a bibliography file that does not exist is named in the compile diagnostic
 }) => {
   await createBlankProject(tauriPage, "E2E Biblatex Missing");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await waitForCompileIdle(tauriPage, 180_000);
   await setEditorContent(tauriPage, MAIN.replace("references.bib", "missing.bib"));
   await tauriPage.click('[data-testid="compile-button"]');
   await expect
