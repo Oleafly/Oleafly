@@ -255,6 +255,68 @@ describe("DocumentOutline", () => {
     );
   });
 
+  it("keeps a collapsed branch collapsed when an edit above it shifts every offset", () => {
+    mount(
+      indexWith([
+        { name: "Introduction", line: 3, from: 10, level: 1 },
+        { name: "Motivation", line: 6, from: 40, level: 2 },
+        { name: "Details", line: 9, from: 70, level: 3 },
+        { name: "Results", line: 12, from: 100, level: 1 },
+      ]),
+      "main.tex",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Motivation" }));
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+
+    act(() => {
+      useIndexStore.setState({
+        index: indexWith([
+          { name: "Introduction", line: 4, from: 17, level: 1 },
+          { name: "Motivation", line: 7, from: 47, level: 2 },
+          { name: "Details", line: 10, from: 77, level: 3 },
+          { name: "Results", line: 13, from: 107, level: 1 },
+        ]) as never,
+      });
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Expand Motivation" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Motivation"));
+    expect(navigateToProjectRange).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "main.tex", range: { from: 47, to: 57 } }),
+    );
+  });
+
+  it("drops a collapsed branch once its heading is renamed", async () => {
+    mount(
+      indexWith([
+        { name: "Motivation", line: 6, from: 40, level: 2 },
+        { name: "Details", line: 9, from: 70, level: 3 },
+      ]),
+      "main.tex",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Motivation" }));
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+
+    act(() => {
+      useIndexStore.setState({
+        index: indexWith([
+          { name: "Rationale", line: 6, from: 40, level: 2 },
+          { name: "Details", line: 9, from: 70, level: 3 },
+        ]) as never,
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Details")).toBeInTheDocument(),
+    );
+  });
+
   it("resets collapsed headings for a different project with an identical outline", async () => {
     const index = indexWith([
       { name: "Introduction", line: 3, from: 10, level: 1 },

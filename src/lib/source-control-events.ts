@@ -4,13 +4,15 @@
  * rail panel, and the panel remains responsible for its own expansion state.
  */
 export const SOURCE_CONTROL_SHOW_GRAPH_EVENT =
-	"oleafly:source-control-show-graph";
+  "oleafly:source-control-show-graph";
 
-let graphRequestPending = false;
+const GRAPH_REQUEST_TTL_MS = 5_000;
+
+let graphRequestedAt: number | null = null;
 
 export function showSourceControlGraph() {
-	graphRequestPending = true;
-	window.dispatchEvent(new CustomEvent(SOURCE_CONTROL_SHOW_GRAPH_EVENT));
+  graphRequestedAt = Date.now();
+  window.dispatchEvent(new CustomEvent(SOURCE_CONTROL_SHOW_GRAPH_EVENT));
 }
 
 /**
@@ -19,7 +21,9 @@ export function showSourceControlGraph() {
  * without coupling commands to the panel's state.
  */
 export function consumeSourceControlGraphRequest() {
-	if (!graphRequestPending) return false;
-	graphRequestPending = false;
-	return true;
+  const requestedAt = graphRequestedAt;
+  graphRequestedAt = null;
+  return (
+    requestedAt !== null && Date.now() - requestedAt < GRAPH_REQUEST_TTL_MS
+  );
 }

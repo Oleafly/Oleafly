@@ -111,15 +111,24 @@ CodeMirror.commands.save = (cm: CodeMirror) => {
   vimSaveHandlers.get(cm.cm6)?.();
 };
 
+const runVimHistory = (
+  view: EditorView,
+  command: "undo" | "redo",
+): boolean => {
+  const cm = getCM(view);
+  if (!cm?.state.vim) return false;
+  cm.operation(() => CodeMirror.commands[command](cm));
+  return true;
+};
+
 const vimHostHistoryGuard: KeyBinding[] = [
-  "Ctrl-y",
-  "Mod-y",
-  "Mod-z",
-  "Mod-Shift-z",
-].map((key) => ({
-  key,
-  run: (view) => Boolean(getCM(view)?.state.vim),
-}));
+  { key: "Mod-z", run: (view) => runVimHistory(view, "undo") },
+  { key: "Mod-Shift-z", run: (view) => runVimHistory(view, "redo") },
+  ...["Ctrl-y", "Mod-y"].map((key) => ({
+    key,
+    run: (view: EditorView) => Boolean(getCM(view)?.state.vim),
+  })),
+];
 
 function vimModeExtension(): Extension {
   // Ghost completion and LaTeX pairing both contain highest-precedence

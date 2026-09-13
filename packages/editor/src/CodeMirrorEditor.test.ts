@@ -199,6 +199,28 @@ describe("CodeMirrorEditor Vim integration", () => {
     expect(document.querySelector(".cm-vim-panel")).toHaveTextContent("NORMAL");
   });
 
+  it("routes the platform undo and redo chords through Vim", () => {
+    render(createElement(CodeMirrorEditor, { host: host() }));
+    const view = getEditorView();
+    const original = view!.state.doc.toString();
+    fireEvent.keyDown(view!.contentDOM, { key: "d", code: "KeyD" });
+    fireEvent.keyDown(view!.contentDOM, { key: "d", code: "KeyD" });
+    expect(view!.state.doc.toString()).toBe("second line\n");
+
+    fireEvent.keyDown(view!.contentDOM, { key: "z", code: "KeyZ", ctrlKey: true });
+    expect(view!.state.doc.toString()).toBe(original);
+    fireEvent.keyDown(view!.contentDOM, {
+      key: "Z",
+      code: "KeyZ",
+      keyCode: 90,
+      which: 90,
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    expect(view!.state.doc.toString()).toBe("second line\n");
+    expect(document.querySelector(".cm-vim-panel")).toHaveTextContent("NORMAL");
+  });
+
   it("routes :w to the editor host's explicit save", () => {
     const saveActive = vi.fn();
     render(createElement(CodeMirrorEditor, { host: host(saveActive) }));

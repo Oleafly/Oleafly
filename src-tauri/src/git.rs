@@ -51,6 +51,15 @@ fn run_configured_git(
     run_configured_git_bounded(root, args, optional_locks, None, configure)
 }
 
+const GIT_IDENTITY_ENV: [&str; 6] = [
+    "GIT_AUTHOR_NAME",
+    "GIT_AUTHOR_EMAIL",
+    "GIT_AUTHOR_DATE",
+    "GIT_COMMITTER_NAME",
+    "GIT_COMMITTER_EMAIL",
+    "GIT_COMMITTER_DATE",
+];
+
 fn run_configured_git_bounded(
     root: &PathBuf,
     args: &[&str],
@@ -76,14 +85,7 @@ fn run_configured_git_bounded(
     // `git commit` also exports its author and committer identity to hooks.
     // Do not let an outer repository's identity override the project-local
     // configuration when Oleafly runs Git from a hook or test harness.
-    for variable in [
-        "GIT_AUTHOR_NAME",
-        "GIT_AUTHOR_EMAIL",
-        "GIT_AUTHOR_DATE",
-        "GIT_COMMITTER_NAME",
-        "GIT_COMMITTER_EMAIL",
-        "GIT_COMMITTER_DATE",
-    ] {
+    for variable in GIT_IDENTITY_ENV {
         command.env_remove(variable);
     }
     configure(&mut command);
@@ -334,7 +336,7 @@ pub async fn git_initialize(project_id: String) -> Result<String, String> {
 }
 
 fn git_initialize_sync(project_id: String) -> Result<String, String> {
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let root = project_root(&project_id)?;
     if !root.join(".git").exists() {
         let branch = default_branch(&root);
@@ -646,6 +648,9 @@ fn run_git_authed(
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE");
+    for variable in GIT_IDENTITY_ENV {
+        command.env_remove(variable);
+    }
     crate::proc::output_contained_with_bounds(command, remote_bounds())
         .map_err(|e| format!("failed to run git: {e}"))
 }
@@ -915,7 +920,7 @@ fn git_push_sync(project_id: String) -> Result<String, String> {
 #[tauri::command]
 pub async fn git_fetch(project_id: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let root = existing_repo(&project_id)?;
         let remote = run_git_read_only(&root, &["remote", "get-url", "origin"])?;
         if !remote.status.success() || String::from_utf8_lossy(&remote.stdout).trim().is_empty() {
@@ -1862,12 +1867,16 @@ pub async fn git_commit_amend(project_id: String, message: String) -> Result<boo
             return Err("Create the first commit before amending it.".into());
         }
         if message.trim().is_empty() {
-            return Err("Enter a commit message before amending.".into());
+            ok_or_err(run_git(
+                &root,
+                &["commit", "--amend", "--quiet", "--no-edit"],
+            )?)?;
+        } else {
+            ok_or_err(run_git(
+                &root,
+                &["commit", "--amend", "--quiet", "-m", &message],
+            )?)?;
         }
-        ok_or_err(run_git(
-            &root,
-            &["commit", "--amend", "--quiet", "-m", &message],
-        )?)?;
         Ok(true)
     })
     .await
@@ -1934,7 +1943,19 @@ pub async fn git_checkout_branch(
 
 fn stash_push_at(root: &PathBuf) -> Result<(GitMutationOutcome, bool), String> {
     let out = run_git(root, &["stash", "push", "--include-untracked"])?;
+    let report = String::from_utf8_lossy(&out.stdout).to_string();
     ok_or_err(out)?;
+    if report.contains("No local changes to save") {
+        return Ok((
+            GitMutationOutcome {
+                message: "Nothing to stash.".into(),
+                outcome: "unchanged".into(),
+                conflicts: Vec::new(),
+                changed: false,
+            },
+            false,
+        ));
+    }
     Ok((
         GitMutationOutcome {
             message: "Saved changes to the stash.".into(),
@@ -2118,12 +2139,13 @@ pub async fn git_resolve_conflict(
     expected_generation: Option<u64>,
 ) -> Result<crate::project::ProjectStateChanged, String> {
     validate_repo_relative_path(&path)?;
+    let operation_project_id = project_id.clone();
     let mutation = crate::project::mutate_project_worktree(
         &state,
         project_id.clone(),
         expected_generation,
-        move |root| {
-            let root = root.to_path_buf();
+        move |_| {
+            let root = existing_repo(&operation_project_id)?;
             resolve_conflict_side(&root, &path, &resolution)?;
             Ok(((), true))
         },
@@ -2762,10 +2784,16 @@ mod tests {
             .await
             .unwrap()
             .contains("+appendix draft"));
+        let message_before_amend = super::git_log(project_id.into()).await.unwrap()[0]
+            .message
+            .clone();
         assert!(super::git_commit_amend(project_id.into(), "   ".into())
             .await
-            .unwrap_err()
-            .contains("commit message"));
+            .unwrap());
+        assert_eq!(
+            super::git_log(project_id.into()).await.unwrap()[0].message,
+            message_before_amend
+        );
         assert!(
             super::git_commit_amend(project_id.into(), "Amended paper".into())
                 .await
@@ -3018,6 +3046,18 @@ mod tests {
             .await
             .unwrap()
             .is_empty());
+        let nothing_to_stash = super::run_git_worktree_operation(
+            app.handle().clone(),
+            app.state::<crate::state::AppState>(),
+            project_id.into(),
+            None,
+            "git-stash-push",
+            super::stash_push_at,
+        )
+        .await
+        .unwrap();
+        assert_eq!(nothing_to_stash.outcome, "unchanged");
+        assert_eq!(nothing_to_stash.message, "Nothing to stash.");
 
         let applied = super::run_git_worktree_operation(
             app.handle().clone(),

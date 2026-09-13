@@ -53,6 +53,25 @@ const editorControllerMocks = vi.hoisted(() => ({
   getEditorView: vi.fn<() => { contentDOM: HTMLElement } | null>(() => null),
 }));
 
+const codeMirrorMocks = vi.hoisted(() => ({
+  findFromDOM: vi.fn<(dom: HTMLElement) => unknown>(() => null),
+  redo: vi.fn(() => true),
+  undo: vi.fn(() => true),
+}));
+vi.mock("@codemirror/view", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@codemirror/view")>();
+  class PatchedEditorView extends actual.EditorView {}
+  Object.defineProperty(PatchedEditorView, "findFromDOM", {
+    value: codeMirrorMocks.findFromDOM,
+  });
+  return { ...actual, EditorView: PatchedEditorView };
+});
+vi.mock("@codemirror/commands", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@codemirror/commands")>()),
+  redo: codeMirrorMocks.redo,
+  undo: codeMirrorMocks.undo,
+}));
+
 const browserWindowMocks = vi.hoisted(() => ({
   launchBrowser: vi.fn(),
   toggleBrowser: vi.fn(),
@@ -308,6 +327,9 @@ describe("project dock layout", () => {
     editorControllerMocks.editorVimRedo.mockClear();
     editorControllerMocks.editorVimUndo.mockClear();
     editorControllerMocks.getEditorView.mockReset().mockReturnValue(null);
+    codeMirrorMocks.findFromDOM.mockReset().mockReturnValue(null);
+    codeMirrorMocks.redo.mockClear();
+    codeMirrorMocks.undo.mockClear();
     assistantLayoutMocks.sidebarMinimumPercent.mockClear();
     assistantLayoutMocks.sidebarPanelGroupWidth.mockClear();
     panelHandleMocks.resize.mockClear();
@@ -605,7 +627,54 @@ describe("project dock layout", () => {
     expect(editorControllerMocks.editorRedo).not.toHaveBeenCalled();
   });
 
-  it("does not redirect native menu history from another CodeMirror surface", async () => {
+  it("runs native menu history on the focused CodeMirror surface's own view", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    appState.tauri = true;
+    useSettingsStore.setState({ vim: true });
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+    const source = document.createElement("div");
+    source.className = "cm-content";
+    const secondaryWrapper = document.createElement("div");
+    secondaryWrapper.className = "cm-editor";
+    const secondary = document.createElement("div");
+    secondary.className = "cm-content";
+    secondary.contentEditable = "true";
+    secondary.tabIndex = 0;
+    secondaryWrapper.append(secondary);
+    document.body.append(source, secondaryWrapper);
+    editorControllerMocks.getEditorView.mockReturnValue({ contentDOM: source });
+    const secondaryView = { id: "secondary-view" };
+    codeMirrorMocks.findFromDOM.mockReturnValue(secondaryView);
+    secondary.focus();
+
+    const undo = appState.menuListeners.get("menu://undo");
+    const redo = appState.menuListeners.get("menu://redo");
+    expect(undo).toBeDefined();
+    expect(redo).toBeDefined();
+    await act(async () => {
+      undo?.();
+      redo?.();
+    });
+
+    expect(codeMirrorMocks.findFromDOM).toHaveBeenCalledWith(secondaryWrapper);
+    expect(codeMirrorMocks.undo).toHaveBeenCalledWith(secondaryView);
+    expect(codeMirrorMocks.redo).toHaveBeenCalledWith(secondaryView);
+    expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorVimRedo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorRedo).not.toHaveBeenCalled();
+  });
+
+  it("leaves the source buffer alone when a secondary CodeMirror view cannot be resolved", async () => {
     const { act } = await import("react");
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
@@ -627,17 +696,19 @@ describe("project dock layout", () => {
     secondary.tabIndex = 0;
     document.body.append(source, secondary);
     editorControllerMocks.getEditorView.mockReturnValue({ contentDOM: source });
+    codeMirrorMocks.findFromDOM.mockReturnValue(null);
     secondary.focus();
 
     const undo = appState.menuListeners.get("menu://undo");
     const redo = appState.menuListeners.get("menu://redo");
-    expect(undo).toBeDefined();
-    expect(redo).toBeDefined();
     await act(async () => {
       undo?.();
       redo?.();
     });
 
+    expect(codeMirrorMocks.findFromDOM).toHaveBeenCalledWith(secondary);
+    expect(codeMirrorMocks.undo).not.toHaveBeenCalled();
+    expect(codeMirrorMocks.redo).not.toHaveBeenCalled();
     expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
     expect(editorControllerMocks.editorVimRedo).not.toHaveBeenCalled();
     expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();

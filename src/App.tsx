@@ -17,6 +17,8 @@ import {
   type ImperativePanelHandle,
 } from "react-resizable-panels";
 import { RefreshCw } from "lucide-react";
+import { EditorView } from "@codemirror/view";
+import { redo as cmRedo, undo as cmUndo } from "@codemirror/commands";
 import { ThemeProvider, currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
 import { themeTokenOverride } from "@/lib/theme-customization";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -634,18 +636,23 @@ function AppContent() {
         document.execCommand(redo ? "redo" : "undo");
         return;
       }
+      // A secondary CodeMirror surface owns its own history; never redirect
+      // its menu click into the paper's source buffer.
+      if (secondaryCodeEditorOwns(active)) {
+        const host = active?.closest(".cm-editor") ?? active?.closest(".cm-content");
+        const view = host ? EditorView.findFromDOM(host as HTMLElement) : null;
+        if (!view) return;
+        if (redo) cmRedo(view);
+        else cmUndo(view);
+        return;
+      }
       // Native menu events have no key event for Vim to intercept. Use its
       // history adapter directly so menu Undo/Redo preserves modal cursor and
       // selection semantics just like the keyboard route above.
-      if (secondaryCodeEditorOwns(active)) return;
       if (!active?.closest(".ProseMirror") && useSettingsStore.getState().vim) {
         const handled = redo ? editorVimRedo() : editorVimUndo();
         if (handled) return;
       }
-      // A secondary CodeMirror surface owns its own history; never redirect
-      // its menu click into the paper's source buffer. ProseMirror and toolbar
-      // focus still go through the app controller below, which routes history
-      // to the active visual editor when appropriate.
       if (redo) editorRedo();
       else editorUndo();
     };

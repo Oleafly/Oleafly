@@ -28,8 +28,18 @@ function basename(path: string): string {
   return index >= 0 ? path.slice(index + 1) : path;
 }
 
-function headingId(item: OutlineItem): string {
-  return `${item.file}:${item.from}:${item.line}:${item.level}:${item.title}`;
+function normalizedHeadingTitle(title: string): string {
+  return title.replace(/\s+/gu, " ").trim().toLowerCase();
+}
+
+function headingIds(items: readonly OutlineItem[]): string[] {
+  const seen = new Map<string, number>();
+  return items.map((item) => {
+    const key = `${item.file}:${item.level}:${normalizedHeadingTitle(item.title)}`;
+    const ordinal = seen.get(key) ?? 0;
+    seen.set(key, ordinal + 1);
+    return `${key}:${ordinal}`;
+  });
 }
 
 type VisibleHeading = Readonly<{
@@ -41,6 +51,7 @@ type VisibleHeading = Readonly<{
 
 function visibleHeadings(
   items: readonly OutlineItem[],
+  ids: readonly string[],
   collapsedHeadingIds: ReadonlySet<string>,
 ): VisibleHeading[] {
   const ancestors: Array<{ level: number; id: string }> = [];
@@ -53,11 +64,12 @@ function visibleHeadings(
       ancestors.pop();
     }
 
+    const id = ids[index] ?? "";
+
     // A collapsed ancestor hides every deeper heading, while peers and the
     // next top-level heading remain visible. Keep walking hidden branches so
     // their descendants still regain the correct parent when re-expanded.
     if (ancestors.every((ancestor) => !collapsedHeadingIds.has(ancestor.id))) {
-      const id = headingId(item);
       visible.push({
         item,
         itemIndex: index,
@@ -66,7 +78,7 @@ function visibleHeadings(
       });
     }
 
-    ancestors.push({ level: item.level, id: headingId(item) });
+    ancestors.push({ level: item.level, id });
   });
 
   return visible;
@@ -122,15 +134,16 @@ export function DocumentOutline({
         : [],
     [index, activePath],
   );
-  const collapsibleHeadingIds = useMemo(
-    () =>
-      new Set(
-        items
-          .filter((item, index) => (items[index + 1]?.level ?? item.level) > item.level)
-          .map(headingId),
-      ),
-    [items],
-  );
+  const itemIds = useMemo(() => headingIds(items), [items]);
+  const collapsibleHeadingIds = useMemo(() => {
+    const collapsible = new Set<string>();
+    items.forEach((item, index) => {
+      if ((items[index + 1]?.level ?? item.level) > item.level) {
+        collapsible.add(itemIds[index] ?? "");
+      }
+    });
+    return collapsible;
+  }, [itemIds, items]);
   const resolvedDocumentKey =
     !building && index && activePath
       ? `${projectId ?? ""}:${activePath}`
@@ -181,8 +194,8 @@ export function DocumentOutline({
     }
   }, [collapsed, items.length, onCollapsedChange, resolvedDocumentKey]);
   const headings = useMemo(
-    () => visibleHeadings(items, collapsedHeadingIds),
-    [collapsedHeadingIds, items],
+    () => visibleHeadings(items, itemIds, collapsedHeadingIds),
+    [collapsedHeadingIds, itemIds, items],
   );
   const previousProjectId = useRef(projectId);
 
@@ -209,11 +222,11 @@ export function DocumentOutline({
     [items, anchor],
   );
   const activeHeadingVisible = useMemo(() => {
-    const activeItem = items[activeIndex];
-    return activeItem
-      ? headings.some((heading) => heading.id === headingId(activeItem))
+    const activeId = activeIndex >= 0 ? itemIds[activeIndex] : undefined;
+    return activeId
+      ? headings.some((heading) => heading.id === activeId)
       : false;
-  }, [activeIndex, headings, items]);
+  }, [activeIndex, headings, itemIds]);
   const latexMacros = useMemo(
     () => collectLatexOutlineMacros(texts),
     [texts],
