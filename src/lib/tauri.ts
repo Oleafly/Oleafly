@@ -63,7 +63,9 @@ import type {
   FileEntry,
   FileMutationResult,
   GitCommit,
+  GitWorktreeOperationResult,
   GitFileChange,
+  GitWorkspaceSnapshot,
   GitHubRepo,
   GitHubRepoStats,
   GitHubUser,
@@ -1130,11 +1132,20 @@ export const gitPull = (projectId: string, expectedGeneration: number) =>
 export const gitStatus = (projectId: string) =>
   invoke<GitFileChange[]>("git_status", { projectId });
 
+export const gitWorkspaceSnapshot = (projectId: string) =>
+  invoke<GitWorkspaceSnapshot>("git_workspace_snapshot", { projectId });
+
 export const gitDiff = (projectId: string, path?: string, staged = false) =>
   invoke<string>("git_diff", { projectId, path: path ?? null, staged });
 
 export const gitDiscard = (projectId: string, path: string, expectedGeneration: number) =>
   invoke<ProjectStateChanged>("git_discard", { projectId, path, expectedGeneration });
+
+export const gitDiscardPaths = (
+  projectId: string,
+  paths: string[],
+  expectedGeneration: number,
+) => invoke<ProjectStateChanged>("git_discard_paths", { projectId, paths, expectedGeneration });
 
 export const gitHeadOid = (projectId: string) =>
   invoke<string | null>("git_head_oid", { projectId });
@@ -1151,9 +1162,54 @@ export const gitStageAll = (projectId: string) =>
 export const gitUnstageAll = (projectId: string) =>
   invoke<void>("git_unstage_all", { projectId });
 
+export const gitStagePaths = (projectId: string, paths: string[]) =>
+  invoke<void>("git_stage_paths", { projectId, paths });
+
+export const gitUnstagePaths = (projectId: string, paths: string[]) =>
+  invoke<void>("git_unstage_paths", { projectId, paths });
+
 // Commits the staged index only. Returns false when nothing is staged.
 export const gitCommit = (projectId: string, message: string) =>
   invoke<boolean>("git_commit", { projectId, message });
+
+export const gitCommitAmend = (projectId: string, message: string) =>
+  invoke<boolean>("git_commit_amend", { projectId, message });
+
+export const gitFetch = (projectId: string) =>
+  invoke<string>("git_fetch", { projectId });
+
+export const gitCreateBranch = (projectId: string, branch: string) =>
+  invoke<string>("git_create_branch", { projectId, branch });
+
+export const gitCheckoutBranch = (
+  projectId: string,
+  branch: string,
+  expectedGeneration: number,
+) => invoke<ProjectStateChanged>("git_checkout_branch", { projectId, branch, expectedGeneration });
+
+export const gitStashPush = (projectId: string, expectedGeneration: number) =>
+  invoke<GitWorktreeOperationResult>("git_stash_push", { projectId, expectedGeneration });
+
+export const gitStashPop = (projectId: string, expectedGeneration: number) =>
+  invoke<GitWorktreeOperationResult>("git_stash_pop", { projectId, expectedGeneration });
+
+export const gitResolveConflict = (
+  projectId: string,
+  path: string,
+  resolution: "current" | "incoming" | "mark",
+  expectedGeneration: number,
+) => invoke<ProjectStateChanged>("git_resolve_conflict", {
+  projectId,
+  path,
+  resolution,
+  expectedGeneration,
+});
+
+export const gitContinueMerge = (projectId: string, expectedGeneration: number) =>
+  invoke<GitWorktreeOperationResult>("git_continue_merge", { projectId, expectedGeneration });
+
+export const gitAbortMerge = (projectId: string, expectedGeneration: number) =>
+  invoke<GitWorktreeOperationResult>("git_abort_merge", { projectId, expectedGeneration });
 
 export const gitShow = (projectId: string, rev: string, path: string) =>
   invoke<string>("git_show", { projectId, rev, path });

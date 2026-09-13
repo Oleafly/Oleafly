@@ -2,17 +2,13 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { CheckpointsPanel } from "@/components/editor/CheckpointsPanel";
-import { GitHistoryPanel } from "@/components/editor/GitHistoryPanel";
 import { useSettingsStore } from "@/store/settings";
 
 export function VersioningModal() {
   const { t } = useTranslation(["common", "editor"]);
   const open = useSettingsStore((state) => state.versioningOpen);
-  const tab = useSettingsStore((state) => state.versioningTab);
-  const setTab = useSettingsStore((state) => state.setVersioningTab);
   const closeVersioning = useSettingsStore((state) => state.closeVersioning);
   const [checkpointsBusy, setCheckpointsBusy] = useState(false);
   const close = useCallback(() => {
@@ -60,47 +56,12 @@ export function VersioningModal() {
           </Button>
         </header>
 
-        <Tabs
-          value={tab}
-          onValueChange={(value) => {
-            if (value === "git" || value === "checkpoints") setTab(value);
-          }}
+        <div
+          data-testid="versioning-panel-checkpoints"
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="flex shrink-0 justify-center px-4 pb-3">
-            <TabsList aria-label={t(($) => $.editor.versioning.views)}>
-              <TabsTrigger
-                value="git"
-                data-testid="versioning-tab-git"
-                disabled={checkpointsBusy}
-                onClick={() => setTab("git")}
-              >
-                {t(($) => $.editor.versioning.gitHistory)}
-              </TabsTrigger>
-              <TabsTrigger
-                value="checkpoints"
-                data-testid="versioning-tab-checkpoints"
-                onClick={() => setTab("checkpoints")}
-              >
-                {t(($) => $.editor.versioning.savedCheckpoints)}
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          <TabsContent
-            value="git"
-            data-testid="versioning-panel-git"
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <GitHistoryPanel />
-          </TabsContent>
-          <TabsContent
-            value="checkpoints"
-            data-testid="versioning-panel-checkpoints"
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <CheckpointsPanel onBusyChange={setCheckpointsBusy} />
-          </TabsContent>
-        </Tabs>
+          <CheckpointsPanel onBusyChange={setCheckpointsBusy} />
+        </div>
       </div>
     </div>
   );

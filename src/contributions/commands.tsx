@@ -47,6 +47,7 @@ import { TERMINAL_LIMIT, terminalLimitMessage, useTerminalsStore } from "@/store
 import { toast } from "@/lib/toast";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { requestThemePreference } from "@/lib/theme";
+import { showSourceControlGraph } from "@/lib/source-control-events";
 import {
   formattingForEngine,
   pathUsesEngineSource,
@@ -351,7 +352,13 @@ export function registerPaletteCommands() {
     label: () => i18n.t(($) => $.shell.commands.gitHistory.label),
     icon: () => <List className="size-4" />,
     order: 310,
-    run: () => useSettingsStore.getState().openVersioning("git"),
+    when: (ctx) => !!ctx.projectId,
+    run: () => {
+      const settings = useSettingsStore.getState();
+      settings.setRailTab("source");
+      settings.setShowTree(true);
+      showSourceControlGraph();
+    },
   });
   palette({
     id: "palette.checkpoints",
@@ -359,7 +366,7 @@ export function registerPaletteCommands() {
     label: () => i18n.t(($) => $.shell.commands.checkpoints.label),
     icon: () => <ClockCheck className="size-4" />,
     order: 315,
-    run: () => useSettingsStore.getState().openVersioning("checkpoints"),
+    run: () => useSettingsStore.getState().openVersioning(),
   });
   palette({
     id: "palette.new-terminal",

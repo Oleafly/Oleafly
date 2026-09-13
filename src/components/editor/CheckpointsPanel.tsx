@@ -87,9 +87,9 @@ const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["minute", 60_000],
 ];
 
-function checkpointsTabIsActive(): boolean {
+function checkpointsPanelIsActive(): boolean {
   const settings = useSettingsStore.getState();
-  return settings.versioningOpen && settings.versioningTab === "checkpoints";
+  return settings.versioningOpen;
 }
 
 function formatCompletedAt(value: number): string {
@@ -702,9 +702,7 @@ function TimelineEntry({
 
 export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (busy: boolean) => void }>) {
   const { t } = useTranslation(["common", "editor"]);
-  const open = useSettingsStore(
-    (state) => state.versioningOpen && state.versioningTab === "checkpoints",
-  );
+  const open = useSettingsStore((state) => state.versioningOpen);
   const closeVersioning = useSettingsStore((state) => state.closeVersioning);
   const checkpointsRevision = useSettingsStore((state) => state.checkpointsRevision);
   const publishingProjectId = useSettingsStore((state) => state.checkpointPublishingProjectId);
@@ -745,7 +743,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     (targetProjectId: string | null, session: number) =>
       session === sessionRequest.current &&
       useFilesStore.getState().projectId === targetProjectId &&
-      checkpointsTabIsActive(),
+      checkpointsPanelIsActive(),
     [],
   );
 

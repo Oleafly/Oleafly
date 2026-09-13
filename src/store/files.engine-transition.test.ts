@@ -128,6 +128,8 @@ beforeEach(async () => {
   }));
   mocks.gitPull.mockReset().mockImplementation(async () => ({
     message: "Pulled",
+    outcome: "pulled",
+    conflicts: [],
     state: await mocks.gitRestore(),
   }));
   mocks.gitDiscard.mockReset().mockImplementation(async () => mocks.gitRestore());

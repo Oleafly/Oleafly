@@ -14,7 +14,7 @@
  * src-tauri/src/protocol.rs mirrors both constants; the vitest conformance
  * test (src/lib/backend-port-protocol.test.ts) fails on drift.
  */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 /** Feature areas the shell requires from its backend. Keep sorted. */
 export const BACKEND_CAPABILITIES = [
     "agent-server",
@@ -474,6 +474,9 @@ export interface GitCommit {
     short: string;
     time: number;
     message: string;
+    author: string;
+    parents: string[];
+    refs: string[];
 }
 export interface EngineInfo {
     kind: "system" | "tinytex" | "none";
@@ -667,12 +670,36 @@ export interface AheadBehind {
 }
 export interface GitPullResult {
     message: string;
+    outcome: "pulled" | "conflicts";
+    conflicts: GitConflict[];
     state: ProjectStateChanged;
 }
 export interface GitFileChange {
     path: string;
     status: string;
     staged: boolean;
+    conflict: boolean;
+}
+export interface GitConflict {
+    path: string;
+    status: string;
+}
+export interface GitWorkspaceSnapshot {
+    initialized: boolean;
+    branch: string | null;
+    remote: string | null;
+    aheadBehind: AheadBehind;
+    operation: "idle" | "merge";
+    changes: GitFileChange[];
+    conflicts: GitConflict[];
+    branches: string[];
+    commits: GitCommit[];
+}
+export interface GitWorktreeOperationResult {
+    message: string;
+    outcome: string;
+    conflicts: GitConflict[];
+    projectState: ProjectStateChanged;
 }
 export interface SynctexRect {
     page: number;
@@ -918,14 +945,27 @@ export interface BackendPort {
   gitPush: (projectId: string) => Promise<string>;
   gitPull: (projectId: string, expectedGeneration: number) => Promise<GitPullResult>;
   gitStatus: (projectId: string) => Promise<GitFileChange[]>;
+  gitWorkspaceSnapshot: (projectId: string) => Promise<GitWorkspaceSnapshot>;
   gitDiff: (projectId: string, path?: string, staged?: boolean) => Promise<string>;
   gitDiscard: (projectId: string, path: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
+  gitDiscardPaths: (projectId: string, paths: string[], expectedGeneration: number) => Promise<ProjectStateChanged>;
   gitHeadOid: (projectId: string) => Promise<string | null>;
   gitStage: (projectId: string, path: string) => Promise<void>;
   gitUnstage: (projectId: string, path: string) => Promise<void>;
   gitStageAll: (projectId: string) => Promise<void>;
   gitUnstageAll: (projectId: string) => Promise<void>;
+  gitStagePaths: (projectId: string, paths: string[]) => Promise<void>;
+  gitUnstagePaths: (projectId: string, paths: string[]) => Promise<void>;
   gitCommit: (projectId: string, message: string) => Promise<boolean>;
+  gitCommitAmend: (projectId: string, message: string) => Promise<boolean>;
+  gitFetch: (projectId: string) => Promise<string>;
+  gitCreateBranch: (projectId: string, branch: string) => Promise<string>;
+  gitCheckoutBranch: (projectId: string, branch: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
+  gitStashPush: (projectId: string, expectedGeneration: number) => Promise<GitWorktreeOperationResult>;
+  gitStashPop: (projectId: string, expectedGeneration: number) => Promise<GitWorktreeOperationResult>;
+  gitResolveConflict: (projectId: string, path: string, resolution: "current" | "incoming" | "mark", expectedGeneration: number) => Promise<ProjectStateChanged>;
+  gitContinueMerge: (projectId: string, expectedGeneration: number) => Promise<GitWorktreeOperationResult>;
+  gitAbortMerge: (projectId: string, expectedGeneration: number) => Promise<GitWorktreeOperationResult>;
   gitShow: (projectId: string, rev: "HEAD" | "INDEX", path: string) => Promise<string>;
   downloadProjectZip: (projectId: string, dest: string) => Promise<void>;
   duplicateProject: (projectId: string, newName: string) => Promise<string>;

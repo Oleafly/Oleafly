@@ -5,6 +5,7 @@ import {
   openProject,
   openRailTab,
   stageAllGitChanges,
+  unstageAllGitChanges,
   pressGlobal,
   typeInEditorAfter,
   type Page,
@@ -29,9 +30,23 @@ async function initializeRepository(page: Page) {
   );
   if (needsInitialize) {
     await page.getByText("Initialize Repository", { exact: true }).click();
-    await expect(page.getByText("Initialized Git on")).toBeVisible({ timeout: 15_000 });
   }
   await expect(page.getByTestId("source-control-actions")).toBeVisible({ timeout: 15_000 });
+}
+
+async function openSourceControlMoreActions(page: Page) {
+  await page.waitForFunction(
+    `document.querySelector('[aria-label="More Source Control actions"]') instanceof HTMLButtonElement`,
+    10_000,
+  );
+  await page.evaluate(`(() => {
+    const button = document.querySelector('[aria-label="More Source Control actions"]');
+    if (!(button instanceof HTMLElement)) return false;
+    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
+    button.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    return true;
+  })()`);
 }
 
 async function stageAllAndCommit(page: Page, message: string) {
@@ -67,7 +82,7 @@ async function stageAllAndCommit(page: Page, message: string) {
   }
 }
 
-test("git panel opens on the remote section while GitHub is disconnected", async ({
+test("Source Control keeps local Git available while GitHub is disconnected", async ({
   tauriPage,
 }) => {
   // Ignored on purpose when a GitHub token is configured, because this case asserts the disconnected panel.
@@ -80,17 +95,17 @@ test("git panel opens on the remote section while GitHub is disconnected", async
   await openRailTab(tauriPage, "Source Control");
   await expect(tauriPage.getByText("Connect GitHub to continue")).toHaveCount(0);
   await initializeRepository(tauriPage);
-  await expect(tauriPage.getByText("Remote", { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(tauriPage.getByText("Publish to GitHub", { exact: true })).toBeVisible();
   await expect(tauriPage.locator('[data-testid="commit-title"]')).toBeVisible();
-  await expect(tauriPage.locator('[aria-label="Commit and push to origin"]')).toHaveCount(0);
-  await expect(tauriPage.locator('[aria-label="Pull from origin"]')).toHaveCount(0);
+  await openSourceControlMoreActions(tauriPage);
+  await expect(tauriPage.getByText("Publish to GitHub", { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
   expect(
-    await tauriPage.evaluate<boolean>(
-      `!!document
-        .querySelector('[data-testid="source-control-actions"]')
-        ?.firstElementChild?.textContent?.includes("Remote")`,
-    ),
+    await tauriPage.evaluate<boolean>(`["Fetch", "Pull", "Push", "Sync"].every((label) => {
+      const item = Array.from(document.querySelectorAll('[role="menuitem"]'))
+        .find((entry) => entry.textContent.trim() === label);
+      return item?.hasAttribute("data-disabled") === true;
+    })`),
   ).toBe(true);
 });
 
@@ -119,14 +134,16 @@ test("a successful compile is committed only through an explicit local action", 
   expect(
     await tauriPage.evaluate<number>(`window.__gitCommitCount?.() ?? Promise.resolve(0)`),
   ).toBe(commitsBeforeCompile + 1);
+
+  const graph = tauriPage.getByTestId("source-control-graph");
+  await expect(graph).toBeVisible({ timeout: 10_000 });
+  await expect(graph.getByText(message, { exact: true })).toBeVisible({ timeout: 10_000 });
+
   await tauriPage.click('[aria-label="Versioning"]');
-  await tauriPage.click('[data-testid="versioning-tab-git"]');
-  await expect(tauriPage.getByTestId("versioning-tab-git")).toHaveAttribute(
-    "aria-selected",
-    "true",
-    { timeout: 10_000 },
-  );
-  await expect(tauriPage.getByText(message, { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(tauriPage.getByTestId("versioning-panel-checkpoints")).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(tauriPage.getByTestId("versioning-tab-git")).toHaveCount(0);
 });
 
 test("stage, diff, and commit without requiring a connected account", async ({ tauriPage }) => {
@@ -158,8 +175,7 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
   await stageAllGitChanges(tauriPage);
   try {
     await tauriPage.waitForFunction(
-      `!!document.querySelector('[aria-label="Unstage all"]') &&
-        !!document.querySelector('.cm-mergeView') &&
+      `!!document.querySelector('.cm-mergeView') &&
         !document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
       30_000,
     );
@@ -171,7 +187,7 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
       return JSON.stringify({
         mode: localStorage.getItem('oleafly.diffMode'),
         workingDiff: document.body.innerText.includes('Working ↔ Index'),
-        unstage: !!document.querySelector('[aria-label="Unstage all"]'),
+        stagedRows: document.querySelectorAll('[data-testid="source-control-staged"] [data-testid^="git-change-"]').length,
         mergeViews: document.querySelectorAll('.cm-mergeView').length,
         changes: Array.from(document.querySelectorAll('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')).map(el => ({ className: el.className, text: el.textContent })),
         sides: Array.from(document.querySelectorAll('.cm-merge-a, .cm-merge-b')).map(el => el.textContent),
@@ -181,10 +197,9 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
     })()`);
     throw new Error(`Working diff remained changed after staging: ${snapshot}`, { cause: error });
   }
-  await tauriPage.evaluate(`document.querySelector('[aria-label="Unstage all"]').click()`);
+  await unstageAllGitChanges(tauriPage);
   await tauriPage.waitForFunction(
-    `!!document.querySelector('[aria-label="Stage all"]') &&
-      !!document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
+    `!!document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
     30_000,
   );
 
@@ -221,16 +236,21 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await ensureGithubConnected(tauriPage);
 
+  await openRailTab(tauriPage, "Source Control");
+  await openSourceControlMoreActions(tauriPage);
+
   // A previous run may have left a remote linked; unlink to get the Publish CTA.
   await tauriPage.waitForFunction(
-    `document.body.innerText.includes('Publish to GitHub') || Array.from(document.querySelectorAll('button')).some(b => b.textContent.trim() === 'Unlink')`,
+    `Array.from(document.querySelectorAll('[role="menuitem"]')).some(entry =>
+      ["Publish to GitHub", "Unlink"].includes((entry.textContent ?? "").trim()))`,
     15_000,
   );
   const linked = await tauriPage.evaluate<boolean>(
-    `Array.from(document.querySelectorAll('button')).some(b => b.textContent.trim() === 'Unlink')`,
+    `Array.from(document.querySelectorAll('[role="menuitem"]')).some(entry => entry.textContent?.trim() === 'Unlink')`,
   );
   if (linked) {
     await tauriPage.getByText("Unlink", { exact: true }).click();
+    await openSourceControlMoreActions(tauriPage);
     await expect(tauriPage.getByText("Publish to GitHub")).toBeVisible({ timeout: 10_000 });
   }
 
@@ -252,6 +272,8 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
     );
   }
   await openRailTab(tauriPage, "Source Control");
+  await openSourceControlMoreActions(tauriPage);
   await tauriPage.getByText("Unlink", { exact: true }).click();
+  await openSourceControlMoreActions(tauriPage);
   await expect(tauriPage.getByText("Publish to GitHub")).toBeVisible({ timeout: 10_000 });
 });

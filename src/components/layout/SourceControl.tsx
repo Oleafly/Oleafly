@@ -1,965 +1,1319 @@
 import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+	type KeyboardEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import type {
+	GitCommit,
+	GitFileChange,
+	GitPullResult,
+	GitWorkspaceSnapshot,
+	ProjectStateChanged,
+} from "@oleafly/backend-port";
 import {
-  Check,
-  FileText,
-  GitBranch,
-  Github,
-  Info,
-  Loader2,
-  Minus,
-  Plus,
-  RefreshCw,
-  ShieldAlert,
-  Undo2,
-  Upload,
-  X,
+	Archive,
+	Check,
+	ChevronDown,
+	CloudDownload,
+	Copy,
+	FileText,
+	GitBranch,
+	GitMerge,
+	GitPullRequest,
+	Loader2,
+	MoreHorizontal,
+	Plus,
+	RefreshCw,
+	RotateCcw,
+	ShieldAlert,
+	Undo2,
+	Upload,
+	X,
 } from "lucide-react";
+import * as tauri from "@/lib/tauri";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useFilesStore } from "@/store/files";
-import { useDiffStore } from "@/store/diff";
+import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
-  gitAheadBehind,
-  gitCommit,
-  gitCurrentBranch,
-  gitGetRemote,
-  gitCleanRemoteCredentials,
-  gitInitialize,
-  gitIsInitialized,
-  gitPush,
-  gitRemoveRemote,
-  gitRemoteCredentialsNeedCleanup,
-  gitStage,
-  gitStageAll,
-  gitStatus,
-  gitUnstage,
-  gitUnstageAll,
-  getConfig,
-  type AheadBehind,
-  type GitFileChange,
-} from "@/lib/tauri";
-import { useGitStatusStore } from "@/store/git-status";
-import { useGithubStore } from "@/store/github";
-import { useSettingsStore } from "@/store/settings";
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useDiffStore } from "@/store/diff";
+import { useFilesStore } from "@/store/files";
+import { useGitStatusStore } from "@/store/git-status";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { GithubMenu } from "@/components/layout/GithubMenu";
+import { SourceControlSection } from "@/components/layout/source-control/SourceControlSection";
+import {
+	consumeSourceControlGraphRequest,
+	SOURCE_CONTROL_SHOW_GRAPH_EVENT,
+} from "@/lib/source-control-events";
 import { toGithubWebUrl } from "@/lib/github-url";
-import { toast } from "@/lib/toast";
-import { i18n } from "@/i18n";
-import { open } from "@tauri-apps/plugin-shell";
 import { cn } from "@/lib/utils";
+import { open } from "@tauri-apps/plugin-shell";
 
-const STATUS_META: Record<string, { label: string; cls: string }> = {
-  M: { label: "M", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  A: { label: "A", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
-  D: { label: "D", cls: "bg-destructive/15 text-destructive" },
-  R: { label: "R", cls: "bg-primary/15 text-primary dark:text-primary" },
-  "?": { label: "U", cls: "bg-primary/15 text-primary dark:text-primary" },
+type GitGraphCommit = GitCommit;
+type ProjectStateResult = { projectState: ProjectStateChanged };
+type CommitSubmissionResult = {
+	committed: true;
+	remoteError?: unknown;
+	conflicts?: boolean;
 };
-
-function meta(code: string) {
-  return STATUS_META[code] ?? { label: code.slice(0, 1), cls: "bg-muted text-muted-foreground" };
-}
-
 const COMMIT_TITLE_LIMIT = 72;
-
-
-function composeCommitMessage(title: string, description: string): string {
-  const subject = title.trim();
-  const body = description.trim();
-  return body ? `${subject}\n\n${body}` : subject;
-}
-
-type ProjectActionToken = {
-  projectId: string;
-  session: number;
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+	M: { label: "M", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+	A: {
+		label: "A",
+		cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+	},
+	D: { label: "D", cls: "bg-destructive/15 text-destructive" },
+	R: { label: "R", cls: "bg-primary/15 text-primary" },
+	"?": { label: "U", cls: "bg-primary/15 text-primary" },
+	U: { label: "!", cls: "bg-destructive/15 text-destructive" },
 };
-
-type PendingRefresh = ProjectActionToken & {
-  queued: boolean;
-  promise: Promise<void>;
-};
+const statusMeta = (status: string) =>
+	STATUS_META[status] ?? {
+		label: status.slice(0, 1),
+		cls: "bg-muted text-muted-foreground",
+	};
+const commitMessage = (title: string, description: string) =>
+	description.trim()
+		? `${title.trim()}\n\n${description.trim()}`
+		: title.trim();
+type ActionToken = { projectId: string; session: number };
+type PendingRefresh = ActionToken & { queued: boolean; promise: Promise<void> };
+type Confirmation = {
+	paths: string[];
+	title: string;
+	description: string;
+	confirm: string;
+} | null;
 
 export function SourceControl() {
-  const { t } = useTranslation(["common", "shell"]);
-  const remoteHint = t(($) => $.shell.sourceControl.remoteHint);
-  const projectId = useFilesStore((s) => s.projectId);
-  const projectName = useFilesStore((s) => s.projectName);
-  const refreshTree = useFilesStore((s) => s.refreshTree);
-  const githubStatus = useGithubStore((s) => s.status);
-  const githubUser = useGithubStore((s) => s.user);
-  const githubConnected = githubStatus === "connected";
-  const remoteFirst = githubStatus === "disconnected";
+	const { t } = useTranslation(["common", "shell"]);
+	const projectId = useFilesStore((s) => s.projectId);
+	const projectName = useFilesStore((s) => s.projectName);
+	const openFile = useFilesStore((s) => s.openFile);
+	const refreshTree = useFilesStore((s) => s.refreshTree);
+	const pullFromGit = useFilesStore((s) => s.pullFromGit);
+	const restoreFromGit = useFilesStore((s) => s.restoreFromGit);
+	const openDiff = useDiffStore((s) => s.openDiff);
+	const clearActiveDiff = useDiffStore((s) => s.clearActiveDiff);
+	const [snapshot, setSnapshot] = useState<GitWorkspaceSnapshot | null>(null);
+	const [title, setTitle] = useState("");
+	const [description, setDescription] = useState("");
+	const [busy, setBusy] = useState(false);
+	const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(
+		null,
+	);
+	const [publishOpen, setPublishOpen] = useState(false);
+	const [credentialCleanupRequired, setCredentialCleanupRequired] =
+		useState(false);
+	const [discardConfirmation, setDiscardConfirmation] =
+		useState<Confirmation>(null);
+	const [sectionOpen, setSectionOpen] = useState({
+		staged: true,
+		changes: true,
+		graph: true,
+	});
+	const [branchFormOpen, setBranchFormOpen] = useState(false);
+	const [branchDraft, setBranchDraft] = useState("");
+	const [restoreCommit, setRestoreCommit] = useState<GitGraphCommit | null>(
+		null,
+	);
+	const [copiedOid, setCopiedOid] = useState<string | null>(null);
+	const previousProjectId = useRef(projectId);
+	const session = useRef(0);
+	const refreshRequest = useRef(0);
+	const pendingRefresh = useRef<PendingRefresh | null>(null);
+	const activeMutation = useRef<ActionToken | null>(null);
 
-  const [changes, setChanges] = useState<GitFileChange[]>([]);
-  const [initialized, setInitialized] = useState<boolean | null>(null);
-  const [branch, setBranch] = useState("");
-  const [remote, setRemote] = useState<string | null>(null);
-  const [credentialCleanupRequired, setCredentialCleanupRequired] = useState(false);
-  const githubUrl = remote ? toGithubWebUrl(remote) : null;
-  const openInGithub = () => {
-    if (githubUrl) open(githubUrl);
-  };
-  const shareGithub = async () => {
-    if (!githubUrl) return;
-    try {
-      await navigator.clipboard.writeText(githubUrl);
-      toast.success(i18n.t(($) => $.shell.sourceControl.linkCopied));
-    } catch {
-      toast.info(githubUrl);
-    }
-  };
-  const [hasToken, setHasToken] = useState(false);
-  const [aheadBehind, setAheadBehind] = useState<AheadBehind | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
-  const [publishOpen, setPublishOpen] = useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
-  const previousProjectId = useRef(projectId);
-  const refreshRequestId = useRef(0);
-  const projectSession = useRef(0);
-  const pendingRefresh = useRef<PendingRefresh | null>(null);
-  const pendingMutation = useRef<ProjectActionToken | null>(null);
-  const openDiff = useDiffStore((s) => s.openDiff);
-  const clearActiveDiff = useDiffStore((s) => s.clearActiveDiff);
-  const openFile = useFilesStore((s) => s.openFile);
+	useLayoutEffect(() => {
+		if (previousProjectId.current === projectId) return;
+		previousProjectId.current = projectId;
+		session.current += 1;
+		refreshRequest.current += 1;
+		pendingRefresh.current = null;
+		activeMutation.current = null;
+		setSnapshot(null);
+		setTitle("");
+		setDescription("");
+		setBusy(false);
+		setNotice(null);
+		setCredentialCleanupRequired(false);
+		setDiscardConfirmation(null);
+		setBranchDraft("");
+		setBranchFormOpen(false);
+		setRestoreCommit(null);
+		setCopiedOid(null);
+	}, [projectId]);
+	const begin = useCallback(
+		(): ActionToken | null =>
+			!projectId || useFilesStore.getState().projectId !== projectId
+				? null
+				: { projectId, session: session.current },
+		[projectId],
+	);
+	const current = useCallback(
+		(action: ActionToken) =>
+			action.session === session.current &&
+			useFilesStore.getState().projectId === action.projectId,
+		[],
+	);
+	const refreshOnce = useCallback(async () => {
+		if (!projectId || useFilesStore.getState().projectId !== projectId) return;
+		const request = ++refreshRequest.current;
+		try {
+			const [next, needsCredentialCleanup] = await Promise.all([
+				tauri.gitWorkspaceSnapshot(projectId),
+				tauri.gitRemoteCredentialsNeedCleanup(projectId).catch(() => false),
+			]);
+			if (
+				request !== refreshRequest.current ||
+				useFilesStore.getState().projectId !== projectId
+			)
+				return;
+			setSnapshot(next);
+			setCredentialCleanupRequired(next.initialized && needsCredentialCleanup);
+			void useGitStatusStore.getState().refresh(projectId);
+		} catch (error) {
+			if (
+				request === refreshRequest.current &&
+				useFilesStore.getState().projectId === projectId
+			)
+				setNotice({ ok: false, text: String(error) });
+		}
+	}, [projectId]);
+	const refresh = useCallback(async () => {
+		if (!projectId || useFilesStore.getState().projectId !== projectId) return;
+		const pending = pendingRefresh.current;
+		if (
+			pending?.projectId === projectId &&
+			pending.session === session.current
+		) {
+			pending.queued = true;
+			refreshRequest.current += 1;
+			return pending.promise;
+		}
+		const operation: PendingRefresh = {
+			projectId,
+			session: session.current,
+			queued: false,
+			promise: Promise.resolve(),
+		};
+		pendingRefresh.current = operation;
+		operation.promise = (async () => {
+			do {
+				operation.queued = false;
+				await refreshOnce();
+			} while (operation.queued && pendingRefresh.current === operation);
+		})().finally(() => {
+			if (pendingRefresh.current === operation) pendingRefresh.current = null;
+		});
+		return operation.promise;
+	}, [projectId, refreshOnce]);
+	useEffect(() => {
+		void refresh();
+		const changed = () => void refresh();
+		window.addEventListener("oleafly:git-changed", changed);
+		return () => window.removeEventListener("oleafly:git-changed", changed);
+	}, [refresh]);
+	useEffect(() => {
+		const showGraph = () => {
+			consumeSourceControlGraphRequest();
+			setSectionOpen((value) => ({ ...value, graph: true }));
+		};
+		if (consumeSourceControlGraphRequest()) showGraph();
+		window.addEventListener(SOURCE_CONTROL_SHOW_GRAPH_EVENT, showGraph);
+		return () =>
+			window.removeEventListener(SOURCE_CONTROL_SHOW_GRAPH_EVENT, showGraph);
+	}, []);
+	const mutate = useCallback(
+		async <T,>(
+			action: ActionToken,
+			operation: () => Promise<T>,
+		): Promise<T | undefined> => {
+			if (busy || activeMutation.current) return;
+			activeMutation.current = action;
+			setBusy(true);
+			setNotice(null);
+			try {
+				const result = await operation();
+				if (current(action)) {
+					window.dispatchEvent(new CustomEvent("oleafly:git-changed"));
+					await pendingRefresh.current?.promise;
+				}
+				return result;
+			} catch (error) {
+				if (current(action)) setNotice({ ok: false, text: String(error) });
+				return undefined;
+			} finally {
+				if (activeMutation.current === action) {
+					activeMutation.current = null;
+					if (current(action)) setBusy(false);
+				}
+			}
+		},
+		[busy, current],
+	);
+	const external = useCallback(
+		(
+			action: ActionToken,
+			operation: (generation: number) => Promise<unknown>,
+		) =>
+			mutate(action, () =>
+				useFilesStore
+					.getState()
+					.runExternalProjectMutation(action.projectId, async (generation) => {
+						const result = await operation(generation);
+						return typeof result === "object" &&
+							result !== null &&
+							"projectState" in result
+							? (result as ProjectStateResult)
+							: ({ projectState: result } as ProjectStateResult);
+					}),
+			),
+		[mutate],
+	);
+	const staged = useMemo(
+		() =>
+			snapshot?.changes.filter((change) => change.staged && !change.conflict) ??
+			[],
+		[snapshot],
+	);
+	const changes = useMemo(
+		() =>
+			snapshot?.changes.filter(
+				(change) => !change.staged && !change.conflict,
+			) ?? [],
+		[snapshot],
+	);
+	const conflicts = snapshot?.conflicts ?? [];
+	const branch = snapshot?.branch ?? "";
+	const remote = snapshot?.remote ?? null;
+	const commitFlowReady =
+		snapshot?.operation === "idle" && conflicts.length === 0;
+	const canCommit =
+		!busy && commitFlowReady && staged.length > 0 && title.trim().length > 0;
+	const canAmend =
+		!busy &&
+		commitFlowReady &&
+		(snapshot?.commits.length ?? 0) > 0 &&
+		title.trim().length > 0;
+	const openSourceFile = async (path: string) => {
+		try {
+			await openFile(path);
+			clearActiveDiff();
+		} catch (error) {
+			setNotice({ ok: false, text: String(error) });
+		}
+	};
+	const openChange = (change: GitFileChange) =>
+		openDiff(change.path, change.staged ? "staged" : "working");
+	const openAll = (entries: GitFileChange[]) => entries.forEach(openChange);
+	const stagePaths = (paths: string[]) => {
+		const action = begin();
+		if (action)
+			void mutate(action, () => tauri.gitStagePaths(action.projectId, paths));
+	};
+	const unstagePaths = (paths: string[]) => {
+		const action = begin();
+		if (action)
+			void mutate(action, () => tauri.gitUnstagePaths(action.projectId, paths));
+	};
+	const requestDiscard = (paths: string[]) => {
+		if (paths.length)
+			setDiscardConfirmation({
+				paths,
+				title: t(($) => $.shell.sourceControl.discardChangesTitle),
+				description: t(($) => $.shell.sourceControl.discardChangesDescription, {
+					count: paths.length,
+				}),
+				confirm: t(($) =>
+					paths.length === 1
+						? $.shell.sourceControl.discard
+						: $.shell.sourceControl.discardAll,
+				),
+			});
+	};
+	const confirmDiscard = () => {
+		const confirmation = discardConfirmation;
+		const action = begin();
+		if (!confirmation || !action) return;
+		setDiscardConfirmation(null);
+		void external(action, (generation) =>
+			tauri.gitDiscardPaths(action.projectId, confirmation.paths, generation),
+		);
+	};
+	const submit = async (kind: "commit" | "amend" | "push" | "sync") => {
+		const action = begin();
+		if (!action || (kind === "amend" ? !canAmend : !canCommit)) return;
+		const subject = title.trim();
+		const text = commitMessage(title, description);
+		const result = await mutate<CommitSubmissionResult>(action, async () => {
+			const committed =
+				kind === "amend"
+					? await tauri.gitCommitAmend(action.projectId, text)
+					: await tauri.gitCommit(action.projectId, text);
+			if (!committed)
+				throw new Error(t(($) => $.shell.sourceControl.nothingStaged));
+			try {
+				if (kind === "sync") {
+					const pullResult = await pullFromGit(action.projectId);
+					if (pullResult.conflicts.length)
+						return { committed: true, conflicts: true };
+					await tauri.gitPush(action.projectId);
+				}
+				if (kind === "push") await tauri.gitPush(action.projectId);
+			} catch (remoteError) {
+				return { committed: true, remoteError };
+			}
+			return { committed: true };
+		});
+		if (result?.committed && current(action)) {
+			setTitle("");
+			setDescription("");
+			if (result.remoteError) {
+				setNotice({
+					ok: false,
+					text: t(($) => $.shell.sourceControl.committedRemoteFailed, {
+						step:
+							kind === "sync"
+								? t(($) => $.shell.sourceControl.sync).toLocaleLowerCase()
+								: t(($) => $.shell.sourceControl.pushShort).toLocaleLowerCase(),
+						reason: String(result.remoteError),
+					}),
+				});
+			} else if (result.conflicts) {
+				setNotice({
+					ok: false,
+					text: t(($) => $.shell.sourceControl.committedWithConflicts),
+				});
+			} else {
+				setNotice({
+					ok: true,
+					text: t(($) => $.shell.sourceControl.committed, { subject }),
+				});
+			}
+			await refreshTree();
+		}
+	};
+	const action = (operation: (token: ActionToken) => Promise<unknown>) => {
+		const token = begin();
+		if (token) void mutate(token, () => operation(token));
+	};
+	const externalAction = (
+		operation: (token: ActionToken, generation: number) => Promise<unknown>,
+	) => {
+		const token = begin();
+		if (token)
+			void external(token, (generation) => operation(token, generation));
+	};
+	const unlinkRemote = () =>
+		action(async (token) => {
+			await tauri.gitRemoveRemote(token.projectId);
+			if (current(token)) {
+				setNotice({ ok: true, text: t(($) => $.shell.sourceControl.unlinked) });
+			}
+		});
+	const cleanSavedCredential = () =>
+		action(async (token) => {
+			await tauri.gitCleanRemoteCredentials(token.projectId);
+			if (current(token)) {
+				setCredentialCleanupRequired(false);
+				setNotice({
+					ok: true,
+					text: t(($) => $.shell.sourceControl.credentialRemoved),
+				});
+			}
+		});
+	const createBranch = async () => {
+		const name = branchDraft.trim();
+		const token = begin();
+		if (!name || !token) return;
+		const created = await mutate(token, () =>
+			tauri.gitCreateBranch(token.projectId, name),
+		);
+		if (created && current(token)) {
+			setBranchDraft("");
+			setBranchFormOpen(false);
+		}
+	};
+	const sync = () =>
+		action(async (token) => {
+			const result: GitPullResult = await pullFromGit(token.projectId);
+			if (result.conflicts.length) return result;
+			return tauri.gitPush(token.projectId);
+		});
+	const copyCommitId = async (commit: GitGraphCommit) => {
+		try {
+			await navigator.clipboard.writeText(commit.oid);
+			setCopiedOid(commit.oid);
+			window.setTimeout(
+				() => setCopiedOid((value) => (value === commit.oid ? null : value)),
+				1500,
+			);
+		} catch (error) {
+			setNotice({ ok: false, text: String(error) });
+		}
+	};
+	const restoreGraphCommit = async () => {
+		const commit = restoreCommit;
+		const token = begin();
+		if (!commit || !token) return;
+		setRestoreCommit(null);
+		await mutate(token, () => restoreFromGit(token.projectId, commit.oid));
+		if (current(token)) await refreshTree();
+	};
+	const row = (change: GitFileChange) => {
+		const info = statusMeta(change.status);
+		const name = change.path.split("/").pop() ?? change.path;
+		const directory = change.path.includes("/")
+			? change.path.slice(0, change.path.lastIndexOf("/"))
+			: "";
+		return (
+			<div
+				key={`${change.staged ? "staged" : "change"}:${change.path}`}
+				className="group flex items-center gap-1 px-2 py-1 hover:bg-accent/60 focus-within:bg-accent/60"
+			>
+				<button
+					type="button"
+					data-testid={`git-change-${change.path}`}
+					onClick={() => openChange(change)}
+					className="flex min-w-0 flex-1 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				>
+					<span
+						className={cn(
+							"flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-semibold",
+							info.cls,
+						)}
+					>
+						{info.label}
+					</span>
+					<span className="min-w-0">
+						<span className="block truncate text-xs font-medium">{name}</span>
+						{directory ? (
+							<span className="block truncate text-[10px] text-muted-foreground">
+								{directory}
+							</span>
+						) : null}
+					</span>
+				</button>
+				<Tooltip label={t(($) => $.shell.sourceControl.openFile)}>
+					<button
+						type="button"
+						aria-label={t(($) => $.shell.sourceControl.openFile)}
+						onClick={() => void openSourceFile(change.path)}
+						className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent hover:text-foreground"
+					>
+						<FileText className="size-3.5" />
+					</button>
+				</Tooltip>
+				{!change.staged ? (
+					<Tooltip label={t(($) => $.shell.sourceControl.discard)}>
+						<button
+							type="button"
+							aria-label={t(($) => $.shell.sourceControl.discard)}
+							disabled={busy}
+							onClick={() => requestDiscard([change.path])}
+							className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+						>
+							<Undo2 className="size-3.5" />
+						</button>
+					</Tooltip>
+				) : null}
+				<Tooltip
+					label={
+						change.staged
+							? t(($) => $.shell.sourceControl.unstage)
+							: t(($) => $.shell.sourceControl.stage)
+					}
+				>
+					<button
+						type="button"
+						aria-label={
+							change.staged
+								? t(($) => $.shell.sourceControl.unstage)
+								: t(($) => $.shell.sourceControl.stage)
+						}
+						disabled={busy}
+						onClick={() =>
+							change.staged
+								? unstagePaths([change.path])
+								: stagePaths([change.path])
+						}
+						className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent hover:text-foreground"
+					>
+						{change.staged ? (
+							<RotateCcw className="size-3.5" />
+						) : (
+							<Plus className="size-3.5" />
+						)}
+					</button>
+				</Tooltip>
+			</div>
+		);
+	};
+	const menu = (kind: "staged" | "changes") => {
+		const entries = kind === "staged" ? staged : changes;
+		return (
+			<>
+				<DropdownMenuItem
+					disabled={!entries.length}
+					onSelect={() => openAll(entries)}
+				>
+					{t(($) => $.shell.sourceControl.openAllChanges)}
+				</DropdownMenuItem>
+				{kind === "changes" ? (
+					<>
+						<DropdownMenuItem
+							disabled={!entries.length || busy}
+							onSelect={() => stagePaths(entries.map((entry) => entry.path))}
+						>
+							{t(($) => $.shell.sourceControl.stageAll)}
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							disabled={!entries.length || busy}
+							onSelect={() =>
+								requestDiscard(entries.map((entry) => entry.path))
+							}
+							className="text-destructive focus:text-destructive"
+						>
+							{t(($) => $.shell.sourceControl.discardAll)}
+						</DropdownMenuItem>
+					</>
+				) : (
+					<DropdownMenuItem
+						disabled={!entries.length || busy}
+						onSelect={() => unstagePaths(entries.map((entry) => entry.path))}
+					>
+						{t(($) => $.shell.sourceControl.unstageAll)}
+					</DropdownMenuItem>
+				)}
+			</>
+		);
+	};
+	const onCommitKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+			event.preventDefault();
+			void submit("commit");
+		}
+	};
+	if (!projectId || snapshot === null)
+		return (
+			<div className="flex h-full flex-col bg-sidebar">
+				<Header branch="" remote={null} busy={busy} onRefresh={refresh} />
+				<div className="flex flex-1 flex-col items-center justify-center gap-2 px-5 text-center">
+					{projectId && !notice ? (
+						<Loader2 className="size-5 animate-spin text-muted-foreground" />
+					) : (
+						<GitBranch className="size-6 text-muted-foreground/60" />
+					)}
+					<p
+						role={notice?.ok === false ? "alert" : undefined}
+						className={cn(
+							"text-xs text-muted-foreground",
+							notice?.ok === false && "text-destructive",
+						)}
+					>
+						{notice?.text ??
+							(projectId
+								? t(($) => $.shell.sourceControl.checking)
+								: t(($) => $.shell.sourceControl.noProject))}
+					</p>
+				</div>
+			</div>
+		);
+	if (snapshot?.initialized === false)
+		return (
+			<div className="flex h-full flex-col bg-sidebar">
+				<Header
+					branch=""
+					remote={null}
+					busy={busy}
+					onRefresh={refresh}
+					onPublish={() => setPublishOpen(true)}
+				/>
+				<div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 text-center">
+					<GitBranch className="size-8 text-muted-foreground/60" />
+					<div>
+						<p className="text-xs font-medium">
+							{t(($) => $.shell.sourceControl.notInitialized)}
+						</p>
+						<p className="mt-1 text-[11px] text-muted-foreground">
+							{t(($) => $.shell.sourceControl.notInitializedHint)}
+						</p>
+					</div>
+					<Button
+						size="sm"
+						onClick={() =>
+							action((token) => tauri.gitInitialize(token.projectId))
+						}
+						disabled={busy}
+					>
+						{t(($) => $.shell.sourceControl.initialize)}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setPublishOpen(true)}
+					>
+						{t(($) => $.shell.sourceControl.publish)}
+					</Button>
+				</div>
+				<PublishToGitHubDialog
+					open={publishOpen}
+					onClose={() => setPublishOpen(false)}
+					projectId={projectId}
+					projectName={projectName}
+					onPublished={() => {
+						void refresh();
+					}}
+				/>
+			</div>
+		);
+	return (
+		<div className="flex h-full flex-col bg-sidebar">
+			<Header
+				branch={branch}
+				remote={remote}
+				aheadBehind={snapshot?.aheadBehind}
+				busy={busy}
+				onRefresh={refresh}
+				onFetch={() => action((token) => tauri.gitFetch(token.projectId))}
+				onPull={() => action((token) => pullFromGit(token.projectId))}
+				onPush={() => action((token) => tauri.gitPush(token.projectId))}
+				onSync={sync}
+				onStash={(pop) =>
+					externalAction((token, generation) =>
+						pop
+							? tauri.gitStashPop(token.projectId, generation)
+							: tauri.gitStashPush(token.projectId, generation),
+					)
+				}
+				branches={snapshot?.branches ?? []}
+				onCheckout={(target) =>
+					externalAction((token, generation) =>
+						tauri.gitCheckoutBranch(token.projectId, target, generation),
+					)
+				}
+				branchFormOpen={branchFormOpen}
+				onBranchFormOpen={setBranchFormOpen}
+				branchDraft={branchDraft}
+				onBranchDraft={setBranchDraft}
+				onCreateBranch={() => void createBranch()}
+				onPublish={() => setPublishOpen(true)}
+				onUnlink={unlinkRemote}
+			/>
+			{credentialCleanupRequired ? (
+				<div className="mx-2 mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 p-2 text-[11px] text-amber-800 dark:text-amber-200">
+					<div className="flex items-start gap-2">
+						<ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
+						<div>
+							<p>{t(($) => $.shell.sourceControl.credentialWarning)}</p>
+							<Button
+								variant="outline"
+								size="xs"
+								className="mt-1.5"
+								disabled={busy}
+								onClick={cleanSavedCredential}
+							>
+								{t(($) => $.shell.sourceControl.removeCredential)}
+							</Button>
+						</div>
+					</div>
+				</div>
+			) : null}
+			<div
+				data-testid="source-control-actions"
+				className="shrink-0 border-b border-sidebar-border p-2"
+			>
+				<Input
+					data-testid="commit-title"
+					value={title}
+					onChange={(event) => setTitle(event.target.value)}
+					onKeyDown={onCommitKeyDown}
+					maxLength={COMMIT_TITLE_LIMIT}
+					placeholder={t(($) => $.shell.sourceControl.commitTitle)}
+					aria-label={t(($) => $.shell.sourceControl.commitTitle)}
+					className="h-8 text-xs"
+				/>
+				<Textarea
+					data-testid="commit-description"
+					value={description}
+					onChange={(event) => setDescription(event.target.value)}
+					rows={2}
+					placeholder={t(
+						($) => $.shell.sourceControl.commitDescriptionPlaceholder,
+					)}
+					aria-label={t(($) => $.shell.sourceControl.commitDescription)}
+					className="mt-1.5 min-h-14 resize-none text-xs"
+				/>
+				<div className="mt-1.5 flex">
+					<Button
+						data-testid="commit-button"
+						size="sm"
+						className="h-8 flex-1 rounded-r-none"
+						disabled={!canCommit}
+						onClick={() => void submit("commit")}
+					>
+						{busy ? <Loader2 className="animate-spin" /> : <Check />}
+						{t(($) => $.shell.sourceControl.commit)}
+					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								size="sm"
+								className="h-8 rounded-l-none border-l border-primary-foreground/30 px-2"
+								disabled={busy}
+								aria-label={t(($) => $.shell.sourceControl.commitActions)}
+							>
+								<ChevronDown />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem
+								disabled={!canCommit}
+								onSelect={() => void submit("commit")}
+							>
+								{t(($) => $.shell.sourceControl.commit)}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={!canAmend}
+								onSelect={() => void submit("amend")}
+							>
+								{t(($) => $.shell.sourceControl.commitAmend)}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={!canCommit || !remote}
+								onSelect={() => void submit("push")}
+							>
+								{t(($) => $.shell.sourceControl.commitAndPush)}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={!canCommit || !remote}
+								onSelect={() => void submit("sync")}
+							>
+								{t(($) => $.shell.sourceControl.commitAndSync)}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
+				{staged.length === 0 && changes.length > 0 ? (
+					<p className="mt-1.5 text-[10px] text-muted-foreground">
+						{t(($) => $.shell.sourceControl.stageToCommit)}
+					</p>
+				) : null}
+			</div>
+			{snapshot.operation === "merge" || conflicts.length ? (
+				<div className="mx-2 mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 p-2">
+					<div className="flex items-center gap-2 text-xs font-medium">
+						<GitMerge className="size-3.5" />
+						{t(($) =>
+							snapshot.operation === "merge"
+								? $.shell.sourceControl.mergeNeedsAttention
+								: $.shell.sourceControl.stashNeedsAttention,
+						)}
+					</div>
+					<ul className="mt-1.5 space-y-1">
+						{conflicts.map((conflict) => (
+							<li
+								key={conflict.path}
+								className="rounded border border-amber-500/20 bg-background/40 p-1.5 text-[11px]"
+							>
+								<button
+									type="button"
+									onClick={() => void openSourceFile(conflict.path)}
+									className="block w-full truncate text-left font-medium underline-offset-2 hover:underline"
+								>
+									{conflict.path}
+								</button>
+								<div className="mt-1 flex flex-wrap gap-1">
+									<Button
+										variant="ghost"
+										size="xs"
+										disabled={busy}
+										onClick={() =>
+											externalAction((token, generation) =>
+												tauri.gitResolveConflict(
+													token.projectId,
+													conflict.path,
+													"current",
+													generation,
+												),
+											)
+										}
+									>
+										{t(($) => $.shell.sourceControl.useCurrent)}
+									</Button>
+									<Button
+										variant="ghost"
+										size="xs"
+										disabled={busy}
+										onClick={() =>
+											externalAction((token, generation) =>
+												tauri.gitResolveConflict(
+													token.projectId,
+													conflict.path,
+													"incoming",
+													generation,
+												),
+											)
+										}
+									>
+										{t(($) => $.shell.sourceControl.useIncoming)}
+									</Button>
+									<Button
+										variant="ghost"
+										size="xs"
+										disabled={busy}
+										onClick={() =>
+											externalAction((token, generation) =>
+												tauri.gitResolveConflict(
+													token.projectId,
+													conflict.path,
+													"mark",
+													generation,
+												),
+											)
+										}
+									>
+										{t(($) => $.shell.sourceControl.markResolved)}
+									</Button>
+								</div>
+							</li>
+						))}
+					</ul>
+					{snapshot.operation === "merge" ? (
+						<div className="mt-2 flex gap-1.5">
+							<Button
+								size="xs"
+								disabled={busy || conflicts.length > 0}
+								onClick={() =>
+									externalAction((token, generation) =>
+										tauri.gitContinueMerge(token.projectId, generation),
+									)
+								}
+							>
+								{t(($) => $.shell.sourceControl.continueMerge)}
+							</Button>
+							<Button
+								variant="outline"
+								size="xs"
+								disabled={busy}
+								onClick={() =>
+									externalAction((token, generation) =>
+										tauri.gitAbortMerge(token.projectId, generation),
+									)
+								}
+							>
+								{t(($) => $.shell.sourceControl.abortMerge)}
+							</Button>
+						</div>
+					) : null}
+				</div>
+			) : null}
+			<div className="min-h-0 flex-1 overflow-auto pt-1">
+				<SourceControlSection
+					id="source-control-staged"
+					title={t(($) => $.shell.sourceControl.stagedChanges)}
+					menuLabel={t(($) => $.shell.sourceControl.sectionActions, {
+						section: t(($) => $.shell.sourceControl.stagedChanges),
+					})}
+					count={staged.length}
+					open={sectionOpen.staged}
+					onOpenChange={(open) =>
+						setSectionOpen((value) => ({ ...value, staged: open }))
+					}
+					menu={menu("staged")}
+				>
+					{staged.length ? (
+						staged.map(row)
+					) : (
+						<p className="px-3 py-2 text-[11px] text-muted-foreground">
+							{t(($) => $.shell.sourceControl.noStagedChanges)}
+						</p>
+					)}
+				</SourceControlSection>
+				<SourceControlSection
+					id="source-control-changes"
+					title={t(($) => $.shell.sourceControl.changes)}
+					menuLabel={t(($) => $.shell.sourceControl.sectionActions, {
+						section: t(($) => $.shell.sourceControl.changes),
+					})}
+					count={changes.length}
+					open={sectionOpen.changes}
+					onOpenChange={(open) =>
+						setSectionOpen((value) => ({ ...value, changes: open }))
+					}
+					menu={menu("changes")}
+				>
+					{changes.length ? (
+						changes.map(row)
+					) : (
+						<p className="px-3 py-2 text-[11px] text-muted-foreground">
+							{t(($) => $.shell.sourceControl.clean)}
+						</p>
+					)}
+				</SourceControlSection>
+				<SourceControlSection
+					id="source-control-graph"
+					title={t(($) => $.shell.sourceControl.graph)}
+					count={snapshot?.commits.length}
+					open={sectionOpen.graph}
+					onOpenChange={(open) =>
+						setSectionOpen((value) => ({ ...value, graph: open }))
+					}
+				>
+					{snapshot?.commits.length ? (
+						<ol className="relative py-1">
+							{snapshot.commits.length > 1 ? (
+								<span
+									aria-hidden
+									className="absolute bottom-5 left-[18px] top-5 w-px bg-primary/40"
+								/>
+							) : null}
+							{snapshot.commits.map((commit) => (
+								<li
+									key={commit.oid}
+									className="group relative flex gap-2 px-3 py-1.5 pl-9 hover:bg-accent/60"
+								>
+									<span
+										aria-hidden
+										className="absolute left-[14px] top-3 size-2.5 rounded-full border-2 border-sidebar bg-primary"
+									/>
+									<div className="min-w-0 flex-1">
+										<div className="flex items-center gap-1">
+											<span className="truncate text-xs font-medium">
+												{commit.message.split("\n", 1)[0]}
+											</span>
+											{commit.refs?.map((ref) => (
+												<span
+													key={ref}
+													className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary"
+												>
+													{ref}
+												</span>
+											))}
+										</div>
+										<span className="text-[10px] text-muted-foreground">
+											{commit.author ?? commit.short}
+										</span>
+									</div>
+									<button
+										type="button"
+										aria-label={t(($) => $.shell.sourceControl.copyCommitId)}
+										onClick={() => void copyCommitId(commit)}
+										className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent"
+									>
+										{copiedOid === commit.oid ? (
+											<Check className="size-3" />
+										) : (
+											<Copy className="size-3" />
+										)}
+									</button>
+									<button
+										type="button"
+										aria-label={t(($) => $.shell.sourceControl.restoreCommit)}
+										disabled={busy || !commitFlowReady}
+										onClick={() => setRestoreCommit(commit)}
+										className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent"
+									>
+										<RotateCcw className="size-3" />
+									</button>
+								</li>
+							))}
+						</ol>
+					) : (
+						<p className="px-3 py-2 text-[11px] text-muted-foreground">
+							{t(($) => $.shell.sourceControl.noHistory)}
+						</p>
+					)}
+				</SourceControlSection>
+			</div>
+			{notice ? (
+				<div
+					data-testid="source-control-status"
+					role={notice.ok ? "status" : "alert"}
+					className={cn(
+						"m-2 rounded-md border p-2 text-[11px]",
+						notice.ok
+							? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+							: "border-destructive/30 bg-destructive/10 text-destructive",
+					)}
+				>
+					{notice.text}
+				</div>
+			) : null}
+			<ConfirmationDialog
+				open={discardConfirmation !== null}
+				title={discardConfirmation?.title ?? ""}
+				description={discardConfirmation?.description ?? ""}
+				confirmLabel={discardConfirmation?.confirm ?? ""}
+				destructive
+				onConfirm={confirmDiscard}
+				onCancel={() => setDiscardConfirmation(null)}
+			/>
+			<ConfirmationDialog
+				open={restoreCommit !== null}
+				title={t(($) => $.shell.sourceControl.restoreCommitTitle)}
+				description={t(($) => $.shell.sourceControl.restoreCommitDescription)}
+				confirmLabel={t(($) => $.shell.sourceControl.restoreCommit)}
+				destructive
+				onConfirm={() => void restoreGraphCommit()}
+				onCancel={() => setRestoreCommit(null)}
+			/>
+			<PublishToGitHubDialog
+				open={publishOpen}
+				onClose={() => setPublishOpen(false)}
+				projectId={projectId}
+				projectName={projectName}
+				onPublished={() => {
+					void refresh();
+				}}
+			/>
+		</div>
+	);
+}
 
-  useLayoutEffect(() => {
-    if (previousProjectId.current === projectId) return;
-    previousProjectId.current = projectId;
-    projectSession.current += 1;
-    refreshRequestId.current += 1;
-    pendingRefresh.current = null;
-    pendingMutation.current = null;
-    setChanges([]);
-    setInitialized(null);
-    setBranch("");
-    setRemote(null);
-    setCredentialCleanupRequired(false);
-    setAheadBehind(null);
-    setTitle("");
-    setDescription("");
-    setBusy(false);
-    setStatus(null);
-    setPublishOpen(false);
-    setConfirmDiscard(null);
-  }, [projectId]);
-
-  const beginProjectAction = (): ProjectActionToken | null => {
-    if (!projectId || useFilesStore.getState().projectId !== projectId) return null;
-    return { projectId, session: projectSession.current };
-  };
-
-  const isCurrentProjectAction = (action: ProjectActionToken) =>
-    action.session === projectSession.current &&
-    useFilesStore.getState().projectId === action.projectId;
-
-  const openSourceFile = (path: string) => {
-    openFile(path);
-    clearActiveDiff();
-  };
-
-  const refreshOnce = useCallback(async () => {
-    if (!projectId || useFilesStore.getState().projectId !== projectId) return;
-    const targetProjectId = projectId;
-    const requestId = ++refreshRequestId.current;
-    try {
-      const [repositoryInitialized, cfg] = await Promise.all([
-        gitIsInitialized(targetProjectId),
-        getConfig(),
-      ]);
-      if (
-        requestId !== refreshRequestId.current ||
-        useFilesStore.getState().projectId !== targetProjectId
-      ) {
-        return;
-      }
-      setInitialized(repositoryInitialized);
-      setHasToken(!!cfg.github_connected);
-      if (!repositoryInitialized) {
-        setChanges([]);
-        setBranch("");
-        setRemote(null);
-        setCredentialCleanupRequired(false);
-        setAheadBehind(null);
-        return;
-      }
-      const [chg, br, rem, ab, cleanupRequired] = await Promise.all([
-        gitStatus(targetProjectId),
-        gitCurrentBranch(targetProjectId).catch(() => ""),
-        gitGetRemote(targetProjectId).catch(() => null),
-        gitAheadBehind(targetProjectId).catch(() => null),
-        gitRemoteCredentialsNeedCleanup(targetProjectId).catch(() => false),
-      ]);
-      if (
-        requestId !== refreshRequestId.current ||
-        useFilesStore.getState().projectId !== targetProjectId
-      ) {
-        return;
-      }
-      setChanges(chg);
-      setBranch(br);
-      setRemote(rem);
-      setAheadBehind(ab);
-      setCredentialCleanupRequired(cleanupRequired);
-      useGitStatusStore.getState().refresh(targetProjectId);
-    } catch {
-      /* ignore */
-    }
-  }, [projectId]);
-
-  // A slow Git process must not turn repeated refreshes into an unbounded
-  // queue of readers ahead of a stage/commit waiting for the worktree lock.
-  const refresh = useCallback(async () => {
-    if (!projectId || useFilesStore.getState().projectId !== projectId) return;
-    const current = pendingRefresh.current;
-    if (current?.projectId === projectId && current.session === projectSession.current) {
-      current.queued = true;
-      refreshRequestId.current += 1;
-      return current.promise;
-    }
-    const operation: PendingRefresh = {
-      projectId,
-      session: projectSession.current,
-      queued: false,
-      promise: Promise.resolve(),
-    };
-    pendingRefresh.current = operation;
-    operation.promise = (async () => {
-      do {
-        operation.queued = false;
-        await refreshOnce();
-      } while (operation.queued && pendingRefresh.current === operation);
-    })().finally(() => {
-      if (pendingRefresh.current === operation) pendingRefresh.current = null;
-    });
-    return operation.promise;
-  }, [projectId, refreshOnce]);
-
-  const initialize = async () => {
-    const action = beginProjectAction();
-    if (!action) return;
-    setBusy(true);
-    setStatus(null);
-    try {
-      const initializedBranch = await gitInitialize(action.projectId);
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({
-        ok: true,
-        text: t(($) => $.shell.sourceControl.initialized, { branch: initializedBranch }),
-      });
-      await refresh();
-    } catch (error) {
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: false, text: String(error) });
-    } finally {
-      if (isCurrentProjectAction(action)) setBusy(false);
-    }
-  };
-
-  useEffect(() => {
-    refresh();
-    // Refresh when an editable diff (or other action) mutates the working tree.
-    const onChanged = () => void refresh();
-    window.addEventListener("oleafly:git-changed", onChanged);
-    return () => window.removeEventListener("oleafly:git-changed", onChanged);
-  }, [refresh]);
-
-  const pull = async () => {
-    const action = beginProjectAction();
-    if (!action) return;
-    setBusy(true);
-    setStatus(null);
-    try {
-      const message = await useFilesStore.getState().pullFromGit(action.projectId);
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: true, text: message });
-      await refresh();
-    } catch (e) {
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: false, text: String(e) });
-    } finally {
-      if (isCurrentProjectAction(action)) setBusy(false);
-    }
-  };
-
-  const unlink = async () => {
-    const action = beginProjectAction();
-    if (!action) return;
-    setBusy(true);
-    try {
-      await gitRemoveRemote(action.projectId);
-      if (!isCurrentProjectAction(action)) return;
-      setRemote(null);
-      setAheadBehind(null);
-      await refresh();
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: true, text: t(($) => $.shell.sourceControl.unlinked) });
-    } catch (e) {
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: false, text: String(e) });
-    } finally {
-      if (isCurrentProjectAction(action)) setBusy(false);
-    }
-  };
-
-  const cleanSavedCredential = async () => {
-    const action = beginProjectAction();
-    if (!action) return;
-    setBusy(true);
-    setStatus(null);
-    try {
-      await gitCleanRemoteCredentials(action.projectId);
-      if (!isCurrentProjectAction(action)) return;
-      setCredentialCleanupRequired(false);
-      setStatus({ ok: true, text: t(($) => $.shell.sourceControl.credentialRemoved) });
-      await refresh();
-    } catch (error) {
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: false, text: String(error) });
-    } finally {
-      if (isCurrentProjectAction(action)) setBusy(false);
-    }
-  };
-
-  const viewDiff = (path: string, staged: boolean) => {
-    openDiff(path, staged ? "staged" : "working");
-  };
-
-  const discard = async (path: string) => {
-    const action = beginProjectAction();
-    if (!action) return;
-    try {
-      await useFilesStore.getState().discardFromGit(action.projectId, path);
-      if (!isCurrentProjectAction(action)) return;
-      await refresh();
-      if (!isCurrentProjectAction(action)) return;
-      notifyGitChanged();
-    } catch (e) {
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: false, text: String(e) });
-    }
-  };
-
-  const notifyGitChanged = () =>
-    window.dispatchEvent(new CustomEvent("oleafly:git-changed"));
-
-  const runGit = async (action: ProjectActionToken, op: () => Promise<unknown>) => {
-    if (busy || pendingMutation.current) return;
-    pendingMutation.current = action;
-    setBusy(true);
-    try {
-      await op();
-      if (!isCurrentProjectAction(action)) return;
-      notifyGitChanged(); // the listener refreshes this panel; an open diff reloads too
-      await pendingRefresh.current?.promise;
-    } catch (e) {
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: false, text: String(e) });
-    } finally {
-      if (pendingMutation.current === action) {
-        pendingMutation.current = null;
-        if (isCurrentProjectAction(action)) setBusy(false);
-      }
-    }
-  };
-  const stageFile = (path: string) => {
-    const action = beginProjectAction();
-    if (action) runGit(action, () => gitStage(action.projectId, path));
-  };
-  const unstageFile = (path: string) => {
-    const action = beginProjectAction();
-    if (action) runGit(action, () => gitUnstage(action.projectId, path));
-  };
-  const stageAll = () => {
-    const action = beginProjectAction();
-    if (action) runGit(action, () => gitStageAll(action.projectId));
-  };
-  const unstageAll = () => {
-    const action = beginProjectAction();
-    if (action) runGit(action, () => gitUnstageAll(action.projectId));
-  };
-
-  const clearStatusLater = (action: ProjectActionToken) => {
-    window.setTimeout(() => {
-      if (isCurrentProjectAction(action)) setStatus(null);
-    }, 1500);
-  };
-
-  const finishCommit = async (
-    action: ProjectActionToken,
-    andPush: boolean,
-    parts: string[],
-  ) => {
-    setStatus({ ok: true, text: parts.join("\n") });
-    setTitle("");
-    setDescription("");
-    await refresh();
-    if (!isCurrentProjectAction(action)) return;
-    await refreshTree();
-    if (!isCurrentProjectAction(action)) return;
-    notifyGitChanged();
-    if (!andPush) clearStatusLater(action);
-  };
-
-  const appendPushResult = async (parts: string[], projectId: string) => {
-    if (!hasToken) {
-      parts.push(t(($) => $.shell.sourceControl.pushSkippedNoToken));
-      return false;
-    }
-    if (!remote) {
-      parts.push(t(($) => $.shell.sourceControl.pushSkippedNoRemote));
-      return false;
-    }
-    parts.push(await gitPush(projectId));
-    return true;
-  };
-
-  const submit = async (andPush: boolean) => {
-    const action = beginProjectAction();
-    if (!action) return;
-    const subject = title.trim();
-    const msg = composeCommitMessage(title, description);
-    const hasStaged = changes.some((c) => c.staged);
-    // A commit requires staged files + a message; pushing existing commits does not.
-    if (hasStaged && !subject) {
-      setStatus({ ok: false, text: t(($) => $.shell.sourceControl.titleRequiredStatus) });
-      return;
-    }
-    setBusy(true);
-    setStatus(null);
-    try {
-      // Commit the staged set only. Nothing staged -> no commit (push still runs).
-      const committed = hasStaged ? await gitCommit(action.projectId, msg) : false;
-      if (!isCurrentProjectAction(action)) return;
-      const parts: string[] = [
-        committed
-          ? t(($) => $.shell.sourceControl.committed, { subject })
-          : t(($) => $.shell.sourceControl.nothingStaged),
-      ];
-      if (andPush) {
-        const pushed = await appendPushResult(parts, action.projectId);
-        if (pushed && !isCurrentProjectAction(action)) return;
-      }
-      await finishCommit(action, andPush, parts);
-    } catch (e) {
-      if (!isCurrentProjectAction(action)) return;
-      setStatus({ ok: false, text: String(e) });
-    } finally {
-      if (isCurrentProjectAction(action)) setBusy(false);
-    }
-  };
-
-  const staged = changes.filter((c) => c.staged);
-  const unstaged = changes.filter((c) => !c.staged);
-  const canCommit = !busy && staged.length > 0 && title.trim().length > 0;
-
-  const onTitleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-    event.preventDefault();
-    if (!canCommit) return;
-    submit(false);
-  };
-
-  const openPublish = () => {
-    if (!githubConnected) {
-      const settings = useSettingsStore.getState();
-      settings.setSettingsInitialSection("integrations");
-      settings.setSettingsScrollTarget("github");
-      settings.setSettingsOpen(true);
-      return;
-    }
-    setPublishOpen(true);
-  };
-
-  const renderRow = (c: GitFileChange) => {
-    const m = meta(c.status);
-    const name = c.path.split("/").pop() ?? c.path;
-    const dir = c.path.includes("/") ? c.path.slice(0, c.path.lastIndexOf("/")) : "";
-    return (
-      <div key={c.path} className="group flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-accent/60">
-        <button type="button"
-          data-testid={`git-change-${c.path}`}
-          onClick={() => void viewDiff(c.path, c.staged)}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        >
-          <span className={cn("flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-semibold", m.cls)}>
-            {m.label}
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-xs font-medium">{name}</span>
-            {dir && <span className="block truncate text-[10px] text-muted-foreground">{dir}</span>}
-          </span>
-        </button>
-        <button type="button"
-          onClick={() => openSourceFile(c.path)}
-          aria-label={t(($) => $.shell.sourceControl.openFile)}
-          title={t(($) => $.shell.sourceControl.openFile)}
-          className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
-        >
-          <FileText className="size-3.5" />
-        </button>
-        {!c.staged &&
-          (confirmDiscard === c.path ? (
-            <>
-              <button type="button"
-                onClick={() => {
-                  setConfirmDiscard(null);
-                  discard(c.path);
-                }}
-                aria-label={t(($) => $.shell.sourceControl.confirmDiscard)}
-                title={t(($) => $.shell.sourceControl.confirmDiscardTitle)}
-                className="flex size-6 shrink-0 items-center justify-center rounded text-destructive hover:bg-destructive/10"
-              >
-                <Check className="size-3.5" />
-              </button>
-              <button type="button"
-                onClick={() => setConfirmDiscard(null)}
-                aria-label={t(($) => $.common.actions.cancel)}
-                className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            </>
-          ) : (
-            <button type="button"
-              onClick={() => setConfirmDiscard(c.path)}
-              aria-label={t(($) => $.shell.sourceControl.discard)}
-              title={t(($) => $.shell.sourceControl.discardTitle)}
-              className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-destructive group-hover:opacity-100"
-            >
-              <Undo2 className="size-3.5" />
-            </button>
-          ))}
-        <button type="button"
-          onClick={() => void (c.staged ? unstageFile(c.path) : stageFile(c.path))}
-          disabled={busy}
-          aria-label={
-            c.staged
-              ? t(($) => $.shell.sourceControl.unstage)
-              : t(($) => $.shell.sourceControl.stage)
-          }
-          title={
-            c.staged
-              ? t(($) => $.shell.sourceControl.unstage)
-              : t(($) => $.shell.sourceControl.stage)
-          }
-          className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
-        >
-          {c.staged ? <Minus className="size-3.5" /> : <Plus className="size-3.5" />}
-        </button>
-      </div>
-    );
-  };
-
-  const commitBlockedReason = () => {
-    if (staged.length === 0) {
-      return t(($) => $.shell.sourceControl.stageFirst);
-    }
-    if (!title.trim()) {
-      return t(($) => $.shell.sourceControl.enterTitle);
-    }
-    return undefined;
-  };
-
-  const renderCommitPanel = () => (
-    <div className="flex flex-col gap-2">
-      <Input
-        data-testid="commit-title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={onTitleKeyDown}
-        maxLength={COMMIT_TITLE_LIMIT}
-        placeholder={t(($) => $.shell.sourceControl.commitTitle)}
-        aria-label={t(($) => $.shell.sourceControl.commitTitle)}
-        className="h-8 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none"
-      />
-      <Textarea
-        data-testid="commit-description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        rows={2}
-        placeholder={t(($) => $.shell.sourceControl.commitDescriptionPlaceholder)}
-        aria-label={t(($) => $.shell.sourceControl.commitDescription)}
-        className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-xs outline-none"
-      />
-      {staged.length === 0 && changes.length > 0 ? (
-        <p className="-mt-1 text-[10px] text-muted-foreground">
-          {t(($) => $.shell.sourceControl.stageToCommit)}
-        </p>
-      ) : (
-        staged.length > 0 &&
-        !title.trim() && (
-          <p className="-mt-1 text-[10px] text-muted-foreground">
-            {t(($) => $.shell.sourceControl.titleRequired)}
-          </p>
-        )
-      )}
-      <div className="flex gap-1.5">
-        <button type="button"
-          data-testid="commit-button"
-          onClick={() => void submit(false)}
-          disabled={busy || staged.length === 0 || !title.trim()}
-          title={commitBlockedReason()}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-        >
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-          {t(($) => $.shell.sourceControl.commit)}
-        </button>
-        {githubConnected && (
-          <>
-            <Tooltip label={t(($) => $.shell.sourceControl.push)} className="flex-1">
-              <button type="button"
-                onClick={() => void submit(true)}
-                disabled={busy || !remote || (staged.length > 0 && !title.trim())}
-                aria-label={t(($) => $.shell.sourceControl.push)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
-              >
-                <Upload className="size-3.5" />
-                {t(($) => $.shell.sourceControl.pushShort)}
-              </button>
-            </Tooltip>
-            <Tooltip label={t(($) => $.shell.sourceControl.pull)} className="flex-1">
-              <button type="button"
-                onClick={() => void pull()}
-                disabled={busy || !remote}
-                aria-label={t(($) => $.shell.sourceControl.pull)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
-              >
-                <RefreshCw className="size-3.5" />
-                {t(($) => $.shell.sourceControl.pullShort)}
-              </button>
-            </Tooltip>
-          </>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderStatusNotice = () =>
-    status && (
-    <div
-      data-testid="source-control-status"
-      className={cn(
-        "mt-2 whitespace-pre-wrap break-words rounded-md border p-2 text-[11px]",
-        status.ok
-          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-          : "border-destructive/30 bg-destructive/10 text-destructive"
-      )}
-    >
-      {status.text}
-    </div>
-  );
-
-  const renderRemoteSection = () => (
-    <div>
-      <div className="flex items-center justify-between gap-2 px-1 pb-1">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-            {t(($) => $.shell.sourceControl.remote)}
-          </span>
-          <Tooltip wide side="top" label={remoteHint}>
-            <Info
-              role="img"
-              aria-label={remoteHint}
-              className="size-3.5 cursor-help text-muted-foreground hover:text-foreground"
-            />
-          </Tooltip>
-        </span>
-        {remote && (
-          <span className="truncate font-mono text-[10px] text-muted-foreground">{remote}</span>
-        )}
-      </div>
-      {remote ? (
-        <div className="flex gap-1.5 px-1">
-          <button type="button"
-            onClick={openPublish}
-            disabled={busy}
-            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-accent disabled:opacity-40"
-          >
-            <Github className="size-3" /> {t(($) => $.shell.sourceControl.changeRepo)}
-          </button>
-          <button type="button"
-            onClick={() => void unlink()}
-            disabled={busy}
-            className="rounded-md border px-2 py-1 text-[11px] hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-          >
-            {t(($) => $.shell.sourceControl.unlink)}
-          </button>
-        </div>
-      ) : (
-        <div className="px-1">
-          <button type="button"
-            onClick={openPublish}
-            disabled={busy}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
-          >
-            <Github className="size-3.5" /> {t(($) => $.shell.sourceControl.publish)}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderChangeList = () => {
-    if (initialized === false) {
-      return (
-        <div className="flex h-full flex-col items-center justify-center gap-3 px-5 text-center">
-          <GitBranch className="size-8 text-muted-foreground/60" />
-          <div>
-            <p className="text-xs font-medium">
-              {t(($) => $.shell.sourceControl.notInitialized)}
-            </p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              {t(($) => $.shell.sourceControl.notInitializedHint)}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void initialize()}
-            disabled={busy}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
-          >
-            {t(($) => $.shell.sourceControl.initialize)}
-          </button>
-          <button
-            type="button"
-            onClick={openPublish}
-            disabled={busy}
-            className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-40"
-          >
-            <Github className="size-3.5" /> {t(($) => $.shell.sourceControl.publish)}
-          </button>
-        </div>
-      );
-    }
-    if (initialized === null) {
-      return (
-        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-          {t(($) => $.shell.sourceControl.checking)}
-        </div>
-      );
-    }
-    if (changes.length === 0) {
-      return (
-        <p className="px-2 py-8 text-center text-xs text-muted-foreground">
-          {t(($) => $.shell.sourceControl.clean)}
-        </p>
-      );
-    }
-    return (
-      <>
-        {staged.length > 0 && (
-          <div className="mb-2">
-            <div className="group/hdr flex items-center gap-1.5 px-2 pb-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                {t(($) => $.shell.sourceControl.staged)}
-              </span>
-              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
-                {staged.length}
-              </span>
-              <button type="button"
-                onClick={() => void unstageAll()}
-                disabled={busy}
-                title={t(($) => $.shell.sourceControl.unstageAll)}
-                aria-label={t(($) => $.shell.sourceControl.unstageAll)}
-                className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
-              >
-                <Minus className="size-3.5" />
-              </button>
-            </div>
-            {staged.map(renderRow)}
-          </div>
-        )}
-        {unstaged.length > 0 && (
-          <div className="group/hdr">
-            <div className="flex items-center gap-1.5 px-2 pb-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                {t(($) => $.shell.sourceControl.changes)}
-              </span>
-              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
-                {unstaged.length}
-              </span>
-              <button type="button"
-                onClick={() => void stageAll()}
-                disabled={busy}
-                title={t(($) => $.shell.sourceControl.stageAll)}
-                aria-label={t(($) => $.shell.sourceControl.stageAll)}
-                className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
-              >
-                <Plus className="size-3.5" />
-              </button>
-            </div>
-            {unstaged.map(renderRow)}
-          </div>
-        )}
-      </>
-    );
-  };
-
-  const renderAheadBehind = () => (
-    remote && aheadBehind?.has_upstream && (aheadBehind.ahead > 0 || aheadBehind.behind > 0) && (
-      <Tooltip
-        label={t(($) => $.shell.sourceControl.aheadBehind, {
-          ahead: aheadBehind.ahead,
-          behind: aheadBehind.behind,
-          branch,
-        })}
-        side="bottom"
-      >
-        <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
-          {aheadBehind.ahead > 0 && (
-            <span className="text-emerald-600 dark:text-emerald-400">↑{aheadBehind.ahead}</span>
-          )}
-          {aheadBehind.behind > 0 && (
-            <span className="text-amber-600 dark:text-amber-400">↓{aheadBehind.behind}</span>
-          )}
-        </span>
-      </Tooltip>
-    )
-  );
-
-  return (
-    <div className="flex h-full flex-col bg-sidebar">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
-        <GitBranch className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          {t(($) => $.shell.sourceControl.title)}
-        </span>
-        <span className="ml-auto" />
-        <Tooltip label={t(($) => $.shell.sourceControl.refresh)} side="bottom">
-          <button type="button"
-            onClick={() => void refresh()}
-            aria-label={t(($) => $.shell.sourceControl.refresh)}
-            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <RefreshCw className="size-3.5" />
-          </button>
-        </Tooltip>
-        {branch && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-medium text-white">
-            <GitBranch className="size-3" />
-            {branch}
-          </span>
-        )}
-        {githubUrl && (
-          <GithubMenu
-            githubUrl={githubUrl}
-            onOpenInGithub={openInGithub}
-            onCopyLink={() => void shareGithub()}
-          />
-        )}
-        {renderAheadBehind()}
-        {githubConnected && (
-          <Tooltip
-            side="bottom"
-            wide
-            label={
-              <div className="flex items-center gap-2">
-                {githubUser?.avatar_url ? (
-                  <img
-                    src={githubUser.avatar_url}
-                    alt=""
-                    className="size-9 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
-                    <Github className="size-4" />
-                  </span>
-                )}
-                <div className="flex min-w-0 flex-col">
-                  {githubUser?.name && (
-                    <span className="truncate text-[13px] font-semibold text-foreground">
-                      {githubUser.name}
-                    </span>
-                  )}
-                  <span className="truncate text-xs text-muted-foreground">{`@${githubUser?.login}`}</span>
-                </div>
-              </div>
-            }
-          >
-            {githubUser?.avatar_url ? (
-              <img
-                src={githubUser.avatar_url}
-                alt={`@${githubUser.login}`}
-                className="size-6 shrink-0 cursor-pointer rounded-full object-cover"
-              />
-            ) : (
-              <span className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full bg-foreground text-background">
-                <Github className="size-3.5" />
-              </span>
-            )}
-          </Tooltip>
-        )}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-auto p-2">
-        {credentialCleanupRequired && initialized === true && (
-          <div className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-700 dark:text-amber-300">
-            <div className="flex items-start gap-2">
-              <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p>{t(($) => $.shell.sourceControl.credentialWarning)}</p>
-                <button
-                  type="button"
-                  onClick={() => void cleanSavedCredential()}
-                  disabled={busy}
-                  className="mt-1.5 rounded border border-current/30 px-2 py-1 font-medium hover:bg-amber-500/10 disabled:opacity-40"
-                >
-                  {t(($) => $.shell.sourceControl.removeCredential)}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {renderChangeList()}
-      </div>
-
-      {initialized === true && (
-        <div
-          data-testid="source-control-actions"
-          className="shrink-0 border-t border-sidebar-border bg-sidebar p-2"
-        >
-          {remoteFirst ? (
-            <>
-              {renderRemoteSection()}
-              <div className="mt-3 border-t border-sidebar-border pt-2">{renderCommitPanel()}</div>
-              {renderStatusNotice()}
-            </>
-          ) : (
-            <>
-              {renderCommitPanel()}
-              {renderStatusNotice()}
-              <div className="mt-3 border-t border-sidebar-border pt-2">{renderRemoteSection()}</div>
-            </>
-          )}
-        </div>
-      )}
-
-      <PublishToGitHubDialog
-        open={publishOpen}
-        onClose={() => setPublishOpen(false)}
-        projectId={projectId}
-        projectName={projectName}
-        onPublished={(url) => {
-          refresh();
-          setStatus({
-            ok: true,
-            text: t(($) => $.shell.sourceControl.published, { url }),
-          });
-        }}
-      />
-    </div>
-  );
+function Header({
+	branch,
+	remote,
+	aheadBehind,
+	busy,
+	onRefresh,
+	onFetch,
+	onPull,
+	onPush,
+	onSync,
+	onStash,
+	branches,
+	onCheckout,
+	branchFormOpen,
+	onBranchFormOpen,
+	branchDraft,
+	onBranchDraft,
+	onCreateBranch,
+	onPublish,
+	onUnlink,
+}: {
+	branch: string;
+	remote: string | null;
+	aheadBehind?: { ahead: number; behind: number } | null;
+	busy: boolean;
+	onRefresh: () => Promise<void>;
+	onFetch?: () => void;
+	onPull?: () => void;
+	onPush?: () => void;
+	onSync?: () => void;
+	onStash?: (pop: boolean) => void;
+	branches?: string[];
+	onCheckout?: (branch: string) => void;
+	branchFormOpen?: boolean;
+	onBranchFormOpen?: (open: boolean) => void;
+	branchDraft?: string;
+	onBranchDraft?: (value: string) => void;
+	onCreateBranch?: () => void;
+	onPublish?: () => void;
+	onUnlink?: () => void;
+}) {
+	const { t } = useTranslation(["common", "shell"]);
+	const url = remote ? toGithubWebUrl(remote) : null;
+	const aheadBehindLabel = aheadBehind
+		? t(($) => $.shell.sourceControl.aheadBehind, {
+				ahead: aheadBehind.ahead,
+				behind: aheadBehind.behind,
+				branch,
+			})
+		: "";
+	const compactAheadBehind = aheadBehind
+		? `${String.fromCharCode(0x2191)}${aheadBehind.ahead} ${String.fromCharCode(0x2193)}${aheadBehind.behind}`
+		: "";
+	return (
+		<>
+			<div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-2">
+				<GitBranch className="size-3.5 text-muted-foreground" />
+				<span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
+					{t(($) => $.shell.sourceControl.title)}
+				</span>
+				<span className="ml-auto" />
+				{branch ? (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="ghost"
+								size="xs"
+								className="max-w-28 gap-1"
+								disabled={busy}
+							>
+								<GitBranch /> <span className="truncate">{branch}</span>
+								<ChevronDown />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuLabel>
+								{t(($) => $.shell.sourceControl.branch)}
+							</DropdownMenuLabel>
+							{branches?.map((item) => (
+								<DropdownMenuItem
+									key={item}
+									disabled={busy || item === branch}
+									onSelect={() => onCheckout?.(item)}
+								>
+									{item}
+								</DropdownMenuItem>
+							))}
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								disabled={busy || !onCreateBranch}
+								onSelect={() => onBranchFormOpen?.(true)}
+							>
+								{t(($) => $.shell.sourceControl.createBranch)}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				) : null}
+				{aheadBehind && (aheadBehind.ahead > 0 || aheadBehind.behind > 0) ? (
+					<span
+						className="shrink-0 text-[10px] tabular-nums text-muted-foreground"
+						title={aheadBehindLabel}
+					>
+						{compactAheadBehind}
+					</span>
+				) : null}
+				<Tooltip label={t(($) => $.shell.sourceControl.refresh)}>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-6"
+						aria-label={t(($) => $.shell.sourceControl.refresh)}
+						disabled={busy}
+						onClick={() => void onRefresh()}
+					>
+						<RefreshCw className="size-3.5" />
+					</Button>
+				</Tooltip>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-6"
+							aria-label={t(($) => $.shell.sourceControl.moreActions)}
+							disabled={busy}
+						>
+							<MoreHorizontal className="size-4" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem
+							disabled={busy || !remote || !onFetch}
+							onSelect={onFetch}
+						>
+							<CloudDownload />
+							{t(($) => $.shell.sourceControl.fetch)}
+						</DropdownMenuItem>
+						<DropdownMenuItem disabled={busy || !remote} onSelect={onPull}>
+							<GitPullRequest />
+							{t(($) => $.shell.sourceControl.pullShort)}
+						</DropdownMenuItem>
+						<DropdownMenuItem disabled={busy || !remote} onSelect={onPush}>
+							<Upload />
+							{t(($) => $.shell.sourceControl.pushShort)}
+						</DropdownMenuItem>
+						<DropdownMenuItem disabled={busy || !remote} onSelect={onSync}>
+							<RefreshCw />
+							{t(($) => $.shell.sourceControl.sync)}
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							disabled={busy || !onStash}
+							onSelect={() => onStash?.(false)}
+						>
+							<Archive />
+							{t(($) => $.shell.sourceControl.stash)}
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							disabled={busy || !onStash}
+							onSelect={() => onStash?.(true)}
+						>
+							<RotateCcw />
+							{t(($) => $.shell.sourceControl.popStash)}
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							disabled={busy || !onPublish}
+							onSelect={onPublish}
+						>
+							{t(($) =>
+								remote
+									? $.shell.sourceControl.changeRepo
+									: $.shell.sourceControl.publish,
+							)}
+						</DropdownMenuItem>
+						{remote ? (
+							<DropdownMenuItem
+								disabled={busy}
+								onSelect={onUnlink}
+								className="text-destructive focus:text-destructive"
+							>
+								{t(($) => $.shell.sourceControl.unlink)}
+							</DropdownMenuItem>
+						) : null}
+					</DropdownMenuContent>
+				</DropdownMenu>
+				{url ? (
+					<GithubMenu
+						githubUrl={url}
+						onOpenInGithub={() => void open(url)}
+						onCopyLink={() => void navigator.clipboard.writeText(url)}
+					/>
+				) : null}
+			</div>
+			{branchFormOpen ? (
+				<div className="flex gap-1.5 border-b border-sidebar-border p-2">
+					<Input
+						autoFocus
+						value={branchDraft}
+						onChange={(event) => onBranchDraft?.(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter") onCreateBranch?.();
+							if (event.key === "Escape") onBranchFormOpen?.(false);
+						}}
+						placeholder={t(($) => $.shell.sourceControl.branchName)}
+						aria-label={t(($) => $.shell.sourceControl.branchName)}
+						className="h-7 text-xs"
+					/>
+					<Button
+						size="xs"
+						disabled={!branchDraft?.trim() || busy}
+						onClick={onCreateBranch}
+					>
+						{t(($) => $.shell.sourceControl.create)}
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-7"
+						aria-label={t(($) => $.common.actions.cancel)}
+						onClick={() => onBranchFormOpen?.(false)}
+					>
+						<X />
+					</Button>
+				</div>
+			) : null}
+		</>
+	);
 }

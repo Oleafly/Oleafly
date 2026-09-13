@@ -35,6 +35,8 @@ const mocks = vi.hoisted(() => ({
     setNewProjectOpen: vi.fn(),
     setAssistantOpen: vi.fn(),
     setSettingsOpen: vi.fn(),
+    setRailTab: vi.fn(),
+    setShowTree: vi.fn(),
     setWordCountOpen: vi.fn(),
     setTerminalOpen: vi.fn(),
     openVersioning: vi.fn(),
@@ -264,6 +266,7 @@ describe("command contributions copy", () => {
     const noProject: AppContext = { ...baseContext, projectId: null };
     const ids = commandsFor("palette", noProject).map((command) => command.id);
     expect(ids).not.toContain("palette.clear-cache");
+    expect(ids).not.toContain("palette.history");
     expect(ids).not.toContain("palette.new-terminal");
     expect(ids).not.toContain("palette.cite-oleafly");
   });
@@ -325,7 +328,10 @@ describe("command contributions behaviour", () => {
     expect(mocks.home.queuePageAfterProjectClose).not.toHaveBeenCalled();
   });
 
-  it("opens settings, word count, versioning and the citation dialog", () => {
+  it("opens settings, word count, checkpoints and the citation dialog", () => {
+    const graphEvents: Event[] = [];
+    const onShowGraph = (event: Event) => graphEvents.push(event);
+    window.addEventListener("oleafly:source-control-show-graph", onShowGraph);
     run("omnibar.settings");
     run("palette.word-count");
     run("palette.history");
@@ -333,9 +339,12 @@ describe("command contributions behaviour", () => {
     run("palette.add-citation");
     expect(mocks.settings.setSettingsOpen).toHaveBeenCalledWith(true);
     expect(mocks.settings.setWordCountOpen).toHaveBeenCalledWith(true);
-    expect(mocks.settings.openVersioning).toHaveBeenNthCalledWith(1, "git");
-    expect(mocks.settings.openVersioning).toHaveBeenNthCalledWith(2, "checkpoints");
+    expect(mocks.settings.setRailTab).toHaveBeenCalledWith("source");
+    expect(mocks.settings.setShowTree).toHaveBeenCalledWith(true);
+    expect(graphEvents).toHaveLength(1);
+    expect(mocks.settings.openVersioning).toHaveBeenCalledWith();
     expect(mocks.citation.setOpen).toHaveBeenCalledWith(true);
+    window.removeEventListener("oleafly:source-control-show-graph", onShowGraph);
   });
 
   it("drives the compile commands", () => {

@@ -29,15 +29,6 @@ const mocks = vi.hoisted(() => ({
   readProjectSources: vi.fn(),
   settings: {
     offline: false,
-    versioningOpen: false,
-    versioningTab: "git" as "git" | "checkpoints",
-    openVersioning: (tab?: "git" | "checkpoints") => {
-      mocks.settings.versioningOpen = true;
-      if (tab) mocks.settings.versioningTab = tab;
-    },
-    closeVersioning: () => {
-      mocks.settings.versioningOpen = false;
-    },
   },
   index: {
     texts: {
@@ -152,8 +143,6 @@ beforeEach(() => {
   mocks.refreshPreviewWindow.mockReset();
   mocks.gitPreparePublish.mockReset().mockResolvedValue(undefined);
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
-  mocks.settings.versioningOpen = false;
-  mocks.settings.versioningTab = "git";
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
   mocks.readProjectSources.mockReset().mockImplementation(
     async (_projectId: string, paths: readonly string[]) => ({

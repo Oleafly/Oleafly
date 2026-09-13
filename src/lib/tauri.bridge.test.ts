@@ -23,9 +23,22 @@ import {
   confirmQuitFlush,
   createFile,
   detectBrowserCookieSources,
+  gitAbortMerge,
+  gitCheckoutBranch,
+  gitCommitAmend,
+  gitContinueMerge,
+  gitCreateBranch,
+  gitDiscardPaths,
+  gitFetch,
   gitInitialize,
   gitIsInitialized,
   gitPreparePublish,
+  gitResolveConflict,
+  gitStagePaths,
+  gitStashPop,
+  gitStashPush,
+  gitUnstagePaths,
+  gitWorkspaceSnapshot,
   importDocument,
   importBrowserCookies,
   isFileConflictError,
@@ -260,6 +273,100 @@ describe("explicit Git setup bridge", () => {
     expect(mocks.invoke).toHaveBeenLastCalledWith("git_prepare_publish", {
       projectId: "project",
       message: "Initial commit",
+    });
+  });
+});
+
+describe("source control workflow bridges", () => {
+  it("routes the coherent snapshot and exact-path index operations", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await gitWorkspaceSnapshot("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_workspace_snapshot", {
+      projectId: "project",
+    });
+
+    await gitStagePaths("project", ["paper.tex", "figures/result.png"]);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_stage_paths", {
+      projectId: "project",
+      paths: ["paper.tex", "figures/result.png"],
+    });
+
+    await gitUnstagePaths("project", ["paper.tex"]);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_unstage_paths", {
+      projectId: "project",
+      paths: ["paper.tex"],
+    });
+
+    await gitDiscardPaths("project", ["notes.md"], 17);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_discard_paths", {
+      projectId: "project",
+      paths: ["notes.md"],
+      expectedGeneration: 17,
+    });
+  });
+
+  it("routes commit, remote, branch, and stash actions", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await gitCommitAmend("project", "Clarify the result");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_commit_amend", {
+      projectId: "project",
+      message: "Clarify the result",
+    });
+
+    await gitFetch("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_fetch", {
+      projectId: "project",
+    });
+
+    await gitCreateBranch("project", "analysis/revision");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_create_branch", {
+      projectId: "project",
+      branch: "analysis/revision",
+    });
+
+    await gitCheckoutBranch("project", "main", 18);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_checkout_branch", {
+      projectId: "project",
+      branch: "main",
+      expectedGeneration: 18,
+    });
+
+    await gitStashPush("project", 18);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_stash_push", {
+      projectId: "project",
+      expectedGeneration: 18,
+    });
+
+    await gitStashPop("project", 19);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_stash_pop", {
+      projectId: "project",
+      expectedGeneration: 19,
+    });
+  });
+
+  it("routes merge recovery with the current project generation", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await gitResolveConflict("project", "paper.tex", "incoming", 20);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_resolve_conflict", {
+      projectId: "project",
+      path: "paper.tex",
+      resolution: "incoming",
+      expectedGeneration: 20,
+    });
+
+    await gitContinueMerge("project", 21);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_continue_merge", {
+      projectId: "project",
+      expectedGeneration: 21,
+    });
+
+    await gitAbortMerge("project", 21);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_abort_merge", {
+      projectId: "project",
+      expectedGeneration: 21,
     });
   });
 });
