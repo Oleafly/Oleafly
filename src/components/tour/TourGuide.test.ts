@@ -266,18 +266,18 @@ describe("terminal tour lifecycle", () => {
     expect(shouldCompleteTourAfterStep("complete", 0, 10)).toBe(true);
   });
 
-  it("clears the active Settings tour immediately after completion", () => {
+  it("clears an active available tour immediately after completion", () => {
     const values = new Map<string, string>();
     const store = createTourState({
       getItem: (key) => values.get(key) ?? null,
       setItem: (key, value) => void values.set(key, value),
       removeItem: (key) => void values.delete(key),
     });
-    store.getState().start("settings");
-    store.getState().complete("settings");
+    store.getState().start("workspace");
+    store.getState().complete("workspace");
     expect(store.getState().activeTourId).toBeNull();
     expect(store.getState().activeStepIndex).toBe(0);
-    expect(store.getState().tours.settings.status).toBe("completed");
+    expect(store.getState().tours.workspace.status).toBe("completed");
   });
 });
 

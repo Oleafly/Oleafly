@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { TOUR_IDS, tourRegistry } from "@/lib/tours/registry";
+import {
+  AVAILABLE_TOUR_IDS,
+  isTourAvailable,
+  TOUR_IDS,
+  tourRegistry,
+} from "@/lib/tours/registry";
 import {
   createTourState,
   defaultPersistedTourState,
@@ -25,12 +30,18 @@ describe("tour state", () => {
     storage = storageFixture();
   });
 
-  it("defaults every versioned tour to pending and enabled", () => {
+  it("defaults only available tours to pending and enabled", () => {
     const state = defaultPersistedTourState();
     expect(state.enabled).toBe(true);
     expect(
-      TOUR_IDS.map((id) => [state.tours[id].status, state.tours[id].version]),
-    ).toEqual(TOUR_IDS.map((id) => ["pending", tourRegistry[id].version]));
+      AVAILABLE_TOUR_IDS.map((id) => [state.tours[id].status, state.tours[id].version]),
+    ).toEqual(AVAILABLE_TOUR_IDS.map((id) => ["pending", tourRegistry[id].version]));
+    for (const id of TOUR_IDS.filter((id) => !isTourAvailable(id))) {
+      expect(state.tours[id]).toEqual({
+        status: "dismissed",
+        version: tourRegistry[id].version,
+      });
+    }
   });
 
   it("persists terminal state but not an interrupted active tour or step", () => {
@@ -98,7 +109,7 @@ describe("tour state", () => {
   it("prevents stacking and supports navigation without persisting progress", () => {
     const store = createTourState(storage);
     expect(store.getState().start("home")).toBe(true);
-    expect(store.getState().start("settings")).toBe(false);
+    expect(store.getState().start("workspace")).toBe(false);
     store.getState().advance();
     store.getState().advance();
     store.getState().back();
@@ -126,29 +137,49 @@ describe("tour state", () => {
     const store = createTourState(storage);
     store.getState().start("home");
     store.getState().complete();
-    store.getState().start("settings");
+    store.getState().start("workspace");
     store.getState().dismiss();
     expect(store.getState().tours.home.status).toBe("completed");
-    expect(store.getState().tours.settings.status).toBe("dismissed");
-    expect(store.getState().tours.ai.status).toBe("pending");
+    expect(store.getState().tours.workspace.status).toBe("dismissed");
+    expect(store.getState().tours.ai.status).toBe("dismissed");
   });
 
   it("enables and disables individual tours without resetting the others", () => {
     const store = createTourState(storage);
     store.getState().complete("home");
-    store.getState().setTourEnabled("settings", false);
+    store.getState().setTourEnabled("workspace", false);
     expect(store.getState().tours.home.status).toBe("completed");
-    expect(store.getState().tours.settings.status).toBe("dismissed");
+    expect(store.getState().tours.workspace.status).toBe("dismissed");
 
-    store.getState().setTourEnabled("settings", true);
+    store.getState().setTourEnabled("workspace", true);
     expect(store.getState().enabled).toBe(true);
-    expect(store.getState().tours.settings.status).toBe("pending");
+    expect(store.getState().tours.workspace.status).toBe("pending");
     expect(store.getState().tours.home.status).toBe("completed");
+  });
+
+  it("rejects automatic and manual starts for unavailable tours", () => {
+    const store = createTourState(storage);
+    expect(store.getState().start("settings")).toBe(false);
+    expect(store.getState().restart("ai-settings")).toBe(false);
+    store.getState().setTourEnabled("diagram", true);
+    expect(store.getState().activeTourId).toBeNull();
+    expect(store.getState().tours.settings.status).toBe("dismissed");
+    expect(store.getState().tours["ai-settings"].status).toBe("dismissed");
+    expect(store.getState().tours.diagram.status).toBe("dismissed");
+  });
+
+  it("dismisses unavailable tours when older persisted state is migrated", () => {
+    const current = defaultPersistedTourState();
+    current.tours.settings.status = "pending";
+    current.tours.ai.status = "completed";
+    const migrated = migrateTourState(current);
+    expect(migrated.tours.settings.status).toBe("dismissed");
+    expect(migrated.tours.ai.status).toBe("dismissed");
   });
 
   it("automatically disables after the final pending tour becomes terminal", () => {
     const store = createTourState(storage);
-    for (const id of TOUR_IDS) store.getState().dismiss(id);
+    for (const id of AVAILABLE_TOUR_IDS) store.getState().dismiss(id);
     expect(store.getState().enabled).toBe(false);
   });
 
@@ -161,7 +192,7 @@ describe("tour state", () => {
 
   it("normalizes an enabled all-terminal persisted state to disabled", () => {
     const current = defaultPersistedTourState();
-    for (const id of TOUR_IDS) current.tours[id].status = "completed";
+    for (const id of AVAILABLE_TOUR_IDS) current.tours[id].status = "completed";
     expect(migrateTourState(current).enabled).toBe(false);
   });
 
@@ -183,13 +214,22 @@ describe("tour state", () => {
     expect(broken.getItem("tour-test")).toBeNull();
   });
 
-  it("dismisses all and re-enable reset clears every prior terminal state", () => {
+  it("dismisses all and resets only available tours to pending", () => {
     const store = createTourState(storage);
     store.getState().dismissAll();
     expect(store.getState().enabled).toBe(false);
     expect(TOUR_IDS.every((id) => store.getState().tours[id].status === "dismissed")).toBe(true);
     store.getState().resetAll();
     expect(store.getState().enabled).toBe(true);
-    expect(TOUR_IDS.every((id) => store.getState().tours[id].status === "pending")).toBe(true);
+    expect(
+      AVAILABLE_TOUR_IDS.every(
+        (id) => store.getState().tours[id].status === "pending",
+      ),
+    ).toBe(true);
+    expect(
+      TOUR_IDS.filter((id) => !isTourAvailable(id)).every(
+        (id) => store.getState().tours[id].status === "dismissed",
+      ),
+    ).toBe(true);
   });
 });

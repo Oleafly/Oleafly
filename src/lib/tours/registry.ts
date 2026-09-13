@@ -3,6 +3,9 @@ import { i18n } from "@/i18n";
 export const TOUR_IDS = ["home", "workspace", "research", "settings", "ai-settings", "ai", "diagram"] as const;
 
 export type TourId = (typeof TOUR_IDS)[number];
+/** Registry entries outside this allowlist stay dormant and cannot be launched. */
+export const AVAILABLE_TOUR_IDS = ["home", "workspace"] as const satisfies readonly TourId[];
+export type AvailableTourId = (typeof AVAILABLE_TOUR_IDS)[number];
 export type TourStatus = "pending" | "completed" | "dismissed";
 export type TourContext = "home" | "project" | "settings" | "ai" | "diagram";
 export type TourStepKind = "informational" | "required-click" | "required-input" | "transition";
@@ -663,8 +666,18 @@ export const tourRegistry = {
 
 export const TOUR_SCHEMA_VERSION = 1;
 
+const availableTourIds = new Set<string>(AVAILABLE_TOUR_IDS);
+
+export function isTourAvailable(id: unknown): id is AvailableTourId {
+  return typeof id === "string" && availableTourIds.has(id);
+}
+
 export function toursForContext(context: TourContext): TourDefinition[] {
   return Object.values(tourRegistry)
-    .filter((tour) => (tour.contexts as readonly TourContext[]).includes(context))
+    .filter(
+      (tour) =>
+        isTourAvailable(tour.id) &&
+        (tour.contexts as readonly TourContext[]).includes(context),
+    )
     .sort((a, b) => a.priority - b.priority);
 }

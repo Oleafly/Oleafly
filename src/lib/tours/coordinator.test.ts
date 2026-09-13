@@ -32,26 +32,14 @@ describe("tour coordinator", () => {
     ).toBe("blocked");
   });
 
-  it("does not chain the AI settings walkthrough after the Settings overview", () => {
+  it("does not select tours from disabled contexts", () => {
     const state = defaultPersistedTourState();
-    state.tours.settings.status = "completed";
-    // The overview leaves the reader on Help, so the walkthrough's own page is
-    // not on screen and it waits rather than starting on top of them.
-    const elsewhereInSettings = {
-      blockingOverlay: false,
-      targetExists: (target: string) => target !== '[data-tour="ai-settings-tabs"]',
-    };
-    expect(evaluateTour(state, "settings", elsewhereInSettings).reason).toBe("missing-target");
-    expect(state.tours["ai-settings"].status).toBe("pending");
-  });
-
-  it("starts the AI settings walkthrough once its own page is open", () => {
-    const state = defaultPersistedTourState();
-    state.tours.settings.status = "completed";
-    expect(evaluateTour(state, "settings", ready)).toEqual({
-      tourId: "ai-settings",
-      reason: "ready",
-    });
+    for (const context of ["settings", "ai", "diagram"] as const) {
+      expect(evaluateTour(state, context, ready)).toEqual({
+        tourId: null,
+        reason: "not-pending",
+      });
+    }
   });
 
   it("ignores disabled state", () => {
