@@ -179,6 +179,10 @@ LaTeX projects get a compatibility scan when they open. If a project needs more 
 
 The bundled Biber sidecar is matched to the Tectonic biblatex version. Compile logs distinguish a missing Biber executable, a version mismatch, and an ordinary LaTeX error so you can choose the right fix.
 
+<div align="center">
+  <img src="docs/assets/readme/compile-engines.png" alt="Oleafly Engines settings showing LaTeX, Typst, Markdown, and managed TeX distributions" width="100%" />
+</div>
+
 ## Read the PDF beside the source
 
 The PDF viewer is built into the workspace and can also open in a detached preview window. It keeps the last accepted PDF visible while a newer compile is running or has failed, so one broken edit does not erase the last readable result.
