@@ -375,6 +375,14 @@ The server binds to `127.0.0.1` only, uses a short-lived bearer token, and runs 
 
 Open Tools from the omnibar or command palette. Search by name, description, or slash command. A tool that needs a network connection or an AI provider says so in its own panel.
 
+### A command palette for the whole workspace
+
+Search projects and documents, open settings, create a project, switch themes, or launch a tool from one place. Type `/` to narrow the list to commands and keep your hands on the keyboard while you work.
+
+<p align="center">
+  <img src="docs/assets/readme/command-palette.png" alt="Oleafly command palette searching projects, documents, commands, and tools" width="100%" />
+</p>
+
 ### Import and format conversion
 
 | Tool | Use it for |
