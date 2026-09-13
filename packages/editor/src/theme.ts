@@ -76,6 +76,20 @@ const chromeTheme = EditorView.theme({
   ".cm-panels": {
     color: "var(--popover-foreground)",
   },
+  ".cm-panels-bottom": {
+    borderTop: "1px solid var(--border)",
+  },
+  ".cm-vim-panel": {
+    minHeight: "28px",
+    alignItems: "center",
+    padding: "3px 10px",
+    backgroundColor: "var(--muted)",
+    color: "var(--muted-foreground)",
+    fontFamily: "var(--font-mono)",
+    fontSize: "11px",
+    fontWeight: "600",
+    letterSpacing: "0.04em",
+  },
   ".cm-textfield": {
     backgroundColor: "var(--background)",
     color: "var(--foreground)",

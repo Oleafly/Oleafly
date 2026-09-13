@@ -591,6 +591,10 @@ function AppContent() {
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;
+      // Once Vim owns the source editor, let its modal handler see the key
+      // first. Keys it declines still fall through to CodeMirror's ordinary
+      // history keymap; capturing them here bypasses Vim entirely.
+      if (active?.closest(".cm-content") && useSettingsStore.getState().vim) return;
       e.preventDefault();
       e.stopPropagation();
       if (inPlainField(active)) {

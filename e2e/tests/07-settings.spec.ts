@@ -1,11 +1,13 @@
 import { test, expect } from "../fixtures";
 import {
   createBlankProject,
+  editorSource,
   fillCommandPalette,
   openProject,
   openSettings,
   pressGlobal,
   paletteItems,
+  typeAtCaret,
   type Page,
 } from "../helpers";
 
@@ -99,7 +101,10 @@ test("compile button becomes recompile after the first result", async ({ tauriPa
   });
 });
 
-test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage }) => {
+test("vim mode: modal editing, live toggle, and persistence part 1", async ({ tauriPage }) => {
+  await openSettingsProject(tauriPage);
+  const editor = tauriPage.locator(".cm-content");
+  await expect(editor).toBeVisible({ timeout: 20_000 });
   await pressGlobal(tauriPage, "k", { meta: true });
   await fillCommandPalette(tauriPage, "vim");
   const alreadyEnabled = await tauriPage.evaluate<boolean>(
@@ -128,12 +133,109 @@ test("vim mode: enable via the palette (persistence part 1)", async ({ tauriPage
       { timeout: 10_000 },
     )
     .toBe("1");
+
+  await editor.focus();
+  await tauriPage.keyboard.press("Escape");
+  await expect(tauriPage.locator(".cm-vim-panel")).toContainText("NORMAL");
+  const original = await editorSource(tauriPage);
+
+  await tauriPage.keyboard.press("g");
+  await tauriPage.keyboard.press("g");
+  await expect
+    .poll(() => tauriPage.evaluate<number>(`import("/src/components/editor/cm/controller.ts").then(
+      ({ getEditorView }) => getEditorView()?.state.doc.lineAt(
+        getEditorView()?.state.selection.main.head ?? 0
+      ).number ?? 0
+    )`))
+    .toBe(1);
+  await tauriPage.keyboard.press("j");
+  await expect
+    .poll(() => tauriPage.evaluate<number>(`import("/src/components/editor/cm/controller.ts").then(
+      ({ getEditorView }) => getEditorView()?.state.doc.lineAt(
+        getEditorView()?.state.selection.main.head ?? 0
+      ).number ?? 0
+    )`))
+    .toBe(2);
+
+  await tauriPage.keyboard.press("Tab");
+  expect(await editorSource(tauriPage)).toBe(original);
+  await editor.focus();
+  await tauriPage.keyboard.press("d");
+  await tauriPage.keyboard.press("d");
+  expect(await editorSource(tauriPage)).not.toBe(original);
+  await tauriPage.keyboard.press("u");
+  await expect.poll(() => editorSource(tauriPage)).toBe(original);
+
+  await tauriPage.keyboard.press("i");
+  await expect(tauriPage.locator(".cm-vim-panel")).toContainText("INSERT");
+  await typeAtCaret(tauriPage, "VIM_E2E ");
+  await tauriPage.keyboard.press("Escape");
+  await expect(tauriPage.locator(".cm-vim-panel")).toContainText("NORMAL");
+  await expect.poll(() => editorSource(tauriPage)).toContain("VIM_E2E");
+
+  await tauriPage.keyboard.press("u");
+  await expect.poll(() => editorSource(tauriPage)).toBe(original);
+  await tauriPage.keyboard.press("Control+y");
+  await expect.poll(() => editorSource(tauriPage)).toBe(original);
+  await tauriPage.keyboard.press("Control+r");
+  await expect.poll(() => editorSource(tauriPage)).toContain("VIM_E2E");
+
+  await tauriPage.evaluate(`import("/src/store/files.ts").then(({ useFilesStore }) => {
+    const originalSave = useFilesStore.getState().saveActive;
+    window.__vimE2eSaveCount = 0;
+    window.__vimE2eOriginalSave = originalSave;
+    useFilesStore.setState({
+      saveActive: async () => {
+        window.__vimE2eSaveCount += 1;
+        await originalSave();
+      },
+    });
+  })`);
+  const exCommand = tauriPage.locator(".cm-vim-panel input");
+  try {
+    await tauriPage.keyboard.press(":");
+    await expect(exCommand).toBeVisible();
+    await exCommand.fill("w");
+    await exCommand.press("Enter");
+    await expect
+      .poll(() => tauriPage.evaluate<number>(`window.__vimE2eSaveCount ?? 0`))
+      .toBe(1);
+  } finally {
+    await tauriPage.evaluate(`import("/src/store/files.ts").then(({ useFilesStore }) => {
+      useFilesStore.setState({ saveActive: window.__vimE2eOriginalSave });
+      delete window.__vimE2eOriginalSave;
+    })`);
+  }
+
+  await editor.focus();
+  await tauriPage.keyboard.press("u");
+  await expect.poll(() => editorSource(tauriPage)).toBe(original);
+  await tauriPage.keyboard.press(":");
+  await expect(exCommand).toBeVisible();
+  await exCommand.fill("w");
+  await exCommand.press("Enter");
+  await expect
+    .poll(() => tauriPage.evaluate<boolean>(`import("/src/store/files.ts").then(
+      ({ useFilesStore }) => useFilesStore.getState().files[
+        useFilesStore.getState().activePath ?? ""
+      ]?.dirty === false
+    )`))
+    .toBe(true);
+
   await pressGlobal(tauriPage, "k", { meta: true });
   await fillCommandPalette(tauriPage, "vim");
   await expect(
     tauriPage.locator('[cmdk-item][aria-selected="true"]'),
   ).toHaveText("Disable vim mode", { timeout: 10_000 });
-  await tauriPage.press("[cmdk-input]", "Escape");
+  await tauriPage.press("[cmdk-input]", "Enter");
+  await expect(tauriPage.locator(".cm-vim-panel")).toHaveCount(0);
+  await pressGlobal(tauriPage, "k", { meta: true });
+  await fillCommandPalette(tauriPage, "vim");
+  await expect(
+    tauriPage.locator('[cmdk-item][aria-selected="true"]'),
+  ).toHaveText("Enable vim mode", { timeout: 10_000 });
+  await tauriPage.press("[cmdk-input]", "Enter");
+  await expect(tauriPage.locator(".cm-vim-panel")).toContainText("NORMAL");
 });
 
 test("vim mode survived the app restart, then disable it (part 2)", async ({ tauriPage }) => {
@@ -147,6 +249,10 @@ test("vim mode survived the app restart, then disable it (part 2)", async ({ tau
       { timeout: 10_000 },
     )
     .toBe("1");
+  await openSettingsProject(tauriPage);
+  await expect(tauriPage.locator(".cm-vim-panel")).toContainText("NORMAL", {
+    timeout: 20_000,
+  });
   await pressGlobal(tauriPage, "k", { meta: true });
   await fillCommandPalette(tauriPage, "vim");
   await expect(
@@ -162,6 +268,7 @@ test("vim mode survived the app restart, then disable it (part 2)", async ({ tau
       { timeout: 10_000 },
     )
     .toBe("0");
+  await expect(tauriPage.locator(".cm-vim-panel")).toHaveCount(0);
   await pressGlobal(tauriPage, "k", { meta: true });
   await fillCommandPalette(tauriPage, "vim");
   await expect(

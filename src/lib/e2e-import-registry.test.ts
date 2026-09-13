@@ -10,6 +10,7 @@ describe("packaged evaluated imports", () => {
     const registered = new Set([...registry.matchAll(/"(\/(?:src|packages)\/[^"\n]+)":/g)].map((match) => match[1]));
     for (const name of [
       "00-tours.spec.ts",
+      "07-settings.spec.ts",
       "74-conversion-matrix.spec.ts",
       "75-conversion-matrix-ui.spec.ts",
       "86-ad-hoc-converters.spec.ts",

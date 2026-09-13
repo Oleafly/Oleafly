@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Vim mode now takes priority over regular editor shortcuts, shows whether the
+  editor is in Normal or Insert mode, keeps Tab available for moving focus in
+  Normal mode, and supports `:w` for saving.
 - Source editor lines and Outline entries have more room to breathe. Panel
   notices now use the same understated icon and in-app tooltip treatment as
   the rest of the workspace.
