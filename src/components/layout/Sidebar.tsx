@@ -1,6 +1,7 @@
 import {
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import {
   PanelGroup,
   Panel,
   PanelResizeHandle,
+  type ImperativePanelGroupHandle,
   type ImperativePanelHandle,
 } from "react-resizable-panels";
 import { FileText, Loader2, Search } from "lucide-react";
@@ -41,6 +43,29 @@ const ProjectStructure = lazy(() =>
 function basename(p: string) {
   const i = p.lastIndexOf("/");
   return i >= 0 ? p.slice(i + 1) : p;
+}
+
+export function reclaimExplorerFillerLayout(
+  layout: readonly number[],
+  collapsedSize: number,
+): number[] | null {
+  const fillerIndex = layout.length - 1;
+  const fillerSize = layout[fillerIndex] ?? 0;
+  if (fillerSize < 0.1) return null;
+  let receivingIndex = -1;
+  for (let index = fillerIndex - 1; index >= 0; index -= 1) {
+    if ((layout[index] ?? 0) > collapsedSize + 0.1) {
+      receivingIndex = index;
+      break;
+    }
+  }
+  const receivingSize = layout[receivingIndex];
+  if (receivingIndex < 0 || receivingSize === undefined) return null;
+
+  const nextLayout = [...layout];
+  nextLayout[receivingIndex] = receivingSize + fillerSize;
+  nextLayout[fillerIndex] = 0;
+  return nextLayout;
 }
 
 export function ProjectSearch() {
@@ -136,12 +161,33 @@ export function FilesPanel() {
   const outlinePanelRef = useRef<ImperativePanelHandle>(null);
   const structurePanelRef = useRef<ImperativePanelHandle>(null);
   const fillerPanelRef = useRef<ImperativePanelHandle>(null);
-  const fillerResetFrame = useRef<number | null>(null);
+  const explorerGroupRef = useRef<ImperativePanelGroupHandle>(null);
+  const fillerResetTimer = useRef<number | null>(null);
   const stackRef = useRef<HTMLDivElement>(null);
   const [collapsedSize, setCollapsedSize] = useState(6);
+  const collapsedSizeRef = useRef(collapsedSize);
   const sourceTitle = t(($) => $.workspace.files.title);
   const outlineTitle = t(($) => $.workspace.outline.title);
   const structureTitle = t(($) => $.workspace.structure.title);
+
+  const reclaimCurrentExplorerFiller = useCallback(() => {
+    if (!stackRef.current?.isConnected) return;
+    const panelGroup = explorerGroupRef.current;
+    if (!panelGroup) return;
+    const nextLayout = reclaimExplorerFillerLayout(
+      panelGroup.getLayout(),
+      collapsedSizeRef.current,
+    );
+    if (nextLayout) panelGroup.setLayout(nextLayout);
+  }, []);
+
+  const scheduleFillerReclaim = useCallback(() => {
+    if (fillerResetTimer.current !== null) return;
+    fillerResetTimer.current = window.setTimeout(() => {
+      fillerResetTimer.current = null;
+      reclaimCurrentExplorerFiller();
+    }, 0);
+  }, [reclaimCurrentExplorerFiller]);
 
   useEffect(() => {
     const stack = stackRef.current;
@@ -166,40 +212,36 @@ export function FilesPanel() {
 
   useEffect(
     () => () => {
-      if (fillerResetFrame.current !== null) {
-        window.cancelAnimationFrame(fillerResetFrame.current);
-        fillerResetFrame.current = null;
+      if (fillerResetTimer.current !== null) {
+        window.clearTimeout(fillerResetTimer.current);
+        fillerResetTimer.current = null;
       }
     },
     [],
   );
+
+  useEffect(() => {
+    collapsedSizeRef.current = collapsedSize;
+    if (sourceCollapsed && outlineCollapsed && structureCollapsed) return;
+    scheduleFillerReclaim();
+  }, [
+    collapsedSize,
+    outlineCollapsed,
+    scheduleFillerReclaim,
+    sourceCollapsed,
+    structureCollapsed,
+  ]);
 
   const minExpandedSize = Math.max(16, Math.min(32, collapsedSize + 4));
   const resizeLabel = (first: string, second: string) =>
     t(($) => $.workspace.explorer.resizeSections, { first, second });
 
   const keepVisibleStackAtBottom = (layout: number[]) => {
-    if (
-      (layout[3] ?? 0) < 0.1 ||
-      fillerResetFrame.current !== null
-    ) {
-      return;
-    }
+    if ((layout[3] ?? 0) < 0.1) return;
     // The filler exists only so all three sections can be reduced to header
-    // height at once. As soon as any section is open, give that spare space
-    // back to the visible stack so the closed Structure header stays anchored
-    // to the bottom edge.
-    fillerResetFrame.current = window.requestAnimationFrame(() => {
-      fillerResetFrame.current = null;
-      if (!stackRef.current?.isConnected) return;
-      const realPanels = [
-        sourcePanelRef.current,
-        outlinePanelRef.current,
-        structurePanelRef.current,
-      ];
-      if (realPanels.every((panel) => panel?.isCollapsed() === true)) return;
-      fillerPanelRef.current?.resize(0);
-    });
+    // height at once. As soon as any section is open, atomically give that
+    // spare space to an already-open section so collapsed panels stay closed.
+    scheduleFillerReclaim();
   };
 
   const changeCollapsed = (
@@ -228,6 +270,7 @@ export function FilesPanel() {
   return (
     <div ref={stackRef} data-testid="explorer-stack" className="h-full min-h-0">
         <PanelGroup
+          ref={explorerGroupRef}
           direction="vertical"
           autoSaveId="sidebar-explorer-sections-v3"
           onLayout={keepVisibleStackAtBottom}

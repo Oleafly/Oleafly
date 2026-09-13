@@ -106,6 +106,28 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       const ids = ${JSON.stringify(panelIds)};
       return ids.map((id) => Number(document.querySelector('[data-panel-id="' + id + '"]')?.getAttribute('data-panel-size') ?? -1));
     })()`);
+  const waitForFillerReclaimed = async () => {
+    await tauriPage.waitForFunction(
+      `Number(document.querySelector('[data-panel-id="explorer-filler-v"]')?.getAttribute('data-panel-size') ?? -1) < 0.2`,
+      5_000,
+    );
+  };
+  const waitForStructureCollapsedAtBottom = async () => {
+    await tauriPage.waitForFunction(
+      `(() => {
+        const stack = document.querySelector('[data-testid="explorer-stack"]')?.getBoundingClientRect();
+        const structure = document.querySelector('[data-panel-id="project-structure-v"]')?.getBoundingClientRect();
+        const toggle = document.querySelector('[data-testid="project-structure"] button[aria-controls="project-structure-content"]');
+        const fillerSize = Number(document.querySelector('[data-panel-id="explorer-filler-v"]')?.getAttribute('data-panel-size') ?? -1);
+        return toggle?.getAttribute('aria-expanded') === 'false'
+          && fillerSize < 0.2
+          && !!stack
+          && !!structure
+          && Math.abs(stack.bottom - structure.bottom) < 1;
+      })()`,
+      5_000,
+    );
+  };
   const sectionToggle = (id: (typeof sectionIds)[number]) =>
     tauriPage
       .getByTestId(id)
@@ -148,6 +170,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       "aria-expanded",
       "false",
     );
+    await waitForFillerReclaimed();
     const initialStructureGeometry = await tauriPage.evaluate<{
       bottomGap: number;
       height: number;
@@ -226,6 +249,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       await expect.poll(bulkOpacity).toBe("1");
     }
     await setSectionOpen("project-structure", false);
+    await waitForStructureCollapsedAtBottom();
 
     const sectionTops = await tauriPage.evaluate<number[]>(`(() => {
       const ids = ${JSON.stringify(sectionIds)};
@@ -276,10 +300,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     }
 
     await setSectionOpen("project-structure", true);
-    await tauriPage.waitForFunction(
-      `Number(document.querySelector('[data-panel-id="explorer-filler-v"]')?.getAttribute('data-panel-size') ?? -1) < 0.2`,
-      5_000,
-    );
+    await waitForFillerReclaimed();
     const structureBottomGap = await tauriPage.evaluate<number>(`(() => {
       const stack = document.querySelector('[data-testid="explorer-stack"]')?.getBoundingClientRect();
       const structure = document.querySelector('[data-panel-id="project-structure-v"]')?.getBoundingClientRect();

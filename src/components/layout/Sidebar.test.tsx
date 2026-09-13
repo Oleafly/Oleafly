@@ -78,7 +78,12 @@ import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" }
 import { registry } from "@oleafly/registry";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { FilesPanel, ProjectSearch, Sidebar } from "./Sidebar";
+import {
+  FilesPanel,
+  ProjectSearch,
+  reclaimExplorerFillerLayout,
+  Sidebar,
+} from "./Sidebar";
 
 const copy = enShell.projectSearch;
 const resizeLabel = (first: string, second: string) =>
@@ -165,6 +170,16 @@ describe("ProjectSearch", () => {
 });
 
 describe("Sidebar", () => {
+  it("reclaims filler space without reopening a collapsed trailing section", () => {
+    expect(reclaimExplorerFillerLayout([38, 40, 6, 16], 6)).toEqual([
+      38, 56, 6, 0,
+    ]);
+  });
+
+  it("keeps filler space when every Explorer section is collapsed", () => {
+    expect(reclaimExplorerFillerLayout([6, 6, 6, 82], 6)).toBeNull();
+  });
+
   it("stacks Explorer, Outline, and Structure without a redundant title row", async () => {
     render(<FilesPanel />);
     expect(screen.queryByRole("heading", { name: enShell.rail.files })).not.toBeInTheDocument();
