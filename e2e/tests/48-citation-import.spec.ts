@@ -98,7 +98,7 @@ test("importing EndNote XML and BibTeX both land in the same library, RDF and un
 async function sourceTreePaths(page: Page): Promise<string[]> {
   return page.evaluate<string[]>(
     `(() => {
-      const tree = document.querySelector('[aria-label="Source tree"]');
+      const tree = document.querySelector('[aria-label="Explorer file tree"]');
       if (!tree) return [];
       return Array.from(tree.querySelectorAll('[role="treeitem"]'))
         .map((row) => row.dataset.path)
@@ -125,7 +125,7 @@ test("importing into a project with no bibliography refreshes the tree and the C
   await waitLong(
     tauriPage,
     `(() => {
-      const tree = document.querySelector('[aria-label="Source tree"]');
+      const tree = document.querySelector('[aria-label="Explorer file tree"]');
       if (!tree) return false;
       return Array.from(tree.querySelectorAll('[role="treeitem"]'))
         .some((row) => row.dataset.path === "references.bib");

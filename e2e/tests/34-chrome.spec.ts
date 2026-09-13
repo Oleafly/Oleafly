@@ -158,7 +158,9 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       return { bottomGap: Math.abs(stack.bottom - structure.bottom), height: structure.height };
     })()`);
     expect(initialStructureGeometry.bottomGap).toBeLessThan(1);
-    expect(initialStructureGeometry.height).toBeGreaterThanOrEqual(31);
+    // WebView device-pixel rounding can report the 32px collapsed header just
+    // below 31 CSS px; keep the guard focused on actual clipping.
+    expect(initialStructureGeometry.height).toBeGreaterThanOrEqual(30.5);
     expect(initialStructureGeometry.height).toBeLessThanOrEqual(33);
 
     const sectionActions = [
@@ -175,8 +177,15 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
       await expect(section).toBeVisible();
       await expect(sectionToggle(id)).toHaveCount(1);
       await setSectionOpen(id, true);
-      const expandAll = section.getByRole("button", { name: expandLabel });
-      const collapseAll = section.getByRole("button", { name: collapseLabel });
+      // The native Tauri driver does not map implicit HTML button roles and
+      // drops ancestor scope for nested role queries. Match the semantic
+      // button directly so each action stays scoped to its own section.
+      const expandAll = section.locator(
+        `button[aria-label="${expandLabel}"]`,
+      );
+      const collapseAll = section.locator(
+        `button[aria-label="${collapseLabel}"]`,
+      );
       await expect
         .poll(async () => (await expandAll.count()) + (await collapseAll.count()))
         .toBe(1);
@@ -190,15 +199,30 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
           if (!actions) throw new Error("Explorer section actions are missing");
           return getComputedStyle(actions).opacity;
         })()`);
+      const sectionClasses = (await section.getAttribute("class")) ?? "";
+      const actionClasses =
+        (await section.locator(`[data-testid="${id}-actions"]`).getAttribute("class")) ??
+        "";
+      expect(sectionClasses.split(/\s+/)).toContain("group/section");
+      expect(actionClasses.split(/\s+/)).toEqual(
+        expect.arrayContaining([
+          "opacity-0",
+          "group-hover/section:opacity-100",
+          "group-focus-within/section:opacity-100",
+        ]),
+      );
       await expect(
         bulkToggle.locator(
           showsCollapse ? "svg.lucide-copy-minus" : "svg.lucide-copy-plus",
         ),
       ).toHaveCount(1);
 
-      await tauriPage.locator(".cm-content").hover();
+      // The native driver dispatches synthetic mouse events, which cannot set
+      // the browser's CSS :hover state. The class contract above covers hover;
+      // exercise the equivalent focus-within reveal with a real DOM focus.
+      await tauriPage.locator(".cm-content").focus();
       await expect.poll(bulkOpacity).toBe("0");
-      await section.locator(`#${id}-content`).hover();
+      await sectionToggle(id).focus();
       await expect.poll(bulkOpacity).toBe("1");
     }
     await setSectionOpen("project-structure", false);
@@ -235,7 +259,7 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
         .slice(0, 3)
         .every((size) => Math.abs(size - expectedCollapsedSize) < 0.3),
     ).toBe(true);
-    expect(sectionHeights.every((height) => height >= 31 && height <= 33)).toBe(
+    expect(sectionHeights.every((height) => height >= 30.5 && height <= 33)).toBe(
       true,
     );
     expect(fullyCollapsedSizes[3]).toBeGreaterThan(0);
@@ -410,6 +434,16 @@ test("editor tabs close from their x button", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Explorer");
+  const explorerToggle = tauriPage
+    .getByTestId("source-tree")
+    .locator('button[aria-controls="source-tree-content"]');
+  if ((await explorerToggle.getAttribute("aria-expanded")) !== "true") {
+    await explorerToggle.click();
+  }
+  await expect(explorerToggle).toHaveAttribute("aria-expanded", "true");
+  // Keep focus inside the section so its on-hover/on-focus controls are
+  // exposed even though the native test driver cannot set CSS :hover.
+  await explorerToggle.focus();
   const exists = await tauriPage.evaluate<boolean>(
     `document.body.innerText.includes('tabtest.tex')`,
   );

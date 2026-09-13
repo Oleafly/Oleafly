@@ -5,6 +5,8 @@ import {
   insertEnvironment as coreInsertEnvironment,
   editorUndo as coreEditorUndo,
   editorRedo as coreEditorRedo,
+  editorVimUndo as coreEditorVimUndo,
+  editorVimRedo as coreEditorVimRedo,
 } from "@oleafly/editor";
 import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 
@@ -80,4 +82,16 @@ export function editorRedo() {
     }
   }
   coreEditorRedo();
+}
+
+/** Returns whether the active source editor accepted the Vim history command. */
+export function editorVimUndo(): boolean {
+  if (isWysiwygActive()) return false;
+  return coreEditorVimUndo();
+}
+
+/** Returns whether the active source editor accepted the Vim history command. */
+export function editorVimRedo(): boolean {
+  if (isWysiwygActive()) return false;
+  return coreEditorVimRedo();
 }

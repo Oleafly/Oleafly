@@ -23,8 +23,10 @@ const mocks = vi.hoisted(() => ({
 	gitCleanRemoteCredentials: vi.fn(),
 	gitRemoteCredentialsNeedCleanup: vi.fn(),
 	gitResolveConflict: vi.fn(),
-	gitContinueMerge: vi.fn(),
-	gitAbortMerge: vi.fn(),
+		gitContinueMerge: vi.fn(),
+		gitAbortMerge: vi.fn(),
+		gitStashPush: vi.fn(),
+		gitStashPop: vi.fn(),
 	refreshGit: vi.fn(),
 	openDiff: vi.fn(),
 	clearActiveDiff: vi.fn(),
@@ -129,8 +131,8 @@ vi.mock("@/lib/tauri", () => ({
 	gitResolveConflict: mocks.gitResolveConflict,
 	gitContinueMerge: mocks.gitContinueMerge,
 	gitAbortMerge: mocks.gitAbortMerge,
-	gitStashPush: vi.fn(),
-	gitStashPop: vi.fn(),
+		gitStashPush: mocks.gitStashPush,
+		gitStashPop: mocks.gitStashPop,
 	gitCheckoutBranch: mocks.gitCheckoutBranch,
 	gitCreateBranch: mocks.gitCreateBranch,
 }));
@@ -170,9 +172,11 @@ beforeEach(() => {
 	mocks.gitInitialize.mockResolvedValue("main");
 	mocks.gitRemoveRemote.mockResolvedValue(undefined);
 	mocks.gitCleanRemoteCredentials.mockResolvedValue(true);
-	mocks.gitResolveConflict.mockResolvedValue(projectState);
-	mocks.gitContinueMerge.mockResolvedValue({ projectState });
-	mocks.gitAbortMerge.mockResolvedValue({ projectState });
+		mocks.gitResolveConflict.mockResolvedValue(projectState);
+		mocks.gitContinueMerge.mockResolvedValue({ projectState });
+		mocks.gitAbortMerge.mockResolvedValue({ projectState });
+		mocks.gitStashPush.mockResolvedValue(projectState);
+		mocks.gitStashPop.mockResolvedValue(projectState);
 });
 
 describe("SourceControl", () => {
@@ -637,6 +641,287 @@ describe("SourceControl", () => {
 		expect(await screen.findByText("Checking Source Control…")).toBeInTheDocument();
 		await act(async () => pending.resolve(snapshot()));
 		expect(await screen.findByText("main.tex")).toBeInTheDocument();
+	});
+
+	it("retries a queued refresh after the first snapshot and ignores credential probe failures", async () => {
+		const user = userEvent.setup();
+		const first = deferred<GitWorkspaceSnapshot>();
+		mocks.gitWorkspaceSnapshot
+			.mockReturnValueOnce(first.promise)
+			.mockResolvedValue(snapshot());
+		mocks.gitRemoteCredentialsNeedCleanup.mockRejectedValue(new Error("keychain offline"));
+		render(<SourceControl />);
+
+		await user.click(await screen.findByRole("button", { name: "Refresh" }));
+		await act(async () => first.resolve(snapshot()));
+		await waitFor(() => expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledTimes(2));
+		expect(await screen.findByText("main.tex")).toBeInTheDocument();
+	});
+
+	it("reports a failed snapshot refresh and recovers when retried", async () => {
+		const user = userEvent.setup();
+		mocks.gitWorkspaceSnapshot
+			.mockRejectedValueOnce(new Error("Git is unavailable"))
+			.mockResolvedValue(snapshot());
+		render(<SourceControl />);
+
+		expect(await screen.findByRole("alert")).toHaveTextContent("Git is unavailable");
+		await user.click(screen.getByRole("button", { name: "Refresh" }));
+		expect(await screen.findByText("main.tex")).toBeInTheDocument();
+	});
+
+	it("opens and unstages all staged paths", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+		const staged = await screen.findByTestId("source-control-staged");
+
+		await user.click(within(staged).getByRole("button", { name: "Open all changes" }));
+		expect(mocks.openDiff).toHaveBeenCalledWith("refs/library.bib", "staged");
+		await user.click(within(staged).getByRole("button", { name: "Unstage all" }));
+		await waitFor(() =>
+			expect(mocks.gitUnstagePaths).toHaveBeenCalledWith("project-1", [
+				"refs/library.bib",
+			]),
+		);
+	});
+
+	it("keeps a failed commit's complete message available for correction", async () => {
+		const user = userEvent.setup();
+		mocks.gitCommit.mockResolvedValue(false);
+		render(<SourceControl />);
+		const title = await screen.findByTestId("commit-title");
+		const description = screen.getByTestId("commit-description");
+		await user.type(title, "Clarify findings");
+		await user.type(description, "Add the replication detail.");
+		await user.click(screen.getByTestId("commit-button"));
+
+		expect(await screen.findByRole("alert")).toHaveTextContent("Nothing staged to commit.");
+		expect(title).toHaveValue("Clarify findings");
+		expect(description).toHaveValue("Add the replication detail.");
+	});
+
+	it("amends with the title and description after the user selects it", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+		await user.type(await screen.findByTestId("commit-title"), "Correct methods");
+		await user.type(screen.getByTestId("commit-description"), "Use the final sample.");
+		await user.click(screen.getByRole("button", { name: "More commit actions" }));
+		await user.click(screen.getByRole("menuitem", { name: "Amend last commit" }));
+
+		await waitFor(() =>
+			expect(mocks.gitCommitAmend).toHaveBeenCalledWith(
+				"project-1",
+				"Correct methods\n\nUse the final sample.",
+			),
+		);
+		expect(screen.getByTestId("source-control-status")).toHaveTextContent(
+			'Committed: "Correct methods"',
+		);
+	});
+
+	it("can cancel destructive confirmations without applying their mutation", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+		await user.click(
+			await screen.findByRole("button", { name: "Discard changes to paper/main.tex" }),
+		);
+		await user.click(
+			within(screen.getByRole("alertdialog")).getByRole("button", { name: /^Cancel/ }),
+		);
+		expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+		expect(mocks.gitDiscardPaths).not.toHaveBeenCalled();
+
+		await user.click(screen.getByRole("button", { name: "Restore version" }));
+		await user.click(
+			within(screen.getByRole("alertdialog")).getByRole("button", { name: /^Cancel/ }),
+		);
+		expect(fileState.restoreFromGit).not.toHaveBeenCalled();
+	});
+
+	it("keeps branch form keyboard controls available for retry and cancellation", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+		await user.click(await screen.findByRole("button", { name: "main" }));
+		await user.click(screen.getByRole("menuitem", { name: "Create branch…" }));
+		const input = screen.getByRole("textbox", { name: "Branch name" });
+		await user.type(input, "experiment");
+		await user.keyboard("{Escape}");
+		expect(screen.queryByRole("textbox", { name: "Branch name" })).not.toBeInTheDocument();
+
+		await user.click(screen.getByRole("button", { name: "main" }));
+		await user.click(screen.getByRole("menuitem", { name: "Create branch…" }));
+		const retry = screen.getByRole("textbox", { name: "Branch name" });
+		await user.clear(retry);
+		await user.type(retry, "experiment");
+		await user.keyboard("{Enter}");
+		await waitFor(() =>
+			expect(mocks.gitCreateBranch).toHaveBeenCalledWith("project-1", "experiment"),
+		);
+	});
+
+	it("surfaces a conflict-file opening failure instead of clearing the active diff", async () => {
+		const user = userEvent.setup();
+		fileState.openFile.mockRejectedValue(new Error("File no longer exists"));
+		mocks.gitWorkspaceSnapshot.mockResolvedValue(
+			snapshot({ conflicts: [{ path: "paper/main.tex", status: "UU" }] }),
+		);
+		render(<SourceControl />);
+		await user.click(await screen.findByRole("button", { name: "paper/main.tex" }));
+		expect(await screen.findByRole("alert")).toHaveTextContent("File no longer exists");
+		expect(mocks.clearActiveDiff).not.toHaveBeenCalled();
+	});
+
+	it("copies commit identifiers and reports a clipboard failure", async () => {
+		const user = userEvent.setup();
+		const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+		const writeText = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: { writeText },
+		});
+		try {
+			render(<SourceControl />);
+			const copy = await screen.findByRole("button", { name: "Copy commit ID" });
+			await user.click(copy);
+			expect(writeText).toHaveBeenCalledWith("abc123");
+
+			writeText.mockRejectedValueOnce(new Error("clipboard blocked"));
+			await user.click(copy);
+			expect(await screen.findByRole("alert")).toHaveTextContent("clipboard blocked");
+		} finally {
+			if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+			else Reflect.deleteProperty(navigator, "clipboard");
+		}
+	});
+
+	it("initializes a repository from the recovery state", async () => {
+		const user = userEvent.setup();
+		mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ initialized: false }));
+		render(<SourceControl />);
+
+		await user.click(await screen.findByRole("button", { name: "Initialize Repository" }));
+		await waitFor(() =>
+			expect(mocks.gitInitialize).toHaveBeenCalledWith("project-1"),
+		);
+	});
+
+	it("keeps remote-only actions disabled when no remote is configured", async () => {
+		const user = userEvent.setup();
+		mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ remote: null }));
+		render(<SourceControl />);
+
+		await user.click(
+			await screen.findByRole("button", { name: "More Source Control actions" }),
+		);
+		const menu = screen.getByRole("menu");
+		for (const name of ["Fetch", "Pull", "Push", "Sync"]) {
+			expect(within(menu).getByRole("menuitem", { name })).toHaveAttribute(
+				"aria-disabled",
+				"true",
+			);
+		}
+		expect(within(menu).getByRole("menuitem", { name: "Publish to GitHub" })).not.toHaveAttribute(
+			"aria-disabled",
+		);
+		expect(within(menu).queryByRole("menuitem", { name: "Unlink" })).not.toBeInTheDocument();
+	});
+
+	it("runs remote actions with the current project and mutation generation", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+		const openActions = async () => {
+			await user.click(
+				screen.getByRole("button", { name: "More Source Control actions" }),
+			);
+			return screen.getByRole("menu");
+		};
+
+		await user.click(within(await openActions()).getByRole("menuitem", { name: "Fetch" }));
+		await waitFor(() => expect(mocks.gitFetch).toHaveBeenCalledWith("project-1"));
+
+		await user.click(within(await openActions()).getByRole("menuitem", { name: "Pull" }));
+		await waitFor(() => expect(fileState.pullFromGit).toHaveBeenCalledWith("project-1"));
+
+		await user.click(within(await openActions()).getByRole("menuitem", { name: "Push" }));
+		await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
+
+		await user.click(within(await openActions()).getByRole("menuitem", { name: "Stash changes" }));
+		await waitFor(() =>
+			expect(mocks.gitStashPush).toHaveBeenCalledWith("project-1", 1),
+		);
+
+		await user.click(within(await openActions()).getByRole("menuitem", { name: "Apply latest stash" }));
+		await waitFor(() =>
+			expect(mocks.gitStashPop).toHaveBeenCalledWith("project-1", 1),
+		);
+	});
+
+	it("checks out a branch through the external mutation boundary", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+
+		await user.click(await screen.findByRole("button", { name: "main" }));
+		await user.click(screen.getByRole("menuitem", { name: "revision" }));
+		await waitFor(() =>
+			expect(mocks.gitCheckoutBranch).toHaveBeenCalledWith("project-1", "revision", 1),
+		);
+		expect(fileState.runExternalProjectMutation).toHaveBeenCalledWith(
+			"project-1",
+			expect.any(Function),
+		);
+	});
+
+	it("offers incoming and manual conflict recovery, and permits aborting a merge", async () => {
+		const user = userEvent.setup();
+		mocks.gitWorkspaceSnapshot.mockResolvedValue(
+			snapshot({
+				operation: "merge",
+				conflicts: [{ path: "paper/main.tex", status: "UU" }],
+			}),
+		);
+		render(<SourceControl />);
+
+		expect(
+			await screen.findByRole("button", { name: "Complete merge" }),
+		).toBeDisabled();
+		await user.click(screen.getByRole("button", { name: "Use incoming" }));
+		await waitFor(() =>
+			expect(mocks.gitResolveConflict).toHaveBeenCalledWith(
+				"project-1",
+				"paper/main.tex",
+				"incoming",
+				1,
+			),
+		);
+		await user.click(screen.getByRole("button", { name: "Mark resolved" }));
+		await waitFor(() =>
+			expect(mocks.gitResolveConflict).toHaveBeenCalledWith(
+				"project-1",
+				"paper/main.tex",
+				"mark",
+				1,
+			),
+		);
+		await user.click(screen.getByRole("button", { name: "Abort merge" }));
+		await waitFor(() =>
+			expect(mocks.gitAbortMerge).toHaveBeenCalledWith("project-1", 1),
+		);
+	});
+
+	it("reports a failed external action and recovers for the next action", async () => {
+		const user = userEvent.setup();
+		mocks.gitStashPush.mockRejectedValueOnce(new Error("stash failed"));
+		render(<SourceControl />);
+
+		await user.click(
+			await screen.findByRole("button", { name: "More Source Control actions" }),
+		);
+		await user.click(screen.getByRole("menuitem", { name: "Stash changes" }));
+		expect(await screen.findByRole("alert")).toHaveTextContent("stash failed");
+
+		await user.click(screen.getByRole("button", { name: "More Source Control actions" }));
+		await user.click(screen.getByRole("menuitem", { name: "Fetch" }));
+		await waitFor(() => expect(mocks.gitFetch).toHaveBeenCalledWith("project-1"));
 	});
 
 	it("opens Graph when another surface requests it", async () => {

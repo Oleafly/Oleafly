@@ -206,12 +206,23 @@ export function FilesPanel() {
     next: boolean,
     panelRef: RefObject<ImperativePanelHandle | null>,
     setCollapsed: (collapsed: boolean) => void,
+    expansionReserveRef?: RefObject<ImperativePanelHandle | null>,
   ) => {
     setCollapsed(next);
     const panel = panelRef.current;
     if (!panel) return;
     if (next && panel.isExpanded()) panel.collapse();
-    if (!next && panel.isCollapsed()) panel.expand();
+    if (!next && panel.isCollapsed()) {
+      const reserve = expansionReserveRef?.current;
+      // Structure has a zero-size filler after it so all section headers can
+      // sit at the bottom. If that reserve is empty, the panel library cannot
+      // grow Structure forward; briefly fund its minimum size from the panels
+      // above, then the normal layout callback returns the filler to zero.
+      if (reserve && reserve.getSize() < minExpandedSize) {
+        reserve.resize(minExpandedSize);
+      }
+      panel.expand();
+    }
   };
 
   return (
@@ -283,7 +294,12 @@ export function FilesPanel() {
             <ProjectStructure
               collapsed={structureCollapsed}
               onCollapsedChange={(next) =>
-                changeCollapsed(next, structurePanelRef, setStructureCollapsed)
+                changeCollapsed(
+                  next,
+                  structurePanelRef,
+                  setStructureCollapsed,
+                  fillerPanelRef,
+                )
               }
             />
           </Suspense>

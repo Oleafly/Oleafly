@@ -427,12 +427,81 @@ function AgentCard({
   );
 }
 
+type CatalogCheckState = "checking" | "ready" | "error";
+
+function AgentCatalogEmptyState({
+  state,
+  error,
+  onRetry,
+}: Readonly<{
+  state: CatalogCheckState;
+  error: string | null;
+  onRetry: () => void;
+}>) {
+  const { t } = useTranslation(["settings"]);
+  if (state === "checking") {
+    return (
+      <Empty className="max-w-sm gap-3">
+        <EmptyMedia>
+          <Loader2 aria-hidden="true" className="size-5 animate-spin" />
+        </EmptyMedia>
+        <div className="space-y-1.5">
+          <EmptyTitle className="text-base">
+            {t(($) => $.settings.ai.agents.checkingTitle)}
+          </EmptyTitle>
+          <EmptyDescription className="text-xs leading-relaxed">
+            {t(($) => $.settings.ai.agents.checkingDescription)}
+          </EmptyDescription>
+        </div>
+      </Empty>
+    );
+  }
+  if (state === "error") {
+    return (
+      <Empty className="max-w-sm gap-3">
+        <EmptyMedia>
+          <RefreshCw aria-hidden="true" className="size-5" />
+        </EmptyMedia>
+        <div className="space-y-1.5">
+          <EmptyTitle className="text-base">
+            {t(($) => $.settings.ai.agents.checkFailedTitle)}
+          </EmptyTitle>
+          <div role="alert">
+            <EmptyDescription className="text-xs leading-relaxed text-destructive">
+              {error}
+            </EmptyDescription>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" type="button" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" className="size-3.5" />
+          {t(($) => $.settings.ai.agents.checkAgain)}
+        </Button>
+      </Empty>
+    );
+  }
+  return (
+    <Empty className="max-w-sm gap-3">
+      <EmptyMedia>
+        <Search aria-hidden="true" className="size-5" />
+      </EmptyMedia>
+      <div className="space-y-1.5">
+        <EmptyTitle className="text-base">
+          {t(($) => $.settings.ai.agents.emptyTitle)}
+        </EmptyTitle>
+        <EmptyDescription className="text-xs leading-relaxed">
+          {t(($) => $.settings.ai.agents.emptyDescription)}
+        </EmptyDescription>
+      </div>
+    </Empty>
+  );
+}
+
 export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null }>) {
   const { t } = useTranslation(["common", "settings"]);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [catalogCheckState, setCatalogCheckState] = useState<"checking" | "ready" | "error">("checking");
+  const [catalogCheckState, setCatalogCheckState] = useState<CatalogCheckState>("checking");
   const [catalogCheckError, setCatalogCheckError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -641,49 +710,11 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
             aria-atomic={catalogCheckState === "checking" ? "true" : undefined}
             className="flex min-h-56 items-center justify-center rounded-lg border border-dashed bg-muted/20 p-6 text-center"
           >
-            {catalogCheckState === "checking" ? (
-              <Empty className="max-w-sm gap-3">
-                <EmptyMedia>
-                  <Loader2 aria-hidden="true" className="size-5 animate-spin" />
-                </EmptyMedia>
-                <div className="space-y-1.5">
-                  <EmptyTitle className="text-base">{t(($) => $.settings.ai.agents.checkingTitle)}</EmptyTitle>
-                  <EmptyDescription className="text-xs leading-relaxed">
-                    {t(($) => $.settings.ai.agents.checkingDescription)}
-                  </EmptyDescription>
-                </div>
-              </Empty>
-            ) : catalogCheckState === "error" ? (
-              <Empty className="max-w-sm gap-3">
-                <EmptyMedia>
-                  <RefreshCw aria-hidden="true" className="size-5" />
-                </EmptyMedia>
-                <div className="space-y-1.5">
-                  <EmptyTitle className="text-base">{t(($) => $.settings.ai.agents.checkFailedTitle)}</EmptyTitle>
-                  <div role="alert">
-                    <EmptyDescription className="text-xs leading-relaxed text-destructive">
-                      {catalogCheckError}
-                    </EmptyDescription>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" type="button" onClick={() => void checkInstalledAgents(true)}>
-                  <RefreshCw aria-hidden="true" className="size-3.5" />
-                  {t(($) => $.settings.ai.agents.checkAgain)}
-                </Button>
-              </Empty>
-            ) : (
-              <Empty className="max-w-sm gap-3">
-                <EmptyMedia>
-                  <Search aria-hidden="true" className="size-5" />
-                </EmptyMedia>
-                <div className="space-y-1.5">
-                  <EmptyTitle className="text-base">{t(($) => $.settings.ai.agents.emptyTitle)}</EmptyTitle>
-                  <EmptyDescription className="text-xs leading-relaxed">
-                    {t(($) => $.settings.ai.agents.emptyDescription)}
-                  </EmptyDescription>
-                </div>
-              </Empty>
-            )}
+            <AgentCatalogEmptyState
+              state={catalogCheckState}
+              error={catalogCheckError}
+              onRetry={() => void checkInstalledAgents(true)}
+            />
           </div>
         )}
       </div>

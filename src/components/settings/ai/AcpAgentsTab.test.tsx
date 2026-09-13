@@ -102,10 +102,13 @@ describe("ACP agent setup acceptance", () => {
     catalog = [agent()];
     const ui = render(<AcpAgentsTab />);
     await ui.findByTestId("acp-agent-card-fixture");
+    const checkButton = await ui.findByRole("button", {
+      name: copy.checkInstalled,
+    });
     const check = deferred<AcpAgentStatus[]>();
     vi.mocked(acpCatalog).mockReturnValueOnce(check.promise);
 
-    fireEvent.click(ui.getByRole("button", { name: copy.checkInstalled }));
+    fireEvent.click(checkButton);
 
     expect(ui.getByTestId("acp-agent-list")).toHaveAttribute("aria-busy", "true");
     expect(ui.getByRole("button", { name: copy.checkingAction })).toBeDisabled();

@@ -14,7 +14,7 @@ import {
 async function openTreeRowMenu(page: Page & { getByText(t: string): unknown }, fileName: string) {
   const ok = await page.evaluate<boolean>(
     `(() => {
-      const tree = document.querySelector('[aria-label="Source tree"]');
+      const tree = document.querySelector('[aria-label="Explorer file tree"]');
       if (!tree) return false;
       const rows = Array.from(tree.querySelectorAll('[role="treeitem"]'));
       const row = rows.find(el => el.dataset.path === ${JSON.stringify(fileName)});
@@ -60,7 +60,7 @@ async function pickMenuItem(
 
 async function createRootEntry(page: Page, name: string, mode: "file" | "dir") {
   const exists = await page.evaluate<boolean>(
-    `!!document.querySelector('[aria-label="Source tree"] [data-path=${JSON.stringify(name)}]')`,
+    `!!document.querySelector('[aria-label="Explorer file tree"] [data-path=${JSON.stringify(name)}]')`,
   );
   if (!exists) {
     await page.click('[data-path="main.tex"]');
@@ -73,7 +73,7 @@ async function createRootEntry(page: Page, name: string, mode: "file" | "dir") {
     await page.fill(`input[placeholder=${JSON.stringify(placeholder)}]`, name);
     await page.press(`input[placeholder=${JSON.stringify(placeholder)}]`, "Enter");
     await page.waitForFunction(
-      `!!document.querySelector('[aria-label="Source tree"] [data-path=${JSON.stringify(name)}]')`,
+      `!!document.querySelector('[aria-label="Explorer file tree"] [data-path=${JSON.stringify(name)}]')`,
       15_000,
     );
   }
@@ -115,7 +115,7 @@ test("create a scratch file in the tree", async ({ tauriPage }) => {
   await tauriPage.fill('input[placeholder="New file name"]', "scratch.tex");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");
   await tauriPage.waitForFunction(
-    `!document.querySelector('input[placeholder="New file name"]') && (document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
+    `!document.querySelector('input[placeholder="New file name"]') && (document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes('scratch.tex')`,
     15_000,
   );
 });
@@ -127,11 +127,11 @@ test("rename a file via the tree three-dot menu", async ({ tauriPage }) => {
   // A retry after a mid-rename failure may find the file already renamed
   // (the inline input commits on blur), so accept either starting state.
   await tauriPage.waitForFunction(
-    `['scratch.tex', 'renamed.tex'].some(n => (document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes(n))`,
+    `['scratch.tex', 'renamed.tex'].some(n => (document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes(n))`,
     15_000,
   );
   const hasScratch = await tauriPage.evaluate<boolean>(
-    `(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
+    `(document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes('scratch.tex')`,
   );
 
   if (hasScratch) {
@@ -157,8 +157,8 @@ test("rename a file via the tree three-dot menu", async ({ tauriPage }) => {
     expect(committed).toBe(true);
   }
   await tauriPage.waitForFunction(
-    `(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('renamed.tex')
-     && !(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('scratch.tex')`,
+    `(document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes('renamed.tex')
+     && !(document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes('scratch.tex')`,
     15_000,
   );
 });
@@ -168,7 +168,7 @@ test("delete a file via the tree three-dot menu", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Explorer");
   await tauriPage.waitForFunction(
-    `(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('renamed.tex')`,
+    `(document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes('renamed.tex')`,
     15_000,
   );
 
@@ -180,7 +180,7 @@ test("delete a file via the tree three-dot menu", async ({ tauriPage }) => {
     tauriPage,
     "renamed.tex",
     "Delete",
-    `!(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('renamed.tex')`,
+    `!(document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes('renamed.tex')`,
   );
 });
 

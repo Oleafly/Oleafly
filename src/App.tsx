@@ -23,7 +23,13 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
 import { Editor } from "@/components/editor/Editor";
-import { editorUndo, editorRedo } from "@/components/editor/cm/controller";
+import {
+  editorUndo,
+  editorRedo,
+  editorVimUndo,
+  editorVimRedo,
+  getEditorView,
+} from "@/components/editor/cm/controller";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -577,6 +583,12 @@ function AppContent() {
     // every platform's webview.
     const inEditor = (active: HTMLElement | null): boolean =>
       !!(active?.closest(".cm-content") || active?.closest(".ProseMirror"));
+    const sourceEditorOwns = (active: HTMLElement | null): boolean => {
+      const source = getEditorView();
+      return !!active && !!source && source.contentDOM.contains(active);
+    };
+    const secondaryCodeEditorOwns = (active: HTMLElement | null): boolean =>
+      !!active?.closest(".cm-content") && !sourceEditorOwns(active);
     const inPlainField = (active: HTMLElement | null): boolean => {
       if (!active || inEditor(active)) return false;
       const tag = active.tagName;
@@ -591,15 +603,24 @@ function AppContent() {
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;
+      if (secondaryCodeEditorOwns(active)) return;
       // Once Vim owns the source editor, let its modal handler see the key
       // first. Keys it declines still fall through to CodeMirror's ordinary
       // history keymap; capturing them here bypasses Vim entirely.
-      if (active?.closest(".cm-content") && useSettingsStore.getState().vim) return;
+      const vimEnabled = useSettingsStore.getState().vim;
+      if (sourceEditorOwns(active) && vimEnabled) return;
       e.preventDefault();
       e.stopPropagation();
       if (inPlainField(active)) {
         document.execCommand(isRedo ? "redo" : "undo");
         return;
+      }
+      // Toolbar and other document chrome still target the source editor. In
+      // Vim mode, route that history request through Vim so it restores modal
+      // cursor and selection state instead of applying bare CM6 history.
+      if (!active?.closest(".ProseMirror") && vimEnabled) {
+        const handled = isRedo ? editorVimRedo() : editorVimUndo();
+        if (handled) return;
       }
       if (isRedo) editorRedo();
       else editorUndo();
@@ -613,6 +634,18 @@ function AppContent() {
         document.execCommand(redo ? "redo" : "undo");
         return;
       }
+      // Native menu events have no key event for Vim to intercept. Use its
+      // history adapter directly so menu Undo/Redo preserves modal cursor and
+      // selection semantics just like the keyboard route above.
+      if (secondaryCodeEditorOwns(active)) return;
+      if (!active?.closest(".ProseMirror") && useSettingsStore.getState().vim) {
+        const handled = redo ? editorVimRedo() : editorVimUndo();
+        if (handled) return;
+      }
+      // A secondary CodeMirror surface owns its own history; never redirect
+      // its menu click into the paper's source buffer. ProseMirror and toolbar
+      // focus still go through the app controller below, which routes history
+      // to the active visual editor when appropriate.
       if (redo) editorRedo();
       else editorUndo();
     };

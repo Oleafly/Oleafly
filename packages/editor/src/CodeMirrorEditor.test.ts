@@ -186,6 +186,12 @@ describe("CodeMirrorEditor Vim integration", () => {
     expect(view!.state.doc.toString()).toBe("second line\n");
     fireEvent.keyDown(view!.contentDOM, { key: "u", code: "KeyU" });
     expect(view!.state.doc.toString()).toBe(original);
+    fireEvent.keyDown(view!.contentDOM, {
+      key: "y",
+      code: "KeyY",
+      ctrlKey: true,
+    });
+    expect(view!.state.doc.toString()).toBe(original);
 
     fireEvent.keyDown(view!.contentDOM, { key: "i", code: "KeyI" });
     expect(document.querySelector(".cm-vim-panel")).toHaveTextContent("INSERT");

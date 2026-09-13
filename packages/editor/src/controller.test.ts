@@ -4,9 +4,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { history } from "@codemirror/commands";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { CodeMirror, getCM, vim } from "@replit/codemirror-vim";
 import {
   editorRedo,
   editorUndo,
+  editorVimRedo,
+  editorVimUndo,
   gotoLine,
   insertTemplate,
   revealEditorRange,
@@ -41,6 +44,42 @@ describe("editor controller history", () => {
 
     editorRedo();
     expect(view.state.doc.toString()).toBe("FIRSTSECOND");
+  });
+
+  it("routes native history requests through Vim's adapter when enabled", () => {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: "before",
+        extensions: [history(), vim()],
+      }),
+    });
+    setEditorView(view);
+    const cm = getCM(view);
+    expect(cm).not.toBeNull();
+    cm!.operation(() => {
+      view!.dispatch({
+        changes: { from: 0, to: 6, insert: "after" },
+        selection: { anchor: 5 },
+      });
+    });
+
+    const undo = vi.spyOn(CodeMirror.commands, "undo");
+    const redo = vi.spyOn(CodeMirror.commands, "redo");
+
+    expect(editorVimUndo()).toBe(true);
+    expect(undo).toHaveBeenCalledOnce();
+    expect(view.state.doc.toString()).toBe("before");
+    expect(view.state.selection.main.head).toBe(0);
+    expect(cm!.curOp).toBeNull();
+
+    expect(editorVimRedo()).toBe(true);
+    expect(redo).toHaveBeenCalledOnce();
+    expect(view.state.doc.toString()).toBe("after");
+    expect(view.state.selection.main.head).toBe(0);
+    expect(cm!.curOp).toBeNull();
   });
 });
 

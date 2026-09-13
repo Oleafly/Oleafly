@@ -1025,9 +1025,10 @@ export function SourceControl() {
 				</SidebarSection>
 			</div>
 			{notice ? (
-				<div
+				<output
 					data-testid="source-control-status"
-					role={notice.ok ? "status" : "alert"}
+					role={notice.ok ? undefined : "alert"}
+					aria-live={notice.ok ? "polite" : undefined}
 					className={cn(
 						"m-2 rounded-md border p-2 text-[11px]",
 						notice.ok
@@ -1036,7 +1037,7 @@ export function SourceControl() {
 					)}
 				>
 					{notice.text}
-				</div>
+				</output>
 			) : null}
 			<div
 				data-testid="source-control-actions"
@@ -1174,7 +1175,7 @@ function Header({
 	onCreateBranch,
 	onPublish,
 	onUnlink,
-}: {
+}: Readonly<{
 	branch: string;
 	remote: string | null;
 	aheadBehind?: { ahead: number; behind: number } | null;
@@ -1194,7 +1195,7 @@ function Header({
 	onCreateBranch?: () => void;
 	onPublish?: () => void;
 	onUnlink?: () => void;
-}) {
+}>) {
 	const { t } = useTranslation(["common", "shell"]);
 	const url = remote ? toGithubWebUrl(remote) : null;
 	const aheadBehindLabel = aheadBehind
@@ -1205,7 +1206,7 @@ function Header({
 			})
 		: "";
 	const compactAheadBehind = aheadBehind
-		? `${String.fromCharCode(0x2191)}${aheadBehind.ahead} ${String.fromCharCode(0x2193)}${aheadBehind.behind}`
+		? `${String.fromCodePoint(0x2191)}${aheadBehind.ahead} ${String.fromCodePoint(0x2193)}${aheadBehind.behind}`
 		: "";
 	return (
 		<>

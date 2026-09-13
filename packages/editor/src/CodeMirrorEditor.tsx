@@ -111,11 +111,25 @@ CodeMirror.commands.save = (cm: CodeMirror) => {
   vimSaveHandlers.get(cm.cm6)?.();
 };
 
-function vimModeExtensions(enabled: boolean): Extension {
+const vimHostHistoryGuard: KeyBinding[] = [
+  "Ctrl-y",
+  "Mod-y",
+  "Mod-z",
+  "Mod-Shift-z",
+].map((key) => ({
+  key,
+  run: (view) => Boolean(getCM(view)?.state.vim),
+}));
+
+function vimModeExtension(): Extension {
   // Ghost completion and LaTeX pairing both contain highest-precedence
-  // keymaps. Vim must precede those too, while still allowing the later maps
-  // to handle keys it declines in insert mode.
-  return enabled ? Prec.highest(vim({ status: true })) : [];
+  // keymaps. Vim must precede those too. If Vim declines a platform history
+  // chord (for example Ctrl+Y when it cannot scroll farther), consume it
+  // before CodeMirror's ordinary undo/redo map can reinterpret the command.
+  return Prec.highest([
+    vim({ status: true }),
+    keymap.of(vimHostHistoryGuard),
+  ]);
 }
 
 export const isLatexSourcePath = (path: string | null): boolean =>
@@ -377,7 +391,7 @@ export function CodeMirrorEditor({
         // Vim must see a key before every ordinary editor keymap. When it
         // declines a key in insert mode, the later completion, indentation,
         // search, and host keymaps still get their normal chance to handle it.
-        vimCompartment.of(vimModeExtensions(vimEnabled)),
+        vimCompartment.of(vimEnabled ? vimModeExtension() : []),
         lineNumbers(),
         highlightActiveLineGutter(),
         highlightSpecialChars(),
@@ -612,7 +626,7 @@ export function CodeMirrorEditor({
     detachVimModeBridge();
     view.setTabFocusMode(false);
     view.dispatch({
-      effects: compartment.reconfigure(vimModeExtensions(vimEnabled)),
+      effects: compartment.reconfigure(vimEnabled ? vimModeExtension() : []),
     });
     if (vimEnabled) attachVimModeBridge(view);
   }, [vimEnabled]);

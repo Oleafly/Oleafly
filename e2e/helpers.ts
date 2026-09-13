@@ -1868,35 +1868,22 @@ export async function stageAllGitChanges(page: Page) {
     `document.querySelectorAll('[data-testid="source-control-changes"] [data-testid^="git-change-"]').length > 0`,
     30_000,
   );
-  // Section controls are hover-revealed. Open the real Changes menu once and
-  // choose its exact-path bulk action; polling must not enqueue more work.
+  // Section controls are hover-revealed, but remain in the accessibility tree.
+  // Activate the real direct bulk action once; polling must not enqueue work.
   await page.waitForFunction(
     `(() => {
-      const button = document.querySelector('[data-testid="source-control-changes"] [aria-label="More actions for Changes"]');
+      const button = document.querySelector('[data-testid="source-control-changes"] [aria-label="Stage all"]');
       return button instanceof HTMLButtonElement && !button.disabled;
     })()`,
     30_000,
   );
   await page.evaluate(
     `(() => {
-      const button = document.querySelector('[data-testid="source-control-changes"] [aria-label="More actions for Changes"]');
+      const button = document.querySelector('[data-testid="source-control-changes"] [aria-label="Stage all"]');
       if (!(button instanceof HTMLElement)) return false;
-      button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
-      button.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
-      button.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+      button.click();
       return true;
     })()`,
-  );
-  await page.waitForFunction(
-    `(() => {
-      const item = Array.from(document.querySelectorAll('[role="menuitem"]'))
-        .find((entry) => entry.textContent.trim() === "Stage all");
-      return item instanceof HTMLElement && !item.hasAttribute("data-disabled");
-    })()`,
-    30_000,
-  );
-  await page.evaluate(
-    `Array.from(document.querySelectorAll('[role="menuitem"]')).find((entry) => entry.textContent.trim() === "Stage all").click()`,
   );
   await page.waitForFunction(
     `document.querySelectorAll('[data-testid="source-control-staged"] [data-testid^="git-change-"]').length > 0 &&
@@ -1908,31 +1895,18 @@ export async function stageAllGitChanges(page: Page) {
 export async function unstageAllGitChanges(page: Page) {
   await page.waitForFunction(
     `(() => {
-      const button = document.querySelector('[data-testid="source-control-staged"] [aria-label="More actions for Staged Changes"]');
+      const button = document.querySelector('[data-testid="source-control-staged"] [aria-label="Unstage all"]');
       return button instanceof HTMLButtonElement && !button.disabled;
     })()`,
     30_000,
   );
   await page.evaluate(
     `(() => {
-      const button = document.querySelector('[data-testid="source-control-staged"] [aria-label="More actions for Staged Changes"]');
+      const button = document.querySelector('[data-testid="source-control-staged"] [aria-label="Unstage all"]');
       if (!(button instanceof HTMLElement)) return false;
-      button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
-      button.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
-      button.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+      button.click();
       return true;
     })()`,
-  );
-  await page.waitForFunction(
-    `(() => {
-      const item = Array.from(document.querySelectorAll('[role="menuitem"]'))
-        .find((entry) => entry.textContent.trim() === "Unstage all");
-      return item instanceof HTMLElement && !item.hasAttribute("data-disabled");
-    })()`,
-    30_000,
-  );
-  await page.evaluate(
-    `Array.from(document.querySelectorAll('[role="menuitem"]')).find((entry) => entry.textContent.trim() === "Unstage all").click()`,
   );
   await page.waitForFunction(
     `document.querySelectorAll('[data-testid="source-control-changes"] [data-testid^="git-change-"]').length > 0 &&

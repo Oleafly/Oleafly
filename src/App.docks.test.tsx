@@ -41,8 +41,17 @@ const appState = vi.hoisted(() => {
   };
   const computerUseListeners = new Set<() => void>();
   const home = { page: "library" };
-  return { analysis, compile, computerUseListeners, files, home };
+  const menuListeners = new Map<string, () => void>();
+  return { analysis, compile, computerUseListeners, files, home, menuListeners, tauri: false };
 });
+
+const editorControllerMocks = vi.hoisted(() => ({
+  editorRedo: vi.fn(),
+  editorUndo: vi.fn(),
+  editorVimRedo: vi.fn(() => true),
+  editorVimUndo: vi.fn(() => true),
+  getEditorView: vi.fn<() => { contentDOM: HTMLElement } | null>(() => null),
+}));
 
 const browserWindowMocks = vi.hoisted(() => ({
   launchBrowser: vi.fn(),
@@ -52,6 +61,12 @@ vi.mock("@/lib/browser-window", () => ({
   launchBrowser: browserWindowMocks.launchBrowser,
   toggleBrowser: browserWindowMocks.toggleBrowser,
   registerBrowserCuaSurface: () => () => {},
+}));
+vi.mock("@/lib/ai-tools", () => ({
+  initAiPdfCaptureFlag: vi.fn(),
+}));
+vi.mock("@/lib/mcp-bridge", () => ({
+  startMcpBridge: vi.fn(async () => () => {}),
 }));
 
 const assistantLayoutMocks = vi.hoisted(() => ({
@@ -144,6 +159,7 @@ vi.mock("@/components/layout/BackendProtocolBanner", () => ({
 }));
 vi.mock("@/components/dock/TerminalPane", () => ({ TerminalPane: () => null }));
 vi.mock("@/components/editor/Editor", () => ({ Editor: () => null }));
+vi.mock("@/components/editor/cm/controller", () => editorControllerMocks);
 vi.mock("@/components/preview/PreviewPane", () => ({ PreviewPane: () => null }));
 vi.mock("@/components/import/PdfImportView", () => ({ PdfImportView: () => null }));
 vi.mock("@/components/layout/Sidebar", () => ({ Sidebar: () => null }));
@@ -232,8 +248,17 @@ vi.mock("@/lib/updater", () => ({
   checkForUpdatesOnStartup: vi.fn(async () => {}),
   openUpdateWindow: vi.fn(),
 }));
-vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false }));
-vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({
+  isTauri: () => appState.tauri,
+  invoke: vi.fn(async () => ({})),
+}));
+vi.mock("@tauri-apps/api/event", () => ({
+  emit: vi.fn(async () => {}),
+  listen: vi.fn(async (event: string, handler: () => void) => {
+    appState.menuListeners.set(event, handler);
+    return () => appState.menuListeners.delete(event);
+  }),
+}));
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ label: "main" }),
 }));
@@ -276,6 +301,13 @@ describe("project dock layout", () => {
   beforeEach(async () => {
     document.body.innerHTML = "<div id='root'></div>";
     appState.computerUseListeners.clear();
+    appState.menuListeners.clear();
+    appState.tauri = false;
+    editorControllerMocks.editorRedo.mockClear();
+    editorControllerMocks.editorUndo.mockClear();
+    editorControllerMocks.editorVimRedo.mockClear();
+    editorControllerMocks.editorVimUndo.mockClear();
+    editorControllerMocks.getEditorView.mockReset().mockReturnValue(null);
     assistantLayoutMocks.sidebarMinimumPercent.mockClear();
     assistantLayoutMocks.sidebarPanelGroupWidth.mockClear();
     panelHandleMocks.resize.mockClear();
@@ -293,6 +325,7 @@ describe("project dock layout", () => {
       viewMode: "split",
       defaultView: "editor-preview",
       openInTree: false,
+      vim: false,
     });
   });
 
@@ -485,5 +518,168 @@ describe("project dock layout", () => {
       );
     });
     expect(browserWindowMocks.toggleBrowser).toHaveBeenCalled();
+  });
+
+  it("routes native menu history through Vim when the source editor is focused", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    appState.tauri = true;
+    useSettingsStore.setState({ vim: true });
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+    const editor = document.createElement("div");
+    editor.className = "cm-content";
+    editor.tabIndex = 0;
+    document.body.append(editor);
+    editorControllerMocks.getEditorView.mockReturnValue({ contentDOM: editor });
+    editor.focus();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const undo = appState.menuListeners.get("menu://undo");
+    const redo = appState.menuListeners.get("menu://redo");
+    expect(undo).toBeDefined();
+    expect(redo).toBeDefined();
+
+    await act(async () => {
+      undo?.();
+      redo?.();
+    });
+
+    expect(editorControllerMocks.editorVimUndo).toHaveBeenCalledOnce();
+    expect(editorControllerMocks.editorVimRedo).toHaveBeenCalledOnce();
+    expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorRedo).not.toHaveBeenCalled();
+  });
+
+  it("routes toolbar history shortcuts through Vim", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    useSettingsStore.setState({ vim: true });
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+    const source = document.createElement("div");
+    source.className = "cm-content";
+    const toolbarButton = document.createElement("button");
+    document.body.append(source, toolbarButton);
+    editorControllerMocks.getEditorView.mockReturnValue({ contentDOM: source });
+    toolbarButton.focus();
+
+    await act(async () => {
+      window.dispatchEvent(
+        new window.KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          key: "z",
+        }),
+      );
+      window.dispatchEvent(
+        new window.KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          key: "y",
+        }),
+      );
+    });
+
+    expect(editorControllerMocks.editorVimUndo).toHaveBeenCalledOnce();
+    expect(editorControllerMocks.editorVimRedo).toHaveBeenCalledOnce();
+    expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorRedo).not.toHaveBeenCalled();
+  });
+
+  it("does not redirect native menu history from another CodeMirror surface", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    appState.tauri = true;
+    useSettingsStore.setState({ vim: true });
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+    const source = document.createElement("div");
+    source.className = "cm-content";
+    const secondary = document.createElement("div");
+    secondary.className = "cm-content";
+    secondary.contentEditable = "true";
+    secondary.tabIndex = 0;
+    document.body.append(source, secondary);
+    editorControllerMocks.getEditorView.mockReturnValue({ contentDOM: source });
+    secondary.focus();
+
+    const undo = appState.menuListeners.get("menu://undo");
+    const redo = appState.menuListeners.get("menu://redo");
+    expect(undo).toBeDefined();
+    expect(redo).toBeDefined();
+    await act(async () => {
+      undo?.();
+      redo?.();
+    });
+
+    expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorVimRedo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorRedo).not.toHaveBeenCalled();
+  });
+
+  it("routes native menu history from the visual editor through the app controller", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    appState.tauri = true;
+    useSettingsStore.setState({ vim: true });
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+    const source = document.createElement("div");
+    source.className = "cm-content";
+    const visual = document.createElement("div");
+    visual.className = "ProseMirror";
+    visual.contentEditable = "true";
+    visual.tabIndex = 0;
+    document.body.append(source, visual);
+    editorControllerMocks.getEditorView.mockReturnValue({ contentDOM: source });
+    visual.focus();
+
+    const undo = appState.menuListeners.get("menu://undo");
+    const redo = appState.menuListeners.get("menu://redo");
+    expect(undo).toBeDefined();
+    expect(redo).toBeDefined();
+    await act(async () => {
+      undo?.();
+      redo?.();
+    });
+
+    expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorVimRedo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorUndo).toHaveBeenCalledOnce();
+    expect(editorControllerMocks.editorRedo).toHaveBeenCalledOnce();
   });
 });

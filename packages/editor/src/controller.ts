@@ -2,6 +2,7 @@ import { EditorView } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
 import { isolateHistory, undo, redo } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
+import { CodeMirror, getCM } from "@replit/codemirror-vim";
 
 let view: EditorView | null = null;
 let documentPath: string | null = null;
@@ -295,6 +296,27 @@ export function editorUndo() {
 export function editorRedo() {
   const v = getEditorView();
   if (v) redo(v);
+}
+
+/**
+ * Runs history through the Vim adapter when the published source view is in
+ * Vim mode. The adapter also restores Vim's expected cursor/selection state,
+ * which CodeMirror's bare history commands cannot do on their own.
+ */
+export function editorVimUndo(): boolean {
+  const v = getEditorView();
+  const cm = v ? getCM(v) : null;
+  if (!cm?.state.vim) return false;
+  cm.operation(() => CodeMirror.commands.undo(cm));
+  return true;
+}
+
+export function editorVimRedo(): boolean {
+  const v = getEditorView();
+  const cm = v ? getCM(v) : null;
+  if (!cm?.state.vim) return false;
+  cm.operation(() => CodeMirror.commands.redo(cm));
+  return true;
 }
 
 export function editorFind() {

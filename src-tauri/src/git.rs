@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use crate::config;
@@ -73,6 +73,19 @@ fn run_configured_git_bounded(
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE")
         .env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
+    // `git commit` also exports its author and committer identity to hooks.
+    // Do not let an outer repository's identity override the project-local
+    // configuration when Oleafly runs Git from a hook or test harness.
+    for variable in [
+        "GIT_AUTHOR_NAME",
+        "GIT_AUTHOR_EMAIL",
+        "GIT_AUTHOR_DATE",
+        "GIT_COMMITTER_NAME",
+        "GIT_COMMITTER_EMAIL",
+        "GIT_COMMITTER_DATE",
+    ] {
+        command.env_remove(variable);
+    }
     configure(&mut command);
     match bounds {
         Some(bounds) => crate::proc::output_contained_with_bounds(command, bounds),
@@ -260,21 +273,30 @@ pub struct GitWorktreeOperationResult {
     pub project_state: crate::project::ProjectStateChanged,
 }
 
-fn validate_repo_relative_path(path: &str) -> Result<(), String> {
-    use std::path::Component;
+fn is_reserved_repo_component(component: &std::ffi::OsStr) -> bool {
+    component.to_str().is_some_and(|segment| {
+        segment.eq_ignore_ascii_case(".git") || segment.eq_ignore_ascii_case(".oleafly")
+    })
+}
 
+fn validate_repo_relative_path(path: &str) -> Result<(), String> {
     if path.is_empty() || path.contains('\0') || path.contains('\\') {
         return Err("Git paths must be non-empty, relative paths using forward slashes.".into());
     }
-    let mut components = std::path::Path::new(path).components();
+    // Accept harmless `./` aliases while still validating their normalized
+    // components. The discard preflight uses that normalized destination to
+    // ensure aliases cannot schedule the same deletion twice.
+    let mut components = std::path::Path::new(path)
+        .components()
+        .filter(|component| !matches!(component, Component::CurDir));
     let Some(Component::Normal(first)) = components.next() else {
         return Err("Git paths must stay inside the project.".into());
     };
-    if first == ".git" || first == ".oleafly" {
+    if is_reserved_repo_component(first) {
         return Err("Git cannot change Oleafly's internal files.".into());
     }
     if components.any(|component| {
-        !matches!(component, Component::Normal(segment) if segment != ".git" && segment != ".oleafly")
+        !matches!(component, Component::Normal(segment) if !is_reserved_repo_component(segment))
     }) {
         return Err("Git paths must stay inside the project.".into());
     }
@@ -919,6 +941,15 @@ pub async fn git_pull(
     project_id: String,
     expected_generation: Option<u64>,
 ) -> Result<GitPullResult, String> {
+    git_pull_with_runtime(app, state, project_id, expected_generation).await
+}
+
+async fn git_pull_with_runtime<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    expected_generation: Option<u64>,
+) -> Result<GitPullResult, String> {
     let cfg = config::read_config()?;
     let token = cfg.github_token;
     let operation_id = project_id.clone();
@@ -1310,7 +1341,13 @@ pub async fn git_discard(
     git_discard_paths(app, state, project_id, vec![path], expected_generation).await
 }
 
-fn path_is_tracked(root: &PathBuf, path: &str) -> Result<bool, String> {
+fn path_is_tracked(root: &PathBuf, path: &Path) -> Result<bool, String> {
+    let path = path.to_str().ok_or_else(|| {
+        format!(
+            "could not discard file {}: path is not valid Unicode",
+            path.display()
+        )
+    })?;
     Ok(run_git_read_only(
         root,
         &[
@@ -1325,24 +1362,237 @@ fn path_is_tracked(root: &PathBuf, path: &str) -> Result<bool, String> {
     .success())
 }
 
-fn discard_paths_at(root: &PathBuf, paths: &[String]) -> Result<(), String> {
-    validate_repo_relative_paths(paths)?;
-    for path in paths {
-        if path_is_tracked(root, path)? {
-            ok_or_err(run_git(
-                root,
-                &["--literal-pathspecs", "checkout", "--", path],
-            )?)?;
+enum DiscardPath {
+    Tracked(PathBuf),
+    UntrackedFile(PathBuf),
+    #[cfg(windows)]
+    UntrackedDirectoryLink(PathBuf),
+}
+
+#[cfg(windows)]
+fn is_windows_directory_link(metadata: &cap_std::fs::Metadata) -> bool {
+    use cap_std::fs::MetadataExt as _;
+
+    const FILE_ATTRIBUTE_DIRECTORY: u32 = 0x10;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+    let attributes = metadata.file_attributes();
+    attributes & FILE_ATTRIBUTE_DIRECTORY != 0 && attributes & FILE_ATTRIBUTE_REPARSE_POINT != 0
+}
+
+fn resolve_discard_candidate(root: &Path, path: &str) -> Result<PathBuf, String> {
+    let normalized: PathBuf = Path::new(path)
+        .components()
+        .filter(|component| !matches!(component, Component::CurDir))
+        .collect();
+    let file_name = normalized
+        .file_name()
+        .ok_or_else(|| format!("could not discard file {path}: illegal path"))?
+        .to_owned();
+    let parent = normalized.parent().unwrap_or_else(|| Path::new(""));
+    let parent_text = parent
+        .to_str()
+        .ok_or_else(|| format!("could not discard file {path}: path is not valid Unicode"))?;
+    crate::sandbox::resolve_within(root, parent_text)
+        .map_err(|error| format!("could not discard file {path}: {error}"))?;
+
+    let real_root = root
+        .canonicalize()
+        .map_err(|error| format!("could not discard file {path}: {error}"))?;
+    let mut prefix = root.to_path_buf();
+    let mut resolved_parent = PathBuf::new();
+    let mut missing_parent = false;
+    for component in parent.components() {
+        let segment = match component {
+            Component::Normal(segment) => segment,
+            _ => return Err(format!("could not discard file {path}: illegal path")),
+        };
+        if missing_parent {
+            resolved_parent.push(segment);
             continue;
         }
-        let candidate = root.join(path);
-        let metadata = std::fs::symlink_metadata(&candidate)
-            .map_err(|error| format!("could not discard untracked file {path}: {error}"))?;
-        if metadata.is_dir() {
-            return Err(format!("refusing to discard directory {path}"));
+        prefix.push(segment);
+        match std::fs::symlink_metadata(&prefix) {
+            Ok(_) => {
+                let real_prefix = prefix
+                    .canonicalize()
+                    .map_err(|error| format!("could not discard file {path}: {error}"))?;
+                let relative = real_prefix.strip_prefix(&real_root).map_err(|_| {
+                    format!("could not discard file {path}: path leaves the project")
+                })?;
+                if relative.components().any(|component| {
+                    matches!(component, Component::Normal(segment) if is_reserved_repo_component(segment))
+                }) {
+                    return Err(format!(
+                        "could not discard file {path}: Git cannot change Oleafly's internal files"
+                    ));
+                }
+                resolved_parent = relative.to_path_buf();
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                // Preserve missing suffixes so a deleted tracked file can still
+                // be restored. Any existing prefix, including a directory
+                // symlink, has already been resolved above.
+                missing_parent = true;
+                resolved_parent.push(segment);
+            }
+            Err(error) => return Err(format!("could not discard file {path}: {error}")),
         }
-        std::fs::remove_file(&candidate)
-            .map_err(|error| format!("could not discard untracked file {path}: {error}"))?;
+    }
+    Ok(resolved_parent.join(file_name))
+}
+
+enum DiscardBasenameMatch {
+    Exact,
+    CaseAlias,
+    Missing,
+}
+
+fn discard_basename_match(
+    root: &Path,
+    candidate: &Path,
+    requested: &str,
+) -> Result<DiscardBasenameMatch, String> {
+    let file_name = candidate
+        .file_name()
+        .ok_or_else(|| format!("could not discard file {requested}: illegal path"))?;
+    let parent = candidate.parent().unwrap_or_else(|| Path::new(""));
+    let entries = match std::fs::read_dir(root.join(parent)) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(DiscardBasenameMatch::Missing)
+        }
+        Err(error) => return Err(format!("could not discard file {requested}: {error}")),
+    };
+
+    let mut has_case_alias = false;
+    for entry in entries {
+        let entry =
+            entry.map_err(|error| format!("could not discard file {requested}: {error}"))?;
+        let actual_name = entry.file_name();
+        if actual_name == file_name {
+            return Ok(DiscardBasenameMatch::Exact);
+        }
+        // Record a case-only spelling but keep scanning because a case-sensitive
+        // directory can legitimately contain an exact entry as well. The caller
+        // rejects the alias only when Git does not track the requested spelling.
+        if actual_name
+            .as_encoded_bytes()
+            .eq_ignore_ascii_case(file_name.as_encoded_bytes())
+        {
+            has_case_alias = true;
+        }
+    }
+    if has_case_alias {
+        return Ok(DiscardBasenameMatch::CaseAlias);
+    }
+    Ok(DiscardBasenameMatch::Missing)
+}
+
+fn preflight_discard_paths(
+    root: &PathBuf,
+    repository: &cap_std::fs::Dir,
+    paths: &[String],
+) -> Result<Vec<DiscardPath>, String> {
+    validate_repo_relative_paths(paths)?;
+    let mut seen = std::collections::HashSet::new();
+    let mut plan = Vec::with_capacity(paths.len());
+    for path in paths {
+        // Resolve every existing parent component but deliberately leave the
+        // final basename unresolved. This makes Git classification agree with
+        // filesystem mutation through an in-project directory alias without
+        // following or merging distinct final symlink entries.
+        let candidate = resolve_discard_candidate(root, path)?;
+        if !seen.insert(candidate.clone()) {
+            continue;
+        }
+        let basename_match = discard_basename_match(root, &candidate, path)?;
+        let metadata = repository.symlink_metadata(&candidate);
+        let tracked = path_is_tracked(root, &candidate)?;
+        if !tracked
+            && (matches!(basename_match, DiscardBasenameMatch::CaseAlias)
+                || (!matches!(basename_match, DiscardBasenameMatch::Exact) && metadata.is_ok()))
+        {
+            // Some filesystems also alias Unicode-normalized spellings. If the
+            // requested basename resolves without appearing exactly in its
+            // directory, reject it for the same reason as a case-only alias.
+            return Err(format!(
+                "could not discard file {path}: use the file's exact name"
+            ));
+        }
+        match metadata {
+            Ok(metadata) if metadata.is_dir() => {
+                return Err(format!("refusing to discard directory {path}"));
+            }
+            Ok(_) if tracked => plan.push(DiscardPath::Tracked(candidate)),
+            Ok(_metadata) => {
+                #[cfg(windows)]
+                if is_windows_directory_link(&_metadata) {
+                    plan.push(DiscardPath::UntrackedDirectoryLink(candidate));
+                    continue;
+                }
+                plan.push(DiscardPath::UntrackedFile(candidate));
+            }
+            Err(error) if tracked && error.kind() == std::io::ErrorKind::NotFound => {
+                // A deleted tracked file is a valid discard target: checkout
+                // recreates it from the index.
+                plan.push(DiscardPath::Tracked(candidate));
+            }
+            Err(error) => {
+                return Err(format!("could not discard untracked file {path}: {error}"));
+            }
+        }
+    }
+    Ok(plan)
+}
+
+fn discard_paths_at(root: &PathBuf, paths: &[String]) -> Result<(), String> {
+    let repository = cap_std::fs::Dir::open_ambient_dir(root, cap_std::ambient_authority())
+        .map_err(|error| format!("could not open the project for discard: {error}"))?;
+    // Resolve and inspect the complete batch before changing any file. Besides
+    // rejecting missing paths and directories up front, `resolve_within`
+    // prevents an untracked path from reaching outside the project through a
+    // symlinked ancestor. The capability-rooted removal then keeps the mutation
+    // bound to this repository if an ancestor changes after preflight.
+    let plan = preflight_discard_paths(root, &repository, paths)?;
+    for item in plan {
+        match item {
+            DiscardPath::Tracked(path) => {
+                let path = path.to_str().ok_or_else(|| {
+                    format!(
+                        "could not discard file {}: path is not valid Unicode",
+                        path.display()
+                    )
+                })?;
+                ok_or_err(run_git(
+                    root,
+                    &["--literal-pathspecs", "checkout", "--", path],
+                )?)?
+            }
+            DiscardPath::UntrackedFile(path) => match repository.remove_file(&path) {
+                Ok(()) => {}
+                // Two user-visible aliases may resolve to the same directory
+                // entry. Once the first alias has removed it, the requested
+                // end state already holds for the second one too.
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(format!(
+                        "could not discard untracked file {}: {error}",
+                        path.display()
+                    ));
+                }
+            },
+            #[cfg(windows)]
+            DiscardPath::UntrackedDirectoryLink(path) => match repository.remove_dir(&path) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(format!(
+                        "could not discard untracked file {}: {error}",
+                        path.display()
+                    ));
+                }
+            },
+        }
     }
     Ok(())
 }
@@ -1724,8 +1974,8 @@ fn stash_pop_at(root: &PathBuf) -> Result<(GitMutationOutcome, bool), String> {
     Err(out_to_string(&out))
 }
 
-async fn run_git_worktree_operation(
-    app: tauri::AppHandle,
+async fn run_git_worktree_operation<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
     expected_generation: Option<u64>,
@@ -2040,6 +2290,28 @@ mod tests {
         std::fs::write(root.join(name), content).unwrap();
     }
 
+    struct TestDataDirOverride {
+        previous: Option<std::ffi::OsString>,
+    }
+
+    impl TestDataDirOverride {
+        fn set(path: &Path) -> Self {
+            let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+            std::env::set_var("OLEAFLY_DATA_DIR", path);
+            Self { previous }
+        }
+    }
+
+    impl Drop for TestDataDirOverride {
+        fn drop(&mut self) {
+            if let Some(previous) = self.previous.take() {
+                std::env::set_var("OLEAFLY_DATA_DIR", previous);
+            } else {
+                std::env::remove_var("OLEAFLY_DATA_DIR");
+            }
+        }
+    }
+
     #[test]
     fn ensure_repository_creates_a_repository_in_an_empty_project() {
         let root = temp_dir("ensure-empty");
@@ -2274,6 +2546,511 @@ mod tests {
         assert!(shown.is_empty());
         assert!(!repository_was_created);
         assert_eq!(source, "unchanged\n");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn async_git_commands_cover_the_workspace_lifecycle() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("async-command-boundary");
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "async-command-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "base line\n");
+        write(&project, "references.bib", "@book{base}\n");
+        crate::project::write_meta(
+            project_id,
+            &crate::project::ProjectMeta {
+                name: "Async command project".into(),
+                main_doc: "main.tex".into(),
+                engine: "tectonic".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        assert!(!super::git_is_initialized(project_id.into()).await.unwrap());
+        assert!(super::git_get_remote(project_id.into())
+            .await
+            .unwrap()
+            .is_none());
+        assert!(super::git_head_oid(project_id.into())
+            .await
+            .unwrap()
+            .is_none());
+        let unopened = super::git_workspace_snapshot(project_id.into())
+            .await
+            .unwrap();
+        assert!(!unopened.initialized);
+        assert!(unopened.branch.is_none());
+        assert!(unopened.changes.is_empty());
+        assert!(unopened.commits.is_empty());
+        assert!(!project.join(".git").exists());
+
+        let branch = super::git_initialize(project_id.into()).await.unwrap();
+        assert!(!branch.is_empty());
+        assert_eq!(
+            super::git_initialize(project_id.into()).await.unwrap(),
+            branch,
+            "initialization is idempotent"
+        );
+        assert!(super::git_is_initialized(project_id.into()).await.unwrap());
+        ok_or_err(run_git(&project, &["config", "core.autocrlf", "false"]).unwrap()).unwrap();
+        ok_or_err(
+            run_git(
+                &project,
+                &["config", "user.email", "command-boundary@example.test"],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        ok_or_err(run_git(&project, &["config", "user.name", "Command Boundary"]).unwrap())
+            .unwrap();
+
+        let initialized = super::git_workspace_snapshot(project_id.into())
+            .await
+            .unwrap();
+        assert!(initialized.initialized);
+        assert_eq!(initialized.branch.as_deref(), Some(branch.as_str()));
+        assert_eq!(initialized.operation, "idle");
+        assert_eq!(initialized.changes.len(), 3);
+        assert!(initialized.changes.iter().all(|change| !change.staged));
+        assert!(initialized.commits.is_empty());
+        assert!(super::git_log(project_id.into()).await.unwrap().is_empty());
+        assert!(
+            super::git_commit_amend(project_id.into(), "too soon".into())
+                .await
+                .unwrap_err()
+                .contains("first commit")
+        );
+
+        let untracked_diff = super::git_diff(project_id.into(), Some("main.tex".into()), false)
+            .await
+            .unwrap();
+        assert!(untracked_diff.contains("+base line"));
+        assert!(super::git_diff(project_id.into(), None, false)
+            .await
+            .unwrap()
+            .is_empty());
+
+        super::git_stage(project_id.into(), "main.tex".into())
+            .await
+            .unwrap();
+        let status = super::git_status(project_id.into()).await.unwrap();
+        assert!(status
+            .iter()
+            .any(|change| change.path == "main.tex" && change.staged && change.status == "A"));
+        assert!(status
+            .iter()
+            .any(|change| change.path == "references.bib" && !change.staged));
+        assert!(
+            super::git_diff(project_id.into(), Some("main.tex".into()), true)
+                .await
+                .unwrap()
+                .contains("+base line")
+        );
+
+        super::git_unstage(project_id.into(), "main.tex".into())
+            .await
+            .unwrap();
+        assert!(super::git_status(project_id.into())
+            .await
+            .unwrap()
+            .iter()
+            .all(|change| !change.staged));
+
+        let first_pair = vec!["main.tex".to_string(), "project.json".to_string()];
+        super::git_stage_paths(project_id.into(), first_pair.clone())
+            .await
+            .unwrap();
+        let status = super::git_status(project_id.into()).await.unwrap();
+        assert_eq!(status.iter().filter(|change| change.staged).count(), 2);
+        assert!(status
+            .iter()
+            .any(|change| change.path == "references.bib" && !change.staged));
+        super::git_unstage_paths(project_id.into(), first_pair)
+            .await
+            .unwrap();
+        assert!(super::git_status(project_id.into())
+            .await
+            .unwrap()
+            .iter()
+            .all(|change| !change.staged));
+
+        super::git_stage_all(project_id.into()).await.unwrap();
+        let staged_all = super::git_status(project_id.into()).await.unwrap();
+        assert_eq!(staged_all.len(), 3);
+        assert!(staged_all.iter().all(|change| change.staged));
+        let staged_diff = super::git_diff(project_id.into(), None, true)
+            .await
+            .unwrap();
+        assert!(staged_diff.contains("diff --git a/main.tex b/main.tex"));
+        assert!(staged_diff.contains("diff --git a/references.bib b/references.bib"));
+        super::git_unstage_all(project_id.into()).await.unwrap();
+        assert!(super::git_status(project_id.into())
+            .await
+            .unwrap()
+            .iter()
+            .all(|change| !change.staged));
+
+        super::git_stage_all(project_id.into()).await.unwrap();
+        assert!(super::git_commit(project_id.into(), "Initial paper".into())
+            .await
+            .unwrap());
+        assert!(!super::git_commit(project_id.into(), "No changes".into())
+            .await
+            .unwrap());
+        let initial_oid = super::git_head_oid(project_id.into())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(initial_oid.len(), 40);
+        let initial_log = super::git_log(project_id.into()).await.unwrap();
+        assert_eq!(initial_log.len(), 1);
+        assert_eq!(initial_log[0].message, "Initial paper");
+        assert_eq!(initial_log[0].author, "Command Boundary");
+        assert_eq!(
+            super::git_show(project_id.into(), "HEAD".into(), "main.tex".into())
+                .await
+                .unwrap(),
+            "base line\n"
+        );
+        assert!(
+            super::git_show(project_id.into(), "HEAD".into(), "missing.tex".into())
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert!(super::git_status(project_id.into())
+            .await
+            .unwrap()
+            .is_empty());
+
+        let amended_main = "base line\namended line\n";
+        write(&project, "main.tex", amended_main);
+        write(&project, "appendix.tex", "appendix draft\n");
+        let working_path_diff = super::git_diff(project_id.into(), Some("main.tex".into()), false)
+            .await
+            .unwrap();
+        assert!(working_path_diff.contains("+amended line"));
+        let working_all_diff = super::git_diff(project_id.into(), None, false)
+            .await
+            .unwrap();
+        assert!(working_all_diff.contains("+amended line"));
+        assert!(!working_all_diff.contains("appendix draft"));
+        assert!(
+            super::git_diff(project_id.into(), Some("appendix.tex".into()), false)
+                .await
+                .unwrap()
+                .contains("+appendix draft")
+        );
+
+        super::git_stage(project_id.into(), "main.tex".into())
+            .await
+            .unwrap();
+        super::git_stage_paths(project_id.into(), vec!["appendix.tex".into()])
+            .await
+            .unwrap();
+        assert!(
+            super::git_diff(project_id.into(), Some("main.tex".into()), true)
+                .await
+                .unwrap()
+                .contains("+amended line")
+        );
+        assert!(super::git_diff(project_id.into(), None, true)
+            .await
+            .unwrap()
+            .contains("+appendix draft"));
+        assert!(super::git_commit_amend(project_id.into(), "   ".into())
+            .await
+            .unwrap_err()
+            .contains("commit message"));
+        assert!(
+            super::git_commit_amend(project_id.into(), "Amended paper".into())
+                .await
+                .unwrap()
+        );
+        let amended_oid = super::git_head_oid(project_id.into())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_ne!(amended_oid, initial_oid);
+        let amended_log = super::git_log(project_id.into()).await.unwrap();
+        assert_eq!(amended_log.len(), 1, "amend replaces the first commit");
+        assert_eq!(amended_log[0].message, "Amended paper");
+        assert_eq!(
+            super::git_show(project_id.into(), "INDEX".into(), "main.tex".into())
+                .await
+                .unwrap(),
+            amended_main
+        );
+        assert_eq!(
+            super::git_show(project_id.into(), "HEAD".into(), "appendix.tex".into())
+                .await
+                .unwrap(),
+            "appendix draft\n"
+        );
+
+        assert!(
+            super::git_create_branch(project_id.into(), "bad..branch".into())
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            super::git_create_branch(project_id.into(), "review/figures".into())
+                .await
+                .unwrap(),
+            "review/figures"
+        );
+        assert_eq!(
+            super::git_current_branch(project_id.into()).await.unwrap(),
+            branch
+        );
+        let branch_snapshot = super::git_workspace_snapshot(project_id.into())
+            .await
+            .unwrap();
+        assert!(branch_snapshot.branches.contains(&branch));
+        assert!(branch_snapshot.branches.contains(&"review/figures".into()));
+        assert_eq!(branch_snapshot.commits[0].message, "Amended paper");
+        let no_upstream = super::git_ahead_behind(project_id.into()).await.unwrap();
+        assert!(!no_upstream.has_upstream);
+        assert_eq!((no_upstream.ahead, no_upstream.behind), (0, 0));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn async_git_commands_cover_a_local_remote_and_worktree_operations() {
+        use tauri::Manager as _;
+
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("async-remote-boundary");
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "async-remote-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        let amended_main = "remote base\n";
+        write(&project, "main.tex", amended_main);
+        crate::project::write_meta(
+            project_id,
+            &crate::project::ProjectMeta {
+                name: "Async remote project".into(),
+                main_doc: "main.tex".into(),
+                engine: "tectonic".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let branch = super::git_initialize(project_id.into()).await.unwrap();
+        ok_or_err(run_git(&project, &["config", "core.autocrlf", "false"]).unwrap()).unwrap();
+        ok_or_err(
+            run_git(
+                &project,
+                &["config", "user.email", "remote-boundary@example.test"],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        ok_or_err(run_git(&project, &["config", "user.name", "Remote Boundary"]).unwrap()).unwrap();
+        super::git_stage_all(project_id.into()).await.unwrap();
+        assert!(super::git_commit(project_id.into(), "Remote base".into())
+            .await
+            .unwrap());
+
+        assert!(super::git_fetch(project_id.into())
+            .await
+            .unwrap_err()
+            .contains("No remote"));
+        assert!(
+            super::git_set_remote(project_id.into(), "file:///tmp/not-allowed".into())
+                .await
+                .is_err()
+        );
+        let first_remote = "https://github.com/Oleafly/command-one.git";
+        let second_remote = "https://github.com/Oleafly/command-two.git";
+        super::git_set_remote(project_id.into(), first_remote.into())
+            .await
+            .unwrap();
+        assert_eq!(
+            super::git_get_remote(project_id.into())
+                .await
+                .unwrap()
+                .as_deref(),
+            Some(first_remote)
+        );
+        super::git_set_remote(project_id.into(), second_remote.into())
+            .await
+            .unwrap();
+        assert_eq!(
+            super::git_get_remote(project_id.into())
+                .await
+                .unwrap()
+                .as_deref(),
+            Some(second_remote)
+        );
+        super::git_remove_remote(project_id.into()).await.unwrap();
+        super::git_remove_remote(project_id.into()).await.unwrap();
+        assert!(super::git_get_remote(project_id.into())
+            .await
+            .unwrap()
+            .is_none());
+
+        let remote = data.join("origin.git");
+        std::fs::create_dir(&remote).unwrap();
+        ok_or_err(run_git(&remote, &["init", "--bare", "--quiet"]).unwrap()).unwrap();
+        let remote_path = remote.to_string_lossy().into_owned();
+        ok_or_err(run_git(&project, &["remote", "add", "origin", &remote_path]).unwrap()).unwrap();
+        ok_or_err(run_git(&project, &["push", "--quiet", "-u", "origin", &branch]).unwrap())
+            .unwrap();
+        let remote_head = format!("refs/heads/{branch}");
+        ok_or_err(run_git(&remote, &["symbolic-ref", "HEAD", &remote_head]).unwrap()).unwrap();
+        let synchronized = super::git_ahead_behind(project_id.into()).await.unwrap();
+        assert!(synchronized.has_upstream);
+        assert_eq!((synchronized.ahead, synchronized.behind), (0, 0));
+
+        let publisher = data.join("publisher");
+        let publisher_path = publisher.to_string_lossy().into_owned();
+        ok_or_err(run_git(&data, &["clone", "--quiet", &remote_path, &publisher_path]).unwrap())
+            .unwrap();
+        ok_or_err(run_git(&publisher, &["config", "core.autocrlf", "false"]).unwrap()).unwrap();
+        ok_or_err(
+            run_git(
+                &publisher,
+                &["config", "user.email", "publisher@example.test"],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        ok_or_err(run_git(&publisher, &["config", "user.name", "Remote Publisher"]).unwrap())
+            .unwrap();
+        write(&publisher, "remote-note.tex", "from remote\n");
+        stage_all(&publisher).unwrap();
+        assert!(commit_index(&publisher, "Remote note").unwrap());
+        ok_or_err(run_git(&publisher, &["push", "--quiet", "origin", &branch]).unwrap()).unwrap();
+
+        assert_eq!(
+            super::git_fetch(project_id.into()).await.unwrap(),
+            "Fetched origin"
+        );
+        let behind = super::git_ahead_behind(project_id.into()).await.unwrap();
+        assert!(behind.has_upstream);
+        assert_eq!((behind.ahead, behind.behind), (0, 1));
+
+        let app = tauri::test::mock_builder()
+            .manage(crate::state::AppState::default())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let pulled = super::git_pull_with_runtime(
+            app.handle().clone(),
+            app.state::<crate::state::AppState>(),
+            project_id.into(),
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(pulled.outcome, "pulled");
+        assert_eq!(pulled.message, format!("Pulled origin/{branch}"));
+        assert!(pulled.conflicts.is_empty());
+        assert_eq!(pulled.state.reason, "git-pull");
+        assert!(pulled.state.files_changed);
+        assert_eq!(
+            std::fs::read_to_string(project.join("remote-note.tex")).unwrap(),
+            "from remote\n"
+        );
+        let after_pull = super::git_ahead_behind(project_id.into()).await.unwrap();
+        assert_eq!((after_pull.ahead, after_pull.behind), (0, 0));
+
+        write(&project, "local-note.tex", "from local\n");
+        super::git_stage(project_id.into(), "local-note.tex".into())
+            .await
+            .unwrap();
+        assert!(super::git_commit(project_id.into(), "Local note".into())
+            .await
+            .unwrap());
+        let ahead = super::git_ahead_behind(project_id.into()).await.unwrap();
+        assert!(ahead.has_upstream);
+        assert_eq!((ahead.ahead, ahead.behind), (1, 0));
+        let remote_snapshot = super::git_workspace_snapshot(project_id.into())
+            .await
+            .unwrap();
+        assert_eq!(
+            remote_snapshot.remote.as_deref(),
+            Some(remote_path.as_str())
+        );
+        assert_eq!(remote_snapshot.ahead_behind.ahead, 1);
+        assert_eq!(remote_snapshot.commits[0].message, "Local note");
+
+        write(&project, "main.tex", "worktree draft\n");
+        write(&project, "scratch.tex", "untracked scratch\n");
+        let stashed = super::run_git_worktree_operation(
+            app.handle().clone(),
+            app.state::<crate::state::AppState>(),
+            project_id.into(),
+            None,
+            "git-stash-push",
+            super::stash_push_at,
+        )
+        .await
+        .unwrap();
+        assert_eq!(stashed.outcome, "stashed");
+        assert_eq!(stashed.message, "Saved changes to the stash.");
+        assert_eq!(stashed.project_state.reason, "git-stash-push");
+        assert!(stashed.project_state.mutation_generation.is_some());
+        assert_eq!(
+            std::fs::read_to_string(project.join("main.tex")).unwrap(),
+            amended_main
+        );
+        assert!(!project.join("scratch.tex").exists());
+        assert!(super::git_status(project_id.into())
+            .await
+            .unwrap()
+            .is_empty());
+
+        let applied = super::run_git_worktree_operation(
+            app.handle().clone(),
+            app.state::<crate::state::AppState>(),
+            project_id.into(),
+            None,
+            "git-stash-pop",
+            super::stash_pop_at,
+        )
+        .await
+        .unwrap();
+        assert_eq!(applied.outcome, "applied");
+        assert_eq!(applied.message, "Applied the latest stash.");
+        assert_eq!(applied.project_state.reason, "git-stash-pop");
+        assert_eq!(
+            std::fs::read_to_string(project.join("main.tex")).unwrap(),
+            "worktree draft\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(project.join("scratch.tex")).unwrap(),
+            "untracked scratch\n"
+        );
+        let restored_changes = super::git_status(project_id.into()).await.unwrap();
+        assert!(restored_changes
+            .iter()
+            .any(|change| change.path == "main.tex" && !change.staged));
+        assert!(restored_changes
+            .iter()
+            .any(|change| change.path == "scratch.tex" && !change.staged));
+
+        let publish_id = "async-publish-project";
+        let publish_project = data.join("projects").join(publish_id);
+        std::fs::create_dir(&publish_project).unwrap();
+        write(&publish_project, "main.tex", "publish me\n");
+        assert!(
+            super::git_prepare_publish(publish_id.into(), "Publish project".into())
+                .await
+                .unwrap()
+        );
+        assert!(super::git_is_initialized(publish_id.into()).await.unwrap());
+        assert_eq!(super::git_log(publish_id.into()).await.unwrap().len(), 1);
+        assert!(
+            !super::git_prepare_publish(publish_id.into(), "No changes".into())
+                .await
+                .unwrap()
+        );
     }
 
     #[test]
@@ -2614,6 +3391,323 @@ mod tests {
         assert!(discard_paths_at(&root, &[".oleafly/state".to_string()]).is_err());
         assert!(validate_repo_relative_path("sections/.git/config").is_err());
         assert!(validate_repo_relative_path("../outside.tex").is_err());
+    }
+
+    #[test]
+    fn discard_preflights_every_path_before_changing_the_worktree() {
+        let root = temp_repo();
+        write(&root, "tracked.tex", "committed\n");
+        stage(&root, "tracked.tex").unwrap();
+        commit_index(&root, "initial").unwrap();
+        write(&root, "tracked.tex", "working copy\n");
+        write(&root, "untracked.tex", "draft\n");
+
+        let result = discard_paths_at(
+            &root,
+            &[
+                "tracked.tex".to_string(),
+                "untracked.tex".to_string(),
+                "missing.tex".to_string(),
+            ],
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            std::fs::read_to_string(root.join("tracked.tex")).unwrap(),
+            "working copy\n",
+            "a later invalid path must not restore an earlier tracked file"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("untracked.tex")).unwrap(),
+            "draft\n",
+            "a later invalid path must not delete an earlier untracked file"
+        );
+    }
+
+    #[test]
+    fn discard_removes_a_path_alias_only_once() {
+        let root = temp_repo();
+        write(&root, "draft.tex", "draft\n");
+
+        discard_paths_at(&root, &["draft.tex".to_string(), "./draft.tex".to_string()]).unwrap();
+
+        assert!(!root.join("draft.tex").exists());
+    }
+
+    #[test]
+    fn repository_internal_paths_are_rejected_case_insensitively() {
+        assert!(validate_repo_relative_path(".GIT/config").is_err());
+        assert!(validate_repo_relative_path("sections/.OLEAFLY/state").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_rejects_an_untracked_path_through_a_symlinked_directory() {
+        let root = temp_repo();
+        let outside = temp_dir("discard-symlink-outside");
+        write(&outside, "keep.tex", "outside\n");
+        std::os::unix::fs::symlink(&outside, root.join("escape")).unwrap();
+
+        let result = discard_paths_at(&root, &["escape/keep.tex".to_string()]);
+
+        assert!(result.is_err());
+        assert_eq!(
+            std::fs::read_to_string(outside.join("keep.tex")).unwrap(),
+            "outside\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_rejects_a_path_through_an_internal_directory_alias() {
+        let root = temp_repo();
+        let config = root.join(".git/config");
+        let before = std::fs::read(&config).unwrap();
+        std::os::unix::fs::symlink(".git", root.join("git-alias")).unwrap();
+
+        let result = discard_paths_at(&root, &["git-alias/config".to_string()]);
+
+        assert!(result.is_err());
+        assert_eq!(std::fs::read(config).unwrap(), before);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_unlinks_a_final_symlink_without_following_its_external_target() {
+        let root = temp_repo();
+        let outside = temp_dir("discard-final-symlink-target");
+        write(&outside, "keep.tex", "outside\n");
+        std::os::unix::fs::symlink(outside.join("keep.tex"), root.join("external-link.tex"))
+            .unwrap();
+
+        discard_paths_at(&root, &["external-link.tex".to_string()]).unwrap();
+
+        assert!(!root.join("external-link.tex").exists());
+        assert_eq!(
+            std::fs::read_to_string(outside.join("keep.tex")).unwrap(),
+            "outside\n"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn discard_removes_an_untracked_directory_link_without_touching_its_target() {
+        let root = temp_repo();
+        let outside = temp_dir("discard-windows-directory-link-target");
+        write(&outside, "keep.tex", "outside\n");
+        let link = root.join("directory-link");
+        if let Err(error) = std::os::windows::fs::symlink_dir(&outside, &link) {
+            eprintln!("skipping directory-link discard test: {error}");
+            return;
+        }
+
+        discard_paths_at(&root, &["directory-link".to_string()]).unwrap();
+
+        assert_eq!(
+            std::fs::symlink_metadata(link).unwrap_err().kind(),
+            std::io::ErrorKind::NotFound
+        );
+        assert_eq!(
+            std::fs::read_to_string(outside.join("keep.tex")).unwrap(),
+            "outside\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_accepts_two_directory_aliases_for_the_same_entry() {
+        let root = temp_repo();
+        std::fs::create_dir(root.join("actual")).unwrap();
+        write(&root, "actual/draft.tex", "draft\n");
+        std::os::unix::fs::symlink("actual", root.join("alias")).unwrap();
+
+        discard_paths_at(
+            &root,
+            &[
+                "actual/draft.tex".to_string(),
+                "alias/draft.tex".to_string(),
+            ],
+        )
+        .unwrap();
+
+        assert!(!root.join("actual/draft.tex").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_restores_a_tracked_file_reached_through_a_directory_alias() {
+        let root = temp_repo();
+        std::fs::create_dir(root.join("actual")).unwrap();
+        write(&root, "actual/tracked.tex", "committed\n");
+        stage(&root, "actual/tracked.tex").unwrap();
+        commit_index(&root, "initial").unwrap();
+        write(&root, "actual/tracked.tex", "working copy\n");
+        std::os::unix::fs::symlink("actual", root.join("alias")).unwrap();
+
+        discard_paths_at(&root, &["alias/tracked.tex".to_string()]).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(root.join("actual/tracked.tex")).unwrap(),
+            "committed\n"
+        );
+        assert!(root.join("alias").is_symlink());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_classifies_mixed_paths_reached_through_a_directory_alias() {
+        let root = temp_repo();
+        std::fs::create_dir(root.join("actual")).unwrap();
+        write(&root, "actual/tracked.tex", "committed\n");
+        stage(&root, "actual/tracked.tex").unwrap();
+        commit_index(&root, "initial").unwrap();
+        write(&root, "actual/tracked.tex", "working copy\n");
+        write(&root, "actual/draft.tex", "draft\n");
+        std::os::unix::fs::symlink("actual", root.join("alias")).unwrap();
+
+        discard_paths_at(
+            &root,
+            &[
+                "actual/tracked.tex".to_string(),
+                "alias/tracked.tex".to_string(),
+                "alias/draft.tex".to_string(),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(root.join("actual/tracked.tex")).unwrap(),
+            "committed\n"
+        );
+        assert!(!root.join("actual/draft.tex").exists());
+    }
+
+    #[test]
+    fn discard_rejects_a_case_alias_for_a_tracked_file() {
+        let root = temp_repo();
+        write(&root, "README.md", "committed\n");
+        stage(&root, "README.md").unwrap();
+        commit_index(&root, "initial").unwrap();
+        write(&root, "README.md", "working copy\n");
+
+        let error = discard_paths_at(&root, &["readme.md".to_string()]).unwrap_err();
+
+        assert!(error.contains("use the file's exact name"));
+        assert_eq!(
+            std::fs::read_to_string(root.join("README.md")).unwrap(),
+            "working copy\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_prefers_an_exact_name_when_case_variants_both_exist() {
+        let root = temp_repo();
+        write(&root, "README.md", "upper seed\n");
+        write(&root, "readme.md", "lower seed\n");
+        let variants: Vec<String> = std::fs::read_dir(&root)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter_map(|entry| entry.file_name().into_string().ok())
+            .filter(|name| name.eq_ignore_ascii_case("readme.md"))
+            .collect();
+        if variants.len() < 2 {
+            // The host filesystem is case-insensitive, so it cannot represent
+            // this otherwise valid Git worktree shape.
+            return;
+        }
+        let other = &variants[0];
+        let requested = &variants[1];
+        write(&root, other, "other\n");
+        write(&root, requested, "committed\n");
+        stage(&root, requested).unwrap();
+        commit_index(&root, "initial").unwrap();
+        write(&root, requested, "working copy\n");
+
+        discard_paths_at(&root, std::slice::from_ref(requested)).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(root.join(requested)).unwrap(),
+            "committed\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join(other)).unwrap(),
+            "other\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_restores_a_deleted_tracked_case_variant_without_removing_its_sibling() {
+        let root = temp_repo();
+        write(&root, "README.md", "committed\n");
+        write(&root, "readme.md", "untracked sibling\n");
+        let variant_count = std::fs::read_dir(&root)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter_map(|entry| entry.file_name().into_string().ok())
+            .filter(|name| name.eq_ignore_ascii_case("readme.md"))
+            .count();
+        if variant_count < 2 {
+            // The host filesystem is case-insensitive, so it cannot represent
+            // this otherwise valid Git worktree shape.
+            return;
+        }
+        stage(&root, "README.md").unwrap();
+        commit_index(&root, "initial").unwrap();
+        std::fs::remove_file(root.join("README.md")).unwrap();
+
+        discard_paths_at(&root, &["README.md".to_string()]).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(root.join("README.md")).unwrap(),
+            "committed\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("readme.md")).unwrap(),
+            "untracked sibling\n"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_rejects_a_case_alias_for_a_tracked_final_symlink() {
+        let root = temp_repo();
+        std::os::unix::fs::symlink("first.tex", root.join("Paper.tex")).unwrap();
+        stage(&root, "Paper.tex").unwrap();
+        commit_index(&root, "initial").unwrap();
+        std::fs::remove_file(root.join("Paper.tex")).unwrap();
+        std::os::unix::fs::symlink("second.tex", root.join("Paper.tex")).unwrap();
+
+        let error = discard_paths_at(&root, &["paper.tex".to_string()]).unwrap_err();
+
+        assert!(error.contains("use the file's exact name"));
+        assert_eq!(
+            std::fs::read_link(root.join("Paper.tex")).unwrap(),
+            PathBuf::from("second.tex")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discard_keeps_distinct_symlink_entries_distinct() {
+        let root = temp_repo();
+        write(&root, "target.tex", "keep\n");
+        std::os::unix::fs::symlink("target.tex", root.join("first-link.tex")).unwrap();
+        std::os::unix::fs::symlink("target.tex", root.join("second-link.tex")).unwrap();
+
+        discard_paths_at(
+            &root,
+            &["first-link.tex".to_string(), "second-link.tex".to_string()],
+        )
+        .unwrap();
+
+        assert!(!root.join("first-link.tex").exists());
+        assert!(!root.join("second-link.tex").exists());
+        assert_eq!(
+            std::fs::read_to_string(root.join("target.tex")).unwrap(),
+            "keep\n"
+        );
     }
 
     #[test]
