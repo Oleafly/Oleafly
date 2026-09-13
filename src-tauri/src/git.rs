@@ -2261,6 +2261,13 @@ mod tests {
         );
     }
 
+    #[test]
+    fn git_worktree_fixture_comparisons_accept_windows_line_endings() {
+        let root = temp_dir("line-endings");
+        write(&root, "paper.tex", "first\r\nsecond\r\n");
+        assert_eq!(read_text_with_lf(root.join("paper.tex")), "first\nsecond\n");
+    }
+
     /// Create a throwaway git repo in a temp dir with a fixed identity.
     fn temp_repo() -> PathBuf {
         let n = COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -2288,6 +2295,10 @@ mod tests {
 
     fn write(root: &Path, name: &str, content: &str) {
         std::fs::write(root.join(name), content).unwrap();
+    }
+
+    fn read_text_with_lf(path: impl AsRef<Path>) -> String {
+        std::fs::read_to_string(path).unwrap().replace("\r\n", "\n")
     }
 
     struct TestDataDirOverride {
@@ -2954,7 +2965,7 @@ mod tests {
         assert_eq!(pulled.state.reason, "git-pull");
         assert!(pulled.state.files_changed);
         assert_eq!(
-            std::fs::read_to_string(project.join("remote-note.tex")).unwrap(),
+            read_text_with_lf(project.join("remote-note.tex")),
             "from remote\n"
         );
         let after_pull = super::git_ahead_behind(project_id.into()).await.unwrap();
@@ -2996,10 +3007,7 @@ mod tests {
         assert_eq!(stashed.message, "Saved changes to the stash.");
         assert_eq!(stashed.project_state.reason, "git-stash-push");
         assert!(stashed.project_state.mutation_generation.is_some());
-        assert_eq!(
-            std::fs::read_to_string(project.join("main.tex")).unwrap(),
-            amended_main
-        );
+        assert_eq!(read_text_with_lf(project.join("main.tex")), amended_main);
         assert!(!project.join("scratch.tex").exists());
         assert!(super::git_status(project_id.into())
             .await
@@ -3020,11 +3028,11 @@ mod tests {
         assert_eq!(applied.message, "Applied the latest stash.");
         assert_eq!(applied.project_state.reason, "git-stash-pop");
         assert_eq!(
-            std::fs::read_to_string(project.join("main.tex")).unwrap(),
+            read_text_with_lf(project.join("main.tex")),
             "worktree draft\n"
         );
         assert_eq!(
-            std::fs::read_to_string(project.join("scratch.tex")).unwrap(),
+            read_text_with_lf(project.join("scratch.tex")),
             "untracked scratch\n"
         );
         let restored_changes = super::git_status(project_id.into()).await.unwrap();
