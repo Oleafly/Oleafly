@@ -19,7 +19,7 @@
 
 永久免费 · 开源 · 无需账户 · 无需注册 · 无跟踪
 
-**写下一篇论文时，少做些琐事。**
+**在现代科学写作工作空间中，减少琐事，写好你的下一篇论文。**
 
 Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Markdown 撰写论文。你可以在同一处查找资料、管理引文，并看到论文逐步成形。让 AI 助手修改一个章节、制作一幅图，或修复失败的构建；你可以审阅每一项改动。项目保存在你拥有的普通文件中，编辑器可在启用或不启用 AI 的情况下使用。
 
@@ -122,26 +122,77 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 <img src="../assets/readme/checkpoints.png" alt="保存在 Oleafly 中的项目检查点" width="100%" />
 
+<p align="center">
+  <img src="../assets/readme/source-control.png" alt="Oleafly 源代码管理面板，显示更改、分支和提交" width="100%" />
+</p>
+<p align="center"><em>无需离开项目，即可查看更改、分支、历史记录和提交。</em></p>
+
+## 工作空间的更多功能
+
+### 从已有工作开始
+
+创建研究项目、导入现有项目，或选择可编辑的模板。开始页面帮助你为论文、学位论文、报告、演示文稿和其他科学文档选择合适的起点。
+
+<img src="../assets/readme/start-work.png" alt="Oleafly 开始页面，可选择研究项目、导入项目或模板" width="100%" />
+
+### 使用 LaTeX、Typst 或 Markdown 编译
+
+为每个项目选择引擎。Tectonic 随应用提供，适合便携式离线构建；`latexmk` 使用已有的 TeX 发行版；Typst 直接编译；Markdown 使用 Pandoc 进行转换。界面会显示当前引擎的实际能力。
+
+<img src="../assets/readme/compile-engines.png" alt="Oleafly 中 LaTeX、Typst、Markdown 和 TeX 发行版的引擎设置" width="100%" />
+
+### 同时阅读源文件和 PDF
+
+源文件始终是主要表示形式，PDF 查看器则显示在旁边。引擎支持时，可以通过 SyncTeX 在源代码行和 PDF 页面之间跳转。编译失败不会自动替换最后一个可读的 PDF。
+
+<img src="../assets/readme/source-and-pdf.png" alt="Oleafly 同时显示论文源文件和编译后的 PDF" width="100%" />
+<img src="../assets/readme/pdf-preview.png" alt="Oleafly 源代码编辑器旁的 PDF 预览" width="100%" />
+
+### 重用研究 Skills
+
+Skills 是普通的 `SKILL.md` 文件夹，用于文献、写作、图形、审阅、投稿和其他工作流。可以用斜杠命令运行它们，保存有效的工作流，或与兼容的代理共享。
+
+<img src="../assets/readme/skills.png" alt="Oleafly 中可重用的研究和写作工作流 Skills" width="100%" />
+
+### 在一个工具库中查找工具和命令
+
+工具库包含 PDF、arXiv、图像、HTML、Word、Markdown、Typst、表格和公式转换工具，也包括 BibTeX、文献、统计、写作、实验室和会议工具。命令面板可以搜索项目、文档、设置和工具；输入 `/` 可只筛选命令。
+
+<img src="../assets/readme/command-palette.png" alt="Oleafly 命令面板，可搜索项目、文档、命令和工具" width="100%" />
+<img src="../assets/readme/tools-gallery.png" alt="Oleafly 工具库，展示研究和文档工具" width="100%" />
+
+### 在论文旁边使用终端
+
+每个项目最多可打开十个 Shell 标签页，为它们命名，并在当前文件夹中运行脚本、数据分析或其他 CLI 工具。内置浏览器用于 computer use 任务，并与论文窗口分开。
+
+<img src="../assets/readme/project-terminal.png" alt="Oleafly 在论文项目旁打开终端" width="100%" />
+
+### 提供商连接由你明确选择
+
+项目文件、索引、本地编译、PDF 预览、检查、Git 和检查点都留在你的电脑上。只有在你选择文献搜索、GitHub、托管 AI 或下载等操作时才会访问网络。本地 Ollama 模型会让模型通信留在你的电脑上。
+
+<img src="../assets/readme/provider-boundaries.png" alt="Oleafly 提供商设置与项目文件分开" width="100%" />
+
 ## 支持的 CLI 代理
 
 将已在使用的代理带入助手，并通过它自己的账户工作。在设置中选择它、登录，然后让它处理打开的项目。Oleafly 的内置目录包含以下 14 个代理：
 
 | 代理 | CLI 命令 |
 | --- | --- |
-| Claude Code | `claude` |
-| Codex CLI | `codex` |
-| Gemini CLI | `gemini` |
-| Cursor | `agent` |
-| OpenCode | `opencode` |
-| Pi | `pi` |
-| Cline | `cline` |
-| OpenClaw | `openclaw` |
-| Hermes Agent | `hermes` |
-| CodeBuddy | `codebuddy` |
-| Kimi Code | `kimi` |
-| Grok Build | `grok` |
-| DeepSeek Harness | `dsh` |
-| Qoder | `qodercli` |
+| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" align="middle" /> Claude Code | `claude` |
+| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" align="middle" /> Codex CLI | `codex` |
+| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" align="middle" /> Gemini CLI | `gemini` |
+| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" align="middle" /> Cursor | `agent` |
+| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" align="middle" /> OpenCode | `opencode` |
+| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" align="middle" /> Pi | `pi` |
+| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" align="middle" /> Cline | `cline` |
+| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" align="middle" /> OpenClaw | `openclaw` |
+| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" align="middle" /> Hermes Agent | `hermes` |
+| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" align="middle" /> CodeBuddy | `codebuddy` |
+| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" align="middle" /> Kimi Code | `kimi` |
+| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" align="middle" /> Grok Build | `grok` |
+| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" align="middle" /> DeepSeek Harness | `dsh` |
+| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" align="middle" /> Qoder | `qodercli` |
 
 CLI 代理支持处于 beta 阶段。可通过设置中的注册表发现更多兼容代理。还可以通过 [MCP](../mcp.md) 连接外部助手。
 
@@ -158,11 +209,12 @@ Oleafly 希望成为一个相连的研究工作空间：塑造问题的阅读材
 
 免费且开源。无需账户。
 
-| 平台 | 下载 |
-| --- | --- |
-| macOS · Apple Silicon | [DMG](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | [MSI 或 EXE](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 或 ARM64 | [AppImage 或 DEB](https://github.com/Oleafly/Oleafly/releases/latest) |
+| 平台 | 软件包 | 下载 |
+| --- | --- | --- |
+| macOS · Apple Silicon | DMG | [![下载 macOS 版](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI 或 EXE | [![下载 Windows 版](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage 或 DEB | [![下载 Linux 版](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage 或 DEB | [![下载 Linux 版](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 LaTeX 使用内置 Tectonic，缓存的软件包可用于离线构建。Typst 自带编译器；Markdown 使用可从设置中获得的 Pandoc。Linux 软件包要求 glibc 2.39 或更高版本。
 

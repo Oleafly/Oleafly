@@ -19,7 +19,7 @@
 
 Gratis para siempre · Código abierto · Sin cuentas · Sin registros · Sin seguimiento
 
-**Escribe tu próximo artículo con menos trabajo administrativo.**
+**Escribe tu próximo artículo con menos trabajo administrativo en un espacio de trabajo científico moderno.**
 
 Oleafly es un espacio de trabajo de escritorio gratuito para escribir artículos en LaTeX, Typst y Markdown. Busca fuentes, gestiona citas y ve cómo toma forma tu artículo, todo en un mismo lugar. Usa un asistente de IA para revisar una sección, crear una figura o corregir una compilación fallida, con cambios que puedes revisar. Tu proyecto se guarda en archivos normales que son tuyos, y puedes usar el editor con o sin IA.
 
@@ -122,26 +122,77 @@ Las compilaciones correctas guardan puntos de control automáticos, para que pue
 
 <img src="../assets/readme/checkpoints.png" alt="Puntos de control guardados de un proyecto en Oleafly" width="100%" />
 
+<p align="center">
+  <img src="../assets/readme/source-control.png" alt="Panel de control de código fuente de Oleafly con cambios, ramas y commits" width="100%" />
+</p>
+<p align="center"><em>Consulta cambios, ramas, historial y commits sin salir del proyecto.</em></p>
+
+## Más partes del espacio de trabajo
+
+### Empieza con el trabajo que ya tienes
+
+Inicia un proyecto de investigación, importa un proyecto existente o elige una plantilla editable. El diálogo inicial te ayuda a escoger el punto de partida adecuado para artículos, tesis, informes, presentaciones y otros documentos científicos.
+
+<img src="../assets/readme/start-work.png" alt="Diálogo de Oleafly para iniciar un proyecto de investigación, una importación o una plantilla" width="100%" />
+
+### Compila con LaTeX, Typst o Markdown
+
+Elige el motor para cada proyecto. Tectonic viene incluido para compilaciones portátiles sin conexión, `latexmk` usa una distribución TeX existente, Typst compila directamente y Markdown usa Pandoc para conversiones. La interfaz muestra las capacidades reales del motor activo.
+
+<img src="../assets/readme/compile-engines.png" alt="Ajustes de Oleafly para motores LaTeX, Typst, Markdown y distribuciones TeX" width="100%" />
+
+### Lee la fuente y el PDF juntos
+
+El código fuente sigue siendo la representación principal, mientras el visor PDF permanece al lado. Cuando el motor lo admite, SyncTeX permite navegar entre una línea de código y su página en el PDF. Una compilación fallida no reemplaza automáticamente el último PDF legible.
+
+<img src="../assets/readme/source-and-pdf.png" alt="Oleafly mostrando la fuente del manuscrito y el PDF compilado juntos" width="100%" />
+<img src="../assets/readme/pdf-preview.png" alt="Vista previa del PDF junto al editor de código fuente en Oleafly" width="100%" />
+
+### Reutiliza tus skills de investigación
+
+Las skills son carpetas `SKILL.md` normales para literatura, escritura, figuras, revisión, envíos y otros flujos. Úsalas con comandos de barra, guarda un flujo que funcione o compártelo con agentes compatibles.
+
+<img src="../assets/readme/skills.png" alt="Skills de Oleafly para flujos reutilizables de investigación y escritura" width="100%" />
+
+### Herramientas y comandos en una galería
+
+La galería reúne conversión de PDF, arXiv, imágenes, HTML, Word, Markdown, Typst, tablas y ecuaciones, además de herramientas para BibTeX, literatura, estadística, escritura, laboratorios y conferencias. La paleta de comandos busca proyectos, documentos, ajustes y herramientas; escribe `/` para filtrar comandos.
+
+<img src="../assets/readme/command-palette.png" alt="Paleta de comandos de Oleafly para proyectos, documentos, comandos y herramientas" width="100%" />
+<img src="../assets/readme/tools-gallery.png" alt="Galería de herramientas de Oleafly con herramientas de investigación y documentos" width="100%" />
+
+### Un terminal junto al artículo
+
+Abre hasta diez pestañas de shell por proyecto, asígnales nombre y ejecuta scripts, análisis de datos u otras herramientas CLI en la carpeta activa. El navegador integrado está pensado para tareas de computer use y permanece separado de la ventana del manuscrito.
+
+<img src="../assets/readme/project-terminal.png" alt="Terminal de Oleafly junto a un proyecto de manuscrito" width="100%" />
+
+### Las conexiones a proveedores son explícitas
+
+Los archivos del proyecto, el índice, la compilación local, la vista previa PDF, las comprobaciones, Git y los puntos de control permanecen en tu ordenador. La red solo se usa para acciones que eliges, como buscar literatura, GitHub, IA alojada o descargas. Los modelos locales de Ollama mantienen el tráfico del modelo en tu ordenador.
+
+<img src="../assets/readme/provider-boundaries.png" alt="Ajustes de proveedores de Oleafly separados de los archivos del proyecto" width="100%" />
+
 ## Agentes CLI compatibles
 
 Trae al asistente un agente que ya usas y trabaja con su propia cuenta. Elígelo en Ajustes, inicia sesión y ponlo a trabajar en el proyecto abierto. El catálogo integrado de Oleafly incluye estos 14 agentes:
 
 | Agente | Comando CLI |
 | --- | --- |
-| Claude Code | `claude` |
-| Codex CLI | `codex` |
-| Gemini CLI | `gemini` |
-| Cursor | `agent` |
-| OpenCode | `opencode` |
-| Pi | `pi` |
-| Cline | `cline` |
-| OpenClaw | `openclaw` |
-| Hermes Agent | `hermes` |
-| CodeBuddy | `codebuddy` |
-| Kimi Code | `kimi` |
-| Grok Build | `grok` |
-| DeepSeek Harness | `dsh` |
-| Qoder | `qodercli` |
+| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" align="middle" /> Claude Code | `claude` |
+| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" align="middle" /> Codex CLI | `codex` |
+| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" align="middle" /> Gemini CLI | `gemini` |
+| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" align="middle" /> Cursor | `agent` |
+| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" align="middle" /> OpenCode | `opencode` |
+| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" align="middle" /> Pi | `pi` |
+| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" align="middle" /> Cline | `cline` |
+| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" align="middle" /> OpenClaw | `openclaw` |
+| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" align="middle" /> Hermes Agent | `hermes` |
+| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" align="middle" /> CodeBuddy | `codebuddy` |
+| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" align="middle" /> Kimi Code | `kimi` |
+| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" align="middle" /> Grok Build | `grok` |
+| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" align="middle" /> DeepSeek Harness | `dsh` |
+| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" align="middle" /> Qoder | `qodercli` |
 
 La compatibilidad con agentes CLI está en beta. Descubre más agentes compatibles mediante el registro en Ajustes. También puedes conectar un asistente externo mediante [MCP](../mcp.md).
 
@@ -158,11 +209,12 @@ En la hoja de ruta están la colaboración y los comentarios en directo, una int
 
 Gratuito y de código abierto. No requiere cuenta.
 
-| Plataforma | Descarga |
-| --- | --- |
-| macOS · Apple Silicon | [DMG](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | [MSI o EXE](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 o ARM64 | [AppImage o DEB](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Plataforma | Paquete | Descarga |
+| --- | --- | --- |
+| macOS · Apple Silicon | DMG | [![Descargar para macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI o EXE | [![Descargar para Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage o DEB | [![Descargar para Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage o DEB | [![Descargar para Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 LaTeX usa Tectonic incluido, con paquetes en caché disponibles para compilaciones sin conexión. Typst incluye un compilador; Markdown usa Pandoc, disponible desde Ajustes. Los paquetes de Linux requieren glibc 2.39 o una versión posterior.
 

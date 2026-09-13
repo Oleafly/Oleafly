@@ -19,7 +19,7 @@
 
 永久無料 · オープンソース · アカウント不要 · サインアップ不要 · トラッキングなし
 
-**面倒な作業を減らして、次の論文を書こう。**
+**面倒な作業を減らして、モダンな科学執筆ワークスペースで次の論文を書こう。**
 
 Oleaflyは、LaTeX、Typst、Markdownで論文を書くための無料デスクトップワークスペースです。文献を探し、引用を管理し、論文が形になっていく様子をひとつの場所で確認できます。AIアシスタントに節の推敲、図の作成、失敗したビルドの修正を頼めます。変更内容は確認してから取り込めます。プロジェクトはあなたが所有する通常のファイルとして保存され、AIの有無にかかわらずエディタを使えます。
 
@@ -122,26 +122,77 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 <img src="../assets/readme/checkpoints.png" alt="Oleaflyに保存されたプロジェクトのチェックポイント" width="100%" />
 
+<p align="center">
+  <img src="../assets/readme/source-control.png" alt="変更、ブランチ、コミットを表示するOleaflyのソース管理パネル" width="100%" />
+</p>
+<p align="center"><em>プロジェクトを離れずに、変更、ブランチ、履歴、コミットを確認できます。</em></p>
+
+## ワークスペースのその他の機能
+
+### すでにある作業から始める
+
+研究プロジェクトを新しく作成するか、既存のプロジェクトを取り込むか、編集可能なテンプレートを選べます。開始画面から、論文、学位論文、レポート、プレゼンテーションなどに合った出発点を選べます。
+
+<img src="../assets/readme/start-work.png" alt="研究プロジェクト、インポート、テンプレートを選ぶOleaflyの開始画面" width="100%" />
+
+### LaTeX、Typst、Markdownでコンパイルする
+
+プロジェクトごとにエンジンを選択できます。Tectonicはポータブルなオフラインビルド用に同梱され、`latexmk`は既存のTeXディストリビューションを使い、Typstは直接コンパイルし、Markdownは変換にPandocを使います。現在のエンジンが持つ機能も画面で確認できます。
+
+<img src="../assets/readme/compile-engines.png" alt="LaTeX、Typst、Markdown、TeXディストリビューションのOleaflyエンジン設定" width="100%" />
+
+### ソースとPDFを並べて読む
+
+ソースが基準となる表示で、PDFビューアを隣に置けます。エンジンが対応していれば、SyncTeXでソース行とPDFページを行き来できます。コンパイルに失敗しても、最後に読めたPDFが自動的に置き換わることはありません。
+
+<img src="../assets/readme/source-and-pdf.png" alt="原稿のソースとコンパイル済みPDFを並べて表示するOleafly" width="100%" />
+<img src="../assets/readme/pdf-preview.png" alt="Oleaflyのソースエディタの隣に表示されたPDFプレビュー" width="100%" />
+
+### 研究ワークフローを再利用するSkills
+
+Skillsは、文献調査、執筆、図、レビュー、投稿などに使える通常の`SKILL.md`フォルダーです。スラッシュコマンドで呼び出したり、うまくいった手順を保存したり、対応するエージェントと共有したりできます。
+
+<img src="../assets/readme/skills.png" alt="研究と執筆のワークフローを再利用するOleaflyのSkills" width="100%" />
+
+### ツールとコマンドをひとつのギャラリーに
+
+ギャラリーには、PDF、arXiv、画像、HTML、Word、Markdown、Typst、表、数式の変換ツールに加えて、BibTeX、文献、統計、執筆、研究機関、学会締切のツールがあります。コマンドパレットではプロジェクト、文書、設定、ツールを検索でき、`/`でコマンドだけに絞り込めます。
+
+<img src="../assets/readme/command-palette.png" alt="プロジェクト、文書、コマンド、ツールを検索するOleaflyのコマンドパレット" width="100%" />
+<img src="../assets/readme/tools-gallery.png" alt="研究と文書のツールを集めたOleaflyのツールギャラリー" width="100%" />
+
+### 論文の隣にターミナルを置く
+
+プロジェクトごとに最大10個のシェルタブを開き、名前を付けて、スクリプトやデータ分析、その他のCLIツールを現在のフォルダーで実行できます。内蔵ブラウザーはcomputer useタスク向けで、原稿のウィンドウとは分離されています。
+
+<img src="../assets/readme/project-terminal.png" alt="原稿プロジェクトの隣で開いたOleaflyのターミナル" width="100%" />
+
+### プロバイダー接続は明示的に管理する
+
+プロジェクトファイル、インデックス、ローカルコンパイル、PDFプレビュー、チェック、Git、チェックポイントはコンピューターに残ります。ネットワークを使うのは、文献検索、GitHub、ホスト型AI、ダウンロードなど、選んだ操作だけです。ローカルのOllamaモデルならモデル通信もコンピューター内に留まります。
+
+<img src="../assets/readme/provider-boundaries.png" alt="プロジェクトファイルとは分離されたOleaflyのプロバイダー設定" width="100%" />
+
 ## 対応するCLIエージェント
 
 すでに使っているエージェントをアシスタントに取り込み、そのアカウントで作業できます。設定で選び、サインインして、開いているプロジェクトに取り組ませます。Oleaflyの組み込みカタログには、次の14エージェントが含まれます。
 
 | エージェント | CLIコマンド |
 | --- | --- |
-| Claude Code | `claude` |
-| Codex CLI | `codex` |
-| Gemini CLI | `gemini` |
-| Cursor | `agent` |
-| OpenCode | `opencode` |
-| Pi | `pi` |
-| Cline | `cline` |
-| OpenClaw | `openclaw` |
-| Hermes Agent | `hermes` |
-| CodeBuddy | `codebuddy` |
-| Kimi Code | `kimi` |
-| Grok Build | `grok` |
-| DeepSeek Harness | `dsh` |
-| Qoder | `qodercli` |
+| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" align="middle" /> Claude Code | `claude` |
+| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" align="middle" /> Codex CLI | `codex` |
+| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" align="middle" /> Gemini CLI | `gemini` |
+| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" align="middle" /> Cursor | `agent` |
+| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" align="middle" /> OpenCode | `opencode` |
+| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" align="middle" /> Pi | `pi` |
+| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" align="middle" /> Cline | `cline` |
+| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" align="middle" /> OpenClaw | `openclaw` |
+| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" align="middle" /> Hermes Agent | `hermes` |
+| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" align="middle" /> CodeBuddy | `codebuddy` |
+| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" align="middle" /> Kimi Code | `kimi` |
+| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" align="middle" /> Grok Build | `grok` |
+| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" align="middle" /> DeepSeek Harness | `dsh` |
+| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" align="middle" /> Qoder | `qodercli` |
 
 CLIエージェントのサポートはbetaです。設定のレジストリから、さらに対応するエージェントを見つけられます。[MCP](../mcp.md)を通じて外部アシスタントに接続することもできます。
 
@@ -158,11 +209,12 @@ Oleaflyが目指すのは、つながったリサーチワークスペースで�
 
 無料かつオープンソースです。アカウントは不要です。
 
-| プラットフォーム | ダウンロード |
-| --- | --- |
-| macOS · Apple Silicon | [DMG](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | [MSIまたはEXE](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64またはARM64 | [AppImageまたはDEB](https://github.com/Oleafly/Oleafly/releases/latest) |
+| プラットフォーム | パッケージ | ダウンロード |
+| --- | --- | --- |
+| macOS · Apple Silicon | DMG | [![macOS向けダウンロード](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSIまたはEXE | [![Windows向けダウンロード](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImageまたはDEB | [![Linux向けダウンロード](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImageまたはDEB | [![Linux向けダウンロード](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 LaTeXは同梱のTectonicを使い、オフラインビルド用のキャッシュ済みパッケージも利用できます。Typstにはコンパイラが同梱されています。Markdownは、設定から利用できるPandocを使います。Linuxパッケージにはglibc 2.39以降が必要です。
 

@@ -12,7 +12,7 @@
 
 [![Open issues](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE) [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
-**Write, compile, and review research documents in one desktop workspace.**
+**Write your next paper with less busywork with a modern scientific writing workspace.**
 
 Oleafly is a free, open-source app for research writing. Use it for papers, theses, reports, presentations, books, resumes, and other technical documents. Work in LaTeX, Typst, or Markdown. The source, PDF, citations, figures, checks, Git history, and optional AI tools stay in the same project.
 
@@ -279,6 +279,11 @@ Preflight is a set of machine checks, not a conformance certificate. It cannot j
 Oleafly works with a normal Git repository. The Source Control panel can initialize a repository, show unified or side-by-side diffs, stage files, discard changes, commit, push, pull, and show ahead or behind state for a remote. You can also publish a project to GitHub or connect an existing repository.
 
 Saving, compiling, or closing a project never creates a commit. Oleafly does not hide the source from your terminal or edit the project's `.gitignore` just to make its own metadata disappear.
+
+<p align="center">
+  <img src="docs/assets/readme/source-control.png" alt="Oleafly Source Control panel showing staged changes, a branch graph, and commit controls" width="100%" />
+</p>
+<p align="center"><em>See staged changes, branches, history, and commits without leaving the project.</em></p>
 
 ### Use checkpoints for quick recovery
 
