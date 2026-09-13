@@ -161,6 +161,14 @@ fn query_js(selector: &str, timeout_ms: u64, return_expr: &str) -> String {
     )
 }
 
+fn press_action_js(key: &str) -> String {
+    let key = json_str(key);
+    format!(
+        r#"el.focus(); var key={key}; var legacy={{Enter:13,Escape:27,Tab:9,Backspace:8,Delete:46,Home:36,End:35,PageUp:33,PageDown:34,ArrowLeft:37,ArrowUp:38,ArrowRight:39,ArrowDown:40}}; var keyCode=legacy[key]||(key.length===1?key.toUpperCase().charCodeAt(0):0); var code=key.length===1?(/[A-Za-z]/.test(key)?'Key'+key.toUpperCase():(/[0-9]/.test(key)?'Digit'+key:key)):key; function dispatch(type){{ var event=new KeyboardEvent(type,{{key:key,code:code,bubbles:true,cancelable:true}}); if(keyCode){{ Object.defineProperty(event,'keyCode',{{get:function(){{return keyCode;}}}}); Object.defineProperty(event,'which',{{get:function(){{return keyCode;}}}}); }} el.dispatchEvent(event); }} dispatch('keydown'); dispatch('keypress'); dispatch('keyup'); return null"#,
+        key = key
+    )
+}
+
 async fn execute_command<R: Runtime>(
     app: &Arc<AppHandle<R>>,
     pending: &PendingResults,
@@ -202,10 +210,13 @@ async fn execute_command<R: Runtime>(
             ))).await
         }
         Command::Press { selector, key, timeout_ms } => {
-            let k = json_str(&key);
-            eval_js(app, pending, window_label, &action_js(&selector, timeout_ms, &format!(
-                "el.focus(); var o={{key:{k},bubbles:true}}; el.dispatchEvent(new KeyboardEvent('keydown',o)); el.dispatchEvent(new KeyboardEvent('keypress',o)); el.dispatchEvent(new KeyboardEvent('keyup',o)); return null", k=k
-            ))).await
+            eval_js(
+                app,
+                pending,
+                window_label,
+                &action_js(&selector, timeout_ms, &press_action_js(&key)),
+            )
+            .await
         }
         Command::Check { selector, timeout_ms } => {
             eval_js(app, pending, window_label, &action_js(&selector, timeout_ms,

@@ -461,11 +461,10 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust dependencies
+      - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: . -> src-tauri/target
-          cache-targets: false
 
       - name: Cache Tectonic sidecar
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
@@ -524,8 +523,11 @@ jobs:
 
       # Third-platform coverage for the shared crates, moved here from the
       # shard jobs so shards stay pure test runners.
+      - name: Test the macOS Rust retry guard
+        run: bash scripts/run-macos-shared-rust-tests.test.sh
+
       - name: Run shared core and oleaflyc tests
-        run: cargo test -p oleafly-core -p oleafly-cli --all-targets
+        run: bash scripts/run-macos-shared-rust-tests.sh
 
       - name: Build the packaged e2e app
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'

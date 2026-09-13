@@ -7,7 +7,6 @@ import {
   openSettings,
   pressGlobal,
   paletteItems,
-  typeAtCaret,
   type Page,
 } from "../helpers";
 
@@ -168,7 +167,10 @@ test("vim mode: modal editing, live toggle, and persistence part 1", async ({ ta
 
   await tauriPage.keyboard.press("i");
   await expect(tauriPage.locator(".cm-vim-panel")).toContainText("INSERT");
-  await typeAtCaret(tauriPage, "VIM_E2E ");
+  // Insert the whole Vim edit as one browser input transaction. Splitting it
+  // into one execCommand call per character makes a single `u` depend on how
+  // a loaded webview groups those independently dispatched edits.
+  await tauriPage.keyboard.insertText("VIM_E2E ");
   await tauriPage.keyboard.press("Escape");
   await expect(tauriPage.locator(".cm-vim-panel")).toContainText("NORMAL");
   await expect.poll(() => editorSource(tauriPage)).toContain("VIM_E2E");
@@ -197,6 +199,7 @@ test("vim mode: modal editing, live toggle, and persistence part 1", async ({ ta
     await expect(exCommand).toBeVisible();
     await exCommand.fill("w");
     await exCommand.press("Enter");
+    await expect(exCommand).toBeHidden();
     await expect
       .poll(() => tauriPage.evaluate<number>(`window.__vimE2eSaveCount ?? 0`))
       .toBe(1);
@@ -214,6 +217,7 @@ test("vim mode: modal editing, live toggle, and persistence part 1", async ({ ta
   await expect(exCommand).toBeVisible();
   await exCommand.fill("w");
   await exCommand.press("Enter");
+  await expect(exCommand).toBeHidden();
   await expect
     .poll(() => tauriPage.evaluate<boolean>(`import("/src/store/files.ts").then(
       ({ useFilesStore }) => useFilesStore.getState().files[
