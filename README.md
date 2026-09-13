@@ -379,7 +379,7 @@ Open Tools from the omnibar or command palette. Search by name, description, or 
 
 | Tool | Use it for |
 | --- | --- |
-| PDF to LaTeX | Reconstruct editable LaTeX from a PDF, with math, figures, and structure preserved where the source allows it |
+| PDF -> LaTeX | Reconstruct editable LaTeX from a PDF, with math, figures, and structure preserved where the source allows it |
 | arXiv to LaTeX | Download an arXiv source bundle by ID, or unpack a saved archive from disk |
 | Image to LaTeX | Turn an image of notes, equations, or a table into editable LaTeX |
 | Equation to LaTeX | Convert typed math or an equation image into LaTeX |
