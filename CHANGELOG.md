@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-12
+
 ### Added
 
 - Tools now includes a reference workspace for building citations and full
@@ -1990,7 +1992,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/Oleafly/Oleafly/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Oleafly/Oleafly/compare/v0.3.13...v0.4.0
 [0.3.13]: https://github.com/Oleafly/Oleafly/compare/v0.3.12...v0.3.13
 [0.3.12]: https://github.com/Oleafly/Oleafly/compare/v0.3.11...v0.3.12

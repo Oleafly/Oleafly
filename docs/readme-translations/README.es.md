@@ -196,7 +196,7 @@ Si Oleafly te ayudó a escribir un artículo, cítalo. Una entrada BibTeX en tu 
   author  = {Venkateshmurthy, Prajwal S and {The Oleafly contributors}},
   title   = {Oleafly: a local-first desktop workspace for research writing},
   year    = {2026},
-  version = {0.4.0},
+  version = {0.4.1},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }
