@@ -461,10 +461,11 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust build
+      - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: . -> src-tauri/target
+          cache-targets: false
 
       - name: Cache Tectonic sidecar
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
