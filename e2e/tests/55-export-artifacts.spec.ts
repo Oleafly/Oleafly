@@ -166,7 +166,7 @@ Standalone resource evidence.
   expect(archiveText(docx, "word/document.xml")).toContain(marker);
 
   const htmlPath = join(output, `document-${run}.html`);
-  await exportThroughMenu(tauriPage, "Export as HTML (.html)", htmlPath);
+  await exportThroughMenu(tauriPage, "Export as HTML (MathML)", htmlPath);
   const html = readFileSync(htmlPath, "utf8");
   expect(html.toLowerCase()).toContain("<!doctype html");
   expect(html).toContain(marker);

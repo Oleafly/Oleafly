@@ -118,6 +118,19 @@ operator-list names. A source assertion alone is never labeled Render.
 | Code tab + TikZ snippets | 19 |
 | Insert as code -> document + figures/*.tikz | 19 |
 | Insert as image, save-as-project, load-existing, Fix with AI | | — image variant / 🔑 [ai] |
+
+## Oleafly Tools
+
+| Surface | Interactions | Spec |
+| --- | --- | --- |
+| Tools catalog | all 22 converter cards, all 9 citation and bibliography cards, themed arXiv marks, search, direct command-palette launch | 45, 86 |
+| Ad hoc converters | built-in text examples, file/archive/PDF/spreadsheet inputs, local vision path, syntax-highlighted output, copy/save/project actions | 86 |
+| Citation generator | structured local example, eight offline styles, formatted reference, in-text citation, BibTeX validation and export | 86, `ReferenceToolView.test.tsx`, `reference-tools.test.ts` |
+| Bibliography generator | structured entry builder, batch BibTeX editor, sorting, validation, style selection and `.bib` export | 86, `ReferenceToolView.test.tsx` |
+| Citation style comparison | APA, MLA, Chicago, IEEE, Harvard, Vancouver, AMA and ACS rendered from the same local record | 86, `reference-tools.test.ts` |
+| DOI, arXiv, ISBN and PMID tools | identifier validation, stale-result rejection, offline error recovery, editable metadata and shared hardened lookup commands | `ReferenceToolView.test.tsx`, `citation.test.ts`, Rust `citation::tests` |
+| URL to BibTeX | DOI/arXiv/PubMed recognition and a safe, editable local webpage fallback without arbitrary URL fetching | 86, `reference-tools.test.ts` |
+| Two-pane tool layout | pointer and keyboard-accessible resizer, persisted desktop sizes, responsive stacked layout | 86, `ToolWorkspace.test.tsx` |
 | Image projects (kind=image) | tailored rail/toolbar, figure compile, save-image control | 25 |
 | Color pickers (fill/border/background) | | ✋ [native] |
 

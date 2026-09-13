@@ -169,6 +169,23 @@
   "import": {
     "title": "导入项目",
     "description": "Oleafly 会将你选择的内容复制到一个新项目中，原文件保持不变。",
+    "failed": "导入未能完成，请重试。",
+    "converterUnavailable": "文档转换器不可用。请检查下载提示后重试。",
+    "supportedTypes": "请选择支持的文档类型。",
+    "importing": "正在导入项目…",
+    "targetTitle": "选择项目类型",
+    "targetDescription": "选择要编辑的格式。原文件旁的图片或包含文件可能需要手动添加到新项目。",
+    "recommended": "建议用于此文件类型",
+    "targetRecommended": "{{label}}（推荐）",
+    "arxivTitle": "导入 arXiv 论文",
+    "arxivDescription": "Oleafly 会下载论文的 LaTeX 源码，并解压为一个项目。",
+    "arxivInputLabel": "arXiv 编号或论文链接",
+    "arxivPlaceholder": "arXiv 编号或 https://arxiv.org/abs/…",
+    "arxivHint": "arXiv 必须提供论文源码。如果论文只有 PDF，请使用 PDF 导入工具。",
+    "arxivPaper": "arXiv 论文",
+    "arxivCardDescription": "通过 arXiv 编号下载论文的 LaTeX 源码。",
+    "importAction": "导入",
+    "tryAgain": "重试",
     "githubTitle": "从 GitHub 导入",
     "githubDescription": "选择一个仓库复制到你的库中。",
     "back": "返回导入来源",
@@ -196,6 +213,14 @@
       "markdown": {
         "title": "Markdown 文档",
         "description": "一个 .md 文件，保持 Markdown 格式。"
+      },
+      "html": {
+        "title": "HTML 页面",
+        "description": "将 HTML 转换为 LaTeX、Markdown 或 Typst。"
+      },
+      "typst": {
+        "title": "Typst 文档",
+        "description": "将 Typst 转换为 LaTeX 或 Markdown。"
       }
     },
     "picker": {
@@ -204,7 +229,16 @@
       "wordTitle": "导入 Word 文档",
       "wordFilter": "Word 文档",
       "markdownTitle": "导入 Markdown 文档",
-      "markdownFilter": "Markdown 文档"
+      "markdownFilter": "Markdown 文档",
+      "htmlTitle": "导入 HTML 页面",
+      "htmlFilter": "HTML 页面",
+      "typstTitle": "导入 Typst 文档",
+      "typstFilter": "Typst 文档"
+    },
+    "targets": {
+      "latex": "LaTeX 项目",
+      "markdown": "Markdown 项目",
+      "typst": "Typst 项目"
     },
     "menu": {
       "local": "本地",
@@ -213,7 +247,8 @@
       "word": "Word 文档",
       "markdown": "Markdown 文档",
       "connect": "在设置中连接 GitHub。",
-      "repositoriesFailed": "无法加载仓库。"
+      "repositoriesFailed": "无法加载仓库。",
+      "repositoriesRetry": "无法加载仓库，请重试"
     }
   },
   "pdfImport": {
@@ -227,7 +262,8 @@
     "refine": "用 AI 优化",
     "converting": "正在转换…",
     "disclaimer": "纯本地重构，不使用 AI。请核对后再使用。",
-    "dropTitle": "将 PDF 或 Word 文档拖放到此处",
+    "dropTitle": "将 PDF 拖放到此处",
+    "choosePdf": "请在此处选择 PDF。Word 转 LaTeX 可使用“工具”中的专用转换器。",
     "dropHint": "或<browse>浏览</browse>文件以上传。PDF 转换在你的设备上进行，不会上传任何文件。",
     "handlesTitle": "可处理的内容",
     "handles": {
@@ -249,6 +285,8 @@
     },
     "pageAlt": "第 {{page}} 页",
     "scanned": "此 PDF 没有文本层（可能是扫描件）。请使用“AI 优化”进行转录。",
+    "scannedLocal": "此 PDF 看起来是扫描件。可使用本地视觉模型进行转录，以恢复可编辑文本。",
+    "transcribeLocal": "在本地转录扫描件",
     "options": {
       "label": "转换选项",
       "pageRange": "页面范围（例如 2-5）",

@@ -37,6 +37,10 @@
     "mcpApprove": {
       "title": "Approve MCP tool",
       "confirm": "Use tool"
+    },
+    "tableImport": {
+      "title": "Choose a spreadsheet to import",
+      "filter": "Spreadsheets"
     }
   },
   "errors": {

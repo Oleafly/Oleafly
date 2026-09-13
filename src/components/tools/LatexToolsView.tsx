@@ -1,23 +1,19 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, ToolCase, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search, ToolCase } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { WHITE_PANEL, cn } from "@/lib/utils";
-import { useHomeViewStore } from "@/store/home-view";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { cn } from "@/lib/utils";
+import { openTool } from "@/features/open-tool";
 import {
   TOOL_CATEGORY_ORDER,
   TOOL_DEFINITIONS,
-  toolById,
   toolCategoryLabel,
   toolDescription,
   toolName,
   toolTags,
-  type ToolCategory,
   type ToolDefinition,
-  type ToolId,
 } from "@/lib/tool-catalog";
+import { ToolPageShell } from "@/components/tools/ToolPageShell";
 
 const TOOL_TONES: Record<
   ToolDefinition["tone"],
@@ -60,12 +56,8 @@ const TOOL_TONES: Record<
   },
 };
 
-function ToolCard({
-  tool,
-  onOpen,
-}: Readonly<{
+function ToolCard({ tool }: Readonly<{
   tool: ToolDefinition;
-  onOpen: () => void;
 }>) {
   const tone = TOOL_TONES[tool.tone];
   const name = toolName(tool.id);
@@ -75,188 +67,135 @@ function ToolCard({
     <button
       type="button"
       data-testid={`latex-tool-card-${tool.id}`}
-      onClick={onOpen}
-      className="group flex w-full items-start gap-4 rounded-xl border bg-card p-5 text-left shadow-sm transition-colors hover:bg-accent/35"
+      onClick={() => void openTool(tool)}
+      className="group flex w-full items-start gap-4 rounded-xl border bg-card p-5 text-left shadow-sm transition-[border-color,background-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-accent/25 hover:shadow-md motion-reduce:transform-none"
     >
-      <div
+      <span
         className={cn(
           "flex size-12 shrink-0 items-center justify-center rounded-xl border",
           tone.icon,
         )}
       >
         <tool.icon className="size-5.5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-base font-semibold group-hover:text-foreground">
-            {name}
-          </span>
-          <code
-            className={cn(
-              "rounded px-2 py-0.5 text-[10px] font-semibold",
-              tone.slash,
-            )}
-          >
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-base font-semibold">{name}</span>
+          <code className={cn("rounded px-2 py-0.5 text-[10px] font-semibold", tone.slash)}>
             {`/${tool.slash[0]}`}
           </code>
-        </div>
-        <div className="mt-1 text-sm leading-relaxed text-muted-foreground">
+        </span>
+        <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
           {description}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {tags.map((t) => (
+        </span>
+        <span className="mt-3 flex flex-wrap gap-1.5">
+          {tags.map((tag) => (
             <span
-              key={t}
-              className={cn(
-                "rounded-full px-2.5 py-1 text-[10px] font-medium",
-                tone.badge,
-              )}
+              key={tag}
+              className={cn("rounded-full px-2.5 py-1 text-[10px] font-medium", tone.badge)}
             >
-              {t}
+              {tag}
             </span>
           ))}
-        </div>
-      </div>
+        </span>
+      </span>
     </button>
   );
 }
 
-function ToolsGallery({
-  search,
-  onOpenTool,
-}: Readonly<{
-  search: string;
-  onOpenTool: (id: ToolId) => void;
-}>) {
-  const { t: translate } = useTranslation(["common", "researchTools"]);
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return TOOL_DEFINITIONS;
-    return TOOL_DEFINITIONS.filter((t) =>
-      `${toolName(t.id)} ${toolDescription(t.id)} ${toolTags(t.id).join(" ")} ${t.slash.join(" ")}`
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [search]);
-
-  const grouped = useMemo(() => {
-    const byCategory = new Map<ToolCategory, ToolDefinition[]>();
-    for (const t of filtered) {
-      byCategory.set(t.category, [...(byCategory.get(t.category) ?? []), t]);
-    }
-    return TOOL_CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((c) => ({
-      category: c,
-      tools: byCategory.get(c) ?? [],
-    }));
-  }, [filtered]);
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="flex-1 p-6">
-        {grouped.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            {translate(($) => $.researchTools.tools.noMatches)}
-          </div>
-        ) : (
-          <div className="space-y-7">
-            {grouped.map(({ category: c, tools }) => (
-              <section key={c} className="space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  {toolCategoryLabel(c)}
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {tools.map((t) => (
-                    <ToolCard
-                      key={t.id}
-                      tool={t}
-                      onOpen={() => onOpenTool(t.id)}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+function matchingTools(search: string): readonly ToolDefinition[] {
+  const query = search.trim().toLowerCase();
+  if (!query) return TOOL_DEFINITIONS;
+  return TOOL_DEFINITIONS.filter((tool) =>
+    `${toolName(tool.id)} ${toolDescription(tool.id)} ${toolTags(tool.id).join(" ")} ${tool.slash.join(" ")}`
+      .toLowerCase()
+      .includes(query),
   );
+}
+
+function groupByCategory(tools: readonly ToolDefinition[]) {
+  const byCategory = new Map<string, ToolDefinition[]>();
+  for (const tool of tools) {
+    byCategory.set(tool.category, [...(byCategory.get(tool.category) ?? []), tool]);
+  }
+  return TOOL_CATEGORY_ORDER.filter((category) => byCategory.has(category)).map((category) => ({
+    category,
+    tools: byCategory.get(category) ?? [],
+  }));
 }
 
 export function LatexToolsView() {
   const { t } = useTranslation(["common", "researchTools"]);
-  const active = useHomeViewStore((s) => s.toolsOpen);
-  const closeTools = useHomeViewStore((s) => s.closeTools);
-  const goTo = useHomeViewStore((s) => s.goTo);
-  const { dialogRef, onBackdropMouseDown } =
-    useModalAccessibility<HTMLDivElement>(active, closeTools);
   const [search, setSearch] = useState("");
-  if (!active) return null;
+  const grouped = groupByCategory(matchingTools(search));
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label={t(($) => $.researchTools.tools.closeGallery)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        role="dialog"
-        ref={dialogRef}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="latex-tools-title"
-        data-modal-initial-focus
-        data-testid="latex-tools-view"
-        className={cn(
-          "relative flex h-[min(48rem,90vh)] w-[min(68rem,96vw)] flex-col overflow-hidden rounded-2xl text-foreground",
-          WHITE_PANEL,
-        )}
-      >
-        <div className="flex items-center gap-4 border-b px-6 py-4">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-300">
-            <ToolCase className="size-5" />
-          </div>
-          <div className="shrink-0">
-            <div
-              id="latex-tools-title"
-              className="text-base font-bold tracking-tight"
-            >
-              {t(($) => $.researchTools.tools.galleryTitle)}
+    <ToolPageShell
+      page="tools"
+      title={t(($) => $.researchTools.tools.galleryTitle)}
+      subtitle={t(($) => $.researchTools.tools.gallerySubtitle)}
+      icon={ToolCase}
+      showTheme
+      testId="latex-tools-view"
+    >
+      <main className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[96rem] px-5 py-6 sm:px-7 lg:px-9">
+          <div className="mb-7 flex flex-col gap-4 border-b pb-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                {t(($) => $.researchTools.tools.toolCount, {
+                  count: TOOL_DEFINITIONS.length,
+                })}
+              </p>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight">
+                {t(($) => $.researchTools.tools.heroTitle)}
+              </h1>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {t(($) => $.researchTools.tools.heroBody)}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t(($) => $.researchTools.tools.gallerySubtitle)}
-            </p>
+            <div className="relative w-full lg:w-96">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                aria-label={t(($) => $.researchTools.tools.searchAria)}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t(($) => $.researchTools.tools.searchPlaceholder, {
+                  total: TOOL_DEFINITIONS.length,
+                })}
+                className="h-10 pl-9 text-sm"
+              />
+            </div>
           </div>
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              aria-label={t(($) => $.researchTools.tools.searchAria)}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t(($) => $.researchTools.tools.searchPlaceholder, {
-                total: TOOL_DEFINITIONS.length,
-              })}
-              className="h-10 pl-8 text-sm"
-            />
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9 shrink-0"
-            onClick={closeTools}
-            aria-label={t(($) => $.common.actions.close)}
-          >
-            <X className="size-4" />
-          </Button>
+
+          {grouped.length === 0 ? (
+            <div className="flex min-h-72 items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
+              {t(($) => $.researchTools.tools.noMatches)}
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {grouped.map(({ category, tools }) => (
+                <section key={category} aria-labelledby={`tools-${category}`}>
+                  <div className="mb-3 flex items-center gap-3">
+                    <h2
+                      id={`tools-${category}`}
+                      className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                    >
+                      {toolCategoryLabel(category)}
+                    </h2>
+                    <span className="text-xs tabular-nums text-muted-foreground/70">{tools.length}</span>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                    {tools.map((tool) => (
+                      <ToolCard key={tool.id} tool={tool} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
         </div>
-        <ToolsGallery
-          search={search}
-          onOpenTool={(id) => {
-            closeTools();
-            goTo(toolById(id).page);
-          }}
-        />
-      </div>
-    </div>
+      </main>
+    </ToolPageShell>
   );
 }

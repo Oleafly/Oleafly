@@ -11,6 +11,7 @@
   "license": "AGPL-3.0-or-later",
   "author": "Prajwal S Venkateshmurthy",
   "scripts": {
+    "gen:conversion-matrix": "node scripts/generate-conversion-matrix.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check:performance": "node scripts/check-performance-budget.mjs",
@@ -34,8 +35,8 @@
     "tauri": "node scripts/tauri-sandbox.mjs",
     "lint": "biome lint src",
     "lint:fix": "biome lint --write src",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "vitest run --maxWorkers=4",
+    "test:coverage": "vitest run --coverage --maxWorkers=4",
     "test:editor:performance": "vitest run --config vitest.editor-performance.config.ts",
     "test:watch": "vitest",
     "prepare": "git config core.hooksPath .githooks || true",
@@ -46,6 +47,9 @@
     "i18n:validate": "node --experimental-strip-types --no-warnings scripts/i18n/validate.ts"
   },
   "dependencies": {
+    "@citation-js/core": "0.8.2",
+    "@citation-js/plugin-bibtex": "0.8.2",
+    "@citation-js/plugin-csl": "0.8.2",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-css": "^6.3.1",
@@ -63,6 +67,7 @@
     "@oleafly/ai-core": "workspace:*",
     "@oleafly/ai-tools": "workspace:*",
     "@oleafly/backend-port": "workspace:*",
+    "@oleafly/conversion-registry": "workspace:*",
     "@oleafly/diagram": "workspace:*",
     "@oleafly/editor": "workspace:*",
     "@oleafly/latex": "workspace:*",
@@ -117,6 +122,7 @@
     "immer": "^11.1.18",
     "katex": "0.18.1",
     "lucide-react": "^0.540.0",
+    "mathjax-full": "3.2.2",
     "mermaid": "^11.16.1",
     "pdfjs-dist": "6.2.108",
     "react": "^19.2.8",
@@ -132,6 +138,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
     "tiptap-markdown": "^0.9.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.25.76",
     "zustand": "^5.0.14"
   },

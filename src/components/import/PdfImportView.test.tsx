@@ -142,10 +142,9 @@ describe("PdfImportView landing", () => {
     render(<PdfImportView />);
     expect(screen.getByTestId("pdf-import-view")).toBeInTheDocument();
     expect(screen.getByTestId("pdf-dropzone")).toBeInTheDocument();
-    expect(
-      screen.getByText(enLibrary.pdfImport.dropTitle),
-    ).toBeInTheDocument();
-    for (const label of Object.values(enLibrary.pdfImport.handles)) {
+    expect(screen.getByText("Drop a PDF here")).toBeInTheDocument();
+    const { word: _word, ...rendered } = enLibrary.pdfImport.handles;
+    for (const label of Object.values(rendered)) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
     expect(screen.getByText(enLibrary.pdfImport.local)).toBeInTheDocument();
@@ -181,10 +180,10 @@ describe("PdfImportView landing", () => {
     expect(click).toHaveBeenCalledTimes(2);
   });
 
-  it("returns to the library and closes the import", () => {
+  it("returns to the tools gallery and closes the import", () => {
     render(<PdfImportView />);
     fireEvent.click(screen.getByTestId("import-back"));
-    expect(useHomeViewStore.getState().page).toBe("library");
+    expect(useHomeViewStore.getState().page).toBe("tools");
     expect(useImportStore.getState().open).toBe(false);
   });
 });
@@ -278,7 +277,11 @@ describe("PdfImportView converted document", () => {
       result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
     });
     render(<PdfImportView />);
-    expect(screen.getByText(enLibrary.pdfImport.scanned)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This PDF looks scanned. Transcribe it with a local vision model to recover editable text.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("re-runs the conversion with a page range and a column count", async () => {

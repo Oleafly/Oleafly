@@ -94,6 +94,20 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   example of what it would flag, and Settings shows both next to a switch.
   Settings keeps two lists on top of it, one of rules the writer turned off
   and one of profile rules they turned back on.
+- When a Harper call fails, the worker throws that engine instance away and
+  builds a new one for the next pass, because a panic inside the WebAssembly
+  module leaves the old instance unusable. The failure reason goes to the
+  console once. `HARPER_PANICKING_RULES` in `lint-profile.ts` lists rules that
+  are forced off for the pinned Harper release (BoringWords in harper.js
+  2.10.0). A test against the installed Harper fails when the rule stops
+  panicking, which is the cue to unblock it.
+- A partial pass, where one engine finished and the other did not, is not
+  announced with a toast. The Project info panel keeps the counts, and the
+  worker logs the reason. Errors that need a retry keep their sticky toast.
+- Deferred, not planned for 0.4.1: a general way to mute an informational
+  notice from the toast itself, with a Settings list of muted notices and a
+  reset button (toasts that need action would stay unmutable), and an upstream
+  report of the BoringWords panic to the Harper project.
 - A finding is only ever as wide as the thing it is about. A spelling finding
   wider than 40 characters, or one that crosses a line, is dropped. A grammar
   finding stops at the end of its sentence and at 300 characters. The same

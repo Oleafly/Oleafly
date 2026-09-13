@@ -37,8 +37,9 @@ function distroTooltip(distro: TexDistribution): string {
 }
 
 /**
- * Markdown projects compile through pandoc into LaTeX and then the bundled
- * Tectonic, so the only moving part the user can affect is pandoc itself.
+ * Markdown projects compile through the bundled Pandoc into LaTeX and then
+ * the bundled Tectonic. The install action is a recovery path for development
+ * builds or damaged app bundles.
  */
 function MarkdownEngineTab() {
   const { t } = useTranslation(["common", "settings"]);
@@ -85,7 +86,7 @@ function MarkdownEngineTab() {
           {pandoc === "ready" && <Check className="size-3.5 text-primary" />}
           {pandoc === "missing" && (
             <Button type="button" size="sm" variant="outline" className="ml-auto h-7" onClick={() => void install()}>
-              {t(($) => $.settings.engine.markdown.install)}
+              {t(($) => $.settings.engine.markdown.repair)}
             </Button>
           )}
           {pandoc === "installing" && (

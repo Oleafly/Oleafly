@@ -175,6 +175,8 @@ export const PREFLIGHT_MESSAGE_KEYS = [
   "rules.layout-table.titleTikz",
   "rules.link-text.detail",
   "rules.link-text.title",
+  "rules.mathml-export-hint.detail",
+  "rules.mathml-export-hint.title",
   "rules.multi-column-reading-order-risk.detailMultiColumn",
   "rules.multi-column-reading-order-risk.detailTwoColumn",
   "rules.multi-column-reading-order-risk.titleMultiColumn",

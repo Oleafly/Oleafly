@@ -61,7 +61,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src-tauri/target/e2e-sidecars/pandoc-*
-          key: pandoc-${{ matrix.target }}-${{ hashFiles('scripts/smoke-markdown.sh') }}
+          key: pandoc-${{ matrix.target }}-${{ hashFiles('scripts/fetch-pandoc.sh', 'scripts/smoke-markdown.sh') }}
 
       - name: Restore Tectonic packages for the Markdown smoke
         id: tectonic-pkgs-md
@@ -244,7 +244,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src-tauri/target/e2e-sidecars/pandoc-*
-          key: pandoc-${{ runner.os }}-x86_64-${{ hashFiles('scripts/smoke-markdown.sh') }}
+          key: pandoc-${{ runner.os }}-x86_64-${{ hashFiles('scripts/fetch-pandoc.sh', 'scripts/smoke-markdown.sh') }}
 
       - name: Restore Tectonic packages for the Markdown smoke
         id: tectonic-pkgs-rust
@@ -330,6 +330,7 @@ jobs:
         run: |
           bash scripts/fetch-tectonic.sh x86_64-pc-windows-msvc
           bash scripts/fetch-biber.sh x86_64-pc-windows-msvc
+          bash scripts/fetch-pandoc.sh x86_64-pc-windows-msvc
           bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
 
       - name: Stage checksum-pinned Tinymist resource archive
@@ -448,7 +449,7 @@ jobs:
       # download instead of a build.
       - name: Compute the packaged app cache key
         id: e2e-app-key
-        run: echo "key=e2e-app-macos-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-macos-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -500,6 +501,21 @@ jobs:
       - name: Fetch Typst sidecar
         if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-typst-e2e-build.outputs.cache-hit != 'true'
         run: bash scripts/fetch-typst.sh aarch64-apple-darwin
+
+      - name: Cache Pandoc sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        id: cache-pandoc-e2e-build
+        uses: actions/cache@v6
+        with:
+          path: |
+            src-tauri/binaries/pandoc-*
+            src-tauri/resources/licenses/pandoc-3.9.0.2-COPYING.md
+            src-tauri/target/e2e-sidecars/pandoc-*
+          key: pandoc-sidecar-${{ runner.os }}-${{ hashFiles('scripts/fetch-pandoc.sh') }}
+
+      - name: Fetch Pandoc sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-pandoc-e2e-build.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-pandoc.sh aarch64-apple-darwin
 
       - name: Stage checksum-pinned Tinymist resource archive
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
@@ -566,7 +582,7 @@ jobs:
       # download instead of a build.
       - name: Compute the packaged app cache key
         id: e2e-app-key
-        run: echo "key=e2e-app-linux-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-linux-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -633,6 +649,21 @@ jobs:
       - name: Fetch Typst sidecar
         if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-typst-e2e-build-linux.outputs.cache-hit != 'true'
         run: bash scripts/fetch-typst.sh x86_64-unknown-linux-gnu
+
+      - name: Cache Pandoc sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        id: cache-pandoc-e2e-build-linux
+        uses: actions/cache@v6
+        with:
+          path: |
+            src-tauri/binaries/pandoc-*
+            src-tauri/resources/licenses/pandoc-3.9.0.2-COPYING.md
+            src-tauri/target/e2e-sidecars/pandoc-*
+          key: pandoc-sidecar-${{ runner.os }}-${{ hashFiles('scripts/fetch-pandoc.sh') }}
+
+      - name: Fetch Pandoc sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-pandoc-e2e-build-linux.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-pandoc.sh x86_64-unknown-linux-gnu
 
       - name: Smoke-test Typst sidecar
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
@@ -865,7 +896,7 @@ jobs:
           pkg="$(dpkg-deb -f oleafly-e2e-linux.deb Package)"
           # Match the app by NAME, never by position. The package installs the
           # engine sidecars beside the app - /usr/bin holds tectonic,
-          # tectonic-biber, typst and oleafly - so "the first executable in
+          # tectonic-biber, pandoc, typst and oleafly - so "the first executable in
           # /usr/bin" is tectonic, and the suite duly launched tectonic as the
           # app and got "required arguments were not provided". The Debian
           # package name and the app binary name are both derived from
@@ -1058,7 +1089,7 @@ jobs:
       - name: Compute the packaged app cache key
         id: e2e-app-key
         shell: bash
-        run: echo "key=e2e-app-windows-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-windows-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -1115,6 +1146,22 @@ jobs:
         if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-typst-e2e-build-windows.outputs.cache-hit != 'true'
         shell: bash
         run: bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
+
+      - name: Cache Pandoc sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        id: cache-pandoc-e2e-build-windows
+        uses: actions/cache@v6
+        with:
+          path: |
+            src-tauri/binaries/pandoc-*
+            src-tauri/resources/licenses/pandoc-3.9.0.2-COPYING.md
+            src-tauri/target/e2e-sidecars/pandoc-*
+          key: pandoc-sidecar-${{ runner.os }}-${{ hashFiles('scripts/fetch-pandoc.sh') }}
+
+      - name: Fetch Pandoc sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-pandoc-e2e-build-windows.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch-pandoc.sh x86_64-pc-windows-msvc
 
       - name: Stage checksum-pinned Tinymist resource archive
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'

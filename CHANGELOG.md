@@ -9,11 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tools now includes a reference workspace for building citations and full
+  bibliographies. It formats APA, MLA, Chicago, IEEE, Harvard, Vancouver, AMA,
+  and ACS styles on the device, accepts structured details or BibTeX, compares
+  styles side by side, validates entries, and saves `.bib` files without
+  creating a project. DOI, arXiv, ISBN, and PubMed metadata lookups use their
+  public catalogs when online; manual editing and formatting remain available
+  offline. Find Citations brings the existing multi-index search and document
+  scan into the same section.
+- Two-pane tools now have a draggable, keyboard-accessible divider. Each tool
+  remembers its desktop layout, while narrow windows continue to stack the
+  panes for easier reading.
 - The interface is available in Simplified Chinese. Settings > General gets a
   Language setting (System default, English, 简体中文). Changing it applies
   right away in every window, including the native menu and dialogs, with no
   restart. Document content, spellcheck and proofreading settings are
   unaffected.
+- Tools now opens as a full page, with 22 converters grouped alongside the
+  existing research and writing tools. Each converter is also available from
+  the command palette. Ad hoc conversions show the result immediately, with
+  copy or download actions and a project option only where the result can be
+  edited as a document.
+- Local converters now cover LaTeX, Typst, Markdown, HTML, Word, spreadsheets,
+  PDFs, images, equations, Mermaid diagrams, and saved arXiv source archives.
+  Pandoc ships with the desktop app, while image and scanned-PDF transcription
+  uses a vision model in Ollama. Entering an arXiv ID is the one converter path
+  that needs a network connection; a saved source archive works offline. The
+  detected main LaTeX file is shown with syntax highlighting.
 - Typing `$`, `\(` or `\[` in the source editor inserts the closing
   delimiter. Typing `$` again at the end of a formula steps over it, brackets
   pair inside inline math, and an empty `$$` becomes display math. Completing
@@ -48,9 +70,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in a paper, with a copy button. The README carries the same entry in every
   language, and CITATION.cff is current, so GitHub's Cite this repository
   button matches.
+- A conversion registry now drives the Import and Export menus. Word, Markdown, HTML, and
+  Typst files can be imported as LaTeX, Markdown, or Typst projects; LaTeX and Markdown
+  projects export to Typst; Typst projects export to Word, HTML, Markdown, and LaTeX. The
+  full route table is generated into docs/conversion-matrix.md with
+  `pnpm gen:conversion-matrix`.
+- HTML exports carry MathML equations, and Preflight now suggests exporting an HTML copy
+  when a document contains math, since screen readers need MathML to read equations
+  reliably.
+- Equations can be saved as SVG or PNG images from the editor context menu and the
+  equation tool. MathJax renders them locally; no content leaves the machine.
+- Spreadsheets import as tables. A CSV, TSV, or XLSX file becomes a booktabs LaTeX table
+  or a Typst table, with every LaTeX- or Typst-special character escaped, inserted at the
+  cursor or copied to the clipboard. Closing during a read leaves the picker ready
+  when reopened, and a successful clipboard retry clears the previous error.
+- The reference library gained a cleaner. Preview citation-key changes and DOI
+  duplicates whose fields can all be preserved. Similar titles and conflicting
+  metadata stay in the library for review. Applying updates supported citations
+  and bibliography links, checks that the saved files still match the preview,
+  and backs up the originals before writing. Comments and BibTeX string definitions
+  are preserved; large previews show the first 500 lines of each version. Nested
+  source files are supported on Windows as well as macOS and Linux.
+- Add citation recognizes ISBNs (looked up on OpenLibrary) and PubMed ids (NCBI), alongside
+  DOIs, arXiv ids, and title searches. An arXiv paper's LaTeX source can be imported as a
+  new project from its id.
+- Statistics calculators for p-values, sample sizes, and confidence intervals are in the
+  Tools panel, computed locally. Proportion intervals use Wilson's method, so zero
+  successes still produce a useful interval. Editing inputs clears the previous result.
+- Statistics, Symbols, Writing Generators, table import, and reference cleanup
+  use the LaTeX Preview layout, with separate input and preview panes. Statistics
+  can copy a labeled result report. Symbols previews the selected command and
+  keeps the project open for insertion at the cursor.
+- Writing generators for abstracts, summaries, paraphrasing, and thesis outlines hand a
+  grounded prompt to the assistant, which reads the open document and is told not to add
+  claims the draft does not contain. Review the prompt and add instructions before
+  generating. Opening the tool keeps the project and editor selection available;
+  provider setup opens above the tool when needed.
+- Settings, Citation Search has a field for an OpenAlex API key. OpenAlex made keys
+  mandatory in February 2026; without one, searches still work but from a small shared
+  daily pool.
 
 ### Fixed
 
+- Grammar checking no longer stays off for the rest of a session after Harper
+  fails on one sentence. The checker is rebuilt on the next pass and the
+  failure is written to the console once. The BoringWords rule is switched
+  off and removed from Settings until Harper fixes the crash it causes on
+  common words such as "very". The toast about a partial proofreading pass is
+  gone; the Project info panel still shows what each pass found.
+- Table import reads only the spreadsheet chosen in the app's own file dialog,
+  and creating a project from a conversion no longer blocks other requests
+  while large files are written.
+- Saved arXiv sources that contain one gzip-compressed TeX file now open in the
+  converter instead of being rejected as a damaged tar archive.
 - Importing a reference library, or inserting a citation into a project
   without a bibliography, shows the new `.bib` file in the file tree and the
   Citations panel right away instead of after reopening the project.
@@ -73,6 +145,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - System TeX compiles run with TeX Live's restricted shell escape, so
   templates that convert EPS figures compile without granting full shell
   access.
+- Imports keep the selected file and show errors in the dialog so failed attempts can
+  be retried. The library's Import menu also accepts arXiv links.
+- Document exports save pending edits first and stop if the open project changes.
+  Export destinations inside the source project are rejected to protect its files.
 
 ## [0.4.0] - 2026-09-07
 

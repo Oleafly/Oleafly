@@ -45,7 +45,10 @@
       "@oleafly/preview/mainThreadWorker": ["./packages/preview/src/mainThreadWorker.ts"],
       "@oleafly/pdf-to-latex": ["./packages/pdf-to-latex/src/index.ts"],
       "@oleafly/pdf-to-latex/pdf-adapter": ["./packages/pdf-to-latex/src/pdf-adapter.ts"],
-      "@oleafly/latex-intelligence": ["./packages/latex-intelligence/src/index.ts"]
+      "@oleafly/latex-intelligence": ["./packages/latex-intelligence/src/index.ts"],
+      "@oleafly/conversion-registry": ["./packages/conversion-registry/src/index.ts"],
+      "@oleafly/conversion-registry/table": ["./packages/conversion-registry/src/table.ts"],
+      "@oleafly/conversion-registry/matrix": ["./packages/conversion-registry/src/matrix.ts"]
     }
   },
   "include": ["src", "packages", "vite.config.ts"]

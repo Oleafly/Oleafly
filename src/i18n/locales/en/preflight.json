@@ -39,6 +39,10 @@
       "title": "Non-descriptive link text",
       "detail": "Link text like 'click here' or a bare URL tells a screen-reader user nothing about the destination. Use text that names the target, for example 'my portfolio'."
     },
+    "mathml-export-hint": {
+      "title": "Export an HTML copy with MathML to check math accessibility",
+      "detail": "The document contains math. Screen readers read equations reliably when they are MathML. Use Export as HTML, which pandoc writes with --mathml, and open the file with a screen reader or an accessibility checker before submission."
+    },
     "no-lang": {
       "title": "No document language set",
       "detail": "The PDF has no language, so a screen reader may read it with the wrong pronunciation rules. Set one, for example \\usepackage[english]{babel} or hyperref's pdflang=en-US."

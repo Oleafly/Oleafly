@@ -8,11 +8,12 @@ import {
   Download,
   FileArchive,
   FileInput,
-  FileType2,
   FolderPlus,
   Heading,
   Image as ImageIcon,
+  Loader2,
   Radical,
+  ScanText,
   ScissorsLineDashed,
   Settings2,
   Sigma,
@@ -23,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WindowControls } from "@/components/layout/WindowControls";
+import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 import {
   createProjectFromConversion,
   downloadFigure,
@@ -39,6 +41,7 @@ import { toast } from "@/lib/toast";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
+import { i18n } from "@/i18n";
 
 const HANDLES = [
   { id: "structure", icon: Heading },
@@ -48,8 +51,15 @@ const HANDLES = [
   { id: "columns", icon: Columns2 },
   { id: "math", icon: Radical },
   { id: "figures", icon: ImageIcon },
-  { id: "word", icon: FileType2 },
 ] as const;
+
+function openPdf(file: File): void {
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    toast.error(i18n.t(($) => $.library.pdfImport.choosePdf));
+    return;
+  }
+  void handlePickedFile(file);
+}
 
 function PdfDropzoneLanding() {
   const { t } = useTranslation(["library"]);
@@ -61,7 +71,6 @@ function PdfDropzoneLanding() {
     columns: t(($) => $.library.pdfImport.handles.columns),
     math: t(($) => $.library.pdfImport.handles.math),
     figures: t(($) => $.library.pdfImport.handles.figures),
-    word: t(($) => $.library.pdfImport.handles.word),
   };
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +97,7 @@ function PdfDropzoneLanding() {
             e.preventDefault();
             setDragOver(false);
             const f = e.dataTransfer.files?.[0];
-            if (f) void handlePickedFile(f);
+            if (f) openPdf(f);
           }}
         >
           <FileInput className="size-10 text-muted-foreground" />
@@ -118,12 +127,12 @@ function PdfDropzoneLanding() {
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf,.docx"
+            accept=".pdf,application/pdf"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = "";
-              if (f) void handlePickedFile(f);
+              if (f) openPdf(f);
             }}
           />
         </div>
@@ -222,11 +231,12 @@ function SourcePane() {
   const { t } = useTranslation(["library"]);
   const tex = useImportStore((s) => s.result?.tex ?? "");
   const likelyScanned = useImportStore((s) => s.result?.report.likelyScanned ?? false);
+  const scanTranscribed = useImportStore((s) => s.scanTranscribed);
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {likelyScanned && (
+      {likelyScanned && !scanTranscribed && (
         <div className="border-b px-4 py-2 text-xs text-muted-foreground">
-          {t(($) => $.library.pdfImport.scanned)}
+          {t(($) => $.library.pdfImport.scannedLocal)}
         </div>
       )}
       <LatexSourceViewer source={tex} />
@@ -328,6 +338,8 @@ export function PdfImportView() {
   const close = useImportStore((s) => s.close);
   const fileName = useImportStore((s) => s.fileName);
   const result = useImportStore((s) => s.result);
+  const scanTranscribed = useImportStore((s) => s.scanTranscribed);
+  const transcribeScan = useImportStore((s) => s.transcribeScan);
   const [refineable, setRefineable] = useState(false);
   const fullscreen = useFullscreen();
   const active = page === "pdf-import";
@@ -354,7 +366,7 @@ export function PdfImportView() {
           size="sm"
           onClick={() => {
             close();
-            useHomeViewStore.getState().goTo("library");
+            useHomeViewStore.getState().goTo("tools");
           }}
           data-testid="import-back"
         >
@@ -410,6 +422,18 @@ export function PdfImportView() {
                 <Sparkles className="size-4" /> {t(($) => $.library.pdfImport.refine)}
               </Button>
             )}
+            {result?.report.likelyScanned && !scanTranscribed && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                data-testid="import-transcribe-scan"
+                onClick={() => void transcribeScan()}
+              >
+                {busy ? <Loader2 className="animate-spin" /> : <ScanText />}
+                {t(($) => $.library.pdfImport.transcribeLocal)}
+              </Button>
+            )}
             <Button
               size="sm"
               disabled={!result}
@@ -457,21 +481,25 @@ export function PdfImportView() {
             )}
             {error && <span className="ml-3 text-xs text-destructive">{error}</span>}
             <span className="ml-auto text-xs text-muted-foreground">
-              {t(($) => $.library.pdfImport.disclaimer)}
+              {scanTranscribed
+                ? "Transcribed on this device. Review equations and tables."
+                : t(($) => $.library.pdfImport.disclaimer)}
             </span>
           </div>
-          <div className="flex min-h-0 flex-1">
-            {(view === "preview" || view === "split") && (
-              <div className={view === "split" ? "w-1/2 border-r" : "w-full"}>
-                <PagePreviews />
-              </div>
-            )}
-            {(view === "source" || view === "split") && (
-              <div className={view === "split" ? "w-1/2" : "w-full"}>
-                <SourcePane />
-              </div>
-            )}
-          </div>
+          {view === "split" ? (
+            <ToolSplitView storageId="pdf-import-review">
+              <div className="h-full min-w-0"><PagePreviews /></div>
+              <div className="h-full min-w-0"><SourcePane /></div>
+            </ToolSplitView>
+          ) : (
+            <div className="flex min-h-0 flex-1">
+              {view === "preview" ? (
+                <div className="w-full"><PagePreviews /></div>
+              ) : (
+                <div className="w-full"><SourcePane /></div>
+              )}
+            </div>
+          )}
           <FiguresStrip />
         </>
       )}

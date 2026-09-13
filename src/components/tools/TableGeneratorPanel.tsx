@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { buildLatexTable, resizeTable, type TableAlign } from "@/lib/latex-tools";
 import { toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
+import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 
 function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" {
   if (align === "l") return "left";
@@ -55,8 +56,8 @@ export function TableGeneratorPanel() {
   const previewHeader = cells[0] ?? [];
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto border-r p-4">
+    <ToolSplitView storageId="latex-table-generator">
+      <div className="flex h-full min-w-0 flex-col overflow-y-auto p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="table-rows">{t(($) => $.researchTools.table.rows)}</label>
@@ -157,7 +158,7 @@ export function TableGeneratorPanel() {
           className="mt-4 max-w-sm"
         />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex h-full min-w-0 flex-col overflow-y-auto">
         <div className="border-b px-4 py-2 text-xs font-medium text-muted-foreground">
           {t(($) => $.researchTools.table.preview)}
         </div>
@@ -234,6 +235,6 @@ export function TableGeneratorPanel() {
           </p>
         )}
       </div>
-    </div>
+    </ToolSplitView>
   );
 }

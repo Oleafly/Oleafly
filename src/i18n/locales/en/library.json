@@ -170,6 +170,23 @@
   "import": {
     "title": "Import a project",
     "description": "Oleafly copies what you choose into a new project. The original is left alone.",
+    "failed": "The import could not finish. Try again.",
+    "converterUnavailable": "The document converter is unavailable. Check the download message, then try again.",
+    "supportedTypes": "Choose one of the supported document types.",
+    "importing": "Importing your project…",
+    "targetTitle": "Choose the project type",
+    "targetDescription": "Choose the format you want to edit. Images or included files stored beside the original may need to be added to the new project.",
+    "recommended": "Recommended for this file type",
+    "targetRecommended": "{{label}} (recommended)",
+    "arxivTitle": "Import an arXiv paper",
+    "arxivDescription": "Oleafly downloads the paper's LaTeX source and unpacks it as a project.",
+    "arxivInputLabel": "arXiv id or paper link",
+    "arxivPlaceholder": "arXiv id or https://arxiv.org/abs/…",
+    "arxivHint": "Source files must be available on arXiv. If the paper is only available as a PDF, use the PDF import tool.",
+    "arxivPaper": "arXiv paper",
+    "arxivCardDescription": "Download a paper's LaTeX source by its arXiv id.",
+    "importAction": "Import",
+    "tryAgain": "Try again",
     "githubTitle": "Import from GitHub",
     "githubDescription": "Choose a repository to copy into your library.",
     "back": "Back to import sources",
@@ -197,6 +214,14 @@
       "markdown": {
         "title": "Markdown document",
         "description": "A .md file, kept as Markdown."
+      },
+      "html": {
+        "title": "HTML page",
+        "description": "Convert HTML to LaTeX, Markdown, or Typst."
+      },
+      "typst": {
+        "title": "Typst document",
+        "description": "Convert Typst to LaTeX or Markdown."
       }
     },
     "picker": {
@@ -205,7 +230,16 @@
       "wordTitle": "Import a Word document",
       "wordFilter": "Word document",
       "markdownTitle": "Import a Markdown document",
-      "markdownFilter": "Markdown document"
+      "markdownFilter": "Markdown document",
+      "htmlTitle": "Import an HTML page",
+      "htmlFilter": "HTML page",
+      "typstTitle": "Import a Typst document",
+      "typstFilter": "Typst document"
+    },
+    "targets": {
+      "latex": "LaTeX project",
+      "markdown": "Markdown project",
+      "typst": "Typst project"
     },
     "menu": {
       "local": "Local",
@@ -214,7 +248,8 @@
       "word": "Word document",
       "markdown": "Markdown document",
       "connect": "Connect GitHub in Settings",
-      "repositoriesFailed": "Could not load repositories."
+      "repositoriesFailed": "Could not load repositories.",
+      "repositoriesRetry": "Could not load repositories. Try again"
     }
   },
   "pdfImport": {
@@ -228,7 +263,8 @@
     "refine": "Refine with AI",
     "converting": "Converting…",
     "disclaimer": "AI-free local reconstruction. Review before trusting.",
-    "dropTitle": "Drop a PDF or Word document here",
+    "dropTitle": "Drop a PDF here",
+    "choosePdf": "Choose a PDF here. Word to LaTeX has its own converter in Tools.",
     "dropHint": "Or <browse>browse</browse> to upload. PDF conversion runs on your device. No files are uploaded.",
     "handlesTitle": "What it handles",
     "handles": {
@@ -255,6 +291,8 @@
     },
     "pageAlt": "Page {{page}}",
     "scanned": "This PDF has no text layer (likely scanned). Use Refine with AI to transcribe it.",
+    "scannedLocal": "This PDF looks scanned. Transcribe it with a local vision model to recover editable text.",
+    "transcribeLocal": "Transcribe scan locally",
     "options": {
       "label": "Conversion options",
       "pageRange": "Page range (e.g. 2-5)",

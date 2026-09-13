@@ -12,9 +12,10 @@ interface CodeFieldProps {
   placeholder?: string;
   className?: string;
   testId?: string;
+  readOnly?: boolean;
 }
 
-/** Editable, syntax-highlighted CodeMirror field for the standalone tool panels. */
+/** Syntax-highlighted CodeMirror field for the standalone tool panels. */
 export function CodeField({
   value,
   onChange,
@@ -23,6 +24,7 @@ export function CodeField({
   placeholder,
   className,
   testId,
+  readOnly = false,
 }: Readonly<CodeFieldProps>) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -38,8 +40,9 @@ export function CodeField({
         extensions: [
           lineNumbers(),
           EditorView.lineWrapping,
-          history(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          ...(readOnly
+            ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
+            : [history(), keymap.of([...defaultKeymap, ...historyKeymap])]),
           language(),
           editorTheme(),
           ...(placeholder ? [cmPlaceholder(placeholder)] : []),

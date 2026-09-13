@@ -1,5 +1,7 @@
 
-import { E2E_HOOKS } from "@/lib/e2e-flags";import {
+import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { pickTableImportFile, registerPickedFileForE2E } from "@/lib/tauri";
+import {
   open as openNativeDialog,
   save as saveNativeDialog,
   type OpenDialogOptions,
@@ -67,6 +69,20 @@ export async function pickOpenPath<T extends OpenDialogOptions>(
     }
   }
   return openNativeDialog(options);
+}
+
+export async function pickTableImportPath(): Promise<string | null> {
+  const state = e2eState();
+  if (state) {
+    state.openRequests += 1;
+    if (Object.hasOwn(state, "nextImportPaths")) {
+      const paths = state.nextImportPaths ?? null;
+      delete state.nextImportPaths;
+      const path = paths?.[0] ?? null;
+      return path === null ? null : registerPickedFileForE2E(path);
+    }
+  }
+  return pickTableImportFile();
 }
 
 /**

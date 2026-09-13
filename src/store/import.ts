@@ -8,6 +8,8 @@ import { convertPages } from "@oleafly/pdf-to-latex";
 import { create } from "zustand";
 import { useHomeViewStore } from "@/store/home-view";
 
+let scanController: AbortController | null = null;
+
 interface ImportState {
   requestGeneration: number;
   open: boolean;
@@ -16,12 +18,14 @@ interface ImportState {
   pages: PageInput[];
   figures: ExtractedFigure[];
   result: ConvertResult | null;
+  scanTranscribed: boolean;
   busy: boolean;
   error: string | null;
   view: "preview" | "source" | "split";
   options: ConvertOptions;
   openWithPdf: (bytes: Uint8Array, fileName: string) => Promise<void>;
   rerun: (options: ConvertOptions) => void;
+  transcribeScan: () => Promise<void>;
   setView: (v: "preview" | "source" | "split") => void;
   close: () => void;
 }
@@ -34,11 +38,14 @@ export const useImportStore = create<ImportState>((set, get) => ({
   pages: [],
   figures: [],
   result: null,
+  scanTranscribed: false,
   busy: false,
   error: null,
   view: "split",
   options: {},
   openWithPdf: async (bytes, fileName) => {
+    scanController?.abort();
+    scanController = null;
     const requestGeneration = get().requestGeneration + 1;
     useHomeViewStore.getState().goTo("pdf-import");
     set({
@@ -49,6 +56,7 @@ export const useImportStore = create<ImportState>((set, get) => ({
       fileName,
       pdfBytes: bytes,
       result: null,
+      scanTranscribed: false,
       pages: [],
       figures: [],
       options: {},
@@ -65,19 +73,66 @@ export const useImportStore = create<ImportState>((set, get) => ({
     }
   },
   rerun: (options) => {
+    scanController?.abort();
+    scanController = null;
     const { pages } = get();
-    set({ options, result: convertPages(pages, options) });
+    set((state) => ({
+      requestGeneration: state.requestGeneration + 1,
+      options,
+      result: convertPages(pages, options),
+      scanTranscribed: false,
+      busy: false,
+      error: null,
+    }));
+  },
+  transcribeScan: async () => {
+    const { pdfBytes, result, requestGeneration, busy } = get();
+    if (!pdfBytes || !result?.report.likelyScanned || busy) return;
+    const controller = new AbortController();
+    scanController = controller;
+    set({ busy: true, error: null });
+    try {
+      const { transcribePdfPages } = await import("@/features/ad-hoc-converters");
+      const tex = await transcribePdfPages(
+        pdfBytes,
+        result.report.pages,
+        "LaTeX",
+        undefined,
+        controller.signal,
+      );
+      if (!get().open || get().requestGeneration !== requestGeneration) return;
+      set({ result: { ...result, tex }, scanTranscribed: true, busy: false });
+    } catch (error) {
+      if (get().open && get().requestGeneration === requestGeneration) {
+        set({
+          busy: false,
+          error:
+            error instanceof DOMException && error.name === "AbortError"
+              ? null
+              : error instanceof Error
+                ? error.message
+                : String(error),
+        });
+      }
+    } finally {
+      if (scanController === controller) scanController = null;
+    }
   },
   setView: (view) => set({ view }),
   close: () =>
-    set((state) => ({
-      requestGeneration: state.requestGeneration + 1,
-      open: false,
-      busy: false,
-      pdfBytes: null,
-      pages: [],
-      figures: [],
-      result: null,
-      error: null,
-    })),
+    set((state) => {
+      scanController?.abort();
+      scanController = null;
+      return {
+        requestGeneration: state.requestGeneration + 1,
+        open: false,
+        busy: false,
+        pdfBytes: null,
+        pages: [],
+        figures: [],
+        result: null,
+        scanTranscribed: false,
+        error: null,
+      };
+    }),
 }));

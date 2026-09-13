@@ -44,34 +44,37 @@ import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
-import { exportCurrentPdf, exportCurrentImagePng } from "@/features/export";
-import { ensurePandoc } from "@/features/pandoc";
+import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
+import { exportRoutesFor } from "@oleafly/conversion-registry";
 import {
-  downloadProjectZip,
   duplicateProject,
-  exportDocument,
-  revealInDir,
 } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac } from "@/lib/utils";
-import { pickSavePath } from "@/lib/native-file-dialog";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { i18n } from "@/i18n";
 
-const FMT_LABEL: Record<string, string> = {
-  zip: "Zip",
-  pdf: "PDF",
-  docx: "Docx",
-  html: "html",
-  md: "Md",
-  pptx: "PowerPoint",
-  epub: "EPUB",
-  txt: "Text",
-};
+type DocFormat = DocumentExportFormat;
 
-type DocFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt";
+/** Backend export format id for a registry target ("md"/"tex" are the ids). */
+function formatForTarget(target: string): DocFormat {
+  switch (target) {
+    case "markdown":
+      return "md";
+    case "latex":
+      return "tex";
+    case "typst":
+      return "typst";
+    case "docx":
+      return "docx";
+    case "html":
+      return "html";
+    default:
+      return "docx";
+  }
+}
 
 function classifyDoc(source: string): "presentation" | "book" | "doc" {
   if (/\\documentclass(\[[^\]]*\])?\{\s*beamer\s*\}/.test(source)) return "presentation";
@@ -299,6 +302,7 @@ export function TopToolbar() {
 
   // Imperative read (not a subscription) to avoid re-rendering on every keystroke.
   const setExportMenuOpen = (open: boolean) => {
+    if (open && exporting) return;
     if (open) {
       const f = useFilesStore.getState();
       // Classify the document that would actually be exported, which a
@@ -308,63 +312,20 @@ export function TopToolbar() {
     }
     setDlOpen(open);
   };
-  const safeName = () => (projectName || "document").replace(/[^\w.-]+/g, "_");
-
-  const doDownloadZip = async () => {
-    if (!projectId) return;
+  const exportBusyRef = useRef(false);
+  const doExportFormat = async (format: DocFormat | "zip") => {
+    if (exportBusyRef.current) return;
+    exportBusyRef.current = true;
     setDlOpen(false);
-    const dest = await pickSavePath({
-      defaultPath: `${safeName()}.zip`,
-      filters: [{ name: "Zip", extensions: ["zip"] }],
-    });
-    if (!dest) return;
-    setExporting("zip");
-    try {
-      await downloadProjectZip(projectId, dest);
-      toast.success(
-        i18n.t(($) => $.shell.toolbar.exportComplete, { format: FMT_LABEL.zip }),
-        {
-          label: i18n.t(($) => $.shell.toolbar.viewFile),
-          onClick: () => void revealInDir(dest),
-        },
-        true,
-      );
-    } catch (e) {
-      notifyError("export zip", e, i18n.t(($) => $.shell.toolbar.exportZipFailed));
-    } finally {
-      setExporting(null);
-    }
-  };
-
-  const doExportFormat = async (format: DocFormat) => {
-    if (!projectId) return;
-    setDlOpen(false);
-    const ext = format;
-    const dest = await pickSavePath({
-      defaultPath: `${safeName()}.${ext}`,
-      filters: [{ name: format.toUpperCase(), extensions: [ext] }],
-    });
-    if (!dest) return;
     setExporting(format);
     try {
-      if (!(await ensurePandoc())) return;
-      await exportDocument(projectId, resolveEffectiveMainDoc().mainDoc, format, dest);
-      toast.success(
-        i18n.t(($) => $.shell.toolbar.exportComplete, {
-          format: FMT_LABEL[format] ?? format,
-        }),
-        {
-          label: i18n.t(($) => $.shell.toolbar.viewFile),
-          onClick: () => void revealInDir(dest),
-        },
-        true,
-      );
-    } catch (e) {
-      notifyError(`export ${format}`, e);
+      await exportCurrentDocument(format);
     } finally {
+      exportBusyRef.current = false;
       setExporting(null);
     }
   };
+  const doDownloadZip = () => doExportFormat("zip");
 
   const doDownloadPdf = async () => {
     setDlOpen(false);
@@ -533,6 +494,12 @@ export function TopToolbar() {
                     {t(($) => $.shell.toolbar.exportPngRaster)}
                   </DropdownMenuItem>
                 )}
+                {!isSingleFigureProject && engine.capabilities.produces_pdf && (
+                  <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
+                    <ImagePlay className="size-4 text-muted-foreground" />
+                    {t(($) => $.shell.toolbar.exportPagePng)}
+                  </DropdownMenuItem>
+                )}
                 {!pdfBytes && (
                   <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
                     {isSingleFigureProject
@@ -543,18 +510,18 @@ export function TopToolbar() {
                 {!isSingleFigureProject && engine.capabilities.conversion_exports.length > 0 && (
                   <>
                     <DropdownMenuSeparator />
-                    {engine.capabilities.conversion_exports.includes("docx") && <DropdownMenuItem onSelect={() => void doExportFormat("docx")}>
-                      <FileType className="size-4 text-muted-foreground" />
-                      {t(($) => $.shell.toolbar.exportDocx)}
-                    </DropdownMenuItem>}
-                    {engine.capabilities.conversion_exports.includes("html") && <DropdownMenuItem onSelect={() => void doExportFormat("html")}>
-                      <FileType className="size-4 text-muted-foreground" />
-                      {t(($) => $.shell.toolbar.exportHtml)}
-                    </DropdownMenuItem>}
-                    {engine.capabilities.conversion_exports.includes("md") && <DropdownMenuItem onSelect={() => void doExportFormat("md")}>
-                      <FileType className="size-4 text-muted-foreground" />
-                      {t(($) => $.shell.toolbar.exportMarkdown)}
-                    </DropdownMenuItem>}
+                    {exportRoutesFor(engine.id, engine.capabilities.conversion_exports)
+                      .filter((route) => route.target !== "pdf")
+                      .map((route) => (
+                        <DropdownMenuItem
+                          key={route.id}
+                          data-testid={`export-route-${route.id}`}
+                          onSelect={() => void doExportFormat(formatForTarget(route.target))}
+                        >
+                          <FileType className="size-4 text-muted-foreground" />
+                          {t(($) => $.shell.toolbar.exportAs, { format: route.label })}
+                        </DropdownMenuItem>
+                      ))}
                     {engine.capabilities.conversion_exports.includes("txt") && <DropdownMenuItem onSelect={() => void doExportFormat("txt")}>
                       <FileType className="size-4 text-muted-foreground" />
                       {t(($) => $.shell.toolbar.exportTxt)}

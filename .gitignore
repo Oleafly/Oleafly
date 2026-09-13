@@ -31,6 +31,7 @@ src-tauri/resources/*.ttb
 src-tauri/resources/language-servers/*
 !src-tauri/resources/language-servers/.gitkeep
 src-tauri/binaries/*
+src-tauri/resources/licenses/pandoc-3.9.0.2-COPYING.md
 !src-tauri/binaries/.gitkeep
 
 .private/

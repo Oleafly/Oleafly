@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CodeField } from "@/components/tools/CodeField";
+import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 import { bibtexLanguage } from "@/components/editor/cm/bibtex";
 import { parseBib, validateBib } from "@/lib/latex-tools";
 import { i18n } from "@/i18n";
@@ -67,8 +68,8 @@ export function BibtexValidatorPanel() {
   }, [input]);
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex min-w-0 flex-1 flex-col border-r">
+    <ToolSplitView storageId="bibtex-validator">
+      <div className="flex h-full min-w-0 flex-col">
         <div className="flex items-center justify-between border-b px-4 py-2 text-xs font-medium text-muted-foreground">
           <span>{t(($) => $.researchTools.bibtex.inputHeading)}</span>
           <span>
@@ -110,7 +111,7 @@ export function BibtexValidatorPanel() {
           </div>
         </div>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-full min-w-0 flex-col">
         <div className="border-b px-4 py-2 text-xs font-medium text-muted-foreground">
           {t(($) => $.researchTools.bibtex.resultsHeading)}
         </div>
@@ -149,6 +150,6 @@ export function BibtexValidatorPanel() {
           ))}
         </div>
       </div>
-    </div>
+    </ToolSplitView>
   );
 }

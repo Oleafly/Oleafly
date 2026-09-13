@@ -2,7 +2,7 @@ import { test, expect } from "../fixtures";
 import { createBlankProject, openProject } from "../helpers";
 
 test("view mode segmented control switches source/split/pdf", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
+  await createBlankProject(tauriPage, "Toolbar views");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.click('[aria-label="PDF View"]');
   await expect(tauriPage.locator('[aria-label="PDF View"]')).toHaveAttribute("aria-pressed", "true");
@@ -71,7 +71,7 @@ test("inline project rename commits and reverts", async ({ tauriPage }, testInfo
 });
 
 test("export menu lists the document formats", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
+  await createBlankProject(tauriPage, "Toolbar exports");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.focus('[aria-label="Export"]');
   await tauriPage.press('[aria-label="Export"]', "Enter");
@@ -84,10 +84,10 @@ test("export menu lists the document formats", async ({ tauriPage }) => {
 });
 
 test("back to library and reopen", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
+  await createBlankProject(tauriPage, "Toolbar navigation");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.click('[title="Back to library"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible();
-  await openProject(tauriPage, "E2E Doc");
+  await openProject(tauriPage, "Toolbar navigation");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 });

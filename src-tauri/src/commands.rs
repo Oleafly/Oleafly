@@ -541,17 +541,50 @@ pub async fn write_bytes_file(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let bytes = decode_b64(&data_base64)?;
-    let dest_for_allow = dest.clone();
+    let destination = dest.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let transaction = crate::sandbox::AtomicFile::for_export(&dest)?;
-        std::fs::write(transaction.staging_path(), bytes)
-            .map_err(|e| format!("failed to write staged artifact: {e}"))?;
-        transaction.commit()
+        write_export_bytes(&destination, &bytes)
     })
     .await
     .map_err(|e| e.to_string())??;
+    allow_reveal_export(&dest, &state).await;
+    Ok(())
+}
+
+/// Export a rendered project image to a user-selected path. Unlike the
+/// generic artifact writer, this knows the source project and rejects a path
+/// inside it before publishing the image.
+#[tauri::command]
+pub async fn export_project_image(
+    project_id: String,
+    dest: String,
+    data_base64: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let bytes = decode_b64(&data_base64)?;
+    let destination = dest.clone();
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let root = crate::paths::project_dir(&project_id)?;
+        crate::project::require_export_destination_outside_project(&root, &destination)?;
+        write_export_bytes(&destination, &bytes)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    allow_reveal_export(&dest, &state).await;
+    Ok(())
+}
+
+fn write_export_bytes(dest: &str, bytes: &[u8]) -> Result<(), String> {
+    let transaction = crate::sandbox::AtomicFile::for_export(dest)?;
+    std::fs::write(transaction.staging_path(), bytes)
+        .map_err(|e| format!("failed to write staged artifact: {e}"))?;
+    transaction.commit()
+}
+
+async fn allow_reveal_export(dest: &str, state: &AppState) {
     // Permit a subsequent "Reveal in Finder/Explorer" for this export path.
-    if let Ok(canon) = std::path::Path::new(&dest_for_allow).canonicalize() {
+    if let Ok(canon) = std::path::Path::new(dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;
         if allow.len() >= 1024 {
             allow.pop_front();
@@ -562,9 +595,8 @@ pub async fn write_bytes_file(
         if allow.len() >= 1024 {
             allow.pop_front();
         }
-        allow.push_back(std::path::PathBuf::from(dest_for_allow));
+        allow.push_back(std::path::PathBuf::from(dest));
     }
-    Ok(())
 }
 
 /// Decode a base64 payload for `write_project_bytes`. Pure, so it is unit-testable.

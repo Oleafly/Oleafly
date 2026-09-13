@@ -182,6 +182,14 @@ jobs:
         shell: bash
         run: bash scripts/fetch-typst.sh ${{ matrix.rust_target }}
 
+      # Pandoc powers the ad-hoc document converters. Shipping the pinned
+      # sidecar keeps every conversion available when the app is offline.
+      - name: Fetch checksum-pinned Pandoc sidecar
+        shell: bash
+        run: |
+          bash scripts/fetch-pandoc.sh ${{ matrix.rust_target }}
+          test -f src-tauri/resources/licenses/pandoc-3.9.0.2-COPYING.md
+
       - name: Smoke-test Typst sidecar
         shell: bash
         run: bash scripts/smoke-typst.sh ${{ matrix.rust_target }}
@@ -439,16 +447,19 @@ jobs:
             RUNTIME_DIR="src-tauri/target/${{ matrix.rust_target }}/release"
             test -f "$RUNTIME_DIR/tectonic"
             test ! -e "$RUNTIME_DIR/tinymist"
+            test -f "$RUNTIME_DIR/pandoc"
             test -f "$RUNTIME_DIR/typst"
           elif [[ "${{ matrix.rust_target }}" == *windows* ]]; then
             RUNTIME_DIR="src-tauri/target/release"
             test -f "$RUNTIME_DIR/tectonic.exe"
             test ! -e "$RUNTIME_DIR/tinymist.exe"
+            test -f "$RUNTIME_DIR/pandoc.exe"
             test -f "$RUNTIME_DIR/typst.exe"
           else
             RUNTIME_DIR="src-tauri/target/release"
             test -f "$RUNTIME_DIR/tectonic"
             test ! -e "$RUNTIME_DIR/tinymist"
+            test -f "$RUNTIME_DIR/pandoc"
             test -f "$RUNTIME_DIR/typst"
           fi
 

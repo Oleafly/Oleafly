@@ -1,4 +1,5 @@
 mod acp;
+mod ad_hoc_conversion;
 mod agent;
 mod agent_config;
 mod agent_exec;
@@ -10,7 +11,9 @@ mod ai_model_metadata;
 mod ai_model_registry;
 mod app_error;
 mod approvals;
+mod arxiv_import;
 mod assets;
+mod bib_clean;
 mod biber_toolchain;
 mod browser;
 mod browser_cookie_import;
@@ -26,6 +29,7 @@ mod commands;
 mod compile_fingerprint;
 mod config;
 mod connectors;
+mod conversion;
 mod cua_policy;
 mod deadlines;
 mod document_engine;
@@ -69,6 +73,7 @@ mod skills_pack;
 mod skills_share;
 mod stall_trace;
 mod state;
+mod stats;
 mod storage;
 mod synctex;
 mod template_packs;
@@ -303,6 +308,8 @@ pub fn run() {
         .on_window_event(on_window_event)
         .setup(setup_app)
         .invoke_handler(traced_commands(tauri::generate_handler![
+            ad_hoc_conversion::convert_ad_hoc,
+            arxiv_import::extract_arxiv_source,
             research_tasks::research_task_list,
             research_tasks::research_task_create,
             research_tasks::research_task_edit,
@@ -464,6 +471,7 @@ pub fn run() {
             commands::read_project_bytes,
             commands::write_project_bytes,
             commands::write_bytes_file,
+            commands::export_project_image,
             github::gh_request_device_code,
             github::gh_check_device_token,
             github::gh_current_user,
@@ -493,6 +501,9 @@ pub fn run() {
             project::import_paths_into_project,
             project::save_file_base64,
             project::read_file_base64,
+            project::read_picked_file_base64,
+            project::pick_table_import_file,
+            project::register_picked_file_for_e2e,
             project::append_app_log,
             project::read_app_log,
             project::has_pandoc,
@@ -514,7 +525,14 @@ pub fn run() {
             latex_engine::compile_tagged,
             citation::fetch_doi_bibtex,
             citation::fetch_arxiv,
+            citation::fetch_isbn_bibtex,
+            citation::fetch_pmid_bibtex,
             citation::crossref_search,
+            arxiv_import::import_arxiv_eprint,
+            bib_clean::clean_bibtex_library,
+            stats::stats_p_value,
+            stats::stats_sample_size,
+            stats::stats_confidence_interval,
             literature::literature_search,
             literature::literature_arxiv_lookup,
             connectors::get_connector_key,
@@ -532,6 +550,7 @@ pub fn run() {
             project::list_projects,
             project::create_project,
             project::create_project_from_pdf_conversion,
+            project::create_project_from_ad_hoc,
             project::create_typst_project,
             project::create_markdown_project,
             project::create_image_project,

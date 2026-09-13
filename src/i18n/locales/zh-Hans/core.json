@@ -180,6 +180,10 @@
     "transcribing": "正在转录图片…"
   },
   "import": {
+    "arxivImported": "arXiv 源码已导入。请编译项目并检查结果。",
+    "chooseOfferedProjectType": "请选择此文件支持的项目类型。",
+    "invalidArxivId": "请粘贴 arXiv 论文链接或类似 2301.01234 的编号。",
+    "supportedDocumentTypes": "请选择支持的文档类型。",
     "conversionNotice": "我们已将你的内容转换为 LaTeX。你可能需要调整样式，尤其是表格、图片和引用。",
     "figureSaved": "已保存 {{name}}",
     "pdfProjectCreated": "已从 PDF 创建项目。请先检查，再信任重建结果。",

@@ -43,7 +43,6 @@ import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
-import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { TERMINAL_LIMIT, terminalLimitMessage, useTerminalsStore } from "@/store/terminals";
 import { toast } from "@/lib/toast";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
@@ -60,6 +59,11 @@ import {
   toolTags,
   type ToolDefinition,
 } from "@/lib/tool-catalog";
+import {
+  openHomePage,
+  openTool,
+  openToolsGallery,
+} from "@/features/open-tool";
 
 const engine = () => useFilesStore.getState().engine;
 const engineLoaded = () => useFilesStore.getState().engineLoaded;
@@ -86,32 +90,6 @@ export const runEngineFormatting = (action: EngineFormattingAction) => {
 
 const toggleTheme = () => window.dispatchEvent(new CustomEvent("oleafly:toggle-theme"));
 const openNewProject = () => useSettingsStore.getState().setNewProjectOpen(true);
-const openHomePage = async (page: HomePage) => {
-  const files = useFilesStore.getState();
-  const home = useHomeViewStore.getState();
-  home.closeTools();
-  if (!files.projectId) {
-    home.goTo(page);
-    return;
-  }
-
-  home.queuePageAfterProjectClose(page);
-  await files.closeProject();
-  if (useFilesStore.getState().projectId) {
-    useHomeViewStore.getState().clearQueuedPageAfterProjectClose();
-  }
-};
-const openToolsGallery = async () => {
-  const files = useFilesStore.getState();
-  const home = useHomeViewStore.getState();
-  home.openTools();
-  if (!files.projectId) return;
-
-  await files.closeProject();
-  if (useFilesStore.getState().projectId) {
-    useHomeViewStore.getState().closeTools();
-  }
-};
 const ENGLISH_KEYWORDS = {
   createProject: "new project create template gallery",
   theme: "theme dark light appearance mode",
@@ -265,7 +243,7 @@ export function registerOmnibarCommands() {
       ),
       order: 330 + index,
       when: (ctx) => ctx.latexToolsEnabled === true,
-      run: () => void openHomePage(tool.page),
+      run: () => void openTool(tool),
     });
   });
   registerCommand({

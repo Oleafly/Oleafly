@@ -37,6 +37,10 @@
     "mcpApprove": {
       "title": "批准 MCP 工具",
       "confirm": "使用工具"
+    },
+    "tableImport": {
+      "title": "选择要导入的电子表格",
+      "filter": "电子表格"
     }
   },
   "errors": {

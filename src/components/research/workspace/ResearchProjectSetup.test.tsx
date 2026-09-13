@@ -125,10 +125,13 @@ describe("ResearchProjectSetup preview admission", () => {
     await act(async () => pending[1].result.resolve(preview(pending[1].request)));
     expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeDisabled();
     expect(page().queryByText("Plan Study as article in typst")).not.toBeInTheDocument();
-    await waitFor(() => expect(pending).toHaveLength(3));
     const request = { name: "Revised study", engine: "typst", starter: "reproducible_analysis" } as const;
-    expect(pending[2].request).toEqual(request);
-    await act(async () => pending[2].result.resolve(preview(request)));
+    await waitFor(() => expect(pending.map(({ request: candidate }) => candidate)).toContainEqual(request));
+    const current = pending.find(({ request: candidate }) =>
+      Object.entries(request).every(([key, value]) => candidate[key as keyof ResearchProjectRequest] === value),
+    );
+    expect(current).toBeDefined();
+    await act(async () => current?.result.resolve(preview(request)));
     expect(page().getByText("Plan Revised study as reproducible_analysis in typst")).toBeInTheDocument();
     expect(page().getByText("Document for Revised study: reproducible_analysis")).toBeInTheDocument();
 

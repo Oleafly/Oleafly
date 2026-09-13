@@ -10,7 +10,7 @@ end-user tutorials.
 | --- | --- |
 | Product surface | [Features](features.md), [General](General.md), [Project library](ProjectLibrary.md), [Editor](Editor.md), [PDF preview](PDFPreview.md), [Source control](SourceControl.md) |
 | Authoring tools | [Keyboard shortcuts](KeyboardShortcuts.md), [AI Copilot](AICopilot.md), [Citations](Citations.md), [Diagram composer](DiagramComposer.md), [Templates](Templates.md) |
-| Document quality | [Preflight](Preflight.md), [Export](Export.md), [Compilation engines](CompilationEngines.md) |
+| Document quality | [Preflight](Preflight.md), [Export](Export.md), [Conversion matrix](conversion-matrix.md), [Conversion roadmap](conversion-roadmap.md), [Compilation engines](CompilationEngines.md) |
 | Integrations | [Integrations](Integrations.md), [MCP integration](mcp.md), [Document engines](document-engines.md) |
 | System design | [Product architecture](architecture.md), [Development](development.md), [Language-server toolchain](language-server-toolchain.md) |
 | Release operations | [Releasing](releasing.md), [Code signing](signing.md), [Auto-updates](updates.md) |

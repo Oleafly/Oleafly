@@ -42,12 +42,18 @@ export async function startMockAiServer(): Promise<MockAiServer> {
     // Model listing (native Ollama + OpenAI shapes), in case the UI probes it.
     if (req.method === "GET" && url.startsWith("/api/tags")) {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ models: [{ name: "llama3.2" }] }));
+      res.end(JSON.stringify({ models: [{ name: "llama3.2" }, { name: "llava" }] }));
       return;
     }
     if (req.method === "GET" && url.startsWith("/v1/models")) {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ object: "list", data: [{ id: "llama3.2", object: "model" }] }));
+      res.end(JSON.stringify({
+        object: "list",
+        data: [
+          { id: "llama3.2", object: "model" },
+          { id: "llava", object: "model" },
+        ],
+      }));
       return;
     }
 

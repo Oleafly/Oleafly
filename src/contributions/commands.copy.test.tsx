@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
     tree: [] as { path: string; is_dir: boolean }[],
     mainDoc: null as string | null,
     closeProject: vi.fn(async () => {}),
+    createTypstProject: vi.fn(async () => "typst-project"),
   },
   settings: {
     vim: false,
@@ -54,6 +55,7 @@ const mocks = vi.hoisted(() => ({
     queuePageAfterProjectClose: vi.fn(),
     clearQueuedPageAfterProjectClose: vi.fn(),
   },
+  homeSetState: vi.fn(),
   terminals: {
     projectId: null as string | null,
     tabs: [] as unknown[],
@@ -61,6 +63,7 @@ const mocks = vi.hoisted(() => ({
   },
   documentCitationUi: { requestDocumentScan: vi.fn() },
   toastInfo: vi.fn(),
+  toastError: vi.fn(),
   handoffToAssistant: vi.fn(),
   exportCurrentPdf: vi.fn(),
   forwardFromCursor: vi.fn(),
@@ -84,7 +87,9 @@ vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files }
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => mocks.compile } }));
 vi.mock("@/store/citation", () => ({ useCitationStore: { getState: () => mocks.citation } }));
-vi.mock("@/store/home-view", () => ({ useHomeViewStore: { getState: () => mocks.home } }));
+vi.mock("@/store/home-view", () => ({
+  useHomeViewStore: { getState: () => mocks.home, setState: mocks.homeSetState },
+}));
 vi.mock("@/store/document-citation-ui", () => ({
   useDocumentCitationUiStore: { getState: () => mocks.documentCitationUi },
 }));
@@ -93,7 +98,9 @@ vi.mock("@/store/terminals", () => ({
   terminalLimitMessage: mocks.terminalLimitMessage,
   useTerminalsStore: { getState: () => mocks.terminals },
 }));
-vi.mock("@/lib/toast", () => ({ toast: { info: mocks.toastInfo } }));
+vi.mock("@/lib/toast", () => ({
+  toast: { info: mocks.toastInfo, error: mocks.toastError },
+}));
 vi.mock("@/features/assistant-handoff", () => ({
   handoffToAssistant: mocks.handoffToAssistant,
 }));
@@ -304,16 +311,18 @@ describe("command contributions behaviour", () => {
     expect(mocks.files.closeProject).not.toHaveBeenCalled();
   });
 
-  it("opens the tools gallery and closes it again if the project survives", async () => {
+  it("opens the tools page and restores the project if it survives the close", async () => {
     run("omnibar.tools");
-    await vi.waitFor(() => expect(mocks.home.openTools).toHaveBeenCalled());
-    expect(mocks.home.closeTools).toHaveBeenCalled();
-    mocks.home.openTools.mockClear();
-    mocks.home.closeTools.mockClear();
+    await vi.waitFor(() =>
+      expect(mocks.home.queuePageAfterProjectClose).toHaveBeenCalledWith("tools"),
+    );
+    expect(mocks.home.clearQueuedPageAfterProjectClose).toHaveBeenCalled();
+    mocks.home.queuePageAfterProjectClose.mockClear();
+    mocks.home.clearQueuedPageAfterProjectClose.mockClear();
     mocks.files.projectId = null;
     run("omnibar.tools");
-    await vi.waitFor(() => expect(mocks.home.openTools).toHaveBeenCalled());
-    expect(mocks.home.closeTools).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(mocks.home.goTo).toHaveBeenCalledWith("tools"));
+    expect(mocks.home.queuePageAfterProjectClose).not.toHaveBeenCalled();
   });
 
   it("opens settings, word count, versioning and the citation dialog", () => {
@@ -446,14 +455,40 @@ describe("command contributions behaviour", () => {
     expect(view.focus).toHaveBeenCalledTimes(2);
   });
 
-  it("opens the page behind every catalog tool command", async () => {
+  it("opens the destination behind every catalog tool command", async () => {
     mocks.files.projectId = null;
     for (const tool of TOOL_DEFINITIONS) {
       run(`tool.${tool.id}`);
     }
-    await vi.waitFor(() =>
-      expect(mocks.home.goTo).toHaveBeenCalledTimes(TOOL_DEFINITIONS.length),
+    const pages = TOOL_DEFINITIONS.filter((tool) => tool.destination.kind === "page");
+    const converters = TOOL_DEFINITIONS.filter(
+      (tool) => tool.destination.kind === "converter",
     );
+    const references = TOOL_DEFINITIONS.filter(
+      (tool) => tool.destination.kind === "reference",
+    );
+    const typstProjects = TOOL_DEFINITIONS.filter(
+      (tool) => tool.destination.kind === "typst-project",
+    );
+    await vi.waitFor(() =>
+      expect(mocks.home.goTo).toHaveBeenCalledTimes(
+        pages.length + converters.length + references.length,
+      ),
+    );
+    for (const tool of pages) {
+      if (tool.destination.kind !== "page") continue;
+      expect(mocks.home.goTo).toHaveBeenCalledWith(tool.destination.page);
+    }
+    expect(mocks.homeSetState).toHaveBeenCalledTimes(
+      converters.length + references.length,
+    );
+    for (const tool of references) {
+      if (tool.destination.kind !== "reference") continue;
+      expect(mocks.homeSetState).toHaveBeenCalledWith({
+        activeReferenceTool: tool.destination.tool,
+      });
+    }
+    expect(mocks.files.createTypstProject).toHaveBeenCalledTimes(typstProjects.length);
   });
 
   it("requests each appearance preference", () => {

@@ -105,7 +105,7 @@ Neither is something to fix from inside a document. Report them so the user know
 ## Markdown
 
 - Pandoc, with the bundled Tectonic as the PDF engine, run with `--sandbox` and `--citeproc`, and with every `.bib` found in the project passed as a bibliography.
-- Pandoc must be present. The app records the prerequisite state and can download a pinned version.
+- Packaged builds include Pandoc. The app records its prerequisite state, and Settings can repair a missing development copy with the pinned version.
 - No SyncTeX, no offline mode, no isolated figure support.
 
 ## Supervised processes

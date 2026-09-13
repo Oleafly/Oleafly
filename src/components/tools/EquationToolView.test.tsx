@@ -1,42 +1,71 @@
 // @vitest-environment jsdom
+import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-
-const toastSuccess = vi.fn();
-const toastError = vi.fn();
-
-vi.mock("@/lib/toast", () => ({
-  toast: {
-    success: (...args: unknown[]) => toastSuccess(...args),
-    error: (...args: unknown[]) => toastError(...args),
-    info: vi.fn(),
-    update: vi.fn(),
-    dismiss: vi.fn(),
-  },
-}));
-
-vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({
-    isFullscreen: () => Promise.resolve(false),
-    isMaximized: () => Promise.resolve(false),
-    onResized: () => Promise.resolve(() => {}),
-  }),
-}));
-
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
-import { ThemeProvider } from "@/lib/theme";
-import { EquationToolView } from "@/components/tools/EquationToolView";
-import { EQUATION_EXAMPLES } from "@/components/tools/EquationPreviewPanel";
 import { useHomeViewStore } from "@/store/home-view";
+import { useFilesStore } from "@/store/files";
 import { toolName } from "@/lib/tool-catalog";
+
+const mocks = vi.hoisted(() => ({
+  createImageProject: vi.fn(),
+  equationToSvgDocument: vi.fn(),
+  listFiles: vi.fn(),
+  projectMutationGeneration: vi.fn(),
+  refreshProjects: vi.fn(),
+  svgDocumentToPngBytes: vi.fn(),
+  toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+  writeProjectBytes: vi.fn(),
+}));
+
+vi.mock("./EquationPreviewPanel", () => ({
+  EQUATION_EXAMPLES: [{ latex: "x" }],
+  EquationPreviewPanel: () => <div />,
+  renderEquation: () => ({ html: "<math />", error: null }),
+}));
+vi.mock("@/components/ui/popover", () => ({
+  Popover: ({ trigger, children }: { trigger: ReactNode; children: ReactNode }) => <div>{trigger}{children}</div>,
+  PopoverItem: ({ children, onClick }: { children: ReactNode; onClick: () => void }) => <button type="button" onClick={onClick}>{children}</button>,
+}));
+vi.mock("@/components/layout/ThemeControls", () => ({
+  ThemeMenu: ({ testId }: { testId?: string }) => <div data-testid={testId} />,
+}));
+vi.mock("@/components/layout/WindowControls", () => ({ WindowControls: () => <div /> }));
+vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
+vi.mock("@/lib/toast", () => ({
+  toast: { error: mocks.toastError, success: mocks.toastSuccess },
+}));
+vi.mock("@/features/equation-export", () => ({
+  equationToSvgDocument: mocks.equationToSvgDocument,
+  svgDocumentToPngBytes: mocks.svgDocumentToPngBytes,
+}));
+vi.mock("@/lib/tauri", () => ({
+  createImageProject: mocks.createImageProject,
+  listFiles: mocks.listFiles,
+  projectMutationGeneration: mocks.projectMutationGeneration,
+  writeProjectBytes: mocks.writeProjectBytes,
+}));
+
+import { EquationToolView } from "./EquationToolView";
+import { EQUATION_EXAMPLES } from "./EquationPreviewPanel";
 
 const writeText = vi.fn(async () => {});
 
 beforeEach(() => {
-  toastSuccess.mockReset();
-  toastError.mockReset();
-  writeText.mockReset();
+  vi.clearAllMocks();
   useHomeViewStore.setState({ page: "equation" });
+  useFilesStore.setState({
+    projects: [],
+    refreshProjects: mocks.refreshProjects,
+  });
+  mocks.listFiles.mockResolvedValue([]);
+  mocks.projectMutationGeneration.mockResolvedValue(0);
+  mocks.equationToSvgDocument.mockResolvedValue("<svg />");
+  mocks.svgDocumentToPngBytes.mockResolvedValue(new Uint8Array([1, 2, 3]));
+  mocks.writeProjectBytes.mockResolvedValue({ generation: 1 });
+  writeText.mockReset();
+  writeText.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText },
@@ -52,41 +81,15 @@ beforeEach(() => {
   HTMLAnchorElement.prototype.click = vi.fn();
 });
 
-function renderView() {
-  return render(
-    <ThemeProvider>
-      <EquationToolView />
-    </ThemeProvider>,
-  );
-}
-
-async function openExportMenu() {
-  const trigger = screen.getByRole("button", {
-    name: enResearchTools.equation.exportOptions,
-  });
-  fireEvent.pointerDown(
-    trigger,
-    new PointerEvent("pointerdown", { bubbles: true, button: 0 }),
-  );
-  fireEvent.click(trigger);
-  await waitFor(() =>
-    expect(
-      screen.getByRole("button", {
-        name: enResearchTools.equation.downloadSvg,
-      }),
-    ).toBeInTheDocument(),
-  );
-}
-
 describe("EquationToolView", () => {
   it("renders nothing when another page is active", () => {
     useHomeViewStore.setState({ page: "library" });
-    const { container } = renderView();
+    const { container } = render(<EquationToolView />);
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders the header, the seeded equation and the rendered status", () => {
-    renderView();
+    render(<EquationToolView />);
     expect(screen.getByTestId("equation-tool-view")).toBeInTheDocument();
     expect(screen.getByText(toolName("equation"))).toBeInTheDocument();
     expect(
@@ -98,130 +101,165 @@ describe("EquationToolView", () => {
     expect(screen.getByTestId("equation-theme-menu")).toBeInTheDocument();
   });
 
-  it("goes back to the library", () => {
-    renderView();
+  it("goes back to the tools gallery", () => {
+    render(<EquationToolView />);
     fireEvent.click(screen.getByTestId("equation-tool-view-back"));
-    expect(useHomeViewStore.getState().page).toBe("library");
+    expect(useHomeViewStore.getState().page).toBe("tools");
   });
 
-  it("copies the display-wrapped source from the header", () => {
-    renderView();
+  it("copies the display-wrapped source from the header", async () => {
+    render(<EquationToolView />);
     fireEvent.click(
-      screen.getByRole("button", {
-        name: enResearchTools.equation.copyLatex,
-      }),
+      screen.getByRole("button", { name: enResearchTools.equation.copyLatex }),
     );
-    expect(writeText).toHaveBeenCalledWith(
-      `\\[ ${EQUATION_EXAMPLES[0].latex} \\]`,
-    );
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enResearchTools.equation.copiedSource,
-    );
+    await vi.waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(
+        `\\[ ${EQUATION_EXAMPLES[0].latex} \\]`,
+      );
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        enResearchTools.equation.copiedSource,
+      );
+    });
   });
 
-  it("switches to the error status when the source stops parsing", () => {
-    renderView();
+  it("reports a clipboard failure when MathML cannot be copied", async () => {
+    writeText.mockRejectedValueOnce(new Error("clipboard denied"));
+    render(<EquationToolView />);
     fireEvent.click(
-      screen.getByRole("button", {
-        name: enResearchTools.equation.example.chemistry,
-      }),
+      screen.getByRole("button", { name: enResearchTools.equation.copyMathml }),
     );
-    expect(
-      screen.getByText(enResearchTools.equation.statusRendered),
-    ).toBeInTheDocument();
+    await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("clipboard denied"));
   });
 
-  it("downloads an SVG from the export menu", async () => {
-    renderView();
-    await openExportMenu();
+  it("reports a clipboard failure when LaTeX cannot be copied", async () => {
+    writeText.mockRejectedValueOnce(new Error("clipboard denied"));
+    render(<EquationToolView />);
     fireEvent.click(
-      screen.getByRole("button", {
-        name: enResearchTools.equation.downloadSvg,
-      }),
+      screen.getByRole("button", { name: enResearchTools.equation.copyLatex }),
     );
-    expect(URL.createObjectURL).toHaveBeenCalled();
-    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+    await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("clipboard denied"));
   });
 
-  it("copies KaTeX HTML from the export menu", async () => {
-    renderView();
-    await openExportMenu();
+  it("copies MathML from the export menu", async () => {
+    render(<EquationToolView />);
+    fireEvent.click(
+      screen.getByRole("button", { name: enResearchTools.equation.copyMathml }),
+    );
+    await vi.waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining("<math"));
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        enResearchTools.equation.copiedMathml,
+      );
+    });
+  });
+
+  it("copies the rendered markup from the export menu", async () => {
+    render(<EquationToolView />);
     fireEvent.click(
       screen.getByRole("button", {
         name: enResearchTools.equation.copyKatexHtml,
       }),
     );
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("katex"));
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enResearchTools.equation.copiedKatexHtml,
-    );
+    await vi.waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith("<math />");
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        enResearchTools.equation.copiedKatexHtml,
+      );
+    });
   });
 
-  it("copies MathML from the export menu", async () => {
-    renderView();
-    await openExportMenu();
+  it("downloads an SVG from the export menu", async () => {
+    render(<EquationToolView />);
     fireEvent.click(
       screen.getByRole("button", {
-        name: enResearchTools.equation.copyMathml,
+        name: enResearchTools.equation.downloadSvg,
       }),
     );
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("<math"));
-    expect(toastSuccess).toHaveBeenCalledWith(
-      enResearchTools.equation.copiedMathml,
-    );
+    await vi.waitFor(() => {
+      expect(mocks.equationToSvgDocument).toHaveBeenCalled();
+      expect(URL.createObjectURL).toHaveBeenCalled();
+      expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+    });
   });
 
-  it("reports an image export failure when the SVG cannot load", async () => {
-    class StubImage {
-      onload: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-      width = 0;
-      height = 0;
-      set src(_value: string) {
-        this.onerror?.();
-      }
-    }
-    const originalImage = globalThis.Image;
-    globalThis.Image = StubImage as unknown as typeof Image;
-    renderView();
-    await openExportMenu();
+  it("renders and downloads a PNG from the export menu", async () => {
+    render(<EquationToolView />);
     fireEvent.click(
       screen.getByRole("button", {
         name: enResearchTools.equation.downloadPng,
       }),
     );
-    expect(toastError).toHaveBeenCalledWith(
-      enResearchTools.equation.exportImageFailed,
-    );
-    globalThis.Image = originalImage;
+    await vi.waitFor(() => {
+      expect(mocks.svgDocumentToPngBytes).toHaveBeenCalled();
+      expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+    });
+    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
-  it("draws and downloads a PNG when the SVG loads", async () => {
-    class StubImage {
-      onload: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-      width = 800;
-      height = 300;
-      set src(_value: string) {
-        this.onload?.();
-      }
-    }
-    const originalImage = globalThis.Image;
-    globalThis.Image = StubImage as unknown as typeof Image;
-    const drawImage = vi.fn();
-    HTMLCanvasElement.prototype.getContext = vi.fn(
-      () => ({ drawImage }),
-    ) as unknown as HTMLCanvasElement["getContext"];
-    HTMLCanvasElement.prototype.toDataURL = vi.fn(() => "data:image/png;base64,");
-    renderView();
-    await openExportMenu();
+  it("reports an image export failure when the equation cannot be rendered", async () => {
+    mocks.equationToSvgDocument.mockRejectedValueOnce("no renderer");
+    render(<EquationToolView />);
     fireEvent.click(
       screen.getByRole("button", {
         name: enResearchTools.equation.downloadPng,
       }),
     );
-    expect(drawImage).toHaveBeenCalled();
-    expect(toastError).not.toHaveBeenCalled();
-    globalThis.Image = originalImage;
+    await vi.waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        enResearchTools.equation.exportImageFailed,
+      ),
+    );
+  });
+
+  it("can keep an equation as a reusable image project", async () => {
+    mocks.createImageProject.mockResolvedValue("project-1");
+    mocks.refreshProjects.mockResolvedValue(undefined);
+    render(<EquationToolView />);
+
+    fireEvent.click(screen.getByRole("button", { name: /New image project/i }));
+
+    await vi.waitFor(() => {
+      expect(mocks.createImageProject).toHaveBeenCalledWith(
+        "equation",
+        expect.stringContaining("\\documentclass[border=6pt]{standalone}"),
+      );
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        "Saved as a new image project. You can open it from the Library.",
+      );
+    });
+  });
+
+  it("saves a rendered PNG into an existing project without racing newer edits", async () => {
+    useFilesStore.setState({
+      projects: [{
+        id: "paper",
+        name: "Paper",
+        main_doc: "main.tex",
+        engine: "xetex",
+        kind: "",
+        created_at: 0,
+        updated_at: 0,
+        has_preview: false,
+        exports: [],
+        forked_from: null,
+        recovery_pending: false,
+      }],
+    });
+    mocks.projectMutationGeneration.mockResolvedValue(7);
+    render(<EquationToolView />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Paper" }));
+
+    await vi.waitFor(() => {
+      expect(mocks.writeProjectBytes).toHaveBeenCalledWith(
+        "paper",
+        "figures/equation.png",
+        "AQID",
+        7,
+      );
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        "Saved figures/equation.png to Paper.",
+      );
+    });
   });
 });

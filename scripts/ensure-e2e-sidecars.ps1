@@ -53,3 +53,4 @@ function Install-Sidecar($name, $version, $asset, $sha256, $member, $url) {
 
 Install-Sidecar "typst" "0.15.0" "typst-x86_64-pc-windows-msvc.zip" "66ae7f0907b4b9afed5c7d6cb9b21e07f0f3c3d4e293ba3e0026a54d88202fe9" "typst-x86_64-pc-windows-msvc\typst.exe" "https://github.com/typst/typst/releases/download/v0.15.0/typst-x86_64-pc-windows-msvc.zip"
 Install-Sidecar "tectonic" "0.16.9" "tectonic-0.16.9-x86_64-pc-windows-msvc.zip" "131a24604785a9600989a3d91225f597df52ac06f00aeffe86fd529f99ee5cdd" "tectonic.exe" "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.16.9/tectonic-0.16.9-x86_64-pc-windows-msvc.zip"
+Install-Sidecar "pandoc" "3.9.0.2" "pandoc-3.9.0.2-windows-x86_64.zip" "c97542f2800f446e788d9f74237856d995421ad1bb3cc8324286840c5f272d3a" "pandoc-3.9.0.2\pandoc.exe" "https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip"

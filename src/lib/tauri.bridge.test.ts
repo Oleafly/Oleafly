@@ -123,6 +123,7 @@ describe("document import bridge", () => {
     );
     expect(mocks.invoke).toHaveBeenCalledWith("import_document", {
       path: "/tmp/paper.md",
+      target: null,
     });
   });
 });

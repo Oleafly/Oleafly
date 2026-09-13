@@ -40,7 +40,8 @@ const appState = vi.hoisted(() => {
     },
   };
   const computerUseListeners = new Set<() => void>();
-  return { analysis, compile, computerUseListeners, files };
+  const home = { page: "library" };
+  return { analysis, compile, computerUseListeners, files, home };
 });
 
 const browserWindowMocks = vi.hoisted(() => ({
@@ -176,6 +177,12 @@ vi.mock("@/components/editor/VersioningModal", () => ({
 vi.mock("@/components/editor/HotkeysModal", () => ({ HotkeysModal: () => null }));
 vi.mock("@/components/tour/TourGuide", () => ({ TourGuide: () => null }));
 vi.mock("@/components/tools/EquationToolView", () => ({ EquationToolView: () => null }));
+vi.mock("@/components/tools/GeneratorsToolView", () => ({
+  GeneratorsToolView: () => <div data-testid="generators-tool-view" />,
+}));
+vi.mock("@/components/tools/SymbolsToolView", () => ({
+  SymbolsToolView: () => <div data-testid="symbols-tool-view" />,
+}));
 vi.mock("@/components/tools/LiteratureSearchToolView", () => ({
   LiteratureSearchToolView: () => null,
 }));
@@ -198,8 +205,7 @@ vi.mock("@/store/preflight", () => ({
   usePreflightStore: { getState: () => ({ reset: vi.fn() }) },
 }));
 vi.mock("@/store/home-view", () => {
-  const state = { page: "library", toolsOpen: false, goLibrary: vi.fn() };
-  return { useHomeViewStore: selectorStore(state) };
+  return { useHomeViewStore: selectorStore(appState.home) };
 });
 vi.mock("@/store/tours", () => ({
   useTourStore: { getState: () => ({ activeTourId: null }) },
@@ -274,6 +280,7 @@ describe("project dock layout", () => {
     assistantLayoutMocks.sidebarPanelGroupWidth.mockClear();
     panelHandleMocks.resize.mockClear();
     panelHandleMocks.callbacks.clear();
+    appState.home.page = "library";
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({
       webBrowser: true,
@@ -338,6 +345,24 @@ describe("project dock layout", () => {
     });
 
     expect(document.querySelector('[data-testid="versioning-modal"]')).not.toBeNull();
+  });
+
+  it.each(["generators", "symbols"])("keeps the project open under the %s tool", async (page) => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    appState.home.page = page;
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+
+    expect(document.querySelector(`[data-testid="${page}-tool-view"]`)).not.toBeNull();
+    expect(document.querySelector('[data-sidebar-open] > .contents')?.hasAttribute("inert")).toBe(true);
   });
 
   it("passes the app font size into the sidebar width floor", async () => {

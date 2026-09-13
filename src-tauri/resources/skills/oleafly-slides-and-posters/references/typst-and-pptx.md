@@ -67,7 +67,7 @@ There are three routes and only one of them is a button.
 
 ### From a Beamer deck, through the Export menu
 
-The Export menu offers "Export as PowerPoint (.pptx)" when the project's main document is a LaTeX file whose class is `beamer`. Pandoc does the conversion, and Oleafly downloads Pandoc on demand the first time.
+The Export menu offers "Export as PowerPoint (.pptx)" when the project's main document is a LaTeX file whose class is `beamer`. The bundled Pandoc runtime does the conversion offline.
 
 So the flow is: build the Beamer deck, `set_main_doc` to it, compile, and then tell the user to use Export as PowerPoint from the toolbar. There is no tool that triggers an export, so this step is the user's.
 
@@ -106,7 +106,7 @@ The Markdown slide structure Pandoc expects:
 
 Level-1 headings become section divider slides. Level-2 headings become content slides. A horizontal rule (`---`) also starts a new slide when there is no heading. Pandoc needs to run with the project as its working directory so relative image paths resolve, which `run_command` already does.
 
-Pandoc has to be present. Oleafly downloads it on demand for its own export path, so the first Export from the menu installs it; after that the command-line route finds it too.
+Pandoc has to be present. Packaged builds include it, so Oleafly's export path works offline. If a development copy is missing, Settings can repair it with the pinned version.
 
 ### Typst projects
 

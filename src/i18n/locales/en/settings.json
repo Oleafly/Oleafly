@@ -708,8 +708,10 @@
   },
   "citations": {
     "actions": {
+      "removeApiKey": "Remove API key",
       "removeEmail": "Remove email",
       "removeKey": "Remove key",
+      "saveApiKey": "Save API key",
       "saveEmail": "Save email",
       "saveKey": "Save key"
     },
@@ -727,7 +729,12 @@
       "emailRemoved": "OpenAlex contact email removed",
       "emailSaveFailed": "Could not save the OpenAlex contact email.",
       "emailSaved": "OpenAlex contact email saved",
-      "hint": "Optional contact email. OpenAlex uses it for higher rate limits (polite pool). Stored locally."
+      "hint": "An API key is recommended. OpenAlex requires keys for regular access, while keyless searches share a small daily pool. A contact email also enables the polite pool. Both stay on this device.",
+      "keyLabel": "OpenAlex API key",
+      "keyRemoveFailed": "Could not remove the OpenAlex API key.",
+      "keyRemoved": "OpenAlex API key removed",
+      "keySaveFailed": "Could not save the OpenAlex API key.",
+      "keySaved": "OpenAlex API key saved"
     },
     "semanticScholar": {
       "docsLink": "Semantic Scholar API information",
@@ -832,6 +839,7 @@
       "downloading": "Downloading…",
       "heading": "Markdown compiler",
       "install": "Install pandoc",
+      "repair": "Repair Pandoc",
       "note": "Choosing a different PDF backend for Markdown, or a system pandoc over the managed one, is not available yet.",
       "status": {
         "checking": "Checking for pandoc…",
@@ -1228,7 +1236,6 @@
       "help": "Harper is tuned for chat and email. These rules either push a style papers do not follow, such as spelling out kB and min, or trip over the placeholders that stand in for LaTeX markup, so Oleafly keeps them off. Each one shows what it would flag. Turn it on if you want those findings.",
       "reasons": {
         "AvoidContractions": "Asks you to write out every contraction.",
-        "BoringWords": "Asks for a livelier word.",
         "CompoundNouns": "Joins a compound noun that was written as two words.",
         "Dashes": "Replaces a typed -- or --- with the proper dash character.",
         "DiscourseMarkers": "Flags a sentence that opens with a marker such as however and leaves out the comma after it.",

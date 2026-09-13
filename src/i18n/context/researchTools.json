@@ -56,9 +56,40 @@
   "tools": {
     "back": "Returns from a tool page to the project library",
     "category": {
-      "convert": "Tools that convert one document format into another",
-      "tables": "Tools for building document tables"
+      "converters": "Tools that convert one document format into another",
+      "references": "Citation and bibliography tools",
+      "write": "Writing tools, used as a verb"
     }
+  },
+  "generators": {
+    "source": "Uppercase heading above the source controls",
+    "instructions": "Uppercase heading above optional writing instructions",
+    "taskFooter": "Explains that Generate opens the assistant and sends the visible prompt"
+  },
+  "symbols": {
+    "categoryAll": "Shows symbols from every category",
+    "statusUnavailable": "The bundled symbol reference failed to load",
+    "visibleLimit": "Explains that only the first part of a large result set is rendered"
+  },
+  "converter": {
+    "source": "Badge for editable source text, not a research citation source",
+    "bundle": "Badge for an archive containing multiple converted files",
+    "runsOnDevice": "Privacy note saying the conversion is local",
+    "downloadsFromArxiv": "Network disclosure for the arXiv ID workflow"
+  },
+  "references": {
+    "fieldContainerTitle": "Generic journal, book or proceedings container title",
+    "reference": "A full bibliography entry, contrasted with an in-text citation",
+    "inText": "A short citation placed inside prose",
+    "localEditing": "Badge saying edits and formatting happen on this device",
+    "styleCount": "Number of citation styles available for comparison"
+  },
+  "stats": {
+    "tabInterval": "Short tab label for the confidence interval calculator",
+    "openPopulation": "An effectively unlimited population for sample size planning",
+    "finitePopulation": "A population with a specified total size",
+    "wilsonHalfWidth": "Half-width of a Wilson score interval",
+    "criticalValue": "Label for the critical t or z value used in the interval"
   },
   "equation": {
     "inline": "Renders the equation inside a line of text",

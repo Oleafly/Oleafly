@@ -59,6 +59,7 @@ exec docker run --rm "${TTY_FLAGS[@]}" --platform "$PLATFORM" \
     set -euo pipefail
     pnpm install --frozen-lockfile
     bash scripts/fetch-tectonic.sh "$OLEAFLY_E2E_TARGET"
+    bash scripts/fetch-pandoc.sh "$OLEAFLY_E2E_TARGET"
     bash scripts/fetch-typst.sh "$OLEAFLY_E2E_TARGET"
     export OLEAFLY_DATA_DIR="$(mktemp -d /tmp/oleafly-linux.XXXXXX)"
     # Same launcher CI uses, under a virtual display.

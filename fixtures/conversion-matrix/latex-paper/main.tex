@@ -1,0 +1,77 @@
+% !TeX root = main.tex
+\documentclass[10pt]{article}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{graphicx}
+
+\newcommand{\system}{\textsc{Oleafly}}
+
+\title{A Conversion Matrix Stress Test}
+\author{Fixture Author\footnote{Affiliation omitted for the fixture.}}
+\date{2026}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+This document exercises math, tables, figures, footnotes, citations, and a
+custom macro so every converter has something to chew on.
+The \system{} app should survive this round trip\footnote{A footnote keeps
+exporters honest.}.
+
+\section{Method}
+\input{sections/method}
+
+\section{Results}
+The error follows
+\begin{equation}
+  \label{eq:err}
+  \epsilon(t) = \alpha e^{-\lambda t} + \beta,
+\end{equation}
+and the switch between regimes is
+\begin{equation}
+  f(x) =
+  \begin{cases}
+    x^2, & x < 1, \\
+    \sqrt{x}, & x \geq 1.
+  \end{cases}
+\end{equation}
+The coupled updates solve
+\begin{align}
+  a_{n+1} &= a_n - \eta \nabla_a L, \\
+  b_{n+1} &= b_n - \eta \nabla_b L.
+\end{align}
+
+Table~\ref{tab:results} summarizes the runs.
+\begin{table}[htbp]
+  \centering
+  \caption{Booktabs results table.}
+  \label{tab:results}
+  \begin{tabular}{lrr}
+    \toprule
+    Method & Accuracy (\%) & Time (s) \\
+    \midrule
+    Baseline & 71.2 & 14 \\
+    \system{} & 94.1 & 9 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \draw[->] (0,0) -- (3,0) node[right] {$t$};
+    \draw[->] (0,0) -- (0,2) node[above] {$y$};
+    \draw[thick,blue] plot[domain=0:3] (\x,{2*exp(-0.7*\x)});
+  \end{tikzpicture}
+  \caption{A decay curve drawn with TikZ.}
+  \label{fig:decay}
+\end{figure}
+
+Prior work informs the setup \cite{knuth1984literate, lamport1994latex}.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

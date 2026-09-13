@@ -315,6 +315,9 @@ export const writeProjectBytes = (
 export const writeBytesFile = (dest: string, dataBase64: string) =>
   invoke<void>("write_bytes_file", { dest, dataBase64 });
 
+export const exportProjectImage = (projectId: string, dest: string, dataBase64: string) =>
+  invoke<void>("export_project_image", { projectId, dest, dataBase64 });
+
 export const loadProjectChats = (projectId: string) =>
   invoke<string>("load_project_chats", { projectId });
 
@@ -435,12 +438,67 @@ export const saveFileBase64 = (
 
 export const readFileBase64 = (projectId: string, path: string) =>
   invoke<string>("read_file_base64", { projectId, path });
+export const readPickedFileBase64 = (path: string) =>
+  invoke<string>("read_picked_file_base64", { path });
+export const pickTableImportFile = () => invoke<string | null>("pick_table_import_file");
+export const registerPickedFileForE2E = (path: string) =>
+  invoke<string>("register_picked_file_for_e2e", { path });
+
+export interface AdHocArtifact {
+  path: string;
+  dataBase64: string;
+}
+
+export interface AdHocConversionRequest {
+  source: "latex" | "markdown" | "typst" | "html" | "docx";
+  target: "latex" | "markdown" | "typst" | "html" | "docx";
+  text?: string;
+  dataBase64?: string;
+}
+
+export interface AdHocConversionResult {
+  kind: "text" | "binary";
+  text: string | null;
+  dataBase64: string | null;
+  fileName: string;
+  mediaType: string;
+  files: AdHocArtifact[];
+}
+
+export const convertAdHoc = (request: AdHocConversionRequest) =>
+  invoke<AdHocConversionResult>("convert_ad_hoc", { request });
+
+export interface ArxivSourceRequest {
+  arxivId?: string;
+  dataBase64?: string;
+}
+
+export interface ArxivSourceResult {
+  archiveName: string;
+  mainFile: string;
+  mainSource: string;
+  files: AdHocArtifact[];
+}
+
+export const extractArxivSource = (request: ArxivSourceRequest) =>
+  invoke<ArxivSourceResult>("extract_arxiv_source", { request });
+
+export interface CreateAdHocProjectRequest {
+  name: string;
+  target: "latex" | "markdown" | "typst";
+  text?: string;
+  mainFile?: string;
+  files: AdHocArtifact[];
+}
+
+export const createProjectFromAdHoc = (request: CreateAdHocProjectRequest) =>
+  invoke<string>("create_project_from_ad_hoc", { request });
 
 export const createProjectFromDocx = (name: string, dataBase64: string) =>
   invoke<string>("create_project_from_docx", { name, dataBase64 });
 
-export const importDocument = (path: string) =>
-  invoke<string>("import_document", { path });
+export const importDocument = (path: string, target?: ImportTarget) =>
+  invoke<string>("import_document", { path, target: target ?? null });
 
 export const appendAppLog = (message: string) =>
   invoke<void>("append_app_log", { message });
@@ -744,6 +802,95 @@ export const compileTagged = (projectId: string, mainDoc: string) =>
 
 export const fetchDoiBibtex = (doi: string) => invoke<string>("fetch_doi_bibtex", { doi });
 export const fetchArxiv = (id: string) => invoke<string>("fetch_arxiv", { id });
+export const fetchIsbnBibtex = (isbn: string) => invoke<string>("fetch_isbn_bibtex", { isbn });
+export const fetchPmidBibtex = (pmid: string) => invoke<string>("fetch_pmid_bibtex", { pmid });
+export const importArxivEprint = (arxivId: string, name?: string) =>
+  invoke<string>("import_arxiv_eprint", { arxivId, name: name ?? null });
+
+// --- Conversion matrix (registry-driven tools) ---
+
+/** The kind of project an import produces. */
+export type ImportTarget = "latex" | "markdown" | "typst";
+
+export interface CleanAction {
+  kind: "renamed-key" | "removed-duplicate" | "advisory";
+  old?: string;
+  new?: string;
+  removed?: string;
+  kept?: string;
+  by?: string;
+  key?: string;
+  field?: string;
+}
+
+export interface CleanLibraryOutcome {
+  original: string;
+  cleaned: string;
+  entriesBefore: number;
+  entriesAfter: number;
+  actions: CleanAction[];
+  applied: boolean;
+  previewToken: string;
+  changedFiles: string[];
+  backupPath?: string | null;
+  projectState?: ProjectStateChanged;
+}
+
+export const cleanBibtexLibrary = (projectId: string, bibPath: string, apply: boolean, previewToken?: string, expectedGeneration?: number) =>
+  invoke<CleanLibraryOutcome>("clean_bibtex_library", { projectId, bibPath, apply, previewToken, expectedGeneration });
+
+export interface StatsPValueResult {
+  p: number;
+  label: string;
+}
+
+export const statsPValue = (test: string, statistic: number, df?: number) =>
+  invoke<StatsPValueResult>("stats_p_value", { test, statistic, df: df ?? null });
+
+export interface StatsSampleSizeResult {
+  z: number;
+  infinitePopulation: number;
+  finitePopulation?: number | null;
+}
+
+export const statsSampleSize = (
+  proportion: number,
+  marginError: number,
+  confidence: number,
+  population?: number,
+) =>
+  invoke<StatsSampleSizeResult>("stats_sample_size", {
+    proportion,
+    marginError,
+    confidence,
+    population: population ?? null,
+  });
+
+export interface StatsConfidenceIntervalResult {
+  pointEstimate: number;
+  lower: number;
+  upper: number;
+  standardError: number;
+  marginOfError: number;
+  criticalValue: number;
+  criticalLabel: string;
+  degreesOfFreedom?: number | null;
+  intervalMethod: string;
+}
+
+export const statsConfidenceInterval = (
+  mode: "mean" | "proportion",
+  confidence: number,
+  options: { mean?: number; sd?: number; n?: number; successes?: number },
+) =>
+  invoke<StatsConfidenceIntervalResult>("stats_confidence_interval", {
+    mode,
+    confidence,
+    mean: options.mean ?? null,
+    sd: options.sd ?? null,
+    n: options.n ?? null,
+    successes: options.successes ?? null,
+  });
 export const literatureArxivLookup = (arxivId: string) =>
   invoke<string>("literature_arxiv_lookup", { arxivId });
 export const crossrefSearch = (query: string) => invoke<string>("crossref_search", { query });

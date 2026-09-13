@@ -7,6 +7,7 @@ import {
   Bold,
   Code,
   Divide,
+  FileDown,
   Heading,
   Image,
   Italic,
@@ -36,6 +37,8 @@ import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { goToSyncTex } from "@/features/synctex";
+import { saveEquationAsPng, saveEquationAsSvg } from "@/features/equation-export";
+import { useTableImportStore } from "@/store/table-import";
 import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
 import {
@@ -82,6 +85,7 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
   const engine = useFilesStore((s) => s.engine);
   const syncTexSupported =
     projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engine.capabilities.supports_synctex;
+  const setTableImportOpen = useTableImportStore((state) => state.setOpen);
   if (!engineLoaded) {
     return (
       <ContextMenu>
@@ -116,6 +120,13 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           </ContextMenuItem>
           <ContextMenuItem onClick={() => insertAtCursor("- Item\n")}>
             <List className="mr-2 size-4" /> {t(($) => $.editor.toolbar.bulletedList)}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => setTableImportOpen(true)}>
+            <Table className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.tableFromFile)}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => void saveEquationAsSvg()}>
+            <FileDown className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.equationAsSvg)}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -245,6 +256,9 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
         <ContextMenuItem onClick={() => insertTable(3, 3)}>
           <Table className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.table)}
         </ContextMenuItem>
+        <ContextMenuItem onClick={() => setTableImportOpen(true)} data-testid="context-table-from-file">
+          <Table className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.tableFromFile)}
+        </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={insertAlign}>
           <Rows3 className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.align)}
@@ -254,6 +268,12 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
         </ContextMenuItem>
         <ContextMenuItem onClick={insertFraction}>
           <Divide className="mr-2 size-4" /> {t(($) => $.editor.toolbar.fraction)}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => void saveEquationAsSvg()} data-testid="context-export-equation-svg">
+          <FileDown className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.equationAsSvg)}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => void saveEquationAsPng()} data-testid="context-export-equation-png">
+          <FileDown className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.equationAsPng)}
         </ContextMenuItem>
         <ContextMenuItem onClick={insertBlockquote}>
           <Quote className="mr-2 size-4" /> {t(($) => $.editor.toolbar.blockquote)}

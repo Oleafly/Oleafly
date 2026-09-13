@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalLinter } from "harper.js";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -5,6 +7,7 @@ import { binaryInlined as binary } from "harper.js/binaryInlined";
 import {
   ACADEMIC_DISABLED_RULES,
   ACADEMIC_PROFILE_RULES,
+  HARPER_PANICKING_RULES,
   buildLintConfig,
   isLintRuleName,
   lintConfigFingerprint,
@@ -18,8 +21,15 @@ describe("buildLintConfig", () => {
       expect(config[rule], rule).toBe(false);
     }
     expect(Object.keys(config)).toHaveLength(
-      ACADEMIC_DISABLED_RULES.length,
+      ACADEMIC_DISABLED_RULES.length + HARPER_PANICKING_RULES.length,
     );
+  });
+
+  it("keeps a panicking rule off even when the writer enabled it earlier", () => {
+    const config = buildLintConfig([], ["BoringWords", "LongSentences"]);
+    expect(config.BoringWords).toBe(false);
+    expect(config.LongSentences).toBe(true);
+    expect(ACADEMIC_DISABLED_RULES.includes("BoringWords")).toBe(false);
   });
 
   it("turns a profile rule back on when the writer asks for it", () => {
@@ -53,7 +63,10 @@ describe("buildLintConfig", () => {
       ["has space", "", "a".repeat(120), "9Leading"],
       [],
     );
-    expect(Object.keys(config)).toEqual([...ACADEMIC_DISABLED_RULES]);
+    expect(Object.keys(config)).toEqual([
+      ...ACADEMIC_DISABLED_RULES,
+      ...HARPER_PANICKING_RULES,
+    ]);
   });
 
   it("fingerprints the same config identically regardless of key order", () => {
@@ -63,6 +76,16 @@ describe("buildLintConfig", () => {
     expect(lintConfigFingerprint({ A: true })).not.toBe(
       lintConfigFingerprint({ A: false }),
     );
+  });
+});
+
+describe("the BoringWords block", () => {
+  it("is pinned to the harper.js line that panics on common words; re-check it on upgrade", () => {
+    const manifest = JSON.parse(
+      readFileSync(path.join(process.cwd(), "node_modules/harper.js/package.json"), "utf8"),
+    ) as { version: string };
+    expect(HARPER_PANICKING_RULES).toEqual(["BoringWords"]);
+    expect(manifest.version.startsWith("2.10.")).toBe(true);
   });
 });
 

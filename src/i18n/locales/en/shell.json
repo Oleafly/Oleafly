@@ -758,6 +758,8 @@
     "exportPdf": "Export as PDF",
     "exportPdfVector": "Export as PDF (vector image)",
     "exportPngRaster": "Export as PNG (raster image)",
+    "exportPagePng": "Export page as PNG (raster image)",
+    "exportAs": "Export as {{format}}",
     "exportPptx": "Export as PowerPoint (.pptx)",
     "exportSourceZip": "Export source (.zip)",
     "exportTxt": "Export as Plain text (.txt)",

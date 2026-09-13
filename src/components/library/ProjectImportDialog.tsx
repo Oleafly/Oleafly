@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import {
@@ -7,10 +7,13 @@ import {
   FileText,
   FileType2,
   Github,
+  Globe,
   Loader2,
   Lock,
   Package,
+  Sigma,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,66 +26,33 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
+  IMPORT_FILE_SOURCES,
+  importPickerOptions,
+  importArxivPaper,
+  importFileKind,
   importGitHubRepository,
   importSelectedFile,
+  importTargetsForKind,
   type ProjectImportFileKind,
 } from "@/features/project-import";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
-import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-function pickerOptions(kind: ProjectImportFileKind) {
-  switch (kind) {
-    case "project":
-      return {
-        multiple: false as const,
-        filters: [
-          { name: i18n.t(($) => $.library.import.picker.projectFilter), extensions: ["zip"] },
-        ],
-        title: i18n.t(($) => $.library.import.picker.projectTitle),
-      };
-    case "word":
-      return {
-        multiple: false as const,
-        filters: [
-          { name: i18n.t(($) => $.library.import.picker.wordFilter), extensions: ["docx"] },
-        ],
-        title: i18n.t(($) => $.library.import.picker.wordTitle),
-      };
-    case "markdown":
-      return {
-        multiple: false as const,
-        filters: [
-          {
-            name: i18n.t(($) => $.library.import.picker.markdownFilter),
-            extensions: ["md", "markdown"],
-          },
-        ],
-        title: i18n.t(($) => $.library.import.picker.markdownTitle),
-      };
-  }
-}
-
-const LOCAL_SOURCES: {
-  kind: ProjectImportFileKind;
-  icon: typeof Package;
-}[] = [
-  { kind: "project", icon: Package },
-  { kind: "word", icon: FileType2 },
-  { kind: "markdown", icon: FileText },
-];
+const SOURCE_ICONS = { project: Package, word: FileType2, markdown: FileText, html: Globe, typst: Sigma };
 
 export function ProjectImportDialog({
   open,
   onClose,
-  onImportStarted,
+  onImported,
+  initialView = "sources",
 }: Readonly<{
   open: boolean;
   onClose: () => void;
-  onImportStarted?: () => void;
+  onImported?: () => void;
+  initialView?: "sources" | "arxiv";
 }>) {
   const { t } = useTranslation(["library"]);
   const sourceCopy: Record<ProjectImportFileKind, { title: string; description: string }> = {
@@ -98,21 +68,43 @@ export function ProjectImportDialog({
       title: t(($) => $.library.import.sources.markdown.title),
       description: t(($) => $.library.import.sources.markdown.description),
     },
+    html: {
+      title: t(($) => $.library.import.sources.html.title),
+      description: t(($) => $.library.import.sources.html.description),
+    },
+    typst: {
+      title: t(($) => $.library.import.sources.typst.title),
+      description: t(($) => $.library.import.sources.typst.description),
+    },
   };
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
-  const [view, setView] = useState<"sources" | "github">("sources");
+  const [view, setView] = useState<"sources" | "github" | "target" | "arxiv">(
+    initialView,
+  );
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [arxivId, setArxivId] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const sessionRef = useRef(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [repositoryAttempt, setRepositoryAttempt] = useState(0);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
   const [repositoryLoadFailed, setRepositoryLoadFailed] = useState(false);
 
   useEffect(() => {
-    if (!open) setView("sources");
-  }, [open]);
+    sessionRef.current += 1;
+    setView(initialView);
+    setPendingPath(null);
+    setErrorMessage(null);
+    if (!open) setArxivId("");
+    return () => { sessionRef.current += 1; };
+  }, [open, initialView]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the retry counter explicitly starts another request.
   useEffect(() => {
-    if (view !== "github") return;
+    if (!open || view !== "github") return;
     if (githubStatus === "unknown") {
       void refreshGithub();
       return;
@@ -135,32 +127,73 @@ export function ProjectImportDialog({
     return () => {
       cancelled = true;
     };
-  }, [view, githubStatus, refreshGithub, repositories.length]);
+  }, [open, view, githubStatus, refreshGithub, repositories.length, repositoryAttempt]);
 
-  const importFile = async (kind: ProjectImportFileKind) => {
-    const selection = await pickOpenPath(pickerOptions(kind));
-    if (typeof selection !== "string") return;
+  const reportError = (error: unknown) => {
+    const detail = error instanceof Error ? error.message : typeof error === "string" ? error : t(($) => $.library.import.failed);
+    setErrorMessage(detail);
+    void logError("project import", error);
+  };
+
+  const runImport = async (work: () => Promise<boolean>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
-    onImportStarted?.();
+    setErrorMessage(null);
     try {
-      await importSelectedFile(selection);
+      const imported = await work();
+      if (imported === false) {
+        setErrorMessage(t(($) => $.library.import.converterUnavailable));
+      } else {
+        onImported?.();
+        onClose();
+      }
     } catch (error) {
-      notifyError("import", error);
+      reportError(error);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
-  const importRepository = async (repository: GitHubRepo) => {
+  const importFile = async (kind: ProjectImportFileKind) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
-    onImportStarted?.();
+    setErrorMessage(null);
+    const session = sessionRef.current;
+    let selection: string | null = null;
     try {
-      await importGitHubRepository(repository);
+      const picked = await pickOpenPath(importPickerOptions(kind));
+      if (session !== sessionRef.current || typeof picked !== "string") return;
+      selection = picked;
+      const fileKind = importFileKind(picked);
+      if (!fileKind) throw new Error(t(($) => $.library.import.supportedTypes));
+      if (importTargetsForKind(fileKind).length > 1) {
+        setPendingPath(picked);
+        setView("target");
+        selection = null;
+      }
     } catch (error) {
-      notifyError("import GitHub repository", error);
+      reportError(error);
+      selection = null;
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
+    if (selection) await runImport(() => importSelectedFile(selection));
+  };
+
+  const importWithTarget = async (target: "latex" | "markdown" | "typst") => {
+    if (pendingPath) await runImport(() => importSelectedFile(pendingPath, target));
+  };
+
+  const importFromArxiv = async () => {
+    if (arxivId.trim()) await runImport(() => importArxivPaper(arxivId));
+  };
+
+  const importRepository = async (repository: GitHubRepo) => {
+    await runImport(async () => { await importGitHubRepository(repository); return true; });
   };
 
   const openGithubSettings = () => {
@@ -168,7 +201,7 @@ export function ProjectImportDialog({
     settings.setSettingsInitialSection("integrations");
     settings.setSettingsScrollTarget("github");
     settings.setSettingsOpen(true);
-    onImportStarted?.();
+    onClose();
   };
 
   const renderRepositoryList = () => {
@@ -195,9 +228,19 @@ export function ProjectImportDialog({
     }
     if (repositoryLoadFailed) {
       return (
-        <p className="p-3 text-sm text-muted-foreground">
-          {t(($) => $.library.import.repositoriesFailed)}
-        </p>
+        <div className="space-y-2 p-3">
+          <p role="alert" className="text-sm text-muted-foreground">
+            {t(($) => $.library.import.repositoriesFailed)}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setRepositoryAttempt((attempt) => attempt + 1)}
+          >
+            {t(($) => $.library.import.tryAgain)}
+          </Button>
+        </div>
       );
     }
     if (repositories.length === 0) {
@@ -259,18 +302,19 @@ export function ProjectImportDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (!next && !busyRef.current) onClose();
       }}
     >
       <DialogContent data-testid="project-import-dialog" className="max-w-xl gap-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {view === "github" ? (
+            {view !== "sources" ? (
               <button
                 type="button"
                 aria-label={t(($) => $.library.import.back)}
                 data-testid="project-import-back"
-                onClick={() => setView("sources")}
+                disabled={busy}
+                onClick={() => { setView("sources"); setErrorMessage(null); setPendingPath(null); }}
                 className="rounded-md text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ChevronLeft aria-hidden="true" className="size-4" />
@@ -278,23 +322,97 @@ export function ProjectImportDialog({
             ) : null}
             {view === "github"
               ? t(($) => $.library.import.githubTitle)
-              : t(($) => $.library.import.title)}
+              : view === "arxiv"
+                ? t(($) => $.library.import.arxivTitle)
+                : view === "target"
+                  ? t(($) => $.library.import.targetTitle)
+                  : t(($) => $.library.import.title)}
           </DialogTitle>
           <DialogDescription>
             {view === "github"
               ? t(($) => $.library.import.githubDescription)
-              : t(($) => $.library.import.description)}
+              : view === "arxiv"
+                ? t(($) => $.library.import.arxivDescription)
+                : view === "target"
+                  ? t(($) => $.library.import.targetDescription)
+                  : t(($) => $.library.import.description)}
           </DialogDescription>
         </DialogHeader>
 
-        {view === "sources" ? (
+        {errorMessage && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
+        {busy && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />{t(($) => $.library.import.importing)}</p>}
+        {view === "target" ? (
+          <div className="grid gap-2">
+            <p className="break-all text-xs text-muted-foreground">{pendingPath?.split(/[/\\]/).pop()}</p>
+            {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
+              (target) => (
+                <button
+                  key={target.target}
+                  type="button"
+                  disabled={busy}
+                  data-testid={`project-import-target-${target.target}`}
+                  onClick={() => void importWithTarget(target.target)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors",
+                    "hover:border-primary/40 hover:bg-accent disabled:opacity-60",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">
+                      {target.label}
+                    </span>
+                    {target.recommended ? (
+                      <span className="block text-xs text-muted-foreground">
+                        {t(($) => $.library.import.recommended)}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              ),
+            )}
+          </div>
+        ) : view === "arxiv" ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Input
+                aria-label={t(($) => $.library.import.arxivInputLabel)}
+                disabled={busy}
+                data-testid="project-import-arxiv-id"
+                value={arxivId}
+                placeholder={t(($) => $.library.import.arxivPlaceholder)}
+                onChange={(event) => setArxivId(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void importFromArxiv();
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={busy || arxivId.trim() === ""}
+                onClick={() => void importFromArxiv()}
+              >
+                {busy ? (
+                  <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                ) : null}
+                {t(($) => $.library.import.importAction)}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t(($) => $.library.import.arxivHint)}
+            </p>
+          </div>
+        ) : view === "sources" ? (
           <div className="space-y-4">
             <section className="space-y-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t(($) => $.library.import.localHeading)}
               </h3>
               <div className="grid gap-2">
-                {LOCAL_SOURCES.map((source) => (
+                {IMPORT_FILE_SOURCES.map((source) => {
+                  const Icon = SOURCE_ICONS[source.kind];
+                  const copy = sourceCopy[source.kind];
+                  return (
                   <button
                     key={source.kind}
                     type="button"
@@ -308,18 +426,18 @@ export function ProjectImportDialog({
                     )}
                   >
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <source.icon aria-hidden="true" className="size-4" />
+                      <Icon aria-hidden="true" className="size-4" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-foreground">
-                        {sourceCopy[source.kind].title}
+                        {copy.title}
                       </span>
                       <span className="block text-xs text-muted-foreground">
-                        {sourceCopy[source.kind].description}
+                        {copy.description}
                       </span>
                     </span>
                   </button>
-                ))}
+                ); })}
               </div>
             </section>
 
@@ -327,6 +445,27 @@ export function ProjectImportDialog({
               <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t(($) => $.library.import.cloudHeading)}
               </h3>
+              <button
+                type="button"
+                disabled={busy}
+                data-testid="project-import-arxiv"
+                onClick={() => setView("arxiv")}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors",
+                  "hover:border-primary/40 hover:bg-accent disabled:opacity-60",
+                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                )}
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Sigma aria-hidden="true" className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-foreground">{t(($) => $.library.import.arxivPaper)}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t(($) => $.library.import.arxivCardDescription)}
+                  </span>
+                </span>
+              </button>
               <button
                 type="button"
                 disabled={busy}

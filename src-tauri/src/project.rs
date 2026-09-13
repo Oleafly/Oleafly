@@ -2208,7 +2208,10 @@ fn unique_temporary_path(parent: &Path, prefix: &str) -> Result<PathBuf, String>
     Err("could not create a temporary move path".into())
 }
 
-fn create_unique_temporary_directory(parent: &Path, prefix: &str) -> Result<PathBuf, String> {
+pub(crate) fn create_unique_temporary_directory(
+    parent: &Path,
+    prefix: &str,
+) -> Result<PathBuf, String> {
     for suffix in 0..10_000_u32 {
         let candidate = parent.join(format!("{prefix}-{}-{suffix}", std::process::id()));
         match std::fs::create_dir(&candidate) {
@@ -2427,6 +2430,143 @@ pub async fn read_file_base64(project_id: String, path: String) -> Result<String
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+const TABLE_IMPORT_ALLOWLIST_LIMIT: usize = 64;
+
+#[tauri::command]
+pub async fn pick_table_import_file(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .set_title(crate::i18n::t("dialog.tableImport.title"))
+        .add_filter(
+            crate::i18n::t("dialog.tableImport.filter"),
+            &["csv", "tsv", "xlsx", "xls"],
+        )
+        .pick_file(move |selection| {
+            let _ = sender.send(selection);
+        });
+    let Some(selection) = receiver
+        .await
+        .map_err(|_| "The spreadsheet picker closed unexpectedly.".to_string())?
+    else {
+        return Ok(None);
+    };
+    let picked = selection
+        .into_path()
+        .map_err(|_| "That location is not a file Oleafly can read.".to_string())?;
+    let canonical = canonical_table_import_path(&picked)?;
+    let display = canonical.to_string_lossy().into_owned();
+    allow_table_import_path(canonical, &state).await;
+    Ok(Some(display))
+}
+
+#[tauri::command]
+pub async fn register_picked_file_for_e2e(
+    path: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<String, String> {
+    if !cfg!(feature = "e2e-testing") {
+        return Err("Spreadsheet registration is available only in e2e builds.".into());
+    }
+    let canonical = canonical_table_import_path(Path::new(&path))?;
+    let display = canonical.to_string_lossy().into_owned();
+    allow_table_import_path(canonical, &state).await;
+    Ok(display)
+}
+
+/// Read a spreadsheet (CSV/TSV/XLS/XLSX) the user picked through
+/// `pick_table_import_file` as base64, so the webview can parse it with
+/// SheetJS. Only allowlisted paths are readable, and the read still goes
+/// through an open file handle with a hard cap.
+#[tauri::command]
+pub async fn read_picked_file_base64(
+    path: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<String, String> {
+    const MAX_PICKED_BYTES: usize = 16 * 1024 * 1024;
+    let canonical = canonical_table_import_path(Path::new(&path))?;
+    {
+        let allowlist = state.table_import_allowlist.lock().await;
+        assert_table_import_allowed(&canonical, &allowlist)?;
+    }
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        let bytes = read_picked_file_bytes(&canonical, MAX_PICKED_BYTES)
+            .map_err(|error| format!("failed to read {path}: {error}"))?;
+        Ok(STANDARD.encode(&bytes))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn canonical_table_import_path(path: &Path) -> Result<PathBuf, String> {
+    let canonical = path
+        .canonicalize()
+        .map_err(|error| format!("failed to read {}: {error}", path.display()))?;
+    let extension = canonical
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+    if !is_table_import_extension(extension.as_deref()) {
+        return Err("Choose a CSV, TSV, XLS, or XLSX spreadsheet.".into());
+    }
+    Ok(canonical)
+}
+
+async fn allow_table_import_path(canonical: PathBuf, state: &crate::state::AppState) {
+    let mut allowlist = state.table_import_allowlist.lock().await;
+    if allowlist.iter().any(|entry| entry == &canonical) {
+        return;
+    }
+    if allowlist.len() >= TABLE_IMPORT_ALLOWLIST_LIMIT {
+        allowlist.pop_front();
+    }
+    allowlist.push_back(canonical);
+}
+
+fn assert_table_import_allowed(
+    canonical: &Path,
+    allowlist: &std::collections::VecDeque<PathBuf>,
+) -> Result<(), String> {
+    if allowlist.iter().any(|entry| entry == canonical) {
+        return Ok(());
+    }
+    Err(
+        "Choose the spreadsheet again: Oleafly reads only files picked in its own import dialog."
+            .into(),
+    )
+}
+
+fn is_table_import_extension(extension: Option<&str>) -> bool {
+    matches!(extension, Some("csv" | "tsv" | "xls" | "xlsx"))
+}
+
+fn read_picked_file_bytes(path: &Path, max_bytes: usize) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+
+    let file = std::fs::File::open(path).map_err(|error| error.to_string())?;
+    if !file
+        .metadata()
+        .map_err(|error| error.to_string())?
+        .is_file()
+    {
+        return Err("the selected path is not a file".into());
+    }
+    let mut bytes = Vec::with_capacity(max_bytes.min(64 * 1024));
+    file.take(max_bytes.saturating_add(1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if bytes.len() > max_bytes {
+        return Err("the file is larger than the 16 MB table-import limit".into());
+    }
+    Ok(bytes)
 }
 
 /// Append a line to the global app log at `~/.oleafly/app.log` (append-only,
@@ -3317,11 +3457,235 @@ pub struct PdfConversionFigure {
     pub data_base64: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdHocProjectFile {
+    pub path: String,
+    pub data_base64: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAdHocProjectRequest {
+    pub name: String,
+    pub target: String,
+    pub text: Option<String>,
+    pub main_file: Option<String>,
+    pub files: Vec<AdHocProjectFile>,
+}
+
+fn safe_ad_hoc_project_path(path: &str) -> Result<PathBuf, String> {
+    if path.is_empty() || path.len() > 4096 || path.contains('\\') {
+        return Err("A converted file has an invalid path.".into());
+    }
+    let candidate = Path::new(path);
+    let components: Vec<_> = candidate.components().collect();
+    if components.is_empty()
+        || components.len() > IMPORT_MAX_DEPTH
+        || components
+            .iter()
+            .any(|component| !matches!(component, std::path::Component::Normal(_)))
+    {
+        return Err("A converted file has an invalid path.".into());
+    }
+    let mut normalized = PathBuf::new();
+    for component in components {
+        let std::path::Component::Normal(segment) = component else {
+            return Err("A converted file has an invalid path.".into());
+        };
+        let segment = segment
+            .to_str()
+            .ok_or_else(|| "A converted filename is not valid Unicode.".to_string())?;
+        let windows_stem = segment
+            .split('.')
+            .next()
+            .unwrap_or_default()
+            .to_ascii_uppercase();
+        let windows_reserved = matches!(windows_stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+            || (windows_stem.len() == 4
+                && (windows_stem.starts_with("COM") || windows_stem.starts_with("LPT"))
+                && windows_stem.as_bytes()[3].is_ascii_digit()
+                && windows_stem.as_bytes()[3] != b'0');
+        if segment.len() > 255
+            || segment.ends_with([' ', '.'])
+            || segment
+                .chars()
+                .any(|character| character <= '\u{1f}' || r#"<>:\"/\|?*"#.contains(character))
+            || windows_reserved
+        {
+            return Err(
+                "A converted file has a name that is not portable across platforms.".into(),
+            );
+        }
+        if [".git", ".oleafly", "project.json"]
+            .iter()
+            .any(|reserved| segment.eq_ignore_ascii_case(reserved))
+        {
+            return Err("A converted file uses a reserved project path.".into());
+        }
+        normalized.push(segment);
+    }
+    Ok(normalized)
+}
+
+/// Publish converter output as one complete project. A normal text conversion
+/// supplies `text` and media under assets/. A source bundle supplies
+/// `mainFile` plus every file, as produced by the bounded arXiv extractor.
+#[tauri::command]
+pub async fn create_project_from_ad_hoc(
+    request: CreateAdHocProjectRequest,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || create_project_from_ad_hoc_blocking(request))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn create_project_from_ad_hoc_blocking(
+    request: CreateAdHocProjectRequest,
+) -> Result<String, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+
+    const MAX_FILES: usize = 5000;
+    const MAX_TOTAL_BYTES: usize = 256 * 1024 * 1024;
+    let project_name: String = request.name.trim().chars().take(200).collect();
+    let project_name = if project_name.is_empty() {
+        "Converted document".into()
+    } else {
+        project_name
+    };
+    let (default_main, engine, expected_extension) = match request.target.as_str() {
+        "latex" => ("main.tex", default_engine(), "tex"),
+        "markdown" => ("main.md", "markdown".into(), "md"),
+        "typst" => ("main.typ", "typst".into(), "typ"),
+        _ => return Err("Choose a LaTeX, Markdown, or Typst project.".into()),
+    };
+    if request.files.len() > MAX_FILES {
+        return Err("The conversion produced too many project files.".into());
+    }
+    let source_bundle = request.main_file.is_some();
+    if source_bundle == request.text.is_some() {
+        return Err("The converter supplied an invalid project payload.".into());
+    }
+    let main_doc = request.main_file.unwrap_or_else(|| default_main.into());
+    let main_path = safe_ad_hoc_project_path(&main_doc)?;
+    let extension = main_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    if !extension.eq_ignore_ascii_case(expected_extension) {
+        return Err("The converted main document does not match the project type.".into());
+    }
+
+    let mut decoded = Vec::with_capacity(request.files.len() + usize::from(!source_bundle));
+    let mut paths = HashSet::new();
+    let mut total = 0_usize;
+    for file in request.files {
+        let relative = safe_ad_hoc_project_path(&file.path)?;
+        let normalized = relative
+            .to_str()
+            .ok_or_else(|| "A converted filename is not valid Unicode.".to_string())?
+            .replace('\\', "/");
+        if !source_bundle && !normalized.starts_with("assets/") {
+            return Err("Converted media must stay inside the assets folder.".into());
+        }
+        if !paths.insert(normalized.to_ascii_lowercase()) {
+            return Err("The conversion produced duplicate file paths.".into());
+        }
+        let encoded = file.data_base64.trim();
+        let estimated = encoded.len().saturating_mul(3) / 4;
+        if total.saturating_add(estimated) > MAX_TOTAL_BYTES {
+            return Err("The converted project is larger than the 256 MB limit.".into());
+        }
+        let bytes = STANDARD
+            .decode(encoded)
+            .map_err(|_| format!("Could not decode {}.", file.path))?;
+        total = total.saturating_add(bytes.len());
+        if total > MAX_TOTAL_BYTES {
+            return Err("The converted project is larger than the 256 MB limit.".into());
+        }
+        decoded.push((relative, bytes));
+    }
+    if source_bundle {
+        let main_key = main_path
+            .to_str()
+            .ok_or_else(|| "The converted main document has an invalid name.".to_string())?
+            .replace('\\', "/")
+            .to_ascii_lowercase();
+        if !paths.contains(&main_key) {
+            return Err("The source bundle is missing its main document.".into());
+        }
+    } else {
+        let text = request.text.unwrap_or_default();
+        total = total.saturating_add(text.len());
+        if total > MAX_TOTAL_BYTES {
+            return Err("The converted project is larger than the 256 MB limit.".into());
+        }
+        decoded.push((main_path.clone(), text.into_bytes()));
+    }
+
+    static AD_HOC_PROJECT_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    let _guard = AD_HOC_PROJECT_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| "The converted-project lock is unavailable.".to_string())?;
+    let root = paths::projects_root()?;
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let staging = create_unique_temporary_directory(&root, ".oleafly-converted-project")?;
+    let result = (|| -> Result<(), String> {
+        for (path, bytes) in decoded {
+            let destination = staging.join(path);
+            if let Some(parent) = destination.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|error| format!("Could not create a project folder: {error}"))?;
+            }
+            atomic_write(&destination, &bytes)
+                .map_err(|error| format!("Could not write a converted file: {error}"))?;
+        }
+        write_meta_at(
+            &staging.join("project.json"),
+            &ProjectMeta {
+                name: project_name,
+                main_doc,
+                engine,
+                color: String::new(),
+                kind: String::new(),
+                exports: Vec::new(),
+                hidden: false,
+                forked_from: None,
+                tex: None,
+                tex_flavor: None,
+                allow_shell_escape: false,
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
+                extra: HashMap::new(),
+            },
+        )
+    })();
+    if let Err(error) = result {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(error);
+    }
+    let project_id = reservation.publish_staged(&staging)?;
+    initialize_git_for_project_quietly(&project_id);
+    Ok(project_id)
+}
+
 /// Publish a converted PDF as one complete project. The library never observes
 /// a project containing only `main.tex` (or only some figures): every payload
 /// is validated and staged in a sibling directory before the final rename.
-#[tauri::command(async)]
-pub fn create_project_from_pdf_conversion(
+#[tauri::command]
+pub async fn create_project_from_pdf_conversion(
+    name: String,
+    tex: String,
+    figures: Vec<PdfConversionFigure>,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        create_project_from_pdf_conversion_blocking(name, tex, figures)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+fn create_project_from_pdf_conversion_blocking(
     name: String,
     tex: String,
     figures: Vec<PdfConversionFigure>,
@@ -3472,6 +3836,15 @@ pub async fn import_overleaf_project(name: Option<String>, path: String) -> Resu
 
 fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
     import_overleaf_project_blocking_with(name, path, |_| Ok(()))
+}
+
+/// Import an already-unpacked directory tree as a new project (shared by the
+/// arXiv e-print importer, which stages the unpack itself).
+pub(crate) fn import_project_directory_blocking(
+    name: Option<String>,
+    dir: &str,
+) -> Result<String, String> {
+    import_overleaf_project_blocking_with(name, dir, |_| Ok(()))
 }
 
 fn import_overleaf_project_blocking_with(
@@ -4275,6 +4648,8 @@ pub async fn export_pdf(
 
 fn stage_exported_pdf(project_id: &str, dest: &str) -> Result<(), String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let root = paths::project_dir(project_id)?;
+    require_export_destination_outside_project(&root, dest)?;
     let transaction = AtomicFile::for_export(dest)?;
     let meta = read_meta(project_id)?;
     let pdf = crate::document_engine::compiled_pdf_path(project_id, &meta.engine, &meta.main_doc)?;
@@ -4362,8 +4737,16 @@ fn find_pandoc_on_path(path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
 }
 
 pub(crate) fn find_pandoc() -> Option<String> {
+    // Release builds carry Pandoc beside the app as a checksum-pinned Tauri
+    // sidecar, so every document conversion works without a first-run download.
+    if let Ok(bundled) = crate::document_engine::resolve_bundled_sidecar("pandoc") {
+        if let Some(bundled) = canonical_supported_pandoc(&bundled) {
+            return bundled.into_os_string().into_string().ok();
+        }
+    }
     let mut candidates: Vec<PathBuf> = Vec::new();
-    // Our own on-demand download location wins first (guaranteed compatible).
+    // Keep the managed cache as a fallback for older installations and
+    // developer builds that do not stage the bundled sidecar.
     if let Ok(root) = paths::oleafly_root() {
         candidates.push(root.join("bin").join(if cfg!(windows) {
             "pandoc.exe"
@@ -4425,7 +4808,8 @@ pub async fn export_document(
     }
     let writer = validate_conversion_export(&meta, &format, &dest)?;
     let root = paths::project_dir(&project_id)?;
-    resolve(&project_id, &main_doc)?;
+    resolve_export_main_document(&project_id, &main_doc)?;
+    require_export_destination_outside_project(&root, &dest)?;
     let found = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
         .map_err(|e| e.to_string())?;
@@ -4435,7 +4819,10 @@ pub async fn export_document(
     };
     let transaction = AtomicFile::for_export(&dest)?;
     let staged_dest = transaction.staging_path().to_string_lossy().into_owned();
-    let mut args = vec![format!("--to={writer}"), "-o".into(), staged_dest];
+    let mut args = vec![format!("--to={writer}"), "-o".into(), staged_dest.clone()];
+    if crate::conversion::export_needs_standalone(&format) {
+        args.push("--standalone".into());
+    }
     match format.as_str() {
         "pptx" => {
             args.extend(["--slide-level".into(), "2".into()]);
@@ -4457,6 +4844,9 @@ pub async fn export_document(
         crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &root).await?;
     if code != Some(0) {
         return Err(format!("pandoc failed: {}", log.trim()));
+    }
+    if format == "typst" {
+        apply_typst_fixup(Path::new(&staged_dest))?;
     }
     transaction.commit()?;
     drop(worktree);
@@ -4492,19 +4882,43 @@ pub async fn export_document(
     Ok(())
 }
 
+fn export_would_write_inside_project(project_root: &Path, destination: &str) -> bool {
+    let Ok(project_root) = project_root.canonicalize() else {
+        return false;
+    };
+    let destination = Path::new(destination);
+    let canonical_destination = destination.canonicalize().ok().or_else(|| {
+        destination.parent().and_then(|parent| {
+            parent
+                .canonicalize()
+                .ok()
+                .and_then(|parent| destination.file_name().map(|name| parent.join(name)))
+        })
+    });
+    canonical_destination.is_some_and(|destination| destination.starts_with(&project_root))
+}
+
+fn resolve_export_main_document(project_id: &str, main_doc: &str) -> Result<PathBuf, String> {
+    resolve(project_id, main_doc)
+}
+
+pub(crate) fn require_export_destination_outside_project(
+    project_root: &Path,
+    destination: &str,
+) -> Result<(), String> {
+    if export_would_write_inside_project(project_root, destination) {
+        return Err("Choose an export destination outside this project.".into());
+    }
+    Ok(())
+}
+
 fn validate_conversion_export(
     meta: &ProjectMeta,
     format: &str,
     dest: &str,
 ) -> Result<&'static str, String> {
-    let (writer, extension) = match format {
-        "docx" => ("docx", "docx"),
-        "html" => ("html5", "html"),
-        "md" => ("markdown", "md"),
-        "txt" => ("plain", "txt"),
-        "pptx" => ("pptx", "pptx"),
-        "epub" => ("epub", "epub"),
-        _ => return Err(format!("unsupported export format: {format}")),
+    let Some((writer, extension)) = crate::conversion::export_writer(format) else {
+        return Err(format!("unsupported export format: {format}"));
     };
     if !Path::new(dest)
         .extension()
@@ -4526,29 +4940,18 @@ fn validate_conversion_export(
     Ok(writer)
 }
 
+#[cfg(test)]
 fn docx_pandoc_args() -> Vec<String> {
-    vec![
-        "--from=docx".into(),
-        "--to=latex".into(),
-        "--standalone".into(),
-        "--extract-media=assets".into(),
-        "-o".into(),
-        "main.tex".into(),
-        "--".into(),
-        "source.docx".into(),
-    ]
+    crate::conversion::import_plan("docx", "latex")
+        .expect("docx -> latex is a registered import route")
+        .args
 }
 
+#[cfg(test)]
 fn markdown_pandoc_args() -> Vec<String> {
-    vec![
-        "--from=markdown".into(),
-        "--to=latex".into(),
-        "--standalone".into(),
-        "-o".into(),
-        "main.tex".into(),
-        "--".into(),
-        "source.md".into(),
-    ]
+    crate::conversion::import_plan("md", "latex")
+        .expect("md -> latex is a registered import route")
+        .args
 }
 
 fn validate_docx_bytes(bytes: &[u8]) -> Result<(), String> {
@@ -4569,10 +4972,13 @@ fn decode_docx_base64(data: &str) -> Result<Vec<u8>, String> {
 
 async fn create_project_from_pandoc_source(
     name: String,
-    source_name: &str,
+    plan: crate::conversion::ImportPlan,
     bytes: Vec<u8>,
-    args: Vec<String>,
 ) -> Result<String, String> {
+    let source_name = plan.source_name.to_string();
+    let main_doc = plan.main_doc.to_string();
+    let engine = plan.engine.to_string();
+    let args = plan.args;
     let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
         .map_err(|e| e.to_string())?
@@ -4583,7 +4989,7 @@ async fn create_project_from_pandoc_source(
     let reservation = reserve_unique_project_directory(&root, true)?;
     let staging = create_unique_temporary_directory(&root, ".oleafly-document-import")?;
     let result: Result<(), String> = async {
-        atomic_write(&staging.join(source_name), &bytes)
+        atomic_write(&staging.join(&source_name), &bytes)
             .map_err(|e| format!("failed to write {source_name}: {e}"))?;
         let (log, code) =
             crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &staging)
@@ -4591,13 +4997,16 @@ async fn create_project_from_pandoc_source(
         if code != Some(0) {
             return Err(format!("pandoc failed: {}", log.trim()));
         }
-        let _ = std::fs::remove_file(staging.join(source_name));
+        let _ = std::fs::remove_file(staging.join(&source_name));
+        if main_doc.ends_with(".typ") {
+            apply_typst_fixup(&staging.join(&main_doc))?;
+        }
         write_meta_at(
             &staging.join("project.json"),
             &ProjectMeta {
                 name,
-                main_doc: default_main_doc(),
-                engine: default_engine(),
+                main_doc,
+                engine,
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
@@ -4629,18 +5038,32 @@ async fn create_project_from_pandoc_source(
     Ok(project_id)
 }
 
+/// Rewrite a generated Typst file in place, patching pandoc output bugs.
+fn apply_typst_fixup(path: &Path) -> Result<(), String> {
+    let source = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let fixed = crate::conversion::fixup_typst_source(&source);
+    if fixed != source {
+        atomic_write(path, fixed.as_bytes()).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// Create a LaTeX project from an uploaded .docx. The bytes are written inside
 /// the new project dir and pandoc runs there, so no external path is read.
 #[tauri::command]
 pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
     let bytes = decode_docx_base64(&data_base64)?;
-    create_project_from_pandoc_source(name, "source.docx", bytes, docx_pandoc_args()).await
+    let plan =
+        crate::conversion::import_plan("docx", "latex").expect("docx -> latex route is registered");
+    create_project_from_pandoc_source(name, plan, bytes).await
 }
 
-/// Import a user-selected Word or Markdown file as a new LaTeX project.
-/// The extension selects the pandoc reader; both paths publish atomically.
+/// Import a user-selected Word, Markdown, HTML, or Typst file as a new
+/// project. The extension selects the pandoc reader and `target` the project
+/// kind written ("latex", "markdown", or "typst"); both paths publish
+/// atomically.
 #[tauri::command]
-pub async fn import_document(path: String) -> Result<String, String> {
+pub async fn import_document(path: String, target: Option<String>) -> Result<String, String> {
     let source = PathBuf::from(&path);
     if !source.is_file() {
         return Err(format!("import source not found: {path}"));
@@ -4661,18 +5084,17 @@ pub async fn import_document(path: String) -> Result<String, String> {
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| format!("failed to read {path}: {e}"))?;
-
-    match extension.as_str() {
-        "docx" => {
-            validate_docx_bytes(&bytes)?;
-            create_project_from_pandoc_source(name, "source.docx", bytes, docx_pandoc_args()).await
-        }
-        "md" | "markdown" => {
-            create_project_from_pandoc_source(name, "source.md", bytes, markdown_pandoc_args())
-                .await
-        }
-        _ => Err("Choose a .docx, .md, or .markdown file.".into()),
+    let target_kind = target.as_deref().unwrap_or("latex").to_ascii_lowercase();
+    let plan = crate::conversion::import_plan(&extension, &target_kind).ok_or_else(|| {
+        format!(
+            "Converting .{extension} to a {target_kind} project is not supported. \
+             Choose a .docx, .md, .markdown, .html, .htm, or .typ file."
+        )
+    })?;
+    if extension == "docx" {
+        validate_docx_bytes(&bytes)?;
     }
+    create_project_from_pandoc_source(name, plan, bytes).await
 }
 
 /// Whether a usable pandoc is already available (system or our cache).
@@ -5390,8 +5812,9 @@ pub(crate) async fn search_project_bounded(
 pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let transaction = AtomicFile::for_export(&dest)?;
         let root = paths::project_dir(&project_id)?;
+        require_export_destination_outside_project(&root, &dest)?;
+        let transaction = AtomicFile::for_export(&dest)?;
         let file = std::fs::File::create(transaction.staging_path()).map_err(|e| e.to_string())?;
         let mut writer = zip::ZipWriter::new(file);
         let opts = zip::write::SimpleFileOptions::default()
@@ -5824,18 +6247,22 @@ async fn recycle_project_synchronized(
 #[cfg(test)]
 mod tests {
     use super::{
+        allow_table_import_path, assert_table_import_allowed, canonical_table_import_path,
         copy_path_in_project, create_diagram_project, create_image_project_in,
-        create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
-        create_project_transaction, create_typst_project_in, download_project_zip,
-        duplicate_project, engine_for_main_document, extract_pandoc, flatten_single_root_folder,
+        create_markdown_project_in, create_path_in_project, create_project_from_ad_hoc_blocking,
+        create_project_from_pdf_conversion_blocking, create_project_transaction,
+        create_typst_project_in, download_project_zip, duplicate_project, engine_for_main_document,
+        export_would_write_inside_project, extract_pandoc, flatten_single_root_folder,
         get_or_create_scratch_project_blocking, import_paths_transactional,
         import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
-        import_skip, infer_main_document, normalize_loaded_tex_flavor, normalize_relative,
-        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
-        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
+        import_skip, infer_main_document, is_table_import_extension, normalize_loaded_tex_flavor,
+        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta,
+        read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
+        safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
         tex_root_magic_target, try_reserve_project_directory, validate_conversion_export,
-        validate_tex_flavor, write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope,
-        PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
+        validate_tex_flavor, write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest,
+        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
+        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -5848,6 +6275,90 @@ mod tests {
             .tempdir()
             .unwrap()
             .keep()
+    }
+
+    #[test]
+    fn picked_table_reads_allow_only_supported_extensions_and_stay_bounded() {
+        assert!(is_table_import_extension(Some("csv")));
+        assert!(is_table_import_extension(Some("tsv")));
+        assert!(is_table_import_extension(Some("xls")));
+        assert!(is_table_import_extension(Some("xlsx")));
+        assert!(!is_table_import_extension(Some("ods")));
+        assert!(!is_table_import_extension(None));
+
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("table.csv");
+        std::fs::write(&path, b"a,b,c").unwrap();
+        assert_eq!(read_picked_file_bytes(&path, 5).unwrap(), b"a,b,c");
+        assert!(read_picked_file_bytes(&path, 4)
+            .unwrap_err()
+            .contains("table-import limit"));
+    }
+
+    #[test]
+    fn picked_table_paths_resolve_to_canonical_spreadsheets() {
+        let directory = tempfile::tempdir().unwrap();
+        let spreadsheet = directory.path().join("results.CSV");
+        std::fs::write(&spreadsheet, b"a,b").unwrap();
+        let nested = directory.path().join("nested");
+        std::fs::create_dir(&nested).unwrap();
+
+        let canonical = canonical_table_import_path(&spreadsheet).unwrap();
+        assert_eq!(
+            canonical,
+            canonical_table_import_path(&nested.join("../results.CSV")).unwrap()
+        );
+
+        let notes = directory.path().join("notes.txt");
+        std::fs::write(&notes, b"secret").unwrap();
+        assert!(canonical_table_import_path(&notes)
+            .unwrap_err()
+            .contains("CSV, TSV, XLS, or XLSX"));
+        assert!(canonical_table_import_path(&directory.path().join("missing.csv")).is_err());
+    }
+
+    #[test]
+    fn picked_table_reads_are_refused_outside_the_allowlist() {
+        let directory = tempfile::tempdir().unwrap();
+        let picked = directory.path().join("picked.csv");
+        let sibling = directory.path().join("sibling.csv");
+        std::fs::write(&picked, b"a,b").unwrap();
+        std::fs::write(&sibling, b"c,d").unwrap();
+        let picked = canonical_table_import_path(&picked).unwrap();
+        let sibling = canonical_table_import_path(&sibling).unwrap();
+
+        let mut allowlist = std::collections::VecDeque::new();
+        assert!(assert_table_import_allowed(&picked, &allowlist).is_err());
+
+        allowlist.push_back(picked.clone());
+        assert!(assert_table_import_allowed(&picked, &allowlist).is_ok());
+        assert!(assert_table_import_allowed(&sibling, &allowlist)
+            .unwrap_err()
+            .contains("its own import dialog"));
+
+        allowlist.pop_front();
+        assert!(assert_table_import_allowed(&picked, &allowlist).is_err());
+    }
+
+    #[test]
+    fn the_table_import_allowlist_is_bounded_and_free_of_duplicates() {
+        let state = crate::state::AppState::default();
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        tauri::async_runtime::block_on(async {
+            let first = root.join("first.csv");
+            std::fs::write(&first, b"a").unwrap();
+            allow_table_import_path(first.clone(), &state).await;
+            allow_table_import_path(first.clone(), &state).await;
+            assert_eq!(state.table_import_allowlist.lock().await.len(), 1);
+
+            for index in 0..TABLE_IMPORT_ALLOWLIST_LIMIT {
+                allow_table_import_path(root.join(format!("bulk-{index}.csv")), &state).await;
+            }
+            let allowlist = state.table_import_allowlist.lock().await;
+            assert_eq!(allowlist.len(), TABLE_IMPORT_ALLOWLIST_LIMIT);
+            assert!(assert_table_import_allowed(&first, &allowlist).is_err());
+        });
     }
 
     #[test]
@@ -6060,7 +6571,8 @@ mod tests {
 
         let latex = super::create_project("Paper".into()).unwrap();
         let converted =
-            create_project_from_pdf_conversion("Converted".into(), tex.clone(), vec![]).unwrap();
+            create_project_from_pdf_conversion_blocking("Converted".into(), tex.clone(), vec![])
+                .unwrap();
         let imported = import_project_zip_bytes("Imported".into(), &bytes).unwrap();
         let markdown = super::create_markdown_project("Notes".into()).unwrap();
         let typst = super::create_typst_project("Typst".into()).unwrap();
@@ -6086,7 +6598,8 @@ mod tests {
         write_git_auto_init(false);
         let plain = super::create_project("Plain".into()).unwrap();
         let plain_converted =
-            create_project_from_pdf_conversion("Plain converted".into(), tex, vec![]).unwrap();
+            create_project_from_pdf_conversion_blocking("Plain converted".into(), tex, vec![])
+                .unwrap();
         let plain_imported = import_project_zip_bytes("Plain imported".into(), &bytes).unwrap();
         for project_id in [&plain, &plain_converted, &plain_imported] {
             assert!(
@@ -7102,7 +7615,7 @@ mod tests {
         let data = test_dir("converted-project");
         std::env::set_var("OLEAFLY_DATA_DIR", &data);
 
-        let id = create_project_from_pdf_conversion(
+        let id = create_project_from_pdf_conversion_blocking(
             "Imported".into(),
             "\\documentclass{article}\\begin{document}Ready\\end{document}".into(),
             vec![PdfConversionFigure {
@@ -7120,7 +7633,7 @@ mod tests {
         );
 
         let visible_before = std::fs::read_dir(data.join("projects")).unwrap().count();
-        let error = create_project_from_pdf_conversion(
+        let error = create_project_from_pdf_conversion_blocking(
             "Broken".into(),
             "partial".into(),
             vec![PdfConversionFigure {
@@ -7174,6 +7687,31 @@ mod tests {
                 .count(),
             0
         );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn zip_export_rejects_a_project_owned_destination_before_staging() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("zip-export-destination");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "zip-export";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        let destination = project.join("main.tex");
+        std::fs::write(&destination, "source").unwrap();
+
+        let error = download_project_zip(
+            project_id.into(),
+            destination.to_string_lossy().into_owned(),
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error, "Choose an export destination outside this project.");
+        assert_eq!(std::fs::read_to_string(&destination).unwrap(), "source");
+
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
     }
@@ -8084,7 +8622,19 @@ mod tests {
             engine: "typst".into(),
             ..ProjectMeta::default()
         };
-        assert!(validate_conversion_export(&typst, "docx", "/tmp/out.docx").is_err());
+        assert_eq!(
+            validate_conversion_export(&typst, "docx", "/tmp/out.docx").unwrap(),
+            "docx"
+        );
+        assert_eq!(
+            validate_conversion_export(&typst, "tex", "/tmp/out.tex").unwrap(),
+            "latex"
+        );
+        assert!(validate_conversion_export(&typst, "pptx", "/tmp/out.pptx").is_err());
+        assert_eq!(
+            validate_conversion_export(&latex, "typst", "/tmp/out.typ").unwrap(),
+            "typst"
+        );
         let markdown = ProjectMeta {
             main_doc: "main.md".into(),
             engine: "markdown".into(),
@@ -8099,6 +8649,76 @@ mod tests {
             validate_conversion_export(&markdown, "txt", "/tmp/out.txt").unwrap(),
             "plain"
         );
+    }
+
+    #[test]
+    fn export_rejects_destinations_inside_the_project() {
+        let directory = tempfile::tempdir().unwrap();
+        let project = directory.path().join("project");
+        std::fs::create_dir(&project).unwrap();
+        let main = project.join("main.tex");
+        let existing = project.join("references.bib");
+        let new = project.join("exports").join("paper.docx");
+        let outside = directory.path().join("paper.docx");
+        std::fs::write(&main, "source").unwrap();
+        std::fs::write(&existing, "references").unwrap();
+        std::fs::create_dir(project.join("exports")).unwrap();
+
+        assert!(export_would_write_inside_project(
+            &project,
+            &main.to_string_lossy()
+        ));
+        assert!(export_would_write_inside_project(
+            &project,
+            &existing.to_string_lossy()
+        ));
+        assert!(export_would_write_inside_project(
+            &project,
+            &new.to_string_lossy()
+        ));
+        assert!(!export_would_write_inside_project(
+            &project,
+            &outside.to_string_lossy()
+        ));
+    }
+
+    #[test]
+    fn export_main_document_cannot_escape_its_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("export-main-document");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "export-main-document";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        let outside = data.join("projects").join("outside.tex");
+        std::fs::write(&outside, "outside source").unwrap();
+        std::fs::write(project.join("main.tex"), "project source").unwrap();
+
+        assert!(super::resolve_export_main_document(project_id, "../outside.tex").is_err());
+        assert!(super::resolve_export_main_document(project_id, "main.tex").is_ok());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn pdf_export_rejects_a_project_owned_destination_before_staging() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("pdf-export-destination");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = "pdf-export";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        let destination = project.join("main.tex");
+        std::fs::write(&destination, "source").unwrap();
+
+        let error =
+            super::stage_exported_pdf(project_id, &destination.to_string_lossy()).unwrap_err();
+        assert_eq!(error, "Choose an export destination outside this project.");
+        assert_eq!(std::fs::read_to_string(&destination).unwrap(), "source");
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
@@ -9118,5 +9738,190 @@ mod tests {
         normalize_loaded_tex_flavor(&mut legacy).unwrap();
 
         assert_eq!(legacy.tex_flavor, None);
+    }
+
+    #[test]
+    fn ad_hoc_project_paths_reject_traversal_and_reserved_state() {
+        assert_eq!(
+            safe_ad_hoc_project_path("assets/figure.png").unwrap(),
+            std::path::PathBuf::from("assets/figure.png")
+        );
+        for path in [
+            "../escape.tex",
+            "/absolute.tex",
+            "nested\\windows.tex",
+            ".git/config",
+            ".oleafly/build/log",
+            "project.json",
+            "assets/CON.png",
+            "assets/trailing. ",
+            "assets/bad:name.png",
+        ] {
+            assert!(safe_ad_hoc_project_path(path).is_err(), "accepted {path}");
+        }
+    }
+
+    #[test]
+    fn ad_hoc_text_project_is_published_with_its_assets() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("ad-hoc-project");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+
+        let id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
+            name: "Converted notes".into(),
+            target: "latex".into(),
+            text: Some("\\documentclass{article}\\begin{document}Ready\\end{document}".into()),
+            main_file: None,
+            files: vec![AdHocProjectFile {
+                path: "assets/figure.png".into(),
+                data_base64: "AQID".into(),
+            }],
+        })
+        .unwrap();
+        let directory = crate::paths::project_dir(&id).unwrap();
+        let meta: ProjectMeta =
+            serde_json::from_str(&std::fs::read_to_string(directory.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(meta.name, "Converted notes");
+        assert_eq!(meta.main_doc, "main.tex");
+        assert_eq!(
+            std::fs::read(directory.join("assets/figure.png")).unwrap(),
+            [1, 2, 3]
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn ad_hoc_projects_cover_every_target_and_source_bundles() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("ad-hoc-project-targets");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+
+        for (target, main_doc, engine, source) in [
+            ("latex", "main.tex", "xetex", "\\documentclass{article}"),
+            ("markdown", "main.md", "markdown", "# Converted"),
+            ("typst", "main.typ", "typst", "= Converted"),
+        ] {
+            let id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
+                name: " ".into(),
+                target: target.into(),
+                text: Some(source.into()),
+                main_file: None,
+                files: Vec::new(),
+            })
+            .unwrap();
+            let directory = crate::paths::project_dir(&id).unwrap();
+            let meta: ProjectMeta = serde_json::from_str(
+                &std::fs::read_to_string(directory.join("project.json")).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(meta.name, "Converted document");
+            assert_eq!(meta.main_doc, main_doc);
+            assert_eq!(meta.engine, engine);
+            assert_eq!(
+                std::fs::read_to_string(directory.join(main_doc)).unwrap(),
+                source
+            );
+        }
+
+        let bundle_id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
+            name: "Source bundle".into(),
+            target: "latex".into(),
+            text: None,
+            main_file: Some("paper/main.tex".into()),
+            files: vec![
+                AdHocProjectFile {
+                    path: "paper/main.tex".into(),
+                    data_base64: "XFxkb2N1bWVudGNsYXNze2FydGljbGV9".into(),
+                },
+                AdHocProjectFile {
+                    path: "paper/section.tex".into(),
+                    data_base64: "U2VjdGlvbg==".into(),
+                },
+            ],
+        })
+        .unwrap();
+        let bundle = crate::paths::project_dir(&bundle_id).unwrap();
+        assert!(bundle.join("paper/main.tex").is_file());
+        assert!(bundle.join("paper/section.tex").is_file());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn ad_hoc_project_validation_rejects_ambiguous_or_unsafe_payloads() {
+        let request = |target: &str,
+                       text: Option<&str>,
+                       main_file: Option<&str>,
+                       files: Vec<AdHocProjectFile>| {
+            create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
+                name: "Converted".into(),
+                target: target.into(),
+                text: text.map(str::to_string),
+                main_file: main_file.map(str::to_string),
+                files,
+            })
+        };
+        assert!(request("pdf", Some("x"), None, Vec::new()).is_err());
+        assert!(request("latex", None, None, Vec::new()).is_err());
+        assert!(request("latex", Some("x"), Some("main.tex"), Vec::new()).is_err());
+        assert!(request("latex", None, Some("main.md"), Vec::new()).is_err());
+        assert!(request(
+            "latex",
+            Some("x"),
+            None,
+            vec![AdHocProjectFile {
+                path: "outside.png".into(),
+                data_base64: "AQID".into(),
+            }],
+        )
+        .is_err());
+        assert!(request(
+            "latex",
+            Some("x"),
+            None,
+            vec![
+                AdHocProjectFile {
+                    path: "assets/a.png".into(),
+                    data_base64: "AQID".into(),
+                },
+                AdHocProjectFile {
+                    path: "assets/A.PNG".into(),
+                    data_base64: "AQID".into(),
+                },
+            ],
+        )
+        .is_err());
+        assert!(request(
+            "latex",
+            Some("x"),
+            None,
+            vec![AdHocProjectFile {
+                path: "assets/a.png".into(),
+                data_base64: "not-base64".into(),
+            }],
+        )
+        .is_err());
+        assert!(request(
+            "latex",
+            None,
+            Some("main.tex"),
+            vec![AdHocProjectFile {
+                path: "section.tex".into(),
+                data_base64: "WA==".into(),
+            }],
+        )
+        .is_err());
+
+        let too_many = (0..=5000)
+            .map(|index| AdHocProjectFile {
+                path: format!("assets/{index}.png"),
+                data_base64: String::new(),
+            })
+            .collect();
+        assert!(request("latex", Some("x"), None, too_many).is_err());
     }
 }

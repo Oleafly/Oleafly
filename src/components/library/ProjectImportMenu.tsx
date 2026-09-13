@@ -16,47 +16,18 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
+  IMPORT_FILE_SOURCES,
+  importPickerOptions,
   importGitHubRepository,
   importSelectedFile,
+  importTargetsForKind,
   type ProjectImportFileKind,
 } from "@/features/project-import";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
-import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
-
-function pickerOptions(kind: ProjectImportFileKind) {
-  switch (kind) {
-    case "project":
-      return {
-        multiple: false as const,
-        filters: [
-          { name: i18n.t(($) => $.library.import.picker.projectFilter), extensions: ["zip"] },
-        ],
-        title: i18n.t(($) => $.library.import.picker.projectTitle),
-      };
-    case "word":
-      return {
-        multiple: false as const,
-        filters: [
-          { name: i18n.t(($) => $.library.import.picker.wordFilter), extensions: ["docx"] },
-        ],
-        title: i18n.t(($) => $.library.import.picker.wordTitle),
-      };
-    case "markdown":
-      return {
-        multiple: false as const,
-        filters: [
-          {
-            name: i18n.t(($) => $.library.import.picker.markdownFilter),
-            extensions: ["md", "markdown"],
-          },
-        ],
-        title: i18n.t(($) => $.library.import.picker.markdownTitle),
-      };
-  }
-}
+import { ProjectImportDialog } from "./ProjectImportDialog";
 
 export function ProjectImportMenu({
   align = "end",
@@ -70,6 +41,13 @@ export function ProjectImportMenu({
   triggerTooltip?: ReactNode;
 }>) {
   const { t } = useTranslation(["library"]);
+  const sourceLabels: Record<ProjectImportFileKind, string> = {
+    project: t(($) => $.library.import.sources.project.title),
+    word: t(($) => $.library.import.sources.word.title),
+    markdown: t(($) => $.library.import.sources.markdown.title),
+    html: t(($) => $.library.import.sources.html.title),
+    typst: t(($) => $.library.import.sources.typst.title),
+  };
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
   const [open, setOpen] = useState(false);
@@ -80,10 +58,14 @@ export function ProjectImportMenu({
   // import while it is set.
   const openingExternalRef = useRef(false);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [arxivOpen, setArxivOpen] = useState(false);
+  const [repositoryAttempt, setRepositoryAttempt] = useState(0);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
   const [repositoryLoadFailed, setRepositoryLoadFailed] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the retry counter explicitly starts another request.
   useEffect(() => {
     if (!githubOpen) return;
     if (githubStatus === "unknown") {
@@ -108,30 +90,38 @@ export function ProjectImportMenu({
     return () => {
       cancelled = true;
     };
-  }, [githubOpen, githubStatus, refreshGithub, repositories.length]);
+  }, [githubOpen, githubStatus, refreshGithub, repositories.length, repositoryAttempt]);
 
-  const importFile = async (kind: ProjectImportFileKind) => {
-    const selection = await pickOpenPath(pickerOptions(kind));
-    if (typeof selection !== "string") return;
+  const importFile = async (
+    kind: ProjectImportFileKind,
+    target?: "latex" | "markdown" | "typst",
+  ) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
-    onImportSelected?.();
     try {
-      await importSelectedFile(selection);
+      const selection = await pickOpenPath(importPickerOptions(kind));
+      if (typeof selection !== "string") return;
+      if (await importSelectedFile(selection, target)) onImportSelected?.();
     } catch (error) {
       notifyError("import", error);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   const importRepository = async (repository: GitHubRepo) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
-    onImportSelected?.();
     try {
       await importGitHubRepository(repository);
+      onImportSelected?.();
     } catch (error) {
       notifyError("import GitHub repository", error);
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -163,8 +153,13 @@ export function ProjectImportMenu({
     }
     if (repositoryLoadFailed) {
       return (
-        <DropdownMenuItem disabled>
-          {t(($) => $.library.import.menu.repositoriesFailed)}
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault();
+            setRepositoryAttempt((attempt) => attempt + 1);
+          }}
+        >
+          {t(($) => $.library.import.menu.repositoriesRetry)}
         </DropdownMenuItem>
       );
     }
@@ -230,6 +225,14 @@ export function ProjectImportMenu({
                 event.preventDefault();
                 event.stopPropagation();
               }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                event.stopPropagation();
+                void openExternal(repository.html_url).catch((error) => {
+                  notifyError("open repository", error);
+                });
+              }}
               className="shrink-0 text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
             >
               <ExternalLink className="size-3.5" />
@@ -241,9 +244,11 @@ export function ProjectImportMenu({
   };
 
   return (
+    <>
     <DropdownMenu
       open={open}
       onOpenChange={(nextOpen) => {
+        if (nextOpen && busyRef.current) return;
         setOpen(nextOpen);
         if (!nextOpen) setGithubOpen(false);
       }}
@@ -260,13 +265,31 @@ export function ProjectImportMenu({
         <DropdownMenuItem onSelect={() => void importFile("project")}>
           {t(($) => $.library.import.menu.project)}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => void importFile("word")}>
-          {t(($) => $.library.import.menu.word)}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => void importFile("markdown")}>
-          {t(($) => $.library.import.menu.markdown)}
-        </DropdownMenuItem>
+        {IMPORT_FILE_SOURCES.filter((source) => source.kind !== "project").map(({ kind }) => {
+          const targets = importTargetsForKind(kind);
+          return (
+            <DropdownMenuSub key={kind}>
+              <DropdownMenuSubTrigger data-testid={`import-kind-${kind}`}>
+                {sourceLabels[kind]}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {targets.map((target) => (
+                  <DropdownMenuItem
+                    key={target.target}
+                    data-testid={`import-target-${kind}-${target.target}`}
+                    onSelect={() => void importFile(kind, target.target)}
+                  >
+                    {target.recommended
+                      ? t(($) => $.library.import.targetRecommended, { label: target.label })
+                      : target.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          );
+        })}
         <DropdownMenuLabel>{t(($) => $.library.import.menu.cloud)}</DropdownMenuLabel>
+        <DropdownMenuItem data-testid="import-arxiv" onSelect={() => setArxivOpen(true)}>{t(($) => $.library.import.arxivPaper)}</DropdownMenuItem>
         <DropdownMenuSub open={githubOpen} onOpenChange={setGithubOpen}>
           <DropdownMenuSubTrigger>GitHub</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="max-h-72 min-w-64 overflow-y-auto">
@@ -275,5 +298,7 @@ export function ProjectImportMenu({
         </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
+    <ProjectImportDialog open={arxivOpen} initialView="arxiv" onClose={() => setArxivOpen(false)} onImported={onImportSelected} />
+    </>
   );
 }

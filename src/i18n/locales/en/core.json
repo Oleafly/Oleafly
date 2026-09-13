@@ -184,6 +184,10 @@
     "transcribing": "Transcribing image…"
   },
   "import": {
+    "arxivImported": "arXiv source imported. Compile the project to check the result.",
+    "chooseOfferedProjectType": "Choose one of the project types offered for this file.",
+    "invalidArxivId": "Paste an arXiv paper link or an id such as 2301.01234.",
+    "supportedDocumentTypes": "Choose one of the supported document types.",
     "conversionNotice": "We've converted your content to LaTeX. You may need to edit styling, particularly for tables, figures and citations.",
     "figureSaved": "Saved {{name}}",
     "pdfProjectCreated": "Project created from PDF. Review before trusting the reconstruction.",

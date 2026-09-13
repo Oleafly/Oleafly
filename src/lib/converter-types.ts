@@ -1,0 +1,18 @@
+export type ConverterToolId =
+  | "image-to-latex"
+  | "arxiv-to-latex"
+  | "equation-to-latex"
+  | "excel-to-latex"
+  | "html-to-latex"
+  | "image-to-typst"
+  | "latex-to-html"
+  | "latex-to-markdown"
+  | "latex-to-typst"
+  | "latex-to-word"
+  | "markdown-to-latex"
+  | "markdown-to-typst"
+  | "mermaid-to-latex"
+  | "pdf-to-markdown"
+  | "pdf-to-typst"
+  | "typst-to-latex"
+  | "word-to-latex";

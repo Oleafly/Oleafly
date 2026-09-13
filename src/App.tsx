@@ -119,8 +119,23 @@ const HotkeysModal = lazy(() =>
 const TourGuide = lazy(() =>
   import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide })),
 );
+const StatsToolView = lazy(() =>
+  import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })),
+);
+const GeneratorsToolView = lazy(() =>
+  import("@/components/tools/GeneratorsToolView").then((m) => ({ default: m.GeneratorsToolView })),
+);
+const SymbolsToolView = lazy(() =>
+  import("@/components/tools/SymbolsToolView").then((m) => ({ default: m.SymbolsToolView })),
+);
 const EquationToolView = lazy(() =>
   import("@/components/tools/EquationToolView").then((m) => ({ default: m.EquationToolView })),
+);
+const ConverterToolView = lazy(() =>
+  import("@/components/tools/ConverterToolView").then((m) => ({ default: m.ConverterToolView })),
+);
+const ReferenceToolView = lazy(() =>
+  import("@/components/tools/ReferenceToolView").then((m) => ({ default: m.ReferenceToolView })),
 );
 const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
@@ -233,7 +248,7 @@ function AppContent() {
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const closeDocks = useSettingsStore((s) => s.closeDocks);
   const homePage = useHomeViewStore((state) => state.page);
-  const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
+  const projectToolOpen = homePage === "generators" || homePage === "symbols";
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const pdfPanelRef = useRef<ImperativePanelHandle>(null);
@@ -743,12 +758,17 @@ function AppContent() {
         <Suspense fallback={null}>
           {homePage === "pdf-import" && <PdfImportView />}
           {homePage === "equation" && <EquationToolView />}
+          {homePage === "converter" && <ConverterToolView />}
+          {homePage === "reference" && <ReferenceToolView />}
           {homePage === "bibtex" && <BibtexToolView />}
           {homePage === "table" && <TableToolView />}
           {homePage === "lab-search" && <LabSearchToolView />}
           {homePage === "literature-search" && <LiteratureSearchToolView />}
           {homePage === "deadlines" && <DeadlinesView />}
-          {toolsOpen && <LatexToolsView />}
+          {homePage === "stats" && <StatsToolView />}
+          {homePage === "generators" && <GeneratorsToolView />}
+          {homePage === "symbols" && <SymbolsToolView />}
+          {homePage === "tools" && <LatexToolsView />}
         </Suspense>
         <ExternalToolApprovals />
         <EnginePickerModal />
@@ -773,11 +793,12 @@ function AppContent() {
 
   return (
     <ThemeProvider>
-      {/* Drives the gutter's horizontal metrics: the line-number column gives
-          back a few pixels only while the sidebar is competing for the width
-          (see globals.css). */}
       <div data-sidebar-open={showTree ? "true" : "false"} className="flex h-full flex-col">
-        <TopToolbar />
+        <div className="contents" inert={projectToolOpen || undefined}>
+          {/* Drives the gutter's horizontal metrics: the line-number column gives
+              back a few pixels only while the sidebar is competing for the width
+              (see globals.css). */}
+          <TopToolbar />
         <BackendProtocolBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
@@ -963,13 +984,23 @@ function AppContent() {
           </Suspense>
         )}
         <LazyModals>
-          <SettingsModal />
           <CiteOleaflyDialog />
           <WordCountModal />
           <VersioningModal />
           <HotkeysModal />
           <TourGuide />
         </LazyModals>
+        </div>
+        <LazyModals>
+          <SettingsModal />
+        </LazyModals>
+        {projectToolOpen && (
+          <Suspense fallback={null}>
+            <div className="fixed inset-0 z-[70]">
+              {homePage === "generators" ? <GeneratorsToolView /> : <SymbolsToolView />}
+            </div>
+          </Suspense>
+        )}
       </div>
     </ThemeProvider>
   );

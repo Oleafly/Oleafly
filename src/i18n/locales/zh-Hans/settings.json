@@ -703,8 +703,10 @@
   },
   "citations": {
     "actions": {
+      "removeApiKey": "移除 API 密钥",
       "removeEmail": "移除邮箱",
       "removeKey": "移除密钥",
+      "saveApiKey": "保存 API 密钥",
       "saveEmail": "保存邮箱",
       "saveKey": "保存密钥"
     },
@@ -722,7 +724,12 @@
       "emailRemoved": "OpenAlex 联系邮箱已移除。",
       "emailSaveFailed": "无法保存 OpenAlex 联系邮箱。",
       "emailSaved": "OpenAlex 联系邮箱已保存。",
-      "hint": "可选的联系邮箱。OpenAlex 会用它获取更高的速率限制（礼貌池）。仅存储在本地。"
+      "hint": "建议配置 API 密钥。OpenAlex 的常规访问需要密钥；无密钥搜索会共用较小的每日配额。联系邮箱还可启用礼貌池。两者都只保存在此设备上。",
+      "keyLabel": "OpenAlex API 密钥",
+      "keyRemoveFailed": "无法移除 OpenAlex API 密钥。",
+      "keyRemoved": "OpenAlex API 密钥已移除。",
+      "keySaveFailed": "无法保存 OpenAlex API 密钥。",
+      "keySaved": "OpenAlex API 密钥已保存。"
     },
     "semanticScholar": {
       "docsLink": "Semantic Scholar API 信息",
@@ -827,6 +834,7 @@
       "downloading": "正在下载…",
       "heading": "Markdown 编译器",
       "install": "安装 pandoc",
+      "repair": "修复 Pandoc",
       "note": "为 Markdown 选择其他 PDF 后端，或以系统 pandoc 取代托管的 pandoc，目前尚不可用。",
       "status": {
         "checking": "正在检查 pandoc…",
@@ -1213,7 +1221,6 @@
       "help": "Harper 原本面向聊天和邮件调优。这些规则要么推行论文并不采用的风格（例如要求将 kB 和 min 写成完整单词），要么会被代表 LaTeX 标记的占位符干扰，因此 Oleafly 将它们保持关闭。每条规则都会显示它将标出的内容。如果你想要这些检查结果，可以将其开启。",
       "reasons": {
         "AvoidContractions": "要求你把每个缩写形式都写成完整形式。",
-        "BoringWords": "建议使用更生动的词汇。",
         "CompoundNouns": "将分写成两个单词的复合名词合并为一个单词。",
         "Dashes": "将输入的 -- 或 --- 替换为正确的破折号字符。",
         "DiscourseMarkers": "标记以 however 等话语标记开头、且其后缺少逗号的句子。",

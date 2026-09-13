@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const githubListRepos = vi.fn(async () => [] as GitHubRepo[]);
 const importGitHubRepository = vi.fn(async () => {});
-const importSelectedFile = vi.fn(async () => {});
+const importSelectedFile = vi.fn(async () => true);
 const pickOpenPath = vi.fn(async () => null as unknown);
 const openExternal = vi.fn(async () => {});
 const notifyError = vi.fn();
@@ -21,7 +21,8 @@ vi.mock("@/lib/github", () => ({
   githubListRepos: () => githubListRepos(),
 }));
 
-vi.mock("@/features/project-import", () => ({
+vi.mock("@/features/project-import", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/project-import")>()),
   importGitHubRepository: (...args: unknown[]) =>
     importGitHubRepository(...(args as [])),
   importSelectedFile: (...args: unknown[]) =>
@@ -89,6 +90,13 @@ function openMenu() {
   });
 }
 
+function openSubmenu(testId: string) {
+  openMenu();
+  const trigger = screen.getByTestId(testId);
+  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+  fireEvent.click(trigger);
+}
+
 async function openGithubSubmenu() {
   openMenu();
   fireEvent.pointerDown(screen.getByText("GitHub"), {
@@ -104,6 +112,7 @@ beforeEach(() => {
   githubListRepos.mockResolvedValue([]);
   importGitHubRepository.mockReset();
   importSelectedFile.mockReset();
+  importSelectedFile.mockResolvedValue(true);
   pickOpenPath.mockReset();
   pickOpenPath.mockResolvedValue(null);
   openExternal.mockReset();
@@ -120,44 +129,55 @@ describe("ProjectImportMenu local imports", () => {
     openMenu();
     fireEvent.click(screen.getByText(enLibrary.import.menu.project));
     await waitFor(() =>
-      expect(importSelectedFile).toHaveBeenCalledWith("/tmp/project.zip"),
+      expect(importSelectedFile).toHaveBeenCalledWith("/tmp/project.zip", undefined),
     );
     expect(onImportSelected).toHaveBeenCalledTimes(1);
     expect(pickOpenPath).toHaveBeenCalledWith(
       expect.objectContaining({
         title: enLibrary.import.picker.projectTitle,
-        filters: [
-          expect.objectContaining({
-            name: enLibrary.import.picker.projectFilter,
-          }),
-        ],
+        filters: [expect.objectContaining({
+          name: enLibrary.import.picker.projectFilter,
+          extensions: ["zip"],
+        })],
       }),
     );
   });
 
-  it("imports a chosen Word document", async () => {
+  it("imports a chosen Word document into the selected project type", async () => {
     pickOpenPath.mockResolvedValue("/tmp/paper.docx");
     renderMenu();
-    openMenu();
-    fireEvent.click(screen.getByText(enLibrary.import.menu.word));
+    openSubmenu("import-kind-word");
+    fireEvent.click(screen.getByTestId("import-target-word-latex"));
     await waitFor(() =>
-      expect(importSelectedFile).toHaveBeenCalledWith("/tmp/paper.docx"),
+      expect(importSelectedFile).toHaveBeenCalledWith("/tmp/paper.docx", "latex"),
     );
     expect(pickOpenPath).toHaveBeenCalledWith(
-      expect.objectContaining({ title: enLibrary.import.picker.wordTitle }),
+      expect.objectContaining({
+        title: enLibrary.import.picker.wordTitle,
+        filters: [expect.objectContaining({
+          name: enLibrary.import.picker.wordFilter,
+          extensions: ["docx"],
+        })],
+      }),
     );
   });
 
-  it("imports a chosen Markdown document", async () => {
+  it("imports a chosen Markdown document into the selected project type", async () => {
     pickOpenPath.mockResolvedValue("/tmp/notes.md");
     renderMenu();
-    openMenu();
-    fireEvent.click(screen.getByText(enLibrary.import.menu.markdown));
+    openSubmenu("import-kind-markdown");
+    fireEvent.click(screen.getByTestId("import-target-markdown-typst"));
     await waitFor(() =>
-      expect(importSelectedFile).toHaveBeenCalledWith("/tmp/notes.md"),
+      expect(importSelectedFile).toHaveBeenCalledWith("/tmp/notes.md", "typst"),
     );
     expect(pickOpenPath).toHaveBeenCalledWith(
-      expect.objectContaining({ title: enLibrary.import.picker.markdownTitle }),
+      expect.objectContaining({
+        title: enLibrary.import.picker.markdownTitle,
+        filters: [expect.objectContaining({
+          name: enLibrary.import.picker.markdownFilter,
+          extensions: ["md", "markdown"],
+        })],
+      }),
     );
   });
 
@@ -226,7 +246,7 @@ describe("ProjectImportMenu GitHub submenu", () => {
     renderMenu();
     await openGithubSubmenu();
     expect(
-      await screen.findByText(enLibrary.import.menu.repositoriesFailed),
+      await screen.findByText("Could not load repositories. Try again"),
     ).toBeInTheDocument();
   });
 

@@ -30,13 +30,13 @@ const limits = {
   // seconds. The editor math subpath split stayed, so the entry is 3.45 MB
   // rather than the 3.96 MB it was before that.
   // +420 KB for the interface localization runtime and the English catalogs,
-  // which stay in the entry so every key has its fallback before first paint:
-  // entry measures 3.73 MB.
-  largestJavaScript: 3_800_000,
+  // which stay in the entry so every key has its fallback before first paint.
+  // The merged entry measures 3.80 MB; keep about 100 KB of build-tool drift.
+  largestJavaScript: 3_900_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 3_800_000,
+  entryJavaScript: 3_900_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -58,6 +58,12 @@ const limits = {
   // picker modal, TinyTeX install guards, import taxonomy and classifier,
   // Library import entry points): combined graph measures 9.27 MB.
   //
+  // +2.35 MB for the equation image export and spreadsheet table import:
+  // the MathJax tex-to-SVG graph (~1.86 MB, split into small pieces) and the
+  // SheetJS reader (~0.49 MB). Both load on first use only (an equation
+  // export or a CSV/XLSX import); neither enters the entry chunk, and the
+  // measured entry (3.24 MB) stays under the startup gates below.
+  //
   // +3.6 MB for the chat markdown/math/mermaid rendering feature, taking the
   // whole-graph total to ~12.86 MB. This is entirely lazy weight, not startup
   // weight: the mermaid ecosystem dominates it (mermaid.core ~0.6 MB, ~30
@@ -76,9 +82,10 @@ const limits = {
   // Raised to 14 MB after the Markdown project editing and terminal prompt
   // work on main (13.14 MB there) plus the skills settings tab, catalog,
   // sharing card and slash invocation: combined graph measures 13.17 MB.
-  // +740 KB for the localization runtime, the English catalogs and one lazy
-  // locale chunk (zh-Hans, about 280 KB): combined graph measures 14.46 MB.
-  totalJavaScript: 14_600_000,
+  // The citation workspace adds Citation.js, citeproc, and five CSL styles in
+  // an on-demand chunk. Localization adds the runtime, English catalogs, and
+  // one lazy zh-Hans chunk. Keep the combined graph below this ceiling.
+  totalJavaScript: 18_600_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

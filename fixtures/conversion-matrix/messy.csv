@@ -1,0 +1,5 @@
+Name,Notes,Value,Special
+"Smith, Jane","said ""hi, there"" — ok",42,"a&b%c$d#e_f{g}h~i^j\k"
+Doe John,"line one
+line two",7,"unicode: αβγ—é ✓"
+"Trailing, comma, cell",plain,-3.5,"100% done"

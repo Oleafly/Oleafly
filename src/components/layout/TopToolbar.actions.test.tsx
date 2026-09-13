@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   exportDocument: vi.fn(async () => {}),
   revealInDir: vi.fn(async () => {}),
   ensurePandoc: vi.fn(async () => true),
+  exportCurrentDocument: vi.fn(async () => {}),
   exportCurrentPdf: vi.fn(async () => {}),
   exportCurrentImagePng: vi.fn(async () => {}),
   success: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/features/export", () => ({
+  exportCurrentDocument: mocks.exportCurrentDocument,
   exportCurrentPdf: mocks.exportCurrentPdf,
   exportCurrentImagePng: mocks.exportCurrentImagePng,
 }));
@@ -203,42 +205,35 @@ describe("TopToolbar export menu", () => {
       await screen.findByRole("menuitem", { name: toolbar.exportSourceZip }),
     );
     await waitFor(() =>
-      expect(mocks.downloadProjectZip).toHaveBeenCalledWith("p1", "/tmp/out.zip"),
-    );
-    expect(mocks.success).toHaveBeenCalledWith(
-      toolbar.exportComplete.replace("{{format}}", "Zip"),
-      expect.objectContaining({ label: toolbar.viewFile }),
-      true,
+      expect(mocks.exportCurrentDocument).toHaveBeenCalledWith("zip"),
     );
   });
 
-  it("does nothing when the save dialog is dismissed", async () => {
-    mocks.pickSavePath.mockResolvedValue(null as unknown as string);
+  it("leaves the save dialog to the export feature", async () => {
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByLabelText(toolbar.export));
     await user.click(
       await screen.findByRole("menuitem", { name: toolbar.exportSourceZip }),
     );
-    await waitFor(() => expect(mocks.pickSavePath).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.exportCurrentDocument).toHaveBeenCalled());
+    expect(mocks.pickSavePath).not.toHaveBeenCalled();
     expect(mocks.downloadProjectZip).not.toHaveBeenCalled();
   });
 
-  it("reports a failed zip export", async () => {
-    mocks.downloadProjectZip.mockRejectedValueOnce(new Error("disk full"));
+  it("reopens the export menu after an export finishes", async () => {
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByLabelText(toolbar.export));
     await user.click(
       await screen.findByRole("menuitem", { name: toolbar.exportSourceZip }),
     );
-    await waitFor(() =>
-      expect(mocks.notifyError).toHaveBeenCalledWith(
-        "export zip",
-        expect.anything(),
-        toolbar.exportZipFailed,
-      ),
+    await waitFor(() => expect(mocks.exportCurrentDocument).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByLabelText(toolbar.export));
+    await user.click(
+      await screen.findByRole("menuitem", { name: toolbar.exportSourceZip }),
     );
+    await waitFor(() => expect(mocks.exportCurrentDocument).toHaveBeenCalledTimes(2));
   });
 
   it("exports the compiled PDF", async () => {
@@ -249,34 +244,34 @@ describe("TopToolbar export menu", () => {
     await waitFor(() => expect(mocks.exportCurrentPdf).toHaveBeenCalled());
   });
 
-  it("converts the document through pandoc", async () => {
+  it("converts the document through the registry route", async () => {
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByLabelText(toolbar.export));
-    await user.click(await screen.findByRole("menuitem", { name: toolbar.exportDocx }));
-    await waitFor(() =>
-      expect(mocks.exportDocument).toHaveBeenCalledWith(
-        "p1",
-        "main.tex",
-        "docx",
-        "/tmp/out.zip",
-      ),
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Export as Word (.docx)" }),
     );
-    expect(mocks.success).toHaveBeenCalledWith(
-      toolbar.exportComplete.replace("{{format}}", "Docx"),
-      expect.anything(),
-      true,
+    await waitFor(() =>
+      expect(mocks.exportCurrentDocument).toHaveBeenCalledWith("docx"),
     );
   });
 
-  it("stops the conversion when pandoc is missing", async () => {
-    mocks.ensurePandoc.mockResolvedValue(false);
+  it("offers every registry export route the engine supports", async () => {
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByLabelText(toolbar.export));
-    await user.click(await screen.findByRole("menuitem", { name: toolbar.exportHtml }));
-    await waitFor(() => expect(mocks.ensurePandoc).toHaveBeenCalled());
-    expect(mocks.exportDocument).not.toHaveBeenCalled();
+    await screen.findByRole("menuitem", { name: "Export as Word (.docx)" });
+    const names = screen
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent?.trim());
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "Export as Word (.docx)",
+        "Export as HTML (MathML)",
+        "Export as Markdown (.md)",
+        "Export as Typst (.typ)",
+      ]),
+    );
   });
 
   it("asks for a compile before an export when there is no PDF", async () => {

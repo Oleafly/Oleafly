@@ -105,7 +105,7 @@ test("plain document export menu offers neither PowerPoint nor EPUB", async ({ t
   await compileClean(tauriPage);
   const items = await exportMenuItems(tauriPage);
   expect(items).toContain("Export as Word (.docx)");
-  expect(items).toContain("Export as HTML (.html)");
+  expect(items).toContain("Export as HTML (MathML)");
   expect(items).toContain("Export as Markdown (.md)");
   expect(items).toContain("Export as Plain text (.txt)");
   expect(items).not.toContain("Export as PowerPoint");

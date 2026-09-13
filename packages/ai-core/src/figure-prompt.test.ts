@@ -21,8 +21,23 @@ describe("vision capability", () => {
     expect(modelSupportsVision("openrouter", "qwen/qwen2-vl-7b")).toBe(true);
   });
 
+  it("recognises common local Ollama vision model ids", () => {
+    for (const id of ["qwen2.5vl:7b", "qwen3-vl:8b", "gemma3:12b"]) {
+      expect(modelSupportsVision("ollama", id), `${id} is a vision model`).toBe(true);
+    }
+  });
+
+  it("checks long uncontrolled model ids in bounded linear work", () => {
+    expect(modelSupportsVision("ollama", "qwen".repeat(100_000))).toBe(false);
+    expect(modelSupportsVision("openrouter", `${"qwen".repeat(100_000)}/qwen3-vl:8b`)).toBe(
+      true,
+    );
+  });
+
   it("stays false for models with no image support", () => {
     expect(modelSupportsVision("deepseek", "deepseek-chat")).toBe(false);
     expect(modelSupportsVision("groq", "llama-3.3-70b-versatile")).toBe(false);
+    expect(modelSupportsVision("ollama", "qwen2.5:7b")).toBe(false);
+    expect(modelSupportsVision("ollama", "gemma3:1b")).toBe(false);
   });
 });

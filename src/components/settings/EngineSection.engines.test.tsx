@@ -227,14 +227,18 @@ describe("EngineSection Markdown tab", () => {
       await screen.findByText(engineCopy.markdown.status.missing),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: engineCopy.markdown.install }));
+    await user.click(
+      screen.getByRole("button", { name: engineCopy.markdown.repair }),
+    );
     expect(
       await screen.findByText(engineCopy.markdown.status.installing),
     ).toBeInTheDocument();
     expect(screen.getByText(engineCopy.markdown.downloading)).toBeInTheDocument();
 
     release(true);
-    expect(await screen.findByText(engineCopy.markdown.status.ready)).toBeInTheDocument();
+    expect(
+      await screen.findByText(engineCopy.markdown.status.ready),
+    ).toBeInTheDocument();
   });
 
   it("treats a failed pandoc probe as missing", async () => {

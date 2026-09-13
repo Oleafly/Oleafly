@@ -1,12 +1,13 @@
 import { test, expect } from "../fixtures";
-import { createBlankProject } from "../helpers";
+import {
+  createBlankProject,
+  fillCommandPalette,
+  pressGlobal,
+} from "../helpers";
 
-// Oleafly Tools is a glass modal over the dashboard (not a full page), and
-// clicking a tool inside it hands off to that tool's own dedicated full view
-// (back button returns straight to Library). Deadlines moved from its own
-// dock modal into a tool card here (Research & Analyze) and is now one of
-// those full views too - see 44-deadlines.spec.ts for its own coverage.
-test("dock opens Tools as a modal, and a tool card hands off to a full view", async ({
+// Tools is a full home page. A converter's Back action returns here, and the
+// gallery's Back action returns to the Library.
+test("dock opens the Tools page, and a converter returns to it", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
@@ -16,14 +17,16 @@ test("dock opens Tools as a modal, and a tool card hands off to a full view", as
   await expect(tauriPage.getByText("Oleafly Tools", { exact: true })).toBeVisible();
   await expect(tauriPage.locator('[data-testid="latex-tool-card-deadlines"]')).toBeVisible();
 
-  // PDF to LaTeX is a card in the Tools modal; opening it closes the modal
-  // and lands on the dropzone (not an immediately-triggered OS file picker).
+  // Opening PDF to LaTeX lands on its dropzone rather than immediately
+  // triggering an operating-system file picker.
   await tauriPage.click('[data-testid="latex-tool-card-pdf-to-latex"]');
   await expect(tauriPage.locator('[data-testid="pdf-import-view"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="pdf-dropzone"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeHidden();
 
   await tauriPage.click('[data-testid="import-back"]');
+  await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeVisible();
+  await tauriPage.click('[data-testid="latex-tools-view-back"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   await expect(tauriPage.locator('[data-testid="pdf-import-view"]')).toBeHidden();
 });
@@ -40,18 +43,65 @@ test("Oleafly Tools gallery filters by category and search, and opens a dedicate
     '[data-testid="latex-tools-view"] input[aria-label="Search Oleafly Tools"]',
     "table",
   );
-  await expect(tauriPage.locator('[data-testid="latex-tool-card-table"]')).toBeVisible();
+  await expect(
+    tauriPage.locator('[data-testid="latex-tool-card-table-to-latex"]'),
+  ).toBeVisible();
   await expect(tauriPage.locator('[data-testid="latex-tool-card-bibtex"]')).toBeHidden();
 
-  await tauriPage.click('[data-testid="latex-tool-card-table"]');
+  await tauriPage.click('[data-testid="latex-tool-card-table-to-latex"]');
   await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeHidden();
   await expect(tauriPage.locator('[data-testid="table-tool-view"]')).toBeVisible();
   await expect(tauriPage.getByText("LaTeX Table Generator", { exact: true })).toBeVisible();
 
-  // Back returns straight to the Library dashboard, not to the Tools picker.
+  // Back returns to the full Tools page, which keeps the broader workflow in context.
   await tauriPage.click('[data-testid="table-tool-view-back"]');
-  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="table-tool-view"]')).toBeHidden();
+});
+
+test("a deterministic converter runs from its built-in example", async ({ tauriPage }) => {
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await tauriPage.click('[data-testid="open-latex-tools"]');
+  await tauriPage.click('[data-testid="latex-tool-card-mermaid-to-latex"]');
+
+  await expect(tauriPage.getByTestId("converter-tool-view")).toBeVisible();
+  await expect(tauriPage.getByText("Mermaid to LaTeX", { exact: true })).toBeVisible();
+  await tauriPage.click('[data-testid="converter-run"]');
+  await expect(tauriPage.getByTestId("converter-output")).toContainText(
+    "\\begin{tikzpicture}",
+  );
+
+  await tauriPage.click('[data-testid="converter-tool-view-back"]');
+  await expect(tauriPage.getByTestId("latex-tools-view")).toBeVisible();
+});
+
+test("the bundled Pandoc converts Markdown without a project", async ({ tauriPage }) => {
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await pressGlobal(tauriPage, "f", { meta: true, shift: true });
+  await expect(tauriPage.locator("[cmdk-input]")).toBeVisible();
+  await fillCommandPalette(tauriPage, "markdown to latex");
+  await expect(tauriPage.getByText("Open Markdown to LaTeX")).toBeVisible();
+  await tauriPage.press("[cmdk-input]", "Enter");
+
+  await expect(tauriPage.getByTestId("converter-tool-view")).toBeVisible();
+  await expect(tauriPage.getByText("Markdown to LaTeX", { exact: true })).toBeVisible();
+  await tauriPage.click('[data-testid="converter-run"]');
+  await expect(tauriPage.getByTestId("converter-output")).toContainText(
+    "\\documentclass",
+    { timeout: 60_000 },
+  );
+  // CodeMirror virtualizes off-screen lines, so scroll the result to its end
+  // before checking the source heading that Pandoc places in the document body.
+  await tauriPage
+    .getByTestId("converter-output")
+    .locator(".cm-scroller")
+    .evaluate((scroller) => scroller.scrollTo(0, scroller.scrollHeight));
+  await expect(tauriPage.getByTestId("converter-output")).toContainText(
+    "A compact example",
+  );
+
+  await tauriPage.click('[data-testid="converter-tool-view-back"]');
+  await expect(tauriPage.getByTestId("latex-tools-view")).toBeVisible();
 });
 
 test("dock opens the Diagram Composer as a standalone page and back returns to Library", async ({

@@ -10,6 +10,7 @@ use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; literature search)";
+const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 
 /// Trim and validate an OpenAlex polite-pool contact email.
 fn sanitize_openalex_email(raw: &str) -> Option<&str> {
@@ -19,6 +20,20 @@ fn sanitize_openalex_email(raw: &str) -> Option<&str> {
     } else {
         Some(email)
     }
+}
+
+/// The configured OpenAlex API key, if any. Keys became mandatory for
+/// meaningful daily volumes in February 2026, so searches work without one
+/// but degrade quickly.
+fn openalex_api_key() -> Option<String> {
+    crate::secrets::read_connector_secrets()
+        .ok()
+        .and_then(|secrets| {
+            secrets
+                .get("openalex-api-key")
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        })
 }
 
 /// User-Agent for OpenAlex only: appends mailto when a contact email is configured.
@@ -45,18 +60,38 @@ fn client() -> Result<reqwest::Client, String> {
         .map_err(|error| error.to_string())
 }
 
+fn request_error(source: &str, error: reqwest::Error) -> String {
+    format!("{source} search failed: {}", error.without_url())
+}
+
 async fn response_text(source: &str, request: RequestBuilder) -> Result<String, String> {
     let response = request
         .send()
         .await
-        .map_err(|error| format!("{source} search failed: {error}"))?;
+        .map_err(|error| request_error(source, error))?;
     let status = response.status();
     let retry_after = response
         .headers()
         .get(reqwest::header::RETRY_AFTER)
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
-    let body = response.text().await.map_err(|error| error.to_string())?;
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
+    {
+        return Err(format!("{source} returned more than 2 MB of data."));
+    }
+    let mut body = Vec::new();
+    let mut stream = response.bytes_stream();
+    use futures_util::StreamExt;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| error.without_url().to_string())?;
+        if body.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
+            return Err(format!("{source} returned more than 2 MB of data."));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    let body = String::from_utf8(body).map_err(|_| format!("{source} returned invalid text."))?;
 
     if status.is_success() {
         return Ok(body);
@@ -103,14 +138,26 @@ async fn search_openalex(
     if !filters.is_empty() {
         params.push(("filter".to_string(), filters.join(",")));
     }
-    response_text(
+    let api_key = openalex_api_key();
+    let has_key = api_key.is_some();
+    if let Some(key) = api_key {
+        params.push(("api_key".to_string(), key));
+    }
+    let result = response_text(
         "OpenAlex",
         client()?
             .get("https://api.openalex.org/works")
             .header("User-Agent", literature_user_agent())
             .query(&params),
     )
-    .await
+    .await;
+    if result.is_err() && !has_key {
+        // Keyless requests share a tiny daily pool; say what to do about it.
+        return result.map_err(|error| {
+            format!("{error} Without an OpenAlex API key this source is heavily limited. Add one in Settings, Integrations.")
+        });
+    }
+    result
 }
 
 async fn search_semantic_scholar(

@@ -7,6 +7,7 @@ import "katex/contrib/mhchem";
 import { Copy, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CodeField } from "@/components/tools/CodeField";
+import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 import { latexMathLanguage } from "@/components/editor/cm/latex";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -134,8 +135,8 @@ export function EquationPreviewPanel({
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex min-w-0 flex-1 flex-col border-r">
+    <ToolSplitView storageId="latex-equation-preview">
+      <div className="flex h-full min-w-0 flex-col">
         <div className="flex items-center justify-between border-b px-4 py-2.5">
           <span className="text-xs font-semibold tracking-wide text-muted-foreground">
             {t(($) => $.researchTools.equation.sourceHeading)}
@@ -192,7 +193,7 @@ export function EquationPreviewPanel({
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-full min-w-0 flex-col">
         <div className="flex items-center justify-between border-b px-4 py-2.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold tracking-wide text-muted-foreground">
@@ -323,6 +324,6 @@ export function EquationPreviewPanel({
           </div>
         </div>
       </div>
-    </div>
+    </ToolSplitView>
   );
 }

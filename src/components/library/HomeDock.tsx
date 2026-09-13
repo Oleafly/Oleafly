@@ -9,6 +9,7 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import { openToolsGallery } from "@/features/open-tool";
 
 const DOCK_BUTTON_SHAPE = "rounded-full hover:scale-[1.2]";
 
@@ -69,8 +70,6 @@ export function HomeDock() {
   const latexTools = useSettingsStore((s) => s.latexTools);
   const hasProjects = useFilesStore((s) => s.projects.length > 0);
   const fullscreen = useFullscreen();
-  const toolsOpen = useHomeViewStore((s) => s.toolsOpen);
-  const openTools = useHomeViewStore((s) => s.openTools);
   const page = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
   const horizontal = dockPlacement === "bottom";
@@ -109,8 +108,8 @@ export function HomeDock() {
         <DockButton
           label={t(($) => $.library.dock.tools)}
           icon={<ToolCase className="size-4" />}
-          onClick={openTools}
-          active={toolsOpen}
+          onClick={() => void openToolsGallery()}
+          active={page === "tools"}
           testId="open-latex-tools"
           tooltipSide={tooltipSide}
         />

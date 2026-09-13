@@ -39,6 +39,10 @@
       "title": "非描述性链接文本",
       "detail": "像“点击此处”或裸 URL 这样的链接文本，无法让屏幕阅读器用户了解目标位置。请使用能点明目标的文本，例如“我的作品集”。"
     },
+    "mathml-export-hint": {
+      "title": "导出带 MathML 的 HTML 副本以检查公式无障碍性",
+      "detail": "文档中包含公式。只有当公式为 MathML 时，屏幕阅读器才能可靠地朗读它们。请使用“导出为 HTML”，pandoc 会以 --mathml 写出该文件，并在投稿前用屏幕阅读器或无障碍检查工具打开它。"
+    },
     "no-lang": {
       "title": "未设置文档语言",
       "detail": "此 PDF 未设置语言，屏幕阅读器可能按错误的发音规则朗读。请设置一种语言，例如 \\usepackage[english]{babel}，或使用 hyperref 的 pdflang=en-US。"

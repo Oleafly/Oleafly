@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
-import { LatexToolsView } from "@/components/tools/LatexToolsView";
 import { useHomeViewStore } from "@/store/home-view";
+import { useFilesStore } from "@/store/files";
 import {
   TOOL_CATEGORY_ORDER,
   TOOL_DEFINITIONS,
@@ -12,14 +11,28 @@ import {
   toolDescription,
   toolName,
   toolTags,
+  type ToolCategory,
 } from "@/lib/tool-catalog";
+
+const mocks = vi.hoisted(() => ({ openTool: vi.fn() }));
+
+vi.mock("@/features/open-tool", () => ({ openTool: mocks.openTool }));
+vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
+vi.mock("@/components/layout/WindowControls", () => ({ WindowControls: () => null }));
+vi.mock("@/components/layout/ThemeControls", () => ({ ThemeMenu: () => null }));
+
+import { LatexToolsView } from "./LatexToolsView";
+
+const CATEGORY_KEYS: readonly ToolCategory[] = [...TOOL_CATEGORY_ORDER];
 
 function searchBox() {
   return screen.getByLabelText(enResearchTools.tools.searchAria);
 }
 
 beforeEach(() => {
-  useHomeViewStore.setState({ page: "library", toolsOpen: true });
+  mocks.openTool.mockClear();
+  useFilesStore.setState({ projectId: null });
+  useHomeViewStore.setState({ page: "tools", activeConverter: null });
 });
 
 describe("tool catalog copy", () => {
@@ -33,23 +46,35 @@ describe("tool catalog copy", () => {
     }
   });
 
-  it("resolves a label for every category", () => {
-    for (const category of TOOL_CATEGORY_ORDER) {
+  it("resolves a label for every localized category", () => {
+    for (const category of CATEGORY_KEYS) {
       expect(toolCategoryLabel(category).length).toBeGreaterThan(0);
     }
   });
 });
 
 describe("LatexToolsView", () => {
-  it("renders nothing while the gallery is closed", () => {
-    useHomeViewStore.setState({ toolsOpen: false });
+  it("renders nothing while another page is active", () => {
+    useHomeViewStore.setState({ page: "library" });
     const { container } = render(<LatexToolsView />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders a card for every tool grouped by category", () => {
+  it("renders the catalog as a full page with 22 converter cards", () => {
     render(<LatexToolsView />);
     expect(screen.getByTestId("latex-tools-view")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: enResearchTools.tools.heroTitle })).toBeVisible();
+    expect(screen.getByText(enResearchTools.tools.heroBody)).toBeVisible();
+    expect(screen.getByText("22", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByTestId("latex-tool-card-image-to-latex")).toBeVisible();
+    expect(screen.getByTestId("latex-tool-card-word-to-latex")).toBeVisible();
+    expect(screen.getByTestId("latex-tool-card-doi-to-bibtex")).toBeVisible();
+    expect(screen.getByTestId("latex-tool-card-url-to-bibtex")).toBeVisible();
+  });
+
+  it("renders a card for every tool grouped by category", () => {
+    render(<LatexToolsView />);
     expect(
       screen.getByText(enResearchTools.tools.galleryTitle),
     ).toBeInTheDocument();
@@ -73,6 +98,13 @@ describe("LatexToolsView", () => {
     );
   });
 
+  it("filters by name, description, tag, or command", () => {
+    render(<LatexToolsView />);
+    fireEvent.change(searchBox(), { target: { value: "spreadsheet" } });
+    expect(screen.getByTestId("latex-tool-card-excel-to-latex")).toBeVisible();
+    expect(screen.queryByTestId("latex-tool-card-image-to-latex")).not.toBeInTheDocument();
+  });
+
   it("filters the gallery by slash command", () => {
     render(<LatexToolsView />);
     fireEvent.change(searchBox(), {
@@ -94,28 +126,22 @@ describe("LatexToolsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens a tool's page and closes the gallery", () => {
+  it("opens the selected registry definition", () => {
+    render(<LatexToolsView />);
+    fireEvent.click(screen.getByTestId("latex-tool-card-latex-to-typst"));
+    expect(mocks.openTool).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "latex-to-typst" }),
+    );
+  });
+
+  it("opens a tool page from its card", () => {
     render(<LatexToolsView />);
     fireEvent.click(screen.getByTestId("latex-tool-card-bibtex"));
-    expect(useHomeViewStore.getState().toolsOpen).toBe(false);
-    expect(useHomeViewStore.getState().page).toBe("bibtex");
-  });
-
-  it("closes from the header button", () => {
-    render(<LatexToolsView />);
-    fireEvent.click(
-      screen.getByRole("button", { name: enCommon.actions.close }),
-    );
-    expect(useHomeViewStore.getState().toolsOpen).toBe(false);
-  });
-
-  it("closes when the backdrop is pressed", () => {
-    render(<LatexToolsView />);
-    fireEvent.mouseDown(
-      screen.getByRole("button", {
-        name: enResearchTools.tools.closeGallery,
+    expect(mocks.openTool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "bibtex",
+        destination: { kind: "page", page: "bibtex" },
       }),
     );
-    expect(useHomeViewStore.getState().toolsOpen).toBe(false);
   });
 });

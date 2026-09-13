@@ -140,7 +140,7 @@ export interface EngineCapabilities {
     formatting_profile: "latex" | "typst" | "markdown" | "none";
     source_preflight_profile: "latex" | "none";
     features: EngineFeature[];
-    conversion_exports: Array<"docx" | "html" | "md" | "txt" | "pptx" | "epub">;
+    conversion_exports: Array<"docx" | "html" | "md" | "txt" | "pptx" | "epub" | "typst" | "tex">;
     template_kinds: Array<"document" | "image">;
     compiler_prerequisite: "pandoc" | "system_tex" | null;
 }

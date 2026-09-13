@@ -391,6 +391,28 @@ const uaStandardWithoutTitle: Rule = (text) => {
   ];
 };
 
+// Math renders accessibly on the web only as MathML (or images with alt
+// text). When the source contains math, point at the HTML export, which
+// pandoc writes with --mathml, as an accessibility check surface (G11).
+const mathMlExportHint: Rule = (text) => {
+  const hasMath =
+    /\\begin\{(?:equation|align|gather|multline|eqnarray|math|displaymath)\*?\}/.test(
+      text,
+    ) || /(?:^|[^\\$\w])\$[^$]+\$/.test(text) || /\\\[/.test(text);
+  if (!hasMath) return [];
+  return [
+    make(
+      "mathml-export-hint",
+      "a11y",
+      "info",
+      message("rules.mathml-export-hint.title"),
+      message("rules.mathml-export-hint.detail"),
+      undefined,
+      "advisory",
+    ),
+  ];
+};
+
 const uaStandardOnBundledEngine: Rule = (text, context) => {
   if (context.engine !== "bundled") return [];
   const declaration = uaStandardDeclaration(text);
@@ -439,6 +461,7 @@ const tableHeaderRows: Rule = (text) => {
 const RULES: Rule[] = [
   multiColumn,
   noGlyphToUnicode,
+  mathMlExportHint,
   iconNearContact,
   layoutTable,
   contactInHeader,

@@ -745,6 +745,8 @@
     "exportPdf": "导出为 PDF",
     "exportPdfVector": "导出为 PDF（矢量图）",
     "exportPngRaster": "导出为 PNG（位图）",
+    "exportPagePng": "将页面导出为 PNG（位图）",
+    "exportAs": "导出为 {{format}}",
     "exportPptx": "导出为 PowerPoint (.pptx)",
     "exportSourceZip": "导出源码 (.zip)",
     "exportTxt": "导出为纯文本 (.txt)",
