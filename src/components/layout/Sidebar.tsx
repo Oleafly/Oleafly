@@ -248,19 +248,18 @@ export function FilesPanel() {
     next: boolean,
     panelRef: RefObject<ImperativePanelHandle | null>,
     setCollapsed: (collapsed: boolean) => void,
-    expansionReserveRef?: RefObject<ImperativePanelHandle | null>,
+    followingPanelRefs: readonly RefObject<ImperativePanelHandle | null>[],
   ) => {
     setCollapsed(next);
     const panel = panelRef.current;
     if (!panel) return;
     if (next && panel.isExpanded()) panel.collapse();
     if (!next && panel.isCollapsed()) {
-      const reserve = expansionReserveRef?.current;
-      // Structure has a zero-size filler after it so all section headers can
-      // sit at the bottom. If that reserve is empty, the panel library cannot
-      // grow Structure forward; briefly fund its minimum size from the panels
-      // above, then the normal layout callback returns the filler to zero.
-      if (reserve && reserve.getSize() < minExpandedSize) {
+      const reserve = fillerPanelRef.current;
+      const canGrowForward = followingPanelRefs.some(
+        (ref) => ref.current?.isExpanded() === true,
+      );
+      if (!canGrowForward && reserve && reserve.getSize() < minExpandedSize) {
         reserve.resize(minExpandedSize);
       }
       panel.expand();
@@ -290,7 +289,10 @@ export function FilesPanel() {
           <FileTree
             collapsed={sourceCollapsed}
             onCollapsedChange={(next) =>
-              changeCollapsed(next, sourcePanelRef, setSourceCollapsed)
+              changeCollapsed(next, sourcePanelRef, setSourceCollapsed, [
+                outlinePanelRef,
+                structurePanelRef,
+              ])
             }
           />
         </Panel>
@@ -313,7 +315,9 @@ export function FilesPanel() {
             <DocumentOutline
               collapsed={outlineCollapsed}
               onCollapsedChange={(next) =>
-                changeCollapsed(next, outlinePanelRef, setOutlineCollapsed)
+                changeCollapsed(next, outlinePanelRef, setOutlineCollapsed, [
+                  structurePanelRef,
+                ])
               }
             />
           </Suspense>
@@ -337,12 +341,7 @@ export function FilesPanel() {
             <ProjectStructure
               collapsed={structureCollapsed}
               onCollapsedChange={(next) =>
-                changeCollapsed(
-                  next,
-                  structurePanelRef,
-                  setStructureCollapsed,
-                  fillerPanelRef,
-                )
+                changeCollapsed(next, structurePanelRef, setStructureCollapsed, [])
               }
             />
           </Suspense>

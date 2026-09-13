@@ -13,6 +13,14 @@ const sourceLabel = "Explorer";
 const outlineLabel = "Outline";
 const structureLabel = "Structure";
 
+vi.mock("react-resizable-panels", () =>
+  vi.importActual(
+    new URL(
+      "../../../node_modules/react-resizable-panels/dist/react-resizable-panels.browser.development.cjs.js",
+      import.meta.url,
+    ).pathname,
+  ),
+);
 vi.mock("@/lib/tauri", () => ({ searchDocs: mocks.searchDocs }));
 vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
 vi.mock("@/components/files/FileTree", () => ({
@@ -238,5 +246,68 @@ describe("Sidebar", () => {
     >);
     render(<Sidebar />);
     expect(screen.getByTestId("contributed-panel")).toBeInTheDocument();
+  });
+});
+
+describe("FilesPanel section expansion", () => {
+  const panelSize = (id: string) =>
+    Number(
+      document
+        .querySelector(`[data-panel-id="${id}"]`)
+        ?.getAttribute("data-panel-size") ?? -1,
+    );
+  const layout = () =>
+    ["source-tree-v", "document-outline-v", "project-structure-v", "explorer-filler-v"]
+      .map((id) => `${id}=${panelSize(id)}`)
+      .join(" ");
+  const expectSize = async (id: string, predicate: (size: number) => boolean) => {
+    await waitFor(() => expect(predicate(panelSize(id)), layout()).toBe(true));
+  };
+  const setOpen = async (
+    user: ReturnType<typeof userEvent.setup>,
+    testId: string,
+    open: boolean,
+  ) => {
+    const toggle = await screen.findByTestId(testId);
+    if (toggle.getAttribute("aria-expanded") !== String(open)) {
+      await user.click(toggle);
+    }
+    await waitFor(() =>
+      expect(screen.getByTestId(testId)).toHaveAttribute("aria-expanded", String(open)),
+    );
+  };
+
+  it("reopens Outline after Explorer reclaimed every spare pixel above it", async () => {
+    localStorage.removeItem("react-resizable-panels:sidebar-explorer-sections-v3");
+    render(<FilesPanel />);
+    const user = userEvent.setup();
+
+    for (const id of ["file-tree", "document-outline", "project-structure"]) {
+      await setOpen(user, id, false);
+    }
+    for (const id of ["source-tree-v", "document-outline-v", "project-structure-v"]) {
+      await expectSize(id, (size) => size <= 6.1);
+    }
+    await expectSize("explorer-filler-v", (size) => size > 60);
+
+    await setOpen(user, "project-structure", true);
+    await expectSize("project-structure-v", (size) => size >= 16);
+    await expectSize("explorer-filler-v", (size) => size < 0.2);
+    await setOpen(user, "project-structure", false);
+    await expectSize("project-structure-v", (size) => size <= 6.1);
+
+    await setOpen(user, "file-tree", true);
+    await expectSize("source-tree-v", (size) => size >= 16);
+    await expectSize("explorer-filler-v", (size) => size < 0.2);
+
+    await setOpen(user, "document-outline", true);
+    await expectSize("document-outline-v", (size) => size >= 16);
+    expect(screen.getByTestId("file-tree")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("project-structure")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    await expectSize("project-structure-v", (size) => size <= 6.1);
+    await expectSize("explorer-filler-v", (size) => size < 0.2);
   });
 });
