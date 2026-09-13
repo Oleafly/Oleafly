@@ -114,7 +114,7 @@ PDF reconstruction is deterministic. It extracts the text, layout, equations, an
 </p>
 <p align="center"><em>Bring an existing project or document into an ordinary local workspace.</em></p>
 
-### A project is just a folder
+### Every project is an accessible folder on your disk
 
 Oleafly's library tracks project identity, engine, document kind, bookmarks, preview state, and history. The manuscript itself remains a normal directory. The source can be opened in another editor, inspected in a terminal, shared with a coauthor, or committed with ordinary Git. Oleafly does not require a proprietary document database to compile your work.
 
