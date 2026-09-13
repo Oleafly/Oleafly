@@ -157,7 +157,7 @@ beforeEach(() => {
   mocks.pickSavePath.mockResolvedValue(null);
   mocks.prepareExternalMutation.mockResolvedValue(17);
   mocks.applyProjectStateChanged.mockResolvedValue(true);
-  useSettingsStore.setState({ versioningOpen: true, versioningTab: "checkpoints" });
+  useSettingsStore.setState({ versioningOpen: true });
   useFilesStore.setState({
     projectId: "project",
     projectName: "Research draft",

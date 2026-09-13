@@ -1,5 +1,6 @@
 {
   "files": {
+    "collapseAll": "折叠所有文件夹",
     "confirmDelete": "删除 {{path}}？此操作无法撤销。",
     "conflict": {
       "cancelAriaLabel": "取消移动文件",
@@ -13,6 +14,7 @@
     },
     "createFailed": "无法创建“{{path}}”。",
     "deleteFailed": "无法删除“{{path}}”。",
+    "expandAll": "展开所有文件夹",
     "importAriaLabel": "导入到所选文件夹",
     "importFiles": "导入文件",
     "importFolder": "导入文件夹",
@@ -37,7 +39,11 @@
     "renameAriaLabel": "重命名文件",
     "renameFailed": "无法重命名“{{path}}”。原始路径未更改。",
     "setMain": "已将此文件设为主文档。",
-    "treeAriaLabel": "源码树"
+    "title": "资源管理器",
+    "treeAriaLabel": "资源管理器文件树"
+  },
+  "explorer": {
+    "resizeSections": "调整 {{first}} 与 {{second}} 的大小"
   },
   "intelligence": {
     "badges": {
@@ -95,8 +101,13 @@
   },
   "outline": {
     "ariaLabel": "文档大纲",
+    "collapseHeading": "折叠 {{title}}",
+    "collapseAll": "折叠所有标题",
     "empty": "此文档中没有章节或包含文件。",
+    "emptyDetail": "添加章节标题即可生成可导航的大纲。",
     "entryCount_other": "{{count}} 个大纲条目",
+    "expandHeading": "展开 {{title}}",
+    "expandAll": "展开所有标题",
     "title": "大纲"
   },
   "panelError": {
@@ -105,9 +116,11 @@
   },
   "structure": {
     "ariaLabel": "文档结构",
+    "collapseAll": "折叠所有结构条目",
     "empty": "项目结构图中没有受支持的文件。",
     "filterLabel": "筛选项目结构",
     "filterPlaceholder": "筛选项目结构图…",
+    "expandAll": "展开所有结构条目",
     "itemCount_other": "{{count}} 个结构条目",
     "noMatch": "没有与“{{query}}”匹配的结构。",
     "notice": {

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
 import { createElement } from "react";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import type { CompletionSource } from "@codemirror/autocomplete";
+import { getCM, Vim } from "@replit/codemirror-vim";
+import type { CodeMirrorV } from "@replit/codemirror-vim";
 import {
   CodeMirrorEditor,
   isLatexSourcePath,
@@ -127,6 +129,108 @@ describe("CodeMirrorEditor measurement", () => {
 
     await vi.waitFor(() => expect(synchronousGhostSource).toHaveBeenCalled());
     expect(asyncPopupSource).not.toHaveBeenCalled();
+  });
+});
+
+describe("CodeMirrorEditor Vim integration", () => {
+  function host(saveActive = vi.fn()): EditorHost {
+    return {
+      t: englishEditorMessage,
+      useActivePath: () => "main.tex",
+      getActivePath: () => "main.tex",
+      useDocVersion: () => 0,
+      useCompletionSyntax: () => "latex",
+      getContent: () => "first line\nsecond line\n",
+      setContent: vi.fn(),
+      saveActive,
+      useSettings: () => ({
+        vim: true,
+        spellcheck: false,
+        harper: false,
+        editorTheme: "system",
+        autocomplete: false,
+        autoCloseBrackets: false,
+        nonBlinkingCursor: false,
+        ghostCompletion: false,
+        stickyScroll: false,
+      }),
+      useLintRefreshDeps: () => [],
+    };
+  }
+
+  it("shows the active mode and keeps ordinary keymaps behind Vim", () => {
+    render(createElement(CodeMirrorEditor, { host: host() }));
+    const view = getEditorView();
+    expect(view).not.toBeNull();
+    expect(document.querySelector(".cm-vim-panel")).toHaveTextContent("NORMAL");
+
+    const original = view!.state.doc.toString();
+    fireEvent.keyDown(view!.contentDOM, { key: "l", code: "KeyL" });
+    fireEvent.keyDown(view!.contentDOM, {
+      key: "Backspace",
+      code: "Backspace",
+      keyCode: 8,
+      which: 8,
+    });
+    expect(view!.state.doc.toString()).toBe(original);
+
+    const tabWasNotCanceled = fireEvent.keyDown(view!.contentDOM, {
+      key: "Tab",
+      code: "Tab",
+    });
+    expect(view!.state.doc.toString()).toBe(original);
+    expect(tabWasNotCanceled).toBe(true);
+
+    fireEvent.keyDown(view!.contentDOM, { key: "d", code: "KeyD" });
+    fireEvent.keyDown(view!.contentDOM, { key: "d", code: "KeyD" });
+    expect(view!.state.doc.toString()).toBe("second line\n");
+    fireEvent.keyDown(view!.contentDOM, { key: "u", code: "KeyU" });
+    expect(view!.state.doc.toString()).toBe(original);
+    fireEvent.keyDown(view!.contentDOM, {
+      key: "y",
+      code: "KeyY",
+      ctrlKey: true,
+    });
+    expect(view!.state.doc.toString()).toBe(original);
+
+    fireEvent.keyDown(view!.contentDOM, { key: "i", code: "KeyI" });
+    expect(document.querySelector(".cm-vim-panel")).toHaveTextContent("INSERT");
+    fireEvent.keyDown(view!.contentDOM, { key: "Escape", code: "Escape" });
+    expect(document.querySelector(".cm-vim-panel")).toHaveTextContent("NORMAL");
+  });
+
+  it("routes the platform undo and redo chords through Vim", () => {
+    render(createElement(CodeMirrorEditor, { host: host() }));
+    const view = getEditorView();
+    const original = view!.state.doc.toString();
+    fireEvent.keyDown(view!.contentDOM, { key: "d", code: "KeyD" });
+    fireEvent.keyDown(view!.contentDOM, { key: "d", code: "KeyD" });
+    expect(view!.state.doc.toString()).toBe("second line\n");
+
+    fireEvent.keyDown(view!.contentDOM, { key: "z", code: "KeyZ", ctrlKey: true });
+    expect(view!.state.doc.toString()).toBe(original);
+    fireEvent.keyDown(view!.contentDOM, {
+      key: "Z",
+      code: "KeyZ",
+      keyCode: 90,
+      which: 90,
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    expect(view!.state.doc.toString()).toBe("second line\n");
+    expect(document.querySelector(".cm-vim-panel")).toHaveTextContent("NORMAL");
+  });
+
+  it("routes :w to the editor host's explicit save", () => {
+    const saveActive = vi.fn();
+    render(createElement(CodeMirrorEditor, { host: host(saveActive) }));
+    const view = getEditorView();
+    const cm = view ? getCM(view) : null;
+    expect(cm).not.toBeNull();
+
+    Vim.handleEx(cm! as CodeMirrorV, "w");
+
+    expect(saveActive).toHaveBeenCalledOnce();
   });
 });
 

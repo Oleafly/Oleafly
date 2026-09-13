@@ -49,7 +49,9 @@ describe("WorkspaceControls", () => {
         <SidebarViews />
       </ThemeProvider>,
     );
-    expect(screen.getByLabelText(enShell.rail.files)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(enShell.rail.files).querySelector("svg.lucide-folder"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(enShell.rail.search)).toBeInTheDocument();
     expect(screen.getByLabelText(enShell.rail.sourceControl)).toBeInTheDocument();
   });

@@ -30,6 +30,7 @@ import {
   writeFileContent,
   type FileConflictStrategy,
   type FileEntry,
+  type GitPullResult,
   type ProjectInfo,
   type ProjectMeta,
   type ProjectStateChanged,
@@ -242,7 +243,7 @@ interface FilesStore {
   renameProject: (name: string) => Promise<void>;
   createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
   restoreFromGit: (expectedProjectId: string, oid: string) => Promise<void>;
-  pullFromGit: (expectedProjectId: string) => Promise<string>;
+  pullFromGit: (expectedProjectId: string) => Promise<GitPullResult>;
   discardFromGit: (expectedProjectId: string, path: string) => Promise<void>;
 
   refreshTree: () => Promise<void>;
@@ -1295,10 +1296,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId } = get();
     if (!projectId) return;
     const result = await apiCreateFile(projectId, path, isDir, conflictStrategy);
+    if (get().projectId !== projectId) return;
     if (Number.isSafeInteger(result?.generation)) {
       rememberMutationGeneration(projectId, result.generation);
     }
     await get().refreshTree();
+    if (get().projectId !== projectId) return;
     // keep_both may have diverted to a sibling name; open what was created.
     if (!isDir) await get().openFile(result.path);
   },
@@ -2000,7 +2003,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
     const result = await gitPull(expectedProjectId, expectedGeneration);
     await get().applyProjectStateChanged(result.state);
-    return result.message;
+    return result;
   }),
 
   discardFromGit: (expectedProjectId, path) => enqueueProjectTransition(async () => {

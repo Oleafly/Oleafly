@@ -19,7 +19,6 @@ async function compileOk(page: Page) {
 
 async function openCheckpoints(page: Page) {
   await page.click('[aria-label="Versioning"]');
-  await page.click('[data-testid="versioning-tab-checkpoints"]');
   await expect(page.locator('[role="dialog"][aria-labelledby="versioning-title"]')).toBeVisible({
     timeout: 10_000,
   });

@@ -48,7 +48,10 @@ beforeEach(() => {
     return definition;
   });
 });
-afterEach(cleanup);
+afterEach(async () => {
+  cleanup();
+  await new Promise((resolve) => setImmediate(resolve));
+});
 afterAll(restore);
 
 type Ui = ReturnType<typeof render>;
@@ -70,6 +73,131 @@ function fill(input: HTMLElement, value: string) {
 }
 
 describe("ACP agent setup acceptance", () => {
+  it("shows an immediate, reserved checking state before the first agent list arrives", async () => {
+    const check = deferred<AcpAgentStatus[]>();
+    vi.mocked(acpCatalog).mockReturnValueOnce(check.promise);
+
+    const ui = render(<AcpAgentsTab />);
+    const list = ui.getByTestId("acp-agent-list");
+    expect(list).toHaveAttribute("aria-busy", "true");
+    const checkButton = ui.getByRole("button", { name: copy.checkingAction });
+    expect(checkButton).toBeDisabled();
+    expect(checkButton.querySelector(".animate-spin")).not.toBeNull();
+    expect(ui.queryByTestId("acp-agent-check-status")).not.toBeInTheDocument();
+    expect(ui.getByTestId("acp-agent-empty-state")).toHaveAttribute(
+      "role",
+      "status",
+    );
+    expect(ui.getByText(copy.checkingTitle)).toBeInTheDocument();
+    expect(ui.getByText(copy.checkingDescription)).toBeInTheDocument();
+
+    await act(async () => check.resolve([agent()]));
+
+    expect(await ui.findByTestId("acp-agent-card-fixture")).toBeInTheDocument();
+    expect(list).toHaveAttribute("aria-busy", "false");
+    expect(ui.queryByTestId("acp-agent-check-status")).not.toBeInTheDocument();
+  });
+
+  it("keeps the current cards visible while checking again and reports the completed check", async () => {
+    catalog = [agent()];
+    const ui = render(<AcpAgentsTab />);
+    await ui.findByTestId("acp-agent-card-fixture");
+    const checkButton = await ui.findByRole("button", {
+      name: copy.checkInstalled,
+    });
+    const check = deferred<AcpAgentStatus[]>();
+    vi.mocked(acpCatalog).mockReturnValueOnce(check.promise);
+
+    fireEvent.click(checkButton);
+
+    expect(ui.getByTestId("acp-agent-list")).toHaveAttribute("aria-busy", "true");
+    expect(ui.getByRole("button", { name: copy.checkingAction })).toBeDisabled();
+    expect(ui.getByTestId("acp-agent-check-status")).toHaveTextContent(
+      copy.refreshingStatus,
+    );
+    expect(ui.getByTestId("acp-agent-card-fixture")).toBeInTheDocument();
+
+    await act(async () => check.resolve([agent()]));
+
+    expect(ui.getByTestId("acp-agent-list")).toHaveAttribute("aria-busy", "false");
+    expect(ui.queryByTestId("acp-agent-check-status")).not.toBeInTheDocument();
+  });
+
+  it("explains a failed first check and lets the user retry from the reserved result area", async () => {
+    vi.mocked(acpCatalog)
+      .mockRejectedValueOnce(new Error("The agent service did not respond."))
+      .mockResolvedValueOnce([]);
+
+    const ui = render(<AcpAgentsTab />);
+
+    expect(await ui.findByRole("alert")).toHaveTextContent("The agent service did not respond.");
+    expect(ui.getByText(copy.checkFailedTitle)).toBeInTheDocument();
+    fireEvent.click(ui.getByRole("button", { name: copy.checkAgain }));
+    expect(await ui.findByText(copy.emptyTitle)).toBeInTheDocument();
+    expect(ui.getByText(copy.emptyDescription)).toBeInTheDocument();
+  });
+
+  it("keeps later action errors separate from an earlier catalog failure", async () => {
+    vi.mocked(acpCatalog).mockRejectedValueOnce(
+      new Error("The agent service did not respond."),
+    );
+    vi.mocked(acpRegister).mockRejectedValueOnce(
+      new Error("The agent definition was rejected."),
+    );
+    const ui = render(<AcpAgentsTab />);
+    expect(await ui.findByRole("alert")).toHaveTextContent(
+      "The agent service did not respond.",
+    );
+
+    openSection(ui, "custom");
+    fill(
+      ui.getByLabelText(copy.custom.label),
+      JSON.stringify(agent().definition),
+    );
+    fireEvent.click(ui.getByRole("button", { name: copy.custom.submit }));
+
+    expect(await ui.findByRole("alert")).toHaveTextContent(
+      "The agent definition was rejected.",
+    );
+    expect(ui.queryByText("The agent service did not respond.")).not.toBeInTheDocument();
+  });
+
+  it("stays busy until a superseding catalog refresh is replaced by an accepted check", async () => {
+    const initial = deferred<AcpAgentStatus[]>();
+    const outside = deferred<AcpAgentStatus[]>();
+    const retry = deferred<AcpAgentStatus[]>();
+    vi.mocked(acpCatalog)
+      .mockReturnValueOnce(initial.promise)
+      .mockReturnValueOnce(outside.promise)
+      .mockReturnValueOnce(retry.promise);
+
+    const ui = render(<AcpAgentsTab />);
+    await waitFor(() => expect(acpCatalog).toHaveBeenCalledTimes(1));
+    const outsideRefresh = useAcpSessionsStore.getState().refreshCatalog();
+
+    await act(async () => initial.resolve([]));
+    await waitFor(() => expect(acpCatalog).toHaveBeenCalledTimes(3));
+    expect(ui.getByTestId("acp-agent-list")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect(ui.queryByTestId("acp-agent-check-status")).not.toBeInTheDocument();
+
+    await act(async () => outside.resolve([agent("outside")]));
+    await expect(outsideRefresh).resolves.toBe(false);
+    expect(ui.getByTestId("acp-agent-list")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+
+    await act(async () => retry.resolve([agent()]));
+    expect(await ui.findByTestId("acp-agent-card-fixture")).toBeInTheDocument();
+    expect(ui.getByTestId("acp-agent-list")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+  });
+
   it("registers exactly the reviewed custom definition without installing or launching it", async () => {
     const ui = render(<AcpAgentsTab projectId="paper" />);
     openSection(ui, "custom");
@@ -80,7 +208,7 @@ describe("ACP agent setup acceptance", () => {
     const json = JSON.stringify(definition);
     fill(ui.getByLabelText(copy.custom.label), json);
     fireEvent.click(ui.getByRole("button", { name: copy.custom.submit }));
-    expect(await ui.findByRole("status")).toHaveTextContent(
+    expect(await ui.findByTestId("acp-agent-notice")).toHaveTextContent(
       withValues(copy.notice.registered, { name: "Research CLI" }),
     );
     expect(acpRegister).toHaveBeenCalledExactlyOnceWith(json);
@@ -100,7 +228,7 @@ describe("ACP agent setup acceptance", () => {
     expect(await ui.findByRole("alert")).toHaveTextContent("The package version must be pinned.");
     expect(input).toHaveValue(json);
     fireEvent.click(ui.getByRole("button", { name: copy.custom.submit }));
-    await ui.findByRole("status");
+    await ui.findByTestId("acp-agent-notice");
     expect(ui.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -130,7 +258,7 @@ describe("ACP agent setup acceptance", () => {
     fireEvent.click(
       within(ui.getByRole("dialog")).getByRole("button", { name: copy.install.confirm }),
     );
-    expect(await ui.findByRole("status")).toHaveTextContent(
+    expect(await ui.findByTestId("acp-agent-notice")).toHaveTextContent(
       withValues(copy.notice.installed, { name: "Research CLI" }),
     );
     expect(acpInstall).toHaveBeenCalledTimes(2);
@@ -173,7 +301,9 @@ describe("ACP agent setup acceptance", () => {
     fireEvent.click(remove);
     expect(await ui.findByRole("alert")).toHaveTextContent("Disconnect its sessions first.");
     fireEvent.click(remove);
-    expect(await ui.findByRole("status")).toHaveTextContent(copy.notice.removed);
+    expect(await ui.findByTestId("acp-agent-notice")).toHaveTextContent(
+      copy.notice.removed,
+    );
     expect(acpRemoveAgent).toHaveBeenLastCalledWith("fixture");
     expect(ui.queryByRole("heading", { name: "Research CLI" })).not.toBeInTheDocument();
     expect(useAcpSessionsStore.getState().sessions.saved).toEqual(session());
@@ -195,13 +325,19 @@ describe("ACP agent setup acceptance", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("names the vendor CLI it found instead of reporting the agent as not installed", async () => {
+  it("shows vendor CLI details while keeping bridge metadata collapsed until requested", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
     catalog = [
       agent("claude", {
         definition: { ...agent().definition, id: "claude", name: "Claude Code", version: "0.74.0", builtin: true },
         installed: false,
         executable: null,
         canInstall: true,
+        signInHint: "Sign in before starting a conversation.",
         cli: { command: "claude", displayName: "Claude Code", path: "/Users/researcher/.local/bin/claude", version: "2.1.258", signInCommand: "claude auth login" },
       }),
     ];
@@ -211,7 +347,66 @@ describe("ACP agent setup acceptance", () => {
     expect(card).toHaveTextContent("Claude Code 2.1.258 found at /Users/researcher/.local/bin/claude");
     expect(card).not.toHaveTextContent("Not installed");
     fireEvent.click(within(card).getByRole("button", { expanded: false }));
-    expect(card).toHaveTextContent("claude auth login");
+    const cliDetails = within(card).getByRole("region", {
+      name: copy.cliTitle,
+    });
+    expect(cliDetails).toHaveTextContent(copy.cliPathLabel);
+    expect(cliDetails).toHaveTextContent("/Users/researcher/.local/bin/claude");
+    expect(cliDetails).toHaveTextContent(copy.versionLabel);
+    expect(cliDetails).toHaveTextContent("2.1.258");
+    expect(cliDetails).toHaveTextContent(copy.signInCommandLabel);
+    const command = within(card).getByTestId("acp-agent-sign-in-command-claude");
+    expect(command).toHaveClass("min-h-12", "px-3", "py-2.5");
+    expect(command).toHaveTextContent("claude auth login");
+    const copyButton = within(command).getByRole("button", {
+      name: copy.copySignInCommand,
+    });
+    fireEvent.click(copyButton);
+    expect(writeText).toHaveBeenCalledExactlyOnceWith("claude auth login");
+    const copiedButton = await within(command).findByRole("button", {
+      name: enCommon.actions.copied,
+    });
+    expect(copiedButton).toHaveAttribute("data-copied", "true");
+    expect(copiedButton).toHaveClass("text-emerald-600");
+    expect(copiedButton.querySelector("svg")).toHaveClass("size-3.5");
+    const bridgeDetails = within(card).getByRole("region", {
+      name: copy.bridgeTitle,
+    });
+    const bridgeToggle = within(bridgeDetails).getByTestId(
+      "acp-agent-bridge-details-claude-toggle",
+    );
+    const bridgeContent = bridgeDetails.querySelector<HTMLElement>(
+      "#acp-agent-bridge-details-claude-content",
+    );
+    expect(bridgeContent).not.toBeNull();
+    expect(bridgeToggle).toHaveAttribute("aria-expanded", "false");
+    expect(bridgeToggle).toHaveAttribute(
+      "aria-controls",
+      "acp-agent-bridge-details-claude-content",
+    );
+    expect(bridgeContent).toHaveAttribute("hidden");
+    expect(bridgeDetails).not.toHaveTextContent(copy.bridgePathLabel);
+    expect(command).toBeVisible();
+    expect(within(card).getByRole("region", { name: copy.nextStepTitle })).toHaveTextContent(
+      copy.installBridgeNextStep,
+    );
+
+    fireEvent.click(bridgeToggle);
+
+    expect(bridgeToggle).toHaveAttribute("aria-expanded", "true");
+    expect(bridgeContent).not.toHaveAttribute("hidden");
+    expect(bridgeDetails).toHaveTextContent(copy.bridgePathLabel);
+    expect(bridgeDetails).toHaveTextContent(copy.bridgeSourceLabel);
+    expect(bridgeDetails).toHaveTextContent(copy.platformLabel);
+    expect(
+      Array.from(bridgeDetails.querySelectorAll("dt")).map((term) => term.textContent),
+    ).toEqual([
+      copy.bridgePathLabel,
+      copy.versionLabel,
+      copy.platformLabel,
+      copy.bridgeSourceLabel,
+    ]);
+    expect(bridgeDetails.querySelector("dl")).toHaveClass("grid-cols-3");
     expect(within(card).getByTestId("acp-agent-install-claude")).toHaveTextContent(
       copy.installBridge,
     );
@@ -235,5 +430,50 @@ describe("ACP agent setup acceptance", () => {
     expect(card).toHaveTextContent("Codex is not on your PATH");
     fireEvent.click(within(card).getByRole("button", { expanded: false }));
     expect(within(card).getByTestId("acp-agent-install-codex")).toBeDisabled();
+  });
+
+  it("does not offer bridge installation when the vendor CLI is the bridge", async () => {
+    catalog = [
+      agent("shared-cli", {
+        definition: {
+          ...agent().definition,
+          id: "shared-cli",
+          name: "Shared CLI",
+          builtin: true,
+          distribution: {
+            command: { executable: "shared-cli" },
+          },
+        },
+        installed: true,
+        executable: "/usr/local/bin/shared-cli",
+        installedVersion: "3.2.1",
+        managed: false,
+        canInstall: false,
+        signInHint: "Sign in through Shared CLI before starting a conversation.",
+        cli: {
+          command: "shared-cli",
+          displayName: "Shared CLI",
+          path: "/usr/local/bin/shared-cli",
+          version: "3.2.1",
+          signInCommand: "shared-cli login",
+        },
+        bridgeSharedWithCli: true,
+      }),
+    ];
+
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await expandAgent(ui, "shared-cli");
+
+    expect(
+      within(card).queryByTestId("acp-agent-install-shared-cli"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(card).getByRole("region", { name: copy.nextStepTitle }),
+    ).toHaveTextContent(
+      "Sign in through Shared CLI before starting a conversation.",
+    );
+    expect(
+      within(card).getByRole("button", { name: copy.openTerminal }),
+    ).toBeInTheDocument();
   });
 });

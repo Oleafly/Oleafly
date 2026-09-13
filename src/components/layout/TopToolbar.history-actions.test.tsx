@@ -10,7 +10,6 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 beforeEach(() => {
   useSettingsStore.setState({
     versioningOpen: false,
-    versioningTab: "checkpoints",
   });
 });
 
@@ -27,17 +26,16 @@ describe("ProjectHistoryActions", () => {
     await user.click(versioning);
 
     expect(useSettingsStore.getState().versioningOpen).toBe(true);
-    expect(useSettingsStore.getState().versioningTab).toBe("checkpoints");
   });
 
-  it("reopens on the tab that was last selected", async () => {
-    useSettingsStore.setState({ versioningTab: "git" });
+  it("reopens the checkpoints window after it was closed", async () => {
     const user = userEvent.setup();
     render(<ProjectHistoryActions />);
 
     await user.click(screen.getByRole("button", { name: enShell.toolbar.versioning }));
+    useSettingsStore.getState().closeVersioning();
+    await user.click(screen.getByRole("button", { name: enShell.toolbar.versioning }));
 
     expect(useSettingsStore.getState().versioningOpen).toBe(true);
-    expect(useSettingsStore.getState().versioningTab).toBe("git");
   });
 });

@@ -5,7 +5,7 @@ test("create a new file, edit it, and switch between files", async ({ tauriPage 
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', "notes.tex");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");
@@ -29,7 +29,7 @@ test("create a new file, edit it, and switch between files", async ({ tauriPage 
 test("outline shows the document structure", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await tauriPage.getByText("main.tex").click();
   await expect(tauriPage.getByText("Introduction")).toBeVisible();
 });

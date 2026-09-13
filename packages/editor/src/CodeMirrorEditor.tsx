@@ -34,7 +34,7 @@ import {
 } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { setDiagnostics } from "@codemirror/lint";
-import { vim } from "@replit/codemirror-vim";
+import { CodeMirror, getCM, vim } from "@replit/codemirror-vim";
 
 import { highlightActiveLineWhenCollapsed } from "./active-line";
 import type { EditorTranslator } from "./messages";
@@ -75,6 +75,8 @@ export interface EditorHost {
   useCompletionSyntax(path: string | null): CompletionSyntax;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
+  /** Flush the active buffer when Vim's `:w` command is run. */
+  saveActive?(): void;
   isEditLocked?(): boolean;
   registerMutationOwner?(owner: {
     setLocked: (locked: boolean) => void;
@@ -98,6 +100,45 @@ export interface EditorHost {
     stickyScroll: boolean;
   };
   useLintRefreshDeps(): readonly unknown[];
+}
+
+const vimSaveHandlers = new WeakMap<EditorView, () => void>();
+
+// codemirror-vim's built-in :write/:w command calls this CM5-compatible save
+// hook. Route it back to the host that owns the EditorView so the reusable
+// editor package does not need to know about the app's file store.
+CodeMirror.commands.save = (cm: CodeMirror) => {
+  vimSaveHandlers.get(cm.cm6)?.();
+};
+
+const runVimHistory = (
+  view: EditorView,
+  command: "undo" | "redo",
+): boolean => {
+  const cm = getCM(view);
+  if (!cm?.state.vim) return false;
+  cm.operation(() => CodeMirror.commands[command](cm));
+  return true;
+};
+
+const vimHostHistoryGuard: KeyBinding[] = [
+  { key: "Mod-z", run: (view) => runVimHistory(view, "undo") },
+  { key: "Mod-Shift-z", run: (view) => runVimHistory(view, "redo") },
+  ...["Ctrl-y", "Mod-y"].map((key) => ({
+    key,
+    run: (view: EditorView) => Boolean(getCM(view)?.state.vim),
+  })),
+];
+
+function vimModeExtension(): Extension {
+  // Ghost completion and LaTeX pairing both contain highest-precedence
+  // keymaps. Vim must precede those too. If Vim declines a platform history
+  // chord (for example Ctrl+Y when it cannot scroll farther), consume it
+  // before CodeMirror's ordinary undo/redo map can reinterpret the command.
+  return Prec.highest([
+    vim({ status: true }),
+    keymap.of(vimHostHistoryGuard),
+  ]);
 }
 
 export const isLatexSourcePath = (path: string | null): boolean =>
@@ -228,6 +269,12 @@ export function CodeMirrorEditor({
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const vimCompartmentRef = useRef<Compartment | null>(null);
+  const vimModeBridgeRef = useRef<{
+    cm: CodeMirror;
+    modeHandler: () => void;
+    tabHandler: (event: KeyboardEvent) => void;
+    view: EditorView;
+  } | null>(null);
   const spellCompartmentRef = useRef<Compartment | null>(null);
   const langCompartmentRef = useRef<Compartment | null>(null);
   const historyCompartmentRef = useRef<Compartment | null>(null);
@@ -260,6 +307,57 @@ export function CodeMirrorEditor({
     stickyScroll: stickyScrollEnabled,
   } = host.useSettings();
   const lintDeps = host.useLintRefreshDeps();
+
+  const detachVimModeBridge = () => {
+    const current = vimModeBridgeRef.current;
+    if (!current) return;
+    current.cm.off("vim-mode-change", current.modeHandler);
+    current.view.contentDOM.removeEventListener(
+      "keydown",
+      current.tabHandler,
+      true,
+    );
+    vimModeBridgeRef.current = null;
+  };
+
+  const attachVimModeBridge = (view: EditorView) => {
+    const cm = getCM(view);
+    if (!cm) {
+      view.setTabFocusMode(false);
+      return;
+    }
+    const updateTabFocusMode = () => {
+      // Outside insert/replace mode, Tab belongs to browser focus navigation,
+      // not indentWithTab. This prevents the upstream normal-mode insertion
+      // bug without trapping keyboard users inside the editor.
+      view.setTabFocusMode(Boolean(cm.state.vim && !cm.state.vim.insertMode));
+    };
+    const letNormalModeTabLeaveEditor = (event: KeyboardEvent) => {
+      if (
+        event.key === "Tab" &&
+        cm.state.vim &&
+        !cm.state.vim.insertMode
+      ) {
+        // CodeMirror's built-in tab-focus mode checks keyCode. Some webview
+        // automation and assistive input paths report only `key`, so stop its
+        // editor listener without canceling the browser's focus traversal.
+        event.stopImmediatePropagation();
+      }
+    };
+    cm.on("vim-mode-change", updateTabFocusMode);
+    view.contentDOM.addEventListener(
+      "keydown",
+      letNormalModeTabLeaveEditor,
+      true,
+    );
+    vimModeBridgeRef.current = {
+      cm,
+      modeHandler: updateTabFocusMode,
+      tabHandler: letNormalModeTabLeaveEditor,
+      view,
+    };
+    updateTabFocusMode();
+  };
 
   // Construct during the layout phase. The corrective measurement effect
   // below is also a layout effect and must see a live EditorView on the first
@@ -299,6 +397,10 @@ export function CodeMirrorEditor({
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
+        // Vim must see a key before every ordinary editor keymap. When it
+        // declines a key in insert mode, the later completion, indentation,
+        // search, and host keymaps still get their normal chance to handle it.
+        vimCompartment.of(vimEnabled ? vimModeExtension() : []),
         lineNumbers(),
         highlightActiveLineGutter(),
         highlightSpecialChars(),
@@ -355,7 +457,6 @@ export function CodeMirrorEditor({
           ...historyKeymap,
           ...foldKeymap,
         ]),
-        vimCompartment.of(vimEnabled ? vim() : []),
         spellCompartment.of(
           isProseSourcePath(initialPath) && (spellcheck || harper)
             ? spellLintExtensions({ spell: spellcheck, harper })
@@ -372,6 +473,8 @@ export function CodeMirrorEditor({
 
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
+    if (host.saveActive) vimSaveHandlers.set(view, host.saveActive);
+    if (vimEnabled) attachVimModeBridge(view);
     setEditorView(view);
     setEditorDocumentPath(initialPath);
     const unregisterMutationOwner = host.registerMutationOwner?.({
@@ -384,6 +487,9 @@ export function CodeMirrorEditor({
       unregisterMutationOwner?.();
       cancelSourceProofreading(prevPathRef.current ?? undefined);
       setEditorDocumentPath(null);
+      detachVimModeBridge();
+      view.setTabFocusMode(false);
+      vimSaveHandlers.delete(view);
       view.destroy();
       setEditorView(null);
       viewRef.current = null;
@@ -526,9 +632,12 @@ export function CodeMirrorEditor({
     const view = viewRef.current;
     const compartment = vimCompartmentRef.current;
     if (!view || !compartment) return;
+    detachVimModeBridge();
+    view.setTabFocusMode(false);
     view.dispatch({
-      effects: compartment.reconfigure(vimEnabled ? vim() : []),
+      effects: compartment.reconfigure(vimEnabled ? vimModeExtension() : []),
     });
+    if (vimEnabled) attachVimModeBridge(view);
   }, [vimEnabled]);
 
   // Toggle bracket auto-closing and cursor blinking without recreating the

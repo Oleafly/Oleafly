@@ -9,29 +9,95 @@ const mocks = vi.hoisted(() => ({
   openFile: vi.fn(async () => {}),
   revealEditor: vi.fn(),
 }));
+const sourceLabel = "Explorer";
+const outlineLabel = "Outline";
+const structureLabel = "Structure";
 
+vi.mock("react-resizable-panels", () =>
+  vi.importActual(
+    new URL(
+      "../../../node_modules/react-resizable-panels/dist/react-resizable-panels.browser.development.cjs.js",
+      import.meta.url,
+    ).pathname,
+  ),
+);
 vi.mock("@/lib/tauri", () => ({ searchDocs: mocks.searchDocs }));
 vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
 vi.mock("@/components/files/FileTree", () => ({
-  FileTree: () => <div data-testid="file-tree" />,
+  FileTree: ({
+    collapsed,
+    onCollapsedChange,
+  }: {
+    collapsed: boolean;
+    onCollapsedChange: (collapsed: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="file-tree"
+      aria-expanded={!collapsed}
+      onClick={() => onCollapsedChange(!collapsed)}
+    >
+      {sourceLabel}
+    </button>
+  ),
 }));
 vi.mock("@/components/layout/WorkspaceControls", () => ({
   SidebarViews: () => <div data-testid="sidebar-views" />,
 }));
 vi.mock("@/components/layout/DocumentOutline", () => ({
-  DocumentOutline: () => <div data-testid="document-outline" />,
+  DocumentOutline: ({
+    collapsed,
+    onCollapsedChange,
+  }: {
+    collapsed: boolean;
+    onCollapsedChange: (collapsed: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="document-outline"
+      aria-expanded={!collapsed}
+      onClick={() => onCollapsedChange(!collapsed)}
+    >
+      {outlineLabel}
+    </button>
+  ),
 }));
 vi.mock("@/components/layout/Outline", () => ({
-  Outline: () => <div data-testid="project-structure" />,
+  Outline: ({
+    collapsed,
+    onCollapsedChange,
+  }: {
+    collapsed: boolean;
+    onCollapsedChange: (collapsed: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="project-structure"
+      aria-expanded={!collapsed}
+      onClick={() => onCollapsedChange(!collapsed)}
+    >
+      {structureLabel}
+    </button>
+  ),
 }));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { registry } from "@oleafly/registry";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { FilesPanel, ProjectSearch, Sidebar } from "./Sidebar";
+import {
+  FilesPanel,
+  ProjectSearch,
+  reclaimExplorerFillerLayout,
+  Sidebar,
+} from "./Sidebar";
 
 const copy = enShell.projectSearch;
+const resizeLabel = (first: string, second: string) =>
+  enWorkspace.explorer.resizeSections
+    .replace("{{first}}", first)
+    .replace("{{second}}", second);
 
 const HIT = {
   project_id: "p1",
@@ -112,11 +178,49 @@ describe("ProjectSearch", () => {
 });
 
 describe("Sidebar", () => {
-  it("stacks the file tree over the outline and the structure map", async () => {
+  it("reclaims filler space without reopening a collapsed trailing section", () => {
+    expect(reclaimExplorerFillerLayout([38, 40, 6, 16], 6)).toEqual([
+      38, 56, 6, 0,
+    ]);
+  });
+
+  it("keeps filler space when every Explorer section is collapsed", () => {
+    expect(reclaimExplorerFillerLayout([6, 6, 6, 82], 6)).toBeNull();
+  });
+
+  it("stacks Explorer, Outline, and Structure without a redundant title row", async () => {
     render(<FilesPanel />);
+    expect(screen.queryByRole("heading", { name: enShell.rail.files })).not.toBeInTheDocument();
+    const sourceOutlineHandle = screen.getByLabelText(
+      resizeLabel(enWorkspace.files.title, enWorkspace.outline.title),
+    );
+    expect(sourceOutlineHandle).toBeInTheDocument();
+    expect(sourceOutlineHandle.firstElementChild).toHaveClass(
+      "opacity-0",
+      "group-hover:opacity-100",
+      "group-focus-visible:opacity-100",
+      "group-data-[resize-handle-state=drag]:opacity-100",
+    );
+    expect(
+      screen.getByLabelText(
+        resizeLabel(enWorkspace.outline.title, enWorkspace.structure.title),
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("file-tree")).toBeInTheDocument();
     expect(await screen.findByTestId("document-outline")).toBeInTheDocument();
     expect(screen.getByTestId("project-structure")).toBeInTheDocument();
+    expect(screen.getByTestId("file-tree")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByTestId("document-outline")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByTestId("project-structure")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 
   it("falls back to the files panel for an unknown rail tab", async () => {
@@ -142,5 +246,68 @@ describe("Sidebar", () => {
     >);
     render(<Sidebar />);
     expect(screen.getByTestId("contributed-panel")).toBeInTheDocument();
+  });
+});
+
+describe("FilesPanel section expansion", () => {
+  const panelSize = (id: string) =>
+    Number(
+      document
+        .querySelector(`[data-panel-id="${id}"]`)
+        ?.getAttribute("data-panel-size") ?? -1,
+    );
+  const layout = () =>
+    ["source-tree-v", "document-outline-v", "project-structure-v", "explorer-filler-v"]
+      .map((id) => `${id}=${panelSize(id)}`)
+      .join(" ");
+  const expectSize = async (id: string, predicate: (size: number) => boolean) => {
+    await waitFor(() => expect(predicate(panelSize(id)), layout()).toBe(true));
+  };
+  const setOpen = async (
+    user: ReturnType<typeof userEvent.setup>,
+    testId: string,
+    open: boolean,
+  ) => {
+    const toggle = await screen.findByTestId(testId);
+    if (toggle.getAttribute("aria-expanded") !== String(open)) {
+      await user.click(toggle);
+    }
+    await waitFor(() =>
+      expect(screen.getByTestId(testId)).toHaveAttribute("aria-expanded", String(open)),
+    );
+  };
+
+  it("reopens Outline after Explorer reclaimed every spare pixel above it", async () => {
+    localStorage.removeItem("react-resizable-panels:sidebar-explorer-sections-v3");
+    render(<FilesPanel />);
+    const user = userEvent.setup();
+
+    for (const id of ["file-tree", "document-outline", "project-structure"]) {
+      await setOpen(user, id, false);
+    }
+    for (const id of ["source-tree-v", "document-outline-v", "project-structure-v"]) {
+      await expectSize(id, (size) => size <= 6.1);
+    }
+    await expectSize("explorer-filler-v", (size) => size > 60);
+
+    await setOpen(user, "project-structure", true);
+    await expectSize("project-structure-v", (size) => size >= 16);
+    await expectSize("explorer-filler-v", (size) => size < 0.2);
+    await setOpen(user, "project-structure", false);
+    await expectSize("project-structure-v", (size) => size <= 6.1);
+
+    await setOpen(user, "file-tree", true);
+    await expectSize("source-tree-v", (size) => size >= 16);
+    await expectSize("explorer-filler-v", (size) => size < 0.2);
+
+    await setOpen(user, "document-outline", true);
+    await expectSize("document-outline-v", (size) => size >= 16);
+    expect(screen.getByTestId("file-tree")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("project-structure")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    await expectSize("project-structure-v", (size) => size <= 6.1);
+    await expectSize("explorer-filler-v", (size) => size < 0.2);
   });
 });

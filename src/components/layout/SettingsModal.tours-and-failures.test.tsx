@@ -52,7 +52,13 @@ vi.mock("@/lib/tours", async (importOriginal) => ({
 }));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
-import { TOUR_IDS, resolveTourText, tourRegistry } from "@/lib/tours/registry";
+import {
+  AVAILABLE_TOUR_IDS,
+  isTourAvailable,
+  resolveTourText,
+  TOUR_IDS,
+  tourRegistry,
+} from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
@@ -240,25 +246,31 @@ describe("Settings recycle bin failures", () => {
 });
 
 describe("Settings tour guides", () => {
-  it("lists every tour with its status and toggles one off", async () => {
+  it("lists only the two available tours and toggles one off", async () => {
     openSettings("general");
     render(<SettingsModal />);
     fireEvent.click(
       await screen.findByRole("button", { expanded: false, name: new RegExp(tours.enable) }),
     );
-    for (const id of TOUR_IDS) {
+    for (const id of AVAILABLE_TOUR_IDS) {
       const name = resolveTourText(tourRegistry[id].label);
       expect(screen.getAllByText(name).length).toBeGreaterThan(0);
       expect(
         screen.getByLabelText(tours.enableOne.replace("{{name}}", name)),
       ).toHaveAttribute("aria-checked", "true");
     }
-    const first = resolveTourText(tourRegistry[TOUR_IDS[0]].label);
+    for (const id of TOUR_IDS.filter((id) => !isTourAvailable(id))) {
+      const name = resolveTourText(tourRegistry[id].label);
+      expect(
+        screen.queryByLabelText(tours.enableOne.replace("{{name}}", name)),
+      ).not.toBeInTheDocument();
+    }
+    const first = resolveTourText(tourRegistry[AVAILABLE_TOUR_IDS[0]].label);
     fireEvent.click(
       screen.getByLabelText(tours.enableOne.replace("{{name}}", first)),
     );
     await waitFor(() =>
-      expect(useTourStore.getState().tours[TOUR_IDS[0]].status).not.toBe(
+      expect(useTourStore.getState().tours[AVAILABLE_TOUR_IDS[0]].status).not.toBe(
         "pending",
       ),
     );
@@ -299,7 +311,7 @@ describe("Settings tour guides", () => {
   });
 
   it("restarts the tours when they are turned back on", async () => {
-    for (const id of TOUR_IDS) {
+    for (const id of AVAILABLE_TOUR_IDS) {
       useTourStore.getState().setTourEnabled(id, false);
     }
     openSettings("general");

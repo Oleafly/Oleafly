@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import {
+  chooseCommandPaletteItem,
   compileAndWait,
   createBlankProject,
   fillCommandPalette,
@@ -74,41 +75,47 @@ async function commitAll(page: Page, message: string) {
 async function openHistory(page: Page) {
   await pressGlobal(page, "k", { meta: true });
   await fillCommandPalette(page, "history");
-  await page.press("[cmdk-input]", "Enter");
+  await chooseCommandPaletteItem(page, "Git history");
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'Versioning')`,
+    `document.querySelector('[aria-label="Source Control"]')?.getAttribute('aria-current') === 'page'`,
     10_000,
   );
   await page.waitForFunction(
-    `document.querySelector('[data-testid="versioning-tab-git"]')?.getAttribute('aria-selected') === 'true'`,
+    `document.querySelector('[data-testid="source-control-graph"] button[aria-controls="source-control-graph-content"]')?.getAttribute('aria-expanded') === 'true'`,
     10_000,
   );
 }
 
 async function restoreCommit(page: Page, message: string) {
-  await page.waitForFunction(
-    `Array.from(document.querySelectorAll('[data-testid="history-commit-title"]'))
-      .some((d) => d.textContent.trim() === ${JSON.stringify(message)})`,
-    15_000,
-  );
+  const graph = page.getByTestId("source-control-graph");
+  await expect(graph.getByText(message, { exact: true })).toBeVisible({ timeout: 15_000 });
   const clicked = await page.evaluate<boolean>(
     `(() => {
-      const title = Array.from(document.querySelectorAll('[data-testid="history-commit-title"]'))
+      const graph = document.querySelector('[data-testid="source-control-graph"]');
+      const title = Array.from(graph?.querySelectorAll('span') ?? [])
         .find((d) => d.textContent.trim() === ${JSON.stringify(message)});
-      const row = title && title.closest('[data-testid="history-commit"]');
-      const btn = row && Array.from(row.querySelectorAll('button'))
-        .find((b) => (b.getAttribute('title') || '').startsWith('Restore'));
+      const row = title?.closest('li');
+      const btn = row?.querySelector('button[aria-label="Restore version"]');
       if (!btn) return false;
       btn.click();
       return true;
     })()`,
   );
   if (!clicked) throw new Error(`no Restore button for commit "${message}"`);
-  await page.getByText("Overwrite all").click();
-  await page.waitForFunction(
-    `!Array.from(document.querySelectorAll('h2')).some((h) => h.textContent.trim() === 'Versioning')`,
-    15_000,
+  const confirmation = page.getByRole("alertdialog");
+  await expect(confirmation).toBeVisible({ timeout: 5_000 });
+  const confirmed = await page.evaluate<boolean>(
+    `(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const button = Array.from(dialog?.querySelectorAll('button') ?? [])
+        .find((entry) => entry.textContent.trim() === "Restore version");
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()`,
   );
+  if (!confirmed) throw new Error("restore confirmation action unavailable");
+  await expect(confirmation).not.toBeVisible({ timeout: 15_000 });
 }
 
 test("explicit local Git history restores the document backward and forward", async ({

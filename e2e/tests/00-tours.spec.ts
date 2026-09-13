@@ -4,10 +4,7 @@ import {
   tourTest as test,
 } from "../fixtures";
 import {
-  createBlankProject,
   openProject,
-  openRailTab,
-  openSettings,
   pressGlobal,
   type Page,
 } from "../helpers";
@@ -363,185 +360,78 @@ test("welcome is modal and Home creates a real project before Workspace starts",
   ).toBeVisible();
 });
 
-test("Settings tour remains in the viewport and tour confirmations are atomic", async ({
+test("only Getting started and Your workspace remain enabled", async ({
   tauriPage,
 }) => {
   await loadTours(tauriPage, {
     home: "completed",
+    workspace: "pending",
+    research: "pending",
     settings: "pending",
+    "ai-settings": "pending",
+    ai: "pending",
     diagram: "pending",
   });
   await tauriPage.click('[data-tour="settings"]');
-  await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Settings", {
-    timeout: 20_000,
-  });
-  await tauriPage.waitForFunction(
-    `(() => {
-      const tooltip = document.querySelector('[data-tour-tooltip="settings-navigation"]');
-      if (!tooltip) return false;
-      const r = tooltip.getBoundingClientRect();
-      return r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth;
-    })()`,
-    20_000,
-  );
-  await tauriPage.press("body", "Escape");
-  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
-  await tauriPage.getByText("Cancel", { exact: true }).click();
-  await expect(tauriPage.getByText("Quit the tour?")).toBeHidden();
-  await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Settings");
-  await tauriPage.getByText("Skip", { exact: true }).click();
-  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
-  await tauriPage.getByText("Quit tour", { exact: true }).click();
+  await new Promise((resolve) => setTimeout(resolve, 750));
   await expect(tauriPage.locator("#react-joyride-portal")).toHaveCount(0);
-  await expect(tauriPage.locator(".react-joyride__overlay")).toHaveCount(0);
-  await openSettings(tauriPage, "general");
+
+  const launchResults = await tauriPage.evaluate<Record<string, string | null>>(
+    `(async () => {
+      const { useTourStore } = await import("/src/store/tours.ts");
+      const nextFrame = () => new Promise((resolve) =>
+        requestAnimationFrame(() => resolve(null))
+      );
+      const results = {};
+      window.dispatchEvent(new CustomEvent("oleafly:start-tour", { detail: "workspace" }));
+      await nextFrame();
+      results.workspace = useTourStore.getState().activeTourId;
+      useTourStore.getState().stop();
+      for (const id of ["research", "settings", "ai-settings", "ai", "diagram"]) {
+        window.dispatchEvent(new CustomEvent("oleafly:start-tour", { detail: id }));
+        await nextFrame();
+        results[id] = useTourStore.getState().activeTourId;
+      }
+      return results;
+    })()`,
+  );
+  expect(launchResults.workspace).toBe("workspace");
+  for (const id of ["research", "settings", "ai-settings", "ai", "diagram"]) {
+    expect(launchResults[id]).toBeNull();
+  }
+
   await expect(tauriPage.getByText("Enable tour guides", { exact: true })).toBeVisible();
+  await tauriPage.click('[aria-controls="tour-guides-panel"]');
+  for (const name of ["Getting started", "Your workspace"]) {
+    await expect(
+      tauriPage.locator(`[aria-label="Enable ${name} tour"]`),
+    ).toHaveCount(1);
+  }
+  for (const name of [
+    "Research workspace",
+    "Settings",
+    "AI settings",
+    "AI Assistant",
+    "Diagram Composer",
+  ]) {
+    await expect(
+      tauriPage.locator(`[aria-label="Enable ${name} tour"]`),
+    ).toHaveCount(0);
+  }
 
   await tauriPage.click('[aria-label="Enable all tour guides"]');
   await expect(tauriPage.getByText("Disable tour guides?", { exact: true })).toBeVisible();
   await tauriPage.getByText("Cancel", { exact: true }).click();
   await expect(tauriPage.getByText("Disable tour guides?", { exact: true })).toHaveCount(0);
 
-  await tauriPage.click('[aria-controls="tour-guides-panel"]');
   await tauriPage.getByText("Dismiss all tours", { exact: true }).click();
   await expect(tauriPage.getByText("Dismiss all tours?", { exact: true })).toBeVisible();
   await tauriPage.getByText("Dismiss all", { exact: true }).click();
-  await expect(
-    tauriPage.getByText(`${Object.keys(versions).length} dismissed`, { exact: false }),
-  ).toBeVisible();
+  await expect(tauriPage.getByText("2 dismissed", { exact: false })).toBeVisible();
 
   await tauriPage.click('[aria-label="Enable all tour guides"]');
   await expect(tauriPage.locator('[aria-label="Close settings"]')).toHaveCount(0);
   await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Home", {
     timeout: 20_000,
   });
-});
-
-test("AI and Diagram tours select their eligible context without sending or compiling", async ({
-  tauriPage,
-}) => {
-  await loadTours(tauriPage, { ai: "pending", diagram: "pending" });
-  await createBlankProject(tauriPage, `Tour Context ${Date.now()}`);
-  await openRailTab(tauriPage, "Research Assistant");
-  await tauriPage.waitForFunction(
-    `document.querySelector("#react-joyride-portal h2")?.textContent === "AI Assistant"`,
-    30_000,
-  );
-  await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("AI Assistant", {
-    timeout: 30_000,
-  });
-  await tauriPage.waitForFunction(
-    `(() => {
-      const target = document.querySelector('[data-tour="ai-assistant-header"]');
-      const tooltip = document.querySelector('[data-tour-tooltip="ai-assistant"]');
-      if (!(target instanceof HTMLElement) || !(tooltip instanceof HTMLElement)) return false;
-      const targetRect = target.getBoundingClientRect();
-      const tooltipRect = tooltip.getBoundingClientRect();
-      return tooltipRect.top >= targetRect.bottom - 2
-        && tooltipRect.top >= 0
-        && tooltipRect.right <= window.innerWidth
-        && tooltipRect.bottom <= window.innerHeight;
-    })()`,
-    20_000,
-  );
-  await tauriPage.getByText("Skip", { exact: true }).click();
-  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
-  await tauriPage.getByText("Quit tour", { exact: true }).click();
-
-  // The Diagram Composer is a standalone home-shell page now, not a
-  // per-project modal, so reaching it means leaving the project first.
-  await tauriPage.click('[title="Back to library"]');
-  // The dock re-renders while the project list refreshes after leaving a
-  // project, and a click landing on a pre-refresh button node is silently
-  // dropped. Wait for the loaded library, then probe-and-click atomically,
-  // re-clicking until the composer actually mounts.
-  await expect(
-    tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
-  ).toBeVisible({ timeout: 30_000 });
-  const composerDeadline = Date.now() + 30_000;
-  for (;;) {
-    const state = await tauriPage.evaluate<string>(
-      `(() => {
-        if (document.querySelector('[data-tour="diagram-composer"]')) return "open";
-        const button = document.querySelector('[data-testid="open-diagram-composer"]');
-        if (button instanceof HTMLElement) {
-          button.click();
-          return "clicked";
-        }
-        return "missing";
-      })()`,
-    );
-    if (state === "open") break;
-    if (Date.now() > composerDeadline) {
-      throw new Error(`Diagram Composer never opened (last state: ${state})`);
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText("Diagram Composer", {
-    timeout: 30_000,
-  });
-  await expect(tauriPage.locator('[data-tour="diagram-composer"]')).toBeVisible();
-  await tauriPage.getByText("Skip", { exact: true }).click();
-  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
-  await tauriPage.getByText("Quit tour", { exact: true }).click();
-  await expect(tauriPage.getByText("Quit the tour?")).toBeHidden();
-});
-
-test("AI settings tour walks the tabs with keyboard navigation and Escape confirm", async ({
-  tauriPage,
-}) => {
-  await loadTours(tauriPage, { "ai-settings": "pending" });
-  await openSettings(tauriPage, "ai");
-  await tauriPage.evaluate(
-    `window.dispatchEvent(new CustomEvent("oleafly:start-tour", { detail: "ai-settings" }))`,
-  );
-  const title = () => tauriPage.locator("#react-joyride-portal h2");
-  await expect(title()).toHaveText("AI Assistant settings", { timeout: 30_000 });
-
-  await pressGlobal(tauriPage, "Enter", { meta: true });
-  await expect(title()).toHaveText("Connect providers", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "ArrowLeft", { meta: true });
-  await expect(title()).toHaveText("AI Assistant settings", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "Enter", { meta: true });
-  await expect(title()).toHaveText("Connect providers", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "Enter", { meta: true });
-  await expect(title()).toHaveText("Bring your own endpoint", { timeout: 10_000 });
-
-  await pressGlobal(tauriPage, "Enter", { meta: true });
-  await expect(title()).toHaveText("Instructions", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "Enter", { meta: true });
-  await expect(title()).toHaveText("Instructions");
-
-  // A real click (mouse or trusted Enter) fires a native click event; the
-  // bridge's synthetic Enter only reaches Radix's keydown handler, which
-  // switches the tab without the click the required-click step listens for.
-  // The synthetic sequence must include mousedown: Radix activates the tab on
-  // mousedown, while the tour's required-click step advances on click.
-  await tauriPage.evaluate(
-    `(() => {
-      const el = document.querySelector('[data-tour="ai-settings-tab-instructions"]');
-      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1 }));
-      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-      el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 1 }));
-      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    })()`,
-  );
-  await expect(title()).toHaveText("Default model", { timeout: 15_000 });
-
-  await pressGlobal(tauriPage, "Escape");
-  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
-  await tauriPage.getByText("Cancel", { exact: true }).click();
-  await expect(tauriPage.getByText("Quit the tour?")).toBeHidden();
-  await expect(title()).toHaveText("Default model");
-
-  await pressGlobal(tauriPage, "Escape");
-  await expect(tauriPage.getByText("Quit the tour?")).toBeVisible({ timeout: 10_000 });
-  await tauriPage.getByText("Quit tour", { exact: true }).click();
-  await expect(tauriPage.getByText("Quit the tour?")).toBeHidden();
-  await tauriPage.waitForFunction(
-    `!document.querySelector("#react-joyride-portal h2")`,
-    10_000,
-  );
-  await tauriPage.click('[aria-label="Close settings"]');
 });

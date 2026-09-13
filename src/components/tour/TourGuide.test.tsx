@@ -385,9 +385,10 @@ describe("TourGuide overlay reachability", () => {
     document.body.style.pointerEvents = "";
   });
 
-  it("starts the AI settings walkthrough when it is asked for by name", () => {
+  it("ignores a named tour that is unavailable", () => {
     joyrideMocks.render = true;
     useSettingsStore.setState({ settingsOpen: true });
+    useTourStore.setState({ activeTourId: null });
     mountTourTarget("ai-settings-tabs", { top: 40, left: 40, width: 240, height: 32 });
 
     render(<TourGuide />);
@@ -398,11 +399,11 @@ describe("TourGuide overlay reachability", () => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(tourStep().activeTourId).toBe("ai-settings");
-    expect(document.querySelector("[data-tour-tooltip]")).not.toBeNull();
+    expect(tourStep().activeTourId).toBeNull();
+    expect(document.querySelector("[data-tour-tooltip]")).toBeNull();
   });
 
-  it("still starts a named tour with a diagram open behind Settings", () => {
+  it("does not let an unavailable named tour interrupt an available tour", () => {
     joyrideMocks.render = true;
     useSettingsStore.setState({ settingsOpen: true });
     useHomeViewStore.setState({ page: "diagram-composer" });
@@ -416,7 +417,7 @@ describe("TourGuide overlay reachability", () => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(tourStep().activeTourId).toBe("ai-settings");
+    expect(tourStep().activeTourId).toBe("home");
   });
 
   it("keeps dimming the whole grid on the step that only describes it", () => {

@@ -62,12 +62,12 @@ test("AI tab opens the chat panel", async ({ tauriPage }, testInfo) => {
 test("preflight and git tabs are present for a LaTeX project", async ({ tauriPage }) => {
   // The view switchers live in the sidebar bar, which renders while the sidebar
   // is open; open it first, then assert the switchers are present.
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await expect(tauriPage.locator('[aria-label="Preflight Checks"]')).toBeVisible();
   await expect(tauriPage.locator('[aria-label="Source Control"]')).toBeVisible();
 });
 
 test("files tab shows the file tree with main.tex", async ({ tauriPage }) => {
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await expect(tauriPage.getByText("main.tex")).toBeVisible();
 });

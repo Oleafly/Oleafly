@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import {
+  AVAILABLE_TOUR_IDS,
+  isTourAvailable,
   TOUR_IDS,
   TOUR_SCHEMA_VERSION,
   type TourId,
@@ -54,7 +56,13 @@ export interface TourState extends PersistedTourState {
 
 function pendingTours(): Record<TourId, PersistedTourEntry> {
   return Object.fromEntries(
-    TOUR_IDS.map((id) => [id, { status: "pending", version: tourRegistry[id].version }]),
+    TOUR_IDS.map((id) => [
+      id,
+      {
+        status: isTourAvailable(id) ? "pending" : "dismissed",
+        version: tourRegistry[id].version,
+      },
+    ]),
   ) as Record<TourId, PersistedTourEntry>;
 }
 
@@ -68,6 +76,7 @@ export function defaultPersistedTourState(): PersistedTourState {
 
 function normalizeEntry(id: TourId, value: unknown, enabled: boolean): PersistedTourEntry {
   const version = tourRegistry[id].version;
+  if (!isTourAvailable(id)) return { status: "dismissed", version };
   if (!value || typeof value !== "object") return { status: "pending", version };
   const entry = value as Partial<PersistedTourEntry>;
   const status =
@@ -85,7 +94,7 @@ export function migrateTourState(value: unknown): PersistedTourState {
   const tours = Object.fromEntries(
     TOUR_IDS.map((id) => [id, normalizeEntry(id, source[id], !explicitlyDisabled)]),
   ) as Record<TourId, PersistedTourEntry>;
-  const allTerminal = TOUR_IDS.every((id) => tours[id].status !== "pending");
+  const allTerminal = AVAILABLE_TOUR_IDS.every((id) => tours[id].status !== "pending");
   return {
     schemaVersion: TOUR_SCHEMA_VERSION,
     enabled: !explicitlyDisabled && !allTerminal,
@@ -173,7 +182,7 @@ function promoteLegacy(primary: SyncStateStorage) {
     return;
   }
   const legacy = migrateLegacyTourState(primary);
-  if (TOUR_IDS.every((id) => legacy.tours[id].status === "pending")) return;
+  if (AVAILABLE_TOUR_IDS.every((id) => legacy.tours[id].status === "pending")) return;
   try {
     primary.setItem(
       TOUR_STORAGE_KEY,
@@ -204,7 +213,8 @@ function terminalUpdate(
   return {
     tours,
     enabled:
-      state.enabled && !TOUR_IDS.every((tourId) => tours[tourId].status !== "pending"),
+      state.enabled &&
+      !AVAILABLE_TOUR_IDS.every((tourId) => tours[tourId].status !== "pending"),
     activeTourId: state.activeTourId === id ? null : state.activeTourId,
     activeStepIndex: state.activeTourId === id ? 0 : state.activeStepIndex,
   };
@@ -219,6 +229,7 @@ export function createTourState(primary: SyncStateStorage = browserStorage()) {
         const begin = (id: TourId, stepIndex: number, manual: boolean) => {
           const state = get();
           if (
+            !isTourAvailable(id) ||
             (!state.enabled && !manual) ||
             state.activeTourId !== null ||
             (!manual && state.tours[id].status !== "pending")
@@ -273,7 +284,8 @@ export function createTourState(primary: SyncStateStorage = browserStorage()) {
             }),
           resetAll: () =>
             set({ ...defaultPersistedTourState(), activeTourId: null, activeStepIndex: 0 }),
-          setTourEnabled: (id, enabled) =>
+          setTourEnabled: (id, enabled) => {
+            if (!isTourAvailable(id)) return;
             set((state) => {
               const tours = {
                 ...state.tours,
@@ -287,11 +299,14 @@ export function createTourState(primary: SyncStateStorage = browserStorage()) {
                 enabled:
                   enabled ||
                   (state.enabled &&
-                    !TOUR_IDS.every((tourId) => tours[tourId].status !== "pending")),
+                    !AVAILABLE_TOUR_IDS.every(
+                      (tourId) => tours[tourId].status !== "pending",
+                    )),
                 activeTourId: state.activeTourId === id ? null : state.activeTourId,
                 activeStepIndex: state.activeTourId === id ? 0 : state.activeStepIndex,
               };
-            }),
+            });
+          },
         };
       },
       {

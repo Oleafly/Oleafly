@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  AVAILABLE_TOUR_IDS,
+  isTourAvailable,
   resolveTourText,
   stepNeedsReachableTarget,
   TOUR_IDS,
@@ -109,13 +111,8 @@ describe("tour registry", () => {
     expect(tourRegistry.ai.steps[0].placement).toBe("bottom");
   });
 
-  it("keeps the detailed AI settings walkthrough separate from the Settings overview", () => {
-    expect("autoStart" in tourRegistry.settings).toBe(false);
+  it("keeps the dormant AI settings walkthrough definition intact", () => {
     expect(tourRegistry["ai-settings"].contexts).toEqual(["settings"]);
-    // Order keeps the overview first and the walkthrough's own first target
-    // keeps it off every other settings page. Opting out of auto-start as well
-    // left it with no way to run at all.
-    expect("autoStart" in tourRegistry["ai-settings"]).toBe(false);
     expect(tourRegistry["ai-settings"].priority).toBeGreaterThan(
       tourRegistry.settings.priority,
     );
@@ -177,16 +174,17 @@ describe("tour registry copy", () => {
     expect(resolveTourText(() => "thunk")).toBe("thunk");
   });
 
-  it("orders the tours of each context by priority", () => {
-    const contexts: TourContext[] = ["home", "project", "settings", "ai", "diagram"];
-    for (const context of contexts) {
-      const tours = toursForContext(context);
-      expect(tours.length).toBeGreaterThan(0);
-      for (const tour of tours) {
-        expect(tour.contexts).toContain(context);
-      }
-      const priorities = tours.map((tour) => tour.priority);
-      expect(priorities).toEqual([...priorities].sort((a, b) => a - b));
+  it("only makes Getting started and Your workspace available", () => {
+    expect(AVAILABLE_TOUR_IDS).toEqual(["home", "workspace"]);
+    expect(AVAILABLE_TOUR_IDS.map((id) => resolveTourText(tourRegistry[id].label))).toEqual([
+      "Getting started",
+      "Your workspace",
+    ]);
+    expect(TOUR_IDS.filter(isTourAvailable)).toEqual(AVAILABLE_TOUR_IDS);
+    expect(toursForContext("home").map((tour) => tour.id)).toEqual(["home"]);
+    expect(toursForContext("project").map((tour) => tour.id)).toEqual(["workspace"]);
+    for (const context of ["settings", "ai", "diagram"] satisfies TourContext[]) {
+      expect(toursForContext(context)).toEqual([]);
     }
   });
 

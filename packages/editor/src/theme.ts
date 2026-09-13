@@ -2,6 +2,8 @@ import { EditorView } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 
+export const EDITOR_LINE_HEIGHT = "1.7";
+
 // Uses CSS variables (the Geist tokens + `--cm-*` syntax vars) so a single
 // theme adapts to both light and dark automatically, no compartment swapping
 // needed.
@@ -26,7 +28,7 @@ const chromeTheme = EditorView.theme({
   },
   ".cm-scroller": {
     fontFamily: "var(--cm-font-family, var(--font-mono))",
-    lineHeight: "1.6",
+    lineHeight: EDITOR_LINE_HEIGHT,
     minHeight: "0",
     overflow: "auto",
   },
@@ -73,6 +75,20 @@ const chromeTheme = EditorView.theme({
   // across the editor and ruled a line under the widget.
   ".cm-panels": {
     color: "var(--popover-foreground)",
+  },
+  ".cm-panels-bottom": {
+    borderTop: "1px solid var(--border)",
+  },
+  ".cm-vim-panel": {
+    minHeight: "28px",
+    alignItems: "center",
+    padding: "3px 10px",
+    backgroundColor: "var(--muted)",
+    color: "var(--muted-foreground)",
+    fontFamily: "var(--font-mono)",
+    fontSize: "11px",
+    fontWeight: "600",
+    letterSpacing: "0.04em",
   },
   ".cm-textfield": {
     backgroundColor: "var(--background)",

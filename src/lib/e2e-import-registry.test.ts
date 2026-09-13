@@ -4,11 +4,13 @@ import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { scriptValue } from "../../e2e/script-value";
 
-describe("packaged conversion checks", () => {
-  it("registers every module loaded by the conversion specs", () => {
+describe("packaged evaluated imports", () => {
+  it("registers every module loaded by the covered specs", () => {
     const registry = readFileSync(resolve("src/lib/e2e-import-registry.ts"), "utf8");
     const registered = new Set([...registry.matchAll(/"(\/(?:src|packages)\/[^"\n]+)":/g)].map((match) => match[1]));
     for (const name of [
+      "00-tours.spec.ts",
+      "07-settings.spec.ts",
       "74-conversion-matrix.spec.ts",
       "75-conversion-matrix-ui.spec.ts",
       "86-ad-hoc-converters.spec.ts",

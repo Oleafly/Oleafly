@@ -46,6 +46,7 @@ import {
   proofreadDocument,
 } from "@/lib/proofreading/client";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
+import { notifyError } from "@/lib/toast";
 
 function sourceProofreadingContextKey(
   projectId: string | null,
@@ -186,6 +187,12 @@ const HOST: EditorHost = {
   },
   getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
+  saveActive: () => {
+    void useFilesStore
+      .getState()
+      .saveActive()
+      .catch((error) => notifyError("vim save", error));
+  },
   isEditLocked: () => isEditorMutationLocked(useFilesStore.getState().projectId),
   registerMutationOwner: (owner) => registerEditorMutationOwner({
     ...owner,

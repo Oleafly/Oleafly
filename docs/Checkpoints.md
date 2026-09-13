@@ -54,10 +54,10 @@ Other internal failures are recorded in the app log.
 
 ## The Versioning window
 
-The Versioning window has two tabs. Git History lists the project's commits and
-restores the project to any of them. Saved Checkpoints lists the checkpoints.
+The Versioning window contains saved checkpoints. Git history lives in Source
+Control, beside the repository's branches and working-tree changes.
 
-The checkpoints tab opens on the timeline, newest on top, with the version
+The window opens on the checkpoint timeline, newest on top, with the version
 number, time, engine, main document, file count, and stored size. Expand an
 entry to see the files it holds and their sizes.
 
@@ -85,9 +85,9 @@ format version, lineage, table counts, and packs. Export and Import move a
 complete history as an encrypted archive. Keep latest and Reset trim the
 history.
 
-The toolbar has one Versioning button, and it opens the window on the tab used
-last. The command palette has two entries. "Git history" opens the Git History
-tab and "Checkpoints" opens the Saved Checkpoints tab.
+The toolbar's Versioning button opens the checkpoint window. The command
+palette has separate entries: "Git history" opens the Graph section in Source
+Control, while "Checkpoints" opens Versioning.
 
 ## Settings
 

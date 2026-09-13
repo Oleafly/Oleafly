@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import {
+  chooseCommandPaletteItem,
   createBlankProject,
   fillCommandPalette,
   openProject,
@@ -70,21 +71,61 @@ test("project info modal opens from the word-count palette command and closes", 
   await expect(projectInfo).not.toBeVisible();
 });
 
-test("history modal opens from the palette", async ({ tauriPage }) => {
+test("history command reveals Source Control Graph while Versioning stays checkpoints-only", async ({ tauriPage }) => {
   await pressGlobal(tauriPage, "k", { meta: true });
   await fillCommandPalette(tauriPage, "history");
-  await tauriPage.press("[cmdk-input]", "Enter");
-  // The modal heading renders (history may be empty for a fresh repo).
+  await chooseCommandPaletteItem(tauriPage, "Git history");
+  try {
+    await tauriPage.waitForFunction(
+      `document.querySelector('[aria-label="Source Control"]')?.getAttribute('aria-current') === 'page'`,
+      10_000,
+    );
+  } catch (error) {
+    const snapshot = await tauriPage.evaluate<string>(
+      `Promise.all([
+        import("/src/store/settings.ts").then(({ useSettingsStore }) => {
+          const state = useSettingsStore.getState();
+          return { railTab: state.railTab, showTree: state.showTree, paletteOpen: state.paletteOpen };
+        }),
+        Promise.resolve({
+          activeRail: Array.from(document.querySelectorAll('[aria-current="page"]'))
+            .map((element) => element.getAttribute("aria-label")),
+          sourcePresent: !!document.querySelector('[aria-label="Source Control"]'),
+          paletteVisible: Array.from(document.querySelectorAll('[cmdk-input]')).some(
+            (element) => element.getClientRects().length > 0,
+          ),
+        }),
+      ]).then(([store, dom]) => JSON.stringify({ store, dom }))`,
+    );
+    throw new Error(`Git history command did not reveal Source Control: ${snapshot}`, {
+      cause: error,
+    });
+  }
   await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Versioning')`,
-    10_000,
+    `!!document.querySelector('[data-testid="source-control-graph"]') ||
+      Array.from(document.querySelectorAll('button')).some(
+        (button) => button.textContent.trim() === "Initialize Repository"
+      )`,
+    15_000,
   );
-  await expect(tauriPage.locator("#versioning-title")).toBeVisible({ timeout: 10_000 });
-  await expect(tauriPage.getByTestId("versioning-tab-git")).toHaveAttribute(
-    "aria-selected",
-    "true",
-    { timeout: 10_000 },
+  const hasGraph = await tauriPage.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="source-control-graph"]')`,
   );
+  if (!hasGraph) {
+    await tauriPage.getByText("Initialize Repository", { exact: true }).click();
+  }
+  await expect(tauriPage.getByTestId("source-control-graph")).toBeVisible({ timeout: 10_000 });
+  await expect(
+    tauriPage.locator(
+      '[data-testid="source-control-graph"] button[aria-controls="source-control-graph-content"]',
+    ),
+  ).toHaveAttribute("aria-expanded", "true");
+
+  await tauriPage.click('[aria-label="Versioning"]');
+  await expect(tauriPage.getByTestId("versioning-panel-checkpoints")).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(tauriPage.getByTestId("versioning-tab-git")).toHaveCount(0);
   await tauriPage.click('[aria-label="Close versioning"]');
 });
 

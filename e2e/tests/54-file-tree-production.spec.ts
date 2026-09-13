@@ -20,7 +20,7 @@ async function openRowAction(page: Page, path: string, action: string) {
   const opened = await page.evaluate<boolean>(
     `(() => {
       const row = document.querySelector(
-        '[aria-label="Source tree"] [data-path=' + CSS.escape(${JSON.stringify(path)}) + ']'
+        '[aria-label="Explorer file tree"] [data-path=' + CSS.escape(${JSON.stringify(path)}) + ']'
       );
       if (!row) return false;
       const expected = ${JSON.stringify(`More actions for ${path.split("/").pop()}`)};
@@ -163,7 +163,7 @@ async function createEntry(
   }
   await page.waitForFunction(
     `Array.from(document.querySelectorAll(
-      '[aria-label="Source tree"] [data-path]'
+      '[aria-label="Explorer file tree"] [data-path]'
     )).some(row => row.dataset.path === ${JSON.stringify(path)})`,
     30_000,
   );
@@ -288,14 +288,14 @@ async function expandFolderPath(page: Page, path: string) {
     const prefix = parts.slice(0, index).join("/");
     await page.waitForFunction(
       `Array.from(document.querySelectorAll(
-        '[aria-label="Source tree"] [data-path]'
+        '[aria-label="Explorer file tree"] [data-path]'
       )).some(row => row.dataset.path === ${JSON.stringify(prefix)})`,
       15_000,
     );
     await page.evaluate(
       `(() => {
         const row = Array.from(document.querySelectorAll(
-          '[aria-label="Source tree"] [data-path]'
+          '[aria-label="Explorer file tree"] [data-path]'
         )).find(candidate => candidate.dataset.path === ${JSON.stringify(prefix)});
         if (row?.getAttribute("aria-expanded") === "false") row.click();
         return true;
@@ -318,7 +318,7 @@ ${marker}
 `;
 
   await createBlankProject(tauriPage, projectName);
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   const folder = await createEntry(tauriPage, `workspace-${run}`, "dir");
   const rootFile = await createEntry(tauriPage, `root-${run}.tex`, "file");
@@ -358,7 +358,7 @@ ${marker}
   // Deleting the active root file must activate the most recently used
   // surviving tab (the new main document), not leave an empty editor.
   await tauriPage.click(
-    `[aria-label="Source tree"] [data-path=${JSON.stringify(rootFile)}]`,
+    `[aria-label="Explorer file tree"] [data-path=${JSON.stringify(rootFile)}]`,
   );
   await tauriPage.evaluate(
     `(window.confirm = message =>
@@ -387,7 +387,7 @@ ${marker}
   );
 
   await openProject(tauriPage, projectName);
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await expandFolderPath(tauriPage, `${renamedFolder}/chapters`);
   const entries = await listProjectEntries(tauriPage);
   const paths = entries.map((entry) => entry.path);
@@ -426,7 +426,7 @@ test("real import actions copy exact files and recursive folders into exact dest
   writeFileSync(join(nestedFolder, "payload.bin"), nestedBinary);
 
   await createBlankProject(tauriPage, projectName);
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   await setNextImportPaths(tauriPage, [rootTextPath]);
   await tauriPage.focus('[title="Import a file or folder (into the selected folder)"]');

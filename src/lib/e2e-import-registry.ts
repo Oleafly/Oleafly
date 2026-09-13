@@ -43,6 +43,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/store/project-index.ts": () => import("@/store/project-index"),
   "/src/store/proofreading.ts": () => import("@/store/proofreading"),
   "/src/store/settings.ts": () => import("@/store/settings"),
+  "/src/store/tours.ts": () => import("@/store/tours"),
   "/packages/editor/src/controller.ts": () => import("../../packages/editor/src/controller"),
   "/packages/editor/src/index.ts": () => import("@oleafly/editor"),
   "/packages/preflight/src/doc-type.ts": () => import("../../packages/preflight/src/doc-type"),

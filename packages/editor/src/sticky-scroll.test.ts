@@ -55,6 +55,7 @@ describe("stickyScroll", () => {
     const mounted = mount(1);
     const container = mounted.dom.querySelector(".cm-stickyScroll");
     expect(container).not.toBeNull();
+    expect(getComputedStyle(container as HTMLElement).lineHeight).toBe("1.7");
 
     mounted.destroy();
     view = null;

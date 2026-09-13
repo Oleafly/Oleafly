@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -13,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,43 +61,53 @@ const example = JSON.stringify(
 function CopyValue({ value, label }: Readonly<{ value: string; label: string }>) {
   const { t } = useTranslation(["common"]);
   const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copiedLabel = t(($) => $.common.actions.copied);
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+    },
+    [],
+  );
+
   return (
-    <Tooltip label={copied ? t(($) => $.common.actions.copied) : label}>
+    <Tooltip label={copied ? copiedLabel : label}>
       <Button
         type="button"
         variant="ghost"
-        size="xs"
-        aria-label={label}
+        size="icon"
+        className={
+          copied
+            ? "size-8 shrink-0 text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+            : "size-8 shrink-0"
+        }
+        aria-label={copied ? copiedLabel : label}
+        data-copied={copied ? "true" : undefined}
         onClick={() => {
           void navigator.clipboard
             ?.writeText(value)
             .then(() => {
+              if (resetTimer.current) clearTimeout(resetTimer.current);
               setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
+              resetTimer.current = setTimeout(() => {
+                setCopied(false);
+                resetTimer.current = null;
+              }, 1500);
             })
             .catch(() => setCopied(false));
         }}
       >
-        <Copy className="size-3" />
+        {copied ? (
+          <Check aria-hidden="true" className="size-3.5" />
+        ) : (
+          <Copy aria-hidden="true" className="size-3.5" />
+        )}
+        <span aria-live="polite" className="sr-only">
+          {copied ? copiedLabel : ""}
+        </span>
       </Button>
     </Tooltip>
-  );
-}
-
-function DetailRow({
-  title,
-  children,
-}: Readonly<{
-  title: string;
-  children: React.ReactNode;
-}>) {
-  return (
-    <div className="space-y-1 rounded-md border bg-muted/30 p-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {title}
-      </p>
-      {children}
-    </div>
   );
 }
 
@@ -214,6 +227,15 @@ function AgentCard({
   const readiness = acpReadiness(agent);
   const cli = agent.cli;
   const installing = busy === "install";
+  const bridgeActionAvailable =
+    !agent.bridgeSharedWithCli && (!agent.installed || !agent.managed);
+  const nextStep =
+    agent.taskUnavailableReason ??
+    (readiness === "bridge-missing"
+      ? t(($) => $.settings.ai.agents.installBridgeNextStep)
+      : agent.reason ?? agent.signInHint);
+  const cliTitleId = `acp-agent-${agent.definition.id}-cli-title`;
+  const nextStepTitleId = `acp-agent-${agent.definition.id}-next-step-title`;
   return (
     <div
       data-testid={`acp-agent-card-${agent.definition.id}`}
@@ -246,74 +268,147 @@ function AgentCard({
         </div>
       </div>
       {open && (
-        <div className="space-y-2 px-3 pb-3">
+        <div className="space-y-4 border-t border-border/70 px-4 py-4">
           {cli && (
-            <DetailRow title={t(($) => $.settings.ai.agents.cliTitle)}>
-              <div className="flex items-center gap-2">
-                <p className="min-w-0 flex-1 break-all font-mono text-[11px] text-foreground">
-                  {cli.path ??
-                    t(($) => $.settings.ai.agents.cliNotOnPath, { command: cli.command })}
+            <section aria-labelledby={cliTitleId} className="space-y-3">
+              <h5 id={cliTitleId} className="text-xs font-semibold text-foreground">
+                {t(($) => $.settings.ai.agents.cliTitle)}
+              </h5>
+              <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="min-w-0">
+                  <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t(($) => $.settings.ai.agents.cliPathLabel)}
+                  </dt>
+                  <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
+                    {cli.path ??
+                      t(($) => $.settings.ai.agents.cliNotOnPath, {
+                        command: cli.command,
+                      })}
+                  </dd>
+                </div>
+                <div className="min-w-24">
+                  <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t(($) => $.settings.ai.agents.versionLabel)}
+                  </dt>
+                  <dd className="mt-1 text-xs tabular-nums text-foreground">
+                    {cli.version ?? t(($) => $.settings.ai.agents.notReported)}
+                  </dd>
+                </div>
+              </dl>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.settings.ai.agents.signInCommandLabel)}
                 </p>
-                {cli.version && (
-                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                    {cli.version}
-                  </span>
-                )}
+                <div
+                  data-testid={`acp-agent-sign-in-command-${agent.definition.id}`}
+                  className="flex min-h-12 items-center gap-2 rounded-md border bg-background px-3 py-2.5"
+                >
+                  <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-foreground">
+                    {cli.signInCommand}
+                  </code>
+                  <CopyValue
+                    value={cli.signInCommand}
+                    label={t(($) => $.settings.ai.agents.copySignInCommand)}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <code className="min-w-0 flex-1 truncate rounded bg-background px-1.5 py-1 font-mono text-[11px]">
-                  {cli.signInCommand}
-                </code>
-                <CopyValue
-                  value={cli.signInCommand}
-                  label={t(($) => $.settings.ai.agents.copySignInCommand)}
-                />
-                {projectId && (
-                  <Button type="button" variant="ghost" size="xs" onClick={onOpenTerminal}>
-                    <Terminal className="size-3" /> {t(($) => $.settings.ai.agents.openTerminal)}
+            </section>
+          )}
+          <CollapsibleSection
+            id={`acp-agent-bridge-details-${agent.definition.id}`}
+            title={t(($) => $.settings.ai.agents.bridgeTitle)}
+            headingLevel="h4"
+            className="bg-background/40"
+          >
+            <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
+              <div className="col-span-3 min-w-0">
+                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.settings.ai.agents.bridgePathLabel)}
+                </dt>
+                <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
+                  {agent.executable ??
+                    t(($) => $.settings.ai.agents.bridgeUnresolved)}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.settings.ai.agents.versionLabel)}
+                </dt>
+                <dd className="mt-1 text-xs tabular-nums text-foreground">
+                  {agent.installedVersion ?? agent.definition.version}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.settings.ai.agents.platformLabel)}
+                </dt>
+                <dd className="mt-1 break-all text-xs text-foreground">
+                  {agent.platform}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.settings.ai.agents.bridgeSourceLabel)}
+                </dt>
+                <dd className="mt-1 text-xs text-foreground">
+                  {bridgeSourceLabel(agent)}
+                </dd>
+              </div>
+            </dl>
+          </CollapsibleSection>
+          {(nextStep || bridgeActionAvailable || (projectId && cli)) && (
+            <section
+              aria-labelledby={nextStepTitleId}
+              className="space-y-2.5 border-t border-border/70 pt-4"
+            >
+              <h5
+                id={nextStepTitleId}
+                className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                {t(($) => $.settings.ai.agents.nextStepTitle)}
+              </h5>
+              {nextStep && (
+                <p className="text-xs leading-relaxed text-foreground/85">
+                  {nextStep}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {bridgeActionAvailable && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    data-testid={`acp-agent-install-${agent.definition.id}`}
+                    disabled={!!busy || !agent.canInstall}
+                    onClick={(event) =>
+                      onInstall(agent.definition, event.currentTarget)
+                    }
+                  >
+                    {installing ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Download className="size-3.5" />
+                    )}
+                    {agent.installed
+                      ? t(($) => $.settings.ai.agents.updateBridge)
+                      : t(($) => $.settings.ai.agents.installBridge)}
+                  </Button>
+                )}
+                {projectId && cli && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onOpenTerminal}
+                  >
+                    <Terminal className="size-3.5" />
+                    {t(($) => $.settings.ai.agents.openTerminal)}
                   </Button>
                 )}
               </div>
-            </DetailRow>
+            </section>
           )}
-          <DetailRow title={t(($) => $.settings.ai.agents.bridgeTitle)}>
-            <div className="flex items-center gap-2">
-              <p className="min-w-0 flex-1 break-all font-mono text-[11px] text-foreground">
-                {agent.executable ?? t(($) => $.settings.ai.agents.bridgeUnresolved)}
-              </p>
-              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                {agent.installedVersion ?? agent.definition.version}
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {bridgeSourceLabel(agent)}{" · "}{agent.platform}
-            </p>
-            {agent.taskUnavailableReason && (
-              <p className="text-[11px] text-muted-foreground">{agent.taskUnavailableReason}</p>
-            )}
-          </DetailRow>
-          {agent.reason && <p className="text-xs text-muted-foreground">{agent.reason}</p>}
-          {agent.signInHint && <p className="text-xs text-muted-foreground">{agent.signInHint}</p>}
-          <div className="flex flex-wrap gap-2">
-            {(!agent.installed || !agent.managed) && (
-              <Button
-                type="button"
-                size="sm"
-                data-testid={`acp-agent-install-${agent.definition.id}`}
-                disabled={!!busy || !agent.canInstall}
-                onClick={(event) => onInstall(agent.definition, event.currentTarget)}
-              >
-                {installing ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Download className="size-3.5" />
-                )}
-                {agent.installed
-                  ? t(($) => $.settings.ai.agents.updateBridge)
-                  : t(($) => $.settings.ai.agents.installBridge)}
-              </Button>
-            )}
-            {!agent.definition.builtin && (
+          {!agent.definition.builtin && (
+            <div className="flex border-t border-border/70 pt-3">
               <Button
                 type="button"
                 variant="ghost"
@@ -324,11 +419,80 @@ function AgentCard({
               >
                 <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+type CatalogCheckState = "checking" | "ready" | "error";
+
+function AgentCatalogEmptyState({
+  state,
+  error,
+  onRetry,
+}: Readonly<{
+  state: CatalogCheckState;
+  error: string | null;
+  onRetry: () => void;
+}>) {
+  const { t } = useTranslation(["settings"]);
+  if (state === "checking") {
+    return (
+      <Empty className="max-w-sm gap-3">
+        <EmptyMedia>
+          <Loader2 aria-hidden="true" className="size-5 animate-spin" />
+        </EmptyMedia>
+        <div className="space-y-1.5">
+          <EmptyTitle className="text-base">
+            {t(($) => $.settings.ai.agents.checkingTitle)}
+          </EmptyTitle>
+          <EmptyDescription className="text-xs leading-relaxed">
+            {t(($) => $.settings.ai.agents.checkingDescription)}
+          </EmptyDescription>
+        </div>
+      </Empty>
+    );
+  }
+  if (state === "error") {
+    return (
+      <Empty className="max-w-sm gap-3">
+        <EmptyMedia>
+          <RefreshCw aria-hidden="true" className="size-5" />
+        </EmptyMedia>
+        <div className="space-y-1.5">
+          <EmptyTitle className="text-base">
+            {t(($) => $.settings.ai.agents.checkFailedTitle)}
+          </EmptyTitle>
+          <div role="alert">
+            <EmptyDescription className="text-xs leading-relaxed text-destructive">
+              {error}
+            </EmptyDescription>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" type="button" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" className="size-3.5" />
+          {t(($) => $.settings.ai.agents.checkAgain)}
+        </Button>
+      </Empty>
+    );
+  }
+  return (
+    <Empty className="max-w-sm gap-3">
+      <EmptyMedia>
+        <Search aria-hidden="true" className="size-5" />
+      </EmptyMedia>
+      <div className="space-y-1.5">
+        <EmptyTitle className="text-base">
+          {t(($) => $.settings.ai.agents.emptyTitle)}
+        </EmptyTitle>
+        <EmptyDescription className="text-xs leading-relaxed">
+          {t(($) => $.settings.ai.agents.emptyDescription)}
+        </EmptyDescription>
+      </div>
+    </Empty>
   );
 }
 
@@ -337,29 +501,73 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [catalogCheckState, setCatalogCheckState] = useState<CatalogCheckState>("checking");
+  const [catalogCheckError, setCatalogCheckError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AcpRegistryEntry[]>([]);
   const [definition, setDefinition] = useState("");
   const [review, setReview] = useState<AcpDefinition | null>(null);
   const reviewOpener = useRef<HTMLElement | null>(null);
+  const mounted = useRef(true);
+  const catalogCheckRequest = useRef(0);
   const reviewing = review !== null;
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   useEffect(() => {
     if (!reviewing) return;
     const id = appModalCoordinator.add(reviewOpener.current);
     return () => { appModalCoordinator.remove(id)?.focus({ preventScroll: true }); };
   }, [reviewing]);
 
-  useEffect(() => {
-    void useAcpSessionsStore
-      .getState()
-      .refreshCatalog(true)
-      .catch((error_: unknown) => setError(acpError(error_)));
+  const checkInstalledAgents = useCallback(async (userInitiated = false) => {
+    const request = ++catalogCheckRequest.current;
+    if (userInitiated) setBusy("preflight");
+    setError(null);
+    setCatalogCheckError(null);
+    setNotice(null);
+    setCatalogCheckState("checking");
+    try {
+      let applied = false;
+      while (
+        !applied &&
+        mounted.current &&
+        request === catalogCheckRequest.current
+      ) {
+        applied = await useAcpSessionsStore.getState().refreshCatalog(true);
+      }
+      if (!applied) return;
+      if (mounted.current && request === catalogCheckRequest.current) {
+        setCatalogCheckState("ready");
+      }
+    } catch (error_) {
+      const message = acpError(error_);
+      if (mounted.current && request === catalogCheckRequest.current) {
+        setCatalogCheckError(message);
+        setCatalogCheckState("error");
+      }
+    } finally {
+      if (
+        userInitiated &&
+        mounted.current &&
+        request === catalogCheckRequest.current
+      ) {
+        setBusy(null);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    void checkInstalledAgents();
+  }, [checkInstalledAgents]);
 
   const action = async (key: string, work: () => Promise<void>) => {
     setBusy(key);
     setError(null);
+    setCatalogCheckError(null);
+    setCatalogCheckState((state) => (state === "error" ? "ready" : state));
     setNotice(null);
     try {
       await work();
@@ -404,15 +612,15 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
             variant="secondary"
             size="sm"
             type="button"
-            disabled={!!busy}
+            disabled={!!busy || catalogCheckState === "checking"}
             onClick={() =>
-              void action("preflight", () => useAcpSessionsStore.getState().refreshCatalog(true))
+              void checkInstalledAgents(true)
             }
           >
-            {busy === "preflight" ? (
+            {catalogCheckState === "checking" ? (
               <>
                 <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-                {t(($) => $.settings.ai.agents.checkingInstalled)}
+                {t(($) => $.settings.ai.agents.checkingAction)}
               </>
             ) : (
               <>
@@ -433,34 +641,82 @@ export function AcpAgentsTab({ projectId }: Readonly<{ projectId?: string | null
           {error}
         </p>
       )}
+      {catalogCheckError && catalog.length > 0 && !review ? (
+        <p role="alert" className="rounded-md border border-destructive/40 p-2 text-xs text-destructive">
+          <span className="font-medium">
+            {t(($) => $.settings.ai.agents.checkFailedTitle)}
+          </span>
+          <span className="ml-1">{catalogCheckError}</span>
+        </p>
+      ) : null}
       {notice && (
-        <output className="block rounded-md border p-2 text-xs">
+        <output
+          data-testid="acp-agent-notice"
+          className="block rounded-md border p-2 text-xs"
+        >
           {notice}
         </output>
       )}
 
-      <div className="space-y-2.5" data-testid="acp-agent-list">
-        {catalog.map((agent) => (
-          <AgentCard
-            key={agent.definition.id}
-            agent={agent}
-            projectId={projectId}
-            busy={busy}
-            onInstall={(definition, opener) => {
-              reviewOpener.current = opener;
-              setError(null);
-              setReview(definition);
-            }}
-            onOpenTerminal={openTerminal}
-            onRemove={(agentId) =>
-              void action(agentId, async () => {
-                await acpRemoveAgent(agentId);
-                await useAcpSessionsStore.getState().refreshCatalog();
-                setNotice(t(($) => $.settings.ai.agents.notice.removed));
-              })
-            }
-          />
-        ))}
+      <div
+        className="min-h-72 space-y-2.5"
+        data-testid="acp-agent-list"
+        aria-busy={catalogCheckState === "checking"}
+      >
+        {catalog.length > 0 ? (
+          <div className="space-y-2.5">
+            {catalogCheckState === "checking" && (
+              <div
+                data-testid="acp-agent-check-status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                className="flex min-h-8 items-center gap-2 px-1 text-xs text-muted-foreground"
+              >
+                <Loader2
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0 animate-spin"
+                />
+                <span>{t(($) => $.settings.ai.agents.refreshingStatus)}</span>
+              </div>
+            )}
+            {catalog.map((agent) => (
+              <AgentCard
+                key={agent.definition.id}
+                agent={agent}
+                projectId={projectId}
+                busy={busy}
+                onInstall={(definition, opener) => {
+                  reviewOpener.current = opener;
+                  setError(null);
+                  setReview(definition);
+                }}
+                onOpenTerminal={openTerminal}
+                onRemove={(agentId) =>
+                  void action(agentId, async () => {
+                    await acpRemoveAgent(agentId);
+                    await useAcpSessionsStore.getState().refreshCatalog();
+                    setNotice(t(($) => $.settings.ai.agents.notice.removed));
+                  })
+                }
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            data-testid="acp-agent-empty-state"
+            role={catalogCheckState === "checking" ? "status" : undefined}
+            aria-live={catalogCheckState === "checking" ? "polite" : undefined}
+            aria-atomic={catalogCheckState === "checking" ? "true" : undefined}
+            className="flex min-h-56 items-center justify-center rounded-lg border border-dashed bg-muted/20 p-6 text-center"
+          >
+            <AgentCatalogEmptyState
+              state={catalogCheckState}
+              error={catalogCheckError}
+              onRetry={() => void checkInstalledAgents(true)}
+            />
+          </div>
+        )}
       </div>
 
       <Section

@@ -28,6 +28,7 @@ import {
   type TourTooltipMetrics,
 } from "@/lib/tours/placement";
 import {
+  isTourAvailable,
   resolveTourText,
   stepNeedsReachableTarget,
   tourRegistry,
@@ -1269,8 +1270,9 @@ export function TourGuide() {
   useEffect(() => {
     let pendingFrame: number | null = null;
     const manualStart = (event: Event) => {
-      const requestedId =
-        event instanceof CustomEvent ? (event.detail as keyof typeof tourRegistry | undefined) : undefined;
+      const requested = event instanceof CustomEvent ? event.detail : undefined;
+      const requestedId = isTourAvailable(requested) ? requested : undefined;
+      if (requested !== undefined && !requestedId) return;
       // Guessing which tour was meant is hopeless with a diagram open behind
       // Settings, but a caller that names one has already answered that.
       if (!requestedId && diagramOpen && settingsOpen) return;
@@ -1282,6 +1284,7 @@ export function TourGuide() {
         return "home";
       };
       const id = requestedId ?? contextualId();
+      if (!isTourAvailable(id)) return;
       setWelcomeAccepted(true);
       useTourStore.getState().stop();
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);

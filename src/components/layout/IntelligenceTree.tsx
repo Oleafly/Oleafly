@@ -74,6 +74,24 @@ export interface IntelligenceTreeNode {
   };
 }
 
+/**
+ * A monotonically identified command lets a parent repeat bulk tree actions
+ * without taking ownership of the tree's normal keyboard and pointer state.
+ * `modelKey` scopes a command to one authoritative snapshot so a delayed
+ * render cannot apply it to newer project data.
+ */
+export interface IntelligenceTreeExpansionCommand {
+  readonly id: number;
+  readonly action: "expand-all" | "collapse-all";
+  readonly modelKey?: string;
+}
+
+export type IntelligenceTreeExpansionState =
+  | "none"
+  | "expanded"
+  | "collapsed"
+  | "mixed";
+
 interface VisibleTreeRow {
   node: IntelligenceTreeNode;
   level: number;
@@ -150,6 +168,56 @@ function collectVisibleNodeIds(
   }
 
   return branchHasMatch;
+}
+
+function collectNodeIds(
+  nodes: readonly IntelligenceTreeNode[],
+  ids: Set<string>,
+  expandableIds: Set<string>,
+): void {
+  for (const node of nodes) {
+    ids.add(node.id);
+    if (node.children?.length) {
+      expandableIds.add(node.id);
+      collectNodeIds(node.children, ids, expandableIds);
+    }
+  }
+}
+
+function pruneOverrides(
+  current: ReadonlySet<string>,
+  knownIds: ReadonlySet<string>,
+): ReadonlySet<string> {
+  if ([...current].every((id) => knownIds.has(id))) return current;
+  return new Set([...current].filter((id) => knownIds.has(id)));
+}
+
+function treeExpansionState(
+  nodes: readonly IntelligenceTreeNode[],
+  collapsedByUser: ReadonlySet<string>,
+  expandedByUser: ReadonlySet<string>,
+): IntelligenceTreeExpansionState {
+  let expandable = 0;
+  let expanded = 0;
+  const pending = [...nodes];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) continue;
+    if (node.children?.length) {
+      expandable += 1;
+      if (
+        expandedByUser.has(node.id) ||
+        (!collapsedByUser.has(node.id) && node.defaultExpanded !== false)
+      ) {
+        expanded += 1;
+      }
+      pending.push(...node.children);
+    }
+  }
+  if (expandable === 0) return "none";
+  if (expanded === 0) return "collapsed";
+  if (expanded === expandable) return "expanded";
+  return "mixed";
 }
 
 type FlattenScope = Readonly<{
@@ -391,6 +459,10 @@ export function IntelligenceTree({
   emptyMessage,
   onActivate,
   className,
+  expansionCommand,
+  modelKey,
+  expansionCommandKey,
+  onExpansionStateChange,
 }: Readonly<{
   label: string;
   nodes: readonly IntelligenceTreeNode[];
@@ -398,6 +470,12 @@ export function IntelligenceTree({
   emptyMessage: string;
   onActivate: (node: IntelligenceTreeNode) => void;
   className?: string;
+  expansionCommand?: IntelligenceTreeExpansionCommand | null;
+  /** Changes when local expansion overrides should reset, normally by project. */
+  modelKey?: string;
+  /** Snapshot identity used only to reject stale bulk commands. */
+  expansionCommandKey?: string;
+  onExpansionStateChange?: (state: IntelligenceTreeExpansionState) => void;
 }>) {
   const reactId = useId();
   const treeId = reactId.replaceAll(":", "");
@@ -410,6 +488,58 @@ export function IntelligenceTree({
   );
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  const previousModelKey = useRef<string | undefined>(modelKey);
+  const lastExpansionCommand = useRef<string | null>(null);
+  const { nodeIds, expandableIds } = useMemo(() => {
+    const nodeIds = new Set<string>();
+    const expandableIds = new Set<string>();
+    collectNodeIds(nodes, nodeIds, expandableIds);
+    return { nodeIds, expandableIds };
+  }, [nodes]);
+  useEffect(() => {
+    if (previousModelKey.current === modelKey) return;
+    previousModelKey.current = modelKey;
+    lastExpansionCommand.current = null;
+    setCollapsedByUser(new Set());
+    setExpandedByUser(new Set());
+    setFocusedId(null);
+  }, [modelKey]);
+
+  useEffect(() => {
+    setCollapsedByUser((current) => pruneOverrides(current, nodeIds));
+    setExpandedByUser((current) => pruneOverrides(current, nodeIds));
+  }, [nodeIds]);
+
+  useEffect(() => {
+    if (!expansionCommand) return;
+    const commandModelKey = expansionCommandKey ?? modelKey;
+    if (
+      expansionCommand.modelKey !== undefined &&
+      expansionCommand.modelKey !== commandModelKey
+    ) {
+      return;
+    }
+    const commandKey = `${commandModelKey ?? ""}\0${expansionCommand.id}`;
+    if (lastExpansionCommand.current === commandKey) return;
+    lastExpansionCommand.current = commandKey;
+    startTransition(() => {
+      if (expansionCommand.action === "expand-all") {
+        setCollapsedByUser(new Set());
+        setExpandedByUser(new Set(expandableIds));
+      } else {
+        setCollapsedByUser(new Set(expandableIds));
+        setExpandedByUser(new Set());
+      }
+    });
+  }, [expandableIds, expansionCommand, expansionCommandKey, modelKey]);
+
+  const expansionState = useMemo(
+    () => treeExpansionState(nodes, collapsedByUser, expandedByUser),
+    [collapsedByUser, expandedByUser, nodes],
+  );
+  useEffect(() => {
+    onExpansionStateChange?.(expansionState);
+  }, [expansionState, onExpansionStateChange]);
 
   const visibleRows = useMemo(() => {
     const visibleIds = new Set<string>();

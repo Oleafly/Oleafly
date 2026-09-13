@@ -1390,6 +1390,38 @@ export async function fillCommandPalette(
   }
 }
 
+/**
+ * Select a visible command by its rendered label. The native bridge sends a
+ * synthetic key event to the input, which can race cmdk's controlled
+ * selection update after an E2E-only query injection. Clicking the rendered
+ * item still exercises the command's real onSelect path.
+ */
+export async function chooseCommandPaletteItem(page: Page, label: string): Promise<void> {
+  const serializedLabel = JSON.stringify(label);
+  await page.waitForFunction(
+    `Array.from(document.querySelectorAll('[cmdk-item]')).some(
+      (item) => item.textContent.trim() === ${serializedLabel}
+    )`,
+    10_000,
+  );
+  const selected = await page.evaluate<boolean>(
+    `(() => {
+      const item = Array.from(document.querySelectorAll('[cmdk-item]'))
+        .find((entry) => entry.textContent.trim() === ${serializedLabel});
+      if (!(item instanceof HTMLElement)) return false;
+      item.click();
+      return true;
+    })()`,
+  );
+  if (!selected) throw new Error(`command palette item unavailable: ${label}`);
+  await page.waitForFunction(
+    `!Array.from(document.querySelectorAll('[cmdk-input]')).some(
+      (element) => element instanceof HTMLInputElement && element.getClientRects().length > 0
+    )`,
+    10_000,
+  );
+}
+
 // Place the caret through CodeMirror's public state API. This never mutates
 // the document and is independent of viewport rendering, text-node splitting,
 // lint decorations, and WebKit's synthetic mouse-event handling.
@@ -1832,21 +1864,53 @@ export async function stageAllGitChanges(page: Page) {
   // The rail may already be open from a previous commit. Request the current
   // saved working tree instead of relying on a mount-time status snapshot.
   await page.click('[aria-label="Refresh"]');
-  // The control is hover-revealed. Wait for Git's initial status, then invoke
-  // the real button once; polling must not enqueue more stage/refresh work.
+  await page.waitForFunction(
+    `document.querySelectorAll('[data-testid="source-control-changes"] [data-testid^="git-change-"]').length > 0`,
+    30_000,
+  );
+  // Section controls are hover-revealed, but remain in the accessibility tree.
+  // Activate the real direct bulk action once; polling must not enqueue work.
   await page.waitForFunction(
     `(() => {
-      const button = document.querySelector('[aria-label="Stage all"]');
+      const button = document.querySelector('[data-testid="source-control-changes"] [aria-label="Stage all"]');
       return button instanceof HTMLButtonElement && !button.disabled;
     })()`,
     30_000,
   );
-  await page.evaluate(`document.querySelector('[aria-label="Stage all"]').click()`);
+  await page.evaluate(
+    `(() => {
+      const button = document.querySelector('[data-testid="source-control-changes"] [aria-label="Stage all"]');
+      if (!(button instanceof HTMLElement)) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  await page.waitForFunction(
+    `document.querySelectorAll('[data-testid="source-control-staged"] [data-testid^="git-change-"]').length > 0 &&
+      document.querySelectorAll('[data-testid="source-control-changes"] [data-testid^="git-change-"]').length === 0`,
+    60_000,
+  );
+}
+
+export async function unstageAllGitChanges(page: Page) {
   await page.waitForFunction(
     `(() => {
-      const button = document.querySelector('[aria-label="Unstage all"]');
+      const button = document.querySelector('[data-testid="source-control-staged"] [aria-label="Unstage all"]');
       return button instanceof HTMLButtonElement && !button.disabled;
     })()`,
+    30_000,
+  );
+  await page.evaluate(
+    `(() => {
+      const button = document.querySelector('[data-testid="source-control-staged"] [aria-label="Unstage all"]');
+      if (!(button instanceof HTMLElement)) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  await page.waitForFunction(
+    `document.querySelectorAll('[data-testid="source-control-changes"] [data-testid^="git-change-"]').length > 0 &&
+      document.querySelectorAll('[data-testid="source-control-staged"] [data-testid^="git-change-"]').length === 0`,
     60_000,
   );
 }

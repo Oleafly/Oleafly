@@ -58,7 +58,6 @@ describe("checkpoint publication events", () => {
     clearTheNoticeWithASavedCheckpoint();
     useSettingsStore.setState({
       versioningOpen: false,
-      versioningTab: "git",
       checkpointsRevision: 0,
       checkpointPublishingProjectId: null,
     });

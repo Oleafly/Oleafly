@@ -1,49 +1,78 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useSettingsStore } from "@/store/settings";
+import type { GitWorkspaceSnapshot } from "@oleafly/backend-port";
+import { SOURCE_CONTROL_SHOW_GRAPH_EVENT } from "@/lib/source-control-events";
 import { SourceControl } from "./SourceControl";
-import { i18n } from "@/i18n";
-import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
-  gitAheadBehind: vi.fn(),
-  gitCurrentBranch: vi.fn(),
-  gitGetRemote: vi.fn(),
-  gitCleanRemoteCredentials: vi.fn(),
-  gitInitialize: vi.fn(),
-  gitIsInitialized: vi.fn(),
-  gitStatus: vi.fn(),
-  gitRemoteCredentialsNeedCleanup: vi.fn(),
-  refreshGitCount: vi.fn(),
-  getConfig: vi.fn(),
+  gitWorkspaceSnapshot: vi.fn(),
+  gitStagePaths: vi.fn(),
+  gitUnstagePaths: vi.fn(),
+  gitDiscardPaths: vi.fn(),
   gitCommit: vi.fn(),
+  gitCommitAmend: vi.fn(),
   gitPush: vi.fn(),
+  gitFetch: vi.fn(),
+  gitCreateBranch: vi.fn(),
+  gitCheckoutBranch: vi.fn(),
+  gitInitialize: vi.fn(),
   gitRemoveRemote: vi.fn(),
-  gitStage: vi.fn(),
-  gitStageAll: vi.fn(),
-  gitUnstage: vi.fn(),
-  gitUnstageAll: vi.fn(),
+  gitCleanRemoteCredentials: vi.fn(),
+  gitRemoteCredentialsNeedCleanup: vi.fn(),
+  gitResolveConflict: vi.fn(),
+    gitContinueMerge: vi.fn(),
+    gitAbortMerge: vi.fn(),
+    gitStashPush: vi.fn(),
+    gitStashPop: vi.fn(),
+  refreshGit: vi.fn(),
+  openDiff: vi.fn(),
+  clearActiveDiff: vi.fn(),
+  publishDialog: vi.fn(),
 }));
 
+const projectState = { generation: 1, changed_paths: [], deleted_paths: [] };
 const fileState = {
-  projectId: "project-1",
+  projectId: "project-1" as string | null,
   projectName: "Research notes",
   refreshTree: vi.fn(),
   openFile: vi.fn(),
   pullFromGit: vi.fn(),
-  discardFromGit: vi.fn(),
+  restoreFromGit: vi.fn(),
+  runExternalProjectMutation: vi.fn(),
 };
 
-const githubState: {
-  status: string;
-  user: { login: string; name: string | null; avatar_url: string } | null;
-} = {
-  status: "connected",
-  user: { login: "octocat", name: "Octo Cat", avatar_url: "" },
-};
+function snapshot(
+  overrides: Partial<GitWorkspaceSnapshot> = {},
+): GitWorkspaceSnapshot {
+  return {
+    initialized: true,
+    branch: "main",
+    remote: "https://github.com/oleafly/research.git",
+    aheadBehind: { ahead: 1, behind: 2, has_upstream: true },
+    operation: "idle",
+    changes: [
+      { path: "paper/main.tex", status: "M", staged: false, conflict: false },
+      { path: "refs/library.bib", status: "A", staged: true, conflict: false },
+    ],
+    conflicts: [],
+    branches: ["main", "revision"],
+    commits: [
+      {
+        oid: "abc123",
+        short: "abc123",
+        time: 1,
+        message: "Add methods",
+        author: "Researcher",
+        parents: [],
+        refs: ["main"],
+      },
+    ],
+    ...overrides,
+  };
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -61,634 +90,1028 @@ vi.mock("@/store/files", () => ({
 }));
 
 vi.mock("@/store/diff", () => ({
-  useDiffStore: (selector: (state: { openDiff: () => void; clearActiveDiff: () => void }) => unknown) =>
-    selector({ openDiff: vi.fn(), clearActiveDiff: vi.fn() }),
+  useDiffStore: (
+    selector: (state: {
+      openDiff: typeof mocks.openDiff;
+      clearActiveDiff: typeof mocks.clearActiveDiff;
+    }) => unknown,
+  ) =>
+    selector({
+      openDiff: mocks.openDiff,
+      clearActiveDiff: mocks.clearActiveDiff,
+    }),
 }));
 
 vi.mock("@/store/git-status", () => ({
-  useGitStatusStore: { getState: () => ({ refresh: mocks.refreshGitCount }) },
-}));
-
-vi.mock("@/store/github", () => ({
-  useGithubStore: (selector: (state: typeof githubState) => unknown) => selector(githubState),
+  useGitStatusStore: { getState: () => ({ refresh: mocks.refreshGit }) },
 }));
 
 vi.mock("@/components/integrations/PublishToGitHubDialog", () => ({
-  PublishToGitHubDialog: () => null,
+  PublishToGitHubDialog: (props: unknown) => {
+    mocks.publishDialog(props);
+    return null;
+  },
+}));
+
+vi.mock("@/components/layout/GithubMenu", () => ({
+  GithubMenu: () => null,
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 
 vi.mock("@/lib/tauri", () => ({
-  getConfig: mocks.getConfig,
-  gitAheadBehind: mocks.gitAheadBehind,
+  gitWorkspaceSnapshot: mocks.gitWorkspaceSnapshot,
+  gitStagePaths: mocks.gitStagePaths,
+  gitUnstagePaths: mocks.gitUnstagePaths,
+  gitDiscardPaths: mocks.gitDiscardPaths,
   gitCommit: mocks.gitCommit,
-  gitCurrentBranch: mocks.gitCurrentBranch,
-  gitGetRemote: mocks.gitGetRemote,
-  gitCleanRemoteCredentials: mocks.gitCleanRemoteCredentials,
-  gitInitialize: mocks.gitInitialize,
-  gitIsInitialized: mocks.gitIsInitialized,
+  gitCommitAmend: mocks.gitCommitAmend,
   gitPush: mocks.gitPush,
+  gitFetch: mocks.gitFetch,
+  gitInitialize: mocks.gitInitialize,
   gitRemoveRemote: mocks.gitRemoveRemote,
+  gitCleanRemoteCredentials: mocks.gitCleanRemoteCredentials,
   gitRemoteCredentialsNeedCleanup: mocks.gitRemoteCredentialsNeedCleanup,
-  gitStage: mocks.gitStage,
-  gitStageAll: mocks.gitStageAll,
-  gitStatus: mocks.gitStatus,
-  gitUnstage: mocks.gitUnstage,
-  gitUnstageAll: mocks.gitUnstageAll,
+  gitResolveConflict: mocks.gitResolveConflict,
+  gitContinueMerge: mocks.gitContinueMerge,
+  gitAbortMerge: mocks.gitAbortMerge,
+    gitStashPush: mocks.gitStashPush,
+    gitStashPop: mocks.gitStashPop,
+  gitCheckoutBranch: mocks.gitCheckoutBranch,
+  gitCreateBranch: mocks.gitCreateBranch,
 }));
 
 beforeEach(() => {
-  githubState.status = "connected";
-  githubState.user = { login: "octocat", name: "Octo Cat", avatar_url: "" };
-  useSettingsStore.setState({
-    settingsOpen: false,
-    settingsInitialSection: "general",
-    settingsScrollTarget: null,
-  });
   fileState.projectId = "project-1";
   fileState.projectName = "Research notes";
   fileState.refreshTree.mockReset().mockResolvedValue(undefined);
   fileState.openFile.mockReset().mockResolvedValue(undefined);
-  fileState.pullFromGit.mockReset().mockResolvedValue("Pulled");
-  fileState.discardFromGit.mockReset().mockResolvedValue(undefined);
-  mocks.gitAheadBehind.mockReset().mockResolvedValue({
-    ahead: 0,
-    behind: 0,
-    has_upstream: false,
+  fileState.restoreFromGit.mockReset().mockResolvedValue(undefined);
+  fileState.pullFromGit.mockReset().mockResolvedValue({
+    message: "Pulled",
+    outcome: "pulled",
+    conflicts: [],
+    state: projectState,
   });
-  mocks.gitCurrentBranch.mockReset().mockRejectedValue(new Error("not initialized"));
-  mocks.gitGetRemote.mockReset().mockResolvedValue(null);
-  mocks.gitCleanRemoteCredentials.mockReset().mockResolvedValue(true);
-  mocks.gitInitialize.mockReset().mockResolvedValue("main");
-  mocks.gitIsInitialized.mockReset().mockResolvedValue(false);
-  mocks.gitStatus.mockReset().mockResolvedValue([]);
-  mocks.gitRemoteCredentialsNeedCleanup.mockReset().mockResolvedValue(false);
-  mocks.refreshGitCount.mockReset().mockResolvedValue(undefined);
-  mocks.getConfig.mockReset().mockResolvedValue({ github_connected: false });
-  mocks.gitCommit.mockReset().mockResolvedValue(true);
-  mocks.gitPush.mockReset().mockResolvedValue("Pushed to origin/main.");
-  mocks.gitRemoveRemote.mockReset().mockResolvedValue(undefined);
-  mocks.gitStage.mockReset().mockResolvedValue(undefined);
-  mocks.gitStageAll.mockReset().mockResolvedValue(undefined);
-  mocks.gitUnstage.mockReset().mockResolvedValue(undefined);
-  mocks.gitUnstageAll.mockReset().mockResolvedValue(undefined);
+  fileState.runExternalProjectMutation
+    .mockReset()
+    .mockImplementation(
+      async (
+        _projectId: string,
+        operation: (generation: number) => Promise<unknown>,
+      ) => operation(1),
+    );
+  for (const mock of Object.values(mocks)) mock.mockReset();
+  mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot());
+  mocks.gitRemoteCredentialsNeedCleanup.mockResolvedValue(false);
+  mocks.gitStagePaths.mockResolvedValue(undefined);
+  mocks.gitUnstagePaths.mockResolvedValue(undefined);
+  mocks.gitDiscardPaths.mockResolvedValue(projectState);
+  mocks.gitCommit.mockResolvedValue(true);
+  mocks.gitCommitAmend.mockResolvedValue(true);
+  mocks.gitPush.mockResolvedValue("Pushed");
+  mocks.gitFetch.mockResolvedValue("Fetched");
+  mocks.gitCreateBranch.mockResolvedValue("analysis/revision");
+  mocks.gitCheckoutBranch.mockResolvedValue(projectState);
+  mocks.gitInitialize.mockResolvedValue("main");
+  mocks.gitRemoveRemote.mockResolvedValue(undefined);
+  mocks.gitCleanRemoteCredentials.mockResolvedValue(true);
+    mocks.gitResolveConflict.mockResolvedValue(projectState);
+    mocks.gitContinueMerge.mockResolvedValue({ projectState });
+    mocks.gitAbortMerge.mockResolvedValue({ projectState });
+    mocks.gitStashPush.mockResolvedValue(projectState);
+    mocks.gitStashPop.mockResolvedValue(projectState);
 });
 
-const MIXED_CHANGES = [
-  { path: "src/main.tex", status: "M", staged: false },
-  { path: "refs/library.bib", status: "A", staged: true },
-];
-
-function withRepository(changes = MIXED_CHANGES) {
-  mocks.gitIsInitialized.mockResolvedValue(true);
-  mocks.gitCurrentBranch.mockResolvedValue("main");
-  mocks.gitStatus.mockResolvedValue(changes);
-}
-
 describe("SourceControl", () => {
-  it("coalesces repeated refreshes while Git is slow and fetches one final snapshot", async () => {
-    withRepository();
+  it("renders separate staged, working, and graph accordions from one snapshot", async () => {
     render(<SourceControl />);
-    await screen.findByTestId("git-change-src/main.tex");
-    const slowStatus = deferred<typeof MIXED_CHANGES>();
-    mocks.gitStatus.mockImplementationOnce(() => slowStatus.promise);
-    fireEvent.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
-    await waitFor(() => expect(mocks.gitStatus).toHaveBeenCalledTimes(2));
-    for (let index = 0; index < 20; index++) {
-      fireEvent.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
-    }
-    expect(mocks.gitStatus).toHaveBeenCalledTimes(2);
-    await act(async () => slowStatus.resolve(MIXED_CHANGES));
-    await waitFor(() => expect(mocks.gitStatus).toHaveBeenCalledTimes(3));
-    await waitFor(() => expect(mocks.refreshGitCount).toHaveBeenCalledTimes(2));
+
+    expect(await screen.findByText("library.bib")).toBeInTheDocument();
+    expect(screen.getByText("main.tex")).toBeInTheDocument();
+    expect(screen.getByText("Add methods")).toBeInTheDocument();
+    expect(screen.getByText("↑1 ↓2")).toBeInTheDocument();
+    const stagedSection = screen.getByTestId("source-control-staged");
+    const commitActions = screen.getByTestId("source-control-actions");
+    expect(commitActions).toHaveClass("border-t");
+    expect(
+      stagedSection.compareDocumentPosition(commitActions) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
   });
 
-  it("admits one staging action until its refreshed status is visible", async () => {
-    withRepository([{ path: "main.tex", status: "M", staged: false }]);
-    const staged = deferred<void>();
-    mocks.gitStageAll.mockImplementationOnce(() => staged.promise);
+  it("shows direct Changes actions and stages exact working paths", async () => {
+    const user = userEvent.setup();
     render(<SourceControl />);
-    const stageAll = await screen.findByRole("button", { name: enShell.sourceControl.stageAll });
-    fireEvent.click(stageAll);
-    for (let index = 0; index < 20; index++) fireEvent.click(stageAll);
-    expect(mocks.gitStageAll).toHaveBeenCalledTimes(1);
-    expect(stageAll).toBeDisabled();
-    expect(screen.getByRole("button", { name: enShell.sourceControl.stage })).toBeDisabled();
-    mocks.gitStatus.mockResolvedValue([{ path: "main.tex", status: "M", staged: true }]);
-    await act(async () => staged.resolve());
-    await waitFor(() => expect(screen.getByRole("button", { name: enShell.sourceControl.unstageAll })).toBeEnabled());
-  });
 
-  it("keeps the current project's status when an older project refresh finishes last", async () => {
-    const user = userEvent.setup();
-    const slowOlderProjectStatus = deferred<
-      Array<{ path: string; status: string; staged: boolean }>
-    >();
-    const slowRefreshStarted = deferred<void>();
-    const currentProjectInitialization = deferred<boolean>();
-    let projectARefreshes = 0;
-    mocks.gitIsInitialized.mockImplementation((projectId: string) =>
-      projectId === "project-b"
-        ? currentProjectInitialization.promise
-        : Promise.resolve(true),
+    const changes = await screen.findByTestId("source-control-changes");
+    expect(
+      within(changes).getByRole("button", { name: "Open all changes" }),
+    ).toBeInTheDocument();
+    expect(
+      within(changes).getByRole("button", { name: "Discard all changes" }),
+    ).toBeInTheDocument();
+    const stageAll = within(changes).getByRole("button", { name: "Stage all" });
+    expect(within(changes).getByTestId("source-control-changes-actions")).toHaveClass(
+      "opacity-0",
+      "group-hover/section:opacity-100",
+      "group-focus-within/section:opacity-100",
     );
-    mocks.gitStatus.mockImplementation((projectId: string) => {
-      if (projectId === "project-b") {
-        return Promise.resolve([
-          { path: "project-b.tex", status: "M", staged: false },
-        ]);
-      }
-      projectARefreshes += 1;
-      if (projectARefreshes === 1) {
-        return Promise.resolve([
-          { path: "project-a.tex", status: "M", staged: false },
-        ]);
-      }
-      slowRefreshStarted.resolve();
-      return slowOlderProjectStatus.promise;
-    });
-    fileState.projectId = "project-a";
-    const view = render(<SourceControl />);
-    expect(await screen.findByText("project-a.tex")).toBeInTheDocument();
-    expect(screen.getByTestId("source-control-actions")).toBeInTheDocument();
+    expect(
+      within(changes).queryByRole("button", {
+        name: "More actions for Changes",
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(stageAll);
 
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
-    await slowRefreshStarted.promise;
-
-    fileState.projectId = "project-b";
-    view.rerender(<SourceControl />);
-
-    expect(screen.queryByText("project-a.tex")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("source-control-actions")).not.toBeInTheDocument();
-
-    await act(async () => {
-      currentProjectInitialization.resolve(true);
-      await currentProjectInitialization.promise;
-    });
-    expect(await screen.findByText("project-b.tex")).toBeInTheDocument();
-
-    await act(async () => {
-      slowOlderProjectStatus.resolve([
-        { path: "project-a.tex", status: "M", staged: false },
-      ]);
-      await slowOlderProjectStatus.promise;
-    });
-
-    expect(screen.getByText("project-b.tex")).toBeInTheDocument();
-    expect(screen.queryByText("project-a.tex")).not.toBeInTheDocument();
-  });
-
-  it("binds pulls to the clicked project and ignores stale action completion", async () => {
-    const user = userEvent.setup();
-    const projectAPull = deferred<string>();
-    const projectBPull = deferred<string>();
-    mocks.gitIsInitialized.mockResolvedValue(true);
-    mocks.gitCurrentBranch.mockResolvedValue("main");
-    mocks.gitGetRemote.mockResolvedValue("https://github.com/oleafly/project.git");
-    fileState.pullFromGit.mockImplementation((expectedProjectId: string) =>
-      expectedProjectId === "project-a" ? projectAPull.promise : projectBPull.promise,
+    await waitFor(() =>
+      expect(mocks.gitStagePaths).toHaveBeenCalledWith("project-1", [
+        "paper/main.tex",
+      ]),
     );
-    fileState.projectId = "project-a";
-    const view = render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.pull }));
-    expect(fileState.pullFromGit).toHaveBeenCalledWith("project-a");
-
-    fileState.projectId = "project-b";
-    view.rerender(<SourceControl />);
-    const projectBPullButton = await screen.findByRole("button", {
-      name: enShell.sourceControl.pull,
-    });
-    expect(projectBPullButton).toBeEnabled();
-    await user.click(projectBPullButton);
-    expect(fileState.pullFromGit).toHaveBeenLastCalledWith("project-b");
-
-    await act(async () => {
-      projectAPull.resolve("Pulled project A");
-      await projectAPull.promise;
-    });
-
-    expect(projectBPullButton).toBeDisabled();
-    expect(screen.queryByText("Pulled project A")).not.toBeInTheDocument();
-
-    await act(async () => {
-      projectBPull.resolve("Pulled project B");
-      await projectBPull.promise;
-    });
-    expect(await screen.findByText("Pulled project B")).toBeInTheDocument();
   });
 
-  it("binds discard to the project whose row was confirmed", async () => {
+  it("uses compact icons and a GitHub mark in the repository menu", async () => {
     const user = userEvent.setup();
-    mocks.gitIsInitialized.mockResolvedValue(true);
-    mocks.gitCurrentBranch.mockResolvedValue("main");
-    mocks.gitStatus.mockResolvedValue([
-      { path: "main.tex", status: "M", staged: false },
-    ]);
     render(<SourceControl />);
 
     await screen.findByText("main.tex");
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.discard }));
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.confirmDiscard }));
+    const refresh = screen.getByRole("button", { name: "Refresh" });
+    const moreActions = screen.getByRole("button", {
+      name: "More Source Control actions",
+    });
+    expect(refresh).toHaveClass("size-5", "[&_svg]:size-3");
+    expect(moreActions).toHaveClass("size-5", "[&_svg]:size-3");
+    await user.click(moreActions);
+    const menu = screen.getByRole("menu");
+    for (const label of ["Fetch", "Pull", "Push", "Sync", "Stash changes"]) {
+      expect(
+        within(menu).getByRole("menuitem", { name: label }).querySelector("svg"),
+      ).toHaveClass("size-3.5");
+    }
+    expect(
+      within(menu)
+        .getByRole("menuitem", { name: "Change repo" })
+        .querySelector("svg.lucide-github"),
+    ).toBeInTheDocument();
+  });
 
+  it("presents the current branch as a badge without a menu divider", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+
+    const branch = await screen.findByRole("button", { name: "main" });
+    expect(branch).toHaveClass(
+      "rounded-full",
+      "border",
+      "border-emerald-500/30",
+      "bg-emerald-500/10",
+      "text-emerald-700",
+      "[&_svg]:size-3",
+    );
+    await user.click(branch);
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByText("Branches")).toBeInTheDocument();
+    expect(within(menu).queryByRole("separator")).not.toBeInTheDocument();
+  });
+
+  it("opens a working diff or source file and stages only that row", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+
+    const changes = await screen.findByTestId("source-control-changes");
+    const changeButton = within(changes).getByTestId("git-change-paper/main.tex");
+    const changeRow = changeButton.parentElement;
+    if (!changeRow) throw new Error("expected a Git file row");
+    expect(changeButton.querySelector("svg")).toBeInTheDocument();
+    expect(
+      within(changeRow)
+        .getByRole("button", { name: "Open paper/main.tex" })
+        .querySelector("svg.lucide-file-symlink"),
+    ).toBeInTheDocument();
+    expect(changeRow).toHaveClass("w-full", "pl-4", "hover:bg-accent/60");
+    const status = within(changes).getByTestId(
+      "git-status-working-paper/main.tex",
+    );
+    expect(changeRow.lastElementChild).toBe(status);
+    expect(changeButton).toHaveAttribute("aria-describedby", status.id);
+    expect(within(changeRow).getAllByRole("button")).toHaveLength(4);
+    for (const label of [
+      "Open paper/main.tex",
+      "Discard changes to paper/main.tex",
+      "Stage paper/main.tex",
+    ]) {
+      expect(within(changeRow).getByRole("button", { name: label })).toHaveClass(
+        "opacity-0",
+        "group-hover:opacity-100",
+      );
+    }
+
+    await user.click(changeButton);
+    expect(mocks.openDiff).toHaveBeenCalledWith("paper/main.tex", "working");
+
+    await user.click(
+      within(changes).getByRole("button", { name: "Open paper/main.tex" }),
+    );
     await waitFor(() =>
-      expect(fileState.discardFromGit).toHaveBeenCalledWith("project-1", "main.tex"),
+      expect(fileState.openFile).toHaveBeenCalledWith("paper/main.tex"),
+    );
+    expect(mocks.clearActiveDiff).toHaveBeenCalled();
+
+    await user.click(
+      within(changes).getByRole("button", { name: "Stage paper/main.tex" }),
+    );
+    await waitFor(() =>
+      expect(mocks.gitStagePaths).toHaveBeenCalledWith("project-1", [
+        "paper/main.tex",
+      ]),
     );
   });
 
-  it("initializes Git only after the user chooses Initialize Repository", async () => {
+  it("uses the shared accordion contract for every Source Control section", async () => {
     const user = userEvent.setup();
     render(<SourceControl />);
 
-    const initialize = await screen.findByRole("button", { name: "Initialize Repository" });
-    expect(mocks.gitInitialize).not.toHaveBeenCalled();
-    expect(mocks.gitStatus).not.toHaveBeenCalled();
-    expect(mocks.gitCurrentBranch).not.toHaveBeenCalled();
-    expect(mocks.gitAheadBehind).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("source-control-actions")).not.toBeInTheDocument();
-
-    await user.click(initialize);
-
-    await waitFor(() => expect(mocks.gitInitialize).toHaveBeenCalledWith("project-1"));
+    for (const [testId, label] of [
+      ["source-control-staged", "Staged Changes"],
+      ["source-control-changes", "Changes"],
+      ["source-control-graph", "Graph"],
+    ] as const) {
+      const section = await screen.findByTestId(testId);
+      const toggle = within(section).getByRole("button", {
+        name: label,
+        expanded: true,
+      });
+      const contentId = `${testId}-content`;
+      expect(toggle).toHaveAttribute("aria-controls", contentId);
+      expect(toggle.querySelector("output")).toBeInTheDocument();
+      expect(toggle.parentElement).toHaveClass("hover:bg-sidebar-accent");
+      expect(document.getElementById(contentId)).not.toHaveAttribute("hidden");
+      await user.click(toggle);
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(document.getElementById(contentId)).toHaveAttribute("hidden");
+    }
   });
 
-  it("repairs a legacy credential only after the user chooses the repair action", async () => {
+  it("keeps counts beside titles and section actions at the far right", async () => {
+    render(<SourceControl />);
+
+    const staged = await screen.findByTestId("source-control-staged");
+    const toggle = within(staged).getByRole("button", {
+      name: "Staged Changes",
+    });
+    expect(toggle.querySelector("svg.lucide-book-plus")).toBeInTheDocument();
+    expect(toggle.querySelector("output")).toHaveTextContent("1");
+    expect(toggle.querySelector("output")).toHaveAccessibleName(
+      "1 staged change",
+    );
+    const openAll = within(staged).getByRole("button", {
+      name: "Open all changes",
+    });
+    expect(toggle.parentElement?.lastElementChild).toBe(
+      openAll.parentElement?.parentElement,
+    );
+    expect(within(staged).getByTestId("source-control-staged-actions")).toHaveClass(
+      "opacity-0",
+      "group-hover/section:opacity-100",
+    );
+    const changes = screen.getByTestId("source-control-changes");
+    expect(
+      within(changes)
+        .getByRole("button", { name: "Changes" })
+        .querySelector("svg.lucide-diff"),
+    ).toBeInTheDocument();
+    expect(within(changes).getByText("1", { selector: "output" })).toHaveAccessibleName(
+      "1 working change",
+    );
+    const graph = screen.getByTestId("source-control-graph");
+    expect(within(graph).getByText("1", { selector: "output" })).toHaveAccessibleName(
+      "1 commit",
+    );
+  });
+
+  it("renders intentional empty states for staged work and history", async () => {
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({ changes: [], commits: [] }),
+    );
+    render(<SourceControl />);
+
+    const staged = await screen.findByTestId("source-control-staged");
+    expect(within(staged).getByText("No staged changes")).toHaveClass(
+      "leading-4",
+    );
+    expect(within(staged).getByText("No staged changes").parentElement).toHaveClass(
+      "justify-center",
+      "text-center",
+    );
+    expect(within(staged).getByTestId("source-control-staged-actions")).toHaveClass(
+      "opacity-0",
+      "group-hover/section:opacity-100",
+    );
+    const graph = screen.getByTestId("source-control-graph");
+    expect(within(graph).getByText("No commits yet")).toHaveClass("leading-4");
+    expect(within(graph).getByText("No commits yet").parentElement).toHaveClass(
+      "justify-center",
+      "text-center",
+    );
+    expect(graph.querySelector("svg.lucide-git-commit-horizontal")).toBeInTheDocument();
+  });
+
+  it("keeps both sides of a partly staged file visible", async () => {
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({
+        changes: [
+          {
+            path: "paper/main.tex",
+            status: "M",
+            staged: true,
+            conflict: false,
+          },
+          {
+            path: "paper/main.tex",
+            status: "M",
+            staged: false,
+            conflict: false,
+          },
+        ],
+      }),
+    );
+    render(<SourceControl />);
+
+    expect(await screen.findAllByTestId("git-change-paper/main.tex")).toHaveLength(
+      2,
+    );
+  });
+
+  it("confirms discard and wraps direct project-state mutations", async () => {
     const user = userEvent.setup();
-    mocks.gitIsInitialized.mockResolvedValue(true);
-    mocks.gitCurrentBranch.mockResolvedValue("main");
+    render(<SourceControl />);
+
+    await screen.findByText("main.tex");
+    await user.click(
+      screen.getByRole("button", {
+        name: "Discard changes to paper/main.tex",
+      }),
+    );
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Discard changes",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.gitDiscardPaths).toHaveBeenCalledWith(
+        "project-1",
+        ["paper/main.tex"],
+        1,
+      ),
+    );
+    expect(fileState.runExternalProjectMutation).toHaveBeenCalledWith(
+      "project-1",
+      expect.any(Function),
+    );
+  });
+
+  it("does not push after a sync pull reports merge conflicts", async () => {
+    const user = userEvent.setup();
+    fileState.pullFromGit.mockResolvedValue({
+      message: "Resolve conflicts",
+      outcome: "conflicts",
+      conflicts: [{ path: "paper/main.tex", status: "UU" }],
+      state: projectState,
+    });
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Sync methods");
+    await user.click(
+      screen.getByRole("button", { name: "More commit actions" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Commit & Sync" }));
+
+    await waitFor(() =>
+      expect(fileState.pullFromGit).toHaveBeenCalledWith("project-1"),
+    );
+    await waitFor(() =>
+      expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledTimes(2),
+    );
+    expect(mocks.gitPush).not.toHaveBeenCalled();
+    expect(screen.getByTestId("commit-title")).toHaveValue("");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Committed locally. Resolve the pulled conflicts before pushing.",
+    );
+  });
+
+  it("preserves the typed message when the local commit fails", async () => {
+    const user = userEvent.setup();
+    mocks.gitCommit.mockRejectedValue(new Error("Set your Git author first."));
+    render(<SourceControl />);
+
+    const input = await screen.findByTestId("commit-title");
+    await user.type(input, "Explain sampling");
+    await user.click(screen.getByTestId("commit-button"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Set your Git author first.",
+    );
+    expect(input).toHaveValue("Explain sampling");
+    expect(fileState.refreshTree).not.toHaveBeenCalled();
+  });
+
+  it("clears a committed message but reports a later push failure", async () => {
+    const user = userEvent.setup();
+    mocks.gitPush.mockRejectedValue(new Error("Remote is unavailable."));
+    render(<SourceControl />);
+
+    const input = await screen.findByTestId("commit-title");
+    await user.type(input, "Explain sampling");
+    await user.click(
+      screen.getByRole("button", { name: "More commit actions" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Commit & Push" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Committed locally, but push failed: Error: Remote is unavailable.",
+    );
+    expect(input).toHaveValue("");
+    expect(fileState.refreshTree).toHaveBeenCalled();
+  });
+
+  it("keeps the split commit menu open for amend while commit itself is disabled", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({
+        changes: [
+          {
+            path: "paper/main.tex",
+            status: "M",
+            staged: false,
+            conflict: false,
+          },
+        ],
+      }),
+    );
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Clarify methods");
+    const commitButton = screen.getByTestId("commit-button");
+    expect(commitButton).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByText("Stage a file to commit.")).not.toBeInTheDocument();
+    await user.hover(commitButton);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Stage a file to commit.",
+    );
+    await user.unhover(commitButton);
+    await waitFor(() =>
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
+    );
+    await user.tab();
+    await user.tab();
+    expect(commitButton).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Stage a file to commit.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "More commit actions" }),
+    );
+    expect(screen.getByRole("menuitem", { name: "Commit" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "Amend last commit" }),
+    ).not.toHaveAttribute("aria-disabled", "true");
+    await user.keyboard("{Escape}");
+    expect(mocks.gitCommitAmend).not.toHaveBeenCalled();
+  });
+
+  it("offers conflict resolution through the project-mutation boundary", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({
+        operation: "merge",
+        conflicts: [{ path: "paper/main.tex", status: "UU" }],
+      }),
+    );
+    render(<SourceControl />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Use current" }),
+    );
+    await waitFor(() =>
+      expect(mocks.gitResolveConflict).toHaveBeenCalledWith(
+        "project-1",
+        "paper/main.tex",
+        "current",
+        1,
+      ),
+    );
+  });
+
+  it("does not offer merge-only controls for stash conflicts", async () => {
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({
+        operation: "idle",
+        conflicts: [{ path: "paper/main.tex", status: "UU" }],
+      }),
+    );
+    render(<SourceControl />);
+
+    expect(await screen.findByText("Resolve stash conflicts")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Abort merge" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Complete merge" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps a branch name available for correction when creation fails", async () => {
+    const user = userEvent.setup();
+    mocks.gitCreateBranch.mockRejectedValue(new Error("Choose a valid branch name."));
+    render(<SourceControl />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "main" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Create branch…" }));
+    const input = screen.getByRole("textbox", { name: "Branch name" });
+    await user.type(input, "bad..branch");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Choose a valid branch name.",
+    );
+    expect(input).toHaveValue("bad..branch");
+  });
+
+  it("shows a loading state until the first coherent snapshot arrives", async () => {
+    const pending = deferred<GitWorkspaceSnapshot>();
+    mocks.gitWorkspaceSnapshot.mockReturnValue(pending.promise);
+    render(<SourceControl />);
+
+    expect(await screen.findByText("Checking Source Control…")).toBeInTheDocument();
+    await act(async () => pending.resolve(snapshot()));
+    expect(await screen.findByText("main.tex")).toBeInTheDocument();
+  });
+
+  it("retries a queued refresh after the first snapshot and ignores credential probe failures", async () => {
+    const user = userEvent.setup();
+    const first = deferred<GitWorkspaceSnapshot>();
+    mocks.gitWorkspaceSnapshot
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValue(snapshot());
+    mocks.gitRemoteCredentialsNeedCleanup.mockRejectedValue(new Error("keychain offline"));
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "Refresh" }));
+    await act(async () => first.resolve(snapshot()));
+    await waitFor(() => expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("main.tex")).toBeInTheDocument();
+  });
+
+  it("reports a failed snapshot refresh and recovers when retried", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot
+      .mockRejectedValueOnce(new Error("Git is unavailable"))
+      .mockResolvedValue(snapshot());
+    render(<SourceControl />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Git is unavailable");
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("main.tex")).toBeInTheDocument();
+  });
+
+  it("opens and unstages all staged paths", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+    const staged = await screen.findByTestId("source-control-staged");
+
+    await user.click(within(staged).getByRole("button", { name: "Open all changes" }));
+    expect(mocks.openDiff).toHaveBeenCalledWith("refs/library.bib", "staged");
+    await user.click(within(staged).getByRole("button", { name: "Unstage all" }));
+    await waitFor(() =>
+      expect(mocks.gitUnstagePaths).toHaveBeenCalledWith("project-1", [
+        "refs/library.bib",
+      ]),
+    );
+  });
+
+  it("keeps a failed commit's complete message available for correction", async () => {
+    const user = userEvent.setup();
+    mocks.gitCommit.mockResolvedValue(false);
+    render(<SourceControl />);
+    const title = await screen.findByTestId("commit-title");
+    const description = screen.getByTestId("commit-description");
+    await user.type(title, "Clarify findings");
+    await user.type(description, "Add the replication detail.");
+    await user.click(screen.getByTestId("commit-button"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Nothing staged to commit.");
+    expect(title).toHaveValue("Clarify findings");
+    expect(description).toHaveValue("Add the replication detail.");
+  });
+
+  it("amends with the title and description after the user selects it", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+    await user.type(await screen.findByTestId("commit-title"), "Correct methods");
+    await user.type(screen.getByTestId("commit-description"), "Use the final sample.");
+    await user.click(screen.getByRole("button", { name: "More commit actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Amend last commit" }));
+
+    await waitFor(() =>
+      expect(mocks.gitCommitAmend).toHaveBeenCalledWith(
+        "project-1",
+        "Correct methods\n\nUse the final sample.",
+      ),
+    );
+    expect(screen.getByTestId("source-control-status")).toHaveTextContent(
+      'Committed: "Correct methods"',
+    );
+  });
+
+  it("can cancel destructive confirmations without applying their mutation", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+    await user.click(
+      await screen.findByRole("button", { name: "Discard changes to paper/main.tex" }),
+    );
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: /^Cancel/ }),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(mocks.gitDiscardPaths).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Restore version" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: /^Cancel/ }),
+    );
+    expect(fileState.restoreFromGit).not.toHaveBeenCalled();
+  });
+
+  it("keeps branch form keyboard controls available for retry and cancellation", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+    await user.click(await screen.findByRole("button", { name: "main" }));
+    await user.click(screen.getByRole("menuitem", { name: "Create branch…" }));
+    const input = screen.getByRole("textbox", { name: "Branch name" });
+    await user.type(input, "experiment");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("textbox", { name: "Branch name" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "main" }));
+    await user.click(screen.getByRole("menuitem", { name: "Create branch…" }));
+    const retry = screen.getByRole("textbox", { name: "Branch name" });
+    await user.clear(retry);
+    await user.type(retry, "experiment");
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(mocks.gitCreateBranch).toHaveBeenCalledWith("project-1", "experiment"),
+    );
+  });
+
+  it("surfaces a conflict-file opening failure instead of clearing the active diff", async () => {
+    const user = userEvent.setup();
+    fileState.openFile.mockRejectedValue(new Error("File no longer exists"));
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({ conflicts: [{ path: "paper/main.tex", status: "UU" }] }),
+    );
+    render(<SourceControl />);
+    await user.click(await screen.findByRole("button", { name: "paper/main.tex" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("File no longer exists");
+    expect(mocks.clearActiveDiff).not.toHaveBeenCalled();
+  });
+
+  it("copies commit identifiers and reports a clipboard failure", async () => {
+    const user = userEvent.setup();
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const writeText = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    try {
+      render(<SourceControl />);
+      const copy = await screen.findByRole("button", { name: "Copy commit ID" });
+      await user.click(copy);
+      expect(writeText).toHaveBeenCalledWith("abc123");
+
+      writeText.mockRejectedValueOnce(new Error("clipboard blocked"));
+      await user.click(copy);
+      expect(await screen.findByRole("alert")).toHaveTextContent("clipboard blocked");
+    } finally {
+      if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("initializes a repository from the recovery state", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ initialized: false }));
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "Initialize Repository" }));
+    await waitFor(() =>
+      expect(mocks.gitInitialize).toHaveBeenCalledWith("project-1"),
+    );
+  });
+
+  it("keeps remote-only actions disabled when no remote is configured", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ remote: null }));
+    render(<SourceControl />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "More Source Control actions" }),
+    );
+    const menu = screen.getByRole("menu");
+    for (const name of ["Fetch", "Pull", "Push", "Sync"]) {
+      expect(within(menu).getByRole("menuitem", { name })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    }
+    expect(within(menu).getByRole("menuitem", { name: "Publish to GitHub" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
+    expect(within(menu).queryByRole("menuitem", { name: "Unlink" })).not.toBeInTheDocument();
+  });
+
+  it("runs remote actions with the current project and mutation generation", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+    const openActions = async () => {
+      await user.click(
+        screen.getByRole("button", { name: "More Source Control actions" }),
+      );
+      return screen.getByRole("menu");
+    };
+
+    await user.click(within(await openActions()).getByRole("menuitem", { name: "Fetch" }));
+    await waitFor(() => expect(mocks.gitFetch).toHaveBeenCalledWith("project-1"));
+
+    await user.click(within(await openActions()).getByRole("menuitem", { name: "Pull" }));
+    await waitFor(() => expect(fileState.pullFromGit).toHaveBeenCalledWith("project-1"));
+
+    await user.click(within(await openActions()).getByRole("menuitem", { name: "Push" }));
+    await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
+
+    await user.click(within(await openActions()).getByRole("menuitem", { name: "Stash changes" }));
+    await waitFor(() =>
+      expect(mocks.gitStashPush).toHaveBeenCalledWith("project-1", 1),
+    );
+
+    await user.click(within(await openActions()).getByRole("menuitem", { name: "Apply latest stash" }));
+    await waitFor(() =>
+      expect(mocks.gitStashPop).toHaveBeenCalledWith("project-1", 1),
+    );
+  });
+
+  it("checks out a branch through the external mutation boundary", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "main" }));
+    await user.click(screen.getByRole("menuitem", { name: "revision" }));
+    await waitFor(() =>
+      expect(mocks.gitCheckoutBranch).toHaveBeenCalledWith("project-1", "revision", 1),
+    );
+    expect(fileState.runExternalProjectMutation).toHaveBeenCalledWith(
+      "project-1",
+      expect.any(Function),
+    );
+  });
+
+  it("offers incoming and manual conflict recovery, and permits aborting a merge", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({
+        operation: "merge",
+        conflicts: [{ path: "paper/main.tex", status: "UU" }],
+      }),
+    );
+    render(<SourceControl />);
+
+    expect(
+      await screen.findByRole("button", { name: "Complete merge" }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Use incoming" }));
+    await waitFor(() =>
+      expect(mocks.gitResolveConflict).toHaveBeenCalledWith(
+        "project-1",
+        "paper/main.tex",
+        "incoming",
+        1,
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: "Mark resolved" }));
+    await waitFor(() =>
+      expect(mocks.gitResolveConflict).toHaveBeenCalledWith(
+        "project-1",
+        "paper/main.tex",
+        "mark",
+        1,
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: "Abort merge" }));
+    expect(mocks.gitAbortMerge).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Abort this merge?");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Abort merge" }),
+    );
+    await waitFor(() =>
+      expect(mocks.gitAbortMerge).toHaveBeenCalledWith("project-1", 1),
+    );
+  });
+
+  it("reports a failed external action and recovers for the next action", async () => {
+    const user = userEvent.setup();
+    mocks.gitStashPush.mockRejectedValueOnce(new Error("stash failed"));
+    render(<SourceControl />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "More Source Control actions" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Stash changes" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("stash failed");
+
+    await user.click(screen.getByRole("button", { name: "More Source Control actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Fetch" }));
+    await waitFor(() => expect(mocks.gitFetch).toHaveBeenCalledWith("project-1"));
+  });
+
+  it("surfaces what fetch and stash actually did", async () => {
+    const user = userEvent.setup();
+    mocks.gitStashPush.mockResolvedValue({
+      message: "Nothing to stash.",
+      outcome: "unchanged",
+      conflicts: [],
+      projectState,
+    });
+    render(<SourceControl />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "More Source Control actions" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Fetch" }));
+    expect(await screen.findByText("Fetched")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "More Source Control actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Stash changes" }));
+    expect(await screen.findByText("Nothing to stash.")).toBeInTheDocument();
+    expect(mocks.gitStashPush).toHaveBeenCalledWith("project-1", 1);
+  });
+
+  it("opens Graph when another surface requests it", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+
+    const graph = await screen.findByTestId("source-control-graph");
+    await user.click(within(graph).getByRole("button", { name: /Graph/ }));
+    expect(screen.queryByText("Add methods")).not.toBeInTheDocument();
+    act(() =>
+      window.dispatchEvent(new CustomEvent(SOURCE_CONTROL_SHOW_GRAPH_EVENT)),
+    );
+    expect(await screen.findByText("Add methods")).toBeInTheDocument();
+  });
+
+  it("restores a Graph version only after confirmation", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Restore version" }),
+    );
+    const confirmation = screen.getByRole("alertdialog");
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Restore version" }),
+    );
+
+    await waitFor(() =>
+      expect(fileState.restoreFromGit).toHaveBeenCalledWith(
+        "project-1",
+        "abc123",
+      ),
+    );
+    expect(fileState.refreshTree).toHaveBeenCalled();
+  });
+
+  it("blocks Graph restore while a merge is unresolved", async () => {
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({
+        operation: "merge",
+        conflicts: [{ path: "paper/main.tex", status: "UU" }],
+      }),
+    );
+    render(<SourceControl />);
+
+    expect(
+      await screen.findByRole("button", { name: "Restore version" }),
+    ).toBeDisabled();
+  });
+
+  it("drops an older project snapshot when the project changes", async () => {
+    const slowProjectA = deferred<GitWorkspaceSnapshot>();
+    mocks.gitWorkspaceSnapshot.mockImplementation((projectId: string) =>
+      projectId === "project-a"
+        ? slowProjectA.promise
+        : Promise.resolve(
+            snapshot({
+              changes: [
+                {
+                  path: "project-b.tex",
+                  status: "M",
+                  staged: false,
+                  conflict: false,
+                },
+              ],
+            }),
+          ),
+    );
+    fileState.projectId = "project-a";
+    const view = render(<SourceControl />);
+
+    fileState.projectId = "project-b";
+    view.rerender(<SourceControl />);
+    expect(await screen.findByText("project-b.tex")).toBeInTheDocument();
+
+    await act(async () =>
+      slowProjectA.resolve(
+        snapshot({
+          changes: [
+            {
+              path: "project-a.tex",
+              status: "M",
+              staged: false,
+              conflict: false,
+            },
+          ],
+        }),
+      ),
+    );
+    expect(screen.queryByText("project-a.tex")).not.toBeInTheDocument();
+  });
+
+  it("closes the publish dialog when the project changes", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ remote: null }));
+    const view = render(<SourceControl />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "More Source Control actions" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Publish to GitHub" }),
+    );
+    await waitFor(() =>
+      expect(mocks.publishDialog).toHaveBeenLastCalledWith(
+        expect.objectContaining({ open: true, projectId: "project-1" }),
+      ),
+    );
+
+    fileState.projectId = "project-2";
+    fileState.projectName = "Next project";
+    view.rerender(<SourceControl />);
+
+    await waitFor(() =>
+      expect(mocks.publishDialog).toHaveBeenLastCalledWith(
+        expect.objectContaining({ open: false, projectId: "project-2" }),
+      ),
+    );
+  });
+
+  it("only removes a legacy credential after the user chooses the repair action", async () => {
+    const user = userEvent.setup();
     mocks.gitRemoteCredentialsNeedCleanup.mockResolvedValue(true);
     render(<SourceControl />);
 
-    const repair = await screen.findByRole("button", { name: "Remove saved credential" });
+    const repair = await screen.findByRole("button", {
+      name: "Remove saved credential",
+    });
     expect(mocks.gitCleanRemoteCredentials).not.toHaveBeenCalled();
-
     await user.click(repair);
-
     await waitFor(() =>
       expect(mocks.gitCleanRemoteCredentials).toHaveBeenCalledWith("project-1"),
     );
   });
 
-  it("stages and unstages one file and whole sections", async () => {
+  it("keeps remote unlink available from the more-actions menu", async () => {
     const user = userEvent.setup();
-    withRepository();
     render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.stage }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: "More Source Control actions",
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Unlink" }));
     await waitFor(() =>
-      expect(mocks.gitStage).toHaveBeenCalledWith("project-1", "src/main.tex"),
+      expect(mocks.gitRemoveRemote).toHaveBeenCalledWith("project-1"),
     );
-
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.unstage }));
-    await waitFor(() =>
-      expect(mocks.gitUnstage).toHaveBeenCalledWith("project-1", "refs/library.bib"),
+    expect(screen.getByTestId("source-control-status")).toHaveTextContent(
+      "Unlinked from GitHub.",
     );
-
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.stageAll }));
-    await waitFor(() => expect(mocks.gitStageAll).toHaveBeenCalledWith("project-1"));
-
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.unstageAll }));
-    await waitFor(() => expect(mocks.gitUnstageAll).toHaveBeenCalledWith("project-1"));
-
-    expect(mocks.gitStatus.mock.calls.length).toBeGreaterThan(4);
-  });
-
-  it("shows the reason when staging fails", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    mocks.gitStage.mockRejectedValue(new Error("index.lock exists"));
-    render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.stage }));
-
-    expect(await screen.findByText(/index\.lock exists/)).toBeInTheDocument();
-  });
-
-  it("commits the staged set, clears both fields, and retires the notice", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    try {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      withRepository();
-      render(<SourceControl />);
-
-      const title = await screen.findByTestId("commit-title");
-      const body = screen.getByTestId("commit-description");
-      await user.type(title, "Add the results table");
-      await user.click(screen.getByRole("button", { name: /Commit$/ }));
-
-      await waitFor(() =>
-        expect(mocks.gitCommit).toHaveBeenCalledWith("project-1", "Add the results table"),
-      );
-      expect(
-        await screen.findByText(/Committed: "Add the results table"/),
-      ).toBeInTheDocument();
-      expect(title).toHaveValue("");
-      expect(body).toHaveValue("");
-      expect(fileState.refreshTree).toHaveBeenCalled();
-      expect(mocks.gitPush).not.toHaveBeenCalled();
-
-      await act(async () => {
-        vi.advanceTimersByTime(1600);
-      });
-      expect(screen.queryByText(/Committed: "Add the results table"/)).toBeNull();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("joins the title and the description with a blank line", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    render(<SourceControl />);
-
-    const title = await screen.findByTestId("commit-title");
-    expect(title).toHaveAttribute("maxlength", "72");
-    await user.type(title, "Add the results table");
-    await user.type(
-      screen.getByTestId("commit-description"),
-      "Numbers come from the second run.",
-    );
-    await user.click(screen.getByRole("button", { name: /Commit$/ }));
-
-    await waitFor(() =>
-      expect(mocks.gitCommit).toHaveBeenCalledWith(
-        "project-1",
-        "Add the results table\n\nNumbers come from the second run.",
-      ),
-    );
-    expect(await screen.findByText(/Committed: "Add the results table"/)).toBeInTheDocument();
-  });
-
-  it("commits from the title field when Enter is pressed with a staged file", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    render(<SourceControl />);
-
-    await user.type(await screen.findByTestId("commit-title"), "Enter commits{Enter}");
-
-    await waitFor(() =>
-      expect(mocks.gitCommit).toHaveBeenCalledWith("project-1", "Enter commits"),
-    );
-  });
-
-  it("ignores Enter in the title field while nothing is staged", async () => {
-    const user = userEvent.setup();
-    withRepository([{ path: "main.tex", status: "M", staged: false }]);
-    render(<SourceControl />);
-
-    await user.type(await screen.findByTestId("commit-title"), "Nothing staged{Enter}");
-
-    expect(mocks.gitCommit).not.toHaveBeenCalled();
-    expect(await screen.findByText("Stage a file to commit.")).toBeInTheDocument();
-  });
-
-  it("commits and pushes when a token and a remote are both present", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    mocks.getConfig.mockResolvedValue({ github_connected: true });
-    mocks.gitGetRemote.mockResolvedValue("https://github.com/oleafly/project.git");
-    render(<SourceControl />);
-
-    await user.type(await screen.findByTestId("commit-title"), "Push me");
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.push }));
-
-    await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
-    expect(await screen.findByText(/Pushed to origin\/main\./)).toBeInTheDocument();
-  });
-
-  it("reports a commit failure instead of clearing the title", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    mocks.gitCommit.mockRejectedValue(new Error("nothing to commit"));
-    render(<SourceControl />);
-
-    const title = await screen.findByTestId("commit-title");
-    await user.type(title, "Broken commit");
-    await user.click(screen.getByRole("button", { name: /Commit$/ }));
-
-    expect(await screen.findByText(/nothing to commit/)).toBeInTheDocument();
-    expect(title).toHaveValue("Broken commit");
-  });
-
-  it("unlinks the remote and drops the ahead and behind badge", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    mocks.gitGetRemote.mockResolvedValue("https://github.com/oleafly/project.git");
-    mocks.gitAheadBehind.mockResolvedValue({ ahead: 2, behind: 1, has_upstream: true });
-    render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: "Unlink" }));
-
-    await waitFor(() => expect(mocks.gitRemoveRemote).toHaveBeenCalledWith("project-1"));
-    expect(await screen.findByText("Unlinked from GitHub.")).toBeInTheDocument();
-  });
-
-  it("shows the reason when unlinking fails", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    mocks.gitGetRemote.mockResolvedValue("https://github.com/oleafly/project.git");
-    mocks.gitRemoveRemote.mockRejectedValue(new Error("remote origin is missing"));
-    render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: "Unlink" }));
-
-    expect(await screen.findByText(/remote origin is missing/)).toBeInTheDocument();
-  });
-
-  it("shows the reason when initializing fails", async () => {
-    const user = userEvent.setup();
-    mocks.gitInitialize.mockRejectedValue(new Error("permission denied"));
-    render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: "Initialize Repository" }));
-
-    await waitFor(() => expect(mocks.gitInitialize).toHaveBeenCalled());
-    expect(screen.queryByText(/Initialized Git on/)).toBeNull();
-  });
-
-  it("shows the reason when a pull fails", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    mocks.gitGetRemote.mockResolvedValue("https://github.com/oleafly/project.git");
-    fileState.pullFromGit.mockRejectedValue(new Error("merge conflict in main.tex"));
-    render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.pull }));
-
-    expect(await screen.findByText(/merge conflict in main\.tex/)).toBeInTheDocument();
-  });
-
-  it("shows the reason when the credential repair fails", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    mocks.gitRemoteCredentialsNeedCleanup.mockResolvedValue(true);
-    mocks.gitCleanRemoteCredentials.mockRejectedValue(new Error("config is read only"));
-    render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: "Remove saved credential" }));
-
-    expect(await screen.findByText(/config is read only/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove saved credential" })).toBeInTheDocument();
-  });
-
-  it("shows the reason when discarding a file fails", async () => {
-    const user = userEvent.setup();
-    withRepository([{ path: "main.tex", status: "M", staged: false }]);
-    fileState.discardFromGit.mockRejectedValue(new Error("file is locked"));
-    render(<SourceControl />);
-
-    await screen.findByText("main.tex");
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.discard }));
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.confirmDiscard }));
-
-    expect(await screen.findByText(/file is locked/)).toBeInTheDocument();
-  });
-
-  it("still lists changes when the branch, remote, and upstream reads fail", async () => {
-    mocks.gitIsInitialized.mockResolvedValue(true);
-    mocks.gitStatus.mockResolvedValue([{ path: "main.tex", status: "M", staged: false }]);
-    mocks.gitGetRemote.mockRejectedValue(new Error("no remote"));
-    mocks.gitAheadBehind.mockRejectedValue(new Error("no upstream"));
-    mocks.gitRemoteCredentialsNeedCleanup.mockRejectedValue(new Error("unreadable config"));
-    render(<SourceControl />);
-
-    expect(await screen.findByText("main.tex")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Unlink" })).toBeNull();
-    expect(screen.queryByText(enShell.sourceControl.credentialWarning)).toBeNull();
-  });
-
-  it("queues a fresh snapshot and drops the superseded response", async () => {
-    const user = userEvent.setup();
-    const firstInitializedRead = deferred<boolean>();
-    let reads = 0;
-    mocks.gitIsInitialized.mockImplementation(() => {
-      reads += 1;
-      return reads === 1 ? firstInitializedRead.promise : Promise.resolve(true);
-    });
-    mocks.gitCurrentBranch.mockResolvedValue("main");
-    mocks.gitStatus.mockResolvedValue([{ path: "second.tex", status: "M", staged: false }]);
-    render(<SourceControl />);
-
-    await user.click(screen.getByRole("button", { name: enShell.sourceControl.refresh }));
-    expect(reads).toBe(1);
-
-    await act(async () => {
-      firstInitializedRead.resolve(false);
-      await firstInitializedRead.promise;
-    });
-
-    expect(await screen.findByText("second.tex")).toBeInTheDocument();
-    expect(reads).toBe(2);
-    expect(screen.queryByRole("button", { name: "Initialize Repository" })).toBeNull();
-  });
-
-  it("offers publishing to GitHub before a repository exists", async () => {
-    const user = userEvent.setup();
-    render(<SourceControl />);
-
-    await screen.findByRole("button", { name: "Initialize Repository" });
-    const publish = screen.getByRole("button", { name: enShell.sourceControl.publish });
-    await user.click(publish);
-
-    expect(mocks.gitInitialize).not.toHaveBeenCalled();
-    expect(publish).toBeInTheDocument();
-  });
-
-  it("carries the remote hint on an info icon instead of a paragraph", async () => {
-    withRepository();
-    render(<SourceControl />);
-
-    const info = await screen.findByRole("img", { name: enShell.sourceControl.remoteHint });
-    expect(info).toHaveClass("size-3.5", "text-muted-foreground");
-    expect(screen.queryByText(enShell.sourceControl.remoteHint)).toBeNull();
-  });
-
-  it("keeps committing and hides pushing and pulling while GitHub is disconnected", async () => {
-    githubState.status = "disconnected";
-    githubState.user = null;
-    withRepository([{ path: "main.tex", status: "M", staged: false }]);
-    render(<SourceControl />);
-
-    const actions = await screen.findByTestId("source-control-actions");
-    expect(screen.getByTestId("commit-title")).toBeInTheDocument();
-    expect(screen.getByTestId("commit-description")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
-    expect(screen.getByText(enShell.sourceControl.stageToCommit)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: enShell.sourceControl.push })).toBeNull();
-    expect(screen.queryByRole("button", { name: enShell.sourceControl.pull })).toBeNull();
-    expect(actions.firstElementChild).toHaveTextContent("Remote");
-    expect(screen.getByRole("button", { name: enShell.sourceControl.publish })).toBeInTheDocument();
-  });
-
-  it("commits the staged set while GitHub is disconnected", async () => {
-    const user = userEvent.setup();
-    githubState.status = "disconnected";
-    githubState.user = null;
-    withRepository();
-    render(<SourceControl />);
-
-    await user.type(await screen.findByTestId("commit-title"), "Local only commit");
-    await user.click(screen.getByRole("button", { name: /Commit$/ }));
-
-    await waitFor(() =>
-      expect(mocks.gitCommit).toHaveBeenCalledWith("project-1", "Local only commit"),
-    );
-    expect(
-      await screen.findByText(
-        i18n.t(($) => $.shell.sourceControl.committed, { subject: "Local only commit" }),
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("adds pushing and pulling once GitHub is connected", async () => {
-    withRepository([{ path: "main.tex", status: "M", staged: false }]);
-    render(<SourceControl />);
-
-    const actions = await screen.findByTestId("source-control-actions");
-    expect(actions.firstElementChild).toContainElement(screen.getByTestId("commit-title"));
-    expect(screen.getByTestId("commit-description")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: enShell.sourceControl.push })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: enShell.sourceControl.pull })).toBeInTheDocument();
-    expect(screen.getByText(enShell.sourceControl.stageToCommit)).toBeInTheDocument();
-  });
-
-  it("holds the commit layout while the account status is still unknown", async () => {
-    githubState.status = "unknown";
-    githubState.user = null;
-    withRepository([{ path: "main.tex", status: "M", staged: false }]);
-    render(<SourceControl />);
-
-    const actions = await screen.findByTestId("source-control-actions");
-    expect(actions.firstElementChild).toContainElement(screen.getByTestId("commit-title"));
-    expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: enShell.sourceControl.push })).toBeNull();
-    expect(screen.queryByRole("button", { name: enShell.sourceControl.pull })).toBeNull();
-  });
-
-  it("sends Publish to the GitHub settings tab while the account is disconnected", async () => {
-    const user = userEvent.setup();
-    githubState.status = "disconnected";
-    githubState.user = null;
-    withRepository();
-    render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.publish }));
-
-    const settings = useSettingsStore.getState();
-    expect(settings.settingsOpen).toBe(true);
-    expect(settings.settingsInitialSection).toBe("integrations");
-    expect(settings.settingsScrollTarget).toBe("github");
-  });
-
-  it("leaves Settings closed when a connected account publishes", async () => {
-    const user = userEvent.setup();
-    withRepository();
-    render(<SourceControl />);
-
-    await user.click(await screen.findByRole("button", { name: enShell.sourceControl.publish }));
-
-    expect(useSettingsStore.getState().settingsOpen).toBe(false);
   });
 });

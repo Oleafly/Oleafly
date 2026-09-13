@@ -86,7 +86,11 @@ import { formatDateTime, formatNumber } from "@/lib/intl";
 import { notifyError, toast } from "@/lib/toast";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
-import { resolveTourText, TOUR_IDS, tourRegistry } from "@/lib/tours/registry";
+import {
+  AVAILABLE_TOUR_IDS,
+  resolveTourText,
+  tourRegistry,
+} from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
@@ -272,8 +276,12 @@ export function SettingsModal() {
   const [tourGuidesOpen, setTourGuidesOpen] = useState(false);
   const toursEnabled = useTourStore((s) => s.enabled);
   const tours = useTourStore((s) => s.tours);
-  const completedTours = TOUR_IDS.filter((id) => tours[id].status === "completed").length;
-  const dismissedTours = TOUR_IDS.filter((id) => tours[id].status === "dismissed").length;
+  const completedTours = AVAILABLE_TOUR_IDS.filter(
+    (id) => tours[id].status === "completed",
+  ).length;
+  const dismissedTours = AVAILABLE_TOUR_IDS.filter(
+    (id) => tours[id].status === "dismissed",
+  ).length;
   const navigation = developerSettings
     ? [
         ...NAV.slice(0, -1),
@@ -1068,7 +1076,7 @@ export function SettingsModal() {
                   {t(($) => $.shell.settings.tours.summary, {
                     completed: completedTours,
                     dismissed: dismissedTours,
-                    total: TOUR_IDS.length,
+                    total: AVAILABLE_TOUR_IDS.length,
                   })}
                 </span>
               </span>
@@ -1096,7 +1104,7 @@ export function SettingsModal() {
           </div>
           {tourGuidesOpen && (
             <div id="tour-guides-panel" className="space-y-2 border-t p-3">
-              {TOUR_IDS.map((id) => {
+              {AVAILABLE_TOUR_IDS.map((id) => {
                 const status = tours[id].status;
                 const checked = status === "pending";
                 return (
@@ -1144,7 +1152,9 @@ export function SettingsModal() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={!toursEnabled && dismissedTours === TOUR_IDS.length}
+                  disabled={
+                    !toursEnabled && dismissedTours === AVAILABLE_TOUR_IDS.length
+                  }
                   onClick={() => setTourConfirmation("dismiss-all")}
                 >
                   {t(($) => $.shell.settings.tours.dismissAll)}
