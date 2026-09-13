@@ -333,20 +333,20 @@ The catalog includes 14 CLI agents. Each uses its own account, permissions, and 
 
 | Agent | Command |
 | --- | --- |
-| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" /> Claude Code | `claude` |
-| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" /> Codex CLI | `codex` |
-| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" /> Gemini CLI | `gemini` |
-| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" /> Pi | `pi` |
-| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" /> OpenCode | `opencode` |
-| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" /> OpenClaw | `openclaw` |
-| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" /> Cline | `cline` |
-| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" /> Hermes Agent | `hermes` |
-| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" /> CodeBuddy | `codebuddy` |
-| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" /> Kimi Code | `kimi` |
-| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" /> Grok Build | `grok` |
-| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" /> Cursor | `agent` |
-| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" /> DeepSeek Harness | `dsh` |
-| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" /> Qoder | `qodercli` |
+| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" align="middle" /> Claude Code | `claude` |
+| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" align="middle" /> Codex CLI | `codex` |
+| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" align="middle" /> Gemini CLI | `gemini` |
+| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" align="middle" /> Pi | `pi` |
+| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" align="middle" /> OpenCode | `opencode` |
+| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" align="middle" /> OpenClaw | `openclaw` |
+| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" align="middle" /> Cline | `cline` |
+| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" align="middle" /> Hermes Agent | `hermes` |
+| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" align="middle" /> CodeBuddy | `codebuddy` |
+| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" align="middle" /> Kimi Code | `kimi` |
+| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" align="middle" /> Grok Build | `grok` |
+| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" align="middle" /> Cursor | `agent` |
+| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" align="middle" /> DeepSeek Harness | `dsh` |
+| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" align="middle" /> Qoder | `qodercli` |
 
 <small>These marks identify compatible tools and remain the property of their respective owners. They do not imply endorsement.</small>
 
