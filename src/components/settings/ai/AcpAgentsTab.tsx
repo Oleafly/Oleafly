@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import {
   Dialog,
   DialogContent,
@@ -234,7 +235,6 @@ function AgentCard({
       ? t(($) => $.settings.ai.agents.installBridgeNextStep)
       : agent.reason ?? agent.signInHint);
   const cliTitleId = `acp-agent-${agent.definition.id}-cli-title`;
-  const bridgeTitleId = `acp-agent-${agent.definition.id}-bridge-title`;
   const nextStepTitleId = `acp-agent-${agent.definition.id}-next-step-title`;
   return (
     <div
@@ -314,14 +314,12 @@ function AgentCard({
               </div>
             </section>
           )}
-          <section
-            aria-labelledby={bridgeTitleId}
-            data-testid={`acp-agent-bridge-details-${agent.definition.id}`}
-            className={cli ? "space-y-3 border-t border-border/70 pt-4" : "space-y-3"}
+          <CollapsibleSection
+            id={`acp-agent-bridge-details-${agent.definition.id}`}
+            title={t(($) => $.settings.ai.agents.bridgeTitle)}
+            headingLevel="h4"
+            className="bg-background/40"
           >
-            <h5 id={bridgeTitleId} className="text-xs font-semibold text-foreground">
-              {t(($) => $.settings.ai.agents.bridgeTitle)}
-            </h5>
             <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
               <div className="col-span-3 min-w-0">
                 <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -357,7 +355,7 @@ function AgentCard({
                 </dd>
               </div>
             </dl>
-          </section>
+          </CollapsibleSection>
           {(nextStep || bridgeActionAvailable || (projectId && cli)) && (
             <section
               aria-labelledby={nextStepTitleId}

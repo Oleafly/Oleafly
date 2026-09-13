@@ -322,7 +322,7 @@ describe("ACP agent setup acceptance", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("names the vendor CLI it found instead of reporting the agent as not installed", async () => {
+  it("shows vendor CLI details while keeping bridge metadata collapsed until requested", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -369,6 +369,29 @@ describe("ACP agent setup acceptance", () => {
     const bridgeDetails = within(card).getByRole("region", {
       name: copy.bridgeTitle,
     });
+    const bridgeToggle = within(bridgeDetails).getByTestId(
+      "acp-agent-bridge-details-claude-toggle",
+    );
+    const bridgeContent = bridgeDetails.querySelector<HTMLElement>(
+      "#acp-agent-bridge-details-claude-content",
+    );
+    expect(bridgeContent).not.toBeNull();
+    expect(bridgeToggle).toHaveAttribute("aria-expanded", "false");
+    expect(bridgeToggle).toHaveAttribute(
+      "aria-controls",
+      "acp-agent-bridge-details-claude-content",
+    );
+    expect(bridgeContent).toHaveAttribute("hidden");
+    expect(bridgeDetails).not.toHaveTextContent(copy.bridgePathLabel);
+    expect(command).toBeVisible();
+    expect(within(card).getByRole("region", { name: copy.nextStepTitle })).toHaveTextContent(
+      copy.installBridgeNextStep,
+    );
+
+    fireEvent.click(bridgeToggle);
+
+    expect(bridgeToggle).toHaveAttribute("aria-expanded", "true");
+    expect(bridgeContent).not.toHaveAttribute("hidden");
     expect(bridgeDetails).toHaveTextContent(copy.bridgePathLabel);
     expect(bridgeDetails).toHaveTextContent(copy.bridgeSourceLabel);
     expect(bridgeDetails).toHaveTextContent(copy.platformLabel);
@@ -381,9 +404,6 @@ describe("ACP agent setup acceptance", () => {
       copy.bridgeSourceLabel,
     ]);
     expect(bridgeDetails.querySelector("dl")).toHaveClass("grid-cols-3");
-    expect(within(card).getByRole("region", { name: copy.nextStepTitle })).toHaveTextContent(
-      copy.installBridgeNextStep,
-    );
     expect(within(card).getByTestId("acp-agent-install-claude")).toHaveTextContent(
       copy.installBridge,
     );
