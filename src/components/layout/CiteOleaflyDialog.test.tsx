@@ -39,6 +39,7 @@ describe("CiteOleaflyDialog", () => {
   it("reads the app version into the citation card", async () => {
     useCiteOleaflyStore.setState({ open: true });
     render(<CiteOleaflyDialog />);
+    expect(screen.getByTestId("cite-oleafly-dialog")).toHaveClass("max-w-3xl");
     expect(screen.getByText(copy.title)).toBeInTheDocument();
     expect(screen.getByText(copy.description)).toBeInTheDocument();
     await waitFor(() =>

@@ -318,7 +318,7 @@ ${marker}
 `;
 
   await createBlankProject(tauriPage, projectName);
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   const folder = await createEntry(tauriPage, `workspace-${run}`, "dir");
   const rootFile = await createEntry(tauriPage, `root-${run}.tex`, "file");
@@ -387,7 +387,7 @@ ${marker}
   );
 
   await openProject(tauriPage, projectName);
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await expandFolderPath(tauriPage, `${renamedFolder}/chapters`);
   const entries = await listProjectEntries(tauriPage);
   const paths = entries.map((entry) => entry.path);
@@ -426,7 +426,7 @@ test("real import actions copy exact files and recursive folders into exact dest
   writeFileSync(join(nestedFolder, "payload.bin"), nestedBinary);
 
   await createBlankProject(tauriPage, projectName);
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   await setNextImportPaths(tauriPage, [rootTextPath]);
   await tauriPage.focus('[title="Import a file or folder (into the selected folder)"]');

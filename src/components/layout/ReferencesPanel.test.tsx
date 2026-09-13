@@ -136,6 +136,7 @@ describe("ReferencesPanel controls", () => {
     expect(filter.className).toContain("rounded-md");
     expect(filter.className).toContain("focus-visible:ring-ring");
     expect(filter.className).toContain("h-8");
+    expect(filter.parentElement).toHaveClass("mt-2");
   });
 
   it("clears the filter from the inline button", async () => {

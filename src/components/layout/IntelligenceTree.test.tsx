@@ -8,6 +8,7 @@ import {
   IntelligenceTree,
   PanelBreadcrumb,
   PanelState,
+  type IntelligenceTreeExpansionCommand,
   type IntelligenceTreeNode,
 } from "./IntelligenceTree";
 
@@ -69,12 +70,18 @@ const NODES: IntelligenceTreeNode[] = [
   },
 ];
 
-function renderTree(query = "") {
+function renderTree(
+  query = "",
+  expansionCommand: IntelligenceTreeExpansionCommand | null = null,
+  modelKey = "project:1",
+) {
   return render(
     <IntelligenceTree
       label={TREE_LABEL}
       nodes={NODES}
       query={query}
+      modelKey={modelKey}
+      expansionCommand={expansionCommand}
       onActivate={onActivate}
       emptyMessage={EMPTY_MESSAGE}
     />,
@@ -116,6 +123,83 @@ describe("IntelligenceTree", () => {
     expect(orphan).toHaveAttribute("aria-expanded", "false");
     await user.click(orphan);
     await waitFor(() => expect(orphan).toHaveAttribute("aria-expanded", "true"));
+  });
+
+  it("handles repeatable recursive expand-all and collapse-all commands", async () => {
+    const { rerender } = renderTree();
+    expect(screen.queryByText("Buried")).not.toBeInTheDocument();
+
+    rerender(
+      <IntelligenceTree
+        label={TREE_LABEL}
+        nodes={NODES}
+        query=""
+        modelKey="project:1"
+        expansionCommand={{ id: 1, action: "expand-all", modelKey: "project:1" }}
+        onActivate={onActivate}
+        emptyMessage={EMPTY_MESSAGE}
+      />,
+    );
+    expect(await screen.findByText("Buried")).toBeInTheDocument();
+    expect(screen.getByText("sec:intro")).toBeInTheDocument();
+
+    rerender(
+      <IntelligenceTree
+        label={TREE_LABEL}
+        nodes={NODES}
+        query=""
+        modelKey="project:1"
+        expansionCommand={{ id: 2, action: "collapse-all", modelKey: "project:1" }}
+        onActivate={onActivate}
+        emptyMessage={EMPTY_MESSAGE}
+      />,
+    );
+    await waitFor(() => expect(screen.queryByText("Introduction")).not.toBeInTheDocument());
+    expect(screen.queryByText("Buried")).not.toBeInTheDocument();
+  });
+
+  it("resets user expansion overrides when its model changes", async () => {
+    const { rerender } = renderTree(
+      "",
+      { id: 1, action: "collapse-all", modelKey: "project:1" },
+    );
+    await waitFor(() => expect(screen.queryByText("Introduction")).not.toBeInTheDocument());
+
+    rerender(
+      <IntelligenceTree
+        label={TREE_LABEL}
+        nodes={NODES}
+        query=""
+        modelKey="project:2"
+        expansionCommand={{ id: 1, action: "collapse-all", modelKey: "project:1" }}
+        onActivate={onActivate}
+        emptyMessage={EMPTY_MESSAGE}
+      />,
+    );
+    expect(await screen.findByText("Introduction")).toBeInTheDocument();
+    expect(screen.queryByText("Buried")).not.toBeInTheDocument();
+  });
+
+  it("rejects a bulk command from an older snapshot without resetting user state", async () => {
+    render(
+      <IntelligenceTree
+        label={TREE_LABEL}
+        nodes={NODES}
+        query=""
+        modelKey="project"
+        expansionCommandKey="project:revision-2"
+        expansionCommand={{
+          id: 1,
+          action: "collapse-all",
+          modelKey: "project:revision-1",
+        }}
+        onActivate={onActivate}
+        emptyMessage={EMPTY_MESSAGE}
+      />,
+    );
+
+    expect(await screen.findByText("Introduction")).toBeInTheDocument();
+    expect(screen.queryByText("Buried")).not.toBeInTheDocument();
   });
 
   it("walks the rows with the arrow keys", async () => {

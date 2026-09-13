@@ -290,11 +290,31 @@ describe("ReferencesPanel citations and symbols", () => {
     expect(mocks.runCiteOleaflyAction).toHaveBeenCalled();
   });
 
-  it("notes a stale analysis", () => {
+  it("notes a stale analysis with a muted app tooltip", async () => {
     const data = snapshot();
     openProject();
     setState({ status: "success", identity: data.identity, data, stale: true });
     render(<ReferencesPanel />);
+    const info = screen.getByTestId("references-status-info");
+    expect(info).toHaveClass("ml-auto", "text-muted-foreground");
+    expect(info).toHaveAccessibleName(copy.notice.stale);
+    expect(info).not.toHaveClass("text-amber-600", "dark:text-amber-400");
+    const user = userEvent.setup();
+    await user.hover(info);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      copy.notice.stale,
+    );
+    await user.unhover(info);
+    await waitFor(() =>
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
+    );
+    for (let step = 0; step < 12 && document.activeElement !== info; step += 1) {
+      await user.tab();
+    }
+    expect(info).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      copy.notice.stale,
+    );
     expect(screen.getAllByText(copy.notice.stale).length).toBeGreaterThan(0);
   });
 

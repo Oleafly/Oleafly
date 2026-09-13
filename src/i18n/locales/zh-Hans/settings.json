@@ -1,13 +1,23 @@
 {
   "ai": {
     "agents": {
+      "bridgePathLabel": "可执行文件",
+      "bridgeSourceLabel": "来源",
       "bridgeTitle": "ACP 桥接",
       "bridgeUnresolved": "尚未解析到桥接可执行文件。",
+      "checkAgain": "再次检查",
+      "checkFailedTitle": "无法检查已安装的代理",
       "checkInstalled": "检查已安装的代理",
+      "checkingAction": "检查中",
+      "checkingDescription": "Oleafly 正在检查此电脑上的命令行工具，这可能需要一点时间。",
       "checkingInstalled": "正在检查已安装的代理",
+      "checkingTitle": "正在查找命令行代理",
       "cliNotOnPath": "在 PATH 中找不到 {{command}}。",
+      "cliPathLabel": "检测位置",
       "cliTitle": "命令行工具",
       "copySignInCommand": "复制登录命令",
+      "emptyDescription": "安装受支持的命令行代理后，再次检查。",
+      "emptyTitle": "未找到命令行代理",
       "custom": {
         "description": "粘贴代理定义，注册 Oleafly 未内置的代理。",
         "hint": "粘贴包含固定版本 npm 或 uv 包、已验证二进制文件或已安装可执行文件的代理定义。请勿将密码和 API 密钥写入此 JSON。",
@@ -26,7 +36,10 @@
         "title": "安装 {{name}} 桥接 {{version}}"
       },
       "installBridge": "安装桥接程序",
+      "installBridgeNextStep": "先安装 ACP 桥接程序，然后通过命令行工具登录。",
       "intro": "通过 ACP 连接本地代理。每个代理自行管理其模型、工具和登录，API 提供商设置保持独立。请使用官方 CLI 账户登录：Oleafly 不会导入账户令牌，也不会估算订阅配额。",
+      "nextStepTitle": "下一步",
+      "notReported": "未报告",
       "notice": {
         "installed": "{{name}} 已安装。开始对话前，请先通过其 CLI 登录。",
         "registered": "{{name}} 已注册。注册不会安装或启动它。",
@@ -35,6 +48,8 @@
       },
       "openSignInTerminal": "打开登录终端",
       "openTerminal": "打开终端",
+      "platformLabel": "平台",
+      "refreshingStatus": "正在刷新代理状态。当前列表会保持不变。",
       "registry": {
         "description": "在 ACP 注册表中搜索其他团队发布的代理。",
         "hideDistribution": "隐藏分发",
@@ -49,6 +64,8 @@
         "title": "查找更多代理"
       },
       "sectionLabel": "ACP 代理",
+      "signInCommandLabel": "登录命令",
+      "versionLabel": "版本",
       "updateBridge": "更新桥接"
     },
     "approvals": {

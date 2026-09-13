@@ -1,6 +1,18 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import {
+  PanelGroup,
+  Panel,
+  PanelResizeHandle,
+  type ImperativePanelHandle,
+} from "react-resizable-panels";
 import { FileText, Loader2, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -116,85 +128,207 @@ export function ProjectSearch() {
 }
 
 export function FilesPanel() {
+  const { t } = useTranslation(["workspace"]);
+  const [sourceCollapsed, setSourceCollapsed] = useState(false);
+  const [outlineCollapsed, setOutlineCollapsed] = useState(false);
+  const [structureCollapsed, setStructureCollapsed] = useState(true);
+  const sourcePanelRef = useRef<ImperativePanelHandle>(null);
+  const outlinePanelRef = useRef<ImperativePanelHandle>(null);
+  const structurePanelRef = useRef<ImperativePanelHandle>(null);
+  const fillerPanelRef = useRef<ImperativePanelHandle>(null);
+  const fillerResetFrame = useRef<number | null>(null);
+  const stackRef = useRef<HTMLDivElement>(null);
+  const [collapsedSize, setCollapsedSize] = useState(6);
+  const sourceTitle = t(($) => $.workspace.files.title);
+  const outlineTitle = t(($) => $.workspace.outline.title);
+  const structureTitle = t(($) => $.workspace.structure.title);
+
+  useEffect(() => {
+    const stack = stackRef.current;
+    if (!stack) return;
+    const updateCollapsedSize = () => {
+      const height = stack.getBoundingClientRect().height;
+      if (height <= 0) return;
+      const next = Math.max(1.5, Math.min(28, (32 / height) * 100));
+      setCollapsedSize((current) =>
+        Math.abs(current - next) < 0.05 ? current : next,
+      );
+    };
+    updateCollapsedSize();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateCollapsedSize);
+      return () => window.removeEventListener("resize", updateCollapsedSize);
+    }
+    const observer = new ResizeObserver(updateCollapsedSize);
+    observer.observe(stack);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (fillerResetFrame.current !== null) {
+        window.cancelAnimationFrame(fillerResetFrame.current);
+      }
+    },
+    [],
+  );
+
+  const minExpandedSize = Math.max(16, Math.min(32, collapsedSize + 4));
+  const resizeLabel = (first: string, second: string) =>
+    t(($) => $.workspace.explorer.resizeSections, { first, second });
+
+  const keepVisibleStackAtBottom = (layout: number[]) => {
+    if (
+      (layout[3] ?? 0) < 0.1 ||
+      fillerResetFrame.current !== null
+    ) {
+      return;
+    }
+    // The filler exists only so all three sections can be reduced to header
+    // height at once. As soon as any section is open, give that spare space
+    // back to the visible stack so the closed Structure header stays anchored
+    // to the bottom edge.
+    fillerResetFrame.current = window.requestAnimationFrame(() => {
+      fillerResetFrame.current = null;
+      if (!stackRef.current?.isConnected) return;
+      const realPanels = [
+        sourcePanelRef.current,
+        outlinePanelRef.current,
+        structurePanelRef.current,
+      ];
+      if (realPanels.every((panel) => panel?.isCollapsed() === true)) return;
+      fillerPanelRef.current?.resize(0);
+    });
+  };
+
+  const changeCollapsed = (
+    next: boolean,
+    panelRef: RefObject<ImperativePanelHandle | null>,
+    setCollapsed: (collapsed: boolean) => void,
+  ) => {
+    setCollapsed(next);
+    const panel = panelRef.current;
+    if (!panel) return;
+    if (next && panel.isExpanded()) panel.collapse();
+    if (!next && panel.isCollapsed()) panel.expand();
+  };
+
   return (
-    <PanelGroup direction="vertical">
-      {/* The file list keeps the larger share: it is what you navigate by, and
-          the outline below it stays long enough to scan without crowding it.
-          Both stay draggable. */}
-      <Panel id="filetree-v" order={1} defaultSize={60} minSize={15}>
-        <FileTree />
-      </Panel>
-      <PanelResizeHandle
-        style={{ cursor: "row-resize" }}
-        className={cn(
-          "resize-handle-row group flex h-2.5 items-center justify-center",
-          "transition-colors hover:bg-accent/40"
-        )}
-      >
-        <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
-      </PanelResizeHandle>
-      <Panel id="outline-v" order={2} defaultSize={40} minSize={10}>
-        {/* Outline first and open: it answers "where am I in this document",
-            which is the question you have while writing. Structure sits under
-            it, collapsed, for when you want the whole project map. */}
-        <Suspense fallback={<SidebarPanelFallback />}>
-          <OutlineAndStructure />
-        </Suspense>
-      </Panel>
-    </PanelGroup>
+    <div ref={stackRef} data-testid="explorer-stack" className="h-full min-h-0">
+        <PanelGroup
+          direction="vertical"
+          autoSaveId="sidebar-explorer-sections-v3"
+          onLayout={keepVisibleStackAtBottom}
+          className="h-full min-h-0"
+        >
+        <Panel
+          ref={sourcePanelRef}
+          id="source-tree-v"
+          order={1}
+          defaultSize={(100 - collapsedSize) / 2}
+          minSize={minExpandedSize}
+          collapsible
+          collapsedSize={collapsedSize}
+          onCollapse={() => setSourceCollapsed(true)}
+          onExpand={() => setSourceCollapsed(false)}
+        >
+          <FileTree
+            collapsed={sourceCollapsed}
+            onCollapsedChange={(next) =>
+              changeCollapsed(next, sourcePanelRef, setSourceCollapsed)
+            }
+          />
+        </Panel>
+        <SidebarSectionHandle
+          id="source-outline-resize"
+          ariaLabel={resizeLabel(sourceTitle, outlineTitle)}
+        />
+        <Panel
+          ref={outlinePanelRef}
+          id="document-outline-v"
+          order={2}
+          defaultSize={(100 - collapsedSize) / 2}
+          minSize={minExpandedSize}
+          collapsible
+          collapsedSize={collapsedSize}
+          onCollapse={() => setOutlineCollapsed(true)}
+          onExpand={() => setOutlineCollapsed(false)}
+        >
+          <Suspense fallback={<SidebarPanelFallback />}>
+            <DocumentOutline
+              collapsed={outlineCollapsed}
+              onCollapsedChange={(next) =>
+                changeCollapsed(next, outlinePanelRef, setOutlineCollapsed)
+              }
+            />
+          </Suspense>
+        </Panel>
+        <SidebarSectionHandle
+          id="outline-structure-resize"
+          ariaLabel={resizeLabel(outlineTitle, structureTitle)}
+        />
+        <Panel
+          ref={structurePanelRef}
+          id="project-structure-v"
+          order={3}
+          defaultSize={collapsedSize}
+          minSize={minExpandedSize}
+          collapsible
+          collapsedSize={collapsedSize}
+          onCollapse={() => setStructureCollapsed(true)}
+          onExpand={() => setStructureCollapsed(false)}
+        >
+          <Suspense fallback={<SidebarPanelFallback />}>
+            <ProjectStructure
+              collapsed={structureCollapsed}
+              onCollapsedChange={(next) =>
+                changeCollapsed(next, structurePanelRef, setStructureCollapsed)
+              }
+            />
+          </Suspense>
+        </Panel>
+        <PanelResizeHandle
+          id="explorer-filler-resize"
+          disabled
+          aria-hidden="true"
+          tabIndex={-1}
+          className="hidden"
+        />
+        <Panel
+          ref={fillerPanelRef}
+          id="explorer-filler-v"
+          order={4}
+          defaultSize={0}
+          minSize={0}
+          aria-hidden="true"
+          className="pointer-events-none"
+        >
+          <span />
+        </Panel>
+        </PanelGroup>
+    </div>
   );
 }
 
-function SidebarSectionHandle() {
+function SidebarSectionHandle({
+  id,
+  ariaLabel,
+}: Readonly<{
+  id: string;
+  ariaLabel: string;
+}>) {
   return (
     <PanelResizeHandle
+      id={id}
+      aria-label={ariaLabel}
       style={{ cursor: "row-resize" }}
       className={cn(
         "resize-handle-row group flex h-2.5 items-center justify-center",
-        "transition-colors hover:bg-accent/40",
+        "transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
       )}
     >
-      <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
+      <span className="h-0.5 w-8 rounded-full bg-transparent opacity-0 transition-[background-color,opacity] group-hover:bg-ring group-hover:opacity-100 group-focus-visible:bg-ring group-focus-visible:opacity-100 group-data-[resize-handle-state=drag]:bg-ring group-data-[resize-handle-state=drag]:opacity-100" />
     </PanelResizeHandle>
-  );
-}
-
-function OutlineAndStructure() {
-  const [outlineCollapsed, setOutlineCollapsed] = useState(false);
-  const [structureCollapsed, setStructureCollapsed] = useState(true);
-  const bothOpen = !outlineCollapsed && !structureCollapsed;
-
-  if (!bothOpen) {
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        <DocumentOutline
-          collapsed={outlineCollapsed}
-          onCollapsedChange={setOutlineCollapsed}
-        />
-        <ProjectStructure
-          collapsed={structureCollapsed}
-          onCollapsedChange={setStructureCollapsed}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <PanelGroup direction="vertical" autoSaveId="sidebar-outline-structure">
-      <Panel id="doc-outline-v" order={1} defaultSize={50} minSize={12}>
-        <DocumentOutline
-          collapsed={outlineCollapsed}
-          onCollapsedChange={setOutlineCollapsed}
-        />
-      </Panel>
-      <SidebarSectionHandle />
-      <Panel id="project-structure-v" order={2} defaultSize={50} minSize={12}>
-        <ProjectStructure
-          collapsed={structureCollapsed}
-          onCollapsedChange={setStructureCollapsed}
-        />
-      </Panel>
-    </PanelGroup>
   );
 }
 

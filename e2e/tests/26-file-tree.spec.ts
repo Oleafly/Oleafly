@@ -107,7 +107,7 @@ async function startInlineRename(page: Page, from: string, to: string) {
 test("create a scratch file in the tree", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   // Menu operations run in their own tests (fresh pages): right after a
   // create, the tree refresh churn reliably swallows Radix menu-item selection.
@@ -123,7 +123,7 @@ test("create a scratch file in the tree", async ({ tauriPage }) => {
 test("rename a file via the tree three-dot menu", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   // A retry after a mid-rename failure may find the file already renamed
   // (the inline input commits on blur), so accept either starting state.
   await tauriPage.waitForFunction(
@@ -166,7 +166,7 @@ test("rename a file via the tree three-dot menu", async ({ tauriPage }) => {
 test("delete a file via the tree three-dot menu", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await tauriPage.waitForFunction(
     `(document.querySelector('[aria-label="Source tree"]')?.textContent ?? '').includes('renamed.tex')`,
     15_000,
@@ -193,7 +193,7 @@ test("rename collisions offer Cancel, Keep both, and Replace without silent data
   const kept = `collision-target-${run} (2).tex`;
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   await createRootEntry(tauriPage, target, "file");
   await typeInEditorAtStart(tauriPage, `% destination-${run}\n`);
@@ -244,7 +244,7 @@ test("dragging into a folder uses the same collision-safe Keep both flow", async
   const nestedKept = `${folder}/move-${run} (2).tex`;
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   await createRootEntry(tauriPage, name, "file");
   await typeInEditorAtStart(tauriPage, `% moving-${run}\n`);
@@ -283,7 +283,7 @@ test("creating a taken name offers Keep both and never offers Replace", async ({
   const kept = `create-collision-${run} (2).tex`;
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   await createRootEntry(tauriPage, taken, "file");
   await typeInEditorAtStart(tauriPage, `% original-${run}\n`);

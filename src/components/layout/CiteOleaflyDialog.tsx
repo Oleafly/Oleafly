@@ -26,7 +26,7 @@ export function CiteOleaflyDialog() {
   }, [open]);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-xl" data-testid="cite-oleafly-dialog">
+      <DialogContent className="max-w-3xl" data-testid="cite-oleafly-dialog">
         <DialogHeader>
           <DialogTitle>{t(($) => $.shell.citeOleafly.title)}</DialogTitle>
           <DialogDescription>{t(($) => $.shell.citeOleafly.description)}</DialogDescription>

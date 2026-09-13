@@ -1,5 +1,6 @@
 {
   "files": {
+    "collapseAll": "Collapse all folders",
     "confirmDelete": "Delete {{path}}? This cannot be undone.",
     "conflict": {
       "cancelAriaLabel": "Cancel file move",
@@ -13,6 +14,7 @@
     },
     "createFailed": "Could not create \"{{path}}\".",
     "deleteFailed": "Could not delete \"{{path}}\".",
+    "expandAll": "Expand all folders",
     "importAriaLabel": "Import into selected folder",
     "importFiles": "Import file(s)",
     "importFolder": "Import folder",
@@ -37,7 +39,11 @@
     "renameAriaLabel": "Rename file",
     "renameFailed": "Could not rename \"{{path}}\". The original path was left unchanged.",
     "setMain": "Set as main document",
-    "treeAriaLabel": "Source tree"
+    "title": "Explorer",
+    "treeAriaLabel": "Explorer file tree"
+  },
+  "explorer": {
+    "resizeSections": "Resize {{first}} and {{second}}"
   },
   "intelligence": {
     "badges": {
@@ -97,9 +103,14 @@
   },
   "outline": {
     "ariaLabel": "Document outline",
+    "collapseHeading": "Collapse {{title}}",
+    "collapseAll": "Collapse all headings",
     "empty": "No sections or includes in this document.",
+    "emptyDetail": "Add a section heading to build a navigable outline.",
     "entryCount_one": "{{count}} outline entry",
     "entryCount_other": "{{count}} outline entries",
+    "expandHeading": "Expand {{title}}",
+    "expandAll": "Expand all headings",
     "title": "Outline"
   },
   "panelError": {
@@ -108,9 +119,11 @@
   },
   "structure": {
     "ariaLabel": "Document structure",
+    "collapseAll": "Collapse all structure items",
     "empty": "No supported files are present in the project map.",
     "filterLabel": "Filter project structure",
     "filterPlaceholder": "Filter project map…",
+    "expandAll": "Expand all structure items",
     "itemCount_one": "{{count}} structure item",
     "itemCount_other": "{{count}} structure items",
     "noMatch": "No structure matches “{{query}}”.",

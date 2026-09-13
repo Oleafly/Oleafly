@@ -781,6 +781,40 @@ async function until(ready: () => boolean) {
   expect(ready()).toBe(true);
 }
 
+describe("createFile", () => {
+  it("does not refresh or open a created file after the project changes", async () => {
+    let releaseCreate: (value: {
+      status: "created";
+      path: string;
+      generation: number;
+    }) => void = () => {};
+    const started = new Promise<void>((resolveStarted) => {
+      mocks.createFile.mockImplementationOnce(() => {
+        resolveStarted();
+        return new Promise((resolve) => {
+          releaseCreate = resolve;
+        });
+      });
+    });
+
+    const creation = useFilesStore.getState().createFile("notes.tex", false);
+    await started;
+    useFilesStore.setState({
+      projectId: "next-project",
+      tree: [{ path: "notes.tex", is_dir: false }],
+      files: {},
+      openTabs: [],
+      activePath: null,
+    });
+    releaseCreate({ status: "created", path: "notes.tex", generation: 4 });
+    await creation;
+
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().activePath).toBeNull();
+  });
+});
+
 describe("engineErrorMessage", () => {
   it("names both engine failures", () => {
     expect(engineErrorMessage("loadFailed")).toBe(core.engine.error.loadFailed);

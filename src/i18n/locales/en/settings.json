@@ -1,13 +1,23 @@
 {
   "ai": {
     "agents": {
+      "bridgePathLabel": "Executable",
+      "bridgeSourceLabel": "Source",
       "bridgeTitle": "ACP bridge",
       "bridgeUnresolved": "No bridge executable resolved yet.",
+      "checkAgain": "Check again",
+      "checkFailedTitle": "Could not check installed agents",
       "checkInstalled": "Check installed agents",
+      "checkingAction": "Checking",
+      "checkingDescription": "This can take a moment while Oleafly checks the command line tools on this computer.",
       "checkingInstalled": "Checking installed agents",
+      "checkingTitle": "Looking for command line agents",
       "cliNotOnPath": "{{command}} was not found on your PATH.",
+      "cliPathLabel": "Detected at",
       "cliTitle": "Command line tool",
       "copySignInCommand": "Copy sign-in command",
+      "emptyDescription": "Install a supported command line agent, then check again.",
+      "emptyTitle": "No command line agents found",
       "custom": {
         "description": "Paste an agent definition to register an agent Oleafly does not ship.",
         "hint": "Paste an agent definition with a pinned npm or uv package, a verified binary, or an installed executable. Keep passwords and API keys out of this JSON.",
@@ -26,7 +36,10 @@
         "title": "Install {{name}} bridge {{version}}"
       },
       "installBridge": "Install bridge",
+      "installBridgeNextStep": "Install the ACP bridge, then sign in through the command line tool.",
       "intro": "Connect a local agent through ACP. Each agent manages its own models, tools and sign-in, and API provider settings stay separate. Use the official CLI account for sign-in: Oleafly does not import account tokens or estimate subscription quotas.",
+      "nextStepTitle": "Next step",
+      "notReported": "Not reported",
       "notice": {
         "installed": "{{name}} is installed. Sign in through its CLI before starting a conversation.",
         "registered": "{{name}} is registered. Registration does not install or launch it.",
@@ -35,6 +48,8 @@
       },
       "openSignInTerminal": "Open sign-in terminal",
       "openTerminal": "Open terminal",
+      "platformLabel": "Platform",
+      "refreshingStatus": "Refreshing agent status. The current list stays in place.",
       "registry": {
         "description": "Search the ACP registry for agents published by other teams.",
         "hideDistribution": "Hide distribution",
@@ -49,6 +64,8 @@
         "title": "Find more agents"
       },
       "sectionLabel": "ACP agents",
+      "signInCommandLabel": "Sign-in command",
+      "versionLabel": "Version",
       "updateBridge": "Update bridge"
     },
     "approvals": {

@@ -758,7 +758,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
     }
   }
   await replaceEditorSource(tauriPage, fixture.source);
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await expect(tauriPage.getByText("main.tex", { exact: true })).toBeVisible();
   await expect(
     tauriPage.getByText("frontmatter", { exact: true }),
@@ -1214,7 +1214,7 @@ The integrated preview renders a second page.
   expect(liveHighlighting.spans).toBeGreaterThan(10);
   expect(liveHighlighting.colors).toBeGreaterThan(2);
 
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await waitLong(
     tauriPage,
     `!!document.querySelector('[aria-controls="project-structure-content"]')`,

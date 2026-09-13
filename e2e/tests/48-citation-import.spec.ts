@@ -114,7 +114,7 @@ test("importing into a project with no bibliography refreshes the tree and the C
   const name = `Citation Refresh ${Date.now()}`;
   await createBlankProject(tauriPage, name);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 60_000 });
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
 
   expect(await sourceTreePaths(tauriPage)).not.toContain("references.bib");
 

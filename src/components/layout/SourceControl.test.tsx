@@ -183,26 +183,88 @@ describe("SourceControl", () => {
 		expect(screen.getByText("main.tex")).toBeInTheDocument();
 		expect(screen.getByText("Add methods")).toBeInTheDocument();
 		expect(screen.getByText("↑1 ↓2")).toBeInTheDocument();
-		expect(screen.getByTestId("source-control-actions")).toBeInTheDocument();
+		const stagedSection = screen.getByTestId("source-control-staged");
+		const commitActions = screen.getByTestId("source-control-actions");
+		expect(commitActions).toHaveClass("border-t");
+		expect(
+			stagedSection.compareDocumentPosition(commitActions) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).not.toBe(0);
 	});
 
-	it("stages exact working paths from the Changes section menu", async () => {
+	it("shows direct Changes actions and stages exact working paths", async () => {
 		const user = userEvent.setup();
 		render(<SourceControl />);
 
 		const changes = await screen.findByTestId("source-control-changes");
-		await user.click(
-			within(changes).getByRole("button", {
+		expect(
+			within(changes).getByRole("button", { name: "Open all changes" }),
+		).toBeInTheDocument();
+		expect(
+			within(changes).getByRole("button", { name: "Discard all changes" }),
+		).toBeInTheDocument();
+		const stageAll = within(changes).getByRole("button", { name: "Stage all" });
+		expect(within(changes).getByTestId("source-control-changes-actions")).toHaveClass(
+			"opacity-0",
+			"group-hover/section:opacity-100",
+			"group-focus-within/section:opacity-100",
+		);
+		expect(
+			within(changes).queryByRole("button", {
 				name: "More actions for Changes",
 			}),
-		);
-		await user.click(screen.getByRole("menuitem", { name: "Stage all" }));
+		).not.toBeInTheDocument();
+		await user.click(stageAll);
 
 		await waitFor(() =>
 			expect(mocks.gitStagePaths).toHaveBeenCalledWith("project-1", [
 				"paper/main.tex",
 			]),
 		);
+	});
+
+	it("uses compact icons and a GitHub mark in the repository menu", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+
+		await screen.findByText("main.tex");
+		const refresh = screen.getByRole("button", { name: "Refresh" });
+		const moreActions = screen.getByRole("button", {
+			name: "More Source Control actions",
+		});
+		expect(refresh).toHaveClass("size-5", "[&_svg]:size-3");
+		expect(moreActions).toHaveClass("size-5", "[&_svg]:size-3");
+		await user.click(moreActions);
+		const menu = screen.getByRole("menu");
+		for (const label of ["Fetch", "Pull", "Push", "Sync", "Stash changes"]) {
+			expect(
+				within(menu).getByRole("menuitem", { name: label }).querySelector("svg"),
+			).toHaveClass("size-3.5");
+		}
+		expect(
+			within(menu)
+				.getByRole("menuitem", { name: "Change repo" })
+				.querySelector("svg.lucide-github"),
+		).toBeInTheDocument();
+	});
+
+	it("presents the current branch as a badge without a menu divider", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+
+		const branch = await screen.findByRole("button", { name: "main" });
+		expect(branch).toHaveClass(
+			"rounded-full",
+			"border",
+			"border-emerald-500/30",
+			"bg-emerald-500/10",
+			"text-emerald-700",
+			"[&_svg]:size-3",
+		);
+		await user.click(branch);
+		const menu = screen.getByRole("menu");
+		expect(within(menu).getByText("Branches")).toBeInTheDocument();
+		expect(within(menu).queryByRole("separator")).not.toBeInTheDocument();
 	});
 
 	it("opens a working diff or source file and stages only that row", async () => {
@@ -210,21 +272,141 @@ describe("SourceControl", () => {
 		render(<SourceControl />);
 
 		const changes = await screen.findByTestId("source-control-changes");
-		await user.click(within(changes).getByTestId("git-change-paper/main.tex"));
+		const changeButton = within(changes).getByTestId("git-change-paper/main.tex");
+		const changeRow = changeButton.parentElement;
+		if (!changeRow) throw new Error("expected a Git file row");
+		expect(changeButton.querySelector("svg")).toBeInTheDocument();
+		expect(
+			within(changeRow)
+				.getByRole("button", { name: "Open paper/main.tex" })
+				.querySelector("svg.lucide-file-symlink"),
+		).toBeInTheDocument();
+		expect(changeRow).toHaveClass("w-full", "pl-4", "hover:bg-accent/60");
+		const status = within(changes).getByTestId(
+			"git-status-working-paper/main.tex",
+		);
+		expect(changeRow.lastElementChild).toBe(status);
+		expect(changeButton).toHaveAttribute("aria-describedby", status.id);
+		expect(within(changeRow).getAllByRole("button")).toHaveLength(4);
+		for (const label of [
+			"Open paper/main.tex",
+			"Discard changes to paper/main.tex",
+			"Stage paper/main.tex",
+		]) {
+			expect(within(changeRow).getByRole("button", { name: label })).toHaveClass(
+				"opacity-0",
+				"group-hover:opacity-100",
+			);
+		}
+
+		await user.click(changeButton);
 		expect(mocks.openDiff).toHaveBeenCalledWith("paper/main.tex", "working");
 
-		await user.click(within(changes).getByRole("button", { name: "Open file" }));
+		await user.click(
+			within(changes).getByRole("button", { name: "Open paper/main.tex" }),
+		);
 		await waitFor(() =>
 			expect(fileState.openFile).toHaveBeenCalledWith("paper/main.tex"),
 		);
 		expect(mocks.clearActiveDiff).toHaveBeenCalled();
 
-		await user.click(within(changes).getByRole("button", { name: "Stage" }));
+		await user.click(
+			within(changes).getByRole("button", { name: "Stage paper/main.tex" }),
+		);
 		await waitFor(() =>
 			expect(mocks.gitStagePaths).toHaveBeenCalledWith("project-1", [
 				"paper/main.tex",
 			]),
 		);
+	});
+
+	it("uses the shared accordion contract for every Source Control section", async () => {
+		const user = userEvent.setup();
+		render(<SourceControl />);
+
+		for (const [testId, label] of [
+			["source-control-staged", "Staged Changes"],
+			["source-control-changes", "Changes"],
+			["source-control-graph", "Graph"],
+		] as const) {
+			const section = await screen.findByTestId(testId);
+			const toggle = within(section).getByRole("button", {
+				name: label,
+				expanded: true,
+			});
+			const contentId = `${testId}-content`;
+			expect(toggle).toHaveAttribute("aria-controls", contentId);
+			expect(toggle.querySelector("output")).toBeInTheDocument();
+			expect(toggle.parentElement).toHaveClass("hover:bg-sidebar-accent");
+			expect(document.getElementById(contentId)).not.toHaveAttribute("hidden");
+			await user.click(toggle);
+			expect(toggle).toHaveAttribute("aria-expanded", "false");
+			expect(document.getElementById(contentId)).toHaveAttribute("hidden");
+		}
+	});
+
+	it("keeps counts beside titles and section actions at the far right", async () => {
+		render(<SourceControl />);
+
+		const staged = await screen.findByTestId("source-control-staged");
+		const toggle = within(staged).getByRole("button", {
+			name: "Staged Changes",
+		});
+		expect(toggle.querySelector("svg.lucide-book-plus")).toBeInTheDocument();
+		expect(toggle.querySelector("output")).toHaveTextContent("1");
+		expect(toggle.querySelector("output")).toHaveAccessibleName(
+			"1 staged change",
+		);
+		const openAll = within(staged).getByRole("button", {
+			name: "Open all changes",
+		});
+		expect(toggle.parentElement?.lastElementChild).toBe(
+			openAll.parentElement?.parentElement,
+		);
+		expect(within(staged).getByTestId("source-control-staged-actions")).toHaveClass(
+			"opacity-0",
+			"group-hover/section:opacity-100",
+		);
+		const changes = screen.getByTestId("source-control-changes");
+		expect(
+			within(changes)
+				.getByRole("button", { name: "Changes" })
+				.querySelector("svg.lucide-diff"),
+		).toBeInTheDocument();
+		expect(within(changes).getByText("1", { selector: "output" })).toHaveAccessibleName(
+			"1 working change",
+		);
+		const graph = screen.getByTestId("source-control-graph");
+		expect(within(graph).getByText("1", { selector: "output" })).toHaveAccessibleName(
+			"1 commit",
+		);
+	});
+
+	it("renders intentional empty states for staged work and history", async () => {
+		mocks.gitWorkspaceSnapshot.mockResolvedValue(
+			snapshot({ changes: [], commits: [] }),
+		);
+		render(<SourceControl />);
+
+		const staged = await screen.findByTestId("source-control-staged");
+		expect(within(staged).getByText("No staged changes")).toHaveClass(
+			"leading-4",
+		);
+		expect(within(staged).getByText("No staged changes").parentElement).toHaveClass(
+			"justify-center",
+			"text-center",
+		);
+		expect(within(staged).getByTestId("source-control-staged-actions")).toHaveClass(
+			"opacity-0",
+			"group-hover/section:opacity-100",
+		);
+		const graph = screen.getByTestId("source-control-graph");
+		expect(within(graph).getByText("No commits yet")).toHaveClass("leading-4");
+		expect(within(graph).getByText("No commits yet").parentElement).toHaveClass(
+			"justify-center",
+			"text-center",
+		);
+		expect(graph.querySelector("svg.lucide-git-commit-horizontal")).toBeInTheDocument();
 	});
 
 	it("keeps both sides of a partly staged file visible", async () => {
@@ -258,7 +440,11 @@ describe("SourceControl", () => {
 		render(<SourceControl />);
 
 		await screen.findByText("main.tex");
-		await user.click(screen.getByRole("button", { name: "Discard changes" }));
+		await user.click(
+			screen.getByRole("button", {
+				name: "Discard changes to paper/main.tex",
+			}),
+		);
 		await user.click(
 			within(screen.getByRole("alertdialog")).getByRole("button", {
 				name: "Discard changes",
@@ -342,7 +528,7 @@ describe("SourceControl", () => {
 		expect(fileState.refreshTree).toHaveBeenCalled();
 	});
 
-	it("allows a message-only amend when there are no staged files", async () => {
+	it("disables the split commit menu whenever the primary commit is disabled", async () => {
 		const user = userEvent.setup();
 		mocks.gitWorkspaceSnapshot.mockResolvedValue(
 			snapshot({
@@ -359,18 +545,28 @@ describe("SourceControl", () => {
 		render(<SourceControl />);
 
 		await user.type(await screen.findByTestId("commit-title"), "Clarify methods");
-		expect(screen.getByTestId("commit-button")).toBeDisabled();
-		await user.click(
-			screen.getByRole("button", { name: "More commit actions" }),
+		const commitButton = screen.getByTestId("commit-button");
+		expect(commitButton).toHaveAttribute("aria-disabled", "true");
+		expect(screen.queryByText("Stage a file to commit.")).not.toBeInTheDocument();
+		await user.hover(commitButton);
+		expect(await screen.findByRole("tooltip")).toHaveTextContent(
+			"Stage a file to commit.",
 		);
-		await user.click(screen.getByRole("menuitem", { name: "Amend last commit" }));
-
+		await user.unhover(commitButton);
 		await waitFor(() =>
-			expect(mocks.gitCommitAmend).toHaveBeenCalledWith(
-				"project-1",
-				"Clarify methods",
-			),
+			expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
 		);
+		await user.tab();
+		await user.tab();
+		expect(commitButton).toHaveFocus();
+		expect(await screen.findByRole("tooltip")).toHaveTextContent(
+			"Stage a file to commit.",
+		);
+		expect(
+			screen.getByRole("button", { name: "More commit actions" }),
+		).toBeDisabled();
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+		expect(mocks.gitCommitAmend).not.toHaveBeenCalled();
 	});
 
 	it("offers conflict resolution through the project-mutation boundary", async () => {

@@ -411,27 +411,30 @@ export function ReferencesPanel() {
   };
 
   const renderPanelBreadcrumbRow = () => (
-    <div className="mt-1.5 flex min-w-0 items-center gap-2 px-0.5">
-      <PanelBreadcrumb
-        project={projectName || undefined}
-        path={activePath}
-      />
+    <div className="mt-2 flex min-w-0 items-center gap-2 px-0.5">
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <PanelBreadcrumb
+          project={projectName || undefined}
+          path={activePath}
+        />
+      </div>
       {view === "results" && query ? (
         <Tooltip label={query.title} side="bottom">
-          <span className="ml-auto max-w-[48%] shrink truncate text-[9px] font-medium text-sidebar-foreground/75">
+          <span className="min-w-0 max-w-[48%] shrink truncate text-[9px] font-medium text-sidebar-foreground/75">
             {query.title}
           </span>
         </Tooltip>
       ) : null}
       {notice ? (
         <Tooltip label={notice} side="bottom">
-          <span
-            className={`flex shrink-0 items-center text-amber-600 dark:text-amber-400 ${
-              view === "results" && query ? "" : "ml-auto"
-            }`}
+          <button
+            type="button"
+            aria-label={notice}
+            data-testid="references-status-info"
+            className="ml-auto flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <Info aria-hidden className="size-3.5" />
-          </span>
+          </button>
         </Tooltip>
       ) : null}
     </div>
@@ -534,7 +537,7 @@ export function ReferencesPanel() {
             ))}
           </TabsList>
         </Tabs>
-        <div className="relative mt-1.5">
+        <div className="relative mt-2">
           <Search
             aria-hidden
             className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"

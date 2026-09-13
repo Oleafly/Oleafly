@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { FileText, FlaskConical, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
+import { FlaskConical, Folder, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
 import { registerRailTab } from "@oleafly/registry";
 import { i18n } from "@/i18n";
 import { useGitStatusStore } from "@/store/git-status";
@@ -32,7 +32,7 @@ export function registerRailTabs() {
   registerRailTab({
     id: "files",
     label: () => i18n.t(($) => $.shell.rail.files),
-    icon: FileText,
+    icon: Folder,
     section: "explore",
     order: 10,
     panel: FilesPanel,

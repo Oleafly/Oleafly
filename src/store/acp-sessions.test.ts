@@ -110,10 +110,12 @@ describe("ACP catalog and session-list request ordering", () => {
     const registered = [agent("builtin"), agent("newly-registered")];
     vi.mocked(acpCatalog).mockReturnValueOnce(initial.promise).mockResolvedValueOnce(registered);
     const first = useAcpSessionsStore.getState().refreshCatalog();
-    await useAcpSessionsStore.getState().refreshCatalog(true);
+    await expect(
+      useAcpSessionsStore.getState().refreshCatalog(true),
+    ).resolves.toBe(true);
     expect(useAcpSessionsStore.getState().catalog).toEqual(registered);
     initial.resolve([agent("builtin")]);
-    await first;
+    await expect(first).resolves.toBe(false);
     expect(useAcpSessionsStore.getState().catalog).toEqual(registered);
     expect(vi.mocked(acpCatalog).mock.calls).toEqual([[false], [true]]);
   });
@@ -123,8 +125,10 @@ describe("ACP catalog and session-list request ordering", () => {
     const registered = [agent("newly-registered")];
     vi.mocked(acpCatalog).mockReturnValueOnce(initial.promise).mockResolvedValueOnce(registered);
     const first = useAcpSessionsStore.getState().refreshCatalog();
-    const settled = expect(first).resolves.toBeUndefined();
-    await useAcpSessionsStore.getState().refreshCatalog();
+    const settled = expect(first).resolves.toBe(false);
+    await expect(
+      useAcpSessionsStore.getState().refreshCatalog(),
+    ).resolves.toBe(true);
     initial.reject(new Error("The earlier discovery failed."));
     await settled;
     expect(useAcpSessionsStore.getState().catalog).toEqual(registered);
@@ -139,7 +143,7 @@ describe("ACP catalog and session-list request ordering", () => {
     const first = useAcpSessionsStore.getState().refreshCatalog();
     await expect(useAcpSessionsStore.getState().refreshCatalog(true)).rejects.toBe(failure);
     initial.resolve([agent("obsolete")]);
-    await first;
+    await expect(first).resolves.toBe(false);
     expect(useAcpSessionsStore.getState().catalog).toEqual(known);
   });
 
@@ -171,9 +175,17 @@ describe("ACP catalog and session-list request ordering", () => {
 });
 
 describe("ACP controlled conversation selectors", () => {
-  afterEach(cleanup);
-  afterAll(() => {
+  const drainReactScheduler = async () => {
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+  afterEach(async () => {
     cleanup();
+    await drainReactScheduler();
+  });
+  afterAll(async () => {
+    cleanup();
+    await drainReactScheduler();
     restore();
   });
   beforeEach(() => {

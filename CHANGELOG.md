@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Source Control brings everyday Git work into one panel: staged and unstaged
+  files, file and bulk actions, commit title and description fields, amend,
+  push and sync choices, branch and remote actions, a commit graph, and merge
+  conflict resolution. Saved checkpoints remain in Versioning.
+- Explorer stacks the file tree, Outline, and Structure into collapsible,
+  vertically resizable sections. Each tree can expand or collapse in one
+  click, and the layout is remembered between visits.
+
+### Changed
+
+- Source editor lines and Outline entries have more room to breathe. Panel
+  notices now use the same understated icon and in-app tooltip treatment as
+  the rest of the workspace.
+- Checking for local agents now shows progress immediately, keeps the current
+  list in place during a refresh, and explains empty or failed checks. The
+  citation fallback dialog is also wider, so BibTeX is easier to read.
+
 ## [0.4.1] - 2026-09-12
 
 ### Added

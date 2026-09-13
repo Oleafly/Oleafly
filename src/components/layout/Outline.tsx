@@ -1,14 +1,18 @@
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronRight, Info, ListTree } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { CopyMinus, CopyPlus, Info, ListTree } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   IntelligenceFilter,
   IntelligenceTree,
   PanelState,
+  type IntelligenceTreeExpansionCommand,
+  type IntelligenceTreeExpansionState,
   type IntelligenceTreeNode,
 } from "@/components/layout/IntelligenceTree";
+import { SidebarSection } from "@/components/layout/SidebarSection";
 import { buildProjectStructureNodes } from "@/components/layout/project-intelligence-view";
-import { cn } from "@/lib/utils";
 import { acceptedProjectSnapshot } from "@/lib/project-intelligence/current";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import {
@@ -144,11 +148,25 @@ export function Outline({
   const [uncontrolledCollapsed, setUncontrolledCollapsed] =
     useState(defaultCollapsed);
   const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
-  const toggleCollapsed = () => {
-    setUncontrolledCollapsed(!collapsed);
-    onCollapsedChange?.(!collapsed);
+  const setOpen = (open: boolean) => {
+    const next = !open;
+    setUncontrolledCollapsed(next);
+    onCollapsedChange?.(next);
   };
   const [filter, setFilter] = useState("");
+  const [expansionCommand, setExpansionCommand] =
+    useState<IntelligenceTreeExpansionCommand | null>(null);
+  const [treeExpansionState, setTreeExpansionState] =
+    useState<IntelligenceTreeExpansionState>("none");
+  const previousProjectId = useRef(projectId);
+
+  useEffect(() => {
+    if (previousProjectId.current === projectId) return;
+    previousProjectId.current = projectId;
+    setFilter("");
+    setExpansionCommand(null);
+    setTreeExpansionState("none");
+  }, [projectId]);
 
   const snapshot = acceptedProjectSnapshot(
     intelligenceState,
@@ -161,6 +179,23 @@ export function Outline({
   );
   const nodeCount = useMemo(() => countNodes(nodes), [nodes]);
   const notice = useStatusNotice(intelligenceState);
+  const modelKey = snapshot?.identity.projectId;
+  const expansionCommandKey = snapshot
+    ? [
+        snapshot.identity.projectId,
+        snapshot.identity.projectRevision,
+        snapshot.identity.requestGeneration,
+      ].join(":")
+    : undefined;
+  const filterActive = filter.trim().length > 0;
+  const sendExpansionCommand = (action: IntelligenceTreeExpansionCommand["action"]) => {
+    if (!expansionCommandKey || filterActive) return;
+    setExpansionCommand((current) => ({
+      id: (current?.id ?? 0) + 1,
+      action,
+      modelKey: expansionCommandKey,
+    }));
+  };
 
   const navigate = useCallback((node: IntelligenceTreeNode) => {
     if (!node.target) return;
@@ -172,72 +207,86 @@ export function Outline({
   }, []);
 
   return (
-    <section
-      aria-label={t(($) => $.workspace.structure.ariaLabel)}
-      aria-busy={intelligenceState.status === "running"}
-      className={cn(
-        "flex min-h-0 flex-col border-t border-sidebar-border",
-        collapsed ? "shrink-0" : "flex-1",
-      )}
-    >
-      <div className="flex h-8 shrink-0 items-center border-b border-sidebar-border/65">
-        <button
-          type="button"
-          aria-expanded={!collapsed}
-          aria-controls="project-structure-content"
-          onClick={toggleCollapsed}
-          className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75 hover:bg-sidebar-accent"
-        >
-          {collapsed ? (
-            <ChevronRight aria-hidden className="size-3" />
-          ) : (
-            <ChevronDown aria-hidden className="size-3" />
-          )}
-          <ListTree aria-hidden className="size-3.5" />
-          <span className="truncate">{t(($) => $.workspace.structure.title)}</span>
-          {notice ? (
-            <span
-              title={notice}
-              className="flex shrink-0 items-center text-amber-600 dark:text-amber-400"
-            >
+    <SidebarSection
+      id="project-structure"
+      title={t(($) => $.workspace.structure.title)}
+      icon={<ListTree aria-hidden className="size-3.5" />}
+      ariaLabel={t(($) => $.workspace.structure.ariaLabel)}
+      ariaBusy={intelligenceState.status === "running"}
+      count={snapshot ? nodeCount : undefined}
+      countLabel={
+        snapshot
+          ? t(($) => $.workspace.structure.itemCount, { count: nodeCount })
+          : undefined
+      }
+      titleAdornment={
+        notice ? (
+          <Tooltip label={notice} side="right" delay={200}>
+            <span className="flex shrink-0 items-center text-muted-foreground">
               <Info aria-hidden className="size-3.5" />
             </span>
-          ) : null}
-          {snapshot ? (
-            <output
-              aria-label={t(($) => $.workspace.structure.itemCount, { count: nodeCount })}
-              className="ml-auto shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
-            >
-              {nodeCount}
-            </output>
-          ) : null}
-        </button>
-      </div>
-
-      {!collapsed ? (
-        <div
-          id="project-structure-content"
-          className="flex min-h-0 flex-1 flex-col"
+          </Tooltip>
+        ) : null
+      }
+      open={!collapsed}
+      onOpenChange={setOpen}
+      className={collapsed ? "shrink-0" : "h-full flex-1"}
+      contentClassName="flex min-h-0 flex-1 flex-col pb-0"
+      actions={
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          aria-label={t(
+            treeExpansionState === "collapsed"
+              ? ($) => $.workspace.structure.expandAll
+              : ($) => $.workspace.structure.collapseAll,
+          )}
+          title={t(
+            treeExpansionState === "collapsed"
+              ? ($) => $.workspace.structure.expandAll
+              : ($) => $.workspace.structure.collapseAll,
+          )}
+          disabled={
+            !snapshot || filterActive || treeExpansionState === "none"
+          }
+          onClick={() =>
+            sendExpansionCommand(
+              treeExpansionState === "collapsed"
+                ? "expand-all"
+                : "collapse-all",
+            )
+          }
         >
-          <div className="shrink-0 border-b border-sidebar-border/65 px-2 py-1.5">
+          {treeExpansionState === "collapsed" ? (
+            <CopyPlus aria-hidden className="size-3.5" />
+          ) : (
+            <CopyMinus aria-hidden className="size-3.5" />
+          )}
+        </Button>
+      }
+    >
+      <div className="shrink-0 border-b border-sidebar-border/65 px-2 py-1.5">
             <IntelligenceFilter
               value={filter}
               onChange={setFilter}
               label={t(($) => $.workspace.structure.filterLabel)}
               placeholder={t(($) => $.workspace.structure.filterPlaceholder)}
             />
-          </div>
+      </div>
 
-          {notice ? (
-            <output className="sr-only">{notice}</output>
-          ) : null}
+      {notice ? <output className="sr-only">{notice}</output> : null}
 
-          <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
+      <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
             {snapshot ? (
               <IntelligenceTree
                 label={t(($) => $.workspace.structure.treeLabel)}
                 nodes={nodes}
                 query={filter}
+                modelKey={modelKey}
+                expansionCommandKey={expansionCommandKey}
+                expansionCommand={expansionCommand}
+                onExpansionStateChange={setTreeExpansionState}
                 onActivate={navigate}
                 emptyMessage={
                   filter
@@ -252,9 +301,7 @@ export function Outline({
                 activePath={activePath}
               />
             )}
-          </div>
-        </div>
-      ) : null}
-    </section>
+      </div>
+    </SidebarSection>
   );
 }

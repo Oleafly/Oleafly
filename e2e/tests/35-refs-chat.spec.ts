@@ -149,7 +149,7 @@ test("the active conversation survives tab switches and sidebar collapse", async
 
   await askForConcat(tauriPage, `chat ${RUN}s`, "LEMON", "GRAPE");
 
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await openRailTab(tauriPage, "Research Assistant");
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('LEMONGRAPE')`,

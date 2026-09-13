@@ -1,5 +1,6 @@
 import { Trans, useTranslation } from "react-i18next";
 import {
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -10,6 +11,7 @@ import {
 } from "react";
 import {
   ChevronRight,
+  CopyMinus,
   CopyPlus,
   FilePlus,
   Folder,
@@ -40,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFilesStore } from "@/store/files";
+import { SidebarSection } from "@/components/layout/SidebarSection";
 import { fileTreePathIsHidden, useSettingsStore } from "@/store/settings";
 import { FileIcon } from "@/components/files/fileIcon";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
@@ -65,9 +68,36 @@ interface TreeNode {
   children: TreeNode[];
 }
 
+type NewEntryMode = null | "file" | "dir";
+
+interface NewEntryDraft {
+  mode: NewEntryMode;
+  parent: string;
+  value: string;
+}
+
+type NewEntryFinalizeReason = "blur" | "enter";
+
+function directoryPaths(nodes: readonly TreeNode[]): Set<string> {
+  const paths = new Set<string>();
+  const pending = [...nodes];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) continue;
+    if (node.isDir) paths.add(node.path);
+    pending.push(...node.children);
+  }
+  return paths;
+}
+
 function parentOf(path: string): string {
   const i = path.lastIndexOf("/");
   return i >= 0 ? path.slice(0, i) : "";
+}
+
+function remapTreePath(path: string, from: string, to: string): string {
+  if (path === from) return to;
+  return path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : path;
 }
 
 const ROOT = "__root__";
@@ -124,20 +154,30 @@ interface TreeCtx {
   onChangeRename: (v: string) => void;
   onCommitRename: (path: string) => void;
   onCancelRename: () => void;
-  newMode: null | "file" | "dir";
+  newMode: NewEntryMode;
   newParent: string;
   newValue: string;
   onStartNew: (parent: string, mode: "file" | "dir") => void;
   onChangeNew: (v: string) => void;
-  onSubmitNew: () => void;
+  onSubmitNew: (
+    reason: NewEntryFinalizeReason,
+    renderedParent: string,
+  ) => void;
   onCancelNew: () => void;
   dragOver: string | null;
   setDragOver: (p: string | null) => void;
   onMove: (from: string, toDir: string) => void;
 }
 
-export function FileTree() {
-  const { t } = useTranslation(["common", "shell", "workspace"]);
+export function FileTree({
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
+}: Readonly<{
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}> = {}) {
+  const { t } = useTranslation(["common", "workspace"]);
+  const projectId = useFilesStore((s) => s.projectId);
   const tree = useFilesStore((s) => s.tree);
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const activePath = useFilesStore((s) => s.activePath);
@@ -154,13 +194,26 @@ export function FileTree() {
   const mainExtensions = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
   const [selected, setSelected] = useState<{ path: string; isDir: boolean } | null>(null);
-  const [newMode, setNewMode] = useState<null | "file" | "dir">(null);
+  const [newMode, setNewMode] = useState<NewEntryMode>(null);
   const [newParent, setNewParent] = useState("");
   const [newValue, setNewValue] = useState("");
   const [renamePath, setRenamePath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const interactionRevision = useRef({
+    expanded: 0,
+    selected: 0,
+    draft: 0,
+    dragOver: 0,
+  });
+  const draftIntent = useRef<NewEntryDraft>({
+    mode: null,
+    parent: "",
+    value: "",
+  });
+  const renameOperationsInFlight = useRef(0);
   const [conflict, setConflict] = useState<
     | {
         op: "rename";
@@ -194,25 +247,181 @@ export function FileTree() {
       ),
     [hiddenFilePatterns, tree],
   );
+  const directories = useMemo(() => directoryPaths(nodes), [nodes]);
+  const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
 
-  const expand = (p: string) =>
+  const previousProjectId = useRef(projectId);
+  const projectSession = useRef(0);
+  useEffect(() => {
+    // A project switch replaces the complete file tree. Clear every local
+    // interaction state then, and prune state whose path disappeared after a
+    // same-project refresh, so an old selection cannot target another file.
+    if (previousProjectId.current !== projectId) {
+      previousProjectId.current = projectId;
+      projectSession.current += 1;
+      setExpanded(new Set());
+      setSelected(null);
+      setNewMode(null);
+      setNewParent("");
+      setNewValue("");
+      draftIntent.current = { mode: null, parent: "", value: "" };
+      setRenamePath(null);
+      setRenameValue("");
+      setDragOver(null);
+      setConflict(null);
+      setResolvingConflict(false);
+      return;
+    }
+
+    const validPaths = new Set<string>();
+    const visit = (entries: readonly TreeNode[]) => {
+      for (const entry of entries) {
+        validPaths.add(entry.path);
+        visit(entry.children);
+      }
+    };
+    visit(nodes);
+
+    setExpanded((current) =>
+      new Set([...current].filter((path) => directories.has(path))),
+    );
+    setSelected((current) =>
+      current && validPaths.has(current.path) ? current : null,
+    );
+    setRenamePath((current) =>
+      current && validPaths.has(current) ? current : null,
+    );
+    setDragOver((current) =>
+      current === ROOT || (current && directories.has(current)) ? current : null,
+    );
+    setNewMode((current) =>
+      current && newParent && !directories.has(newParent) ? null : current,
+    );
+    if (newParent && !directories.has(newParent)) {
+      setNewParent("");
+      setNewValue("");
+    }
+    setConflict((current) => {
+      if (!current) return null;
+      if (current.op === "rename") {
+        return validPaths.has(current.from) ? current : null;
+      }
+      const parent = parentOf(current.to);
+      return !parent || directories.has(parent) ? current : null;
+    });
+  }, [directories, newParent, nodes, projectId]);
+
+  const interactionPaths = () => ({
+    expanded,
+    selected,
+    draft: { mode: newMode, parent: newParent, value: newValue },
+    dragOver,
+  });
+  const currentInteractionRevision = () => ({ ...interactionRevision.current });
+  const markInteraction = (kind: keyof typeof interactionRevision.current) => {
+    interactionRevision.current[kind] += 1;
+  };
+  const currentProjectOperation = (token: {
+    projectId: string | null;
+    session: number;
+  }) =>
+    token.session === projectSession.current &&
+    useFilesStore.getState().projectId === token.projectId;
+
+  const restoreRemappedInteractionPaths = (
+    from: string,
+    to: string,
+    previous: ReturnType<typeof interactionPaths>,
+    startedAt: ReturnType<typeof currentInteractionRevision>,
+  ) => {
+    const changed = (kind: keyof typeof interactionRevision.current) =>
+      interactionRevision.current[kind] !== startedAt[kind];
+    const sourceDraft = changed("draft") ? draftIntent.current : previous.draft;
+    const remappedDraft = {
+      ...sourceDraft,
+      parent: remapTreePath(sourceDraft.parent, from, to),
+    };
+    setExpanded((current) => {
+      const next = new Set(
+        [...(changed("expanded") ? current : previous.expanded)].map((path) =>
+          remapTreePath(path, from, to),
+        ),
+      );
+      // A nested draft is only mounted inside its expanded parent. Starting
+      // the draft expanded that parent, so preserve that visibility through
+      // the transient pruning caused by the rename refresh.
+      if (remappedDraft.mode && remappedDraft.parent) {
+        next.add(remappedDraft.parent);
+      }
+      return next;
+    });
+    setSelected((current) => {
+      const value = changed("selected") ? current : previous.selected;
+      return value
+        ? {
+            ...value,
+            path: remapTreePath(value.path, from, to),
+          }
+        : null;
+    });
+    draftIntent.current = remappedDraft;
+    setNewMode(remappedDraft.mode);
+    setNewParent(remappedDraft.parent);
+    setNewValue(remappedDraft.value);
+    setDragOver((current) => {
+      const value = changed("dragOver") ? current : previous.dragOver;
+      return value && value !== ROOT ? remapTreePath(value, from, to) : value;
+    });
+  };
+
+  const expand = (p: string) => {
+    markInteraction("expanded");
     setExpanded((prev) => {
       const next = new Set(prev);
       next.add(p);
       return next;
     });
+  };
 
-  const toggle = (path: string) =>
+  const toggle = (path: string) => {
+    markInteraction("expanded");
     setExpanded((prev) => {
       const next = new Set(prev);
       next.has(path) ? next.delete(path) : next.add(path);
       return next;
     });
+  };
+
+  const select = (path: string, isDir: boolean) => {
+    markInteraction("selected");
+    setSelected({ path, isDir });
+  };
+
+  const updateDragOver = (path: string | null) => {
+    markInteraction("dragOver");
+    setDragOver(path);
+  };
 
   const renameOrPrompt = async (from: string, to: string, action: "rename" | "move") => {
+    const previousInteractionPaths = interactionPaths();
+    const startedAt = currentInteractionRevision();
+    const operation = { projectId, session: projectSession.current };
+    renameOperationsInFlight.current += 1;
     try {
-      return await renameEntry(from, to);
+      const destination = await renameEntry(from, to);
+      if (!currentProjectOperation(operation)) return null;
+      // The store refreshes the tree before this promise resolves. Restore
+      // from the pre-operation snapshot so the refresh cannot discard a
+      // selected or expanded descendant before its path is remapped.
+      restoreRemappedInteractionPaths(
+        from,
+        destination,
+        previousInteractionPaths,
+        startedAt,
+      );
+      return destination;
     } catch (error) {
+      if (!currentProjectOperation(operation)) return null;
       if (isFileConflictError(error)) {
         setConflict({ op: "rename", from, to, suggestedDestination: error.suggestedDestination });
       } else {
@@ -225,24 +434,44 @@ export function FileTree() {
         );
       }
       return null;
+    } finally {
+      renameOperationsInFlight.current -= 1;
     }
   };
 
   const resolveConflict = async (strategy: "keep_both" | "replace") => {
     const pending = conflict;
     if (!pending) return;
+    const operation = { projectId, session: projectSession.current };
     setResolvingConflict(true);
     try {
       if (pending.op === "create") {
         await createFile(pending.to, pending.isDir, strategy);
+        if (!currentProjectOperation(operation)) return;
         setConflict(null);
       } else {
-        const destination = await renameEntry(pending.from, pending.to, strategy);
+        const previousInteractionPaths = interactionPaths();
+        const startedAt = currentInteractionRevision();
+        renameOperationsInFlight.current += 1;
+        let destination: string;
+        try {
+          destination = await renameEntry(pending.from, pending.to, strategy);
+        } finally {
+          renameOperationsInFlight.current -= 1;
+        }
+        if (!currentProjectOperation(operation)) return;
         setConflict(null);
+        restoreRemappedInteractionPaths(
+          pending.from,
+          destination,
+          previousInteractionPaths,
+          startedAt,
+        );
         const parent = parentOf(destination);
         if (parent) expand(parent);
       }
     } catch (error) {
+      if (!currentProjectOperation(operation)) return;
       if (isFileConflictError(error)) {
         setConflict({
           ...pending,
@@ -256,7 +485,7 @@ export function FileTree() {
         );
       }
     } finally {
-      setResolvingConflict(false);
+      if (currentProjectOperation(operation)) setResolvingConflict(false);
     }
   };
 
@@ -268,14 +497,31 @@ export function FileTree() {
     const dir = parentOf(oldPath);
     const to = dir ? `${dir}/${newName}` : newName;
     if (to === oldPath) return;
-    await renameOrPrompt(oldPath, to, "rename");
+    const destination = await renameOrPrompt(oldPath, to, "rename");
+    if (!destination) return;
   };
 
   const startNew = (parent: string, mode: "file" | "dir") => {
     if (parent) expand(parent);
+    markInteraction("draft");
+    draftIntent.current = { mode, parent, value: "" };
     setNewParent(parent);
     setNewValue("");
     setNewMode(mode);
+  };
+
+  const changeNewValue = (value: string) => {
+    markInteraction("draft");
+    draftIntent.current = { ...draftIntent.current, value };
+    setNewValue(value);
+  };
+
+  const clearNewDraft = () => {
+    markInteraction("draft");
+    draftIntent.current = { mode: null, parent: "", value: "" };
+    setNewMode(null);
+    setNewParent("");
+    setNewValue("");
   };
 
   const targetDir = () => {
@@ -283,18 +529,32 @@ export function FileTree() {
     return selected.isDir ? selected.path : parentOf(selected.path);
   };
 
-  const submitNew = async () => {
-    const name = newValue.trim();
-    const mode = newMode;
-    const parent = newParent;
-    setNewMode(null);
-    setNewValue("");
+  const submitNew = async (
+    reason: NewEntryFinalizeReason,
+    renderedParent: string,
+  ) => {
+    // Refreshing the tree during a rename temporarily unmounts a draft whose
+    // parent still has its old path. That focus loss is structural, not a user
+    // request to create the old path, so let the rename restore and remap it.
+    if (
+      reason === "blur" &&
+      (renameOperationsInFlight.current > 0 ||
+        renderedParent !== draftIntent.current.parent)
+    ) {
+      return;
+    }
+    const { mode, parent, value } = draftIntent.current;
+    const name = value.trim();
+    clearNewDraft();
     if (!name || !mode) return;
     const path = parent ? `${parent}/${name}` : name;
+    const operation = { projectId, session: projectSession.current };
     try {
       await createFile(path, mode === "dir");
+      if (!currentProjectOperation(operation)) return;
       if (mode === "dir") expand(path);
     } catch (e) {
+      if (!currentProjectOperation(operation)) return;
       if (isFileConflictError(e)) {
         setConflict({
           op: "create",
@@ -309,8 +569,7 @@ export function FileTree() {
   };
 
   const cancelNew = () => {
-    setNewMode(null);
-    setNewValue("");
+    clearNewDraft();
   };
 
   const move = async (from: string, toDir: string) => {
@@ -319,13 +578,17 @@ export function FileTree() {
     if (to === from) return;
     if (toDir === from || toDir.startsWith(`${from}/`)) return; // into itself / a descendant
     const destination = await renameOrPrompt(from, to, "move");
-    if (destination && toDir) expand(toDir);
+    if (destination) {
+      if (toDir) expand(toDir);
+    }
   };
 
   const importInto = async (destDir: string, mode: "file" | "dir") => {
+    const operation = { projectId, session: projectSession.current };
     const sources = await pickImportSources(mode);
-    if (sources.length === 0) return;
+    if (sources.length === 0 || !currentProjectOperation(operation)) return;
     await importPaths(destDir, sources);
+    if (!currentProjectOperation(operation)) return;
     if (destDir) expand(destDir);
   };
 
@@ -335,7 +598,7 @@ export function FileTree() {
     mainDoc,
     activePath,
     selected: selected?.path ?? null,
-    onSelect: (path, isDir) => setSelected({ path, isDir }),
+    onSelect: select,
     onOpen: (path) => {
       // Opening a file from the tree brings the editor forward if a layout was
       // hiding it (AI-only or preview-only), then shows the file.
@@ -367,70 +630,104 @@ export function FileTree() {
     newParent,
     newValue,
     onStartNew: startNew,
-    onChangeNew: setNewValue,
+    onChangeNew: changeNewValue,
     onSubmitNew: submitNew,
     onCancelNew: cancelNew,
     dragOver,
-    setDragOver,
+    setDragOver: updateDragOver,
     onMove: move,
   };
 
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex h-9 items-center justify-between border-b border-sidebar-border px-3">
-        <div className="flex items-center gap-1.5">
-          <FolderTree className="size-3.5 text-muted-foreground" />
-          <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-            {t(($) => $.shell.rail.files)}
-          </span>
-        </div>
-        <div className="flex items-center gap-0.5">
+  const sourceActions = (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        title={t(
+          expanded.size > 0
+            ? ($) => $.workspace.files.collapseAll
+            : ($) => $.workspace.files.expandAll,
+        )}
+        aria-label={t(
+          expanded.size > 0
+            ? ($) => $.workspace.files.collapseAll
+            : ($) => $.workspace.files.expandAll,
+        )}
+        disabled={directories.size === 0}
+        onClick={() => {
+          markInteraction("expanded");
+          setExpanded(expanded.size > 0 ? new Set() : new Set(directories));
+        }}
+      >
+        {expanded.size > 0 ? (
+          <CopyMinus aria-hidden className="size-3.5" />
+        ) : (
+          <CopyPlus aria-hidden className="size-3.5" />
+        )}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        title={t(($) => $.workspace.files.newFileTitle)}
+        aria-label={t(($) => $.workspace.files.newFileAriaLabel)}
+        onClick={() => startNew(targetDir(), "file")}
+      >
+        <FilePlus className="size-3.5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        title={t(($) => $.workspace.files.newFolderTitle)}
+        aria-label={t(($) => $.workspace.files.newFolderAriaLabel)}
+        onClick={() => startNew(targetDir(), "dir")}
+      >
+        <FolderPlus className="size-3.5" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
             className="size-7"
-            title={t(($) => $.workspace.files.newFileTitle)}
-            aria-label={t(($) => $.workspace.files.newFileAriaLabel)}
-            onClick={() => startNew(targetDir(), "file")}
+            title={t(($) => $.workspace.files.importTitle)}
+            aria-label={t(($) => $.workspace.files.importAriaLabel)}
           >
-            <FilePlus className="size-3.5" />
+            <Import className="size-3.5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            title={t(($) => $.workspace.files.newFolderTitle)}
-            aria-label={t(($) => $.workspace.files.newFolderAriaLabel)}
-            onClick={() => startNew(targetDir(), "dir")}
-          >
-            <FolderPlus className="size-3.5" />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                title={t(($) => $.workspace.files.importTitle)}
-                aria-label={t(($) => $.workspace.files.importAriaLabel)}
-              >
-                <Import className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => ctx.onImport(targetDir(), "file")}>
-                <FilePlus className="size-4 text-muted-foreground" /> {t(($) => $.workspace.files.importFiles)}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => ctx.onImport(targetDir(), "dir")}>
-                <FolderPlus className="size-4 text-muted-foreground" /> {t(($) => $.workspace.files.importFolder)}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onClick={() => ctx.onImport(targetDir(), "file")}>
+            <FilePlus className="size-4 text-muted-foreground" /> {t(($) => $.workspace.files.importFiles)}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => ctx.onImport(targetDir(), "dir")}>
+            <FolderPlus className="size-4 text-muted-foreground" /> {t(($) => $.workspace.files.importFolder)}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
 
-      {/* The whole list is a drop target for moving entries back to the root. */}
-      <ContextMenu>
+  return (
+    <>
+      <SidebarSection
+        id="source-tree"
+        title={t(($) => $.workspace.files.title)}
+        icon={<FolderTree aria-hidden className="size-3.5" />}
+        open={!collapsed}
+        onOpenChange={(open) => {
+          const next = !open;
+          setUncontrolledCollapsed(next);
+          onCollapsedChange?.(next);
+        }}
+        className={collapsed ? "shrink-0" : "h-full flex-1"}
+        contentClassName="flex min-h-0 flex-1 flex-col pb-0"
+        actions={sourceActions}
+      >
+        {/* The whole list is a drop target for moving entries back to the root. */}
+        <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
             role="tree"
@@ -442,16 +739,18 @@ export function FileTree() {
             onDragOver={(e) => {
               if (!e.dataTransfer.types.includes("text/plain")) return;
               e.preventDefault();
-              setDragOver(ROOT);
+              updateDragOver(ROOT);
             }}
             onDrop={(e) => {
               e.preventDefault();
               const from = e.dataTransfer.getData("text/plain");
-              setDragOver(null);
+              updateDragOver(null);
               if (from) void move(from, "");
             }}
             onDragLeave={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null);
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                updateDragOver(null);
+              }
             }}
           >
             {newMode && newParent === "" && (
@@ -461,7 +760,7 @@ export function FileTree() {
                 depth={0}
                 parentPath=""
                 onChange={ctx.onChangeNew}
-                onSubmit={ctx.onSubmitNew}
+                onSubmit={(reason) => ctx.onSubmitNew(reason, "")}
                 onCancel={ctx.onCancelNew}
               />
             )}
@@ -485,11 +784,12 @@ export function FileTree() {
             <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
           </ContextMenuItem>
         </ContextMenuContent>
-      </ContextMenu>
+        </ContextMenu>
 
-      <LinkedFoldersSection />
+        <LinkedFoldersSection />
 
-      <TaskOutputsSection />
+        <TaskOutputsSection />
+      </SidebarSection>
 
       {conflict && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
@@ -558,17 +858,20 @@ export function FileTree() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-function useFinalizeOnce(onSubmit: () => void, onCancel: () => void) {
+function useFinalizeOnce(
+  onSubmit: (reason: NewEntryFinalizeReason) => void,
+  onCancel: () => void,
+) {
   const finalizedRef = useRef(false);
   return {
-    submitOnce: () => {
+    submitOnce: (reason: NewEntryFinalizeReason) => {
       if (finalizedRef.current) return;
       finalizedRef.current = true;
-      onSubmit();
+      onSubmit(reason);
     },
     cancelOnce: () => {
       if (finalizedRef.current) return;
@@ -592,7 +895,7 @@ export function NewEntryInput({
   depth: number;
   parentPath: string;
   onChange: (v: string) => void;
-  onSubmit: () => void;
+  onSubmit: (reason: NewEntryFinalizeReason) => void;
   onCancel: () => void;
 }>) {
   const { t } = useTranslation(["workspace"]);
@@ -619,9 +922,9 @@ export function NewEntryInput({
         ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onBlur={submitOnce}
+        onBlur={() => submitOnce("blur")}
         onKeyDown={(e) => {
-          if (e.key === "Enter") submitOnce();
+          if (e.key === "Enter") submitOnce("enter");
           if (e.key === "Escape") cancelOnce();
         }}
         placeholder={
@@ -650,7 +953,10 @@ export function RenameEntryInput({
 }>) {
   const { t } = useTranslation(["workspace"]);
   const inputRef = useInitialFocus<HTMLInputElement>();
-  const { submitOnce, cancelOnce } = useFinalizeOnce(onSubmit, onCancel);
+  const { submitOnce, cancelOnce } = useFinalizeOnce(
+    () => onSubmit(),
+    onCancel,
+  );
 
   return (
     <div style={{ paddingLeft: `${depth * 12 + 0}px` }} className="py-0.5">
@@ -659,9 +965,9 @@ export function RenameEntryInput({
         aria-label={t(($) => $.workspace.files.renameAriaLabel)}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onBlur={submitOnce}
+        onBlur={() => submitOnce("blur")}
         onKeyDown={(e) => {
-          if (e.key === "Enter") submitOnce();
+          if (e.key === "Enter") submitOnce("enter");
           if (e.key === "Escape") cancelOnce();
         }}
         onClick={(e) => e.stopPropagation()}
@@ -886,7 +1192,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
               depth={depth + 1}
               parentPath={node.path}
               onChange={ctx.onChangeNew}
-              onSubmit={ctx.onSubmitNew}
+              onSubmit={(reason) => ctx.onSubmitNew(reason, node.path)}
               onCancel={ctx.onCancelNew}
             />
           )}

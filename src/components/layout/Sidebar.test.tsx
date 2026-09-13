@@ -9,29 +9,82 @@ const mocks = vi.hoisted(() => ({
   openFile: vi.fn(async () => {}),
   revealEditor: vi.fn(),
 }));
+const sourceLabel = "Explorer";
+const outlineLabel = "Outline";
+const structureLabel = "Structure";
 
 vi.mock("@/lib/tauri", () => ({ searchDocs: mocks.searchDocs }));
 vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
 vi.mock("@/components/files/FileTree", () => ({
-  FileTree: () => <div data-testid="file-tree" />,
+  FileTree: ({
+    collapsed,
+    onCollapsedChange,
+  }: {
+    collapsed: boolean;
+    onCollapsedChange: (collapsed: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="file-tree"
+      aria-expanded={!collapsed}
+      onClick={() => onCollapsedChange(!collapsed)}
+    >
+      {sourceLabel}
+    </button>
+  ),
 }));
 vi.mock("@/components/layout/WorkspaceControls", () => ({
   SidebarViews: () => <div data-testid="sidebar-views" />,
 }));
 vi.mock("@/components/layout/DocumentOutline", () => ({
-  DocumentOutline: () => <div data-testid="document-outline" />,
+  DocumentOutline: ({
+    collapsed,
+    onCollapsedChange,
+  }: {
+    collapsed: boolean;
+    onCollapsedChange: (collapsed: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="document-outline"
+      aria-expanded={!collapsed}
+      onClick={() => onCollapsedChange(!collapsed)}
+    >
+      {outlineLabel}
+    </button>
+  ),
 }));
 vi.mock("@/components/layout/Outline", () => ({
-  Outline: () => <div data-testid="project-structure" />,
+  Outline: ({
+    collapsed,
+    onCollapsedChange,
+  }: {
+    collapsed: boolean;
+    onCollapsedChange: (collapsed: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="project-structure"
+      aria-expanded={!collapsed}
+      onClick={() => onCollapsedChange(!collapsed)}
+    >
+      {structureLabel}
+    </button>
+  ),
 }));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { registry } from "@oleafly/registry";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { FilesPanel, ProjectSearch, Sidebar } from "./Sidebar";
 
 const copy = enShell.projectSearch;
+const resizeLabel = (first: string, second: string) =>
+  enWorkspace.explorer.resizeSections
+    .replace("{{first}}", first)
+    .replace("{{second}}", second);
 
 const HIT = {
   project_id: "p1",
@@ -112,11 +165,39 @@ describe("ProjectSearch", () => {
 });
 
 describe("Sidebar", () => {
-  it("stacks the file tree over the outline and the structure map", async () => {
+  it("stacks Explorer, Outline, and Structure without a redundant title row", async () => {
     render(<FilesPanel />);
+    expect(screen.queryByRole("heading", { name: enShell.rail.files })).not.toBeInTheDocument();
+    const sourceOutlineHandle = screen.getByLabelText(
+      resizeLabel(enWorkspace.files.title, enWorkspace.outline.title),
+    );
+    expect(sourceOutlineHandle).toBeInTheDocument();
+    expect(sourceOutlineHandle.firstElementChild).toHaveClass(
+      "opacity-0",
+      "group-hover:opacity-100",
+      "group-focus-visible:opacity-100",
+      "group-data-[resize-handle-state=drag]:opacity-100",
+    );
+    expect(
+      screen.getByLabelText(
+        resizeLabel(enWorkspace.outline.title, enWorkspace.structure.title),
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("file-tree")).toBeInTheDocument();
     expect(await screen.findByTestId("document-outline")).toBeInTheDocument();
     expect(screen.getByTestId("project-structure")).toBeInTheDocument();
+    expect(screen.getByTestId("file-tree")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByTestId("document-outline")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByTestId("project-structure")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 
   it("falls back to the files panel for an unknown rail tab", async () => {

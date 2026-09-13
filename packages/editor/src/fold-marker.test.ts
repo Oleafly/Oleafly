@@ -54,6 +54,12 @@ describe("foldMarkerDOM", () => {
 });
 
 describe("gutter width, from the cascade rather than layout", () => {
+  it("uses the roomier document line height", () => {
+    const view = mountGutters("one\ntwo\nthree");
+
+    expect(styleOf(view, ".cm-scroller").lineHeight).toBe("1.7");
+  });
+
   it("sizes the fold column to the marker with no padding around it", () => {
     const view = mountGutters("one\ntwo\nthree");
     const marker = styleOf(view, ".cm-fold-marker");

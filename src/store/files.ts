@@ -1296,10 +1296,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId } = get();
     if (!projectId) return;
     const result = await apiCreateFile(projectId, path, isDir, conflictStrategy);
+    if (get().projectId !== projectId) return;
     if (Number.isSafeInteger(result?.generation)) {
       rememberMutationGeneration(projectId, result.generation);
     }
     await get().refreshTree();
+    if (get().projectId !== projectId) return;
     // keep_both may have diverted to a sibling name; open what was created.
     if (!isDir) await get().openFile(result.path);
   },

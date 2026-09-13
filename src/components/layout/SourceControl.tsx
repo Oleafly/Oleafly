@@ -17,12 +17,17 @@ import type {
 } from "@oleafly/backend-port";
 import {
 	Archive,
+	BookPlus,
 	Check,
 	ChevronDown,
 	CloudDownload,
 	Copy,
-	FileText,
+	Diff,
+	FileSymlink,
+	Files,
+	Github,
 	GitBranch,
+	GitCommitHorizontal,
 	GitMerge,
 	GitPullRequest,
 	Loader2,
@@ -49,12 +54,13 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { FileIcon } from "@/components/files/fileIcon";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { GithubMenu } from "@/components/layout/GithubMenu";
-import { SourceControlSection } from "@/components/layout/source-control/SourceControlSection";
+import { SidebarSection } from "@/components/layout/SidebarSection";
 import {
 	consumeSourceControlGraphRequest,
 	SOURCE_CONTROL_SHOW_GRAPH_EVENT,
@@ -311,6 +317,7 @@ export function SourceControl() {
 		commitFlowReady &&
 		(snapshot?.commits.length ?? 0) > 0 &&
 		title.trim().length > 0;
+	const showStageToCommitHint = staged.length === 0 && changes.length > 0;
 	const openSourceFile = async (path: string) => {
 		try {
 			await openFile(path);
@@ -479,28 +486,35 @@ export function SourceControl() {
 	const row = (change: GitFileChange) => {
 		const info = statusMeta(change.status);
 		const name = change.path.split("/").pop() ?? change.path;
+		const openLabel = t(($) => $.shell.sourceControl.openFileFor, {
+			path: change.path,
+		});
+		const discardLabel = t(($) => $.shell.sourceControl.discardFor, {
+			path: change.path,
+		});
+		const stageLabel = t(
+			change.staged
+				? ($) => $.shell.sourceControl.unstageFor
+				: ($) => $.shell.sourceControl.stageFor,
+			{ path: change.path },
+		);
+		const statusId = `git-status-${change.staged ? "staged" : "working"}-${encodeURIComponent(change.path)}`;
 		const directory = change.path.includes("/")
 			? change.path.slice(0, change.path.lastIndexOf("/"))
 			: "";
 		return (
 			<div
 				key={`${change.staged ? "staged" : "change"}:${change.path}`}
-				className="group flex items-center gap-1 px-2 py-1 hover:bg-accent/60 focus-within:bg-accent/60"
+				className="group flex w-full items-center gap-1 py-1 pl-4 pr-2 hover:bg-accent/60 focus-within:bg-accent/60"
 			>
 				<button
 					type="button"
 					data-testid={`git-change-${change.path}`}
+					aria-describedby={statusId}
 					onClick={() => openChange(change)}
 					className="flex min-w-0 flex-1 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 				>
-					<span
-						className={cn(
-							"flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-semibold",
-							info.cls,
-						)}
-					>
-						{info.label}
-					</span>
+					<FileIcon name={name} className="size-4 shrink-0" />
 					<span className="min-w-0">
 						<span className="block truncate text-xs font-medium">{name}</span>
 						{directory ? (
@@ -513,18 +527,18 @@ export function SourceControl() {
 				<Tooltip label={t(($) => $.shell.sourceControl.openFile)}>
 					<button
 						type="button"
-						aria-label={t(($) => $.shell.sourceControl.openFile)}
+						aria-label={openLabel}
 						onClick={() => void openSourceFile(change.path)}
 						className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent hover:text-foreground"
 					>
-						<FileText className="size-3.5" />
+						<FileSymlink className="size-3.5" />
 					</button>
 				</Tooltip>
 				{!change.staged ? (
 					<Tooltip label={t(($) => $.shell.sourceControl.discard)}>
 						<button
 							type="button"
-							aria-label={t(($) => $.shell.sourceControl.discard)}
+							aria-label={discardLabel}
 							disabled={busy}
 							onClick={() => requestDiscard([change.path])}
 							className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-destructive/10 hover:text-destructive"
@@ -542,11 +556,7 @@ export function SourceControl() {
 				>
 					<button
 						type="button"
-						aria-label={
-							change.staged
-								? t(($) => $.shell.sourceControl.unstage)
-								: t(($) => $.shell.sourceControl.stage)
-						}
+						aria-label={stageLabel}
 						disabled={busy}
 						onClick={() =>
 							change.staged
@@ -562,45 +572,77 @@ export function SourceControl() {
 						)}
 					</button>
 				</Tooltip>
+				<span
+					id={statusId}
+					data-testid={`git-status-${change.staged ? "staged" : "working"}-${change.path}`}
+					className={cn(
+						"ml-1 flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-semibold",
+						info.cls,
+					)}
+				>
+					{info.label}
+				</span>
 			</div>
 		);
 	};
-	const menu = (kind: "staged" | "changes") => {
+	const sectionActions = (kind: "staged" | "changes") => {
 		const entries = kind === "staged" ? staged : changes;
+		const paths = entries.map((entry) => entry.path);
+		const actionClass =
+			"flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground";
 		return (
 			<>
-				<DropdownMenuItem
-					disabled={!entries.length}
-					onSelect={() => openAll(entries)}
-				>
-					{t(($) => $.shell.sourceControl.openAllChanges)}
-				</DropdownMenuItem>
+				<Tooltip label={t(($) => $.shell.sourceControl.openAllChanges)}>
+					<button
+						type="button"
+						aria-label={t(($) => $.shell.sourceControl.openAllChanges)}
+						className={actionClass}
+						disabled={!entries.length}
+						onClick={() => openAll(entries)}
+					>
+						<Files aria-hidden className="size-3.5" />
+					</button>
+				</Tooltip>
 				{kind === "changes" ? (
 					<>
-						<DropdownMenuItem
-							disabled={!entries.length || busy}
-							onSelect={() => stagePaths(entries.map((entry) => entry.path))}
-						>
-							{t(($) => $.shell.sourceControl.stageAll)}
-						</DropdownMenuItem>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							disabled={!entries.length || busy}
-							onSelect={() =>
-								requestDiscard(entries.map((entry) => entry.path))
-							}
-							className="text-destructive focus:text-destructive"
-						>
-							{t(($) => $.shell.sourceControl.discardAll)}
-						</DropdownMenuItem>
+						<Tooltip label={t(($) => $.shell.sourceControl.discardAll)}>
+							<button
+								type="button"
+								aria-label={t(($) => $.shell.sourceControl.discardAll)}
+								className={cn(
+									actionClass,
+									"hover:bg-destructive/10 hover:text-destructive",
+								)}
+								disabled={!entries.length || busy}
+								onClick={() => requestDiscard(paths)}
+							>
+								<Undo2 aria-hidden className="size-3.5" />
+							</button>
+						</Tooltip>
+						<Tooltip label={t(($) => $.shell.sourceControl.stageAll)}>
+							<button
+								type="button"
+								aria-label={t(($) => $.shell.sourceControl.stageAll)}
+								className={actionClass}
+								disabled={!entries.length || busy}
+								onClick={() => stagePaths(paths)}
+							>
+								<Plus aria-hidden className="size-3.5" />
+							</button>
+						</Tooltip>
 					</>
 				) : (
-					<DropdownMenuItem
-						disabled={!entries.length || busy}
-						onSelect={() => unstagePaths(entries.map((entry) => entry.path))}
-					>
-						{t(($) => $.shell.sourceControl.unstageAll)}
-					</DropdownMenuItem>
+					<Tooltip label={t(($) => $.shell.sourceControl.unstageAll)}>
+						<button
+							type="button"
+							aria-label={t(($) => $.shell.sourceControl.unstageAll)}
+							className={actionClass}
+							disabled={!entries.length || busy}
+							onClick={() => unstagePaths(paths)}
+						>
+							<RotateCcw aria-hidden className="size-3.5" />
+						</button>
+					</Tooltip>
 				)}
 			</>
 		);
@@ -736,87 +778,6 @@ export function SourceControl() {
 					</div>
 				</div>
 			) : null}
-			<div
-				data-testid="source-control-actions"
-				className="shrink-0 border-b border-sidebar-border p-2"
-			>
-				<Input
-					data-testid="commit-title"
-					value={title}
-					onChange={(event) => setTitle(event.target.value)}
-					onKeyDown={onCommitKeyDown}
-					maxLength={COMMIT_TITLE_LIMIT}
-					placeholder={t(($) => $.shell.sourceControl.commitTitle)}
-					aria-label={t(($) => $.shell.sourceControl.commitTitle)}
-					className="h-8 text-xs"
-				/>
-				<Textarea
-					data-testid="commit-description"
-					value={description}
-					onChange={(event) => setDescription(event.target.value)}
-					rows={2}
-					placeholder={t(
-						($) => $.shell.sourceControl.commitDescriptionPlaceholder,
-					)}
-					aria-label={t(($) => $.shell.sourceControl.commitDescription)}
-					className="mt-1.5 min-h-14 resize-none text-xs"
-				/>
-				<div className="mt-1.5 flex">
-					<Button
-						data-testid="commit-button"
-						size="sm"
-						className="h-8 flex-1 rounded-r-none"
-						disabled={!canCommit}
-						onClick={() => void submit("commit")}
-					>
-						{busy ? <Loader2 className="animate-spin" /> : <Check />}
-						{t(($) => $.shell.sourceControl.commit)}
-					</Button>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button
-								size="sm"
-								className="h-8 rounded-l-none border-l border-primary-foreground/30 px-2"
-								disabled={busy}
-								aria-label={t(($) => $.shell.sourceControl.commitActions)}
-							>
-								<ChevronDown />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuItem
-								disabled={!canCommit}
-								onSelect={() => void submit("commit")}
-							>
-								{t(($) => $.shell.sourceControl.commit)}
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								disabled={!canAmend}
-								onSelect={() => void submit("amend")}
-							>
-								{t(($) => $.shell.sourceControl.commitAmend)}
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								disabled={!canCommit || !remote}
-								onSelect={() => void submit("push")}
-							>
-								{t(($) => $.shell.sourceControl.commitAndPush)}
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								disabled={!canCommit || !remote}
-								onSelect={() => void submit("sync")}
-							>
-								{t(($) => $.shell.sourceControl.commitAndSync)}
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
-				{staged.length === 0 && changes.length > 0 ? (
-					<p className="mt-1.5 text-[10px] text-muted-foreground">
-						{t(($) => $.shell.sourceControl.stageToCommit)}
-					</p>
-				) : null}
-			</div>
 			{snapshot.operation === "merge" || conflicts.length ? (
 				<div className="mx-2 mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 p-2">
 					<div className="flex items-center gap-2 text-xs font-medium">
@@ -926,39 +887,46 @@ export function SourceControl() {
 				</div>
 			) : null}
 			<div className="min-h-0 flex-1 overflow-auto pt-1">
-				<SourceControlSection
+				<SidebarSection
 					id="source-control-staged"
 					title={t(($) => $.shell.sourceControl.stagedChanges)}
-					menuLabel={t(($) => $.shell.sourceControl.sectionActions, {
-						section: t(($) => $.shell.sourceControl.stagedChanges),
-					})}
+					icon={<BookPlus aria-hidden className="size-3.5" />}
 					count={staged.length}
+					countLabel={t(($) => $.shell.sourceControl.stagedChangeCount, {
+						count: staged.length,
+					})}
 					open={sectionOpen.staged}
 					onOpenChange={(open) =>
 						setSectionOpen((value) => ({ ...value, staged: open }))
 					}
-					menu={menu("staged")}
+					actions={sectionActions("staged")}
 				>
 					{staged.length ? (
 						staged.map(row)
 					) : (
-						<p className="px-3 py-2 text-[11px] text-muted-foreground">
-							{t(($) => $.shell.sourceControl.noStagedChanges)}
-						</p>
+						<div className="flex min-h-20 items-center justify-center gap-2.5 px-3 py-4 text-center text-muted-foreground/75">
+							<span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
+								<BookPlus aria-hidden className="size-3.5" />
+							</span>
+							<p className="text-[11px] leading-4">
+								{t(($) => $.shell.sourceControl.noStagedChanges)}
+							</p>
+						</div>
 					)}
-				</SourceControlSection>
-				<SourceControlSection
+				</SidebarSection>
+				<SidebarSection
 					id="source-control-changes"
 					title={t(($) => $.shell.sourceControl.changes)}
-					menuLabel={t(($) => $.shell.sourceControl.sectionActions, {
-						section: t(($) => $.shell.sourceControl.changes),
-					})}
+					icon={<Diff aria-hidden className="size-3.5" />}
 					count={changes.length}
+					countLabel={t(($) => $.shell.sourceControl.workingChangeCount, {
+						count: changes.length,
+					})}
 					open={sectionOpen.changes}
 					onOpenChange={(open) =>
 						setSectionOpen((value) => ({ ...value, changes: open }))
 					}
-					menu={menu("changes")}
+					actions={sectionActions("changes")}
 				>
 					{changes.length ? (
 						changes.map(row)
@@ -967,11 +935,19 @@ export function SourceControl() {
 							{t(($) => $.shell.sourceControl.clean)}
 						</p>
 					)}
-				</SourceControlSection>
-				<SourceControlSection
+				</SidebarSection>
+				<SidebarSection
 					id="source-control-graph"
 					title={t(($) => $.shell.sourceControl.graph)}
+					icon={<GitBranch aria-hidden className="size-3.5" />}
 					count={snapshot?.commits.length}
+					countLabel={
+						snapshot
+							? t(($) => $.shell.sourceControl.commitCount, {
+									count: snapshot.commits.length,
+								})
+							: undefined
+					}
 					open={sectionOpen.graph}
 					onOpenChange={(open) =>
 						setSectionOpen((value) => ({ ...value, graph: open }))
@@ -1037,11 +1013,16 @@ export function SourceControl() {
 							))}
 						</ol>
 					) : (
-						<p className="px-3 py-2 text-[11px] text-muted-foreground">
-							{t(($) => $.shell.sourceControl.noHistory)}
-						</p>
+						<div className="flex min-h-20 items-center justify-center gap-2.5 px-3 py-4 text-center text-muted-foreground/75">
+							<span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
+								<GitCommitHorizontal aria-hidden className="size-3.5" />
+							</span>
+							<p className="text-[11px] leading-4">
+								{t(($) => $.shell.sourceControl.noHistory)}
+							</p>
+						</div>
 					)}
-				</SourceControlSection>
+				</SidebarSection>
 			</div>
 			{notice ? (
 				<div
@@ -1057,6 +1038,91 @@ export function SourceControl() {
 					{notice.text}
 				</div>
 			) : null}
+			<div
+				data-testid="source-control-actions"
+				className="shrink-0 border-t border-sidebar-border p-2"
+			>
+				<Input
+					data-testid="commit-title"
+					value={title}
+					onChange={(event) => setTitle(event.target.value)}
+					onKeyDown={onCommitKeyDown}
+					maxLength={COMMIT_TITLE_LIMIT}
+					placeholder={t(($) => $.shell.sourceControl.commitTitle)}
+					aria-label={t(($) => $.shell.sourceControl.commitTitle)}
+					className="h-8 text-xs"
+				/>
+				<Textarea
+					data-testid="commit-description"
+					value={description}
+					onChange={(event) => setDescription(event.target.value)}
+					rows={2}
+					placeholder={t(
+						($) => $.shell.sourceControl.commitDescriptionPlaceholder,
+					)}
+					aria-label={t(($) => $.shell.sourceControl.commitDescription)}
+					className="mt-1.5 min-h-14 resize-none text-xs"
+				/>
+				<div className="mt-1.5 flex">
+					<Tooltip
+						label={t(($) => $.shell.sourceControl.stageToCommit)}
+						suppressed={!showStageToCommitHint || busy}
+						className="min-w-0 flex-1"
+					>
+						<Button
+							data-testid="commit-button"
+							size="sm"
+							className="h-8 w-full rounded-r-none aria-[disabled=true]:pointer-events-none aria-[disabled=true]:opacity-50"
+							disabled={busy}
+							aria-disabled={!canCommit}
+							onClick={() => {
+								if (canCommit) void submit("commit");
+							}}
+						>
+							{busy ? <Loader2 className="animate-spin" /> : <Check />}
+							{t(($) => $.shell.sourceControl.commit)}
+						</Button>
+					</Tooltip>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								size="sm"
+								className="h-8 rounded-l-none border-l border-primary-foreground/30 px-2"
+								disabled={!canCommit}
+								aria-label={t(($) => $.shell.sourceControl.commitActions)}
+							>
+								<ChevronDown />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem
+								disabled={!canCommit}
+								onSelect={() => void submit("commit")}
+							>
+								{t(($) => $.shell.sourceControl.commit)}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={!canAmend}
+								onSelect={() => void submit("amend")}
+							>
+								{t(($) => $.shell.sourceControl.commitAmend)}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={!canCommit || !remote}
+								onSelect={() => void submit("push")}
+							>
+								{t(($) => $.shell.sourceControl.commitAndPush)}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={!canCommit || !remote}
+								onSelect={() => void submit("sync")}
+							>
+								{t(($) => $.shell.sourceControl.commitAndSync)}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
+			</div>
 			<ConfirmationDialog
 				open={discardConfirmation !== null}
 				title={discardConfirmation?.title ?? ""}
@@ -1155,11 +1221,12 @@ function Header({
 							<Button
 								variant="ghost"
 								size="xs"
-								className="max-w-28 gap-1"
+								className="h-6 max-w-32 gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 text-[11px] text-emerald-700 hover:bg-emerald-500/15 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200 [&_svg]:size-3"
 								disabled={busy}
 							>
-								<GitBranch /> <span className="truncate">{branch}</span>
-								<ChevronDown />
+								<GitBranch aria-hidden />
+								<span className="truncate">{branch}</span>
+								<ChevronDown aria-hidden />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
@@ -1175,7 +1242,6 @@ function Header({
 									{item}
 								</DropdownMenuItem>
 							))}
-							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								disabled={busy || !onCreateBranch}
 								onSelect={() => onBranchFormOpen?.(true)}
@@ -1197,12 +1263,12 @@ function Header({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="size-6"
+						className="size-5 [&_svg]:size-3"
 						aria-label={t(($) => $.shell.sourceControl.refresh)}
 						disabled={busy}
 						onClick={() => void onRefresh()}
 					>
-						<RefreshCw className="size-3.5" />
+						<RefreshCw />
 					</Button>
 				</Tooltip>
 				<DropdownMenu>
@@ -1210,11 +1276,11 @@ function Header({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="size-6"
+							className="size-5 [&_svg]:size-3"
 							aria-label={t(($) => $.shell.sourceControl.moreActions)}
 							disabled={busy}
 						>
-							<MoreHorizontal className="size-4" />
+							<MoreHorizontal />
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
@@ -1222,19 +1288,19 @@ function Header({
 							disabled={busy || !remote || !onFetch}
 							onSelect={onFetch}
 						>
-							<CloudDownload />
+							<CloudDownload className="size-3.5 shrink-0" />
 							{t(($) => $.shell.sourceControl.fetch)}
 						</DropdownMenuItem>
 						<DropdownMenuItem disabled={busy || !remote} onSelect={onPull}>
-							<GitPullRequest />
+							<GitPullRequest className="size-3.5 shrink-0" />
 							{t(($) => $.shell.sourceControl.pullShort)}
 						</DropdownMenuItem>
 						<DropdownMenuItem disabled={busy || !remote} onSelect={onPush}>
-							<Upload />
+							<Upload className="size-3.5 shrink-0" />
 							{t(($) => $.shell.sourceControl.pushShort)}
 						</DropdownMenuItem>
 						<DropdownMenuItem disabled={busy || !remote} onSelect={onSync}>
-							<RefreshCw />
+							<RefreshCw className="size-3.5 shrink-0" />
 							{t(($) => $.shell.sourceControl.sync)}
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
@@ -1242,14 +1308,14 @@ function Header({
 							disabled={busy || !onStash}
 							onSelect={() => onStash?.(false)}
 						>
-							<Archive />
+							<Archive className="size-3.5 shrink-0" />
 							{t(($) => $.shell.sourceControl.stash)}
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							disabled={busy || !onStash}
 							onSelect={() => onStash?.(true)}
 						>
-							<RotateCcw />
+							<RotateCcw className="size-3.5 shrink-0" />
 							{t(($) => $.shell.sourceControl.popStash)}
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
@@ -1257,6 +1323,7 @@ function Header({
 							disabled={busy || !onPublish}
 							onSelect={onPublish}
 						>
+							<Github className="size-3.5 shrink-0" />
 							{t(($) =>
 								remote
 									? $.shell.sourceControl.changeRepo

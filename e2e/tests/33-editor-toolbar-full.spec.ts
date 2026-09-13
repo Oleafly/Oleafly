@@ -327,7 +327,7 @@ test("non-tex files get no formatting toolbar; txt files edit fine", async ({ ta
   // that the LaTeX toolbar mounted at all.
   await expect(tauriPage.locator('[aria-label^="Undo ("]')).toBeVisible({ timeout: 10_000 });
 
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await tauriPage.getByText("project.json", { exact: true }).click();
   await tauriPage.waitForFunction(
     `!document.querySelector('[aria-label^="Bold ("]')`,
@@ -350,7 +350,7 @@ test("non-tex files get no formatting toolbar; txt files edit fine", async ({ ta
 
 test("font files open a binary notice instead of a broken editor", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  await openRailTab(tauriPage, "Source Tree");
+  await openRailTab(tauriPage, "Explorer");
   await tauriPage.click('[title="New file (in the selected folder)"]');
   await tauriPage.fill('input[placeholder="New file name"]', "sample.ttf");
   await tauriPage.press('input[placeholder="New file name"]', "Enter");

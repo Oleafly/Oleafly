@@ -18,7 +18,8 @@ interface AcpState {
   composers: Record<string, AcpComposer>;
   errors: Record<string, string | null>;
   setError: (projectId: string, message: string | null) => void;
-  refreshCatalog: (probe?: boolean) => Promise<void>;
+  /** Returns true only when this request supplied the accepted catalog. */
+  refreshCatalog: (probe?: boolean) => Promise<boolean>;
   loadProject: (projectId: string) => Promise<void>;
   open: (projectId: string, id: string) => Promise<void>;
   start: (projectId: string, agentId: string) => Promise<void>;
@@ -83,9 +84,12 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     const request = ++catalogRequest;
     try {
       const catalog = await acpCatalog(probe);
-      if (request === catalogRequest) set({ catalog });
+      if (request !== catalogRequest) return false;
+      set({ catalog });
+      return true;
     } catch (error) {
       if (request === catalogRequest) throw error;
+      return false;
     }
   },
   loadProject: async (projectId) => {
