@@ -473,14 +473,6 @@ The computer-use tool cannot read, capture, click, or script page content. Remot
 
 ## Download Oleafly
 
-<div align="center">
-
-[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
-
-</div>
-
 Free forever · Open source · No accounts · No sign-ups · No tracking
 
 | Platform | Package | Download |
