@@ -15,6 +15,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { wrapSelection } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
+import { isManagedProjectPath } from "@/lib/project-paths";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
@@ -114,6 +115,7 @@ export function Editor() {
   }), []);
   const openTabs = useFilesStore((s) => s.openTabs);
   const activePath = useFilesStore((s) => s.activePath);
+  const managedFile = !!activePath && isManagedProjectPath(activePath);
   const setActive = useFilesStore((s) => s.setActive);
   const closeTab = useFilesStore((s) => s.closeTab);
   const diffs = useDiffStore((s) => s.diffs);
@@ -276,7 +278,16 @@ export function Editor() {
       );
     }
     return (
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {managedFile ? (
+          <output
+            data-testid="managed-file-notice"
+            className="border-b px-4 py-2 text-sm text-muted-foreground"
+          >
+            {t(($) => $.editor.shell.managedFileReadOnly, { file: activePath })}
+          </output>
+        ) : null}
+        <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
           aria-hidden={!wysiwyg}
           inert={!wysiwyg ? true : undefined}
@@ -307,6 +318,7 @@ export function Editor() {
             <CodeMirrorEditor active={!wysiwyg} />
           </EditorContextMenu>
           <SelectionActionMenu />
+        </div>
         </div>
       </div>
     );

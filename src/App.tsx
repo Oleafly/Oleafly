@@ -81,6 +81,7 @@ import { AboutModal } from "@/components/layout/AboutModal";
 import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
+import { SaveBlockedDialog } from "@/components/layout/SaveBlockedDialog";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import {
   CHECKPOINT_PUBLICATION_EVENT,
@@ -818,6 +819,7 @@ function AppContent() {
         <EnginePickerModal />
         <TinytexGuards />
         <QuitGuard />
+        <SaveBlockedDialog />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -1021,6 +1023,7 @@ function AppContent() {
         <EnginePickerModal />
         <TinytexGuards />
         <QuitGuard />
+        <SaveBlockedDialog />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>

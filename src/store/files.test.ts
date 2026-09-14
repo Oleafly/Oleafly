@@ -956,12 +956,32 @@ describe("openProject", () => {
 
     await useFilesStore.getState().openProject("opened");
 
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "save before switching projects",
-      expect.anything(),
-      core.project.saveBlockedSwitch,
-    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
     expect(useFilesStore.getState().projectId).toBe("project");
+    expect(useFilesStore.getState().saveBlocked).toEqual({
+      action: "switch",
+      targetProjectId: "opened",
+      failures: [{ path: "main.tex", reason: "read only volume" }],
+    });
+    expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(true);
+  });
+
+  it("switches after the user discards the unsaved changes that blocked it", async () => {
+    primeOpen(LATEX_ENGINE);
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "dirty\n", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+    mocks.writeFileContent.mockRejectedValue(new Error("read only volume"));
+    await useFilesStore.getState().openProject("opened");
+    expect(useFilesStore.getState().saveBlocked?.action).toBe("switch");
+
+    await useFilesStore.getState().discardUnsavedAndLeave();
+
+    expect(useFilesStore.getState().saveBlocked).toBeNull();
+    expect(useFilesStore.getState().projectId).toBe("opened");
   });
 });
 
@@ -977,12 +997,96 @@ describe("closeProject", () => {
 
     await useFilesStore.getState().closeProject();
 
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "save before closing project",
-      expect.anything(),
-      core.project.saveBlockedClose,
-    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
     expect(useFilesStore.getState().projectId).toBe("project");
+    expect(useFilesStore.getState().saveBlocked).toEqual({
+      action: "close",
+      targetProjectId: null,
+      failures: [{ path: "main.tex", reason: "read only volume" }],
+    });
+  });
+
+  it("names every file that failed and brings the first one to the front", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: {
+        "main.tex": { content: "ok\n", dirty: true },
+        "project.json": { content: "{}", dirty: true },
+        "notes/todo.tex": { content: "x\n", dirty: true },
+      },
+      openTabs: ["main.tex", "project.json", "notes/todo.tex"],
+      activePath: "main.tex",
+    });
+    mocks.writeFileContent.mockImplementation(async (_project: string, path: string) => {
+      if (path === "project.json") {
+        throw new Error("project.json is managed by Oleafly and cannot be changed as a project file");
+      }
+      if (path === "notes/todo.tex") throw new Error("disk full");
+      return { generation: 1 };
+    });
+
+    await useFilesStore.getState().closeProject();
+
+    const blocked = useFilesStore.getState().saveBlocked;
+    expect(blocked?.failures.map((failure) => failure.path)).toEqual([
+      "project.json",
+      "notes/todo.tex",
+    ]);
+    expect(blocked?.failures[0]?.reason).toContain("managed by Oleafly");
+    expect(useFilesStore.getState().activePath).toBe("project.json");
+    expect(useFilesStore.getState().files["main.tex"]?.dirty).toBe(false);
+  });
+
+  it("closes after the user discards the unsaved changes that blocked it", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "project.json": { content: "{}", dirty: true } },
+      openTabs: ["project.json"],
+      activePath: "project.json",
+    });
+    mocks.writeFileContent.mockRejectedValue(new Error("managed by Oleafly"));
+    await useFilesStore.getState().closeProject();
+    expect(useFilesStore.getState().saveBlocked?.action).toBe("close");
+
+    await useFilesStore.getState().discardUnsavedAndLeave();
+
+    expect(useFilesStore.getState().saveBlocked).toBeNull();
+    expect(useFilesStore.getState().projectId).toBeNull();
+  });
+
+  it("dismissing the blocked dialog keeps the project and its unsaved buffer", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "project.json": { content: "{}", dirty: true } },
+      openTabs: ["project.json"],
+      activePath: "project.json",
+    });
+    mocks.writeFileContent.mockRejectedValue(new Error("managed by Oleafly"));
+    await useFilesStore.getState().closeProject();
+
+    useFilesStore.getState().dismissSaveBlocked();
+
+    expect(useFilesStore.getState().saveBlocked).toBeNull();
+    expect(useFilesStore.getState().projectId).toBe("project");
+    expect(useFilesStore.getState().files["project.json"]?.dirty).toBe(true);
+  });
+});
+
+describe("setContent", () => {
+  it("never marks a file the backend manages as dirty", () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "project.json": { content: "{}", dirty: false } },
+      openTabs: ["project.json"],
+      activePath: "project.json",
+    });
+
+    useFilesStore.getState().setContent("project.json", "{\"main\": \"x\"}");
+
+    expect(useFilesStore.getState().files["project.json"]).toEqual({
+      content: "{}",
+      dirty: false,
+    });
   });
 });
 

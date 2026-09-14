@@ -130,6 +130,11 @@ const vimHostHistoryGuard: KeyBinding[] = [
   })),
 ];
 
+const editabilityExtensions = (locked: boolean) => [
+  EditorState.readOnly.of(locked),
+  EditorView.editable.of(!locked),
+];
+
 function vimModeExtension(): Extension {
   // Ghost completion and LaTeX pairing both contain highest-precedence
   // keymaps. Vim must precede those too. If Vim declines a platform history
@@ -286,6 +291,7 @@ export function CodeMirrorEditor({
 
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const stickyCompartmentRef = useRef<Compartment | null>(null);
+  const editabilityCompartmentRef = useRef<Compartment | null>(null);
   const activePath = host.useActivePath();
   const completionSyntax = host.useCompletionSyntax(activePath);
   // NB: the active file's content is read imperatively (host.getContent) inside
@@ -391,9 +397,7 @@ export function CodeMirrorEditor({
       extraGhostCompletionSourcesForPath?.(initialPath) ?? [];
 
     const editability = new Compartment();
-    const editabilityExtensions = (locked: boolean) => [
-      EditorState.readOnly.of(locked), EditorView.editable.of(!locked),
-    ];
+    editabilityCompartmentRef.current = editability;
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
@@ -589,6 +593,13 @@ export function CodeMirrorEditor({
     // crosses file boundaries (a change from file A must not replay into file B).
     if (pathChanged) {
       effects.push(historyCompartmentRef.current!.reconfigure([]));
+    }
+    if (editabilityCompartmentRef.current) {
+      effects.push(
+        editabilityCompartmentRef.current.reconfigure(
+          editabilityExtensions(host.isEditLocked?.() ?? false),
+        ),
+      );
     }
     if (current !== activeContent) {
       view.dispatch({

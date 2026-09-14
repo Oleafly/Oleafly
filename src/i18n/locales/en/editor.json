@@ -101,6 +101,7 @@
     "pdfLoadFailed": "Failed to load PDF: {{detail}}",
     "imageLoadFailed": "Failed to load image: {{detail}}",
     "binaryFile": "Binary file. No preview available.",
+    "managedFileReadOnly": "{{file}} is managed by Oleafly and is read-only here. Project settings change through Oleafly itself, not by editing this file.",
     "noFileOpen": "No file open.",
     "noFileOpenHint": "Pick a file from the tree to start editing."
   },
