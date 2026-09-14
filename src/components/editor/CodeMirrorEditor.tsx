@@ -1,4 +1,5 @@
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
+import { isManagedProjectPath } from "@/lib/project-paths";
 import { useEffect } from "react";
 import type { Extension } from "@codemirror/state";
 import type { KeyBinding } from "@codemirror/view";
@@ -193,7 +194,13 @@ const HOST: EditorHost = {
       .saveActive()
       .catch((error) => notifyError("vim save", error));
   },
-  isEditLocked: () => isEditorMutationLocked(useFilesStore.getState().projectId),
+  isEditLocked: () => {
+    const { projectId, activePath } = useFilesStore.getState();
+    return (
+      isEditorMutationLocked(projectId) ||
+      (!!activePath && isManagedProjectPath(activePath))
+    );
+  },
   registerMutationOwner: (owner) => registerEditorMutationOwner({
     ...owner,
     projectId: () => useFilesStore.getState().projectId,

@@ -807,11 +807,12 @@ describe("transactional project transitions", () => {
       dirty: true,
     });
     expect(useFilesStore.getState().loading).toBe(false);
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "save before closing project",
-      failure,
-      expect.stringContaining("stayed open"),
-    );
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().saveBlocked).toEqual({
+      action: "close",
+      targetProjectId: null,
+      failures: [{ path: "main.tex", reason: failure.message }],
+    });
   });
 
   it("orders a newer close flush behind an older in-flight save", async () => {
@@ -1025,7 +1026,9 @@ describe("transactional quit flush", () => {
       activePath: "main.tex",
     });
 
-    await expect(useFilesStore.getState().flushForQuit()).rejects.toBe(failure);
+    await expect(useFilesStore.getState().flushForQuit()).rejects.toThrow(
+      "main.tex: disk full",
+    );
 
     expect(useFilesStore.getState().projectId).toBe("project");
     expect(useFilesStore.getState().files["main.tex"]).toEqual({

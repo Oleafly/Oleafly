@@ -57,6 +57,7 @@ import { recordProjectStateRevision } from "@/lib/project-state-revision";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
+import { isManagedProjectPath } from "@/lib/project-paths";
 import {
   flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession,
@@ -204,6 +205,30 @@ interface FileState {
   edits?: number;
 }
 
+export interface SaveFailure {
+  path: string;
+  reason: string;
+}
+
+export interface SaveBlockedState {
+  action: "close" | "switch";
+  targetProjectId: string | null;
+  failures: SaveFailure[];
+}
+
+export class SaveFlushError extends Error {
+  readonly failures: SaveFailure[];
+
+  constructor(failures: SaveFailure[]) {
+    super(failures.map((failure) => `${failure.path}: ${failure.reason}`).join("\n"));
+    this.name = "SaveFlushError";
+    this.failures = failures;
+  }
+}
+
+const describeFailure = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 interface FilesStore {
   projectId: string | null;
   projectName: string;
@@ -225,10 +250,13 @@ interface FilesStore {
   projectsLoaded: boolean;
   loading: boolean;
   docVersion: number;
+  saveBlocked: SaveBlockedState | null;
 
   refreshProjects: () => Promise<void>;
   openProject: (id: string, shouldContinue?: () => boolean) => Promise<void>;
   closeProject: () => Promise<void>;
+  dismissSaveBlocked: () => void;
+  discardUnsavedAndLeave: () => Promise<void>;
   /**
    * Durably write every dirty buffer of the open project before the app
    * quits. Serialized with project transitions; rejects (and leaves buffers
@@ -473,12 +501,14 @@ async function flushDirtyBuffers(projectId: string, get: () => FilesStore, asser
 
     for (const path of paths) pendingSaves.delete(path);
     const results = await Promise.allSettled(paths.map((path) => get().saveFile(path)));
-    const failure = results.find(
-      (result): result is PromiseRejectedResult => result.status === "rejected",
+    const failures = results.flatMap((result, index) =>
+      result.status === "rejected"
+        ? [{ path: paths[index], reason: describeFailure(result.reason) }]
+        : [],
     );
-    if (failure) {
+    if (failures.length > 0) {
       requeueDirtyPaths(projectId, get);
-      throw failure.reason;
+      throw new SaveFlushError(failures);
     }
   }
 }
@@ -700,7 +730,26 @@ function showCompatibilityWarnings(
 type FilesSet = StoreApi<FilesStore>["setState"];
 type FilesGet = StoreApi<FilesStore>["getState"];
 
+function reportSaveBlocked(
+  error: unknown,
+  action: SaveBlockedState["action"],
+  targetProjectId: string | null,
+  set: FilesSet,
+  get: FilesGet,
+): boolean {
+  if (!(error instanceof SaveFlushError)) return false;
+  void logError(
+    action === "close" ? "save before closing project" : "save before switching projects",
+    error,
+  );
+  set({ saveBlocked: { action, targetProjectId, failures: error.failures } });
+  const first = error.failures[0]?.path;
+  if (first && get().files[first]) void get().openFile(first).catch(() => {});
+  return true;
+}
+
 async function prepareProjectSwitch(
+  targetProjectId: string,
   shouldContinue: () => boolean,
   set: FilesSet,
   get: FilesGet,
@@ -714,11 +763,13 @@ async function prepareProjectSwitch(
       await flushDirtyBuffers(previousProjectId, get);
     } catch (error) {
       set({ loading: false });
-      notifyError(
-        "save before switching projects",
-        error,
-        i18n.t(($) => $.core.project.saveBlockedSwitch),
-      );
+      if (!reportSaveBlocked(error, "switch", targetProjectId, set, get)) {
+        notifyError(
+          "save before switching projects",
+          error,
+          i18n.t(($) => $.core.project.saveBlockedSwitch),
+        );
+      }
       return null;
     }
   }
@@ -843,7 +894,7 @@ async function openProjectTransition(
   set: FilesSet,
   get: FilesGet,
 ): Promise<void> {
-  const prepared = await prepareProjectSwitch(shouldContinue, set, get);
+  const prepared = await prepareProjectSwitch(id, shouldContinue, set, get);
   if (!prepared) return;
   const { seq, superseded } = beginProjectOpen(id, shouldContinue, set, get);
   try {
@@ -1037,6 +1088,7 @@ const EMPTY_PROJECT_STATE = {
   tabOrder: {},
   activePath: null,
   loading: false,
+  saveBlocked: null,
 } satisfies Partial<FilesStore>;
 
 export const useFilesStore = create<FilesStore>((set, get) => ({
@@ -1056,6 +1108,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   projectsLoaded: false,
   loading: false,
   docVersion: 0,
+  saveBlocked: null,
 
   refreshProjects: async () => {
     // Single-flight: the app shell and the library both ask for the list on
@@ -1081,11 +1134,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         await flushDirtyBuffers(projectId, get);
       } catch (error) {
         set({ loading: false });
-        notifyError(
-          "save before closing project",
-          error,
-          i18n.t(($) => $.core.project.saveBlockedClose),
-        );
+        if (!reportSaveBlocked(error, "close", null, set, get)) {
+          notifyError(
+            "save before closing project",
+            error,
+            i18n.t(($) => $.core.project.saveBlockedClose),
+          );
+        }
         return;
       }
     }
@@ -1102,6 +1157,27 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     resetMutationGeneration();
     set(EMPTY_PROJECT_STATE);
   }),
+
+  dismissSaveBlocked: () => set({ saveBlocked: null }),
+
+  discardUnsavedAndLeave: async () => {
+    const blocked = get().saveBlocked;
+    if (!blocked) return;
+    set((s) => {
+      const files = { ...s.files };
+      for (const { path } of blocked.failures) {
+        const file = files[path];
+        if (file) files[path] = { ...file, dirty: false };
+      }
+      return { files, saveBlocked: null };
+    });
+    for (const { path } of blocked.failures) pendingSaves.delete(path);
+    if (blocked.action === "switch" && blocked.targetProjectId) {
+      await get().openProject(blocked.targetProjectId);
+    } else {
+      await get().closeProject();
+    }
+  },
 
   flushForQuit: () => enqueueProjectTransition(async () => {
     const projectId = get().projectId;
@@ -1229,6 +1305,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   },
 
   setContent: (path, content, opts) => {
+    if (isManagedProjectPath(path)) return;
     set((s) => ({
       files: {
         ...s.files,

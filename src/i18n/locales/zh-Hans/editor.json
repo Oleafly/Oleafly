@@ -101,6 +101,7 @@
     "pdfLoadFailed": "加载 PDF 失败：{{detail}}",
     "imageLoadFailed": "加载图片失败：{{detail}}",
     "binaryFile": "二进制文件，无法预览。",
+    "managedFileReadOnly": "{{file}} 由 Oleafly 管理，在此处为只读。项目设置通过 Oleafly 本身修改，而不是编辑此文件。",
     "noFileOpen": "未打开文件。",
     "noFileOpenHint": "从文件树中选择一个文件开始编辑。"
   },
