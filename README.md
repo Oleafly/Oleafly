@@ -365,6 +365,20 @@ Oleafly includes skills for literature work, authoring, figures, review, submiss
 
 Use a skill with a slash command, add your own folder, record a repeatable workflow from a completed chat, or install a domain skill from the shelf when you choose to download one. Skills can be shared with compatible CLI agents on the same computer. A skill already installed keeps working offline.
 
+### Skills shipped with Oleafly
+
+The bundled `research-core` pack ships 36 skills. The names below are the IDs used by the catalog and in project settings.
+
+| Category | Skills |
+| --- | --- |
+| Research and literature | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
+| Manuscript authoring and analysis | `experimental-design`, `oleafly-data-analysis`, `oleafly-manuscript-scaffold`, `oleafly-related-work`, `scientific-writing`, `statistical-analysis`, `statistical-power`, `venue-templates` |
+| Figures and visualization | `oleafly-figure-prep`, `scientific-schematics`, `scientific-visualization` |
+| Review and evidence | `oleafly-response-letter`, `oleafly-review-manuscript`, `oleafly-verify-claims`, `peer-review`, `scholar-evaluation` |
+| Submission | `oleafly-pre-submission` |
+| Communication | `oleafly-slides-and-posters`, `pptx-posters`, `research-grants`, `scientific-slides` |
+| Import and build tooling | `import-refine`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
+
 <p align="center">
   <img src="docs/assets/readme/skills.png" alt="Oleafly AI Assistant skills panel showing reusable research capabilities" width="100%" />
 </p>

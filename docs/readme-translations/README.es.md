@@ -154,6 +154,8 @@ Las skills son carpetas `SKILL.md` normales para literatura, escritura, figuras,
 
 <img src="../assets/readme/skills.png" alt="Skills de Oleafly para flujos reutilizables de investigación y escritura" width="100%" />
 
+El paquete incluido `research-core` contiene 36 skills. Consulta la [lista completa de skills incluidas](../../README.md#skills-shipped-with-oleafly) y los nombres del catálogo en la README en inglés.
+
 ### Herramientas y comandos en una galería
 
 La galería reúne conversión de PDF, arXiv, imágenes, HTML, Word, Markdown, Typst, tablas y ecuaciones, además de herramientas para BibTeX, literatura, estadística, escritura, laboratorios y conferencias. La paleta de comandos busca proyectos, documentos, ajustes y herramientas; escribe `/` para filtrar comandos.

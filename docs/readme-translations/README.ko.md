@@ -154,6 +154,8 @@ Skills는 문헌 조사, 작성, 그림, 검토, 제출 및 기타 작업 흐름
 
 <img src="../assets/readme/skills.png" alt="재사용 가능한 연구 및 글쓰기 작업 흐름을 위한 Oleafly Skills" width="100%" />
 
+번들로 제공되는 `research-core` 팩에는 36개의 Skills가 포함되어 있습니다. [번들 Skills 전체 목록](../../README.md#skills-shipped-with-oleafly)과 카탈로그 이름은 영어 README에서 확인할 수 있습니다.
+
 ### 도구와 명령을 한곳의 갤러리에서
 
 갤러리에는 PDF, arXiv, 이미지, HTML, Word, Markdown, Typst, 표와 수식 변환 도구뿐 아니라 BibTeX, 문헌, 통계, 작성, 연구실 및 학회 도구가 있습니다. 명령 팔레트에서 프로젝트, 문서, 설정과 도구를 검색하고 `/`를 입력해 명령만 필터링하세요.

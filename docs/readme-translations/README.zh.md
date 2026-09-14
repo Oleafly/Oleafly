@@ -154,6 +154,8 @@ Skills 是普通的 `SKILL.md` 文件夹，用于文献、写作、图形、审�
 
 <img src="../assets/readme/skills.png" alt="Oleafly 中可重用的研究和写作工作流 Skills" width="100%" />
 
+内置的 `research-core` 软件包包含 36 个 Skills。完整的[内置 Skills 列表](../../README.md#skills-shipped-with-oleafly)和目录名称请参阅英文 README。
+
 ### 在一个工具库中查找工具和命令
 
 工具库包含 PDF、arXiv、图像、HTML、Word、Markdown、Typst、表格和公式转换工具，也包括 BibTeX、文献、统计、写作、实验室和会议工具。命令面板可以搜索项目、文档、设置和工具；输入 `/` 可只筛选命令。

@@ -154,6 +154,8 @@ Skills sind gewöhnliche `SKILL.md`-Ordner für Literaturarbeit, Schreiben, Abbi
 
 <img src="../assets/readme/skills.png" alt="Oleafly-Skills für wiederverwendbare Recherche- und Schreibabläufe" width="100%" />
 
+Das enthaltene Paket `research-core` umfasst 36 Skills. Die [vollständige Liste der enthaltenen Skills](../../README.md#skills-shipped-with-oleafly) und die Katalognamen stehen in der englischen README.
+
 ### Werkzeuge und Befehle in einer Galerie
 
 Die Tools-Galerie bündelt PDF-, arXiv-, Bild-, HTML-, Word-, Markdown-, Typst-, Tabellen- und Gleichungskonvertierung sowie BibTeX-, Literatur-, Statistik-, Schreib-, Labor- und Konferenzwerkzeuge. Die Befehlspalette durchsucht Projekte, Dokumente, Einstellungen und Werkzeuge; mit `/` kannst du Befehle direkt filtern.

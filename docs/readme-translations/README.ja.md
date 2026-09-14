@@ -154,6 +154,8 @@ Skillsは、文献調査、執筆、図、レビュー、投稿などに使え�
 
 <img src="../assets/readme/skills.png" alt="研究と執筆のワークフローを再利用するOleaflyのSkills" width="100%" />
 
+同梱の `research-core` パックには36個のSkillsが含まれています。完全な[同梱Skillsの一覧](../../README.md#skills-shipped-with-oleafly)とカタログ名は英語版READMEで確認できます。
+
 ### ツールとコマンドをひとつのギャラリーに
 
 ギャラリーには、PDF、arXiv、画像、HTML、Word、Markdown、Typst、表、数式の変換ツールに加えて、BibTeX、文献、統計、執筆、研究機関、学会締切のツールがあります。コマンドパレットではプロジェクト、文書、設定、ツールを検索でき、`/`でコマンドだけに絞り込めます。
