@@ -141,6 +141,13 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 <img src="../assets/readme/compile-engines.png" alt="LaTeX、Typst、Markdown、TeXディストリビューションのOleaflyエンジン設定" width="100%" />
 
+### LaTeXエディタ、ブロック、記号
+
+LaTeXバーでは、CodeとVisualの切り替え、元に戻す・やり直す、6段階の見出し、書式、リンク、引用、相互参照、脚注、引用ブロック、図、表、リスト、`equation`・`align`・分数ブロック、コードインテリジェンスを使えます。記号ピッカーには、ギリシャ文字、演算子、関係、矢印、集合論、論理、微積分、関数、括弧、アクセント、空白、その他のカテゴリに236個の固有コマンドがあります。ブロックと記号の[詳細一覧](../../README.md#insert-latex-blocks-formatting-and-symbols)は英語版READMEにあります。
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="書式、参照、図、表、リスト、数式、記号の操作を備えたOleafly LaTeXエディタバー" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="検索可能なカテゴリを備えたOleafly LaTeX記号ピッカー" width="100%" />
+
 ### ソースとPDFを並べて読む
 
 ソースが基準となる表示で、PDFビューアを隣に置けます。エンジンが対応していれば、SyncTeXでソース行とPDFページを行き来できます。コンパイルに失敗しても、最後に読めたPDFが自動的に置き換わることはありません。

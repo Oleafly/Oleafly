@@ -141,6 +141,13 @@ Oleafly 是一款免费的桌面工作空间，用于通过 LaTeX、Typst 和 Ma
 
 <img src="../assets/readme/compile-engines.png" alt="Oleafly 中 LaTeX、Typst、Markdown 和 TeX 发行版的引擎设置" width="100%" />
 
+### LaTeX 编辑器、块和符号
+
+LaTeX 工具栏提供 Code 和 Visual 视图、撤销和重做、六级标题、格式设置、链接、引用、交叉引用、脚注、块引用、图形、表格、列表、`equation`、`align` 和分数块，以及代码智能功能。符号选择器包含 236 个不重复命令，分为希腊字母、运算符、关系、箭头、集合论、逻辑、微积分、函数、括号、重音、间距和其他类别。完整的[块和符号说明](../../README.md#insert-latex-blocks-formatting-and-symbols)请参阅英文 README。
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="Oleafly LaTeX 编辑器工具栏，包含格式、引用、图形、表格、列表、公式和符号控件" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="Oleafly LaTeX 符号选择器，带有可搜索的类别" width="100%" />
+
 ### 同时阅读源文件和 PDF
 
 源文件始终是主要表示形式，PDF 查看器则显示在旁边。引擎支持时，可以通过 SyncTeX 在源代码行和 PDF 页面之间跳转。编译失败不会自动替换最后一个可读的 PDF。

@@ -137,8 +137,53 @@ In LaTeX, Typst, Markdown, and BibTeX you get:
 - Live diagnostics for syntax, compile errors, undefined citations, duplicate keys, duplicate labels, and broken references.
 - A local and global document outline with symbols, labels, citations, macros, and file relationships.
 - Search and replace, code folding, multi-file tabs, Vim mode, word count, slash-command insertion, and configurable keyboard shortcuts.
-- LaTeX structural helpers for `\\item`, `\\begin` / `\\end`, environments, math delimiters, captions, and common insertion patterns.
-- Hovers for compiled label numbers and pages, equation previews, and image thumbnails for `\\includegraphics` targets.
+- LaTeX structural helpers for `\item`, `\begin` / `\end`, environments, math delimiters, captions, and common insertion patterns.
+- Hovers for compiled label numbers and pages, equation previews, and image thumbnails for `\includegraphics` targets.
+
+### Insert LaTeX blocks, formatting, and symbols
+
+The LaTeX editor keeps common structures one click away while leaving the source in your hands. Switch between Code and Visual view, undo or redo, choose a heading level, format text, insert references, and build a table or figure without memorising every command.
+
+<div align="center">
+  <img src="docs/assets/readme/latex-editor-toolbar.png" alt="Oleafly LaTeX editor toolbar with formatting, reference, figure, table, list, equation, fraction, and symbol controls" width="100%" />
+</div>
+<p align="center"><em>Build a structured LaTeX document from the toolbar, then keep editing the source directly.</em></p>
+
+| Area | Available controls |
+| --- | --- |
+| Editing and modes | Code view, Visual view, undo, redo |
+| Document structure | H1–H6 insertion: `\part`, `\chapter`, `\section`, `\subsection`, `\subsubsection`, `\paragraph` |
+| Inline formatting | Bold `\textbf{}`, italic `\textit{}`, underline `\underline{}`, inline code `\texttt{}` |
+| References and notes | Links `\href{}{}`, project citations, cross-references `\ref{}`, footnotes `\footnote{}` |
+| Content blocks | Block quotes with `quote`, figures with `\includegraphics`, captions and labels, visual tables with selectable rows and columns, bulleted `itemize` lists, numbered `enumerate` lists |
+| Math blocks | `equation`, `align`, and fraction `\frac{}{}` insertion |
+| AI-assisted insertion | Image to LaTeX for an equation, table, or visible text when a vision-capable provider is configured |
+| Code intelligence | Go to definition, find references, and project-wide symbol rename |
+
+### A searchable LaTeX symbol palette
+
+The symbol picker contains 236 unique commands in its **All** view. The category lists contain 238 entries because `\nabla` and `\partial` are useful in both Operators and Calculus. Search by the symbol name or its LaTeX command, then insert it at the cursor.
+
+| Category | Count | Available symbols and commands |
+| --- | ---: | --- |
+| Greek lowercase | 29 | `\alpha`, `\beta`, `\gamma`, `\delta`, `\epsilon`, `\varepsilon`, `\zeta`, `\eta`, `\theta`, `\vartheta`, `\iota`, `\kappa`, `\lambda`, `\mu`, `\nu`, `\xi`, `\pi`, `\varpi`, `\rho`, `\varrho`, `\sigma`, `\varsigma`, `\tau`, `\upsilon`, `\phi`, `\varphi`, `\chi`, `\psi`, `\omega` |
+| Greek uppercase | 11 | `\Gamma`, `\Delta`, `\Theta`, `\Lambda`, `\Xi`, `\Pi`, `\Sigma`, `\Upsilon`, `\Phi`, `\Psi`, `\Omega` |
+| Operators | 19 | `+`, `-`, `\times`, `\div`, `\cdot`, `\pm`, `\mp`, `\ast`, `\star`, `\circ`, `\bullet`, `\oplus`, `\ominus`, `\otimes`, `\odot`, `\dagger`, `\ddagger`, `\nabla`, `\partial` |
+| Relations | 21 | `=`, `\neq`, `<`, `>`, `\leq`, `\geq`, `\ll`, `\gg`, `\approx`, `\sim`, `\simeq`, `\cong`, `\equiv`, `\propto`, `\prec`, `\succ`, `\preceq`, `\succeq`, `\perp`, `\parallel`, `\mid` |
+| Arrows | 23 | `\leftarrow`, `\rightarrow`, `\uparrow`, `\downarrow`, `\leftrightarrow`, `\Leftarrow`, `\Rightarrow`, `\Uparrow`, `\Downarrow`, `\Leftrightarrow`, `\mapsto`, `\longmapsto`, `\longrightarrow`, `\longleftarrow`, `\hookrightarrow`, `\hookleftarrow`, `\nearrow`, `\searrow`, `\nwarrow`, `\swarrow`, `\rightleftharpoons`, `\leftharpoonup`, `\rightharpoonup` |
+| Set theory | 19 | `\in`, `\notin`, `\ni`, `\subset`, `\supset`, `\subseteq`, `\supseteq`, `\cup`, `\cap`, `\bigcup`, `\bigcap`, `\setminus`, `\emptyset`, `\varnothing`, `\mathbb{N}`, `\mathbb{Z}`, `\mathbb{Q}`, `\mathbb{R}`, `\mathbb{C}` |
+| Logic | 16 | `\forall`, `\exists`, `\nexists`, `\neg`, `\land`, `\lor`, `\wedge`, `\vee`, `\implies`, `\iff`, `\therefore`, `\because`, `\top`, `\bot`, `\vdash`, `\models` |
+| Calculus | 18 | `\int`, `\iint`, `\iiint`, `\oint`, `\sum`, `\prod`, `\coprod`, `\lim`, `\infty`, `\nabla`, `\partial`, `\sqrt{}`, `\frac{}{}`, `\binom{}{}`, `\sup`, `\inf`, `\max`, `\min` |
+| Functions | 19 | `\sin`, `\cos`, `\tan`, `\cot`, `\sec`, `\csc`, `\arcsin`, `\arccos`, `\arctan`, `\sinh`, `\cosh`, `\tanh`, `\log`, `\ln`, `\exp`, `\det`, `\dim`, `\ker`, `\arg` |
+| Brackets | 16 | `(`, `)`, `[`, `]`, `\{`, `\}`, `\langle`, `\rangle`, `\lfloor`, `\rfloor`, `\lceil`, `\rceil`, literal vertical bar, `\|`, `\left( \right)`, `\left[ \right]` |
+| Accents | 14 | `\hat{}`, `\bar{}`, `\tilde{}`, `\vec{}`, `\dot{}`, `\ddot{}`, `\acute{}`, `\grave{}`, `\breve{}`, `\check{}`, `\overline{}`, `\underline{}`, `\overbrace{}`, `\underbrace{}` |
+| Dots and spacing | 13 | `\cdots`, `\ldots`, `\vdots`, `\ddots`, `\quad`, `\qquad`, `\,`, `\;`, `\!`, `\text{}`, `\mathrm{}`, `\mathbf{}`, `\mathcal{}` |
+| Miscellaneous | 20 | `\hbar`, `\ell`, `\wp`, `\Re`, `\Im`, `\aleph`, `\angle`, `\triangle`, `\diamond`, `\square`, `\lozenge`, `\clubsuit`, `\diamondsuit`, `\heartsuit`, `\spadesuit`, `^{\circ}`, `\#`, `\$`, `\%`, `\&` |
+
+<div align="center">
+  <img src="docs/assets/readme/latex-symbols.png" alt="Oleafly LaTeX symbol palette with searchable categories for Greek letters, operators, relations, arrows, set theory, logic, calculus, functions, brackets, accents, spacing, and miscellaneous symbols" width="100%" />
+</div>
+<p align="center"><em>Search 236 unique LaTeX commands by category or name and insert the one you need.</em></p>
 
 <div align="center">
   <img src="docs/assets/readme/source-and-pdf.png" alt="Oleafly showing a manuscript source file and compiled PDF together" width="100%" />

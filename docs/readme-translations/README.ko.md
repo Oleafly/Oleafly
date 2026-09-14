@@ -141,6 +141,13 @@ Zotero RDF, EndNote XML, RIS, BibTeX에서 기존 라이브러리를 가져오�
 
 <img src="../assets/readme/compile-engines.png" alt="LaTeX, Typst, Markdown 및 TeX 배포판을 위한 Oleafly 엔진 설정" width="100%" />
 
+### LaTeX 편집기, 블록 및 기호
+
+LaTeX 도구 모음에서는 Code와 Visual 보기, 실행 취소와 다시 실행, 6단계 제목, 서식, 링크, 인용, 상호 참조, 각주, 인용 블록, 그림, 표, 목록, `equation`·`align`·분수 블록, 코드 인텔리전스를 사용할 수 있습니다. 기호 선택기에는 그리스 문자, 연산자, 관계, 화살표, 집합론, 논리, 미적분, 함수, 괄호, 악센트, 간격 및 기타 범주에 걸쳐 고유 명령 236개가 있습니다. 블록과 기호의 [전체 세부 정보](../../README.md#insert-latex-blocks-formatting-and-symbols)는 영어 README에서 확인할 수 있습니다.
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="서식, 참조, 그림, 표, 목록, 수식 및 기호 제어 기능이 있는 Oleafly LaTeX 편집기 도구 모음" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="검색 가능한 범주가 있는 Oleafly LaTeX 기호 선택기" width="100%" />
+
 ### 소스와 PDF를 함께 읽으세요
 
 소스가 기준 표현으로 유지되는 동안 PDF 뷰어를 옆에 둘 수 있습니다. 엔진이 지원하면 SyncTeX로 소스 줄과 PDF 페이지 사이를 이동할 수 있습니다. 컴파일에 실패해도 마지막으로 읽을 수 있던 PDF가 자동으로 사라지지 않습니다.

@@ -141,6 +141,13 @@ Elige el motor para cada proyecto. Tectonic viene incluido para compilaciones po
 
 <img src="../assets/readme/compile-engines.png" alt="Ajustes de Oleafly para motores LaTeX, Typst, Markdown y distribuciones TeX" width="100%" />
 
+### Editor LaTeX, bloques y símbolos
+
+La barra de LaTeX ofrece vistas Code y Visual, deshacer y rehacer, seis niveles de encabezado, formato, enlaces, citas, referencias cruzadas, notas al pie, citas en bloque, figuras, tablas, listas, bloques `equation`, `align` y fracciones, además de inteligencia de código. El selector de símbolos contiene 236 comandos únicos en las categorías de letras griegas, operadores, relaciones, flechas, teoría de conjuntos, lógica, cálculo, funciones, corchetes, acentos, espaciado y otros. Consulta los [detalles completos de bloques y símbolos](../../README.md#insert-latex-blocks-formatting-and-symbols) en la README en inglés.
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="Barra del editor LaTeX de Oleafly con controles de formato, referencias, figuras, tablas, listas, ecuaciones y símbolos" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="Selector de símbolos LaTeX de Oleafly con categorías que se pueden buscar" width="100%" />
+
 ### Lee la fuente y el PDF juntos
 
 El código fuente sigue siendo la representación principal, mientras el visor PDF permanece al lado. Cuando el motor lo admite, SyncTeX permite navegar entre una línea de código y su página en el PDF. Una compilación fallida no reemplaza automáticamente el último PDF legible.

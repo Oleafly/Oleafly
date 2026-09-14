@@ -141,6 +141,13 @@ Choisissez le moteur pour chaque projet. Tectonic est inclus pour des compilatio
 
 <img src="../assets/readme/compile-engines.png" alt="Réglages Oleafly pour les moteurs LaTeX, Typst, Markdown et les distributions TeX" width="100%" />
 
+### Éditeur LaTeX, blocs et symboles
+
+La barre LaTeX propose les vues Code et Visual, annuler et rétablir, six niveaux de titre, la mise en forme, les liens, les citations, les renvois, les notes de bas de page, les citations en bloc, les figures, les tableaux, les listes, les blocs `equation`, `align` et fractions, ainsi que l’intelligence de code. Le sélecteur de symboles contient 236 commandes uniques réparties entre lettres grecques, opérateurs, relations, flèches, théorie des ensembles, logique, calcul, fonctions, parenthèses, accents, espaces et symboles divers. Consultez les [détails complets des blocs et symboles](../../README.md#insert-latex-blocks-formatting-and-symbols) dans le README anglais.
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="Barre de l’éditeur LaTeX Oleafly avec outils de mise en forme, références, figures, tableaux, listes, équations et symboles" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="Sélecteur de symboles LaTeX Oleafly avec catégories consultables" width="100%" />
+
 ### Lisez la source et le PDF ensemble
 
 Le code source reste la représentation de référence, tandis que le lecteur PDF reste ouvert à côté. Lorsque le moteur le permet, SyncTeX permet de naviguer entre une ligne source et sa page dans le PDF. Une compilation échouée ne remplace pas automatiquement le dernier PDF lisible.

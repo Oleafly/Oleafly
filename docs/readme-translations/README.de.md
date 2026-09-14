@@ -141,6 +141,13 @@ Wähle die Engine pro Projekt. Tectonic ist für portable Offline-Builds enthalt
 
 <img src="../assets/readme/compile-engines.png" alt="Oleafly-Einstellungen für LaTeX-, Typst-, Markdown- und TeX-Engines" width="100%" />
 
+### LaTeX-Editor, Blöcke und Symbole
+
+Die LaTeX-Leiste bietet Code- und Visual-Ansicht, Rückgängig und Wiederholen, sechs Überschriftenebenen, Formatierung, Links, Zitate, Querverweise, Fußnoten, Blockzitate, Abbildungen, Tabellen, Listen, `equation`-, `align`- und Bruchblöcke sowie Code-Intelligenz. Der Symbolpicker enthält 236 eindeutige Befehle in den Kategorien griechische Buchstaben, Operatoren, Relationen, Pfeile, Mengenlehre, Logik, Analysis, Funktionen, Klammern, Akzente, Abstände und Sonstiges. Die [vollständigen Details zu Blöcken und Symbolen](../../README.md#insert-latex-blocks-formatting-and-symbols) stehen in der englischen README.
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="Oleafly-LaTeX-Editorleiste mit Formatierungs-, Referenz-, Abbildungs-, Tabellen-, Listen-, Gleichungs- und Symbolwerkzeugen" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="Durchsuchbarer LaTeX-Symbolpicker in Oleafly" width="100%" />
+
 ### Quelle und PDF zusammen lesen
 
 Der Quelltext bleibt die maßgebliche Darstellung, während der PDF-Viewer direkt daneben geöffnet bleibt. Mit SyncTeX kannst du – sofern die Engine es unterstützt – zwischen Quellzeile und PDF navigieren. Ein fehlgeschlagener Build ersetzt nicht automatisch die letzte lesbare PDF-Version.
