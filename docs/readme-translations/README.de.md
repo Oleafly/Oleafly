@@ -12,10 +12,14 @@
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![Lizenz: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
-**Schreibe deine nächste Arbeit mit weniger Routinearbeit.**
+Für immer kostenlos · Open Source · Keine Konten · Keine Anmeldung · Kein Tracking
+
+**Schreibe deine nächste Arbeit mit weniger Routinearbeit in einem modernen Arbeitsbereich für wissenschaftliches Schreiben.**
 
 Oleafly ist ein kostenloser Desktop-Arbeitsbereich zum Schreiben wissenschaftlicher Arbeiten in LaTeX, Typst und Markdown. Recherchiere Quellen, verwalte Zitate und sieh zu, wie deine Arbeit entsteht – alles an einem Ort. Bitte einen KI-Assistenten, einen Abschnitt zu überarbeiten, eine Abbildung zu erstellen oder einen fehlgeschlagenen Build zu reparieren. Die Änderungen kannst du prüfen. Dein Projekt bleibt in normalen Dateien, die dir gehören, und der Editor funktioniert auch ohne KI.
 
@@ -24,7 +28,7 @@ Oleafly ist ein kostenloser Desktop-Arbeitsbereich zum Schreiben wissenschaftlic
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="Oleafly beim Bearbeiten der LLaMA-Forschungsarbeit in LaTeX, mit Quellbaum, Dokumentgliederung und kompiliertem PDF gleichzeitig geöffnet" width="100%" />
+  <img src="../assets/readme/hero.png" alt="Oleafly-Arbeitsbereich mit einem LaTeX-Projekt, Quelltexteditor, PDF-Vorschau und KI-Planungsbereich" width="100%" />
 </div>
 
 ## Funktionen
@@ -53,7 +57,8 @@ Wähle einen Zeitschriftenartikel, eine Dissertation, einen Beamer-Vortrag oder 
 
 Du hast schon ein Manuskript? Importiere ein Projekt-ZIP oder ein GitHub-Repository, hole ein Word-Dokument herein oder nutze ein PDF als Ausgangspunkt für bearbeitbares LaTeX. Dein nächstes Projekt kann mit Arbeit beginnen, die bereits erledigt ist.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="Die Oleafly-Vorlagengalerie mit Dokumentvorschauen und Projektstartern" width="100%" />
+<img src="../assets/readme/template-downloads.png" alt="Oleafly-Vorlagendownloads mit Paketen für wissenschaftliches Schreiben und Beamer" width="100%" />
+<img src="../assets/readme/import-project.png" alt="Oleafly-Dialog zum Importieren eines Projekts" width="100%" />
 
 ### Schreibe mit dem ganzen Dokument im Blick
 
@@ -61,7 +66,7 @@ Behalte deinen Quelltext, die Kapitelgliederung und das kompilierte PDF zusammen
 
 Schreibe direkt im Quelltext oder nutze den visuellen Editor für LaTeX und Markdown. Gleichungen, Zitate und Abbildungen bleiben griffbereit, während dein Dokument wächst.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="Oleafly zeigt eine Forschungsarbeit zusammen mit ihrem LaTeX-Quelltext und kompilierten PDF" width="100%" />
+<img src="../assets/readme/visual-editor.png" alt="Der visuelle Oleafly-Editor mit Dateibaum und Dokumentgliederung" width="100%" />
 
 ### Finde die Quellen, die deine Argumentation braucht
 
@@ -69,7 +74,6 @@ Durchsuche arXiv, Semantic Scholar, Crossref, PubMed und OpenAlex zusammen. Olea
 
 Übernimm deine bestehende Bibliothek aus Zotero RDF, EndNote XML, RIS oder BibTeX. Füge dann eine Referenz per DOI oder Titel hinzu und setze ihr Zitat, ohne den Satz zu verlassen.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Suchergebnisse aus wissenschaftlichen Datenbanken in Oleafly" width="100%" />
 
 ### Gib deinem Assistenten das tatsächliche Projekt
 
@@ -77,14 +81,13 @@ Bitte ihn, einen Abschnitt zu straffen, eine Gleichung zu erklären oder einen B
 
 Nutze das Modell deiner Wahl: Verbinde einen gehosteten Anbieter, verwende Ollama lokal oder wähle einen der folgenden CLI-Agenten. Der Editor ist auch bei ausgeschalteter KI vollständig nutzbar.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="Der KI-Assistent arbeitet neben dem geöffneten Forschungsprojekt" width="100%" />
+<img src="../assets/readme/ai-personas.png" alt="KI-Assistentenrollen für Schreiben und Begutachtung in Oleafly" width="100%" />
 
 <details>
 <summary>Sieh dir eine vorgeschlagene Änderung an, bevor sie angewendet wird</summary>
 
 Lies im Modus „Ask for approval“ den vorgeschlagenen Dateidiff und entscheide, ob du ihn anwenden möchtest. Du kannst auch gewöhnliche Schreibvorgänge für die Sitzung genehmigen oder in den Einstellungen eine andere Freigaberichtlinie wählen.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="Freigabesteuerung zum Prüfen der vom Assistenten vorgeschlagenen Änderungen" width="100%" />
 
 </details>
 
@@ -94,7 +97,7 @@ Beschreibe dem Assistenten ein Diagramm oder erstelle es auf der Arbeitsfläche.
 
 Füge das Ergebnis mit Beschriftung und Label ein. Der bearbeitbare Vektorquelltext bleibt im Projekt und ist für die nächste Überarbeitung oder Änderungen deiner Mitautor:innen bereit.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="Der Diagramm-Arbeitsbereich mit bearbeitbarem Quelltext und gerenderter Abbildung" width="100%" />
+<img src="../assets/readme/diagram-composer.png" alt="Diagram Composer in Oleafly mit einem bearbeitbaren Diagramm auf der Arbeitsfläche" width="100%" />
 
 ### Schreibe weiter, während die Recherche vorankommt
 
@@ -102,7 +105,6 @@ Gib einer Rechercheaufgabe eine Literaturübersicht, eine Analyse oder einen zu 
 
 Recherche-Skills gehen weiter: Erstelle eine Leseliste, prüfe Behauptungen anhand von Quellenmaterial, bereite aus der Arbeit einen Vortrag vor oder entwirf eine Antwort an Gutachter:innen. Speichere deinen eigenen Ablauf, um ihn im nächsten Projekt wiederzuverwenden.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="Der Recherche-Arbeitsbereich für Aufgaben, die neben dem Manuskript laufen" width="100%" />
 
 ### Bereite die Arbeit vor, die du einreichen möchtest
 
@@ -110,7 +112,7 @@ Prüfe das Manuskript und sein kompiliertes PDF vor dem Export. Preflight sammel
 
 Prüfe bei einem Lebenslauf, wie der Text des PDFs bei einem Parser ankommt. Wähle für eine Arbeit ein Veröffentlichungsprofil und sieh dir dessen Einreichungsprüfungen an. Exportiere das PDF oder packe den Quelltext, wenn du bereit zum Versenden bist.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="Preflight-Prüfungen für eine Forschungsarbeit vor der Einreichung" width="100%" />
+<img src="../assets/readme/preflight-accessibility.png" alt="Maschinenprüfbare Barrierefreiheitsbefunde in Oleafly Preflight" width="100%" />
 
 ### Jedes Projekt bleibt deins
 
@@ -118,7 +120,67 @@ Deine Arbeit bleibt in normalen Dateien auf deinem Computer. Bearbeite sie mit e
 
 Erfolgreiche Kompilierungen speichern automatische Checkpoints, damit du zu einem früheren Projektstand zurückkehren kannst. Nutze Git, wenn du Commits und eine gemeinsame Historie brauchst. Du entscheidest, was du behältst und wann du es veröffentlichst.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="Gespeicherte Projekt-Checkpoints in Oleafly" width="100%" />
+<img src="../assets/readme/checkpoints.png" alt="Gespeicherte Projekt-Checkpoints in Oleafly" width="100%" />
+
+<p align="center">
+  <img src="../assets/readme/source-control.png" alt="Oleafly Source-Control-Ansicht mit Änderungen, Branches und Commit-Steuerung" width="100%" />
+</p>
+<p align="center"><em>Sieh Änderungen, Branches, Verlauf und Commits, ohne das Projekt zu verlassen.</em></p>
+
+## Weitere Bereiche des Arbeitsbereichs
+
+### Beginne mit deiner tatsächlichen Arbeit
+
+Starte ein neues Forschungsprojekt, importiere ein vorhandenes Projekt oder wähle eine bearbeitbare Vorlage. Der Startdialog hilft dir, den richtigen Einstieg für Paper, Dissertation, Bericht, Präsentation oder andere wissenschaftliche Dokumente zu wählen.
+
+<img src="../assets/readme/start-work.png" alt="Oleafly-Dialog zum Starten eines Forschungsprojekts, Imports oder einer Vorlage" width="100%" />
+
+### Kompiliere mit LaTeX, Typst oder Markdown
+
+Wähle die Engine pro Projekt. Tectonic ist für portable Offline-Builds enthalten, `latexmk` nutzt eine vorhandene TeX-Distribution, Typst kompiliert direkt und Markdown verwendet Pandoc für Konvertierungen. Die tatsächlichen Grenzen der aktiven Engine werden in der Oberfläche angezeigt.
+
+<img src="../assets/readme/compile-engines.png" alt="Oleafly-Einstellungen für LaTeX-, Typst-, Markdown- und TeX-Engines" width="100%" />
+
+### LaTeX-Editor, Blöcke und Symbole
+
+Die LaTeX-Leiste bietet Code- und Visual-Ansicht, Rückgängig und Wiederholen, sechs Überschriftenebenen, Formatierung, Links, Zitate, Querverweise, Fußnoten, Blockzitate, Abbildungen, Tabellen, Listen, `equation`-, `align`- und Bruchblöcke sowie Code-Intelligenz. Der Symbolpicker enthält 236 eindeutige Befehle in den Kategorien griechische Buchstaben, Operatoren, Relationen, Pfeile, Mengenlehre, Logik, Analysis, Funktionen, Klammern, Akzente, Abstände und Sonstiges. Die [vollständigen Details zu Blöcken und Symbolen](../../README.md#insert-latex-blocks-formatting-and-symbols) stehen in der englischen README.
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="Oleafly-LaTeX-Editorleiste mit Formatierungs-, Referenz-, Abbildungs-, Tabellen-, Listen-, Gleichungs- und Symbolwerkzeugen" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="Durchsuchbarer LaTeX-Symbolpicker in Oleafly" width="100%" />
+
+### Quelle und PDF zusammen lesen
+
+Der Quelltext bleibt die maßgebliche Darstellung, während der PDF-Viewer direkt daneben geöffnet bleibt. Mit SyncTeX kannst du – sofern die Engine es unterstützt – zwischen Quellzeile und PDF navigieren. Ein fehlgeschlagener Build ersetzt nicht automatisch die letzte lesbare PDF-Version.
+
+<img src="../assets/readme/source-and-pdf.png" alt="Oleafly mit Manuskriptquelle und kompiliertem PDF nebeneinander" width="100%" />
+<img src="../assets/readme/pdf-preview.png" alt="PDF-Vorschau neben dem Quelltexteditor in Oleafly" width="100%" />
+
+### Wiederverwendbare Skills
+
+Skills sind gewöhnliche `SKILL.md`-Ordner für Literaturarbeit, Schreiben, Abbildungen, Reviews, Einreichungen und andere Abläufe. Verwende sie per Slash-Befehl, speichere einen bewährten Ablauf oder teile ihn mit kompatiblen Agenten.
+
+<img src="../assets/readme/skills.png" alt="Oleafly-Skills für wiederverwendbare Recherche- und Schreibabläufe" width="100%" />
+
+Das enthaltene Paket `research-core` umfasst 36 Skills. Die [vollständige Liste der enthaltenen Skills](../../README.md#skills-shipped-with-oleafly) und die Katalognamen stehen in der englischen README.
+
+### Werkzeuge und Befehle in einer Galerie
+
+Die Tools-Galerie bündelt PDF-, arXiv-, Bild-, HTML-, Word-, Markdown-, Typst-, Tabellen- und Gleichungskonvertierung sowie BibTeX-, Literatur-, Statistik-, Schreib-, Labor- und Konferenzwerkzeuge. Die Befehlspalette durchsucht Projekte, Dokumente, Einstellungen und Werkzeuge; mit `/` kannst du Befehle direkt filtern.
+
+<img src="../assets/readme/command-palette.png" alt="Oleafly-Befehlspalette für Projekte, Dokumente, Befehle und Werkzeuge" width="100%" />
+<img src="../assets/readme/tools-gallery.png" alt="Oleafly-Tools-Galerie mit Forschungs- und Dokumentwerkzeugen" width="100%" />
+
+### Ein Terminal neben dem Paper
+
+Öffne bis zu zehn Shell-Tabs pro Projekt, benenne sie und führe Skripte, Datenanalysen oder andere CLI-Werkzeuge im aktiven Projektordner aus. Der integrierte Browser ist für Computer-Use-Aufgaben gedacht und bleibt vom Manuskriptfenster getrennt.
+
+<img src="../assets/readme/project-terminal.png" alt="Oleafly-Terminal neben einem Manuskriptprojekt" width="100%" />
+
+### Anbieter bleiben eine bewusste Verbindung
+
+Projektdateien, Index, lokale Kompilierung, PDF-Vorschau, Prüfungen, Git und Checkpoints bleiben auf deinem Computer. Netzwerkzugriffe erfolgen nur für Aktionen, die du auswählst, etwa Literaturrecherche, GitHub, gehostete KI oder Downloads. Lokale Ollama-Modelle halten den Modellverkehr auf deinem Computer.
+
+<img src="../assets/readme/provider-boundaries.png" alt="Oleafly-Anbietereinstellungen getrennt von den Projektdateien" width="100%" />
 
 ## Unterstützte CLI-Agenten
 
@@ -126,24 +188,23 @@ Bring einen Agenten, den du bereits nutzt, in den Assistenten und arbeite über 
 
 | Agent | CLI-Befehl |
 | --- | --- |
-| Claude Code | `claude` |
-| Codex CLI | `codex` |
-| Gemini CLI | `gemini` |
-| Cursor | `agent` |
-| OpenCode | `opencode` |
-| Pi | `pi` |
-| Cline | `cline` |
-| OpenClaw | `openclaw` |
-| Hermes Agent | `hermes` |
-| CodeBuddy | `codebuddy` |
-| Kimi Code | `kimi` |
-| Grok Build | `grok` |
-| DeepSeek Harness | `dsh` |
-| Qoder | `qodercli` |
+| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" align="middle" /> Claude Code | `claude` |
+| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" align="middle" /> Codex CLI | `codex` |
+| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" align="middle" /> Gemini CLI | `gemini` |
+| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" align="middle" /> Cursor | `agent` |
+| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" align="middle" /> OpenCode | `opencode` |
+| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" align="middle" /> Pi | `pi` |
+| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" align="middle" /> Cline | `cline` |
+| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" align="middle" /> OpenClaw | `openclaw` |
+| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" align="middle" /> Hermes Agent | `hermes` |
+| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" align="middle" /> CodeBuddy | `codebuddy` |
+| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" align="middle" /> Kimi Code | `kimi` |
+| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" align="middle" /> Grok Build | `grok` |
+| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" align="middle" /> DeepSeek Harness | `dsh` |
+| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" align="middle" /> Qoder | `qodercli` |
 
 Die Unterstützung für CLI-Agenten ist in beta. Entdecke weitere kompatible Agenten über die Registry in den Einstellungen. Du kannst auch über [MCP](../mcp.md) einen externen Assistenten verbinden.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Claude Code und weitere CLI-Agenten im Oleafly-Assistenten" width="100%" />
 
 ## Ein Arbeitsbereich, der mit deiner Arbeit wächst
 
@@ -151,17 +212,18 @@ Oleafly entwickelt sich zu einem verbundenen Forschungsarbeitsbereich: die Lekt�
 
 Als Nächstes stehen Live-Zusammenarbeit und Kommentare, eine mehrsprachige Oberfläche, weitergehende Unterstützung für Typst und Markdown sowie optionale Synchronisierung zwischen Geräten auf der Roadmap. Verfolge diese Arbeit im [Changelog](../../CHANGELOG.md).
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Als Projekte organisierte Forschungsarbeiten in der Oleafly-Bibliothek" width="100%" />
+<img src="../assets/readme/project-library.png" alt="Als Projekte organisierte Forschungsarbeiten in der Oleafly-Bibliothek" width="100%" />
 
 ## Oleafly herunterladen
 
 Kostenlos und Open Source. Kein Konto nötig.
 
-| Plattform | Download |
-| --- | --- |
-| macOS · Apple Silicon | [DMG](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | [MSI oder EXE](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 oder ARM64 | [AppImage oder DEB](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Plattform | Paket | Download |
+| --- | --- | --- |
+| macOS · Apple Silicon | DMG | [![Download für macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI oder EXE | [![Download für Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage oder DEB | [![Download für Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage oder DEB | [![Download für Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 LaTeX verwendet das mitgelieferte Tectonic; zwischengespeicherte Pakete stehen für Offline-Builds bereit. Typst hat einen integrierten Compiler; Markdown verwendet Pandoc, das du in den Einstellungen aktivieren kannst. Linux-Pakete benötigen glibc 2.39 oder neuer.
 

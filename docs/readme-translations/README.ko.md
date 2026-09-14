@@ -12,10 +12,14 @@
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![라이선스: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![스타](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
-**다음 논문은 잡무를 줄이고 작성하세요.**
+영원히 무료 · 오픈 소스 · 계정 불필요 · 가입 불필요 · 추적 없음
+
+**현대적인 과학 글쓰기 작업 공간에서 잡무를 줄이고 다음 논문을 작성하세요.**
 
 Oleafly는 LaTeX, Typst, Markdown으로 논문을 작성할 수 있는 무료 데스크톱 작업 공간입니다. 한곳에서 자료를 찾고, 인용을 관리하고, 논문이 완성되어 가는 모습을 확인하세요. AI 어시스턴트에게 섹션을 다듬거나, 그림을 만들거나, 실패한 빌드를 고쳐 달라고 할 수 있으며 변경 사항은 직접 검토할 수 있습니다. 프로젝트는 사용자가 소유한 일반 파일로 보관되며, AI를 켜거나 끈 상태로 편집기를 사용할 수 있습니다.
 
@@ -24,7 +28,7 @@ Oleafly는 LaTeX, Typst, Markdown으로 논문을 작성할 수 있는 무료 �
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="LLaMA 연구 논문을 LaTeX로 편집하는 Oleafly. 소스 트리, 문서 개요, 컴파일된 PDF가 함께 열려 있습니다." width="100%" />
+  <img src="../assets/readme/hero.png" alt="LaTeX 프로젝트의 소스 편집기, PDF 미리보기, AI 계획 패널을 보여 주는 Oleafly 작업 공간" width="100%" />
 </div>
 
 ## 기능
@@ -53,7 +57,8 @@ Oleafly는 LaTeX, Typst, Markdown으로 논문을 작성할 수 있는 무료 �
 
 이미 원고가 있나요? 프로젝트 ZIP이나 GitHub 저장소를 가져오고, Word 문서를 불러오거나 PDF를 편집 가능한 LaTeX의 출발점으로 사용하세요. 다음 프로젝트는 이미 해 둔 작업에서 시작할 수 있습니다.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="문서 미리보기와 프로젝트 시작 파일이 있는 Oleafly 템플릿 갤러리" width="100%" />
+<img src="../assets/readme/template-downloads.png" alt="학술 작성과 Beamer를 위한 Oleafly 템플릿 다운로드" width="100%" />
+<img src="../assets/readme/import-project.png" alt="Oleafly 프로젝트 가져오기 대화상자" width="100%" />
 
 ### 문서 전체를 보며 작성하세요
 
@@ -61,7 +66,7 @@ Oleafly는 LaTeX, Typst, Markdown으로 논문을 작성할 수 있는 무료 �
 
 소스에서 직접 작성하거나 LaTeX와 Markdown용 시각 편집기를 사용하세요. 문서가 길어져도 수식, 인용, 그림을 바로 다룰 수 있습니다.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="LaTeX 소스와 컴파일된 PDF를 함께 보여 주는 Oleafly의 연구 논문" width="100%" />
+<img src="../assets/readme/visual-editor.png" alt="파일 트리와 문서 개요를 보여 주는 Oleafly 시각적 편집기" width="100%" />
 
 ### 논증에 필요한 자료를 찾으세요
 
@@ -69,7 +74,6 @@ arXiv, Semantic Scholar, Crossref, PubMed, OpenAlex를 함께 검색하세요. O
 
 Zotero RDF, EndNote XML, RIS, BibTeX에서 기존 라이브러리를 가져오세요. 이어서 DOI나 제목으로 참고문헌을 추가하고, 문장을 벗어나지 않고 인용을 넣으세요.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Oleafly에서 학술 데이터베이스를 검색한 결과" width="100%" />
 
 ### 어시스턴트에게 실제 프로젝트를 맡기세요
 
@@ -77,14 +81,13 @@ Zotero RDF, EndNote XML, RIS, BibTeX에서 기존 라이브러리를 가져오�
 
 원하는 모델을 그대로 사용하세요. 호스팅 제공업체를 연결하거나, Ollama를 로컬에서 사용하거나, 아래의 CLI 에이전트 중 하나를 선택할 수 있습니다. AI를 끈 상태에서도 편집기의 모든 기능을 사용할 수 있습니다.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="열린 연구 프로젝트 옆에서 작업하는 AI 어시스턴트" width="100%" />
+<img src="../assets/readme/ai-personas.png" alt="Oleafly AI 어시스턴트의 작성 및 검토 역할 선택" width="100%" />
 
 <details>
 <summary>적용하기 전에 제안된 편집을 확인하세요</summary>
 
 승인 요청 모드에서는 제안된 파일 diff를 읽고 적용 여부를 선택하세요. 세션 동안 일반적인 쓰기 작업을 승인하거나 설정에서 다른 승인 정책을 선택할 수도 있습니다.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="어시스턴트가 제안한 변경 사항을 검토하는 승인 제어" width="100%" />
 
 </details>
 
@@ -94,7 +97,7 @@ Zotero RDF, EndNote XML, RIS, BibTeX에서 기존 라이브러리를 가져오�
 
 캡션과 레이블을 붙여 결과를 삽입하세요. 다음 수정이나 공동 저자의 변경에 대비해 편집 가능한 벡터 소스를 프로젝트에 보관할 수 있습니다.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="편집 가능한 소스와 렌더링된 그림이 있는 다이어그램 작업 공간" width="100%" />
+<img src="../assets/readme/diagram-composer.png" alt="캔버스에서 편집 가능한 다이어그램을 만드는 Oleafly Diagram Composer" width="100%" />
 
 ### 연구가 진행되는 동안 계속 작성하세요
 
@@ -102,7 +105,6 @@ Zotero RDF, EndNote XML, RIS, BibTeX에서 기존 라이브러리를 가져오�
 
 연구 스킬은 작업을 더 이어갑니다. 읽을거리 목록을 만들고, 자료에 비추어 주장을 확인하고, 논문으로 발표 자료를 준비하거나, 심사 의견에 대한 답변 초안을 작성하세요. 나만의 절차를 저장해 다음 프로젝트에서 다시 사용할 수도 있습니다.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="원고와 함께 실행되는 작업을 위한 연구 작업 공간" width="100%" />
 
 ### 제출할 논문을 준비하세요
 
@@ -110,7 +112,7 @@ Zotero RDF, EndNote XML, RIS, BibTeX에서 기존 라이브러리를 가져오�
 
 이력서는 PDF의 텍스트가 파서에 어떻게 전달되는지 확인하세요. 논문은 출판 프로필을 선택하고 해당 제출 검사를 검토하세요. 보낼 준비가 되면 PDF를 내보내거나 소스를 패키지로 묶으세요.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="제출 전 연구 논문을 위한 사전 검사" width="100%" />
+<img src="../assets/readme/preflight-accessibility.png" alt="Oleafly Preflight의 접근성 검사 결과" width="100%" />
 
 ### 모든 프로젝트를 내 것으로 유지하세요
 
@@ -118,7 +120,67 @@ Zotero RDF, EndNote XML, RIS, BibTeX에서 기존 라이브러리를 가져오�
 
 성공적으로 컴파일하면 자동 체크포인트가 저장되므로 이전 프로젝트 상태로 돌아갈 수 있습니다. 커밋과 공유 기록이 필요할 때 Git을 사용하세요. 무엇을 보관하고 언제 게시할지는 사용자가 정합니다.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="Oleafly에 저장된 프로젝트 체크포인트" width="100%" />
+<img src="../assets/readme/checkpoints.png" alt="Oleafly에 저장된 프로젝트 체크포인트" width="100%" />
+
+<p align="center">
+  <img src="../assets/readme/source-control.png" alt="변경 사항, 브랜치, 커밋을 보여 주는 Oleafly 소스 제어 패널" width="100%" />
+</p>
+<p align="center"><em>프로젝트를 나가지 않고 변경 사항, 브랜치, 기록, 커밋을 확인하세요.</em></p>
+
+## 작업 공간의 더 많은 기능
+
+### 이미 가진 작업에서 시작하세요
+
+새 연구 프로젝트를 만들거나, 기존 프로젝트를 가져오거나, 편집 가능한 템플릿을 선택하세요. 시작 화면에서 논문, 학위 논문, 보고서, 프레젠테이션 및 기타 과학 문서에 맞는 출발점을 고를 수 있습니다.
+
+<img src="../assets/readme/start-work.png" alt="연구 프로젝트, 가져오기 또는 템플릿을 선택하는 Oleafly 시작 화면" width="100%" />
+
+### LaTeX, Typst 또는 Markdown으로 컴파일하세요
+
+프로젝트마다 엔진을 선택하세요. Tectonic은 휴대 가능한 오프라인 빌드를 위해 포함되어 있고, `latexmk`는 기존 TeX 배포판을 사용하며, Typst는 직접 컴파일하고, Markdown은 변환에 Pandoc을 사용합니다. 현재 엔진의 실제 기능이 화면에 표시됩니다.
+
+<img src="../assets/readme/compile-engines.png" alt="LaTeX, Typst, Markdown 및 TeX 배포판을 위한 Oleafly 엔진 설정" width="100%" />
+
+### LaTeX 편집기, 블록 및 기호
+
+LaTeX 도구 모음에서는 Code와 Visual 보기, 실행 취소와 다시 실행, 6단계 제목, 서식, 링크, 인용, 상호 참조, 각주, 인용 블록, 그림, 표, 목록, `equation`·`align`·분수 블록, 코드 인텔리전스를 사용할 수 있습니다. 기호 선택기에는 그리스 문자, 연산자, 관계, 화살표, 집합론, 논리, 미적분, 함수, 괄호, 악센트, 간격 및 기타 범주에 걸쳐 고유 명령 236개가 있습니다. 블록과 기호의 [전체 세부 정보](../../README.md#insert-latex-blocks-formatting-and-symbols)는 영어 README에서 확인할 수 있습니다.
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="서식, 참조, 그림, 표, 목록, 수식 및 기호 제어 기능이 있는 Oleafly LaTeX 편집기 도구 모음" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="검색 가능한 범주가 있는 Oleafly LaTeX 기호 선택기" width="100%" />
+
+### 소스와 PDF를 함께 읽으세요
+
+소스가 기준 표현으로 유지되는 동안 PDF 뷰어를 옆에 둘 수 있습니다. 엔진이 지원하면 SyncTeX로 소스 줄과 PDF 페이지 사이를 이동할 수 있습니다. 컴파일에 실패해도 마지막으로 읽을 수 있던 PDF가 자동으로 사라지지 않습니다.
+
+<img src="../assets/readme/source-and-pdf.png" alt="원고 소스와 컴파일된 PDF를 함께 보여 주는 Oleafly" width="100%" />
+<img src="../assets/readme/pdf-preview.png" alt="Oleafly 소스 편집기 옆의 PDF 미리보기" width="100%" />
+
+### 연구 Skills를 재사용하세요
+
+Skills는 문헌 조사, 작성, 그림, 검토, 제출 및 기타 작업 흐름을 위한 일반적인 `SKILL.md` 폴더입니다. 슬래시 명령으로 사용하고, 잘 작동한 흐름을 저장하거나 호환되는 에이전트와 공유할 수 있습니다.
+
+<img src="../assets/readme/skills.png" alt="재사용 가능한 연구 및 글쓰기 작업 흐름을 위한 Oleafly Skills" width="100%" />
+
+번들로 제공되는 `research-core` 팩에는 36개의 Skills가 포함되어 있습니다. [번들 Skills 전체 목록](../../README.md#skills-shipped-with-oleafly)과 카탈로그 이름은 영어 README에서 확인할 수 있습니다.
+
+### 도구와 명령을 한곳의 갤러리에서
+
+갤러리에는 PDF, arXiv, 이미지, HTML, Word, Markdown, Typst, 표와 수식 변환 도구뿐 아니라 BibTeX, 문헌, 통계, 작성, 연구실 및 학회 도구가 있습니다. 명령 팔레트에서 프로젝트, 문서, 설정과 도구를 검색하고 `/`를 입력해 명령만 필터링하세요.
+
+<img src="../assets/readme/command-palette.png" alt="프로젝트, 문서, 명령과 도구를 검색하는 Oleafly 명령 팔레트" width="100%" />
+<img src="../assets/readme/tools-gallery.png" alt="연구 및 문서 도구를 보여 주는 Oleafly 도구 갤러리" width="100%" />
+
+### 논문 옆에서 터미널을 사용하세요
+
+프로젝트마다 최대 10개의 셸 탭을 열고 이름을 지정한 뒤, 활성 폴더에서 스크립트, 데이터 분석 또는 다른 CLI 도구를 실행하세요. 내장 브라우저는 computer use 작업을 위한 별도 창으로 원고 창과 분리되어 있습니다.
+
+<img src="../assets/readme/project-terminal.png" alt="원고 프로젝트 옆에 열린 Oleafly 터미널" width="100%" />
+
+### 공급자 연결은 명시적으로 관리됩니다
+
+프로젝트 파일, 색인, 로컬 컴파일, PDF 미리보기, 검사, Git 및 체크포인트는 컴퓨터에 남습니다. 문헌 검색, GitHub, 호스팅 AI 또는 다운로드처럼 사용자가 선택한 작업에만 네트워크가 사용됩니다. 로컬 Ollama 모델을 사용하면 모델 트래픽도 컴퓨터 안에 머뭅니다.
+
+<img src="../assets/readme/provider-boundaries.png" alt="프로젝트 파일과 분리된 Oleafly 공급자 설정" width="100%" />
 
 ## 지원되는 CLI 에이전트
 
@@ -126,24 +188,23 @@ Zotero RDF, EndNote XML, RIS, BibTeX에서 기존 라이브러리를 가져오�
 
 | 에이전트 | CLI 명령 |
 | --- | --- |
-| Claude Code | `claude` |
-| Codex CLI | `codex` |
-| Gemini CLI | `gemini` |
-| Cursor | `agent` |
-| OpenCode | `opencode` |
-| Pi | `pi` |
-| Cline | `cline` |
-| OpenClaw | `openclaw` |
-| Hermes Agent | `hermes` |
-| CodeBuddy | `codebuddy` |
-| Kimi Code | `kimi` |
-| Grok Build | `grok` |
-| DeepSeek Harness | `dsh` |
-| Qoder | `qodercli` |
+| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" align="middle" /> Claude Code | `claude` |
+| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" align="middle" /> Codex CLI | `codex` |
+| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" align="middle" /> Gemini CLI | `gemini` |
+| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" align="middle" /> Cursor | `agent` |
+| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" align="middle" /> OpenCode | `opencode` |
+| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" align="middle" /> Pi | `pi` |
+| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" align="middle" /> Cline | `cline` |
+| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" align="middle" /> OpenClaw | `openclaw` |
+| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" align="middle" /> Hermes Agent | `hermes` |
+| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" align="middle" /> CodeBuddy | `codebuddy` |
+| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" align="middle" /> Kimi Code | `kimi` |
+| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" align="middle" /> Grok Build | `grok` |
+| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" align="middle" /> DeepSeek Harness | `dsh` |
+| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" align="middle" /> Qoder | `qodercli` |
 
 CLI 에이전트 지원은 beta입니다. 설정의 레지스트리에서 호환되는 에이전트를 더 찾아보세요. [MCP](../mcp.md)를 통해 외부 어시스턴트를 연결할 수도 있습니다.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Oleafly 어시스턴트에서 사용할 수 있는 Claude Code와 다른 CLI 에이전트" width="100%" />
 
 ## 작업과 함께 자라는 작업 공간
 
@@ -151,17 +212,18 @@ Oleafly가 지향하는 것은 연결된 연구 작업 공간입니다. 질문�
 
 다음 로드맵에는 실시간 협업과 댓글, 다국어 인터페이스, Typst와 Markdown 지원 확대, 기기 간 선택적 동기화가 있습니다. 이 작업이 추가되는 과정은 [변경 로그](../../CHANGELOG.md)에서 확인하세요.
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Oleafly 라이브러리에서 프로젝트로 정리된 연구 논문" width="100%" />
+<img src="../assets/readme/project-library.png" alt="Oleafly 라이브러리에서 프로젝트로 정리된 연구 논문" width="100%" />
 
 ## Oleafly 다운로드
 
 무료 오픈 소스입니다. 계정이 필요하지 않습니다.
 
-| 플랫폼 | 다운로드 |
-| --- | --- |
-| macOS · Apple Silicon | [DMG](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | [MSI 또는 EXE](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 또는 ARM64 | [AppImage 또는 DEB](https://github.com/Oleafly/Oleafly/releases/latest) |
+| 플랫폼 | 패키지 | 다운로드 |
+| --- | --- | --- |
+| macOS · Apple Silicon | DMG | [![macOS용 다운로드](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI 또는 EXE | [![Windows용 다운로드](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage 또는 DEB | [![Linux용 다운로드](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage 또는 DEB | [![Linux용 다운로드](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 LaTeX는 내장 Tectonic을 사용하며, 오프라인 빌드에 쓸 수 있는 캐시된 패키지도 있습니다. Typst에는 컴파일러가 포함되어 있고, Markdown은 설정에서 사용할 수 있는 Pandoc을 사용합니다. Linux 패키지에는 glibc 2.39 이상이 필요합니다.
 

@@ -12,10 +12,14 @@
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![ライセンス: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
-[![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![スター](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
-**面倒な作業を減らして、次の論文を書こう。**
+永久無料 · オープンソース · アカウント不要 · サインアップ不要 · トラッキングなし
+
+**面倒な作業を減らして、モダンな科学執筆ワークスペースで次の論文を書こう。**
 
 Oleaflyは、LaTeX、Typst、Markdownで論文を書くための無料デスクトップワークスペースです。文献を探し、引用を管理し、論文が形になっていく様子をひとつの場所で確認できます。AIアシスタントに節の推敲、図の作成、失敗したビルドの修正を頼めます。変更内容は確認してから取り込めます。プロジェクトはあなたが所有する通常のファイルとして保存され、AIの有無にかかわらずエディタを使えます。
 
@@ -24,7 +28,7 @@ Oleaflyは、LaTeX、Typst、Markdownで論文を書くための無料デスク�
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="ソースツリー、文書アウトライン、コンパイル済みPDFを同時に開き、OleaflyでLLaMAの研究論文をLaTeXで編集している画面" width="100%" />
+  <img src="../assets/readme/hero.png" alt="LaTeXプロジェクトのソースエディタ、PDFプレビュー、AI計画パネルを表示したOleaflyのワークスペース" width="100%" />
 </div>
 
 ## 機能
@@ -53,7 +57,8 @@ Oleaflyは、LaTeX、Typst、Markdownで論文を書くための無料デスク�
 
 すでに原稿がありますか？ プロジェクトZIPやGitHubリポジトリをインポートしたり、Word文書を取り込んだり、編集可能なLaTeXの出発点としてPDFを使ったりできます。次のプロジェクトは、すでに進めた作業から始められます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="文書プレビューとプロジェクトの出発点を備えたOleaflyのテンプレートギャラリー" width="100%" />
+<img src="../assets/readme/template-downloads.png" alt="学術執筆とBeamer向けのOleaflyテンプレートダウンロード" width="100%" />
+<img src="../assets/readme/import-project.png" alt="Oleaflyのプロジェクトインポート画面" width="100%" />
 
 ### 文書全体を見ながら書く
 
@@ -61,7 +66,7 @@ Oleaflyは、LaTeX、Typst、Markdownで論文を書くための無料デスク�
 
 ソースを直接書くことも、LaTeXとMarkdown用のビジュアルエディタを使うこともできます。文書が育っても、数式、引用、図はすぐ手の届くところにあります。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="LaTeXソースとコンパイル済みPDFを並べて研究論文を表示するOleafly" width="100%" />
+<img src="../assets/readme/visual-editor.png" alt="ファイルツリーと文書アウトラインを表示したOleaflyのビジュアルエディタ" width="100%" />
 
 ### 論旨に必要な文献を見つける
 
@@ -69,7 +74,6 @@ arXiv、Semantic Scholar、Crossref、PubMed、OpenAlexをまとめて検索で�
 
 Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り込めます。その後、DOIまたはタイトルで参考文献を追加し、文から離れずに引用を挿入できます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Oleaflyで学術データベースを検索した結果" width="100%" />
 
 ### 実際のプロジェクトをアシスタントに渡す
 
@@ -77,14 +81,13 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 好みのモデルを使えます。ホスト型のプロバイダーに接続する、Ollamaをローカルで使う、または以下のCLIエージェントから選べます。AIをオフにしても、エディタはすべて使えます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="開いている研究プロジェクトの横で作業するAIアシスタント" width="100%" />
+<img src="../assets/readme/ai-personas.png" alt="OleaflyのAIアシスタントに用意された執筆とレビューの役割" width="100%" />
 
 <details>
 <summary>提案された編集を適用する前に確認する</summary>
 
 「Ask for approval」モードでは、提案されたファイル差分を読み、適用するかどうかを選べます。通常の書き込みをそのセッションで許可することも、設定から別の承認ポリシーを選ぶこともできます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="アシスタントが提案した変更を確認するための承認コントロール" width="100%" />
 
 </details>
 
@@ -94,7 +97,7 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 結果にはキャプションとラベルを付けて挿入します。編集可能なベクターソースはプロジェクト内に残るため、次の改訂や共著者による変更にも対応できます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="編集可能なソースとレンダリング済みの図を備えたダイアグラムワークスペース" width="100%" />
+<img src="../assets/readme/diagram-composer.png" alt="編集可能な図をキャンバス上で扱うOleaflyのDiagram Composer" width="100%" />
 
 ### リサーチを進めながら書き続ける
 
@@ -102,7 +105,6 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 リサーチスキルは作業の幅を広げます。読書リストを作る、出典資料に照らして主張を確認する、論文から発表を準備する、査読者への回答を下書きするといったことができます。自分の手順を保存して、次のプロジェクトで再利用することもできます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="原稿と並行して実行するタスクのためのリサーチワークスペース" width="100%" />
 
 ### 提出したい論文を整える
 
@@ -110,7 +112,7 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 履歴書では、PDFのテキストがパーサーにどう読み取られるかを確認できます。論文では、出版プロファイルを選び、投稿前チェックを見直せます。送る準備ができたら、PDFを書き出すか、ソースをパッケージ化します。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="提出前の研究論文に対するPreflightチェック" width="100%" />
+<img src="../assets/readme/preflight-accessibility.png" alt="Oleafly Preflightのアクセシビリティ検査結果" width="100%" />
 
 ### どのプロジェクトもあなたのもの
 
@@ -118,7 +120,67 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 コンパイルが成功すると、自動チェックポイントが保存されるので、以前のプロジェクト状態に戻れます。コミットや共有履歴が必要なときはGitを使えます。何を残し、いつ公開するかはあなたが決めます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="Oleaflyに保存されたプロジェクトのチェックポイント" width="100%" />
+<img src="../assets/readme/checkpoints.png" alt="Oleaflyに保存されたプロジェクトのチェックポイント" width="100%" />
+
+<p align="center">
+  <img src="../assets/readme/source-control.png" alt="変更、ブランチ、コミットを表示するOleaflyのソース管理パネル" width="100%" />
+</p>
+<p align="center"><em>プロジェクトを離れずに、変更、ブランチ、履歴、コミットを確認できます。</em></p>
+
+## ワークスペースのその他の機能
+
+### すでにある作業から始める
+
+研究プロジェクトを新しく作成するか、既存のプロジェクトを取り込むか、編集可能なテンプレートを選べます。開始画面から、論文、学位論文、レポート、プレゼンテーションなどに合った出発点を選べます。
+
+<img src="../assets/readme/start-work.png" alt="研究プロジェクト、インポート、テンプレートを選ぶOleaflyの開始画面" width="100%" />
+
+### LaTeX、Typst、Markdownでコンパイルする
+
+プロジェクトごとにエンジンを選択できます。Tectonicはポータブルなオフラインビルド用に同梱され、`latexmk`は既存のTeXディストリビューションを使い、Typstは直接コンパイルし、Markdownは変換にPandocを使います。現在のエンジンが持つ機能も画面で確認できます。
+
+<img src="../assets/readme/compile-engines.png" alt="LaTeX、Typst、Markdown、TeXディストリビューションのOleaflyエンジン設定" width="100%" />
+
+### LaTeXエディタ、ブロック、記号
+
+LaTeXバーでは、CodeとVisualの切り替え、元に戻す・やり直す、6段階の見出し、書式、リンク、引用、相互参照、脚注、引用ブロック、図、表、リスト、`equation`・`align`・分数ブロック、コードインテリジェンスを使えます。記号ピッカーには、ギリシャ文字、演算子、関係、矢印、集合論、論理、微積分、関数、括弧、アクセント、空白、その他のカテゴリに236個の固有コマンドがあります。ブロックと記号の[詳細一覧](../../README.md#insert-latex-blocks-formatting-and-symbols)は英語版READMEにあります。
+
+<img src="../assets/readme/latex-editor-toolbar.png" alt="書式、参照、図、表、リスト、数式、記号の操作を備えたOleafly LaTeXエディタバー" width="100%" />
+<img src="../assets/readme/latex-symbols.png" alt="検索可能なカテゴリを備えたOleafly LaTeX記号ピッカー" width="100%" />
+
+### ソースとPDFを並べて読む
+
+ソースが基準となる表示で、PDFビューアを隣に置けます。エンジンが対応していれば、SyncTeXでソース行とPDFページを行き来できます。コンパイルに失敗しても、最後に読めたPDFが自動的に置き換わることはありません。
+
+<img src="../assets/readme/source-and-pdf.png" alt="原稿のソースとコンパイル済みPDFを並べて表示するOleafly" width="100%" />
+<img src="../assets/readme/pdf-preview.png" alt="Oleaflyのソースエディタの隣に表示されたPDFプレビュー" width="100%" />
+
+### 研究ワークフローを再利用するSkills
+
+Skillsは、文献調査、執筆、図、レビュー、投稿などに使える通常の`SKILL.md`フォルダーです。スラッシュコマンドで呼び出したり、うまくいった手順を保存したり、対応するエージェントと共有したりできます。
+
+<img src="../assets/readme/skills.png" alt="研究と執筆のワークフローを再利用するOleaflyのSkills" width="100%" />
+
+同梱の `research-core` パックには36個のSkillsが含まれています。完全な[同梱Skillsの一覧](../../README.md#skills-shipped-with-oleafly)とカタログ名は英語版READMEで確認できます。
+
+### ツールとコマンドをひとつのギャラリーに
+
+ギャラリーには、PDF、arXiv、画像、HTML、Word、Markdown、Typst、表、数式の変換ツールに加えて、BibTeX、文献、統計、執筆、研究機関、学会締切のツールがあります。コマンドパレットではプロジェクト、文書、設定、ツールを検索でき、`/`でコマンドだけに絞り込めます。
+
+<img src="../assets/readme/command-palette.png" alt="プロジェクト、文書、コマンド、ツールを検索するOleaflyのコマンドパレット" width="100%" />
+<img src="../assets/readme/tools-gallery.png" alt="研究と文書のツールを集めたOleaflyのツールギャラリー" width="100%" />
+
+### 論文の隣にターミナルを置く
+
+プロジェクトごとに最大10個のシェルタブを開き、名前を付けて、スクリプトやデータ分析、その他のCLIツールを現在のフォルダーで実行できます。内蔵ブラウザーはcomputer useタスク向けで、原稿のウィンドウとは分離されています。
+
+<img src="../assets/readme/project-terminal.png" alt="原稿プロジェクトの隣で開いたOleaflyのターミナル" width="100%" />
+
+### プロバイダー接続は明示的に管理する
+
+プロジェクトファイル、インデックス、ローカルコンパイル、PDFプレビュー、チェック、Git、チェックポイントはコンピューターに残ります。ネットワークを使うのは、文献検索、GitHub、ホスト型AI、ダウンロードなど、選んだ操作だけです。ローカルのOllamaモデルならモデル通信もコンピューター内に留まります。
+
+<img src="../assets/readme/provider-boundaries.png" alt="プロジェクトファイルとは分離されたOleaflyのプロバイダー設定" width="100%" />
 
 ## 対応するCLIエージェント
 
@@ -126,24 +188,23 @@ Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリを取り�
 
 | エージェント | CLIコマンド |
 | --- | --- |
-| Claude Code | `claude` |
-| Codex CLI | `codex` |
-| Gemini CLI | `gemini` |
-| Cursor | `agent` |
-| OpenCode | `opencode` |
-| Pi | `pi` |
-| Cline | `cline` |
-| OpenClaw | `openclaw` |
-| Hermes Agent | `hermes` |
-| CodeBuddy | `codebuddy` |
-| Kimi Code | `kimi` |
-| Grok Build | `grok` |
-| DeepSeek Harness | `dsh` |
-| Qoder | `qodercli` |
+| <img src="https://cdn.simpleicons.org/anthropic" alt="" width="24" height="24" align="middle" /> Claude Code | `claude` |
+| <img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="24" height="24" align="middle" /> Codex CLI | `codex` |
+| <img src="https://cdn.simpleicons.org/googlegemini" alt="" width="24" height="24" align="middle" /> Gemini CLI | `gemini` |
+| <img src="https://cdn.simpleicons.org/cursor" alt="" width="24" height="24" align="middle" /> Cursor | `agent` |
+| <img src="https://cdn.simpleicons.org/opencode" alt="" width="24" height="24" align="middle" /> OpenCode | `opencode` |
+| <img src="https://pi.dev/favicon.svg" alt="" width="24" height="24" align="middle" /> Pi | `pi` |
+| <img src="https://cdn.simpleicons.org/cline" alt="" width="24" height="24" align="middle" /> Cline | `cline` |
+| <img src="https://openclaw.ai/favicon.svg" alt="" width="24" height="24" align="middle" /> OpenClaw | `openclaw` |
+| <img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="24" height="24" align="middle" /> Hermes Agent | `hermes` |
+| <img src="https://cdn.simpleicons.org/codebuddy" alt="" width="24" height="24" align="middle" /> CodeBuddy | `codebuddy` |
+| <img src="https://cdn.simpleicons.org/kimi" alt="" width="24" height="24" align="middle" /> Kimi Code | `kimi` |
+| <img src="https://grok.com/images/favicon.svg" alt="" width="24" height="24" align="middle" /> Grok Build | `grok` |
+| <img src="https://cdn.simpleicons.org/deepseek" alt="" width="24" height="24" align="middle" /> DeepSeek Harness | `dsh` |
+| <img src="https://qoder.com/favIcon.svg" alt="" width="24" height="24" align="middle" /> Qoder | `qodercli` |
 
 CLIエージェントのサポートはbetaです。設定のレジストリから、さらに対応するエージェントを見つけられます。[MCP](../mcp.md)を通じて外部アシスタントに接続することもできます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Oleaflyアシスタントで利用できるClaude CodeなどのCLIエージェント" width="100%" />
 
 ## 作業とともに育つワークスペース
 
@@ -151,17 +212,18 @@ Oleaflyが目指すのは、つながったリサーチワークスペースで�
 
 ロードマップの次の項目は、ライブコラボレーションとコメント、多言語インターフェース、TypstとMarkdownへのより深い対応、デバイス間の任意の同期です。進捗は[変更履歴](../../CHANGELOG.md)で確認できます。
 
-<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Oleaflyライブラリでプロジェクトとして整理された研究論文" width="100%" />
+<img src="../assets/readme/project-library.png" alt="Oleaflyライブラリでプロジェクトとして整理された研究論文" width="100%" />
 
 ## Oleaflyをダウンロード
 
 無料かつオープンソースです。アカウントは不要です。
 
-| プラットフォーム | ダウンロード |
-| --- | --- |
-| macOS · Apple Silicon | [DMG](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | [MSIまたはEXE](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64またはARM64 | [AppImageまたはDEB](https://github.com/Oleafly/Oleafly/releases/latest) |
+| プラットフォーム | パッケージ | ダウンロード |
+| --- | --- | --- |
+| macOS · Apple Silicon | DMG | [![macOS向けダウンロード](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSIまたはEXE | [![Windows向けダウンロード](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImageまたはDEB | [![Linux向けダウンロード](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImageまたはDEB | [![Linux向けダウンロード](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 LaTeXは同梱のTectonicを使い、オフラインビルド用のキャッシュ済みパッケージも利用できます。Typstにはコンパイラが同梱されています。Markdownは、設定から利用できるPandocを使います。Linuxパッケージにはglibc 2.39以降が必要です。
 

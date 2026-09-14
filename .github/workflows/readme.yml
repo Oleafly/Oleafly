@@ -1,0 +1,75 @@
+name: README checks
+
+on:
+  push:
+    paths:
+      - README.md
+      - docs/readme-translations/**
+      - docs/assets/readme/**
+      - .github/workflows/readme.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - README.md
+      - docs/readme-translations/**
+      - docs/assets/readme/**
+      - .github/workflows/readme.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate README assets and paths
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check README formatting and local image references
+        run: |
+          set -euo pipefail
+          git diff --check
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+
+          const translationFiles = fs.readdirSync("docs/readme-translations")
+            .filter((name) => /^README\.[^.]+\.md$/.test(name))
+            .map((name) => `docs/readme-translations/${name}`);
+          const files = ["README.md", ...translationFiles];
+          const missing = [];
+          const refsByFile = new Map();
+
+          for (const file of files) {
+            const readme = fs.readFileSync(file, "utf8");
+            if (/\/Users\/|prajwalsvenkatesh|SCR-20260913-mtbo|SCR-20260913-mtfw/.test(readme)) {
+              console.error(`${file} contains a personal absolute path or an excluded screenshot reference.`);
+              process.exit(1);
+            }
+
+            const refs = [...readme.matchAll(/(?:docs\/assets\/readme|\.\.\/assets\/readme)\/[^\s)"']+/g)]
+              .map(([ref]) => ref.replace(/[.,]+$/, ""));
+            const resolvedRefs = refs.map((ref) => ref.startsWith("../")
+              ? `docs/${ref.slice(3)}`
+              : ref);
+            refsByFile.set(file, new Set(resolvedRefs));
+            for (const ref of resolvedRefs) {
+              if (!fs.existsSync(ref)) missing.push(`${file}: ${ref}`);
+            }
+          }
+
+          if (missing.length > 0) {
+            console.error("Missing README assets:");
+            console.error(missing.join("\n"));
+            process.exit(1);
+          }
+
+          const totalRefs = [...refsByFile.values()]
+            .reduce((count, refs) => count + refs.size, 0);
+          if (totalRefs === 0) {
+            console.error("The README files do not reference any local screenshot assets.");
+            process.exit(1);
+          }
+
+          console.log(`Validated ${totalRefs} local screenshot references across ${files.length} README files.`);
+          NODE
