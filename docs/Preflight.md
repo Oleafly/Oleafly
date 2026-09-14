@@ -5,6 +5,11 @@ current PDF before a document leaves the app. It separates facts Oleafly can
 verify from advisory checks that still need an author's judgment. It is not a
 guarantee of acceptance or a formal accessibility certificate.
 
+<div align="center">
+  <img src="assets/readme/preflight-accessibility.png" alt="Oleafly Preflight accessibility checks reporting machine-checkable findings" width="100%" />
+</div>
+<p align="center"><em>Preflight shows what the file supports and where human review is still needed.</em></p>
+
 ## Checks
 
 - **Compile and layout:** failed builds, unresolved citations and references,

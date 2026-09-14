@@ -14,6 +14,11 @@ optional assets so the library can filter and validate it.
 - AI-generated starters can be compiled and saved as ordinary editable
   projects when a provider is configured.
 
+<div align="center">
+  <img src="assets/readme/template-downloads.png" alt="Oleafly Downloads settings showing editable academic, presentation, business, and research templates" width="100%" />
+</div>
+<p align="center"><em>Choose a starting layout, then edit the files as ordinary project source.</em></p>
+
 ## Packaging contract
 
 - Bundled starters live under `src-tauri/resources/templates/`.

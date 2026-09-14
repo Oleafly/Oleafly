@@ -20,6 +20,11 @@ state without changing the source format.
 - Local word count, project search, logs, and diagnostic surfaces.
 - Update checks through the signed application updater.
 
+<div align="center">
+  <img src="assets/readme/command-palette.png" alt="Oleafly command palette searching projects, documents, commands, and tools" width="100%" />
+</div>
+<p align="center"><em>Search the workspace and open commands or tools from one place.</em></p>
+
 ## Appearance
 
 Appearance has three choices: System, Light, and Dark. System follows the
@@ -37,6 +42,11 @@ close action is disabled when nothing sits on that side. The color shows as a
 dot before the title and tints the tab while it is active. Titles and colors are
 saved per project, so a terminal slot reopens with the name and color it had.
 Shift+F10 or the context menu key opens the menu when a tab has focus.
+
+<div align="center">
+  <img src="assets/readme/project-terminal.png" alt="Oleafly terminal opened beside a manuscript project" width="100%" />
+</div>
+<p align="center"><em>Run project commands in a terminal tab without leaving the editor and PDF workspace.</em></p>
 
 ## Local-first policy
 

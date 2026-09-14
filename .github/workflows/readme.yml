@@ -32,13 +32,55 @@ jobs:
           git diff --check
           node --input-type=module <<'NODE'
           import fs from "node:fs";
+          import path from "node:path";
 
           const translationFiles = fs.readdirSync("docs/readme-translations")
             .filter((name) => /^README\.[^.]+\.md$/.test(name))
             .map((name) => `docs/readme-translations/${name}`);
           const files = ["README.md", ...translationFiles];
+          const expectedLocales = ["ar", "de", "es", "fr", "ja", "ko", "pt", "ru", "zh"];
+          const missingTranslationFiles = expectedLocales
+            .map((locale) => "docs/readme-translations/README." + locale + ".md")
+            .filter((file) => !fs.existsSync(file));
+          if (missingTranslationFiles.length > 0) {
+            console.error("Missing translated READMEs:");
+            console.error(missingTranslationFiles.join("\n"));
+            process.exit(1);
+          }
           const missing = [];
           const refsByFile = new Map();
+          const assetsByFile = new Map();
+          const relativeLinksByFile = new Map();
+          const structuralMismatches = [];
+
+          const localAssetNames = (readme) => [...readme.matchAll(
+            /(?:docs\/assets\/readme|\.\.\/assets\/readme)\/([^\s)"']+)/g,
+          )].map(([, name]) => name.replace(/[.,]+$/, ""));
+
+          const relativeLinkTargets = (file, readme) => {
+            const targets = [];
+            for (const [, target] of readme.matchAll(
+              /\[[^\]]+\]\((?!https?:|mailto:|#)([^)\s]+)(?:\s+"[^"]*")?\)/g,
+            )) {
+              const [withoutFragment] = target.split("#");
+              targets.push(path.posix.normalize(path.posix.join(path.posix.dirname(file), withoutFragment)));
+            }
+            return targets.sort();
+          };
+          const sharedRelativeLinkTargets = (file, readme) => relativeLinkTargets(file, readme)
+            .filter((target) => target !== "README.md" && !target.startsWith("docs/readme-translations/"));
+
+          const sourceReadme = fs.readFileSync("README.md", "utf8");
+          const sourceAssets = localAssetNames(sourceReadme);
+          const sourceLinks = sharedRelativeLinkTargets("README.md", sourceReadme);
+          const sourceHeadingLevels = [...sourceReadme.matchAll(/^(##|###) /gm)]
+            .map(([, level]) => level.length);
+          const sourceTableRows = sourceReadme.split("\n").filter((line) => /^\| /.test(line)).length;
+          const sourceDetails = (sourceReadme.match(/^<details>$/gm) || []).length;
+          const sourceImages = (sourceReadme.match(/^<img /gm) || []).length;
+          const fenceMarker = String.fromCharCode(96).repeat(3);
+          const sourceFences = sourceReadme.split("\n")
+            .filter((line) => line.startsWith(fenceMarker)).length;
 
           for (const file of files) {
             const readme = fs.readFileSync(file, "utf8");
@@ -53,9 +95,60 @@ jobs:
               ? `docs/${ref.slice(3)}`
               : ref);
             refsByFile.set(file, new Set(resolvedRefs));
+            assetsByFile.set(file, localAssetNames(readme));
+            relativeLinksByFile.set(file, sharedRelativeLinkTargets(file, readme));
+
+            const headingLevels = [...readme.matchAll(/^(##|###) /gm)]
+              .map(([, level]) => level.length);
+            const tableRows = readme.split("\n").filter((line) => /^\| /.test(line)).length;
+            const details = (readme.match(/^<details>$/gm) || []).length;
+            const fences = readme.split("\n")
+              .filter((line) => line.startsWith(fenceMarker)).length;
+            const images = (readme.match(/^<img /gm) || []).length;
+            if (file !== "README.md" && (
+              headingLevels.join(",") !== sourceHeadingLevels.join(",")
+              || assetsByFile.get(file).join(",") !== sourceAssets.join(",")
+              || tableRows !== sourceTableRows
+              || details !== sourceDetails
+              || fences !== sourceFences
+              || images !== sourceImages
+            )) {
+              structuralMismatches.push(file);
+            }
             for (const ref of resolvedRefs) {
               if (!fs.existsSync(ref)) missing.push(`${file}: ${ref}`);
             }
+          }
+
+          const citationMarkers = ["Cite", "Zitat", "Zitier", "Citer", "Cita", "引用", "استشهاد", "인용", "цитир"];
+          const starMarkers = ["Star", "Sterne", "Étoiles", "Estrellas", "Estrelas", "Звёзд", "スター", "스타", "星", "النجوم"];
+          const containsMarker = (heading, markers) => markers.some((marker) =>
+            heading.toLocaleLowerCase().includes(marker.toLocaleLowerCase()));
+          for (const file of translationFiles) {
+            const readme = fs.readFileSync(file, "utf8");
+            const headings = [...readme.matchAll(/^## (.+)$/gm)];
+            const lastHeadings = headings.slice(-2).map(([, heading]) => heading);
+            const citationIndex = headings.at(-2)?.index ?? -1;
+            const starIndex = headings.at(-1)?.index ?? -1;
+            const closingOrderValid = lastHeadings.length === 2
+              && containsMarker(lastHeadings[0], citationMarkers)
+              && containsMarker(lastHeadings[1], starMarkers)
+              && citationIndex >= 0
+              && starIndex >= 0
+              && citationIndex < starIndex
+              && readme.trimEnd().endsWith("</a>");
+            if (
+              relativeLinksByFile.get(file).join(",") !== sourceLinks.join(",")
+              || !closingOrderValid
+            ) {
+              structuralMismatches.push(file + " (closing order or relative links)");
+            }
+          }
+
+          if (structuralMismatches.length > 0) {
+            console.error("README translations do not match the English structure:");
+            console.error([...new Set(structuralMismatches)].join("\n"));
+            process.exit(1);
           }
 
           if (missing.length > 0) {

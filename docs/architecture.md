@@ -33,6 +33,11 @@ making document engines, filesystem policy, and external integrations explicit.
 5. The preview consumes the accepted artifact and optional SyncTeX map.
 6. Preflight and AI tools consume the same project snapshot and result policy.
 
+<div align="center">
+  <img src="assets/readme/source-and-pdf.png" alt="Oleafly showing manuscript source beside its compiled PDF" width="100%" />
+</div>
+<p align="center"><em>The shell keeps source, compiled output, and project tools in one workspace.</em></p>
+
 Step 2 reads project source through a single `read_project_sources` call
 instead of one `read_file` per path. Rust hashes every file and sends text back
 only where the hash differs from what the caller already holds, so a rebuild
@@ -62,6 +67,13 @@ The contribution registry is the supported application extension point. Tabs,
 commands, AI toolsets, and context providers register typed contributions.
 Packages depend on ports and contracts, not application stores or Tauri globals.
 The app shell supplies concrete adapters at the boundary.
+
+The user-facing Tools gallery has its own typed registry in
+`src/lib/tool-catalog.ts`. Each entry declares a category, destination, icon,
+tone, and slash aliases. Labels, descriptions, and tags come from the locale
+catalog, while `src/contributions/commands.tsx` exposes the same entries to the
+command palette. Keep those surfaces in sync and update the catalog tests when
+adding or removing a tool.
 
 ## Package boundaries and ports
 

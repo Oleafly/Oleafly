@@ -9,6 +9,7 @@ The references below are for contributors, integrators, and release maintainers.
 | --- | --- |
 | [Engineering index](../README.md) | Feature inventories and engineering contracts |
 | [Feature reference](../features.md) | The product surface and supported workflows |
+| [Tools gallery](../Tools.md) | Built-in converters, research, reference, statistics, and writing tools |
 | [Document engines](../document-engines.md) | LaTeX, Typst, and Markdown capabilities |
 | [Product architecture](../architecture.md) | System boundaries, package ownership, and extension points |
 | [Development](../development.md) | Local setup, tests, and contribution workflow |

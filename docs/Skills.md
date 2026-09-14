@@ -12,6 +12,11 @@ Skills live in Settings → AI → Skills, grouped by the phase of work they
 belong to: Research, Authoring, Figures, Review, Submission, Communication,
 Tooling, plus a "Your skills" group and a "Domain shelf" group.
 
+<div align="center">
+  <img src="assets/readme/skills.png" alt="Oleafly AI Assistant skills panel showing reusable research capabilities" width="100%" />
+</div>
+<p align="center"><em>Skills turn a repeatable research routine into something you can use again.</em></p>
+
 ## The three tiers
 
 **Bundled research pack.** Oleafly ships with a pack of skills that cover a

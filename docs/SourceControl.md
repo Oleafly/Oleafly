@@ -15,6 +15,11 @@ with **Initialise Git for every project**. With the switch off, Source Control
 starts only when you press **Initialize Repository** or publish to GitHub, or
 when an imported project already carries its own repository.
 
+<div align="center">
+  <img src="assets/readme/source-control.png" alt="Oleafly Source Control panel showing staged changes, a branch graph, and commit controls" width="100%" />
+</div>
+<p align="center"><em>Use normal Git operations beside the manuscript, with the repository state in view.</em></p>
+
 ## Product surface
 
 - Explicit repository initialization and commits.

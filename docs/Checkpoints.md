@@ -89,6 +89,11 @@ The toolbar's Versioning button opens the checkpoint window. The command
 palette has separate entries: "Git history" opens the Graph section in Source
 Control, while "Checkpoints" opens Versioning.
 
+<div align="center">
+  <img src="assets/readme/checkpoints.png" alt="Oleafly Versioning window showing saved checkpoints with restore controls and stored files" width="100%" />
+</div>
+<p align="center"><em>Checkpoints give you a local recovery path without changing Git history.</em></p>
+
 ## Settings
 
 Settings has two checkpoint switches, under Data Storage in the Local store
