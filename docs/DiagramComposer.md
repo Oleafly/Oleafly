@@ -14,6 +14,11 @@ into a proprietary binary format.
 - Optional AI repair of figure compile errors and optional vision refinement.
 - Fullscreen composer mode and project-local figure naming.
 
+<div align="center">
+  <img src="assets/readme/diagram-composer.png" alt="Oleafly Diagram Composer showing an editable research diagram on a canvas" width="100%" />
+</div>
+<p align="center"><em>Keep the canvas model and the generated TikZ source editable.</em></p>
+
 ## Engineering boundaries
 
 - The diagram package is UI- and host-driven; it does not import app stores,

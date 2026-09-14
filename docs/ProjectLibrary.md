@@ -4,6 +4,11 @@ The library is the project lifecycle surface. It stores ordinary project
 folders and metadata while providing discovery, templates, previews, and
 recent-work navigation.
 
+<div align="center">
+  <img src="assets/readme/start-work.png" alt="Oleafly start screen offering a research project, project import, or template" width="100%" />
+</div>
+<p align="center"><em>Start with the kind of work you actually have: a new project, an existing project, or a template.</em></p>
+
 ## Implemented surface
 
 - Project cards with engine, document kind, modification, bookmark, and preview
@@ -16,6 +21,20 @@ recent-work navigation.
 - Compile and export history associated with the project.
 - Template gallery integration and optional template-pack downloads.
 - PDF and source import entry points.
+
+<div align="center">
+  <img src="assets/readme/project-library.png" alt="Oleafly project library with research projects organized as cards" width="100%" />
+</div>
+<p align="center"><em>Keep manuscripts discoverable without moving the project folders that contain them.</em></p>
+
+The library also keeps import paths close to project creation. Existing
+project archives, Word documents, Markdown, HTML, Typst, arXiv sources, and
+GitHub repositories can start a new project without changing the original.
+
+<div align="center">
+  <img src="assets/readme/import-project.png" alt="Oleafly import project dialog for archives, documents, arXiv sources, and GitHub repositories" width="100%" />
+</div>
+<p align="center"><em>Bring the work you already have into a new project while leaving the original alone.</em></p>
 
 ## Engineering boundaries
 

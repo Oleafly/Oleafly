@@ -557,6 +557,7 @@ Linux packages require glibc 2.39 or newer. Releases include signed update artif
 - [Editor guide](docs/Editor.md)
 - [PDF preview](docs/PDFPreview.md)
 - [Citations and literature](docs/Citations.md)
+- [Tools gallery](docs/Tools.md)
 - [Preflight and accessibility checks](docs/Preflight.md)
 - [Templates](docs/Templates.md)
 - [Diagram Composer](docs/DiagramComposer.md)

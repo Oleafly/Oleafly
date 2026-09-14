@@ -12,8 +12,10 @@ surface is designed to provide without duplicating task walkthroughs.
 | Automatic project snapshots after a successful compile | [Checkpoints](Checkpoints.md) |
 | AI assistance and external clients | [AI Copilot](AICopilot.md), [Integrations](Integrations.md), [MCP](mcp.md) |
 | Reusable AI skills, bundled and your own | [Skills](Skills.md) |
+| Research and document tools | [Tools gallery](Tools.md) |
 | Citations and literature metadata | [Citations](Citations.md) |
 | Templates and diagrams | [Templates](Templates.md), [Diagram composer](DiagramComposer.md) |
+| Browser and terminal workspace | [General](General.md), [In-app browser](browser.md) |
 | Compilation and conversion | [Compilation engines](CompilationEngines.md), [Export](Export.md) |
 | Compile, submission, accessibility, reference, privacy, and ATS checks | [Preflight](Preflight.md) |
 | Release and update operations | [Releasing](releasing.md), [Code signing](signing.md), [Auto-updates](updates.md) |
@@ -36,4 +38,4 @@ skill you chose to install.
 Capability claims should be backed by the implementation and its tests. Engine
 capabilities come from the `DocumentEngine` descriptor; editor acceptance is
 tracked in `test/fixtures/editor-support/contract.json`; package ownership and
-maintenance rules are documented in [Product architecture](Architecture.md).
+maintenance rules are documented in [Product architecture](architecture.md).

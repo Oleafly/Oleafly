@@ -5,6 +5,11 @@ can also open in a detached preview window. The preview is driven by the
 compiled artifact and retains the last accepted PDF while a newer compile is
 pending or has failed.
 
+<div align="center">
+  <img src="assets/readme/pdf-preview.png" alt="Oleafly PDF preview beside the source editor" width="100%" />
+</div>
+<p align="center"><em>Keep the source and the latest accepted PDF visible together.</em></p>
+
 ## Implemented controls
 
 - Continuous scroll with virtualized page rendering.

@@ -16,6 +16,11 @@ preflight do not require an account.
 | Optional downloads | Engines, language servers, templates, fonts, and Pandoc | Checksum or manifest policy applies before installation |
 | Update feed | Release metadata and signed artifacts | The embedded updater public key must validate the feed artifact |
 
+<div align="center">
+  <img src="assets/readme/provider-boundaries.png" alt="Oleafly provider settings kept separate from project files" width="100%" />
+</div>
+<p align="center"><em>Connections are configured separately from the manuscript and its ordinary files.</em></p>
+
 ## Provider adapter model
 
 AI providers implement the common provider interface in

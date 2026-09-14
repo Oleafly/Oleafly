@@ -17,6 +17,11 @@ it is not a second document model.
 - Chat prompt shortcuts for **Friendly** and **Fire** paper review (mentor-style
   feedback and strict Reviewer #2 critique of the current document).
 
+<div align="center">
+  <img src="assets/readme/ai-personas.png" alt="Oleafly AI Assistant persona choices for research writing, document editing, critical review, and figure work" width="100%" />
+</div>
+<p align="center"><em>Choose a working role when the task calls for a different kind of help.</em></p>
+
 ## Change and approval model
 
 - File-changing actions produce a visible diff before application.
@@ -146,6 +151,11 @@ Provider credentials are stored in encrypted app state and are never written
 to project files. Hosted calls are opt-in. Local Ollama operation keeps model
 traffic on the machine. The provider interface and model discovery code are
 shared by the built-in assistant and figure-generation flows.
+
+<div align="center">
+  <img src="assets/readme/provider-boundaries.png" alt="Oleafly provider settings kept separate from project files" width="100%" />
+</div>
+<p align="center"><em>Provider connections are explicit and separate from the manuscript on disk.</em></p>
 
 ## Engineering anchors
 

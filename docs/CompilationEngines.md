@@ -5,6 +5,11 @@ consume the descriptor's capabilities instead of guessing from filename
 extensions. Rust owns process execution, artifact paths, diagnostics, and
 engine-specific policy.
 
+<div align="center">
+  <img src="assets/readme/compile-engines.png" alt="Oleafly Engines settings showing LaTeX, Typst, Markdown, and managed TeX distributions" width="100%" />
+</div>
+<p align="center"><em>Choose the engine that matches the document and its toolchain needs.</em></p>
+
 ## LaTeX
 
 - Default engine: bundled Tectonic sidecar.

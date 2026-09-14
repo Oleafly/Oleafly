@@ -67,6 +67,38 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   prose mask, so math bodies, verbatim blocks, and machine arguments are not
   counted; a non-empty selection adds a selection count.
 
+## LaTeX controls at a glance
+
+The LaTeX toolbar keeps common source operations close to the editor. It does
+not replace the source: each action inserts ordinary LaTeX that remains
+readable in Git and other editors.
+
+| Group | Available controls |
+| --- | --- |
+| Modes and history | Code view, Visual view, undo, redo |
+| Structure | Six heading levels, from `\part` through `\paragraph` |
+| Inline text | Bold, italic, underline, and monospace text |
+| References | Links, citations, cross-references, and footnotes |
+| Blocks | Quotes, figures with captions and labels, tables, itemized and numbered lists, `equation`, `align`, and fractions |
+| Intelligence | Go to definition, find references, and project-wide rename |
+| Symbols | A searchable palette with 236 unique commands across 13 categories |
+
+<div align="center">
+  <img src="assets/readme/latex-editor-toolbar.png" alt="Oleafly LaTeX editor toolbar with formatting, references, figures, tables, lists, equations, and symbol controls" width="100%" />
+</div>
+<p align="center"><em>Insert common LaTeX structures without leaving the source editor.</em></p>
+
+The symbol palette groups Greek letters, operators, relations, arrows, set
+theory, logic, calculus, functions, brackets, accents, dots and spacing, and
+miscellaneous symbols. Search by symbol or command, then insert it at the
+current cursor. The full [symbol catalog in the README](../README.md#searchable-latex-symbol-palette)
+lists every category and command.
+
+<div align="center">
+  <img src="assets/readme/latex-symbols.png" alt="Oleafly searchable LaTeX symbol palette with categorized mathematical commands" width="100%" />
+</div>
+<p align="center"><em>Browse or search the symbol catalog, then insert the command where you are writing.</em></p>
+
 ## Proofreading
 
 - Two checkers share one worker pass. Hunspell owns spelling against the
