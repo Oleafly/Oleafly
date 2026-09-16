@@ -24,13 +24,6 @@ const TRAILING_ARGUMENTS = /^(?:\s*(?:\[[^\]]*\]|\{[^{}]*\}))*\s*$/u;
 
 const ITEM_ENVIRONMENTS = new Set(["itemize", "enumerate", "description"]);
 
-/**
- * Required arguments for environments whose `\begin` is incomplete without
- * them. `text` is the snippet that follows the closing brace of `\begin{name}`
- * and `placeholders` says how many tab stops it spends, so the body can take
- * the next one. Keyed by exact name first, then by the starless base, which is
- * how `tabular*` keeps its width argument while `alignat*` shares `alignat`'s.
- */
 interface EnvironmentArguments {
   readonly text: string;
   readonly placeholders: number;
@@ -52,7 +45,7 @@ const ENVIRONMENT_ARGUMENTS: ReadonlyMap<string, EnvironmentArguments> =
     ],
     [
       "tabularx",
-      { text: "{${1:\\linewidth}}{${2:lcr}}", placeholders: 2 },
+      { text: "{${1:\\linewidth}}{${2:lX}}", placeholders: 2 },
     ],
     ["minipage", { text: "{${1:0.8\\linewidth}}", placeholders: 1 }],
     ["thebibliography", { text: "{${1:9}}", placeholders: 1 }],

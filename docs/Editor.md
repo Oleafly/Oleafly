@@ -55,10 +55,28 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   closing delimiter, and Backspace between a fresh pair removes both halves.
   Comments, verbatim blocks and an escaped `\$` are left as typed. Environment
   completions insert the matching `\end`, with a first `\item`, caption or
-  column specification where the environment needs one. Two toggles in
-  Settings > Appearance > Editor control this: Auto-close math and Auto-close
-  environments. Both sit under Auto-close brackets: switch that one off and the
-  LaTeX pairing and the Enter `\end` go with it.
+  column specification where the environment needs one. Environments that take
+  arguments, such as `alignat`, `array`, `tabularx` and `minipage`, arrive with
+  them filled in. Two toggles in Settings > Appearance > Editor control this:
+  Auto-close math and Auto-close environments. Both sit under Auto-close
+  brackets: switch that one off and the LaTeX pairing and the Enter `\end` go
+  with it.
+- Sized delimiters: a `(`, `[`, `<`, `|`, `\{` or `\|` typed after `\left`,
+  `\bigl`, `\Bigl`, `\biggl` or `\Biggl` brings its closer, and `\big`,
+  `\Big`, `\bigg` and `\Bigg` do the same for the glyphs that have a distinct
+  closer. The caret lands between the two halves. Nothing pairs after
+  `\middle`, `\bigm` or a closing command, and a `\big|` stays a single bar.
+  The closer is skipped when the caret sits right in front of a word or a
+  command such as `\frac`, so a `\left(` typed in front of `x^2` stays open
+  for you to close by hand. Typing the closing glyph steps over the closer the
+  editor wrote, an inner `(a+b)` keeps its own parenthesis, and spelling the
+  whole closer out, `\right)` or `\right\}`, replaces the pending one instead
+  of leaving two. Backspace between an empty pair removes both halves.
+  Autocomplete offers the named delimiters as pairs too: `\left\langle`
+  writes `\right\rangle` with it, `\langle` on its own writes `\rangle`, and
+  once `\left\`, `\middle\` or `\right\` is typed the list narrows to the
+  delimiters that can follow. Accepting `\right\rangle` while that closer is
+  already pending replaces it rather than adding a second one.
 - Rich hovers: references whose label sits in a math environment render the
   equation (KaTeX), `\includegraphics` targets show a thumbnail, and labels
   display their number and page from the last successful compile. Label

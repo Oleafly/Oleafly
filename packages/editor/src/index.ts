@@ -46,20 +46,7 @@ export {
   latexIgnoredRangesField,
   mathContextAt,
 } from "./latex-lexical";
-export {
-  latexDelimiterCloserAt,
-  latexDelimiterCompletionSpecs,
-  latexDelimiterFamilySpecs,
-  latexDelimiterPrefixBefore,
-  latexEmptyDelimiterPairAt,
-  latexMathCommandSpecs,
-  latexSnippetLiteral,
-  LATEX_DELIMITER_GLYPHS,
-  LATEX_DELIMITER_SIZES,
-  type LatexDelimiterCompletionSpec,
-  type LatexDelimiterGlyph,
-  type LatexDelimiterSize,
-} from "./latex-delimiters";
+export { latexSnippetLiteral } from "./latex-delimiters";
 export {
   latexPairChange,
   latexPairInputHandler,

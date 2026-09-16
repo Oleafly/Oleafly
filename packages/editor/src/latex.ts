@@ -17,12 +17,12 @@ import {
 } from "./latex-lexical";
 import { environmentSnippet } from "./latex-environments";
 import {
-  latexDelimiterCompletionSpecs,
+  LATEX_DELIMITER_COMPLETIONS,
   latexDelimiterFamilySpecs,
   latexDelimiterPrefixBefore,
-  latexMathCommandSpecs,
   type LatexDelimiterCompletionSpec,
 } from "./latex-delimiters";
+import { latexDelimiterCompletionApply } from "./latex-pairs";
 import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
@@ -232,14 +232,9 @@ export const STANDARD_ENVIRONMENTS = [
   "gathered",
   "flalign",
   "flalign*",
-  "eqnarray",
-  "eqnarray*",
-  "displaymath",
   "subequations",
   "smallmatrix",
   "subarray",
-  "xalignat",
-  "xalignat*",
   "thebibliography",
   "list",
   "picture",
@@ -1173,12 +1168,6 @@ export function latexCompletions(
   );
 }
 
-/**
- * Delimiter completions scoped to the size command the caret already sits
- * after. At `\left\l` only a delimiter can follow, so this replaces the
- * generic command list rather than adding to it, and it widens the applied
- * range back over `\left` so the chosen entry does not double the prefix.
- */
 const DELIMITER_FAMILY_BEFORE = /\\[A-Za-z]+(\\[A-Za-z]*)$/u;
 
 function delimiterSpecCompletion(
@@ -1187,9 +1176,9 @@ function delimiterSpecCompletion(
 ): Completion {
   return guardCompletionForSource(guard, {
     label: spec.label,
-    type: spec.template ? "snippet" : "function",
+    type: spec.kind === "pair" ? "snippet" : "function",
     detail: spec.detail,
-    apply: spec.template ? snippet(spec.template) : undefined,
+    apply: latexDelimiterCompletionApply(spec),
   });
 }
 
@@ -1226,14 +1215,11 @@ function commandCompletions(
         guardCompletionForSource(guard, option),
       ),
       ...packageCompletions(context.state, guard),
+      ...LATEX_DELIMITER_COMPLETIONS.map((spec) =>
+        delimiterSpecCompletion(guard, spec),
+      ),
       ...(corpusProvider?.coreCommands() ?? []).map((option) =>
         guardCompletionForSource(guard, option),
-      ),
-      ...latexDelimiterCompletionSpecs().map((spec) =>
-        delimiterSpecCompletion(guard, spec),
-      ),
-      ...latexMathCommandSpecs().map((spec) =>
-        delimiterSpecCompletion(guard, spec),
       ),
     ]),
   };

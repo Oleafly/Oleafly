@@ -151,7 +151,7 @@ describe("environmentSnippet", () => {
 
   it("gives table variants the argument shape their own form needs", () => {
     expect(applied("tabularx")).toBe(
-      "\\begin{tabularx}{\\linewidth|}{lcr}\n  \n\\end{tabularx}",
+      "\\begin{tabularx}{\\linewidth|}{lX}\n  \n\\end{tabularx}",
     );
     expect(applied("tabular*")).toBe(
       "\\begin{tabular*}{\\linewidth|}{ll}\n  \n\\end{tabular*}",

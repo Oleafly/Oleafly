@@ -21,6 +21,7 @@ import {
   setLatexCorpusProvider,
   slashCompletions,
 } from "./latex";
+import { latexPairChange, latexPairInputHandler } from "./latex-pairs";
 import { installEnglishEditorMessages } from "./test-messages";
 
 installEnglishEditorMessages();
@@ -710,25 +711,46 @@ describe("environment completion inside a linked begin and end snippet", () => {
 });
 
 describe("semantic delimiter completion", () => {
-  function accepted(
-    doc: string,
-    label: string,
-  ): { text: string; head: number } {
-    const view = new EditorView({
-      state: EditorState.create({ doc }),
+  function pairingView(doc: string): EditorView {
+    return new EditorView({
+      state: EditorState.create({
+        doc,
+        extensions: [latexPairInputHandler({ math: true, brackets: true })],
+      }),
       parent: document.body,
     });
-    const context = new CompletionContext(view.state, doc.length, false);
+  }
+
+  function acceptAt(view: EditorView, label: string, at: number): void {
+    const context = new CompletionContext(view.state, at, false);
     const result = latexCommandCompletions(context);
     const chosen = option(result, label);
     if (typeof chosen.apply !== "function") {
       throw new Error(`${label} has no apply`);
     }
-    chosen.apply(view, chosen, result!.from, doc.length);
+    chosen.apply(view, chosen, result!.from, at);
+  }
+
+  function accepted(
+    doc: string,
+    label: string,
+  ): { text: string; head: number } {
+    const view = pairingView(doc);
+    acceptAt(view, label, doc.length);
     const text = view.state.doc.toString();
     const head = view.state.selection.main.head;
     view.destroy();
     return { text, head };
+  }
+
+  function typed(view: EditorView, text: string): void {
+    for (const character of text) {
+      const spec = latexPairChange(view.state, character, {
+        math: true,
+        brackets: true,
+      });
+      view.dispatch(spec ?? view.state.replaceSelection(character));
+    }
   }
 
   function labelsFor(doc: string): string[] {
@@ -749,6 +771,7 @@ describe("semantic delimiter completion", () => {
       String.raw`\left\langle`,
       String.raw`\left\lvert`,
       String.raw`\left\lVert`,
+      String.raw`\left\uparrow`,
       String.raw`\left.`,
     ]) {
       expect(found, label).toContain(label);
@@ -819,6 +842,35 @@ describe("semantic delimiter completion", () => {
     expect(accepted("\\rang", String.raw`\rangle`).text).toBe(
       String.raw`\rangle`,
     );
+    expect(accepted("\\big", String.raw`\big|`).text).toBe(String.raw`\big|`);
+  });
+
+  it("steps over the closer of an accepted pair once its glyph is typed", () => {
+    const view = pairingView("\\lef");
+    acceptAt(view, String.raw`\left(`, 4);
+    typed(view, "x)");
+    expect(view.state.doc.toString()).toBe(String.raw`\left(x\right)`);
+    expect(view.state.selection.main.head).toBe(view.state.doc.length);
+    view.destroy();
+  });
+
+  it("consumes the pending closer when the matching closer is accepted", () => {
+    const view = pairingView("\\left\\lan");
+    acceptAt(view, String.raw`\left\langle`, 9);
+    typed(view, " x\\right\\ra");
+    acceptAt(view, String.raw`\right\rangle`, view.state.selection.main.head);
+    expect(view.state.doc.toString()).toBe(
+      String.raw`\left\langle x\right\rangle`,
+    );
+    expect(view.state.selection.main.head).toBe(view.state.doc.length);
+    view.destroy();
+  });
+
+  it("does not consume anything when the accepted closer has no pending partner", () => {
+    const view = pairingView("x\\right\\ra");
+    acceptAt(view, String.raw`\right\rangle`, view.state.doc.length);
+    expect(view.state.doc.toString()).toBe(String.raw`x\right\rangle`);
+    view.destroy();
   });
 });
 
@@ -836,6 +888,7 @@ describe("delimiter completion scoped to an open size command", () => {
     expect(found.length).toBeGreaterThan(0);
     expect(found.every((label) => label.startsWith("\\left"))).toBe(true);
     expect(found).toContain(String.raw`\left\langle`);
+    expect(found).toContain(String.raw`\left\uparrow`);
     expect(found).not.toContain(String.raw`\lambda`);
   });
 
@@ -866,11 +919,10 @@ describe("delimiter completion scoped to an open size command", () => {
     const found = (result?.options ?? []).map((entry) => String(entry.label));
     expect(found.every((label) => label.startsWith("\\right"))).toBe(true);
     expect(found).toContain(String.raw`\right\rangle`);
+    expect(found).toContain(String.raw`\right\Downarrow`);
     expect(
-      scoped("\\right\\")?.options.every(
-        (entry) => typeof entry.apply !== "function",
-      ),
-    ).toBe(false);
+      result?.options.every((entry) => typeof entry.apply === "function"),
+    ).toBe(true);
   });
 
   it("scopes a separator command to bar-like glyphs", () => {
@@ -878,6 +930,7 @@ describe("delimiter completion scoped to an open size command", () => {
       String(entry.label),
     );
     expect(found).toContain(String.raw`\middle\vert`);
+    expect(found).toContain(String.raw`\middle\uparrow`);
     expect(found).not.toContain(String.raw`\middle\langle`);
   });
 
@@ -887,62 +940,6 @@ describe("delimiter completion scoped to an open size command", () => {
     );
     expect(found).toContain(String.raw`\left(`);
     expect(found).toContain(String.raw`\section`);
-  });
-});
-
-describe("advanced math command completion", () => {
-  function accepted(doc: string, label: string): string {
-    const view = new EditorView({
-      state: EditorState.create({ doc }),
-      parent: document.body,
-    });
-    const context = new CompletionContext(view.state, doc.length, false);
-    const result = latexCommandCompletions(context);
-    const chosen = option(result, label);
-    if (typeof chosen.apply !== "function") {
-      throw new Error(`${label} has no apply`);
-    }
-    chosen.apply(view, chosen, result!.from, doc.length);
-    const text = view.state.doc.toString();
-    view.destroy();
-    return text;
-  }
-
-  it("offers the fraction and binomial families", () => {
-    const found = (completion("\\d")?.options ?? []).map((entry) =>
-      String(entry.label),
-    );
-    expect(found).toContain("\\dfrac{}{}");
-    expect(found).toContain("\\dbinom{}{}");
-  });
-
-  it("offers the definition commands", () => {
-    const found = (completion("\\Declare")?.options ?? []).map((entry) =>
-      String(entry.label),
-    );
-    expect(found).toContain("\\DeclareMathOperator{}{}");
-    expect(found).toContain("\\DeclarePairedDelimiter{}{}{}");
-  });
-
-  it("expands to a single backslash in a placeholder default", () => {
-    expect(accepted("\\Declare", "\\DeclareMathOperator{}{}")).toBe(
-      "\\DeclareMathOperator{\\cmd}{name}",
-    );
-    expect(accepted("\\Declare", "\\DeclarePairedDelimiter{}{}{}")).toBe(
-      "\\DeclarePairedDelimiter{\\cmd}{\\lvert}{\\rvert}",
-    );
-  });
-
-  it("writes a LaTeX line break inside substack", () => {
-    expect(accepted("\\subs", "\\substack{}")).toBe(
-      "\\substack{first \\\\ second}",
-    );
-  });
-
-  it("expands the argument shape of a document command", () => {
-    expect(accepted("\\NewDoc", "\\NewDocumentCommand{}{}{}")).toBe(
-      "\\NewDocumentCommand{\\cmd}{m}{definition}",
-    );
   });
 });
 
@@ -960,7 +957,7 @@ describe("delimiter completion against the loading corpus", () => {
     expect(found).toContain(String.raw`\left\langle`);
   });
 
-  it("lets a corpus entry keep a label the registry also carries", () => {
+  it("keeps the registry entry when the corpus carries the same label", () => {
     setLatexCorpusProvider({
       coreCommands: () => [
         {
@@ -968,13 +965,22 @@ describe("delimiter completion against the loading corpus", () => {
           type: "function",
           detail: "from the corpus",
         },
+        {
+          label: String.raw`\corpusonly`,
+          type: "function",
+          detail: "from the corpus",
+        },
       ],
     });
-    const options = (completion("\\lef")?.options ?? []).filter(
+    const options = completion("\\lef")?.options ?? [];
+    const left = options.filter(
       (entry) => String(entry.label) === String.raw`\left(`,
     );
-    expect(options).toHaveLength(1);
-    expect(options[0].detail).toBe("from the corpus");
+    expect(left).toHaveLength(1);
+    expect(left[0].detail).toBe(String.raw`\left( ... \right)`);
+    expect(options.some((entry) => entry.label === String.raw`\corpusonly`)).toBe(
+      true,
+    );
   });
 
   it("names every option once", () => {
@@ -1010,9 +1016,6 @@ describe("environment completion with required arguments", () => {
     expect(accepted("\\begin{alignedat", "alignedat")).toContain(
       "\\begin{alignedat}{2}",
     );
-    expect(accepted("\\begin{xalignat", "xalignat")).toContain(
-      "\\begin{xalignat}{2}",
-    );
   });
 
   it("seeds a column specification for array-like environments", () => {
@@ -1023,7 +1026,7 @@ describe("environment completion with required arguments", () => {
       "\\begin{subarray}{c}",
     );
     expect(accepted("\\begin{tabularx", "tabularx")).toContain(
-      "\\begin{tabularx}{\\linewidth}{lcr}",
+      "\\begin{tabularx}{\\linewidth}{lX}",
     );
   });
 
@@ -1061,9 +1064,6 @@ describe("environment completion with required arguments", () => {
   });
 });
 
-// The delimiter e2e spec types these exact queries and walks the popup for
-// these exact labels. Pinning them here means a rename breaks the fast suite
-// first, instead of only showing up in a packaged run.
 describe("labels the delimiter e2e spec depends on", () => {
   function labelsFor(doc: string): string[] {
     return (completion(doc)?.options ?? []).map((entry) =>
@@ -1072,8 +1072,6 @@ describe("labels the delimiter e2e spec depends on", () => {
   }
 
   it("offers every delimiter the spec walks to", () => {
-    // The spec walks the popup to these by exact label, so ordering does not
-    // matter, but the entry has to be in the list the source returns.
     expect(labelsFor("\\left\\lan")).toContain(String.raw`\left\langle`);
     for (const label of [
       String.raw`\left\{`,
@@ -1086,9 +1084,6 @@ describe("labels the delimiter e2e spec depends on", () => {
   it("scopes an open size command to a list the popup renders whole", () => {
     const labels = labelsFor("\\left\\");
     expect(labels.length).toBeGreaterThan(0);
-    // CodeMirror renders a 100-option window around the selection, so the
-    // spec's "every label starts with \left" assertion is only sound while
-    // the scoped list stays under that cap.
     expect(labels.length).toBeLessThan(100);
     expect(labels.every((label) => label.startsWith("\\left"))).toBe(true);
     expect(labels).toContain(String.raw`\left\langle`);
@@ -1097,10 +1092,6 @@ describe("labels the delimiter e2e spec depends on", () => {
   });
 
   it("leaves one environment candidate for each name the spec accepts", () => {
-    // The spec accepts whatever the popup highlights, so a query whose text is
-    // a substring of a sibling environment cannot be asked for by name:
-    // `alignat` also matches xalignat and xxalignat, and which one ranks first
-    // is CodeMirror's call, not ours.
     for (const name of ["alignedat", "tabularx"]) {
       const matches = labelsFor(`\\begin{${name}`).filter((label) =>
         label.includes(name),

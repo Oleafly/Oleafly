@@ -17,12 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   vertically resizable sections. Each tree can expand or collapse in one
   click, and the layout is remembered between visits.
 - The LaTeX editor closes sized math delimiters as you type them. A `(` after
-  `\left` brings its `\right)`, and the `\bigl`, `\Bigl`, `\biggl` and
-  `\Biggl` families behave the same way. Autocomplete offers the named
-  delimiters too, so picking `\left\langle` writes `\right\rangle` with it.
-  `\middle` and `\bigm` stay unpaired, because a separator has no partner.
-  Backspace on an empty pair clears both sides, and typing a closing glyph
-  steps over one the editor already wrote.
+  `\left` brings its `\right)`, and the `\bigl`, `\Bigl`, `\biggl`,
+  `\Biggl` and symmetric `\big` families behave the same way. Autocomplete
+  offers the named delimiters too, so picking `\left\langle` writes
+  `\right\rangle` with it. `\middle` and `\bigm` stay unpaired, because a
+  separator has no partner, and so does a lone `\big|`. Backspace on an empty
+  pair clears both sides. Typing the closing glyph steps over the closer the
+  editor wrote, an inner `(a+b)` keeps its own parenthesis, and spelling out
+  `\right)` yourself replaces the pending closer instead of doubling it.
 - Environments that take arguments now complete with them, so
   `\begin{alignat}` arrives as `\begin{alignat}{2}`. The same goes for
   `array`, `tabularx`, `minipage`, `thebibliography`, `list`, `picture` and

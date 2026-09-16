@@ -218,6 +218,14 @@ test("LaTeX math and environment closing follow their own toggles", async ({
     .toContain("$x");
   expect(await editorSource(tauriPage)).not.toContain("$$");
 
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "\\left(");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\left(");
+  expect(await editorSource(tauriPage)).not.toContain("\\right)");
+
   await toggleSetting(tauriPage, "Auto-close environments", false);
   await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
   await caretToEnd(tauriPage);

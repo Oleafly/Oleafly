@@ -1,18 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
-  latexSnippetLiteral,
-  latexDelimiterCloserAt,
+  LATEX_DELIMITER_COMPLETIONS,
+  LATEX_DELIMITER_GLYPHS,
+  LATEX_DELIMITER_SIZES,
+  latexDelimiterCloserConsumption,
+  latexDelimiterCloserFor,
+  latexDelimiterCloserText,
+  latexDelimiterClosesAhead,
   latexDelimiterClosing,
-  latexDelimiterCompletionSpecs,
   latexDelimiterFamilySpecs,
-  latexDelimiterGlyphForClosingTrigger,
   latexDelimiterGlyphForTrigger,
   latexDelimiterOpening,
   latexDelimiterPrefixBefore,
+  latexDelimiterTakesPartner,
+  latexDelimiterUnclosedInside,
   latexEmptyDelimiterPairAt,
-  latexMathCommandSpecs,
-  LATEX_DELIMITER_GLYPHS,
-  LATEX_DELIMITER_SIZES,
+  latexSnippetLiteral,
+  type LatexDelimiterCloser,
+  type LatexDelimiterCompletionSpec,
   type LatexDelimiterGlyph,
   type LatexDelimiterSize,
 } from "./latex-delimiters";
@@ -29,9 +34,34 @@ function glyph(open: string): LatexDelimiterGlyph {
   return found;
 }
 
-function labels(): Set<string> {
-  return new Set(latexDelimiterCompletionSpecs().map((spec) => spec.label));
+function spec(label: string): LatexDelimiterCompletionSpec {
+  const found = LATEX_DELIMITER_COMPLETIONS.find(
+    (entry) => entry.label === label,
+  );
+  if (!found) throw new Error(`no completion ${label}`);
+  return found;
 }
+
+function labels(): Set<string> {
+  return new Set(LATEX_DELIMITER_COMPLETIONS.map((entry) => entry.label));
+}
+
+const RIGHT_PAREN: LatexDelimiterCloser = { command: "right", glyph: ")" };
+const RIGHT_BRACE: LatexDelimiterCloser = {
+  command: "right",
+  glyph: String.raw`\}`,
+};
+const RIGHT_BAR: LatexDelimiterCloser = { command: "right", glyph: "|" };
+const RIGHT_NORM: LatexDelimiterCloser = {
+  command: "right",
+  glyph: String.raw`\|`,
+};
+const RIGHT_RANGLE: LatexDelimiterCloser = {
+  command: "right",
+  glyph: String.raw`\rangle`,
+};
+const BIG_PAREN: LatexDelimiterCloser = { command: "big", glyph: ")" };
+const RANGLE: LatexDelimiterCloser = { command: "", glyph: String.raw`\rangle` };
 
 describe("delimiter tables", () => {
   it("covers the auto-sized, fixed-size and separator families", () => {
@@ -62,7 +92,7 @@ describe("delimiter tables", () => {
     }
   });
 
-  it("carries the angle, floor, ceiling and norm delimiters", () => {
+  it("carries every delimiter the LaTeX kernel and amsmath declare", () => {
     const pairs = new Map(
       LATEX_DELIMITER_GLYPHS.map((entry) => [entry.open, entry.close]),
     );
@@ -71,14 +101,41 @@ describe("delimiter tables", () => {
     expect(pairs.get(String.raw`\lVert`)).toBe(String.raw`\rVert`);
     expect(pairs.get(String.raw`\lfloor`)).toBe(String.raw`\rfloor`);
     expect(pairs.get(String.raw`\lceil`)).toBe(String.raw`\rceil`);
-    expect(pairs.get(String.raw`\vert`)).toBe(String.raw`\vert`);
-    expect(pairs.get(String.raw`\Vert`)).toBe(String.raw`\Vert`);
+    expect(pairs.get(String.raw`\lbrace`)).toBe(String.raw`\rbrace`);
+    expect(pairs.get(String.raw`\lgroup`)).toBe(String.raw`\rgroup`);
+    expect(pairs.get(String.raw`\lmoustache`)).toBe(String.raw`\rmoustache`);
+    expect(pairs.get(String.raw`\ulcorner`)).toBe(String.raw`\urcorner`);
+    expect(pairs.get(String.raw`\llcorner`)).toBe(String.raw`\lrcorner`);
+    for (const name of [
+      String.raw`\vert`,
+      String.raw`\Vert`,
+      String.raw`\backslash`,
+      String.raw`\uparrow`,
+      String.raw`\downarrow`,
+      String.raw`\updownarrow`,
+      String.raw`\Uparrow`,
+      String.raw`\Downarrow`,
+      String.raw`\Updownarrow`,
+      String.raw`\arrowvert`,
+      String.raw`\Arrowvert`,
+      String.raw`\bracevert`,
+      "/",
+    ]) {
+      expect(pairs.get(name), name).toBe(name);
+    }
   });
 
   it("only marks a glyph standalone when its two halves differ", () => {
     for (const entry of LATEX_DELIMITER_GLYPHS) {
       if (!entry.standalone) continue;
       expect(entry.open, entry.open).not.toBe(entry.close);
+    }
+  });
+
+  it("marks every symmetric glyph as a separator", () => {
+    for (const entry of LATEX_DELIMITER_GLYPHS) {
+      if (entry.open !== entry.close) continue;
+      expect(entry.separator, entry.open).toBe(true);
     }
   });
 });
@@ -97,6 +154,12 @@ describe("latexDelimiterPrefixBefore", () => {
     expect(match?.command).toBe("left");
     expect(match?.escapedSlash).toBe(true);
     expect(match?.length).toBe(6);
+  });
+
+  it("allows horizontal space between the command and its glyph", () => {
+    expect(latexDelimiterPrefixBefore("\\left ")?.length).toBe(6);
+    expect(latexDelimiterPrefixBefore("\\bigl\t\\")?.escapedSlash).toBe(true);
+    expect(latexDelimiterPrefixBefore("\\left\n")).toBeNull();
   });
 
   it("classifies closers and separators by role", () => {
@@ -147,61 +210,301 @@ describe("trigger lookup", () => {
     expect(latexDelimiterGlyphForTrigger("{", false)).toBeNull();
     expect(latexDelimiterGlyphForTrigger("(", true)).toBeNull();
   });
+});
 
-  it("maps a typed closing character back to its glyph", () => {
-    expect(latexDelimiterGlyphForClosingTrigger(")")?.open).toBe("(");
-    expect(latexDelimiterGlyphForClosingTrigger("]")?.open).toBe("[");
-    expect(latexDelimiterGlyphForClosingTrigger(">")?.open).toBe("<");
-    expect(latexDelimiterGlyphForClosingTrigger("|")?.open).toBe("|");
-    expect(latexDelimiterGlyphForClosingTrigger("}")).toBeNull();
+describe("latexDelimiterTakesPartner", () => {
+  it("pairs every glyph after an asymmetric size command", () => {
+    for (const entry of LATEX_DELIMITER_GLYPHS) {
+      expect(latexDelimiterTakesPartner(size("left"), entry), entry.open).toBe(
+        true,
+      );
+      expect(latexDelimiterTakesPartner(size("bigl"), entry), entry.open).toBe(
+        true,
+      );
+    }
+  });
+
+  it("pairs only asymmetric glyphs after a symmetric size command", () => {
+    expect(latexDelimiterTakesPartner(size("big"), glyph("("))).toBe(true);
+    expect(latexDelimiterTakesPartner(size("Bigg"), glyph(String.raw`\{`))).toBe(
+      true,
+    );
+    expect(latexDelimiterTakesPartner(size("big"), glyph("|"))).toBe(false);
+    expect(latexDelimiterTakesPartner(size("Big"), glyph(String.raw`\|`))).toBe(
+      false,
+    );
+    expect(latexDelimiterTakesPartner(size("bigg"), glyph("/"))).toBe(false);
   });
 });
 
-describe("latexDelimiterCloserAt", () => {
-  it("measures the closer that follows the caret", () => {
-    expect(latexDelimiterCloserAt("\\right) tail", glyph("("))).toBe(7);
-    expect(latexDelimiterCloserAt("\\bigr]", glyph("["))).toBe(6);
-    expect(latexDelimiterCloserAt("\\Biggr>", glyph("<"))).toBe(7);
+describe("closer identity", () => {
+  it("spells a sized closer from its command and glyph", () => {
+    expect(latexDelimiterCloserText(RIGHT_PAREN)).toBe(String.raw`\right)`);
+    expect(latexDelimiterCloserText(RIGHT_BRACE)).toBe(String.raw`\right\}`);
+    expect(latexDelimiterCloserText(BIG_PAREN)).toBe(String.raw`\big)`);
   });
 
-  it("does not let a short size command match a longer one", () => {
-    expect(latexDelimiterCloserAt("\\biggr)", glyph("("))).toBe(7);
-    expect(latexDelimiterCloserAt("\\bigg)", glyph("("))).toBe(6);
-    expect(latexDelimiterCloserAt("\\big)", glyph("("))).toBe(5);
+  it("spells a standalone closer as the glyph alone", () => {
+    expect(latexDelimiterCloserText(RANGLE)).toBe(String.raw`\rangle`);
   });
 
-  it("returns null when the glyph does not match the closer", () => {
-    expect(latexDelimiterCloserAt("\\right]", glyph("("))).toBeNull();
-    expect(latexDelimiterCloserAt("plain text", glyph("("))).toBeNull();
+  it("builds openings and closings from the same two halves", () => {
+    const entry = glyph(String.raw`\langle`);
+    expect(latexDelimiterOpening(size("Biggl"), entry)).toBe(
+      String.raw`\Biggl\langle`,
+    );
+    expect(latexDelimiterClosing(size("Biggl"), entry)).toBe(
+      String.raw`\Biggr\rangle`,
+    );
+    expect(latexDelimiterCloserFor(size("big"), glyph("["))).toEqual({
+      command: "big",
+      glyph: "]",
+    });
+  });
+});
+
+describe("latexDelimiterClosesAhead", () => {
+  it("recognises a closing size command and a named closing glyph", () => {
+    expect(latexDelimiterClosesAhead(String.raw`\right)`)).toBe(true);
+    expect(latexDelimiterClosesAhead(String.raw`\Biggr]`)).toBe(true);
+    expect(latexDelimiterClosesAhead(String.raw`\rangle`)).toBe(true);
+    expect(latexDelimiterClosesAhead(String.raw`\rvert x`)).toBe(true);
+  });
+
+  it("recognises a symmetric size command and the math closers", () => {
+    expect(latexDelimiterClosesAhead(String.raw`\big)`)).toBe(true);
+    expect(latexDelimiterClosesAhead(String.raw`\]`)).toBe(true);
+    expect(latexDelimiterClosesAhead(String.raw`\)`)).toBe(true);
+    expect(latexDelimiterClosesAhead(String.raw`\}`)).toBe(true);
+    expect(latexDelimiterClosesAhead(String.raw`\|`)).toBe(true);
+    expect(latexDelimiterClosesAhead(String.raw`\\`)).toBe(true);
+  });
+
+  it("treats an opening size command and content commands as content", () => {
+    expect(latexDelimiterClosesAhead(String.raw`\left(`)).toBe(false);
+    expect(latexDelimiterClosesAhead(String.raw`\bigl(`)).toBe(false);
+    expect(latexDelimiterClosesAhead(String.raw`\frac{a}{b}`)).toBe(false);
+    expect(latexDelimiterClosesAhead(String.raw`\alpha`)).toBe(false);
+    expect(latexDelimiterClosesAhead("x")).toBe(false);
+    expect(latexDelimiterClosesAhead("")).toBe(false);
+  });
+});
+
+describe("latexDelimiterCloserConsumption", () => {
+  it("steps over a closer when its glyph is typed bare", () => {
+    expect(latexDelimiterCloserConsumption("x", ")", RIGHT_PAREN)).toBe(0);
+    expect(latexDelimiterCloserConsumption("x", "|", RIGHT_BAR)).toBe(0);
+    expect(latexDelimiterCloserConsumption("x", "}", RIGHT_BRACE)).toBe(0);
+  });
+
+  it("consumes a closer the user spells out in full", () => {
+    expect(
+      latexDelimiterCloserConsumption(String.raw`x\right`, ")", RIGHT_PAREN),
+    ).toBe(String.raw`\right`.length);
+    expect(
+      latexDelimiterCloserConsumption("x\\right\\", "}", RIGHT_BRACE),
+    ).toBe("\\right\\".length);
+    expect(
+      latexDelimiterCloserConsumption(String.raw`x\big`, ")", BIG_PAREN),
+    ).toBe(String.raw`\big`.length);
+    expect(
+      latexDelimiterCloserConsumption(
+        String.raw`x\right\rangl`,
+        "e",
+        RIGHT_RANGLE,
+      ),
+    ).toBe(String.raw`\right\rangl`.length);
+  });
+
+  it("consumes a spelled closer whose size command carries a space", () => {
+    expect(
+      latexDelimiterCloserConsumption(String.raw`x\right `, ")", RIGHT_PAREN),
+    ).toBe(String.raw`\right `.length);
+  });
+
+  it("consumes an escaped glyph typed on its own", () => {
+    expect(
+      latexDelimiterCloserConsumption("x\\", "}", RIGHT_BRACE),
+    ).toBe(1);
+    expect(
+      latexDelimiterCloserConsumption("x\\", "|", RIGHT_NORM),
+    ).toBe(1);
+  });
+
+  it("consumes a named glyph typed without its size command", () => {
+    expect(
+      latexDelimiterCloserConsumption(String.raw`x\rangl`, "e", RIGHT_RANGLE),
+    ).toBe(String.raw`\rangl`.length);
+    expect(latexDelimiterCloserConsumption(String.raw`x\rangl`, "e", RANGLE)).toBe(
+      String.raw`\rangl`.length,
+    );
+  });
+
+  it("refuses a glyph that does not end the closer", () => {
+    expect(latexDelimiterCloserConsumption("x", "]", RIGHT_PAREN)).toBeNull();
+    expect(latexDelimiterCloserConsumption("x", "e", RIGHT_PAREN)).toBeNull();
+    expect(latexDelimiterCloserConsumption("x", "))", RIGHT_PAREN)).toBeNull();
+  });
+
+  it("refuses a closer spelled with a different size command", () => {
+    expect(
+      latexDelimiterCloserConsumption(String.raw`x\bigr`, ")", RIGHT_PAREN),
+    ).toBeNull();
+    expect(
+      latexDelimiterCloserConsumption(String.raw`x\left`, ")", RIGHT_PAREN),
+    ).toBeNull();
+    expect(
+      latexDelimiterCloserConsumption("x\\right\\", ")", RIGHT_PAREN),
+    ).toBeNull();
+    expect(
+      latexDelimiterCloserConsumption(String.raw`x\right`, "}", RIGHT_BRACE),
+    ).toBeNull();
+  });
+
+  it("keeps a literal escape the user is typing", () => {
+    expect(
+      latexDelimiterCloserConsumption("x\\", ")", RIGHT_PAREN),
+    ).toBeNull();
+    expect(
+      latexDelimiterCloserConsumption("x\\\\", ")", RIGHT_PAREN),
+    ).toBe(0);
+    expect(
+      latexDelimiterCloserConsumption("x\\\\", "}", RIGHT_BRACE),
+    ).toBe(0);
+  });
+
+  it("ignores a spelled closer whose backslash is itself escaped", () => {
+    expect(
+      latexDelimiterCloserConsumption(String.raw`x\\rangl`, "e", RIGHT_RANGLE),
+    ).toBeNull();
+  });
+
+  it("keeps the glyph while an inner opener is still unclosed", () => {
+    expect(latexDelimiterCloserConsumption("(a+b", ")", RIGHT_PAREN)).toBeNull();
+    expect(latexDelimiterCloserConsumption("(a+b)", ")", RIGHT_PAREN)).toBe(0);
+    expect(latexDelimiterCloserConsumption("(a)(b", ")", RIGHT_PAREN)).toBeNull();
+    expect(
+      latexDelimiterCloserConsumption(String.raw`\{a`, "}", RIGHT_BRACE),
+    ).toBeNull();
+    expect(
+      latexDelimiterCloserConsumption("\\{a\\}\\", "}", RIGHT_BRACE),
+    ).toBe(1);
+    expect(
+      latexDelimiterCloserConsumption(
+        String.raw`a \langle b \rangl`,
+        "e",
+        RIGHT_RANGLE,
+      ),
+    ).toBeNull();
+  });
+
+  it("consumes a closer spelled in full even inside an unclosed opener", () => {
+    expect(
+      latexDelimiterCloserConsumption("(a\\right", ")", RIGHT_PAREN),
+    ).toBe(String.raw`\right`.length);
+    expect(
+      latexDelimiterCloserConsumption(
+        String.raw`\langle b \right\rangl`,
+        "e",
+        RIGHT_RANGLE,
+      ),
+    ).toBe(String.raw`\right\rangl`.length);
+  });
+
+  it("checks the whole body rather than the last few characters", () => {
+    const body = `(${"a".repeat(200)}`;
+    expect(latexDelimiterCloserConsumption(body, ")", RIGHT_PAREN)).toBeNull();
+    expect(latexDelimiterCloserConsumption(`${body})`, ")", RIGHT_PAREN)).toBe(
+      0,
+    );
+  });
+});
+
+describe("latexDelimiterUnclosedInside", () => {
+  it("counts unescaped glyphs and ignores escaped ones", () => {
+    expect(latexDelimiterUnclosedInside("(", RIGHT_PAREN)).toBe(true);
+    expect(latexDelimiterUnclosedInside("()", RIGHT_PAREN)).toBe(false);
+    expect(latexDelimiterUnclosedInside(String.raw`\(a`, RIGHT_PAREN)).toBe(false);
+    expect(latexDelimiterUnclosedInside(String.raw`\\(a`, RIGHT_PAREN)).toBe(true);
+    expect(
+      latexDelimiterUnclosedInside(String.raw`\left(a\right)`, RIGHT_PAREN),
+    ).toBe(false);
+  });
+
+  it("counts escaped braces and named glyphs as whole tokens", () => {
+    expect(latexDelimiterUnclosedInside("{a", RIGHT_BRACE)).toBe(false);
+    expect(latexDelimiterUnclosedInside(String.raw`\{a`, RIGHT_BRACE)).toBe(true);
+    expect(
+      latexDelimiterUnclosedInside(String.raw`\langle a`, RIGHT_RANGLE),
+    ).toBe(true);
+    expect(
+      latexDelimiterUnclosedInside(String.raw`\langlex a`, RIGHT_RANGLE),
+    ).toBe(false);
+    expect(
+      latexDelimiterUnclosedInside(String.raw`\langle a \rangle`, RIGHT_RANGLE),
+    ).toBe(false);
+  });
+
+  it("never reports a symmetric glyph as unclosed", () => {
+    expect(latexDelimiterUnclosedInside("|a|b", RIGHT_BAR)).toBe(false);
+    expect(latexDelimiterUnclosedInside(String.raw`\|a`, RIGHT_NORM)).toBe(false);
   });
 });
 
 describe("latexEmptyDelimiterPairAt", () => {
   it("measures an empty sized pair", () => {
     expect(latexEmptyDelimiterPairAt("\\left(", "\\right)")).toEqual({
-      open: 6,
-      close: 7,
+      opener: 6,
+      closer: 7,
     });
     expect(
       latexEmptyDelimiterPairAt("x \\Biggl\\langle", "\\Biggr\\rangle y"),
-    ).toEqual({ open: 13, close: 13 });
+    ).toEqual({ opener: 13, closer: 13 });
+    expect(latexEmptyDelimiterPairAt("\\left\\{", "\\right\\}")).toEqual({
+      opener: 7,
+      closer: 8,
+    });
+  });
+
+  it("measures a pair whose opener carries a space and a null pair", () => {
+    expect(latexEmptyDelimiterPairAt("\\left (", "\\right)")).toEqual({
+      opener: 7,
+      closer: 7,
+    });
+    expect(latexEmptyDelimiterPairAt("\\left.", "\\right.")).toEqual({
+      opener: 6,
+      closer: 7,
+    });
+    expect(latexEmptyDelimiterPairAt("\\bigl.", "\\bigr.")).toBeNull();
   });
 
   it("measures an empty standalone pair", () => {
     expect(latexEmptyDelimiterPairAt("\\langle", "\\rangle")).toEqual({
-      open: 7,
-      close: 7,
+      opener: 7,
+      closer: 7,
     });
+    expect(latexEmptyDelimiterPairAt("\\vert", "\\vert")).toBeNull();
   });
 
   it("ignores an escaped opener and a mismatched closer", () => {
     expect(latexEmptyDelimiterPairAt("\\\\left(", "\\right)")).toBeNull();
+    expect(latexEmptyDelimiterPairAt("\\\\langle", "\\rangle")).toBeNull();
     expect(latexEmptyDelimiterPairAt("\\left(", "\\right]")).toBeNull();
     expect(latexEmptyDelimiterPairAt("\\left(", "x\\right)")).toBeNull();
+    expect(latexEmptyDelimiterPairAt("\\left+", "\\right+")).toBeNull();
   });
 
   it("ignores a pair whose halves come from different size families", () => {
     expect(latexEmptyDelimiterPairAt("\\bigl(", "\\Bigr)")).toBeNull();
+    expect(latexEmptyDelimiterPairAt("\\right(", "\\right)")).toBeNull();
+  });
+
+  it("ignores a symmetric glyph after a symmetric size", () => {
+    expect(latexEmptyDelimiterPairAt("\\big|", "\\big|")).toBeNull();
+    expect(latexEmptyDelimiterPairAt("\\big(", "\\big)")).toEqual({
+      opener: 5,
+      closer: 5,
+    });
   });
 });
 
@@ -220,6 +523,7 @@ describe("delimiter completion specs", () => {
       String.raw`\left\lVert`,
       String.raw`\left\vert`,
       String.raw`\left\Vert`,
+      String.raw`\left\uparrow`,
       String.raw`\left.`,
       String.raw`\right.`,
     ]) {
@@ -247,63 +551,88 @@ describe("delimiter completion specs", () => {
     }
   });
 
-  it("offers the standalone semantic pairs", () => {
+  it("offers the standalone semantic pairs and the bare size commands", () => {
     const all = labels();
-    expect(all.has(String.raw`\langle`)).toBe(true);
-    expect(all.has(String.raw`\rangle`)).toBe(true);
-    expect(all.has(String.raw`\lvert`)).toBe(true);
-    expect(all.has(String.raw`\lVert`)).toBe(true);
+    for (const label of [
+      String.raw`\langle`,
+      String.raw`\rangle`,
+      String.raw`\lvert`,
+      String.raw`\lVert`,
+      String.raw`\left`,
+      String.raw`\right`,
+      String.raw`\middle`,
+      String.raw`\bigl`,
+      String.raw`\Biggm`,
+      String.raw`\big`,
+    ]) {
+      expect(all.has(label), label).toBe(true);
+    }
+    expect(all.has(String.raw`\vert`)).toBe(false);
+    expect(all.has(String.raw`\uparrow`)).toBe(false);
   });
 
-  it("offers separators without a closing partner", () => {
-    const specs = latexDelimiterCompletionSpecs();
+  it("pairs an opener with the closer it inserts", () => {
+    expect(spec(String.raw`\left(`)).toEqual({
+      kind: "pair",
+      label: String.raw`\left(`,
+      detail: String.raw`\left( ... \right)`,
+      closer: RIGHT_PAREN,
+    });
+    expect(spec(String.raw`\left\{`)).toMatchObject({
+      kind: "pair",
+      closer: RIGHT_BRACE,
+    });
+    expect(spec(String.raw`\left.`)).toMatchObject({
+      kind: "pair",
+      closer: { command: "right", glyph: "." },
+    });
+    expect(spec(String.raw`\langle`)).toMatchObject({
+      kind: "pair",
+      closer: RANGLE,
+    });
+  });
+
+  it("marks closers so accepting one can consume its pending partner", () => {
+    expect(spec(String.raw`\right)`)).toEqual({
+      kind: "closer",
+      label: String.raw`\right)`,
+      detail: String.raw`\left( ... \right)`,
+      closer: RIGHT_PAREN,
+    });
+    expect(spec(String.raw`\right.`)).toMatchObject({ kind: "closer" });
+    expect(spec(String.raw`\rangle`)).toMatchObject({
+      kind: "closer",
+      closer: RANGLE,
+    });
+    expect(spec(String.raw`\big)`)).toMatchObject({
+      kind: "closer",
+      closer: BIG_PAREN,
+    });
+  });
+
+  it("offers separators and symmetric fixed sizes without a partner", () => {
     for (const label of [
       String.raw`\middle|`,
       String.raw`\middle\vert`,
       String.raw`\bigm|`,
       String.raw`\Biggm\Vert`,
+      String.raw`\big|`,
+      String.raw`\Bigg\|`,
+      String.raw`\left`,
+      String.raw`\right`,
     ]) {
-      const spec = specs.find((entry) => entry.label === label);
-      expect(spec, label).toBeDefined();
-      expect(spec?.template, label).toBeNull();
+      expect(spec(label).kind, label).toBe("plain");
     }
-  });
-
-  it("pairs a standalone opener but leaves its closer alone", () => {
-    const specs = latexDelimiterCompletionSpecs();
-    const open = specs.find((spec) => spec.label === String.raw`\langle`);
-    const close = specs.find((spec) => spec.label === String.raw`\rangle`);
-    expect(open?.template).toBe("\\langle${1}\\rangle");
-    expect(close?.template).toBeNull();
-  });
-
-  it("wraps a tab stop between the two halves of every paired spec", () => {
-    for (const spec of latexDelimiterCompletionSpecs()) {
-      if (spec.template === null) continue;
-      // Brace delimiters reach the snippet parser doubled, so compare against
-      // the escaped spelling rather than the label shown in the dropdown.
-      const escaped = spec.label.replace(/\\([{}])/gu, "\\\\$1");
-      expect(spec.template.startsWith(escaped), spec.label).toBe(true);
-      expect(spec.template, spec.label).toContain("${1}");
-    }
-  });
-
-  it("doubles a brace delimiter so the snippet parser keeps it", () => {
-    const brace = latexDelimiterCompletionSpecs().find(
-      (spec) => spec.label === String.raw`\left\{`,
-    );
-    expect(brace?.template).toBe("\\left\\\\{${1}\\right\\\\}");
   });
 
   it("names every entry once", () => {
-    const specs = latexDelimiterCompletionSpecs();
-    expect(labels().size).toBe(specs.length);
+    expect(labels().size).toBe(LATEX_DELIMITER_COMPLETIONS.length);
   });
 
   it("never offers a closer as something that opens a pair", () => {
-    for (const spec of latexDelimiterCompletionSpecs()) {
-      if (!spec.label.startsWith("\\right")) continue;
-      expect(spec.template, spec.label).toBeNull();
+    for (const entry of LATEX_DELIMITER_COMPLETIONS) {
+      if (!entry.label.startsWith("\\right")) continue;
+      expect(entry.kind, entry.label).not.toBe("pair");
     }
   });
 });
@@ -314,29 +643,35 @@ describe("latexDelimiterFamilySpecs", () => {
       size: size("left"),
       role: "open",
     });
-    const found = specs.map((spec) => spec.label);
+    const found = specs.map((entry) => entry.label);
     expect(found).toContain(String.raw`\left\langle`);
+    expect(found).toContain(String.raw`\left\Updownarrow`);
     expect(found).toContain(String.raw`\left.`);
     expect(found).not.toContain(String.raw`\right\rangle`);
     expect(found.every((label) => label.startsWith("\\left"))).toBe(true);
+    expect(specs.every((entry) => entry.kind === "pair")).toBe(true);
   });
 
   it("scopes a closing family to closers of that size", () => {
-    const found = latexDelimiterFamilySpecs({
+    const specs = latexDelimiterFamilySpecs({
       size: size("bigl"),
       role: "close",
-    }).map((spec) => spec.label);
+    });
+    const found = specs.map((entry) => entry.label);
     expect(found).toContain(String.raw`\bigr\rangle`);
     expect(found).not.toContain(String.raw`\bigl\langle`);
+    expect(found).not.toContain(String.raw`\bigr.`);
+    expect(specs.every((entry) => entry.kind === "closer")).toBe(true);
   });
 
   it("scopes a separator family to bar-like glyphs", () => {
     const found = latexDelimiterFamilySpecs({
       size: size("left"),
       role: "middle",
-    }).map((spec) => spec.label);
+    }).map((entry) => entry.label);
     expect(found).toContain(String.raw`\middle|`);
     expect(found).toContain(String.raw`\middle\Vert`);
+    expect(found).toContain(String.raw`\middle\uparrow`);
     expect(found).not.toContain(String.raw`\middle(`);
     expect(found).not.toContain(String.raw`\middle\langle`);
   });
@@ -347,71 +682,17 @@ describe("latexDelimiterFamilySpecs", () => {
     ).toEqual([]);
   });
 
-  it("builds openings and closings from the same two halves", () => {
-    const entry = glyph(String.raw`\langle`);
-    expect(latexDelimiterOpening(size("Biggl"), entry)).toBe(
-      String.raw`\Biggl\langle`,
+  it("leaves symmetric glyphs unpaired under a symmetric fixed size", () => {
+    const specs = latexDelimiterFamilySpecs({
+      size: size("big"),
+      role: "open",
+    });
+    expect(specs.find((entry) => entry.label === String.raw`\big|`)?.kind).toBe(
+      "plain",
     );
-    expect(latexDelimiterClosing(size("Biggl"), entry)).toBe(
-      String.raw`\Biggr\rangle`,
+    expect(specs.find((entry) => entry.label === String.raw`\big(`)?.kind).toBe(
+      "pair",
     );
-  });
-});
-
-describe("advanced math command specs", () => {
-  it("covers the fraction, binomial and stacking families", () => {
-    const found = new Set(
-      latexMathCommandSpecs().map((spec) => spec.label),
-    );
-    for (const label of [
-      "\\dfrac{}{}",
-      "\\tfrac{}{}",
-      "\\binom{}{}",
-      "\\dbinom{}{}",
-      "\\tbinom{}{}",
-      "\\genfrac{}{}{}{}{}{}",
-      "\\substack{}",
-      "\\overset{}{}",
-      "\\underset{}{}",
-    ]) {
-      expect(found.has(label), label).toBe(true);
-    }
-  });
-
-  it("covers the definition commands", () => {
-    const found = new Set(
-      latexMathCommandSpecs().map((spec) => spec.label),
-    );
-    for (const label of [
-      "\\DeclareMathOperator{}{}",
-      "\\DeclarePairedDelimiter{}{}{}",
-      "\\providecommand{}{}",
-      "\\NewDocumentCommand{}{}{}",
-      "\\DeclareDocumentCommand{}{}{}",
-      "\\NewDocumentEnvironment{}{}{}{}",
-    ]) {
-      expect(found.has(label), label).toBe(true);
-    }
-  });
-
-  it("writes single backslashes into placeholder defaults", () => {
-    const operator = latexMathCommandSpecs().find(
-      (spec) => spec.label === "\\DeclareMathOperator{}{}",
-    );
-    expect(operator?.template).toBe(
-      "\\DeclareMathOperator{${1:\\cmd}}{${2:name}}",
-    );
-    const substack = latexMathCommandSpecs().find(
-      (spec) => spec.label === "\\substack{}",
-    );
-    expect(substack?.template).toBe(
-      "\\substack{${1:first} \\\\ ${2:second}}",
-    );
-  });
-
-  it("names every entry once", () => {
-    const specs = latexMathCommandSpecs();
-    expect(new Set(specs.map((spec) => spec.label)).size).toBe(specs.length);
   });
 });
 
