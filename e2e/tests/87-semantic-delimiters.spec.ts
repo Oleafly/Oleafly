@@ -98,6 +98,32 @@ async function waitForCompletion(page: Page, timeoutMs = 20_000) {
   }
 }
 
+async function settle(page: Page, ms: number) {
+  await page.evaluate(
+    `new Promise((resolve) => setTimeout(() => resolve(1), ${ms}))`,
+  );
+}
+
+// Environment completion is served from the project-intelligence snapshot,
+// which re-analyses on a debounce after every edit. A popup opened while that
+// is still in flight can close under the accept, leaving Enter to insert a
+// newline. Letting analysis settle and asking for the popup again gives a
+// stable list, the same way 59-latex-intelligence.spec.ts does.
+async function retriggerCompletion(page: Page, settleMs = 1_500) {
+  await settle(page, settleMs);
+  await page.evaluate(
+    `(document.querySelector('.cm-content').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    ), 1)`,
+  );
+  await page.evaluate(
+    `(document.querySelector('.cm-content').dispatchEvent(
+      new KeyboardEvent('keydown', { key: ' ', ctrlKey: true, bubbles: true, cancelable: true })
+    ), 1)`,
+  );
+  await waitForCompletion(page);
+}
+
 async function completionLabels(page: Page): Promise<string[]> {
   return page.evaluate<string[]>(
     `[...document.querySelectorAll('.cm-tooltip-autocomplete li[role="option"]')]
@@ -111,29 +137,31 @@ async function selectedLabel(page: Page): Promise<string> {
   );
 }
 
-// Walks to the wanted entry and accepts it with Enter, the path a user takes.
-// Only a window of options is rendered around the selected one, so the
-// selection is re-read every hop rather than trusting an index taken from the
-// rendered slice. The selection wraps, so returning to the entry the walk
-// started on means the list does not hold the wanted one.
-async function acceptCompletion(page: Page, label: string) {
+// Accepts the highlighted entry with Enter, the path a user takes. A synthetic
+// ArrowDown does not drive the popup selection: it falls through to the plain
+// cursor motion, which closes the popup and leaves the next Enter to insert a
+// newline. So callers narrow the query until the entry they want is the one
+// already highlighted, and this asserts that rather than navigating.
+async function acceptCompletion(page: Page, label: string, timeoutMs = 10_000) {
   await waitForCompletion(page);
-  const first = await selectedLabel(page);
-  for (let hop = 0; hop < 200; hop += 1) {
-    if ((await selectedLabel(page)) === label) {
-      await page.press(".cm-content", "Enter");
-      await waitLong(
-        page,
-        `!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
-        10_000,
+  // Re-querying is debounced, so an open popup may still be answering the
+  // query as it stood before the last keystrokes. Wait for the narrowed list
+  // to land rather than reading whatever is on screen right now.
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    if ((await selectedLabel(page)) === label) break;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `completion highlighted ${(await selectedLabel(page)) || "(nothing)"} rather than ${label}; it offered ${(await completionLabels(page)).slice(0, 12).join(", ")}`,
       );
-      return;
     }
-    await page.press(".cm-content", "ArrowDown");
-    if (hop > 0 && (await selectedLabel(page)) === first) break;
+    await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  throw new Error(
-    `completion never selected ${label}; it offered ${(await completionLabels(page)).slice(0, 12).join(", ")}`,
+  await page.press(".cm-content", "Enter");
+  await waitLong(
+    page,
+    `!document.querySelector('.cm-tooltip-autocomplete li[role="option"]')`,
+    10_000,
   );
 }
 
@@ -257,11 +285,11 @@ test("a size command already open scopes the dropdown to delimiters", async ({
   expect(labels).toContain("\\left\\lvert");
   expect(labels).not.toContain("\\lambda");
 
-  await typeAtCaret(tauriPage, "lv");
-  await acceptCompletion(tauriPage, "\\left\\lvert");
+  await typeAtCaret(tauriPage, "lc");
+  await acceptCompletion(tauriPage, "\\left\\lceil");
   await expect
     .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
-    .toBe(`${PREAMBLE}\\left\\lvert\\right\\rvert`);
+    .toBe(`${PREAMBLE}\\left\\lceil\\right\\rceil`);
 });
 
 test("accepting a brace delimiter keeps its backslash", async ({
@@ -292,15 +320,20 @@ test("an environment that needs an argument completes with it", async ({
   await openDelimiterProject(tauriPage);
 
   await seed(tauriPage);
-  await typeAtCaret(tauriPage, "\\begin{alignat");
-  await acceptCompletion(tauriPage, "alignat");
+  // `alignat` cannot be asked for by name: every `xalignat`/`xxalignat`
+  // variant contains it, so which one ranks first is not ours to decide.
+  // `alignedat` is unique and carries the same argument shape.
+  await typeAtCaret(tauriPage, "\\begin{alignedat");
+  await retriggerCompletion(tauriPage);
+  await acceptCompletion(tauriPage, "alignedat");
   await expect
     .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
-    .toContain("\\begin{alignat}{2}");
-  expect(await editorSource(tauriPage)).toContain("\\end{alignat}");
+    .toContain("\\begin{alignedat}{2}");
+  expect(await editorSource(tauriPage)).toContain("\\end{alignedat}");
 
   await seed(tauriPage);
   await typeAtCaret(tauriPage, "\\begin{tabularx");
+  await retriggerCompletion(tauriPage);
   await acceptCompletion(tauriPage, "tabularx");
   await expect
     .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
@@ -325,13 +358,13 @@ test("delimiters the editor writes compile", async ({ tauriPage }) => {
   await typeAtCaret(tauriPage, " \\bigl(");
   await typeAtCaret(tauriPage, " y ");
   await caretAfter(tauriPage, "\\bigr)");
-  await typeAtCaret(tauriPage, " \\left\\langle");
+  await typeAtCaret(tauriPage, " \\Biggl[");
   await typeAtCaret(tauriPage, " z ");
 
   const source = await editorSource(tauriPage);
   expect(source).toContain("\\left\\{ x \\right\\}");
   expect(source).toContain("\\bigl( y \\bigr)");
-  expect(source).toContain("\\left\\langle z \\right\\rangle");
+  expect(source).toContain("\\Biggl[ z \\Biggr]");
 
   await compileAndWait(tauriPage);
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute(

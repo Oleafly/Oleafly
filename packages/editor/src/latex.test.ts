@@ -1071,9 +1071,18 @@ describe("labels the delimiter e2e spec depends on", () => {
     );
   }
 
-  it("offers the named delimiter each narrowed query walks to", () => {
-    expect(labelsFor("\\left\\lan")).toContain(String.raw`\left\langle`);
-    expect(labelsFor("\\left\\lv")).toContain(String.raw`\left\lvert`);
+  it("narrows to exactly one entry for the queries the spec types", () => {
+    // The spec accepts whatever the popup highlights, so each query it types
+    // has to leave a single candidate for CodeMirror to rank first.
+    for (const [query, label] of [
+      ["\\left\\lan", String.raw`\left\langle`],
+      ["\\left\\lc", String.raw`\left\lceil`],
+    ] as const) {
+      const matches = labelsFor(query).filter((entry) =>
+        entry.startsWith(query.replace(/\\\\/gu, "\\")),
+      );
+      expect(matches, query).toEqual([label]);
+    }
   });
 
   it("scopes an open size command to a list the popup renders whole", () => {
@@ -1089,8 +1098,16 @@ describe("labels the delimiter e2e spec depends on", () => {
     expect(labels).not.toContain(String.raw`\lambda`);
   });
 
-  it("offers the environments the spec accepts by name", () => {
-    expect(labelsFor("\\begin{alignat")).toContain("alignat");
-    expect(labelsFor("\\begin{tabularx")).toContain("tabularx");
+  it("leaves one environment candidate for each name the spec accepts", () => {
+    // The spec accepts whatever the popup highlights, so a query whose text is
+    // a substring of a sibling environment cannot be asked for by name:
+    // `alignat` also matches xalignat and xxalignat, and which one ranks first
+    // is CodeMirror's call, not ours.
+    for (const name of ["alignedat", "tabularx"]) {
+      const matches = labelsFor(`\\begin{${name}`).filter((label) =>
+        label.includes(name),
+      );
+      expect([...new Set(matches)], name).toEqual([name]);
+    }
   });
 });
