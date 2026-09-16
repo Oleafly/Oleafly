@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Picking a brace delimiter from autocomplete wrote invalid LaTeX. `\left\{`
   came out as `\left{`, and the backslash went missing from every `\bigl\{`
   and `\Biggl\{` suggestion as well.
+- ISBN lookups keep working when OpenLibrary's books endpoint is unavailable,
+  by reading the edition record and a search hit instead. Author names from
+  OpenLibrary now land in BibTeX as written, so `Ian Goodfellow` no longer
+  becomes `Ian, G.`.
 
 ## [0.4.1] - 2026-09-12
 

@@ -172,10 +172,9 @@ fn bibtex_authors(names: &[String]) -> String {
             }
             let mut parts = name.split_whitespace();
             let family = parts.next().unwrap_or_default().to_string();
-            // PubMed compresses given names to bare initials ("Smith JA");
-            // OpenLibrary spells them out ("Goodfellow Ian"). Expand
-            // all-uppercase tokens letter by letter, otherwise take the
-            // first letter of each spelled-out name.
+            // PubMed compresses given names to bare initials ("Smith JA").
+            // Expand all-uppercase tokens letter by letter, otherwise take
+            // the first letter of each spelled-out name.
             let initials: Vec<String> = parts
                 .flat_map(|token| {
                     if token.chars().all(|c| !c.is_ascii_lowercase()) && token.len() <= 3 {
@@ -259,6 +258,68 @@ fn brace_field(value: &str) -> String {
     format!("{{{}}}", value.replace(['{', '}'], ""))
 }
 
+fn string_list(value: Option<&serde_json::Value>) -> Vec<String> {
+    value
+        .and_then(|v| v.as_array())
+        .map(|list| {
+            list.iter()
+                .filter_map(|v| v.as_str())
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn text_field<'a>(record: Option<&'a serde_json::Value>, name: &str) -> Option<&'a str> {
+    record
+        .and_then(|value| value.get(name))
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+}
+
+/// The `api/books` shape assembled from an edition record (`/isbn/<isbn>.json`)
+/// and a search hit (`search.json?isbn=`), for when that endpoint is down.
+pub(crate) fn merge_isbn_records(
+    edition: Option<&serde_json::Value>,
+    search: Option<&serde_json::Value>,
+) -> Option<serde_json::Value> {
+    let title = text_field(edition, "title").or_else(|| text_field(search, "title"))?;
+    let authors: Vec<serde_json::Value> =
+        string_list(search.and_then(|hit| hit.get("author_name")))
+            .into_iter()
+            .map(|name| serde_json::json!({ "name": name }))
+            .collect();
+    let publisher = string_list(edition.and_then(|record| record.get("publishers")))
+        .into_iter()
+        .next()
+        .or_else(|| {
+            string_list(search.and_then(|hit| hit.get("publisher")))
+                .into_iter()
+                .next()
+        });
+    let publish_date = text_field(edition, "publish_date")
+        .map(str::to_string)
+        .or_else(|| {
+            search
+                .and_then(|hit| hit.get("first_publish_year"))
+                .map(|year| match year {
+                    serde_json::Value::Number(number) => number.to_string(),
+                    serde_json::Value::String(text) => text.clone(),
+                    _ => String::new(),
+                })
+        });
+    Some(serde_json::json!({
+        "title": title,
+        "authors": authors,
+        "publishers": publisher
+            .map(|name| vec![serde_json::json!({ "name": name })])
+            .unwrap_or_default(),
+        "publish_date": publish_date.unwrap_or_default(),
+    }))
+}
+
 /// BibTeX for a book, from OpenLibrary's ISBN view (`?jscmd=data`).
 /// The JSON shape here is stable and covered by unit tests below.
 pub(crate) fn isbn_bibtex(data: &serde_json::Value, isbn: &str) -> Result<String, String> {
@@ -288,7 +349,11 @@ pub(crate) fn isbn_bibtex(data: &serde_json::Value, isbn: &str) -> Result<String
         .and_then(|v| v.as_str())
         .unwrap_or_default();
     let year = year_of(date);
-    let author_list = bibtex_authors(&authors);
+    let author_list = authors
+        .iter()
+        .map(|name| name.trim())
+        .collect::<Vec<_>>()
+        .join(" and ");
     let key = cite_key(&author_list, &year, title);
     let mut fields = vec![
         ("author", brace_field(&author_list)),
@@ -311,32 +376,87 @@ pub(crate) fn isbn_bibtex(data: &serde_json::Value, isbn: &str) -> Result<String
     ))
 }
 
-/// Canonical BibTeX for an ISBN, via OpenLibrary. The `api/books` view
-/// answers directly with authors and publishers; the plain `.json` view
-/// redirects and drops them.
-#[tauri::command]
-pub async fn fetch_isbn_bibtex(isbn: String) -> Result<String, String> {
-    let isbn = normalize_isbn(&isbn)?;
-    let resp = client()?
-        .get("https://openlibrary.org/api/books")
-        .query(&[
-            ("bibkeys", format!("ISBN:{isbn}").as_str()),
-            ("jscmd", "data"),
-            ("format", "json"),
-        ])
+async fn openlibrary_json(
+    client: &reqwest::Client,
+    url: &str,
+    query: &[(&str, &str)],
+) -> Result<serde_json::Value, String> {
+    let resp = client
+        .get(url)
+        .query(query)
         .send()
         .await
         .map_err(|e| format!("lookup failed: {e}"))?
         .error_for_status()
-        .map_err(|_| "No book found for that ISBN.".to_string())?;
-    let data = response_json(resp)
+        .map_err(|e| e.to_string())?;
+    response_json(resp)
         .await
-        .map_err(|error| format!("OpenLibrary returned an unreadable response: {error}"))?;
-    let entry = data
-        .get(format!("ISBN:{isbn}"))
-        .cloned()
-        .ok_or("No book found for that ISBN.")?;
-    isbn_bibtex(&entry, &isbn)
+        .map_err(|error| format!("OpenLibrary returned an unreadable response: {error}"))
+}
+
+async fn isbn_books_entry(client: &reqwest::Client, isbn: &str) -> Option<serde_json::Value> {
+    let data = openlibrary_json(
+        client,
+        "https://openlibrary.org/api/books",
+        &[
+            ("bibkeys", format!("ISBN:{isbn}").as_str()),
+            ("jscmd", "data"),
+            ("format", "json"),
+        ],
+    )
+    .await
+    .ok()?;
+    data.get(format!("ISBN:{isbn}")).cloned()
+}
+
+async fn isbn_edition(client: &reqwest::Client, isbn: &str) -> Option<serde_json::Value> {
+    let record = openlibrary_json(
+        client,
+        &format!("https://openlibrary.org/isbn/{isbn}.json"),
+        &[],
+    )
+    .await
+    .ok()?;
+    record.get("title").and_then(|v| v.as_str())?;
+    Some(record)
+}
+
+async fn isbn_search_hit(
+    client: &reqwest::Client,
+    isbn: &str,
+) -> Result<Option<serde_json::Value>, String> {
+    let data = openlibrary_json(
+        client,
+        "https://openlibrary.org/search.json",
+        &[
+            ("isbn", isbn),
+            ("fields", "title,author_name,publisher,first_publish_year"),
+            ("limit", "1"),
+        ],
+    )
+    .await?;
+    Ok(data
+        .get("docs")
+        .and_then(|docs| docs.as_array())
+        .and_then(|docs| docs.first())
+        .cloned())
+}
+
+/// Canonical BibTeX for an ISBN, via OpenLibrary. The `api/books` view
+/// answers directly with authors and publishers; when it is unavailable the
+/// edition record and a search hit supply the same fields between them.
+#[tauri::command]
+pub async fn fetch_isbn_bibtex(isbn: String) -> Result<String, String> {
+    let isbn = normalize_isbn(&isbn)?;
+    let client = client()?;
+    if let Some(entry) = isbn_books_entry(&client, &isbn).await {
+        return isbn_bibtex(&entry, &isbn);
+    }
+    let edition = isbn_edition(&client, &isbn).await;
+    let hit = isbn_search_hit(&client, &isbn).await?;
+    let record =
+        merge_isbn_records(edition.as_ref(), hit.as_ref()).ok_or("No book found for that ISBN.")?;
+    isbn_bibtex(&record, &isbn)
 }
 
 /// BibTeX for an article, from NCBI's PubMed esummary record.
@@ -474,17 +594,73 @@ mod tests {
     fn isbn_bibtex_maps_openlibrary_fields() {
         let data = serde_json::json!({
             "title": "Deep Learning",
-            "authors": [{"name": "Goodfellow Ian"}, {"name": "Bengio Yoshua"}],
+            "authors": [{"name": "Ian Goodfellow"}, {"name": "Yoshua Bengio"}],
             "publishers": [{"name": "MIT Press"}],
             "publish_date": "November 2016",
         });
         let bib = isbn_bibtex(&data, "9780262035613").unwrap();
         assert!(bib.starts_with("@book{goodfellow2016deep,"), "{bib}");
-        assert!(bib.contains("author = {Goodfellow, I. and Bengio, Y.}"));
+        assert!(bib.contains("author = {Ian Goodfellow and Yoshua Bengio}"));
         assert!(bib.contains("publisher = {MIT Press}"));
         assert!(bib.contains("year = {2016}"));
         assert!(bib.contains("isbn = {9780262035613}"));
         assert!(bib.ends_with("}"));
+    }
+
+    #[test]
+    fn merged_isbn_records_prefer_the_edition_and_take_authors_from_search() {
+        let edition = serde_json::json!({
+            "title": "Deep Learning",
+            "publishers": ["MIT Press"],
+            "publish_date": "3 January 2017",
+            "works": [{"key": "/works/OL17801809W"}],
+        });
+        let hit = serde_json::json!({
+            "title": "Deep learning (search title)",
+            "author_name": ["Ian Goodfellow", "Yoshua Bengio", "Aaron Courville"],
+            "publisher": ["deeplearningbook.org", "MIT Press"],
+            "first_publish_year": 2016,
+        });
+        let record = merge_isbn_records(Some(&edition), Some(&hit)).unwrap();
+        let bib = isbn_bibtex(&record, "9780262035613").unwrap();
+        assert!(bib.starts_with("@book{goodfellow2017deep,"), "{bib}");
+        assert!(bib.contains("author = {Ian Goodfellow and Yoshua Bengio and Aaron Courville}"));
+        assert!(bib.contains("title = {Deep Learning}"));
+        assert!(bib.contains("publisher = {MIT Press}"));
+        assert!(bib.contains("year = {2017}"));
+    }
+
+    #[test]
+    fn merged_isbn_records_fall_back_to_the_search_hit_alone() {
+        let hit = serde_json::json!({
+            "title": "Deep Learning",
+            "author_name": ["Ian Goodfellow"],
+            "publisher": ["MIT Press"],
+            "first_publish_year": 2016,
+        });
+        let record = merge_isbn_records(None, Some(&hit)).unwrap();
+        let bib = isbn_bibtex(&record, "9780262035613").unwrap();
+        assert!(bib.starts_with("@book{goodfellow2016deep,"), "{bib}");
+        assert!(bib.contains("publisher = {MIT Press}"));
+        assert!(bib.contains("year = {2016}"));
+    }
+
+    #[test]
+    fn merged_isbn_records_survive_an_edition_without_authors_and_reject_nothing_useful() {
+        let edition = serde_json::json!({
+            "title": "Deep Learning",
+            "publishers": ["MIT Press"],
+            "publish_date": "2017",
+        });
+        let record = merge_isbn_records(Some(&edition), None).unwrap();
+        let bib = isbn_bibtex(&record, "9780262035613").unwrap();
+        assert!(bib.contains("author = {}"), "{bib}");
+        assert!(bib.contains("title = {Deep Learning}"));
+        assert!(bib.contains("year = {2017}"));
+
+        let untitled = serde_json::json!({ "author_name": ["Somebody"] });
+        assert!(merge_isbn_records(None, Some(&untitled)).is_none());
+        assert!(merge_isbn_records(None, None).is_none());
     }
 
     #[test]
