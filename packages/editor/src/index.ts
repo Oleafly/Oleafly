@@ -46,6 +46,7 @@ export {
   latexIgnoredRangesField,
   mathContextAt,
 } from "./latex-lexical";
+export { latexSnippetLiteral } from "./latex-delimiters";
 export {
   latexPairChange,
   latexPairInputHandler,

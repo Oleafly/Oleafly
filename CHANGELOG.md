@@ -16,6 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Explorer stacks the file tree, Outline, and Structure into collapsible,
   vertically resizable sections. Each tree can expand or collapse in one
   click, and the layout is remembered between visits.
+- The LaTeX editor closes sized math delimiters as you type them. A `(` after
+  `\left` brings its `\right)`, and the `\bigl`, `\Bigl`, `\biggl`,
+  `\Biggl` and symmetric `\big` families behave the same way. Autocomplete
+  offers the named delimiters too, so picking `\left\langle` writes
+  `\right\rangle` with it. `\middle` and `\bigm` stay unpaired, because a
+  separator has no partner, and so does a lone `\big|`. Backspace on an empty
+  pair clears both sides. Typing the closing glyph steps over the closer the
+  editor wrote, an inner `(a+b)` keeps its own parenthesis, and spelling out
+  `\right)` yourself replaces the pending closer instead of doubling it.
+- Environments that take arguments now complete with them, so
+  `\begin{alignat}` arrives as `\begin{alignat}{2}`. The same goes for
+  `array`, `tabularx`, `minipage`, `thebibliography`, `list`, `picture` and
+  several others.
 
 ### Changed
 
@@ -28,6 +41,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Checking for local agents now shows progress immediately, keeps the current
   list in place during a refresh, and explains empty or failed checks. The
   citation fallback dialog is also wider, so BibTeX is easier to read.
+
+### Fixed
+
+- Picking a brace delimiter from autocomplete wrote invalid LaTeX. `\left\{`
+  came out as `\left{`, and the backslash went missing from every `\bigl\{`
+  and `\Biggl\{` suggestion as well.
+- ISBN lookups keep working when OpenLibrary's books endpoint is unavailable,
+  by reading the edition record and a search hit instead. Author names from
+  OpenLibrary now land in BibTeX as written, so `Ian Goodfellow` no longer
+  becomes `Ian, G.`.
 
 ## [0.4.1] - 2026-09-12
 

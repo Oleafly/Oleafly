@@ -24,14 +24,65 @@ const TRAILING_ARGUMENTS = /^(?:\s*(?:\[[^\]]*\]|\{[^{}]*\}))*\s*$/u;
 
 const ITEM_ENVIRONMENTS = new Set(["itemize", "enumerate", "description"]);
 
+interface EnvironmentArguments {
+  readonly text: string;
+  readonly placeholders: number;
+  readonly item?: boolean;
+}
+
+const ENVIRONMENT_ARGUMENTS: ReadonlyMap<string, EnvironmentArguments> =
+  new Map<string, EnvironmentArguments>([
+    ["alignat", { text: "{${1:2}}", placeholders: 1 }],
+    ["alignedat", { text: "{${1:2}}", placeholders: 1 }],
+    ["xalignat", { text: "{${1:2}}", placeholders: 1 }],
+    ["xxalignat", { text: "{${1:2}}", placeholders: 1 }],
+    ["array", { text: "{${1:rcl}}", placeholders: 1 }],
+    ["subarray", { text: "{${1:c}}", placeholders: 1 }],
+    ["tabular", { text: "{${1:ll}}", placeholders: 1 }],
+    [
+      "tabular*",
+      { text: "{${1:\\linewidth}}{${2:ll}}", placeholders: 2 },
+    ],
+    [
+      "tabularx",
+      { text: "{${1:\\linewidth}}{${2:lX}}", placeholders: 2 },
+    ],
+    ["minipage", { text: "{${1:0.8\\linewidth}}", placeholders: 1 }],
+    ["thebibliography", { text: "{${1:9}}", placeholders: 1 }],
+    [
+      "list",
+      { text: "{${1:label}}{${2:layout}}", placeholders: 2, item: true },
+    ],
+    [
+      "picture",
+      {
+        text: "(${1:width},${2:height})(${3:x-offset},${4:y-offset})",
+        placeholders: 4,
+      },
+    ],
+    ["filecontents", { text: "{${1:filename}}", placeholders: 1 }],
+    ["multicols", { text: "{${1:2}}", placeholders: 1 }],
+  ]);
+
 function environmentBase(name: string): string {
   return name.endsWith("*") ? name.slice(0, -1) : name;
 }
 
+function environmentArguments(name: string): EnvironmentArguments | null {
+  return (
+    ENVIRONMENT_ARGUMENTS.get(name) ??
+    ENVIRONMENT_ARGUMENTS.get(environmentBase(name)) ??
+    null
+  );
+}
+
 export function environmentSnippet(name: string): string {
   const close = `\\end{${name}}`;
-  if (name === "tabular") {
-    return `${name}}{\${1:ll}}\n\t\${2}\n${close}\${}`;
+  const args = environmentArguments(name);
+  if (args) {
+    const stop = `\${${args.placeholders + 1}}`;
+    const body = args.item ? String.raw`\item ${stop}` : stop;
+    return `${name}}${args.text}\n\t${body}\n${close}\${}`;
   }
   switch (environmentBase(name)) {
     case "itemize":

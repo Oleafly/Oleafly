@@ -1,7 +1,16 @@
 // @vitest-environment jsdom
 
-import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
-import { defaultKeymap } from "@codemirror/commands";
+import {
+  closeBrackets,
+  closeBracketsKeymap,
+  type Completion,
+} from "@codemirror/autocomplete";
+import {
+  defaultKeymap,
+  history,
+  isolateHistory,
+  undo,
+} from "@codemirror/commands";
 import { indentUnit } from "@codemirror/language";
 import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -12,7 +21,13 @@ import {
   latexIgnoredRangesField,
   mathContextAt,
 } from "./latex-lexical";
-import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
+import { type LatexDelimiterCompletionSpec } from "./latex-delimiters";
+import {
+  latexDelimiterCompletionApply,
+  latexPairChange,
+  latexPairInputHandler,
+  latexPairKeymap,
+} from "./latex-pairs";
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
   Object.defineProperty(Range.prototype, "getClientRects", {
@@ -48,6 +63,7 @@ function mount(
       selection,
       extensions: [
         EditorState.allowMultipleSelections.of(true),
+        history(),
         indentUnit.of("  "),
         latexLanguage(),
         closeBrackets(),
@@ -607,5 +623,670 @@ describe("live reconfiguration", () => {
     expect(target.state.doc.toString()).toBe("a $$$");
     type(target, "(");
     expect(target.state.doc.toString()).toBe("a $$$(");
+  });
+});
+
+const CARET = "\u2038";
+
+function caretMarked(target: EditorView): string {
+  const head = target.state.selection.main.head;
+  return `${target.state.sliceDoc(0, head)}${CARET}${target.state.sliceDoc(head)}`;
+}
+
+function typedAt(
+  doc: string,
+  offset: number,
+  text: string,
+  options?: PairOptions,
+): string {
+  const target = mount(doc, EditorSelection.single(offset), options);
+  type(target, text);
+  return caretMarked(target);
+}
+
+function afterTyping(
+  prefix: string,
+  text: string,
+  options?: PairOptions,
+): string {
+  return typedAt(prefix, prefix.length, text, options);
+}
+
+function keys(target: EditorView, text: string): void {
+  for (const character of text) type(target, character);
+}
+
+function afterKeys(prefix: string, text: string, options?: PairOptions): string {
+  const target = mount(prefix, EditorSelection.single(prefix.length), options);
+  keys(target, text);
+  return caretMarked(target);
+}
+
+function fakeCompletion(label: string): Completion {
+  return { label };
+}
+
+function acceptSpec(
+  target: EditorView,
+  spec: LatexDelimiterCompletionSpec,
+  from: number,
+  to: number,
+): void {
+  latexDelimiterCompletionApply(spec)(target, fakeCompletion(spec.label), from, to);
+}
+
+const LEFT_LANGLE: LatexDelimiterCompletionSpec = {
+  kind: "pair",
+  label: String.raw`\left\langle`,
+  detail: "",
+  closer: { command: "right", glyph: String.raw`\rangle` },
+};
+
+const RIGHT_RANGLE: LatexDelimiterCompletionSpec = {
+  kind: "closer",
+  label: String.raw`\right\rangle`,
+  detail: "",
+  closer: { command: "right", glyph: String.raw`\rangle` },
+};
+
+const LANGLE: LatexDelimiterCompletionSpec = {
+  kind: "pair",
+  label: String.raw`\langle`,
+  detail: "",
+  closer: { command: "", glyph: String.raw`\rangle` },
+};
+
+const MIDDLE_BAR: LatexDelimiterCompletionSpec = {
+  kind: "plain",
+  label: String.raw`\middle|`,
+  detail: "",
+};
+
+describe("auto-sized delimiter pairing", () => {
+  it("closes every bare glyph typed after \\left", () => {
+    expect(afterTyping("\\left", "(")).toBe(`\\left(${CARET}\\right)`);
+    expect(afterTyping("\\left", "[")).toBe(`\\left[${CARET}\\right]`);
+    expect(afterTyping("\\left", "<")).toBe(`\\left<${CARET}\\right>`);
+    expect(afterTyping("\\left", "|")).toBe(`\\left|${CARET}\\right|`);
+  });
+
+  it("closes the escaped glyphs typed after \\left\\", () => {
+    expect(afterTyping("\\left\\", "{")).toBe(`\\left\\{${CARET}\\right\\}`);
+    expect(afterTyping("\\left\\", "|")).toBe(`\\left\\|${CARET}\\right\\|`);
+  });
+
+  it("closes a glyph separated from its size command by a space", () => {
+    expect(afterTyping("\\left ", "(")).toBe(`\\left (${CARET}\\right)`);
+    expect(afterTyping("\\bigl \\", "{")).toBe(`\\bigl \\{${CARET}\\bigr\\}`);
+  });
+
+  it("keeps the caret inside the new pair", () => {
+    const target = mount(
+      "\\left",
+      EditorSelection.single("\\left".length),
+    );
+    type(target, "(");
+    expect(target.state.selection.main.head).toBe("\\left(".length);
+    expect(target.state.selection.main.empty).toBe(true);
+  });
+});
+
+describe("fixed-size delimiter pairing", () => {
+  it("matches each sized opener with its own closer", () => {
+    expect(afterTyping("\\bigl", "(")).toBe(`\\bigl(${CARET}\\bigr)`);
+    expect(afterTyping("\\Bigl", "[")).toBe(`\\Bigl[${CARET}\\Bigr]`);
+    expect(afterTyping("\\biggl\\", "{")).toBe(
+      `\\biggl\\{${CARET}\\biggr\\}`,
+    );
+    expect(afterTyping("\\Biggl", "(")).toBe(`\\Biggl(${CARET}\\Biggr)`);
+    expect(afterTyping("\\bigl", "|")).toBe(`\\bigl|${CARET}\\bigr|`);
+  });
+
+  it("repeats the same command for the symmetric sizes", () => {
+    expect(afterTyping("\\big", "(")).toBe(`\\big(${CARET}\\big)`);
+    expect(afterTyping("\\Big", "[")).toBe(`\\Big[${CARET}\\Big]`);
+    expect(afterTyping("\\bigg", "<")).toBe(`\\bigg<${CARET}\\bigg>`);
+    expect(afterTyping("\\Bigg\\", "{")).toBe(`\\Bigg\\{${CARET}\\Bigg\\}`);
+  });
+
+  it("leaves a symmetric glyph alone after a symmetric size", () => {
+    expect(afterTyping("\\big", "|")).toBe(`\\big|${CARET}`);
+    expect(afterTyping("\\Bigg\\", "|")).toBe(`\\Bigg\\|${CARET}`);
+    expect(afterKeys("$f(x)", "\\big|_0^1$")).toBe(`$f(x)\\big|_0^1$${CARET}`);
+  });
+});
+
+describe("delimiters that take no partner", () => {
+  it("leaves a separator unpaired", () => {
+    expect(afterTyping("\\middle", "|")).toBe(`\\middle|${CARET}`);
+    expect(afterTyping("\\bigm", "|")).toBe(`\\bigm|${CARET}`);
+    expect(afterTyping("\\Biggm\\", "|")).toBe(`\\Biggm\\|${CARET}`);
+  });
+
+  it("keeps the generic bracket handler off a separator", () => {
+    expect(afterTyping("\\middle", "(")).toBe(`\\middle(${CARET}`);
+  });
+
+  it("leaves a closing size command unpaired", () => {
+    expect(afterTyping("\\right", "(")).toBe(`\\right(${CARET}`);
+    expect(afterTyping("\\bigr", "[")).toBe(`\\bigr[${CARET}`);
+  });
+
+  it("does not invent a closer for a null delimiter", () => {
+    expect(afterTyping("\\left", ".")).toBe(`\\left.${CARET}`);
+  });
+});
+
+describe("semantic pairing boundaries", () => {
+  it("ignores a size command whose backslash is escaped", () => {
+    expect(afterTyping("\\\\left", "(")).toBe(`\\\\left(${CARET})`);
+  });
+
+  it("ignores a word that merely starts with a size command", () => {
+    expect(afterTyping("\\lefty", "(")).toBe(`\\lefty(${CARET})`);
+  });
+
+  it("leaves comments and verbatim blocks alone", () => {
+    expect(afterTyping("% \\left", "(")).toBe(`% \\left(${CARET})`);
+    const verbatim = "\\begin{verbatim}\n\\left";
+    expect(afterTyping(verbatim, "(")).toBe(`${verbatim}(${CARET})`);
+  });
+
+  it("still pairs \\( and \\[ the way it always did", () => {
+    expect(afterTyping("\\", "(")).toBe(`\\(${CARET}\\)`);
+    expect(afterTyping("\\", "{")).toBe(`\\{${CARET}`);
+  });
+
+  it("does nothing when math auto-close is off", () => {
+    expect(afterTyping("\\left", "(", { math: false })).toBe(
+      `\\left(${CARET})`,
+    );
+  });
+});
+
+describe("the character after the caret", () => {
+  it("refuses to pair when the glyph would sit against a word", () => {
+    expect(typedAt("\\leftx^2", 5, "(")).toBe(`\\left(${CARET}x^2`);
+    expect(typedAt("\\left\\frac{a}{b}", 5, "(")).toBe(
+      `\\left(${CARET}\\frac{a}{b}`,
+    );
+    expect(typedAt("\\left\\x", 6, "{")).toBe(`\\left\\{${CARET}x`);
+  });
+
+  it("pairs before whitespace, punctuation and a math closer", () => {
+    expect(typedAt("\\left x", 5, "(")).toBe(`\\left(${CARET}\\right) x`);
+    expect(typedAt("\\left)", 5, "(")).toBe(`\\left(${CARET}\\right))`);
+    expect(typedAt("$\\left$", 6, "(")).toBe(`$\\left(${CARET}\\right)$`);
+    expect(typedAt("\\[\\left\\]", 7, "(")).toBe(
+      `\\[\\left(${CARET}\\right)\\]`,
+    );
+    expect(typedAt("\\left\\\\", 5, "(")).toBe(`\\left(${CARET}\\right)\\\\`);
+  });
+
+  it("pairs before a closing delimiter so nesting keeps working", () => {
+    expect(typedAt("\\left\\right)", 5, "(")).toBe(
+      `\\left(${CARET}\\right)\\right)`,
+    );
+    expect(typedAt("\\bigl\\rangle", 5, "(")).toBe(
+      `\\bigl(${CARET}\\bigr)\\rangle`,
+    );
+  });
+});
+
+describe("nested and multiline delimiters", () => {
+  it("pairs an inner delimiter inside an outer one", () => {
+    expect(afterKeys("", "\\left(\\left[")).toBe(
+      `\\left(\\left[${CARET}\\right]\\right)`,
+    );
+  });
+
+  it("pairs a sized delimiter typed inside another family", () => {
+    expect(afterKeys("", "\\left(\\bigl(")).toBe(
+      `\\left(\\bigl(${CARET}\\bigr)\\right)`,
+    );
+  });
+
+  it("pairs across a multiline body", () => {
+    const doc = "\\left(\n  \\bigl\n\\right)";
+    expect(typedAt(doc, doc.indexOf("\\bigl") + 5, "<")).toBe(
+      `\\left(\n  \\bigl<${CARET}\\bigr>\n\\right)`,
+    );
+  });
+
+  it("keeps an inner paren pair inside a sized pair", () => {
+    expect(afterKeys("", "\\left((a+b)")).toBe(`\\left((a+b)${CARET}\\right)`);
+    expect(afterKeys("", "\\left(f(x)")).toBe(`\\left(f(x)${CARET}\\right)`);
+    expect(afterKeys("", "\\left((a+b)(c+d))")).toBe(
+      `\\left((a+b)(c+d)\\right)${CARET}`,
+    );
+  });
+
+  it("closes an inner sized pair before the outer one", () => {
+    expect(afterKeys("", "\\left(\\bigl[x]y)")).toBe(
+      `\\left(\\bigl[x\\bigr]y\\right)${CARET}`,
+    );
+  });
+});
+
+describe("overtyping a closer the editor inserted", () => {
+  it("steps over the closer instead of writing a second one", () => {
+    expect(afterKeys("", "\\left(x)")).toBe(`\\left(x\\right)${CARET}`);
+    expect(afterKeys("", "\\left[x]")).toBe(`\\left[x\\right]${CARET}`);
+    expect(afterKeys("", "\\left<x>")).toBe(`\\left<x\\right>${CARET}`);
+    expect(afterKeys("", "\\left|x|")).toBe(`\\left|x\\right|${CARET}`);
+    expect(afterKeys("", "\\bigl(x)")).toBe(`\\bigl(x\\bigr)${CARET}`);
+    expect(afterKeys("", "\\big(x)")).toBe(`\\big(x\\big)${CARET}`);
+  });
+
+  it("steps over an escaped closer typed as its glyph", () => {
+    expect(afterKeys("", "\\left\\{x\\}")).toBe(`\\left\\{x\\right\\}${CARET}`);
+    expect(afterKeys("", "\\left\\|x\\|")).toBe(`\\left\\|x\\right\\|${CARET}`);
+    expect(afterKeys("", "\\left\\{x}")).toBe(`\\left\\{x\\right\\}${CARET}`);
+  });
+
+  it("consumes a closer the user spells out in full", () => {
+    expect(afterKeys("", "\\left(x\\right)")).toBe(`\\left(x\\right)${CARET}`);
+    expect(afterKeys("", "\\left\\{x\\right\\}")).toBe(
+      `\\left\\{x\\right\\}${CARET}`,
+    );
+    expect(afterKeys("", "\\bigl(x\\bigr)")).toBe(`\\bigl(x\\bigr)${CARET}`);
+    expect(afterKeys("", "\\big(x\\big)")).toBe(`\\big(x\\big)${CARET}`);
+    expect(afterKeys("", "\\left(x\\right )")).toBe(`\\left(x\\right)${CARET}`);
+  });
+
+  it("spells the closer out across lines too", () => {
+    const target = mount("", EditorSelection.single(0));
+    keys(target, "\\left(");
+    press(target, "Enter");
+    keys(target, "x");
+    press(target, "Enter");
+    keys(target, "\\right)");
+    expect(target.state.doc.toString()).toBe("\\left(\nx\n\\right)");
+  });
+
+  it("writes the glyph when the user spells a different closer", () => {
+    expect(afterKeys("", "\\left(x\\bigr)")).toBe(
+      `\\left(x\\bigr)${CARET}\\right)`,
+    );
+    expect(afterKeys("", "\\left(x\\)")).toBe(`\\left(x\\)${CARET}\\right)`);
+    expect(afterKeys("", "\\left\\{x\\right}")).toBe(
+      `\\left\\{x\\right}${CARET}\\right\\}`,
+    );
+  });
+
+  it("does not step over a closer the editor did not insert", () => {
+    expect(typedAt("\\left(\\right)", 6, ")")).toBe(`\\left()${CARET}\\right)`);
+    expect(typedAt("\\left(x\\bigr)", 7, ")")).toBe(
+      `\\left(x)${CARET}\\bigr)`,
+    );
+  });
+
+  it("forgets a closer once the caret leaves its line", () => {
+    const target = mount("\n", EditorSelection.single(0));
+    keys(target, "\\left(");
+    target.dispatch({ selection: EditorSelection.cursor(target.state.doc.length) });
+    target.dispatch({ selection: EditorSelection.cursor("\\left(".length) });
+    type(target, ")");
+    expect(caretMarked(target)).toBe(`\\left()${CARET}\\right)\n`);
+  });
+
+  it("forgets a closer the user edited", () => {
+    const target = mount("", EditorSelection.single(0));
+    keys(target, "\\left(");
+    const closer = target.state.doc.toString().indexOf("\\right)");
+    target.dispatch({
+      changes: { from: closer + 6, to: closer + 7, insert: "]" },
+    });
+    type(target, ")");
+    expect(caretMarked(target)).toBe(`\\left()${CARET}\\right]`);
+  });
+
+  it("makes stepping over a closer undoable", () => {
+    const target = mount("", EditorSelection.single(0));
+    keys(target, "\\left(x");
+    const spec = latexPairChange(target.state, ")", {
+      math: true,
+      brackets: true,
+    });
+    target.dispatch({ ...spec, annotations: isolateHistory.of("before") });
+    expect(caretMarked(target)).toBe(`\\left(x\\right)${CARET}`);
+    expect(undo(target)).toBe(true);
+    expect(caretMarked(target)).toBe(`\\left(x${CARET}\\right)`);
+  });
+});
+
+describe("closers inserted by completion", () => {
+  it("tracks the closer of an accepted pair", () => {
+    const target = mount("\\left\\lan", EditorSelection.single(9));
+    acceptSpec(target, LEFT_LANGLE, 0, 9);
+    expect(caretMarked(target)).toBe(`\\left\\langle${CARET}\\right\\rangle`);
+    keys(target, " x\\right\\rangle");
+    expect(caretMarked(target)).toBe(`\\left\\langle x\\right\\rangle${CARET}`);
+  });
+
+  it("consumes a pending closer when its glyph is spelled alone", () => {
+    const target = mount("", EditorSelection.single(0));
+    acceptSpec(target, LEFT_LANGLE, 0, 0);
+    keys(target, " x\\rangle");
+    expect(caretMarked(target)).toBe(`\\left\\langle x\\right\\rangle${CARET}`);
+  });
+
+  it("consumes a pending closer when the closer is accepted from the list", () => {
+    const target = mount("", EditorSelection.single(0));
+    acceptSpec(target, LEFT_LANGLE, 0, 0);
+    keys(target, " x\\right\\ra");
+    const from = target.state.doc.toString().indexOf("\\right\\ra");
+    acceptSpec(target, RIGHT_RANGLE, from, from + "\\right\\ra".length);
+    expect(caretMarked(target)).toBe(`\\left\\langle x\\right\\rangle${CARET}`);
+  });
+
+  it("inserts an accepted closer plainly when nothing is pending", () => {
+    const target = mount("x\\right\\ra", EditorSelection.single(10));
+    acceptSpec(target, RIGHT_RANGLE, 1, 10);
+    expect(caretMarked(target)).toBe(`x\\right\\rangle${CARET}`);
+  });
+
+  it("tracks a standalone pair and inserts a plain entry verbatim", () => {
+    const target = mount("\\lan", EditorSelection.single(4));
+    acceptSpec(target, LANGLE, 0, 4);
+    keys(target, " x\\rangle");
+    expect(caretMarked(target)).toBe(`\\langle x\\rangle${CARET}`);
+    const plain = mount("\\mid", EditorSelection.single(4));
+    acceptSpec(plain, MIDDLE_BAR, 0, 4);
+    expect(caretMarked(plain)).toBe(`\\middle|${CARET}`);
+  });
+});
+
+describe("backspacing an empty semantic pair", () => {
+  function backspaceAt(doc: string, offset: number): string {
+    const target = mount(doc, EditorSelection.single(offset));
+    press(target, "Backspace");
+    return caretMarked(target);
+  }
+
+  it("removes both halves of a sized pair", () => {
+    expect(backspaceAt("\\left(\\right)", 6)).toBe(CARET);
+    expect(backspaceAt("\\bigl[\\bigr]", 6)).toBe(CARET);
+    expect(backspaceAt("\\Biggl\\{\\Biggr\\}", 8)).toBe(CARET);
+    expect(backspaceAt("\\big(\\big)", 5)).toBe(CARET);
+    expect(backspaceAt("\\left (\\right)", 7)).toBe(CARET);
+  });
+
+  it("removes both halves of a named and a null pair", () => {
+    expect(backspaceAt("\\left\\langle\\right\\rangle", 12)).toBe(CARET);
+    expect(backspaceAt("\\langle\\rangle", 7)).toBe(CARET);
+    expect(backspaceAt("\\left.\\right.", 6)).toBe(CARET);
+  });
+
+  it("keeps surrounding text", () => {
+    expect(backspaceAt("a\\left(\\right)b", 7)).toBe(`a${CARET}b`);
+  });
+
+  it("leaves a pair with a body alone", () => {
+    expect(backspaceAt("\\left(x\\right)", 7)).toBe(`\\left(${CARET}\\right)`);
+  });
+
+  it("leaves a mismatched pair alone", () => {
+    expect(backspaceAt("\\left(\\bigr)", 6)).toBe(`\\left${CARET}\\bigr)`);
+    expect(backspaceAt("\\big|\\big|", 5)).toBe(`\\big${CARET}\\big|`);
+  });
+
+  it("leaves an escaped opener alone", () => {
+    expect(backspaceAt("\\\\left(\\right)", 7)).toBe(`\\\\left${CARET}\\right)`);
+  });
+});
+
+describe("wrapping a selection in a semantic delimiter", () => {
+  function wrapped(doc: string, from: number, to: number, text: string) {
+    const target = mount(doc, EditorSelection.single(from, to));
+    type(target, text);
+    return target.state.doc.toString();
+  }
+
+  it("wraps the selection rather than replacing it", () => {
+    expect(
+      wrapped("\\left x + y", "\\left".length, "\\left x + y".length, "("),
+    ).toBe("\\left( x + y\\right)");
+  });
+
+  it("wraps a selection that follows a spaced size command", () => {
+    expect(
+      wrapped("\\left x + y", "\\left ".length, "\\left x + y".length, "("),
+    ).toBe("\\left (x + y\\right)");
+  });
+
+  it("leaves a word that only starts with a size command to the generic handler", () => {
+    expect(
+      wrapped("\\lefty x", "\\lefty ".length, "\\lefty x".length, "("),
+    ).toBe("\\lefty (x)");
+  });
+
+  it("wraps with an escaped glyph too", () => {
+    expect(wrapped("\\left\\ab", "\\left\\".length, "\\left\\ab".length, "{")).toBe(
+      "\\left\\{ab\\right\\}",
+    );
+  });
+
+  it("keeps the selection over the wrapped text", () => {
+    const doc = "\\left\\ab";
+    const target = mount(doc, EditorSelection.single(6, doc.length));
+    type(target, "{");
+    const main = target.state.selection.main;
+    expect(target.state.sliceDoc(main.from, main.to)).toBe("ab");
+  });
+
+  it("tracks the closer written around a selection", () => {
+    const doc = "\\left x";
+    const target = mount(doc, EditorSelection.single(5, doc.length));
+    type(target, "(");
+    target.dispatch({ selection: EditorSelection.cursor(target.state.selection.main.to) });
+    type(target, ")");
+    expect(caretMarked(target)).toBe(`\\left( x\\right)${CARET}`);
+  });
+});
+
+describe("multiple cursors in semantic delimiters", () => {
+  function cursors(doc: string, offsets: number[]): EditorView {
+    return mount(
+      doc,
+      EditorSelection.create(offsets.map((at) => EditorSelection.cursor(at))),
+    );
+  }
+
+  it("pairs at every cursor at once", () => {
+    const doc = "\\left\n\\bigl";
+    const target = cursors(doc, ["\\left".length, doc.length]);
+    type(target, "(");
+    expect(target.state.doc.toString()).toBe(
+      "\\left(\\right)\n\\bigl(\\bigr)",
+    );
+  });
+
+  it("declines when only some cursors follow a size command", () => {
+    const doc = "\\left\nplain";
+    const target = cursors(doc, ["\\left".length, doc.length]);
+    type(target, "(");
+    expect(target.state.doc.toString()).toBe("\\left()\nplain()");
+  });
+
+  it("steps over the closer at every cursor at once", () => {
+    const target = cursors("\\left\n\\bigl", ["\\left".length, "\\left\n\\bigl".length]);
+    type(target, "(");
+    type(target, ")");
+    expect(target.state.doc.toString()).toBe("\\left(\\right)\n\\bigl(\\bigr)");
+    expect(target.state.selection.ranges.map((range) => range.head)).toEqual([
+      "\\left(\\right)".length,
+      "\\left(\\right)\n\\bigl(\\bigr)".length,
+    ]);
+  });
+});
+
+describe("math environments the delimiter families are written in", () => {
+  function inMath(name: string): boolean {
+    const doc = `\\begin{${name}}\nx + \n\\end{${name}}`;
+    return mathContextAt(
+      EditorState.create({ doc }),
+      doc.indexOf("x + ") + 4,
+    ).inMath;
+  }
+
+  it("recognises the alignment environments", () => {
+    for (const name of [
+      "align",
+      "align*",
+      "alignat",
+      "alignat*",
+      "aligned",
+      "alignedat",
+      "alignedat*",
+      "flalign",
+      "flalign*",
+      "xalignat",
+      "xalignat*",
+      "xxalignat",
+    ]) {
+      expect(inMath(name), name).toBe(true);
+    }
+  });
+
+  it("recognises the gathered, split and multiline environments", () => {
+    for (const name of [
+      "gather",
+      "gather*",
+      "gathered",
+      "split",
+      "multline",
+      "multline*",
+      "multlined",
+      "IEEEeqnarray",
+      "IEEEeqnarray*",
+    ]) {
+      expect(inMath(name), name).toBe(true);
+    }
+  });
+
+  it("recognises the matrix and case environments", () => {
+    for (const name of [
+      "matrix",
+      "matrix*",
+      "pmatrix",
+      "pmatrix*",
+      "bmatrix",
+      "Bmatrix*",
+      "vmatrix",
+      "Vmatrix*",
+      "smallmatrix",
+      "smallmatrix*",
+      "subarray",
+      "cases",
+      "cases*",
+      "dcases",
+      "rcases",
+      "drcases",
+      "numcases",
+      "subnumcases",
+    ]) {
+      expect(inMath(name), name).toBe(true);
+    }
+  });
+
+  it("leaves a wrapper that only holds equations out of math", () => {
+    expect(inMath("subequations")).toBe(false);
+    expect(inMath("figure")).toBe(false);
+    expect(inMath("itemize")).toBe(false);
+  });
+
+  it("pairs a semantic delimiter typed inside a math environment", () => {
+    const doc = "\\begin{alignat}{2}\n  \\bigl\n\\end{alignat}";
+    expect(typedAt(doc, doc.indexOf("\\bigl") + 5, "(")).toBe(
+      `\\begin{alignat}{2}\n  \\bigl(${CARET}\\bigr)\n\\end{alignat}`,
+    );
+  });
+});
+
+describe("input that never reaches semantic pairing", () => {
+  it("declines a multi-character insertion such as a paste", () => {
+    const state = EditorState.create({
+      doc: "\\left",
+      selection: EditorSelection.single("\\left".length),
+    });
+    expect(
+      latexPairChange(state, "\\left(", { math: true, brackets: true }),
+    ).toBeNull();
+    expect(
+      latexPairChange(state, "((", { math: true, brackets: true }),
+    ).toBeNull();
+  });
+
+  it("declines in a read-only document", () => {
+    const state = EditorState.create({
+      doc: "\\left",
+      selection: EditorSelection.single("\\left".length),
+      extensions: [EditorState.readOnly.of(true)],
+    });
+    expect(
+      latexPairChange(state, "(", { math: true, brackets: true }),
+    ).toBeNull();
+  });
+
+  it("leaves the pair alone for vim outside insert mode", () => {
+    const target = mount("\\left", EditorSelection.single("\\left".length));
+    (target as unknown as { cm: unknown }).cm = {
+      state: { vim: { insertMode: false } },
+    };
+    type(target, "(");
+    expect(target.state.doc.toString()).toBe("\\left()");
+    expect(target.state.doc.toString()).not.toContain("\\right");
+  });
+
+  it("pairs again once vim is back in insert mode", () => {
+    const target = mount("\\left", EditorSelection.single("\\left".length));
+    (target as unknown as { cm: unknown }).cm = {
+      state: { vim: { insertMode: true } },
+    };
+    type(target, "(");
+    expect(target.state.doc.toString()).toBe("\\left(\\right)");
+  });
+
+  it("survives a size command sitting at the very start of the document", () => {
+    expect(afterTyping("\\bigl", "(")).toBe(`\\bigl(${CARET}\\bigr)`);
+  });
+
+  it("survives an unfinished command and a stray backslash", () => {
+    expect(afterTyping("\\", "|")).toBe(`\\|${CARET}`);
+    expect(afterTyping("\\lef\\", "{")).toBe(`\\lef\\{${CARET}`);
+    expect(afterTyping("\\\\", "(")).toBe(`\\\\(${CARET})`);
+  });
+
+  it("ignores ordinary characters while a closer is pending", () => {
+    expect(afterKeys("", "\\left(a+b")).toBe(`\\left(a+b${CARET}\\right)`);
+  });
+});
+
+describe("overloaded glyphs and deliberate mixed forms", () => {
+  it("never pairs a bare bar outside a size command", () => {
+    expect(afterTyping("$a ", "|")).toBe(`$a |${CARET}`);
+    expect(afterTyping("$a \\", "|")).toBe(`$a \\|${CARET}`);
+    expect(afterTyping("text ", "<")).toBe(`text <${CARET}`);
+  });
+
+  it("lets the user close a pair with a different glyph", () => {
+    const doc = "\\left(x\\right";
+    expect(typedAt(doc, doc.length, "]")).toBe(
+      `\\left(x\\right]${CARET}`,
+    );
+  });
+
+  it("lets the user close a pair with a null delimiter", () => {
+    const doc = "\\left(x\\right";
+    expect(typedAt(doc, doc.length, ".")).toBe(
+      `\\left(x\\right.${CARET}`,
+    );
+  });
+
+  it("leaves a deliberately mixed pair in place on backspace", () => {
+    const target = mount("\\left(\\right.", EditorSelection.single(6));
+    press(target, "Backspace");
+    expect(target.state.doc.toString()).toBe("\\left\\right.");
   });
 });

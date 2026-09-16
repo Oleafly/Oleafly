@@ -397,6 +397,32 @@ describe("closeEnvironmentAtCursor", () => {
     setEditorDocumentPath("/project/notes.typ");
     expect(closeEnvironmentAtCursor(stateAt("\\begin{theorem}\nx|"))).toBeNull();
   });
+
+  it("ignores a \\begin that only appears in a comment", () => {
+    expect(
+      closeEnvironmentAtCursor(stateAt("% \\begin{theorem}\nx|")),
+    ).toBeNull();
+  });
+
+  it("ignores a \\begin inside a verbatim block", () => {
+    const source =
+      "\\begin{verbatim}\n\\begin{theorem}\n\\end{verbatim}\nx|";
+    expect(closeEnvironmentAtCursor(stateAt(source))).toBeNull();
+  });
+
+  it("ignores an \\end that only appears in a comment", () => {
+    const state = stateAt(
+      "\\begin{theorem}\nx\n% \\end{theorem}\ny|",
+    );
+    const result = applied(state, closeEnvironmentAtCursor(state)!);
+    expect(result.doc).toContain("\\end{theorem}\ny\n\\end{theorem}");
+  });
+
+  it("reads a space between \\begin and its name", () => {
+    const state = stateAt("\\begin {theorem}\n  x|");
+    const result = applied(state, closeEnvironmentAtCursor(state)!);
+    expect(result.doc).toBe("\\begin {theorem}\n  x\n\\end{theorem}");
+  });
 });
 
 describe("surroundSelectionWithEnvironment", () => {

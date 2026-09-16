@@ -96,6 +96,8 @@ export function caretLineIncludes(needle: string): string {
 }
 
 // The app's own handlers for Cmd+K / Cmd+Shift+F listen on window keydown.
+// CodeMirror does not: its keydown listener is bound to .cm-content, so an
+// editor binding needs page.press(".cm-content", ...) instead.
 export async function pressGlobal(
   page: Page,
   key: string,
@@ -145,15 +147,6 @@ export async function openNewProject(page: Page) {
     `!!document.querySelector('[data-testid="create-first-project"]')`,
   );
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
-}
-
-// The bridge's press dispatches its synthetic key on window, and Radix listens
-// on document, so a window-only Escape never reaches a Radix dialog. Dispatch
-// on document, which is where a real key event passes on its way up.
-export async function pressEscape(page: Page) {
-  await page.evaluate(
-    `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))`,
-  );
 }
 
 // Creating a project now starts on a chooser: research, import or template.

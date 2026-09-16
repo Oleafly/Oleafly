@@ -218,6 +218,14 @@ test("LaTeX math and environment closing follow their own toggles", async ({
     .toContain("$x");
   expect(await editorSource(tauriPage)).not.toContain("$$");
 
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "\\left(");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\left(");
+  expect(await editorSource(tauriPage)).not.toContain("\\right)");
+
   await toggleSetting(tauriPage, "Auto-close environments", false);
   await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
   await caretToEnd(tauriPage);
@@ -232,6 +240,40 @@ test("LaTeX math and environment closing follow their own toggles", async ({
   await toggleSetting(tauriPage, "Auto-close brackets", true);
   await toggleSetting(tauriPage, "Auto-close math", true);
   await toggleSetting(tauriPage, "Auto-close environments", true);
+});
+
+test("semantic delimiter pairing follows the math toggle", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(240_000);
+  await openPrefsProject(tauriPage);
+  await toggleSetting(tauriPage, "Auto-close brackets", true);
+  await toggleSetting(tauriPage, "Auto-close math", true);
+
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "\\left(");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\left(\\right)");
+
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "\\bigl\\{");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\bigl\\{\\bigr\\}");
+
+  await toggleSetting(tauriPage, "Auto-close math", false);
+  await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
+  await caretToEnd(tauriPage);
+  await typeAtCaret(tauriPage, "\\left(");
+  await expect
+    .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
+    .toContain("\\left(");
+  expect(await editorSource(tauriPage)).not.toContain("\\right)");
+
+  await toggleSetting(tauriPage, "Auto-close math", true);
 });
 
 test("auto-close brackets gates math and environment closing", async ({

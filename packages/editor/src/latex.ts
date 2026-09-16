@@ -17,6 +17,13 @@ import {
 } from "./latex-lexical";
 import { environmentSnippet } from "./latex-environments";
 import {
+  LATEX_DELIMITER_COMPLETIONS,
+  latexDelimiterFamilySpecs,
+  latexDelimiterPrefixBefore,
+  type LatexDelimiterCompletionSpec,
+} from "./latex-delimiters";
+import { latexDelimiterCompletionApply } from "./latex-pairs";
+import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
   type CompletionRequestGuard,
@@ -218,6 +225,32 @@ export const STANDARD_ENVIRONMENTS = [
   "verbatim",
   "minipage",
   "tikzpicture",
+  "alignat",
+  "alignat*",
+  "alignedat",
+  "aligned",
+  "gathered",
+  "flalign",
+  "flalign*",
+  "subequations",
+  "smallmatrix",
+  "subarray",
+  "thebibliography",
+  "list",
+  "picture",
+  "filecontents",
+  "filecontents*",
+  "multicols",
+  "lemma",
+  "corollary",
+  "proposition",
+  "definition",
+  "remark",
+  "example",
+  "titlepage",
+  "verse",
+  "verbatim*",
+  "lstlisting",
 ] as const;
 
 const STANDARD_CLASSES = [
@@ -1130,8 +1163,41 @@ export function latexCompletions(
   return (
     referenceCitationCompletions(context, guard) ??
     structuralArgumentCompletions(context, guard) ??
+    delimiterFamilyCompletions(context, guard) ??
     commandCompletions(context, guard, true)
   );
+}
+
+const DELIMITER_FAMILY_BEFORE = /\\[A-Za-z]+(\\[A-Za-z]*)$/u;
+
+function delimiterSpecCompletion(
+  guard: CompletionRequestGuard,
+  spec: LatexDelimiterCompletionSpec,
+): Completion {
+  return guardCompletionForSource(guard, {
+    label: spec.label,
+    type: spec.kind === "pair" ? "snippet" : "function",
+    detail: spec.detail,
+    apply: latexDelimiterCompletionApply(spec),
+  });
+}
+
+function delimiterFamilyCompletions(
+  context: CompletionContext,
+  guard: CompletionRequestGuard,
+): CompletionResult | null {
+  const before = boundedCompletionContext(context.state, context.pos);
+  const match = DELIMITER_FAMILY_BEFORE.exec(before);
+  if (!match) return null;
+  const prefix = latexDelimiterPrefixBefore(
+    before.slice(0, before.length - match[1].length),
+  );
+  if (!prefix || prefix.escapedSlash) return null;
+  const options = latexDelimiterFamilySpecs(prefix).map((spec) =>
+    delimiterSpecCompletion(guard, spec),
+  );
+  if (options.length === 0) return null;
+  return { from: context.pos - match[0].length, options };
 }
 
 function commandCompletions(
@@ -1149,6 +1215,9 @@ function commandCompletions(
         guardCompletionForSource(guard, option),
       ),
       ...packageCompletions(context.state, guard),
+      ...LATEX_DELIMITER_COMPLETIONS.map((spec) =>
+        delimiterSpecCompletion(guard, spec),
+      ),
       ...(corpusProvider?.coreCommands() ?? []).map((option) =>
         guardCompletionForSource(guard, option),
       ),
@@ -1165,6 +1234,7 @@ export function latexCommandCompletions(
   const guard = createCompletionRequestGuard(context);
   return (
     structuralArgumentCompletions(context, guard) ??
+    delimiterFamilyCompletions(context, guard) ??
     commandCompletions(context, guard, false)
   );
 }
