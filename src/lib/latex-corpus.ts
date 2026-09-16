@@ -1,5 +1,5 @@
 import { snippet, type Completion } from "@codemirror/autocomplete";
-import { setLatexCorpusProvider } from "@oleafly/editor";
+import { latexSnippetLiteral, setLatexCorpusProvider } from "@oleafly/editor";
 import {
   loadClassNames,
   loadCore,
@@ -114,7 +114,9 @@ function completionForCorpusMacro(
     ...(macro.documentation
       ? { info: macro.documentation }
       : {}),
-    apply: macro.snippet ? snippet(`\\${macro.snippet}`) : undefined,
+    apply: macro.snippet
+      ? snippet(latexSnippetLiteral(`\\${macro.snippet}`))
+      : undefined,
   };
 }
 

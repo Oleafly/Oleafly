@@ -49,7 +49,7 @@ export function vimOwnsInput(view: { state: EditorState }): boolean {
 const LIST_NAMES = new Set(["itemize", "enumerate", "description"]);
 
 /** Any `\begin{...}` / `\end{...}` pair; the name keeps a trailing star. */
-const ANY_ENVIRONMENT = /\\(begin|end)\{([^{}]+)\}/g;
+const ANY_ENVIRONMENT = /\\(begin|end)\s*\{([^{}]+)\}/g;
 
 /** `\item` at the start of a line (after indentation), not `\itemize` etc. */
 const ITEM_LINE = /^(\s*)\\item(?![a-zA-Z])/;
@@ -346,7 +346,7 @@ export function closeEnvironmentAtCursor(state: EditorState): TransactionSpec | 
   const head = state.selection.main.head;
 
   const scanFrom = Math.max(0, head - ENV_SCAN_LIMIT);
-  const text = state.sliceDoc(scanFrom, head);
+  const text = latexMaskedSlice(state, scanFrom, head);
   const stack: { name: string; pos: number }[] = [];
   ANY_ENVIRONMENT.lastIndex = 0;
   for (let m = ANY_ENVIRONMENT.exec(text); m; m = ANY_ENVIRONMENT.exec(text)) {

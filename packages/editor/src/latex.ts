@@ -17,6 +17,13 @@ import {
 } from "./latex-lexical";
 import { environmentSnippet } from "./latex-environments";
 import {
+  latexDelimiterCompletionSpecs,
+  latexDelimiterFamilySpecs,
+  latexDelimiterPrefixBefore,
+  latexMathCommandSpecs,
+  type LatexDelimiterCompletionSpec,
+} from "./latex-delimiters";
+import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
   type CompletionRequestGuard,
@@ -218,6 +225,37 @@ export const STANDARD_ENVIRONMENTS = [
   "verbatim",
   "minipage",
   "tikzpicture",
+  "alignat",
+  "alignat*",
+  "alignedat",
+  "aligned",
+  "gathered",
+  "flalign",
+  "flalign*",
+  "eqnarray",
+  "eqnarray*",
+  "displaymath",
+  "subequations",
+  "smallmatrix",
+  "subarray",
+  "xalignat",
+  "xalignat*",
+  "thebibliography",
+  "list",
+  "picture",
+  "filecontents",
+  "filecontents*",
+  "multicols",
+  "lemma",
+  "corollary",
+  "proposition",
+  "definition",
+  "remark",
+  "example",
+  "titlepage",
+  "verse",
+  "verbatim*",
+  "lstlisting",
 ] as const;
 
 const STANDARD_CLASSES = [
@@ -1130,8 +1168,47 @@ export function latexCompletions(
   return (
     referenceCitationCompletions(context, guard) ??
     structuralArgumentCompletions(context, guard) ??
+    delimiterFamilyCompletions(context, guard) ??
     commandCompletions(context, guard, true)
   );
+}
+
+/**
+ * Delimiter completions scoped to the size command the caret already sits
+ * after. At `\left\l` only a delimiter can follow, so this replaces the
+ * generic command list rather than adding to it, and it widens the applied
+ * range back over `\left` so the chosen entry does not double the prefix.
+ */
+const DELIMITER_FAMILY_BEFORE = /\\[A-Za-z]+(\\[A-Za-z]*)$/u;
+
+function delimiterSpecCompletion(
+  guard: CompletionRequestGuard,
+  spec: LatexDelimiterCompletionSpec,
+): Completion {
+  return guardCompletionForSource(guard, {
+    label: spec.label,
+    type: spec.template ? "snippet" : "function",
+    detail: spec.detail,
+    apply: spec.template ? snippet(spec.template) : undefined,
+  });
+}
+
+function delimiterFamilyCompletions(
+  context: CompletionContext,
+  guard: CompletionRequestGuard,
+): CompletionResult | null {
+  const before = boundedCompletionContext(context.state, context.pos);
+  const match = DELIMITER_FAMILY_BEFORE.exec(before);
+  if (!match) return null;
+  const prefix = latexDelimiterPrefixBefore(
+    before.slice(0, before.length - match[1].length),
+  );
+  if (!prefix || prefix.escapedSlash) return null;
+  const options = latexDelimiterFamilySpecs(prefix).map((spec) =>
+    delimiterSpecCompletion(guard, spec),
+  );
+  if (options.length === 0) return null;
+  return { from: context.pos - match[0].length, options };
 }
 
 function commandCompletions(
@@ -1152,6 +1229,12 @@ function commandCompletions(
       ...(corpusProvider?.coreCommands() ?? []).map((option) =>
         guardCompletionForSource(guard, option),
       ),
+      ...latexDelimiterCompletionSpecs().map((spec) =>
+        delimiterSpecCompletion(guard, spec),
+      ),
+      ...latexMathCommandSpecs().map((spec) =>
+        delimiterSpecCompletion(guard, spec),
+      ),
     ]),
   };
 }
@@ -1165,6 +1248,7 @@ export function latexCommandCompletions(
   const guard = createCompletionRequestGuard(context);
   return (
     structuralArgumentCompletions(context, guard) ??
+    delimiterFamilyCompletions(context, guard) ??
     commandCompletions(context, guard, false)
   );
 }

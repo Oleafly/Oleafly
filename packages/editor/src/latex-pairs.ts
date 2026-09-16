@@ -10,6 +10,14 @@ import {
   type TransactionSpec,
 } from "@codemirror/state";
 import { EditorView, type KeyBinding } from "@codemirror/view";
+import {
+  latexDelimiterCloserAt,
+  latexDelimiterClosing,
+  latexDelimiterGlyphForClosingTrigger,
+  latexDelimiterGlyphForTrigger,
+  latexDelimiterPrefixBefore,
+  latexEmptyDelimiterPairAt,
+} from "./latex-delimiters";
 import { inLatexIgnoredRegion, mathContextAt } from "./latex-lexical";
 import { vimOwnsInput } from "./latex-structure-commands";
 
@@ -265,6 +273,82 @@ function escapedBraceChange(state: EditorState): TransactionSpec | null {
   };
 }
 
+function sliceBefore(state: EditorState, pos: number): string {
+  return state.sliceDoc(Math.max(0, pos - RUN_LIMIT), pos);
+}
+
+function sliceAfter(state: EditorState, pos: number): string {
+  return state.sliceDoc(pos, Math.min(state.doc.length, pos + RUN_LIMIT));
+}
+
+/**
+ * Pairs a delimiter the user opened with a size command: typing `(` right
+ * after `\left` closes it with `\right)`. `\middle` and the `m` separators
+ * are recognised but deliberately left unpaired, and so is a closing size
+ * command, which already is the partner of something.
+ */
+function semanticPairForRange(
+  state: EditorState,
+  range: SelectionRange,
+  text: string,
+): RangeChange | null {
+  const pos = range.from;
+  if (inLatexIgnoredRegion(state, pos)) return null;
+  const prefix = latexDelimiterPrefixBefore(sliceBefore(state, pos));
+  if (!prefix) return null;
+  const glyph = latexDelimiterGlyphForTrigger(text, prefix.escapedSlash);
+  if (!glyph) return null;
+  if (prefix.role !== "open") {
+    return range.empty ? plainInsert(range, text) : null;
+  }
+  const closing = latexDelimiterClosing(prefix.size, glyph);
+  if (!range.empty) return wrapSelection(range, text, closing);
+  return {
+    changes: [{ from: pos, insert: `${text}${closing}` }],
+    range: EditorSelection.cursor(pos + text.length),
+  };
+}
+
+/**
+ * Steps the caret over a closer the editor inserted instead of writing a
+ * second one. A caret sitting just after a closing size command is skipped:
+ * there the user is spelling out their own `\right)` and means the glyph.
+ */
+function semanticOvertypeForRange(
+  state: EditorState,
+  range: SelectionRange,
+  text: string,
+): RangeChange | null {
+  if (!range.empty) return null;
+  const pos = range.head;
+  if (inLatexIgnoredRegion(state, pos) || escapedAt(state, pos)) return null;
+  const glyph = latexDelimiterGlyphForClosingTrigger(text);
+  if (!glyph) return null;
+  const before = sliceBefore(state, pos);
+  if (latexDelimiterPrefixBefore(before)) return null;
+  const length = latexDelimiterCloserAt(sliceAfter(state, pos), glyph);
+  if (length === null) return null;
+  return { changes: [], range: EditorSelection.cursor(pos + length) };
+}
+
+function semanticDelimiterChange(
+  state: EditorState,
+  text: string,
+): TransactionSpec | null {
+  const plans = state.selection.ranges.map(
+    (range) =>
+      semanticOvertypeForRange(state, range, text) ??
+      semanticPairForRange(state, range, text),
+  );
+  if (plans.includes(null)) return null;
+  let index = 0;
+  return {
+    ...state.changeByRange(() => plans[index++]!),
+    userEvent: "input.type",
+    scrollIntoView: true,
+  };
+}
+
 export function latexPairChange(
   state: EditorState,
   text: string,
@@ -272,6 +356,10 @@ export function latexPairChange(
 ): TransactionSpec | null {
   if (state.readOnly) return null;
   if (options.math && text === "$") return dollarChange(state);
+  if (options.math) {
+    const semantic = semanticDelimiterChange(state, text);
+    if (semantic) return semantic;
+  }
   if (options.math && (text === "(" || text === "[")) {
     return mathDelimiterChange(state, text);
   }
@@ -298,16 +386,19 @@ export function latexPairInputHandler(options: LatexPairOptions): Extension {
 function emptyPairAt(
   state: EditorState,
   pos: number,
-): { open: string; close: string } | null {
+): { open: number; close: number } | null {
   for (const [open, close] of MATH_PAIRS) {
     if (
       state.sliceDoc(pos - open.length, pos) === open &&
       state.sliceDoc(pos, pos + close.length) === close
     ) {
-      return { open, close };
+      return { open: open.length, close: close.length };
     }
   }
-  return null;
+  return latexEmptyDelimiterPairAt(
+    sliceBefore(state, pos),
+    sliceAfter(state, pos),
+  );
 }
 
 function deleteMathPairBackward(view: EditorView): boolean {
@@ -322,12 +413,9 @@ function deleteMathPairBackward(view: EditorView): boolean {
     const pair = pairs[index++]!;
     return {
       changes: [
-        {
-          from: range.head - pair.open.length,
-          to: range.head + pair.close.length,
-        },
+        { from: range.head - pair.open, to: range.head + pair.close },
       ],
-      range: EditorSelection.cursor(range.head - pair.open.length),
+      range: EditorSelection.cursor(range.head - pair.open),
     };
   });
   view.dispatch({

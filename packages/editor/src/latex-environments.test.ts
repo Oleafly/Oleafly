@@ -149,12 +149,12 @@ describe("environmentSnippet", () => {
     );
   });
 
-  it("leaves table variants with their own argument shapes alone", () => {
+  it("gives table variants the argument shape their own form needs", () => {
     expect(applied("tabularx")).toBe(
-      "\\begin{tabularx}\n  |\n\\end{tabularx}",
+      "\\begin{tabularx}{\\linewidth|}{lcr}\n  \n\\end{tabularx}",
     );
     expect(applied("tabular*")).toBe(
-      "\\begin{tabular*}\n  |\n\\end{tabular*}",
+      "\\begin{tabular*}{\\linewidth|}{ll}\n  \n\\end{tabular*}",
     );
   });
 
