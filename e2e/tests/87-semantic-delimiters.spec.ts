@@ -311,6 +311,18 @@ test("a size command already open scopes the dropdown to delimiters", async ({
   await seed(tauriPage);
   await typeAtCaret(tauriPage, "\\left\\");
   await waitForCompletion(tauriPage);
+  // An open popup may still be answering the `\left` query typed a keystroke
+  // earlier, whose list is not scoped and does carry entries like `\lambda`.
+  // Wait for the scoped list to land before reading its shape.
+  await expect
+    .poll(
+      async () =>
+        (await completionLabels(tauriPage)).every((label) =>
+          label.startsWith("\\left"),
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
   // The scoped list is far under the 100-option render window, so what the
   // popup renders here is the whole of what the source offered.
   const labels = await completionLabels(tauriPage);
