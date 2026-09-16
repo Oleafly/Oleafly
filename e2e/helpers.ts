@@ -149,16 +149,6 @@ export async function openNewProject(page: Page) {
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
 }
 
-// Dispatches on document, where Radix listens, so a dialog sees the key
-// wherever focus sits. Neither this nor pressGlobal can reach CodeMirror: the
-// editor binds keydown to .cm-content alone, so an editor key has to go
-// through page.press(".cm-content", ...).
-export async function pressEscape(page: Page) {
-  await page.evaluate(
-    `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))`,
-  );
-}
-
 // Creating a project now starts on a chooser: research, import or template.
 export async function chooseProjectKind(
   page: Page,
