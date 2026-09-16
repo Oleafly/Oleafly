@@ -45,6 +45,9 @@ operator-list names. A source assertion alone is never labeled Render.
 | Toolbar SyncTeX | source-only view -> Go to PDF -> split view and PDF location | 47 |
 | File types | project.json/.txt open with no LaTeX toolbar; .ttf/.otf/.woff open a binary notice (was: silent failure, fixed) | 33 |
 | Code folding | fold gutter collapses and restores a region | 34 |
+| Semantic delimiter pairing | `\left`, `\bigl`, `\Biggl` and the symmetric `\big` families close their glyph as the user types, including the escaped `\{` and `\|`; `\middle`/`\bigm` separators and closing size commands stay unpaired; Backspace clears an empty pair and the closing glyph steps over the closer; the paired output compiles | 87 |
+| Delimiter completion | the dropdown offers the named families, Enter inserts both halves, an open size command scopes the list to delimiters without doubling the prefix, and an accepted brace delimiter keeps its backslash | 87 |
+| Environment argument shapes | `alignat` and `tabularx` complete with the arguments their `\begin` needs | 87 |
 | Editor tabs | close button removes the tab, main.tex stays active | 34 |
 | Context menu | every LaTeX insertion/heading/list action; Ask AI widget; SyncTeX; definition/references/rename activation; every Typst/Markdown profile action | 53 (activation/navigation), 16 (legacy smoke) |
 | File tabs | created by file switching | 08 |

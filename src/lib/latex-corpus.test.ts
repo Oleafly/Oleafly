@@ -99,3 +99,12 @@ describe("corpus delimiter snippets", () => {
     );
   });
 });
+
+describe("the corpus brace entry the delimiter work fixed", () => {
+  it("is offered under a bare size-command query", () => {
+    const labels = (completion("\\left")?.options ?? []).map((entry) =>
+      String(entry.label),
+    );
+    expect(labels).toContain(String.raw`\left{`);
+  });
+});

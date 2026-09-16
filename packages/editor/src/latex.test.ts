@@ -1060,3 +1060,37 @@ describe("environment completion with required arguments", () => {
     );
   });
 });
+
+// The delimiter e2e spec types these exact queries and walks the popup for
+// these exact labels. Pinning them here means a rename breaks the fast suite
+// first, instead of only showing up in a packaged run.
+describe("labels the delimiter e2e spec depends on", () => {
+  function labelsFor(doc: string): string[] {
+    return (completion(doc)?.options ?? []).map((entry) =>
+      String(entry.label),
+    );
+  }
+
+  it("offers the named delimiter each narrowed query walks to", () => {
+    expect(labelsFor("\\left\\lan")).toContain(String.raw`\left\langle`);
+    expect(labelsFor("\\left\\lv")).toContain(String.raw`\left\lvert`);
+  });
+
+  it("scopes an open size command to a list the popup renders whole", () => {
+    const labels = labelsFor("\\left\\");
+    expect(labels.length).toBeGreaterThan(0);
+    // CodeMirror renders a 100-option window around the selection, so the
+    // spec's "every label starts with \left" assertion is only sound while
+    // the scoped list stays under that cap.
+    expect(labels.length).toBeLessThan(100);
+    expect(labels.every((label) => label.startsWith("\\left"))).toBe(true);
+    expect(labels).toContain(String.raw`\left\langle`);
+    expect(labels).toContain(String.raw`\left\lvert`);
+    expect(labels).not.toContain(String.raw`\lambda`);
+  });
+
+  it("offers the environments the spec accepts by name", () => {
+    expect(labelsFor("\\begin{alignat")).toContain("alignat");
+    expect(labelsFor("\\begin{tabularx")).toContain("tabularx");
+  });
+});
