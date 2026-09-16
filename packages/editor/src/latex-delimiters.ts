@@ -247,39 +247,62 @@ export function latexDelimiterUnclosedInside(
   return countGlyph(body, entry.open) > countGlyph(body, entry.close);
 }
 
+function spelledConsumption(
+  before: string,
+  typed: string,
+  closer: LatexDelimiterCloser,
+  prefix: LatexDelimiterPrefixMatch,
+): number | null {
+  const spelled = before
+    .slice(before.length - prefix.length)
+    .replace(/[ \t]+/gu, "");
+  const matches =
+    prefix.command === closer.command &&
+    spelled + typed === latexDelimiterCloserText(closer);
+  return matches ? prefix.length : null;
+}
+
+function glyphForms(closer: LatexDelimiterCloser): string[] {
+  const forms = [latexDelimiterCloserText(closer), closer.glyph];
+  if (ESCAPED_GLYPH.test(closer.glyph)) forms.push(closer.glyph.slice(1));
+  return forms;
+}
+
+function bareConsumption(before: string, closer: LatexDelimiterCloser): number | null {
+  const literalEscape =
+    !ESCAPED_GLYPH.test(closer.glyph) &&
+    backslashIsEscaped(before, before.length);
+  return literalEscape ? null : 0;
+}
+
+function glyphConsumption(
+  before: string,
+  body: string,
+  closer: LatexDelimiterCloser,
+): number | null {
+  const text = latexDelimiterCloserText(closer);
+  for (const form of glyphForms(closer)) {
+    if (form !== text && latexDelimiterUnclosedInside(body, closer)) return null;
+    const spelled = form.slice(0, -1);
+    if (spelled.length === 0) return bareConsumption(before, closer);
+    if (endsWithUnescaped(before, spelled)) return spelled.length;
+  }
+  return null;
+}
+
 export function latexDelimiterCloserConsumption(
   body: string,
   typed: string,
   closer: LatexDelimiterCloser,
 ): number | null {
-  const text = latexDelimiterCloserText(closer);
-  if (typed.length !== 1 || !text.endsWith(typed)) return null;
+  if (typed.length !== 1 || !latexDelimiterCloserText(closer).endsWith(typed)) {
+    return null;
+  }
   const before = body.length > RUN_LIMIT ? body.slice(-RUN_LIMIT) : body;
   const prefix = latexDelimiterPrefixBefore(before);
-  if (prefix) {
-    const spelled = before
-      .slice(before.length - prefix.length)
-      .replace(/[ \t]+/gu, "");
-    const matches =
-      prefix.command === closer.command && spelled + typed === text;
-    return matches ? prefix.length : null;
-  }
-  const escapedGlyph = ESCAPED_GLYPH.test(closer.glyph);
-  const forms = [text, closer.glyph];
-  if (escapedGlyph) forms.push(closer.glyph.slice(1));
-  for (const form of forms) {
-    const spelled = form.slice(0, -1);
-    if (form !== text && latexDelimiterUnclosedInside(body, closer)) {
-      return null;
-    }
-    if (spelled.length === 0) {
-      const literalEscape =
-        !escapedGlyph && backslashIsEscaped(before, before.length);
-      return literalEscape ? null : 0;
-    }
-    if (endsWithUnescaped(before, spelled)) return spelled.length;
-  }
-  return null;
+  return prefix
+    ? spelledConsumption(before, typed, closer, prefix)
+    : glyphConsumption(before, body, closer);
 }
 
 export interface LatexEmptyDelimiterPair {
