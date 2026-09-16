@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Explorer stacks the file tree, Outline, and Structure into collapsible,
   vertically resizable sections. Each tree can expand or collapse in one
   click, and the layout is remembered between visits.
+- The LaTeX editor closes sized math delimiters as you type them. A `(` after
+  `\left` brings its `\right)`, and the `\bigl`, `\Bigl`, `\biggl` and
+  `\Biggl` families behave the same way. Autocomplete offers the named
+  delimiters too, so picking `\left\langle` writes `\right\rangle` with it.
+  `\middle` and `\bigm` stay unpaired, because a separator has no partner.
+  Backspace on an empty pair clears both sides, and typing a closing glyph
+  steps over one the editor already wrote.
+- Environments that take arguments now complete with them, so
+  `\begin{alignat}` arrives as `\begin{alignat}{2}`. The same goes for
+  `array`, `tabularx`, `minipage`, `thebibliography`, `list`, `picture` and
+  several others.
 
 ### Changed
 
@@ -28,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Checking for local agents now shows progress immediately, keeps the current
   list in place during a refresh, and explains empty or failed checks. The
   citation fallback dialog is also wider, so BibTeX is easier to read.
+
+### Fixed
+
+- Picking a brace delimiter from autocomplete wrote invalid LaTeX. `\left\{`
+  came out as `\left{`, and the backslash went missing from every `\bigl\{`
+  and `\Biggl\{` suggestion as well.
 
 ## [0.4.1] - 2026-09-12
 
