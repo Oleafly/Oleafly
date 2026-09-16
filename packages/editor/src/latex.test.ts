@@ -1071,17 +1071,15 @@ describe("labels the delimiter e2e spec depends on", () => {
     );
   }
 
-  it("narrows to exactly one entry for the queries the spec types", () => {
-    // The spec accepts whatever the popup highlights, so each query it types
-    // has to leave a single candidate for CodeMirror to rank first.
-    for (const [query, label] of [
-      ["\\left\\lan", String.raw`\left\langle`],
-      ["\\left\\lc", String.raw`\left\lceil`],
-    ] as const) {
-      const matches = labelsFor(query).filter((entry) =>
-        entry.startsWith(query.replace(/\\\\/gu, "\\")),
-      );
-      expect(matches, query).toEqual([label]);
+  it("offers every delimiter the spec walks to", () => {
+    // The spec walks the popup to these by exact label, so ordering does not
+    // matter, but the entry has to be in the list the source returns.
+    expect(labelsFor("\\left\\lan")).toContain(String.raw`\left\langle`);
+    for (const label of [
+      String.raw`\left\{`,
+      String.raw`\left\lvert`,
+    ]) {
+      expect(labelsFor("\\left\\"), label).toContain(label);
     }
   });
 

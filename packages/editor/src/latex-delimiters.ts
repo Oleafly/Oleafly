@@ -217,6 +217,19 @@ export interface LatexEmptyDelimiterPair {
  * opener can take its closer with it. `before` ends at the cursor and `after`
  * starts there.
  */
+function straddlesCursor(
+  before: string,
+  after: string,
+  open: string,
+  close: string,
+): boolean {
+  return (
+    before.endsWith(open) &&
+    after.startsWith(close) &&
+    !backslashIsEscaped(before, before.length - open.length)
+  );
+}
+
 export function latexEmptyDelimiterPairAt(
   before: string,
   after: string,
@@ -225,16 +238,18 @@ export function latexEmptyDelimiterPairAt(
     for (const entry of LATEX_DELIMITER_GLYPHS) {
       const open = latexDelimiterOpening(size, entry);
       const close = latexDelimiterClosing(size, entry);
-      if (!before.endsWith(open) || !after.startsWith(close)) continue;
-      if (backslashIsEscaped(before, before.length - open.length)) continue;
-      return { open: open.length, close: close.length };
+      if (straddlesCursor(before, after, open, close)) {
+        return { open: open.length, close: close.length };
+      }
     }
   }
   for (const entry of LATEX_DELIMITER_GLYPHS) {
-    if (!entry.standalone) continue;
-    if (!before.endsWith(entry.open) || !after.startsWith(entry.close)) continue;
-    if (backslashIsEscaped(before, before.length - entry.open.length)) continue;
-    return { open: entry.open.length, close: entry.close.length };
+    if (
+      entry.standalone &&
+      straddlesCursor(before, after, entry.open, entry.close)
+    ) {
+      return { open: entry.open.length, close: entry.close.length };
+    }
   }
   return null;
 }
@@ -260,7 +275,7 @@ const ELLIPSIS = " ... ";
  * parsing. Labels and details stay unescaped: they are read, not inserted.
  */
 export function latexSnippetLiteral(text: string): string {
-  return text.replace(/\\([{}])/gu, "\\\\$1");
+  return text.replace(/\\([{}])/gu, String.raw`\\$1`);
 }
 
 function pairDetail(opening: string, closing: string): string {
@@ -439,75 +454,75 @@ export function latexMathCommandSpecs(): readonly LatexDelimiterCompletionSpec[]
 let mathSpecs: LatexDelimiterCompletionSpec[] | null = null;
 
 const MATH_COMMAND_SPECS: readonly LatexDelimiterCompletionSpec[] = [
-  { label: "\\dfrac{}{}", detail: "\\dfrac{num}{den}", template: "\\dfrac{${1}}{${2}}" },
-  { label: "\\tfrac{}{}", detail: "\\tfrac{num}{den}", template: "\\tfrac{${1}}{${2}}" },
-  { label: "\\binom{}{}", detail: "\\binom{n}{k}", template: "\\binom{${1}}{${2}}" },
-  { label: "\\dbinom{}{}", detail: "\\dbinom{n}{k}", template: "\\dbinom{${1}}{${2}}" },
-  { label: "\\tbinom{}{}", detail: "\\tbinom{n}{k}", template: "\\tbinom{${1}}{${2}}" },
+  { label: String.raw`\dfrac{}{}`, detail: String.raw`\dfrac{num}{den}`, template: "\\dfrac{${1}}{${2}}" },
+  { label: String.raw`\tfrac{}{}`, detail: String.raw`\tfrac{num}{den}`, template: "\\tfrac{${1}}{${2}}" },
+  { label: String.raw`\binom{}{}`, detail: String.raw`\binom{n}{k}`, template: "\\binom{${1}}{${2}}" },
+  { label: String.raw`\dbinom{}{}`, detail: String.raw`\dbinom{n}{k}`, template: "\\dbinom{${1}}{${2}}" },
+  { label: String.raw`\tbinom{}{}`, detail: String.raw`\tbinom{n}{k}`, template: "\\tbinom{${1}}{${2}}" },
   {
-    label: "\\genfrac{}{}{}{}{}{}",
-    detail: "\\genfrac{left}{right}{thickness}{style}{num}{den}",
+    label: String.raw`\genfrac{}{}{}{}{}{}`,
+    detail: String.raw`\genfrac{left}{right}{thickness}{style}{num}{den}`,
     template:
       "\\genfrac{${1:left}}{${2:right}}{${3:thickness}}" +
       "{${4:style}}{${5:num}}{${6:den}}",
   },
   {
-    label: "\\substack{}",
-    detail: "\\substack{first \\\\ second}",
+    label: String.raw`\substack{}`,
+    detail: String.raw`\substack{first \\ second}`,
     template: "\\substack{${1:first} \\\\ ${2:second}}",
   },
-  { label: "\\overset{}{}", detail: "\\overset{above}{base}", template: "\\overset{${1:above}}{${2:base}}" },
-  { label: "\\underset{}{}", detail: "\\underset{below}{base}", template: "\\underset{${1:below}}{${2:base}}" },
+  { label: String.raw`\overset{}{}`, detail: String.raw`\overset{above}{base}`, template: "\\overset{${1:above}}{${2:base}}" },
+  { label: String.raw`\underset{}{}`, detail: String.raw`\underset{below}{base}`, template: "\\underset{${1:below}}{${2:base}}" },
   {
-    label: "\\DeclareMathOperator{}{}",
-    detail: "\\DeclareMathOperator{\\cmd}{name}",
+    label: String.raw`\DeclareMathOperator{}{}`,
+    detail: String.raw`\DeclareMathOperator{\cmd}{name}`,
     template: "\\DeclareMathOperator{${1:\\cmd}}{${2:name}}",
   },
   {
-    label: "\\DeclareMathOperator*{}{}",
-    detail: "\\DeclareMathOperator*{\\cmd}{name}",
+    label: String.raw`\DeclareMathOperator*{}{}`,
+    detail: String.raw`\DeclareMathOperator*{\cmd}{name}`,
     template: "\\DeclareMathOperator*{${1:\\cmd}}{${2:name}}",
   },
   {
-    label: "\\DeclarePairedDelimiter{}{}{}",
-    detail: "\\DeclarePairedDelimiter{\\cmd}{left}{right}",
+    label: String.raw`\DeclarePairedDelimiter{}{}{}`,
+    detail: String.raw`\DeclarePairedDelimiter{\cmd}{left}{right}`,
     template:
       "\\DeclarePairedDelimiter{${1:\\cmd}}{${2:\\lvert}}{${3:\\rvert}}",
   },
   {
-    label: "\\providecommand{}{}",
-    detail: "\\providecommand{\\cmd}{definition}",
+    label: String.raw`\providecommand{}{}`,
+    detail: String.raw`\providecommand{\cmd}{definition}`,
     template: "\\providecommand{${1:\\cmd}}{${2:definition}}",
   },
   {
-    label: "\\providecommand{}[]{}",
-    detail: "\\providecommand{\\cmd}[args]{definition}",
+    label: String.raw`\providecommand{}[]{}`,
+    detail: String.raw`\providecommand{\cmd}[args]{definition}`,
     template: "\\providecommand{${1:\\cmd}}[${2:args}]{${3:definition}}",
   },
   {
-    label: "\\NewDocumentCommand{}{}{}",
-    detail: "\\NewDocumentCommand{\\cmd}{argument spec}{definition}",
+    label: String.raw`\NewDocumentCommand{}{}{}`,
+    detail: String.raw`\NewDocumentCommand{\cmd}{argument spec}{definition}`,
     template: "\\NewDocumentCommand{${1:\\cmd}}{${2:m}}{${3:definition}}",
   },
   {
-    label: "\\RenewDocumentCommand{}{}{}",
-    detail: "\\RenewDocumentCommand{\\cmd}{argument spec}{definition}",
+    label: String.raw`\RenewDocumentCommand{}{}{}`,
+    detail: String.raw`\RenewDocumentCommand{\cmd}{argument spec}{definition}`,
     template: "\\RenewDocumentCommand{${1:\\cmd}}{${2:m}}{${3:definition}}",
   },
   {
-    label: "\\DeclareDocumentCommand{}{}{}",
-    detail: "\\DeclareDocumentCommand{\\cmd}{argument spec}{definition}",
+    label: String.raw`\DeclareDocumentCommand{}{}{}`,
+    detail: String.raw`\DeclareDocumentCommand{\cmd}{argument spec}{definition}`,
     template: "\\DeclareDocumentCommand{${1:\\cmd}}{${2:m}}{${3:definition}}",
   },
   {
-    label: "\\NewDocumentEnvironment{}{}{}{}",
-    detail: "\\NewDocumentEnvironment{name}{argument spec}{begin}{end}",
+    label: String.raw`\NewDocumentEnvironment{}{}{}{}`,
+    detail: String.raw`\NewDocumentEnvironment{name}{argument spec}{begin}{end}`,
     template:
       "\\NewDocumentEnvironment{${1:name}}{${2:m}}{${3:begin}}{${4:end}}",
   },
   {
-    label: "\\DeclareDocumentEnvironment{}{}{}{}",
-    detail: "\\DeclareDocumentEnvironment{name}{argument spec}{begin}{end}",
+    label: String.raw`\DeclareDocumentEnvironment{}{}{}{}`,
+    detail: String.raw`\DeclareDocumentEnvironment{name}{argument spec}{begin}{end}`,
     template:
       "\\DeclareDocumentEnvironment{${1:name}}{${2:m}}{${3:begin}}{${4:end}}",
   },

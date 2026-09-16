@@ -105,12 +105,30 @@ async function settle(page: Page, ms: number) {
 }
 
 // Environment completion is served from the project-intelligence snapshot,
-// which re-analyses on a debounce after every edit. A popup opened while that
-// is still in flight can close under the accept, leaving Enter to insert a
-// newline. Letting analysis settle and asking for the popup again gives a
-// stable list, the same way 59-latex-intelligence.spec.ts does.
-async function retriggerCompletion(page: Page, settleMs = 1_500) {
-  await settle(page, settleMs);
+// which re-analyses on a debounce after every edit. While that is in flight
+// the source can close the popup out from under an accept, and the Enter then
+// reaches the editor and inserts a newline. Waiting for a settled snapshot is
+// what makes the next accept safe; a fixed sleep only usually is.
+async function waitForIndexSettled(page: Page, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const settled = await page.evaluate<boolean>(
+      `import("/src/store/project-index.ts").then(({ useIndexStore }) => {
+        const state = useIndexStore.getState().intelligenceState;
+        return !!state && state.stale === false;
+      })`,
+    );
+    if (settled) return;
+    if (Date.now() > deadline) {
+      throw new Error("project intelligence never settled");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+}
+
+async function retriggerCompletion(page: Page) {
+  await waitForIndexSettled(page);
+  await settle(page, 300);
   await page.evaluate(
     `(document.querySelector('.cm-content').dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
@@ -137,25 +155,42 @@ async function selectedLabel(page: Page): Promise<string> {
   );
 }
 
-// Accepts the highlighted entry with Enter, the path a user takes. A synthetic
-// ArrowDown does not drive the popup selection: it falls through to the plain
-// cursor motion, which closes the popup and leaves the next Enter to insert a
-// newline. So callers narrow the query until the entry they want is the one
-// already highlighted, and this asserts that rather than navigating.
+// Walks to an entry and accepts it with Enter, the path a user takes.
+//
+// The first loop waits for the wanted entry to appear, because re-querying is
+// debounced and an open popup may still be answering the query as it stood
+// before the last keystrokes. Polling also clears CodeMirror's 75ms
+// interactionDelay, inside which moveCompletionSelection declines an arrow
+// key; the press then falls through to the plain cursor motion, which closes
+// the popup and leaves the following Enter to insert a newline.
+//
+// The second loop walks rather than assuming the entry is highlighted. Order
+// is not ours to predict: CodeMirror breaks score ties with localeCompare,
+// which collates `\{` and `\|` against letters differently under the CI
+// runner's locale than under a developer's, so the same query highlights a
+// different entry per platform.
 async function acceptCompletion(page: Page, label: string, timeoutMs = 10_000) {
   await waitForCompletion(page);
-  // Re-querying is debounced, so an open popup may still be answering the
-  // query as it stood before the last keystrokes. Wait for the narrowed list
-  // to land rather than reading whatever is on screen right now.
   const deadline = Date.now() + timeoutMs;
+  let labels: string[] = [];
   for (;;) {
-    if ((await selectedLabel(page)) === label) break;
+    labels = await completionLabels(page);
+    if (labels.includes(label)) break;
     if (Date.now() > deadline) {
       throw new Error(
-        `completion highlighted ${(await selectedLabel(page)) || "(nothing)"} rather than ${label}; it offered ${(await completionLabels(page)).slice(0, 12).join(", ")}`,
+        `completion never offered ${label}; it offered ${labels.slice(0, 16).join(", ")}`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  for (let hop = 0; hop <= labels.length; hop += 1) {
+    if ((await selectedLabel(page)) === label) break;
+    if (hop === labels.length) {
+      throw new Error(
+        `completion never highlighted ${label}; it offered ${labels.join(", ")}`,
+      );
+    }
+    await page.press(".cm-content", "ArrowDown");
   }
   await page.press(".cm-content", "Enter");
   await waitLong(
@@ -285,11 +320,13 @@ test("a size command already open scopes the dropdown to delimiters", async ({
   expect(labels).toContain("\\left\\lvert");
   expect(labels).not.toContain("\\lambda");
 
-  await typeAtCaret(tauriPage, "lc");
-  await acceptCompletion(tauriPage, "\\left\\lceil");
+  // Taken from the unnarrowed list on purpose: this entry is nowhere near the
+  // top under either platform's collation, so the walk is exercised wherever
+  // the suite runs.
+  await acceptCompletion(tauriPage, "\\left\\lvert");
   await expect
     .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
-    .toBe(`${PREAMBLE}\\left\\lceil\\right\\rceil`);
+    .toBe(`${PREAMBLE}\\left\\lvert\\right\\rvert`);
 });
 
 test("accepting a brace delimiter keeps its backslash", async ({

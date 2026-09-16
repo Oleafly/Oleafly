@@ -88,7 +88,7 @@ export function environmentSnippet(name: string): string {
   const args = environmentArguments(name);
   if (args) {
     const stop = `\${${args.placeholders + 1}}`;
-    const body = args.item ? `\\item ${stop}` : stop;
+    const body = args.item ? String.raw`\item ${stop}` : stop;
     return `${name}}${args.text}\n\t${body}\n${close}\${}`;
   }
   switch (environmentBase(name)) {
