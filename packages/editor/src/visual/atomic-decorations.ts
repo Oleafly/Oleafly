@@ -94,7 +94,7 @@ const SILENT_COMMANDS: ReadonlySet<string> = new Set(
   [
     "vspace", "hspace", "noindent", "indent", "par", "selectfont", "newpage", "clearpage", "cleardoublepage",
     "pagebreak", "nopagebreak", "linenumbers", "nolinenumbers", "smallskip", "medskip", "bigskip", "newblock",
-    "centering", "raggedright", "raggedleft", "fontsize", "bfseries", "itshape", "mdseries", "upshape", "scshape",
+    "raggedright", "raggedleft", "fontsize", "bfseries", "itshape", "mdseries", "upshape", "scshape",
     "slshape", "rmfamily", "sffamily", "ttfamily", "normalfont", "normalsize", "small", "footnotesize", "scriptsize",
     "tiny", "large", "Large", "LARGE", "huge", "Huge", "hfill", "vfill", "sloppy", "frenchspacing", "onecolumn",
     "twocolumn", "thispagestyle", "pagestyle", "markboth", "markright", "IEEEpeerreviewmaketitle",
@@ -224,6 +224,7 @@ class AtomicDecorationBuilder {
     this.trackPreamble(node);
     const { type } = node;
     if (type.is("$Environment")) return this.enterEnvironment(node);
+    if (type.is("Centering")) return this.enterCentering(node);
     if (type.is("BeginEnv")) return this.enterBegin(node);
     if (type.is("EndEnv")) return this.enterEnd(node);
     if (type.is("SectioningCommand")) return this.enterSectioning(node);
@@ -482,6 +483,13 @@ class AtomicDecorationBuilder {
       );
     }
     return undefined;
+  }
+
+  private enterCentering(node: SyntaxNodeRef): boolean | undefined {
+    if (!this.shouldDecorate(node)) return undefined;
+    if (lineHoldsOnlyNode(this.state.doc.lineAt(node.from), node.node)) return undefined;
+    this.push(replaceInline(node.from, node.to, new BraceWidget()));
+    return false;
   }
 
   private enterBibItem(node: SyntaxNodeRef): boolean | undefined {

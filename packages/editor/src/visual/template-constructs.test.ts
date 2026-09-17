@@ -54,6 +54,13 @@ describe("template constructs", () => {
     expect(texts).toContain("\\vspace*{12pt}");
   });
 
+  it("hides a centering command that shares its line with other content", () => {
+    const doc = BODY("\\begin{table}\n\\centering%% note\n\\begin{tabular}{l}\na\\\\\n\\end{tabular}\n\\end{table}\nAfter");
+    const state = createState(doc, doc.indexOf("After"));
+    const texts = decorations(state).map((entry) => doc.slice(entry.from, entry.to));
+    expect(texts).toContain("\\centering");
+  });
+
   it("turns rule commands into rule widgets", () => {
     const doc = BODY("\\rule{\\textwidth}{4pt}\nText\\hrule");
     const state = createState(doc, doc.indexOf("Text"));

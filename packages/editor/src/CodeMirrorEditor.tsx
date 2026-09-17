@@ -69,8 +69,6 @@ import { gateCompletionSource, type CompletionSyntax } from "./completion-trigge
 import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
 import { emacsModeExtension } from "./emacs-mode";
 import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
-import { latexTreeSupport } from "./latex-tree";
-import { visualMode } from "./visual";
 import type { VisualPorts } from "./visual/types";
 
 export type { VisualImage, VisualPorts, VisualRange } from "./visual/types";
@@ -196,9 +194,22 @@ function visualRendersPath(
   return visualActive && !!ports && supportsVisualMode(path);
 }
 
+type VisualModule = Pick<typeof import("./visual"), "latexTreeSupport" | "visualMode">;
+
+let visualModule: VisualModule | null = null;
+let visualModuleLoading: Promise<VisualModule> | null = null;
+
+function loadVisualModule(): Promise<VisualModule> {
+  visualModuleLoading ??= import("./visual").then((module) => {
+    visualModule = module;
+    return module;
+  });
+  return visualModuleLoading;
+}
+
 function languageExtensionFor(path: string | null, visualRendered: boolean): Extension {
   if (!path) return [];
-  if (visualRendered) return latexTreeSupport();
+  if (visualRendered && visualModule) return visualModule.latexTreeSupport();
   return languageForPath(path) ?? [];
 }
 
@@ -206,7 +217,45 @@ function visualExtensionFor(
   visualRendered: boolean,
   ports: VisualPorts | undefined,
 ): Extension {
-  return visualRendered && ports ? visualMode(ports) : [];
+  return visualRendered && ports && visualModule ? visualModule.visualMode(ports) : [];
+}
+
+interface VisualCompartments {
+  language: Compartment;
+  visual: Compartment;
+  wrap: Compartment;
+}
+
+function applyVisualCompartments(
+  view: EditorView,
+  compartments: VisualCompartments,
+  path: string | null,
+  rendered: boolean,
+  ports: VisualPorts | undefined,
+  lineWrap: boolean,
+): void {
+  view.dispatch({
+    effects: [
+      compartments.language.reconfigure(languageExtensionFor(path, rendered)),
+      compartments.visual.reconfigure(visualExtensionFor(rendered, ports)),
+      compartments.wrap.reconfigure(lineWrapExtensionFor(lineWrap, rendered)),
+    ],
+  });
+  view.requestMeasure();
+}
+
+function applyVisualModeWhenLoaded(
+  rendered: boolean,
+  isCurrent: () => boolean,
+  apply: () => void,
+): void {
+  if (!rendered || visualModule) return;
+  loadVisualModule().then(
+    () => {
+      if (isCurrent()) apply();
+    },
+    () => undefined,
+  );
 }
 
 function lineWrapExtensionFor(lineWrap: boolean, visualRendered: boolean): Extension {
@@ -402,6 +451,8 @@ export function CodeMirrorEditor({
     stickyScroll: stickyScrollEnabled,
     mathPreview,
   } = host.useSettings();
+  const lineWrapRef = useRef(lineWrap);
+  lineWrapRef.current = lineWrap;
   const vimEnabled = keymapMode === "vim";
   const editorKeys = host.useEditorKeymap();
   const editorKeysSignature = JSON.stringify(editorKeys);
@@ -589,6 +640,22 @@ export function CodeMirrorEditor({
 
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
+    applyVisualModeWhenLoaded(
+      initialVisual,
+      () => viewRef.current === view,
+      () => {
+        const path = host.getActivePath();
+        const rendered = visualRendersPath(path, visualActiveRef.current, host.visualPorts);
+        applyVisualCompartments(
+          view,
+          { language: langCompartment, visual: visualCompartment, wrap: lineWrapCompartment },
+          path,
+          rendered,
+          host.visualPorts,
+          lineWrapRef.current,
+        );
+      },
+    );
     if (host.saveActive) registerHostSave(view, host.saveActive);
     if (vimEnabled) attachVimModeBridge(view);
     setEditorView(view);
@@ -698,6 +765,25 @@ export function CodeMirrorEditor({
         lineWrapExtensionFor(lineWrap, visualRendered),
       ),
     ];
+    applyVisualModeWhenLoaded(
+      visualRendered,
+      () => viewRef.current === view && host.getActivePath() === activePath,
+      () => {
+        const rendered = visualRendersPath(activePath, visualActiveRef.current, host.visualPorts);
+        applyVisualCompartments(
+          view,
+          {
+            language: langCompartmentRef.current!,
+            visual: visualCompartmentRef.current!,
+            wrap: lineWrapCompartmentRef.current!,
+          },
+          activePath,
+          rendered,
+          host.visualPorts,
+          lineWrapRef.current,
+        );
+      },
+    );
     effects.push(
       sourceToolsCompartmentRef.current!.reconfigure(
         sourceToolsForPath(
@@ -795,16 +881,29 @@ export function CodeMirrorEditor({
     }
     const path = host.getActivePath();
     const visualRendered = visualRendersPath(path, visualActive, host.visualPorts);
-    view.dispatch({
-      effects: [
-        languageCompartment.reconfigure(languageExtensionFor(path, visualRendered)),
-        visualCompartment.reconfigure(
-          visualExtensionFor(visualRendered, host.visualPorts),
-        ),
-        wrapCompartment.reconfigure(lineWrapExtensionFor(lineWrap, visualRendered)),
-      ],
-    });
-    view.requestMeasure();
+    applyVisualCompartments(
+      view,
+      { language: languageCompartment, visual: visualCompartment, wrap: wrapCompartment },
+      path,
+      visualRendered,
+      host.visualPorts,
+      lineWrap,
+    );
+    applyVisualModeWhenLoaded(
+      visualRendered,
+      () => viewRef.current === view && host.getActivePath() === path,
+      () => {
+        const rendered = visualRendersPath(path, visualActiveRef.current, host.visualPorts);
+        applyVisualCompartments(
+          view,
+          { language: languageCompartment, visual: visualCompartment, wrap: wrapCompartment },
+          path,
+          rendered,
+          host.visualPorts,
+          lineWrapRef.current,
+        );
+      },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineWrap, visualActive]);
 
