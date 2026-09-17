@@ -1,0 +1,647 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Indeling met twee kolommen",
+      "detailTwoColumn": "Cv-parsers zetten twee kolommen vaak in de verkeerde volgorde achter elkaar. Gebruik liever één kolom voor documenten die een ATS moet kunnen lezen.",
+      "titleMultiColumn": "Indeling met meerdere kolommen",
+      "detailMultiColumn": "Cv-parsers zetten kolommen vaak in de verkeerde volgorde achter elkaar. Gebruik één kolom voor documenten die voor een ATS bedoeld zijn."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Controleer de leesvolgorde van de twee kolommen",
+      "detailTwoColumn": "Publicatie-indelingen met meerdere kolommen kunnen toegankelijk zijn zolang de tagstructuur van de PDF de bedoelde volgorde bewaart. Compileer en controleer de werkelijke leesvolgorde in plaats van de zichtbare kolommen alleen al als fout te zien.",
+      "titleMultiColumn": "Controleer de leesvolgorde van de kolommen",
+      "detailMultiColumn": "Kolommen zijn niet vanzelf ontoegankelijk, maar hun tag- en inhoudsvolgorde moet wel betekenisvol blijven. Compileer en bekijk de werkelijke leesvolgorde."
+    },
+    "no-glyphtounicode": {
+      "title": "De Unicode-extractiekaart is niet opgegeven",
+      "detailEngineNeedsMap": "XeTeX, en de meegeleverde engine die daarop voortbouwt, maken de glyph-naar-Unicode-kaart niet automatisch aan, waardoor de tekst er onleesbaar uit kan komen. Compileer, controleer de leesweergave en kies bij voorkeur een lettertype met een volledige Unicode-koppeling.",
+      "detailAutomatic": "pdfLaTeX en LuaLaTeX maken deze kaart sinds de LaTeX-uitgave van 2021-06-01 automatisch aan, dus je hoeft niets op te geven. Compileer en controleer de tekst in de leesweergave. Laad bij XeTeX cmap of wissel van engine."
+    },
+    "icon-near-contact": {
+      "title": "Pictogram naast contactgegevens",
+      "detail": "Lettertypepictogrammen (zoals \\faPhone of \\faEnvelope) worden als glyphs weergegeven die een parser als onbekende tekens leest en die een schermlezer geen naam kan geven, waardoor het contactgegeven ernaast verloren kan gaan. Zorg dat het e-mailadres of telefoonnummer er ook als gewone selecteerbare tekst staat."
+    },
+    "layout-table": {
+      "titleTable": "Tabelinhoud wordt mogelijk niet als cv-velden gelezen",
+      "detailTable": "ATS-tools maken tabelinhoud vaak onvoorspelbaar plat. Gebruik geen tabel om cv-tekst naast elkaar te zetten; echte onderzoeksdatatabellen worden apart beoordeeld bij Toegankelijkheid.",
+      "titleTikz": "TikZ-inhoud heeft een semantisch alternatief nodig",
+      "detailTikz": "TikZ tekent visuele inhoud zonder de betekenis ervan als gewone tekst beschikbaar te maken. Geef een toegankelijke beschrijving voor publicatie-uitvoer en gebruik het niet voor cv-inhoud die naar een ATS gaat."
+    },
+    "contact-in-header": {
+      "title": "Contactgegevens in de paginakop",
+      "detail": "Sommige cv-parsers slaan kop- en voetteksten over. Zet je e-mailadres en telefoonnummer in de hoofdtekst, zodat de geëxtraheerde tekst ze bewaart."
+    },
+    "figure-alt": {
+      "title": "Afbeelding zonder alt-tekst",
+      "detail": "Deze afbeelding heeft geen beschrijvende alt-tekst, dus een schermlezer kan hem niet overbrengen. Voeg een beschrijving toe, bijvoorbeeld \\includegraphics[alt={Een portretfoto van de auteur}]{...}. Markeer puur decoratieve afbeeldingen in plaats daarvan als artefact."
+    },
+    "link-text": {
+      "title": "Niet-beschrijvende linktekst",
+      "detail": "Linktekst als 'klik hier' of een kale URL zegt een schermlezergebruiker niets over de bestemming. Gebruik tekst die het doel benoemt, bijvoorbeeld 'mijn portfolio'."
+    },
+    "mathml-export-hint": {
+      "title": "Exporteer een HTML-kopie met MathML om de toegankelijkheid van de wiskunde te controleren",
+      "detail": "Het document bevat wiskunde. Schermlezers lezen vergelijkingen betrouwbaar voor als ze MathML zijn. Gebruik Exporteren als HTML, dat pandoc met --mathml schrijft, en open het bestand met een schermlezer of een toegankelijkheidscontrole voordat je inzendt."
+    },
+    "no-lang": {
+      "title": "Geen documenttaal ingesteld",
+      "detail": "De PDF heeft geen taal, dus een schermlezer kan hem met de verkeerde uitspraakregels voorlezen. Stel er een in, bijvoorbeeld \\usepackage[dutch]{babel} of pdflang=nl-NL van hyperref."
+    },
+    "no-title": {
+      "title": "Geen PDF-titel",
+      "detail": "De PDF heeft geen titel in de metagegevens, terwijl hulpsoftware en browsers die gebruiken om het document aan te kondigen. Stel er een in met hyperref, bijvoorbeeld \\hypersetup{pdftitle={Jouw naam, cv}}."
+    },
+    "heading-skip": {
+      "title": "Kopniveau overgeslagen",
+      "detail": "Deze kop springt meer dan één niveau dieper dan de vorige, waardoor het documentoverzicht breekt waar schermlezers en parsers op vertrouwen. Sla geen niveaus over: ga bijvoorbeeld van section naar subsection naar subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Afwijkende sectiekop: \"{{heading}}\"",
+      "detail": "Parsers koppelen secties door standaardkoppen als Experience, Education en Skills te herkennen. Een creatieve titel kan die sectie ongecategoriseerd laten. Overweeg een gangbare kop."
+    },
+    "color-only": {
+      "title": "Controleer of kleur niet het enige signaal is",
+      "detail": "Preflight vond gekleurde inhoud maar kan de betekenis ervan niet automatisch bepalen. Als kleur status of categorieën onderscheidt, combineer die dan met tekst, vorm, dikte of een ander waarneembaar signaal."
+    },
+    "reading-order-risk": {
+      "title": "Indeling die de leesvolgorde kan verstoren",
+      "detail": "Kanttekeningen en omlopende figuren plaatsen inhoud buiten de hoofdstroom, dus parsers en schermlezers kunnen die in de verkeerde volgorde lezen. Controleer de leesvolgorde in het voorbeeld hieronder nadat je hebt gecompileerd."
+    },
+    "ua-standard-without-title": {
+      "title": "PDF/UA wordt opgegeven zonder documenttitel",
+      "detailBoth": "Dit document geeft pdfstandard=ua op maar stelt geen pdftitle en geen pdfdisplaydoctitle=true in. PDF/UA vereist een titel in de XMP-metagegevens plus een viewerinstelling die hem toont, dus de uitvoer zou een standaard claimen waaraan hij niet voldoet. Laad hyperref en stel \\hypersetup{pdftitle={Jouw titel}, pdfdisplaydoctitle=true} in.",
+      "detailTitle": "Dit document geeft pdfstandard=ua op maar stelt geen pdftitle in. PDF/UA vereist een titel in de XMP-metagegevens plus een viewerinstelling die hem toont, dus de uitvoer zou een standaard claimen waaraan hij niet voldoet. Laad hyperref en stel \\hypersetup{pdftitle={Jouw titel}, pdfdisplaydoctitle=true} in.",
+      "detailDisplay": "Dit document geeft pdfstandard=ua op maar stelt geen pdfdisplaydoctitle=true in. PDF/UA vereist een titel in de XMP-metagegevens plus een viewerinstelling die hem toont, dus de uitvoer zou een standaard claimen waaraan hij niet voldoet. Laad hyperref en stel \\hypersetup{pdftitle={Jouw titel}, pdfdisplaydoctitle=true} in."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "De meegeleverde engine kan de opgegeven PDF/UA-uitvoer niet maken",
+      "detail": "Dit document geeft pdfstandard=ua op, maar de meegeleverde engine kan geen tagstructuur schrijven, dus de PDF zou een PDF/UA-claim dragen waaraan hij niet voldoet. Compileer met pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer, of haal de sleutel pdfstandard weg."
+    },
+    "table-header-rows": {
+      "title": "De koprij van de tabel is niet als kop gemarkeerd",
+      "detail": "Deze tabel zet een lijn onder de eerste rij, waardoor die als kop leest, maar LaTeX tagt standaard elke cel als datacel. Een schermlezer kan een waarde dan niet aan zijn kolom koppelen. Geef de koprij op, bijvoorbeeld \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Kolommen lezen in de uitvoer dwars door elkaar",
+      "detail": "Op deze pagina komt de tekst van twee kolommen op dezelfde regels terecht, dus een parser leest ze recht door tot warrige tekst en een schermlezer kondigt ze in de verkeerde volgorde aan. Gebruik één kolom voor inhoud die gelezen moet kunnen worden. Zie de leesweergave hieronder."
+    },
+    "pdf-garbled": {
+      "title": "Onleesbare of niet-gekoppelde tekst in de uitvoer",
+      "detail": "De geëxtraheerde tekst bevat tekens die niet aan Unicode gekoppeld zijn, dus kopiëren en plakken en parsers zien warrige uitvoer en een schermlezer kan hem niet lezen. Meestal betekent dit dat de glyph-naar-Unicode-kaart ontbreekt of dat een lettertype niet als tekst is ingesloten."
+    },
+    "pdf-selectable": {
+      "title": "Pagina heeft geen selecteerbare tekst",
+      "detail": "Deze pagina bevat weinig of geen tekst die eruit te halen is, dus een parser en een schermlezer zien niets. Waarschijnlijk is hij als afbeelding weergegeven of gebruikt hij lettertypen die niet als tekst zijn ingesloten. Zorg dat de inhoud echte, selecteerbare tekst is."
+    },
+    "output-clipped-content": {
+      "title": "Tekst loopt buiten de pagina",
+      "detail": "Er staat selecteerbare tekst buiten de mediabox van deze pagina die bij drukwerk en verwerking door de uitgever afgesneden of verdwenen kan zijn. Bekijk brede vergelijkingen, tabellen, URL's en gepositioneerde inhoud."
+    },
+    "output-small-text": {
+      "title": "Zeer kleine tekst gevonden",
+      "detail_one": "{{count}} stuk tekst meet minder dan ongeveer 7 pt. Kleine letters zijn lastig te lezen op papier en bij normale zoom. Ga na of de uitgever dit toestaat en vergroot labels of voetnoten die niet per se klein hoeven te zijn.",
+      "detail_other": "{{count}} stukken tekst meten minder dan ongeveer 7 pt. Kleine letters zijn lastig te lezen op papier en bij normale zoom. Ga na of de uitgever dit toestaat en vergroot labels of voetnoten die niet per se klein hoeven te zijn."
+    },
+    "pdf-no-bookmarks": {
+      "title": "Lange PDF heeft geen bladwijzers",
+      "detail": "Lange documenten horen een hiërarchisch bladwijzeroverzicht te bieden, zodat gebruikers met het toetsenbord of hulpsoftware door secties kunnen navigeren zonder elke pagina op volgorde te lezen. Dit is een WCAG-aanbeveling en geen PDF/UA-eis. Laad hyperref of bookmark om er een te maken."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "De PDF-metagegevens konden niet worden bekeken",
+      "detail": "Preflight kon de PDF-metagegevens niet lezen en kan de documenttitel of -taal dus niet controleren. Dit is een onbekende uitkomst, geen bewijs dat die velden ontbreken. Compileer opnieuw en voer de controle nog eens uit."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "De PDF mist een taal en een titel",
+      "titleLang": "De PDF mist een taal",
+      "titleTitle": "De PDF mist een titel",
+      "detail": "Hulpsoftware en browsers gebruiken de taal en titel uit de PDF-catalogus om het document goed aan te kondigen. Stel ze in met hyperref, bijvoorbeeld \\hypersetup{pdftitle={Jouw naam, cv}, pdflang=nl-NL}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "De tagstatus van de PDF kon niet worden bekeken",
+      "detail": "Preflight kon het MarkInfo-woordenboek van de PDF niet lezen. Dat is een onbekende uitkomst en geen bewijs in welke richting dan ook, dus de uitvoer wordt op grond van die controle alleen niet getagd of ongetagd genoemd."
+    },
+    "compile-failed": {
+      "title": "De laatste compilatie is mislukt",
+      "detail": "Inzenduitvoer moet uit een geslaagde build komen. Los de eerste compilerfout op, compileer opnieuw en voer Preflight nog eens uit."
+    },
+    "compile-overfull-box": {
+      "title_one": "{{count}} te volle regel in de uitvoer",
+      "title_other": "{{count}} te volle regels in de uitvoer",
+      "detail": "De compiler meldt inhoud die tot {{width}} pt buiten het tekstkader loopt. Bekijk deze plekken op afgesneden tekst, vergelijkingen, tabellen of links."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} ontbrekende glyph",
+      "title_other": "{{count}} ontbrekende glyphs",
+      "detail": "De gekozen lettertypen kunnen niet elk teken weergeven. Ontbrekende glyphs kunnen ongemerkt uit de PDF verdwijnen, ook symbolen in namen, vergelijkingen en citaties."
+    },
+    "compile-unresolved-references": {
+      "title": "De gecompileerde uitvoer bevat niet-opgeloste verwijzingen",
+      "detail": "Minstens één citatie of kruisverwijzing bleef na het compileren onopgelost. De ingezonden PDF kan [?] of ?? bevatten. Bekijk het logboek en voer de vereiste bibliografie- en LaTeX-doorgangen uit."
+    },
+    "compile-rerun-required": {
+      "title": "Er is nog een compilatiedoorgang nodig",
+      "detail": "Het laatste logboek zegt dat labels, citaties of de inhoudsopgave nog niet vastliggen. Compileer opnieuw tot de waarschuwing over opnieuw uitvoeren verdwijnt, en exporteer daarna pas."
+    },
+    "compile-duplicate-destination": {
+      "title": "Dubbele PDF-bestemmingen",
+      "detail": "Twee ankers delen dezelfde bestemming, dus links of bladwijzers kunnen naar de verkeerde plek springen. Dit komt vaak door dubbele labels of doordat de paginanummering opnieuw begint."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Verschillende paginaformaten in één PDF",
+      "detail_one": "De PDF bevat {{count}} paginaformaat ({{sizes}}). Gemengde mediaboxen wijzen vaak op een verkeerd opgenomen pagina of figuur en kunnen productiecontroles van uitgevers laten mislukken.",
+      "detail_other": "De PDF bevat {{count}} paginaformaten ({{sizes}}). Gemengde mediaboxen wijzen vaak op een verkeerd opgenomen pagina of figuur en kunnen productiecontroles van uitgevers laten mislukken."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "Taggen meldde {{count}} probleem",
+      "title_other": "Taggen meldde {{count}} problemen",
+      "detail": "De tagcode schreef deze waarschuwingen naar het logboek: {{warnings}} Elk daarvan is een plek waar de structuurboom niet bij de inhoud past. Los ze bij de bron op en compileer opnieuw."
+    },
+    "output-tagging-status": {
+      "title_one": "Het tagstatusrapport markeerde {{count}} item",
+      "title_other": "Het tagstatusrapport markeerde {{count}} items",
+      "detail": "LaTeX schreef aan het eind van de build een eigen tagstatusrapport.",
+      "partClass": "De class {{name}} is {{status}}.",
+      "partBlocking": "Niet geschikt voor taggen: {{files}}.",
+      "partUnproven": "Geen vastgelegd oordeel voor: {{files}}.",
+      "partPartial": "Slechts gedeeltelijk getagd: {{files}}.",
+      "partAdvice": "Alles wat niet getagd kan worden, kan hele secties buiten de structuurboom laten, dus vervang wat je kunt."
+    },
+    "pdf-structure-single-pass": {
+      "title": "De tagstructuur lijkt op een eerste compilatiedoorgang",
+      "detail": "De PDF is als getagd gemarkeerd, maar de structuurboom bevat vrijwel niets, wat één doorgang oplevert. Getagde uitvoer vraagt twee doorgangen. Compileer opnieuw en controleer nogmaals."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "Deze PDF claimt PDF/UA-{{part}} maar voldoet er niet aan",
+      "detail": "De XMP-metagegevens geven pdfuaid:part {{part}} op, maar het bestand maakt dat niet waar.",
+      "partNoXmpTitle": "Er staat geen documenttitel in de XMP-metagegevens.",
+      "partNoDisplayDocTitle": "DisplayDocTitle staat niet op true.",
+      "partNotTagged": "Het bestand is niet getagd.",
+      "partAdvice": "Alles wat op die claim afgaat, meldt deze PDF als conform terwijl hij dat niet is, dus dicht de gaten of laat de claim vallen. Stel met hyperref \\hypersetup{pdftitle={Jouw titel}, pdfdisplaydoctitle=true} in en compileer met taggen aan."
+    },
+    "pdf-xmp-title": {
+      "title": "De titel staat alleen in het Info-woordenboek",
+      "detail": "De documenttitel staat in het Info-woordenboek maar niet als dc:title in de XMP-metagegevens, waar PDF/UA hem zoekt. Hyperref laden met pdftitle schrijft beide."
+    },
+    "pdf-display-doc-title": {
+      "title": "De lezer toont de bestandsnaam, niet de titel",
+      "detail": "ViewerPreferences heeft geen DisplayDocTitle-item op true staan, dus een PDF-lezer kondigt de bestandsnaam aan in het venster en aan hulpsoftware. Stel dit in met hyperref, bijvoorbeeld \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "De PDF markeert het eigen taggen als onbetrouwbaar",
+      "detail": "MarkInfo zet Suspects op true, waarmee de maker zegt dat de tagstructuur mogelijk niet bij de zichtbare inhoud past. Compileer opnieuw met een actuele engine en bekijk de tagwaarschuwingen in het logboek."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} linkannotatie heeft geen beschrijving",
+      "title_other": "{{count}} linkannotaties hebben geen beschrijving",
+      "detail": "Een linkannotatie zonder Contents-item geeft een schermlezer niets om aan te kondigen als die de links op een pagina opsomt. Beschrijf de bestemming in de linktekst en laat hyperref die tekst in de annotatie zetten."
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}}% van de tekst staat buiten de tagstructuur",
+      "detail": "{{untagged}} van {{total}} stukken tekst zijn nergens in de tagstructuur gekoppeld, dus een schermlezer slaat ze over. Artefacten tellen niet mee. Echte inhoud moet getagd zijn en decoratieve inhoud moet als artefact zijn gemarkeerd, bijvoorbeeld \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "De PDF-structuur kon niet volledig worden bekeken",
+      "detail_one": "De toegankelijkheidsstructuurboom kon niet worden uitgelezen voor pagina {{pages}}. Preflight beschouwt de ontbrekende structuur niet als bewijs dat de PDF ongetagd is.",
+      "detail_other": "De toegankelijkheidsstructuurboom kon niet worden uitgelezen voor de pagina's {{pages}}. Preflight beschouwt de ontbrekende structuur niet als bewijs dat de PDF ongetagd is."
+    },
+    "pdf-untagged-output": {
+      "title": "Deze PDF is niet getagd",
+      "detail": "De gecompileerde PDF draagt geen structuurboom, dus een schermlezer krijgt geen koppen, lijsten, tabellen of leesvolgorde en het bestand kan niet voldoen aan PDF/UA-1 clausule 7.1. Getagde uitvoer vraagt pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer met \\DocumentMetadata{tagging=on}. De meegeleverde engine kan geen tags maken. De bron- en uitvoercontroles hierboven blijven intussen gewoon gelden."
+    },
+    "pdf-structure-missing": {
+      "title": "Getagde PDF heeft geen leesbare structuurboom",
+      "detail": "De PDF noemt zichzelf getagd, maar Preflight vond geen documentstructuur om doorheen te navigeren. Schermlezers krijgen mogelijk geen koppen, lijsten, tabellen of leesvolgorde. Taggen vraagt twee compilatiedoorgangen, dus compileer opnieuw en controleer nogmaals voordat je dit als definitief ziet."
+    },
+    "output-figure-alt": {
+      "title": "Getagde figuur heeft geen alt-tekst",
+      "detail": "Deze figuur is getagd maar draagt geen alternatieve tekst, dus een schermlezer kan hem niet beschrijven. Voeg bij de bron een beschrijving toe, bijvoorbeeld \\includegraphics[alt={...}]{...}. Markeer decoratieve afbeeldingen in plaats daarvan met [artifact]."
+    },
+    "output-formula-alt": {
+      "title": "Vergelijking heeft geen tekstalternatief",
+      "detail": "Onder PDF/UA-1 heeft een Formula Alt of ActualText nodig. Voeg er bij de bron een toe, bijvoorbeeld met \\tagpdfsetup of een alt-sleutel op de vergelijking. Onder PDF/UA-2 kun je in plaats daarvan MathML koppelen door met LuaLaTeX en \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}} te compileren."
+    },
+    "output-table-headers": {
+      "title": "Getagde tabel heeft geen kopcellen",
+      "detail": "Deze tabel heeft geen kopcellen (TH), dus een schermlezer kan gegevens niet aan de kolom- of rijkop koppelen. Markeer de koprij, bijvoorbeeld \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "Kopniveau overgeslagen in de tagstructuur",
+      "detail": "De getagde koppen springen meer dan één niveau (bijvoorbeeld van H1 rechtstreeks naar H3), waardoor het overzicht breekt waarmee een schermlezer navigeert. Sla geen kopniveaus over."
+    },
+    "ats-no-name": {
+      "title": "Een parser kon je naam niet herkennen",
+      "detail": "In de geëxtraheerde tekst is geen aannemelijke persoonsnaam gevonden. Zet je naam als gewone tekst dicht bij het begin van het document, buiten paginakoppen, afbeeldingen en gepositioneerde tekstkaders."
+    },
+    "ats-no-email": {
+      "title": "Een parser kon je e-mailadres niet vinden",
+      "detail": "In de geëxtraheerde tekst is geen e-mailadres gevonden, terwijl een parser juist daar het meest op vertrouwt. Staat je adres naast een pictogram of in een koptekst, dan is het misschien geen selecteerbare tekst. Zet het als gewone tekst in de hoofdtekst."
+    },
+    "ats-no-phone": {
+      "title": "Een parser kon geen telefoonnummer vinden",
+      "detail": "In de geëxtraheerde tekst is geen telefoonnummer gevonden. Staat het er wel maar zit het achter een pictogram of in een koptekst, voeg het dan als gewone selecteerbare tekst toe in de hoofdtekst."
+    },
+    "ats-no-experience": {
+      "title": "Een parser vond geen sectie met werkervaring",
+      "detail": "Er is geen standaardkop Experience gevonden, dus een parser bundelt je functies mogelijk niet tot een loopbaanoverzicht. Gebruik een gangbare kop als Experience of Work Experience als echte, selecteerbare tekst."
+    },
+    "ats-long-resume": {
+      "title_one": "Het cv is {{count}} pagina lang",
+      "title_other": "Het cv is {{count}} pagina's lang",
+      "detail": "Veel wervingsprocessen verwachten een of twee pagina's, al mogen cv's van senioren en cv's in de wetenschap en bij de overheid langer zijn. Ga na of deze lengte past bij de functie en het documenttype."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} bibliografie-item heeft onvolledige metagegevens",
+      "title_other": "{{count}} bibliografie-items hebben onvolledige metagegevens",
+      "detail": "Onvolledige records kunnen in uitgeversstijlen kapotte of dubbelzinnige verwijzingen opleveren. {{examples}}.",
+      "detailTruncated": "Onvolledige records kunnen in uitgeversstijlen kapotte of dubbelzinnige verwijzingen opleveren. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} DOI-waarde ziet er onjuist uit",
+      "title_other": "{{count}} DOI-waarden zien er onjuist uit",
+      "detail": "Bekijk de DOI-velden van {{keys}}. Bewaar alleen de DOI zelf, bijvoorbeeld 10.1000/example, en geen beschrijvende tekst."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} mogelijk dubbele referentie",
+      "title_other": "{{count}} groepen mogelijk dubbele referenties",
+      "detail": "Deze sleutels hebben dezelfde genormaliseerde titel: {{groups}}. Voeg echte duplicaten samen zodat de citatiestijl en metagegevens consistent blijven."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} niet-geciteerd bibliografie-item",
+      "title_other": "{{count}} niet-geciteerde bibliografie-items",
+      "detail": "Ongebruikte items maken de inzendmetagegevens rommelig en het beheer van duplicaten lastiger. Bekijk {{keys}}.",
+      "detailTruncated": "Ongebruikte items maken de inzendmetagegevens rommelig en het beheer van duplicaten lastiger. Bekijk {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} label is in meerdere bestanden gedefinieerd",
+      "title_other": "{{count}} labels zijn in meerdere bestanden gedefinieerd",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "Naar {{count}} label van een figuur, tabel of vergelijking wordt nooit verwezen",
+      "title_other": "Naar {{count}} labels van figuren, tabellen of vergelijkingen wordt nooit verwezen",
+      "detail": "Ga na of elk genummerd resultaat in het manuscript wordt besproken: {{labels}}.",
+      "detailTruncated": "Ga na of elk genummerd resultaat in het manuscript wordt besproken: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "Citatie \"{{key}}\" staat in geen enkele .bib",
+      "detail": "Deze citatiesleutel is niet in de geladen bibliografie gevonden, dus hij verschijnt als [?] in de PDF. Controleer de sleutel of voeg het item toe aan je .bib (Citatie toevoegen kan het ophalen)."
+    },
+    "refs-undefined-ref": {
+      "title": "Verwijzing naar \"{{label}}\" heeft geen bijbehorende \\label",
+      "detail": "Deze kruisverwijzing wijst naar een label dat niet gedefinieerd is, dus hij verschijnt als ?? in de PDF. Controleer de labelnaam of voeg de ontbrekende \\label toe."
+    },
+    "refs-duplicate-label": {
+      "title": "Dubbel label \"{{label}}\"",
+      "detail": "Hetzelfde label is meer dan één keer gedefinieerd, dus verwijzingen ernaartoe zijn dubbelzinnig. Maak elk label uniek."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Afbeelding niet gevonden: {{file}}",
+      "detailImage": "Deze \\includegraphics wijst naar een bestand dat niet in het project zit, dus de figuur ontbreekt straks. Controleer de bestandsnaam en het pad.",
+      "titleInclude": "Ingesloten bestand niet gevonden: {{file}}",
+      "detailInclude": "Deze \\input of \\include wijst naar een bestand dat niet in het project zit. Controleer de bestandsnaam en het pad."
+    },
+    "refs-bib-missing": {
+      "title": "Bibliografiebestand niet gevonden: {{file}}",
+      "detail": "Deze \\bibliography of \\addbibresource wijst naar een bestand dat niet in het project zit, dus elke citatie verschijnt als [?]. Controleer de bestandsnaam of importeer een referentiebibliotheek om het aan te maken."
+    },
+    "refs-duplicate-bib": {
+      "title": "Dubbele bibliografie-items: {{keys}}",
+      "detail": "Deze items delen de DOI {{doi}}, dus het is dezelfde referentie onder verschillende sleutels. Houd er één en citeer die, anders staat hij twee keer in je bibliografie."
+    },
+    "submission-path-case": {
+      "title": "Hoofdlettergebruik in de bestandsnaam klopt niet: {{target}}",
+      "detailFigure": "Deze figuur wordt alleen gevonden op een bestandssysteem dat geen onderscheid maakt tussen hoofd- en kleine letters. Het project bevat \"{{match}}\", dus neem dat hoofdlettergebruik exact over voordat je inzendt bij buildsystemen op Linux.",
+      "detailInclude": "Dit ingesloten bestand wordt alleen gevonden op een bestandssysteem dat geen onderscheid maakt tussen hoofd- en kleine letters. Het project bevat \"{{match}}\", dus neem dat hoofdlettergebruik exact over voordat je inzendt bij buildsystemen op Linux."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Ontbrekende figuur: {{target}}",
+      "titleInclude": "Ontbrekend ingesloten bestand: {{target}}",
+      "detail": "Geen enkel projectbestand lost deze verwijzing uit {{file}} op. Een schone inzendbuild mislukt, ook als een lokale cache het document nu wel laat compileren."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "figuur zonder bijschrift",
+      "titleTable": "tabel zonder bijschrift",
+      "detail": "Figuren en tabellen in publicaties horen een genummerd, beschrijvend bijschrift te hebben, zodat ernaar verwezen kan worden en ze op zichzelf te begrijpen zijn."
+    },
+    "submission-label-before-caption": {
+      "title": "Het label staat vóór het bijschrift",
+      "detail": "Zet het label na het bijschrift. Anders kan LaTeX het aan de vorige teller koppelen en het verkeerde figuur- of tabelnummer opleveren."
+    },
+    "privacy-sensitive-file": {
+      "title": "Gevoelig bestand opgenomen: {{file}}",
+      "detail": "Haal inloggegevens en bestanden met privésleutels uit het project voordat je het bronarchief exporteert, synchroniseert of publiceert."
+    },
+    "privacy-credential": {
+      "title": "Mogelijke inloggegevens in {{file}}",
+      "detail": "Het project bevat tekst die lijkt op een API-token, een cloudtoegangssleutel of een privésleutel. Trek blootgestelde inloggegevens in en haal ze daarna uit het project en de Git-geschiedenis."
+    },
+    "privacy-internal-comment": {
+      "title": "Interne notitie staat nog in {{file}}",
+      "detail": "Commentaar in de broncode is niet zichtbaar in de PDF, maar kan wel openbaar zijn in een bronarchief van een conferentie, tijdschrift of preprint. Bekijk en verwijder persoonlijke redactionele notities."
+    },
+    "privacy-draft-artifact": {
+      "title": "Conceptopmaak staat nog aan",
+      "detail": "De broncode zet draft, TODO, wijzigingen bijhouden, watermerk of labeldebugging aan. Zet dat uit en bekijk de definitieve PDF met eigen ogen voordat je inzendt."
+    },
+    "privacy-blind-author": {
+      "title": "De identiteit van de auteur staat nog in de blinde-reviewbron",
+      "detail": "De broncode bevat een niet-geanonimiseerde auteur, affiliatie, e-mailadres, adres of dankwoordveld. Vervang identificerende inhoud met de anonieme reviewmodus van de uitgever."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Het dankwoord kan de auteurs verraden",
+      "detail": "Dankwoorden noemen vaak instellingen, subsidies, samenwerkingspartners of faciliteiten. Haal ze uit een blinde-reviewinzending, tenzij de uitgever ze uitdrukkelijk toestaat."
+    },
+    "privacy-pdf-author": {
+      "title": "PDF-metagegevens noemen een auteur",
+      "detail": "Het veld Author van de PDF is \"{{author}}\". Wis de auteursmetagegevens voordat je een PDF voor blinde review uploadt."
+    },
+    "submission-nonportable-filename": {
+      "title": "Niet-overdraagbare bestandsnaam: {{file}}",
+      "detail": "Dit profiel staat alleen letters, cijfers, liggende streepjes, plussen, minnen, punten, komma's, isgelijktekens en mapscheidingstekens toe. Wijzig de naam van het bestand en pas de verwijzingen ernaartoe aan."
+    },
+    "submission-absolute-path": {
+      "title": "Machinespecifiek pad in {{file}}",
+      "detail": "Absolute lokale paden bestaan niet op de buildservers van uitgevers. Zet de afhankelijkheid in het project en verwijs ernaar met een relatief pad."
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} vereist het uitvoeren van een externe opdracht",
+      "detail": "Veel builders van uitgevers en archieven schakelen shell escape uit. Maak de uitvoer vooraf aan of ga na of de gekozen uitgever dit pakket en deze opdracht ondersteunt."
+    },
+    "submission-generated-file": {
+      "title": "Gegenereerd buildbestand opgenomen: {{file}}",
+      "detail": "Gegenereerde hulpbestanden maken bronpakketten rommelig en kunnen verouderde toestand bewaren. Laat ze weg, tenzij de gekozen uitgever dat bestand uitdrukkelijk vraagt."
+    },
+    "submission-document-class": {
+      "title": "De documentklasse van {{profile}} is niet actief",
+      "detail": "Dit profiel verwacht {{expected}}, maar het project gebruikt {{actual}}. Begin met het huidige officiële sjabloon van de uitgever.",
+      "detailNoClass": "Dit profiel verwacht {{expected}}, maar er is geen documentklasse gevonden. Begin met het huidige officiële sjabloon van de uitgever."
+    },
+    "submission-no-abstract": {
+      "title": "Geen samenvatting gevonden",
+      "detail": "Dit publicatieprofiel verwacht een samenvatting in een standaard abstract-omgeving. Voeg er een toe of ga na of deze uitgever er geen vraagt."
+    },
+    "submission-no-keywords": {
+      "title": "Geen trefwoorden voor de publicatie gevonden",
+      "detail": "Het profiel {{profile}} verwacht trefwoorden via de standaardopdracht of -omgeving van het sjabloon."
+    },
+    "submission-figure-format": {
+      "title": "Niet-ondersteund figuurformaat: {{file}}",
+      "detail": "{{profile}} accepteert {{formats}} als figuurbestand voor de ondersteunde TeX-werkwijzen. Zet deze figuur om voordat je hem uploadt."
+    },
+    "submission-placeholder": {
+      "title": "Er staat nog conceptopvulling in het manuscript",
+      "detail": "De broncode bevat TODO, TBD, FIXME, opvultekst of vraagtekens. Bekijk elk voorkomen voordat je de definitieve inzending maakt."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} ligt onder de vereiste versie",
+      "detail": "{{profile}} vereist PDF {{minimum}} of nieuwer. Pas de PDF-instellingen van de compiler aan en maak het bestand opnieuw aan."
+    },
+    "submission-bookmarks": {
+      "title": "PDF-bladwijzers zijn niet toegestaan",
+      "detail": "{{profile}} weigert PDF-bladwijzers. Haal het documentoverzicht weg voor dit inzendprofiel."
+    },
+    "submission-links": {
+      "title": "PDF-links zijn niet toegestaan",
+      "detail": "{{profile}} weigert linkannotaties. Schakel gegenereerde hyperlinks uit voor de ingezonden PDF."
+    },
+    "submission-attachments": {
+      "title": "De PDF bevat ingesloten bijlagen",
+      "detail": "{{profile}} weigert PDF-bijlagen en -pakketten. Verwijder alle ingesloten bestanden voordat je inzendt."
+    },
+    "submission-security": {
+      "title": "Er staan beveiligingsbeperkingen op de PDF",
+      "detail": "{{profile}} vereist een PDF zonder wachtwoord- of rechtenbeperkingen."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} lettertype is niet ingesloten",
+      "title_other": "{{count}} lettertypen zijn niet ingesloten",
+      "detail": "{{profile}} vereist dat elk lettertype is ingesloten of als subset is opgenomen, zodat tekst en wiskunde betrouwbaar worden weergegeven. Los {{fonts}} op."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "Van sommige lettertypen kon de insluiting niet worden gecontroleerd",
+      "detail": "Preflight kon de insluitingsstatus van {{fonts}} niet vaststellen. Controleer ze met de officiële PDF-controle van de uitgever."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Toegankelijkheid",
+    "both": "ATS + Toegankelijkheid",
+    "refs": "Referenties",
+    "compile": "Build",
+    "submission": "Inzending",
+    "privacy": "Privacy"
+  },
+  "severity": {
+    "error": "Fout",
+    "warning": "Waarschuwing",
+    "info": "Opmerking"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Build",
+    "a11y": "Toegang",
+    "refs": "Refs",
+    "submission": "Inzenden",
+    "privacy": "Privacy"
+  },
+  "checks": {
+    "compile": {
+      "label": "Build en opmaak",
+      "who": "Voor elk definitief document",
+      "info": "Buildfouten, niet-opgeloste verwijzingen, ontbrekende glyphs en problemen met de pagina-indeling.",
+      "detail": "Bekijkt het nieuwste compilerlogboek en de PDF op mislukte builds, niet-opgeloste verwijzingen, ontbrekende glyphs, te volle of afgesneden inhoud, verouderde waarschuwingen over opnieuw compileren en gemengde paginaformaten."
+    },
+    "submission": {
+      "label": "Klaar voor inzending",
+      "who": "Voor conferenties, tijdschriften, preprints en scripties",
+      "info": "Regels van het publicatieprofiel en bestanden die niet in het bronpakket horen.",
+      "detail": "Past een publicatieprofiel toe op het hele project: officiële documentklasse, overdraagbare bronpaden, figuurformaten, samenvatting en trefwoorden, PDF-beperkingen, bijschriften en een opgeruimd bronpakket."
+    },
+    "ats": {
+      "label": "Klaar voor ATS",
+      "who": "Voor cv's",
+      "info": "De contactgegevens en secties die een cv-parser kan terugvinden.",
+      "detail": "Simuleert wat een Applicant Tracking System (Workday, Taleo, Greenhouse) uit je PDF haalt en markeert indeling en opmaak die dat in de war sturen. Niet van belang voor wetenschappelijke artikelen."
+    },
+    "a11y": {
+      "label": "Toegankelijkheid",
+      "who": "Voor wetenschappelijke, overheids- en gepubliceerde PDF's",
+      "info": "Taggen, alt-tekst, documenttaal en -titel, viewerinstellingen, structuur, links en leesvolgorde.",
+      "detail": "Controleert de gecompileerde PDF op het machinaal controleerbare deel van PDF/UA-1 (ISO 14289-1) en de WCAG 2.2-technieken voor PDF: taggen, alt-tekst, documenttaal en -titel, viewerinstellingen, kop- en tabelstructuur, linkbeschrijvingen, leesvolgorde en selecteerbare tekst. Broncontroles markeren waarschijnlijke problemen al voordat je compileert."
+    },
+    "refs": {
+      "label": "Referenties en bestanden",
+      "who": "Voor onderzoek en documenten met meerdere bestanden",
+      "info": "Kapotte citaties, dubbele labels, onvolledige bibliografie-items en ontbrekende bestanden.",
+      "detail": "Vindt ongedefinieerde citaties en kruisverwijzingen, dubbele labels en ontbrekende figuren of ingesloten bestanden, voordat ze je PDF bij de inzending breken."
+    },
+    "privacy": {
+      "label": "Privacy en blinde review",
+      "who": "Voordat je broncode deelt of anoniem inzendt",
+      "info": "Geheimen, conceptnotities, gevoelige bestanden en identiteitslekken tijdens blinde review.",
+      "detail": "Vindt inloggegevens, privésleutels, interne opmerkingen, conceptopmaak, gevoelige projectbestanden, auteursmetagegevens en identiteitslekken in inzendingen voor anonieme review."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Algemene publicatie",
+      "description": "Overdraagbare broncode, schone uitvoer, volledige metagegevens en veelvoorkomende publicatierisico's."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Overdraagbare broncode die opnieuw gebouwd kan worden op het hoofdlettergevoelige inzendsysteem van arXiv."
+    },
+    "ieee": {
+      "label": "IEEE-conferentie of -tijdschrift",
+      "description": "IEEEtran-broncode plus de PDF-eisen die voor publicatie in IEEE Xplore worden gecontroleerd."
+    },
+    "acm": {
+      "label": "ACM-conferentie of -tijdschrift",
+      "description": "De acmart-bronstructuur van ACM en publicatieklare onderzoeksmetagegevens."
+    },
+    "journal": {
+      "label": "Ander tijdschrift",
+      "description": "Uitgeversneutrale tijdschriftcontroles. Voeg de exacte grenzen van het tijdschrift toe voordat je inzendt."
+    },
+    "thesis": {
+      "label": "Scriptie of proefschrift",
+      "description": "Controles op de structuur, navigatie, referenties en overdraagbare broncode van een lang document."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Experience",
+      "education": "Education",
+      "skills": "Skills",
+      "projects": "Projects",
+      "summary": "Summary"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: {{passed}} van {{total}} machinaal controleerbare regels gecontroleerd. Een deelcontrole, geen conformiteitsverklaring.",
+    "coverageWithBlindSpots": "PDF/UA-1: {{passed}} van {{total}} machinaal controleerbare regels gecontroleerd. Oleafly leest {{covered}} van die regels, en {{unavailable}} daarvan konden in dit bestand niet worden gecontroleerd. Een deelcontrole, geen conformiteitsverklaring."
+  },
+  "taggingGate": {
+    "noSupport": "De class {{name}} kan geen getagde uitvoer maken, en het LaTeX Project verwacht dat ook niet.",
+    "noSupportWithNote": "De class {{name}} kan geen getagde uitvoer maken, en het LaTeX Project verwacht dat ook niet. {{note}}",
+    "currentlyIncompatible": "De class {{name}} is nog niet geschikt voor LaTeX-taggen, dus deze broncode voorbereiden levert je geen toegankelijke PDF op.",
+    "currentlyIncompatibleWithNote": "De class {{name}} is nog niet geschikt voor LaTeX-taggen, dus deze broncode voorbereiden levert je geen toegankelijke PDF op. {{note}}",
+    "partiallyCompatible": "De class {{name}} is maar deels geschikt voor taggen, dus verwacht gaten in de structuurboom.",
+    "partiallyCompatibleWithNote": "De class {{name}} is maar deels geschikt voor taggen, dus verwacht gaten in de structuurboom. {{note}}",
+    "unrecorded": "Het LaTeX Project heeft voor de class {{name}} geen tagstatus vastgelegd, dus de uitkomst staat niet vast. Compileer en controleer de uitvoer."
+  },
+  "prep": {
+    "metadataUpdated": "De vereiste tagsleutels zijn aan je \\DocumentMetadata toegevoegd.",
+    "metadataAdded": "\\DocumentMetadata is als eerste regel toegevoegd (verplicht, moet vóór \\documentclass staan).",
+    "headerRows": "table/header-rows is op 1 gezet, zodat de eerste rij van elke tabel als kopcellen wordt getagd. Wijzig het getal als een tabel een andere kopdiepte heeft.",
+    "unicodeMath": "\\usepackage{unicode-math} is toegevoegd, dat deze engine nodig heeft voor getagde wiskunde.",
+    "altPlaceholders_one": "Er zijn plaatshouders voor alt-tekst toegevoegd aan {{count}} afbeelding. Vervang de TODO-tekst door een echte beschrijving.",
+    "altPlaceholders_other": "Er zijn plaatshouders voor alt-tekst toegevoegd aan {{count}} afbeeldingen. Vervang de TODO-tekst door een echte beschrijving.",
+    "titleRequired": "PDF/UA heeft een documenttitel nodig die de lezer toont. Laad hyperref en stel \\hypersetup{pdftitle={Jouw titel}, pdfdisplaydoctitle=true} in.",
+    "incompatiblePackages_one": "Dit pakket is niet geschikt voor taggen: {{packages}}. Inhoud eruit kan ongetagd in de PDF belanden. Vervang het waar je kunt.",
+    "incompatiblePackages_other": "Deze pakketten zijn niet geschikt voor taggen: {{packages}}. Inhoud eruit kan ongetagd in de PDF belanden. Vervang ze waar je kunt.",
+    "cautionPackages": "Deze pakketten taggen maar deels, of er is geen tagoordeel voor vastgelegd: {{packages}}. Compileer en controleer de structuurboom op gaten.",
+    "compileLua": "Compileer de voorbereide broncode met LuaLaTeX uit TeX Live 2025 of nieuwer en controleer de uitvoer daarna opnieuw.",
+    "compileAny": "Compileer de voorbereide broncode met pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer en controleer de uitvoer daarna opnieuw. Toegankelijke wiskunde vraagt LuaLaTeX. De meegeleverde engine kan geen tags maken."
+  },
+  "gate": {
+    "incompatiblePackages_one": "Dit pakket is niet geschikt voor taggen: {{packages}}. Inhoud eruit kan ongetagd in de PDF belanden.",
+    "incompatiblePackages_other": "Deze pakketten zijn niet geschikt voor taggen: {{packages}}. Inhoud eruit kan ongetagd in de PDF belanden.",
+    "incompatiblePackagesTruncated": "Deze pakketten zijn niet geschikt voor taggen: {{packages}} en nog {{more}}. Inhoud eruit kan ongetagd in de PDF belanden.",
+    "partialPackages": "Deze pakketten taggen maar deels: {{packages}}.",
+    "partialPackagesTruncated": "Deze pakketten taggen maar deels: {{packages}} en nog {{more}}.",
+    "unknownPackages": "Voor {{packages}} is geen tagoordeel vastgelegd.",
+    "unknownPackagesTruncated": "Voor {{packages}} en nog {{more}} is geen tagoordeel vastgelegd.",
+    "cautionAdvice": "Compileer en controleer de structuurboom op gaten."
+  },
+  "panel": {
+    "title": "Preflight",
+    "readerDisabled": "Compileer en voer eerst een uitvoercontrole uit",
+    "readerEnabled": "Open de tekst die uit de PDF is gehaald",
+    "readerButton": "Tonen wat de lezer ziet",
+    "aboutLabel": "Over Preflight",
+    "aboutTitle": "Wat Preflight controleert",
+    "aboutIntro": "Preflight leest de projectbroncode, het compilerlogboek en de huidige PDF. Zet alleen de controles aan die bij dit document passen.",
+    "aboutFooter": "Bevestigde bevindingen komen uit directe waarnemingen. Adviserende bevindingen vragen nog om jouw oordeel. Een schoon rapport helpt bij de review, maar garandeert geen acceptatie of toegankelijkheid. Alle controles draaien lokaal.",
+    "enableCheck": "{{check}} inschakelen",
+    "runCheck": "{{check}} uitvoeren",
+    "rerunCheck": "{{check}} opnieuw uitvoeren",
+    "run": "Uitvoeren",
+    "rerun": "Opnieuw uitvoeren",
+    "collapse": "Inklappen",
+    "expand": "Uitklappen",
+    "publicationProfile": "Publicatieprofiel",
+    "anonymousReview": "Anonieme review",
+    "anonymousReviewHint": "Bekijk ook auteursvelden, dankwoorden en PDF-metagegevens.",
+    "anonymousReviewToggle": "Identiteit voor anonieme review controleren",
+    "engineUnsupported": "Broncontroles voor {{engine}} zijn nog niet gebouwd. Deze controle gebruikt alleen de gecompileerde PDF en meldt ontbrekende bronondersteuning niet als fout.",
+    "runToSeeResults": "Voer deze controle uit om resultaten te zien.",
+    "analyzing": "Analyseren…",
+    "runEnabled_one": "{{count}} ingeschakelde controle uitvoeren",
+    "runEnabled_other": "{{count}} ingeschakelde controles uitvoeren",
+    "rerunEnabled_one": "{{count}} ingeschakelde controle opnieuw uitvoeren",
+    "rerunEnabled_other": "{{count}} ingeschakelde controles opnieuw uitvoeren",
+    "failed": "Preflight is mislukt: {{error}}",
+    "standardsCaveat": "Oleafly leest het deel van PDF/UA en WCAG dat in het bestand zelf te controleren is. Het kan niet bepalen of alt-tekst zinvol is, of de leesvolgorde klopt, of het kleurcontrast hoog genoeg is. Dat moet een mens beoordelen. Voor een formele conformiteitsverklaring valideer je met veraPDF of PAC 2024.",
+    "pdfRequired": "PDF vereist. Compileer het project en voer het opnieuw uit. Deze controle is nog niet beoordeeld.",
+    "compileFirst": "Compileer het project eerst. Preflight heeft het huidige compilerlogboek of de huidige PDF nodig om de buildkwaliteit te beoordelen.",
+    "partialCoverage": "De broncontroles zijn klaar. Compileer het project en voer het opnieuw uit om de controles op PDF-niveau af te ronden.",
+    "unsupportedCoverage": "Niet beoordeeld. Broncontroles voor deze engine zijn er nog niet.",
+    "groupSource": "Project en broncode",
+    "groupOutput": "Gecompileerde uitvoer",
+    "fixAll_one": "{{count}} oplossen met AI",
+    "fixAll_other": "Alle {{count}} oplossen met AI",
+    "noProblems": "Geen problemen gevonden."
+  },
+  "finding": {
+    "review": "Beoordelen",
+    "manual": "Handmatig",
+    "page": "p.{{page}}",
+    "needsJudgment": "Vraagt jouw oordeel. Geen enkel hulpmiddel kan dit uit het bestand alleen bepalen.",
+    "jumpToSource": "Naar de broncode springen",
+    "fixWithAi": "Repareren met AI"
+  },
+  "score": {
+    "notEvaluated": "{{label}} niet beoordeeld",
+    "readiness": "{{label}}: {{score}} van de 100",
+    "notScored": "Geen score"
+  },
+  "reader": {
+    "title": "Wat de lezer ziet",
+    "description": "Tekst die in leesvolgorde uit de huidige PDF is gehaald. Dit komt dicht bij wat een schermlezer of geautomatiseerde parser krijgt.",
+    "pagesNav": "PDF-pagina's",
+    "page": "Pagina {{page}}",
+    "empty": "leeg",
+    "extractedFrom": "Tekst uit pagina {{page}}",
+    "pageOf": "Pagina {{page}} van {{total}}",
+    "noText": "Er is geen selecteerbare tekst op deze pagina gevonden."
+  },
+  "atsCard": {
+    "title": "Wat een parser eruit haalde",
+    "notFound": "Niet gevonden",
+    "links_one": "{{count}} link",
+    "links_other": "{{count}} links",
+    "detected": "{{section}}: gevonden",
+    "requiredMissing": "{{section}}: vereiste sectie niet gevonden",
+    "optionalMissing": "{{section}}: optionele sectie niet gevonden",
+    "detectedTitle": "Sectie {{section}} gevonden",
+    "requiredMissingTitle": "{{section}} wordt verwacht maar is niet gevonden",
+    "optionalMissingTitle": "{{section}} is optioneel en is niet gevonden",
+    "optionalSuffix": ", optioneel"
+  },
+  "prepExport": {
+    "title": "Toegankelijke export",
+    "intro": "Bereid dit document voor op getagde uitvoer volgens PDF/UA-2. Oleafly voegt \\DocumentMetadata met pdfstandard=ua-2 en tagging=on toe, plus de alt-tekst- en tabelinstellingen die het zelf kan invullen. Compileer het resultaat met pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer en controleer het daarna opnieuw. Toegankelijke wiskunde vraagt LuaLaTeX. De meegeleverde engine kan geen tags maken.",
+    "activeFileFallback": "Oleafly kon het hoofddocument niet laden en heeft daarom het bestand bekeken waarin je werkt. Open het hoofddocument om de class en pakketten te zien die je build echt laadt.",
+    "prepare": "Voorbereiden op toegankelijke export",
+    "unavailable": "Voorbereiden staat uit voor deze documentklasse. Stap over op een class die de tagcode ondersteunt en voer de controle opnieuw uit. Compatibiliteitsgegevens van het LaTeX Project, opgehaald op {{retrieved}}.",
+    "unavailableUndated": "Voorbereiden staat uit voor deze documentklasse. Stap over op een class die de tagcode ondersteunt en voer de controle opnieuw uit. Compatibiliteitsgegevens van het LaTeX Project.",
+    "applied": "Toegepast",
+    "apply": "Toepassen op document",
+    "copied": "Gekopieerd",
+    "copy": "Broncode kopiëren",
+    "compileTagged": "Getagd compileren en controleren",
+    "compileTaggedWarning": "De LuaLaTeX van je systeem kan lokale bestanden lezen. Voer hem alleen uit voor een project dat je vertrouwt.",
+    "noEngine": "Schakel een engine in bij Instellingen, LaTeX-engine om de getagde PDF in de app te maken. Of compileer de voorbereide broncode met je eigen pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer."
+  }
+}

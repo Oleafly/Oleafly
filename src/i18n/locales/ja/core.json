@@ -1,0 +1,576 @@
+{
+  "accents": {
+    "blue": "ブルー",
+    "green": "グリーン",
+    "orange": "オレンジ",
+    "purple": "パープル",
+    "rose": "ローズ",
+    "teal": "ティール"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "ブリッジが必要",
+      "cliMissing": "CLI が見つかりません",
+      "ready": "準備完了",
+      "unavailable": "利用できません"
+    },
+    "requestFailed": "ACP のリクエストを完了できませんでした。"
+  },
+  "aiBudget": {
+    "approximateCost": "約 {{amount}}",
+    "blocked": "このプロジェクトは AI の予算 {{budget}} に達しました。続けるには、設定で予算を引き上げるか解除してください。",
+    "warned": "このプロジェクトは AI 予算 {{budget}} のうち {{spent}} を使いました。"
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "この操作のため Oleafly アシスタントに切り替えました。"
+  },
+  "bibtex": {
+    "duplicateDoi": "次のキーと DOI が重複しています: {{keys}}",
+    "duplicateKey": "引用キーが重複しています",
+    "invalidYear": "年「{{year}}」は 4 桁の数字ではありません",
+    "missingField": "必須フィールドがありません: {{fields}}",
+    "missingKey": "@{{type}} 型の項目に引用キーがありません",
+    "unknownType": "不明な項目の種類 @{{type}}",
+    "unreadableFields": "「{{entry}}」のフィールドを読み取れませんでした",
+    "unterminatedEntry": "{{position}} 文字目付近で項目が閉じられていません",
+    "unusualField": "@{{type}} では珍しいフィールドです: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "引用の読み込み中に {{path}} が変更されました。もう一度お試しください。",
+    "noArxivEntry": "arXiv の項目が見つかりません。",
+    "noReferences": "そのファイルに参考文献は見つかりませんでした。",
+    "offline": "引用の検索にはネットワークが必要です。設定でオフラインモードを解除してください。",
+    "parseFailed": "引用を解析できませんでした。",
+    "projectChanged": "引用の読み込み中にプロジェクトが変更されました。",
+    "projectChangedNotInserted": "引用の読み込み中にプロジェクトが変更されました。引用は挿入されていません。",
+    "projectChangedRetry": "引用の読み込み中にプロジェクトが変更されました。元のプロジェクトでもう一度お試しください。",
+    "readFailed": "{{path}} を読み取れませんでした: {{detail}}",
+    "unrecognizedFile": "認識できないファイル形式です: {{name}}",
+    "writeFailed": "{{path}} に書き込めませんでした: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Oleafly の項目を {{path}} に追加しました。{{markup}} で引用できます。",
+    "failed": "Oleafly の引用を追加できませんでした。代わりに設定の「ヘルプと情報」からコピーしてください。",
+    "present": "{{path}} にはすでに Oleafly の項目があります。{{markup}} で引用できます。",
+    "undo": "元に戻す"
+  },
+  "compatibility": {
+    "biblatexBiber": "このプロジェクトは参考文献に biblatex と Biber を使っています。",
+    "blockerFinding_other": "{{title}}（ほか {{more}} 件）",
+    "chooseEngine": "エンジンを選択…",
+    "importNotes_other": "読み込み時の注意 {{count}} 件: {{title}}（ほか {{more}} 件）"
+  },
+  "compile": {
+    "engineNotLoaded": "ドキュメントエンジンが読み込まれるまで、コンパイルはできません。",
+    "noOfflineMode": "{{engine}} にはオフラインのコンパイルモードがありません。通常どおりコンパイルします。",
+    "retry": "もう一度コンパイル"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "開発用のプロジェクトをすべてごみ箱に移動します。完全に削除されるものはありません。",
+        "title": "プロジェクトを消去"
+      },
+      "replayFirstRun": {
+        "description": "すべてのツアーをリセットし、現在のプロジェクトを閉じて、最初の案内に戻ります。",
+        "title": "初回起動をやり直す"
+      },
+      "resetAndSeed": {
+        "description": "現在のプロジェクトをごみ箱に移動してから、ローカルキャッシュにある {{count}} 件の実プロジェクト由来のフィクスチャをすべてコピーします。",
+        "title": "リセットして投入"
+      },
+      "resetUiState": {
+        "description": "プロジェクトを削除せずに、Oleafly のローカル設定と保存された UI の状態を消去します。",
+        "title": "UI の状態をリセット"
+      },
+      "seedCorpus": {
+        "action": "コーパスを投入",
+        "description": "~/Codespace/Oleafly/oleafly-seed から研究プロジェクトを {{count}} 件コピーします。LaTeX と Typst の論文、学位論文、書籍、発表、ポスター、図が含まれ、すべて同梱エンジンでコンパイルできることを確認済みです。既存のフィクスチャはそのまま残ります。",
+        "title": "研究コーパスを投入"
+      }
+    },
+    "closeProjectFailed": "開いているプロジェクトを安全に閉じられませんでした。",
+    "confirm": {
+      "clearProjects": {
+        "action": "プロジェクトを消去",
+        "description": "隔離された開発用ライブラリのプロジェクトがすべて、そのごみ箱に移動します。本番の Oleafly ライブラリには影響しません。",
+        "title": "開発用プロジェクトをすべて消去しますか？"
+      },
+      "fallbackTitle": "開発用の操作を確認",
+      "resetAndSeed": {
+        "action": "リセットして投入",
+        "description": "現在の開発用プロジェクトがすべてごみ箱に移動し、そのあと Oleafly がローカルの oleafly-seed キャッシュから研究用フィクスチャを {{count}} 件コピーします。",
+        "title": "開発用ライブラリをリセットして投入しますか？"
+      },
+      "resetBrowser": {
+        "action": "UI の状態をリセット",
+        "description": "この開発用オリジンの Oleafly の設定、ツアー、その他のブラウザ状態を消去してから、アプリを再読み込みします。プロジェクトのファイルはディスク上に残ります。",
+        "title": "開発用の UI の状態をリセットしますか？"
+      }
+    },
+    "debugOnly": {
+      "description": "これらの操作は Vite の開発ビルドでのみ読み込まれます。本番ビルドは、出力される資産にこのモジュールの目印が現れた場合、これを拒否します。",
+      "title": "デバッグビルド専用"
+    },
+    "library": {
+      "checking": "ライブラリのパスを確認中…",
+      "label": "開発用ライブラリ",
+      "locked": ".oleafly-dev サンドボックスではないため、プロジェクトの操作はロックされています。"
+    },
+    "nav": "開発者",
+    "projectsRecycled_other": "{{count}} 件のプロジェクトをごみ箱に移動しました。",
+    "replayFailed": "初回起動のツアーをリセットできませんでした。",
+    "resetAndSeedSummary": "{{removed}} 件のプロジェクトをごみ箱に移動し、研究コーパスを投入しました。作成 {{created}} 件、既存 {{skipped}} 件。",
+    "resetFailed": "開発用サンドボックスをリセットできませんでした。",
+    "sandboxOnly": "研究用フィクスチャは .oleafly-dev サンドボックスにのみコピーできます。",
+    "seedFailed": "研究コーパスを投入できませんでした。",
+    "seedFailures_other": "{{summary}} {{count}} 件のフィクスチャが失敗しました。最初の失敗: {{name}}: {{message}}",
+    "seedSummary": "研究コーパスを投入しました。作成 {{created}} 件、既存 {{skipped}} 件。",
+    "unknownSeedError": "不明な投入エラー"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "PNG 画像",
+      "zipArchive": "Zip アーカイブ"
+    }
+  },
+  "dictionary": {
+    "full": "辞書がいっぱいのため、その単語はこの文書の中でのみ非表示にしました。保存するには設定でどれかを削除してください。",
+    "wordTooLong": "単語として保存するには長すぎるため、この文書の中でのみ非表示にしました。単語は {{max}} 文字までです。"
+  },
+  "documentScan": {
+    "complete": "スキャンが完了しました",
+    "failed": "文書のスキャンに失敗しました",
+    "processed": "{{total}} 段落中 {{current}} 段落を処理しました…",
+    "processing": "{{total}} 段落中 {{current}} 段落目を処理中…",
+    "skippedEmpty": "空のクエリをスキップしました（{{current}}/{{total}}）",
+    "splitting": "文書を段落に分割しています…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "ドキュメントエンジンの情報を読み込めませんでした。エンジン固有の操作は無効です。",
+      "renameReloadFailed": "メイン文書の名前を変更したあと、ドキュメントエンジンの情報を読み込めませんでした。",
+      "stillLoading": "ドキュメントエンジンの情報を読み込んでいます。"
+    }
+  },
+  "export": {
+    "pdfFailed": "PDF を保存できませんでした",
+    "pdfFailedDetail": "PDF を保存できませんでした: {{detail}}",
+    "pngFailed": "PNG を保存できませんでした",
+    "pngFailedDetail": "PNG を保存できませんでした: {{detail}}",
+    "revealFailed": "ファイルは保存されましたが、Oleafly はそのフォルダを開けませんでした（権限がありません）。保存ダイアログで選んだ場所を確認してください。",
+    "saved": "{{kind}} を保存しました · {{fileName}}",
+    "showInFolder": "フォルダに表示"
+  },
+  "externalChange": {
+    "deletionRestored": "外部からの削除と未保存の編集が競合しました。ローカルの編集内容を復元しました。",
+    "localEditKept": "未保存の変更がある状態で「{{path}}」への外部からの編集が届きました。ローカルの編集内容を残しました。",
+    "persistExternalFailed": "「{{path}}」への最新の外部更新を保存できませんでした。",
+    "preserveLocalFailed": "「{{path}}」へのローカルの更新を保持できませんでした。",
+    "reloadFailed": "プロジェクトの設定は更新されましたが、変更されたファイルの一部を再読み込みできませんでした。",
+    "restoreLocalFailed": "「{{path}}」への未保存の更新を復元できませんでした。"
+  },
+  "fonts": {
+    "systemDefault": "システムの既定",
+    "terminalDefault": "ターミナルの既定"
+  },
+  "imageToLatex": {
+    "failed": "画像から LaTeX への変換に失敗しました: {{detail}}",
+    "inserted": "画像から LaTeX を挿入しました",
+    "transcribing": "画像を文字起こししています…"
+  },
+  "import": {
+    "arxivImported": "arXiv のソースを読み込みました。結果を確認するにはプロジェクトをコンパイルしてください。",
+    "chooseOfferedProjectType": "このファイルで選べるプロジェクトの種類から 1 つ選んでください。",
+    "invalidArxivId": "arXiv の論文リンク、または 2301.01234 のような ID を貼り付けてください。",
+    "supportedDocumentTypes": "対応している文書形式のいずれかを選んでください。",
+    "conversionNotice": "内容を LaTeX に変換しました。表、図、引用を中心に、体裁を調整する必要があるかもしれません。",
+    "figureSaved": "{{name}} を保存しました",
+    "pdfProjectCreated": "PDF からプロジェクトを作成しました。再構成の結果を確認してから使ってください。",
+    "pickPdfOrDocx": ".pdf または .docx のファイルを選んでください",
+    "texSaved": ".tex を保存しました",
+    "unsupportedFile": ".zip、.docx、.md、.markdown のいずれかのファイルを選んでください。",
+    "zipSaveFailed": "ZIP アーカイブを保存できませんでした。",
+    "zipSaved": ".zip を保存しました"
+  },
+  "inlineAi": {
+    "concise": "簡潔にする",
+    "expand": "詳しくする",
+    "fixSource": "ソースを直す",
+    "grammar": "文法を直す",
+    "improve": "改善する",
+    "translate": "翻訳する"
+  },
+  "intelligence": {
+    "analysisFailed": "現在のリビジョンのプロジェクト解析に失敗しました。",
+    "analyzing": "プロジェクトインテリジェンスが現在のリビジョンを解析しています。",
+    "couldNotSend": "プロジェクトの解析をワーカーに送れませんでした。",
+    "disposed": "プロジェクトインテリジェンスのワーカーは破棄されています。",
+    "disposedDuringRequest": "プロジェクトインテリジェンスのワーカーが破棄されました。",
+    "failed": "プロジェクトインテリジェンスが失敗しました。",
+    "identityMismatch": "プロジェクトインテリジェンスの応答の識別子がリクエストと一致しませんでした。",
+    "malformedResponse": "プロジェクトインテリジェンスのワーカーが不正な応答を返しました。",
+    "malformedSnapshotIdentity": "プロジェクトインテリジェンスのスナップショット識別子が不正でした。",
+    "noProject": "アクティブなプロジェクトがありません。",
+    "partialFiles_other": "{{count}} 件のファイルで、復旧可能な部分的解析が得られました。",
+    "retainedStale": "プロジェクトの内容が変更されました。現在のリビジョンの解析が終わるまで、保持している解析は古いままです。",
+    "sourceGraphRefreshing": "プロジェクトのファイルが変更されました。ソースグラフを更新しています。",
+    "sourceSnapshotsLoading": "プロジェクトのファイルが変更されました。現在の解析のためにソースのスナップショットを読み込んでいます。",
+    "staleSnapshot": "プロジェクトインテリジェンスのワーカーは、このスナップショットの解析を保持していません。",
+    "stopped": "プロジェクトインテリジェンスは停止しています。",
+    "timedOut": "プロジェクトインテリジェンスがタイムアウトしました。",
+    "typeMismatch": "プロジェクトインテリジェンスの応答の種類がリクエストと一致しませんでした。",
+    "unexpectedResponse": "プロジェクトインテリジェンスのワーカーが予期しない応答を返しました。",
+    "workerFailed": "プロジェクトインテリジェンスのワーカーが失敗しました。",
+    "workerRestarted": "タイムアウト後、プロジェクトインテリジェンスのワーカーを再起動しました。",
+    "workerUnavailable": "プロジェクトインテリジェンスのワーカーを利用できません。"
+  },
+  "latexPackages": {
+    "algorithm2e": "アルゴリズムの組版",
+    "amsmath": "高度な数式組版",
+    "amssymb": "拡張された数学記号",
+    "amsthm": "定理と証明の環境",
+    "array": "拡張された array と tabular",
+    "authblk": "著者と所属のブロック",
+    "babel": "多言語対応と文書の言語設定",
+    "biblatex": "高度な参考文献機能",
+    "bookmark": "改良された PDF のしおり",
+    "booktabs": "美しい表の罫線",
+    "caption": "キャプションのカスタマイズ",
+    "cleveref": "賢い相互参照（hyperref のあとに読み込みます）",
+    "csquotes": "文脈に応じた引用符（biblatex に必要）",
+    "enumitem": "リストのカスタマイズ",
+    "fancyhdr": "ヘッダーとフッターのカスタマイズ",
+    "float": "改良されたフロートの配置",
+    "fontspec": "OpenType フォントの選択（Xe/LuaLaTeX）",
+    "geometry": "ページレイアウトのカスタマイズ",
+    "graphicx": "図や画像の取り込み",
+    "hyperref": "ハイパーリンク、しおり、PDF のメタデータ",
+    "inputenc": "入力エンコーディング（Xe/LuaLaTeX では不要）",
+    "lineno": "査読用の行番号",
+    "lipsum": "ダミー（lorem ipsum）テキスト",
+    "listings": "コードリスト（内容はタグ付けされません）",
+    "mathtools": "修正と機能を加えた amsmath の上位版",
+    "microtype": "マイクロタイポグラフィの調整",
+    "minted": "Pygments で強調表示するコードリスト",
+    "multirow": "複数行にまたがる表のセル",
+    "natbib": "著者年方式と番号方式の引用",
+    "parskip": "段落の間隔",
+    "pdfpages": "別の PDF からページ全体を取り込む",
+    "setspace": "行間の調整",
+    "siunitx": "SI 単位と数値の書式",
+    "subcaption": "サブフィギュアとサブテーブル",
+    "subfig": "旧来のサブフィギュア用パッケージ",
+    "tabularx": "幅を自動調整する表",
+    "threeparttable": "下に注釈を付けられる表",
+    "tikz": "プログラムで描くベクタ図（alt テキストは手動で指定）",
+    "titlesec": "セクション見出しの書式",
+    "todonotes": "下書き用の余白メモ",
+    "unicode-math": "Xe/LuaLaTeX 向けの Unicode 数式（タグ付き数式に必要）",
+    "url": "URL の組版",
+    "wrapfig": "本文を回り込ませる図",
+    "xcolor": "色のサポート"
+  },
+  "literatureSources": {
+    "arxiv": "物理、数学、計算機科学、定量生物学などの分野の 240 万件を超えるプレプリント。",
+    "crossref": "1 億 5000 万件を超える研究成果のメタデータを持つ DOI の登録機関。",
+    "googleScholar": "Serper 経由の Google Scholar の検索結果。設定 → 連携 → 引用検索で Serper の API キーが必要です。",
+    "openalex": "学術文献、著者、情報源、機関、トピック、出版社、助成機関のオープンなカタログ。",
+    "pubmed": "MEDLINE を含む、生物医学と生命科学分野の 4000 万件を超える文献情報と抄録。",
+    "semanticScholar": "引用グラフ、影響力のある引用データ、TLDR 要約を備えた学術索引。",
+    "uspto": "先行技術調査と応用研究のための米国特許と公開出願。PatentsView の移行中は検索を停止しています。",
+    "usptoPaused": "USPTO は Open Data Portal への移行中、PatentsView の検索 API を一時的に停止しています。",
+    "yearRangeInvalid": "開始年を終了年より後にはできません。"
+  },
+  "mcp": {
+    "openProjectSummary": "プロジェクト {{id}} を開く",
+    "useToolSummary": "{{server}} の MCP サーバーの {{tool}} を使う"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "MCP サーバー '{{name}}' の type と transport の指定が矛盾しています。",
+    "exactlyOneServer": "MCP サーバーの JSON には、サーバーをちょうど 1 つだけ含める必要があります。",
+    "fieldBoolean": "MCP サーバー '{{name}}' のフィールド '{{field}}' は真偽値である必要があります。",
+    "fieldString": "MCP サーバー '{{name}}' のフィールド '{{field}}' は文字列である必要があります。",
+    "fieldStringArray": "MCP サーバー '{{name}}' のフィールド '{{field}}' は文字列の配列である必要があります。",
+    "fieldStringRecord": "MCP サーバー '{{name}}' のフィールド '{{field}}' は文字列値のオブジェクトである必要があります。",
+    "jsonMalformed": "MCP サーバーの JSON が不正です。",
+    "jsonNotObject": "MCP サーバーの JSON はオブジェクトである必要があります。",
+    "mcpServersNotObject": "MCP サーバーの JSON のフィールド 'mcpServers' はオブジェクトである必要があります。",
+    "serverNotObject": "MCP サーバー '{{name}}' はオブジェクトである必要があります。",
+    "structural": "{{detail}} {\"server-name\": {...}} または {\"mcpServers\": {\"server-name\": {...}}} のいずれかの形式にしてください。",
+    "unknownServer": "不明なサーバー",
+    "unsupportedTransport": "MCP サーバー '{{name}}' の transport '{{transport}}' は対応していません。",
+    "unsupportedType": "MCP サーバー '{{name}}' の type '{{type}}' は対応していません。"
+  },
+  "mermaid": {
+    "diagram": "ダイアグラム",
+    "renderFailed": "図を描画できません。",
+    "rendering": "図を描画しています"
+  },
+  "missingPackages": {
+    "action_other": "{{count}} 件のファイルを探してインストール",
+    "installing_other": "{{count}} 件のパッケージをインストールしています。完了するとコンパイルが再開します。",
+    "summary_other": "コンパイル時に {{names}} が見つかりませんでした。TeX Live でこれらを提供するパッケージを探してください。"
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "コンテキストウィンドウ {{tokens}} トークン",
+      "deprecated": {
+        "label": "非推奨",
+        "title": "プロバイダがこのモデルを非推奨にしました"
+      },
+      "reasoning": {
+        "label": "推論",
+        "title": "推論モデル"
+      },
+      "tools": {
+        "label": "ツール",
+        "title": "ツールを呼び出せます"
+      },
+      "vision": {
+        "label": "画像",
+        "title": "画像を受け付けます"
+      }
+    },
+    "listChange": {
+      "none": "変更なし",
+      "summary": "追加 {{added}} 件、削除 {{removed}} 件"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "プロジェクトの参照解析を利用できません。",
+    "analysisUpdating": "プロジェクトの参照を更新しています。",
+    "definitionsFor": "{{name}} の定義",
+    "edits_other": "{{count}} 件の編集",
+    "files_other": "{{count}} 件のファイル",
+    "nameExists": "「{{name}}」はすでに存在します。",
+    "noDefinition": "「{{name}}」の定義が見つかりません",
+    "noReferences": "「{{name}}」への参照はありません",
+    "notRenamable": "このシンボルの名前は変更できません。",
+    "nothingToRename": "名前を変更する対象がありません。",
+    "referencesFor": "{{name}} への参照",
+    "renamePartial": "{{total}} 件中 {{edited}} 件のファイルで「{{name}}」に変更しました。{{files}} には書き込めませんでした。",
+    "renamed": "「{{name}}」に変更しました（$t(core:navigation.files, {\"count\": {{files}} }) で $t(core:navigation.edits, {\"count\": {{edits}} })）"
+  },
+  "pandoc": {
+    "downloadFailed": "pandoc をダウンロードできませんでした。手動でインストールしてから、もう一度お試しください",
+    "downloadingPercent": "pandoc をダウンロード中… {{progress}}%",
+    "downloadingSize": "pandoc をダウンロード中… {{megabytes}} MB",
+    "installGuide": "インストール手順",
+    "installed": "pandoc をインストールしました"
+  },
+  "project": {
+    "copyFailed": "「{{path}}」をコピーできませんでした。",
+    "dateUnavailable": "不明",
+    "importFailed": "読み込めませんでした。詳細はアプリのログを確認してください。",
+    "imported": "プロジェクトを読み込みました。",
+    "openFailed": "プロジェクトを開けませんでした。詳細はアプリのログを確認してください。",
+    "restoringUnsavedFiles": "プロジェクトの更新により、未保存の編集があるファイルが削除されました。Oleafly は編集内容を保持し、それらのファイルを復元しています。",
+    "saveBlockedClose": "保存できないファイルがあったため、プロジェクトは開いたままです。",
+    "saveBlockedDiscard": "変更を破棄して閉じる",
+    "saveBlockedMany": "{{count}} 件のファイルを保存できませんでした: {{files}}。最初の 1 件は未保存の変更とともにエディタで開いています（{{reason}}）。このまま問題を直すか、それらのファイルの未保存の変更を破棄して閉じてください。",
+    "saveBlockedOne": "{{file}} を保存できませんでした（{{reason}}）。未保存の変更とともにエディタで開いています。このまま問題を直すか、その変更を破棄して閉じてください。",
+    "saveBlockedStay": "このまま続ける",
+    "saveBlockedSwitch": "保存できないファイルがあったため、プロジェクトは開いたままです。",
+    "saveBlockedTitle": "保存できないファイルがあります",
+    "updatedDaysAgo_other": "{{count}} 日前に更新",
+    "updatedOn": "{{date}} に更新",
+    "updatedToday": "今日更新",
+    "updatedYesterday": "昨日更新"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "解析に失敗しました: {{message}}",
+    "beginIsHere": "{{command}} はここにあります。",
+    "beginWithoutEnd": "{{command}} に対応する \\end がありません。",
+    "bibliographyFileMissing": "参考文献ファイル「{{file}}」がプロジェクト内に見つかりませんでした。",
+    "citationHasManyDefinitions_other": "引用「{{name}}」には定義の候補が {{count}} 件あります。",
+    "citationKeyDuplicated_other": "引用キー「{{name}}」が {{count}} 回定義されています。",
+    "citationUnresolved": "引用「{{name}}」を解決できませんでした。",
+    "definedHere": "{{kind}}「{{name}}」はここで定義されています。",
+    "duplicateTargetDefined_other": "{{kind}} の対象「{{name}}」が {{count}} 回定義されています。",
+    "endWithoutBegin": "{{command}} に対応する \\begin がありません。",
+    "entryMissingFieldList": "参考文献の項目「{{key}}」にフィールドの一覧がありません。",
+    "expectedEndBefore": "{{found}} の前に {{expected}} が必要です。",
+    "fieldIncompleteValue": "フィールド「{{name}}」の値が不完全です。",
+    "fieldMissingEquals": "フィールド「{{name}}」に「=」がありません。",
+    "fieldRepeated": "フィールド「{{name}}」が参考文献の項目「{{key}}」で重複しています。",
+    "fileNotLoaded": "現在のプロジェクト解析のために、このソースファイルはまだ読み込まれていません。",
+    "fileUnreadable": "ファイルを読み取れませんでした。",
+    "incompleteEntry": "@{{type}} の項目が不完全です。",
+    "invalidYear": "年「{{year}}」は 4 桁の BibTeX の年ではありません。",
+    "kinds": {
+      "anchor": "アンカー",
+      "asset": "アセット",
+      "bibentry": "参考文献の項目",
+      "bibliography": "参考文献",
+      "environment": "環境",
+      "file": "ファイル",
+      "glossary": "用語集の項目",
+      "import": "インポート",
+      "include": "インクルード",
+      "label": "ラベル",
+      "link": "リンク",
+      "macro": "マクロ",
+      "section": "セクション"
+    },
+    "malformedDirective": "BibTeX のディレクティブまたは項目の種類が不正です。",
+    "missingCitationKey": "@{{type}} に引用キーがありません。",
+    "missingRequiredField": "{{entry}} に必須フィールド {{fields}} がありません。",
+    "possibleTarget": "候補となる対象: {{file}}",
+    "projectFileUnreadable": "プロジェクトのファイルを読み取れませんでした。",
+    "referenceHasManyDefinitions_other": "参照「{{name}}」には定義の候補が {{count}} 件あります。",
+    "referenceUnresolved": "参照「{{name}}」を解決できませんでした。",
+    "targetMatchesManyFiles_other": "{{kind}} の対象「{{target}}」が {{count}} 件のプロジェクトファイルに一致します。",
+    "targetUnresolved": "{{kind}} の対象「{{target}}」を解決できませんでした。",
+    "typeDelimiterExpected": "@{{type}} のあとには開き波括弧または開き丸括弧が必要です。",
+    "unclosedDelimiter": "区切り記号「{{char}}」が「{{expected}}」で閉じられていません。",
+    "unclosedDirective": "@{{type}} のディレクティブが閉じられていません。",
+    "unclosedEntry": "@{{type}} の項目が閉じられていません。",
+    "unclosedEntryNamed": "参考文献の項目「{{key}}」が閉じられていません。",
+    "unclosedFence": "コードブロックのフェンスが閉じられていません。",
+    "unclosedFrontMatter": "YAML のフロントマターが閉じられていません。",
+    "unclosedString": "文字列リテラルが閉じられていません。",
+    "unclosedTypstComment": "Typst のブロックコメントが閉じられていません。",
+    "unexpectedClosingDelimiter": "予期しない閉じ記号「{{char}}」です。",
+    "unknownEntryType": "不明な参考文献の項目の種類 @{{type}} です。",
+    "unparsableField": "@{{type}} のフィールドを解析できませんでした。",
+    "unparsableFieldNamed": "「{{key}}」の中のフィールドを解析できませんでした。"
+  },
+  "proofreading": {
+    "cancelled": "校正をキャンセルしました。",
+    "couldNotStart": "オフライン校正を開始できませんでした。",
+    "disposed": "オフライン校正は破棄されました。",
+    "invalidResponse": "オフライン校正が不正な応答を返しました。",
+    "outOfRangeDiagnostic": "オフライン校正が範囲外の診断を返しました。",
+    "postFailed": "文書をオフライン校正に送れませんでした。",
+    "restarted": "オフライン校正を再起動しました。",
+    "restartedAfterTimeout": "タイムアウト後、オフライン校正を再起動しました。",
+    "staleResponse": "オフライン校正が古い応答を返しました。",
+    "stopped": "オフライン校正が予期せず停止しました。",
+    "superseded": "新しい校正リクエストがこのリクエストを置き換えました。",
+    "timedOut": "オフライン校正がタイムアウトしました。次の編集時に再起動します。",
+    "dictionaryUnavailable": "選択されたスペル辞書がインストールされていません。設定からダウンロードしてください。"
+  },
+  "skillGroups": {
+    "shelf": "分野別の棚",
+    "user": "自分のスキル"
+  },
+  "tagged": {
+    "compileFailed": "タグ付きのコンパイルに失敗しました。エンジンを確認してもう一度お試しください。",
+    "compiled": "タグ付き PDF をコンパイルしました。下のアクセシビリティの判定を確認してください。",
+    "compiledWithErrors": "タグ付きのコンパイルはエラーありで終了しました。ログを確認してください。",
+    "engineRequired": "先に設定の「LaTeX エンジン」でタグ付け対応のエンジンを有効にしてください。"
+  },
+  "terminal": {
+    "defaultTitle": "ターミナル {{index}}"
+  },
+  "tex": {
+    "distributionGap": "このプロジェクトは {{pinned}} で固定されています。現在の {{local}} にはそのうち {{count}} 件のパッケージがないため、同じディストリビューションに戻すまでコンパイルが失敗することがあります。",
+    "distributionSkew": "このプロジェクトは {{pinned}} で固定されていますが、このマシンは {{local}} でコンパイルします。出力がわずかに異なることがあります。",
+    "installPinned_other": "{{count}} 件すべてインストール",
+    "installingPinned_other": "固定された {{count}} 件のパッケージをインストール中…",
+    "pinnedPackagesFailed": "固定されたパッケージの一部をインストールできませんでした。設定 → LaTeX エンジンを確認してください。",
+    "pinnedPackagesInstalled": "固定された LaTeX パッケージをインストールしました。",
+    "pinnedPackagesMissing_other": "このプロジェクトは、ここにインストールされていない LaTeX パッケージを {{count}} 件固定しています。"
+  },
+  "theme": {
+    "cssForbiddenSyntax": "カスタム CSS では at 規則、URL、セレクタは使えません。",
+    "cssNotSimple": "カスタム CSS には単純なプロパティ宣言だけを書いてください。",
+    "cssNotText": "カスタム CSS はテキストである必要があります。",
+    "cssPropertyNotAllowed": "このカスタム CSS プロパティは使えません: {{property}}。",
+    "cssTooLarge": "カスタム CSS が 64 KiB を超えています。",
+    "cssTooManyDeclarations": "カスタム CSS に書ける宣言は最大 64 件です。",
+    "cssUnsafeValue": "カスタム CSS に安全でない値が含まれています。",
+    "customizationNotObject": "テーマのカスタマイズはオブジェクトである必要があります。",
+    "dark": {
+      "notObject": "ダークの CSS 変数はオブジェクトである必要があります。",
+      "tooManyEntries": "ダークの CSS 変数が {{max}} 件を超えています。"
+    },
+    "fileMissingCssVars": "テーマファイルには、light と dark の項目を持つ cssVars を含める必要があります。",
+    "fileMissingModes": "テーマファイルには light と dark の CSS 変数を含める必要があります。",
+    "fileNotJson": "テーマファイルが正しい JSON ではありません。",
+    "fileNotObject": "テーマファイルにはオブジェクトを含める必要があります。",
+    "fileNotText": "テーマファイルはテキストである必要があります。",
+    "fileTooLarge": "テーマファイルが 128 KiB を超えています。",
+    "invalidColor": "テーマトークン {{token}} の色の値が不正です。",
+    "invalidRadius": "角の丸みには px、rem、em、パーセントのいずれかを使ってください。",
+    "light": {
+      "notObject": "ライトの CSS 変数はオブジェクトである必要があります。",
+      "tooManyEntries": "ライトの CSS 変数が {{max}} 件を超えています。"
+    },
+    "tokens": {
+      "notObject": "テーマトークンはオブジェクトである必要があります。",
+      "tooManyEntries": "テーマトークンが {{max}} 件を超えています。"
+    },
+    "unknownProperty": "不明",
+    "unsupportedToken": "対応していないテーマトークンです: {{token}}。",
+    "unsupportedVersion": "このテーマファイルは対応していないバージョンを使っています。"
+  },
+  "themes": {
+    "matchApp": "アプリのテーマに合わせる"
+  },
+  "tinytex": {
+    "installFailed": "TinyTeX をインストールできませんでした。",
+    "installGuide": "インストール手順",
+    "installed": "TinyTeX をインストールしました。",
+    "phase": {
+      "addingPackages": "パッケージを追加中…",
+      "downloading": "ダウンロード中…",
+      "downloadingPercent": "ダウンロード中… {{progress}}%",
+      "installing": "インストール中…",
+      "unpacking": "展開中…"
+    },
+    "removeFailed": "TinyTeX を削除できませんでした",
+    "removed": "TinyTeX を削除しました"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "論文を読む",
+      "alphaxivSearch": "論文を検索",
+      "compile": "文書をコンパイル",
+      "getLog": "コンパイルログを読む",
+      "insertFigure": "図を挿入",
+      "listFiles": "プロジェクトのファイルを一覧",
+      "literatureSearch": "文献を検索",
+      "previewFigure": "図をプレビュー",
+      "projectLibrarySearch": "プロジェクトの資料を検索",
+      "projectMap": "プロジェクトを俯瞰",
+      "readFile": "ファイルを読む",
+      "readLinkedFile": "リンクされたファイルを読む",
+      "readPdfText": "コンパイル済み PDF を読む",
+      "readResearchRootFile": "リンクされたファイルを読む",
+      "runCommand": "コマンドを実行",
+      "searchProject": "プロジェクトを検索",
+      "sendMessage": "委任したタスクを更新",
+      "spawnAgent": "タスクを委任して開始",
+      "verifyCitation": "引用を確認",
+      "verifyPdfPages": "PDF のページを確認",
+      "waitAgent": "委任したタスクを待つ"
+    },
+    "skillsBudgetNotice": "Codex はすべてのスキルを一覧できませんでした。スキルの説明にはコンテキストの 2% しか使わないため、スキルフォルダを整理するか、スキルを名前で指定してください。",
+    "status": {
+      "cancelled": "停止",
+      "declined": "拒否",
+      "done": "完了",
+      "failed": "失敗",
+      "failedWithCode": "終了コード {{code}} で失敗",
+      "interrupted": "中断",
+      "running": "実行中",
+      "timedOut": "タイムアウト"
+    },
+    "summary": {
+      "citationUnverified": "一致する記録が見つかりません",
+      "citationVerified": "引用サービスで確認済み",
+      "compileFailed": "コンパイルに失敗しました",
+      "compileSucceeded": "コンパイルに成功しました",
+      "diagnostics_other": "{{count}} 件の診断",
+      "papers_other": "{{count}} 件の論文"
+    }
+  },
+  "ui": {
+    "transparent": "透明"
+  },
+  "update": {
+    "projectChangedWhileSaving": "保存中にプロジェクトが変更されました。もう一度更新をお試しください。"
+  }
+}

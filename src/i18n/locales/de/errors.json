@@ -1,0 +1,31 @@
+{
+  "unknown": "Etwas ist schiefgelaufen. Einzelheiten stehen im Protokoll der App.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "Der Projektname darf nicht leer sein.",
+    "name_conflict": "Ein Projekt mit dem Namen {{name}} gibt es bereits.",
+    "folder_unavailable": "Es konnte kein neuer Projektordner reserviert werden."
+  },
+  "settings": {
+    "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."
+  },
+  "literature": {
+    "query_empty": "Die Suchanfrage darf nicht leer sein.",
+    "query_too_long": "Die Suchanfrage ist zu lang (höchstens {{max}} Zeichen).",
+    "unknown_source": "Unbekannte Literaturquelle."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX enthält keine zum System passende {{name}}-Binärdatei.",
+    "package_operation_timeout": "Der Paketvorgang hat sein Limit von {{span}} überschritten und wurde beendet, damit Sie wieder kompilieren können. Vermutlich ist der TeX Live Mirror gerade ausgelastet. Versuchen Sie es später erneut oder führen Sie tlmgr selbst aus."
+  },
+  "github": {
+    "sign_in_expired": "Der Anmeldecode ist abgelaufen. Versuchen Sie es erneut.",
+    "sign_in_cancelled": "Die Autorisierung bei GitHub wurde abgebrochen.",
+    "sign_in_failed": "Die Anmeldung bei GitHub ist fehlgeschlagen.",
+    "repositories_unavailable": "Die Repositorys konnten nicht geladen werden.",
+    "create_repo_failed": "Das Repository konnte nicht erstellt werden ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "Der Vollzugriff wurde nicht aktiviert."
+  }
+}

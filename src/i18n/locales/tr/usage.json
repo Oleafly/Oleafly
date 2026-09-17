@@ -1,0 +1,188 @@
+{
+  "dialog": {
+    "title": "Kullanım raporu",
+    "description": "Projeye, ajana, sağlayıcıya, modele ve oturuma göre kaydedilen token etkinliği.",
+    "from": "Başlangıç",
+    "through": "Bitiş",
+    "quickRangesLegend": "Hızlı aralıklar",
+    "utcNote": "Tarihler ve saatler UTC'dir.",
+    "apply": "Uygula",
+    "refresh": "Yenile",
+    "refreshLabel": "Kullanım raporunu yenile",
+    "loading": "Kullanım yükleniyor…",
+    "loadFailed": "Kullanım raporu yüklenemedi.",
+    "loadFailedHint": "Birazdan yeniden deneyin.",
+    "tryAgain": "Yeniden dene",
+    "emptyTitle": "Bu filtreler için kullanım kaydedilmedi.",
+    "emptyDescription": "Tarih aralığını değiştirin veya bir filtreyi kaldırın."
+  },
+  "quickRanges": {
+    "days7": "7g",
+    "days30": "30g",
+    "days90": "90g",
+    "month": "Bu ay"
+  },
+  "filters": {
+    "project": "Proje",
+    "projectAll": "Tüm projeler",
+    "agent": "Ajan",
+    "agentAll": "Tüm ajanlar",
+    "provider": "Sağlayıcı",
+    "providerAll": "Tüm sağlayıcılar",
+    "model": "Model",
+    "modelAll": "Tüm modeller",
+    "session": "Oturum",
+    "sessionAll": "Tüm oturumlar"
+  },
+  "report": {
+    "range": "{{start}} ile {{end}} arası (UTC)",
+    "costDisclaimer": "Maliyet tahminleri kayıtlı fiyat verilerini kullanır, sağlayıcı faturanızı veya plan kotanızı değil.",
+    "exportCsv": "CSV olarak dışa aktar",
+    "exportSaved": "{{path}} kaydedildi",
+    "exportFailed": "Kullanım raporu kaydedilemedi.",
+    "inputTokens": "Girdi token'ları",
+    "inputIncludesCache": "Önbellekten gelen girdi dahildir",
+    "outputTokens": "Çıktı token'ları",
+    "outputIncludesReasoning": "Akıl yürütme token'ları dahildir",
+    "cacheReads": "Önbellek okumaları",
+    "costEstimate": "Maliyet tahmini",
+    "allRecordsPriced": "Tüm kayıtlar fiyatlandırıldı",
+    "sessions": "Oturumlar",
+    "dailyTokens": "Günlük token",
+    "activityByHour": "Saate göre etkinlik",
+    "projects": "Projeler",
+    "agents": "Ajanlar",
+    "providers": "Sağlayıcılar",
+    "models": "Modeller"
+  },
+  "counts": {
+    "records_one": "{{total}} kayıt",
+    "records_other": "{{total}} kayıt",
+    "sessions_one": "{{total}} oturum",
+    "sessions_other": "{{total}} oturum",
+    "tokens_one": "{{total}} token",
+    "tokens_other": "{{total}} token",
+    "inputUnknown_one": "girdi sayısı olmayan {{total}} kayıt",
+    "inputUnknown_other": "girdi sayısı olmayan {{total}} kayıt",
+    "outputUnknown_one": "çıktı sayısı olmayan {{total}} kayıt",
+    "outputUnknown_other": "çıktı sayısı olmayan {{total}} kayıt",
+    "cacheUnknown_one": "karşılaştırılabilir önbellek verisi olmayan {{total}} kayıt",
+    "cacheUnknown_other": "karşılaştırılabilir önbellek verisi olmayan {{total}} kayıt",
+    "unpriced_one": "{{total}} kayıt fiyatlandırılmadı",
+    "unpriced_other": "{{total}} kayıt fiyatlandırılmadı",
+    "partlyUnpriced_one": "{{total}} kaydın {{unpriced}} tanesi fiyatlandırılmadı",
+    "partlyUnpriced_other": "{{total}} kaydın {{unpriced}} tanesi fiyatlandırılmadı",
+    "onPlan_one": "{{total}} kayıt bir plana dahil veya yerel",
+    "onPlan_other": "{{total}} kayıt bir plana dahil veya yerel",
+    "childRuns_one": "{{total}} alt çalıştırma",
+    "childRuns_other": "{{total}} alt çalıştırma",
+    "usageRecords_one": "{{total}} kullanım kaydı",
+    "usageRecords_other": "{{total}} kullanım kaydı",
+    "excludedChildRecords_one": "{{total}} alt kayıt üst toplamda zaten sayıldığı için iki kez sayılmadı.",
+    "excludedChildRecords_other": "{{total}} alt kayıt üst toplamda zaten sayıldığı için iki kez sayılmadı.",
+    "unmeasured_one": "Ölçülmüş token sayısı olmayan {{total}} kayıt.",
+    "unmeasured_other": "Ölçülmüş token sayısı olmayan {{total}} kayıt."
+  },
+  "cache": {
+    "rate": "karşılaştırılabilir girdinin %{{percent}} kadarı",
+    "rateWithUnknown": "karşılaştırılabilir girdinin %{{percent}} kadarı, {{unknown}} karşılaştırılamaz"
+  },
+  "cost": {
+    "local": "Yerel",
+    "plan": "Plan",
+    "notBilledPerToken": "Token başına faturalandırılmaz",
+    "noEstimate": "Tahmin yok",
+    "noSavedPrice": "Bu kayıtlar için kayıtlı fiyat yok",
+    "priceSource": "Fiyat kaynağı: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Günlük girdi ve çıktı token eğilimi",
+    "chartTitle": "Günlük token kullanımı",
+    "empty": "Günlük etkinlik yok.",
+    "tokensUnavailable": "Token sayıları kullanılamıyor",
+    "inOut": "{{input}} girdi, {{output}} çıktı",
+    "incompleteDays": "Token sayıları eksik olan günler çizgiye dahil edilmez.",
+    "day": "Gün",
+    "inputTokens": "Girdi token'ları",
+    "outputTokens": "Çıktı token'ları"
+  },
+  "heatmap": {
+    "label": "UTC gününe ve saatine göre token etkinliği",
+    "cell": "{{weekday}} {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "Kayıtlı etkinlik yok",
+    "tokenUnavailable": "Token sayısı kullanılamıyor",
+    "hoursInUtc": "Saatler UTC'dir",
+    "less": "Az",
+    "more": "Çok",
+    "weekdays": {
+      "sun": "Paz",
+      "mon": "Pzt",
+      "tue": "Sal",
+      "wed": "Çar",
+      "thu": "Per",
+      "fri": "Cum",
+      "sat": "Cmt"
+    }
+  },
+  "breakdown": {
+    "empty": "Kayıtlı kullanım yok.",
+    "name": "Ad",
+    "tokens": "Token",
+    "cost": "Maliyet",
+    "sessions": "Oturumlar"
+  },
+  "sessions": {
+    "title": "Oturumlar",
+    "subtitle": "Sohbetler, görevler, alt ajan çalıştırmaları ve yardımcı çağrılar, en yeniden başlayarak.",
+    "emptyTitle": "Bu filtrelere uyan oturum yok",
+    "emptyDescription": "Tarih aralığını değiştirin veya bir filtreyi kaldırın.",
+    "session": "Oturum",
+    "project": "Proje",
+    "agent": "Ajan",
+    "model": "Model",
+    "lastActivity": "Son etkinlik (UTC)",
+    "input": "Girdi",
+    "output": "Çıktı",
+    "cost": "Maliyet",
+    "billing": "Faturalama",
+    "status": "Durum",
+    "rowsPerPage": "Sayfa başına satır",
+    "page": "Sayfa {{page}} / {{pageCount}}",
+    "previous": "Önceki",
+    "next": "Sonraki"
+  },
+  "labels": {
+    "unknown": "Bilinmiyor",
+    "mixed": "Karışık",
+    "generalProject": "Genel",
+    "runtimeBuiltIn": "Oleafly asistanı",
+    "runtimeHelper": "Yardımcı çağrılar",
+    "runtimeAcp": "CLI ajanları"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Plan",
+    "local": "Yerel",
+    "unknown": "Bilinmiyor",
+    "mixed": "Karışık"
+  },
+  "scope": {
+    "child": "Alt ajan",
+    "task": "Görev",
+    "helper": "Yardımcı"
+  },
+  "status": {
+    "in_progress": "Sürüyor",
+    "completed": "Tamamlandı",
+    "failed": "Başarısız",
+    "cancelled": "İptal edildi",
+    "interrupted": "Kesildi"
+  },
+  "measurement": {
+    "provider_reported": "Sağlayıcı tarafından sayıldı",
+    "runtime_reported": "Ajan tarafından sayıldı",
+    "estimated": "Yerel olarak tahmin edildi",
+    "unavailable": "Ölçülmedi",
+    "mixed_or_unavailable": "Kısmen ölçüldü"
+  }
+}

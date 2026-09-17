@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Günlükler",
+    "showLogs": "Derleme günlüklerini göster",
+    "showPdf": "PDF önizlemesini göster",
+    "askAi": "Yapay zekaya sor",
+    "more": "Daha fazla önizleme denetimi",
+    "duration": "{{seconds}}sn",
+    "failed": "Başarısız",
+    "compiledWithErrors": "Hatalarla derlendi",
+    "compiledWithWarnings": "Uyarılarla derlendi",
+    "compiledSuccessfully": "Başarıyla derlendi"
+  },
+  "pageLayout": {
+    "group": "Sayfa düzeni",
+    "single": "Tek sayfa görünümü",
+    "double": "İki sayfa görünümü"
+  },
+  "pages": {
+    "previous": "Önceki sayfa",
+    "next": "Sonraki sayfa",
+    "number": "Sayfa numarası",
+    "ofTotal": "/ {{total}}",
+    "pageOfTotal": "Sayfa {{page}} / {{total}}"
+  },
+  "zoom": {
+    "in": "Yakınlaştır",
+    "out": "Uzaklaştır",
+    "fitToWidth": "Genişliğe sığdır",
+    "fitToHeight": "Yüksekliğe sığdır",
+    "reset": "%100'e döndür",
+    "percent": "%{{percent}}",
+    "percentLabel": "Yakınlaştırma yüzde {{percent}}",
+    "menuLabel": "Yakınlaştırma · %{{percent}}"
+  },
+  "outline": {
+    "open": "Belge anahattı",
+    "panel": "PDF belge anahattı",
+    "title": "Belge anahattı",
+    "close": "Belge anahattını kapat",
+    "loading": "Anahat yükleniyor…",
+    "empty": "Bu PDF bir belge anahattı içermiyor.",
+    "externalLink": "Dış bağlantı",
+    "externalBadge": "Bağlantı"
+  },
+  "search": {
+    "open": "PDF'te ara",
+    "panel": "Bu PDF'te ara",
+    "placeholder": "Belgede ara",
+    "input": "PDF metninde ara",
+    "previous": "Önceki arama sonucu",
+    "next": "Sonraki arama sonucu",
+    "close": "PDF aramasını kapat"
+  },
+  "viewer": {
+    "scrollArea": "PDF sürekli kaydırma alanı",
+    "crashedTitle": "PDF önizlemesi çöktü",
+    "crashedDetail": "Geçerli sürümü yeniden derleyin veya görüntüleyiciyi yeniden deneyin.",
+    "retry": "Görüntüleyiciyi yeniden dene",
+    "loadingLatest": "En son derlenen PDF yükleniyor…",
+    "retryingLoad": "PDF yüklemesi yeniden deneniyor…",
+    "retainedFailure": "{{detail}} Bunun yerine başarıyla yüklenen son PDF gösteriliyor.",
+    "retainedFailureDetail": "Geçerli PDF yüklenemedi",
+    "invalidTitle": "Geçersiz PDF",
+    "emptyTitle": "Boş PDF",
+    "unavailableTitle": "PDF görüntüleyici kullanılamıyor",
+    "loadFailedTitle": "PDF yüklenemedi",
+    "loadFailedDetail": "PDF yüklenemedi."
+  },
+  "password": {
+    "title": "Parola gerekiyor",
+    "label": "PDF parolası",
+    "placeholder": "PDF parolası",
+    "submit": "PDF kilidini aç"
+  },
+  "actions": {
+    "downloadImage": "Görseli indir",
+    "downloadPdf": "PDF'i indir",
+    "downloadDisplayedPdf": "Görüntülenen PDF'i indir",
+    "downloadStalePdf": "Eski, güncel olmayan PDF'i indir",
+    "saveImage": "Görseli projeye kaydet",
+    "savePdf": "PDF'i projeye kaydet",
+    "invert": "PDF önizleme renklerini tersine çevir",
+    "restoreColors": "Renkleri geri yükle",
+    "readerView": "Okuyucu görünümü",
+    "exitReaderView": "Okuyucu görünümünden çık",
+    "rotate": "Saat yönünde döndür",
+    "rotateTooltip": "PDF'i saat yönünde döndür (90°). Şu anda {{degrees}}°",
+    "openWindow": "Önizlemeyi yeni bir pencerede aç",
+    "hideToolbar": "Araç çubuğunu gizle",
+    "showToolbar": "Araç çubuğunu göster",
+    "settings": "PDF önizleme ayarları",
+    "fullscreen": "Tam ekran önizleme",
+    "exitFullscreen": "Tam ekrandan çık",
+    "retryCompile": "Derlemeyi yeniden dene"
+  },
+  "stale": {
+    "badge": "Eski",
+    "badgeLabel": "Eski, güncel olmayan önizleme. Yeniden derleyin.",
+    "tooltip": "Önizleme, düzenleyicideki değişikliklere göre eski. {{explanation}} {{syncTex}} Yeniden derlemek için tıklayın.",
+    "explanation": "Bu PDF, etkin proje sürümünü temsil etmiyor.",
+    "revisionExplanation": "Proje sürümü {{displayed}} gösteriliyor. Etkin proje sürümü {{active}}.",
+    "noIdentity": "Görüntülenen PDF'in etkin sürüm için doğrulanmış bir derleme kimliği yok.",
+    "syncTexAvailable": "SyncTeX, düzenlemeler için en yakın değişmemiş satırı kullanır.",
+    "syncTexUnavailable": "SyncTeX için güncel bir derleme gerekir."
+  },
+  "save": {
+    "title": "PDF'i projeye kaydet",
+    "imageTitle": "Görseli projeye kaydet",
+    "close": "Kaydetme penceresini kapat",
+    "staleDescription": "Görüntülenen eski PDF'i proje ağacına kaydeder. Etkin sürümü temsil etmez.",
+    "description": "Görüntülenen PDF'i proje ağacına kaydeder (Git ile işlenir).",
+    "nameLabel": "Projeye kaydetme adı",
+    "namePlaceholder": "belge.pdf",
+    "imageSaved": "Görsel projeye kaydedildi.",
+    "pdfSaved": "PDF projeye kaydedildi.",
+    "failed": "Projeye kaydedilemedi."
+  },
+  "download": {
+    "pngFilter": "PNG görseli",
+    "imageSaved": "Görsel kaydedildi · {{name}}",
+    "pdfSaved": "PDF kaydedildi · {{name}}",
+    "showInFolder": "Klasörde göster",
+    "folderUnavailable": "Dosya kaydedildi, ancak Oleafly klasörünü açamadı (izin verilmedi). Kaydetme penceresinde seçtiğiniz konuma bakın.",
+    "imageFailed": "Görsel indirilemedi.",
+    "imageFailedDetail": "Görsel indirilemedi: {{detail}}",
+    "pdfFailed": "PDF indirilemedi.",
+    "pdfFailedDetail": "PDF indirilemedi: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "PDF derlemesi şu anda kullanılamıyor.",
+    "compileFailed": "Derleme başarısız oldu. Neyin ters gittiğini görmek için Günlükler sekmesini açın."
+  },
+  "a11y": {
+    "stale": "Eski, güncel olmayan PDF. {{explanation}}",
+    "page": "PDF sayfası {{page}} / {{total}}.",
+    "searchResult": "Arama sonucu {{current}} / {{total}}."
+  },
+  "startup": {
+    "headingReady": "PDF önizlemesi hazır",
+    "headingPreparing": "PDF önizlemesi hazırlanıyor",
+    "headingAttention": "Başlatma ilgi gerektiriyor",
+    "progressLabel": "Belge başlatma: {{total}} aşamadan {{completed}} tanesi tamamlandı veya atlandı",
+    "doneCount": "{{completed}}/{{total}} tamam",
+    "metaRunning": "{{stages}} çalışıyor",
+    "metaQueued": "{{stages}} sırada",
+    "metaFailed": "{{stages}} başarısız",
+    "compileNow": "Şimdi derle",
+    "noProject": "Etkin proje yok",
+    "waitingForEngine": "Belge motoru bekleniyor",
+    "orPress": "veya <shortcutKey>{{keys}}</shortcutKey> tuşlarına basın",
+    "status": {
+      "done": "tamam",
+      "running": "çalışıyor",
+      "queued": "sırada",
+      "skipped": "atlandı",
+      "failed": "başarısız"
+    },
+    "language": {
+      "serviceLabel": "Dil hizmeti",
+      "analysisLabel": "Dil çözümlemesi",
+      "openingFiles": "Proje dosyaları açılıyor",
+      "starting": "Dil hizmeti başlatılıyor",
+      "restarting": "Dil hizmeti yeniden başlatılıyor",
+      "installing": "Dil hizmeti kuruluyor",
+      "connected": "Başlatıldı ve bağlandı",
+      "ready": "Hazır",
+      "localOnly": "Gerekmiyor. Yerel çözümleme kullanılıyor.",
+      "notApplicable": "Bu proje için geçerli değil",
+      "unavailable": "Kullanılamıyor. Yerel çözümleme kullanılabilir durumda.",
+      "waitingToStart": "Başlamak için bekleniyor",
+      "waitingForFiles": "Proje dosyaları bekleniyor",
+      "syncing": "Güncel proje dosyaları eşitleniyor",
+      "analyzing": "Proje yapısı çözümleniyor",
+      "analyzed": "Geçerli proje sürümü çözümlendi",
+      "partial": "Kullanılabilir kısmi çözümleme hazır",
+      "needsAttention": "Çözümleme ilgi gerektiriyor",
+      "notAvailable": "Bu proje için kullanılamıyor",
+      "queued": "Geçerli sürüm için sıraya alındı",
+      "waitingForService": "Dil hizmeti bekleniyor"
+    },
+    "compile": {
+      "label": "Derleniyor",
+      "saving": "Geçerli değişiklikler kaydediliyor",
+      "downloading": "Gerekli LaTeX paketleri indiriliyor",
+      "producing": "PDF çıktısı üretiliyor ve doğrulanıyor",
+      "unavailable": "Derleyici kullanılamıyor",
+      "failed": "Derleme başarısız oldu. Ayrıntılar için Günlükler'i açın.",
+      "accepted": "Doğrulanmış çıktı kabul edildi",
+      "waiting": "Geçerli sürümün derlenmesi bekleniyor"
+    },
+    "render": {
+      "label": "PDF işleniyor",
+      "preparing": "Sayfalar, metin ve bağlantılar hazırlanıyor",
+      "reading": "PDF okunuyor · %{{percent}}",
+      "passwordRequired": "Parola gerekiyor",
+      "needsAttention": "PDF işleme ilgi gerektiriyor",
+      "ready": "Önizleme hazır",
+      "waitingForRenderer": "Doğrulanmış PDF işleyici bekleniyor",
+      "waitingForCompile": "Doğrulanmış derleme çıktısı bekleniyor"
+    }
+  },
+  "window": {
+    "fitWidth": "Genişliğe sığdır",
+    "fitHeight": "Yüksekliğe sığdır",
+    "invert": "Renkleri tersine çevir",
+    "invertLabel": "PDF renklerini tersine çevir",
+    "rotateLabel": "PDF'i saat yönünde döndür",
+    "staleHeading": "Eski · güncel olmayan önizleme",
+    "staleCompiling": "Daha yeni bir proje sürümü derleniyor. Bu, {{revision}} sürümü için doğrulanmış son PDF.",
+    "staleUnknownRevision": "bilinmiyor",
+    "staleCompileFailed": "{{detail}} Doğrulanmış son PDF görünür kalır.",
+    "staleCompileFailedDetail": "Daha yeni derleme kullanılabilir bir PDF üretmedi",
+    "staleIdentity": "Bu PDF, kabul edilen en son derleme kimliğini temsil etmiyor.",
+    "crashedDetail": "Bu görüntüleyiciyi yeniden deneyin veya ana pencerede yeniden derleyin.",
+    "compilingTitle": "PDF derleniyor",
+    "compileFailedTitle": "Derleme başarısız oldu",
+    "compileUnavailableTitle": "Derleme kullanılamıyor",
+    "artifactUnavailableTitle": "PDF kullanılamıyor",
+    "noVerifiedTitle": "Doğrulanmış PDF yok",
+    "compilingDetail": "Derleme tamamlandığında doğrulanmış PDF görünecek.",
+    "noVerifiedDetail": "Projeyi ana pencerede derleyin. Bu pencere yalnızca doğrulanmış derleme kimliği olan çıktıyı gösterir.",
+    "loadingTitle": "PDF yükleniyor",
+    "loadingVerified": "Doğrulanmış PDF yükleniyor…",
+    "restoringLast": "Başarıyla yüklenen son PDF geri yükleniyor…",
+    "retryingLoad": "PDF yüklemesi yeniden deneniyor…",
+    "unlocking": "PDF kilidi açılıyor…",
+    "rotating": "PDF döndürülüyor…",
+    "retainedFailureDetail": "En son PDF yüklenemedi",
+    "artifactFailure": "Derlenen PDF doğrulanamadı veya okunamadı. Mümkün olduğunda başarıyla yüklenen son PDF korunur.",
+    "downloadStarted": "PDF indirmesi başladı.",
+    "downloadSaved": "PDF başarıyla kaydedildi.",
+    "downloadFailed": "Görüntülenen PDF kaydedilemedi."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "PDF parolası kabul edilmedi.",
+      "passwordRequired": "Bu PDF parola korumalı.",
+      "invalid": "Derlenen çıktı geçerli bir PDF değil. Yeniden derleyin veya derleme günlüğünü inceleyin.",
+      "unavailable": "PDF işleyici bu pencerede kullanılamıyor. Pencereyi geri yükledikten veya uygulamayı yeniden başlattıktan sonra yeniden deneyin.",
+      "generic": "PDF yüklenemedi. Geçerli sürümü yeniden derleyip tekrar deneyin.",
+      "empty": "Derlenen PDF boş.",
+      "firstPage": "PDF açıldı, ancak ilk sayfası işlenemedi."
+    },
+    "link": {
+      "blockedScheme": "Bu PDF bağlantısı engellenmiş bir URL şeması kullanıyor."
+    },
+    "search": {
+      "failed": "Arama her sayfayı okuyamadı. PDF'i yeniden yükledikten sonra tekrar deneyin."
+    },
+    "outline": {
+      "empty": "Bu PDF bir belge anahattı içermiyor.",
+      "failed": "PDF anahattı yüklenemedi.",
+      "destinationUnavailable": "Bu anahat hedefi kullanılamıyor.",
+      "blockedScheme": "Bu bağlantı engellenmiş bir URL şeması kullanıyor.",
+      "noDestination": "Bu anahat ögesinin bir hedefi yok.",
+      "untitled": "Adsız bölüm"
+    },
+    "status": {
+      "loading": "PDF yükleniyor…"
+    },
+    "a11y": {
+      "document": "PDF belge önizlemesi",
+      "page": "PDF sayfası {{page}} / {{total}}",
+      "textLayer": "PDF sayfası {{page}} için seçilebilir metin"
+    },
+    "screenReader": {
+      "layer": "Ekran okuyucu görünümü, sayfa {{page}} / {{total}}",
+      "title": "Ekran okuyucu kipi",
+      "pageLabel": "Sayfa {{page}} / {{total}}",
+      "empty": "Bu sayfada okunabilir metin bulunamadı."
+    }
+  }
+}

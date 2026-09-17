@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Leeg",
+    "diagramsAndFigures": "Diagrammen en figuren",
+    "cvsAndResumes": "Cv's",
+    "journalsAndConferences": "Tijdschriften en conferenties",
+    "bibliographies": "Bibliografieën",
+    "assignments": "Opdrachten",
+    "thesesAndReports": "Scripties en rapporten",
+    "books": "Boeken",
+    "presentations": "Presentaties",
+    "posters": "Posters",
+    "newsletters": "Nieuwsbrieven",
+    "calendars": "Kalenders",
+    "letters": "Brieven",
+    "aiGenerated": "Door AI gemaakt"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Cv",
+    "diagramsAndFigures": "Diagrammen",
+    "journalsAndConferences": "Tijdschriften"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Een warme humanistische schreefloze letter die veel moderne cv-sjablonen gebruiken."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Een strakke, neutrale schreefloze letter die prettig leest op het scherm en op papier."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Een verfijnde transitionele schreefletter, een goede keuze voor academische en zakelijke documenten."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Pakket academisch schrijven",
+      "description": "Onderzoeks- en subsidievoorstellen, literatuuroverzichten, motivatiebrieven, aanbevelingsbrieven, whitepapers en scripties."
+    },
+    "beamer-themes": {
+      "label": "Beamer-themacollectie",
+      "description": "Beamer-presentaties in de thema's Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla en Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Zakelijke documenten",
+      "description": "Facturen, memo's, notulen, ondernemingsplannen en rapporten, certificaten en een driebladige brochure."
+    },
+    "conference-preprints": {
+      "label": "Preprintstijlen voor conferenties",
+      "description": "Preprints in de stijl van NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv en Interspeech."
+    },
+    "coursework": {
+      "label": "Pakket studiemateriaal",
+      "description": "Huiswerk, werkbladen, quizzen, beoordelingsmodellen, collegeaantekeningen, studiewijzers, wiskundige overzichtsbladen, tentamens en uitwerkingen met pseudocode."
+    },
+    "creative-misc": {
+      "label": "Creatief en overig",
+      "description": "Receptenboeken, uitnodigingen, personageformulieren voor rollenspellen, een jaarkalender, galerijen met tabellen en TikZ, en veldnotities."
+    },
+    "cv-collection": {
+      "label": "Collectie cv-stijlen",
+      "description": "Cv's in de stijl van ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds en Jake's."
+    },
+    "reports-lab": {
+      "label": "Practicum- en technische rapporten",
+      "description": "Practicumverslagen, wetenschappelijke en technische rapporten, project- en stageverslagen en een jaarverslag."
+    },
+    "resume-plus": {
+      "label": "Uitbreiding cv-sjablonen",
+      "description": "Technisch cv in twee kolommen, minimalistisch cv, uitgebreid academisch cv, sollicitatiebrief en een cv in Typst."
+    },
+    "slides-posters": {
+      "label": "Dia's en posters",
+      "description": "Metropolis-beamerpresentatie, tikzposter staand en liggend, en een better-poster-lay-out."
+    },
+    "venue-classes": {
+      "label": "Classes voor tijdschriften en conferenties",
+      "description": "Startpunten voor REVTeX, ACS achemso, Elsevier, ACM sigconf en tijdschriften in Typst."
+    }
+  }
+}

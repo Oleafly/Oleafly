@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Oleafly について",
+    "checkUpdates": "アップデートを確認…",
+    "reloadViews": "ビューを再読み込み",
+    "restartApp": "アプリケーションを再起動",
+    "quit": "Oleafly を終了",
+    "edit": "編集",
+    "undo": "取り消す",
+    "redo": "やり直す",
+    "cut": "カット",
+    "copy": "コピー",
+    "paste": "ペースト",
+    "selectAll": "すべてを選択",
+    "view": "表示",
+    "toggleTerminal": "ターミナルの表示を切り替え",
+    "toggleBrowser": "ブラウザの表示を切り替え"
+  },
+  "window": {
+    "browser": "Oleafly ブラウザ",
+    "browserTitled": "{{title}} - Oleafly ブラウザ"
+  },
+  "dialog": {
+    "cancel": "キャンセル",
+    "fullAccess": {
+      "title": "フルアクセスを有効にしますか？",
+      "message": "フルアクセスを有効にすると、アシスタントは毎回の承認なしに shell コマンドの実行やファイルの編集ができるようになります。フルアクセスを有効にしますか？",
+      "confirm": "フルアクセスを有効にする"
+    },
+    "cookieImport": {
+      "title": "Cookie の読み込みの確認",
+      "messageHost": "{{browser}} のプロファイル「{{profile}}」から {{hostname}} の Cookie を Oleafly のアプリ内ブラウザに読み込みますか？読み込んだ Cookie によってウェブサイトにサインインされる場合があります。",
+      "messageAll": "{{browser}} のプロファイル「{{profile}}」のすべての Cookie を Oleafly のアプリ内ブラウザに読み込みますか？読み込んだ Cookie によってウェブサイトにサインインされる場合があります。",
+      "confirm": "Cookie を読み込む"
+    },
+    "mcpApprove": {
+      "title": "MCP ツールの承認",
+      "confirm": "ツールを使う"
+    },
+    "tableImport": {
+      "title": "読み込むスプレッドシートを選択",
+      "filter": "スプレッドシート"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "アプリケーションメニューを利用できません",
+    "viewMenuUnavailable": "表示メニューを利用できません",
+    "menuItemUnavailable": "メニュー項目 {{id}} を利用できません",
+    "fullAccessDismissed": "フルアクセスの確認が閉じられました。",
+    "fullAccessDeclined": "フルアクセスは有効になりませんでした。",
+    "approvalDialogClosed": "ネイティブの承認ダイアログが予期せず閉じました。"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Om Oleafly",
+    "checkUpdates": "Se etter oppdateringer…",
+    "reloadViews": "Last inn visningene på nytt",
+    "restartApp": "Start programmet på nytt",
+    "quit": "Avslutt Oleafly",
+    "edit": "Rediger",
+    "undo": "Angre",
+    "redo": "Gjør om",
+    "cut": "Klipp ut",
+    "copy": "Kopier",
+    "paste": "Lim inn",
+    "selectAll": "Marker alt",
+    "view": "Vis",
+    "toggleTerminal": "Vis eller skjul terminalen",
+    "toggleBrowser": "Vis eller skjul nettleseren"
+  },
+  "window": {
+    "browser": "Oleafly-nettleser",
+    "browserTitled": "{{title}} - Oleafly-nettleser"
+  },
+  "dialog": {
+    "cancel": "Avbryt",
+    "fullAccess": {
+      "title": "Vil du slå på full tilgang?",
+      "message": "Med full tilgang kan assistenten kjøre shell-kommandoer og redigere filer uten å be om godkjenning hver gang. Vil du slå på full tilgang?",
+      "confirm": "Slå på full tilgang"
+    },
+    "cookieImport": {
+      "title": "Bekreft import av cookies",
+      "messageHost": "Vil du importere cookies for {{hostname}} fra {{browser}}-profilen \"{{profile}}\" til den innebygde nettleseren i Oleafly? Importerte cookies kan logge deg inn på nettsteder.",
+      "messageAll": "Vil du importere alle cookies fra {{browser}}-profilen \"{{profile}}\" til den innebygde nettleseren i Oleafly? Importerte cookies kan logge deg inn på nettsteder.",
+      "confirm": "Importer cookies"
+    },
+    "mcpApprove": {
+      "title": "Godkjenn MCP-verktøy",
+      "confirm": "Bruk verktøyet"
+    },
+    "tableImport": {
+      "title": "Velg et regneark å importere",
+      "filter": "Regneark"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Programmenyen er utilgjengelig",
+    "viewMenuUnavailable": "Vis-menyen er utilgjengelig",
+    "menuItemUnavailable": "Menyvalget {{id}} er utilgjengelig",
+    "fullAccessDismissed": "Bekreftelsen for full tilgang ble lukket.",
+    "fullAccessDeclined": "Full tilgang ble ikke slått på.",
+    "approvalDialogClosed": "Den native godkjenningsdialogen lukket seg uventet."
+  }
+}

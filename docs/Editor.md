@@ -21,8 +21,9 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
 4. **Live inline preview**: renders supported inline math and visual content
    without replacing the editable source representation.
 5. **LaTeX command completion and syntax checking**: completes commands,
-   labels, citation keys, environments, and project file paths, while compile
-   and parser diagnostics remain attached to source locations.
+   labels, citation keys, environments, bibliography styles, and project file
+   paths, while compile and parser diagnostics remain attached to source
+   locations.
 6. **Live grammar checking**: runs the configured offline proofing pipeline on
    prose while excluding commands, comments, and mathematical syntax.
 7. **Local and global structure view**: exposes headings, symbols, labels,
@@ -77,6 +78,15 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   once `\left\`, `\middle\` or `\right\` is typed the list narrows to the
   delimiters that can follow. Accepting `\right\rangle` while that closer is
   already pending replaces it rather than adding a second one.
+- Turning the syntax check off: a comment line that reads `%novalidate` and
+  nothing else silences the LaTeX syntax check for the whole file, wherever
+  it sits. `%begin novalidate` and `%end novalidate` silence a region, and
+  the text between them is not read at all, so an environment that generated
+  code opens in there is never reported as unclosed. A `.bib` file uses two
+  percent signs for the same three markers. The marker has to be the whole
+  comment, so `% novalidate later, not yet` stays an ordinary comment.
+  Compile errors, spelling, grammar and project diagnostics carry on as
+  before.
 - Rich hovers: references whose label sits in a math environment render the
   equation (KaTeX), `\includegraphics` targets show a thumbnail, and labels
   display their number and page from the last successful compile. Label
@@ -84,6 +94,37 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
 - Word count (toolbar popover and command palette) uses the spellchecker's
   prose mask, so math bodies, verbatim blocks, and machine arguments are not
   counted; a non-empty selection adds a selection count.
+
+## Visual editor
+
+Inline and display math render through KaTeX. Click any formula to edit its
+source in place; Enter (or Ctrl+Enter for display math) commits, Escape
+cancels. Footnotes show as a marker that opens a small editor. Theorem-like
+environments, including ones declared with `\newtheorem` in the preamble,
+render with their name and optional title. Every sectioning command from
+`\part` to `\subparagraph` is a heading, and `\textcolor` and `\colorbox`
+show their colours.
+
+Figures render the image from the project (with or without an extension, as
+LaTeX resolves it) with width, label and caption controls. Tables render as
+editable grids; a toolbar above the table adds or removes rows and columns,
+sets column alignment, switches between no borders, horizontal rules, all
+borders and booktabs rules, places the caption above or below, sets the
+label, toggles the header row and merges or splits cells. Merged cells
+serialize as `\multicolumn`.
+
+Pasting formatted text from a browser or an office suite converts it to bold,
+italic, lists and tables. Pasting text that already contains LaTeX inserts it
+as native nodes. Pasting or dropping an image file saves it into the project
+(`figures/` when that folder exists, otherwise next to the main document) and
+inserts a figure with the caption focused. The same works in the source
+editor, which inserts the figure snippet instead.
+
+Insert figure opens a dialog in both editors: choose an image from the
+project or import one from disk, pick a width, and decide whether to add a
+caption and a label. Citations, references, labels and unknown commands stay
+as raw source chips, and so do `\multirow`, `\cline`, `tabular*`, `tabularx`,
+`figure*`, subfigures and `\caption[short]`, which round-trip untouched.
 
 ## LaTeX controls at a glance
 
@@ -121,6 +162,16 @@ lists every category and command.
 
 - Two checkers share one worker pass. Hunspell owns spelling against the
   selected dictionary pack. Harper owns grammar and style.
+- Five dictionary packs ship with the app: English (United States, United
+  Kingdom, Australia), German and French. The rest of the list, more than
+  sixty languages, downloads on demand and then stays on disk, so it works
+  offline afterwards. Every download is checked against its published
+  SHA-256 before it is used, and a language that is not installed says so
+  instead of falling back to another one.
+- A project can pin its own spell-check language in the Project info panel.
+  The choice lives in `project.json`, travels with the project, and overrides
+  the app setting for that project only. The grammar checker's English
+  dialect still follows the app setting.
 - LaTeX reaches Harper through a prose mask the same length as the source, so
   a lint span is already a document offset. Markup that reads as a noun in the
   sentence, such as a citation, a reference, a `\gls` term or inline math,
@@ -180,6 +231,23 @@ lists every category and command.
   of findings dismissed in the open project, and takes either back. Under
   them it lists every rule the academic profile turns off, each with a switch
   that turns it back on.
+
+## Editor settings
+
+Settings > Appearance > Editor holds the editor's own preferences. All of
+them are stored locally, survive a reload, and go back to their defaults with
+Reset appearance.
+
+- Keybindings: Default, Vim or Emacs. See
+  [KeyboardShortcuts.md](KeyboardShortcuts.md) for what each mode binds.
+- Editor font size, editor font and editor theme.
+- Tab size: 2, 4 or 8 spaces. It sets the indent unit and the width a
+  literal tab renders at.
+- Line height: compact (1.4), normal (1.7) or wide (2.0).
+- Wrap long lines: on by default. Turn it off and the editor scrolls
+  sideways instead.
+- Auto-complete, auto-close brackets, auto-close math, auto-close
+  environments, inline suggestion, non-blinking cursor and sticky scroll.
 
 ## Engineering boundaries
 

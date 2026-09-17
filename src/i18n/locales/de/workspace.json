@@ -1,0 +1,198 @@
+{
+  "files": {
+    "collapseAll": "Alle Ordner zuklappen",
+    "confirmDelete": "{{path}} löschen? Das lässt sich nicht rückgängig machen.",
+    "conflict": {
+      "cancelAriaLabel": "Verschieben der Datei abbrechen",
+      "createBody": "<destination>{{destination}}</destination> gibt es bereits. Behalten Sie beide Dateien mit <suggestion>{{suggestion}}</suggestion>. Beim Erstellen wird nie eine vorhandene Datei ersetzt.",
+      "dialogAriaLabel": "Konflikt beim Verschieben der Datei",
+      "keepBoth": "Beide behalten",
+      "renameBody": "<destination>{{destination}}</destination> gibt es bereits. Behalten Sie beide Dateien mit <suggestion>{{suggestion}}</suggestion> oder ersetzen Sie das vorhandene Ziel. Oleafly ersetzt es nur, wenn Sie Ersetzen wählen.",
+      "replace": "Ersetzen",
+      "title": "Dieser Name ist schon vergeben",
+      "unchanged": "Ursprungs- und Zielpfad blieben unverändert."
+    },
+    "createFailed": "„{{path}}“ konnte nicht erstellt werden.",
+    "deleteFailed": "„{{path}}“ konnte nicht gelöscht werden.",
+    "expandAll": "Alle Ordner aufklappen",
+    "importAriaLabel": "In den ausgewählten Ordner importieren",
+    "importFiles": "Datei(en) importieren",
+    "importFolder": "Ordner importieren",
+    "importTitle": "Datei oder Ordner importieren (in den ausgewählten Ordner)",
+    "makeCopy": "Kopie anlegen",
+    "moreActions": "Weitere Aktionen für {{name}}",
+    "moveFailed": "„{{path}}“ konnte nicht verschoben werden. Der ursprüngliche Pfad blieb unverändert.",
+    "newEntry": {
+      "fileInFolder": "Neuer Dateiname im Ordner {{folder}}",
+      "fileInRoot": "Neuer Dateiname im Projektstammverzeichnis",
+      "filePlaceholder": "Neuer Dateiname",
+      "folderInFolder": "Neuer Ordnername im Ordner {{folder}}",
+      "folderInRoot": "Neuer Ordnername im Projektstammverzeichnis",
+      "folderPlaceholder": "Neuer Ordnername"
+    },
+    "newFile": "Neue Datei",
+    "newFileAriaLabel": "Neue Datei im ausgewählten Ordner",
+    "newFileTitle": "Neue Datei (im ausgewählten Ordner)",
+    "newFolder": "Neuer Ordner",
+    "newFolderAriaLabel": "Neuer Ordner im ausgewählten Ordner",
+    "newFolderTitle": "Neuer Ordner (im ausgewählten Ordner)",
+    "renameAriaLabel": "Datei umbenennen",
+    "renameFailed": "„{{path}}“ konnte nicht umbenannt werden. Der ursprüngliche Pfad blieb unverändert.",
+    "setMain": "Als Hauptdokument festlegen",
+    "title": "Explorer",
+    "treeAriaLabel": "Dateibaum im Explorer"
+  },
+  "explorer": {
+    "resizeSections": "{{first}} und {{second}} in der Größe ändern"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "mehrdeutig",
+      "cycle": "Zyklus",
+      "definitions_one": "{{count}} Definition",
+      "definitions_other": "{{count}} Definitionen",
+      "duplicate": "doppelt",
+      "external": "extern",
+      "folded": "eingeklappt",
+      "incomplete": "unvollständig",
+      "missing": "fehlt"
+    },
+    "bibEntryIn": "Eintrag vom Typ {{type}} in {{file}}",
+    "duplicateKey": "Doppelter Schlüssel.",
+    "duplicateKeyIn": "Doppelter Schlüssel {{key}} in {{file}}",
+    "folded": {
+      "description": "Dieser Zweig ist eingeklappt, damit sehr große Projektgraphen flüssig bleiben.",
+      "label": "Verknüpfte Quelle öffnen, um fortzufahren"
+    },
+    "fromFile": "{{kind}} aus {{file}}",
+    "groups": {
+      "bibliography": "Literaturverzeichnis",
+      "bibtexEntries": "BibTeX-Einträge",
+      "commands": "Befehle",
+      "definitions_one": "Definition",
+      "definitions_other": "Definitionen",
+      "dependencies": "Verweise & Abhängigkeiten",
+      "duplicateCitations": "Doppelte Zitierschlüssel",
+      "environments": "Umgebungen",
+      "labels": "Labels & Anker",
+      "occurrences": "Fundstellen",
+      "sections": "Abschnitte",
+      "unlinked": "Nicht eingebundene Dateien",
+      "unresolvedCitations": "Ungelöste Zitationen",
+      "unresolvedDuplicate": "Ungelöst & doppelt"
+    },
+    "inFile": "{{kind}} in {{file}}",
+    "incompleteEntry": "Unvollständiger Eintrag.",
+    "kinds": {
+      "anchor": "Anker",
+      "asset": "Ressource",
+      "bibentry": "Literatureintrag",
+      "bibliography": "Literaturverzeichnis",
+      "citation": "Zitation",
+      "environment": "Umgebung",
+      "file": "Datei",
+      "glossary": "Glossar",
+      "import": "Import",
+      "include": "Einbindung",
+      "label": "Label",
+      "link": "Verweis",
+      "macro": "Makro",
+      "reference": "Referenz",
+      "section": "Abschnitt"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Dokumentgliederung",
+    "collapseHeading": "{{title}} zuklappen",
+    "collapseAll": "Alle Überschriften zuklappen",
+    "empty": "Keine Abschnitte oder Einbindungen in diesem Dokument.",
+    "emptyDetail": "Fügen Sie eine Abschnittsüberschrift hinzu, um eine navigierbare Gliederung aufzubauen.",
+    "entryCount_one": "{{count}} Gliederungseintrag",
+    "entryCount_other": "{{count}} Gliederungseinträge",
+    "expandHeading": "{{title}} aufklappen",
+    "expandAll": "Alle Überschriften aufklappen",
+    "title": "Gliederung"
+  },
+  "panelError": {
+    "message": "Beim Layout der Bereiche hat es gehakt. Ihre Projektdateien liegen sicher auf der Festplatte.",
+    "reload": "Oleafly neu laden"
+  },
+  "structure": {
+    "ariaLabel": "Dokumentstruktur",
+    "collapseAll": "Alle Strukturelemente zuklappen",
+    "empty": "In der Projektkarte gibt es keine unterstützten Dateien.",
+    "filterLabel": "Projektstruktur filtern",
+    "filterPlaceholder": "Projektkarte filtern…",
+    "expandAll": "Alle Strukturelemente aufklappen",
+    "itemCount_one": "{{count}} Strukturelement",
+    "itemCount_other": "{{count}} Strukturelemente",
+    "noMatch": "Keine Struktur passt zu „{{query}}“.",
+    "notice": {
+      "partial": "Unvollständige Karte. Unlesbare oder fehlerhafte Dateien bleiben nach Möglichkeit sichtbar.",
+      "stale": "Wird aktualisiert. Die Struktur der vorherigen Fassung bleibt ausgeblendet, bis die aktuellen Quellbereiche bereit sind."
+    },
+    "title": "Struktur",
+    "treeLabel": "Projektstruktur",
+    "unavailable": {
+      "failed": {
+        "detail": "Das Projekt konnte nicht analysiert werden. Ihre Quelldateien wurden nicht verändert.",
+        "title": "Struktur konnte nicht aufgebaut werden"
+      },
+      "mapping": {
+        "detail": "Oleafly indexiert gerade Überschriften, verknüpfte Dateien, Symbole und Einträge im Literaturverzeichnis.",
+        "title": "Projektstruktur wird erfasst"
+      },
+      "noProject": {
+        "detail": "Öffnen Sie ein Dokumentprojekt, um seine lokale Struktur und die Projektstruktur zu durchsuchen.",
+        "title": "Kein Projekt geöffnet"
+      },
+      "noSource": {
+        "detail": "Öffnen Sie eine unterstützte Quell- oder Bibliografiedatei, um ihre Struktur zu sehen.",
+        "title": "Keine aktive Quelle"
+      },
+      "offline": {
+        "detail": "Die Projektanalyse ist für diesen Arbeitsbereich gerade nicht verfügbar.",
+        "title": "Strukturdienst nicht verfügbar"
+      },
+      "unsupported": {
+        "detail": "Für diesen Dateityp gibt es keinen Anbieter für die Projektstruktur.",
+        "title": "Struktur ist nicht verfügbar"
+      },
+      "waiting": {
+        "detail": "Die neueste Projektfassung wurde noch nicht indexiert.",
+        "title": "Warten auf die Projektstruktur"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Assistent wird geladen",
+    "editor": "Editor wird geladen",
+    "preview": "Vorschau wird geladen",
+    "terminal": "Terminal wird geladen"
+  },
+  "terminal": {
+    "closeCurrent": "Aktuelles schließen",
+    "closeLeft": "Alle links schließen",
+    "closeOthers": "Andere schließen",
+    "closeRight": "Alle rechts schließen",
+    "closeTab": "{{title}} schließen",
+    "color": "Farbe",
+    "errors": {
+      "input": "Die shell konnte keine Eingabe annehmen",
+      "resize": "Die Größe des Terminals ließ sich nicht ändern",
+      "start": "Die shell konnte nicht starten"
+    },
+    "limitReached": "Schließen Sie ein Terminal, um ein weiteres zu öffnen",
+    "newTerminal": "Neues Terminal",
+    "settings": "Terminal-Einstellungen",
+    "starting": "Die shell des Projekts wird gestartet…",
+    "tabs": "Terminals",
+    "titleInput": "Titel des Terminals"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Filter leeren",
+    "filterPlaceholder": "Filtern…",
+    "noProject": "Kein Projekt"
+  }
+}

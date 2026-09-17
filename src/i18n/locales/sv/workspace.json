@@ -1,0 +1,198 @@
+{
+  "files": {
+    "collapseAll": "Fäll ihop alla mappar",
+    "confirmDelete": "Vill du radera {{path}}? Det går inte att ångra.",
+    "conflict": {
+      "cancelAriaLabel": "Avbryt filflytten",
+      "createBody": "<destination>{{destination}}</destination> finns redan. Behåll båda filerna genom att använda <suggestion>{{suggestion}}</suggestion>. Att skapa en fil ersätter aldrig en befintlig fil.",
+      "dialogAriaLabel": "Konflikt vid filflytt",
+      "keepBoth": "Behåll båda",
+      "renameBody": "<destination>{{destination}}</destination> finns redan. Behåll båda filerna genom att använda <suggestion>{{suggestion}}</suggestion>, eller ersätt målfilen. Oleafly ersätter den inte om du inte väljer Ersätt.",
+      "replace": "Ersätt",
+      "title": "Namnet används redan",
+      "unchanged": "Sökvägarna till originalet och målet lämnades oförändrade."
+    },
+    "createFailed": "Det gick inte att skapa \"{{path}}\".",
+    "deleteFailed": "Det gick inte att radera \"{{path}}\".",
+    "expandAll": "Expandera alla mappar",
+    "importAriaLabel": "Importera till den valda mappen",
+    "importFiles": "Importera fil(er)",
+    "importFolder": "Importera mapp",
+    "importTitle": "Importera en fil eller mapp (till den valda mappen)",
+    "makeCopy": "Skapa en kopia",
+    "moreActions": "Fler åtgärder för {{name}}",
+    "moveFailed": "Det gick inte att flytta \"{{path}}\". Ursprungssökvägen lämnades oförändrad.",
+    "newEntry": {
+      "fileInFolder": "Namn på ny fil i mappen {{folder}}",
+      "fileInRoot": "Namn på ny fil i projektroten",
+      "filePlaceholder": "Namn på ny fil",
+      "folderInFolder": "Namn på ny mapp i mappen {{folder}}",
+      "folderInRoot": "Namn på ny mapp i projektroten",
+      "folderPlaceholder": "Namn på ny mapp"
+    },
+    "newFile": "Ny fil",
+    "newFileAriaLabel": "Ny fil i den valda mappen",
+    "newFileTitle": "Ny fil (i den valda mappen)",
+    "newFolder": "Ny mapp",
+    "newFolderAriaLabel": "Ny mapp i den valda mappen",
+    "newFolderTitle": "Ny mapp (i den valda mappen)",
+    "renameAriaLabel": "Byt namn på filen",
+    "renameFailed": "Det gick inte att byta namn på \"{{path}}\". Ursprungssökvägen lämnades oförändrad.",
+    "setMain": "Ange som huvuddokument",
+    "title": "Utforskaren",
+    "treeAriaLabel": "Filträd i utforskaren"
+  },
+  "explorer": {
+    "resizeSections": "Ändra storlek på {{first}} och {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "tvetydig",
+      "cycle": "cykel",
+      "definitions_one": "{{count}} definition",
+      "definitions_other": "{{count}} definitioner",
+      "duplicate": "dubblett",
+      "external": "extern",
+      "folded": "ihopfälld",
+      "incomplete": "ofullständig",
+      "missing": "saknas"
+    },
+    "bibEntryIn": "{{type}}-post i {{file}}",
+    "duplicateKey": "Dubblerad nyckel.",
+    "duplicateKeyIn": "Dubblerad nyckel {{key}} i {{file}}",
+    "folded": {
+      "description": "Grenen är ihopfälld för att mycket stora projektgrafer ska förbli snabba.",
+      "label": "Öppna den länkade källan för att fortsätta"
+    },
+    "fromFile": "{{kind}} från {{file}}",
+    "groups": {
+      "bibliography": "Bibliografi",
+      "bibtexEntries": "BibTeX-poster",
+      "commands": "Kommandon",
+      "definitions_one": "Definition",
+      "definitions_other": "Definitioner",
+      "dependencies": "Länkar och beroenden",
+      "duplicateCitations": "Dubblerade citeringsnycklar",
+      "environments": "Miljöer",
+      "labels": "Etiketter och ankare",
+      "occurrences": "Förekomster",
+      "sections": "Avsnitt",
+      "unlinked": "Olänkade filer",
+      "unresolvedCitations": "Olösta citeringar",
+      "unresolvedDuplicate": "Olösta och dubblerade"
+    },
+    "inFile": "{{kind}} i {{file}}",
+    "incompleteEntry": "Ofullständig post.",
+    "kinds": {
+      "anchor": "ankare",
+      "asset": "resurs",
+      "bibentry": "bibliografipost",
+      "bibliography": "bibliografi",
+      "citation": "citering",
+      "environment": "miljö",
+      "file": "fil",
+      "glossary": "ordlista",
+      "import": "import",
+      "include": "inkludering",
+      "label": "etikett",
+      "link": "länk",
+      "macro": "makro",
+      "reference": "referens",
+      "section": "avsnitt"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Dokumentets disposition",
+    "collapseHeading": "Fäll ihop {{title}}",
+    "collapseAll": "Fäll ihop alla rubriker",
+    "empty": "Inga avsnitt eller inkluderingar i det här dokumentet.",
+    "emptyDetail": "Lägg till en avsnittsrubrik för att bygga en disposition att navigera i.",
+    "entryCount_one": "{{count}} post i dispositionen",
+    "entryCount_other": "{{count}} poster i dispositionen",
+    "expandHeading": "Expandera {{title}}",
+    "expandAll": "Expandera alla rubriker",
+    "title": "Disposition"
+  },
+  "panelError": {
+    "message": "Panellayouten stötte på ett problem. Dina projektfiler ligger kvar oskadda på disken.",
+    "reload": "Läs in Oleafly på nytt"
+  },
+  "structure": {
+    "ariaLabel": "Dokumentets struktur",
+    "collapseAll": "Fäll ihop alla strukturposter",
+    "empty": "Det finns inga filer som stöds i projektkartan.",
+    "filterLabel": "Filtrera projektstrukturen",
+    "filterPlaceholder": "Filtrera projektkartan…",
+    "expandAll": "Expandera alla strukturposter",
+    "itemCount_one": "{{count}} strukturpost",
+    "itemCount_other": "{{count}} strukturposter",
+    "noMatch": "Ingen struktur matchar ”{{query}}”.",
+    "notice": {
+      "partial": "Ofullständig karta. Filer som inte går att läsa eller är felformade visas där det är möjligt.",
+      "stale": "Uppdaterar. Strukturen från föregående revision är dold tills aktuella källintervall är klara."
+    },
+    "title": "Struktur",
+    "treeLabel": "Projektstruktur",
+    "unavailable": {
+      "failed": {
+        "detail": "Projektet kunde inte analyseras. Dina källfiler ändrades inte.",
+        "title": "Strukturen kunde inte byggas"
+      },
+      "mapping": {
+        "detail": "Oleafly indexerar rubriker, länkade filer, symboler och bibliografiposter.",
+        "title": "Kartlägger projektets struktur"
+      },
+      "noProject": {
+        "detail": "Öppna ett dokumentprojekt för att bläddra i dess lokala struktur och projektstruktur.",
+        "title": "Inget projekt är öppet"
+      },
+      "noSource": {
+        "detail": "Öppna en källfil eller bibliografifil som stöds för att se dess struktur.",
+        "title": "Ingen aktiv källa"
+      },
+      "offline": {
+        "detail": "Projektanalys är inte tillgänglig för den här arbetsytan just nu.",
+        "title": "Strukturtjänsten är inte tillgänglig"
+      },
+      "unsupported": {
+        "detail": "Den här filtypen har ingen leverantör av projektstruktur.",
+        "title": "Strukturen är inte tillgänglig"
+      },
+      "waiting": {
+        "detail": "Den senaste projektrevisionen har inte indexerats än.",
+        "title": "Väntar på projektstrukturen"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Läser in assistenten",
+    "editor": "Läser in redigeraren",
+    "preview": "Läser in förhandsvisningen",
+    "terminal": "Läser in terminalen"
+  },
+  "terminal": {
+    "closeCurrent": "Stäng den aktuella",
+    "closeLeft": "Stäng alla till vänster",
+    "closeOthers": "Stäng övriga",
+    "closeRight": "Stäng alla till höger",
+    "closeTab": "Stäng {{title}}",
+    "color": "Färg",
+    "errors": {
+      "input": "Det gick inte att skicka indata till shell-sessionen",
+      "resize": "Terminalen kunde inte ändra storlek",
+      "start": "Det gick inte att starta shell-sessionen"
+    },
+    "limitReached": "Stäng en terminal för att öppna en till",
+    "newTerminal": "Ny terminal",
+    "settings": "Terminalinställningar",
+    "starting": "Startar projektets shell…",
+    "tabs": "Terminaler",
+    "titleInput": "Terminalens titel"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Rensa filtret",
+    "filterPlaceholder": "Filtrera…",
+    "noProject": "Inget projekt"
+  }
+}

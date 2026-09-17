@@ -1,0 +1,202 @@
+{
+  "files": {
+    "collapseAll": "Comprimi tutte le cartelle",
+    "confirmDelete": "Vuoi eliminare {{path}}? L'operazione non può essere annullata.",
+    "conflict": {
+      "cancelAriaLabel": "Annulla lo spostamento del file",
+      "createBody": "<destination>{{destination}}</destination> esiste già. Puoi tenere entrambi i file usando <suggestion>{{suggestion}}</suggestion>. La creazione non sostituisce mai un file esistente.",
+      "dialogAriaLabel": "Conflitto nello spostamento del file",
+      "keepBoth": "Tieni entrambi",
+      "renameBody": "<destination>{{destination}}</destination> esiste già. Puoi tenere entrambi i file usando <suggestion>{{suggestion}}</suggestion> oppure sostituire la destinazione esistente. Oleafly non la sostituisce se non scegli Sostituisci.",
+      "replace": "Sostituisci",
+      "title": "Questo nome è già in uso",
+      "unchanged": "I percorsi di origine e destinazione sono rimasti invariati."
+    },
+    "createFailed": "Impossibile creare \"{{path}}\".",
+    "deleteFailed": "Impossibile eliminare \"{{path}}\".",
+    "expandAll": "Espandi tutte le cartelle",
+    "importAriaLabel": "Importa nella cartella selezionata",
+    "importFiles": "Importa file",
+    "importFolder": "Importa una cartella",
+    "importTitle": "Importa un file o una cartella (nella cartella selezionata)",
+    "makeCopy": "Crea una copia",
+    "moreActions": "Altre azioni per {{name}}",
+    "moveFailed": "Impossibile spostare \"{{path}}\". Il percorso originale è rimasto invariato.",
+    "newEntry": {
+      "fileInFolder": "Nome del nuovo file nella cartella {{folder}}",
+      "fileInRoot": "Nome del nuovo file nella radice del progetto",
+      "filePlaceholder": "Nome del nuovo file",
+      "folderInFolder": "Nome della nuova cartella nella cartella {{folder}}",
+      "folderInRoot": "Nome della nuova cartella nella radice del progetto",
+      "folderPlaceholder": "Nome della nuova cartella"
+    },
+    "newFile": "Nuovo file",
+    "newFileAriaLabel": "Nuovo file nella cartella selezionata",
+    "newFileTitle": "Nuovo file (nella cartella selezionata)",
+    "newFolder": "Nuova cartella",
+    "newFolderAriaLabel": "Nuova cartella nella cartella selezionata",
+    "newFolderTitle": "Nuova cartella (nella cartella selezionata)",
+    "renameAriaLabel": "Rinomina il file",
+    "renameFailed": "Impossibile rinominare \"{{path}}\". Il percorso originale è rimasto invariato.",
+    "setMain": "Imposta come documento principale",
+    "title": "Esplora file",
+    "treeAriaLabel": "Albero dei file del progetto"
+  },
+  "explorer": {
+    "resizeSections": "Ridimensiona {{first}} e {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "ambiguo",
+      "cycle": "ciclo",
+      "definitions_one": "{{count}} definizione",
+      "definitions_many": "{{count}} definizioni",
+      "definitions_other": "{{count}} definizioni",
+      "duplicate": "duplicato",
+      "external": "esterno",
+      "folded": "compresso",
+      "incomplete": "incompleto",
+      "missing": "mancante"
+    },
+    "bibEntryIn": "Voce {{type}} in {{file}}",
+    "duplicateKey": "Chiave duplicata.",
+    "duplicateKeyIn": "Chiave {{key}} duplicata in {{file}}",
+    "folded": {
+      "description": "Questo ramo è compresso per mantenere reattivi i grafi di progetto molto grandi.",
+      "label": "Apri il sorgente collegato per continuare"
+    },
+    "fromFile": "{{kind}} da {{file}}",
+    "groups": {
+      "bibliography": "Bibliografia",
+      "bibtexEntries": "Voci BibTeX",
+      "commands": "Comandi",
+      "definitions_one": "Definizione",
+      "definitions_many": "Definizioni",
+      "definitions_other": "Definizioni",
+      "dependencies": "Collegamenti e dipendenze",
+      "duplicateCitations": "Chiavi di citazione duplicate",
+      "environments": "Ambienti",
+      "labels": "Etichette e ancore",
+      "occurrences": "Occorrenze",
+      "sections": "Sezioni",
+      "unlinked": "File non collegati",
+      "unresolvedCitations": "Citazioni non risolte",
+      "unresolvedDuplicate": "Non risolte e duplicate"
+    },
+    "inFile": "{{kind}} in {{file}}",
+    "incompleteEntry": "Voce incompleta.",
+    "kinds": {
+      "anchor": "ancora",
+      "asset": "risorsa",
+      "bibentry": "voce bibliografica",
+      "bibliography": "bibliografia",
+      "citation": "citazione",
+      "environment": "ambiente",
+      "file": "file",
+      "glossary": "glossario",
+      "import": "importazione",
+      "include": "inclusione",
+      "label": "etichetta",
+      "link": "collegamento",
+      "macro": "macro",
+      "reference": "riferimento",
+      "section": "sezione"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Struttura del documento",
+    "collapseHeading": "Comprimi {{title}}",
+    "collapseAll": "Comprimi tutti i titoli",
+    "empty": "Nessuna sezione o inclusione in questo documento.",
+    "emptyDetail": "Aggiungi un titolo di sezione per costruire una struttura navigabile.",
+    "entryCount_one": "{{count}} voce della struttura",
+    "entryCount_many": "{{count}} voci della struttura",
+    "entryCount_other": "{{count}} voci della struttura",
+    "expandHeading": "Espandi {{title}}",
+    "expandAll": "Espandi tutti i titoli",
+    "title": "Struttura"
+  },
+  "panelError": {
+    "message": "Il layout dei pannelli ha avuto un problema. I file del tuo progetto sono al sicuro sul disco.",
+    "reload": "Ricarica Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "Mappa del progetto",
+    "collapseAll": "Comprimi tutti gli elementi della mappa",
+    "empty": "Nella mappa del progetto non è presente nessun file supportato.",
+    "filterLabel": "Filtra la mappa del progetto",
+    "filterPlaceholder": "Filtra la mappa del progetto…",
+    "expandAll": "Espandi tutti gli elementi della mappa",
+    "itemCount_one": "{{count}} elemento della mappa",
+    "itemCount_many": "{{count}} elementi della mappa",
+    "itemCount_other": "{{count}} elementi della mappa",
+    "noMatch": "Nessun elemento corrisponde a “{{query}}”.",
+    "notice": {
+      "partial": "Mappa parziale. I file illeggibili o malformati restano visibili dove possibile.",
+      "stale": "Aggiornamento in corso. La mappa della revisione precedente resta nascosta finché non sono pronti gli intervalli del sorgente attuale."
+    },
+    "title": "Mappa",
+    "treeLabel": "Mappa del progetto",
+    "unavailable": {
+      "failed": {
+        "detail": "Non è stato possibile analizzare il progetto. I tuoi file sorgente non sono stati modificati.",
+        "title": "Impossibile costruire la mappa"
+      },
+      "mapping": {
+        "detail": "Oleafly sta indicizzando titoli, file collegati, simboli e voci bibliografiche.",
+        "title": "Mappatura del progetto in corso"
+      },
+      "noProject": {
+        "detail": "Apri un progetto di documento per esplorarne la struttura locale e quella di progetto.",
+        "title": "Nessun progetto aperto"
+      },
+      "noSource": {
+        "detail": "Apri un file sorgente o bibliografico supportato per vederne la struttura.",
+        "title": "Nessun sorgente attivo"
+      },
+      "offline": {
+        "detail": "L'analisi del progetto non è disponibile in questo momento per quest'area di lavoro.",
+        "title": "Servizio della mappa non disponibile"
+      },
+      "unsupported": {
+        "detail": "Questo tipo di file non ha un provider per la mappa del progetto.",
+        "title": "Mappa non disponibile"
+      },
+      "waiting": {
+        "detail": "L'ultima revisione del progetto non è ancora stata indicizzata.",
+        "title": "In attesa della mappa del progetto"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Caricamento dell'assistente",
+    "editor": "Caricamento dell'editor",
+    "preview": "Caricamento dell'anteprima",
+    "terminal": "Caricamento del terminale"
+  },
+  "terminal": {
+    "closeCurrent": "Chiudi il corrente",
+    "closeLeft": "Chiudi tutti a sinistra",
+    "closeOthers": "Chiudi gli altri",
+    "closeRight": "Chiudi tutti a destra",
+    "closeTab": "Chiudi {{title}}",
+    "color": "Colore",
+    "errors": {
+      "input": "La shell non ha potuto accettare l'input",
+      "resize": "Non è stato possibile ridimensionare il terminale",
+      "start": "Impossibile avviare la shell"
+    },
+    "limitReached": "Chiudi un terminale per aprirne un altro",
+    "newTerminal": "Nuovo terminale",
+    "settings": "Impostazioni del terminale",
+    "starting": "Avvio della shell del progetto…",
+    "tabs": "Terminali",
+    "titleInput": "Titolo del terminale"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Cancella il filtro",
+    "filterPlaceholder": "Filtra…",
+    "noProject": "Nessun progetto"
+  }
+}

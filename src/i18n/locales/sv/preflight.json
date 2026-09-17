@@ -1,0 +1,647 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Tvåspaltig layout",
+      "detailTwoColumn": "CV-parsers linjäriserar ofta två spalter i fel ordning. Använd hellre en enspaltig layout för dokument som ska läsas av ett ATS.",
+      "titleMultiColumn": "Flerspaltig layout",
+      "detailMultiColumn": "CV-parsers linjäriserar ofta spalter i fel ordning. Använd en spalt för dokument som riktar sig till ett ATS."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Kontrollera läsordningen i de två spalterna",
+      "detailTwoColumn": "Flerspaltiga publiceringslayouter kan vara tillgängliga när PDF:ens taggträd bevarar den avsedda ordningen. Kompilera och bekräfta den faktiska läsordningen i stället för att se de synliga spalterna som ett fel i sig.",
+      "titleMultiColumn": "Kontrollera läsordningen i de flera spalterna",
+      "detailMultiColumn": "Spalter är inte automatiskt otillgängliga, men deras tagg- och innehållsordning måste förbli meningsfull. Kompilera och granska den faktiska läsordningen."
+    },
+    "no-glyphtounicode": {
+      "title": "Ingen kartläggning för Unicode-extraktion är deklarerad",
+      "detailEngineNeedsMap": "XeTeX, och den medföljande motorn som bygger på den, skapar inte kartläggningen från glyf till Unicode automatiskt, så extraherad text kan bli oläslig. Kompilera och kontrollera läsvyn, och välj helst ett typsnitt med fullständig Unicode-kartläggning.",
+      "detailAutomatic": "pdfLaTeX och LuaLaTeX skapar den här kartläggningen automatiskt sedan LaTeX-utgåvan 2021-06-01, så ingen deklaration behövs. Kompilera och bekräfta den extraherade texten i läsvyn. I XeTeX läser du in cmap eller byter motor."
+    },
+    "icon-near-contact": {
+      "title": "Ikon bredvid kontaktuppgifter",
+      "detail": "Typsnittsikoner (som \\faPhone eller \\faEnvelope) renderas som glyfer som en parser läser som okända tecken och som en skärmläsare inte kan benämna, så kontaktuppgiften bredvid dem kan gå förlorad. Se till att e-postadressen eller telefonnumret också finns som vanlig markerbar text."
+    },
+    "layout-table": {
+      "titleTable": "Tabellinnehåll kanske inte tolkas som CV-fält",
+      "detailTable": "ATS-verktyg plattar ofta ut tabellinnehåll på oförutsägbara sätt. Undvik att använda en tabell för att placera CV-text sida vid sida. Riktiga datatabeller för forskning bedöms separat under Tillgänglighet.",
+      "titleTikz": "TikZ-innehåll behöver ett semantiskt alternativ",
+      "detailTikz": "TikZ ritar visuellt innehåll utan att göra betydelsen tillgänglig som vanlig text. Ge en tillgänglig beskrivning för publicerat material och undvik det i CV-innehåll som riktar sig till ett ATS."
+    },
+    "contact-in-header": {
+      "title": "Kontaktuppgifter i sidhuvudet",
+      "detail": "Vissa CV-parsers utelämnar sidhuvuden och sidfötter. Lägg din e-postadress och ditt telefonnummer i dokumentets brödtext så att de finns kvar i den extraherade texten."
+    },
+    "figure-alt": {
+      "title": "Bild utan alt-text",
+      "detail": "Den här bilden har ingen beskrivande alt-text, så en skärmläsare kan inte förmedla den. Lägg till en beskrivning, till exempel \\includegraphics[alt={Ett porträtt av författaren}]{...}. Markera rent dekorativa bilder som artefakter i stället."
+    },
+    "link-text": {
+      "title": "Länktext som inte beskriver målet",
+      "detail": "Länktext som \"klicka här\" eller en naken URL säger ingenting om målet för den som använder skärmläsare. Använd text som namnger målet, till exempel \"min portfölj\"."
+    },
+    "mathml-export-hint": {
+      "title": "Exportera en HTML-kopia med MathML för att kontrollera tillgängligheten i matematiken",
+      "detail": "Dokumentet innehåller matematik. Skärmläsare läser ekvationer tillförlitligt när de är MathML. Använd Exportera som HTML, som pandoc skriver med --mathml, och öppna filen med en skärmläsare eller ett tillgänglighetsverktyg innan du lämnar in."
+    },
+    "no-lang": {
+      "title": "Inget dokumentspråk är angivet",
+      "detail": "PDF:en har inget språk, så en skärmläsare kan läsa den med fel uttalsregler. Ange ett, till exempel \\usepackage[english]{babel} eller pdflang=en-US i hyperref."
+    },
+    "no-title": {
+      "title": "Ingen PDF-titel",
+      "detail": "PDF:en har ingen titel i sina metadata, och den använder hjälpmedel och webbläsare för att presentera dokumentet. Ange en med hyperref, till exempel \\hypersetup{pdftitle={Ditt namn, CV}}."
+    },
+    "heading-skip": {
+      "title": "En rubriknivå hoppades över",
+      "detail": "Den här rubriken hoppar mer än en nivå djupare än den föregående, vilket bryter den dispositionen som skärmläsare och parsers förlitar sig på. Hoppa inte över nivåer, gå till exempel section, sedan subsection, sedan subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Avsnittsrubrik som avviker från standard: \"{{heading}}\"",
+      "detail": "Parsers kartlägger avsnitt genom att känna igen standardrubriker som Experience, Education och Skills. En kreativ rubrik kan göra att avsnittet inte kategoriseras. Överväg en konventionell rubrik."
+    },
+    "color-only": {
+      "title": "Kontrollera att färg inte är den enda signalen",
+      "detail": "Förkontrollen hittade färgat innehåll men kan inte avgöra betydelsen automatiskt. Om färg skiljer status eller kategorier åt, kombinera den med text, form, tjocklek eller någon annan synlig signal."
+    },
+    "reading-order-risk": {
+      "title": "Layout som kan störa läsordningen",
+      "detail": "Marginalnoter och figurer med omflutet innehåll placerar material utanför huvudflödet, så parsers och skärmläsare kan läsa det i fel ordning. Kontrollera läsordningen i förhandsvisningen nedan efter kompileringen."
+    },
+    "ua-standard-without-title": {
+      "title": "PDF/UA deklareras utan dokumenttitel",
+      "detailBoth": "Det här dokumentet deklarerar pdfstandard=ua men anger varken pdftitle eller pdfdisplaydoctitle=true. PDF/UA kräver en titel i XMP-metadata och en visningsinställning som visar den, så resultatet skulle göra anspråk på en standard det inte uppfyller. Läs in hyperref och ange \\hypersetup{pdftitle={Din titel}, pdfdisplaydoctitle=true}.",
+      "detailTitle": "Det här dokumentet deklarerar pdfstandard=ua men anger ingen pdftitle. PDF/UA kräver en titel i XMP-metadata och en visningsinställning som visar den, så resultatet skulle göra anspråk på en standard det inte uppfyller. Läs in hyperref och ange \\hypersetup{pdftitle={Din titel}, pdfdisplaydoctitle=true}.",
+      "detailDisplay": "Det här dokumentet deklarerar pdfstandard=ua men anger inte pdfdisplaydoctitle=true. PDF/UA kräver en titel i XMP-metadata och en visningsinställning som visar den, så resultatet skulle göra anspråk på en standard det inte uppfyller. Läs in hyperref och ange \\hypersetup{pdftitle={Din titel}, pdfdisplaydoctitle=true}."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "Den medföljande motorn kan inte producera den deklarerade PDF/UA-utdatan",
+      "detail": "Det här dokumentet deklarerar pdfstandard=ua, men den medföljande motorn kan inte skriva något taggträd, så PDF:en skulle bära ett PDF/UA-anspråk den inte uppfyller. Kompilera med pdfLaTeX eller LuaLaTeX från TeX Live 2025 eller senare, eller ta bort nyckeln pdfstandard."
+    },
+    "table-header-rows": {
+      "title": "Tabellens rubrikrad är inte markerad som rubrik",
+      "detail": "Den här tabellen har en linje under första raden, så den läses som en rubrik, men LaTeX taggar som standard varje cell som datacell. En skärmläsare kan då inte koppla ett värde till sin kolumn. Deklarera rubrikraden, till exempel \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Spalterna läses tvärs över i utdatan",
+      "detail": "På den här sidan hamnar texten från två spalter på samma rader, så en parser läser dem rakt över till oordnad text och en skärmläsare läser upp dem i fel ordning. Använd en enspaltig layout för innehåll som måste kunna tolkas. Se läsvyn nedan."
+    },
+    "pdf-garbled": {
+      "title": "Förvanskad eller okartlagd text i utdatan",
+      "detail": "Den extraherade texten innehåller tecken som inte kartlades till Unicode, så kopiera och klistra in och parsers ser förvanskad text, och en skärmläsare kan inte läsa den. Det beror oftast på en saknad kartläggning från glyf till Unicode eller ett typsnitt som inte bäddas in som text."
+    },
+    "pdf-selectable": {
+      "title": "Sidan har ingen markerbar text",
+      "detail": "Den här sidan innehåller lite eller ingen text som går att extrahera, så en parser och en skärmläsare ser ingenting. Troligen är den renderad som en bild eller använder typsnitt som inte bäddas in som text. Se till att innehållet är riktig, markerbar text."
+    },
+    "output-clipped-content": {
+      "title": "Text sträcker sig utanför sidan",
+      "detail": "Markerbar text ligger utanför sidans mediabox och kan bli beskuren eller saknas i tryck och i förlagets produktion. Granska breda ekvationer, tabeller, URL:er och positionerat innehåll."
+    },
+    "output-small-text": {
+      "title": "Mycket liten text upptäcktes",
+      "detail_one": "{{count}} textstycke mäter under ungefär 7 pt. Liten text är svår att läsa i tryck och vid normal zoom. Kontrollera att publiceringsforumet tillåter det och förstora etiketter eller fotnoter som inte behöver vara så små.",
+      "detail_other": "{{count}} textstycken mäter under ungefär 7 pt. Liten text är svår att läsa i tryck och vid normal zoom. Kontrollera att publiceringsforumet tillåter det och förstora etiketter eller fotnoter som inte behöver vara så små."
+    },
+    "pdf-no-bookmarks": {
+      "title": "Den långa PDF:en har inga bokmärken",
+      "detail": "Långa dokument bör ha en hierarkisk bokmärkeslista så att användare med tangentbord och hjälpmedel kan navigera mellan avsnitt utan att läsa varje sida i tur och ordning. Det är en god praxis enligt WCAG snarare än ett krav i PDF/UA. Läs in hyperref, eller bookmark, för att skapa en."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "PDF-metadata kunde inte granskas",
+      "detail": "Förkontrollen kunde inte läsa PDF:ens metadata och kan därför inte verifiera dokumentets titel eller språk. Det är ett okänt resultat, inte ett bevis för att fälten saknas. Kompilera om och kör kontrollen igen."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF:en saknar språk och titel",
+      "titleLang": "PDF:en saknar språk",
+      "titleTitle": "PDF:en saknar titel",
+      "detail": "Hjälpmedel och webbläsare använder PDF:ens katalogspråk och titel för att presentera dokumentet korrekt. Ange dem med hyperref, till exempel \\hypersetup{pdftitle={Ditt namn, CV}, pdflang=en-US}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "PDF:ens taggningsstatus kunde inte granskas",
+      "detail": "Förkontrollen kunde inte läsa PDF:ens MarkInfo-ordlista. Det är ett okänt resultat, inte ett bevis åt något håll, så utdatan kallas varken taggad eller otaggad enbart utifrån den kontrollen."
+    },
+    "compile-failed": {
+      "title": "Den senaste kompileringen misslyckades",
+      "detail": "Det som lämnas in måste komma från ett lyckat bygge. Rätta det första kompilatorfelet, kompilera igen och kör förkontrollen på nytt."
+    },
+    "compile-overfull-box": {
+      "title_one": "{{count}} överfull rad i utdatan",
+      "title_other": "{{count}} överfulla rader i utdatan",
+      "detail": "Kompilatorn rapporterar innehåll som sträcker sig utanför sin textruta, upp till {{width}} pt. Granska de här ställena efter beskuren text, ekvationer, tabeller eller länkar."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} saknad glyf",
+      "title_other": "{{count}} saknade glyfer",
+      "detail": "De valda typsnitten kan inte rendera alla tecken. Saknade glyfer kan försvinna tyst ur PDF:en, även symboler i namn, ekvationer och citeringar."
+    },
+    "compile-unresolved-references": {
+      "title": "Den kompilerade utdatan har olösta referenser",
+      "detail": "Minst en citering eller korsreferens förblev olöst efter kompileringen. Den inlämnade PDF:en kan innehålla [?] eller ??. Kontrollera loggen och kör de bibliografi- och LaTeX-pass som krävs."
+    },
+    "compile-rerun-required": {
+      "title": "Ytterligare ett kompileringspass krävs",
+      "detail": "Den senaste loggen säger att etiketter, citeringar eller innehållsförteckningen inte har stabiliserats. Kompilera om tills varningen om ny körning försvinner innan du exporterar."
+    },
+    "compile-duplicate-destination": {
+      "title": "Dubblerade PDF-mål",
+      "detail": "Två ankare delar samma mål, så länkar eller bokmärken kan hoppa fel. Det kommer oftast av dubblerade etiketter eller omstartad sidnumrering."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Blandade sidstorlekar i en PDF",
+      "detail_one": "PDF:en innehåller {{count}} sidstorlek ({{sizes}}). Blandade mediaboxar tyder ofta på en felaktigt infogad sida eller figur och kan underkännas i förlagets produktionskontroller.",
+      "detail_other": "PDF:en innehåller {{count}} sidstorlekar ({{sizes}}). Blandade mediaboxar tyder ofta på en felaktigt infogad sida eller figur och kan underkännas i förlagets produktionskontroller."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "Taggningen rapporterade {{count}} problem",
+      "title_other": "Taggningen rapporterade {{count}} problem",
+      "detail": "Taggningskoden skrev de här varningarna till loggen: {{warnings}} Var och en är ett ställe där strukturträdet inte stämmer med innehållet. Rätta dem i källkoden och kompilera igen."
+    },
+    "output-tagging-status": {
+      "title_one": "Taggningsrapporten flaggade {{count}} post",
+      "title_other": "Taggningsrapporten flaggade {{count}} poster",
+      "detail": "LaTeX skrev en egen taggningsrapport i slutet av bygget.",
+      "partClass": "Klassen {{name}} är {{status}}.",
+      "partBlocking": "Inte kompatibla med taggning: {{files}}.",
+      "partUnproven": "Inget noterat omdöme för: {{files}}.",
+      "partPartial": "Taggning bara delvis: {{files}}.",
+      "partAdvice": "Allt som inte kan taggas kan lämna hela avsnitt utanför strukturträdet, så byt ut det du kan."
+    },
+    "pdf-structure-single-pass": {
+      "title": "Taggträdet ser ut som ett första kompileringspass",
+      "detail": "PDF:en är markerad som taggad men dess strukturträd innehåller nästan ingenting, vilket är vad ett enda pass ger. Taggad utdata kräver två pass. Kompilera igen och kontrollera på nytt."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "Den här PDF:en gör anspråk på PDF/UA-{{part}} men uppfyller det inte",
+      "detail": "XMP-metadata deklarerar pdfuaid:part {{part}}, men filen håller inte det.",
+      "partNoXmpTitle": "Det finns ingen dokumenttitel i XMP-metadata.",
+      "partNoDisplayDocTitle": "DisplayDocTitle är inte satt till true.",
+      "partNotTagged": "Filen är inte taggad.",
+      "partAdvice": "Allt som litar på anspråket kommer att rapportera den här PDF:en som godkänd trots att den inte är det, så täpp antingen till luckorna eller ta bort anspråket. Med hyperref anger du \\hypersetup{pdftitle={Din titel}, pdfdisplaydoctitle=true} och kompilerar med taggning på."
+    },
+    "pdf-xmp-title": {
+      "title": "Titeln finns bara i Info-ordlistan",
+      "detail": "Dokumenttiteln är angiven i Info-ordlistan men inte som dc:title i XMP-metadata, vilket är där PDF/UA letar efter den. Att läsa in hyperref med pdftitle skriver båda."
+    },
+    "pdf-display-doc-title": {
+      "title": "Läsaren visar filnamnet, inte titeln",
+      "detail": "ViewerPreferences har ingen DisplayDocTitle-post satt till true, så ett PDF-program visar filnamnet i sitt fönster och för hjälpmedel. Ange den med hyperref, till exempel \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "PDF:en markerar sin egen taggning som opålitlig",
+      "detail": "MarkInfo sätter Suspects till true, vilket är producentens sätt att säga att taggträdet kanske inte stämmer med det synliga innehållet. Kompilera om med en aktuell motor och kontrollera taggningsvarningarna i loggen."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} länkanteckning saknar beskrivning",
+      "title_other": "{{count}} länkanteckningar saknar beskrivning",
+      "detail": "En länkanteckning utan Contents-post ger en skärmläsare ingenting att läsa upp när den listar länkarna på en sida. Beskriv målet i länktexten och låt hyperref föra över texten till anteckningen."
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}} % av texten ligger utanför taggträdet",
+      "detail": "{{untagged}} av {{total}} textstycken är inte kopplade till något i taggträdet, så en skärmläsare hoppar över dem. Artefakter räknas inte. Riktigt innehåll måste taggas, och dekorativt innehåll måste markeras som artefakt, till exempel \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "PDF-strukturen kunde inte granskas helt",
+      "detail_one": "Tillgänglighetens strukturträd kunde inte extraheras för sida {{pages}}. Förkontrollen behandlar inte den otillgängliga strukturen som bevis för att PDF:en är otaggad.",
+      "detail_other": "Tillgänglighetens strukturträd kunde inte extraheras för sidorna {{pages}}. Förkontrollen behandlar inte den otillgängliga strukturen som bevis för att PDF:en är otaggad."
+    },
+    "pdf-untagged-output": {
+      "title": "Den här PDF:en är inte taggad",
+      "detail": "Den kompilerade PDF:en bär inget strukturträd, så en skärmläsare får inga rubriker, listor, tabeller eller läsordning, och filen kan inte uppfylla PDF/UA-1 avsnitt 7.1. Taggad utdata kräver pdfLaTeX eller LuaLaTeX från TeX Live 2025 eller senare med \\DocumentMetadata{tagging=on}. Den medföljande motorn kan inte producera taggar. Kontrollerna av källkod och utdata ovan gäller fortfarande under tiden."
+    },
+    "pdf-structure-missing": {
+      "title": "Den taggade PDF:en har inget läsbart strukturträd",
+      "detail": "PDF:en anger sig själv som taggad, men förkontrollen hittade ingen dokumentstruktur att navigera i. Skärmläsare får kanske inga rubriker, listor, tabeller eller läsordning. Taggning kräver två kompileringspass, så kompilera igen och kontrollera på nytt innan du ser det här som slutgiltigt."
+    },
+    "output-figure-alt": {
+      "title": "Den taggade figuren saknar alt-text",
+      "detail": "Den här figuren är taggad men saknar alternativ text, så en skärmläsare kan inte beskriva den. Lägg till en beskrivning i källkoden, till exempel \\includegraphics[alt={...}]{...}. Markera dekorativa bilder med [artifact] i stället."
+    },
+    "output-formula-alt": {
+      "title": "Ekvationen saknar textalternativ",
+      "detail": "Enligt PDF/UA-1 behöver en Formula antingen Alt eller ActualText. Lägg till en i källkoden, till exempel med \\tagpdfsetup eller en alt-nyckel på ekvationen. Enligt PDF/UA-2 kan du i stället koppla MathML genom att kompilera med LuaLaTeX och \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}."
+    },
+    "output-table-headers": {
+      "title": "Den taggade tabellen saknar rubrikceller",
+      "detail": "Den här tabellen har inga rubrikceller (TH), så en skärmläsare kan inte koppla data till sin kolumn- eller radrubrik. Markera rubrikraden, till exempel \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "En rubriknivå hoppades över i taggträdet",
+      "detail": "De taggade rubrikerna hoppar mer än en nivå (till exempel H1 direkt till H3), vilket bryter den disposition som en skärmläsare navigerar efter. Hoppa inte över rubriknivåer."
+    },
+    "ats-no-name": {
+      "title": "En parser kunde inte hitta ditt namn",
+      "detail": "Inget troligt personnamn hittades i den extraherade texten. Håll ditt namn som vanlig text nära dokumentets början, utanför sidhuvuden, grafik och positionerade textrutor."
+    },
+    "ats-no-email": {
+      "title": "En parser kunde inte hitta din e-postadress",
+      "detail": "Ingen e-postadress hittades i den extraherade texten, och det är det fält en parser förlitar sig mest på. Om adressen står bredvid en ikon eller i ett sidhuvud kanske den inte är markerbar text. Lägg den i brödtexten som vanlig text."
+    },
+    "ats-no-phone": {
+      "title": "En parser kunde inte hitta något telefonnummer",
+      "detail": "Inget telefonnummer hittades i den extraherade texten. Om det finns men är dolt bakom en ikon eller i ett sidhuvud, lägg till det som vanlig markerbar text i brödtexten."
+    },
+    "ats-no-experience": {
+      "title": "En parser hittade inget avsnitt för arbetslivserfarenhet",
+      "detail": "Ingen standardrubrik för erfarenhet hittades, så en parser kanske inte grupperar dina roller till en arbetshistorik. Använd en konventionell rubrik som Experience eller Work Experience i riktig, markerbar text."
+    },
+    "ats-long-resume": {
+      "title_one": "CV:t är {{count}} sida långt",
+      "title_other": "CV:t är {{count}} sidor långt",
+      "detail": "Många rekryteringsflöden förväntar sig en eller två sidor, även om CV för seniora roller, akademi och offentlig sektor kan vara längre. Kontrollera att längden passar rollen och dokumenttypen."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} bibliografipost har ofullständiga metadata",
+      "title_other": "{{count}} bibliografiposter har ofullständiga metadata",
+      "detail": "Ofullständiga poster kan ge trasiga eller tvetydiga referenser i förlagens stilar. {{examples}}.",
+      "detailTruncated": "Ofullständiga poster kan ge trasiga eller tvetydiga referenser i förlagens stilar. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} DOI-värde ser felformat ut",
+      "title_other": "{{count}} DOI-värden ser felformade ut",
+      "detail": "Granska DOI-fälten för {{keys}}. Spara bara själva DOI-identifieraren, till exempel 10.1000/example, inte beskrivande text."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} möjlig dubblerad referens",
+      "title_other": "{{count}} möjliga grupper av dubblerade referenser",
+      "detail": "De här nycklarna har samma normaliserade titel: {{groups}}. Slå ihop verkliga dubbletter så att citeringsstil och metadata förblir enhetliga."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} bibliografipost som aldrig citeras",
+      "title_other": "{{count}} bibliografiposter som aldrig citeras",
+      "detail": "Oanvända poster skapar brus i metadata vid inlämning och gör dubbletter svårare att hantera. Granska {{keys}}.",
+      "detailTruncated": "Oanvända poster skapar brus i metadata vid inlämning och gör dubbletter svårare att hantera. Granska {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} etikett är definierad i flera filer",
+      "title_other": "{{count}} etiketter är definierade i flera filer",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "{{count}} etikett för figur, tabell eller ekvation refereras aldrig",
+      "title_other": "{{count}} etiketter för figurer, tabeller eller ekvationer refereras aldrig",
+      "detail": "Kontrollera att varje numrerat resultat diskuteras i manuset: {{labels}}.",
+      "detailTruncated": "Kontrollera att varje numrerat resultat diskuteras i manuset: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "Citeringen \"{{key}}\" finns inte i någon .bib",
+      "detail": "Den här citeringsnyckeln hittades inte i den inlästa bibliografin, så den renderas som [?] i PDF:en. Kontrollera nyckeln, eller lägg till posten i din .bib (Lägg till citering kan hämta den)."
+    },
+    "refs-undefined-ref": {
+      "title": "Referensen till \"{{label}}\" saknar matchande \\label",
+      "detail": "Den här korsreferensen pekar på en etikett som inte är definierad, så den renderas som ?? i PDF:en. Kontrollera etikettnamnet, eller lägg till den saknade \\label."
+    },
+    "refs-duplicate-label": {
+      "title": "Dubblerad etikett \"{{label}}\"",
+      "detail": "Samma etikett är definierad mer än en gång, så referenser till den blir tvetydiga. Gör varje etikett unik."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Bilden hittades inte: {{file}}",
+      "detailImage": "Den här \\includegraphics pekar på en fil som inte finns i projektet, så figuren kommer att saknas. Kontrollera filnamnet och sökvägen.",
+      "titleInclude": "Den inkluderade filen hittades inte: {{file}}",
+      "detailInclude": "Den här \\input eller \\include pekar på en fil som inte finns i projektet. Kontrollera filnamnet och sökvägen."
+    },
+    "refs-bib-missing": {
+      "title": "Bibliografifilen hittades inte: {{file}}",
+      "detail": "Den här \\bibliography eller \\addbibresource pekar på en fil som inte finns i projektet, så varje citering renderas som [?]. Kontrollera filnamnet, eller importera ett referensbibliotek för att skapa filen."
+    },
+    "refs-duplicate-bib": {
+      "title": "Dubblerade bibliografiposter: {{keys}}",
+      "detail": "De här posterna delar DOI {{doi}}, så de är samma referens under olika nycklar. Behåll en och citera den, annars listar din bibliografi den två gånger."
+    },
+    "submission-path-case": {
+      "title": "Filnamnets versaler matchar inte: {{target}}",
+      "detailFigure": "Den här figuren hittas bara på ett filsystem som inte skiljer på stora och små bokstäver. Projektet innehåller \"{{match}}\", så matcha den stavningen exakt innan du lämnar in till Linux-baserade byggsystem.",
+      "detailInclude": "Den här inkluderade filen hittas bara på ett filsystem som inte skiljer på stora och små bokstäver. Projektet innehåller \"{{match}}\", så matcha den stavningen exakt innan du lämnar in till Linux-baserade byggsystem."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Saknad figur: {{target}}",
+      "titleInclude": "Saknad inkluderad fil: {{target}}",
+      "detail": "Ingen projektfil matchar den här referensen från {{file}}. Ett rent inlämningsbygge misslyckas även om en lokal cache just nu gör att dokumentet kompilerar."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "figur utan bildtext",
+      "titleTable": "tabell utan bildtext",
+      "detail": "Figurer och tabeller i publikationer bör ha en numrerad, beskrivande bildtext så att de kan refereras och förstås fristående."
+    },
+    "submission-label-before-caption": {
+      "title": "Etiketten står före sin bildtext",
+      "detail": "Placera etiketten efter bildtexten. Annars kan LaTeX koppla den till föregående räknare och ge fel figur- eller tabellnummer."
+    },
+    "privacy-sensitive-file": {
+      "title": "Känslig fil är inkluderad: {{file}}",
+      "detail": "Ta bort filer med inloggningsuppgifter och privata nycklar från projektet innan du exporterar, synkroniserar eller publicerar källarkivet."
+    },
+    "privacy-credential": {
+      "title": "Möjlig inloggningsuppgift i {{file}}",
+      "detail": "Projektet innehåller text som ser ut som en API-token, en molnåtkomstnyckel eller en privat nyckel. Återkalla exponerade uppgifter och ta sedan bort dem från projektet och dess Git-historik."
+    },
+    "privacy-internal-comment": {
+      "title": "En intern notering finns kvar i {{file}}",
+      "detail": "Kommentarer i källkoden syns inte i PDF:en men kan vara offentliga i ett källarkiv hos en konferens, en tidskrift eller en preprintserver. Granska och ta bort privata redaktionella noteringar."
+    },
+    "privacy-draft-artifact": {
+      "title": "Utkastmarkeringar är fortfarande aktiverade",
+      "detail": "Källkoden aktiverar utdata för utkast, TODO, ändringsspårning, vattenstämpel eller etikettfelsökning. Stäng av det och granska den slutliga PDF:en visuellt innan du lämnar in."
+    },
+    "privacy-blind-author": {
+      "title": "Författarens identitet finns kvar i källkod för blindgranskning",
+      "detail": "Källkoden innehåller en icke-anonym författare, affiliering, e-postadress, adress eller ett tackfält. Ersätt identifierande innehåll med publiceringsforumets läge för anonym granskning."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Tacksägelserna kan avslöja författarna",
+      "detail": "Tacksägelser namnger ofta lärosäten, anslag, medarbetare eller anläggningar. Ta bort dem ur en inlämning för blindgranskning om inte publiceringsforumet uttryckligen tillåter dem."
+    },
+    "privacy-pdf-author": {
+      "title": "PDF-metadata identifierar en författare",
+      "detail": "PDF:ens Author-fält är \"{{author}}\". Rensa författarmetadata innan du laddar upp en PDF för blindgranskning."
+    },
+    "submission-nonportable-filename": {
+      "title": "Filnamn som inte är portabelt: {{file}}",
+      "detail": "Den här profilen tillåter bara bokstäver, siffror, understreck, plus, minus, punkter, kommatecken, likhetstecken och katalogavgränsare. Byt namn på filen och uppdatera referenserna till den."
+    },
+    "submission-absolute-path": {
+      "title": "Datorspecifik sökväg i {{file}}",
+      "detail": "Absoluta lokala sökvägar finns inte på förlagens byggservrar. Flytta in beroendet i projektet och referera till det med en relativ sökväg."
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} kräver att externa kommandon körs",
+      "detail": "Många förlags- och arkivbyggen stänger av shell escape. Skapa utdatan i förväg eller bekräfta att det valda publiceringsforumet stöder paketet och kommandot."
+    },
+    "submission-generated-file": {
+      "title": "Genererad byggfil är inkluderad: {{file}}",
+      "detail": "Genererade hjälpfiler gör källpaket röriga och kan bevara inaktuellt tillstånd. Utelämna dem om inte det valda publiceringsforumet uttryckligen kräver filen."
+    },
+    "submission-document-class": {
+      "title": "Dokumentklassen för {{profile}} är inte aktiv",
+      "detail": "Den här profilen förväntar sig {{expected}}, men projektet använder {{actual}}. Utgå från publiceringsforumets aktuella officiella mall.",
+      "detailNoClass": "Den här profilen förväntar sig {{expected}}, men ingen dokumentklass hittades. Utgå från publiceringsforumets aktuella officiella mall."
+    },
+    "submission-no-abstract": {
+      "title": "Ingen sammanfattning hittades",
+      "detail": "Den här publiceringsprofilen förväntar sig en sammanfattning i en vanlig abstract-miljö. Lägg till en eller bekräfta att det aktuella publiceringsforumet inte kräver någon."
+    },
+    "submission-no-keywords": {
+      "title": "Inga publiceringsnyckelord hittades",
+      "detail": "Profilen {{profile}} förväntar sig nyckelord med mallens standardkommando eller standardmiljö."
+    },
+    "submission-figure-format": {
+      "title": "Figurformat som inte stöds: {{file}}",
+      "detail": "{{profile}} tar emot figurfiler av typen {{formats}} för de TeX-arbetsflöden som stöds. Konvertera figuren före uppladdning."
+    },
+    "submission-placeholder": {
+      "title": "Platshållare från utkastet finns kvar i manuset",
+      "detail": "Källkoden innehåller TODO, TBD, FIXME, platshållartext eller frågeteckenmarkörer. Granska varje förekomst innan du framställer den slutliga inlämningen."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} är under den version som krävs",
+      "detail": "{{profile}} kräver PDF {{minimum}} eller senare. Uppdatera kompilatorns PDF-inställningar och skapa filen på nytt."
+    },
+    "submission-bookmarks": {
+      "title": "PDF-bokmärken är inte tillåtna",
+      "detail": "{{profile}} tillåter inte PDF-bokmärken. Ta bort dokumentets disposition för den här inlämningsprofilen."
+    },
+    "submission-links": {
+      "title": "PDF-länkar är inte tillåtna",
+      "detail": "{{profile}} tillåter inte länkanteckningar. Stäng av genererade hyperlänkar i den inlämnade PDF:en."
+    },
+    "submission-attachments": {
+      "title": "PDF:en innehåller inbäddade bilagor",
+      "detail": "{{profile}} tillåter inte PDF-bilagor eller paket. Ta bort alla inbäddade filer före inlämning."
+    },
+    "submission-security": {
+      "title": "PDF:ens säkerhetsbegränsningar är aktiverade",
+      "detail": "{{profile}} kräver en PDF utan lösenord eller behörighetsbegränsningar."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} typsnitt är inte inbäddat",
+      "title_other": "{{count}} typsnitt är inte inbäddade",
+      "detail": "{{profile}} kräver att varje typsnitt bäddas in eller delmängdas så att text och matematik renderas tillförlitligt. Åtgärda {{fonts}}."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "Inbäddningen av vissa typsnitt kunde inte verifieras",
+      "detail": "Förkontrollen kunde inte belägga inbäddningsstatus för {{fonts}}. Bekräfta dem med publiceringsforumets officiella PDF-kontroll."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Tillgänglighet",
+    "both": "ATS + Tillgänglighet",
+    "refs": "Referenser",
+    "compile": "Kompilering",
+    "submission": "Inlämning",
+    "privacy": "Integritet"
+  },
+  "severity": {
+    "error": "Fel",
+    "warning": "Varning",
+    "info": "Notering"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Bygge",
+    "a11y": "Tillgäng.",
+    "refs": "Ref.",
+    "submission": "Inlämn.",
+    "privacy": "Integr."
+  },
+  "checks": {
+    "compile": {
+      "label": "Kompilering och layout",
+      "who": "För alla slutgiltiga dokument",
+      "info": "Byggfel, olösta referenser, saknade glyfer och problem med sidlayouten.",
+      "detail": "Granskar den senaste kompilatorloggen och PDF:en efter misslyckade byggen, olösta referenser, saknade glyfer, överfullt eller beskuret innehåll, kvarvarande varningar om ny körning och blandade sidstorlekar."
+    },
+    "submission": {
+      "label": "Redo för inlämning",
+      "who": "För konferenser, tidskrifter, preprints och avhandlingar",
+      "info": "Regler i publiceringsprofilen och filer som inte bör följa med i källpaketet.",
+      "detail": "Tillämpar en publiceringsprofil på hela projektet: officiell dokumentklass, portabla källsökvägar, figurformat, sammanfattning och nyckelord, PDF-begränsningar, bildtexter och ett rent källpaket."
+    },
+    "ats": {
+      "label": "Redo för ATS",
+      "who": "För CV och meritförteckningar",
+      "info": "De kontaktuppgifter och avsnitt som en CV-parser kan få ut.",
+      "detail": "Simulerar vad ett rekryteringssystem (Workday, Taleo, Greenhouse) extraherar ur din PDF och flaggar layout och formatering som förvanskar den. Inte relevant för forskningsartiklar."
+    },
+    "a11y": {
+      "label": "Tillgänglighet",
+      "who": "För forskning, offentlig sektor och publicerade PDF-filer",
+      "info": "Taggning, alt-text, dokumentspråk och titel, visningsinställningar, struktur, länkar och läsordning.",
+      "detail": "Kontrollerar den kompilerade PDF:en mot den maskinellt kontrollerbara delen av PDF/UA-1 (ISO 14289-1) och PDF-teknikerna i WCAG 2.2: taggning, alt-text, dokumentspråk och titel, visningsinställningar, rubrik- och tabellstruktur, länkbeskrivningar, läsordning och markerbar text. Kontrollerna av källkoden flaggar troliga problem redan innan du kompilerar."
+    },
+    "refs": {
+      "label": "Referenser och resurser",
+      "who": "För forskning och dokument med flera filer",
+      "info": "Trasiga citeringar, dubblerade etiketter, ofullständiga bibliografiposter och saknade resurser.",
+      "detail": "Hittar odefinierade citeringar och korsreferenser, dubblerade etiketter och saknade figur- eller inkluderade filer, innan de förstör din PDF vid inlämningen."
+    },
+    "privacy": {
+      "label": "Integritet och blindgranskning",
+      "who": "Innan du delar källkod eller lämnar in anonymt",
+      "info": "Hemligheter, utkastnoteringar, känsliga filer och identitetsläckor vid blindgranskning.",
+      "detail": "Hittar inloggningsuppgifter, privata nycklar, interna kommentarer, utkastmarkeringar, känsliga projektfiler, författarmetadata och identitetsläckor i inlämningar för anonym granskning."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Allmän publicering",
+      "description": "Portabel källkod, ren utdata, fullständiga metadata och vanliga publiceringsrisker."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Portabel källkod som går att bygga om i arXiv:s inlämningssystem, som skiljer på stora och små bokstäver."
+    },
+    "ieee": {
+      "label": "IEEE-konferens eller IEEE-tidskrift",
+      "description": "IEEEtran-källkod plus de PDF-krav som kontrolleras för publicering i IEEE Xplore."
+    },
+    "acm": {
+      "label": "ACM-konferens eller ACM-tidskrift",
+      "description": "Källstrukturen i ACM acmart och publiceringsfärdiga forskningsmetadata."
+    },
+    "journal": {
+      "label": "Annan tidskrift",
+      "description": "Förlagsneutrala tidskriftskontroller. Lägg till tidskriftens exakta gränser före inlämning."
+    },
+    "thesis": {
+      "label": "Avhandling",
+      "description": "Struktur, navigering, referenser och portabel källkod för långa dokument."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Erfarenhet",
+      "education": "Utbildning",
+      "skills": "Färdigheter",
+      "projects": "Projekt",
+      "summary": "Sammanfattning"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: {{passed}} av {{total}} maskinellt kontrollerbara regler verifierade. En delmängdskontroll, inte ett intyg om överensstämmelse.",
+    "coverageWithBlindSpots": "PDF/UA-1: {{passed}} av {{total}} maskinellt kontrollerbara regler verifierade. Oleafly läser {{covered}} av de reglerna, och {{unavailable}} av dem kunde inte kontrolleras i den här filen. En delmängdskontroll, inte ett intyg om överensstämmelse."
+  },
+  "taggingGate": {
+    "noSupport": "Klassen {{name}} kan inte producera taggad utdata, och LaTeX-projektet räknar inte med att den ska kunna det.",
+    "noSupportWithNote": "Klassen {{name}} kan inte producera taggad utdata, och LaTeX-projektet räknar inte med att den ska kunna det. {{note}}",
+    "currentlyIncompatible": "Klassen {{name}} är ännu inte kompatibel med LaTeX-taggning, så att förbereda den här källkoden skulle inte ge dig en tillgänglig PDF.",
+    "currentlyIncompatibleWithNote": "Klassen {{name}} är ännu inte kompatibel med LaTeX-taggning, så att förbereda den här källkoden skulle inte ge dig en tillgänglig PDF. {{note}}",
+    "partiallyCompatible": "Klassen {{name}} är bara delvis kompatibel med taggning, så räkna med luckor i strukturträdet.",
+    "partiallyCompatibleWithNote": "Klassen {{name}} är bara delvis kompatibel med taggning, så räkna med luckor i strukturträdet. {{note}}",
+    "unrecorded": "LaTeX-projektet har inte noterat någon taggningsstatus för klassen {{name}}, så resultatet är obekräftat. Kompilera och kontrollera utdatan."
+  },
+  "prep": {
+    "metadataUpdated": "Lade till de taggningsnycklar som krävs i din \\DocumentMetadata.",
+    "metadataAdded": "Lade till \\DocumentMetadata som första rad (krävs, måste stå före \\documentclass).",
+    "headerRows": "Satte table/header-rows till 1 så att första raden i varje tabell taggas som rubrikceller. Ändra siffran om en tabell har ett annat rubrikdjup.",
+    "unicodeMath": "Lade till \\usepackage{unicode-math}, som den här motorn behöver för taggad matematik.",
+    "altPlaceholders_one": "Lade till platshållare för alt-text i {{count}} bild. Ersätt TODO-texten med en riktig beskrivning.",
+    "altPlaceholders_other": "Lade till platshållare för alt-text i {{count}} bilder. Ersätt TODO-texten med en riktig beskrivning.",
+    "titleRequired": "PDF/UA kräver en dokumenttitel som läsaren visar. Läs in hyperref och ange \\hypersetup{pdftitle={Din titel}, pdfdisplaydoctitle=true}.",
+    "incompatiblePackages_one": "Det här paketet är inte kompatibelt med taggning: {{packages}}. Innehåll från det kan hamna otaggat i PDF:en. Byt ut det där du kan.",
+    "incompatiblePackages_other": "De här paketen är inte kompatibla med taggning: {{packages}}. Innehåll från dem kan hamna otaggat i PDF:en. Byt ut dem där du kan.",
+    "cautionPackages": "De här paketen taggar bara delvis, eller saknar noterat taggningsomdöme: {{packages}}. Kompilera och kontrollera strukturträdet efter luckor.",
+    "compileLua": "Kompilera den förberedda källkoden med LuaLaTeX från TeX Live 2025 eller senare, och kontrollera sedan utdatan på nytt.",
+    "compileAny": "Kompilera den förberedda källkoden med pdfLaTeX eller LuaLaTeX från TeX Live 2025 eller senare, och kontrollera sedan utdatan på nytt. Tillgänglig matematik kräver LuaLaTeX. Den medföljande motorn kan inte producera taggar."
+  },
+  "gate": {
+    "incompatiblePackages_one": "Det här paketet är inte kompatibelt med taggning: {{packages}}. Innehåll från det kan hamna otaggat i PDF:en.",
+    "incompatiblePackages_other": "De här paketen är inte kompatibla med taggning: {{packages}}. Innehåll från dem kan hamna otaggat i PDF:en.",
+    "incompatiblePackagesTruncated": "De här paketen är inte kompatibla med taggning: {{packages}} och {{more}} till. Innehåll från dem kan hamna otaggat i PDF:en.",
+    "partialPackages": "De här paketen taggar bara delvis: {{packages}}.",
+    "partialPackagesTruncated": "De här paketen taggar bara delvis: {{packages}} och {{more}} till.",
+    "unknownPackages": "Inget taggningsomdöme är noterat för {{packages}}.",
+    "unknownPackagesTruncated": "Inget taggningsomdöme är noterat för {{packages}} och {{more}} till.",
+    "cautionAdvice": "Kompilera och kontrollera strukturträdet efter luckor."
+  },
+  "panel": {
+    "title": "Förkontroll",
+    "readerDisabled": "Kompilera och kör en kontroll av utdatan först",
+    "readerEnabled": "Öppna texten som extraherats ur PDF:en",
+    "readerButton": "Visa vad läsaren ser",
+    "aboutLabel": "Om förkontrollen",
+    "aboutTitle": "Vad förkontrollen granskar",
+    "aboutIntro": "Förkontrollen läser projektets källkod, kompilatorloggen och den aktuella PDF:en. Slå bara på de kontroller som passar det här dokumentet.",
+    "aboutFooter": "Verifierade fynd bygger på direkta observationer. Rådgivande fynd kräver fortfarande din bedömning. En ren rapport hjälper vid granskning, men den är inget intyg om att dokumentet godkänns eller är tillgängligt. Alla kontroller körs lokalt.",
+    "enableCheck": "Aktivera {{check}}",
+    "runCheck": "Kör {{check}}",
+    "rerunCheck": "Kör {{check}} igen",
+    "run": "Kör",
+    "rerun": "Kör igen",
+    "collapse": "Fäll ihop",
+    "expand": "Expandera",
+    "publicationProfile": "Publiceringsprofil",
+    "anonymousReview": "Anonym granskning",
+    "anonymousReviewHint": "Granska även författarfält, tacksägelser och PDF-metadata.",
+    "anonymousReviewToggle": "Kontrollera identitet vid anonym granskning",
+    "engineUnsupported": "Källkodskontroller för {{engine}} är inte implementerade än. Den här kontrollen använder bara den kompilerade PDF:en och rapporterar inte avsaknaden av källkodsstöd som ett fel.",
+    "runToSeeResults": "Kör den här kontrollen för att se resultat.",
+    "analyzing": "Analyserar…",
+    "runEnabled_one": "Kör {{count}} aktiverad kontroll",
+    "runEnabled_other": "Kör {{count}} aktiverade kontroller",
+    "rerunEnabled_one": "Kör {{count}} aktiverad kontroll igen",
+    "rerunEnabled_other": "Kör {{count}} aktiverade kontroller igen",
+    "failed": "Förkontrollen misslyckades: {{error}}",
+    "standardsCaveat": "Oleafly läser den del av PDF/UA och WCAG som går att kontrollera i själva filen. Programmet kan inte avgöra om alt-texten är meningsfull, om läsordningen är begriplig eller om färgkontrasten är tillräcklig. Det måste en människa bedöma. För ett formellt intyg om överensstämmelse validerar du med veraPDF eller PAC 2024.",
+    "pdfRequired": "PDF krävs. Kompilera projektet och kör igen. Den här kontrollen är inte bedömd än.",
+    "compileFirst": "Kompilera projektet först. Förkontrollen behöver den aktuella kompilatorloggen eller PDF:en för att bedöma byggets kvalitet.",
+    "partialCoverage": "Kontrollerna av källkoden är klara. Kompilera projektet och kör igen för att slutföra kontrollerna på PDF-nivå.",
+    "unsupportedCoverage": "Inte bedömd. Källkodskontroller för den här motorn är inte implementerade.",
+    "groupSource": "Projekt och källkod",
+    "groupOutput": "Kompilerad utdata",
+    "fixAll_one": "Åtgärda {{count}} med AI",
+    "fixAll_other": "Åtgärda alla {{count}} med AI",
+    "noProblems": "Inga problem hittades."
+  },
+  "finding": {
+    "review": "Granska",
+    "manual": "Manuell",
+    "page": "s.{{page}}",
+    "needsJudgment": "Kräver din bedömning. Inget verktyg kan avgöra det här utifrån filen ensam.",
+    "jumpToSource": "Hoppa till källkoden",
+    "fixWithAi": "Åtgärda med AI"
+  },
+  "score": {
+    "notEvaluated": "{{label}} är inte bedömd",
+    "readiness": "{{label}} beredskap {{score}} av 100",
+    "notScored": "Inte poängsatt"
+  },
+  "reader": {
+    "title": "Vad läsaren ser",
+    "description": "Text som extraherats ur den aktuella PDF:en i läsordning. Det här ligger nära vad en skärmläsare eller en automatisk parser får.",
+    "pagesNav": "PDF-sidor",
+    "page": "Sida {{page}}",
+    "empty": "tom",
+    "extractedFrom": "Extraherad text från sida {{page}}",
+    "pageOf": "Sida {{page}} av {{total}}",
+    "noText": "Ingen markerbar text hittades på den här sidan."
+  },
+  "atsCard": {
+    "title": "Vad en parser fick ut",
+    "notFound": "Hittades inte",
+    "links_one": "{{count}} länk",
+    "links_other": "{{count}} länkar",
+    "detected": "{{section}}: hittat",
+    "requiredMissing": "{{section}}: obligatoriskt avsnitt hittades inte",
+    "optionalMissing": "{{section}}: valfritt avsnitt hittades inte",
+    "detectedTitle": "Avsnittet {{section}} hittades",
+    "requiredMissingTitle": "{{section}} förväntas men hittades inte",
+    "optionalMissingTitle": "{{section}} är valfritt och hittades inte",
+    "optionalSuffix": ", valfritt"
+  },
+  "prepExport": {
+    "title": "Tillgänglig export",
+    "intro": "Förbered det här dokumentet för taggad utdata enligt PDF/UA-2. Oleafly lägger till \\DocumentMetadata med pdfstandard=ua-2 och tagging=on, plus den alt-text och tabelluppsättning som går att fylla i. Kompilera resultatet med pdfLaTeX eller LuaLaTeX från TeX Live 2025 eller senare, och kontrollera sedan på nytt. Tillgänglig matematik kräver LuaLaTeX. Den medföljande motorn kan inte producera taggar.",
+    "activeFileFallback": "Oleafly kunde inte läsa in huvuddokumentet, så filen du redigerar kontrollerades i stället. Öppna huvuddokumentet för att se den klass och de paket ditt bygge faktiskt läser in.",
+    "prepare": "Förbered för tillgänglig export",
+    "unavailable": "Förberedelsen är avstängd för den här dokumentklassen. Byt till en klass som taggningskoden stöder och kör kontrollen igen. Kompatibilitetsdata från LaTeX-projektet, hämtade {{retrieved}}.",
+    "unavailableUndated": "Förberedelsen är avstängd för den här dokumentklassen. Byt till en klass som taggningskoden stöder och kör kontrollen igen. Kompatibilitetsdata från LaTeX-projektet.",
+    "applied": "Tillämpad",
+    "apply": "Tillämpa på dokumentet",
+    "copied": "Kopierad",
+    "copy": "Kopiera källkoden",
+    "compileTagged": "Kompilera taggat och verifiera",
+    "compileTaggedWarning": "Systemets LuaLaTeX kan läsa lokala filer. Kör den bara för ett projekt du litar på.",
+    "noEngine": "För att skapa den taggade PDF:en i appen aktiverar du en motor under Inställningar, LaTeX-motor. Eller kompilera den förberedda källkoden med din egen pdfLaTeX eller LuaLaTeX från TeX Live 2025 eller senare."
+  }
+}

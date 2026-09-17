@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "關於 Oleafly",
+    "checkUpdates": "檢查更新…",
+    "reloadViews": "重新載入檢視",
+    "restartApp": "重新啟動應用程式",
+    "quit": "結束 Oleafly",
+    "edit": "編輯",
+    "undo": "復原",
+    "redo": "重做",
+    "cut": "剪下",
+    "copy": "複製",
+    "paste": "貼上",
+    "selectAll": "全選",
+    "view": "檢視",
+    "toggleTerminal": "切換終端機",
+    "toggleBrowser": "切換瀏覽器"
+  },
+  "window": {
+    "browser": "Oleafly 瀏覽器",
+    "browserTitled": "{{title}} - Oleafly 瀏覽器"
+  },
+  "dialog": {
+    "cancel": "取消",
+    "fullAccess": {
+      "title": "要啟用完整存取權嗎？",
+      "message": "完整存取權可讓助理執行 shell 指令並編輯檔案，不必每次徵求核准。要啟用完整存取權嗎？",
+      "confirm": "啟用完整存取權"
+    },
+    "cookieImport": {
+      "title": "確認匯入 Cookie",
+      "messageHost": "要將 {{browser}} 設定檔「{{profile}}」中 {{hostname}} 的 Cookie 匯入 Oleafly 的內建瀏覽器嗎？匯入的 Cookie 可能會讓你自動登入網站。",
+      "messageAll": "要將 {{browser}} 設定檔「{{profile}}」中的所有 Cookie 匯入 Oleafly 的內建瀏覽器嗎？匯入的 Cookie 可能會讓你自動登入網站。",
+      "confirm": "匯入 Cookie"
+    },
+    "mcpApprove": {
+      "title": "核准 MCP 工具",
+      "confirm": "使用工具"
+    },
+    "tableImport": {
+      "title": "選擇要匯入的試算表",
+      "filter": "試算表"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "應用程式選單無法使用",
+    "viewMenuUnavailable": "檢視選單無法使用",
+    "menuItemUnavailable": "選單項目 {{id}} 無法使用",
+    "fullAccessDismissed": "完整存取權確認已關閉。",
+    "fullAccessDeclined": "未啟用完整存取權。",
+    "approvalDialogClosed": "原生核准對話框意外關閉。"
+  }
+}

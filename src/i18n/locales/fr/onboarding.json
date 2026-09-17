@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Premiers pas",
+    "overview": {
+      "title": "Accueil",
+      "content": "Vos projets et la création de projet commencent ici."
+    },
+    "create": {
+      "title": "Créer un vrai projet",
+      "content": "Choisissez Nouveau projet pour voir les différentes façons de démarrer un travail."
+    },
+    "kind": {
+      "title": "Trois façons de commencer",
+      "content": "Lancez un projet de recherche, importez un manuscrit que vous avez déjà, ou partez d'un modèle prêt à l'emploi."
+    },
+    "kindTemplate": {
+      "title": "Partir d'un modèle",
+      "content": "Choisissez Utiliser un modèle pour ouvrir la galerie. Les deux autres points de départ restent disponibles quand vous en avez besoin."
+    },
+    "gallery": {
+      "title": "Trouvez votre point de départ",
+      "content": "Parcourez les catégories, cherchez par nom et affinez les modèles par compilateur ou par disponibilité hors ligne."
+    },
+    "template": {
+      "title": "Choisir un modèle",
+      "content": "Sélectionnez un vrai modèle pour continuer. Ses fichiers deviendront votre nouveau projet."
+    },
+    "name": {
+      "title": "Nommez votre projet",
+      "content": "Saisissez un nom de projet. Suivant devient disponible dès que le nom n'est plus vide."
+    },
+    "color": {
+      "title": "Choisir une couleur de couverture",
+      "content": "Cette couleur rend le projet facile à repérer sur l'accueil. Vous pouvez garder celle du modèle."
+    },
+    "createProject": {
+      "title": "Créez votre projet",
+      "content": "Cliquez sur \"Créer le projet\" pour créer un projet à partir du modèle sélectionné."
+    }
+  },
+  "workspace": {
+    "label": "Votre espace de travail",
+    "toolbar": {
+      "title": "Barre d'outils du projet",
+      "content": "Les actions du projet et les commandes de compilation se trouvent ici."
+    },
+    "sidebar": {
+      "title": "Navigation dans l'espace de travail",
+      "content": "Passez d'un fichier à l'autre, recherchez, gérez le contrôle de version, la prévérification, les références et l'activité MCP."
+    },
+    "editor": {
+      "title": "Éditeur",
+      "content": "Rédigez et parcourez le source avec complétion, diagnostics, mise en forme et intelligence du code."
+    },
+    "wysiwygToggle": {
+      "title": "Essayez le mode WYSIWYG",
+      "content": "Basculez entre le source brut et une vue mise en forme de votre document, à la manière d'un traitement de texte."
+    },
+    "compile": {
+      "title": "Compiler et recompiler",
+      "content": "Construisez le projet actuel ici. La visite guidée ne compile jamais rien et ne modifie pas votre source."
+    },
+    "logs": {
+      "title": "Journaux de compilation",
+      "content": "Ouvrez les journaux de compilation pour examiner les erreurs sans toucher au contenu du projet. L'état voisin indique la durée de la dernière compilation."
+    },
+    "preview": {
+      "title": "Aperçu PDF",
+      "content": "Le document compilé reste à côté de votre source en vue partagée."
+    },
+    "zoom": {
+      "title": "Votre boîte à outils PDF complète",
+      "content": "Ouvrez le plan, recherchez du texte, passez d'une page à l'autre, choisissez une mise en page à une ou deux pages, zoomez ou ajustez la page, inversez les couleurs, utilisez la vue lecture accessible, faites pivoter, téléchargez, enregistrez dans le projet, passez en plein écran ou ouvrez l'aperçu dans sa propre fenêtre."
+    },
+    "sourceNavigation": {
+      "title": "Du PDF au source",
+      "content": "Cliquez sur le contenu du PDF compilé pour accéder directement au passage correspondant du source."
+    }
+  },
+  "research": {
+    "label": "Espace de recherche",
+    "open": {
+      "title": "Espace de recherche",
+      "content": "Ouvrez-le pour confier des tâches de recherche à un agent et pour relier des dossiers de lecture et des jeux de données que vous conservez ailleurs. C'est tout nouveau et en bêta, alors signalez-nous ce qui ne fonctionne pas."
+    },
+    "tasks": {
+      "title": "Mettre des tâches de recherche en file",
+      "content": "Décrivez un travail et confiez-le à un agent. Chaque tâche garde sa propre conversation, ses sorties et ses notes de relecture."
+    },
+    "folders": {
+      "title": "Relier des dossiers que vous avez déjà",
+      "content": "Pointez l'espace de travail vers des dossiers de lecture et des jeux de données extérieurs au projet. Rien n'est copié ni déplacé."
+    }
+  },
+  "settings": {
+    "label": "Paramètres",
+    "navigation": {
+      "title": "Paramètres",
+      "content": "Naviguez ici entre les préférences et les intégrations."
+    },
+    "general": {
+      "title": "Préférences générales",
+      "content": "Réglez le comportement de l'édition, le mode hors ligne, les raccourcis et les visites guidées."
+    },
+    "appearance": {
+      "title": "Apparence",
+      "content": "Choisissez le thème, la typographie, la disposition par défaut de l'espace de travail et la couleur d'accentuation."
+    },
+    "dictionary": {
+      "title": "Dictionnaire",
+      "content": "Passez en revue les mots, propres au projet ou globaux, ignorés par les vérifications orthographiques et grammaticales."
+    },
+    "data": {
+      "title": "Stockage des données",
+      "content": "Examinez le stockage local des projets et gérez les données de l'application."
+    },
+    "ai": {
+      "title": "Assistant IA",
+      "content": "Configurez les fournisseurs, les modèles, les identifiants et les serveurs MCP que l'assistant peut utiliser."
+    },
+    "compiler": {
+      "title": "Compilateur",
+      "content": "Choisissez et configurez le moteur LaTeX utilisé pour construire les projets."
+    },
+    "downloads": {
+      "title": "Téléchargements",
+      "content": "Gérez les paquets et les ressources disponibles pour le travail hors ligne."
+    },
+    "integrations": {
+      "title": "Intégrations",
+      "content": "Connectez GitHub, alphaXiv, Zotero, la recherche de citations et le serveur MCP local d'Oleafly."
+    },
+    "shortcuts": {
+      "title": "Raccourcis clavier",
+      "content": "Consultez, modifiez, définissez et réinitialisez les raccourcis clavier de l'application."
+    },
+    "mcp": {
+      "title": "MCP de l'assistant",
+      "content": "Choisissez les serveurs MCP que l'assistant peut utiliser."
+    },
+    "help": {
+      "title": "Aide et à propos",
+      "content": "Relancez la visite guidée contextuelle, ouvrez la documentation, consultez les raccourcis ou signalez un problème."
+    }
+  },
+  "aiSettings": {
+    "label": "Paramètres de l'IA",
+    "tabs": {
+      "title": "Paramètres de l'assistant IA",
+      "content": "Gérez ici les fournisseurs et les clés, les instructions, les personas, les compétences réutilisables et les serveurs MCP."
+    },
+    "providers": {
+      "title": "Connecter des fournisseurs",
+      "content": "Collez une clé : elle est validée auprès du fournisseur avant d'être enregistrée. Les fournisseurs connectés affichent un badge vert et se déploient en une liste de modèles que vous pouvez activer, compléter ou restaurer. Les clés restent chiffrées sur cet ordinateur."
+    },
+    "customProvider": {
+      "title": "Utilisez votre propre point d'accès",
+      "content": "Toute URL de base compatible OpenAI fonctionne ici, y compris des serveurs locaux comme Ollama ou LM Studio."
+    },
+    "openInstructions": {
+      "title": "Instructions",
+      "content": "Cliquez sur l'onglet Instructions pour continuer."
+    },
+    "defaultModel": {
+      "title": "Modèle par défaut",
+      "content": "Les nouvelles discussions démarrent avec ce modèle. Vous pouvez toujours changer de modèle pour chaque conversation depuis le panneau de discussion."
+    },
+    "instructions": {
+      "title": "Instructions personnalisées",
+      "content": "Vos préférences de style permanentes, ajoutées à chaque requête de l'assistant."
+    },
+    "openPersonas": {
+      "title": "Personas",
+      "content": "Cliquez sur l'onglet Personas pour continuer."
+    },
+    "personas": {
+      "title": "Créer des personas",
+      "content": "Des jeux d'instructions nommés et colorés, à activer depuis le menu Persona de la discussion. Essayez un correcteur, un relecteur ou un puriste du LaTeX."
+    }
+  },
+  "ai": {
+    "label": "Assistant IA",
+    "assistant": {
+      "title": "Assistant IA",
+      "content": "Travaillez avec un assistant qui connaît votre projet, sans rien envoyer pendant cette visite guidée."
+    },
+    "runtime": {
+      "title": "Deux types d'agent",
+      "content": "L'agent Oleafly s'appuie sur le fournisseur de modèles que vous configurez. L'agent en ligne de commande, en bêta, pilote un agent de développement déjà installé sur cet ordinateur."
+    },
+    "connectProvider": {
+      "title": "Connecter un fournisseur",
+      "content": "Si aucun fournisseur n'est configuré, commencez ici. La visite guidée ne demande ni ne modifie jamais d'identifiants."
+    },
+    "providerModel": {
+      "title": "Fournisseur et modèle",
+      "content": "Changez de modèle pour cette conversation. Les changements ne valent que pour cette session. Votre modèle par défaut se règle dans les Paramètres. Les logos identifient le fournisseur de chaque modèle."
+    },
+    "prompts": {
+      "title": "Invites rapides",
+      "content": "Choisissez une invite prête à l'emploi pour la placer dans le champ de discussion."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Choisissez la façon dont l'assistant doit travailler. Un persona actif remplace vos instructions par défaut jusqu'à ce que vous le désactiviez."
+    },
+    "input": {
+      "title": "Champ de discussion",
+      "content": "Décrivez ce dont vous avez besoin. L'assistant peut utiliser le contexte du projet, mais cette visite guidée n'envoie jamais de requête."
+    },
+    "attachments": {
+      "title": "Pièces jointes",
+      "content": "Joignez des images, des PDF et des fichiers source quand une conversation demande du contexte supplémentaire."
+    },
+    "history": {
+      "title": "Historique des conversations",
+      "content": "Rouvrez les discussions récentes et l'historique complet, chaque conversation restant liée à l'état de son projet."
+    },
+    "usage": {
+      "title": "Utilisation",
+      "content": "Les conversations configurées affichent ici les exécutions, les jetons et le coût estimé, quand ces données sont disponibles."
+    },
+    "restore": {
+      "title": "Restaurer l'état du projet",
+      "content": "Après une modification par l'IA, un point de contrôle peut restaurer les fichiers du projet sans supprimer la conversation."
+    }
+  },
+  "diagram": {
+    "label": "Compositeur de diagrammes",
+    "composer": {
+      "title": "Compositeur de diagrammes",
+      "content": "Construisez des diagrammes visuellement ou à partir de code TikZ. La visite guidée ne modifie ni n'enregistre votre travail."
+    },
+    "import": {
+      "title": "Importer un fichier TikZ",
+      "content": "Vous avez déjà un fichier .tikz ou .tex ? Importez-le pour remplacer ce dessin de départ. Il reste un brouillon tant que vous ne choisissez pas de l'enregistrer."
+    },
+    "modes": {
+      "title": "Dessin et Code",
+      "content": "Le mode Dessin vous laisse travailler directement sur le canevas. Le mode Code affiche le TikZ généré et des extraits réutilisables."
+    },
+    "palette": {
+      "title": "Palette de formes",
+      "content": "Choisissez une forme, puis cliquez et faites glisser sur le canevas pour la placer et la dimensionner."
+    },
+    "handles": {
+      "title": "Relier et redimensionner",
+      "content": "Une forme sélectionnée expose des poignées de connexion et de redimensionnement, pour une structure et des tailles précises."
+    },
+    "inspector": {
+      "title": "Inspecteur",
+      "content": "Sélectionnez une forme ou une connexion pour ajuster son style, son texte, son tracé et son ordre de superposition."
+    },
+    "preview": {
+      "title": "Aperçu compilé",
+      "content": "Compiler ouvre un aperçu à côté de l'éditeur, avec des réglages d'échelle et de fond."
+    },
+    "compile": {
+      "title": "Compiler",
+      "content": "Compiler produit un aperçu isolé sans insérer le diagramme dans votre document."
+    },
+    "saveProject": {
+      "title": "Enregistrer comme projet",
+      "content": "Enregistrez un diagramme terminé comme projet d'image réutilisable, qui apparaîtra sur l'accueil."
+    },
+    "download": {
+      "title": "Télécharger",
+      "content": "Téléchargez le diagramme compilé au format PNG sans l'enregistrer comme projet."
+    }
+  }
+}

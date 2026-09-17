@@ -1,0 +1,147 @@
+{
+  "citeOleafly": "이 논문에서 Oleafly 인용하기",
+  "empty": {
+    "citations": {
+      "detail": "참고문헌 라이브러리를 가져오거나 인용을 추가해 시작하세요.",
+      "title": "아직 인용이 없습니다"
+    },
+    "symbols": {
+      "detail": "제목, 레이블, 명령, 환경은 프로젝트를 작성하는 대로 여기에 나타납니다.",
+      "title": "아직 심볼이 없습니다"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "인용 필터",
+    "ariaLabelResults": "결과 필터",
+    "ariaLabelSymbols": "심볼 필터",
+    "clear": "필터 지우기",
+    "noCitation": "“{{query}}”와(과) 일치하는 인용이 없습니다.",
+    "noResult": "“{{query}}”와(과) 일치하는 결과가 없습니다.",
+    "noSymbol": "“{{query}}”와(과) 일치하는 심볼이 없습니다.",
+    "placeholderCitations": "키, 제목, 저자 필터…",
+    "placeholderResults": "위치 필터…",
+    "placeholderSymbols": "레이블과 명령 필터…"
+  },
+  "import": {
+    "added_other": "{{target}}에 참고문헌 {{count}}건을 추가했습니다.",
+    "addedWithDuplicates_other": "{{target}}에 참고문헌 {{count}}건을 추가했고 {{duplicates}}건은 이미 있습니다.",
+    "allDuplicates_other": "해당 참고문헌 {{count}}건은 이미 {{target}}에 있습니다.",
+    "defaultTarget": "참고문헌 목록",
+    "description": "인용 관리 도구나 참고문헌 파일에서 이 프로젝트로 참고문헌을 추가합니다.",
+    "duplicateNote": "참고문헌 목록에 이미 있는 DOI를 가진 항목은 건너뜁니다.",
+    "empty": "해당 파일에서 참고문헌을 찾지 못했습니다.",
+    "endnote": {
+      "button": "XML, RIS 또는 BibTeX 파일 선택",
+      "description": "EndNote XML, RIS 또는 BibTeX 파일을 선택하세요. Oleafly가 프로젝트 참고문헌 목록에 항목을 추가합니다.",
+      "title": "EndNote, RIS 또는 BibTeX"
+    },
+    "failed": "해당 참고문헌을 가져오지 못했습니다.",
+    "nothingNew": "{{target}}에 새로 추가할 항목이 없습니다.",
+    "problems_other": "가져오는 동안 문제가 {{count}}건 발생했습니다. {{details}}",
+    "readFailed": "해당 파일을 읽지 못했습니다.",
+    "title": "참고문헌 라이브러리 가져오기",
+    "unrecognized": "인식할 수 없는 파일 형식: {{name}}",
+    "zotero": {
+      "button": "Zotero RDF 파일 선택",
+      "description": "Zotero에서 파일 → 라이브러리 내보내기 → Zotero RDF를 선택한 다음, 내보낸 파일을 고르세요.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "부분 결과입니다. 형식이 잘못되었거나 읽을 수 없는 파일에서는 일부 항목이 빠질 수 있습니다.",
+    "stale": "업데이트하는 중입니다. 이전 리비전의 인용, 심볼, 범위는 숨깁니다."
+  },
+  "panel": {
+    "ariaLabel": "참고문헌(Shift-F12)",
+    "clearQuery": "참고문헌 질의 지우기",
+    "cleanLibrary": "참고문헌 라이브러리 정리",
+    "importAriaLabel": "참고문헌 가져오기",
+    "issues_other": "참고문헌 또는 인용 문제 {{count}}건",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "참고문헌",
+    "viewTabs": "참고문헌 패널 보기"
+  },
+  "cleanLibrary": {
+    "title": "참고문헌 라이브러리 정리",
+    "description": "파일을 바꾸기 전에 인용 키와 중복 항목을 검토하세요.",
+    "library": "참고문헌 라이브러리",
+    "entryCount_other": "항목 {{count}}개",
+    "footer": "미리보기를 실행하면 열려 있는 파일이 저장됩니다. 적용할 때는 파일이 미리보기와 여전히 일치하는지 확인하고 원본을 백업합니다.",
+    "noBib": "이 프로젝트에는 정리할 .bib 파일이 없습니다.",
+    "entriesKept": "전체 {{total}}개 항목 중 {{kept}}개가 남습니다.",
+    "changes": "변경 사항 및 참고",
+    "noChanges": "적용할 파일 변경 사항이 없습니다.",
+    "filesToUpdate": "업데이트할 파일: {{files}}",
+    "none": "없음",
+    "introSafeChanges": "인용 키를 표준 형식으로 맞춥니다. DOI 중복은 세부 정보를 모두 보존할 수 있을 때만 제거합니다.",
+    "introReview": "제목이 비슷하거나 메타데이터가 충돌하는 항목은 검토할 수 있도록 라이브러리에 남겨 둡니다.",
+    "preview": "미리보기",
+    "reviewTitle": "적용하기 전에 검토하세요",
+    "reviewBody": "변경 사항을 미리 보고 어떤 항목과 인용이 업데이트되는지 확인하세요.",
+    "statusAttention": "확인 필요",
+    "statusWorking": "처리하는 중…",
+    "statusPreviewReady": "미리보기 준비됨",
+    "statusReady": "미리보기 실행 가능",
+    "refreshPreview": "미리보기 새로 고침",
+    "previewChanges": "변경 사항 미리보기",
+    "apply": "적용하고 인용 다시 쓰기",
+    "truncated": "미리보기는 각 버전의 처음 500줄만 보여 줍니다.",
+    "actionRenamed": "{{old}}을(를) {{new}}(으)로 변경",
+    "actionDuplicate": "{{removed}}을(를) {{kept}}의 중복으로 제거({{by}} 기준 일치)",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "정리된 파일을 다시 불러오지 못했습니다. 편집하기 전에 프로젝트를 다시 여세요.",
+    "cleaned": "라이브러리를 정리했습니다. 전체 {{total}}개 항목 중 {{kept}}개를 남겼습니다.",
+    "cleanedWithBackup": "라이브러리를 정리했습니다. 전체 {{total}}개 항목 중 {{kept}}개를 남겼습니다. 원본 파일은 {{path}}에 저장했습니다."
+  },
+  "query": {
+    "expired": {
+      "detail": "이 질의 이후에 프로젝트가 바뀌었습니다. 현재 소스 범위를 쓰려면 참조 찾기를 다시 실행하세요.",
+      "title": "참조 결과가 만료되었습니다"
+    },
+    "noLocations": {
+      "detail": "이 리비전에 심볼은 있지만 일치하는 정의나 사용처가 없습니다.",
+      "title": "위치를 찾지 못했습니다"
+    },
+    "none": {
+      "detail": "레이블, 인용, 명령 또는 환경에 커서를 두고 Shift-F12를 누르세요.",
+      "title": "참조 질의 없음"
+    }
+  },
+  "tabs": {
+    "citations": "인용",
+    "results": "참조",
+    "symbols": "심볼"
+  },
+  "trees": {
+    "citations": "프로젝트 인용",
+    "noCitations": "참고문헌 항목이나 인용 사용처를 찾지 못했습니다.",
+    "noSymbols": "프로젝트에서 정의한 심볼을 찾지 못했습니다.",
+    "symbols": "프로젝트 심볼"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "최신 프로젝트 리비전을 분석하지 못했습니다. 소스 파일은 바뀌지 않았습니다.",
+      "title": "프로젝트 분석 실패"
+    },
+    "indexing": {
+      "detail": "현재 프로젝트 리비전이 준비되면 참조와 인용이 표시됩니다.",
+      "title": "프로젝트 인텔리전스 색인 생성 중"
+    },
+    "noProject": {
+      "detail": "인용, 심볼, 파일 간 참조를 살펴보려면 문서 프로젝트를 여세요.",
+      "title": "열린 프로젝트 없음"
+    },
+    "offline": {
+      "detail": "지금은 이 작업 공간에서 참조와 인용을 확인할 수 없습니다.",
+      "title": "분석 서비스를 사용할 수 없음"
+    },
+    "unsupported": {
+      "detail": "현재 프로젝트는 지원되는 문서 엔진을 쓰지 않습니다.",
+      "title": "프로젝트 인텔리전스를 사용할 수 없음"
+    },
+    "waiting": {
+      "detail": "최신 프로젝트 리비전이 아직 색인되지 않았습니다.",
+      "title": "프로젝트 분석 대기 중"
+    }
+  }
+}

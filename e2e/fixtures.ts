@@ -46,6 +46,18 @@ for (const p of envCandidates) {
 //   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing
 let nativePageOpened = false;
 const productionE2e = process.env.OLEAFLY_E2E_PRODUCTION === "1";
+
+function localeForSpec(file: string): string {
+  const match = /locale-([a-z]{2,3})(?:-([a-z]{2,4}))?\.spec\./i.exec(file);
+  if (!match) return "en";
+  const language = match[1].toLowerCase();
+  const subtag = match[2];
+  if (!subtag) return language;
+  const tail = subtag.length === 4
+    ? subtag[0].toUpperCase() + subtag.slice(1).toLowerCase()
+    : subtag.toUpperCase();
+  return `${language}-${tail}`;
+}
 const DISMISSED_TOUR_STATE = JSON.stringify({
   state: {
     schemaVersion: 1,
@@ -272,7 +284,7 @@ function createNativeTest(dismissTours: boolean) {
         // Enable the experimental Visual editor and LaTeX tools (default off)
         // so the gated e2e specs run. Wrapped as an IIFE expression, the form
         // this bridge evaluates reliably (bare multi-statement strings time out).
-        const locale = testInfo.file.includes("97-locale-zh-hans") ? "zh-Hans" : "en";
+        const locale = localeForSpec(testInfo.file);
         await page.evaluate(`(function(){
           localStorage.removeItem("oleafly.shortcuts");
           localStorage.setItem("oleafly.locale", "${locale}");

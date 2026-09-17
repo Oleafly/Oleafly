@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Acerca de Oleafly",
+    "checkUpdates": "Buscar actualizaciones…",
+    "reloadViews": "Recargar vistas",
+    "restartApp": "Reiniciar la aplicación",
+    "quit": "Salir de Oleafly",
+    "edit": "Edición",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "cut": "Cortar",
+    "copy": "Copiar",
+    "paste": "Pegar",
+    "selectAll": "Seleccionar todo",
+    "view": "Ver",
+    "toggleTerminal": "Alternar terminal",
+    "toggleBrowser": "Alternar navegador"
+  },
+  "window": {
+    "browser": "Navegador de Oleafly",
+    "browserTitled": "{{title}} - Navegador de Oleafly"
+  },
+  "dialog": {
+    "cancel": "Cancelar",
+    "fullAccess": {
+      "title": "¿Activar el acceso completo?",
+      "message": "El acceso completo permite que el asistente ejecute comandos de shell y edite archivos sin pedir aprobación cada vez. ¿Quieres activarlo?",
+      "confirm": "Activar acceso completo"
+    },
+    "cookieImport": {
+      "title": "Confirmar la importación de cookies",
+      "messageHost": "¿Importar en el navegador integrado de Oleafly las cookies de {{hostname}} del perfil \"{{profile}}\" de {{browser}}? Las cookies importadas pueden iniciar tu sesión en algunos sitios web.",
+      "messageAll": "¿Importar en el navegador integrado de Oleafly todas las cookies del perfil \"{{profile}}\" de {{browser}}? Las cookies importadas pueden iniciar tu sesión en algunos sitios web.",
+      "confirm": "Importar cookies"
+    },
+    "mcpApprove": {
+      "title": "Aprobar la herramienta MCP",
+      "confirm": "Usar la herramienta"
+    },
+    "tableImport": {
+      "title": "Elige una hoja de cálculo para importar",
+      "filter": "Hojas de cálculo"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "El menú de la aplicación no está disponible",
+    "viewMenuUnavailable": "El menú Ver no está disponible",
+    "menuItemUnavailable": "El elemento de menú {{id}} no está disponible",
+    "fullAccessDismissed": "Se descartó la confirmación de acceso completo.",
+    "fullAccessDeclined": "No se activó el acceso completo.",
+    "approvalDialogClosed": "El diálogo nativo de aprobación se cerró de forma inesperada."
+  }
+}

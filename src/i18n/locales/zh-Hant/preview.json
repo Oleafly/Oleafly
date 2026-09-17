@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "記錄檔",
+    "showLogs": "顯示編譯記錄檔",
+    "showPdf": "顯示 PDF 預覽",
+    "askAi": "詢問 AI",
+    "more": "更多預覽控制項",
+    "duration": "{{seconds}} 秒",
+    "failed": "失敗",
+    "compiledWithErrors": "編譯完成，但有錯誤",
+    "compiledWithWarnings": "編譯完成，但有警告",
+    "compiledSuccessfully": "編譯成功"
+  },
+  "pageLayout": {
+    "group": "頁面版面配置",
+    "single": "單頁檢視",
+    "double": "雙頁檢視"
+  },
+  "pages": {
+    "previous": "上一頁",
+    "next": "下一頁",
+    "number": "頁碼",
+    "ofTotal": "共 {{total}} 頁",
+    "pageOfTotal": "第 {{page}} 頁，共 {{total}} 頁"
+  },
+  "zoom": {
+    "in": "放大",
+    "out": "縮小",
+    "fitToWidth": "符合寬度",
+    "fitToHeight": "符合高度",
+    "reset": "重設為 100%",
+    "percent": "{{percent}}%",
+    "percentLabel": "縮放百分之 {{percent}}",
+    "menuLabel": "縮放 · {{percent}}%"
+  },
+  "outline": {
+    "open": "文件大綱",
+    "panel": "PDF 文件大綱",
+    "title": "文件大綱",
+    "close": "關閉文件大綱",
+    "loading": "正在載入大綱…",
+    "empty": "這份 PDF 沒有文件大綱。",
+    "externalLink": "外部連結",
+    "externalBadge": "連結"
+  },
+  "search": {
+    "open": "搜尋 PDF",
+    "panel": "搜尋這份 PDF",
+    "placeholder": "搜尋文件",
+    "input": "搜尋 PDF 文字",
+    "previous": "上一個搜尋結果",
+    "next": "下一個搜尋結果",
+    "close": "關閉 PDF 搜尋"
+  },
+  "viewer": {
+    "scrollArea": "PDF 連續捲動區域",
+    "crashedTitle": "PDF 預覽已當機",
+    "crashedDetail": "請重新編譯目前的修訂版本，或重試檢視器。",
+    "retry": "重試檢視器",
+    "loadingLatest": "正在載入最新編譯的 PDF…",
+    "retryingLoad": "正在重試載入 PDF…",
+    "retainedFailure": "{{detail}}，改為顯示上次成功載入的 PDF。",
+    "retainedFailureDetail": "無法載入目前的 PDF",
+    "invalidTitle": "PDF 無效",
+    "emptyTitle": "空白 PDF",
+    "unavailableTitle": "PDF 檢視器無法使用",
+    "loadFailedTitle": "PDF 載入失敗",
+    "loadFailedDetail": "無法載入這份 PDF。"
+  },
+  "password": {
+    "title": "需要密碼",
+    "label": "PDF 密碼",
+    "placeholder": "PDF 密碼",
+    "submit": "解鎖 PDF"
+  },
+  "actions": {
+    "downloadImage": "下載圖片",
+    "downloadPdf": "下載 PDF",
+    "downloadDisplayedPdf": "下載顯示中的 PDF",
+    "downloadStalePdf": "下載已過期、非目前版本的 PDF",
+    "saveImage": "將圖片儲存到專案",
+    "savePdf": "將 PDF 儲存到專案",
+    "invert": "反轉 PDF 預覽顏色",
+    "restoreColors": "還原顏色",
+    "readerView": "閱讀檢視",
+    "exitReaderView": "結束閱讀檢視",
+    "rotate": "順時針旋轉",
+    "rotateTooltip": "順時針旋轉 PDF（90°）。目前為 {{degrees}}°",
+    "openWindow": "在新視窗開啟預覽",
+    "hideToolbar": "隱藏工具列",
+    "showToolbar": "顯示工具列",
+    "settings": "PDF 預覽設定",
+    "fullscreen": "全螢幕預覽",
+    "exitFullscreen": "結束全螢幕",
+    "retryCompile": "重試編譯"
+  },
+  "stale": {
+    "badge": "已過期",
+    "badgeLabel": "預覽已過期，並非目前版本。請重新編譯。",
+    "tooltip": "預覽尚未反映編輯器中的變更。{{explanation}} {{syncTex}} 點按即可重新編譯。",
+    "explanation": "這份 PDF 不是使用中的專案修訂版本。",
+    "revisionExplanation": "目前顯示專案修訂版本 {{displayed}}，使用中的專案為修訂版本 {{active}}。",
+    "noIdentity": "顯示中的 PDF 沒有對應使用中修訂版本的已驗證編譯識別。",
+    "syncTexAvailable": "對編輯過的內容，SyncTeX 會使用最接近的未變更行。",
+    "syncTexUnavailable": "SyncTeX 需要目前版本的編譯結果。"
+  },
+  "save": {
+    "title": "將 PDF 儲存到專案",
+    "imageTitle": "將圖片儲存到專案",
+    "close": "關閉儲存對話框",
+    "staleDescription": "將顯示中、已過期的 PDF 儲存到專案檔案樹。它不是使用中的修訂版本。",
+    "description": "將顯示中的 PDF 儲存到專案檔案樹（透過 Git 提交）。",
+    "nameLabel": "專案中的儲存名稱",
+    "namePlaceholder": "文件.pdf",
+    "imageSaved": "圖片已儲存到專案。",
+    "pdfSaved": "PDF 已儲存到專案。",
+    "failed": "無法儲存到專案。"
+  },
+  "download": {
+    "pngFilter": "PNG 圖片",
+    "imageSaved": "圖片已儲存 · {{name}}",
+    "pdfSaved": "PDF 已儲存 · {{name}}",
+    "showInFolder": "在資料夾中顯示",
+    "folderUnavailable": "檔案已儲存，但 Oleafly 無法開啟它所在的資料夾（權限遭拒）。請確認你在儲存對話框中選擇的位置。",
+    "imageFailed": "無法下載圖片。",
+    "imageFailedDetail": "無法下載圖片：{{detail}}",
+    "pdfFailed": "無法下載 PDF。",
+    "pdfFailedDetail": "無法下載 PDF：{{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "目前無法編譯 PDF。",
+    "compileFailed": "編譯失敗。開啟記錄檔分頁即可查看問題所在。"
+  },
+  "a11y": {
+    "stale": "PDF 已過期，並非目前版本。{{explanation}}",
+    "page": "PDF 第 {{page}} 頁，共 {{total}} 頁。",
+    "searchResult": "第 {{current}} 個搜尋結果，共 {{total}} 個。"
+  },
+  "startup": {
+    "headingReady": "PDF 預覽已就緒",
+    "headingPreparing": "正在準備 PDF 預覽",
+    "headingAttention": "啟動需要處理",
+    "progressLabel": "文件啟動：{{total}} 個階段中有 {{completed}} 個已完成或略過",
+    "doneCount": "已完成 {{completed}}/{{total}}",
+    "metaRunning": "{{stages}} 個執行中",
+    "metaQueued": "{{stages}} 個在佇列中",
+    "metaFailed": "{{stages}} 個失敗",
+    "compileNow": "立即編譯",
+    "noProject": "沒有使用中的專案",
+    "waitingForEngine": "正在等待文件引擎",
+    "orPress": "或按 <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "已完成",
+      "running": "執行中",
+      "queued": "佇列中",
+      "skipped": "已略過",
+      "failed": "失敗"
+    },
+    "language": {
+      "serviceLabel": "語言服務",
+      "analysisLabel": "語言分析",
+      "openingFiles": "正在開啟專案檔案",
+      "starting": "正在啟動語言服務",
+      "restarting": "正在重新啟動語言服務",
+      "installing": "正在安裝語言服務",
+      "connected": "已啟動並連線",
+      "ready": "已就緒",
+      "localOnly": "不需要，改用本機分析。",
+      "notApplicable": "不適用於這個專案",
+      "unavailable": "無法使用，本機分析仍可使用。",
+      "waitingToStart": "等待啟動",
+      "waitingForFiles": "正在等待專案檔案",
+      "syncing": "正在同步目前的專案檔案",
+      "analyzing": "正在分析專案結構",
+      "analyzed": "已分析目前的專案修訂版本",
+      "partial": "可用的部分分析已就緒",
+      "needsAttention": "分析需要處理",
+      "notAvailable": "這個專案無法使用",
+      "queued": "已為目前的修訂版本排入佇列",
+      "waitingForService": "正在等待語言服務"
+    },
+    "compile": {
+      "label": "正在編譯",
+      "saving": "正在儲存目前的變更",
+      "downloading": "正在下載所需的 LaTeX 套件",
+      "producing": "正在產生並驗證 PDF 輸出",
+      "unavailable": "編譯器無法使用",
+      "failed": "編譯失敗。開啟記錄檔查看詳情。",
+      "accepted": "已接受驗證過的輸出",
+      "waiting": "正在等待編譯目前的修訂版本"
+    },
+    "render": {
+      "label": "正在算繪 PDF",
+      "preparing": "正在準備頁面、文字與連結",
+      "reading": "正在讀取 PDF · {{percent}}%",
+      "passwordRequired": "需要密碼",
+      "needsAttention": "PDF 算繪需要處理",
+      "ready": "預覽已就緒",
+      "waitingForRenderer": "正在等待已驗證的 PDF 算繪器",
+      "waitingForCompile": "正在等待已驗證的編譯輸出"
+    }
+  },
+  "window": {
+    "fitWidth": "符合寬度",
+    "fitHeight": "符合高度",
+    "invert": "反轉顏色",
+    "invertLabel": "反轉 PDF 顏色",
+    "rotateLabel": "順時針旋轉 PDF",
+    "staleHeading": "已過期 · 非目前版本的預覽",
+    "staleCompiling": "較新的專案修訂版本正在編譯。這是修訂版本 {{revision}} 最後一份已驗證的 PDF。",
+    "staleUnknownRevision": "未知",
+    "staleCompileFailed": "{{detail}}。最後一份已驗證的 PDF 仍會顯示。",
+    "staleCompileFailedDetail": "較新的編譯沒有產生可用的 PDF",
+    "staleIdentity": "這份 PDF 不符合最新接受的編譯識別。",
+    "crashedDetail": "請重試這個檢視器，或在主視窗重新編譯。",
+    "compilingTitle": "正在編譯 PDF",
+    "compileFailedTitle": "編譯失敗",
+    "compileUnavailableTitle": "無法編譯",
+    "artifactUnavailableTitle": "PDF 無法使用",
+    "noVerifiedTitle": "沒有已驗證的 PDF",
+    "compilingDetail": "編譯完成後就會顯示已驗證的 PDF。",
+    "noVerifiedDetail": "請在主視窗編譯專案。這個視窗只會顯示具有已驗證編譯識別的輸出。",
+    "loadingTitle": "正在載入 PDF",
+    "loadingVerified": "正在載入已驗證的 PDF…",
+    "restoringLast": "正在還原上次成功載入的 PDF…",
+    "retryingLoad": "正在重試載入 PDF…",
+    "unlocking": "正在解鎖 PDF…",
+    "rotating": "正在旋轉 PDF…",
+    "retainedFailureDetail": "無法載入最新的 PDF",
+    "artifactFailure": "無法驗證或讀取編譯出的 PDF。若有上次成功載入的 PDF，會繼續保留顯示。",
+    "downloadStarted": "PDF 已開始下載。",
+    "downloadSaved": "PDF 已成功儲存。",
+    "downloadFailed": "無法儲存顯示中的 PDF。"
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "PDF 密碼不正確。",
+      "passwordRequired": "這份 PDF 受密碼保護。",
+      "invalid": "編譯出的輸出不是有效的 PDF。請重新編譯，或查看編譯記錄檔。",
+      "unavailable": "這個視窗中的 PDF 算繪器無法使用。請還原視窗或重新啟動應用程式後再試一次。",
+      "generic": "無法載入這份 PDF。請重新編譯目前的修訂版本後再試一次。",
+      "empty": "編譯出的 PDF 是空的。",
+      "firstPage": "PDF 已開啟，但無法算繪第一頁。"
+    },
+    "link": {
+      "blockedScheme": "這個 PDF 連結使用了已封鎖的 URL 配置。"
+    },
+    "search": {
+      "failed": "搜尋無法讀取每一頁。請重新載入 PDF 後再試一次。"
+    },
+    "outline": {
+      "empty": "這份 PDF 沒有文件大綱。",
+      "failed": "無法載入 PDF 大綱。",
+      "destinationUnavailable": "這個大綱目標位置無法使用。",
+      "blockedScheme": "這個連結使用了已封鎖的 URL 配置。",
+      "noDestination": "這個大綱項目沒有目標位置。",
+      "untitled": "未命名章節"
+    },
+    "status": {
+      "loading": "正在載入 PDF…"
+    },
+    "a11y": {
+      "document": "PDF 文件預覽",
+      "page": "PDF 第 {{page}} 頁，共 {{total}} 頁",
+      "textLayer": "PDF 第 {{page}} 頁的可選取文字"
+    },
+    "screenReader": {
+      "layer": "螢幕閱讀器檢視，第 {{page}} 頁，共 {{total}} 頁",
+      "title": "螢幕閱讀器模式",
+      "pageLabel": "第 {{page}} 頁，共 {{total}} 頁",
+      "empty": "這一頁找不到可讀取的文字。"
+    }
+  }
+}

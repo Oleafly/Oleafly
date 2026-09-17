@@ -53,6 +53,10 @@ Shift+F10 or the context menu key opens the menu when a tab has focus.
 Project files, optional Git history, compiled artifacts, indexing, preview
 rendering, spellchecking, and preflight remain local unless the user selects a
 network operation. The app has no mandatory account or telemetry requirement.
+Downloading a spelling dictionary is the one spell-check operation that leaves
+the machine. It fetches two files from a public package CDN, so the CDN learns
+which language you picked and nothing else: no document text, no project name,
+no account. Offline mode refuses the download.
 
 ## Engineering anchors
 

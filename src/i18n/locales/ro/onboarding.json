@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Primii pași",
+    "overview": {
+      "title": "Acasă",
+      "content": "Aici se află proiectele tale și de aici creezi altele noi."
+    },
+    "create": {
+      "title": "Creează un proiect real",
+      "content": "Alege Proiect nou ca să vezi felurile în care poate începe o lucrare."
+    },
+    "kind": {
+      "title": "Trei feluri de a începe",
+      "content": "Începe un proiect de cercetare, adu un manuscris pe care îl ai deja sau pornește de la un șablon pregătit."
+    },
+    "kindTemplate": {
+      "title": "Pornește de la un șablon",
+      "content": "Alege Folosește un șablon ca să deschizi galeria. Celelalte două puncte de plecare sunt acolo oricând ai nevoie de ele."
+    },
+    "gallery": {
+      "title": "Găsește-ți punctul de plecare",
+      "content": "Răsfoiește categoriile, caută după nume și restrânge șabloanele după compilator sau după disponibilitatea offline."
+    },
+    "template": {
+      "title": "Alege un șablon",
+      "content": "Selectează orice șablon real ca să continui. Fișierele lui vor deveni proiectul tău nou."
+    },
+    "name": {
+      "title": "Dă un nume proiectului",
+      "content": "Introdu un nume de proiect. Butonul Înainte devine disponibil când numele nu este gol."
+    },
+    "color": {
+      "title": "Alege o culoare de copertă",
+      "content": "Culoarea aceasta face proiectul ușor de reperat pe ecranul principal. Poți păstra valoarea implicită a șablonului."
+    },
+    "createProject": {
+      "title": "Creează-ți proiectul",
+      "content": "Apasă „Creează proiectul” ca să creezi un proiect cu șablonul selectat."
+    }
+  },
+  "workspace": {
+    "label": "Spațiul tău de lucru",
+    "toolbar": {
+      "title": "Bara de instrumente a proiectului",
+      "content": "Aici se află acțiunile proiectului și comenzile de compilare."
+    },
+    "sidebar": {
+      "title": "Navigarea în spațiul de lucru",
+      "content": "Treci de la fișiere la căutare, control al versiunilor, preverificare, referințe și activitate MCP."
+    },
+    "editor": {
+      "title": "Editor",
+      "content": "Scrie și navighează prin sursă cu completare, diagnostice, formatare și inteligență de cod."
+    },
+    "wysiwygToggle": {
+      "title": "Încearcă modul WYSIWYG",
+      "content": "Comută între sursa brută și o vizualizare formatată a documentului tău, în stil Google Docs."
+    },
+    "compile": {
+      "title": "Compilează și recompilează",
+      "content": "De aici construiești proiectul curent. Turul nu compilează și nu îți schimbă niciodată sursa."
+    },
+    "logs": {
+      "title": "Jurnale de compilare",
+      "content": "Deschide jurnalele de compilare ca să inspectezi erorile fără să schimbi conținutul proiectului. Starea alăturată arată durata ultimei compilări."
+    },
+    "preview": {
+      "title": "Previzualizare PDF",
+      "content": "Documentul compilat rămâne lângă sursa ta, în vizualizare împărțită."
+    },
+    "zoom": {
+      "title": "Trusa ta completă pentru PDF",
+      "content": "Deschide cuprinsul, caută text, sari de la o pagină la alta, alege aspectul pe una sau două pagini, mărește sau potrivește pagina, inversează culorile, folosește vizualizarea accesibilă de lectură, rotește, descarcă, salvează în proiect, treci pe ecran complet sau deschide previzualizarea într-o fereastră separată."
+    },
+    "sourceNavigation": {
+      "title": "Din PDF în sursă",
+      "content": "Apasă pe conținutul din PDF-ul compilat ca să sari direct la sursa corespunzătoare."
+    }
+  },
+  "research": {
+    "label": "Spațiu de cercetare",
+    "open": {
+      "title": "Spațiu de cercetare",
+      "content": "Deschide-l ca să dai sarcini de cercetare unui agent și ca să legi folderele de lectură și seturile de date pe care le ții în altă parte. Este nou și în beta, așa că te rugăm să raportezi orice nu funcționează."
+    },
+    "tasks": {
+      "title": "Pune sarcini de cercetare la coadă",
+      "content": "Descrie o lucrare și dă-i-o unui agent. Fiecare sarcină își păstrează propria conversație, propriile rezultate și propriile observații."
+    },
+    "folders": {
+      "title": "Leagă foldere pe care le ai deja",
+      "content": "Îndreaptă spațiul de lucru spre foldere de lectură și seturi de date din afara proiectului. Nimic nu se copiază și nu se mută."
+    }
+  },
+  "settings": {
+    "label": "Setări",
+    "navigation": {
+      "title": "Setări",
+      "content": "De aici treci de la preferințe la integrări."
+    },
+    "general": {
+      "title": "Preferințe generale",
+      "content": "Controlează comportamentul la editare, modul offline, scurtăturile și ghidurile din tur."
+    },
+    "appearance": {
+      "title": "Aspect",
+      "content": "Alege tema, tipografia, aranjarea implicită a spațiului de lucru și culoarea de accent."
+    },
+    "dictionary": {
+      "title": "Dicționar",
+      "content": "Verifică cuvintele specifice proiectului și pe cele globale pe care verificarea ortografică și gramaticală le ignoră."
+    },
+    "data": {
+      "title": "Stocarea datelor",
+      "content": "Inspectează stocarea locală a proiectelor și gestionează datele aplicației."
+    },
+    "ai": {
+      "title": "Asistentul AI",
+      "content": "Configurează furnizorii, modelele, credențialele și serverele MCP pe care le poate folosi asistentul."
+    },
+    "compiler": {
+      "title": "Compilator",
+      "content": "Alege și configurează motorul LaTeX folosit pentru a construi proiectele."
+    },
+    "downloads": {
+      "title": "Descărcări",
+      "content": "Gestionează pachetele și resursele disponibile pentru lucrul offline."
+    },
+    "integrations": {
+      "title": "Integrări",
+      "content": "Conectează GitHub, alphaXiv, Zotero, căutarea de citări și serverul MCP local al Oleafly."
+    },
+    "shortcuts": {
+      "title": "Scurtături de tastatură",
+      "content": "Verifică, modifică, definește și resetează scurtăturile de tastatură ale aplicației."
+    },
+    "mcp": {
+      "title": "MCP pentru asistent",
+      "content": "Alege ce servere MCP poate folosi asistentul."
+    },
+    "help": {
+      "title": "Ajutor și Despre",
+      "content": "Repornește turul contextual, deschide documentația, vezi scurtăturile sau raportează o problemă."
+    }
+  },
+  "aiSettings": {
+    "label": "Setări AI",
+    "tabs": {
+      "title": "Setările asistentului AI",
+      "content": "De aici gestionezi furnizorii și cheile, instrucțiunile, personajele, abilitățile refolosibile și serverele MCP."
+    },
+    "providers": {
+      "title": "Conectează furnizori",
+      "content": "Lipește o cheie și ea este validată la furnizor înainte de salvare. Furnizorii conectați primesc o insignă verde și se extind într-o listă de modele pe care o poți comuta, completa sau restabili. Cheile rămân criptate pe acest computer."
+    },
+    "customProvider": {
+      "title": "Adu-ți propriul punct de acces",
+      "content": "Aici funcționează orice URL de bază compatibil cu OpenAI, inclusiv servere locale precum Ollama sau LM Studio."
+    },
+    "openInstructions": {
+      "title": "Instrucțiuni",
+      "content": "Apasă pe fila Instrucțiuni ca să continui."
+    },
+    "defaultModel": {
+      "title": "Model implicit",
+      "content": "Conversațiile noi pornesc cu acest model. Poți schimba modelul pentru fiecare conversație din panoul de discuție."
+    },
+    "instructions": {
+      "title": "Instrucțiuni personalizate",
+      "content": "Preferințele tale permanente de stil, adăugate la fiecare cerere pe care o face asistentul."
+    },
+    "openPersonas": {
+      "title": "Personaje",
+      "content": "Apasă pe fila Personaje ca să continui."
+    },
+    "personas": {
+      "title": "Creează personaje",
+      "content": "Seturi de instrucțiuni cu nume și culoare, pe care le schimbi din meniul Personaj al conversației. Încearcă un corector, un recenzent sau un purist LaTeX."
+    }
+  },
+  "ai": {
+    "label": "Asistentul AI",
+    "assistant": {
+      "title": "Asistentul AI",
+      "content": "Lucrează cu un asistent care îți cunoaște proiectul, fără să trimiți nimic în timpul acestui tur."
+    },
+    "runtime": {
+      "title": "Două feluri de agent",
+      "content": "Agentul Oleafly rulează pe furnizorul de modele pe care îl configurezi. Agentul din linia de comandă, aflat în beta, folosește un agent de programare instalat deja pe acest computer."
+    },
+    "connectProvider": {
+      "title": "Conectează un furnizor",
+      "content": "Dacă nu ai niciun furnizor configurat, începe de aici. Turul nu cere și nu schimbă niciodată credențiale."
+    },
+    "providerModel": {
+      "title": "Furnizor și model",
+      "content": "Schimbă modelele pentru această conversație. Modificările se aplică doar acestei sesiuni. Modelul tău implicit se stabilește în Setări. Siglele arată furnizorul fiecărui model."
+    },
+    "prompts": {
+      "title": "Scurtături de prompturi",
+      "content": "Alege un prompt gata făcut ca să îl pui în câmpul de discuție."
+    },
+    "persona": {
+      "title": "Personaj",
+      "content": "Alege felul în care ar trebui să lucreze asistentul. Un personaj activ îți înlocuiește instrucțiunile implicite până când îl dezactivezi."
+    },
+    "input": {
+      "title": "Câmpul de discuție",
+      "content": "Descrie ce îți trebuie. Asistentul poate folosi contextul proiectului, dar turul acesta nu trimite nicio cerere."
+    },
+    "attachments": {
+      "title": "Atașamente",
+      "content": "Atașează imagini, fișiere PDF și fișiere sursă atunci când o conversație are nevoie de context suplimentar."
+    },
+    "history": {
+      "title": "Istoricul conversațiilor",
+      "content": "Redeschide conversațiile recente și istoricul complet, păstrând fiecare conversație legată de starea proiectului ei."
+    },
+    "usage": {
+      "title": "Utilizare",
+      "content": "Conversațiile configurate arată aici rulările, tokenurile și costul estimat, atunci când sunt disponibile."
+    },
+    "restore": {
+      "title": "Restabilește starea proiectului",
+      "content": "După o modificare făcută de AI, un punct de control poate restabili fișierele proiectului fără să șteargă conversația."
+    }
+  },
+  "diagram": {
+    "label": "Compozitorul de diagrame",
+    "composer": {
+      "title": "Compozitorul de diagrame",
+      "content": "Construiește diagrame vizual sau din cod TikZ. Turul nu îți modifică și nu îți salvează lucrul."
+    },
+    "import": {
+      "title": "Importă un fișier TikZ",
+      "content": "Ai deja un fișier .tikz sau .tex? Importă-l ca să înlocuiești acest desen de start. Rămâne o ciornă până alegi să îl salvezi."
+    },
+    "modes": {
+      "title": "Desenare și Cod",
+      "content": "Modul Desenare îți permite să lucrezi direct pe pânză. Modul Cod arată codul TikZ generat și fragmentele refolosibile."
+    },
+    "palette": {
+      "title": "Paleta de forme",
+      "content": "Alege o formă, apoi apasă și trage pe pânză ca să o plasezi și să îi dai dimensiunea."
+    },
+    "handles": {
+      "title": "Conectează și redimensionează",
+      "content": "O formă selectată arată mânere de conectare și de redimensionare, pentru structură și dimensiuni precise."
+    },
+    "inspector": {
+      "title": "Inspector",
+      "content": "Selectează o formă sau o conexiune ca să îi ajustezi stilul, textul, traseul și ordinea de suprapunere."
+    },
+    "preview": {
+      "title": "Previzualizare compilată",
+      "content": "Compilarea deschide o previzualizare lângă editor, cu comenzi pentru scară și fundal."
+    },
+    "compile": {
+      "title": "Compilează",
+      "content": "Compilarea produce o previzualizare izolată, fără să insereze diagrama în documentul tău."
+    },
+    "saveProject": {
+      "title": "Salvează ca proiect",
+      "content": "Salvează o diagramă terminată ca proiect de imagine refolosibil, care apare pe ecranul principal."
+    },
+    "download": {
+      "title": "Descarcă",
+      "content": "Descarcă diagrama compilată ca fișier PNG, fără să o salvezi ca proiect."
+    }
+  }
+}

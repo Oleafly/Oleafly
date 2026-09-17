@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Over Oleafly",
+    "checkUpdates": "Controleren op updates…",
+    "reloadViews": "Weergaven opnieuw laden",
+    "restartApp": "Applicatie opnieuw starten",
+    "quit": "Oleafly afsluiten",
+    "edit": "Bewerken",
+    "undo": "Ongedaan maken",
+    "redo": "Opnieuw",
+    "cut": "Knippen",
+    "copy": "Kopiëren",
+    "paste": "Plakken",
+    "selectAll": "Alles selecteren",
+    "view": "Beeld",
+    "toggleTerminal": "Terminal tonen of verbergen",
+    "toggleBrowser": "Browser tonen of verbergen"
+  },
+  "window": {
+    "browser": "Oleafly Browser",
+    "browserTitled": "{{title}} - Oleafly Browser"
+  },
+  "dialog": {
+    "cancel": "Annuleren",
+    "fullAccess": {
+      "title": "Volledige toegang inschakelen?",
+      "message": "Met volledige toegang kan de assistent shell-opdrachten uitvoeren en bestanden bewerken zonder telkens om goedkeuring te vragen. Volledige toegang inschakelen?",
+      "confirm": "Volledige toegang inschakelen"
+    },
+    "cookieImport": {
+      "title": "Cookie-import bevestigen",
+      "messageHost": "Cookies voor {{hostname}} importeren uit het {{browser}}-profiel \"{{profile}}\" naar de ingebouwde browser van Oleafly? Met geïmporteerde cookies kun je op websites aangemeld raken.",
+      "messageAll": "Alle cookies importeren uit het {{browser}}-profiel \"{{profile}}\" naar de ingebouwde browser van Oleafly? Met geïmporteerde cookies kun je op websites aangemeld raken.",
+      "confirm": "Cookies importeren"
+    },
+    "mcpApprove": {
+      "title": "MCP-tool goedkeuren",
+      "confirm": "Tool gebruiken"
+    },
+    "tableImport": {
+      "title": "Kies een spreadsheet om te importeren",
+      "filter": "Spreadsheets"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Het applicatiemenu is niet beschikbaar",
+    "viewMenuUnavailable": "Het menu Beeld is niet beschikbaar",
+    "menuItemUnavailable": "Menu-item {{id}} is niet beschikbaar",
+    "fullAccessDismissed": "De bevestiging voor volledige toegang is weggeklikt.",
+    "fullAccessDeclined": "Volledige toegang is niet ingeschakeld.",
+    "approvalDialogClosed": "Het systeemvenster voor goedkeuring is onverwacht gesloten."
+  }
+}

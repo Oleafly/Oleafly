@@ -1,0 +1,597 @@
+{
+  "accents": {
+    "blue": "Sininen",
+    "green": "Vihreä",
+    "orange": "Oranssi",
+    "purple": "Violetti",
+    "rose": "Ruusu",
+    "teal": "Sinivihreä"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Silta tarvitaan",
+      "cliMissing": "Komentorivityökalua ei löydy",
+      "ready": "Valmis",
+      "unavailable": "Ei käytettävissä"
+    },
+    "requestFailed": "ACP-pyyntöä ei voitu viedä loppuun."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Tämä projekti saavutti tekoälybudjettinsa {{budget}}. Nosta budjettia tai tyhjennä se asetuksissa, niin työ jatkuu.",
+    "warned": "Tämä projekti on käyttänyt {{spent}} tekoälybudjetistaan {{budget}}."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "Tähän toimintoon vaihdettiin Oleafly-avustaja."
+  },
+  "bibtex": {
+    "duplicateDoi": "Sama DOI myös viitteissä: {{keys}}",
+    "duplicateKey": "Viiteavain on kahteen kertaan",
+    "invalidYear": "Vuosi \"{{year}}\" ei ole nelinumeroinen luku",
+    "missingField": "Pakollinen kenttä puuttuu: {{fields}}",
+    "missingKey": "Tyypin @{{type}} viitteestä puuttuu viiteavain",
+    "unknownType": "Tuntematon viitetyyppi @{{type}}",
+    "unreadableFields": "Viitteen \"{{entry}}\" kenttiä ei voitu lukea",
+    "unterminatedEntry": "Päättämätön viite merkin {{position}} kohdalla",
+    "unusualField": "Epätavallinen kenttä tyypille @{{type}}: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} muuttui viittausten tuonnin aikana. Yritä uudelleen.",
+    "noArxivEntry": "arXiv-viitettä ei löytynyt.",
+    "noReferences": "Tiedostosta ei löytynyt yhtään viitettä.",
+    "offline": "Viitehaku vaatii verkkoyhteyden. Poista offline-tila käytöstä asetuksissa.",
+    "parseFailed": "Viittausta ei voitu jäsentää.",
+    "projectChanged": "Projekti muuttui viittausten tuonnin aikana.",
+    "projectChangedNotInserted": "Projekti muuttui viittausten tuonnin aikana. Viittausta ei lisätty.",
+    "projectChangedRetry": "Projekti muuttui viittausten tuonnin aikana. Yritä uudelleen alkuperäisessä projektissa.",
+    "readFailed": "Kohdetta {{path}} ei voitu lukea: {{detail}}",
+    "unrecognizedFile": "Tunnistamaton tiedostotyyppi: {{name}}",
+    "writeFailed": "Kohteeseen {{path}} ei voitu kirjoittaa: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Oleafly-viite lisättiin tiedostoon {{path}}. Viittaa siihen merkinnällä {{markup}}.",
+    "failed": "Oleafly-viittausta ei voitu lisätä. Kopioi se sen sijaan kohdasta Asetukset, Ohje ja tietoja.",
+    "present": "Tiedostossa {{path}} on jo Oleafly-viite. Viittaa siihen merkinnällä {{markup}}.",
+    "undo": "Kumoa"
+  },
+  "compatibility": {
+    "biblatexBiber": "Tämä projekti käyttää lähdeluettelossa biblatexia ja Biberiä.",
+    "blockerFinding_one": "{{title}}",
+    "blockerFinding_other": "{{title}} (+{{more}} muuta)",
+    "chooseEngine": "Valitse moottori…",
+    "importNotes_one": "{{count}} tuontihuomio: {{title}}",
+    "importNotes_other": "{{count}} tuontihuomiota: {{title}} (+{{more}} muuta)"
+  },
+  "compile": {
+    "engineNotLoaded": "Kääntäminen ei ole käytettävissä ennen kuin dokumenttimoottori on ladattu.",
+    "noOfflineMode": "{{engine}} ei tarjoa offline-käännöstilaa. Käännetään normaalisti.",
+    "retry": "Käännä uudelleen"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Siirrä kaikki kehitysprojektit roskakoriin. Mitään ei poisteta pysyvästi.",
+        "title": "Tyhjennä projektit"
+      },
+      "replayFirstRun": {
+        "description": "Nollaa kaikki esittelyt, sulje nykyinen projekti ja palaa tervetulonäkymään.",
+        "title": "Toista ensimmäinen käynnistys"
+      },
+      "resetAndSeed": {
+        "description": "Siirrä nykyiset projektit roskakoriin ja kopioi sitten kaikki {{count}} kiinnitettyä oikean maailman testiaineistoa paikallisesta välimuistista.",
+        "title": "Nollaa ja alusta"
+      },
+      "resetUiState": {
+        "description": "Tyhjennä Oleaflyn paikalliset asetukset ja tallennettu käyttöliittymätila poistamatta projekteja.",
+        "title": "Nollaa käyttöliittymän tila"
+      },
+      "seedCorpus": {
+        "action": "Alusta korpus",
+        "description": "Kopioi {{count}} tutkimusprojektia hakemistosta ~/Codespace/Oleafly/oleafly-seed. Artikkeleita, opinnäytteitä, kirjoja, esityksiä, postereita ja kuvia LaTeXilla ja Typstillä, ja jokaisen kääntyminen mukana tulevilla moottoreilla on varmistettu. Olemassa olevat aineistot säilytetään.",
+        "title": "Alusta tutkimuskorpus"
+      }
+    },
+    "closeProjectFailed": "Avointa projektia ei voitu sulkea turvallisesti.",
+    "confirm": {
+      "clearProjects": {
+        "action": "Tyhjennä projektit",
+        "description": "Jokainen eristetyn kehityskirjaston projekti siirtyy sen roskakoriin. Tuotannon Oleafly-kirjastoon ei kosketa.",
+        "title": "Tyhjennetäänkö kaikki kehitysprojektit?"
+      },
+      "fallbackTitle": "Vahvista kehitystoiminto",
+      "resetAndSeed": {
+        "action": "Nollaa ja alusta",
+        "description": "Jokainen nykyinen kehitysprojekti siirtyy roskakoriin, minkä jälkeen Oleafly kopioi {{count}} tutkimusaineistoa paikallisesta oleafly-seed-välimuistista.",
+        "title": "Nollataanko ja alustetaanko kehityskirjasto?"
+      },
+      "resetBrowser": {
+        "action": "Nollaa käyttöliittymän tila",
+        "description": "Tämä tyhjentää Oleaflyn asetukset, esittelyt ja muun selaintilan tästä kehitysalkuperästä ja lataa sovelluksen sitten uudelleen. Projektitiedostot jäävät levylle.",
+        "title": "Nollataanko kehityksen käyttöliittymätila?"
+      }
+    },
+    "debugOnly": {
+      "description": "Nämä säätimet ladataan vain Viten kehitysversiossa. Tuotantoversiot hylkäävät tämän moduulin, jos sen tunnistemerkki esiintyy missään tuotetussa resurssissa.",
+      "title": "Vain debug-versiossa"
+    },
+    "library": {
+      "checking": "Tarkistetaan kirjaston polkua…",
+      "label": "Kehityskirjasto",
+      "locked": "Projektisäätimet on lukittu, koska tämä ei ole .oleafly-dev-hiekkalaatikko."
+    },
+    "nav": "Kehittäjä",
+    "projectsRecycled_one": "{{count}} projekti siirrettiin roskakoriin.",
+    "projectsRecycled_other": "{{count}} projektia siirrettiin roskakoriin.",
+    "replayFailed": "Ensimmäisen käynnistyksen esittelyä ei voitu nollata.",
+    "resetAndSeedSummary": "{{removed}} projektia siirrettiin roskakoriin ja tutkimuskorpus alustettiin: {{created}} luotu, {{skipped}} oli jo olemassa.",
+    "resetFailed": "Kehityshiekkalaatikkoa ei voitu nollata.",
+    "sandboxOnly": "Tutkimusaineistoja voi kopioida vain .oleafly-dev-hiekkalaatikkoon.",
+    "seedFailed": "Tutkimuskorpusta ei voitu alustaa.",
+    "seedFailures_one": "{{summary}} {{count}} aineisto epäonnistui. Ensimmäinen virhe: {{name}}: {{message}}",
+    "seedFailures_other": "{{summary}} {{count}} aineistoa epäonnistui. Ensimmäinen virhe: {{name}}: {{message}}",
+    "seedSummary": "Tutkimuskorpus alustettiin: {{created}} luotu, {{skipped}} oli jo olemassa.",
+    "unknownSeedError": "Tuntematon alustusvirhe"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "PNG-kuva",
+      "zipArchive": "Zip-arkisto"
+    }
+  },
+  "dictionary": {
+    "full": "Sanakirja on täynnä, joten sana piilotetaan sen sijaan tästä dokumentista. Poista jokin sana asetuksissa, niin sen voi tallentaa.",
+    "wordTooLong": "Tämä on liian pitkä tallennettavaksi sanana, joten se piilotetaan sen sijaan tästä dokumentista. Sanassa voi olla enintään {{max}} merkkiä."
+  },
+  "documentScan": {
+    "complete": "Tarkistus valmis",
+    "failed": "Dokumentin tarkistus epäonnistui",
+    "processed": "Käsitelty {{current}}/{{total}} kappaletta…",
+    "processing": "Käsitellään {{current}}/{{total}} kappaletta…",
+    "skippedEmpty": "Ohitettiin tyhjä haku ({{current}}/{{total}})",
+    "splitting": "Jaetaan dokumenttia kappaleiksi…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "Dokumenttimoottorin tietoja ei voitu ladata. Moottorikohtaiset toiminnot eivät ole käytettävissä.",
+      "renameReloadFailed": "Dokumenttimoottorin tietoja ei voitu ladata päädokumentin uudelleennimeämisen jälkeen.",
+      "stillLoading": "Dokumenttimoottorin tiedot latautuvat vielä."
+    }
+  },
+  "export": {
+    "pdfFailed": "PDF:n tallennus ei onnistunut",
+    "pdfFailedDetail": "PDF:n tallennus ei onnistunut: {{detail}}",
+    "pngFailed": "PNG:n tallennus ei onnistunut",
+    "pngFailedDetail": "PNG:n tallennus ei onnistunut: {{detail}}",
+    "revealFailed": "Tiedosto tallennettiin, mutta Oleafly ei voinut avata sen kansiota (käyttöoikeus evätty). Tarkista tallennusikkunassa valittu sijainti.",
+    "saved": "{{kind}} tallennettu · {{fileName}}",
+    "showInFolder": "Näytä kansiossa"
+  },
+  "externalChange": {
+    "deletionRestored": "Ulkoinen poisto osui yhteen tallentamattomien muokkausten kanssa. Paikalliset muokkaukset palautettiin.",
+    "localEditKept": "Tiedostoon \"{{path}}\" tuli ulkoinen muutos, kun siinä oli tallentamattomia muutoksia. Paikallinen muokkaus säilytettiin.",
+    "persistExternalFailed": "Viimeisintä ulkoista päivitystä tiedostoon \"{{path}}\" ei voitu tallentaa.",
+    "preserveLocalFailed": "Paikallista päivitystä tiedostoon \"{{path}}\" ei voitu säilyttää.",
+    "reloadFailed": "Projektin asetukset päivitettiin, mutta joitakin muuttuneita tiedostoja ei voitu ladata uudelleen.",
+    "restoreLocalFailed": "Tallentamatonta päivitystä tiedostoon \"{{path}}\" ei voitu palauttaa."
+  },
+  "fonts": {
+    "systemDefault": "Järjestelmän oletus",
+    "terminalDefault": "Päätteen oletus"
+  },
+  "imageToLatex": {
+    "failed": "Kuvasta LaTeXiin epäonnistui: {{detail}}",
+    "inserted": "Kuvasta luettu LaTeX lisättiin",
+    "transcribing": "Litteroidaan kuvaa…"
+  },
+  "import": {
+    "arxivImported": "arXiv-lähdekoodi tuotiin. Tarkista tulos kääntämällä projekti.",
+    "chooseOfferedProjectType": "Valitse jokin tälle tiedostolle tarjotuista projektityypeistä.",
+    "invalidArxivId": "Liitä arXiv-artikkelin linkki tai tunnus, esimerkiksi 2301.01234.",
+    "supportedDocumentTypes": "Valitse jokin tuetuista dokumenttityypeistä.",
+    "conversionNotice": "Sisältö muunnettiin LaTeX-muotoon. Muotoilua voi joutua korjaamaan käsin, erityisesti taulukoissa, kuvissa ja viittauksissa.",
+    "figureSaved": "{{name}} tallennettiin",
+    "pdfProjectCreated": "Projekti luotiin PDF-tiedostosta. Tarkista jälleenrakennus ennen kuin luotat siihen.",
+    "pickPdfOrDocx": "Valitse .pdf- tai .docx-tiedosto",
+    "texSaved": ".tex tallennettiin",
+    "unsupportedFile": "Valitse .zip-, .docx-, .md- tai .markdown-tiedosto.",
+    "zipSaveFailed": "ZIP-arkistoa ei voitu tallentaa.",
+    "zipSaved": ".zip tallennettiin"
+  },
+  "inlineAi": {
+    "concise": "Tiivistä",
+    "expand": "Laajenna sisältöä",
+    "fixSource": "Korjaa lähdekoodi",
+    "grammar": "Korjaa kielioppi",
+    "improve": "Paranna",
+    "translate": "Käännä kielelle"
+  },
+  "intelligence": {
+    "analysisFailed": "Nykyisen version projektianalyysi epäonnistui.",
+    "analyzing": "Projektiäly analysoi nykyistä versiota.",
+    "couldNotSend": "Projektianalyysia ei voitu lähettää työntekijälle.",
+    "disposed": "Projektiälyn työntekijä on suljettu.",
+    "disposedDuringRequest": "Projektiälyn työntekijä suljettiin kesken pyynnön.",
+    "failed": "Projektiäly epäonnistui.",
+    "identityMismatch": "Projektiälyn vastauksen tunniste ei vastannut pyyntöä.",
+    "malformedResponse": "Projektiälyn työntekijä palautti virheellisen vastauksen.",
+    "malformedSnapshotIdentity": "Projektiälyn tilannevedoksen tunniste oli virheellinen.",
+    "noProject": "Yhtään projektia ei ole aktiivisena.",
+    "partialFiles_one": "{{count}} tiedosto tuotti osittaisen mutta käyttökelpoisen analyysin.",
+    "partialFiles_other": "{{count}} tiedostoa tuotti osittaisen mutta käyttökelpoisen analyysin.",
+    "retainedStale": "Projektin sisältö muuttui. Säilytetty analyysi on vanhentunut, kunnes nykyinen versio on analysoitu.",
+    "sourceGraphRefreshing": "Projektin tiedostot muuttuivat. Lähdekoodikaaviota päivitetään.",
+    "sourceSnapshotsLoading": "Projektin tiedostot muuttuivat. Lähdekoodin tilannevedoksia ladataan nykyistä analyysia varten.",
+    "staleSnapshot": "Projektiälyn työntekijällä ei ole analyysia tälle tilannevedokselle.",
+    "stopped": "Projektiäly on pysäytetty.",
+    "timedOut": "Projektiälyn aikakatkaisu.",
+    "typeMismatch": "Projektiälyn vastauksen tyyppi ei vastannut pyyntöä.",
+    "unexpectedResponse": "Projektiälyn työntekijä palautti odottamattoman vastauksen.",
+    "workerFailed": "Projektiälyn työntekijä epäonnistui.",
+    "workerRestarted": "Projektiälyn työntekijä käynnistettiin uudelleen aikakatkaisun jälkeen.",
+    "workerUnavailable": "Projektiälyn työntekijä ei ole käytettävissä."
+  },
+  "latexPackages": {
+    "algorithm2e": "Algoritmien ladonta",
+    "amsmath": "Edistynyt matematiikan ladonta",
+    "amssymb": "Laajennettu matematiikan symbolivalikoima",
+    "amsthm": "Lause- ja todistusympäristöt",
+    "array": "Laajennettu array ja tabular",
+    "authblk": "Tekijä- ja affiliaatiolohkot",
+    "babel": "Monikielisyys ja dokumentin kieli",
+    "biblatex": "Edistynyt lähdeluettelotuki",
+    "bookmark": "Parannetut PDF-kirjanmerkit",
+    "booktabs": "Ammattimaiset taulukkoviivat",
+    "caption": "Kuvatekstien mukauttaminen",
+    "cleveref": "Älykkäät ristiviittaukset (lataa hyperrefin jälkeen)",
+    "csquotes": "Kontekstin mukaiset lainausmerkit (biblatexin vaatima)",
+    "enumitem": "Luetteloiden mukauttaminen",
+    "fancyhdr": "Mukautetut ylä- ja alatunnisteet",
+    "float": "Parannettu kelluvien elementtien sijoittelu",
+    "fontspec": "OpenType-fonttien valinta (Xe/LuaLaTeX)",
+    "geometry": "Sivun taiton mukauttaminen",
+    "graphicx": "Grafiikan ja kuvien sisällyttäminen",
+    "hyperref": "Hyperlinkit, kirjanmerkit ja PDF-metatiedot",
+    "inputenc": "Syötteen merkistökoodaus (tarpeeton Xe/LuaLaTeXissa)",
+    "lineno": "Rivinumerot arviointiversioihin",
+    "lipsum": "Täyteteksti (lorem ipsum)",
+    "listings": "Koodilistaukset (niiden sisältöä ei merkitä)",
+    "mathtools": "amsmathin laajennus korjauksineen ja työkaluineen",
+    "microtype": "Mikrotypografian hienosäätö",
+    "minted": "Pygments-korostetut koodilistaukset",
+    "multirow": "Monirivinen taulukkosolu",
+    "natbib": "Tekijä-vuosi- ja numeroviittaukset",
+    "parskip": "Kappalevälit",
+    "pdfpages": "Kokonaisten sivujen sisällyttäminen toisesta PDF-tiedostosta",
+    "setspace": "Riviväliasetukset",
+    "siunitx": "SI-yksiköt ja lukujen muotoilu",
+    "subcaption": "Osakuvat ja osataulukot",
+    "subfig": "Vanhempi osakuvien taittopaketti",
+    "tabularx": "Automaattilevyiset taulukot",
+    "threeparttable": "Taulukot, joissa on huomautukset alla",
+    "tikz": "Ohjelmoitava vektorigrafiikka (vaatii vaihtoehtoisen tekstin käsin)",
+    "titlesec": "Otsikoiden muotoilu",
+    "todonotes": "Marginaalin tehtävämuistiinpanot luonnoksiin",
+    "unicode-math": "Unicode-matematiikka Xe/LuaLaTeXille (tarvitaan merkittyyn matematiikkaan)",
+    "url": "URL-osoitteiden ladonta",
+    "wrapfig": "Kuvat, joiden ympäri teksti kiertyy",
+    "xcolor": "Värituki"
+  },
+  "literatureSources": {
+    "arxiv": "Yli 2,4 miljoonaa preprinttiä fysiikasta, matematiikasta, tietojenkäsittelytieteestä, kvantitatiivisesta biologiasta ja lähialoilta.",
+    "crossref": "DOI-rekisteri, jossa on metatiedot yli 150 miljoonalle tutkimusjulkaisulle.",
+    "googleScholar": "Google Scholar -tulokset Serperin kautta. Vaatii Serper-API-avaimen kohdassa Asetukset → Integraatiot → Viitehaku.",
+    "openalex": "Avoin luettelo tieteellisistä julkaisuista, tekijöistä, lähteistä, organisaatioista, aiheista, kustantajista ja rahoittajista.",
+    "pubmed": "Yli 40 miljoonaa viitettä ja tiivistelmää biolääketieteen ja biotieteiden kirjallisuudesta, MEDLINE mukaan lukien.",
+    "semanticScholar": "Tieteellinen hakemisto, jossa on viitegraafit, vaikuttavien viittausten tiedot ja TLDR-tiivistelmät.",
+    "uspto": "Yhdysvaltain patentit ja julkaistut hakemukset tekniikan tason ja soveltavan tutkimuksen selvittämiseen. Haku on pysäytetty PatentsView-siirron ajaksi.",
+    "usptoPaused": "USPTO on väliaikaisesti pysäyttänyt PatentsView-haun API-rajapinnat Open Data Portal -siirron ajaksi.",
+    "yearRangeInvalid": "Alkuvuosi ei voi olla loppuvuotta myöhäisempi."
+  },
+  "mcp": {
+    "openProjectSummary": "Avaa projekti {{id}}",
+    "useToolSummary": "Käytä työkalua {{tool}} MCP-palvelimelta {{server}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "MCP-palvelimella '{{name}}' on ristiriitaiset type- ja transport-määritykset.",
+    "exactlyOneServer": "MCP-palvelimen JSON-tiedostossa on oltava täsmälleen yksi palvelin.",
+    "fieldBoolean": "MCP-palvelimen '{{name}}' kentän '{{field}}' on oltava totuusarvo.",
+    "fieldString": "MCP-palvelimen '{{name}}' kentän '{{field}}' on oltava merkkijono.",
+    "fieldStringArray": "MCP-palvelimen '{{name}}' kentän '{{field}}' on oltava merkkijonotaulukko.",
+    "fieldStringRecord": "MCP-palvelimen '{{name}}' kentän '{{field}}' on oltava olio, jonka arvot ovat merkkijonoja.",
+    "jsonMalformed": "MCP-palvelimen JSON on virheellinen.",
+    "jsonNotObject": "MCP-palvelimen JSON-tiedoston on oltava olio.",
+    "mcpServersNotObject": "MCP-palvelimen JSON-kentän 'mcpServers' on oltava olio.",
+    "serverNotObject": "MCP-palvelimen '{{name}}' on oltava olio.",
+    "structural": "{{detail}} Odotettiin joko {\"server-name\": {...}} tai {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Tuntematon palvelin",
+    "unsupportedTransport": "MCP-palvelimella '{{name}}' on tukematon transport '{{transport}}'.",
+    "unsupportedType": "MCP-palvelimella '{{name}}' on tukematon type '{{type}}'."
+  },
+  "mermaid": {
+    "diagram": "Kaavio",
+    "renderFailed": "Kaaviota ei voitu piirtää.",
+    "rendering": "Piirretään kaaviota"
+  },
+  "missingPackages": {
+    "action_one": "Etsi ja asenna {{name}}",
+    "action_other": "Etsi ja asenna {{count}} tiedostoa",
+    "installing_one": "Asennetaan {{name}}. Kääntäminen käynnistyy uudelleen, kun asennus on valmis.",
+    "installing_other": "Asennetaan {{count}} pakettia. Kääntäminen käynnistyy uudelleen, kun asennus on valmis.",
+    "summary_one": "Kääntäminen ei löytänyt kohdetta \"{{name}}\". Etsi TeX Livestä paketti, joka sisältää sen.",
+    "summary_other": "Kääntäminen ei löytänyt kohteita {{names}}. Etsi niiden paketit TeX Livestä."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "{{tokens}} tokenin kontekstin koko",
+      "deprecated": {
+        "label": "Vanhentunut",
+        "title": "Palvelu on merkinnyt tämän mallin vanhentuneeksi"
+      },
+      "reasoning": {
+        "label": "Päättely",
+        "title": "Päättelymalli"
+      },
+      "tools": {
+        "label": "Työkalut",
+        "title": "Osaa kutsua työkaluja"
+      },
+      "vision": {
+        "label": "Konenäkö",
+        "title": "Hyväksyy kuvia"
+      }
+    },
+    "listChange": {
+      "none": "Ei muutoksia",
+      "summary": "{{added}} lisätty, {{removed}} poistettu"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "Projektin viiteanalyysi ei ole käytettävissä.",
+    "analysisUpdating": "Projektin viitteet päivittyvät.",
+    "definitionsFor": "Kohteen {{name}} määritelmät",
+    "edits_one": "{{count}} muokkaus",
+    "edits_other": "{{count}} muokkausta",
+    "files_one": "{{count}} tiedosto",
+    "files_other": "{{count}} tiedostoa",
+    "nameExists": "\"{{name}}\" on jo olemassa.",
+    "noDefinition": "Kohteelle \"{{name}}\" ei löytynyt määritelmää",
+    "noReferences": "Kohteeseen \"{{name}}\" ei ole viitteitä",
+    "notRenamable": "Tätä symbolia ei voi nimetä uudelleen.",
+    "nothingToRename": "Ei mitään nimettävää uudelleen.",
+    "referencesFor": "Viitteet kohteeseen {{name}}",
+    "renamePartial": "Nimettiin muotoon \"{{name}}\" {{edited}}/{{total}} tiedostossa. Kohteita {{files}} ei voitu kirjoittaa.",
+    "renamed": "Nimettiin muotoon \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) kohteessa $t(core:navigation.files, {\"count\": {{files}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "Pandocin lataus ei onnistunut. Asenna se käsin ja yritä sitten uudelleen",
+    "downloadingPercent": "Ladataan pandocia… {{progress}} %",
+    "downloadingSize": "Ladataan pandocia… {{megabytes}} MB",
+    "installGuide": "Asennusohje",
+    "installed": "pandoc asennettu"
+  },
+  "project": {
+    "copyFailed": "Kohdetta \"{{path}}\" ei voitu kopioida.",
+    "dateUnavailable": "Ei saatavilla",
+    "importFailed": "Tuonti ei onnistunut. Katso lisätiedot sovelluslokista.",
+    "imported": "Projekti tuotiin.",
+    "openFailed": "Projektia ei voitu avata. Katso lisätiedot sovelluslokista.",
+    "restoringUnsavedFiles": "Projektipäivitys poisti tiedostoja, joissa oli tallentamattomia muokkauksia. Oleafly säilytti muokkaukset ja palauttaa nyt nuo tiedostot.",
+    "saveBlockedClose": "Projekti jäi auki, koska yhtä tai useampaa tiedostoa ei voitu tallentaa.",
+    "saveBlockedDiscard": "Hylkää muutokset ja poistu",
+    "saveBlockedMany": "{{count}} tiedostoa ei voitu tallentaa: {{files}}. Ensimmäinen niistä on auki editorissa tallentamattomine muutoksineen ({{reason}}). Jää korjaamaan ongelma tai hylkää näiden tiedostojen tallentamattomat muutokset ja poistu.",
+    "saveBlockedOne": "Tiedostoa {{file}} ei voitu tallentaa ({{reason}}). Se on auki editorissa tallentamattomine muutoksineen. Jää korjaamaan ongelma tai hylkää muutokset ja poistu.",
+    "saveBlockedStay": "Jää",
+    "saveBlockedSwitch": "Projekti jäi auki, koska yhtä tai useampaa tiedostoa ei voitu tallentaa.",
+    "saveBlockedTitle": "Joitakin tiedostoja ei voitu tallentaa",
+    "updatedDaysAgo_one": "Päivitetty {{count}} päivä sitten",
+    "updatedDaysAgo_other": "Päivitetty {{count}} päivää sitten",
+    "updatedOn": "Päivitetty {{date}}",
+    "updatedToday": "Päivitetty tänään",
+    "updatedYesterday": "Päivitetty eilen"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Analyysi epäonnistui: {{message}}",
+    "beginIsHere": "{{command}} on tässä.",
+    "beginWithoutEnd": "Komennolta {{command}} puuttuu vastaava \\end.",
+    "bibliographyFileMissing": "Lähdeluettelotiedostoa \"{{file}}\" ei löytynyt projektista.",
+    "citationHasManyDefinitions_one": "Viittauksella \"{{name}}\" on {{count}} mahdollinen määritelmä.",
+    "citationHasManyDefinitions_other": "Viittauksella \"{{name}}\" on {{count}} mahdollista määritelmää.",
+    "citationKeyDuplicated_one": "Viiteavain \"{{name}}\" on määritelty {{count}} kerran.",
+    "citationKeyDuplicated_other": "Viiteavain \"{{name}}\" on määritelty {{count}} kertaa.",
+    "citationUnresolved": "Viittausta \"{{name}}\" ei voitu ratkaista.",
+    "definedHere": "{{kind}} \"{{name}}\" on määritelty tässä.",
+    "duplicateTargetDefined_one": "Kohde {{kind}} \"{{name}}\" on määritelty {{count}} kerran.",
+    "duplicateTargetDefined_other": "Kohde {{kind}} \"{{name}}\" on määritelty {{count}} kertaa.",
+    "endWithoutBegin": "Komennolta {{command}} puuttuu vastaava \\begin.",
+    "entryMissingFieldList": "Lähdeviitteellä \"{{key}}\" ei ole kenttäluetteloa.",
+    "expectedEndBefore": "Odotettiin {{expected}} ennen kohtaa {{found}}.",
+    "fieldIncompleteValue": "Kentän \"{{name}}\" arvo on puutteellinen.",
+    "fieldMissingEquals": "Kentältä \"{{name}}\" puuttuu \"=\".",
+    "fieldRepeated": "Kenttä \"{{name}}\" toistuu lähdeviitteessä \"{{key}}\".",
+    "fileNotLoaded": "Lähdetiedostoa ei ole ladattu nykyistä projektianalyysia varten.",
+    "fileUnreadable": "Tiedostoa ei voitu lukea.",
+    "incompleteEntry": "Puutteellinen @{{type}}-viite.",
+    "invalidYear": "Vuosi \"{{year}}\" ei ole nelinumeroinen BibTeX-vuosi.",
+    "kinds": {
+      "anchor": "ankkuri",
+      "asset": "resurssi",
+      "bibentry": "lähdeviite",
+      "bibliography": "lähdeluettelo",
+      "environment": "ympäristö",
+      "file": "tiedosto",
+      "glossary": "sanastokohta",
+      "import": "tuonti",
+      "include": "sisällytys",
+      "label": "nimike",
+      "link": "linkki",
+      "macro": "makro",
+      "section": "luku"
+    },
+    "malformedDirective": "Virheellinen BibTeX-direktiivi tai viitetyyppi.",
+    "missingCitationKey": "@{{type}}-viitteeltä puuttuu viiteavain.",
+    "missingRequiredField": "Viitteeltä {{entry}} puuttuu pakollinen kenttä {{fields}}.",
+    "possibleTarget": "Mahdollinen kohde: {{file}}",
+    "projectFileUnreadable": "Projektitiedostoa ei voitu lukea.",
+    "referenceHasManyDefinitions_one": "Viitteellä \"{{name}}\" on {{count}} mahdollinen määritelmä.",
+    "referenceHasManyDefinitions_other": "Viitteellä \"{{name}}\" on {{count}} mahdollista määritelmää.",
+    "referenceUnresolved": "Viitettä \"{{name}}\" ei voitu ratkaista.",
+    "targetMatchesManyFiles_one": "Kohde {{kind}} \"{{target}}\" vastaa {{count}} projektitiedostoa.",
+    "targetMatchesManyFiles_other": "Kohde {{kind}} \"{{target}}\" vastaa {{count}} projektitiedostoa.",
+    "targetUnresolved": "Kohdetta {{kind}} \"{{target}}\" ei voitu ratkaista.",
+    "typeDelimiterExpected": "@{{type}}-viitteen jälkeen on tultava avaava aalto- tai kaarisulje.",
+    "unclosedDelimiter": "Erotinta \"{{char}}\" ei ole suljettu merkillä \"{{expected}}\".",
+    "unclosedDirective": "@{{type}}-direktiiviä ei ole suljettu.",
+    "unclosedEntry": "@{{type}}-viitettä ei ole suljettu.",
+    "unclosedEntryNamed": "Lähdeviitettä \"{{key}}\" ei ole suljettu.",
+    "unclosedFence": "Aidattua koodilohkoa ei ole suljettu.",
+    "unclosedFrontMatter": "YAML-alkulohkoa ei ole suljettu.",
+    "unclosedString": "Merkkijonoliteraalia ei ole suljettu.",
+    "unclosedTypstComment": "Typst-lohkokommenttia ei ole suljettu.",
+    "unexpectedClosingDelimiter": "Odottamaton sulkeva erotin \"{{char}}\".",
+    "unknownEntryType": "Tuntematon lähdeviitteen tyyppi @{{type}}.",
+    "unparsableField": "@{{type}}-viitteen kenttää ei voitu jäsentää.",
+    "unparsableFieldNamed": "Kohteen \"{{key}}\" kenttää ei voitu jäsentää."
+  },
+  "proofreading": {
+    "cancelled": "Kielentarkistus peruutettiin.",
+    "couldNotStart": "Offline-kielentarkistusta ei voitu käynnistää.",
+    "disposed": "Offline-kielentarkistus suljettiin.",
+    "invalidResponse": "Offline-kielentarkistus palautti virheellisen vastauksen.",
+    "outOfRangeDiagnostic": "Offline-kielentarkistus palautti alueen ulkopuolisen huomion.",
+    "postFailed": "Dokumenttia ei voitu lähettää offline-kielentarkistukseen.",
+    "restarted": "Offline-kielentarkistus käynnistyi uudelleen.",
+    "restartedAfterTimeout": "Offline-kielentarkistus käynnistyi uudelleen aikakatkaisun jälkeen.",
+    "staleResponse": "Offline-kielentarkistus palautti vanhentuneen vastauksen.",
+    "stopped": "Offline-kielentarkistus pysähtyi odottamatta.",
+    "superseded": "Uudempi kielentarkistuspyyntö korvasi tämän.",
+    "timedOut": "Offline-kielentarkistus aikakatkaistiin ja käynnistyy uudelleen seuraavan muokkauksen yhteydessä.",
+    "dictionaryUnavailable": "Valittua oikolukusanakirjaa ei ole asennettu. Lataa se asetuksissa."
+  },
+  "skillGroups": {
+    "shelf": "Aihealueen hylly",
+    "user": "Omat taidot"
+  },
+  "tagged": {
+    "compileFailed": "Merkitty käännös epäonnistui. Tarkista moottori ja yritä uudelleen.",
+    "compiled": "Merkitty PDF käännettiin. Katso saavutettavuustulos alta.",
+    "compiledWithErrors": "Merkitty käännös valmistui virheiden kanssa. Tarkista loki.",
+    "engineRequired": "Ota ensin käyttöön merkintöjä tukeva moottori kohdassa Asetukset, LaTeX-moottori."
+  },
+  "terminal": {
+    "defaultTitle": "Pääte {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Tämä projekti kiinnitettiin jakeluun {{pinned}}. Aktiivisesta jakelusta {{local}} puuttuu {{count}} sen pakettia, joten kääntäminen voi epäonnistua, kunnes tuo jakelu on taas käytössä.",
+    "distributionSkew": "Tämä projekti kiinnitettiin jakeluun {{pinned}}, ja tämä kone kääntää jakelulla {{local}}. Tulos voi poiketa hieman.",
+    "installPinned_one": "Asenna se",
+    "installPinned_other": "Asenna kaikki {{count}}",
+    "installingPinned_one": "Asennetaan {{count}} kiinnitettyä pakettia…",
+    "installingPinned_other": "Asennetaan {{count}} kiinnitettyä pakettia…",
+    "pinnedPackagesFailed": "Joitakin kiinnitettyjä paketteja ei voitu asentaa. Katso Asetukset → LaTeX-moottori.",
+    "pinnedPackagesInstalled": "Kiinnitetyt LaTeX-paketit asennettiin.",
+    "pinnedPackagesMissing_one": "Tämä projekti kiinnittää {{count}} LaTeX-paketin, jota ei ole asennettu tälle koneelle.",
+    "pinnedPackagesMissing_other": "Tämä projekti kiinnittää {{count}} LaTeX-pakettia, joita ei ole asennettu tälle koneelle."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "Mukautettu CSS ei voi käyttää at-sääntöjä, URL-osoitteita eikä valitsimia.",
+    "cssNotSimple": "Mukautetun CSS:n on sisällettävä yksinkertaisia ominaisuusmäärittelyjä.",
+    "cssNotText": "Mukautetun CSS:n on oltava tekstiä.",
+    "cssPropertyNotAllowed": "Mukautettu CSS-ominaisuus ei ole sallittu: {{property}}.",
+    "cssTooLarge": "Mukautettu CSS on suurempi kuin 64 KiB.",
+    "cssTooManyDeclarations": "Mukautetussa CSS:ssä voi olla enintään 64 määrittelyä.",
+    "cssUnsafeValue": "Mukautettu CSS sisältää turvattoman arvon.",
+    "customizationNotObject": "Teeman mukautuksen on oltava olio.",
+    "dark": {
+      "notObject": "Tumman teeman CSS-muuttujien on oltava olio.",
+      "tooManyEntries": "Tumman teeman CSS-muuttujia on yli {{max}}."
+    },
+    "fileMissingCssVars": "Teematiedostossa on oltava cssVars, jossa on light- ja dark-kohdat.",
+    "fileMissingModes": "Teematiedostossa on oltava vaalean ja tumman teeman CSS-muuttujat.",
+    "fileNotJson": "Teematiedosto ei ole kelvollista JSONia.",
+    "fileNotObject": "Teematiedoston on sisällettävä olio.",
+    "fileNotText": "Teematiedoston on oltava tekstiä.",
+    "fileTooLarge": "Teematiedosto on suurempi kuin 128 KiB.",
+    "invalidColor": "Teematunnuksella {{token}} on virheellinen väriarvo.",
+    "invalidRadius": "Kulman pyöristyksen yksikön on oltava px, rem, em tai prosentti.",
+    "light": {
+      "notObject": "Vaalean teeman CSS-muuttujien on oltava olio.",
+      "tooManyEntries": "Vaalean teeman CSS-muuttujia on yli {{max}}."
+    },
+    "tokens": {
+      "notObject": "Teematunnusten on oltava olio.",
+      "tooManyEntries": "Teematunnuksia on yli {{max}}."
+    },
+    "unknownProperty": "tuntematon",
+    "unsupportedToken": "Tukematon teematunnus: {{token}}.",
+    "unsupportedVersion": "Tämä teematiedosto käyttää tukematonta versiota."
+  },
+  "themes": {
+    "matchApp": "Seuraa sovelluksen teemaa"
+  },
+  "tinytex": {
+    "installFailed": "TinyTeXiä ei voitu asentaa.",
+    "installGuide": "Asennusohje",
+    "installed": "TinyTeX asennettiin.",
+    "phase": {
+      "addingPackages": "Lisätään paketteja…",
+      "downloading": "Ladataan…",
+      "downloadingPercent": "Ladataan… {{progress}} %",
+      "installing": "Asennetaan…",
+      "unpacking": "Puretaan…"
+    },
+    "removeFailed": "TinyTeXiä ei voitu poistaa",
+    "removed": "TinyTeX poistettiin"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Lue artikkeli",
+      "alphaxivSearch": "Hae artikkeleita",
+      "compile": "Käännä dokumentti",
+      "getLog": "Lue käännösloki",
+      "insertFigure": "Lisää kuva",
+      "listFiles": "Listaa projektin tiedostot",
+      "literatureSearch": "Hae kirjallisuutta",
+      "previewFigure": "Esikatsele kuva",
+      "projectLibrarySearch": "Hae projektin lähteistä",
+      "projectMap": "Kartoita projekti",
+      "readFile": "Lue tiedosto",
+      "readLinkedFile": "Lue linkitetty tiedosto",
+      "readPdfText": "Lue käännetty PDF",
+      "readResearchRootFile": "Lue linkitetty tiedosto",
+      "runCommand": "Suorita komento",
+      "searchProject": "Hae projektista",
+      "sendMessage": "Päivitä delegoitu tehtävä",
+      "spawnAgent": "Käynnistä delegoitu tehtävä",
+      "verifyCitation": "Tarkista viittaus",
+      "verifyPdfPages": "Tarkista PDF-sivut",
+      "waitAgent": "Odota delegoitua tehtävää"
+    },
+    "skillsBudgetNotice": "Codex ei voinut listata kaikkia taitojaan. Se varaa taitojen kuvauksille 2 prosentin kontekstibudjetin, joten karsi taitokansiota tai pyydä taitoa nimellä.",
+    "status": {
+      "cancelled": "Pysäytetty",
+      "declined": "Hylätty",
+      "done": "Valmis",
+      "failed": "Epäonnistui",
+      "failedWithCode": "Epäonnistui, paluukoodi {{code}}",
+      "interrupted": "Keskeytyi",
+      "running": "Käynnissä",
+      "timedOut": "Aikakatkaistiin"
+    },
+    "summary": {
+      "citationUnverified": "Vastaavaa tietuetta ei löytynyt",
+      "citationVerified": "Viitepalvelu vahvisti",
+      "compileFailed": "Kääntäminen epäonnistui",
+      "compileSucceeded": "Kääntyi onnistuneesti",
+      "diagnostics_one": "{{count}} huomio",
+      "diagnostics_other": "{{count}} huomiota",
+      "papers_one": "{{count}} artikkeli",
+      "papers_other": "{{count}} artikkelia"
+    }
+  },
+  "ui": {
+    "transparent": "Läpinäkyvä"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Projekti muuttui tallennuksen aikana. Yritä päivitystä uudelleen."
+  }
+}

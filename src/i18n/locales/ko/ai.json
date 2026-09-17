@@ -1,0 +1,729 @@
+{
+  "runtime": {
+    "ariaLabel": "어시스턴트 런타임",
+    "builtIn": "Oleafly 에이전트",
+    "cli": "CLI 에이전트"
+  },
+  "shell": {
+    "float": "어시스턴트 띄우기",
+    "floatAriaLabel": "어시스턴트를 앱 위에 띄우기",
+    "overlayTitle": "AI 어시스턴트",
+    "dockAriaLabel": "채팅을 사이드바에 다시 붙이기",
+    "floatingNotice": "어시스턴트가 앱 위에 떠 있습니다.",
+    "dockBack": "다시 붙이기",
+    "loadingAgents": "에이전트를 불러오는 중…",
+    "openProjectForCli": "CLI 에이전트와 작업하려면 프로젝트를 여세요."
+  },
+  "minimap": {
+    "ariaLabel": "대화 차례",
+    "jumpTo": "이동: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "승인 요청",
+        "description": "파일 편집, 인터넷 접속, 명령 실행 전에 물어봅니다."
+      },
+      "approveForMe": {
+        "label": "알아서 승인",
+        "description": "위험으로 분류된 작업에만 물어봅니다."
+      },
+      "fullAccess": {
+        "label": "전체 접근 권한",
+        "description": "승인을 묻지 않고 도구 작업을 실행합니다."
+      },
+      "custom": {
+        "label": "사용자 지정(approvals.toml)",
+        "description": "approvals.toml의 규칙을 씁니다. 설정의 AI 어시스턴트에서 편집하세요."
+      }
+    },
+    "selectorAriaLabel": "승인 모드. {{mode}}",
+    "editProjectRules": "프로젝트 규칙 편집",
+    "confirm": {
+      "command": "명령 확인",
+      "externalTool": "외부 도구 작업 확인",
+      "internet": "인터넷 접속 확인",
+      "edit": "AI 편집 확인"
+    },
+    "headline": {
+      "command": "어시스턴트가 이 명령을 실행하려고 합니다",
+      "externalTool": "어시스턴트가 외부 도구를 쓰려고 합니다",
+      "internet": "어시스턴트가 인터넷에 접속하려고 합니다",
+      "edit": "어시스턴트가 파일을 바꾸려고 합니다"
+    },
+    "mcpNote": "아래 인자를 설정된 MCP 서버로 보냅니다.",
+    "line": "{{line}}번째 줄",
+    "sessionAutoApprove": "쓰기 작업에 세션 자동 승인이 켜져 있습니다(삭제는 여전히 클릭이 필요합니다).",
+    "commandLabel": "명령",
+    "workingDirectory": "작업 디렉터리",
+    "mcpServer": "MCP 서버",
+    "toolLabel": "도구",
+    "arguments": "인자",
+    "figureAlt": "그림 미리보기",
+    "firstChange": "첫 변경 · L{{line}}",
+    "reject": "거부",
+    "alwaysInProject": "이 프로젝트에서는 항상",
+    "alwaysInProjectAriaLabel": "이 프로젝트에서 항상 허용",
+    "alwaysAllow": "항상 허용",
+    "approve": "승인",
+    "external": {
+      "title": "외부 에이전트 요청(MCP)",
+      "moreWaiting_other": "{{count}}건 더 대기 중"
+    }
+  },
+  "attachments": {
+    "remove": "{{name}} 제거"
+  },
+  "chat": {
+    "pill": {
+      "plan": "계획",
+      "step": "{{total}}단계 중 {{current}}단계",
+      "review": "검토"
+    },
+    "plan": {
+      "detailsAriaLabel": "계획 세부 정보",
+      "headingPlan": "계획",
+      "headingChanges": "변경 사항",
+      "approve": "계획 승인",
+      "revise": "수정",
+      "statusAwaiting": "승인 대기 중",
+      "statusApproved": "승인됨"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "완료됨",
+        "inProgress": "진행 중",
+        "pending": "대기 중",
+        "cancelled": "취소됨"
+      }
+    },
+    "fileChanges": {
+      "changed": "변경됨",
+      "committed": "{{commit}} 커밋됨"
+    },
+    "runSummary": {
+      "plan": "계획",
+      "stepsDone": "{{done}}/{{total}} 완료",
+      "filesChanged_other": "파일 {{count}}개 변경됨"
+    },
+    "copyMessage": "메시지 복사",
+    "exploration": {
+      "explored": "살펴봄",
+      "exploredItems": "{{items}}을(를) 살펴봄",
+      "files_other": "파일 {{count}}개",
+      "searches_other": "검색 {{count}}회",
+      "lists_other": "목록 {{count}}개"
+    },
+    "reasoning": {
+      "thinking": "생각하는 중…",
+      "thoughtFor": "{{seconds}}초 동안 생각함",
+      "label": "추론"
+    },
+    "subagent": {
+      "finished": "완료됨",
+      "failed": "실패",
+      "stopped": "중지됨",
+      "usingTool": "{{tool}} 사용 중",
+      "working": "작업 중",
+      "errorBody": "에이전트가 이 작업을 끝내지 못했습니다.",
+      "stoppedBody": "답변하기 전에 작업이 중지되었습니다.",
+      "openTask": "작업 열기"
+    },
+    "workedSteps": {
+      "duration": "{{seconds}}초 동안 작업함",
+      "steps_other": "{{count}}단계를 거쳤습니다"
+    },
+    "steered": "방향을 조정함",
+    "toolOutputError": "오류: {{message}}",
+    "errorHints": {
+      "invalidKey": "API 키가 올바르지 않거나 만료된 것 같습니다. 설정 → AI 어시스턴트에서 업데이트하거나 {{where}} 제공자를 바꾸세요.",
+      "outOfCredits": "AI 제공자의 크레딧이나 할당량이 소진되었습니다. 계정을 충전하거나 {{where}} 다른 제공자(또는 로컬 Ollama)로 바꾸세요.",
+      "overloaded": "지금 제공자 서버에 부하가 걸려 있습니다(이미 재시도했습니다). 잠시 후 다시 시도하거나 {{where}} 비슷한 모델로 바꾸세요.",
+      "rateLimited": "제공자가 요청 속도를 제한하고 있습니다. 잠시 기다렸다가 다시 시도하거나 {{where}} 제공자를 바꾸세요.",
+      "retiredModel": "제공자가 이 모델을 중단하거나 제한했습니다. {{where}} 더 새로운 모델을 고르세요(설정 → AI 어시스턴트에 사용 중인 키로 쓸 수 있는 모델이 나옵니다).",
+      "unreachable": "AI 제공자에 연결하지 못했습니다. 네트워크 연결을 확인하고, Ollama를 쓰고 있다면 실행 중인지 확인하세요(설정 → AI 어시스턴트 → Ollama 확인).",
+      "where": {
+        "inSettings": "설정의 AI 어시스턴트에서",
+        "modelMenu": "위 모델 메뉴에서"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "맥락 추가",
+    "mentionMenuAgentsAndFiles": "에이전트와 프로젝트 파일",
+    "mentionMenuFiles": "프로젝트 파일",
+    "mentionHeadingAgents": "에이전트에게 위임",
+    "mentionHeadingFiles": "프로젝트 파일",
+    "slashMenuAriaLabel": "슬래시 명령",
+    "placeholderEngineUnavailable": "문서 엔진을 사용할 수 없습니다. AI 편집이 꺼졌습니다",
+    "placeholderDefault": "문서 작업에 필요한 도움을 AI에게 요청하세요…",
+    "planRevisionPlaceholder": "계획에서 무엇을 바꿀지 설명하세요",
+    "prompts": "프롬프트",
+    "promptShortcutsAriaLabel": "프롬프트 바로 가기",
+    "persona": "페르소나",
+    "personaActiveTooltip": "{{name}}이(가) 활성 상태이며 기본 지침을 대신합니다.",
+    "personaChoose": "페르소나 선택",
+    "personaActiveAriaLabel": "페르소나. {{name}}이(가) 활성 상태이며 기본 지침을 대신합니다.",
+    "personaCreate": "설정에서 페르소나 만들기",
+    "personaNone": "없음",
+    "planModeOn": "계획 모드 켜짐",
+    "planModeOff": "계획 모드 꺼짐",
+    "planModeAriaLabel": "계획 모드",
+    "plan": "계획",
+    "planModeInfo": "계획 모드 안내",
+    "planModeHint": "계획 모드에서는 어시스턴트가 편집하기 전에 계획을 제안합니다. 계획 모드를 끄면 어시스턴트가 모든 도구에 바로 접근합니다.",
+    "stop": "중지",
+    "stopTitle": "생성 중지",
+    "send": "보내기",
+    "checkAgain": "다시 확인"
+  },
+  "commands": {
+    "groups": {
+      "skills": "스킬"
+    },
+    "archive": {
+      "label": "보관",
+      "description": "이 채팅을 보관합니다"
+    },
+    "forkChat": {
+      "label": "채팅 포크",
+      "description": "이 대화에서 새 채팅을 만듭니다"
+    },
+    "goal": {
+      "label": "목표",
+      "description": "어시스턴트가 계속 지향할 목표를 정합니다"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "연결된 MCP 서버와 상태를 봅니다"
+    },
+    "model": {
+      "label": "모델",
+      "description": "이 채팅에 쓸 모델을 고릅니다"
+    },
+    "planMode": {
+      "enableLabel": "계획 모드 켜기",
+      "disableLabel": "계획 모드 끄기",
+      "description": "구조화된 계획 세우기를 켜거나 끕니다"
+    },
+    "recordSkill": {
+      "label": "스킬로 기록",
+      "description": "이 채팅의 접근 방식을 편집 가능한 초안으로 저장합니다"
+    },
+    "files": {
+      "label": "파일",
+      "description": "다음 메시지에 파일을 첨부합니다"
+    },
+    "browser": {
+      "label": "브라우저 붙이기",
+      "description": "문서 옆에 브라우저를 엽니다"
+    }
+  },
+  "models": {
+    "ariaLabel": "AI 모델",
+    "placeholder": "모델 선택",
+    "triggerTooltip": "{{model}}. 제공자나 모델을 바꿉니다",
+    "searchLabel": "모델 검색",
+    "searchPlaceholder": "모델 검색…",
+    "emptyTitle": "모델을 찾지 못했습니다",
+    "emptyHint": "다른 검색어를 시도하세요.",
+    "trust": {
+      "verified": "검증됨",
+      "untested": "미검증",
+      "blocked": "차단됨"
+    },
+    "trustTitle": {
+      "verified": "Oleafly가 이 모델에서 어시스턴트를 실행해 봤습니다",
+      "untested": "아직 어시스턴트와 함께 써 보지 않았습니다. 처음 쓸 때 확인합니다",
+      "blocked": "어시스턴트가 이 모델에서는 실행될 수 없습니다"
+    },
+    "chatOnlyHint": "채팅 전용이며 이 모델은 도구를 쓸 수 없습니다",
+    "checkingHint": "이 모델을 확인하는 중",
+    "blockedWithReason": "이 모델은 어시스턴트에서 차단되었습니다: {{reason}}",
+    "blocked": "이 모델은 어시스턴트에서 차단되었습니다.",
+    "probeFailedWithDetail": "이 모델을 확인하지 못했습니다. {{detail}}",
+    "probeFailed": "이 모델을 확인하지 못했습니다."
+  },
+  "history": {
+    "title": "채팅 기록",
+    "closeBackdrop": "채팅 기록 닫기",
+    "searchLabel": "채팅 검색",
+    "searchPlaceholder": "제목과 메시지 검색",
+    "emptyProject": "이 프로젝트에 저장된 채팅이 아직 없습니다.",
+    "emptySearch": "그 검색과 일치하는 채팅이 없습니다.",
+    "untitled": "새 채팅",
+    "staleTitle": "이 채팅은 프로젝트의 이전 버전에서 시작되었습니다",
+    "staleBadge": "이전 버전",
+    "messages_other": "메시지 {{count}}개",
+    "tokens": "~{{amount}} 토큰",
+    "deleteAriaLabel": "{{title}} 삭제",
+    "deleteFallbackTitle": "채팅",
+    "deleteTitle": "채팅 삭제",
+    "relative": {
+      "justNow": "방금",
+      "minutes": "{{count}}분 전",
+      "hours": "{{count}}시간 전",
+      "days": "{{count}}일 전"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "안 함",
+      "everyTime": "매번 채팅에서",
+      "askModeOnly": "승인 요청 모드에서만",
+      "unlessAllowed": "예, 프로젝트에서 허용한 경우는 제외"
+    },
+    "catalog": {
+      "readFile": "프로젝트 파일을 읽습니다. 긴 파일은 일부씩 읽습니다.",
+      "writeFile": "파일 전체를 쓰고 기존 내용을 대체합니다.",
+      "replaceInFile": "파일에서 정확히 일치하는 구절을 찾아 바꿉니다.",
+      "createFile": "프로젝트에 새 파일이나 폴더를 만듭니다.",
+      "renameFile": "파일이나 폴더의 이름을 바꾸거나 옮깁니다.",
+      "deleteFile": "파일이나 폴더를 삭제합니다.",
+      "listFiles": "프로젝트의 모든 파일과 폴더를 나열합니다.",
+      "searchProject": "프로젝트의 텍스트를 검색해 파일과 줄 위치를 찾습니다.",
+      "projectMap": "문서의 개요를 읽습니다. 절, 레이블, 인용 키, 매크로, 포함 파일, 확인되지 않은 항목을 봅니다.",
+      "showLocation": "편집기에서 파일의 특정 줄을 열고 PDF 미리보기를 그 위치로 옮깁니다.",
+      "compile": "해당 엔진으로 프로젝트를 컴파일하고 오류를 보고합니다.",
+      "getLog": "마지막 컴파일 로그를 읽습니다.",
+      "getPdfText": "컴파일된 PDF의 텍스트를 쪽 단위로 읽습니다.",
+      "verifyPdfPages": "컴파일된 페이지를 이미지로 렌더링해 비전 모델이 배치를 확인할 수 있게 합니다.",
+      "setMainDoc": "프로젝트가 어느 파일에서 컴파일할지 바꿉니다.",
+      "literatureSearch": "키워드로 OpenAlex에서 논문을 검색합니다. 키가 필요 없습니다.",
+      "verifyCitation": "doi.org나 Crossref를 통해 DOI나 제목을 검증된 BibTeX로 바꿉니다.",
+      "projectLibrarySearch": "프로젝트 자체의 텍스트와 메모를 키워드로 검색합니다.",
+      "alphaxivSearch": "alphaXiv를 통해 arXiv 논문을 검색합니다.",
+      "alphaxivPaperContent": "alphaXiv를 통해 arXiv 논문의 전문을 가져옵니다.",
+      "previewFigure": "TikZ나 PGFPlots 그림을 따로 컴파일해 결과를 채팅에 보여 줍니다.",
+      "insertFigure": "완성한 그림을 캡션과 레이블과 함께 커서 위치에 삽입하고 figures/ 아래에 PNG로 저장합니다.",
+      "loadImage": "이미 프로젝트에 있는 이미지를 살펴봅니다.",
+      "updateTodos": "채팅에 표시되는 단계별 계획을 쓰거나 업데이트합니다.",
+      "getTodos": "현재 계획을 읽습니다.",
+      "rememberNote": "나중의 채팅에서도 볼 수 있는 프로젝트 메모를 저장합니다.",
+      "forgetNote": "저장된 프로젝트 메모를 제거합니다.",
+      "listNotes": "저장된 프로젝트 메모를 나열합니다.",
+      "loadSkill": "스킬을 따르기 전에 그 스킬의 전체 지침을 불러옵니다.",
+      "readSkillFile": "스킬에 딸려 오는 참고 파일이나 스크립트를 읽습니다.",
+      "spawnAgent": "자체 작업과 도구를 가진 도우미 에이전트를 시작합니다.",
+      "sendMessage": "실행 중인 도우미 에이전트에게 메시지를 보냅니다.",
+      "followupTask": "도우미 에이전트가 끝난 뒤 다른 작업을 맡깁니다.",
+      "waitAgent": "도우미 에이전트가 끝날 때까지 기다렸다가 결과를 읽습니다.",
+      "interruptAgent": "도우미 에이전트가 하고 있는 일을 중단합니다.",
+      "listAgents": "도우미 에이전트와 그 상태를 나열합니다.",
+      "closeAgent": "도우미 에이전트를 닫습니다.",
+      "runCommand": "프로젝트 폴더에서 shell 명령을 2분 제한으로 실행합니다.",
+      "computerUse": "어시스턴트의 브라우저 창에서 웹 페이지를 엽니다.",
+      "toggleTheme": "밝은 모드와 어두운 모드를 전환합니다."
+    },
+    "disableAll": "모두 끄기",
+    "emptyContext": "이 맥락에서 쓸 수 있는 도구가 없습니다.",
+    "enableAll": "모두 켜기",
+    "enableTool": "{{name}} 켜기",
+    "enabledCount": "{{total}}개 중 {{enabled}}개 켜짐",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "에이전트",
+      "buildAndPdf": "빌드와 PDF",
+      "figures": "그림",
+      "files": "파일",
+      "planAndMemory": "계획과 기억",
+      "research": "연구",
+      "skills": "스킬",
+      "system": "시스템"
+    },
+    "managerAriaLabel": "에이전트 도구 관리",
+    "managerHeading": "도구",
+    "managerTooltip": "도구",
+    "noDescription": "설명이 없습니다.",
+    "notes": {
+      "latexOnly": "LaTeX 프로젝트에서만",
+      "pdfCaptureSetting": "PDF 페이지 캡처 설정이 필요합니다",
+      "alphaxivKey": "연동에 alphaXiv 키가 필요합니다",
+      "chatApproval": "채팅에서 명령을 하나씩 승인합니다",
+      "browserSetting": "웹 브라우저 설정이 필요합니다"
+    },
+    "sourceGroups": {
+      "figure": "그림",
+      "mcp": "MCP",
+      "project": "프로젝트 도구",
+      "skills": "스킬"
+    },
+    "table": {
+      "tool": "도구",
+      "whatItDoes": "하는 일",
+      "asksFirst": "먼저 물어보기"
+    }
+  },
+  "toolCard": {
+    "approved": "승인됨",
+    "rejected": "거부됨",
+    "binaryPreview": "이 연결된 파일은 바이너리라서 여기에서 미리 볼 수 없습니다.",
+    "previewTruncated": "미리보기를 256 KiB에서 멈췄습니다.",
+    "previewFailed": "이 연결된 소스는 미리 볼 수 없습니다.",
+    "showAll": "{{characters}}자 전체 보기",
+    "loadingSource": "소스를 불러오는 중",
+    "inspectSource": "소스 살펴보기",
+    "openFile": "파일 열기",
+    "openSource": "소스 열기",
+    "openSourceTitled": "소스 열기: {{title}}",
+    "openTask": "작업 열기",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "렌더링된 그림 미리보기",
+    "toolImageAlt": "도구에서 온 이미지",
+    "showFigure": "렌더링된 그림 보기",
+    "showTikz": "TikZ 소스 보기",
+    "figureTab": "그림",
+    "tikzTab": "TikZ",
+    "saving": "저장하는 중",
+    "saveToProject": "프로젝트에 저장",
+    "copyCode": "코드 복사",
+    "saved": "{{path}}에 저장했습니다",
+    "saveNeedsProject": "이 그림을 저장하려면 프로젝트를 여세요.",
+    "saveFailed": "그림을 저장하지 못했습니다."
+  },
+  "transcript": {
+    "dialogTitle": "위임 작업 기록",
+    "dialogDescription": "위임받은 에이전트가 이 작업을 하면서 읽고, 실행하고, 답한 모든 내용입니다.",
+    "loading": "기록을 불러오는 중",
+    "failed": "기록을 불러오지 못했습니다.",
+    "empty": "이 작업은 기록을 남기지 않았습니다."
+  },
+  "subagents": {
+    "working": "서브에이전트 작업 중",
+    "count": "서브에이전트({{count}})",
+    "stopAll": "모두 중지",
+    "stopFailed": "서브에이전트를 중지하지 못했습니다.",
+    "updates": "업데이트 {{count}}건",
+    "openTask": "작업 열기",
+    "awaitingPermission": "위임받은 에이전트가 권한을 기다리고 있습니다.",
+    "taskFailed": "위임한 작업이 실패했습니다. 열어서 오류를 확인하세요.",
+    "transcriptTruncated": "이 기록은 여기에 표시된 부분보다 깁니다.",
+    "noTranscriptYet": "이 작업은 아직 기록 활동을 보고하지 않았습니다.",
+    "noSessionInfo": "이 작업은 기록을 열 만큼의 세션 정보를 남기지 않았습니다.",
+    "loadingTranscript": "기록을 불러오는 중…",
+    "transcriptFailed": "기록을 불러오지 못했습니다.",
+    "stillWorking": "이 서브에이전트는 아직 작업 중입니다. 작업이 끝나면 전체 기록이 열립니다.",
+    "noFinalAnswer": "이 에이전트는 최종 답변을 남기지 않았습니다.",
+    "latest": "최근: {{text}}",
+    "workingDetail": "작업 중",
+    "status": {
+      "active": "작업 중",
+      "awaiting": "권한 필요",
+      "updated": "업데이트됨",
+      "interrupted": "중지됨",
+      "completed": "완료",
+      "failed": "실패"
+    }
+  },
+  "acp": {
+    "newConversation": "새 대화",
+    "savedConversations": "저장된 대화",
+    "untitledConversation": "제목 없는 대화",
+    "agentSetup": "에이전트 설정",
+    "usageReport": "사용량 보고서",
+    "permission": {
+      "ariaLabel": "에이전트 권한",
+      "namedHeadline": "{{agent}}에 권한이 필요합니다",
+      "headline": "에이전트에 권한이 필요합니다",
+      "expired": "이 요청은 만료되었습니다. 에이전트에게 다시 시도하도록 요청하세요.",
+      "dismiss": "닫기"
+    },
+    "readiness": {
+      "managedBridge": "Oleafly가 설치한 브리지 {{version}}입니다.",
+      "bridgeOnPath": "PATH에서 브리지를 찾았습니다.",
+      "bridgeMissingWithCli": "{{path}}에서 {{cli}}을(를) 찾았습니다. 연결하려면 ACP 브리지 {{version}}을(를) 설치하세요.",
+      "bridgeMissing": "이 에이전트를 연결하려면 ACP 브리지 {{version}}을(를) 설치하세요.",
+      "cliMissing": "{{cli}}이(가) PATH에 없습니다. 설치한 다음 {{command}}을(를) 실행하세요.",
+      "cliNotFound": "이 에이전트의 명령줄 도구를 찾지 못했습니다.",
+      "unavailable": "이 에이전트는 이 컴퓨터에서 실행할 수 없습니다."
+    },
+    "bridgeSource": {
+      "notInstalled": "설치 안 됨",
+      "managed": "Oleafly가 관리",
+      "onPath": "PATH에 있음"
+    },
+    "installing": "설치하는 중",
+    "installBridge": "브리지 설치",
+    "assistantAriaLabel": "CLI 에이전트 어시스턴트",
+    "loadEarlier": "이전 활동 불러오기",
+    "starting": "{{agent}} 시작하는 중",
+    "startingFallback": "에이전트",
+    "startingHint": "에이전트의 명령줄 도구를 실행하고 있습니다. 처음에는 몇 초 걸립니다.",
+    "readySubtitle": "{{agent}}이(가) 이 프로젝트에서 준비되었습니다",
+    "projectSubtitle": "\"{{project}}\" 작업 중",
+    "signInFallback": "이 에이전트의 CLI로 로그인한 다음 다시 연결하세요.",
+    "reconnectAfterSignIn": "로그인 후 다시 연결",
+    "reconnect": "대화에 다시 연결",
+    "resumeTask": "이 작업을 이어가려면 연구 작업을 여세요.",
+    "delegatedConversation": "이 대화는 위임된 에이전트 실행에 속합니다.",
+    "noResume": "이 에이전트는 저장된 대화를 이어갈 수 없습니다. 준비되면 새 대화를 시작하세요.",
+    "imageTooLarge": "480 KiB보다 작은 이미지를 고르세요. 이미지는 최대 네 개까지 첨부할 수 있습니다.",
+    "imageReadFailed": "이미지를 읽지 못했습니다.",
+    "removeImage": "{{name}} 제거",
+    "composerAriaLabel": "CLI 에이전트에게 메시지",
+    "composerPlaceholderReady": "이 프로젝트에 대해 에이전트에게 작업을 요청하세요",
+    "composerPlaceholderIdle": "메시지를 보내려면 대화를 시작하거나 다시 연결하세요",
+    "attachImage": "이미지 첨부",
+    "startConversation": "{{agent}}와(과) 대화 시작",
+    "startConversationFallback": "에이전트",
+    "agentModel": "에이전트 모델",
+    "modelManaged": "에이전트가 모델을 관리합니다",
+    "stop": "중지",
+    "stopTitle": "에이전트 중지",
+    "send": "보내기",
+    "connecting": "연결하는 중",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "연결 중",
+      "authRequired": "인증 필요",
+      "ready": "준비됨",
+      "running": "실행 중",
+      "cancelling": "취소하는 중",
+      "cancelled": "취소됨",
+      "disconnected": "연결 끊김",
+      "failed": "실패"
+    },
+    "roster": {
+      "bridgeMissing": "에이전트 설정에서 브리지를 설치하세요",
+      "cliMissing": "이 컴퓨터에서 CLI를 찾을 수 없음",
+      "unavailable": "이 컴퓨터에서는 쓸 수 없음",
+      "comingSoon": "준비 중"
+    },
+    "messageTooLarge": "이 메시지와 이미지가 너무 큽니다. 메시지를 줄이거나 이미지를 하나 빼세요.",
+    "terminalCommand": "에이전트가 터미널 명령을 실행하고 있습니다.",
+    "agentToolFallback": "에이전트 도구",
+    "agentReported": "에이전트가 알렸습니다: {{detail}}",
+    "imageAttachmentName": "이미지 {{index}}",
+    "agentImage": "[에이전트가 이미지를 반환했습니다.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "CLI 에이전트",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "설치 안 됨",
+    "cliDetail": "CLI 에이전트 · 자체 계정을 씁니다",
+    "builtInDetail": "{{provider}} · Oleafly 에이전트"
+  },
+  "home": {
+    "heading": "오늘은 무엇을 해 볼까요?",
+    "headingAccent": "해 볼까요?",
+    "skillCategories": "스킬 분류",
+    "skillLockedTitle": "{{name}}은(는) 이 프로젝트에서 꺼져 있습니다",
+    "recentChats": "최근 채팅",
+    "recentStaleTitle": "프로젝트의 이전 버전에서 시작됨",
+    "recentUntitled": "새 채팅",
+    "recentStaleBadge": "이전 버전",
+    "recentMessages_other": "메시지 {{count}}개",
+    "showAllHistory": "전체 기록 보기({{count}})"
+  },
+  "research": {
+    "noSourceLink": "이 결과에는 출처 링크가 없습니다.",
+    "sourceOpenFailed": "출처를 열지 못했습니다.",
+    "noProjectPath": "이 결과에는 프로젝트 파일 경로가 없습니다.",
+    "resultOpenFailed": "결과 파일을 열지 못했습니다."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "작성 및 편집",
+      "citationsAndLiterature": "인용 및 문헌",
+      "review": "검토",
+      "figuresAndTables": "그림 및 표"
+    },
+    "improveWriting": {
+      "label": "글 다듬기",
+      "description": "명확성, 어조, 흐름을 손봅니다"
+    },
+    "fixGrammar": {
+      "label": "문법 고치기",
+      "description": "문법과 문장 부호를 바로잡습니다"
+    },
+    "fixLatexErrors": {
+      "label": "LaTeX 오류 고치기",
+      "description": "깨진 코드와 컴파일 오류를 고칩니다"
+    },
+    "writeEquation": {
+      "label": "수식 작성",
+      "description": "자연어를 LaTeX 수식으로 바꿉니다"
+    },
+    "draftSection": {
+      "label": "절 초안 작성",
+      "description": "내 문체로 새 절을 씁니다"
+    },
+    "paraphrase": {
+      "label": "다르게 표현",
+      "description": "뜻은 그대로 두고 표현을 바꿉니다"
+    },
+    "shorten": {
+      "label": "줄이기",
+      "description": "글을 더 간결하게 만듭니다"
+    },
+    "expand": {
+      "label": "늘리기",
+      "description": "내용을 자세히 풀어 씁니다"
+    },
+    "journalFormat": {
+      "label": "저널 형식",
+      "description": "목표 발표처에 맞게 서식을 바꿉니다"
+    },
+    "writeAbstract": {
+      "label": "초록 작성",
+      "description": "논문에서 초록 초안을 뽑습니다"
+    },
+    "generateTitle": {
+      "label": "제목 생성",
+      "description": "눈길을 끄는 논문 제목을 만듭니다"
+    },
+    "keywords": {
+      "label": "키워드",
+      "description": "검색에 쓸 키워드를 뽑습니다"
+    },
+    "continueWriting": {
+      "label": "이어서 쓰기",
+      "description": "멈춘 곳부터 이어 씁니다"
+    },
+    "citationSearch": {
+      "label": "인용 검색",
+      "description": "alphaXiv와 OpenAlex에서 논문을 찾습니다"
+    },
+    "literatureReview": {
+      "label": "문헌 검토",
+      "description": "실제 출처를 바탕으로 관련 연구를 정리합니다"
+    },
+    "citeClaim": {
+      "label": "이 주장 인용하기",
+      "description": "검증된 참고문헌을 찾아 추가합니다"
+    },
+    "myLibrary": {
+      "label": "내 라이브러리",
+      "description": "가져온 참고문헌을 검색합니다"
+    },
+    "labSearch": {
+      "label": "연구실 검색",
+      "description": "연구실과 기관을 찾습니다"
+    },
+    "friendlyReview": {
+      "label": "우호적 심사",
+      "description": "멘토 같은 건설적인 피드백을 줍니다"
+    },
+    "fireReview": {
+      "label": "혹독한 심사",
+      "description": "까다로운 2번 심사자처럼 주장과 방법을 시험합니다"
+    },
+    "academicPresentation": {
+      "label": "학술 발표 자료",
+      "description": "논문으로 Beamer 슬라이드를 만듭니다"
+    },
+    "academicPoster": {
+      "label": "학술 포스터",
+      "description": "논문으로 학회 포스터를 만듭니다"
+    },
+    "generateTable": {
+      "label": "표 생성",
+      "description": "채팅에서 LaTeX 표 초안을 만듭니다"
+    },
+    "tikzFigure": {
+      "label": "TikZ 그림",
+      "description": "채팅에서 TikZ 코드 초안을 만듭니다"
+    }
+  },
+  "turn": {
+    "thinking": "생각하는 중…",
+    "continuing": "이어가는 중…",
+    "reasoning": "추론하는 중…",
+    "runningTool": "{{name}} 실행하는 중…",
+    "processingResult": "결과를 처리하는 중…",
+    "summarizing": "이전 대화를 요약하는 중…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "에이전트 세션을 열지 못했습니다.",
+    "approvalModeSaveFailed": "승인 모드를 저장하지 못했습니다.",
+    "skillDraftSaved": "스킬 초안을 저장했습니다. 켜기 전에 검토하세요.",
+    "skillDraftFailed": "스킬 초안을 저장하지 못했습니다. {{error}}",
+    "chatArchived": "채팅을 보관했습니다.",
+    "chatArchiveFailed": "이 채팅을 보관하지 못했습니다.",
+    "chatForked": "채팅을 포크했습니다.",
+    "chatForkFailed": "이 채팅을 포크하지 못했습니다.",
+    "engineNotLoaded": "문서 엔진 정보를 불러오지 않았습니다. 안전을 위해 AI 편집을 껐습니다.",
+    "skillsLoadFailed": "켜 놓은 스킬을 불러오지 못했습니다. 다시 시도하세요.",
+    "approvalModeLoadFailed": "승인 모드를 불러오지 못했습니다.",
+    "approvalRulesLoadFailed": "프로젝트 승인 규칙을 불러오지 못했습니다.",
+    "restored": "프로젝트 파일을 복원했습니다. 대화는 그대로 두었습니다.",
+    "restoreFailed": "복원하지 못했습니다: {{error}}",
+    "steerFailed": "실행 중인 차례의 방향을 조정하지 못했습니다.",
+    "approvalRuleSaveFailed": "프로젝트 승인 규칙을 저장하지 못했습니다.",
+    "attachmentTooLarge": "{{name}}이(가) 너무 큽니다(최대 10 MB).",
+    "attachmentReadFailed": "{{name}}을(를) 읽지 못했습니다.",
+    "tooManyTools": "도구 {{enabled}}개가 켜져 있지만 한 번 실행에는 최대 {{max}}개까지 지원합니다. 도구에서 최소 {{excess}}개를 끄고 다시 시도하세요."
+  },
+  "header": {
+    "mcpTooltip": "어시스턴트 MCP 서버 설정",
+    "mcpAriaLabel": "어시스턴트 MCP 설정",
+    "settings": "어시스턴트 설정",
+    "usageAriaLabel": "AI 사용량 보기",
+    "usageReport": "사용량 보고서",
+    "newChat": "새 채팅",
+    "chatHistory": "채팅 기록",
+    "staleChatHint": "이 채팅은 프로젝트의 이전 버전에서 시작되었습니다. 파일 내용이 AI가 본 것과 다를 수 있습니다."
+  },
+  "usage": {
+    "lastRun": "마지막 실행",
+    "steps": "단계",
+    "input": "입력",
+    "output": "출력",
+    "thisChat": "이 채팅",
+    "runs": "실행",
+    "tokens": "토큰",
+    "cacheNote": "캐시 사용량과 비용 추정치는 사용량 보고서에 있습니다.",
+    "summaryRunWithTokens_other": "마지막 실행: {{count}}단계, 보고된 토큰 {{tokens}}개",
+    "summaryRunNoTokens_other": "마지막 실행: {{count}}단계, 토큰 합계를 알 수 없음",
+    "summaryChat": "이 채팅: {{steps}}단계, 토큰 {{tokens}}개",
+    "summaryFallback": "AI 사용량"
+  },
+  "provider": {
+    "connectTitle": "계속하려면 AI 제공자를 연결하세요",
+    "connectBody": "직접 준비한 API 키(OpenAI, Anthropic, Groq 등)를 쓰거나 Ollama로 모델을 로컬에서 실행하세요. 어시스턴트는 파일을 읽고 편집하고, 프로젝트를 컴파일하고, PDF를 확인할 수 있습니다.",
+    "connectButton": "제공자 연결",
+    "runLocal": "Ollama로 로컬 모델 실행",
+    "quotaWarning": "채팅 기록 저장 공간이 가득 찼습니다. 오래된 채팅을 정리했으며 새 메시지가 저장되지 않을 수 있습니다. 기록에서 오래된 채팅을 지워 공간을 확보하세요."
+  },
+  "conversation": {
+    "renderFailed": "이 대화를 표시하지 못했습니다. 새 채팅을 시작하거나 기록에서 다시 여세요.",
+    "checkpointRestored": "이 체크포인트로 프로젝트를 복원했습니다",
+    "restoring": "복원하는 중…",
+    "restoreCheckpoint": "이 응답 이전 상태로 코드 복원",
+    "restoreConfirm": "프로젝트 파일을 이 응답 이전 상태로 복원할까요? 이후 AI 응답이 만든 코드 변경도 함께 사라집니다. 대화는 그대로 남습니다.",
+    "noResponse": "이 메시지에 대한 응답이 오지 않았습니다. 스트림이 중단되었습니다. 다시 보내거나 새 채팅을 시작하세요.",
+    "scrollToBottom": "맨 아래로 이동",
+    "projectSubtitle": "\"{{project}}\" 작업 중",
+    "noOutput": "모델이 아무 출력도 내놓지 않았습니다. 설정 → AI 어시스턴트를 확인하세요."
+  },
+  "followUps": {
+    "steered": "실행 중인 차례에 반영했습니다: {{summary}}",
+    "sending": "다음 차례로 보냈습니다: {{summary}}",
+    "waiting": "실행 중 안전한 지점을 기다리는 중입니다: {{summary}}",
+    "queued": "다음 차례를 위해 대기열에 넣었습니다: {{summary}}",
+    "steerNow": "지금 반영",
+    "startingRun": "실행을 시작하는 중",
+    "discard": "대기 중인 메시지 버리기"
+  },
+  "goal": {
+    "editAriaLabel": "목표 편집: {{goal}}",
+    "clear": "목표 지우기",
+    "formAriaLabel": "지속 목표 설정",
+    "label": "목표",
+    "placeholder": "어시스턴트가 계속 지향해야 할 목표는 무엇인가요?",
+    "save": "목표 저장"
+  },
+  "suggestions": {
+    "literatureSweep": "이 프로젝트에 필요한 문헌을 훑어 주세요",
+    "relatedWork": "관련 연구 절 초안을 써 주세요",
+    "verifyClaims": "모든 주장을 출처와 대조해 확인해 주세요",
+    "reviewManuscript": "심사자처럼 검토해 주세요",
+    "latexBuild": "문서의 소스 오류를 고쳐 주세요",
+    "preSubmission": "제출할 수 있게 준비해 주세요",
+    "slides": "이 논문을 발표 자료로 만들어 주세요",
+    "recompile": "다시 컴파일하고 오류를 확인해 주세요"
+  }
+}

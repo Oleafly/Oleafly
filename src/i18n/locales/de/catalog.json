@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Leer",
+    "diagramsAndFigures": "Diagramme & Abbildungen",
+    "cvsAndResumes": "Lebensläufe",
+    "journalsAndConferences": "Zeitschriften & Konferenzen",
+    "bibliographies": "Literaturverzeichnisse",
+    "assignments": "Übungsaufgaben",
+    "thesesAndReports": "Abschlussarbeiten & Berichte",
+    "books": "Bücher",
+    "presentations": "Präsentationen",
+    "posters": "Poster",
+    "newsletters": "Newsletter",
+    "calendars": "Kalender",
+    "letters": "Briefe",
+    "aiGenerated": "KI-generiert"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Lebenslauf",
+    "diagramsAndFigures": "Diagramme",
+    "journalsAndConferences": "Zeitschriften"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Eine warme humanistische Serifenlose, die viele moderne Lebenslaufvorlagen verwenden."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Eine klare, neutrale Serifenlose, die am Bildschirm und im Druck gut lesbar ist."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Eine feine Übergangsantiqua, die gut zu wissenschaftlichen und geschäftlichen Dokumenten passt."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Paket Wissenschaftliches Schreiben",
+      "description": "Forschungs- und Förderanträge, Literaturübersichten, Motivationsschreiben, Empfehlungsschreiben, White Paper und Abschlussarbeiten."
+    },
+    "beamer-themes": {
+      "label": "Beamer-Themensammlung",
+      "description": "Beamer-Foliensätze in Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla und Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Geschäftsdokumente",
+      "description": "Rechnungen, Memos, Besprechungsprotokolle, Geschäftspläne und Berichte, Urkunden und eine dreiteilige Faltbroschüre."
+    },
+    "conference-preprints": {
+      "label": "Preprint-Stile für Konferenzen",
+      "description": "Preprints im Stil von NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv und Interspeech."
+    },
+    "coursework": {
+      "label": "Paket Lehrveranstaltungen",
+      "description": "Hausaufgaben, Arbeitsblätter, Tests, Bewertungsraster, Vorlesungsskripte, Modulpläne, Formelsammlungen, Klausuren und Pseudocode-Ausarbeitungen."
+    },
+    "creative-misc": {
+      "label": "Kreativ & Sonstiges",
+      "description": "Rezeptbücher, Einladungen, Charakterbögen für Rollenspiele, ein Jahreskalender, Tabellen- und TikZ-Galerien sowie Feldnotizen."
+    },
+    "cv-collection": {
+      "label": "Stilsammlung für Lebensläufe",
+      "description": "Lebensläufe im Stil von ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds und Jake."
+    },
+    "reports-lab": {
+      "label": "Labor- und Technikberichte",
+      "description": "Laborberichte, wissenschaftliche und technische Berichte, Projekt- und Praktikumsberichte sowie ein Jahresbericht."
+    },
+    "resume-plus": {
+      "label": "Erweiterung für Lebensläufe",
+      "description": "Zweispaltiger Lebenslauf für die Technikbranche, minimalistischer Lebenslauf, ausführlicher akademischer Lebenslauf, Anschreiben und ein Lebenslauf in Typst."
+    },
+    "slides-posters": {
+      "label": "Folien & Poster",
+      "description": "Beamer-Foliensatz im Metropolis-Stil, tikzposter im Hoch- und Querformat sowie ein Layout im better-poster-Stil."
+    },
+    "venue-classes": {
+      "label": "Klassen für Zeitschriften & Konferenzen",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf und Zeitschriftenvorlagen in Typst."
+    }
+  }
+}

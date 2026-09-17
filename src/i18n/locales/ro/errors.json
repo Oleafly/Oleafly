@@ -1,0 +1,31 @@
+{
+  "unknown": "A apărut o problemă. Consultă jurnalul aplicației pentru detalii.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "Numele proiectului nu poate fi gol.",
+    "name_conflict": "Există deja un proiect numit {{name}}.",
+    "folder_unavailable": "Nu s-a putut rezerva un folder nou pentru proiect."
+  },
+  "settings": {
+    "locale_unsupported": "Limba {{locale}} nu este disponibilă."
+  },
+  "literature": {
+    "query_empty": "Interogarea de căutare nu poate fi goală.",
+    "query_too_long": "Interogarea de căutare este prea lungă (maximum {{max}} de caractere).",
+    "unknown_source": "Sursă de literatură necunoscută."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX nu are un binar {{name}} compatibil cu acest sistem.",
+    "package_operation_timeout": "Operațiunea cu pachete a depășit limita de {{span}} și a fost oprită, ca să poți compila din nou. Probabil serverul TeX Live este ocupat. Încearcă mai târziu sau rulează tu tlmgr."
+  },
+  "github": {
+    "sign_in_expired": "Codul de autentificare a expirat. Încearcă din nou.",
+    "sign_in_cancelled": "Autorizarea GitHub a fost anulată.",
+    "sign_in_failed": "Autentificarea GitHub a eșuat.",
+    "repositories_unavailable": "Depozitele nu au putut fi încărcate.",
+    "create_repo_failed": "Depozitul nu a putut fi creat ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "Accesul complet nu a fost activat."
+  }
+}

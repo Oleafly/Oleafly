@@ -1,0 +1,647 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Kaksipalstainen taitto",
+      "detailTwoColumn": "Ansioluettelojäsentimet lukevat kaksi palstaa usein väärässä järjestyksessä. Käytä yksipalstaista taittoa dokumenteissa, jotka ATS-järjestelmän on jäsennettävä.",
+      "titleMultiColumn": "Monipalstainen taitto",
+      "detailMultiColumn": "Ansioluettelojäsentimet lukevat palstat usein väärässä järjestyksessä. Käytä yhtä palstaa ATS-järjestelmille menevissä dokumenteissa."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Tarkista kaksipalstaisen taiton lukujärjestys",
+      "detailTwoColumn": "Monipalstaiset julkaisutaitot voivat olla saavutettavia, kun PDF:n rakennepuu säilyttää aiotun järjestyksen. Käännä dokumentti ja varmista todellinen lukujärjestys sen sijaan, että pitäisit pelkkiä visuaalisia palstoja virheenä.",
+      "titleMultiColumn": "Tarkista monipalstaisen taiton lukujärjestys",
+      "detailMultiColumn": "Palstat eivät ole automaattisesti saavuttamattomia, mutta niiden merkintöjen ja sisällön järjestyksen on pysyttävä mielekkäänä. Käännä dokumentti ja tarkista todellinen lukujärjestys."
+    },
+    "no-glyphtounicode": {
+      "title": "Unicode-poimintakarttaa ei ole määritelty",
+      "detailEngineNeedsMap": "XeTeX ja siihen perustuva mukana tuleva moottori eivät luo glyyfeistä Unicodeen vievää karttaa automaattisesti, joten poimittu teksti voi tulla ulos lukukelvottomana. Käännä dokumentti ja tarkista lukunäkymä, ja käytä mieluiten fonttia, jolla on täysi Unicode-vastaavuus.",
+      "detailAutomatic": "pdfLaTeX ja LuaLaTeX ovat luoneet tämän kartan automaattisesti LaTeXin 2021-06-01-julkaisusta lähtien, joten määrittelyä ei tarvita. Käännä dokumentti ja varmista poimittu lukuteksti. XeTeXissä lataa cmap tai vaihda moottoria."
+    },
+    "icon-near-contact": {
+      "title": "Kuvake yhteystiedon vieressä",
+      "detail": "Fonttikuvakkeet (kuten \\faPhone tai \\faEnvelope) piirtyvät glyyfeinä, jotka jäsennin lukee tuntemattomina merkkeinä eikä ruudunlukija osaa nimetä, joten niiden vieressä oleva yhteystieto voi kadota. Varmista, että sähköposti tai puhelinnumero on myös tavallisena valittavana tekstinä."
+    },
+    "layout-table": {
+      "titleTable": "Taulukon sisältö ei ehkä jäsenny ansioluettelon kentiksi",
+      "detailTable": "ATS-työkalut litistävät taulukkosisällön usein arvaamattomasti. Älä asettele ansioluettelon tekstiä rinnakkain taulukolla. Varsinaiset tutkimusdatan taulukot arvioidaan erikseen saavutettavuudessa.",
+      "titleTikz": "TikZ-sisältö tarvitsee semanttisen vaihtoehdon",
+      "detailTikz": "TikZ piirtää visuaalista sisältöä paljastamatta sen merkitystä tavallisena tekstinä. Anna julkaisutulosteelle saavutettava kuvaus ja vältä sitä ATS-järjestelmille menevässä ansioluettelosisällössä."
+    },
+    "contact-in-header": {
+      "title": "Yhteystiedot sivun ylätunnisteessa",
+      "detail": "Osa ansioluettelojäsentimistä ohittaa ylä- ja alatunnisteet. Sijoita sähköposti ja puhelinnumero dokumentin leipätekstiin, jotta ne säilyvät poimitussa tekstissä."
+    },
+    "figure-alt": {
+      "title": "Kuva ilman vaihtoehtoista tekstiä",
+      "detail": "Tällä kuvalla ei ole kuvailevaa vaihtoehtoista tekstiä, joten ruudunlukija ei voi välittää sitä. Lisää kuvaus, esimerkiksi \\includegraphics[alt={Tekijän kasvokuva}]{...}. Merkitse puhtaasti koristeelliset kuvat sen sijaan artefakteiksi."
+    },
+    "link-text": {
+      "title": "Linkkiteksti ei kuvaa kohdetta",
+      "detail": "Linkkiteksti kuten 'klikkaa tästä' tai paljas URL ei kerro ruudunlukijan käyttäjälle mitään kohteesta. Käytä tekstiä, joka nimeää kohteen, esimerkiksi 'portfolioni'."
+    },
+    "mathml-export-hint": {
+      "title": "Vie HTML-kopio MathML-muodossa ja tarkista matematiikan saavutettavuus",
+      "detail": "Dokumentissa on matematiikkaa. Ruudunlukijat lukevat kaavat luotettavasti, kun ne ovat MathML-muodossa. Käytä Vie HTML-muotoon -toimintoa, jonka pandoc kirjoittaa valitsimella --mathml, ja avaa tiedosto ruudunlukijalla tai saavutettavuustarkistimella ennen lähettämistä."
+    },
+    "no-lang": {
+      "title": "Dokumentin kieltä ei ole asetettu",
+      "detail": "PDF:llä ei ole kieltä, joten ruudunlukija saattaa lukea sen väärillä ääntämissäännöillä. Aseta kieli, esimerkiksi \\usepackage[english]{babel} tai hyperrefin pdflang=en-US."
+    },
+    "no-title": {
+      "title": "PDF:llä ei ole otsikkoa",
+      "detail": "PDF:n metatiedoissa ei ole otsikkoa, jota avustavat tekniikat ja selaimet käyttävät dokumentin ilmoittamiseen. Aseta se hyperrefillä, esimerkiksi \\hypersetup{pdftitle={Nimi, CV}}."
+    },
+    "heading-skip": {
+      "title": "Otsikkotaso hypättiin yli",
+      "detail": "Tämä otsikko hyppää yli yhden tason edellistä syvemmälle, mikä rikkoo dokumentin jäsennyksen, johon ruudunlukijat ja jäsentimet nojaavat. Älä hyppää tasojen yli: ensin section, sitten subsection ja sitten subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Epätavallinen luvun otsikko: \"{{heading}}\"",
+      "detail": "Jäsentimet tunnistavat osiot vakiootsikoista kuten Experience, Education ja Skills. Luova otsikko voi jättää osion luokittelematta. Harkitse tavanomaista otsikkoa."
+    },
+    "color-only": {
+      "title": "Tarkista, ettei väri ole ainoa vihje",
+      "detail": "Esitarkistus löysi värillistä sisältöä mutta ei voi päätellä sen merkitystä automaattisesti. Jos väri erottaa tiloja tai luokkia, liitä siihen teksti, muoto, lihavuus tai muu havaittava vihje."
+    },
+    "reading-order-risk": {
+      "title": "Taitto, joka voi häiritä lukujärjestystä",
+      "detail": "Marginaalihuomautukset ja tekstin kiertämät kuvat sijoittavat sisältöä päävirran ulkopuolelle, joten jäsentimet ja ruudunlukijat voivat lukea sen väärässä järjestyksessä. Tarkista lukujärjestys alla olevasta esikatselusta kääntämisen jälkeen."
+    },
+    "ua-standard-without-title": {
+      "title": "PDF/UA on määritelty ilman dokumentin otsikkoa",
+      "detailBoth": "Tämä dokumentti määrittelee pdfstandard=ua mutta ei aseta pdftitle-arvoa eikä pdfdisplaydoctitle=true-arvoa. PDF/UA edellyttää otsikkoa XMP-metatiedoissa ja katseluohjelman asetusta, joka näyttää sen, joten tuloste väittäisi täyttävänsä standardin, jota se ei täytä. Lataa hyperref ja aseta \\hypersetup{pdftitle={Oma otsikko}, pdfdisplaydoctitle=true}.",
+      "detailTitle": "Tämä dokumentti määrittelee pdfstandard=ua mutta ei aseta pdftitle-arvoa. PDF/UA edellyttää otsikkoa XMP-metatiedoissa ja katseluohjelman asetusta, joka näyttää sen, joten tuloste väittäisi täyttävänsä standardin, jota se ei täytä. Lataa hyperref ja aseta \\hypersetup{pdftitle={Oma otsikko}, pdfdisplaydoctitle=true}.",
+      "detailDisplay": "Tämä dokumentti määrittelee pdfstandard=ua mutta ei aseta pdfdisplaydoctitle=true-arvoa. PDF/UA edellyttää otsikkoa XMP-metatiedoissa ja katseluohjelman asetusta, joka näyttää sen, joten tuloste väittäisi täyttävänsä standardin, jota se ei täytä. Lataa hyperref ja aseta \\hypersetup{pdftitle={Oma otsikko}, pdfdisplaydoctitle=true}."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "Mukana tuleva moottori ei voi tuottaa määriteltyä PDF/UA-tulostetta",
+      "detail": "Tämä dokumentti määrittelee pdfstandard=ua, mutta mukana tuleva moottori ei osaa kirjoittaa rakennepuuta, joten PDF kantaisi PDF/UA-väitettä, jota se ei täytä. Käännä pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta, tai poista pdfstandard-avain."
+    },
+    "table-header-rows": {
+      "title": "Taulukon otsikkoriviä ei ole merkitty otsikoksi",
+      "detail": "Tämä taulukko erottaa ensimmäisen rivinsä viivalla, joten se luetaan otsikkoriviksi, mutta LaTeX merkitsee oletuksena jokaisen solun datasoluksi. Ruudunlukija ei silloin osaa yhdistää arvoa sarakkeeseensa. Määrittele otsikkorivi, esimerkiksi \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Palstat luetaan tulosteessa poikittain",
+      "detail": "Tällä sivulla kahden palstan teksti osuu samoille riveille, joten jäsennin lukee ne suoraan poikki sekavaksi tekstiksi ja ruudunlukija ilmoittaa ne väärässä järjestyksessä. Käytä yksipalstaista taittoa sisällössä, joka on jäsennettävä. Katso lukunäkymä alta."
+    },
+    "pdf-garbled": {
+      "title": "Sekavaa tai vastaavuudetonta tekstiä tulosteessa",
+      "detail": "Poimittu teksti sisältää merkkejä, jotka eivät vastaa mitään Unicode-merkkiä, joten kopiointi ja jäsentimet näkevät sekavaa tulostetta eikä ruudunlukija voi lukea sitä. Tämä johtuu yleensä puuttuvasta glyyfistä Unicodeen vievästä kartasta tai fontista, jota ei ole upotettu tekstinä."
+    },
+    "pdf-selectable": {
+      "title": "Sivulla ei ole valittavaa tekstiä",
+      "detail": "Tällä sivulla on vain vähän tai ei lainkaan poimittavaa tekstiä, joten jäsennin ja ruudunlukija eivät näe mitään. Se on todennäköisesti piirretty kuvana tai käyttää fontteja, joita ei ole upotettu tekstinä. Varmista, että sisältö on aitoa, valittavaa tekstiä."
+    },
+    "output-clipped-content": {
+      "title": "Teksti ulottuu sivun ulkopuolelle",
+      "detail": "Valittavaa tekstiä on tämän sivun mediakehyksen ulkopuolella, ja se voi leikkautua tai kadota tulostuksessa ja kustantajan käsittelyssä. Tarkista leveät kaavat, taulukot, URL-osoitteet ja sijoitettu sisältö."
+    },
+    "output-small-text": {
+      "title": "Havaittiin hyvin pientä tekstiä",
+      "detail_one": "{{count}} tekstijakso on alle noin 7 pt. Pieni teksti on vaikealukuista painettuna ja tavallisella zoomauksella. Varmista, että foorumi sallii sen, ja suurenna tarpeettoman pieniä nimikkeitä ja alaviitteitä.",
+      "detail_other": "{{count}} tekstijaksoa on alle noin 7 pt. Pieni teksti on vaikealukuista painettuna ja tavallisella zoomauksella. Varmista, että foorumi sallii sen, ja suurenna tarpeettoman pieniä nimikkeitä ja alaviitteitä."
+    },
+    "pdf-no-bookmarks": {
+      "title": "Pitkässä PDF:ssä ei ole kirjanmerkkejä",
+      "detail": "Pitkien dokumenttien tulisi tarjota hierarkkinen kirjanmerkkirakenne, jotta näppäimistön ja avustavien tekniikoiden käyttäjät voivat liikkua lukujen välillä lukematta jokaista sivua järjestyksessä. Tämä on WCAG-hyvä käytäntö, ei PDF/UA-vaatimus. Lataa hyperref tai bookmark, niin rakenne syntyy."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "PDF:n metatietoja ei voitu tarkastaa",
+      "detail": "Esitarkistus ei voinut lukea PDF:n metatietoja, joten se ei voi varmistaa dokumentin otsikkoa eikä kieltä. Tulos on tuntematon, ei todiste siitä, että nuo kentät puuttuvat. Käännä uudelleen ja aja tarkistus uudestaan."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF:stä puuttuu kieli ja otsikko",
+      "titleLang": "PDF:stä puuttuu kieli",
+      "titleTitle": "PDF:stä puuttuu otsikko",
+      "detail": "Avustavat tekniikat ja selaimet käyttävät PDF:n luettelon kieltä ja otsikkoa ilmoittaakseen dokumentin oikein. Aseta ne hyperrefillä, esimerkiksi \\hypersetup{pdftitle={Nimi, CV}, pdflang=en-US}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "PDF:n merkintätilaa ei voitu tarkastaa",
+      "detail": "Esitarkistus ei voinut lukea PDF:n MarkInfo-sanakirjaa. Tulos on tuntematon eikä todiste kumpaankaan suuntaan, joten tulostetta ei kutsuta merkityksi eikä merkitsemättömäksi pelkästään tämän tarkistuksen perusteella."
+    },
+    "compile-failed": {
+      "title": "Viimeisin käännös epäonnistui",
+      "detail": "Lähetettävän tulosteen on tultava onnistuneesta käännöksestä. Korjaa ensimmäinen kääntäjän virhe, käännä uudelleen ja aja esitarkistus uudestaan."
+    },
+    "compile-overfull-box": {
+      "title_one": "{{count}} ylitäysi rivi tulosteessa",
+      "title_other": "{{count}} ylitäyttä riviä tulosteessa",
+      "detail": "Kääntäjä ilmoittaa sisällöstä, joka ulottuu tekstilaatikkonsa ulkopuolelle jopa {{width}} pt. Tarkista näistä kohdista leikkautuva teksti, kaavat, taulukot ja linkit."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} puuttuva glyyfi",
+      "title_other": "{{count}} puuttuvaa glyyfiä",
+      "detail": "Valitut fontit eivät osaa piirtää kaikkia merkkejä. Puuttuvat glyyfit voivat kadota PDF:stä huomaamatta, myös nimien, kaavojen ja viittausten symbolit."
+    },
+    "compile-unresolved-references": {
+      "title": "Käännetyssä tulosteessa on ratkaisemattomia viitteitä",
+      "detail": "Ainakin yksi viittaus tai ristiviittaus jäi ratkaisematta käännöksen jälkeen. Lähetettävässä PDF:ssä voi olla [?] tai ??. Tarkista loki ja aja tarvittavat lähdeluettelo- ja LaTeX-kierrokset."
+    },
+    "compile-rerun-required": {
+      "title": "Tarvitaan vielä yksi käännöskierros",
+      "detail": "Viimeisin loki kertoo, että nimikkeet, viittaukset tai sisällysluettelo eivät ole vielä vakiintuneet. Käännä uudelleen, kunnes uudelleenajovaroitus katoaa, ennen vientiä."
+    },
+    "compile-duplicate-destination": {
+      "title": "PDF-kohteita on kahteen kertaan",
+      "detail": "Kaksi ankkuria jakaa saman kohteen, joten linkit tai kirjanmerkit voivat hypätä väärään paikkaan. Tämä johtuu usein kahteen kertaan olevista nimikkeistä tai sivunumeroinnin nollauksista."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Yhdessä PDF:ssä on eri sivukokoja",
+      "detail_one": "PDF sisältää {{count}} sivukoon ({{sizes}}). Sekalaiset mediakehykset viittaavat usein virheellisesti sisällytettyyn sivuun tai kuvaan ja voivat kaataa kustantajan tuotantotarkistukset.",
+      "detail_other": "PDF sisältää {{count}} sivukokoa ({{sizes}}). Sekalaiset mediakehykset viittaavat usein virheellisesti sisällytettyyn sivuun tai kuvaan ja voivat kaataa kustantajan tuotantotarkistukset."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "Merkintä ilmoitti {{count}} ongelman",
+      "title_other": "Merkintä ilmoitti {{count}} ongelmaa",
+      "detail": "Merkintäkoodi kirjoitti nämä varoitukset lokiin: {{warnings}} Jokainen niistä on kohta, jossa rakennepuu ei vastaa sisältöä. Korjaa ne lähdekoodissa ja käännä uudelleen."
+    },
+    "output-tagging-status": {
+      "title_one": "Merkinnän tilaraportti nosti esiin {{count}} kohdan",
+      "title_other": "Merkinnän tilaraportti nosti esiin {{count}} kohtaa",
+      "detail": "LaTeX kirjoitti oman merkinnän tilaraporttinsa käännöksen lopuksi.",
+      "partClass": "Luokka {{name}} on {{status}}.",
+      "partBlocking": "Ei yhteensopiva merkinnän kanssa: {{files}}.",
+      "partUnproven": "Ei kirjattua tulosta: {{files}}.",
+      "partPartial": "Merkintä vain osittain: {{files}}.",
+      "partAdvice": "Kaikki, mitä ei voi merkitä, voi jättää kokonaisia osioita rakennepuun ulkopuolelle, joten korvaa se minkä voit."
+    },
+    "pdf-structure-single-pass": {
+      "title": "Rakennepuu näyttää ensimmäisen käännöskierroksen tulokselta",
+      "detail": "PDF on merkitty merkityksi, mutta sen rakennepuussa ei ole juuri mitään, mikä on tyypillistä yhdelle kierrokselle. Merkitty tuloste vaatii kaksi kierrosta. Käännä uudelleen ja tarkista uudestaan."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "Tämä PDF väittää olevansa PDF/UA-{{part}} mutta ei täytä sitä",
+      "detail": "XMP-metatiedot ilmoittavat pdfuaid:part {{part}}, mutta tiedosto ei tue väitettä.",
+      "partNoXmpTitle": "XMP-metatiedoissa ei ole dokumentin otsikkoa.",
+      "partNoDisplayDocTitle": "DisplayDocTitle ei ole asetettu arvoon true.",
+      "partNotTagged": "Tiedostoa ei ole merkitty.",
+      "partAdvice": "Kaikki, mikä luottaa väitteeseen, raportoi tämän PDF:n vaatimustenmukaiseksi vaikka se ei ole, joten joko korjaa puutteet tai poista väite. Aseta hyperrefillä \\hypersetup{pdftitle={Oma otsikko}, pdfdisplaydoctitle=true} ja käännä merkintä päällä."
+    },
+    "pdf-xmp-title": {
+      "title": "Otsikko on vain Info-sanakirjassa",
+      "detail": "Dokumentin otsikko on asetettu Info-sanakirjaan mutta ei dc:title-kenttään XMP-metatiedoissa, josta PDF/UA sen etsii. Hyperrefin lataaminen pdftitle-arvon kanssa kirjoittaa molemmat."
+    },
+    "pdf-display-doc-title": {
+      "title": "Lukuohjelma näyttää tiedostonimen, ei otsikkoa",
+      "detail": "ViewerPreferences-osiossa ei ole DisplayDocTitle-kohtaa arvolla true, joten PDF-lukuohjelma ilmoittaa tiedostonimen ikkunassaan ja avustaville tekniikoille. Aseta se hyperrefillä, esimerkiksi \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "PDF merkitsee oman merkintänsä epäluotettavaksi",
+      "detail": "MarkInfo asettaa Suspects-arvoksi true, mikä on tuottajan tapa sanoa, ettei rakennepuu ehkä vastaa näkyvää sisältöä. Käännä uudelleen ajantasaisella moottorilla ja tarkista lokin merkintävaroitukset."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} linkkimerkinnällä ei ole kuvausta",
+      "title_other": "{{count}} linkkimerkinnällä ei ole kuvausta",
+      "detail": "Linkkimerkintä ilman Contents-kohtaa ei anna ruudunlukijalle mitään ilmoitettavaa, kun se luettelee sivun linkit. Kuvaile kohde linkkitekstissä ja anna hyperrefin viedä teksti merkintään."
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}} % tekstistä on rakennepuun ulkopuolella",
+      "detail": "{{untagged}}/{{total}} tekstijaksosta ei ole kytketty mihinkään rakennepuussa, joten ruudunlukija ohittaa ne. Artefakteja ei lasketa. Varsinainen sisältö on merkittävä ja koristeellinen sisältö on merkittävä artefaktiksi, esimerkiksi \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "PDF:n rakennetta ei voitu tarkastaa kokonaan",
+      "detail_one": "Saavutettavuuden rakennepuuta ei voitu poimia sivulta {{pages}}. Esitarkistus ei pidä puuttuvaa rakennetta todisteena siitä, että PDF olisi merkitsemätön.",
+      "detail_other": "Saavutettavuuden rakennepuuta ei voitu poimia sivuilta {{pages}}. Esitarkistus ei pidä puuttuvaa rakennetta todisteena siitä, että PDF olisi merkitsemätön."
+    },
+    "pdf-untagged-output": {
+      "title": "Tätä PDF:ää ei ole merkitty",
+      "detail": "Käännetyssä PDF:ssä ei ole rakennepuuta, joten ruudunlukija ei saa otsikoita, luetteloita, taulukoita eikä lukujärjestystä, eikä tiedosto voi täyttää PDF/UA-1-standardin kohtaa 7.1. Merkitty tuloste vaatii pdfLaTeXin tai LuaLaTeXin TeX Live 2025:stä tai uudemmasta ja asetuksen \\DocumentMetadata{tagging=on}. Mukana tuleva moottori ei osaa tuottaa merkintöjä. Yllä olevat lähdekoodi- ja tulostetarkistukset pätevät silti sillä välin."
+    },
+    "pdf-structure-missing": {
+      "title": "Merkityssä PDF:ssä ei ole luettavaa rakennepuuta",
+      "detail": "PDF ilmoittaa olevansa merkitty, mutta esitarkistus ei löytänyt navigoitavaa dokumenttirakennetta. Ruudunlukijat eivät ehkä saa otsikoita, luetteloita, taulukoita eivätkä lukujärjestystä. Merkintä vaatii kaksi käännöskierrosta, joten käännä uudelleen ja tarkista uudestaan ennen kuin pidät tätä lopullisena."
+    },
+    "output-figure-alt": {
+      "title": "Merkityllä kuvalla ei ole vaihtoehtoista tekstiä",
+      "detail": "Tämä kuva on merkitty mutta siinä ei ole vaihtoehtoista tekstiä, joten ruudunlukija ei voi kuvailla sitä. Lisää kuvaus lähdekoodiin, esimerkiksi \\includegraphics[alt={...}]{...}. Merkitse koristeelliset kuvat sen sijaan valitsimella [artifact]."
+    },
+    "output-formula-alt": {
+      "title": "Kaavalla ei ole tekstivastinetta",
+      "detail": "PDF/UA-1:ssä Formula tarvitsee Alt- tai ActualText-arvon. Lisää se lähdekoodiin, esimerkiksi \\tagpdfsetup-komennolla tai kaavan alt-avaimella. PDF/UA-2:ssa voit sen sijaan liittää MathML-koodin kääntämällä LuaLaTeXilla ja asetuksella \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}."
+    },
+    "output-table-headers": {
+      "title": "Merkityssä taulukossa ei ole otsikkosoluja",
+      "detail": "Tässä taulukossa ei ole otsikkosoluja (TH), joten ruudunlukija ei voi yhdistää dataa sarake- tai riviotsikkoonsa. Merkitse otsikkorivi, esimerkiksi \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "Otsikkotaso hypättiin yli rakennepuussa",
+      "detail": "Merkityt otsikot hyppäävät yli yhden tason (esimerkiksi H1 suoraan H3:een), mikä rikkoo jäsennyksen, jonka mukaan ruudunlukija navigoi. Älä hyppää otsikkotasojen yli."
+    },
+    "ats-no-name": {
+      "title": "Jäsennin ei tunnistanut nimeä",
+      "detail": "Poimitusta tekstistä ei löytynyt uskottavaa henkilönnimeä. Pidä nimi tavallisena tekstinä lähellä dokumentin alkua, ylätunnisteiden, grafiikan ja sijoitettujen tekstilaatikoiden ulkopuolella."
+    },
+    "ats-no-email": {
+      "title": "Jäsennin ei löytänyt sähköpostiosoitetta",
+      "detail": "Poimitusta tekstistä ei löytynyt sähköpostiosoitetta, johon jäsennin nojaa eniten. Jos sähköposti on kuvakkeen vieressä tai ylätunnisteessa, se ei ehkä ole valittavaa tekstiä. Sijoita se leipätekstiin tavallisena tekstinä."
+    },
+    "ats-no-phone": {
+      "title": "Jäsennin ei löytänyt puhelinnumeroa",
+      "detail": "Poimitusta tekstistä ei löytynyt puhelinnumeroa. Jos se on olemassa mutta piilossa kuvakkeen takana tai ylätunnisteessa, lisää se leipätekstiin tavallisena valittavana tekstinä."
+    },
+    "ats-no-experience": {
+      "title": "Jäsennin ei havainnut työkokemusosiota",
+      "detail": "Vakiomuotoista Experience-otsikkoa ei löytynyt, joten jäsennin ei ehkä ryhmittele tehtäviä työhistoriaksi. Käytä tavanomaista otsikkoa kuten Experience tai Work Experience aitona, valittavana tekstinä."
+    },
+    "ats-long-resume": {
+      "title_one": "Ansioluettelo on {{count}} sivun pituinen",
+      "title_other": "Ansioluettelo on {{count}} sivun pituinen",
+      "detail": "Moni rekrytointiprosessi odottaa yhtä tai kahta sivua, vaikka kokeneiden hakijoiden sekä akateemiset ja julkishallinnon CV:t voivat olla pidempiä. Varmista, että tämä pituus sopii tehtävään ja dokumenttityyppiin."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} lähdeviitteen metatiedot ovat puutteelliset",
+      "title_other": "{{count}} lähdeviitteen metatiedot ovat puutteelliset",
+      "detail": "Puutteelliset tietueet voivat tuottaa rikkinäisiä tai monitulkintaisia viitteitä kustantajien tyyleissä. {{examples}}.",
+      "detailTruncated": "Puutteelliset tietueet voivat tuottaa rikkinäisiä tai monitulkintaisia viitteitä kustantajien tyyleissä. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} DOI-arvo näyttää virheelliseltä",
+      "title_other": "{{count}} DOI-arvoa näyttää virheelliseltä",
+      "detail": "Tarkista viitteiden {{keys}} DOI-kentät. Tallenna vain DOI-tunniste, esimerkiksi 10.1000/example, äläkä kuvailevaa tekstiä."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} mahdollinen kaksoisviite",
+      "title_other": "{{count}} mahdollista kaksoisviiteryhmää",
+      "detail": "Näillä avaimilla on sama normalisoitu otsikko: {{groups}}. Yhdistä todelliset kaksoiskappaleet, jotta viittaustyyli ja metatiedot pysyvät yhtenäisinä."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} viittaamaton lähdeviite",
+      "title_other": "{{count}} viittaamatonta lähdeviitettä",
+      "detail": "Käyttämättömät viitteet lisäävät kohinaa lähetyksen metatietoihin ja vaikeuttavat kaksoiskappaleiden hallintaa. Tarkista {{keys}}.",
+      "detailTruncated": "Käyttämättömät viitteet lisäävät kohinaa lähetyksen metatietoihin ja vaikeuttavat kaksoiskappaleiden hallintaa. Tarkista {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} nimike on määritelty useassa tiedostossa",
+      "title_other": "{{count}} nimikettä on määritelty useassa tiedostossa",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "{{count}} kuvan, taulukon tai kaavan nimikkeeseen ei viitata koskaan",
+      "title_other": "{{count}} kuvan, taulukon tai kaavan nimikkeeseen ei viitata koskaan",
+      "detail": "Varmista, että jokainen numeroitu tulos käsitellään käsikirjoituksessa: {{labels}}.",
+      "detailTruncated": "Varmista, että jokainen numeroitu tulos käsitellään käsikirjoituksessa: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "Viittausta \"{{key}}\" ei ole missään .bib-tiedostossa",
+      "detail": "Tätä viiteavainta ei löytynyt ladatusta lähdeluettelosta, joten se piirtyy PDF:ään muodossa [?]. Tarkista avain tai lisää viite .bib-tiedostoon (Lisää viittaus osaa hakea sen)."
+    },
+    "refs-undefined-ref": {
+      "title": "Viitteelle \"{{label}}\" ei löydy vastaavaa \\label-komentoa",
+      "detail": "Tämä ristiviittaus osoittaa nimikkeeseen, jota ei ole määritelty, joten se piirtyy PDF:ään muodossa ??. Tarkista nimikkeen nimi tai lisää puuttuva \\label."
+    },
+    "refs-duplicate-label": {
+      "title": "Nimike \"{{label}}\" on kahteen kertaan",
+      "detail": "Sama nimike on määritelty useammin kuin kerran, joten viitteet siihen ovat monitulkintaisia. Tee jokaisesta nimikkeestä yksilöllinen."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Kuvaa ei löydy: {{file}}",
+      "detailImage": "Tämä \\includegraphics osoittaa tiedostoon, jota ei ole projektissa, joten kuva jää puuttumaan. Tarkista tiedostonimi ja polku.",
+      "titleInclude": "Sisällytettyä tiedostoa ei löydy: {{file}}",
+      "detailInclude": "Tämä \\input tai \\include osoittaa tiedostoon, jota ei ole projektissa. Tarkista tiedostonimi ja polku."
+    },
+    "refs-bib-missing": {
+      "title": "Lähdeluettelotiedostoa ei löydy: {{file}}",
+      "detail": "Tämä \\bibliography tai \\addbibresource osoittaa tiedostoon, jota ei ole projektissa, joten jokainen viittaus piirtyy muodossa [?]. Tarkista tiedostonimi tai luo se tuomalla lähdekirjasto."
+    },
+    "refs-duplicate-bib": {
+      "title": "Lähdeviitteitä kahteen kertaan: {{keys}}",
+      "detail": "Näillä viitteillä on sama DOI {{doi}}, joten ne ovat sama viite eri avaimilla. Säilytä yksi ja viittaa siihen, tai lähdeluettelo listaa sen kahdesti."
+    },
+    "submission-path-case": {
+      "title": "Tiedostonimen kirjainkoko ei täsmää: {{target}}",
+      "detailFigure": "Tämä kuva löytyy vain tiedostojärjestelmässä, joka ei erota kirjainkokoa. Projektissa on \"{{match}}\", joten käytä täsmälleen samaa kirjainkokoa ennen lähettämistä Linux-pohjaisiin käännösjärjestelmiin.",
+      "detailInclude": "Tämä sisällytetty tiedosto löytyy vain tiedostojärjestelmässä, joka ei erota kirjainkokoa. Projektissa on \"{{match}}\", joten käytä täsmälleen samaa kirjainkokoa ennen lähettämistä Linux-pohjaisiin käännösjärjestelmiin."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Puuttuva kuva: {{target}}",
+      "titleInclude": "Puuttuva sisällytetty tiedosto: {{target}}",
+      "detail": "Mikään projektitiedosto ei ratkaise tätä viitettä tiedostosta {{file}}. Puhdas lähetyskäännös epäonnistuu, vaikka paikallinen välimuisti sallisi dokumentin kääntyä nyt."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "kuva ilman kuvatekstiä",
+      "titleTable": "taulukko ilman taulukkotekstiä",
+      "detail": "Julkaisun kuvilla ja taulukoilla tulisi olla numeroitu, kuvaileva teksti, jotta niihin voi viitata ja ne ymmärretään itsenäisesti."
+    },
+    "submission-label-before-caption": {
+      "title": "Nimike on ennen kuvatekstiään",
+      "detail": "Sijoita nimike kuvatekstin jälkeen. Muuten LaTeX voi sitoa sen edelliseen laskuriin ja tuottaa väärän kuva- tai taulukkonumeron."
+    },
+    "privacy-sensitive-file": {
+      "title": "Mukana arkaluontoinen tiedosto: {{file}}",
+      "detail": "Poista tunnistetiedot ja yksityisten avainten tiedostot projektista ennen lähdearkiston vientiä, synkronointia tai julkaisua."
+    },
+    "privacy-credential": {
+      "title": "Mahdollinen tunnistetieto tiedostossa {{file}}",
+      "detail": "Projekti sisältää tekstiä, joka muistuttaa API-tokenia, pilvipalvelun käyttöavainta tai yksityistä avainta. Mitätöi paljastuneet tunnistetiedot ja poista ne sitten projektista ja sen Git-historiasta."
+    },
+    "privacy-internal-comment": {
+      "title": "Sisäinen huomautus on yhä tiedostossa {{file}}",
+      "detail": "Lähdekoodin kommentit eivät näy PDF:ssä, mutta ne voivat olla julkisia konferenssin, lehden tai preprintin lähdearkistossa. Käy läpi ja poista yksityiset toimitukselliset muistiinpanot."
+    },
+    "privacy-draft-artifact": {
+      "title": "Luonnosmerkinnät ovat yhä käytössä",
+      "detail": "Lähdekoodi ottaa käyttöön luonnos-, TODO-, muutostenseuranta-, vesileima- tai nimikkeiden virheenjäljitystulosteen. Poista se käytöstä ja tarkista lopullinen PDF silmämääräisesti ennen lähettämistä."
+    },
+    "privacy-blind-author": {
+      "title": "Tekijän henkilöllisyys on yhä anonyymiin arviointiin menevässä lähdekoodissa",
+      "detail": "Lähdekoodi sisältää nimellisen tekijän, affiliaation, sähköpostin, osoitteen tai kiitoskentän. Korvaa tunnistava sisältö foorumin anonyymin arvioinnin tilalla."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Kiitokset voivat paljastaa tekijät",
+      "detail": "Kiitokset yksilöivät usein organisaatioita, rahoituksia, yhteistyökumppaneita tai laitteistoja. Poista ne anonyymiin arviointiin menevästä lähetyksestä, ellei foorumi nimenomaisesti salli niitä."
+    },
+    "privacy-pdf-author": {
+      "title": "PDF:n metatiedot yksilöivät tekijän",
+      "detail": "PDF:n Author-kenttä on \"{{author}}\". Tyhjennä tekijän metatiedot ennen anonyymiin arviointiin menevän PDF:n lähettämistä."
+    },
+    "submission-nonportable-filename": {
+      "title": "Ei-siirrettävä tiedostonimi: {{file}}",
+      "detail": "Tämä profiili sallii vain kirjaimet, numerot, alaviivat, plusmerkit, miinusmerkit, pisteet, pilkut, yhtäsuuruusmerkit ja hakemistoerottimet. Nimeä tiedosto uudelleen ja päivitä sen viittaukset."
+    },
+    "submission-absolute-path": {
+      "title": "Konekohtainen polku tiedostossa {{file}}",
+      "detail": "Absoluuttisia paikallisia polkuja ei ole kustantajan käännöspalvelimilla. Siirrä riippuvuus projektiin ja viittaa siihen suhteellisella polulla."
+    },
+    "submission-shell-escape": {
+      "title": "Tiedosto {{file}} vaatii ulkoisen komennon suorittamista",
+      "detail": "Moni kustantaja ja arkisto poistaa shell escape -toiminnon käytöstä. Tuota tuloste etukäteen tai varmista, että kohdefoorumi tukee tätä pakettia ja komentoa."
+    },
+    "submission-generated-file": {
+      "title": "Mukana luotu käännöstiedosto: {{file}}",
+      "detail": "Luodut aputiedostot tekevät lähdepaketeista sekavia ja voivat säilyttää vanhentunutta tilaa. Jätä ne pois, ellei valittu foorumi nimenomaisesti vaadi kyseistä tiedostoa."
+    },
+    "submission-document-class": {
+      "title": "Dokumenttiluokka {{profile}} ei ole käytössä",
+      "detail": "Tämä profiili odottaa luokkaa {{expected}}, mutta projekti käyttää luokkaa {{actual}}. Aloita foorumin nykyisestä virallisesta mallipohjasta.",
+      "detailNoClass": "Tämä profiili odottaa luokkaa {{expected}}, mutta dokumenttiluokkaa ei havaittu. Aloita foorumin nykyisestä virallisesta mallipohjasta."
+    },
+    "submission-no-abstract": {
+      "title": "Tiivistelmää ei havaittu",
+      "detail": "Tämä julkaisuprofiili odottaa tiivistelmää vakiomuotoisessa abstract-ympäristössä. Lisää se tai varmista, ettei kyseinen foorumi vaadi sitä."
+    },
+    "submission-no-keywords": {
+      "title": "Julkaisun avainsanoja ei havaittu",
+      "detail": "Profiili {{profile}} odottaa avainsanoja sen mallipohjan vakiokomennolla tai -ympäristöllä."
+    },
+    "submission-figure-format": {
+      "title": "Tukematon kuvamuoto: {{file}}",
+      "detail": "{{profile}} hyväksyy tuetuissa TeX-työnkuluissaan kuvatiedostomuodot {{formats}}. Muunna tämä kuva ennen lähettämistä."
+    },
+    "submission-placeholder": {
+      "title": "Käsikirjoituksessa on yhä luonnoksen paikanvaraaja",
+      "detail": "Lähdekoodi sisältää TODO-, TBD- tai FIXME-merkintöjä, paikanvaraajatekstiä tai kysymysmerkkejä. Käy jokainen esiintymä läpi ennen lopullisen lähetyksen tuottamista."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} on vaadittua versiota vanhempi",
+      "detail": "{{profile}} vaatii PDF-version {{minimum}} tai uudemman. Päivitä kääntäjän PDF-asetukset ja luo tiedosto uudelleen."
+    },
+    "submission-bookmarks": {
+      "title": "PDF-kirjanmerkit eivät ole sallittuja",
+      "detail": "{{profile}} ei hyväksy PDF-kirjanmerkkejä. Poista dokumentin jäsennys tästä lähetysprofiilista."
+    },
+    "submission-links": {
+      "title": "PDF-linkit eivät ole sallittuja",
+      "detail": "{{profile}} ei hyväksy linkkimerkintöjä. Poista muodostetut hyperlinkit käytöstä lähetettävässä PDF:ssä."
+    },
+    "submission-attachments": {
+      "title": "PDF sisältää upotettuja liitteitä",
+      "detail": "{{profile}} ei hyväksy PDF-liitteitä eikä -paketteja. Poista kaikki upotetut tiedostot ennen lähettämistä."
+    },
+    "submission-security": {
+      "title": "PDF:n suojausrajoitukset ovat käytössä",
+      "detail": "{{profile}} vaatii PDF:n ilman salasana- tai käyttöoikeusrajoituksia."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} fonttia ei ole upotettu",
+      "title_other": "{{count}} fonttia ei ole upotettu",
+      "detail": "{{profile}} vaatii, että jokainen fontti on upotettu tai osajoukotettu, jotta teksti ja matematiikka piirtyvät luotettavasti. Korjaa {{fonts}}."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "Kaikkien fonttien upotusta ei voitu varmistaa",
+      "detail": "Esitarkistus ei voinut todentaa fonttien {{fonts}} upotuksen tilaa. Varmista ne foorumin virallisella PDF-tarkistimella."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Saavutettavuus",
+    "both": "ATS ja saavutettavuus",
+    "refs": "Viitteet",
+    "compile": "Käännös",
+    "submission": "Lähetys",
+    "privacy": "Yksityisyys"
+  },
+  "severity": {
+    "error": "Virhe",
+    "warning": "Varoitus",
+    "info": "Huomautus"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Käännös",
+    "a11y": "Saavut.",
+    "refs": "Viitteet",
+    "submission": "Lähetys",
+    "privacy": "Yksityis."
+  },
+  "checks": {
+    "compile": {
+      "label": "Käännös ja taitto",
+      "who": "Jokaiselle valmiille dokumentille",
+      "info": "Käännösvirheet, ratkaisemattomat viitteet, puuttuvat glyyfit ja taitto-ongelmat.",
+      "detail": "Tutkii viimeisimmän käännöslokin ja PDF:n epäonnistuneiden käännösten, ratkaisemattomien viitteiden, puuttuvien glyyfien, ylitäyden tai leikkautuvan sisällön, vanhentuneiden uudelleenajovaroitusten ja sekalaisten sivukokojen varalta."
+    },
+    "submission": {
+      "label": "Lähetysvalmius",
+      "who": "Konferensseille, lehdille, preprinteille ja opinnäytteille",
+      "info": "Julkaisuprofiilin säännöt ja tiedostot, joiden ei pitäisi päätyä lähdepakettiin.",
+      "detail": "Soveltaa julkaisuprofiilia koko projektiin: virallinen dokumenttiluokka, siirrettävät lähdepolut, kuvamuodot, tiivistelmä ja avainsanat, PDF-rajoitukset, kuvatekstit ja siisti lähdepaketointi."
+    },
+    "ats": {
+      "label": "ATS-valmius",
+      "who": "Ansioluetteloille ja CV:ille",
+      "info": "Yhteystiedot ja osiot, jotka ansioluettelojäsennin saa talteen.",
+      "detail": "Jäljittelee sitä, mitä rekrytointijärjestelmä (Workday, Taleo, Greenhouse) poimii PDF:stä, ja nostaa esiin taiton ja muotoilun, joka sekoittaa poiminnan. Ei koske tutkimusartikkeleita."
+    },
+    "a11y": {
+      "label": "Saavutettavuus",
+      "who": "Tutkimukseen, julkishallintoon ja julkaistuihin PDF-tiedostoihin",
+      "info": "Merkintä, vaihtoehtoiset tekstit, dokumentin kieli ja otsikko, katseluasetukset, rakenne, linkit ja lukujärjestys.",
+      "detail": "Tarkistaa käännetyn PDF:n koneellisesti tarkistettavaa osaa vasten standardista PDF/UA-1 (ISO 14289-1) ja WCAG 2.2:n PDF-tekniikoista: merkintä, vaihtoehtoiset tekstit, dokumentin kieli ja otsikko, katseluasetukset, otsikko- ja taulukkorakenne, linkkien kuvaukset, lukujärjestys ja valittava teksti. Lähdekooditarkistukset nostavat todennäköiset ongelmat esiin jo ennen kääntämistä."
+    },
+    "refs": {
+      "label": "Viitteet ja resurssit",
+      "who": "Tutkimukseen ja monitiedostoisiin dokumentteihin",
+      "info": "Rikkinäiset viittaukset, kahteen kertaan olevat nimikkeet, puutteelliset lähdeviitteet ja puuttuvat resurssit.",
+      "detail": "Etsii määrittelemättömät viittaukset ja ristiviittaukset, kahteen kertaan olevat nimikkeet sekä puuttuvat kuvat ja sisällytetyt tiedostot ennen kuin ne rikkovat PDF:n lähetysvaiheessa."
+    },
+    "privacy": {
+      "label": "Yksityisyys ja anonyymi arviointi",
+      "who": "Ennen lähdekoodin jakamista tai anonyymiä lähetystä",
+      "info": "Salaisuudet, luonnosmuistiinpanot, arkaluontoiset tiedostot ja henkilöllisyyden paljastuminen anonyymissä arvioinnissa.",
+      "detail": "Etsii tunnistetietoja, yksityisiä avaimia, sisäisiä kommentteja, luonnosmerkintöjä, arkaluontoisia projektitiedostoja, tekijän metatietoja ja henkilöllisyyden paljastavia kohtia anonyymiin arviointiin menevissä lähetyksissä."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Yleinen julkaisu",
+      "description": "Siirrettävä lähdekoodi, siisti tuloste, täydelliset metatiedot ja tavalliset julkaisemisen riskit."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Siirrettävä lähdekoodi, joka kääntyy uudelleen arXivin kirjainkoon erottavassa lähetysjärjestelmässä."
+    },
+    "ieee": {
+      "label": "IEEE-konferenssi tai -lehti",
+      "description": "IEEEtran-lähdekoodi ja IEEE Xplore -julkaisua varten tarkistettavat PDF-rajoitukset."
+    },
+    "acm": {
+      "label": "ACM-konferenssi tai -lehti",
+      "description": "ACM acmart -lähdekoodirakenne ja julkaisuvalmiit tutkimuksen metatiedot."
+    },
+    "journal": {
+      "label": "Muu lehti",
+      "description": "Kustantajasta riippumattomat lehtitarkistukset. Lisää lehden tarkat rajat ennen lähettämistä."
+    },
+    "thesis": {
+      "label": "Opinnäyte tai väitöskirja",
+      "description": "Pitkän dokumentin rakenne, navigointi, viitteet ja siirrettävän lähdekoodin tarkistukset."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Työkokemus",
+      "education": "Koulutus",
+      "skills": "Taidot",
+      "projects": "Projektit",
+      "summary": "Tiivistelmä"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: {{passed}}/{{total}} koneellisesti tarkistettavasta säännöstä varmennettu. Osittainen tarkistus, ei vaatimustenmukaisuuslausunto.",
+    "coverageWithBlindSpots": "PDF/UA-1: {{passed}}/{{total}} koneellisesti tarkistettavasta säännöstä varmennettu. Oleafly lukee näistä säännöistä {{covered}}, ja niistä {{unavailable}} ei voitu tarkistaa tässä tiedostossa. Osittainen tarkistus, ei vaatimustenmukaisuuslausunto."
+  },
+  "taggingGate": {
+    "noSupport": "Luokka {{name}} ei osaa tuottaa merkittyä tulostetta, eikä LaTeX Project odota sen osaavan.",
+    "noSupportWithNote": "Luokka {{name}} ei osaa tuottaa merkittyä tulostetta, eikä LaTeX Project odota sen osaavan. {{note}}",
+    "currentlyIncompatible": "Luokka {{name}} ei ole vielä yhteensopiva LaTeXin merkinnän kanssa, joten tämän lähdekoodin valmistelu ei tuottaisi saavutettavaa PDF:ää.",
+    "currentlyIncompatibleWithNote": "Luokka {{name}} ei ole vielä yhteensopiva LaTeXin merkinnän kanssa, joten tämän lähdekoodin valmistelu ei tuottaisi saavutettavaa PDF:ää. {{note}}",
+    "partiallyCompatible": "Luokka {{name}} on vain osittain yhteensopiva merkinnän kanssa, joten rakennepuuhun jää todennäköisesti aukkoja.",
+    "partiallyCompatibleWithNote": "Luokka {{name}} on vain osittain yhteensopiva merkinnän kanssa, joten rakennepuuhun jää todennäköisesti aukkoja. {{note}}",
+    "unrecorded": "LaTeX Project ei ole kirjannut luokalle {{name}} merkinnän tilaa, joten tulos on todentamaton. Käännä ja tarkista tuloste."
+  },
+  "prep": {
+    "metadataUpdated": "Vaaditut merkintäavaimet lisättiin \\DocumentMetadata-komentoon.",
+    "metadataAdded": "\\DocumentMetadata lisättiin ensimmäiseksi riviksi (pakollinen, ja sen on oltava ennen \\documentclass-komentoa).",
+    "headerRows": "table/header-rows asetettiin arvoon 1, jotta jokaisen taulukon ensimmäinen rivi merkitään otsikkosoluiksi. Muuta lukua, jos jonkin taulukon otsikko on eri syvyinen.",
+    "unicodeMath": "Lisättiin \\usepackage{unicode-math}, jota tämä moottori tarvitsee merkittyyn matematiikkaan.",
+    "altPlaceholders_one": "Vaihtoehtoisen tekstin paikanvaraajat lisättiin {{count}} kuvaan. Korvaa TODO-teksti oikealla kuvauksella.",
+    "altPlaceholders_other": "Vaihtoehtoisen tekstin paikanvaraajat lisättiin {{count}} kuvaan. Korvaa TODO-teksti oikealla kuvauksella.",
+    "titleRequired": "PDF/UA tarvitsee dokumentin otsikon, jonka lukuohjelma näyttää. Lataa hyperref ja aseta \\hypersetup{pdftitle={Oma otsikko}, pdfdisplaydoctitle=true}.",
+    "incompatiblePackages_one": "Tämä paketti ei ole yhteensopiva merkinnän kanssa: {{packages}}. Sen sisältö voi päätyä PDF:ään merkitsemättömänä. Korvaa se, jos voit.",
+    "incompatiblePackages_other": "Nämä paketit eivät ole yhteensopivia merkinnän kanssa: {{packages}}. Niiden sisältö voi päätyä PDF:ään merkitsemättömänä. Korvaa ne, jos voit.",
+    "cautionPackages": "Nämä paketit merkitsevät vain osittain tai niille ei ole kirjattua merkinnän tulosta: {{packages}}. Käännä ja tarkista rakennepuun aukot.",
+    "compileLua": "Käännä valmisteltu lähdekoodi LuaLaTeXilla TeX Live 2025:stä tai uudemmasta ja tarkista tuloste sitten uudelleen.",
+    "compileAny": "Käännä valmisteltu lähdekoodi pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta ja tarkista tuloste sitten uudelleen. Saavutettava matematiikka vaatii LuaLaTeXin. Mukana tuleva moottori ei osaa tuottaa merkintöjä."
+  },
+  "gate": {
+    "incompatiblePackages_one": "Tämä paketti ei ole yhteensopiva merkinnän kanssa: {{packages}}. Sen sisältö voi päätyä PDF:ään merkitsemättömänä.",
+    "incompatiblePackages_other": "Nämä paketit eivät ole yhteensopivia merkinnän kanssa: {{packages}}. Niiden sisältö voi päätyä PDF:ään merkitsemättömänä.",
+    "incompatiblePackagesTruncated": "Nämä paketit eivät ole yhteensopivia merkinnän kanssa: {{packages}} ja {{more}} muuta. Niiden sisältö voi päätyä PDF:ään merkitsemättömänä.",
+    "partialPackages": "Nämä paketit merkitsevät vain osittain: {{packages}}.",
+    "partialPackagesTruncated": "Nämä paketit merkitsevät vain osittain: {{packages}} ja {{more}} muuta.",
+    "unknownPackages": "Paketeille {{packages}} ei ole kirjattua merkinnän tulosta.",
+    "unknownPackagesTruncated": "Paketeille {{packages}} ja {{more}} muulle ei ole kirjattua merkinnän tulosta.",
+    "cautionAdvice": "Käännä ja tarkista rakennepuun aukot."
+  },
+  "panel": {
+    "title": "Esitarkistus",
+    "readerDisabled": "Käännä ja aja ensin tulostetarkistus",
+    "readerEnabled": "Avaa PDF:stä poimittu teksti",
+    "readerButton": "Näytä mitä lukija näkee",
+    "aboutLabel": "Tietoja esitarkistuksesta",
+    "aboutTitle": "Mitä esitarkistus tarkistaa",
+    "aboutIntro": "Esitarkistus lukee projektin lähdekoodin, käännöslokin ja nykyisen PDF:n. Ota käyttöön vain ne tarkistukset, jotka sopivat tähän dokumenttiin.",
+    "aboutFooter": "Varmennetut huomiot perustuvat suoriin havaintoihin. Ohjeelliset huomiot vaativat silti omaa harkintaa. Puhdas raportti auttaa arvioinnissa, mutta se ei takaa hyväksyntää eikä saavutettavuutta. Kaikki tarkistukset ajetaan paikallisesti.",
+    "enableCheck": "Ota käyttöön: {{check}}",
+    "runCheck": "Aja: {{check}}",
+    "rerunCheck": "Aja uudelleen: {{check}}",
+    "run": "Aja",
+    "rerun": "Aja uudelleen",
+    "collapse": "Tiivistä",
+    "expand": "Laajenna",
+    "publicationProfile": "Julkaisuprofiili",
+    "anonymousReview": "Anonyymi arviointi",
+    "anonymousReviewHint": "Tarkista myös tekijäkentät, kiitokset ja PDF:n metatiedot.",
+    "anonymousReviewToggle": "Tarkista anonyymin arvioinnin henkilöllisyys",
+    "engineUnsupported": "{{engine}}-lähdekoodin tarkistuksia ei ole vielä toteutettu. Tämä tarkistus käyttää vain käännettyä PDF:ää eikä raportoi puuttuvaa lähdekooditukea virheenä.",
+    "runToSeeResults": "Aja tämä tarkistus, niin tulokset tulevat näkyviin.",
+    "analyzing": "Analysoidaan…",
+    "runEnabled_one": "Aja {{count}} käytössä oleva tarkistus",
+    "runEnabled_other": "Aja {{count}} käytössä olevaa tarkistusta",
+    "rerunEnabled_one": "Aja uudelleen {{count}} käytössä oleva tarkistus",
+    "rerunEnabled_other": "Aja uudelleen {{count}} käytössä olevaa tarkistusta",
+    "failed": "Esitarkistus epäonnistui: {{error}}",
+    "standardsCaveat": "Oleafly lukee sen osan PDF/UA:sta ja WCAG:sta, joka on tarkistettavissa itse tiedostosta. Se ei voi kertoa, onko vaihtoehtoinen teksti mielekäs, onko lukujärjestys järkevä tai riittääkö värikontrasti. Ne on ihmisen arvioitava. Muodollista vaatimustenmukaisuuslausuntoa varten tarkista tiedosto veraPDF:llä tai PAC 2024:llä.",
+    "pdfRequired": "PDF vaaditaan. Käännä projekti ja aja uudelleen. Tätä tarkistusta ei ole vielä arvioitu.",
+    "compileFirst": "Käännä projekti ensin. Esitarkistus tarvitsee nykyisen käännöslokin tai PDF:n käännöksen laadun arviointiin.",
+    "partialCoverage": "Lähdekooditarkistukset valmistuivat. Käännä projekti ja aja uudelleen, niin PDF-tason tarkistukset valmistuvat.",
+    "unsupportedCoverage": "Ei arvioitu. Tämän moottorin lähdekooditarkistuksia ei ole toteutettu.",
+    "groupSource": "Projekti ja lähdekoodi",
+    "groupOutput": "Käännetty tuloste",
+    "fixAll_one": "Korjaa {{count}} tekoälyllä",
+    "fixAll_other": "Korjaa kaikki {{count}} tekoälyllä",
+    "noProblems": "Ongelmia ei löytynyt."
+  },
+  "finding": {
+    "review": "Tarkista",
+    "manual": "Käsin",
+    "page": "s.{{page}}",
+    "needsJudgment": "Vaatii omaa harkintaa. Mikään työkalu ei voi ratkaista tätä pelkän tiedoston perusteella.",
+    "jumpToSource": "Hyppää lähdekoodiin",
+    "fixWithAi": "Korjaa tekoälyllä"
+  },
+  "score": {
+    "notEvaluated": "{{label}}: ei arvioitu",
+    "readiness": "{{label}}-valmius {{score}}/100",
+    "notScored": "Ei pisteytetty"
+  },
+  "reader": {
+    "title": "Mitä lukija näkee",
+    "description": "Nykyisestä PDF:stä lukujärjestyksessä poimittu teksti. Tämä vastaa läheisesti sitä, mitä ruudunlukija tai automaattinen jäsennin saa.",
+    "pagesNav": "PDF-sivut",
+    "page": "Sivu {{page}}",
+    "empty": "tyhjä",
+    "extractedFrom": "Sivulta {{page}} poimittu teksti",
+    "pageOf": "Sivu {{page}}/{{total}}",
+    "noText": "Tältä sivulta ei löytynyt valittavaa tekstiä."
+  },
+  "atsCard": {
+    "title": "Mitä jäsennin poimi",
+    "notFound": "Ei löytynyt",
+    "links_one": "{{count}} linkki",
+    "links_other": "{{count}} linkkiä",
+    "detected": "{{section}}: havaittu",
+    "requiredMissing": "{{section}}: pakollista osiota ei havaittu",
+    "optionalMissing": "{{section}}: valinnaista osiota ei havaittu",
+    "detectedTitle": "Osio {{section}} havaittiin",
+    "requiredMissingTitle": "Osiota {{section}} odotettiin, mutta sitä ei havaittu",
+    "optionalMissingTitle": "Osio {{section}} on valinnainen, eikä sitä havaittu",
+    "optionalSuffix": ", valinnainen"
+  },
+  "prepExport": {
+    "title": "Saavutettava vienti",
+    "intro": "Valmistele tämä dokumentti merkitylle tulosteelle, joka tähtää PDF/UA-2-standardiin. Oleafly lisää \\DocumentMetadata-komennon arvoilla pdfstandard=ua-2 ja tagging=on sekä ne vaihtoehtoisen tekstin ja taulukoiden asetukset, jotka se osaa täyttää. Käännä tulos pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta ja tarkista sitten uudelleen. Saavutettava matematiikka vaatii LuaLaTeXin. Mukana tuleva moottori ei osaa tuottaa merkintöjä.",
+    "activeFileFallback": "Oleafly ei voinut ladata päädokumenttia, joten se tarkisti muokattavana olevan tiedoston. Avaa päädokumentti, niin näkyviin tulevat luokka ja paketit, jotka käännös todella lataa.",
+    "prepare": "Valmistele saavutettavaa vientiä varten",
+    "unavailable": "Valmistelu ei ole käytettävissä tälle dokumenttiluokalle. Vaihda luokkaan, jota merkintäkoodi tukee, ja aja tarkistus sitten uudelleen. Yhteensopivuustiedot LaTeX Projectilta, noudettu {{retrieved}}.",
+    "unavailableUndated": "Valmistelu ei ole käytettävissä tälle dokumenttiluokalle. Vaihda luokkaan, jota merkintäkoodi tukee, ja aja tarkistus sitten uudelleen. Yhteensopivuustiedot LaTeX Projectilta.",
+    "applied": "Otettu käyttöön",
+    "apply": "Ota käyttöön dokumentissa",
+    "copied": "Kopioitu",
+    "copy": "Kopioi lähdekoodi",
+    "compileTagged": "Käännä merkittynä ja varmista",
+    "compileTaggedWarning": "Järjestelmän LuaLaTeX voi lukea paikallisia tiedostoja. Aja se vain projektille, johon luotat.",
+    "noEngine": "Jotta merkityn PDF:n voi tuottaa sovelluksessa, ota moottori käyttöön kohdassa Asetukset, LaTeX-moottori. Vaihtoehtoisesti käännä valmisteltu lähdekoodi omalla pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta."
+  }
+}

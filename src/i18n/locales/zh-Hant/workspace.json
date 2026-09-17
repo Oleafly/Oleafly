@@ -1,0 +1,194 @@
+{
+  "files": {
+    "collapseAll": "收合所有資料夾",
+    "confirmDelete": "要刪除 {{path}} 嗎？此操作無法復原。",
+    "conflict": {
+      "cancelAriaLabel": "取消移動檔案",
+      "createBody": "<destination>{{destination}}</destination> 已經存在。使用 <suggestion>{{suggestion}}</suggestion> 可同時保留兩個檔案。建立檔案絕不會取代現有檔案。",
+      "dialogAriaLabel": "檔案移動衝突",
+      "keepBoth": "兩者都保留",
+      "renameBody": "<destination>{{destination}}</destination> 已經存在。可使用 <suggestion>{{suggestion}}</suggestion> 同時保留兩個檔案，或取代現有的目標檔案。除非你選擇「取代」，否則 Oleafly 不會取代它。",
+      "replace": "取代",
+      "title": "這個名稱已被使用",
+      "unchanged": "來源與目標路徑都維持不變。"
+    },
+    "createFailed": "無法建立「{{path}}」。",
+    "deleteFailed": "無法刪除「{{path}}」。",
+    "expandAll": "展開所有資料夾",
+    "importAriaLabel": "匯入到選取的資料夾",
+    "importFiles": "匯入檔案",
+    "importFolder": "匯入資料夾",
+    "importTitle": "匯入檔案或資料夾（到選取的資料夾）",
+    "makeCopy": "建立副本",
+    "moreActions": "{{name}} 的更多動作",
+    "moveFailed": "無法移動「{{path}}」。來源路徑維持不變。",
+    "newEntry": {
+      "fileInFolder": "資料夾 {{folder}} 中的新檔案名稱",
+      "fileInRoot": "專案根目錄中的新檔案名稱",
+      "filePlaceholder": "新檔案名稱",
+      "folderInFolder": "資料夾 {{folder}} 中的新資料夾名稱",
+      "folderInRoot": "專案根目錄中的新資料夾名稱",
+      "folderPlaceholder": "新資料夾名稱"
+    },
+    "newFile": "新增檔案",
+    "newFileAriaLabel": "在選取的資料夾中新增檔案",
+    "newFileTitle": "新增檔案（在選取的資料夾中）",
+    "newFolder": "新增資料夾",
+    "newFolderAriaLabel": "在選取的資料夾中新增資料夾",
+    "newFolderTitle": "新增資料夾（在選取的資料夾中）",
+    "renameAriaLabel": "重新命名檔案",
+    "renameFailed": "無法重新命名「{{path}}」。來源路徑維持不變。",
+    "setMain": "設為主要文件",
+    "title": "檔案總管",
+    "treeAriaLabel": "檔案總管檔案樹"
+  },
+  "explorer": {
+    "resizeSections": "調整 {{first}} 與 {{second}} 的大小"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "有歧義",
+      "cycle": "循環",
+      "definitions_other": "{{count}} 項定義",
+      "duplicate": "重複",
+      "external": "外部",
+      "folded": "已摺疊",
+      "incomplete": "不完整",
+      "missing": "遺失"
+    },
+    "bibEntryIn": "{{file}} 中的 {{type}} 條目",
+    "duplicateKey": "重複的鍵。",
+    "duplicateKeyIn": "{{file}} 中有重複的鍵 {{key}}",
+    "folded": {
+      "description": "這個分支已摺疊，以維持超大型專案關係圖的流暢度。",
+      "label": "開啟連結的原始碼以繼續"
+    },
+    "fromFile": "來自 {{file}} 的 {{kind}}",
+    "groups": {
+      "bibliography": "參考文獻",
+      "bibtexEntries": "BibTeX 條目",
+      "commands": "指令",
+      "definitions_other": "定義",
+      "dependencies": "連結與相依項目",
+      "duplicateCitations": "重複的引用鍵",
+      "environments": "環境",
+      "labels": "標籤與錨點",
+      "occurrences": "出現位置",
+      "sections": "章節",
+      "unlinked": "未連結的檔案",
+      "unresolvedCitations": "未解析的引用",
+      "unresolvedDuplicate": "未解析與重複"
+    },
+    "inFile": "{{file}} 中的 {{kind}}",
+    "incompleteEntry": "條目不完整。",
+    "kinds": {
+      "anchor": "錨點",
+      "asset": "資源檔",
+      "bibentry": "書目條目",
+      "bibliography": "參考文獻",
+      "citation": "引用",
+      "environment": "環境",
+      "file": "檔案",
+      "glossary": "詞彙表",
+      "import": "匯入",
+      "include": "引入",
+      "label": "標籤",
+      "link": "連結",
+      "macro": "巨集",
+      "reference": "參照",
+      "section": "章節"
+    }
+  },
+  "outline": {
+    "ariaLabel": "文件大綱",
+    "collapseHeading": "收合 {{title}}",
+    "collapseAll": "收合所有標題",
+    "empty": "這份文件沒有章節或引入的檔案。",
+    "emptyDetail": "加入章節標題，就能建立可瀏覽的大綱。",
+    "entryCount_other": "{{count}} 個大綱項目",
+    "expandHeading": "展開 {{title}}",
+    "expandAll": "展開所有標題",
+    "title": "大綱"
+  },
+  "panelError": {
+    "message": "面板版面配置出了問題。你的專案檔案在磁碟上安然無恙。",
+    "reload": "重新載入 Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "文件結構",
+    "collapseAll": "收合所有結構項目",
+    "empty": "專案地圖中沒有支援的檔案。",
+    "filterLabel": "篩選專案結構",
+    "filterPlaceholder": "篩選專案地圖…",
+    "expandAll": "展開所有結構項目",
+    "itemCount_other": "{{count}} 個結構項目",
+    "noMatch": "沒有符合「{{query}}」的結構。",
+    "notice": {
+      "partial": "地圖並不完整。無法讀取或格式有誤的檔案會盡量保留顯示。",
+      "stale": "更新中。在目前的原始碼範圍就緒前，會先隱藏舊修訂版本的結構。"
+    },
+    "title": "結構",
+    "treeLabel": "專案結構",
+    "unavailable": {
+      "failed": {
+        "detail": "無法分析這個專案。你的原始檔並未變更。",
+        "title": "無法建立結構"
+      },
+      "mapping": {
+        "detail": "Oleafly 正在索引標題、連結的檔案、符號與參考文獻條目。",
+        "title": "正在建立專案結構地圖"
+      },
+      "noProject": {
+        "detail": "開啟文件專案即可瀏覽本機結構與專案結構。",
+        "title": "未開啟專案"
+      },
+      "noSource": {
+        "detail": "開啟支援的原始檔或參考文獻檔即可查看結構。",
+        "title": "沒有使用中的原始檔"
+      },
+      "offline": {
+        "detail": "這個工作區目前無法進行專案分析。",
+        "title": "結構服務無法使用"
+      },
+      "unsupported": {
+        "detail": "這種檔案類型沒有專案結構提供者。",
+        "title": "結構無法使用"
+      },
+      "waiting": {
+        "detail": "最新的專案修訂版本尚未建立索引。",
+        "title": "正在等待專案結構"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "正在載入助理",
+    "editor": "正在載入編輯器",
+    "preview": "正在載入預覽",
+    "terminal": "正在載入終端機"
+  },
+  "terminal": {
+    "closeCurrent": "關閉目前分頁",
+    "closeLeft": "關閉左側全部",
+    "closeOthers": "關閉其他分頁",
+    "closeRight": "關閉右側全部",
+    "closeTab": "關閉 {{title}}",
+    "color": "顏色",
+    "errors": {
+      "input": "shell 無法接受輸入",
+      "resize": "終端機無法調整大小",
+      "start": "shell 無法啟動"
+    },
+    "limitReached": "關閉一個終端機才能再開新的",
+    "newTerminal": "新增終端機",
+    "settings": "終端機設定",
+    "starting": "正在啟動專案 shell…",
+    "tabs": "終端機",
+    "titleInput": "終端機標題"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}，{{path}}",
+    "clearFilter": "清除篩選",
+    "filterPlaceholder": "篩選…",
+    "noProject": "沒有專案"
+  }
+}

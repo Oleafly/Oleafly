@@ -1,0 +1,153 @@
+{
+  "citeOleafly": "Oleafly in diesem Aufsatz zitieren",
+  "empty": {
+    "citations": {
+      "detail": "Importieren Sie eine Literaturbibliothek oder fügen Sie eine Zitation hinzu, um zu beginnen.",
+      "title": "Noch keine Zitationen"
+    },
+    "symbols": {
+      "detail": "Überschriften, Labels, Befehle und Umgebungen erscheinen hier, während das Projekt entsteht.",
+      "title": "Noch keine Symbole"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Zitationen filtern",
+    "ariaLabelResults": "Ergebnisse filtern",
+    "ariaLabelSymbols": "Symbole filtern",
+    "clear": "Filter leeren",
+    "noCitation": "Keine Zitation passt zu „{{query}}“.",
+    "noResult": "Kein Ergebnis passt zu „{{query}}“.",
+    "noSymbol": "Kein Symbol passt zu „{{query}}“.",
+    "placeholderCitations": "Schlüssel, Titel, Autoren filtern…",
+    "placeholderResults": "Fundstellen filtern…",
+    "placeholderSymbols": "Labels und Befehle filtern…"
+  },
+  "import": {
+    "added_one": "{{count}} Literaturangabe zu {{target}} hinzugefügt.",
+    "added_other": "{{count}} Literaturangaben zu {{target}} hinzugefügt.",
+    "addedWithDuplicates_one": "{{count}} Literaturangabe zu {{target}} hinzugefügt, {{duplicates}} waren schon vorhanden.",
+    "addedWithDuplicates_other": "{{count}} Literaturangaben zu {{target}} hinzugefügt, {{duplicates}} waren schon vorhanden.",
+    "allDuplicates_one": "Diese Literaturangabe steht bereits in {{target}}.",
+    "allDuplicates_other": "Diese {{count}} Literaturangaben stehen bereits in {{target}}.",
+    "defaultTarget": "das Literaturverzeichnis",
+    "description": "Fügen Sie diesem Projekt Literaturangaben aus einer Literaturverwaltung oder einer Bibliografiedatei hinzu.",
+    "duplicateNote": "Literaturangaben mit einer DOI, die im Literaturverzeichnis schon steht, werden übersprungen.",
+    "empty": "In dieser Datei wurden keine Literaturangaben gefunden.",
+    "endnote": {
+      "button": "XML-, RIS- oder BibTeX-Datei wählen",
+      "description": "Wählen Sie eine EndNote-XML-, RIS- oder BibTeX-Datei. Oleafly fügt die Literaturangaben dem Literaturverzeichnis des Projekts hinzu.",
+      "title": "EndNote, RIS oder BibTeX"
+    },
+    "failed": "Diese Literaturangaben konnten nicht importiert werden.",
+    "nothingNew": "Es gibt nichts Neues für {{target}}.",
+    "problems_one": "{{count}} Problem beim Import. {{details}}",
+    "problems_other": "{{count}} Probleme beim Import. {{details}}",
+    "readFailed": "Diese Datei konnte nicht gelesen werden.",
+    "title": "Literaturbibliothek importieren",
+    "unrecognized": "Unbekannter Dateityp: {{name}}",
+    "zotero": {
+      "button": "Zotero-RDF-Datei wählen",
+      "description": "Wählen Sie in Zotero Datei → Bibliothek exportieren → Zotero RDF. Wählen Sie danach die exportierte Datei.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Unvollständige Ergebnisse. Fehlerhafte oder unlesbare Dateien können Fundstellen auslassen.",
+    "stale": "Wird aktualisiert. Zitationen, Symbole und Bereiche der vorherigen Fassung sind ausgeblendet."
+  },
+  "panel": {
+    "ariaLabel": "Referenzen (Shift-F12)",
+    "clearQuery": "Referenzabfrage leeren",
+    "cleanLibrary": "Literaturbibliothek bereinigen",
+    "importAriaLabel": "Literaturangaben importieren",
+    "issues_one": "{{count}} Problem mit Referenzen oder Zitationen",
+    "issues_other": "{{count}} Probleme mit Referenzen oder Zitationen",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Referenzen",
+    "viewTabs": "Ansicht des Referenzbereichs"
+  },
+  "cleanLibrary": {
+    "title": "Literaturbibliothek bereinigen",
+    "description": "Prüfen Sie Zitierschlüssel und doppelte Einträge, bevor Ihre Dateien geändert werden.",
+    "library": "Literaturbibliothek",
+    "entryCount_one": "{{count}} Eintrag",
+    "entryCount_other": "{{count}} Einträge",
+    "footer": "Die Vorschau speichert Ihre geöffneten Dateien. Beim Anwenden wird geprüft, ob sie noch zur Vorschau passen, und die Originale werden gesichert.",
+    "noBib": "Dieses Projekt hat keine .bib-Datei zum Bereinigen.",
+    "entriesKept": "{{kept}} von {{total}} Einträgen bleiben erhalten.",
+    "changes": "Änderungen und Hinweise",
+    "noChanges": "Keine Dateiänderungen zum Anwenden.",
+    "filesToUpdate": "Zu aktualisierende Dateien: {{files}}",
+    "none": "Keine",
+    "introSafeChanges": "Zitierschlüssel werden vereinheitlicht. Dubletten mit gleicher DOI werden nur entfernt, wenn alle ihre Angaben erhalten bleiben.",
+    "introReview": "Ähnliche Titel und widersprüchliche Metadaten bleiben zur Prüfung in der Bibliothek.",
+    "preview": "Vorschau",
+    "reviewTitle": "Vor dem Anwenden prüfen",
+    "reviewBody": "Sehen Sie sich die Änderungen in der Vorschau an, um zu erkennen, welche Einträge und Zitationen aktualisiert werden.",
+    "statusAttention": "Prüfung nötig",
+    "statusWorking": "Wird bearbeitet…",
+    "statusPreviewReady": "Vorschau bereit",
+    "statusReady": "Bereit für die Vorschau",
+    "refreshPreview": "Vorschau aktualisieren",
+    "previewChanges": "Änderungen in der Vorschau",
+    "apply": "Anwenden und Zitationen umschreiben",
+    "truncated": "Die Vorschau zeigt die ersten 500 Zeilen jeder Fassung.",
+    "actionRenamed": "{{old}} umbenannt in {{new}}",
+    "actionDuplicate": "{{removed}} als Dublette von {{kept}} entfernt (erkannt über {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "Die bereinigten Dateien konnten nicht neu geladen werden. Öffnen Sie das Projekt erneut, bevor Sie weiterarbeiten.",
+    "cleaned": "Bibliothek bereinigt. {{kept}} von {{total}} Einträgen behalten.",
+    "cleanedWithBackup": "Bibliothek bereinigt. {{kept}} von {{total}} Einträgen behalten. Die Originaldateien liegen in {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Das Projekt hat sich nach dieser Abfrage geändert. Führen Sie Referenzen suchen erneut aus, um aktuelle Quellbereiche zu verwenden.",
+      "title": "Referenzergebnisse sind veraltet"
+    },
+    "noLocations": {
+      "detail": "Das Symbol gibt es in dieser Fassung, aber es hat keine passenden Definitionen oder Fundstellen.",
+      "title": "Keine Fundstellen gefunden"
+    },
+    "none": {
+      "detail": "Setzen Sie den Cursor auf ein Label, eine Zitation, einen Befehl oder eine Umgebung und drücken Sie Shift-F12.",
+      "title": "Keine Referenzabfrage"
+    }
+  },
+  "tabs": {
+    "citations": "Zitationen",
+    "results": "Referenzen",
+    "symbols": "Symbole"
+  },
+  "trees": {
+    "citations": "Zitationen im Projekt",
+    "noCitations": "Es wurden weder Einträge im Literaturverzeichnis noch Zitationen gefunden.",
+    "noSymbols": "Es wurden keine im Projekt definierten Symbole gefunden.",
+    "symbols": "Symbole im Projekt"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Die neueste Projektfassung konnte nicht analysiert werden. Die Quelldateien wurden nicht verändert.",
+      "title": "Projektanalyse fehlgeschlagen"
+    },
+    "indexing": {
+      "detail": "Referenzen und Zitationen erscheinen, sobald die aktuelle Projektfassung bereit ist.",
+      "title": "Projektwissen wird indexiert"
+    },
+    "noProject": {
+      "detail": "Öffnen Sie ein Dokumentprojekt, um Zitationen, Symbole und dateiübergreifende Referenzen zu prüfen.",
+      "title": "Kein Projekt geöffnet"
+    },
+    "offline": {
+      "detail": "Referenzen und Zitationen lassen sich in diesem Arbeitsbereich gerade nicht prüfen.",
+      "title": "Analysedienst nicht verfügbar"
+    },
+    "unsupported": {
+      "detail": "Das aktive Projekt nutzt keine unterstützte Dokument-Engine.",
+      "title": "Projektwissen nicht verfügbar"
+    },
+    "waiting": {
+      "detail": "Die neueste Projektfassung wurde noch nicht indexiert.",
+      "title": "Warten auf die Projektanalyse"
+    }
+  }
+}

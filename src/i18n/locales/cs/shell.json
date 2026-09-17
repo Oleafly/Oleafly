@@ -1,0 +1,951 @@
+{
+  "about": {
+    "close": "Zavřít dialog O aplikaci",
+    "closeBackdrop": "Zavřít O aplikaci Oleafly",
+    "connect": "Spojte se s Oleafly",
+    "links": {
+      "discussions": {
+        "description": "Ptejte se a sdílejte nápady",
+        "label": "Diskuze"
+      },
+      "docs": {
+        "description": "Poznejte Oleafly do posledního detailu",
+        "label": "Dokumentace"
+      },
+      "issues": {
+        "description": "Nahlaste chybu nebo požádejte o funkci",
+        "label": "Hlášení"
+      },
+      "social": {
+        "description": "Sledujte vydání a vývoj",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "Dát hvězdu na GitHubu",
+    "tagline": "Otevřený pracovní prostor pro celý článek. Pište, kompilujte, korigujte, spravujte citace, procházejte PDF, sledujte změny v Gitu a pracujte s modely AI, které si zvolíte.",
+    "version": "Verze {{version}}",
+    "viewSource": "Zobrazit zdrojový kód"
+  },
+  "addCitation": {
+    "added": "Přidáno {{cite}}",
+    "adding": "Přidává se…",
+    "close": "Zavřít dialog citace",
+    "confirm": "Přidat do .bib a citovat",
+    "entry": "Záznam",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Název"
+    },
+    "hint": "Vložte DOI, identifikátor arXiv nebo adresu URL a záznam se načte přímo, nebo napište název a prohledá se Crossref. Zkuste některý z těchto:",
+    "lookUp": "Vyhledat",
+    "lookingUp": "Vyhledává se „{{query}}“…",
+    "matches_one": "{{count}} shoda z Crossref. Vyberte jednu:",
+    "matches_few": "{{count}} shody z Crossref. Vyberte jednu:",
+    "matches_many": "{{count}} shody z Crossref. Vyberte jednu:",
+    "matches_other": "{{count}} shod z Crossref. Vyberte jednu:",
+    "noResults": "Nebyly nalezeny žádné výsledky. Zkontrolujte identifikátor nebo zkuste jiná slova z názvu.",
+    "placeholder": "DOI, identifikátor arXiv, URL nebo název článku…",
+    "privacyNote": "Odesílá se jen identifikátor nebo název, a to na doi.org, arXiv nebo Crossref.",
+    "title": "Přidat citaci"
+  },
+  "backendProtocol": {
+    "mismatch": "Toto okno a jeho backend byly sestaveny pro různé verze Oleafly, takže některé funkce nemusí fungovat. Pomůže přeinstalování aplikace."
+  },
+  "branding": {
+    "assistantMascot": "Maskot asistenta AI aplikace Oleafly"
+  },
+  "browser": {
+    "address": "Hledejte nebo zadejte adresu URL",
+    "back": "Zpět",
+    "closeTab": "Zavřít kartu",
+    "copyUrl": "Kopírovat URL",
+    "forward": "Vpřed",
+    "moreOptions": "Další možnosti",
+    "newTab": "Nová karta",
+    "openExternal": "Otevřít ve vašem prohlížeči",
+    "openTabs": "Otevřené karty",
+    "reload": "Znovu načíst",
+    "setHomePage": "Nastavit jako domovskou stránku"
+  },
+  "citeOleafly": {
+    "description": "V tomto projektu nebyl nalezen soubor bibliografie, takže se nic nezměnilo. Zkopírujte si záznam níže do své bibliografie, nebo jej později najdete v Nastavení, Nápověda a informace.",
+    "openHelp": "Otevřít Nápovědu a informace",
+    "title": "Citovat Oleafly v tomto článku"
+  },
+  "commandGroups": {
+    "commands": "Příkazy",
+    "compile": "Kompilace",
+    "editor": "Editor",
+    "insert": "Vložit",
+    "project": "Projekt",
+    "settings": "Nastavení",
+    "tools": "Nástroje"
+  },
+  "commandPalette": {
+    "empty": "Nebyly nalezeny žádné výsledky.",
+    "label": "Paleta příkazů",
+    "placeholder": "Napište příkaz nebo hledejte…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / název",
+      "label": "Přidat citaci"
+    },
+    "appearance": {
+      "keywords": "motiv vzhled režim",
+      "useDark": "Použít tmavý vzhled",
+      "useLight": "Použít světlý vzhled",
+      "useSystem": "Použít vzhled systému"
+    },
+    "autoCompile": {
+      "disable": "Vypnout automatickou kompilaci",
+      "enable": "Zapnout automatickou kompilaci"
+    },
+    "bold": {
+      "label": "Tučné"
+    },
+    "checkpoints": {
+      "label": "Záchytné body"
+    },
+    "citeOleafly": {
+      "keywords": "citace bibtex bibliografie poděkování oleafly",
+      "label": "Citovat Oleafly v tomto článku"
+    },
+    "clearCache": {
+      "keywords": "vymazat mezipaměť sestavení vyčistit přestavět zastaralé aux",
+      "label": "Vymazat mezipaměť sestavení a kompilovat znovu"
+    },
+    "closeEnvironment": {
+      "keywords": "zavřít ukončit prostředí begin latex",
+      "label": "Uzavřít prostředí LaTeX"
+    },
+    "createProject": {
+      "keywords": "nový projekt vytvořit šablona galerie",
+      "label": "Vytvořit nový projekt"
+    },
+    "diagramComposer": {
+      "keywords": "diagram obrázek tikz skladatel kreslení plátno",
+      "label": "Otevřít Skladatele diagramů"
+    },
+    "documentCitationScan": {
+      "keywords": "citace literatura kontrola dokument odstavec reference najít",
+      "label": "Najít citace v dokumentu"
+    },
+    "equation": {
+      "label": "Rovnice"
+    },
+    "exportPdf": {
+      "label": "Exportovat PDF…"
+    },
+    "figure": {
+      "label": "Obrázek"
+    },
+    "generateFigure": {
+      "keywords": "obrázek diagram kreslení tikz graf ilustrace",
+      "label": "Vytvořit obrázek pomocí AI"
+    },
+    "gitHistory": {
+      "label": "Historie Git"
+    },
+    "italic": {
+      "label": "Kurzíva"
+    },
+    "label": {
+      "label": "Návěští"
+    },
+    "list": {
+      "label": "Odrážkový seznam"
+    },
+    "newProject": {
+      "label": "Nový projekt…"
+    },
+    "newTerminal": {
+      "keywords": "terminál shell konzole nový",
+      "label": "Nový terminál"
+    },
+    "offline": {
+      "offline": "Režim offline (--only-cached)",
+      "online": "Režim online (povolit stahování balíčků)"
+    },
+    "openTool": "Otevřít {{name}}",
+    "recompile": {
+      "label": "Kompilovat znovu"
+    },
+    "section": {
+      "label": "Sekce"
+    },
+    "settings": {
+      "keywords": "nastavení předvolby možnosti",
+      "label": "Otevřít nastavení"
+    },
+    "spellcheck": {
+      "disable": "Vypnout kontrolu pravopisu",
+      "enable": "Zapnout kontrolu pravopisu"
+    },
+    "surroundEnvironment": {
+      "keywords": "obalit zabalit prostředí begin end latex",
+      "label": "Obalit prostředím"
+    },
+    "synctex": {
+      "label": "Přejít do PDF (SyncTeX)"
+    },
+    "table": {
+      "label": "Tabulka"
+    },
+    "theme": {
+      "keywords": "motiv tmavý světlý vzhled režim",
+      "toDark": "Přepnout na tmavý motiv",
+      "toLight": "Přepnout na světlý motiv"
+    },
+    "tools": {
+      "keywords": "nástroje latex pdf rovnice bibtex tabulka laboratoře hledání termíny galerie",
+      "label": "Otevřít Oleafly Tools"
+    },
+    "vim": {
+      "disable": "Vypnout režim Vim",
+      "enable": "Zapnout režim Vim"
+    },
+    "wordCount": {
+      "label": "Počet slov"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "smazat řádek odstranit",
+        "duplicate": "duplikovat řádek výběr kopie",
+        "lowercase": "malá písmena velikost text",
+        "titleCase": "první velká písmena text",
+        "uppercase": "velká písmena velikost text"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Vypnuto",
+      "on": "Zapnuto",
+      "title": "Automatická kompilace"
+    },
+    "compile": "Kompilovat",
+    "compiler": {
+      "auto": "Automaticky <note>[systémový TeX]</note>",
+      "help": "Tectonic je vestavěný a nepotřebuje žádné nastavení. Ostatní volby spouštějí systémový TeX, který umí číst místní soubory dostupné vašemu účtu, proto je používejte jen u důvěryhodných projektů. Automatická volba vybere překladač podle zdroje. pdfLaTeX odpovídá většině šablon časopisů. XeLaTeX a LuaLaTeX přidávají systémová písma a Unicode.",
+      "lualatex": "LuaLaTeX <note>[systémový TeX]</note>",
+      "pdflatex": "pdfLaTeX <note>[systémový TeX]</note>",
+      "tectonic": "Tectonic <note>[vestavěný]</note>",
+      "title": "Překladač (tento projekt)",
+      "xelatex": "XeLaTeX <note>[systémový TeX]</note>"
+    },
+    "errors": {
+      "continue": "Zkusit kompilovat i přes chyby",
+      "stop": "Zastavit u první chyby",
+      "title": "Chování při chybách kompilace"
+    },
+    "fromScratch": "Kompilovat znovu od začátku",
+    "mode": {
+      "fast": "Rychlý <note>[koncept]</note>",
+      "normal": "Normální",
+      "title": "Režim kompilace"
+    },
+    "options": "Možnosti kompilace",
+    "recompile": "Kompilovat znovu",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Zastavit kompilaci",
+    "syntax": {
+      "check": "Zkontrolovat syntaxi před kompilací",
+      "skip": "Nekontrolovat syntaxi",
+      "title": "Kontroly syntaxe"
+    },
+    "texRootBroken": "% !TEX root v {{file}} odkazuje na chybějící soubor ({{target}})",
+    "texRootLabel": "TEX root",
+    "texRootName": "kořen: {{name}}",
+    "texRootOverride": "kořen: {{path}} (nastaveno pomocí % !TEX root v {{file}})"
+  },
+  "datePicker": {
+    "placeholder": "Vyberte datum"
+  },
+  "devMenu": {
+    "inspect": "Prozkoumat",
+    "refreshApp": "Obnovit aplikaci"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "Skrýt asistenta AI",
+      "show": "Zobrazit asistenta AI"
+    },
+    "browser": {
+      "close": "Zavřít prohlížeč ({{shortcut}})",
+      "open": "Otevřít prohlížeč ({{shortcut}})"
+    },
+    "settings": "Nastavení",
+    "sidebar": {
+      "hide": "Skrýt postranní panel ({{shortcut}})",
+      "show": "Zobrazit postranní panel ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Skrýt terminál ({{shortcut}})",
+      "show": "Zobrazit terminál ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "Toto selhání odpovídá známé mezeře vestavěného enginu Tectonic. Zvolte, jak se má tento projekt kompilovat. Volba se uloží do projektu, takže spolupracovníci dostanou stejné nastavení.",
+    "descriptionImportScan": "Kontrola importu našla funkce, které vestavěný engine Tectonic neřídí. Zvolte, jak se má tento projekt kompilovat. Volba se uloží do projektu, takže spolupracovníci dostanou stejné nastavení.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "pdfLaTeX přes latexmk"
+    },
+    "recommended": "Doporučeno",
+    "shellEscape": {
+      "label": "Povolit v tomto počítači externí příkazy",
+      "needed": "Tento projekt používá funkce, které potřebují libovolné externí příkazy. Zůstanou blokované, dokud je nepovolíte.",
+      "warning": "Vyžaduje to minted a některé dokumenty s PythonTeX. LaTeX může spouštět programy s vaším uživatelským oprávněním, proto to zapínejte jen u projektu, kterému věříte. Vlastní pomocníci TeX Live, například převod EPS, běží i bez toho."
+    },
+    "shellEscapeAllowed": "Externí příkazy jsou pro tento projekt v tomto počítači povolené.",
+    "shellEscapeBlocked": "Libovolné externí příkazy jsou pro tento projekt blokované. Vlastní pomocníci TeX Live, například převod EPS, běží dál.",
+    "shellEscapeFailed": "Přístup k externím příkazům se nepodařilo změnit.",
+    "switchFailed": "Engine kompilace se nepodařilo přepnout.",
+    "switched": "Tento projekt se teď kompiluje enginem {{engine}}.",
+    "switchedAfterInstall": "TinyTeX byl nainstalován. Tento projekt se teď kompiluje enginem {{engine}}.",
+    "systemTex": {
+      "alreadySelected": "Již vybráno",
+      "found": "V tomto počítači byla nalezena distribuce TeX. Systémový TeX umí číst místní soubory dostupné vašemu účtu, proto jej používejte jen u projektů, kterým věříte. Libovolné externí příkazy zůstávají blokované, dokud je níže nepovolíte. TeX Live dál spouští pomocníky ze svého vlastního seznamu, například převod EPS.",
+      "missing": "V tomto počítači nebyla nalezena žádná distribuce TeX (MacTeX, TeX Live, MiKTeX, TinyTeX).",
+      "switchPdflatex": "Přepnout na pdfLaTeX a kompilovat znovu",
+      "title": "Použít můj systémový LaTeX (latexmk)",
+      "titlePdflatex": "Použít pdfLaTeX z mého systémového LaTeXu (latexmk)",
+      "use": "Použít systémový LaTeX"
+    },
+    "tectonic": {
+      "description": "Bez nastavování, funguje offline. Stačí na běžný LaTeX a nejrozšířenější balíčky.",
+      "keep": "Ponechat Tectonic",
+      "switchBack": "Přepnout zpět na Tectonic",
+      "title": "Zůstat u Tectonicu",
+      "withFailures_one": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že bude selhávat dál.",
+      "withFailures_few": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že budou selhávat dál.",
+      "withFailures_many": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že budou selhávat dál.",
+      "withFailures_other": "Bez nastavování, funguje offline. U {{features}} se dá čekat, že budou selhávat dál."
+    },
+    "tinytex": {
+      "description": "Nainstaluje kompaktní TeX Live do vaší domovské složky, bez práv správce. Základní stažení má asi 250 MB. Šablony časopisů mohou později dotáhnout další balíčky, dohromady zhruba do 1 GB.",
+      "download": "Stáhnout a používat TinyTeX",
+      "resume": "Pokračovat ve stahování (hotovo {{megabytes}} MB)",
+      "title": "Stáhnout TinyTeX"
+    },
+    "titleCompileFailure": "Tato kompilace potřebuje víc než vestavěný engine",
+    "titleImportScan": "Tento projekt potřebuje víc než vestavěný engine"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Kopírovat diagnostiku",
+    "description": "Oleafly narazil na neočekávanou chybu a nedokázal tuto obrazovku vykreslit. Soubory vašeho projektu zůstávají na disku. Podrobnosti diagnostiky najdete níže.",
+    "halted": "Zastaveno",
+    "logSaved": "Protokol uložen do <path>{{path}}</path>",
+    "reload": "Znovu načíst Oleafly",
+    "report": "Nahlásit na GitHubu",
+    "runtimeError": "Chyba za běhu",
+    "specimen": {
+      "diagramLabel": "Dekorativní schéma vzorku",
+      "layer": "VRSTVA {{current}}/{{total}}",
+      "specimen": "VZOREK:",
+      "transversePlane": "PŘÍČNÝ ŘEZ",
+      "veinDensity": "HUSTOTA ŽILEK:"
+    },
+    "specimenViewer": "Prohlížeč vzorků",
+    "stackTrace": "Výpis zásobníku",
+    "surfaceCrashed": "{{surface}} spadl.",
+    "surfaces": {
+      "aiAssistant": "Asistent AI",
+      "assistantPanel": "Panel asistenta",
+      "chat": "Chat",
+      "diagramComposer": "Skladatel diagramů",
+      "editor": "Editor",
+      "pdfPreview": "Náhled PDF",
+      "researchAssistant": "Výzkumný asistent",
+      "terminalDock": "Dok terminálu"
+    },
+    "title": "Něco se pokazilo"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "Akce GitHub",
+    "connect": "Připojit GitHub…",
+    "connectedAs": "Připojeno jako @{{login}}",
+    "copyRepositoryLink": "Kopírovat odkaz na repozitář",
+    "openInGithub": "Otevřít na GitHubu",
+    "pushHint": "Tyto akce se zpřístupní po odeslání na GitHub",
+    "settings": "Nastavení GitHubu",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "Domů",
+    "label": "Domů",
+    "title": "Zpět do knihovny",
+    "tooltip": "Zpět do knihovny projektů"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Vymazat protokol",
+    "clearLogAriaLabel": "Vymazat protokol MCP",
+    "live": "Běží",
+    "off": "Vypnuto",
+    "openSettings": "Otevřít nastavení MCP",
+    "serverOff": "Server MCP je vypnutý.",
+    "timeWithDuration": "{{time}} · {{ms}} ms",
+    "toolsTitle": "Nástroje dostupné přes MCP",
+    "waiting": "Čeká se na externí agenty…",
+    "waitingHint": "Nástroje volané přes MCP (Claude, Cursor, Grok, …) se tu objeví živě."
+  },
+  "omnibar": {
+    "bookmarked": "Se záložkou",
+    "createProject": "Vytvořit nový projekt",
+    "groups": {
+      "action": "Akce",
+      "documents": "Dokumenty",
+      "references": "Reference"
+    },
+    "label": "Hledat",
+    "noMatches": "Nebyly nalezeny žádné shody.",
+    "openReferences": "Otevřít reference tohoto projektu",
+    "placeholder": "Hledejte projekty, dokumenty, nebo napište / pro příkazy…",
+    "placeholderDocuments": "Hledat uvnitř dokumentů…",
+    "placeholderProjects": "Hledat projekty podle názvu, enginu, druhu, data nebo metadat…",
+    "referencesNeedProject": "Nejprve otevřete projekt, abyste mohli procházet jeho reference.",
+    "slash": {
+      "create": "otevřít galerii šablon",
+      "docs": "hledat uvnitř dokumentů",
+      "projects": "hledat ve vašich projektech",
+      "refs": "otevřít reference tohoto projektu",
+      "settings": "otevřít nastavení",
+      "theme": "přepnout barevný motiv"
+    },
+    "tryCommand": "Zkuste příkaz",
+    "unknownCommand": "Neznámý příkaz. Napište / a uvidíte dostupné příkazy."
+  },
+  "projectSearch": {
+    "hint": "Hledejte napříč soubory tohoto projektu.",
+    "noResults": "Žádné výsledky.",
+    "placeholder": "Najít v projektu…",
+    "title": "Hledání"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Vaše neuložené změny zůstávají otevřené. Zůstaňte a problém vyřešte, nebo aplikaci přesto ukončete a o změny přijďte.",
+      "descriptionRestart": "{{reason}} Vaše neuložené změny zůstávají otevřené. Zůstaňte a problém vyřešte, nebo aplikaci přesto restartujte a o změny přijďte.",
+      "quitAnyway": "Přesto ukončit",
+      "restartAnyway": "Přesto restartovat",
+      "stay": "Zůstat",
+      "title": "Některé soubory se nepodařilo uložit"
+    },
+    "flushTimeout": "Ukládání neskončilo do 5 sekund.",
+    "installing": {
+      "description": "Ukládají se vaše soubory a instaluje se aktualizace. Oleafly se restartuje, jakmile bude hotovo.",
+      "title": "Připravuje se restart"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}} (beta)",
+    "files": "Průzkumník",
+    "mcp": "Aktivita MCP",
+    "pendingBadge_one": "{{count}} čeká",
+    "pendingBadge_few": "{{count}} čekají",
+    "pendingBadge_many": "{{count}} čeká",
+    "pendingBadge_other": "{{count}} čeká",
+    "preflight": "Předletové kontroly",
+    "references": "Reference a citace",
+    "research": "Výzkumný prostor",
+    "search": "Hledat v projektu",
+    "sourceControl": "Správa verzí",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "Zavřít dialog přejmenování",
+    "collision": "{{kind}} s názvem „{{name}}“ už existuje.",
+    "commit": "Potvrdit přejmenování",
+    "newName": "Nový název",
+    "planFiles_one": "{{count}} soubor",
+    "planFiles_few": "{{count}} soubory",
+    "planFiles_many": "{{count}} souboru",
+    "planFiles_other": "{{count}} souborů",
+    "planSummary_one": "{{count}} úprava · $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_few": "{{count}} úpravy · $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_many": "{{count}} úpravy · $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_other": "{{count}} úprav · $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "reference",
+      "bibentry": "záznam bibliografie",
+      "cite": "citace",
+      "environment": "prostředí",
+      "envuse": "použití prostředí",
+      "file": "soubor",
+      "glossary": "položka glosáře",
+      "glossaryuse": "použití glosáře",
+      "inputedge": "vložení",
+      "label": "návěští",
+      "macro": "makro",
+      "macrouse": "použití makra",
+      "ref": "reference",
+      "section": "sekce",
+      "theorem": "věta"
+    },
+    "title": "Přejmenovat <symbol>{{name}}</symbol>"
+  },
+  "settings": {
+    "close": "Zavřít nastavení",
+    "data": {
+      "cloud": {
+        "comingSoon": "Již brzy",
+        "description": "Udržujte projekty synchronizované mezi svými zařízeními, aniž byste nastavovali vzdálený repozitář Git. Každý přenos bude šifrovaný od konce ke konci, takže vaše práce zůstane po cestě soukromá. Zdrojem pravdy zůstanou vaše místní složky projektů.",
+        "title": "Synchronizace v cloudu"
+      },
+      "danger": {
+        "closeFailed": "Otevřený projekt se nepodařilo bezpečně zavřít.",
+        "confirmDeleteAllAction": "Smazat všechny projekty",
+        "confirmDeleteAllDescription": "Každý aktuální projekt se přesune do koše včetně svých souborů a historie Git. Projekty pak můžete obnovovat jednotlivě.",
+        "confirmDeleteAllTitle_one": "Smazat {{count}} projekt?",
+        "confirmDeleteAllTitle_few": "Smazat všechny {{count}} projekty?",
+        "confirmDeleteAllTitle_many": "Smazat všech {{count}} projektů?",
+        "confirmDeleteAllTitle_other": "Smazat všech {{count}} projektů?",
+        "deleteAll": "Smazat všechny projekty",
+        "deleteAllAction": "Smazat vše",
+        "deleteAllDescription": "Přesune každý projekt do koše. Nic se trvale nesmaže.",
+        "deleting": "Maže se…",
+        "moveFailed": "Projekty se nepodařilo přesunout do koše.",
+        "movePartial": "Přesunuto {{count}} projektů, ale operaci se nepodařilo dokončit.",
+        "movedCount_one": "{{count}} projekt byl přesunut do koše.",
+        "movedCount_few": "{{count}} projekty byly přesunuty do koše.",
+        "movedCount_many": "{{count}} projektu bylo přesunuto do koše.",
+        "movedCount_other": "{{count}} projektů bylo přesunuto do koše.",
+        "title": "Nebezpečná zóna"
+      },
+      "githubHint": "Zálohujte nebo synchronizujte projekt mezi zařízeními: připojte GitHub a pak ve správě verzí použijte <push>Odeslat</push> / <pull>Stáhnout</pull>. <setup>Nastavit GitHub →</setup>",
+      "localFirst": "Oleafly je především místní. Všechny projekty leží na vašem disku:",
+      "plainFolders": "Každý projekt je obyčejná složka. Historie Git je volitelná a nic neopouští váš počítač, dokud sami neodešlete na GitHub.",
+      "recycleBin": {
+        "clearAll": "Vysypat koš",
+        "clearFailed": "Koš se nepodařilo vysypat.",
+        "clearPartial": "Trvale bylo smazáno {{count}} projektů, ale koš se nepodařilo vysypat celý.",
+        "clearedCount_one": "Trvale byl smazán {{count}} projekt.",
+        "clearedCount_few": "Trvale byly smazány {{count}} projekty.",
+        "clearedCount_many": "Trvale bylo smazáno {{count}} projektu.",
+        "clearedCount_other": "Trvale bylo smazáno {{count}} projektů.",
+        "clearing": "Vysypává se…",
+        "confirmClearAction": "Vysypat koš",
+        "confirmClearDescription": "Trvale se smaže každý projekt, který je právě v koši, včetně jeho souborů a historie Git. Tuto akci nelze vrátit zpět.",
+        "confirmClearTitle_one": "Odstranit {{count}} projekt z koše?",
+        "confirmClearTitle_few": "Odstranit {{count}} projekty z koše?",
+        "confirmClearTitle_many": "Odstranit {{count}} projektu z koše?",
+        "confirmClearTitle_other": "Odstranit {{count}} projektů z koše?",
+        "confirmDeleteAction": "Trvale smazat",
+        "confirmDeleteDescription": "Odebere z koše projekt, jeho soubory i jeho historii Git. Tuto akci nelze vrátit zpět.",
+        "confirmDeleteTitle": "Trvale smazat „{{name}}“?",
+        "deleteFailed": "Projekt „{{name}}“ se nepodařilo trvale smazat.",
+        "deleteOne": "Trvale smazat {{name}}",
+        "deleted": "Projekt „{{name}}“ byl trvale smazán.",
+        "deletedAt": "Smazáno {{date}} · {{size}}",
+        "empty": "Koš je prázdný.",
+        "loading": "Načítá se koš…",
+        "restore": "Obnovit",
+        "restoreFailed": "Projekt „{{name}}“ se nepodařilo obnovit.",
+        "restored": "Projekt „{{name}}“ byl obnoven.",
+        "size": "{{size}} · bez automatického úklidu",
+        "subtitle": "Smazané projekty tu zůstanou, dokud je neodstraníte",
+        "title": "Koš"
+      },
+      "reveal": "Zobrazit složku projektů ve Finderu",
+      "storage": {
+        "calculating": "Počítá se využití úložiště…",
+        "desktopOnly": "Podrobnosti o úložišti jsou k dispozici v desktopové aplikaci.",
+        "error": "Podrobnosti o úložišti se nepodařilo spočítat.",
+        "refresh": "Obnovit využití úložiště",
+        "stats": {
+          "appData": "Data aplikace",
+          "appDataDetail": "Prostředky a nastavení",
+          "buildCache": "Mezipaměť sestavení",
+          "buildCacheDetail": "Vygenerovaný výstup",
+          "files": "Soubory",
+          "folders_one": "{{count}} složka",
+          "folders_few": "{{count}} složky",
+          "folders_many": "{{count}} složky",
+          "folders_other": "{{count}} složek",
+          "gitHistory": "Historie Git",
+          "gitHistoryDetail": "Místní verze",
+          "images": "Obrázky",
+          "pdfs": "Soubory PDF",
+          "projectFiles": "Soubory projektů",
+          "projectFilesDetail": "Zdroje a metadata",
+          "projects": "Projekty"
+        },
+        "subtitle": "Projekty, náhledy, historie a data aplikace",
+        "title": "Využití úložiště",
+        "total": "{{size}} ve složce s daty Oleafly",
+        "unreadable_one": "{{count}} nepřístupná položka byla vynechána.",
+        "unreadable_few": "{{count}} nepřístupné položky byly vynechány.",
+        "unreadable_many": "{{count}} nepřístupné položky bylo vynecháno.",
+        "unreadable_other": "{{count}} nepřístupných položek bylo vynecháno."
+      },
+      "tabs": {
+        "cloud": "Synchronizace v cloudu",
+        "local": "Místní úložiště"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Zobrazí galerii Oleafly Tools a jednotlivé nástroje (import PDF, rovnice, tabulky, BibTeX, hledání laboratoří a literatury, termíny) i jejich příkazy s lomítkem. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
+        "label": "Nástroje LaTeX"
+      },
+      "visualEditor": {
+        "description": "Zobrazí přepínač Vizuální/Kód v editoru dokumentu. Ve výchozím stavu vypnuto, takže se dokumenty otevírají jen v editoru kódu. Diagramy si vždy ponechají vlastní přepínač plátna.",
+        "label": "Vizuální editor"
+      },
+      "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet.",
+      "webBrowser": {
+        "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi; když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
+        "label": "Webový prohlížeč"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Dialekt angličtiny pro korekturu",
+        "description": "Použije zvolený pravopis, gramatiku a regionální zvyklosti.",
+        "label": "Dialekt angličtiny"
+      },
+      "dictionary": {
+        "ariaLabel": "Slovník pravopisu pro korekturu",
+        "description": "Balíček Hunspell používaný kontrolou pravopisu ve zdrojovém i vizuálním režimu. Jazyky nad rámec pěti dodávaných balíčků se stahují na vyžádání.",
+        "label": "Slovník pravopisu",
+        "downloadFailed": "Slovník {{name}} se nepodařilo stáhnout.",
+        "downloaded": "{{name}} je připraven pro kontrolu pravopisu.",
+        "downloading": "Stahuje se {{name}}",
+        "offlineRefused": "Režim offline je zapnutý. Vypněte jej, abyste mohli stáhnout {{name}}."
+      },
+      "harper": {
+        "description": "Kontroluje anglickou gramatiku a styl v LaTeXu a Markdownu ve zdrojovém i vizuálním režimu a v Typstu ve zdrojovém režimu, s opravami na jedno kliknutí.",
+        "label": "Gramatika a styl (Harper)"
+      },
+      "offline": {
+        "description": "Kompilovat s --only-cached a nikdy nestahovat balíčky přes síť.",
+        "label": "Režim offline"
+      },
+      "proofreadingNote": "Korektura běží místně v pracovním procesu na pozadí. Harper se řídí zvoleným dialektem angličtiny, pravopis vždy používá přesně zvolený balíček Hunspell. Matematika, kód, komentáře, syntaxe citací, metadata a adresy URL jsou vyloučeny.",
+      "regionalism": {
+        "description": "Označí výrazy, které neodpovídají zvolenému dialektu angličtiny. Vypněte, pokud takové výrazy používáte jako názvy produktů nebo v kódu.",
+        "label": "Návrhy k regionalismům"
+      },
+      "spellcheck": {
+        "description": "Podtrhne chybně napsaná slova podle zvoleného offline slovníku Hunspell a nabídne náhrady ve zdrojovém i vizuálním režimu.",
+        "label": "Kontrola pravopisu"
+      },
+      "wordChoice": {
+        "description": "Navrhne alternativní slova (například „too“ vs. „to“). Vypněte, pokud chcete jen pravopis a gramatiku.",
+        "label": "Návrhy k volbě slov"
+      }
+    },
+    "help": {
+      "community": "Komunita",
+      "copyInfo": "Kopírovat informace",
+      "forksTitle": "Forky na GitHubu",
+      "forks_one": "{{count}} fork na GitHubu",
+      "forks_few": "{{count}} forky na GitHubu",
+      "forks_many": "{{count}} forku na GitHubu",
+      "forks_other": "{{count}} forků na GitHubu",
+      "logoAlt": "Oleafly",
+      "project": "Projekt",
+      "resources": {
+        "documentation": "Dokumentace",
+        "learn": "Výuka",
+        "license": "Licence",
+        "reportCrash": "Nahlásit pád (přiložit protokoly)",
+        "startTour": "Spustit prohlídku",
+        "whatsNew": "Co je nového"
+      },
+      "resourcesTitle": "Zdroje",
+      "starRepo": "Dát hvězdu a prozkoumat na GitHubu",
+      "starsTitle": "Hvězdy na GitHubu",
+      "stars_one": "{{count}} hvězda na GitHubu",
+      "stars_few": "{{count}} hvězdy na GitHubu",
+      "stars_many": "{{count}} hvězdy na GitHubu",
+      "stars_other": "{{count}} hvězd na GitHubu",
+      "support": "Pokud vám Oleafly pomáhá v práci, <star>dejte projektu hvězdu na GitHubu</star>. To malé kliknutí pomůže dalším badatelům Oleafly najít a podpoří jeho další vývoj.",
+      "supportAriaLabel": "Podpořit Oleafly",
+      "tagline": "Pište, kompilujte, korigujte, spravujte citace, procházejte PDF, sledujte změny v Gitu a používejte modely AI, které si zvolíte. Vše v jednom otevřeném pracovním prostoru.",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "Asistent AI",
+      "appearance": "Vzhled",
+      "data": "Úložiště dat",
+      "dictionary": "Slovník",
+      "downloads": "Stahování",
+      "engine": "Enginy",
+      "experimentation": "Experimenty",
+      "general": "Obecné",
+      "help": "Nápověda a informace",
+      "integrations": "Integrace",
+      "shortcuts": "Klávesové zkratky"
+    },
+    "sectionsNav": "Sekce nastavení",
+    "title": "Nastavení",
+    "tours": {
+      "confirmDescription": "Tím zavřete všechny zbývající prohlídky a vypnete průvodce prohlídkami. Znovu je zapnete v Obecných nastaveních a začnete od začátku.",
+      "disableConfirm": "Vypnout prohlídky",
+      "disableTitle": "Vypnout průvodce prohlídkami?",
+      "dismissAll": "Zavřít všechny prohlídky",
+      "dismissAllConfirm": "Zavřít vše",
+      "dismissAllTitle": "Zavřít všechny prohlídky?",
+      "enable": "Zapnout průvodce prohlídkami",
+      "enableAll": "Zapnout všechny průvodce prohlídkami",
+      "enableOne": "Zapnout prohlídku {{name}}",
+      "progress": "Postup prohlídek",
+      "progressDetail": "{{completed}} dokončeno a {{dismissed}} zavřeno.",
+      "status": {
+        "completed": "Dokončeno",
+        "dismissed": "Zavřeno",
+        "pending": "Nezahájeno"
+      },
+      "summary": "{{completed}} dokončeno · {{dismissed}} zavřeno · {{total}} celkem"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Přerušit sloučení",
+    "abortMergeDescription": "Dosud provedená řešení konfliktů se zahodí a soubory se vrátí do stavu před začátkem sloučení.",
+    "abortMergeTitle": "Přerušit toto sloučení?",
+    "aheadBehind": "{{ahead}} napřed · {{behind}} pozadu za origin/{{branch}}",
+    "branch": "Větve",
+    "branchName": "Název větve",
+    "changeRepo": "Změnit repozitář",
+    "changes": "Změny",
+    "checking": "Kontroluje se správa verzí…",
+    "clean": "Žádné změny. Pracovní strom je čistý.",
+    "commit": "Commitnout",
+    "commitActions": "Další akce commitu",
+    "commitAmend": "Upravit poslední commit",
+    "amendedKeptMessage": "Poslední commit byl upraven a jeho zpráva zůstala.",
+    "commitAndPush": "Commitnout a odeslat",
+    "commitAndSync": "Commitnout a synchronizovat",
+    "commitDescription": "Popis commitu",
+    "commitDescriptionPlaceholder": "Popis (volitelné)",
+    "commitTitle": "Název commitu",
+    "committed": "Commitnuto: „{{subject}}“",
+    "committedRemoteFailed": "Commitnuto místně, ale {{step}} selhalo: {{reason}}",
+    "committedWithConflicts": "Commitnuto místně. Před odesláním vyřešte stažené konflikty.",
+    "confirmDiscard": "Potvrdit zahození",
+    "confirmDiscardTitle": "Zahodit všechny změny v tomto souboru",
+    "continueMerge": "Dokončit sloučení",
+    "copyCommitId": "Kopírovat ID commitu",
+    "create": "Vytvořit",
+    "createBranch": "Vytvořit větev…",
+    "credentialRemoved": "Uložený přihlašovací údaj byl z tohoto vzdáleného repozitáře Git odebrán.",
+    "credentialWarning": "Starší verze Oleafly uložily do tohoto vzdáleného repozitáře Git přihlašovací údaj.",
+    "discard": "Zahodit změny",
+    "discardFor": "Zahodit změny v {{path}}",
+    "discardAll": "Zahodit všechny změny",
+    "discardChangesDescription": "Tyto změny v pracovním stromu budou ztraceny. Nelze je vrátit zpět.",
+    "discardChangesTitle": "Zahodit vybrané změny?",
+    "discardTitle": "Zahodit změny (vrátit se k poslední verzi)",
+    "enterTitle": "Zadejte název commitu",
+    "finishMergeToCommit": "Před commitem dokončete sloučení.",
+    "fetch": "Načíst",
+    "graph": "Graf",
+    "commitCount_one": "{{count}} commit",
+    "commitCount_few": "{{count}} commity",
+    "commitCount_many": "{{count}} commitu",
+    "commitCount_other": "{{count}} commitů",
+    "initialize": "Inicializovat repozitář",
+    "initialized": "Git byl inicializován na větvi {{branch}}.",
+    "linkCopied": "Odkaz na GitHub zkopírován",
+    "markResolved": "Označit jako vyřešené",
+    "mergeNeedsAttention": "Vyřešte konflikty sloučení",
+    "moreActions": "Další akce správy verzí",
+    "noHistory": "Zatím žádné commity",
+    "noProject": "Otevřete projekt, abyste mohli používat správu verzí.",
+    "noStagedChanges": "Žádné připravené změny",
+    "notInitialized": "Správa verzí není inicializovaná",
+    "notInitializedHint": "Oleafly nebude commitovat do repozitáře Git automaticky.",
+    "nothingStaged": "Ke commitu není nic připraveno.",
+    "openAllChanges": "Otevřít všechny změny",
+    "openFile": "Otevřít soubor",
+    "openFileFor": "Otevřít {{path}}",
+    "popStash": "Použít poslední úschovu",
+    "publish": "Publikovat na GitHub",
+    "published": "Publikováno do {{url}}",
+    "pull": "Stáhnout z origin",
+    "pullShort": "Stáhnout",
+    "push": "Commitnout a odeslat do origin",
+    "pushShort": "Odeslat",
+    "pushSkippedNoRemote": "⚠ Odeslání přeskočeno - níže není nastaven vzdálený repozitář origin.",
+    "pushSkippedNoToken": "⚠ Odeslání přeskočeno - chybí token GitHub (Nastavení → GitHub).",
+    "refresh": "Obnovit",
+    "remote": "Vzdálený repozitář",
+    "remoteHint": "Vytvořte nový repozitář nebo propojte existující jako vzdálený repozitář tohoto projektu a pak odešlete.",
+    "removeCredential": "Odebrat uložený přihlašovací údaj",
+    "restoreCommit": "Obnovit verzi",
+    "restoreCommitDescription": "Nahradí každý sledovaný soubor projektu touto verzí a odebere soubory přidané později. Vaše větev zůstane na svém aktuálním commitu.",
+    "restoreCommitTitle": "Obnovit tuto verzi?",
+    "sectionActions": "Další akce pro {{section}}",
+    "stage": "Připravit",
+    "stageFor": "Připravit {{path}}",
+    "stageAll": "Připravit vše",
+    "stageFirst": "Nejprve připravte soubor",
+    "stageToCommit": "Připravte soubor k commitu.",
+    "staged": "Připravené",
+    "stagedChanges": "Připravené změny",
+    "stagedChangeCount_one": "{{count}} připravená změna",
+    "stagedChangeCount_few": "{{count}} připravené změny",
+    "stagedChangeCount_many": "{{count}} připravené změny",
+    "stagedChangeCount_other": "{{count}} připravených změn",
+    "stash": "Uschovat změny",
+    "stashNeedsAttention": "Vyřešte konflikty úschovy",
+    "sync": "Synchronizovat",
+    "title": "Správa verzí",
+    "titleRequired": "Název commitu je povinný.",
+    "titleRequiredStatus": "Před commitem zadejte název commitu.",
+    "unlink": "Odpojit",
+    "unlinked": "Odpojeno od GitHubu.",
+    "unstage": "Odebrat z připravených",
+    "unstageFor": "Odebrat {{path}} z připravených",
+    "unstageAll": "Odebrat vše z připravených",
+    "workingChangeCount_one": "{{count}} pracovní změna",
+    "workingChangeCount_few": "{{count}} pracovní změny",
+    "workingChangeCount_many": "{{count}} pracovní změny",
+    "workingChangeCount_other": "{{count}} pracovních změn",
+    "useCurrent": "Použít aktuální",
+    "useIncoming": "Použít příchozí"
+  },
+  "splash": {
+    "initializing": "Inicializuje se Oleafly",
+    "loadingCore": "Načítá se Oleafly Core",
+    "loadingHarness": "Načítá se Oleafly Harness",
+    "loadingParsers": "Načítají se Oleafly Parsers",
+    "starting": "Spouští se Oleafly"
+  },
+  "theme": {
+    "dark": "Tmavý",
+    "light": "Světlý",
+    "menuLabel": "Vzhled: {{name}}",
+    "system": "Systémový",
+    "useDark": "Použít tmavý motiv",
+    "useLight": "Použít světlý motiv",
+    "useSystem": "Použít systémový motiv"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Přesto ukončit",
+      "description": "{{phase}} právě teď. Když aplikaci ukončíte, instalace se pozastaví. Stažená část zůstane a naváže se na ni, až Oleafly zase otevřete.",
+      "title": "TinyTeX se stále instaluje"
+    },
+    "wait": {
+      "description": "{{phase}} Vaše kompilace je ve frontě a spustí se automaticky, jakmile bude engine připraven.",
+      "title": "TinyTeX se stále stahuje"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "Zrušit (Esc)",
+    "closeForkDialog": "Zavřít dialog rozvětvení",
+    "compileFigureFirst": "Nejprve obrázek zkompilujte",
+    "compilePdfFirst": "PDF vyžaduje nejprve kompilaci",
+    "export": "Exportovat",
+    "exportComplete": "Export {{format}} dokončen",
+    "exportDocx": "Exportovat jako Word (.docx)",
+    "exportEpub": "Exportovat jako EPUB (.epub)",
+    "exportHtml": "Exportovat jako HTML (.html)",
+    "exportMarkdown": "Exportovat jako Markdown (.md)",
+    "exportPdf": "Exportovat jako PDF",
+    "exportPdfVector": "Exportovat jako PDF (vektorový obrázek)",
+    "exportPngRaster": "Exportovat jako PNG (rastrový obrázek)",
+    "exportPagePng": "Exportovat stránku jako PNG (rastrový obrázek)",
+    "exportAs": "Exportovat jako {{format}}",
+    "exportPptx": "Exportovat jako PowerPoint (.pptx)",
+    "exportSourceZip": "Exportovat zdroj (.zip)",
+    "exportTxt": "Exportovat jako prostý text (.txt)",
+    "exportZipFailed": "Archiv zip projektu se nepodařilo vyexportovat",
+    "exporting": "Exportuje se .{{format}}…",
+    "fork": "Rozvětvit",
+    "forkDescription": "Zkopíruje projekt <name>{{name}}</name> i jeho historii v Gitu do nového projektu. Záchytné body začínají prázdné.",
+    "forkFailed": "Projekt se nepodařilo rozvětvit.",
+    "forkProject": "Rozvětvit projekt",
+    "layout": "Rozvržení",
+    "layouts": {
+      "aiOnly": "Jen AI",
+      "editorAi": "Editor a AI",
+      "editorOnly": "Jen editor",
+      "editorPreview": "Editor a náhled",
+      "editorPreviewAi": "Editor, náhled a AI",
+      "previewAi": "Náhled a AI",
+      "previewOnly": "Jen náhled"
+    },
+    "newProjectName": "Název nového projektu",
+    "projectName": "Název projektu",
+    "projectRenamed": "Projekt byl přejmenován",
+    "saveName": "Uložit (Enter)",
+    "saveNameAriaLabel": "Uložit název",
+    "untitledProject": "projekt",
+    "versioning": "Správa verzí",
+    "viewFile": "Zobrazit soubor",
+    "views": {
+      "editor": "Zobrazení zdroje",
+      "pdf": "Zobrazení PDF",
+      "split": "Rozdělené zobrazení"
+    }
+  },
+  "tour": {
+    "chooseColor": "Vyberte svou charakteristickou barvu",
+    "diagramArrow": "Zakřivená šipka ukazující na plátno diagramu",
+    "pointer": "Ukazatel bubliny prohlídky",
+    "quitConfirm": "Ukončit prohlídku",
+    "quitDescription": "Váš postup se neuloží. Kteroukoli prohlídku můžete později spustit znovu z nabídky Nápověda.",
+    "quitTitle": "Ukončit prohlídku?",
+    "setMood": "Nalaďte se",
+    "showMeAround": "Proveďte mě",
+    "skip": "Přeskočit",
+    "step": "Krok {{step}}",
+    "stepOfTotal": "Krok {{step}} z {{total}}",
+    "stepOfTour": "Krok {{step}} · {{tour}}",
+    "useAccent": "Použít barvu zvýraznění {{name}}",
+    "welcomeArrow": "Ručně kreslená šipka ukazující na uvítací odstavec",
+    "welcomeBody": "Doveďte článek od prvního konceptu k finálnímu PDF v jednom otevřeném pracovním prostoru. Pište, kompilujte, korigujte, spravujte citace, tvořte obrázky, procházejte každou změnu v Gitu a používejte modely AI, které si zvolíte. Vaše projekty zůstávají ve vašem počítači.",
+    "welcomeTitle": "Vítejte v Oleafly"
+  },
+  "updateChecker": {
+    "available": "Dostupná aktualizace · v{{version}}",
+    "check": "Zkontrolovat aktualizace",
+    "checkAgain": "Zkontrolovat znovu",
+    "checkFailed": "Aktualizace se nepodařilo zkontrolovat.",
+    "checking": "Kontroluje se…",
+    "downloadFromGithub": "Stáhnout z GitHubu",
+    "downloading": "Stahuje se… {{percent}} %",
+    "installing": "Instaluje se…",
+    "lastCheckFailed": "Poslední automatická kontrola selhala.",
+    "lastCheckFailedAt": "Poslední automatická kontrola selhala · {{when}}.",
+    "latest": "Máte nejnovější verzi",
+    "releaseNotes": "Poznámky k vydání",
+    "restartNotice": "Oleafly se pro dokončení restartuje.",
+    "tryAgain": "Zkusit znovu",
+    "unsupported": "Aktualizace spravuje desktopová aplikace.",
+    "updateNow": "Aktualizovat teď"
+  },
+  "updateWindow": {
+    "checking": "Kontrolují se aktualizace…",
+    "currentVersion": "Máte verzi v{{version}}",
+    "error": "Aktualizaci se nepodařilo dokončit. Zkuste to prosím později.",
+    "later": "Později",
+    "looking": "Hledá se nejnovější verze…",
+    "packageInstall": "Nainstalováno z balíčku. Aktualizujte stažením nové verze.",
+    "ready": "Nová verze je připravená k instalaci.",
+    "upToDate": "Máte aktuální verzi",
+    "upToDateGeneric": "Používáte nejnovější verzi Oleafly",
+    "upToDateHeadline": "Máte vše aktuální!",
+    "upToDateVersion": "Oleafly v{{version}} je nejnovější verze",
+    "viewRelease": "Zobrazit vydání"
+  },
+  "windowControls": {
+    "group": "Ovládání okna",
+    "maximize": "Maximalizovat",
+    "minimize": "Minimalizovat",
+    "restore": "Obnovit"
+  },
+  "windows": {
+    "preview": "Náhled: {{title}}",
+    "update": "Aktualizace Oleafly"
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "files": {
+    "collapseAll": "Recolher todas as pastas",
+    "confirmDelete": "Excluir {{path}}? Isso não pode ser desfeito.",
+    "conflict": {
+      "cancelAriaLabel": "Cancelar a movimentação do arquivo",
+      "createBody": "<destination>{{destination}}</destination> já existe. Mantenha os dois arquivos usando <suggestion>{{suggestion}}</suggestion>. Criar nunca substitui um arquivo existente.",
+      "dialogAriaLabel": "Conflito ao mover o arquivo",
+      "keepBoth": "Manter os dois",
+      "renameBody": "<destination>{{destination}}</destination> já existe. Mantenha os dois arquivos usando <suggestion>{{suggestion}}</suggestion> ou substitua o destino existente. O Oleafly não vai substituí-lo a menos que você escolha Substituir.",
+      "replace": "Substituir",
+      "title": "Esse nome já está em uso",
+      "unchanged": "Os caminhos de origem e de destino ficaram inalterados."
+    },
+    "createFailed": "Não foi possível criar \"{{path}}\".",
+    "deleteFailed": "Não foi possível excluir \"{{path}}\".",
+    "expandAll": "Expandir todas as pastas",
+    "importAriaLabel": "Importar para a pasta selecionada",
+    "importFiles": "Importar arquivo(s)",
+    "importFolder": "Importar pasta",
+    "importTitle": "Importar um arquivo ou pasta (para a pasta selecionada)",
+    "makeCopy": "Fazer uma cópia",
+    "moreActions": "Mais ações para {{name}}",
+    "moveFailed": "Não foi possível mover \"{{path}}\". O caminho original ficou inalterado.",
+    "newEntry": {
+      "fileInFolder": "Nome do novo arquivo na pasta {{folder}}",
+      "fileInRoot": "Nome do novo arquivo na raiz do projeto",
+      "filePlaceholder": "Nome do novo arquivo",
+      "folderInFolder": "Nome da nova pasta dentro de {{folder}}",
+      "folderInRoot": "Nome da nova pasta na raiz do projeto",
+      "folderPlaceholder": "Nome da nova pasta"
+    },
+    "newFile": "Novo arquivo",
+    "newFileAriaLabel": "Novo arquivo na pasta selecionada",
+    "newFileTitle": "Novo arquivo (na pasta selecionada)",
+    "newFolder": "Nova pasta",
+    "newFolderAriaLabel": "Nova pasta dentro da pasta selecionada",
+    "newFolderTitle": "Nova pasta (dentro da pasta selecionada)",
+    "renameAriaLabel": "Renomear arquivo",
+    "renameFailed": "Não foi possível renomear \"{{path}}\". O caminho original ficou inalterado.",
+    "setMain": "Definir como documento principal",
+    "title": "Explorador",
+    "treeAriaLabel": "Árvore de arquivos do explorador"
+  },
+  "explorer": {
+    "resizeSections": "Redimensionar {{first}} e {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "ambíguo",
+      "cycle": "ciclo",
+      "definitions_one": "{{count}} definição",
+      "definitions_many": "{{count}} definições",
+      "definitions_other": "{{count}} definições",
+      "duplicate": "duplicado",
+      "external": "externo",
+      "folded": "recolhido",
+      "incomplete": "incompleto",
+      "missing": "ausente"
+    },
+    "bibEntryIn": "entrada {{type}} em {{file}}",
+    "duplicateKey": "Chave duplicada.",
+    "duplicateKeyIn": "Chave duplicada {{key}} em {{file}}",
+    "folded": {
+      "description": "Este ramo está recolhido para manter grafos de projeto muito grandes responsivos.",
+      "label": "Abra o código-fonte vinculado para continuar"
+    },
+    "fromFile": "{{kind}} de {{file}}",
+    "groups": {
+      "bibliography": "Bibliografia",
+      "bibtexEntries": "Entradas BibTeX",
+      "commands": "Comandos",
+      "definitions_one": "Definição",
+      "definitions_many": "Definições",
+      "definitions_other": "Definições",
+      "dependencies": "Links e dependências",
+      "duplicateCitations": "Chaves de citação duplicadas",
+      "environments": "Ambientes",
+      "labels": "Rótulos e âncoras",
+      "occurrences": "Ocorrências",
+      "sections": "Seções",
+      "unlinked": "Arquivos sem vínculo",
+      "unresolvedCitations": "Citações não resolvidas",
+      "unresolvedDuplicate": "Não resolvidas e duplicadas"
+    },
+    "inFile": "{{kind}} em {{file}}",
+    "incompleteEntry": "Entrada incompleta.",
+    "kinds": {
+      "anchor": "âncora",
+      "asset": "recurso",
+      "bibentry": "entrada bibliográfica",
+      "bibliography": "bibliografia",
+      "citation": "citação",
+      "environment": "ambiente",
+      "file": "arquivo",
+      "glossary": "glossário",
+      "import": "importação",
+      "include": "inclusão",
+      "label": "rótulo",
+      "link": "link",
+      "macro": "macro",
+      "reference": "referência",
+      "section": "seção"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Sumário do documento",
+    "collapseHeading": "Recolher {{title}}",
+    "collapseAll": "Recolher todos os títulos",
+    "empty": "Nenhuma seção ou inclusão neste documento.",
+    "emptyDetail": "Adicione um título de seção para montar um sumário navegável.",
+    "entryCount_one": "{{count}} item no sumário",
+    "entryCount_many": "{{count}} itens no sumário",
+    "entryCount_other": "{{count}} itens no sumário",
+    "expandHeading": "Expandir {{title}}",
+    "expandAll": "Expandir todos os títulos",
+    "title": "Sumário"
+  },
+  "panelError": {
+    "message": "O layout do painel teve um problema. Seus arquivos de projeto estão a salvo no disco.",
+    "reload": "Recarregar o Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "Estrutura do documento",
+    "collapseAll": "Recolher todos os itens da estrutura",
+    "empty": "Nenhum arquivo compatível está presente no mapa do projeto.",
+    "filterLabel": "Filtrar a estrutura do projeto",
+    "filterPlaceholder": "Filtrar o mapa do projeto…",
+    "expandAll": "Expandir todos os itens da estrutura",
+    "itemCount_one": "{{count}} item de estrutura",
+    "itemCount_many": "{{count}} itens de estrutura",
+    "itemCount_other": "{{count}} itens de estrutura",
+    "noMatch": "Nenhuma estrutura corresponde a “{{query}}”.",
+    "notice": {
+      "partial": "Mapa parcial. Arquivos ilegíveis ou malformados continuam visíveis sempre que possível.",
+      "stale": "Atualizando. A estrutura da revisão anterior fica oculta até que os intervalos atuais do código-fonte estejam prontos."
+    },
+    "title": "Estrutura",
+    "treeLabel": "Estrutura do projeto",
+    "unavailable": {
+      "failed": {
+        "detail": "Não foi possível analisar o projeto. Seus arquivos de origem não foram alterados.",
+        "title": "Não foi possível montar a estrutura"
+      },
+      "mapping": {
+        "detail": "O Oleafly está indexando títulos, arquivos vinculados, símbolos e entradas de bibliografia.",
+        "title": "Mapeando a estrutura do projeto"
+      },
+      "noProject": {
+        "detail": "Abra um projeto de documento para navegar pela estrutura local e do projeto.",
+        "title": "Nenhum projeto aberto"
+      },
+      "noSource": {
+        "detail": "Abra um arquivo de origem ou de bibliografia compatível para ver sua estrutura.",
+        "title": "Nenhuma origem ativa"
+      },
+      "offline": {
+        "detail": "A análise de projeto não está disponível para este espaço de trabalho agora.",
+        "title": "Serviço de estrutura indisponível"
+      },
+      "unsupported": {
+        "detail": "Este tipo de arquivo não tem um provedor de estrutura de projeto.",
+        "title": "A estrutura não está disponível"
+      },
+      "waiting": {
+        "detail": "A revisão mais recente do projeto ainda não foi indexada.",
+        "title": "Aguardando a estrutura do projeto"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Carregando o assistente",
+    "editor": "Carregando o editor",
+    "preview": "Carregando a visualização",
+    "terminal": "Carregando o terminal"
+  },
+  "terminal": {
+    "closeCurrent": "Fechar o atual",
+    "closeLeft": "Fechar todos à esquerda",
+    "closeOthers": "Fechar os outros",
+    "closeRight": "Fechar todos à direita",
+    "closeTab": "Fechar {{title}}",
+    "color": "Cor",
+    "errors": {
+      "input": "O shell não conseguiu aceitar entrada",
+      "resize": "Não foi possível redimensionar o terminal",
+      "start": "O shell não conseguiu iniciar"
+    },
+    "limitReached": "Feche um terminal para abrir outro",
+    "newTerminal": "Novo terminal",
+    "settings": "Configurações do terminal",
+    "starting": "Iniciando o shell do projeto…",
+    "tabs": "Terminais",
+    "titleInput": "Título do terminal"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Limpar filtro",
+    "filterPlaceholder": "Filtrar…",
+    "noProject": "Nenhum projeto"
+  }
+}

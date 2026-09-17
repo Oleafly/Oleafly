@@ -1,0 +1,147 @@
+{
+  "citeOleafly": "在這篇論文中引用 Oleafly",
+  "empty": {
+    "citations": {
+      "detail": "匯入參考文獻庫或新增引用即可開始。",
+      "title": "尚無引用"
+    },
+    "symbols": {
+      "detail": "隨著專案撰寫，標題、標籤、指令與環境會顯示在這裡。",
+      "title": "尚無符號"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "篩選引用",
+    "ariaLabelResults": "篩選結果",
+    "ariaLabelSymbols": "篩選符號",
+    "clear": "清除篩選",
+    "noCitation": "沒有符合「{{query}}」的引用。",
+    "noResult": "沒有符合「{{query}}」的結果。",
+    "noSymbol": "沒有符合「{{query}}」的符號。",
+    "placeholderCitations": "篩選引用鍵、標題、作者…",
+    "placeholderResults": "篩選位置…",
+    "placeholderSymbols": "篩選標籤與指令…"
+  },
+  "import": {
+    "added_other": "已將 {{count}} 筆參考文獻加入 {{target}}。",
+    "addedWithDuplicates_other": "已將 {{count}} 筆參考文獻加入 {{target}}，其中 {{duplicates}} 筆原本就有。",
+    "allDuplicates_other": "這 {{count}} 筆參考文獻已在 {{target}} 中。",
+    "defaultTarget": "參考文獻檔",
+    "description": "從文獻管理軟體或參考文獻檔，把參考文獻加入這個專案。",
+    "duplicateNote": "DOI 已存在於參考文獻中的項目會略過。",
+    "empty": "那個檔案中找不到參考文獻。",
+    "endnote": {
+      "button": "選擇 XML、RIS 或 BibTeX 檔案",
+      "description": "選擇 EndNote XML、RIS 或 BibTeX 檔案。Oleafly 會把參考文獻加入專案的參考文獻檔。",
+      "title": "EndNote、RIS 或 BibTeX"
+    },
+    "failed": "無法匯入那些參考文獻。",
+    "nothingNew": "沒有新項目可以加入 {{target}}。",
+    "problems_other": "匯入時發生 {{count}} 個問題。{{details}}",
+    "readFailed": "無法讀取那個檔案。",
+    "title": "匯入參考文獻庫",
+    "unrecognized": "無法辨識的檔案類型：{{name}}",
+    "zotero": {
+      "button": "選擇 Zotero RDF 檔案",
+      "description": "在 Zotero 中依序選擇「檔案」→「匯出文獻庫」→「Zotero RDF」，然後選擇匯出的檔案。",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "結果並不完整。格式有誤或無法讀取的檔案可能會遺漏部分出現位置。",
+    "stale": "更新中。舊修訂版本的引用、符號與範圍已隱藏。"
+  },
+  "panel": {
+    "ariaLabel": "參考文獻（Shift-F12）",
+    "clearQuery": "清除參考文獻查詢",
+    "cleanLibrary": "整理參考文獻庫",
+    "importAriaLabel": "匯入參考文獻",
+    "issues_other": "{{count}} 個參考文獻或引用問題",
+    "tabWithCount": "{{label}}，{{count}}",
+    "title": "參考文獻",
+    "viewTabs": "參考文獻面板檢視"
+  },
+  "cleanLibrary": {
+    "title": "整理參考文獻庫",
+    "description": "變更檔案前，先檢視引用鍵與重複的條目。",
+    "library": "參考文獻庫",
+    "entryCount_other": "{{count}} 筆條目",
+    "footer": "預覽會先儲存開啟中的檔案。套用時會確認檔案仍與預覽相符，並備份原始檔。",
+    "noBib": "這個專案沒有可整理的 .bib 檔案。",
+    "entriesKept": "{{total}} 筆條目中將保留 {{kept}} 筆。",
+    "changes": "變更與備註",
+    "noChanges": "沒有要套用的檔案變更。",
+    "filesToUpdate": "要更新的檔案：{{files}}",
+    "none": "無",
+    "introSafeChanges": "引用鍵會標準化。只有在所有細節都能保留時，才會移除 DOI 重複項目。",
+    "introReview": "標題相似與中繼資料衝突的項目會留在文獻庫中供你檢視。",
+    "preview": "預覽",
+    "reviewTitle": "套用前先檢視",
+    "reviewBody": "預覽變更，看看哪些條目與引用會更新。",
+    "statusAttention": "需要處理",
+    "statusWorking": "處理中…",
+    "statusPreviewReady": "預覽已就緒",
+    "statusReady": "可以開始預覽",
+    "refreshPreview": "重新整理預覽",
+    "previewChanges": "預覽變更",
+    "apply": "套用並改寫引用",
+    "truncated": "預覽只顯示每個版本的前 500 行。",
+    "actionRenamed": "{{old}} 已重新命名為 {{new}}",
+    "actionDuplicate": "{{removed}} 已移除，因為與 {{kept}} 重複（依 {{by}} 比對）",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "無法重新載入整理後的檔案。請先重新開啟專案再編輯。",
+    "cleaned": "文獻庫已整理。{{total}} 筆條目中保留了 {{kept}} 筆。",
+    "cleanedWithBackup": "文獻庫已整理。{{total}} 筆條目中保留了 {{kept}} 筆。原始檔已儲存在 {{path}}。"
+  },
+  "query": {
+    "expired": {
+      "detail": "這次查詢之後專案有變動。請重新執行「尋找參考文獻」，以使用目前的原始碼範圍。",
+      "title": "參考文獻結果已過期"
+    },
+    "noLocations": {
+      "detail": "這個符號存在於此修訂版本，但沒有相符的定義或出現位置。",
+      "title": "找不到位置"
+    },
+    "none": {
+      "detail": "把游標放在標籤、引用、指令或環境上，然後按 Shift-F12。",
+      "title": "沒有參考文獻查詢"
+    }
+  },
+  "tabs": {
+    "citations": "引用",
+    "results": "參照",
+    "symbols": "符號"
+  },
+  "trees": {
+    "citations": "專案引用",
+    "noCitations": "找不到參考文獻條目或引用的使用位置。",
+    "noSymbols": "找不到專案定義的符號。",
+    "symbols": "專案符號"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "無法分析最新的專案修訂版本。原始檔並未變更。",
+      "title": "專案分析失敗"
+    },
+    "indexing": {
+      "detail": "目前的專案修訂版本就緒後，就會顯示參考文獻與引用。",
+      "title": "正在索引專案智慧資訊"
+    },
+    "noProject": {
+      "detail": "開啟文件專案即可檢視引用、符號與跨檔案參照。",
+      "title": "未開啟專案"
+    },
+    "offline": {
+      "detail": "這個工作區目前無法檢查參考文獻與引用。",
+      "title": "分析服務無法使用"
+    },
+    "unsupported": {
+      "detail": "使用中的專案並未採用支援的文件引擎。",
+      "title": "專案智慧資訊無法使用"
+    },
+    "waiting": {
+      "detail": "最新的專案修訂版本尚未建立索引。",
+      "title": "正在等待專案分析"
+    }
+  }
+}

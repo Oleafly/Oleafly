@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Über Oleafly",
+    "checkUpdates": "Nach Updates suchen…",
+    "reloadViews": "Ansichten neu laden",
+    "restartApp": "Programm neu starten",
+    "quit": "Oleafly beenden",
+    "edit": "Bearbeiten",
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "cut": "Ausschneiden",
+    "copy": "Kopieren",
+    "paste": "Einfügen",
+    "selectAll": "Alles auswählen",
+    "view": "Ansicht",
+    "toggleTerminal": "Terminal ein- oder ausblenden",
+    "toggleBrowser": "Browser ein- oder ausblenden"
+  },
+  "window": {
+    "browser": "Oleafly Browser",
+    "browserTitled": "{{title}} - Oleafly Browser"
+  },
+  "dialog": {
+    "cancel": "Abbrechen",
+    "fullAccess": {
+      "title": "Vollzugriff aktivieren?",
+      "message": "Mit Vollzugriff darf der Assistent shell-Befehle ausführen und Dateien bearbeiten, ohne jedes Mal nachzufragen. Vollzugriff aktivieren?",
+      "confirm": "Vollzugriff aktivieren"
+    },
+    "cookieImport": {
+      "title": "Cookie-Import bestätigen",
+      "messageHost": "Cookies für {{hostname}} aus dem {{browser}}-Profil „{{profile}}“ in den integrierten Browser von Oleafly importieren? Importierte Cookies können Sie bei Websites angemeldet halten.",
+      "messageAll": "Alle Cookies aus dem {{browser}}-Profil „{{profile}}“ in den integrierten Browser von Oleafly importieren? Importierte Cookies können Sie bei Websites angemeldet halten.",
+      "confirm": "Cookies importieren"
+    },
+    "mcpApprove": {
+      "title": "MCP-Werkzeug freigeben",
+      "confirm": "Werkzeug verwenden"
+    },
+    "tableImport": {
+      "title": "Tabelle zum Importieren auswählen",
+      "filter": "Tabellen"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Das Programmmenü ist nicht verfügbar",
+    "viewMenuUnavailable": "Das Menü Ansicht ist nicht verfügbar",
+    "menuItemUnavailable": "Der Menüeintrag {{id}} ist nicht verfügbar",
+    "fullAccessDismissed": "Die Bestätigung für den Vollzugriff wurde geschlossen.",
+    "fullAccessDeclined": "Der Vollzugriff wurde nicht aktiviert.",
+    "approvalDialogClosed": "Der native Bestätigungsdialog wurde unerwartet geschlossen."
+  }
+}

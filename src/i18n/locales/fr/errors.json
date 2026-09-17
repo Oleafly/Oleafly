@@ -1,0 +1,31 @@
+{
+  "unknown": "Une erreur est survenue. Consultez le journal de l'application pour en savoir plus.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "Le nom du projet ne peut pas être vide.",
+    "name_conflict": "Un projet nommé {{name}} existe déjà.",
+    "folder_unavailable": "Impossible de réserver un nouveau dossier de projet."
+  },
+  "settings": {
+    "locale_unsupported": "La langue {{locale}} n'est pas disponible."
+  },
+  "literature": {
+    "query_empty": "La requête de recherche ne peut pas être vide.",
+    "query_too_long": "La requête de recherche est trop longue ({{max}} caractères maximum).",
+    "unknown_source": "Source bibliographique inconnue."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX ne fournit pas de binaire {{name}} compatible avec cet hôte.",
+    "package_operation_timeout": "L'opération sur les paquets a dépassé sa limite de {{span}} et a été interrompue, vous pouvez donc compiler à nouveau. Le miroir TeX Live est sans doute occupé. Réessayez plus tard ou lancez tlmgr vous-même."
+  },
+  "github": {
+    "sign_in_expired": "Le code de connexion a expiré. Réessayez.",
+    "sign_in_cancelled": "L'autorisation GitHub a été annulée.",
+    "sign_in_failed": "La connexion à GitHub a échoué.",
+    "repositories_unavailable": "Impossible de charger les dépôts.",
+    "create_repo_failed": "Impossible de créer le dépôt ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "L'accès complet n'a pas été activé."
+  }
+}

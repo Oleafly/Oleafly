@@ -1,0 +1,206 @@
+{
+  "files": {
+    "collapseAll": "Zwiń wszystkie foldery",
+    "confirmDelete": "Usunąć {{path}}? Tej operacji nie można cofnąć.",
+    "conflict": {
+      "cancelAriaLabel": "Anuluj przenoszenie pliku",
+      "createBody": "<destination>{{destination}}</destination> już istnieje. Zachowaj oba pliki, używając nazwy <suggestion>{{suggestion}}</suggestion>. Tworzenie nigdy nie zastępuje istniejącego pliku.",
+      "dialogAriaLabel": "Konflikt przy przenoszeniu pliku",
+      "keepBoth": "Zachowaj oba",
+      "renameBody": "<destination>{{destination}}</destination> już istnieje. Zachowaj oba pliki, używając nazwy <suggestion>{{suggestion}}</suggestion>, albo zastąp istniejący plik docelowy. Oleafly nie zastąpi go bez wybrania opcji Zastąp.",
+      "replace": "Zastąp",
+      "title": "Ta nazwa jest już zajęta",
+      "unchanged": "Ścieżka źródłowa i docelowa pozostały bez zmian."
+    },
+    "createFailed": "Nie udało się utworzyć \"{{path}}\".",
+    "deleteFailed": "Nie udało się usunąć \"{{path}}\".",
+    "expandAll": "Rozwiń wszystkie foldery",
+    "importAriaLabel": "Importuj do zaznaczonego folderu",
+    "importFiles": "Importuj plik lub pliki",
+    "importFolder": "Importuj folder",
+    "importTitle": "Importuj plik lub folder (do zaznaczonego folderu)",
+    "makeCopy": "Utwórz kopię",
+    "moreActions": "Więcej działań dla {{name}}",
+    "moveFailed": "Nie udało się przenieść \"{{path}}\". Ścieżka źródłowa pozostała bez zmian.",
+    "newEntry": {
+      "fileInFolder": "Nazwa nowego pliku w folderze {{folder}}",
+      "fileInRoot": "Nazwa nowego pliku w katalogu głównym projektu",
+      "filePlaceholder": "Nazwa nowego pliku",
+      "folderInFolder": "Nazwa nowego folderu w folderze {{folder}}",
+      "folderInRoot": "Nazwa nowego folderu w katalogu głównym projektu",
+      "folderPlaceholder": "Nazwa nowego folderu"
+    },
+    "newFile": "Nowy plik",
+    "newFileAriaLabel": "Nowy plik w zaznaczonym folderze",
+    "newFileTitle": "Nowy plik (w zaznaczonym folderze)",
+    "newFolder": "Nowy folder",
+    "newFolderAriaLabel": "Nowy folder w zaznaczonym folderze",
+    "newFolderTitle": "Nowy folder (w zaznaczonym folderze)",
+    "renameAriaLabel": "Zmień nazwę pliku",
+    "renameFailed": "Nie udało się zmienić nazwy \"{{path}}\". Ścieżka źródłowa pozostała bez zmian.",
+    "setMain": "Ustaw jako dokument główny",
+    "title": "Eksplorator",
+    "treeAriaLabel": "Drzewo plików eksploratora"
+  },
+  "explorer": {
+    "resizeSections": "Zmień rozmiar sekcji {{first}} i {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "niejednoznaczne",
+      "cycle": "cykl",
+      "definitions_one": "{{count}} definicja",
+      "definitions_few": "{{count}} definicje",
+      "definitions_many": "{{count}} definicji",
+      "definitions_other": "{{count}} definicji",
+      "duplicate": "duplikat",
+      "external": "zewnętrzne",
+      "folded": "zwinięte",
+      "incomplete": "niekompletne",
+      "missing": "brakujące"
+    },
+    "bibEntryIn": "Pozycja typu {{type}} w pliku {{file}}",
+    "duplicateKey": "Zduplikowany klucz.",
+    "duplicateKeyIn": "Zduplikowany klucz {{key}} w pliku {{file}}",
+    "folded": {
+      "description": "Ta gałąź jest zwinięta, aby bardzo duże grafy projektu pozostały responsywne.",
+      "label": "Otwórz powiązane źródło, aby kontynuować"
+    },
+    "fromFile": "{{kind}} z pliku {{file}}",
+    "groups": {
+      "bibliography": "Bibliografia",
+      "bibtexEntries": "Pozycje BibTeX",
+      "commands": "Polecenia",
+      "definitions_one": "Definicja",
+      "definitions_few": "Definicje",
+      "definitions_many": "Definicje",
+      "definitions_other": "Definicje",
+      "dependencies": "Odsyłacze i zależności",
+      "duplicateCitations": "Zduplikowane klucze cytowań",
+      "environments": "Środowiska",
+      "labels": "Etykiety i kotwice",
+      "occurrences": "Wystąpienia",
+      "sections": "Sekcje",
+      "unlinked": "Niepodlinkowane pliki",
+      "unresolvedCitations": "Nierozwiązane cytowania",
+      "unresolvedDuplicate": "Nierozwiązane i zduplikowane"
+    },
+    "inFile": "{{kind}} w pliku {{file}}",
+    "incompleteEntry": "Niekompletna pozycja.",
+    "kinds": {
+      "anchor": "kotwica",
+      "asset": "zasób",
+      "bibentry": "pozycja bibliografii",
+      "bibliography": "bibliografia",
+      "citation": "cytowanie",
+      "environment": "środowisko",
+      "file": "plik",
+      "glossary": "glosariusz",
+      "import": "import",
+      "include": "dołączenie",
+      "label": "etykieta",
+      "link": "odsyłacz",
+      "macro": "makro",
+      "reference": "odwołanie",
+      "section": "sekcja"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Konspekt dokumentu",
+    "collapseHeading": "Zwiń {{title}}",
+    "collapseAll": "Zwiń wszystkie nagłówki",
+    "empty": "W tym dokumencie nie ma sekcji ani dołączonych plików.",
+    "emptyDetail": "Dodaj nagłówek sekcji, aby zbudować konspekt do nawigacji.",
+    "entryCount_one": "{{count}} pozycja konspektu",
+    "entryCount_few": "{{count}} pozycje konspektu",
+    "entryCount_many": "{{count}} pozycji konspektu",
+    "entryCount_other": "{{count}} pozycji konspektu",
+    "expandHeading": "Rozwiń {{title}}",
+    "expandAll": "Rozwiń wszystkie nagłówki",
+    "title": "Konspekt"
+  },
+  "panelError": {
+    "message": "Układ paneli napotkał problem. Pliki projektu są bezpieczne na dysku.",
+    "reload": "Przeładuj Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "Struktura dokumentu",
+    "collapseAll": "Zwiń wszystkie elementy struktury",
+    "empty": "W mapie projektu nie ma obsługiwanych plików.",
+    "filterLabel": "Filtruj strukturę projektu",
+    "filterPlaceholder": "Filtruj mapę projektu…",
+    "expandAll": "Rozwiń wszystkie elementy struktury",
+    "itemCount_one": "{{count}} element struktury",
+    "itemCount_few": "{{count}} elementy struktury",
+    "itemCount_many": "{{count}} elementów struktury",
+    "itemCount_other": "{{count}} elementu struktury",
+    "noMatch": "Żaden element struktury nie pasuje do „{{query}}”.",
+    "notice": {
+      "partial": "Mapa częściowa. Nieczytelne lub uszkodzone pliki pozostają widoczne tam, gdzie to możliwe.",
+      "stale": "Trwa aktualizacja. Struktura z poprzedniej wersji jest ukryta, dopóki nie będą gotowe aktualne zakresy źródła."
+    },
+    "title": "Struktura",
+    "treeLabel": "Struktura projektu",
+    "unavailable": {
+      "failed": {
+        "detail": "Nie udało się przeanalizować projektu. Pliki źródłowe nie zostały zmienione.",
+        "title": "Nie udało się zbudować struktury"
+      },
+      "mapping": {
+        "detail": "Oleafly indeksuje nagłówki, powiązane pliki, symbole i pozycje bibliografii.",
+        "title": "Mapowanie struktury projektu"
+      },
+      "noProject": {
+        "detail": "Otwórz projekt dokumentu, aby przejrzeć jego strukturę lokalną i projektową.",
+        "title": "Nie otwarto projektu"
+      },
+      "noSource": {
+        "detail": "Otwórz obsługiwany plik źródłowy lub plik bibliografii, aby zobaczyć jego strukturę.",
+        "title": "Brak aktywnego źródła"
+      },
+      "offline": {
+        "detail": "Analiza projektu nie jest teraz dostępna w tym obszarze roboczym.",
+        "title": "Usługa struktury niedostępna"
+      },
+      "unsupported": {
+        "detail": "Ten typ pliku nie ma dostawcy struktury projektu.",
+        "title": "Struktura jest niedostępna"
+      },
+      "waiting": {
+        "detail": "Najnowsza wersja projektu nie została jeszcze zindeksowana.",
+        "title": "Oczekiwanie na strukturę projektu"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Wczytywanie asystenta",
+    "editor": "Wczytywanie edytora",
+    "preview": "Wczytywanie podglądu",
+    "terminal": "Wczytywanie terminala"
+  },
+  "terminal": {
+    "closeCurrent": "Zamknij bieżącą",
+    "closeLeft": "Zamknij wszystkie po lewej",
+    "closeOthers": "Zamknij pozostałe",
+    "closeRight": "Zamknij wszystkie po prawej",
+    "closeTab": "Zamknij {{title}}",
+    "color": "Kolor",
+    "errors": {
+      "input": "Powłoka shell nie przyjęła danych wejściowych",
+      "resize": "Nie udało się zmienić rozmiaru terminala",
+      "start": "Nie udało się uruchomić powłoki shell"
+    },
+    "limitReached": "Zamknij jeden terminal, aby otworzyć kolejny",
+    "newTerminal": "Nowy terminal",
+    "settings": "Ustawienia terminala",
+    "starting": "Uruchamianie powłoki shell projektu…",
+    "tabs": "Terminale",
+    "titleInput": "Tytuł terminala"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Wyczyść filtr",
+    "filterPlaceholder": "Filtruj…",
+    "noProject": "Brak projektu"
+  }
+}

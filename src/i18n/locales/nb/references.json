@@ -1,0 +1,153 @@
+{
+  "citeOleafly": "Siter Oleafly i denne artikkelen",
+  "empty": {
+    "citations": {
+      "detail": "Importer et referansebibliotek eller legg til en sitering for å komme i gang.",
+      "title": "Ingen siteringer ennå"
+    },
+    "symbols": {
+      "detail": "Overskrifter, etiketter, kommandoer og miljøer dukker opp her etter hvert som prosjektet skrives.",
+      "title": "Ingen symboler ennå"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filtrer siteringer",
+    "ariaLabelResults": "Filtrer resultater",
+    "ariaLabelSymbols": "Filtrer symboler",
+    "clear": "Tøm filteret",
+    "noCitation": "Ingen siteringer passer «{{query}}».",
+    "noResult": "Ingen resultater passer «{{query}}».",
+    "noSymbol": "Ingen symboler passer «{{query}}».",
+    "placeholderCitations": "Filtrer nøkler, titler, forfattere…",
+    "placeholderResults": "Filtrer steder…",
+    "placeholderSymbols": "Filtrer etiketter og kommandoer…"
+  },
+  "import": {
+    "added_one": "{{count}} referanse lagt til i {{target}}.",
+    "added_other": "{{count}} referanser lagt til i {{target}}.",
+    "addedWithDuplicates_one": "{{count}} referanse lagt til i {{target}}, {{duplicates}} lå der fra før.",
+    "addedWithDuplicates_other": "{{count}} referanser lagt til i {{target}}, {{duplicates}} lå der fra før.",
+    "allDuplicates_one": "Den referansen ligger allerede i {{target}}.",
+    "allDuplicates_other": "Disse {{count}} referansene ligger allerede i {{target}}.",
+    "defaultTarget": "litteraturlisten",
+    "description": "Legg til referanser fra en referansebehandler eller en litteraturfil i dette prosjektet.",
+    "duplicateNote": "Referanser med en DOI som allerede finnes i litteraturlisten, hoppes over.",
+    "empty": "Fant ingen referanser i den filen.",
+    "endnote": {
+      "button": "Velg XML-, RIS- eller BibTeX-fil",
+      "description": "Velg en EndNote XML-, RIS- eller BibTeX-fil. Oleafly legger referansene inn i litteraturlisten for prosjektet.",
+      "title": "EndNote, RIS eller BibTeX"
+    },
+    "failed": "Kunne ikke importere de referansene.",
+    "nothingNew": "Ingenting nytt å legge til i {{target}}.",
+    "problems_one": "{{count}} problem under importen. {{details}}",
+    "problems_other": "{{count}} problemer under importen. {{details}}",
+    "readFailed": "Kunne ikke lese den filen.",
+    "title": "Importer referansebibliotek",
+    "unrecognized": "Ukjent filtype: {{name}}",
+    "zotero": {
+      "button": "Velg Zotero RDF-fil",
+      "description": "Velg Fil → Eksporter bibliotek → Zotero RDF i Zotero. Velg deretter den eksporterte filen.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Delvise resultater. Filer som er feilformede eller ikke kan leses, kan mangle enkelte forekomster.",
+    "stale": "Oppdaterer. Siteringer, symboler og områder fra forrige revisjon er skjult."
+  },
+  "panel": {
+    "ariaLabel": "Referanser (Shift-F12)",
+    "clearQuery": "Tøm referansesøket",
+    "cleanLibrary": "Rydd i referansebiblioteket",
+    "importAriaLabel": "Importer referanser",
+    "issues_one": "{{count}} problem med referanser eller siteringer",
+    "issues_other": "{{count}} problemer med referanser eller siteringer",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Referanser",
+    "viewTabs": "Visning i referansepanelet"
+  },
+  "cleanLibrary": {
+    "title": "Rydd i referansebiblioteket",
+    "description": "Gå gjennom siteringsnøkler og dupliserte oppføringer før du endrer filene.",
+    "library": "Referansebibliotek",
+    "entryCount_one": "{{count}} oppføring",
+    "entryCount_other": "{{count}} oppføringer",
+    "footer": "Forhåndsvisning lagrer de åpne filene dine. Når du bruker endringene, sjekkes det at filene fortsatt stemmer med forhåndsvisningen, og originalene sikkerhetskopieres.",
+    "noBib": "Dette prosjektet har ingen .bib-fil å rydde i.",
+    "entriesKept": "{{kept}} av {{total}} oppføringer blir stående.",
+    "changes": "Endringer og merknader",
+    "noChanges": "Ingen filendringer å bruke.",
+    "filesToUpdate": "Filer som oppdateres: {{files}}",
+    "none": "Ingen",
+    "introSafeChanges": "Siteringsnøkler standardiseres. Duplikater med samme DOI fjernes bare når alle detaljene kan tas vare på.",
+    "introReview": "Like titler og metadata som er i konflikt, blir liggende i biblioteket til gjennomgang.",
+    "preview": "Forhåndsvis",
+    "reviewTitle": "Se gjennom før du bruker endringene",
+    "reviewBody": "Forhåndsvis endringene for å se hvilke oppføringer og siteringer som blir oppdatert.",
+    "statusAttention": "Trenger oppfølging",
+    "statusWorking": "Jobber…",
+    "statusPreviewReady": "Forhåndsvisningen er klar",
+    "statusReady": "Klar til forhåndsvisning",
+    "refreshPreview": "Oppdater forhåndsvisningen",
+    "previewChanges": "Forhåndsvis endringene",
+    "apply": "Bruk og skriv om siteringene",
+    "truncated": "Forhåndsvisningen viser de første 500 linjene av hver versjon.",
+    "actionRenamed": "{{old}} fikk nytt navn: {{new}}",
+    "actionDuplicate": "{{removed}} ble fjernet som duplikat av {{kept}} (samsvar på {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "De ryddede filene kunne ikke lastes inn på nytt. Åpne prosjektet igjen før du redigerer.",
+    "cleaned": "Biblioteket er ryddet. {{kept}} av {{total}} oppføringer beholdt.",
+    "cleanedWithBackup": "Biblioteket er ryddet. {{kept}} av {{total}} oppføringer beholdt. Originalfilene er lagret i {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Prosjektet ble endret etter dette søket. Kjør Finn referanser på nytt for å bruke gjeldende kildeområder.",
+      "title": "Referanseresultatene er utdaterte"
+    },
+    "noLocations": {
+      "detail": "Symbolet finnes i denne revisjonen, men har ingen definisjoner eller forekomster som passer.",
+      "title": "Fant ingen steder"
+    },
+    "none": {
+      "detail": "Sett markøren på en etikett, sitering, kommando eller et miljø og trykk Shift-F12.",
+      "title": "Ingen referansesøk"
+    }
+  },
+  "tabs": {
+    "citations": "Siteringer",
+    "results": "Referanser",
+    "symbols": "Symboler"
+  },
+  "trees": {
+    "citations": "Siteringer i prosjektet",
+    "noCitations": "Fant ingen oppføringer i litteraturlisten og ingen bruk av siteringer.",
+    "noSymbols": "Fant ingen symboler definert i prosjektet.",
+    "symbols": "Symboler i prosjektet"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Den nyeste prosjektrevisjonen kunne ikke analyseres. Kildefilene ble ikke endret.",
+      "title": "Prosjektanalysen mislyktes"
+    },
+    "indexing": {
+      "detail": "Referanser og siteringer dukker opp når gjeldende prosjektrevisjon er klar.",
+      "title": "Indekserer prosjektinnsikten"
+    },
+    "noProject": {
+      "detail": "Åpne et dokumentprosjekt for å se på siteringer, symboler og referanser på tvers av filer.",
+      "title": "Ingen prosjekter er åpne"
+    },
+    "offline": {
+      "detail": "Referanser og siteringer kan ikke sjekkes i dette arbeidsområdet akkurat nå.",
+      "title": "Analysetjenesten er utilgjengelig"
+    },
+    "unsupported": {
+      "detail": "Det aktive prosjektet bruker ikke en støttet dokumentmotor.",
+      "title": "Prosjektinnsikt er utilgjengelig"
+    },
+    "waiting": {
+      "detail": "Den nyeste prosjektrevisjonen er ikke indeksert ennå.",
+      "title": "Venter på prosjektanalysen"
+    }
+  }
+}

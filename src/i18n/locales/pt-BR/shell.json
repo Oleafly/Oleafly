@@ -1,0 +1,935 @@
+{
+  "about": {
+    "close": "Fechar a caixa Sobre",
+    "closeBackdrop": "Fechar Sobre o Oleafly",
+    "connect": "Acompanhe o Oleafly",
+    "links": {
+      "discussions": {
+        "description": "Faça perguntas e compartilhe ideias",
+        "label": "Discussões"
+      },
+      "docs": {
+        "description": "Conheça cada parte do Oleafly",
+        "label": "Documentação"
+      },
+      "issues": {
+        "description": "Relate um bug ou peça um recurso",
+        "label": "Issues"
+      },
+      "social": {
+        "description": "Acompanhe as versões e o desenvolvimento",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "Dar estrela no GitHub",
+    "tagline": "O espaço de trabalho de código aberto para o artigo inteiro. Escreva, compile, revise, gerencie citações, avalie PDFs, acompanhe mudanças no Git e trabalhe com os modelos de IA que você escolher.",
+    "version": "Versão {{version}}",
+    "viewSource": "Ver o código-fonte"
+  },
+  "addCitation": {
+    "added": "{{cite}} adicionada",
+    "adding": "Adicionando…",
+    "close": "Fechar a caixa de citação",
+    "confirm": "Adicionar ao .bib e citar",
+    "entry": "Entrada",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Título"
+    },
+    "hint": "Cole um DOI, um id do arXiv ou uma URL para buscar a entrada direto, ou digite um título para pesquisar no Crossref. Experimente um destes:",
+    "lookUp": "Buscar",
+    "lookingUp": "Buscando \"{{query}}\"…",
+    "matches_one": "{{count}} resultado do Crossref. Escolha um:",
+    "matches_many": "{{count}} resultados do Crossref. Escolha um:",
+    "matches_other": "{{count}} resultados do Crossref. Escolha um:",
+    "noResults": "Nenhum resultado encontrado. Confira o identificador ou tente outras palavras do título.",
+    "placeholder": "DOI, id do arXiv, URL ou um título de artigo…",
+    "privacyNote": "Só o identificador ou o título é enviado, para doi.org, arXiv ou Crossref.",
+    "title": "Adicionar citação"
+  },
+  "backendProtocol": {
+    "mismatch": "Esta janela e o backend dela foram compilados para versões diferentes do Oleafly, então alguns recursos podem não funcionar. Reinstalar o aplicativo resolve isso."
+  },
+  "branding": {
+    "assistantMascot": "Mascote do assistente de IA do Oleafly"
+  },
+  "browser": {
+    "address": "Buscar ou digitar uma URL",
+    "back": "Voltar",
+    "closeTab": "Fechar aba",
+    "copyUrl": "Copiar a URL",
+    "forward": "Avançar",
+    "moreOptions": "Mais opções",
+    "newTab": "Nova aba",
+    "openExternal": "Abrir no seu navegador",
+    "openTabs": "Abas abertas",
+    "reload": "Recarregar",
+    "setHomePage": "Definir como página inicial"
+  },
+  "citeOleafly": {
+    "description": "Nenhum arquivo de bibliografia foi encontrado neste projeto, então nada foi alterado. Copie a entrada abaixo para a sua bibliografia ou encontre-a depois em Configurações, Ajuda e sobre.",
+    "openHelp": "Abrir Ajuda e sobre",
+    "title": "Citar o Oleafly neste artigo"
+  },
+  "commandGroups": {
+    "commands": "Comandos",
+    "compile": "Compilação",
+    "editor": "Editor",
+    "insert": "Inserir",
+    "project": "Projeto",
+    "settings": "Configurações",
+    "tools": "Ferramentas"
+  },
+  "commandPalette": {
+    "empty": "Nenhum resultado encontrado.",
+    "label": "Paleta de comandos",
+    "placeholder": "Digite um comando ou busque…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / título",
+      "label": "Adicionar citação"
+    },
+    "appearance": {
+      "keywords": "tema aparência modo",
+      "useDark": "Usar a aparência escura",
+      "useLight": "Usar a aparência clara",
+      "useSystem": "Usar a aparência do sistema"
+    },
+    "autoCompile": {
+      "disable": "Desativar a compilação automática",
+      "enable": "Ativar a compilação automática"
+    },
+    "bold": {
+      "label": "Negrito"
+    },
+    "checkpoints": {
+      "label": "Pontos de verificação"
+    },
+    "citeOleafly": {
+      "keywords": "citação bibtex bibliografia agradecer oleafly",
+      "label": "Citar o Oleafly neste artigo"
+    },
+    "clearCache": {
+      "keywords": "limpar cache compilação recompilar desatualizado redefinir aux",
+      "label": "Limpar o cache de compilação e compilar de novo"
+    },
+    "closeEnvironment": {
+      "keywords": "fechar encerrar ambiente begin latex",
+      "label": "Fechar o ambiente LaTeX"
+    },
+    "createProject": {
+      "keywords": "novo projeto criar modelo galeria",
+      "label": "Criar um novo projeto"
+    },
+    "diagramComposer": {
+      "keywords": "diagrama figura tikz compositor desenhar tela",
+      "label": "Abrir o Compositor de diagramas"
+    },
+    "documentCitationScan": {
+      "keywords": "citações literatura varredura documento parágrafo referências localizar",
+      "label": "Localizar citações no documento"
+    },
+    "equation": {
+      "label": "Equação"
+    },
+    "exportPdf": {
+      "label": "Exportar PDF…"
+    },
+    "figure": {
+      "label": "Figura"
+    },
+    "generateFigure": {
+      "keywords": "figura diagrama desenhar tikz gráfico ilustração",
+      "label": "Gerar uma figura com IA"
+    },
+    "gitHistory": {
+      "label": "Histórico do Git"
+    },
+    "italic": {
+      "label": "Itálico"
+    },
+    "label": {
+      "label": "Rótulo"
+    },
+    "list": {
+      "label": "Lista com marcadores"
+    },
+    "newProject": {
+      "label": "Novo projeto…"
+    },
+    "newTerminal": {
+      "keywords": "terminal shell console novo",
+      "label": "Novo terminal"
+    },
+    "offline": {
+      "offline": "Modo offline (--only-cached)",
+      "online": "Modo online (permitir baixar pacotes)"
+    },
+    "openTool": "Abrir {{name}}",
+    "recompile": {
+      "label": "Compilar de novo"
+    },
+    "section": {
+      "label": "Seção"
+    },
+    "settings": {
+      "keywords": "configurações preferências opções",
+      "label": "Abrir as configurações"
+    },
+    "spellcheck": {
+      "disable": "Desativar a verificação ortográfica",
+      "enable": "Ativar a verificação ortográfica"
+    },
+    "surroundEnvironment": {
+      "keywords": "envolver cercar ambiente begin end latex",
+      "label": "Envolver com um ambiente"
+    },
+    "synctex": {
+      "label": "Ir para o PDF (SyncTeX)"
+    },
+    "table": {
+      "label": "Tabela"
+    },
+    "theme": {
+      "keywords": "tema escuro claro aparência modo",
+      "toDark": "Mudar para o tema escuro",
+      "toLight": "Mudar para o tema claro"
+    },
+    "tools": {
+      "keywords": "ferramentas latex pdf equação bibtex tabela laboratórios busca prazos galeria",
+      "label": "Abrir as Ferramentas do Oleafly"
+    },
+    "vim": {
+      "disable": "Desativar o modo Vim",
+      "enable": "Ativar o modo Vim"
+    },
+    "wordCount": {
+      "label": "Contagem de palavras"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "excluir linha remover",
+        "duplicate": "duplicar linha seleção copiar",
+        "lowercase": "minúsculas caixa texto",
+        "titleCase": "iniciais maiúsculas capitalizar texto",
+        "uppercase": "maiúsculas caixa texto"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Desligada",
+      "on": "Ligada",
+      "title": "Compilação automática"
+    },
+    "compile": "Compilar",
+    "compiler": {
+      "auto": "Automático <note>[TeX do sistema]</note>",
+      "help": "O Tectonic já vem embutido e não precisa de instalação. As outras opções usam o TeX do sistema, que pode ler arquivos locais acessíveis à sua conta e só deve ser usado em projetos confiáveis. O modo Automático escolhe o compilador a partir do código. O pdfLaTeX combina com a maioria dos modelos de periódico. XeLaTeX e LuaLaTeX acrescentam fontes do sistema e Unicode.",
+      "lualatex": "LuaLaTeX <note>[TeX do sistema]</note>",
+      "pdflatex": "pdfLaTeX <note>[TeX do sistema]</note>",
+      "tectonic": "Tectonic <note>[embutido]</note>",
+      "title": "Compilador (deste projeto)",
+      "xelatex": "XeLaTeX <note>[TeX do sistema]</note>"
+    },
+    "errors": {
+      "continue": "Tentar compilar apesar dos erros",
+      "stop": "Parar no primeiro erro",
+      "title": "Tratamento de erros de compilação"
+    },
+    "fromScratch": "Compilar do zero",
+    "mode": {
+      "fast": "Rápido <note>[rascunho]</note>",
+      "normal": "Normal",
+      "title": "Modo de compilação"
+    },
+    "options": "Opções de compilação",
+    "recompile": "Compilar de novo",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Parar a compilação",
+    "syntax": {
+      "check": "Verificar a sintaxe antes de compilar",
+      "skip": "Não verificar a sintaxe",
+      "title": "Verificações de sintaxe"
+    },
+    "texRootBroken": "O % !TEX root em {{file}} aponta para um arquivo inexistente ({{target}})",
+    "texRootLabel": "TEX root",
+    "texRootName": "raiz: {{name}}",
+    "texRootOverride": "raiz: {{path}} (definida por % !TEX root em {{file}})"
+  },
+  "datePicker": {
+    "placeholder": "Escolha uma data"
+  },
+  "devMenu": {
+    "inspect": "Inspecionar",
+    "refreshApp": "Atualizar o aplicativo"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "Ocultar o assistente de IA",
+      "show": "Mostrar o assistente de IA"
+    },
+    "browser": {
+      "close": "Fechar o navegador ({{shortcut}})",
+      "open": "Abrir o navegador ({{shortcut}})"
+    },
+    "settings": "Configurações",
+    "sidebar": {
+      "hide": "Ocultar a barra lateral ({{shortcut}})",
+      "show": "Mostrar a barra lateral ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Ocultar o terminal ({{shortcut}})",
+      "show": "Mostrar o terminal ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "A falha corresponde a uma limitação conhecida do motor Tectonic embutido. Escolha como este projeto deve compilar. A escolha fica salva no projeto, então quem colabora recebe a mesma configuração.",
+    "descriptionImportScan": "A varredura de importação encontrou recursos que o motor Tectonic embutido não orquestra. Escolha como este projeto deve compilar. A escolha fica salva no projeto, então quem colabora recebe a mesma configuração.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "pdfLaTeX pelo latexmk"
+    },
+    "recommended": "Recomendado",
+    "shellEscape": {
+      "label": "Permitir comandos externos neste computador",
+      "needed": "Este projeto usa recursos que precisam de comandos externos arbitrários. Eles continuam bloqueados até você permitir.",
+      "warning": "Exigido pelo minted e por alguns documentos PythonTeX. O LaTeX pode executar programas com as suas permissões de usuário, então ative isso só em um projeto em que você confia. Os auxiliares do próprio TeX Live, como a conversão de EPS, rodam sem isso."
+    },
+    "shellEscapeAllowed": "Os comandos externos estão permitidos para este projeto neste computador.",
+    "shellEscapeBlocked": "Comandos externos arbitrários estão bloqueados para este projeto. Os auxiliares do próprio TeX Live, como a conversão de EPS, continuam rodando.",
+    "shellEscapeFailed": "Não foi possível atualizar o acesso a comandos externos.",
+    "switchFailed": "Não foi possível trocar o motor de compilação.",
+    "switched": "Este projeto agora compila com o {{engine}}.",
+    "switchedAfterInstall": "TinyTeX instalado. Este projeto agora compila com o {{engine}}.",
+    "systemTex": {
+      "alreadySelected": "Já selecionado",
+      "found": "Uma distribuição TeX foi encontrada nesta máquina. O TeX do sistema pode ler arquivos locais acessíveis à sua conta, então use-o só em projetos em que você confia. Comandos externos arbitrários continuam bloqueados a menos que você permita abaixo. O TeX Live continua rodando os auxiliares da própria lista de permissões dele, como a conversão de EPS.",
+      "missing": "Nenhuma distribuição TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) foi encontrada nesta máquina.",
+      "switchPdflatex": "Mudar para pdfLaTeX e compilar de novo",
+      "title": "Usar o LaTeX do meu sistema (latexmk)",
+      "titlePdflatex": "Usar o pdfLaTeX no LaTeX do meu sistema (latexmk)",
+      "use": "Usar o LaTeX do sistema"
+    },
+    "tectonic": {
+      "description": "Sem instalação, funciona offline. Dá conta de LaTeX simples e da maioria dos pacotes comuns.",
+      "keep": "Continuar com o Tectonic",
+      "switchBack": "Voltar para o Tectonic",
+      "title": "Continuar usando o Tectonic",
+      "withFailures_one": "Sem instalação, funciona offline. A expectativa é que {{features}} continue falhando.",
+      "withFailures_many": "Sem instalação, funciona offline. A expectativa é que {{features}} continuem falhando.",
+      "withFailures_other": "Sem instalação, funciona offline. A expectativa é que {{features}} continuem falhando."
+    },
+    "tinytex": {
+      "description": "Instala um TeX Live compacto na sua pasta pessoal, sem precisar de permissões de administrador. O download principal tem cerca de 250 MB. Modelos de periódico podem baixar mais pacotes depois, chegando a cerca de 1 GB no total.",
+      "download": "Baixar e usar o TinyTeX",
+      "resume": "Retomar o download ({{megabytes}} MB prontos)",
+      "title": "Baixar o TinyTeX"
+    },
+    "titleCompileFailure": "Esta compilação precisa de mais do que o motor embutido",
+    "titleImportScan": "Este projeto precisa de mais do que o motor embutido"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Copiar os diagnósticos",
+    "description": "O Oleafly encontrou um erro inesperado e não conseguiu renderizar esta tela. Seus arquivos de projeto continuam no disco. Os detalhes de diagnóstico estão abaixo.",
+    "halted": "Parado",
+    "logSaved": "Log salvo em <path>{{path}}</path>",
+    "reload": "Recarregar o Oleafly",
+    "report": "Relatar no GitHub",
+    "runtimeError": "Erro de execução",
+    "specimen": {
+      "diagramLabel": "Diagrama decorativo de espécime",
+      "layer": "CAMADA {{current}}/{{total}}",
+      "specimen": "ESPÉCIME:",
+      "transversePlane": "PLANO TRANSVERSAL",
+      "veinDensity": "DENSIDADE DE NERVURAS:"
+    },
+    "specimenViewer": "Visualizador de espécime",
+    "stackTrace": "Rastreamento de pilha",
+    "surfaceCrashed": "O {{surface}} travou.",
+    "surfaces": {
+      "aiAssistant": "assistente de IA",
+      "assistantPanel": "painel do assistente",
+      "chat": "chat",
+      "diagramComposer": "compositor de diagramas",
+      "editor": "editor",
+      "pdfPreview": "visualizador de PDF",
+      "researchAssistant": "assistente de pesquisa",
+      "terminalDock": "painel de terminal"
+    },
+    "title": "Algo deu errado"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "Ações do GitHub",
+    "connect": "Conectar o GitHub…",
+    "connectedAs": "Conectado como @{{login}}",
+    "copyRepositoryLink": "Copiar o link do repositório",
+    "openInGithub": "Abrir no GitHub",
+    "pushHint": "Envie para o GitHub para liberar estas ações",
+    "settings": "Configurações do GitHub",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "Início",
+    "label": "Início",
+    "title": "Voltar para a biblioteca",
+    "tooltip": "Voltar para a biblioteca de projetos"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Limpar o log",
+    "clearLogAriaLabel": "Limpar o log do MCP",
+    "live": "Ativo",
+    "off": "Desligado",
+    "openSettings": "Abrir as configurações de MCP",
+    "serverOff": "O servidor MCP está desligado.",
+    "timeWithDuration": "{{time}} · {{ms}}ms",
+    "toolsTitle": "Ferramentas disponíveis via MCP",
+    "waiting": "Aguardando agentes externos…",
+    "waitingHint": "As ferramentas chamadas via MCP (Claude, Cursor, Grok, …) aparecem aqui ao vivo."
+  },
+  "omnibar": {
+    "bookmarked": "Com marcador",
+    "createProject": "Criar um novo projeto",
+    "groups": {
+      "action": "Ação",
+      "documents": "Documentos",
+      "references": "Referências"
+    },
+    "label": "Buscar",
+    "noMatches": "Nenhum resultado encontrado.",
+    "openReferences": "Abrir as referências deste projeto",
+    "placeholder": "Busque projetos, documentos ou digite / para ver comandos…",
+    "placeholderDocuments": "Buscar dentro dos documentos…",
+    "placeholderProjects": "Busque projetos por nome, motor, tipo, data ou metadados…",
+    "referencesNeedProject": "Abra um projeto antes para navegar pelas referências dele.",
+    "slash": {
+      "create": "abrir a galeria de modelos",
+      "docs": "buscar dentro dos documentos",
+      "projects": "buscar nos seus projetos",
+      "refs": "abrir as referências deste projeto",
+      "settings": "abrir as configurações",
+      "theme": "trocar o tema de cores"
+    },
+    "tryCommand": "Experimente um comando",
+    "unknownCommand": "Comando desconhecido. Digite / para ver os comandos disponíveis."
+  },
+  "projectSearch": {
+    "hint": "Busque em todos os arquivos deste projeto.",
+    "noResults": "Nenhum resultado.",
+    "placeholder": "Localizar no projeto…",
+    "title": "Busca"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Suas mudanças não salvas continuam abertas. Fique para resolver o problema ou encerre mesmo assim e perca-as.",
+      "descriptionRestart": "{{reason}} Suas mudanças não salvas continuam abertas. Fique para resolver o problema ou reinicie mesmo assim e perca-as.",
+      "quitAnyway": "Encerrar mesmo assim",
+      "restartAnyway": "Reiniciar mesmo assim",
+      "stay": "Ficar",
+      "title": "Alguns arquivos não puderam ser salvos"
+    },
+    "flushTimeout": "O salvamento não terminou em 5 segundos.",
+    "installing": {
+      "description": "Salvando seus arquivos e instalando a atualização. O Oleafly vai reiniciar quando estiver pronto.",
+      "title": "Preparando para reiniciar"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}} (beta)",
+    "files": "Explorador",
+    "mcp": "Atividade MCP",
+    "pendingBadge_one": "{{count}} pendente",
+    "pendingBadge_many": "{{count}} pendentes",
+    "pendingBadge_other": "{{count}} pendentes",
+    "preflight": "Pré-verificação",
+    "references": "Referências e citações",
+    "research": "Espaço de pesquisa",
+    "search": "Buscar no projeto",
+    "sourceControl": "Controle de versão",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "Fechar a caixa de renomeação",
+    "collision": "Já existe {{kind}} com o nome \"{{name}}\".",
+    "commit": "Confirmar a renomeação",
+    "newName": "Novo nome",
+    "planFiles_one": "{{count}} arquivo",
+    "planFiles_many": "{{count}} arquivos",
+    "planFiles_other": "{{count}} arquivos",
+    "planSummary_one": "{{count}} edição em $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_many": "{{count}} edições em $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_other": "{{count}} edições em $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "uma referência",
+      "bibentry": "uma entrada de bibliografia",
+      "cite": "uma citação",
+      "environment": "um ambiente",
+      "envuse": "um uso de ambiente",
+      "file": "um arquivo",
+      "glossary": "uma entrada de glossário",
+      "glossaryuse": "um uso de glossário",
+      "inputedge": "uma inclusão",
+      "label": "um rótulo",
+      "macro": "uma macro",
+      "macrouse": "um uso de macro",
+      "ref": "uma referência",
+      "section": "uma seção",
+      "theorem": "um teorema"
+    },
+    "title": "Renomear <symbol>{{name}}</symbol>"
+  },
+  "settings": {
+    "close": "Fechar as configurações",
+    "data": {
+      "cloud": {
+        "comingSoon": "Em breve",
+        "description": "Mantenha os projetos sincronizados entre seus dispositivos sem configurar um remoto do Git. Toda transferência será criptografada de ponta a ponta, então seu trabalho continua privado no caminho. As pastas locais dos seus projetos continuarão sendo a fonte da verdade.",
+        "title": "Sincronização na nuvem"
+      },
+      "danger": {
+        "closeFailed": "Não foi possível fechar o projeto aberto com segurança.",
+        "confirmDeleteAllAction": "Excluir todos os projetos",
+        "confirmDeleteAllDescription": "Todos os projetos atuais vão para a Lixeira, com os arquivos e o histórico do Git. Depois você pode restaurar os projetos um a um.",
+        "confirmDeleteAllTitle_one": "Excluir todo o {{count}} projeto?",
+        "confirmDeleteAllTitle_many": "Excluir todos os {{count}} projetos?",
+        "confirmDeleteAllTitle_other": "Excluir todos os {{count}} projetos?",
+        "deleteAll": "Excluir todos os projetos",
+        "deleteAllAction": "Excluir tudo",
+        "deleteAllDescription": "Move todos os projetos para a Lixeira. Nada é excluído em definitivo.",
+        "deleting": "Excluindo…",
+        "moveFailed": "Não foi possível mover os projetos para a Lixeira.",
+        "movePartial": "{{count}} projetos movidos, mas não foi possível concluir a operação.",
+        "movedCount_one": "{{count}} projeto movido para a Lixeira.",
+        "movedCount_many": "{{count}} projetos movidos para a Lixeira.",
+        "movedCount_other": "{{count}} projetos movidos para a Lixeira.",
+        "title": "Zona de risco"
+      },
+      "githubHint": "Faça backup ou sincronize um projeto entre dispositivos: conecte o GitHub e depois use <push>Enviar</push> / <pull>Receber</pull> no Controle de versão. <setup>Configurar o GitHub →</setup>",
+      "localFirst": "O Oleafly é local-first. Todos os projetos ficam no seu disco:",
+      "plainFolders": "Cada projeto é uma pasta comum. O histórico do Git é opcional e nada sai da sua máquina, a não ser que você envie para o GitHub.",
+      "recycleBin": {
+        "clearAll": "Esvaziar",
+        "clearFailed": "Não foi possível esvaziar a Lixeira.",
+        "clearPartial": "{{count}} projetos excluídos em definitivo, mas não foi possível esvaziar a Lixeira inteira.",
+        "clearedCount_one": "{{count}} projeto excluído em definitivo.",
+        "clearedCount_many": "{{count}} projetos excluídos em definitivo.",
+        "clearedCount_other": "{{count}} projetos excluídos em definitivo.",
+        "clearing": "Esvaziando…",
+        "confirmClearAction": "Esvaziar a Lixeira",
+        "confirmClearDescription": "Isso exclui em definitivo todos os projetos que estão na Lixeira, com os arquivos e o histórico do Git. Esta ação não pode ser desfeita.",
+        "confirmClearTitle_one": "Remover {{count}} projeto da Lixeira?",
+        "confirmClearTitle_many": "Remover {{count}} projetos da Lixeira?",
+        "confirmClearTitle_other": "Remover {{count}} projetos da Lixeira?",
+        "confirmDeleteAction": "Excluir em definitivo",
+        "confirmDeleteDescription": "Isso remove o projeto, os arquivos dele e o histórico do Git da Lixeira. Esta ação não pode ser desfeita.",
+        "confirmDeleteTitle": "Excluir “{{name}}” em definitivo?",
+        "deleteFailed": "Não foi possível excluir \"{{name}}\" em definitivo.",
+        "deleteOne": "Excluir {{name}} em definitivo",
+        "deleted": "\"{{name}}\" excluído em definitivo.",
+        "deletedAt": "Excluído em {{date}} · {{size}}",
+        "empty": "A Lixeira está vazia.",
+        "loading": "Carregando a Lixeira…",
+        "restore": "Restaurar",
+        "restoreFailed": "Não foi possível restaurar \"{{name}}\".",
+        "restored": "\"{{name}}\" restaurado.",
+        "size": "{{size}} · sem limpeza automática",
+        "subtitle": "Os projetos excluídos ficam aqui até você removê-los",
+        "title": "Lixeira"
+      },
+      "reveal": "Mostrar a pasta de projetos no Finder",
+      "storage": {
+        "calculating": "Calculando o uso de armazenamento…",
+        "desktopOnly": "Os detalhes de armazenamento estão disponíveis no aplicativo para desktop.",
+        "error": "Não foi possível calcular os detalhes de armazenamento.",
+        "refresh": "Atualizar o uso de armazenamento",
+        "stats": {
+          "appData": "Dados do aplicativo",
+          "appDataDetail": "Recursos e configurações",
+          "buildCache": "Cache de compilação",
+          "buildCacheDetail": "Saída gerada",
+          "files": "Arquivos",
+          "folders_one": "{{count}} pasta",
+          "folders_many": "{{count}} pastas",
+          "folders_other": "{{count}} pastas",
+          "gitHistory": "Histórico do Git",
+          "gitHistoryDetail": "Versões locais",
+          "images": "Imagens",
+          "pdfs": "PDFs",
+          "projectFiles": "Arquivos de projeto",
+          "projectFilesDetail": "Código e metadados",
+          "projects": "Projetos"
+        },
+        "subtitle": "Projetos, prévias, histórico e dados do aplicativo",
+        "title": "Uso de armazenamento",
+        "total": "{{size}} na pasta de dados do Oleafly",
+        "unreadable_one": "{{count}} item inacessível ficou de fora.",
+        "unreadable_many": "{{count}} itens inacessíveis ficaram de fora.",
+        "unreadable_other": "{{count}} itens inacessíveis ficaram de fora."
+      },
+      "tabs": {
+        "cloud": "Sincronização na nuvem",
+        "local": "Armazenamento local"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Mostra a galeria de Ferramentas do Oleafly e as ferramentas individuais (importação de PDF, equações, tabelas, BibTeX, busca de laboratórios e de literatura, prazos), além dos comandos de barra delas. Desligado por padrão enquanto está em beta.",
+        "label": "Ferramentas LaTeX"
+      },
+      "visualEditor": {
+        "description": "Mostra o alternador Visual/Código no editor de documentos. Desligado por padrão, então os documentos abrem só no editor de código. Os diagramas mantêm sempre o alternador de tela próprio.",
+        "label": "Editor visual"
+      },
+      "warning": "Estes recursos são experimentais e ainda estão em beta. Eles não foram totalmente testados e podem mudar, quebrar ou sumir em uma versão futura. Ligue-os só se você quiser experimentar o que está em andamento.",
+      "webBrowser": {
+        "description": "Mostra o navegador web interno (o botão no painel e o atalho dele) e deixa a IA conduzi-lo por uso do computador. Desligado por padrão enquanto está em beta; quando desligado, não há botão de navegador e a IA não tem ferramenta de navegador.",
+        "label": "Navegador web"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Variante do inglês na revisão de texto",
+        "description": "Aplica a ortografia, a gramática e as convenções regionais selecionadas.",
+        "label": "Variante do inglês"
+      },
+      "dictionary": {
+        "ariaLabel": "Dicionário ortográfico da revisão de texto",
+        "description": "Pacote Hunspell usado pelas verificações ortográficas nos modos Código e Visual. Idiomas além dos cinco pacotes incluídos são baixados sob demanda.",
+        "label": "Dicionário ortográfico",
+        "downloadFailed": "Não foi possível baixar o dicionário {{name}}.",
+        "downloaded": "{{name}} está pronto para a verificação ortográfica.",
+        "downloading": "Baixando {{name}}",
+        "offlineRefused": "O modo offline está ligado. Desligue para baixar {{name}}."
+      },
+      "harper": {
+        "description": "Verifica gramática e estilo do inglês na edição em LaTeX e Markdown, nos modos Código e Visual, além do Código em Typst, com correções em um clique.",
+        "label": "Gramática e estilo (Harper)"
+      },
+      "offline": {
+        "description": "Compila com --only-cached e nunca busca pacotes pela rede.",
+        "label": "Modo offline"
+      },
+      "proofreadingNote": "A revisão de texto roda localmente, em um processo de segundo plano. O Harper segue a variante de inglês selecionada; a ortografia sempre usa exatamente o pacote Hunspell escolhido. Matemática, código, comentários, sintaxe de citação, metadados e URLs ficam de fora.",
+      "regionalism": {
+        "description": "Aponta termos que não combinam com a variante de inglês selecionada. Desligue se você usa esses termos como nomes de produto ou de código.",
+        "label": "Sugestões de regionalismo"
+      },
+      "spellcheck": {
+        "description": "Sublinha as palavras com erro de ortografia usando o dicionário Hunspell offline selecionado e oferece sugestões de substituição na edição em Código e Visual.",
+        "label": "Verificação ortográfica"
+      },
+      "wordChoice": {
+        "description": "Sugere palavras alternativas (por exemplo, “too” e “to”). Desligue para manter só ortografia e gramática.",
+        "label": "Sugestões de escolha de palavras"
+      }
+    },
+    "help": {
+      "community": "Comunidade",
+      "copyInfo": "Copiar informações",
+      "forksTitle": "Forks no GitHub",
+      "forks_one": "{{count}} fork no GitHub",
+      "forks_many": "{{count}} forks no GitHub",
+      "forks_other": "{{count}} forks no GitHub",
+      "logoAlt": "Oleafly",
+      "project": "Projeto",
+      "resources": {
+        "documentation": "Documentação",
+        "learn": "Aprender",
+        "license": "Licença",
+        "reportCrash": "Relatar uma falha (com os logs anexados)",
+        "startTour": "Iniciar o tour",
+        "whatsNew": "Novidades"
+      },
+      "resourcesTitle": "Recursos",
+      "starRepo": "Dar estrela e explorar no GitHub",
+      "starsTitle": "Estrelas no GitHub",
+      "stars_one": "{{count}} estrela no GitHub",
+      "stars_many": "{{count}} estrelas no GitHub",
+      "stars_other": "{{count}} estrelas no GitHub",
+      "support": "Se o Oleafly ajuda no seu trabalho, <star>dê uma estrela ao projeto no GitHub</star>. Esse cliquezinho ajuda mais pesquisadores a encontrá-lo e sustenta o desenvolvimento.",
+      "supportAriaLabel": "Apoiar o Oleafly",
+      "tagline": "Escreva, compile, revise, gerencie citações, avalie PDFs, acompanhe mudanças no Git e use os modelos de IA que você escolher. Tudo em um espaço de trabalho de código aberto.",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "Assistente de IA",
+      "appearance": "Aparência",
+      "data": "Armazenamento de dados",
+      "dictionary": "Dicionário",
+      "downloads": "Downloads",
+      "engine": "Motores",
+      "experimentation": "Experimentação",
+      "general": "Geral",
+      "help": "Ajuda e sobre",
+      "integrations": "Integrações",
+      "shortcuts": "Atalhos de teclado"
+    },
+    "sectionsNav": "Seções das configurações",
+    "title": "Configurações",
+    "tours": {
+      "confirmDescription": "Isso dispensa todos os tours restantes e desliga os guias. Você pode ativá-los de novo nas configurações Gerais para começar do zero.",
+      "disableConfirm": "Desativar os tours",
+      "disableTitle": "Desativar os guias de tour?",
+      "dismissAll": "Dispensar todos os tours",
+      "dismissAllConfirm": "Dispensar todos",
+      "dismissAllTitle": "Dispensar todos os tours?",
+      "enable": "Ativar os guias de tour",
+      "enableAll": "Ativar todos os guias de tour",
+      "enableOne": "Ativar o tour de {{name}}",
+      "progress": "Progresso dos tours",
+      "progressDetail": "{{completed}} concluídos e {{dismissed}} dispensados.",
+      "status": {
+        "completed": "Concluído",
+        "dismissed": "Dispensado",
+        "pending": "Pendente"
+      },
+      "summary": "{{completed}} concluídos · {{dismissed}} dispensados · {{total}} no total"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Abortar a mesclagem",
+    "abortMergeDescription": "As resoluções de conflito feitas até agora são descartadas e os arquivos voltam ao estado anterior ao início da mesclagem.",
+    "abortMergeTitle": "Abortar esta mesclagem?",
+    "aheadBehind": "{{ahead}} à frente · {{behind}} atrás de origin/{{branch}}",
+    "branch": "Branches",
+    "branchName": "Nome da branch",
+    "changeRepo": "Trocar de repositório",
+    "changes": "Alterações",
+    "checking": "Verificando o controle de versão…",
+    "clean": "Nenhuma alteração. A árvore de trabalho está limpa.",
+    "commit": "Fazer commit",
+    "commitActions": "Mais ações de commit",
+    "commitAmend": "Emendar o último commit",
+    "amendedKeptMessage": "O último commit foi emendado e a mensagem dele foi mantida.",
+    "commitAndPush": "Commit e envio",
+    "commitAndSync": "Commit e sincronização",
+    "commitDescription": "Descrição do commit",
+    "commitDescriptionPlaceholder": "Descrição (opcional)",
+    "commitTitle": "Título do commit",
+    "committed": "Commit feito: \"{{subject}}\"",
+    "committedRemoteFailed": "Commit feito localmente, mas {{step}} falhou: {{reason}}",
+    "committedWithConflicts": "Commit feito localmente. Resolva os conflitos recebidos antes de enviar.",
+    "confirmDiscard": "Confirmar o descarte",
+    "confirmDiscardTitle": "Descartar todas as alterações deste arquivo",
+    "continueMerge": "Concluir a mesclagem",
+    "copyCommitId": "Copiar o ID do commit",
+    "create": "Criar",
+    "createBranch": "Criar branch…",
+    "credentialRemoved": "A credencial salva foi removida deste remoto do Git.",
+    "credentialWarning": "Versões mais antigas do Oleafly salvavam uma credencial neste remoto do Git.",
+    "discard": "Descartar alterações",
+    "discardFor": "Descartar as alterações de {{path}}",
+    "discardAll": "Descartar todas as alterações",
+    "discardChangesDescription": "Estas alterações da árvore de trabalho serão perdidas. Isso não pode ser desfeito.",
+    "discardChangesTitle": "Descartar as alterações selecionadas?",
+    "discardTitle": "Descartar alterações (voltar à última versão)",
+    "enterTitle": "Digite um título de commit",
+    "finishMergeToCommit": "Conclua a mesclagem antes de fazer o commit.",
+    "fetch": "Buscar",
+    "graph": "Grafo",
+    "commitCount_one": "{{count}} commit",
+    "commitCount_many": "{{count}} commits",
+    "commitCount_other": "{{count}} commits",
+    "initialize": "Inicializar o repositório",
+    "initialized": "Git inicializado na branch {{branch}}.",
+    "linkCopied": "Link do GitHub copiado",
+    "markResolved": "Marcar como resolvido",
+    "mergeNeedsAttention": "Resolva os conflitos de mesclagem",
+    "moreActions": "Mais ações do controle de versão",
+    "noHistory": "Ainda não há commits",
+    "noProject": "Abra um projeto para usar o controle de versão.",
+    "noStagedChanges": "Nenhuma alteração preparada",
+    "notInitialized": "O controle de versão não está inicializado",
+    "notInitializedHint": "O Oleafly não faz commit em um repositório Git automaticamente.",
+    "nothingStaged": "Nada preparado para o commit.",
+    "openAllChanges": "Abrir todas as alterações",
+    "openFile": "Abrir arquivo",
+    "openFileFor": "Abrir {{path}}",
+    "popStash": "Aplicar o stash mais recente",
+    "publish": "Publicar no GitHub",
+    "published": "Publicado em {{url}}",
+    "pull": "Receber do origin",
+    "pullShort": "Receber",
+    "push": "Fazer commit e enviar para o origin",
+    "pushShort": "Enviar",
+    "pushSkippedNoRemote": "⚠ Envio ignorado - nenhum remoto origin definido abaixo.",
+    "pushSkippedNoToken": "⚠ Envio ignorado - sem token do GitHub (Configurações → GitHub).",
+    "refresh": "Atualizar",
+    "remote": "Remoto",
+    "remoteHint": "Crie um repositório novo ou vincule um existente como remoto deste projeto e depois envie.",
+    "removeCredential": "Remover a credencial salva",
+    "restoreCommit": "Restaurar versão",
+    "restoreCommitDescription": "Isso substitui todos os arquivos rastreados do projeto por esta versão e remove os arquivos adicionados depois. Sua branch continua no commit atual.",
+    "restoreCommitTitle": "Restaurar esta versão?",
+    "sectionActions": "Mais ações para {{section}}",
+    "stage": "Preparar",
+    "stageFor": "Preparar {{path}}",
+    "stageAll": "Preparar tudo",
+    "stageFirst": "Prepare um arquivo antes",
+    "stageToCommit": "Prepare um arquivo para o commit.",
+    "staged": "Preparadas",
+    "stagedChanges": "Alterações preparadas",
+    "stagedChangeCount_one": "{{count}} alteração preparada",
+    "stagedChangeCount_many": "{{count}} alterações preparadas",
+    "stagedChangeCount_other": "{{count}} alterações preparadas",
+    "stash": "Guardar as alterações",
+    "stashNeedsAttention": "Resolva os conflitos do stash",
+    "sync": "Sincronizar",
+    "title": "Controle de versão",
+    "titleRequired": "O título do commit é obrigatório.",
+    "titleRequiredStatus": "Digite um título de commit antes de confirmar.",
+    "unlink": "Desvincular",
+    "unlinked": "Desvinculado do GitHub.",
+    "unstage": "Tirar da preparação",
+    "unstageFor": "Tirar {{path}} da preparação",
+    "unstageAll": "Tirar tudo da preparação",
+    "workingChangeCount_one": "{{count}} alteração na árvore de trabalho",
+    "workingChangeCount_many": "{{count}} alterações na árvore de trabalho",
+    "workingChangeCount_other": "{{count}} alterações na árvore de trabalho",
+    "useCurrent": "Usar a atual",
+    "useIncoming": "Usar a recebida"
+  },
+  "splash": {
+    "initializing": "Inicializando o Oleafly",
+    "loadingCore": "Carregando o núcleo do Oleafly",
+    "loadingHarness": "Carregando o ambiente do Oleafly",
+    "loadingParsers": "Carregando os analisadores do Oleafly",
+    "starting": "Iniciando o Oleafly"
+  },
+  "theme": {
+    "dark": "Escuro",
+    "light": "Claro",
+    "menuLabel": "Aparência: {{name}}",
+    "system": "Sistema",
+    "useDark": "Usar o tema escuro",
+    "useLight": "Usar o tema claro",
+    "useSystem": "Usar o tema do sistema"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Encerrar mesmo assim",
+      "description": "{{phase}} agora. Se você encerrar, a instalação pausa. A parte já baixada é mantida e continua na próxima vez que você abrir o Oleafly.",
+      "title": "O TinyTeX ainda está instalando"
+    },
+    "wait": {
+      "description": "{{phase}} Sua compilação está na fila e começa sozinha assim que o motor estiver pronto.",
+      "title": "O TinyTeX ainda está baixando"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "Cancelar (Esc)",
+    "closeForkDialog": "Fechar a caixa de bifurcação",
+    "compileFigureFirst": "Compile a figura antes",
+    "compilePdfFirst": "O PDF precisa de uma compilação antes",
+    "export": "Exportar",
+    "exportComplete": "Exportação em {{format}} concluída",
+    "exportDocx": "Exportar como Word (.docx)",
+    "exportEpub": "Exportar como EPUB (.epub)",
+    "exportHtml": "Exportar como HTML (.html)",
+    "exportMarkdown": "Exportar como Markdown (.md)",
+    "exportPdf": "Exportar como PDF",
+    "exportPdfVector": "Exportar como PDF (imagem vetorial)",
+    "exportPngRaster": "Exportar como PNG (imagem rasterizada)",
+    "exportPagePng": "Exportar a página como PNG (imagem rasterizada)",
+    "exportAs": "Exportar como {{format}}",
+    "exportPptx": "Exportar como PowerPoint (.pptx)",
+    "exportSourceZip": "Exportar o código-fonte (.zip)",
+    "exportTxt": "Exportar como texto simples (.txt)",
+    "exportZipFailed": "Não foi possível exportar o zip do projeto",
+    "exporting": "Exportando .{{format}}…",
+    "fork": "Bifurcar",
+    "forkDescription": "Copia <name>{{name}}</name> e o histórico dele no Git para um novo projeto. Os pontos de verificação começam vazios.",
+    "forkFailed": "Não foi possível bifurcar o projeto.",
+    "forkProject": "Bifurcar projeto",
+    "layout": "Layout",
+    "layouts": {
+      "aiOnly": "Só IA",
+      "editorAi": "Editor + IA",
+      "editorOnly": "Só editor",
+      "editorPreview": "Editor + visualização",
+      "editorPreviewAi": "Editor + visualização + IA",
+      "previewAi": "Visualização + IA",
+      "previewOnly": "Só visualização"
+    },
+    "newProjectName": "Nome do novo projeto",
+    "projectName": "Nome do projeto",
+    "projectRenamed": "Projeto renomeado",
+    "saveName": "Salvar (Enter)",
+    "saveNameAriaLabel": "Salvar nome",
+    "untitledProject": "projeto",
+    "versioning": "Versionamento",
+    "viewFile": "Ver arquivo",
+    "views": {
+      "editor": "Visão de código",
+      "pdf": "Visão do PDF",
+      "split": "Visão dividida"
+    }
+  },
+  "tour": {
+    "chooseColor": "Escolha a sua cor",
+    "diagramArrow": "Seta curva apontando para a tela de diagramas",
+    "pointer": "Ponteiro da dica do tour",
+    "quitConfirm": "Sair do tour",
+    "quitDescription": "Seu progresso não é salvo. Você pode reiniciar qualquer tour depois, pelo menu Ajuda.",
+    "quitTitle": "Sair do tour?",
+    "setMood": "Defina o clima",
+    "showMeAround": "Quero conhecer",
+    "skip": "Pular",
+    "step": "Etapa {{step}}",
+    "stepOfTotal": "Etapa {{step}} de {{total}}",
+    "stepOfTour": "Etapa {{step}} · {{tour}}",
+    "useAccent": "Usar a cor de destaque {{name}}",
+    "welcomeArrow": "Seta desenhada à mão apontando para o parágrafo de boas-vindas",
+    "welcomeBody": "Leve um artigo do primeiro rascunho ao PDF final em um só espaço de trabalho de código aberto. Escreva, compile, revise, gerencie citações, monte figuras, acompanhe cada mudança no Git e use os modelos de IA que você escolher. Seus projetos ficam na sua máquina.",
+    "welcomeTitle": "Boas-vindas ao Oleafly"
+  },
+  "updateChecker": {
+    "available": "Atualização disponível · v{{version}}",
+    "check": "Verificar atualizações",
+    "checkAgain": "Verificar de novo",
+    "checkFailed": "Não foi possível verificar as atualizações.",
+    "checking": "Verificando…",
+    "downloadFromGithub": "Baixar do GitHub",
+    "downloading": "Baixando… {{percent}}%",
+    "installing": "Instalando…",
+    "lastCheckFailed": "A última verificação automática falhou.",
+    "lastCheckFailedAt": "A última verificação automática falhou · {{when}}.",
+    "latest": "Você está na versão mais recente",
+    "releaseNotes": "Notas da versão",
+    "restartNotice": "O Oleafly vai reiniciar para concluir.",
+    "tryAgain": "Tentar de novo",
+    "unsupported": "As atualizações são gerenciadas pelo aplicativo para desktop.",
+    "updateNow": "Atualizar agora"
+  },
+  "updateWindow": {
+    "checking": "Verificando atualizações…",
+    "currentVersion": "Você está na v{{version}}",
+    "error": "A atualização não conseguiu terminar. Tente de novo mais tarde.",
+    "later": "Depois",
+    "looking": "Procurando a versão mais recente…",
+    "packageInstall": "Instalado a partir de um pacote. Baixe a nova versão para atualizar.",
+    "ready": "Uma nova versão está pronta para instalar.",
+    "upToDate": "Você está em dia",
+    "upToDateGeneric": "Você está com a versão mais recente do Oleafly",
+    "upToDateHeadline": "Você está em dia!",
+    "upToDateVersion": "O Oleafly v{{version}} é a versão mais recente",
+    "viewRelease": "Ver a versão"
+  },
+  "windowControls": {
+    "group": "Controles da janela",
+    "maximize": "Maximizar",
+    "minimize": "Minimizar",
+    "restore": "Restaurar"
+  },
+  "windows": {
+    "preview": "Visualização: {{title}}",
+    "update": "Atualização do Oleafly"
+  }
+}

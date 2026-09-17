@@ -1,0 +1,1499 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "Spustitelný soubor",
+      "bridgeSourceLabel": "Zdroj",
+      "bridgeTitle": "Most ACP",
+      "bridgeUnresolved": "Zatím nebyl nalezen žádný spustitelný soubor mostu.",
+      "checkAgain": "Zkontrolovat znovu",
+      "checkFailedTitle": "Nainstalované agenty se nepodařilo zkontrolovat",
+      "checkInstalled": "Zkontrolovat nainstalované agenty",
+      "checkingAction": "Kontroluje se",
+      "checkingDescription": "Chvíli to potrvá, než Oleafly zkontroluje nástroje příkazové řádky v tomto počítači.",
+      "checkingInstalled": "Kontrolují se nainstalovaní agenti",
+      "checkingTitle": "Hledají se agenti pro příkazovou řádku",
+      "cliNotOnPath": "{{command}} nebyl nalezen ve vaší proměnné PATH.",
+      "cliPathLabel": "Nalezeno v",
+      "cliTitle": "Nástroj příkazové řádky",
+      "copySignInCommand": "Kopírovat přihlašovací příkaz",
+      "emptyDescription": "Nainstalujte podporovaného agenta pro příkazovou řádku a zkontrolujte to znovu.",
+      "emptyTitle": "Nebyli nalezeni žádní agenti pro příkazovou řádku",
+      "custom": {
+        "description": "Vložte definici agenta a zaregistrujte agenta, kterého Oleafly nedodává.",
+        "hint": "Vložte definici agenta s připnutým balíčkem npm nebo uv, ověřeným binárním souborem nebo nainstalovaným spustitelným souborem. Hesla a klíče API do tohoto JSON nedávejte.",
+        "label": "Zaregistrovat vlastního agenta",
+        "submit": "Zaregistrovat definici",
+        "title": "Přidat vlastního agenta",
+        "useExample": "Použít příklad"
+      },
+      "install": {
+        "confirm": "Nainstalovat",
+        "description": "Oleafly stáhne tento připnutý balíček do své vlastní složky agentů. Agent pak při zahájení konverzace běží pod vaším účtem v CLI.",
+        "installing": "Instaluje se",
+        "location": "Složka agentů Oleafly, {{id}}/{{version}}",
+        "locationLabel": "Nainstaluje se do",
+        "packageLabel": "Balíček",
+        "title": "Nainstalovat most {{name}} {{version}}"
+      },
+      "installBridge": "Nainstalovat most",
+      "installBridgeNextStep": "Nainstalujte most ACP a pak se přihlaste přes nástroj příkazové řádky.",
+      "intro": "Připojte místního agenta přes ACP. Každý agent si spravuje vlastní modely, nástroje i přihlášení a nastavení poskytovatelů API zůstává oddělené. K přihlášení použijte oficiální účet v CLI: Oleafly neimportuje tokeny účtů ani neodhaduje limity předplatného.",
+      "nextStepTitle": "Další krok",
+      "notReported": "Nenahlášeno",
+      "notice": {
+        "installed": "{{name}} je nainstalován. Než zahájíte konverzaci, přihlaste se přes jeho CLI.",
+        "registered": "{{name}} je zaregistrován. Registrace jej nenainstaluje ani nespustí.",
+        "removed": "Definice agenta byla odebrána. Nainstalované soubory a uložené konverzace zůstávají k dispozici.",
+        "terminalOpen": "Terminál projektu je otevřený. Spusťte přihlašovací příkaz zobrazený u vašeho agenta a pak konverzaci znovu připojte."
+      },
+      "openSignInTerminal": "Otevřít terminál pro přihlášení",
+      "openTerminal": "Otevřít terminál",
+      "platformLabel": "Platforma",
+      "refreshingStatus": "Obnovuje se stav agentů. Aktuální seznam zůstává na místě.",
+      "registry": {
+        "description": "Hledejte v registru ACP agenty publikované jinými týmy.",
+        "hideDistribution": "Skrýt distribuci",
+        "register": "Zaregistrovat agenta",
+        "registered": "Zaregistrováno",
+        "reviewHint": "Záznamy v registru popisují software slovy jeho vydavatelů. Než jej zaregistrujete nebo nainstalujete, distribuci si prohlédněte.",
+        "search": "Hledat",
+        "searchLabel": "Najít agenta ACP",
+        "searchPlaceholder": "Hledat v registru ACP",
+        "searching": "Hledá se",
+        "showDistribution": "Zobrazit distribuci",
+        "title": "Najít další agenty"
+      },
+      "sectionLabel": "Agenti ACP",
+      "signInCommandLabel": "Přihlašovací příkaz",
+      "versionLabel": "Verze",
+      "updateBridge": "Aktualizovat most"
+    },
+    "approvals": {
+      "file": {
+        "description": "Vlastní režim schvalování čte tento soubor. Leží v ~/.oleafly/approvals.toml a platí pro každý projekt v tomto zařízení.",
+        "discard": "Zahodit změny",
+        "emptyFile": "Soubor je zatím prázdný.",
+        "help": {
+          "comments": "Komentáře začínající znakem # se při uložení odsud zachovají, ale volba „Vždy v tomto projektu“ na kartě schválení přepíše soubor bez nich.",
+          "modes": "První tabulka, <modesTable>[\"$approval_modes\"]</modesTable>, nastavuje režim schvalování pro každý projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> nebo <custom>\"custom\"</custom>. Projekt, který není uveden, používá Schvalovat za mě.",
+          "openProject": "Otevřený projekt, {{name}}, má id <projectId>{{id}}</projectId>.",
+          "projectIds": "Id projektů jsou názvy složek v ~/.oleafly/projects.",
+          "rules": "Pak jedna tabulka na id projektu, s jedním pravidlem pro každý nástroj: <allow>\"allow\"</allow> nástroj spustí bez dotazu a <deny>\"deny\"</deny> jej odmítne. Pravidla deny platí ve všech režimech, pravidla allow se uplatní ve vlastním režimu a u run_command přeskočí dotaz i v ostatních režimech.",
+          "toolNames": "Názvy nástrojů, které můžete použít: <names>{{names}}</names> a jakýkoli nástroj MCP pod jeho úplným názvem ze seznamu Nástroje."
+        },
+        "helpToggle": "Jak soubor funguje",
+        "insertExample": "Vložit příklad",
+        "reload": "Znovu načíst",
+        "saved": "Uloženo. Pravidla se uplatní při dalším volání nástroje.",
+        "saving": "Ukládá se",
+        "title": "Soubor s pravidly schvalování"
+      },
+      "project": {
+        "allowed": "Vždy povoleno",
+        "denied": "Vždy zamítnuto",
+        "description": "Uložená pravidla pro {{name}}. Platí, když je režim schvalování Vlastní. Odebráním pravidla se u daného nástroje vrátí standardní politika rizika.",
+        "empty": "Zatím žádná uložená pravidla. Přidejte je volbou „Vždy v tomto projektu“ v dotazu na schválení.",
+        "removeRule": "Odebrat pravidlo pro {{tool}}",
+        "thisProject": "tento projekt",
+        "title": "Schvalování nástrojů"
+      }
+    },
+    "budget": {
+      "clear": "Zrušit rozpočet",
+      "inputLabel": "Rozpočet na AI v amerických dolarech",
+      "inputPlaceholder": "Bez rozpočtu",
+      "limit": "Jakmile se rozpočet vyčerpá, běhy se pozastaví.",
+      "save": "Uložit rozpočet",
+      "spent": "Dosavadní odhadovaná útrata: {{amount}}. Jakmile se rozpočet vyčerpá, běhy se pozastaví.",
+      "title": "Rozpočet na AI"
+    },
+    "customProvider": {
+      "addDescription": "Připojte jakýkoli koncový bod kompatibilní s OpenAI podle jeho základní adresy URL.",
+      "addTitle": "Přidat vlastního poskytovatele",
+      "baseUrlLabel": "Základní adresa URL",
+      "baseUrlNote": "Váš uložený klíč API se odešle na tuto novou adresu.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "Změňte název nebo základní adresu URL.",
+      "editTitle": "Upravit vlastního poskytovatele",
+      "errors": {
+        "addFailed": "Tohoto poskytovatele se nepodařilo přidat.",
+        "baseUrlHost": "Adrese URL chybí host.",
+        "baseUrlInvalid": "Zadejte úplnou adresu URL, například https://api.example.com/v1 nebo http://localhost:1234/v1.",
+        "baseUrlProtocol": "Použijte https://, nebo http:// pro místní server.",
+        "baseUrlRequired": "Základní adresa URL je povinná.",
+        "idFormat": "Používejte jen malá písmena, číslice a pomlčky, například acme.",
+        "idRequired": "ID je povinné.",
+        "nameRequired": "Název je povinný.",
+        "saveFailed": "Tohoto poskytovatele se nepodařilo uložit."
+      },
+      "idLabel": "ID",
+      "idPlaceholder": "acme",
+      "keyLabel": "Klíč API (volitelné)",
+      "keyLabelKeepSaved": "Klíč API (ponechte prázdné, chcete-li zachovat uložený klíč)",
+      "keyPlaceholder": "Nechte prázdné, pokud žádný není potřeba",
+      "keyPlaceholderStored": "Uložený klíč zůstane, dokud nezadáte nový",
+      "namePlaceholder": "Acme",
+      "submitAdd": "Přidat poskytovatele"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Schopnosti agenta",
+      "customDescription": "Přidává se ke každému požadavku na AI jako váš osobní styl a preference. Asistent se jimi řídí nad rámec svého vestavěného chování. Nemohou přebít jeho nástroje ani bezpečnostní pravidla.",
+      "customPlaceholder": "například: Piš vždy britskou angličtinou. Vysvětluj stručně. U seznamů dávej přednost balíčku enumitem.",
+      "customTitle": "Vlastní instrukce",
+      "defaultModelDescription": "Použije se pokaždé, když začnete nový chat. Model můžete pro jednotlivou konverzaci přepnout v panelu chatu.",
+      "defaultModelTitle": "Výchozí model chatu",
+      "pdfCaptureDescription": "Umožní agentovi rastrovat zkompilované stránky (verify_pdf_pages) pro vizuální kontrolu rozvržení. Vypněte, pokud nechcete obrázky stránek posílat svému poskytovateli.",
+      "pdfCaptureLabel": "Povolit AI snímání stránek PDF",
+      "save": "Uložit instrukce",
+      "saved": "Uloženo",
+      "toolsHint": "Zkuste ho požádat třeba o „oprav chyby v LaTeXu“, „přidej sekci Publikace“ nebo „zkompiluj znovu a zkontroluj PDF“.",
+      "toolsTitle": "Asistent aktuálně podporuje tyto nástroje"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "Tento model už v seznamu je.",
+        "empty": "Zadejte id modelu.",
+        "spaces": "Id modelů nesmí obsahovat mezery."
+      },
+      "addPlaceholder": "Přidat id modelu",
+      "changeSummary": "{{added}} přidáno, {{removed}} odebráno",
+      "custom": "Vlastní",
+      "deleteAriaLabel": "Smazat model {{model}}",
+      "deleteDialog": {
+        "description": "Odebrat „{{model}}“ ze seznamu modelů tohoto poskytovatele? Vestavěné modely se mohou vrátit přes Obnovit výchozí. Vlastní modely lze znovu přidat podle ID.",
+        "title": "Smazat model"
+      },
+      "deleteTooltip": "Smazat model",
+      "empty": "Zatím žádné modely. Přidejte jeden níže.",
+      "invalidKey": "Neplatný klíč API.",
+      "metadata": {
+        "refreshFailed": "Data o modelech se nepodařilo obnovit.",
+        "unknownDate": "neznámé datum",
+        "updated": "Data o modelech aktualizována {{date}}",
+        "updatedBundled": "Data o modelech aktualizována {{date}}, dodávaná s aplikací",
+        "updatedFromCache": "Data o modelech aktualizována {{date}}, z posledního stažení"
+      },
+      "noChanges": "Žádné změny",
+      "refresh": "Obnovit",
+      "restore": "Obnovit výchozí",
+      "restoreTooltip": "Znovu přidat vestavěné modely tohoto poskytovatele",
+      "title": "Modely",
+      "unreachable": "Poskytovatele se nepodařilo kontaktovat.",
+      "unreadableList": "Poskytovatel vrátil modely, které Oleafly nedokázal přečíst.",
+      "updated": "Aktualizováno {{time}}"
+    },
+    "personas": {
+      "addStarter": "Přidat personu",
+      "addStarterFailed": "{{name}} se nepodařilo přidat. {{error}}",
+      "addStarterNamed": "Přidat personu {{name}}",
+      "colors": {
+        "forest": "Lesní",
+        "grape": "Hroznová",
+        "ocean": "Oceánská",
+        "slate": "Břidlicová",
+        "sunset": "Západ slunce"
+      },
+      "create": "Vytvořit personu",
+      "delete": "Smazat personu",
+      "deleteDescription": "Smazat „{{name}}“? Její prompt se trvale odstraní a každý chat, který ji používá, se vrátí k vašim výchozím instrukcím.",
+      "deleteNamed": "Smazat personu {{name}}",
+      "description": "Znovupoužitelné instrukce pro to, jak má asistent pracovat. Pro daný úkol si jednu zvolte v chatu. Dokud je vybraná, nahrazuje vaše výchozí instrukce.",
+      "edit": "Upravit personu",
+      "editNamed": "Upravit personu {{name}}",
+      "empty": "Zatím nebyly přidány žádné persony.",
+      "form": {
+        "color": "Barva",
+        "create": "Vytvořit",
+        "createTitle": "Vytvoření persony",
+        "description": "Nastavte znovupoužitelné instrukce pro to, jak má asistent pracovat.",
+        "editTitle": "Úprava persony",
+        "instructions": "Instrukce",
+        "instructionsPlaceholder": "Projdi můj text kvůli srozumitelnosti a nejdůležitější problémy uveď jako první.",
+        "namePlaceholder": "Stručný korektor",
+        "required": "Název a prompt jsou povinné.",
+        "saveFailed": "Tuto personu se nepodařilo uložit."
+      },
+      "starters": {
+        "criticalReviewer": "Hledá slabiny v argumentech, metodách, důkazech a podání.",
+        "documentEditor": "Opravuje text, strukturu, citace a LaTeX cílenými, bezpečnými zásahy.",
+        "figure": "Vytváří obrázky a diagramy v publikační kvalitě jako LaTeX TikZ nebo PGFPlots.",
+        "researchWriter": "Píše a strukturuje odborný text, aniž by si vymýšlel důkazy nebo citace."
+      },
+      "suggestedDescription": "Začněte s některou z nich a pak si její instrukce upravte podle svého postupu.",
+      "suggestedTitle": "Doporučené persony",
+      "title": "Persony"
+    },
+    "providers": {
+      "addCustom": "Přidat vlastního poskytovatele",
+      "badge": {
+        "connected": "Připojeno",
+        "notRunning": "Neběží",
+        "running": "Běží"
+      },
+      "blurbs": {
+        "anthropic": "Modely Claude - silné v kódu i psaní.",
+        "custom": "Vlastní poskytovatel.",
+        "deepseek": "Modely DeepSeek V4.",
+        "google": "Modely Gemini z Google AI Studia.",
+        "groq": "Velmi rychlá inference otevřených modelů.",
+        "mistral": "Modely Mistral a Codestral.",
+        "ollama": "Spouští modely ve vašem počítači. Klíč není potřeba - nainstalujte Ollama a stáhněte model.",
+        "openai": "Modely GPT. Výchozí volba.",
+        "openrouter": "Jeden klíč, přístup k modelům z mnoha laboratoří.",
+        "perplexity": "Modely Sonar s živým ukotvením ve webu.",
+        "xai": "Modely Grok od xAI.",
+        "zai": "Modely GLM přes předplatné Z.AI GLM Coding Plan."
+      },
+      "deleteKeyAriaLabel": "Smazat klíč {{provider}}",
+      "deleteKeyTooltip": "Smazat klíč",
+      "docs": "Dokumentace",
+      "editAriaLabel": "Upravit {{provider}}",
+      "editTooltip": "Upravit název nebo koncový bod",
+      "getKey": "Získat klíč",
+      "intro": "Níže připojte poskytovatele, které používáte. Klíče se ukládají jen místně. Uložením se poskytovatel nastaví jako výchozí. Mezi nastavenými poskytovateli a modely můžete přepínat v rozbalovací nabídce v panelu chatu.",
+      "keyPlaceholder": "Sem vložte svůj klíč API",
+      "modelLabel": "Model",
+      "ollama": {
+        "active": "Aktivní",
+        "changeHost": "Změnit hostitele (pokročilé)",
+        "check": "Zkontrolovat Ollama",
+        "checking": "Kontroluje se…",
+        "disconnect": "Odpojit",
+        "hideHost": "Skrýt hostitele",
+        "installedHint": "Ollama je tu nainstalovaná. Její spuštění chvíli trvá.",
+        "modelPlaceholder": "Vyberte model, který se použije",
+        "noModels": "Ollama běží, ale nejsou nainstalované žádné modely. Spusťte <pull>ollama pull llama3.2</pull> a pak zkontrolujte znovu.",
+        "noneResponding": "Na <host>{{host}}</host> neodpovídá žádná Ollama.",
+        "notChecked": "Zatím nezkontrolováno",
+        "notDetected": "Nenalezeno",
+        "recheck": "Zkontrolovat znovu",
+        "runningModels_one": "Běží · {{count}} model",
+        "runningModels_few": "Běží · {{count}} modely",
+        "runningModels_many": "Běží · {{count}} modelu",
+        "runningModels_other": "Běží · {{count}} modelů",
+        "setupSteps": "1. Nainstalujte z <download>ollama.com <icon></icon></download> · 2. Spustí se automaticky (nebo spusťte <serve>ollama serve</serve>) · 3. Stáhněte model, například <pull>ollama pull llama3.2</pull> · 4. Zkontrolujte znovu.",
+        "start": "Spustit Ollama"
+      },
+      "removeAriaLabel": "Odebrat {{provider}}",
+      "removeDialog": {
+        "description": "Odebrat „{{provider}}“? Spolu s ním se smaže i jeho uložený klíč a seznam modelů.",
+        "title": "Odebrání vlastního poskytovatele"
+      },
+      "removeTooltip": "Odebrat vlastního poskytovatele",
+      "replaceKey": "Nahradit klíč",
+      "status": {
+        "error": "Chyba: {{message}}",
+        "errorFallback": "Klíč se nepodařilo ověřit.",
+        "valid": "Klíč je platný. Modely jsou připravené níže.",
+        "validating": "Kontroluje se klíč..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Načítají se agenti…",
+      "errors": {
+        "invalidKey": "Neplatný klíč API.",
+        "keyNotKept": "Základní adresa URL byla uložena, ale klíč ne. Zadejte klíč znovu.",
+        "providerGone": "Tento poskytovatel už neexistuje.",
+        "providerIdInUse": "Toto ID poskytovatele se už používá."
+      },
+      "messages": {
+        "keyRemoved": "Klíč {{provider}} byl odebrán.",
+        "keyRemovedAccessDisabled": "Klíč {{provider}} byl odebrán. Přístup k AI je vypnutý.",
+        "keySavedAddModels": "Klíč {{provider}} byl uložen. Modely přidejte ručně níže.",
+        "keySavedCheckedOnUse": "Klíč {{provider}} byl uložen. Zkontroluje se při prvním použití.",
+        "ollamaConnected": "Ollama připojena · {{model}}",
+        "preferencesReset": "Předvolby asistenta AI byly obnoveny na výchozí hodnoty.",
+        "providerAdded": "{{provider}} byl přidán.",
+        "providerConnected": "{{provider}} je připojen.",
+        "providerUpdated": "{{provider}} byl aktualizován.",
+        "providerUpdatedWithoutModels": "{{provider}} byl aktualizován. Jeho seznam modelů se nepodařilo obnovit."
+      },
+      "reset": {
+        "confirmWithProject": "Obnoví předvolby asistenta AI na výchozí hodnoty, včetně dostupnosti modelů, zapnutých dovedností a rozpočtu tohoto projektu. Aktivní poskytovatel a model, klíče poskytovatelů, persony, pravidla schvalování, historie využití a servery MCP zůstanou beze změny.",
+        "confirmWithoutProject": "Obnoví předvolby asistenta AI na výchozí hodnoty, včetně dostupnosti modelů a zapnutých dovedností. Aktivní poskytovatel a model, klíče poskytovatelů, persony, pravidla schvalování, historie využití a servery MCP zůstanou beze změny.",
+        "sectionName": "Asistent AI"
+      },
+      "tabs": {
+        "agents": "Agenti CLI",
+        "instructions": "Instrukce",
+        "mcp": "MCP",
+        "personas": "Persony",
+        "providers": "Poskytovatelé a klíče",
+        "skills": "Dovednosti"
+      }
+    },
+    "skills": {
+      "addFolder": "Přidat složku",
+      "addFolderDialogTitle": "Přidání složky s dovednostmi",
+      "catalog": {
+        "description": "Další dovednosti pro konkrétní výzkumné obory. Instalací se dovednost přidá do seznamu výše.",
+        "empty": "Katalog nemá žádné další dovednosti k instalaci.",
+        "install": "Nainstalovat",
+        "loading": "Načítá se katalog...",
+        "messages": {
+          "installed": "{{name}} nainstalováno.",
+          "removed": "{{name}} odebráno."
+        },
+        "progress": {
+          "downloading": "Stahuje se...",
+          "downloadingPercent": "Stahuje se {{percent}} %",
+          "extracting": "Rozbaluje se...",
+          "extractingPercent": "Rozbaluje se {{percent}} %",
+          "failed": "Instalace selhala.",
+          "finishing": "Dokončuje se instalace..."
+        },
+        "refresh": "Obnovit",
+        "source": {
+          "bundled": "Vestavěný katalog",
+          "bundledOffline": "Vestavěný katalog, síť se nepodařilo kontaktovat",
+          "cached": "Katalog z mezipaměti z cdn.oleafly.com, naposledy staženo {{when}}",
+          "cachedOffline": "Katalog z mezipaměti z cdn.oleafly.com, naposledy staženo {{when}}, síť se nepodařilo kontaktovat",
+          "cachedUnknown": "Katalog z mezipaměti z cdn.oleafly.com, doba posledního stažení není známá",
+          "cachedUnknownOffline": "Katalog z mezipaměti z cdn.oleafly.com, doba posledního stažení není známá, síť se nepodařilo kontaktovat",
+          "remote": "Katalog z cdn.oleafly.com, staženo {{when}}",
+          "remoteUnknown": "Katalog z cdn.oleafly.com, doba stažení není známá"
+        },
+        "title": "Oborová police",
+        "uninstall": "Odinstalovat",
+        "update": "Aktualizovat"
+      },
+      "createSkill": "Vytvořit dovednost",
+      "description": "Asistent načte úplné instrukce dovednosti až ve chvíli, kdy usoudí, že ji potřebuje, nebo hned, když v chatu napíšete /skill-id. Dovednost, kterou tu zapnete, je zapnutá ve všech projektech, dokud ji projekt nepřebije.",
+      "editAria": "Upravit {{name}}",
+      "editor": {
+        "createDescription": "Vytvoří koncept SKILL.md ve vaší složce dovedností Oleafly.",
+        "createTitle": "Vytvoření dovednosti",
+        "descriptionPlaceholder": "Zkontroluj, zda má každé tvrzení oporu.",
+        "editDescription": "Dolaďte metadata a instrukce uložené v SKILL.md.",
+        "editTitle": "Úprava dovednosti",
+        "instructions": "Instrukce",
+        "instructionsHint": "Nechte prázdné a vytvoří se minimální kostra instrukcí.",
+        "instructionsPlaceholder": "Uveďte, kdy tuto dovednost použít a jaké kroky má asistent provést.",
+        "namePlaceholder": "Kontrolor tvrzení",
+        "requiredAll": "Název, popis a instrukce jsou povinné.",
+        "requiredBasics": "Název a popis jsou povinné.",
+        "submitCreate": "Vytvořit"
+      },
+      "empty": "Nebyly nalezeny žádné dovednosti. Přidejte složku nebo nějakou vytvořte.",
+      "enableAria": "Zapnout {{name}}",
+      "fileCount_one": "{{count}} soubor",
+      "fileCount_few": "{{count}} soubory",
+      "fileCount_many": "{{count}} souboru",
+      "fileCount_other": "{{count}} souborů",
+      "groups": {
+        "shelf": "Oborová police",
+        "user": "Vaše dovednosti"
+      },
+      "inheritsDevice": "Dědí nastavení zařízení",
+      "invalidBadge": "Neplatné",
+      "loadFailed": "Dovednosti se nepodařilo načíst. {{message}}",
+      "loading": "Načítají se dovednosti...",
+      "messages": {
+        "added": "{{name}} přidáno.",
+        "created": "{{name}} vytvořeno.",
+        "editorClosed": "Editor dovedností už není otevřený.",
+        "removed": "{{name}} odebráno.",
+        "saved": "{{name}} uloženo.",
+        "updated": "{{name}} aktualizováno."
+      },
+      "missingDescription": "Této dovednosti chybí popis.",
+      "offForProject": "Vypnuto pro tento projekt",
+      "onForProject": "Zapnuto pro tento projekt",
+      "phases": {
+        "authoring": "Psaní",
+        "communication": "Komunikace",
+        "figures": "Obrázky",
+        "research": "Výzkum",
+        "review": "Revize",
+        "submission": "Odeslání",
+        "tooling": "Nástroje"
+      },
+      "removeAria": "Odebrat {{name}}",
+      "removeDialog": {
+        "description": "Odebrat „{{name}}“ a její složku z Oleafly? Tuto akci nelze vrátit zpět.",
+        "title": "Odebrání dovednosti"
+      },
+      "share": {
+        "description": "Propojte své dovednosti do složek, které už jiní programovací agenti v tomto počítači čtou, takže dovednost napíšete jednou a použije ji každý agent.",
+        "emptyBody": "V tomto počítači nebyly nalezeny žádné další složky agentů.",
+        "status": {
+          "linked": "propojeno {{linked}} z {{total}}",
+          "undetected": "V tomto zařízení nenalezeno",
+          "unsupported": "V tomto systému není podporováno"
+        },
+        "summary": {
+          "checking": "Kontrolují se složky agentů",
+          "linked_one": "Propojeno {{linked}} z {{count}} agenta",
+          "linked_few": "Propojeno {{linked}} z {{count}} agentů",
+          "linked_many": "Propojeno {{linked}} z {{count}} agenta",
+          "linked_other": "Propojeno {{linked}} z {{count}} agentů",
+          "none": "Nebyly nalezeny žádné další složky agentů"
+        },
+        "title": "Sdílet dovednosti s dalšími agenty v tomto počítači"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "Přidáno",
+        "bundled": "Vestavěné",
+        "catalog": "Nainstalováno"
+      },
+      "tier": {
+        "credits": "Od {{credits}}",
+        "native": "Postup Oleafly",
+        "shelf": "Dovednost z oborové police",
+        "shelfWithLicense": "Oborová police, {{license}}",
+        "user": "Vaše vlastní dovednost",
+        "vendored": "Převzatá dovednost"
+      },
+      "title": "Dovednosti",
+      "updateAction": "Aktualizovat",
+      "updateDialog": {
+        "description": "Nahradit „{{name}}“ nejnovější dodávanou verzí? Veškeré místní úpravy jejích souborů budou ztraceny.",
+        "title": "Aktualizace dovednosti"
+      },
+      "useDeviceSetting": "Použít nastavení zařízení",
+      "useDeviceSettingAria": "Použít pro {{name}} nastavení zařízení",
+      "useInProject": "Použít v tomto projektu",
+      "useInProjectAria": "Použít {{name}} v tomto projektu",
+      "validateAria": "Ověřit {{name}}"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Používá se pro tlačítka, výběr a kurzor v editoru.",
+        "label": "Barva zvýraznění",
+        "swatchAriaLabel": "Zvýraznění {{name}}"
+      },
+      "bgPattern": {
+        "description": "Vyberte vzor za policí projektů.",
+        "dots": "Puntíky",
+        "grid": "Mřížka",
+        "label": "Vzor pozadí"
+      },
+      "dock": {
+        "bottom": "Dole",
+        "description": "Zvolte, kde má být dok na domovské obrazovce.",
+        "label": "Umístění doku",
+        "left": "Vlevo",
+        "right": "Vpravo"
+      },
+      "font": {
+        "description": "Pokud písmo není nainstalované, použije se systémová náhrada.",
+        "label": "Písmo aplikace"
+      },
+      "fontSize": {
+        "description": "Zvětšete nebo zmenšete text v nabídkách, panelech a tlačítkách.",
+        "label": "Velikost písma aplikace"
+      },
+      "theme": {
+        "description": "Systémový se řídí operačním systémem a mění se spolu s ním.",
+        "label": "Vzhled"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "Domovská stránka prohlížeče",
+        "description": "Zvolte stránku, která se otevře s dokem prohlížeče.",
+        "label": "Domovská stránka"
+      },
+      "searchEngine": {
+        "description": "Zvolte vyhledávač používaný pro textové dotazy.",
+        "label": "Výchozí vyhledávač"
+      }
+    },
+    "customTheme": {
+      "cleared": "Přizpůsobení motivu bylo zrušeno.",
+      "customCss": {
+        "description": "Volitelné deklarace platí jen uvnitř aplikace. Pravidla, importy a adresy URL jsou blokované.",
+        "label": "Deklarace CSS omezené na aplikaci"
+      },
+      "darkRestored": "Tokeny tmavého režimu byly obnoveny.",
+      "description": "Změňte barevné tokeny aplikace pro každý režim. Změny se ukládají místně a projeví se hned.",
+      "exportTheme": "Exportovat motiv",
+      "fileTooLarge": "Soubor motivu je větší než 128 KiB.",
+      "importFileAriaLabel": "Importovat soubor motivu",
+      "importTheme": "Importovat motiv",
+      "imported": "Motiv byl importován a použit.",
+      "importedSkippedMore_one": "Motiv byl importován a použit. Přeskočen {{count}} token, který Oleafly nepoužívá: {{tokens}} a další.",
+      "importedSkippedMore_few": "Motiv byl importován a použit. Přeskočeny {{count}} tokeny, které Oleafly nepoužívá: {{tokens}} a další.",
+      "importedSkippedMore_many": "Motiv byl importován a použit. Přeskočeno {{count}} tokenu, který Oleafly nepoužívá: {{tokens}} a další.",
+      "importedSkippedMore_other": "Motiv byl importován a použit. Přeskočeno {{count}} tokenů, které Oleafly nepoužívá: {{tokens}} a další.",
+      "importedSkipped_one": "Motiv byl importován a použit. Přeskočen {{count}} token, který Oleafly nepoužívá: {{tokens}}.",
+      "importedSkipped_few": "Motiv byl importován a použit. Přeskočeny {{count}} tokeny, které Oleafly nepoužívá: {{tokens}}.",
+      "importedSkipped_many": "Motiv byl importován a použit. Přeskočeno {{count}} tokenu, který Oleafly nepoužívá: {{tokens}}.",
+      "importedSkipped_other": "Motiv byl importován a použit. Přeskočeno {{count}} tokenů, které Oleafly nepoužívá: {{tokens}}.",
+      "lightRestored": "Tokeny světlého režimu byly obnoveny.",
+      "modeDark": "Tmavý režim",
+      "modeFieldsetAriaLabel": "Režim motivu k úpravě",
+      "modeLight": "Světlý režim",
+      "pickColorDark": "Vyberte barvu tokenu {{token}} pro tmavý režim",
+      "pickColorLight": "Vyberte barvu tokenu {{token}} pro světlý režim",
+      "radius": {
+        "description": "Použijte hodnotu jako 8px, 0.5rem nebo 1em. Ponechte prázdné pro výchozí hodnotu.",
+        "label": "Zaoblení rohů"
+      },
+      "resetAll": "Obnovit vše",
+      "resetMode": "Obnovit tento režim",
+      "title": "Přizpůsobení motivu",
+      "tokenInputDark": "Token {{token}} pro tmavý režim",
+      "tokenInputLight": "Token {{token}} pro světlý režim",
+      "tokens": {
+        "accent": "Zvýraznění",
+        "accentForeground": "Text na zvýraznění",
+        "background": "Pozadí",
+        "border": "Ohraničení",
+        "card": "Panel",
+        "cardForeground": "Text panelu",
+        "destructive": "Nebezpečí",
+        "destructiveForeground": "Text nebezpečí",
+        "foreground": "Text",
+        "input": "Ohraničení pole",
+        "muted": "Ztlumené",
+        "mutedForeground": "Ztlumený text",
+        "popover": "Vyskakovací panel",
+        "popoverForeground": "Text vyskakovacího panelu",
+        "primary": "Hlavní",
+        "primaryForeground": "Hlavní text",
+        "ring": "Prstenec zaměření",
+        "secondary": "Vedlejší",
+        "secondaryForeground": "Vedlejší text",
+        "sidebar": "Postranní panel",
+        "sidebarAccent": "Zvýraznění postranního panelu",
+        "sidebarAccentForeground": "Text zvýraznění postranního panelu",
+        "sidebarBorder": "Ohraničení postranního panelu",
+        "sidebarForeground": "Text postranního panelu"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Automaticky vkládat uzavírací hranaté a kulaté závorky.",
+        "label": "Automatické uzavírání závorek"
+      },
+      "autoCloseEnvironments": {
+        "description": "Vložit \\end, když po \\begin stisknete Enter.",
+        "label": "Automatické uzavírání prostředí"
+      },
+      "autoCloseMath": {
+        "description": "Při psaní párovat $, \\( a \\[.",
+        "label": "Automatické uzavírání matematiky"
+      },
+      "autocomplete": {
+        "description": "Zobrazovat doplňování kódu už při psaní. Když je vypnuté, otevřete je pomocí Ctrl+Space.",
+        "label": "Automatické doplňování"
+      },
+      "font": {
+        "description": "Zvolte neproporcionální písmo používané pro zdrojové soubory.",
+        "label": "Písmo editoru"
+      },
+      "fontSize": {
+        "description": "Nastavte velikost textu ve zdrojovém editoru.",
+        "label": "Velikost písma editoru"
+      },
+      "ghostCompletion": {
+        "description": "Zobrazovat pravděpodobné doplnění za kurzorem. Přijmete jej klávesou Tab.",
+        "label": "Návrh přímo v textu"
+      },
+      "nonBlinkingCursor": {
+        "description": "Nechat kurzor editoru svítit stále.",
+        "label": "Neblikající kurzor"
+      },
+      "stickyScroll": {
+        "description": "Při posouvání držet aktuální sekce a prostředí LaTeXu nahoře.",
+        "label": "Přilepený posuv"
+      },
+      "theme": {
+        "description": "Nastavit barvy syntaxe zdroje nezávisle na motivu aplikace.",
+        "label": "Motiv editoru"
+      },
+      "keymap": {
+        "description": "Zvolte sadu klávesových zkratek, kterou zdrojový editor používá.",
+        "label": "Klávesové zkratky",
+        "options": {
+          "default": "Výchozí",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Nastavte svislé rozestupy mezi řádky zdroje.",
+        "label": "Výška řádku",
+        "options": {
+          "compact": "Kompaktní",
+          "normal": "Normální",
+          "wide": "Široká"
+        }
+      },
+      "lineWrap": {
+        "description": "Zalamovat dlouhé řádky místo vodorovného posouvání.",
+        "label": "Zalamovat dlouhé řádky"
+      },
+      "tabSize": {
+        "description": "Počet mezer vložených na jednu úroveň odsazení a šířka, na kterou se vykreslí tabulátor.",
+        "label": "Velikost tabulátoru"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Přidat vzor skrytých souborů",
+        "description": "Zvolte, které vygenerované soubory a složky zůstanou mimo strom projektu.",
+        "inputAriaLabel": "Název souboru nebo vzor ke skrytí",
+        "placeholder": "Přidat název souboru nebo vzor",
+        "removeAriaLabel": "Odebrat {{pattern}} ze skrytých souborů",
+        "title": "Skrýt soubory ve stromu souborů"
+      },
+      "homeView": {
+        "description": "Zvolte, jak jsou projekty v knihovně uspořádané.",
+        "grid": "Mřížka",
+        "label": "Výchozí zobrazení domovské obrazovky",
+        "list": "Seznam"
+      },
+      "openIn": {
+        "description": "Zvolte rozvržení, které se použije při otevření projektu.",
+        "label": "Otevírat projekty v"
+      },
+      "showTree": {
+        "description": "Otevřít strom zdrojových souborů pokaždé, když vstoupíte do projektu.",
+        "label": "Zobrazit strom souborů při otevření"
+      }
+    },
+    "fontSizeOption": "{{size}} px",
+    "preview": {
+      "darkMode": {
+        "description": "Ve výchozím stavu invertovat barvy PDF. Barvy můžete stále přepnout v panelu nástrojů náhledu.",
+        "label": "Tmavý režim PDF"
+      },
+      "hoverPreview": {
+        "description": "Zobrazit poslední zkompilovanou stránku, když v knihovně najedete na projekt.",
+        "label": "Náhled PDF při najetí"
+      },
+      "zoomShortcuts": {
+        "description": "Používat Cmd/Ctrl +, - a 0 k přiblížení PDF místo okna aplikace.",
+        "label": "Zkratky přiblížení PDF"
+      }
+    },
+    "sectionName": "Vzhled",
+    "tabs": {
+      "app": "Aplikace",
+      "browser": "Prohlížeč",
+      "editor": "Editor",
+      "files": "Projekt",
+      "pdf": "Náhled PDF",
+      "terminal": "Terminál"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Barevný motiv terminálu",
+        "description": "Zvolte paletu barev ANSI pro terminál.",
+        "label": "Barevný motiv",
+        "optionDark": "{{name}} · tmavý",
+        "optionLight": "{{name}} · světlý"
+      },
+      "colors": {
+        "background": "Pozadí",
+        "backgroundAriaLabel": "Barva pozadí terminálu",
+        "cursor": "Kurzor",
+        "cursorAriaLabel": "Barva kurzoru terminálu",
+        "description": "Upravte základní barvy a zvolená paleta ANSI přitom zůstane.",
+        "followingAppTheme": "Řídí se motivem aplikace: tmavá paleta v tmavém režimu, světlá paleta ve světlém. Chcete-li tyto barvy upravit, vyberte výše konkrétní paletu.",
+        "foreground": "Text",
+        "foregroundAriaLabel": "Barva textu terminálu",
+        "label": "Barvy terminálu"
+      },
+      "cursorBlink": {
+        "description": "Nechat kurzor terminálu blikat.",
+        "label": "Blikající kurzor"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Styl kurzoru terminálu",
+        "bar": "Svislá čára",
+        "block": "Blok",
+        "description": "Zvolte tvar kurzoru v terminálu.",
+        "label": "Styl kurzoru",
+        "underline": "Podtržítko"
+      },
+      "font": {
+        "ariaLabel": "Rodina písma terminálu",
+        "description": "Zvolte neproporcionální písmo používané terminálem.",
+        "label": "Písmo terminálu"
+      },
+      "fontSize": {
+        "description": "Nastavte velikost textu v terminálu.",
+        "label": "Velikost písma terminálu"
+      },
+      "fontWeight": {
+        "description": "Nastavte tloušťku běžného textu v terminálu.",
+        "label": "Tloušťka běžného písma"
+      },
+      "fontWeightBold": {
+        "description": "Nastavte tloušťku tučného textu v terminálu.",
+        "label": "Tloušťka tučného písma"
+      },
+      "startWithProject": {
+        "description": "Spustit prostředí shell už při otevření projektu, ne až když terminál poprvé zobrazíte.",
+        "label": "Spouštět shell s projektem"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly jej uloží na pozadí a jen tehdy, když se zdroj změnil.",
+      "label": "Uložit záchytný bod po každé úspěšné kompilaci"
+    },
+    "config": {
+      "loadFailed": "Nastavení záchytných bodů se nepodařilo načíst.",
+      "saveFailed": "Nastavení záchytných bodů se nepodařilo uložit."
+    },
+    "description": "Záchytný bod zaznamená zdrojové soubory, které použila úspěšná kompilace.",
+    "notifyOnFailure": {
+      "description": "Oleafly vám dá vědět, když nelze uložit záchytný bod, včetně potíží s úložištěm nebo souborů, které se nepodařilo zachytit.",
+      "label": "Zobrazit upozornění, když nelze uložit záchytný bod"
+    },
+    "title": "Záchytné body"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "Odebrat klíč API",
+      "removeEmail": "Odebrat e-mail",
+      "removeKey": "Odebrat klíč",
+      "saveApiKey": "Uložit klíč API",
+      "saveEmail": "Uložit e-mail",
+      "saveKey": "Uložit klíč"
+    },
+    "connected": "Připojeno",
+    "description": "Spravujte přihlašovací údaje používané odbornými vyhledávacími zdroji.",
+    "keyFree": {
+      "description": "Tyto zdroje jsou k dispozici bez klíče API.",
+      "title": "Zdroje bez přihlašovacích údajů"
+    },
+    "openAlex": {
+      "docsLink": "Limity požadavků OpenAlex",
+      "emailLabel": "Kontaktní e-mail pro OpenAlex",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "Kontaktní e-mail pro OpenAlex se nepodařilo odebrat.",
+      "emailRemoved": "Kontaktní e-mail pro OpenAlex byl odebrán",
+      "emailSaveFailed": "Kontaktní e-mail pro OpenAlex se nepodařilo uložit.",
+      "emailSaved": "Kontaktní e-mail pro OpenAlex byl uložen",
+      "hint": "Klíč API se doporučuje. OpenAlex jej pro běžný přístup vyžaduje, zatímco hledání bez klíče sdílí malý denní limit. Kontaktní e-mail navíc zpřístupní zdvořilý fond. Obojí zůstává v tomto zařízení.",
+      "keyLabel": "Klíč API pro OpenAlex",
+      "keyRemoveFailed": "Klíč API pro OpenAlex se nepodařilo odebrat.",
+      "keyRemoved": "Klíč API pro OpenAlex byl odebrán",
+      "keySaveFailed": "Klíč API pro OpenAlex se nepodařilo uložit.",
+      "keySaved": "Klíč API pro OpenAlex byl uložen"
+    },
+    "semanticScholar": {
+      "docsLink": "Informace o API Semantic Scholar",
+      "hint": "Klíč API je volitelný. Anonymní hledání používá veřejné limity služby Semantic Scholar.",
+      "keyLabel": "Klíč API pro Semantic Scholar",
+      "keyRemoveFailed": "Klíč API pro Semantic Scholar se nepodařilo odebrat.",
+      "keyRemoved": "Klíč API pro Semantic Scholar byl odebrán",
+      "keySaveFailed": "Klíč API pro Semantic Scholar se nepodařilo uložit.",
+      "keySaved": "Klíč API pro Semantic Scholar byl uložen"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "Volitelné. Zpřístupní zdroj Google Scholar ve Vyhledávání citací přes Serper. Bez klíče se tento zdroj při výběru přeskočí.",
+      "keyLabel": "Klíč API pro Serper",
+      "keyRemoveFailed": "Klíč API pro Serper se nepodařilo odebrat.",
+      "keyRemoved": "Klíč API pro Serper byl odebrán",
+      "keySaveFailed": "Klíč API pro Serper se nepodařilo uložit.",
+      "keySaved": "Klíč API pro Serper byl uložen"
+    },
+    "title": "Vyhledávání citací"
+  },
+  "cite": {
+    "apa": "Tutéž referenci ve stylu APA najdete pod Cite this repository na GitHubu",
+    "copyBibtex": "Kopírovat BibTeX",
+    "description": "Oleafly je zdarma a s otevřeným zdrojovým kódem a takový zůstane, když se o něm bude vědět. Pokud vám pomohl s článkem, jediný záznam ve vaší bibliografii poví dalšímu badateli, odkud ten nástroj je. Zkopírujte jej, vložte do svého souboru .bib a citujte klíč <citeKey>oleafly</citeKey>.",
+    "title": "Citujte Oleafly ve svém článku"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Vše staženo",
+      "download": "Stáhnout",
+      "downloadAll": "Stáhnout vše"
+    },
+    "aiTemplates": {
+      "deleteDescription": "Smazat „{{name}}“ z vaší knihovny? Projekty už z ní vytvořené si nechávají vlastní kopii a nic se jich nedotkne.",
+      "deleteTitle": "Smazání šablony vytvořené pomocí AI",
+      "deleted": "„{{name}}“ bylo smazáno z vaší knihovny",
+      "empty": "Zatím žádné šablony vytvořené pomocí AI. Vytvořte jednu v galerii šablon.",
+      "fallbackDescription": "Šablona vytvořená pomocí AI",
+      "toggle": "Spravovat šablony vytvořené pomocí AI"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "Vřelé humanistické bezpatkové písmo, které používá řada moderních šablon životopisů.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "Čisté neutrální bezpatkové písmo, které se dobře čte na obrazovce i v tisku.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "Vytříbené přechodové patkové písmo, dobrá volba pro akademické a manažerské dokumenty.",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "Žádná písma ke stažení.",
+      "engineNote": "Engine LuaLaTeX (pro tagovaná, přístupná PDF) se spravuje v sekci Engine LaTeX.",
+      "heading": "Písma",
+      "tooltip": "Některé šablony používají prémiová písma s otevřenou licencí. Aby Oleafly zůstal malý, stahují se tato písma na vyžádání: když takovou šablonu použijete, písma se stáhnou a zkopírují do projektu, aby byl soběstačný a šel zkompilovat offline. Můžete si je také stáhnout předem tady, nebo je odebrat a uvolnit místo."
+    },
+    "packProgress": "{{index}} z {{total}}",
+    "progress": "{{label}} ({{index}} z {{total}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Písma",
+      "templates": "Šablony",
+      "dictionaries": "Slovníky"
+    },
+    "templates": {
+      "empty": "Žádné balíčky šablon ke stažení.",
+      "heading": "Šablony",
+      "tooltip": "Další balíčky šablon se stahují na vyžádání, aby Oleafly zůstal malý. Stáhněte si balíček tady, abyste jeho šablony mohli používat offline, nebo jej později odeberte a uvolněte místo."
+    },
+    "dictionaries": {
+      "empty": "Zatím nejsou stažené žádné další jazyky.",
+      "heading": "Slovníky pravopisu",
+      "note": "Jazyk vyberte v sekci Obecné a stáhne se. Pět dodávaných balíčků je vždy k dispozici a tady se neuvádí.",
+      "tooltip": "S Oleafly se dodává pět jazykových balíčků. Jakýkoli jiný jazyk se stáhne na vyžádání, když si jej zvolíte jako slovník pravopisu, a zůstane tu uložený, aby pak fungoval i offline. Odebráním se uvolní místo a vrátí se nastavení aplikace."
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "Jen pro důvěryhodné projekty. Spouští místní distribuci TeXu, která umí číst soubory dostupné vašemu účtu. Podporuje úplné sady balíčků a vícenásobné průchody. Spouštění příkazů na hostiteli zůstává samostatné oprávnění pro každý projekt.",
+        "name": "latexmk (systémový TeX)"
+      },
+      "tectonic": {
+        "detail": "Dodává se s Oleafly. Rychlý, offline, bez nastavování. Pokryje běžný LaTeX a nejrozšířenější balíčky.",
+        "name": "Tectonic (vestavěný)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Výchozí engine kompilace",
+      "tooltip": "Platí pro nové projekty. Každý projekt si svůj engine připíná v project.json, takže spolupracovníci, kteří otevřou stejný projekt, jej zkompilují stejně bez ohledu na toto nastavení."
+    },
+    "distributions": {
+      "empty": "V tomto počítači nebyla nalezena žádná distribuce TeXu.",
+      "heading": "Správa distribucí TeXu",
+      "rowTooltip": "Dodáváno s {{tools}}. Oleafly spouští své nástroje TeXu z {{binDir}}.",
+      "rowTooltipNoTools": "V této instalaci nebyl nalezen latexmk ani tlmgr. Oleafly spouští své nástroje TeXu z {{binDir}}.",
+      "tooltip": "Vše, co může engine latexmk v tomto počítači využít. TinyTeX se instaluje do vaší domovské složky bez práv správce. Systémové instalace (MacTeX, TeX Live, MiKTeX) se rozpoznají automaticky."
+    },
+    "latexmkMissing": "latexmk nenalezen",
+    "markdown": {
+      "downloading": "Stahuje se…",
+      "heading": "Překladač Markdownu",
+      "install": "Nainstalovat pandoc",
+      "repair": "Opravit Pandoc",
+      "note": "Volba jiného backendu pro PDF u Markdownu ani systémového pandocu místo spravovaného zatím není k dispozici.",
+      "status": {
+        "checking": "Kontroluje se pandoc…",
+        "installing": "Stahuje se připnuté vydání pandocu. Při prvním použití to chvíli trvá.",
+        "missing": "V tomto Macu nenalezeno. Oleafly stáhne kompatibilní pandoc (2.19 nebo novější) do vlastní složky; na vašem systému se nic jiného nemění.",
+        "ready": "Nalezeno. Projekty v Markdownu se pomocí pandocu převedou do LaTeXu a pak se zkompilují vestavěným Tectonicem."
+      },
+      "tectonicDetail": "Vysází LaTeX, který pandoc vytvoří. Dodává se s Oleafly, není co nastavovat.",
+      "tooltip": "Projekty v Markdownu se pomocí pandocu (Pandoc Markdown: tabulky, poznámky pod čarou, citace, matematika) převedou do LaTeXu a ten pak vestavěný Tectonic vysází do PDF. Pandoc se stáhne na vyžádání, až bude poprvé potřeba."
+    },
+    "packages": {
+      "ariaLabel": "Balíčky LaTeX",
+      "badge": {
+        "breaks": "rozbíjí tagování",
+        "caution": "tagování: pozor"
+      },
+      "emptySearch": "Nebyly nalezeny žádné balíčky. Zkuste jiný název nebo klíčové slovo.",
+      "emptySuggested": "Žádný doporučený balíček neodpovídá. Prohledejte TeX Live a projděte celý katalog.",
+      "error": {
+        "install": "{{name}} se nepodařilo nainstalovat.",
+        "read": "Nainstalované balíčky se nepodařilo přečíst.",
+        "remove": "{{name}} se nepodařilo odebrat.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "Najít balíčky LaTeX",
+      "filterPlaceholder": "Filtrovat balíčky…",
+      "heading": "Balíčky",
+      "includedIn": "Součást balíčku {{package}}. Jeho odebráním se odeberou i ostatní soubory z tohoto balíčku.",
+      "intro": {
+        "available": "Tyto balíčky jsou pro projekty používající latexmk (systémový TeX). Tectonic používá vlastní sadu balíčků.",
+        "unavailable": "Správa balíčků vyžaduje TeX Live nebo TinyTeX. U MiKTeXu použijte MiKTeX Console."
+      },
+      "refreshInstalled": "Obnovit nainstalované balíčky",
+      "resultsCapped": "{{total}} výsledků z TeX Live. Zúžte seznam konkrétnějším hledáním.",
+      "results_one": "{{count}} výsledek z TeX Live.",
+      "results_few": "{{count}} výsledky z TeX Live.",
+      "results_many": "{{count}} výsledku z TeX Live.",
+      "results_other": "{{count}} výsledků z TeX Live.",
+      "search": "Hledat v TeX Live",
+      "searching": "Hledá se…",
+      "suggested": "Doporučené balíčky. Další najdete hledáním v TeX Live.",
+      "tree": {
+        "both": "v obou stromech",
+        "system": "v systémovém stromu",
+        "user": "ve vašem osobním stromu"
+      }
+    },
+    "sectionName": "Enginy",
+    "tagging": {
+      "heading": "Tagovaný a přístupný export",
+      "hint": {
+        "none": "Nainstalujte TinyTeX výše v části „Správa distribucí TeXu“ a tagovaný export se zpřístupní.",
+        "system": "Nalezeno ve vašem systému. Není co instalovat.",
+        "tinytex": "Zajišťuje TinyTeX (spravovaný výše)."
+      },
+      "status": {
+        "none": "Není nainstalován žádný tagovací engine",
+        "system": "Používá se systémový LuaLaTeX / TeX Live",
+        "tinytex": "TinyTeX je nainstalován"
+      },
+      "tooltip": "Výchozí engine (Tectonic) je rychlý a funguje offline, ale neumí vytvořit tagovaná PDF podle Section 508 / PDF-UA. K tomu je potřeba systémový LuaLaTeX, který umí číst místní soubory dostupné vašemu účtu, a měl by se proto používat jen u důvěryhodných projektů. Oleafly umí využít stávající distribuci nebo spravovaný TinyTeX."
+    },
+    "tinytex": {
+      "detail": "Kompaktní TeX Live ve vaší domovské složce. Základní stažení má asi 250 MB. Šablony časopisů mohou později přidat balíčky, dohromady zhruba do 1 GB. Předchozí instalace zpřístupní systémový LaTeX ve chvíli, kdy jej sami zvolíte.",
+      "download": "Stáhnout TinyTeX (~250 MB)",
+      "resume": "Pokračovat ve stahování (hotovo {{size}} MB)"
+    },
+    "typst": {
+      "detail": "Dodává se s Oleafly. Rychlý, offline, bez nastavování. Kompiluje dokumenty Typst do PDF.",
+      "heading": "Překladač Typst",
+      "name": "Typst (vestavěný)",
+      "note": "Projekty Typst vždy používají vestavěný překladač. Volba verze překladače ani systémového Typstu zatím není k dispozici.",
+      "tooltip": "Typst je součástí Oleafly, takže není co instalovat ani nastavovat. Každý projekt Typst se kompiluje vestavěným překladačem."
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "Připojeno",
+      "disconnect": "Odpojit",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "Připojit",
+      "toggle": "Pokročilé: použít osobní přístupový token",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "Nové i otevřené projekty dostanou repozitář Git, aby panel Git mohl sledovat změny. Oleafly nikdy necommituje sám od sebe.",
+      "label": "Inicializovat Git pro každý projekt"
+    },
+    "config": {
+      "loadFailed": "Nastavení Gitu se nepodařilo načíst.",
+      "saveFailed": "Nastavení Gitu se nepodařilo uložit."
+    },
+    "connect": "Připojit GitHub",
+    "description": "Zálohujte projekty, synchronizujte je mezi zařízeními a odesílejte i stahujte z panelu Git.",
+    "device": {
+      "openGithub": "Otevřít GitHub",
+      "opened": "Otevřeli jsme <verificationLink>{{url}}</verificationLink> ve vašem prohlížeči. Vložte tam kód a autorizujte Oleafly.",
+      "timedOut": "Přihlášení na GitHub vypršelo. Zkuste to znovu.",
+      "title": "Zadejte tento kód na GitHubu",
+      "waiting": "Čeká se na autorizaci…"
+    },
+    "hint": {
+      "oauth": "Přihlásí vás jednorázovým kódem ve vašem prohlížeči.",
+      "token": "Přihlášení přes OAuth zatím není v tomto sestavení nastavené, vložte proto token."
+    },
+    "notice": {
+      "connected": "Připojeno jako @{{login}}",
+      "disconnected": "Odpojeno."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Připojit",
+      "disconnect": "Odpojit"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>alphaxiv.org</siteLink>, otevřete svou <keyLink>stránku klíčů API</keyLink>, vygenerujte klíč (začíná na <keyPrefix>axv1_</keyPrefix>) a vložte jej níže.",
+      "apiKeyLabel": "Klíč API pro alphaXiv",
+      "description": "Nástroje pro hledání literatury a rozbor článků pro asistenta."
+    },
+    "cookies": {
+      "action": "Importovat cookies",
+      "confirmAllDomains": "Chystáte se importovat cookies z profilu {{profile}} v prohlížeči {{browser}} pro všechny domény. Cookie se uloží ve vestavěném prohlížeči a odešlou se jen na odpovídající weby. Oleafly vás ještě jednou požádá o potvrzení v nativním dialogu, než profil přečte.",
+      "confirmDomain": "Chystáte se importovat cookies z profilu {{profile}} v prohlížeči {{browser}} pro doménu {{domain}}. Cookie se uloží ve vestavěném prohlížeči a odešlou se jen na odpovídající weby. Oleafly vás ještě jednou požádá o potvrzení v nativním dialogu, než profil přečte.",
+      "confirmTitle": "Potvrzení importu cookies",
+      "description": "Použijte ve vestavěném prohlížeči Oleafly stávající přihlášení z jiného prohlížeče.",
+      "detecting": "Hledají se nainstalované profily prohlížečů...",
+      "dialogDescription": "Vyberte jeden nainstalovaný profil prohlížeče. Oleafly jej přečte, až když import zkontrolujete a potvrdíte. Cookies prohlížečů Chromium se odemykají místně přes Klíčenku macOS. Oleafly hodnoty cookies žádné službě Oleafly neposílá.",
+      "dialogTitle": "Import cookies z prohlížeče",
+      "empty": "Nebyly nalezeny žádné podporované profily prohlížečů.",
+      "errors": {
+        "chooseProfile": "Vyberte dostupný profil prohlížeče.",
+        "hostname": "Zadejte název hostitele, například example.com."
+      },
+      "hostnameHint": "Zadejte název hostitele webu, aby se importovaly jen cookies, které tento web může použít. Ponechte prázdné a importuje se každá vhodná cookie z tohoto profilu.",
+      "hostnameLabel": "Cílový název hostitele (volitelné)",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_one": "Importována {{count}} cookie z prohlížeče {{browser}} pro {{domain}}.",
+      "importedDomain_few": "Importovány {{count}} cookies z prohlížeče {{browser}} pro {{domain}}.",
+      "importedDomain_many": "Importováno {{count}} cookies z prohlížeče {{browser}} pro {{domain}}.",
+      "importedDomain_other": "Importováno {{count}} cookies z prohlížeče {{browser}} pro {{domain}}.",
+      "importedProfileDomain_one": "Importována {{count}} cookie z prohlížeče {{browser}}, profil {{profile}}, pro {{domain}}.",
+      "importedProfileDomain_few": "Importovány {{count}} cookies z prohlížeče {{browser}}, profil {{profile}}, pro {{domain}}.",
+      "importedProfileDomain_many": "Importováno {{count}} cookies z prohlížeče {{browser}}, profil {{profile}}, pro {{domain}}.",
+      "importedProfileDomain_other": "Importováno {{count}} cookies z prohlížeče {{browser}}, profil {{profile}}, pro {{domain}}.",
+      "importedProfile_one": "Importována {{count}} cookie z prohlížeče {{browser}}, profil {{profile}}.",
+      "importedProfile_few": "Importovány {{count}} cookies z prohlížeče {{browser}}, profil {{profile}}.",
+      "importedProfile_many": "Importováno {{count}} cookies z prohlížeče {{browser}}, profil {{profile}}.",
+      "importedProfile_other": "Importováno {{count}} cookies z prohlížeče {{browser}}, profil {{profile}}.",
+      "imported_one": "Importována {{count}} cookie z prohlížeče {{browser}}.",
+      "imported_few": "Importovány {{count}} cookies z prohlížeče {{browser}}.",
+      "imported_many": "Importováno {{count}} cookies z prohlížeče {{browser}}.",
+      "imported_other": "Importováno {{count}} cookies z prohlížeče {{browser}}.",
+      "importing": "Importují se cookies...",
+      "profileGroupLabel": "Profily prohlížečů",
+      "profileLegend": "Profil prohlížeče",
+      "review": "Zkontrolovat import",
+      "status": {
+        "available": "K dispozici",
+        "comingSoon": "Již brzy",
+        "noCookieStore": "Žádné úložiště cookies",
+        "notInstalled": "Nenainstalováno"
+      },
+      "title": "Import cookies",
+      "tryAgain": "Zkusit znovu"
+    },
+    "zotero": {
+      "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>zotero.org</siteLink>, otevřete svou <keyLink>stránku klíčů API</keyLink> a klíč vytvořte, pak ze stejné stránky zkopírujte své číselné ID uživatele.",
+      "apiKeyLabel": "Klíč API pro Zotero",
+      "description": "Importujte citace a reference ze své knihovny Zotero.",
+      "userIdLabel": "ID uživatele Zotero",
+      "userIdPlaceholder": "ID uživatele"
+    }
+  },
+  "language": {
+    "ariaLabel": "Jazyk rozhraní",
+    "description": "Zvolte jazyk rozhraní. Výchozí systémový se řídí vaším operačním systémem.",
+    "label": "Jazyk",
+    "note": "Změna jazyka rozhraní nemění jazyk dokumentu ani nastavení korektury.",
+    "system": "Výchozí systémový"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "Importovat {{name}} z {{source}}",
+      "description": "Vyberte servery z nástrojů nainstalovaných v tomto počítači.",
+      "detecting": "Hledají se servery MCP...",
+      "duplicateOverwritten": "Už existuje. Bude přepsán.",
+      "duplicateSkipped": "Už existuje. Bude přeskočen.",
+      "duplicates": {
+        "legend": "Když se názvy shodují",
+        "overwrite": {
+          "description": "Nahradit jej vybraným serverem.",
+          "label": "Přepsat stávající"
+        },
+        "skip": {
+          "description": "Ponechat server, který už je v Oleafly uložený.",
+          "label": "Přeskočit stávající"
+        }
+      },
+      "emptyState": "Nebyly nalezeny žádné konfigurace serverů MCP.",
+      "importing": "Importuje se...",
+      "keys": {
+        "environment": "Prostředí: {{names}}",
+        "headers": "Hlavičky: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Importovat vybrané",
+      "summary": {
+        "commandFallback": "Místní příkaz",
+        "remote": "Vzdálený server: {{origin}}.",
+        "remoteUnknown": "Vzdálený server.",
+        "stdio_one": "Místní příkaz: {{command}}. {{count}} argument.",
+        "stdio_few": "Místní příkaz: {{command}}. {{count}} argumenty.",
+        "stdio_many": "Místní příkaz: {{command}}. {{count}} argumentu.",
+        "stdio_other": "Místní příkaz: {{command}}. {{count}} argumentů."
+      },
+      "title": "Import serverů MCP"
+    },
+    "registry": {
+      "argumentsLine": "Argumenty: {{args}}",
+      "description": "Prohledejte veřejná metadata serverů. Nic se tu neinstaluje ani nespouští. Než server přidáte, prohlédněte si jeho příkaz nebo adresu URL.",
+      "emptyQuery": "Zadejte název serveru a prohledejte oficiální registr MCP.",
+      "environmentLine": "Prostředí: {{names}}",
+      "loadMore": "Načíst další",
+      "noResults": "Nebyly vráceny žádné odpovídající záznamy registru.",
+      "review": "Zkontrolujte před přidáním",
+      "searchLabel": "Hledat v oficiálním registru MCP",
+      "searchPlaceholder": "Hledat názvy serverů",
+      "title": "Oficiální registr MCP",
+      "unsupportedEntry": "Tento záznam neuvádí balíček ani vzdálený přenos, který by Oleafly dokázal zkontrolovat.",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Připojte své aplikace"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor a další klienti MCP mohou otevřený projekt číst, upravovat a kompilovat, přičemž každou změnu schvalujete vy.",
+      "enable": {
+        "ariaLabel": "Zapnout server MCP",
+        "description": "Naslouchá jen v tomto počítači a jen dokud je Oleafly otevřený.",
+        "label": "Zapnout server MCP"
+      },
+      "footer": "Server naslouchá jen v tomto počítači (127.0.0.1) a vyžaduje token uvedený výše. U prvních dvou politik se mazání souborů vždy potvrzuje v Oleafly. claude.ai v prohlížeči se k místnímu serveru nedostane. Použijte místo toho Claude Desktop.",
+      "policy": {
+        "ask": {
+          "description": "Zápisy, přejmenování a mazání zobrazí v Oleafly kartu schválení s rozdíly ještě předtím, než se cokoli provede.",
+          "label": "Potvrdit každou změnu"
+        },
+        "autoWrites": {
+          "description": "Zápisy a přejmenování se provedou hned. Mazání stále zobrazí kartu schválení.",
+          "label": "Automaticky schvalovat úpravy, potvrzovat mazání"
+        },
+        "legend": "Politika schvalování",
+        "trust": {
+          "description": "Změny souborů se nedotazují. Příkazy shell a ovládání počítače vždy vyžadují schválení. Váš klient MCP zůstává další pojistkou.",
+          "label": "Důvěřovat tomuto připojení"
+        }
+      },
+      "port": {
+        "ariaLabel": "Automaticky vybraný port serveru MCP",
+        "label": "Port",
+        "restartAriaLabel": "Restartovat server MCP a vybrat volný port",
+        "restartTooltip": "Restartuje server MCP. Oleafly použije tento port znovu, pokud je volný, jinak vybere jiný volný port."
+      },
+      "readOnly": {
+        "ariaLabel": "Režim jen pro čtení",
+        "description": "Externí aplikace mohou číst a kompilovat, ale nikdy měnit soubory.",
+        "label": "Jen pro čtení"
+      },
+      "status": {
+        "restartedAt": "Restartováno na {{url}}",
+        "runningAt": "Běží na {{url}}"
+      },
+      "title": "Server MCP aplikace Oleafly",
+      "token": {
+        "copyUrl": "Kopírovat URL",
+        "enableToView": "Zapněte server a token se zobrazí.",
+        "help": "Zobrazte nebo zkopírujte bearer token, zkopírujte adresu URL serveru nebo token pro připojené klienty MCP vygenerujte znovu.",
+        "hide": "Skrýt",
+        "label": "Bearer token",
+        "regenerate": "Vygenerovat znovu",
+        "regenerateWarning": "Stávající klienti budou potřebovat nový token.",
+        "reveal": "Zobrazit"
+      }
+    },
+    "servers": {
+      "addServer": "Přidat server",
+      "browseRegistry": "Procházet registr",
+      "card": {
+        "editLabel": "Upravit {{name}}",
+        "enableLabel": "Zapnout {{name}}",
+        "noTools": "Nebyly nahlášeny žádné nástroje.",
+        "removeLabel": "Odebrat {{name}}",
+        "toolCount_one": "{{count}} nástroj",
+        "toolCount_few": "{{count}} nástroje",
+        "toolCount_many": "{{count}} nástroje",
+        "toolCount_other": "{{count}} nástrojů",
+        "toolsLabel": "Nástroje ze serveru {{name}}",
+        "validate": "Ověřit",
+        "validateLabel": "Ověřit {{name}}"
+      },
+      "description": "Připojte asistenta AI k místním příkazům nebo vzdáleným koncovým bodům MCP. Oleafly kontroluje každý zapnutý server při otevření této stránky, každou minutu a na vyžádání. Zobrazuje také nástroje, které každý server nabízí.",
+      "editor": {
+        "addAndValidate": "Přidat a ověřit",
+        "argsHint": "Zadejte jeden argument na řádek.",
+        "argsLabel": "Argumenty",
+        "commandLabel": "Příkaz",
+        "description": "Zapnuté servery se před uložením nastavení zkontrolují.",
+        "formView": "Formulář",
+        "jsonHint": "Vložte jeden server pod jeho názvem, nebo blok zabalený v mcpServers.",
+        "jsonLabel": "Úplná konfigurace",
+        "jsonView": "JSON",
+        "nameLabel": "Název serveru",
+        "pairs": {
+          "addHeader": "Přidat hlavičku",
+          "addVariable": "Přidat proměnnou",
+          "environmentKeyLabel": "Klíč proměnné prostředí {{index}}",
+          "environmentTitle": "Proměnné prostředí",
+          "environmentValueLabel": "Hodnota proměnné prostředí {{index}}",
+          "headerKeyLabel": "Klíč hlavičky {{index}}",
+          "headerValueLabel": "Hodnota hlavičky {{index}}",
+          "headersTitle": "Hlavičky požadavku",
+          "removeHeaderLabel": "Odebrat hlavičku {{index}}",
+          "removeVariableLabel": "Odebrat proměnnou {{index}}",
+          "storedValuePlaceholder": "Uložená hodnota",
+          "valuePlaceholder": "Hodnota"
+        },
+        "saveAndValidate": "Uložit a ověřit",
+        "saveChanges": "Uložit změny",
+        "titleAdd": "Přidání serveru MCP",
+        "titleEdit": "Úprava serveru MCP",
+        "transportLegend": "Přenos",
+        "transportRemote": "Vzdálená adresa URL",
+        "transportStdio": "Místní příkaz",
+        "urlLabel": "Vzdálená adresa URL",
+        "viewSwitchLabel": "Editor konfigurace"
+      },
+      "empty": {
+        "description": "Přidejte server a dejte asistentovi nové nástroje, nebo importujte ty, které už používáte v jiném editoru.",
+        "title": "Nebyly přidány žádné servery"
+      },
+      "hideRegistry": "Skrýt registr",
+      "importButton": "Importovat z jiných nástrojů",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "Importováno {{imported}}, přeskočeno {{skipped}}, selhalo {{failed}}.",
+      "live": {
+        "checking": "Kontroluje se {{name}}.",
+        "connected_one": "{{name}} je připojen. K dispozici {{count}} nástroj.",
+        "connected_few": "{{name}} je připojen. K dispozici {{count}} nástroje.",
+        "connected_many": "{{name}} je připojen. K dispozici {{count}} nástroje.",
+        "connected_other": "{{name}} je připojen. K dispozici {{count}} nástrojů.",
+        "disabled": "{{name}} je vypnutý.",
+        "disabledLastCheckFailed": "{{name}} je vypnutý. Poslední kontrola selhala.",
+        "disabledLastCheckFound_one": "{{name}} je vypnutý. Poslední kontrola našla {{count}} nástroj.",
+        "disabledLastCheckFound_few": "{{name}} je vypnutý. Poslední kontrola našla {{count}} nástroje.",
+        "disabledLastCheckFound_many": "{{name}} je vypnutý. Poslední kontrola našla {{count}} nástroje.",
+        "disabledLastCheckFound_other": "{{name}} je vypnutý. Poslední kontrola našla {{count}} nástrojů.",
+        "failed": "Ověření serveru {{name}} selhalo."
+      },
+      "loading": "Načítají se servery...",
+      "remove": {
+        "confirm": "Odebrat server",
+        "description": "Tím se {{name}} odebere z Oleafly. Později jej můžete přidat znovu.",
+        "descriptionFallback": "Tím se server odebere z Oleafly. Později jej můžete přidat znovu.",
+        "title": "Odebrat server?"
+      },
+      "status": {
+        "checking": "Kontroluje se...",
+        "connected": "Připojeno",
+        "disabled": "Vypnuto",
+        "error": "Chyba"
+      },
+      "title": "Servery MCP asistenta"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Přidat globálně ignorované slovo",
+      "placeholder": "Přidat slovo nebo termín",
+      "projectAriaLabel": "Přidat slovo ignorované v projektu {{project}}",
+      "submitAriaLabel": "Přidat ignorované slovo"
+    },
+    "clear": {
+      "confirm": "Vymazat slova",
+      "descriptionFallback": "Tím se z tohoto slovníku odstraní všechny termíny. Budou se hned zase kontrolovat.",
+      "descriptionGlobal": "Tím se z globálního slovníku odstraní všechny termíny. Budou se hned zase kontrolovat.",
+      "descriptionProject": "Tím se z projektu {{project}} odstraní všechny termíny. Budou se hned zase kontrolovat.",
+      "descriptionSuppressed": "Tím se odstraní všechny termíny ze zavřených nálezů v projektu {{project}}. Budou se hned zase kontrolovat.",
+      "suppressedConfirm": "Zobrazit znovu",
+      "suppressedTitle": "Zobrazit zavřené nálezy znovu?",
+      "title": "Vymazat ignorovaná slova?"
+    },
+    "dismissed": {
+      "countTitle": "Zavřeno {{dismissed}} z {{limit}}, které si projekt dokáže pamatovat",
+      "hidden_one": "{{count}} gramatický nález je v tomto projektu skrytý, protože jste zvolili Ignorovat v tomto projektu. Opětovným zobrazením se znovu podtrhne.",
+      "hidden_few": "{{count}} gramatické nálezy jsou v tomto projektu skryté, protože jste zvolili Ignorovat v tomto projektu. Opětovným zobrazením se znovu podtrhnou.",
+      "hidden_many": "{{count}} gramatického nálezu je v tomto projektu skryto, protože jste zvolili Ignorovat v tomto projektu. Opětovným zobrazením se znovu podtrhne.",
+      "hidden_other": "{{count}} gramatických nálezů je v tomto projektu skrytých, protože jste zvolili Ignorovat v tomto projektu. Opětovným zobrazením se znovu podtrhnou.",
+      "none": "Nic není zavřené. Když u gramatického nálezu zvolíte Ignorovat v tomto projektu, objeví se tady.",
+      "showAgain": "Zobrazit je znovu",
+      "title": "Zavřené nálezy",
+      "titleInProject": "Zavřené nálezy v projektu {{project}}"
+    },
+    "global": {
+      "emptyDescription": "Slova, která tu přidáte, korektura přeskočí ve všech projektech.",
+      "scope": "Platí pro každý projekt"
+    },
+    "intro": "Přidejte slova do svého osobního slovníku pro kontrolu pravopisu. Ukládají se do místního nastavení a ignorují se napříč projekty. Porovnání je normalizované podle Unicode a nerozlišuje velikost písmen.",
+    "profileRules": {
+      "description": "Ve výchozím stavu vypnutá, protože u odborných článků spíš překážejí. Zapněte si, co chcete.",
+      "example": "Příklad: {{example}}",
+      "help": "Harper je vyladěný na chat a e-mail. Tato pravidla buď tlačí na styl, kterým se články neřídí, například rozepisování kB a min, nebo klopýtají o zástupné znaky nahrazující značky LaTeXu, proto je Oleafly nechává vypnutá. U každého je vidět, co by označilo. Zapněte je, pokud takové nálezy chcete.",
+      "reasons": {
+        "AvoidContractions": "Chce, abyste každé stažené tvary rozepsali.",
+        "CompoundNouns": "Spojí složené podstatné jméno, které bylo napsané jako dvě slova.",
+        "Dashes": "Nahradí napsané -- nebo --- správným znakem pomlčky.",
+        "DiscourseMarkers": "Označí větu, která začíná výrazem jako however a postrádá za ním čárku.",
+        "EllipsisLength": "Opraví výpustku, která nemá tři tečky.",
+        "ExpandAlgorithm": "Chce rozepsat algo.",
+        "ExpandArgument": "Chce rozepsat arg.",
+        "ExpandCoordinate": "Chce rozepsat coord.",
+        "ExpandMemoryShorthands": "Chce rozepsat KB a MB.",
+        "ExpandParameter": "Chce rozepsat param.",
+        "ExpandStandardInputAndOutput": "Chce rozepsat stdin a stdout.",
+        "ExpandTimeShorthands": "Chce rozepsat min a sec.",
+        "ExplainLikeImFive": "Rozepíše zkratku na celá slova.",
+        "FillerWords": "Označí slova, která považuje za vycpávková.",
+        "Hedging": "Označí vyhýbavé fráze jako I would argue that nebo to a certain degree.",
+        "LongSentences": "Označí každou větu, která překročí jeho limit délky.",
+        "MergeWords": "Spojí slovo, které rozdělila zbloudilá mezera, například to gether.",
+        "MoreAdjective": "Dává přednost druhému stupni před spojením more a přídavného jména.",
+        "NoFrenchSpaces": "Odstraní mezeru před interpunkcí, kterou používá francouzská typografie.",
+        "NoOxfordComma": "Odstraní čárku před posledním členem výčtu.",
+        "NumericRangeEnDash": "Chce mezi krajními hodnotami číselného rozsahu pomlčku.",
+        "OxfordComma": "Vyžaduje čárku před posledním členem výčtu.",
+        "SentenceCapitalization": "Píše první slovo věty s velkým písmenem, i když věta začíná po zamaskovaných značkách.",
+        "Spaces": "Slučuje opakované mezery, které maska textu nechává všude, kde byly vynechány značky.",
+        "SplitWords": "Rozdělí slovo, které mají být dvě, například alot.",
+        "TransposedSpace": "Přesune mezeru, která stojí na špatné straně interpunkce, což maskování často způsobuje."
+      },
+      "title": "Pravidla, která akademický profil nechává vypnutá",
+      "toggleAriaLabel": "Zapnout {{rule}}"
+    },
+    "projects": {
+      "empty": "Otevřete projekt a můžete přidat termíny pro konkrétní projekt.",
+      "emptyDescription": "Slova přidaná pro tento projekt korektura přeskočí jen tady.",
+      "terms_one": "{{used}} / {{limit}} termín",
+      "terms_few": "{{used}} / {{limit}} termíny",
+      "terms_many": "{{used}} / {{limit}} termínu",
+      "terms_other": "{{used}} / {{limit}} termínů"
+    },
+    "reset": {
+      "confirmationDescription": "Trvale odstraní každé ignorované slovo, globální i projektové, a znovu zapne každé gramatické pravidlo, které jste vypnuli. Akademický profil si svá pravidla nechá vypnutá. Korektura bude tato slova zase označovat.",
+      "sectionName": "Slovník"
+    },
+    "search": {
+      "ariaLabel": "Hledat ignorovaná slova",
+      "placeholder": "Hledat ve slovníku"
+    },
+    "tabs": {
+      "global": "Globální",
+      "projects": "Projekty"
+    },
+    "turnedOff": {
+      "description": "Pravidla, která jste vypnuli, a nálezy, které jste v tomto projektu ignorovali.",
+      "help": "Najeďte v editoru na podtržené slovo nebo větu a malá karta ukáže, co Harper našel, i s akcemi na opravu nebo ignorování. Pravidla vypnutá z této karty a nálezy ignorované v tomto projektu jsou uvedené tady, takže kterékoli z nich můžete vrátit zpět.",
+      "listAriaLabel": "Vypnutá gramatická pravidla",
+      "none": "Zatím jste nevypnuli žádné pravidlo.",
+      "restoreAriaLabel": "Znovu zapnout pravidlo {{rule}}",
+      "restoreTitle": "Znovu zapnout pravidlo „{{rule}}“",
+      "title": "Gramatická pravidla a zavřené nálezy"
+    },
+    "words": {
+      "emptyCompact": "Zatím nic ignorovaného.",
+      "emptyTitle": "Zatím nic ignorovaného",
+      "listAriaLabel": "Ignorovaná slova",
+      "noMatches": "Tomuto hledání neodpovídá žádné ignorované slovo.",
+      "removeAriaLabel": "Přestat ignorovat {{word}}",
+      "removeTitle": "Přestat ignorovat „{{word}}“"
+    }
+  },
+  "reset": {
+    "button": "Obnovit výchozí",
+    "confirmDescription": "Obnoví předvolby v části {{sectionName}} na výchozí hodnoty. Ostatní nastavení zůstanou beze změny.",
+    "confirmTitle": "Obnovit výchozí nastavení v části {{sectionName}}?",
+    "description": "Obnoví předvolby v části {{sectionName}} na výchozí hodnoty.",
+    "label": "Obnovit nastavení"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Hledat a spouštět příkazy Oleafly.",
+        "label": "Paleta příkazů"
+      },
+      "forwardSync": {
+        "description": "Skočit od kurzoru v editoru do zkompilovaného PDF.",
+        "label": "Přejít do PDF"
+      },
+      "recompile": {
+        "description": "Zkompilovat aktuální projekt a zobrazit jeho PDF.",
+        "label": "Kompilovat znovu"
+      },
+      "searchDocuments": {
+        "description": "Hledat napříč projekty a dokumenty.",
+        "label": "Hledat ve všech dokumentech"
+      },
+      "shortcutReference": {
+        "description": "Otevřít přehled zkratek projektu.",
+        "label": "Přehled zkratek"
+      },
+      "toggleBrowser": {
+        "description": "Zobrazit nebo skrýt prohlížeč projektu.",
+        "label": "Přepnout prohlížeč"
+      },
+      "toggleSidebar": {
+        "description": "Zobrazit nebo skrýt postranní panel projektu.",
+        "label": "Přepnout postranní panel"
+      },
+      "toggleTerminal": {
+        "description": "Zobrazit nebo skrýt terminál projektu.",
+        "label": "Přepnout terminál"
+      }
+    },
+    "application": {
+      "editAriaLabel": "Upravit {{action}}, nyní {{shortcut}}",
+      "heading": "Zkratky aplikace",
+      "prompt": "Stiskněte novou kombinaci kláves",
+      "recordAriaLabel": "Nahrává se {{action}}. Stiskněte zkratku.",
+      "recording": "Nahrává se",
+      "resetAriaLabel": "Obnovit {{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "Požádat AI o úpravu výběru",
+        "bold": "Tučné",
+        "findAndReplace": "Najít a nahradit",
+        "findReferences": "Najít reference",
+        "goToDefinition": "Přejít na definici",
+        "goToDefinitionWithPointer": "Přejít na definici ukazatelem",
+        "indentOrAcceptAutocomplete": "Odsadit nebo přijmout doplnění",
+        "italic": "Kurzíva",
+        "jumpToSourceFromPdf": "Skok z PDF do zdroje",
+        "redo": "Znovu",
+        "renameSymbol": "Přejmenovat symbol v celém projektu",
+        "slashCommandMenu": "Nabídka vkládání přes lomítko",
+        "triggerAutocomplete": "Vyvolat automatické doplňování",
+        "undo": "Zpět"
+      },
+      "managed": "Spravuje editor"
+    },
+    "categories": {
+      "codeIntelligence": "Inteligence kódu",
+      "editor": "Editor",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "Už je přiřazeno akci {{action}}.",
+      "reserved": "{{shortcut}} si vyhrazuje operační systém."
+    },
+    "intro": "Přizpůsobte si zkratky aplikace a projděte si klávesové kombinace vestavěné v editoru.",
+    "reserved": {
+      "closeWindow": "Zavřít okno",
+      "copy": "Kopírovat",
+      "cut": "Vyjmout",
+      "paste": "Vložit",
+      "quit": "Ukončit",
+      "save": "Uložit",
+      "selectAll": "Vybrat vše",
+      "systemSearch": "Systémové hledání",
+      "windowSwitching": "Přepínání oken"
+    },
+    "reset": {
+      "sectionName": "Klávesové zkratky"
+    },
+    "tabs": {
+      "application": "Aplikace"
+    },
+    "editorKeys": {
+      "clearHint": "Stisknutím klávesy Backspace necháte tuto akci bez zkratky.",
+      "heading": "Klávesy editoru",
+      "intro": "Tyto klávesy fungují uvnitř zdrojového editoru. Režimy Vim a Emacs si drží vlastní zkratky.",
+      "labels": {
+        "addCursorAbove": "Přidat kurzor nad",
+        "addCursorBelow": "Přidat kurzor pod",
+        "deleteLine": "Smazat řádek",
+        "duplicate": "Duplikovat výběr nebo řádek",
+        "gotoLine": "Přejít na řádek",
+        "indentLess": "Zmenšit odsazení",
+        "indentMore": "Zvětšit odsazení",
+        "lowercase": "Malá písmena",
+        "selectNextOccurrence": "Vybrat další výskyt",
+        "titleCase": "První písmena velká",
+        "toggleComment": "Přepnout komentář",
+        "uppercase": "Velká písmena"
+      },
+      "unbound": "Nenastaveno"
+    }
+  }
+}

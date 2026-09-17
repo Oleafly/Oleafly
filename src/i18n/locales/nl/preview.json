@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Logboeken",
+    "showLogs": "Compileerlogboeken tonen",
+    "showPdf": "PDF-voorbeeld tonen",
+    "askAi": "AI vragen",
+    "more": "Meer knoppen voor het voorbeeld",
+    "duration": "{{seconds}}s",
+    "failed": "Mislukt",
+    "compiledWithErrors": "Gecompileerd met fouten",
+    "compiledWithWarnings": "Gecompileerd met waarschuwingen",
+    "compiledSuccessfully": "Succesvol gecompileerd"
+  },
+  "pageLayout": {
+    "group": "Pagina-indeling",
+    "single": "Weergave met één pagina",
+    "double": "Weergave met twee pagina's"
+  },
+  "pages": {
+    "previous": "Vorige pagina",
+    "next": "Volgende pagina",
+    "number": "Paginanummer",
+    "ofTotal": "van {{total}}",
+    "pageOfTotal": "Pagina {{page}} van {{total}}"
+  },
+  "zoom": {
+    "in": "Inzoomen",
+    "out": "Uitzoomen",
+    "fitToWidth": "Passend in de breedte",
+    "fitToHeight": "Passend in de hoogte",
+    "reset": "Terug naar 100%",
+    "percent": "{{percent}}%",
+    "percentLabel": "Zoom {{percent}} procent",
+    "menuLabel": "Zoom · {{percent}}%"
+  },
+  "outline": {
+    "open": "Inhoudsopgave van het document",
+    "panel": "Inhoudsopgave van de PDF",
+    "title": "Inhoudsopgave van het document",
+    "close": "Inhoudsopgave sluiten",
+    "loading": "Inhoudsopgave laden…",
+    "empty": "Deze PDF bevat geen inhoudsopgave.",
+    "externalLink": "Externe link",
+    "externalBadge": "Link"
+  },
+  "search": {
+    "open": "PDF doorzoeken",
+    "panel": "Deze PDF doorzoeken",
+    "placeholder": "Document doorzoeken",
+    "input": "PDF-tekst doorzoeken",
+    "previous": "Vorig zoekresultaat",
+    "next": "Volgend zoekresultaat",
+    "close": "PDF-zoeken sluiten"
+  },
+  "viewer": {
+    "scrollArea": "Doorlopend scrollgebied van de PDF",
+    "crashedTitle": "Het PDF-voorbeeld is vastgelopen",
+    "crashedDetail": "Compileer de huidige revisie opnieuw of probeer de viewer nog een keer.",
+    "retry": "Viewer opnieuw laden",
+    "loadingLatest": "De nieuwste gecompileerde PDF laden…",
+    "retryingLoad": "PDF opnieuw laden…",
+    "retainedFailure": "{{detail}} In plaats daarvan zie je de laatste PDF die wel kon worden geladen.",
+    "retainedFailureDetail": "De huidige PDF kon niet worden geladen",
+    "invalidTitle": "Ongeldige PDF",
+    "emptyTitle": "Lege PDF",
+    "unavailableTitle": "PDF-viewer niet beschikbaar",
+    "loadFailedTitle": "PDF laden mislukt",
+    "loadFailedDetail": "De PDF kon niet worden geladen."
+  },
+  "password": {
+    "title": "Wachtwoord vereist",
+    "label": "PDF-wachtwoord",
+    "placeholder": "PDF-wachtwoord",
+    "submit": "PDF ontgrendelen"
+  },
+  "actions": {
+    "downloadImage": "Afbeelding downloaden",
+    "downloadPdf": "PDF downloaden",
+    "downloadDisplayedPdf": "Weergegeven PDF downloaden",
+    "downloadStalePdf": "Verouderde, niet-actuele PDF downloaden",
+    "saveImage": "Afbeelding opslaan in project",
+    "savePdf": "PDF opslaan in project",
+    "invert": "Kleuren van het PDF-voorbeeld omkeren",
+    "restoreColors": "Kleuren herstellen",
+    "readerView": "Leesweergave",
+    "exitReaderView": "Leesweergave verlaten",
+    "rotate": "Rechtsom draaien",
+    "rotateTooltip": "PDF rechtsom draaien (90°). Nu {{degrees}}°",
+    "openWindow": "Voorbeeld in een nieuw venster openen",
+    "hideToolbar": "Werkbalk verbergen",
+    "showToolbar": "Werkbalk tonen",
+    "settings": "Instellingen voor het PDF-voorbeeld",
+    "fullscreen": "Voorbeeld op volledig scherm",
+    "exitFullscreen": "Volledig scherm verlaten",
+    "retryCompile": "Opnieuw compileren"
+  },
+  "stale": {
+    "badge": "Verouderd",
+    "badgeLabel": "Verouderd, niet-actueel voorbeeld. Compileer opnieuw.",
+    "tooltip": "Het voorbeeld loopt achter op de wijzigingen in de editor. {{explanation}} {{syncTex}} Klik om opnieuw te compileren.",
+    "explanation": "Deze PDF hoort niet bij de actieve projectrevisie.",
+    "revisionExplanation": "Je ziet projectrevisie {{displayed}}. Het actieve project is revisie {{active}}.",
+    "noIdentity": "De weergegeven PDF heeft geen geverifieerde compilatie-identiteit voor de actieve revisie.",
+    "syncTexAvailable": "SyncTeX gebruikt de dichtstbijzijnde ongewijzigde regel voor bewerkingen.",
+    "syncTexUnavailable": "SyncTeX heeft een actuele compilatie nodig."
+  },
+  "save": {
+    "title": "PDF opslaan in project",
+    "imageTitle": "Afbeelding opslaan in project",
+    "close": "Opslaanvenster sluiten",
+    "staleDescription": "Slaat de weergegeven, verouderde PDF op in de projectboom. Deze hoort niet bij de actieve revisie.",
+    "description": "Slaat de weergegeven PDF op in de projectboom (vastgelegd via Git).",
+    "nameLabel": "Naam in het project",
+    "namePlaceholder": "document.pdf",
+    "imageSaved": "Afbeelding opgeslagen in het project.",
+    "pdfSaved": "PDF opgeslagen in het project.",
+    "failed": "Opslaan in het project is niet gelukt."
+  },
+  "download": {
+    "pngFilter": "PNG-afbeelding",
+    "imageSaved": "Afbeelding opgeslagen · {{name}}",
+    "pdfSaved": "PDF opgeslagen · {{name}}",
+    "showInFolder": "In map tonen",
+    "folderUnavailable": "Het bestand is opgeslagen, maar Oleafly kon de map niet openen (geen toestemming). Kijk op de locatie die je in het opslaanvenster koos.",
+    "imageFailed": "Downloaden van de afbeelding is niet gelukt.",
+    "imageFailedDetail": "Downloaden van de afbeelding is niet gelukt: {{detail}}",
+    "pdfFailed": "Downloaden van de PDF is niet gelukt.",
+    "pdfFailedDetail": "Downloaden van de PDF is niet gelukt: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "PDF-compilatie is op dit moment niet beschikbaar.",
+    "compileFailed": "Compileren is mislukt. Open het tabblad Logboeken om te zien wat er misging."
+  },
+  "a11y": {
+    "stale": "Verouderde, niet-actuele PDF. {{explanation}}",
+    "page": "PDF-pagina {{page}} van {{total}}.",
+    "searchResult": "Zoekresultaat {{current}} van {{total}}."
+  },
+  "startup": {
+    "headingReady": "PDF-voorbeeld klaar",
+    "headingPreparing": "PDF-voorbeeld voorbereiden",
+    "headingAttention": "Het opstarten vraagt aandacht",
+    "progressLabel": "Document opstarten: {{completed}} van {{total}} stappen klaar of overgeslagen",
+    "doneCount": "{{completed}}/{{total}} klaar",
+    "metaRunning": "{{stages}} bezig",
+    "metaQueued": "{{stages}} in de wachtrij",
+    "metaFailed": "{{stages}} mislukt",
+    "compileNow": "Nu compileren",
+    "noProject": "Geen actief project",
+    "waitingForEngine": "Wachten op de document-engine",
+    "orPress": "of druk op <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "klaar",
+      "running": "bezig",
+      "queued": "in wachtrij",
+      "skipped": "overgeslagen",
+      "failed": "mislukt"
+    },
+    "language": {
+      "serviceLabel": "Taalservice",
+      "analysisLabel": "Taalanalyse",
+      "openingFiles": "Projectbestanden openen",
+      "starting": "Taalservice starten",
+      "restarting": "Taalservice herstarten",
+      "installing": "Taalservice installeren",
+      "connected": "Gestart en verbonden",
+      "ready": "Klaar",
+      "localOnly": "Niet nodig. Lokale analyse wordt gebruikt.",
+      "notApplicable": "Niet van toepassing op dit project",
+      "unavailable": "Niet beschikbaar. Lokale analyse blijft beschikbaar.",
+      "waitingToStart": "Wacht op starten",
+      "waitingForFiles": "Wachten op projectbestanden",
+      "syncing": "Huidige projectbestanden synchroniseren",
+      "analyzing": "Projectstructuur analyseren",
+      "analyzed": "Huidige projectrevisie geanalyseerd",
+      "partial": "Bruikbare gedeeltelijke analyse is klaar",
+      "needsAttention": "De analyse vraagt aandacht",
+      "notAvailable": "Niet beschikbaar voor dit project",
+      "queued": "In de wachtrij voor de huidige revisie",
+      "waitingForService": "Wachten op de taalservice"
+    },
+    "compile": {
+      "label": "Compileren",
+      "saving": "Huidige wijzigingen opslaan",
+      "downloading": "Benodigde LaTeX-pakketten downloaden",
+      "producing": "PDF-uitvoer maken en controleren",
+      "unavailable": "Compiler niet beschikbaar",
+      "failed": "Compileren mislukt. Open Logboeken voor details.",
+      "accepted": "Geverifieerde uitvoer geaccepteerd",
+      "waiting": "Wachten om de huidige revisie te compileren"
+    },
+    "render": {
+      "label": "PDF renderen",
+      "preparing": "Pagina's, tekst en links voorbereiden",
+      "reading": "PDF lezen · {{percent}}%",
+      "passwordRequired": "Wachtwoord vereist",
+      "needsAttention": "Het renderen van de PDF vraagt aandacht",
+      "ready": "Voorbeeld klaar",
+      "waitingForRenderer": "Wachten op de geverifieerde PDF-renderer",
+      "waitingForCompile": "Wachten op geverifieerde compileeruitvoer"
+    }
+  },
+  "window": {
+    "fitWidth": "Passend in de breedte",
+    "fitHeight": "Passend in de hoogte",
+    "invert": "Kleuren omkeren",
+    "invertLabel": "PDF-kleuren omkeren",
+    "rotateLabel": "PDF rechtsom draaien",
+    "staleHeading": "Verouderd · niet-actueel voorbeeld",
+    "staleCompiling": "Er wordt een nieuwere projectrevisie gecompileerd. Dit is de laatste geverifieerde PDF voor revisie {{revision}}.",
+    "staleUnknownRevision": "onbekend",
+    "staleCompileFailed": "{{detail}} De laatste geverifieerde PDF blijft zichtbaar.",
+    "staleCompileFailedDetail": "De nieuwere compilatie leverde geen bruikbare PDF op",
+    "staleIdentity": "Deze PDF hoort niet bij de laatst geaccepteerde compilatie-identiteit.",
+    "crashedDetail": "Probeer deze viewer opnieuw of compileer nogmaals in het hoofdvenster.",
+    "compilingTitle": "PDF compileren",
+    "compileFailedTitle": "Compileren mislukt",
+    "compileUnavailableTitle": "Compileren niet beschikbaar",
+    "artifactUnavailableTitle": "PDF niet beschikbaar",
+    "noVerifiedTitle": "Geen geverifieerde PDF",
+    "compilingDetail": "De geverifieerde PDF verschijnt zodra het compileren klaar is.",
+    "noVerifiedDetail": "Compileer het project in het hoofdvenster. Dit venster toont alleen uitvoer met een geverifieerde compilatie-identiteit.",
+    "loadingTitle": "PDF laden",
+    "loadingVerified": "Geverifieerde PDF laden…",
+    "restoringLast": "De laatste goed geladen PDF herstellen…",
+    "retryingLoad": "PDF opnieuw laden…",
+    "unlocking": "PDF ontgrendelen…",
+    "rotating": "PDF draaien…",
+    "retainedFailureDetail": "De nieuwste PDF kon niet worden geladen",
+    "artifactFailure": "De gecompileerde PDF kon niet worden geverifieerd of gelezen. De laatste goed geladen PDF blijft behouden als die er is.",
+    "downloadStarted": "Het downloaden van de PDF is gestart.",
+    "downloadSaved": "De PDF is opgeslagen.",
+    "downloadFailed": "De weergegeven PDF kon niet worden opgeslagen."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "Het PDF-wachtwoord is niet geaccepteerd.",
+      "passwordRequired": "Deze PDF is met een wachtwoord beveiligd.",
+      "invalid": "De gecompileerde uitvoer is geen geldige PDF. Compileer opnieuw of bekijk het compileerlogboek.",
+      "unavailable": "De PDF-renderer is niet beschikbaar in dit venster. Probeer het opnieuw nadat je het venster hebt hersteld of de app opnieuw hebt gestart.",
+      "generic": "De PDF kon niet worden geladen. Compileer de huidige revisie opnieuw en probeer het nog eens.",
+      "empty": "De gecompileerde PDF is leeg.",
+      "firstPage": "De PDF is geopend, maar de eerste pagina kon niet worden weergegeven."
+    },
+    "link": {
+      "blockedScheme": "Deze PDF-link gebruikt een geblokkeerd URL-schema."
+    },
+    "search": {
+      "failed": "Het zoeken kon niet elke pagina lezen. Probeer het opnieuw nadat je de PDF opnieuw hebt geladen."
+    },
+    "outline": {
+      "empty": "Deze PDF bevat geen inhoudsopgave.",
+      "failed": "De inhoudsopgave van de PDF kon niet worden geladen.",
+      "destinationUnavailable": "Die bestemming in de inhoudsopgave is niet beschikbaar.",
+      "blockedScheme": "Deze link gebruikt een geblokkeerd URL-schema.",
+      "noDestination": "Dit item in de inhoudsopgave heeft geen bestemming.",
+      "untitled": "Naamloze sectie"
+    },
+    "status": {
+      "loading": "PDF laden…"
+    },
+    "a11y": {
+      "document": "Voorbeeld van het PDF-document",
+      "page": "PDF-pagina {{page}} van {{total}}",
+      "textLayer": "Selecteerbare tekst van PDF-pagina {{page}}"
+    },
+    "screenReader": {
+      "layer": "Schermlezerweergave, pagina {{page}} van {{total}}",
+      "title": "Schermlezermodus",
+      "pageLabel": "Pagina {{page}} van {{total}}",
+      "empty": "Er is geen leesbare tekst gevonden op deze pagina."
+    }
+  }
+}

@@ -1,0 +1,693 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "Dvousloupcové rozvržení",
+      "detailTwoColumn": "Analyzátory životopisů často linearizují dva sloupce ve špatném pořadí. U dokumentů, které musí zpracovat ATS, dejte přednost jednosloupcovému rozvržení.",
+      "titleMultiColumn": "Vícesloupcové rozvržení",
+      "detailMultiColumn": "Analyzátory životopisů často linearizují sloupce ve špatném pořadí. U dokumentů určených pro ATS použijte jediný sloupec."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "Ověřte pořadí čtení dvou sloupců",
+      "detailTwoColumn": "Vícesloupcová publikační rozvržení mohou být přístupná, pokud strom tagů v PDF zachová zamýšlené pořadí. Zkompilujte a ověřte skutečné pořadí čtení místo toho, abyste samotné vizuální sloupce považovali za chybu.",
+      "titleMultiColumn": "Ověřte pořadí čtení více sloupců",
+      "detailMultiColumn": "Sloupce nejsou automaticky nepřístupné, ale pořadí jejich tagů a obsahu musí dávat smysl. Zkompilujte a prohlédněte si skutečné pořadí čtení."
+    },
+    "no-glyphtounicode": {
+      "title": "Není deklarována mapa pro extrakci do Unicode",
+      "detailEngineNeedsMap": "XeTeX ani vestavěný engine, který z něj vychází, nevytvářejí mapu glyfů na Unicode automaticky, takže extrahovaný text může být nečitelný. Zkompilujte, zkontrolujte čtecí zobrazení a dejte přednost písmu s úplným mapováním do Unicode.",
+      "detailAutomatic": "pdfLaTeX a LuaLaTeX vytvářejí tuto mapu automaticky od vydání LaTeXu 2021-06-01, takže deklarace není potřeba. Zkompilujte a ověřte extrahovaný text ve čtecím zobrazení. V XeTeXu načtěte cmap nebo přepněte engine."
+    },
+    "icon-near-contact": {
+      "title": "Ikona vedle kontaktních údajů",
+      "detail": "Ikonová písma (například \\faPhone nebo \\faEnvelope) se vykreslí jako glyfy, které analyzátor přečte jako neznámé znaky a čtečka obrazovky je nedokáže pojmenovat, takže se kontaktní údaj vedle nich může ztratit. Ověřte, že je e-mail nebo telefon k dispozici i jako prostý vybíratelný text."
+    },
+    "layout-table": {
+      "titleTable": "Obsah tabulky se nemusí rozpoznat jako pole životopisu",
+      "detailTable": "Nástroje ATS často zplošťují obsah tabulek nepředvídatelně. Nepoužívejte tabulku k umístění textu životopisu vedle sebe; skutečné tabulky s výzkumnými daty se posuzují zvlášť v Přístupnosti.",
+      "titleTikz": "Obsah TikZ potřebuje sémantickou alternativu",
+      "detailTikz": "TikZ kreslí vizuální obsah, aniž by jeho význam vystavil jako běžný text. Pro publikační výstup doplňte přístupný popis a u obsahu životopisu určeného pro ATS se mu vyhněte."
+    },
+    "contact-in-header": {
+      "title": "Kontaktní údaje v záhlaví stránky",
+      "detail": "Některé analyzátory životopisů záhlaví a zápatí vynechávají. Uveďte e-mail a telefon v těle dokumentu, aby je extrahovaný text zachoval."
+    },
+    "figure-alt": {
+      "title": "Obrázek bez alternativního textu",
+      "detail": "Tento obrázek nemá popisný alternativní text, takže jej čtečka obrazovky nedokáže zprostředkovat. Přidejte popis, například \\includegraphics[alt={Portrétní fotografie autora}]{...}. Čistě dekorativní obrázky místo toho označte jako artefakty."
+    },
+    "link-text": {
+      "title": "Nepopisný text odkazu",
+      "detail": "Text odkazu jako „klikněte zde“ nebo holá adresa URL uživateli čtečky obrazovky nic o cíli neřekne. Použijte text, který cíl pojmenuje, například „moje portfolio“."
+    },
+    "mathml-export-hint": {
+      "title": "Exportujte kopii v HTML s MathML a ověřte přístupnost matematiky",
+      "detail": "Dokument obsahuje matematiku. Čtečky obrazovky čtou rovnice spolehlivě, když jsou v MathML. Použijte Exportovat jako HTML, což pandoc zapisuje s --mathml, a soubor před odesláním otevřete ve čtečce obrazovky nebo v nástroji pro kontrolu přístupnosti."
+    },
+    "no-lang": {
+      "title": "Není nastaven jazyk dokumentu",
+      "detail": "PDF nemá jazyk, takže jej čtečka obrazovky může číst s nesprávnými pravidly výslovnosti. Nastavte jej, například \\usepackage[czech]{babel} nebo pdflang=cs-CZ v balíčku hyperref."
+    },
+    "no-title": {
+      "title": "PDF nemá název",
+      "detail": "PDF nemá v metadatech název, který asistivní technologie a prohlížeče používají k ohlášení dokumentu. Nastavte jej přes hyperref, například \\hypersetup{pdftitle={Vaše jméno, životopis}}."
+    },
+    "heading-skip": {
+      "title": "Přeskočená úroveň nadpisu",
+      "detail": "Tento nadpis skáče o více než jednu úroveň hlouběji než předchozí, což rozbíjí osnovu dokumentu, na kterou spoléhají čtečky obrazovky i analyzátory. Úrovně nepřeskakujte, jděte například section, pak subsection, pak subsubsection."
+    },
+    "nonstandard-headings": {
+      "title": "Nestandardní nadpis sekce: „{{heading}}“",
+      "detail": "Analyzátory mapují sekce podle rozpoznaných standardních nadpisů jako Experience, Education nebo Skills. Kreativní název může sekci nechat nezařazenou. Zvažte konvenční nadpis."
+    },
+    "color-only": {
+      "title": "Ověřte, že barva není jediné vodítko",
+      "detail": "Předletová kontrola našla barevný obsah, ale nedokáže automaticky určit jeho význam. Pokud barva rozlišuje stav nebo kategorie, doplňte ji textem, tvarem, tloušťkou nebo jiným vnímatelným vodítkem."
+    },
+    "reading-order-risk": {
+      "title": "Rozvržení, které může narušit pořadí čtení",
+      "detail": "Poznámky na okraji a obtékané obrázky umísťují obsah mimo hlavní tok, takže jej analyzátory a čtečky obrazovky mohou číst mimo pořadí. Po kompilaci zkontrolujte pořadí čtení v náhledu níže."
+    },
+    "ua-standard-without-title": {
+      "title": "PDF/UA je deklarováno bez názvu dokumentu",
+      "detailBoth": "Tento dokument deklaruje pdfstandard=ua, ale nenastavuje pdftitle ani pdfdisplaydoctitle=true. PDF/UA vyžaduje název v metadatech XMP a předvolbu prohlížeče, která jej zobrazí, takže by výstup tvrdil, že splňuje standard, který nesplňuje. Načtěte hyperref a nastavte \\hypersetup{pdftitle={Váš název}, pdfdisplaydoctitle=true}.",
+      "detailTitle": "Tento dokument deklaruje pdfstandard=ua, ale nenastavuje pdftitle. PDF/UA vyžaduje název v metadatech XMP a předvolbu prohlížeče, která jej zobrazí, takže by výstup tvrdil, že splňuje standard, který nesplňuje. Načtěte hyperref a nastavte \\hypersetup{pdftitle={Váš název}, pdfdisplaydoctitle=true}.",
+      "detailDisplay": "Tento dokument deklaruje pdfstandard=ua, ale nenastavuje pdfdisplaydoctitle=true. PDF/UA vyžaduje název v metadatech XMP a předvolbu prohlížeče, která jej zobrazí, takže by výstup tvrdil, že splňuje standard, který nesplňuje. Načtěte hyperref a nastavte \\hypersetup{pdftitle={Váš název}, pdfdisplaydoctitle=true}."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "Vestavěný engine neumí vytvořit deklarovaný výstup PDF/UA",
+      "detail": "Tento dokument deklaruje pdfstandard=ua, ale vestavěný engine neumí zapsat strom tagů, takže by PDF neslo tvrzení o PDF/UA, které nesplňuje. Zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2025 či novějšího, nebo klíč pdfstandard odeberte."
+    },
+    "table-header-rows": {
+      "title": "Záhlaví tabulky není označeno jako záhlaví",
+      "detail": "Tato tabulka odděluje první řádek linkou, takže se čte jako záhlaví, ale LaTeX ve výchozím stavu taguje každou buňku jako datovou. Čtečka obrazovky pak nedokáže spojit hodnotu s jejím sloupcem. Deklarujte řádek záhlaví, například \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Sloupce se ve výstupu čtou napříč",
+      "detail": "Na této stránce padá text dvou sloupců na stejné řádky, takže je analyzátor čte rovnou napříč do pomíchaného textu a čtečka obrazovky je ohlašuje mimo pořadí. U obsahu, který se má strojově zpracovat, použijte jednosloupcové rozvržení. Podívejte se na čtecí zobrazení níže."
+    },
+    "pdf-garbled": {
+      "title": "Poškozený nebo nenamapovaný text ve výstupu",
+      "detail": "Extrahovaný text obsahuje znaky, které se nenamapovaly na Unicode, takže kopírování i analyzátory vidí poškozený výstup a čtečka obrazovky jej nedokáže přečíst. Obvykle to znamená chybějící mapu glyfů na Unicode nebo písmo, které není vložené jako text."
+    },
+    "pdf-selectable": {
+      "title": "Stránka nemá vybíratelný text",
+      "detail": "Tato stránka obsahuje jen málo extrahovatelného textu nebo vůbec žádný, takže analyzátor i čtečka obrazovky nevidí nic. Pravděpodobně je vykreslená jako obrázek nebo používá písma, která nejsou vložená jako text. Ověřte, že je obsah skutečný, vybíratelný text."
+    },
+    "output-clipped-content": {
+      "title": "Text přesahuje mimo stránku",
+      "detail": "Vybíratelný text leží za mediaboxem této stránky a při tisku i ve zpracování u vydavatele může být oříznutý nebo chybět. Prohlédněte si široké rovnice, tabulky, adresy URL a napozicovaný obsah."
+    },
+    "output-small-text": {
+      "title": "Zjištěno velmi drobné písmo",
+      "detail_one": "{{count}} textový úsek měří méně než přibližně 7 pt. Drobné písmo se špatně čte v tisku i při běžném zvětšení. Ověřte, že to konference nebo časopis dovoluje, a zvětšete popisky či poznámky, které nemusí být tak malé.",
+      "detail_few": "{{count}} textové úseky měří méně než přibližně 7 pt. Drobné písmo se špatně čte v tisku i při běžném zvětšení. Ověřte, že to konference nebo časopis dovoluje, a zvětšete popisky či poznámky, které nemusí být tak malé.",
+      "detail_many": "{{count}} textového úseku měří méně než přibližně 7 pt. Drobné písmo se špatně čte v tisku i při běžném zvětšení. Ověřte, že to konference nebo časopis dovoluje, a zvětšete popisky či poznámky, které nemusí být tak malé.",
+      "detail_other": "{{count}} textových úseků měří méně než přibližně 7 pt. Drobné písmo se špatně čte v tisku i při běžném zvětšení. Ověřte, že to konference nebo časopis dovoluje, a zvětšete popisky či poznámky, které nemusí být tak malé."
+    },
+    "pdf-no-bookmarks": {
+      "title": "Dlouhé PDF nemá záložky",
+      "detail": "Dlouhé dokumenty by měly nabízet hierarchickou osnovu záložek, aby uživatelé klávesnice a asistivních technologií mohli procházet kapitoly bez čtení všech stránek po pořádku. Jde spíš o doporučený postup WCAG než o požadavek PDF/UA. Načtěte hyperref nebo bookmark, aby se osnova vytvořila."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "Metadata PDF se nepodařilo prozkoumat",
+      "detail": "Předletová kontrola nedokázala přečíst metadata PDF, takže nemůže ověřit název ani jazyk dokumentu. Je to neznámý výsledek, ne důkaz, že tato pole chybí. Zkompilujte znovu a spusťte kontrolu ještě jednou."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF nemá jazyk ani název",
+      "titleLang": "PDF nemá jazyk",
+      "titleTitle": "PDF nemá název",
+      "detail": "Asistivní technologie a prohlížeče používají jazyk a název z katalogu PDF, aby dokument správně ohlásily. Nastavte je přes hyperref, například \\hypersetup{pdftitle={Vaše jméno, životopis}, pdflang=cs-CZ}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "Stav tagování PDF se nepodařilo prozkoumat",
+      "detail": "Předletová kontrola nedokázala přečíst slovník MarkInfo v PDF. To je neznámý výsledek, ne důkaz v žádnou stranu, takže výstup podle této kontroly samotné neoznačí za tagovaný ani netagovaný."
+    },
+    "compile-failed": {
+      "title": "Poslední kompilace selhala",
+      "detail": "Výstup k odeslání musí pocházet z úspěšného sestavení. Opravte první chybu překladače, zkompilujte znovu a spusťte předletovou kontrolu."
+    },
+    "compile-overfull-box": {
+      "title_one": "{{count}} přeplněný řádek ve výstupu",
+      "title_few": "{{count}} přeplněné řádky ve výstupu",
+      "title_many": "{{count}} přeplněného řádku ve výstupu",
+      "title_other": "{{count}} přeplněných řádků ve výstupu",
+      "detail": "Překladač hlásí obsah přesahující mimo svůj textový rámec, až o {{width}} pt. Prohlédněte si tato místa kvůli oříznutému textu, rovnicím, tabulkám nebo odkazům."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} chybějící glyf",
+      "title_few": "{{count}} chybějící glyfy",
+      "title_many": "{{count}} chybějícího glyfu",
+      "title_other": "{{count}} chybějících glyfů",
+      "detail": "Zvolená písma neumí vykreslit každý znak. Chybějící glyfy mohou z PDF tiše zmizet, včetně symbolů ve jménech, rovnicích a citacích."
+    },
+    "compile-unresolved-references": {
+      "title": "Zkompilovaný výstup má nevyřešené reference",
+      "detail": "Alespoň jedna citace nebo křížový odkaz zůstaly po kompilaci nevyřešené. Odeslané PDF může obsahovat [?] nebo ??. Zkontrolujte protokol a spusťte potřebné průchody bibliografie a LaTeXu."
+    },
+    "compile-rerun-required": {
+      "title": "Je potřeba další průchod kompilace",
+      "detail": "Poslední protokol říká, že návěští, citace nebo obsah nejsou ustálené. Kompilujte znovu, dokud varování o opakovaném průchodu nezmizí, a teprve pak exportujte."
+    },
+    "compile-duplicate-destination": {
+      "title": "Duplicitní cíle v PDF",
+      "detail": "Dvě kotvy sdílejí stejný cíl, takže odkazy nebo záložky mohou skočit na špatné místo. Obvykle to plyne z duplicitních návěští nebo z vynulování číslování stránek."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Různé velikosti stránek v jednom PDF",
+      "detail_one": "PDF obsahuje {{count}} velikost stránky ({{sizes}}). Smíšené mediaboxy často znamenají chybně vloženou stránku nebo obrázek a mohou neprojít produkčními kontrolami vydavatele.",
+      "detail_few": "PDF obsahuje {{count}} velikosti stránky ({{sizes}}). Smíšené mediaboxy často znamenají chybně vloženou stránku nebo obrázek a mohou neprojít produkčními kontrolami vydavatele.",
+      "detail_many": "PDF obsahuje {{count}} velikosti stránky ({{sizes}}). Smíšené mediaboxy často znamenají chybně vloženou stránku nebo obrázek a mohou neprojít produkčními kontrolami vydavatele.",
+      "detail_other": "PDF obsahuje {{count}} velikostí stránky ({{sizes}}). Smíšené mediaboxy často znamenají chybně vloženou stránku nebo obrázek a mohou neprojít produkčními kontrolami vydavatele."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "Tagování nahlásilo {{count}} problém",
+      "title_few": "Tagování nahlásilo {{count}} problémy",
+      "title_many": "Tagování nahlásilo {{count}} problému",
+      "title_other": "Tagování nahlásilo {{count}} problémů",
+      "detail": "Tagovací kód zapsal do protokolu tato varování: {{warnings}} Každé z nich je místo, kde strom struktury neodpovídá obsahu. Opravte je ve zdroji a zkompilujte znovu."
+    },
+    "output-tagging-status": {
+      "title_one": "Zpráva o stavu tagování označila {{count}} položku",
+      "title_few": "Zpráva o stavu tagování označila {{count}} položky",
+      "title_many": "Zpráva o stavu tagování označila {{count}} položky",
+      "title_other": "Zpráva o stavu tagování označila {{count}} položek",
+      "detail": "LaTeX na konci sestavení zapsal vlastní zprávu o stavu tagování.",
+      "partClass": "Třída {{name}} je {{status}}.",
+      "partBlocking": "Není kompatibilní s tagováním: {{files}}.",
+      "partUnproven": "Žádný zaznamenaný verdikt pro: {{files}}.",
+      "partPartial": "Tagování jen zčásti: {{files}}.",
+      "partAdvice": "Cokoli, co neumí tagovat, může nechat celé části mimo strom struktury, takže nahraďte, co můžete."
+    },
+    "pdf-structure-single-pass": {
+      "title": "Strom tagů vypadá jako po prvním průchodu",
+      "detail": "PDF je označené jako tagované, ale jeho strom struktury je téměř prázdný, což je přesně výsledek jediného průchodu. Tagovaný výstup potřebuje dva průchody. Zkompilujte znovu a zkontrolujte to ještě jednou."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "Toto PDF tvrdí, že je PDF/UA-{{part}}, ale nesplňuje to",
+      "detail": "Metadata XMP deklarují pdfuaid:part {{part}}, ale soubor to nepodkládá.",
+      "partNoXmpTitle": "V metadatech XMP není žádný název dokumentu.",
+      "partNoDisplayDocTitle": "DisplayDocTitle není nastaveno na true.",
+      "partNotTagged": "Soubor není tagovaný.",
+      "partAdvice": "Cokoli, co tomuto tvrzení uvěří, ohlásí toto PDF jako vyhovující, i když není, takže mezery buď zaplňte, nebo tvrzení odeberte. S balíčkem hyperref nastavte \\hypersetup{pdftitle={Váš název}, pdfdisplaydoctitle=true} a kompilujte se zapnutým tagováním."
+    },
+    "pdf-xmp-title": {
+      "title": "Název je jen ve slovníku Info",
+      "detail": "Název dokumentu je nastaven ve slovníku Info, ale ne jako dc:title v metadatech XMP, kde jej PDF/UA hledá. Načtení balíčku hyperref s pdftitle zapíše obojí."
+    },
+    "pdf-display-doc-title": {
+      "title": "Prohlížeč zobrazí název souboru, ne název dokumentu",
+      "detail": "ViewerPreferences nemá položku DisplayDocTitle nastavenou na true, takže prohlížeč PDF ohlašuje ve svém okně i asistivním technologiím název souboru. Nastavte ji přes hyperref, například \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "PDF samo označuje své tagování za nespolehlivé",
+      "detail": "MarkInfo nastavuje Suspects na true, což je způsob, jak producent říká, že strom tagů nemusí odpovídat viditelnému obsahu. Zkompilujte znovu aktuálním enginem a zkontrolujte varování o tagování v protokolu."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} anotace odkazu nemá popis",
+      "title_few": "{{count}} anotace odkazů nemají popis",
+      "title_many": "{{count}} anotace odkazů nemá popis",
+      "title_other": "{{count}} anotací odkazů nemá popis",
+      "detail": "Anotace odkazu bez položky Contents nedává čtečce obrazovky nic, co by ohlásila, když vypisuje odkazy na stránce. Popište cíl v textu odkazu a nechte hyperref, ať tento text přenese do anotace."
+    },
+    "pdf-untagged-content": {
+      "title": "{{percent}} % textu leží mimo strom tagů",
+      "detail": "{{untagged}} z {{total}} textových úseků není navázáno na nic ve stromu tagů, takže je čtečka obrazovky přeskočí. Artefakty se nepočítají. Skutečný obsah musí být tagovaný a dekorativní obsah označený jako artefakt, například \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "Strukturu PDF se nepodařilo plně prozkoumat",
+      "detail_one": "Strom struktury přístupnosti se nepodařilo získat pro stránku {{pages}}. Předletová kontrola nebude nedostupnou strukturu považovat za důkaz, že PDF není tagované.",
+      "detail_few": "Strom struktury přístupnosti se nepodařilo získat pro stránky {{pages}}. Předletová kontrola nebude nedostupnou strukturu považovat za důkaz, že PDF není tagované.",
+      "detail_many": "Strom struktury přístupnosti se nepodařilo získat pro stránky {{pages}}. Předletová kontrola nebude nedostupnou strukturu považovat za důkaz, že PDF není tagované.",
+      "detail_other": "Strom struktury přístupnosti se nepodařilo získat pro stránky {{pages}}. Předletová kontrola nebude nedostupnou strukturu považovat za důkaz, že PDF není tagované."
+    },
+    "pdf-untagged-output": {
+      "title": "Toto PDF není tagované",
+      "detail": "Zkompilované PDF neobsahuje strom struktury, takže čtečka obrazovky nedostane nadpisy, seznamy, tabulky ani pořadí čtení a soubor nemůže splnit článek 7.1 normy PDF/UA-1. Tagovaný výstup potřebuje pdfLaTeX nebo LuaLaTeX z TeX Live 2025 či novějšího s \\DocumentMetadata{tagging=on}. Vestavěný engine tagy vytvořit neumí. Kontroly zdroje a výstupu uvedené výše mezitím platí dál."
+    },
+    "pdf-structure-missing": {
+      "title": "Tagované PDF nemá čitelný strom struktury",
+      "detail": "PDF se hlásí jako tagované, ale předletová kontrola nenašla žádnou strukturu dokumentu k procházení. Čtečky obrazovky nemusí dostat nadpisy, seznamy, tabulky ani pořadí čtení. Tagování potřebuje dva průchody kompilace, takže zkompilujte znovu a zkontrolujte to, než to budete brát jako konečné."
+    },
+    "output-figure-alt": {
+      "title": "Tagovaný obrázek nemá alternativní text",
+      "detail": "Tento obrázek je tagovaný, ale nenese alternativní text, takže jej čtečka obrazovky nedokáže popsat. Přidejte popis ve zdroji, například \\includegraphics[alt={...}]{...}. Dekorativní obrázky místo toho označte pomocí [artifact]."
+    },
+    "output-formula-alt": {
+      "title": "Rovnice nemá textovou alternativu",
+      "detail": "Podle PDF/UA-1 potřebuje Formula položku Alt nebo ActualText. Doplňte ji ve zdroji, například pomocí \\tagpdfsetup nebo klíče alt u rovnice. Podle PDF/UA-2 můžete místo toho přiřadit MathML kompilací v LuaLaTeX s \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}}."
+    },
+    "output-table-headers": {
+      "title": "Tagovaná tabulka nemá buňky záhlaví",
+      "detail": "Tato tabulka nemá buňky záhlaví (TH), takže čtečka obrazovky nedokáže spojit data s nadpisy sloupců nebo řádků. Označte řádek záhlaví, například \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "Ve stromu tagů je přeskočená úroveň nadpisu",
+      "detail": "Tagované nadpisy skáčou o více než jednu úroveň (například z H1 rovnou na H3), což rozbíjí osnovu, podle které se čtečka obrazovky pohybuje. Úrovně nadpisů nepřeskakujte."
+    },
+    "ats-no-name": {
+      "title": "Analyzátor nedokázal rozpoznat vaše jméno",
+      "detail": "V extrahovaném textu nebylo nalezeno žádné věrohodné jméno osoby. Uveďte své jméno jako prostý text blízko začátku dokumentu, mimo záhlaví stránek, grafiku a napozicované textové rámce."
+    },
+    "ats-no-email": {
+      "title": "Analyzátor nenašel váš e-mail",
+      "detail": "V extrahovaném textu nebyla nalezena žádná e-mailová adresa, což je pole, na které analyzátor spoléhá nejvíc. Pokud váš e-mail sousedí s ikonou nebo je uvnitř záhlaví, nemusí jít o vybíratelný text. Uveďte jej v těle jako prostý text."
+    },
+    "ats-no-phone": {
+      "title": "Analyzátor nenašel telefonní číslo",
+      "detail": "V extrahovaném textu nebylo nalezeno žádné telefonní číslo. Pokud tam je, ale schované za ikonou nebo v záhlaví, doplňte jej v těle jako prostý vybíratelný text."
+    },
+    "ats-no-experience": {
+      "title": "Analyzátor nerozpoznal sekci s pracovními zkušenostmi",
+      "detail": "Nebyl nalezen žádný standardní nadpis Experience, takže analyzátor nemusí vaše role seskupit do pracovní historie. Použijte konvenční nadpis jako Experience nebo Work Experience jako skutečný, vybíratelný text."
+    },
+    "ats-long-resume": {
+      "title_one": "Životopis má {{count}} stránku",
+      "title_few": "Životopis má {{count}} stránky",
+      "title_many": "Životopis má {{count}} stránky",
+      "title_other": "Životopis má {{count}} stránek",
+      "detail": "Řada náborových procesů očekává jednu až dvě stránky, i když seniorní, akademické a státní životopisy mohou být delší. Ověřte, že tato délka odpovídá roli i typu dokumentu."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} záznam bibliografie má neúplná metadata",
+      "title_few": "{{count}} záznamy bibliografie mají neúplná metadata",
+      "title_many": "{{count}} záznamu bibliografie má neúplná metadata",
+      "title_other": "{{count}} záznamů bibliografie má neúplná metadata",
+      "detail": "Neúplné záznamy mohou ve stylech vydavatelů vytvořit rozbité nebo nejednoznačné reference. {{examples}}.",
+      "detailTruncated": "Neúplné záznamy mohou ve stylech vydavatelů vytvořit rozbité nebo nejednoznačné reference. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} hodnota DOI vypadá poškozeně",
+      "title_few": "{{count}} hodnoty DOI vypadají poškozeně",
+      "title_many": "{{count}} hodnoty DOI vypadá poškozeně",
+      "title_other": "{{count}} hodnot DOI vypadá poškozeně",
+      "detail": "Zkontrolujte pole DOI u {{keys}}. Ukládejte jen identifikátor DOI, například 10.1000/example, ne popisný text."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} možná duplicitní reference",
+      "title_few": "{{count}} možné skupiny duplicitních referencí",
+      "title_many": "{{count}} možné skupiny duplicitních referencí",
+      "title_other": "{{count}} možných skupin duplicitních referencí",
+      "detail": "Tyto klíče mají po normalizaci stejný název: {{groups}}. Skutečné duplicity sloučte, aby styl citací a metadata zůstaly konzistentní."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} necitovaný záznam bibliografie",
+      "title_few": "{{count}} necitované záznamy bibliografie",
+      "title_many": "{{count}} necitovaného záznamu bibliografie",
+      "title_other": "{{count}} necitovaných záznamů bibliografie",
+      "detail": "Nepoužité záznamy zanášejí metadata k odeslání šumem a ztěžují správu duplicit. Projděte {{keys}}.",
+      "detailTruncated": "Nepoužité záznamy zanášejí metadata k odeslání šumem a ztěžují správu duplicit. Projděte {{keys}}, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} návěští je definováno ve více souborech",
+      "title_few": "{{count}} návěští jsou definována ve více souborech",
+      "title_many": "{{count}} návěští je definováno ve více souborech",
+      "title_other": "{{count}} návěští je definováno ve více souborech",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "Na {{count}} návěští obrázku, tabulky nebo rovnice se nikdy neodkazuje",
+      "title_few": "Na {{count}} návěští obrázků, tabulek nebo rovnic se nikdy neodkazuje",
+      "title_many": "Na {{count}} návěští obrázků, tabulek nebo rovnic se nikdy neodkazuje",
+      "title_other": "Na {{count}} návěští obrázků, tabulek nebo rovnic se nikdy neodkazuje",
+      "detail": "Ověřte, že se o každém číslovaném výsledku v rukopisu mluví: {{labels}}.",
+      "detailTruncated": "Ověřte, že se o každém číslovaném výsledku v rukopisu mluví: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "Citace „{{key}}“ není v žádném souboru .bib",
+      "detail": "Tento klíč citace nebyl v načtené bibliografii nalezen, takže se v PDF vykreslí jako [?]. Zkontrolujte klíč, nebo záznam doplňte do svého .bib (funkce Přidat citaci jej umí stáhnout)."
+    },
+    "refs-undefined-ref": {
+      "title": "Odkaz na „{{label}}“ nemá odpovídající \\label",
+      "detail": "Tento křížový odkaz míří na návěští, které není definováno, takže se v PDF vykreslí jako ??. Zkontrolujte název návěští, nebo chybějící \\label doplňte."
+    },
+    "refs-duplicate-label": {
+      "title": "Duplicitní návěští „{{label}}“",
+      "detail": "Stejné návěští je definováno víc než jednou, takže odkazy na ně jsou nejednoznačné. Každé návěští musí být jedinečné."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Obrázek nebyl nalezen: {{file}}",
+      "detailImage": "Toto \\includegraphics míří na soubor, který v projektu není, takže obrázek bude chybět. Zkontrolujte název souboru a cestu.",
+      "titleInclude": "Vložený soubor nebyl nalezen: {{file}}",
+      "detailInclude": "Toto \\input nebo \\include míří na soubor, který v projektu není. Zkontrolujte název souboru a cestu."
+    },
+    "refs-bib-missing": {
+      "title": "Soubor bibliografie nebyl nalezen: {{file}}",
+      "detail": "Toto \\bibliography nebo \\addbibresource míří na soubor, který v projektu není, takže se každá citace vykreslí jako [?]. Zkontrolujte název souboru, nebo jej vytvořte importem knihovny referencí."
+    },
+    "refs-duplicate-bib": {
+      "title": "Duplicitní záznamy bibliografie: {{keys}}",
+      "detail": "Tyto záznamy sdílejí DOI {{doi}}, takže jde o tutéž referenci pod různými klíči. Ponechte jeden a citujte jej, jinak ji bibliografie uvede dvakrát."
+    },
+    "submission-path-case": {
+      "title": "Velikost písmen v názvu souboru nesouhlasí: {{target}}",
+      "detailFigure": "Tento obrázek se najde jen na souborovém systému, který nerozlišuje velikost písmen. Projekt obsahuje „{{match}}“, takže před odesláním do sestavovacích systémů na Linuxu zapište velikost písmen přesně stejně.",
+      "detailInclude": "Tento vložený soubor se najde jen na souborovém systému, který nerozlišuje velikost písmen. Projekt obsahuje „{{match}}“, takže před odesláním do sestavovacích systémů na Linuxu zapište velikost písmen přesně stejně."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Chybějící obrázek: {{target}}",
+      "titleInclude": "Chybějící vložený soubor: {{target}}",
+      "detail": "Tento odkaz ze souboru {{file}} nevede na žádný soubor projektu. Čisté sestavení k odeslání selže, i když se dokument díky místní mezipaměti právě teď zkompiluje."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "obrázek bez popisku",
+      "titleTable": "tabulka bez popisku",
+      "detail": "Publikační obrázky a tabulky by měly mít číslovaný popisný text, aby na ně šlo odkazovat a daly se pochopit samostatně."
+    },
+    "submission-label-before-caption": {
+      "title": "Návěští je uvedeno před popiskem",
+      "detail": "Umístěte návěští až za popisek. Jinak jej LaTeX může navázat na předchozí čítač a vytvořit špatné číslo obrázku nebo tabulky."
+    },
+    "privacy-sensitive-file": {
+      "title": "Vložen citlivý soubor: {{file}}",
+      "detail": "Před exportem, synchronizací nebo publikováním archivu se zdrojem odstraňte z projektu přihlašovací údaje a soubory se soukromými klíči."
+    },
+    "privacy-credential": {
+      "title": "Možný přihlašovací údaj v {{file}}",
+      "detail": "Projekt obsahuje text ve tvaru tokenu API, přístupového klíče do cloudu nebo soukromého klíče. Odhalené údaje zneplatněte a pak je odstraňte z projektu i z jeho historie Git."
+    },
+    "privacy-internal-comment": {
+      "title": "V {{file}} zůstala interní poznámka",
+      "detail": "Komentáře ve zdroji nejsou v PDF vidět, ale mohou být veřejné v archivu zdrojů konference, časopisu nebo preprintu. Projděte je a soukromé redakční poznámky odstraňte."
+    },
+    "privacy-draft-artifact": {
+      "title": "Konceptové značky jsou stále zapnuté",
+      "detail": "Zdroj zapíná výstup pro koncept, TODO, sledování změn, vodoznak nebo ladění návěští. Vypněte jej a před odesláním si finální PDF vizuálně prohlédněte."
+    },
+    "privacy-blind-author": {
+      "title": "Ve zdroji pro anonymní recenzi zůstala identita autora",
+      "detail": "Zdroj obsahuje neanonymního autora, pracoviště, e-mail, adresu nebo poděkování. Nahraďte identifikující obsah pomocí anonymního režimu dané konference či časopisu."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Poděkování může prozradit autory",
+      "detail": "Poděkování běžně identifikují instituce, granty, spolupracovníky nebo zázemí. U anonymní recenze je odstraňte, pokud je konference či časopis výslovně nepovoluje."
+    },
+    "privacy-pdf-author": {
+      "title": "Metadata PDF identifikují autora",
+      "detail": "Pole Author v PDF obsahuje „{{author}}“. Před nahráním PDF do anonymní recenze metadata autora vymažte."
+    },
+    "submission-nonportable-filename": {
+      "title": "Nepřenositelný název souboru: {{file}}",
+      "detail": "Tento profil povoluje jen písmena, číslice, podtržítka, plus, minus, tečky, čárky, rovnítka a oddělovače adresářů. Soubor přejmenujte a upravte odkazy na něj."
+    },
+    "submission-absolute-path": {
+      "title": "Cesta vázaná na konkrétní počítač v {{file}}",
+      "detail": "Absolutní místní cesty na sestavovacích serverech vydavatelů neexistují. Přesuňte závislost do projektu a odkazujte na ni relativní cestou."
+    },
+    "submission-shell-escape": {
+      "title": "Soubor {{file}} vyžaduje spouštění externích příkazů",
+      "detail": "Řada sestavovacích systémů vydavatelů a archivů má shell escape vypnutý. Výstup vygenerujte předem, nebo ověřte, že cílová konference či časopis tento balíček a příkaz podporuje."
+    },
+    "submission-generated-file": {
+      "title": "Vložen vygenerovaný soubor ze sestavení: {{file}}",
+      "detail": "Vygenerované pomocné soubory zanášejí zdrojové balíčky a mohou konzervovat zastaralý stav. Vynechte je, pokud je zvolená konference či časopis výslovně nevyžaduje."
+    },
+    "submission-document-class": {
+      "title": "Třída dokumentu {{profile}} není aktivní",
+      "detail": "Tento profil očekává {{expected}}, ale projekt používá {{actual}}. Vyjděte z aktuální oficiální šablony dané konference či časopisu.",
+      "detailNoClass": "Tento profil očekává {{expected}}, ale nebyla rozpoznána žádná třída dokumentu. Vyjděte z aktuální oficiální šablony dané konference či časopisu."
+    },
+    "submission-no-abstract": {
+      "title": "Nebyl rozpoznán abstrakt",
+      "detail": "Tento publikační profil očekává abstrakt ve standardním prostředí abstract. Doplňte jej, nebo ověřte, že jej konkrétní konference či časopis nevyžaduje."
+    },
+    "submission-no-keywords": {
+      "title": "Nebyla rozpoznána publikační klíčová slova",
+      "detail": "Profil {{profile}} očekává klíčová slova zapsaná standardním příkazem nebo prostředím své šablony."
+    },
+    "submission-figure-format": {
+      "title": "Nepodporovaný formát obrázku: {{file}}",
+      "detail": "{{profile}} přijímá pro své podporované postupy v TeXu soubory obrázků {{formats}}. Před nahráním tento obrázek převeďte."
+    },
+    "submission-placeholder": {
+      "title": "V rukopisu zůstal konceptový zástupný text",
+      "detail": "Zdroj obsahuje TODO, TBD, FIXME, zástupný text nebo otazníkové značky. Než vytvoříte finální podobu k odeslání, projděte každý výskyt."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} je pod požadovanou verzí",
+      "detail": "{{profile}} vyžaduje PDF {{minimum}} nebo novější. Upravte nastavení PDF v překladači a soubor vygenerujte znovu."
+    },
+    "submission-bookmarks": {
+      "title": "Záložky v PDF nejsou povolené",
+      "detail": "{{profile}} záložky v PDF odmítá. Pro tento profil odeslání osnovu dokumentu odeberte."
+    },
+    "submission-links": {
+      "title": "Odkazy v PDF nejsou povolené",
+      "detail": "{{profile}} anotace odkazů odmítá. Pro odesílané PDF vypněte generované hypertextové odkazy."
+    },
+    "submission-attachments": {
+      "title": "PDF obsahuje vložené přílohy",
+      "detail": "{{profile}} přílohy a balíčky v PDF odmítá. Před odesláním všechny vložené soubory odeberte."
+    },
+    "submission-security": {
+      "title": "V PDF jsou zapnutá bezpečnostní omezení",
+      "detail": "{{profile}} vyžaduje PDF bez hesla a bez omezení oprávnění."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} písmo není vložené",
+      "title_few": "{{count}} písma nejsou vložená",
+      "title_many": "{{count}} písma není vložené",
+      "title_other": "{{count}} písem není vložených",
+      "detail": "{{profile}} vyžaduje, aby bylo každé písmo vložené nebo v podmnožině, aby se text i matematika vykreslily spolehlivě. Opravte {{fonts}}."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "U některých písem se vložení nepodařilo ověřit",
+      "detail": "Předletová kontrola nedokázala prokázat stav vložení u {{fonts}}. Ověřte je oficiálním nástrojem dané konference či časopisu pro kontrolu PDF."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Přístupnost",
+    "both": "ATS a přístupnost",
+    "refs": "Reference",
+    "compile": "Kompilace",
+    "submission": "Odeslání",
+    "privacy": "Soukromí"
+  },
+  "severity": {
+    "error": "Chyba",
+    "warning": "Varování",
+    "info": "Poznámka"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Build",
+    "a11y": "Přístup",
+    "refs": "Ref.",
+    "submission": "Odesl.",
+    "privacy": "Soukromí"
+  },
+  "checks": {
+    "compile": {
+      "label": "Kompilace a rozvržení",
+      "who": "Pro každý finální dokument",
+      "info": "Chyby sestavení, nevyřešené reference, chybějící glyfy a problémy s rozvržením stránky.",
+      "detail": "Prohlédne poslední protokol překladače a PDF kvůli neúspěšným sestavením, nevyřešeným referencím, chybějícím glyfům, přeplněnému nebo oříznutému obsahu, zastaralým varováním o dalším průchodu a různým velikostem stránek."
+    },
+    "submission": {
+      "label": "Připravenost k odeslání",
+      "who": "Pro konference, časopisy, preprinty a kvalifikační práce",
+      "info": "Pravidla publikačního profilu a soubory, které by neměly být ve zdrojovém balíčku.",
+      "detail": "Uplatní publikační profil na celý projekt: oficiální třídu dokumentu, přenositelné cesty ve zdroji, formáty obrázků, abstrakt a klíčová slova, omezení PDF, popisky a čistý zdrojový balíček."
+    },
+    "ats": {
+      "label": "Připravenost pro ATS",
+      "who": "Pro životopisy",
+      "info": "Kontaktní údaje a sekce, které dokáže analyzátor životopisů získat.",
+      "detail": "Simuluje, co z vašeho PDF vytáhne systém pro sledování uchazečů (Workday, Taleo, Greenhouse), a označí rozvržení i formátování, které to pomíchá. Pro výzkumné články to není relevantní."
+    },
+    "a11y": {
+      "label": "Přístupnost",
+      "who": "Pro výzkumné, úřední a publikované PDF",
+      "info": "Tagování, alternativní texty, jazyk a název dokumentu, nastavení prohlížeče, struktura, odkazy a pořadí čtení.",
+      "detail": "Porovná zkompilované PDF se strojově ověřitelnou částí normy PDF/UA-1 (ISO 14289-1) a s technikami WCAG 2.2 pro PDF: tagování, alternativní texty, jazyk a název dokumentu, nastavení prohlížeče, strukturu nadpisů a tabulek, popisy odkazů, pořadí čtení a vybíratelný text. Kontroly zdroje označí pravděpodobné problémy ještě před kompilací."
+    },
+    "refs": {
+      "label": "Reference a prostředky",
+      "who": "Pro výzkum a dokumenty z více souborů",
+      "info": "Rozbité citace, duplicitní návěští, neúplné záznamy bibliografie a chybějící prostředky.",
+      "detail": "Najde nedefinované citace a křížové odkazy, duplicitní návěští a chybějící obrázky či vložené soubory dřív, než vám při odesílání rozbijí PDF."
+    },
+    "privacy": {
+      "label": "Soukromí a anonymní recenze",
+      "who": "Před sdílením zdroje nebo anonymním odesláním",
+      "info": "Tajemství, konceptové poznámky, citlivé soubory a úniky identity při anonymní recenzi.",
+      "detail": "Najde přihlašovací údaje, soukromé klíče, interní komentáře, konceptové značky, citlivé soubory projektu, metadata autora a úniky identity v příspěvcích pro anonymní recenzi."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Obecná publikace",
+      "description": "Přenositelný zdroj, čistý výstup, úplná metadata a běžná publikační rizika."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "Přenositelný zdroj, který lze znovu sestavit v systému arXiv rozlišujícím velikost písmen."
+    },
+    "ieee": {
+      "label": "Konference / časopis IEEE",
+      "description": "Zdroj IEEEtran plus omezení PDF kontrolovaná pro publikaci v IEEE Xplore."
+    },
+    "acm": {
+      "label": "Konference / časopis ACM",
+      "description": "Struktura zdroje ACM acmart a metadata výzkumu připravená k publikaci."
+    },
+    "journal": {
+      "label": "Jiný časopis",
+      "description": "Kontroly pro časopisy nezávislé na vydavateli. Před odesláním doplňte přesné limity daného časopisu."
+    },
+    "thesis": {
+      "label": "Kvalifikační nebo disertační práce",
+      "description": "Struktura dlouhého dokumentu, navigace, reference a kontroly přenositelnosti zdroje."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Praxe",
+      "education": "Vzdělání",
+      "skills": "Dovednosti",
+      "projects": "Projekty",
+      "summary": "Shrnutí"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: ověřeno {{passed}} z {{total}} strojově kontrolovatelných pravidel. Jde o dílčí kontrolu, ne o prohlášení o shodě.",
+    "coverageWithBlindSpots": "PDF/UA-1: ověřeno {{passed}} z {{total}} strojově kontrolovatelných pravidel. Oleafly z nich čte {{covered}} a {{unavailable}} z nich se v tomto souboru zkontrolovat nepodařilo. Jde o dílčí kontrolu, ne o prohlášení o shodě."
+  },
+  "taggingGate": {
+    "noSupport": "Třída {{name}} neumí vytvořit tagovaný výstup a projekt LaTeX to od ní ani neočekává.",
+    "noSupportWithNote": "Třída {{name}} neumí vytvořit tagovaný výstup a projekt LaTeX to od ní ani neočekává. {{note}}",
+    "currentlyIncompatible": "Třída {{name}} zatím není kompatibilní s tagováním v LaTeXu, takže příprava tohoto zdroje by vám přístupné PDF nedala.",
+    "currentlyIncompatibleWithNote": "Třída {{name}} zatím není kompatibilní s tagováním v LaTeXu, takže příprava tohoto zdroje by vám přístupné PDF nedala. {{note}}",
+    "partiallyCompatible": "Třída {{name}} je s tagováním kompatibilní jen zčásti, počítejte tedy s mezerami ve stromu struktury.",
+    "partiallyCompatibleWithNote": "Třída {{name}} je s tagováním kompatibilní jen zčásti, počítejte tedy s mezerami ve stromu struktury. {{note}}",
+    "unrecorded": "Projekt LaTeX pro třídu {{name}} nezaznamenal stav tagování, takže je výsledek neprokázaný. Zkompilujte a zkontrolujte výstup."
+  },
+  "prep": {
+    "metadataUpdated": "Do vašeho \\DocumentMetadata byly přidány potřebné klíče pro tagování.",
+    "metadataAdded": "\\DocumentMetadata bylo přidáno jako první řádek (je povinné a musí předcházet \\documentclass).",
+    "headerRows": "Nastaveno table/header-rows na 1, takže se první řádek každé tabulky taguje jako buňky záhlaví. Pokud má tabulka jinou hloubku záhlaví, číslo změňte.",
+    "unicodeMath": "Přidáno \\usepackage{unicode-math}, které tento engine potřebuje pro tagovanou matematiku.",
+    "altPlaceholders_one": "K {{count}} obrázku byly přidány zástupné alternativní texty. Nahraďte text TODO skutečným popisem.",
+    "altPlaceholders_few": "K {{count}} obrázkům byly přidány zástupné alternativní texty. Nahraďte text TODO skutečným popisem.",
+    "altPlaceholders_many": "K {{count}} obrázku byly přidány zástupné alternativní texty. Nahraďte text TODO skutečným popisem.",
+    "altPlaceholders_other": "K {{count}} obrázkům byly přidány zástupné alternativní texty. Nahraďte text TODO skutečným popisem.",
+    "titleRequired": "PDF/UA potřebuje název dokumentu, který prohlížeč zobrazí. Načtěte hyperref a nastavte \\hypersetup{pdftitle={Váš název}, pdfdisplaydoctitle=true}.",
+    "incompatiblePackages_one": "Tento balíček není kompatibilní s tagováním: {{packages}}. Obsah z něj může v PDF skončit bez tagů. Kde to jde, nahraďte jej.",
+    "incompatiblePackages_few": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}}. Obsah z nich může v PDF skončit bez tagů. Kde to jde, nahraďte je.",
+    "incompatiblePackages_many": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}}. Obsah z nich může v PDF skončit bez tagů. Kde to jde, nahraďte je.",
+    "incompatiblePackages_other": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}}. Obsah z nich může v PDF skončit bez tagů. Kde to jde, nahraďte je.",
+    "cautionPackages": "Tyto balíčky tagují jen zčásti nebo nemají zaznamenaný verdikt o tagování: {{packages}}. Zkompilujte a zkontrolujte strom struktury kvůli mezerám.",
+    "compileLua": "Připravený zdroj zkompilujte pomocí LuaLaTeX z TeX Live 2025 či novějšího a pak výstup znovu zkontrolujte.",
+    "compileAny": "Připravený zdroj zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2025 či novějšího a pak výstup znovu zkontrolujte. Přístupná matematika potřebuje LuaLaTeX. Vestavěný engine tagy vytvořit neumí."
+  },
+  "gate": {
+    "incompatiblePackages_one": "Tento balíček není kompatibilní s tagováním: {{packages}}. Obsah z něj může v PDF skončit bez tagů.",
+    "incompatiblePackages_few": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}}. Obsah z nich může v PDF skončit bez tagů.",
+    "incompatiblePackages_many": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}}. Obsah z nich může v PDF skončit bez tagů.",
+    "incompatiblePackages_other": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}}. Obsah z nich může v PDF skončit bez tagů.",
+    "incompatiblePackagesTruncated": "Tyto balíčky nejsou kompatibilní s tagováním: {{packages}} a dalších {{more}}. Obsah z nich může v PDF skončit bez tagů.",
+    "partialPackages": "Tyto balíčky tagují jen zčásti: {{packages}}.",
+    "partialPackagesTruncated": "Tyto balíčky tagují jen zčásti: {{packages}} a dalších {{more}}.",
+    "unknownPackages": "Pro {{packages}} není zaznamenán žádný verdikt o tagování.",
+    "unknownPackagesTruncated": "Pro {{packages}} a dalších {{more}} není zaznamenán žádný verdikt o tagování.",
+    "cautionAdvice": "Zkompilujte a zkontrolujte strom struktury kvůli mezerám."
+  },
+  "panel": {
+    "title": "Předletová kontrola",
+    "readerDisabled": "Nejprve zkompilujte a spusťte kontrolu výstupu",
+    "readerEnabled": "Otevřít text extrahovaný z PDF",
+    "readerButton": "Zobrazit, co vidí čtečka",
+    "aboutLabel": "O předletové kontrole",
+    "aboutTitle": "Co předletová kontrola ověřuje",
+    "aboutIntro": "Předletová kontrola čte zdroj projektu, protokol překladače a aktuální PDF. Zapněte jen ty kontroly, které tomuto dokumentu odpovídají.",
+    "aboutFooter": "Ověřené nálezy vycházejí z přímých pozorování. U doporučujících nálezů je stále potřeba váš úsudek. Čistá zpráva pomáhá při recenzi, ale nezaručuje přijetí ani přístupnost. Všechny kontroly běží místně.",
+    "enableCheck": "Zapnout {{check}}",
+    "runCheck": "Spustit {{check}}",
+    "rerunCheck": "Spustit znovu {{check}}",
+    "run": "Spustit",
+    "rerun": "Spustit znovu",
+    "collapse": "Sbalit",
+    "expand": "Rozbalit",
+    "publicationProfile": "Publikační profil",
+    "anonymousReview": "Anonymní recenze",
+    "anonymousReviewHint": "Prohlédnout také pole autorů, poděkování a metadata PDF.",
+    "anonymousReviewToggle": "Kontrolovat identitu pro anonymní recenzi",
+    "engineUnsupported": "Kontroly zdroje pro {{engine}} zatím nejsou hotové. Tato kontrola používá jen zkompilované PDF a chybějící podporu zdroje nehlásí jako chybu.",
+    "runToSeeResults": "Spusťte tuto kontrolu a uvidíte výsledky.",
+    "analyzing": "Analyzuje se…",
+    "runEnabled_one": "Spustit {{count}} zapnutou kontrolu",
+    "runEnabled_few": "Spustit {{count}} zapnuté kontroly",
+    "runEnabled_many": "Spustit {{count}} zapnuté kontroly",
+    "runEnabled_other": "Spustit {{count}} zapnutých kontrol",
+    "rerunEnabled_one": "Spustit znovu {{count}} zapnutou kontrolu",
+    "rerunEnabled_few": "Spustit znovu {{count}} zapnuté kontroly",
+    "rerunEnabled_many": "Spustit znovu {{count}} zapnuté kontroly",
+    "rerunEnabled_other": "Spustit znovu {{count}} zapnutých kontrol",
+    "failed": "Předletová kontrola selhala: {{error}}",
+    "standardsCaveat": "Oleafly čte tu část norem PDF/UA a WCAG, kterou lze ověřit přímo v souboru. Nedokáže posoudit, zda je alternativní text smysluplný, zda pořadí čtení dává smysl ani zda je kontrast barev dost vysoký. To musí posoudit člověk. Pro formální prohlášení o shodě ověřte soubor pomocí veraPDF nebo PAC 2024.",
+    "pdfRequired": "Je potřeba PDF. Zkompilujte projekt a spusťte to znovu. Tato kontrola zatím nebyla vyhodnocena.",
+    "compileFirst": "Nejprve projekt zkompilujte. Předletová kontrola potřebuje aktuální protokol překladače nebo PDF, aby posoudila kvalitu sestavení.",
+    "partialCoverage": "Kontroly zdroje jsou hotové. Zkompilujte projekt a spusťte to znovu, aby se dokončily kontroly na úrovni PDF.",
+    "unsupportedCoverage": "Nevyhodnoceno. Kontroly zdroje pro tento engine nejsou hotové.",
+    "groupSource": "Projekt a zdroj",
+    "groupOutput": "Zkompilovaný výstup",
+    "fixAll_one": "Opravit {{count}} pomocí AI",
+    "fixAll_few": "Opravit všechny {{count}} pomocí AI",
+    "fixAll_many": "Opravit všech {{count}} pomocí AI",
+    "fixAll_other": "Opravit všech {{count}} pomocí AI",
+    "noProblems": "Nebyly nalezeny žádné problémy."
+  },
+  "finding": {
+    "review": "K posouzení",
+    "manual": "Ručně",
+    "page": "s.{{page}}",
+    "needsJudgment": "Potřebuje váš úsudek. Tohle žádný nástroj ze samotného souboru nerozhodne.",
+    "jumpToSource": "Přejít do zdroje",
+    "fixWithAi": "Opravit pomocí AI"
+  },
+  "score": {
+    "notEvaluated": "{{label}} nevyhodnoceno",
+    "readiness": "Připravenost {{label}} {{score}} ze 100",
+    "notScored": "Bez hodnocení"
+  },
+  "reader": {
+    "title": "Co vidí čtečka",
+    "description": "Text extrahovaný z aktuálního PDF v pořadí čtení. Takto to zhruba dostane čtečka obrazovky nebo automatický analyzátor.",
+    "pagesNav": "Stránky PDF",
+    "page": "Stránka {{page}}",
+    "empty": "prázdné",
+    "extractedFrom": "Text extrahovaný ze stránky {{page}}",
+    "pageOf": "Stránka {{page}} z {{total}}",
+    "noText": "Na této stránce nebyl nalezen žádný vybíratelný text."
+  },
+  "atsCard": {
+    "title": "Co analyzátor vytáhl",
+    "notFound": "Nenalezeno",
+    "links_one": "{{count}} odkaz",
+    "links_few": "{{count}} odkazy",
+    "links_many": "{{count}} odkazu",
+    "links_other": "{{count}} odkazů",
+    "detected": "{{section}}: rozpoznáno",
+    "requiredMissing": "{{section}}: povinná sekce nebyla rozpoznána",
+    "optionalMissing": "{{section}}: volitelná sekce nebyla rozpoznána",
+    "detectedTitle": "Sekce {{section}} byla rozpoznána",
+    "requiredMissingTitle": "Sekce {{section}} se očekává, ale nebyla rozpoznána",
+    "optionalMissingTitle": "Sekce {{section}} je volitelná a nebyla rozpoznána",
+    "optionalSuffix": ", volitelné"
+  },
+  "prepExport": {
+    "title": "Přístupný export",
+    "intro": "Připravte tento dokument na tagovaný výstup mířící na PDF/UA-2. Oleafly přidá \\DocumentMetadata s pdfstandard=ua-2 a tagging=on plus nastavení alternativních textů a tabulek, které dokáže doplnit. Výsledek zkompilujte pomocí pdfLaTeX nebo LuaLaTeX z TeX Live 2025 či novějšího a pak jej znovu zkontrolujte. Přístupná matematika potřebuje LuaLaTeX. Vestavěný engine tagy vytvořit neumí.",
+    "activeFileFallback": "Oleafly nedokázal načíst hlavní dokument, proto zkontroloval soubor, který právě upravujete. Otevřete hlavní dokument, abyste viděli třídu a balíčky, které vaše sestavení skutečně načítá.",
+    "prepare": "Připravit na přístupný export",
+    "unavailable": "Příprava je pro tuto třídu dokumentu vypnutá. Přepněte na třídu, kterou tagovací kód podporuje, a spusťte kontrolu znovu. Data o kompatibilitě z projektu LaTeX, získáno {{retrieved}}.",
+    "unavailableUndated": "Příprava je pro tuto třídu dokumentu vypnutá. Přepněte na třídu, kterou tagovací kód podporuje, a spusťte kontrolu znovu. Data o kompatibilitě z projektu LaTeX.",
+    "applied": "Použito",
+    "apply": "Použít v dokumentu",
+    "copied": "Zkopírováno",
+    "copy": "Kopírovat zdroj",
+    "compileTagged": "Zkompilovat s tagy a ověřit",
+    "compileTaggedWarning": "Systémový LuaLaTeX umí číst místní soubory. Spouštějte jej jen u projektu, kterému věříte.",
+    "noEngine": "Chcete-li tagované PDF vytvořit přímo v aplikaci, zapněte engine v Nastavení, Engine LaTeX. Nebo připravený zdroj zkompilujte vlastním pdfLaTeX či LuaLaTeX z TeX Live 2025 nebo novějšího."
+  }
+}

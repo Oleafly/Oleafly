@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Despre Oleafly",
+    "checkUpdates": "Caută actualizări…",
+    "reloadViews": "Reîncarcă vizualizările",
+    "restartApp": "Repornește aplicația",
+    "quit": "Ieși din Oleafly",
+    "edit": "Editare",
+    "undo": "Anulează",
+    "redo": "Refă",
+    "cut": "Decupează",
+    "copy": "Copiază",
+    "paste": "Lipește",
+    "selectAll": "Selectează tot",
+    "view": "Vizualizare",
+    "toggleTerminal": "Arată sau ascunde terminalul",
+    "toggleBrowser": "Arată sau ascunde browserul"
+  },
+  "window": {
+    "browser": "Browser Oleafly",
+    "browserTitled": "{{title}} - Browser Oleafly"
+  },
+  "dialog": {
+    "cancel": "Anulează",
+    "fullAccess": {
+      "title": "Activezi accesul complet?",
+      "message": "Accesul complet permite asistentului să ruleze comenzi shell și să modifice fișiere fără să ceară aprobare de fiecare dată. Activezi accesul complet?",
+      "confirm": "Activează accesul complet"
+    },
+    "cookieImport": {
+      "title": "Confirmă importul de cookie-uri",
+      "messageHost": "Imporți cookie-urile pentru {{hostname}} din profilul „{{profile}}” al {{browser}} în browserul integrat Oleafly? Cookie-urile importate te pot autentifica pe site-uri.",
+      "messageAll": "Imporți toate cookie-urile din profilul „{{profile}}” al {{browser}} în browserul integrat Oleafly? Cookie-urile importate te pot autentifica pe site-uri.",
+      "confirm": "Importă cookie-urile"
+    },
+    "mcpApprove": {
+      "title": "Aprobă instrumentul MCP",
+      "confirm": "Folosește instrumentul"
+    },
+    "tableImport": {
+      "title": "Alege o foaie de calcul de importat",
+      "filter": "Foi de calcul"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Meniul aplicației nu este disponibil",
+    "viewMenuUnavailable": "Meniul Vizualizare nu este disponibil",
+    "menuItemUnavailable": "Elementul de meniu {{id}} nu este disponibil",
+    "fullAccessDismissed": "Confirmarea accesului complet a fost închisă.",
+    "fullAccessDeclined": "Accesul complet nu a fost activat.",
+    "approvalDialogClosed": "Fereastra nativă de aprobare s-a închis neașteptat."
+  }
+}

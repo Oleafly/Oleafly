@@ -1,0 +1,159 @@
+{
+  "citeOleafly": "Citează Oleafly în această lucrare",
+  "empty": {
+    "citations": {
+      "detail": "Importă o bibliotecă de referințe sau adaugă o citare ca să începi.",
+      "title": "Încă nu există citări"
+    },
+    "symbols": {
+      "detail": "Titlurile, etichetele, comenzile și mediile apar aici pe măsură ce scrii proiectul.",
+      "title": "Încă nu există simboluri"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filtrează citările",
+    "ariaLabelResults": "Filtrează rezultatele",
+    "ariaLabelSymbols": "Filtrează simbolurile",
+    "clear": "Golește filtrul",
+    "noCitation": "Nicio citare nu corespunde cu „{{query}}”.",
+    "noResult": "Niciun rezultat nu corespunde cu „{{query}}”.",
+    "noSymbol": "Niciun simbol nu corespunde cu „{{query}}”.",
+    "placeholderCitations": "Filtrează chei, titluri, autori…",
+    "placeholderResults": "Filtrează locurile…",
+    "placeholderSymbols": "Filtrează etichete și comenzi…"
+  },
+  "import": {
+    "added_one": "{{count}} referință a fost adăugată în {{target}}.",
+    "added_few": "{{count}} referințe au fost adăugate în {{target}}.",
+    "added_other": "{{count}} de referințe au fost adăugate în {{target}}.",
+    "addedWithDuplicates_one": "{{count}} referință a fost adăugată în {{target}}, iar {{duplicates}} erau deja acolo.",
+    "addedWithDuplicates_few": "{{count}} referințe au fost adăugate în {{target}}, iar {{duplicates}} erau deja acolo.",
+    "addedWithDuplicates_other": "{{count}} de referințe au fost adăugate în {{target}}, iar {{duplicates}} erau deja acolo.",
+    "allDuplicates_one": "Referința aceea se află deja în {{target}}.",
+    "allDuplicates_few": "Cele {{count}} referințe se află deja în {{target}}.",
+    "allDuplicates_other": "Cele {{count}} de referințe se află deja în {{target}}.",
+    "defaultTarget": "bibliografie",
+    "description": "Adaugă în acest proiect referințe dintr-un manager de citări sau dintr-un fișier de bibliografie.",
+    "duplicateNote": "Referințele al căror DOI există deja în bibliografie sunt sărite.",
+    "empty": "Fișierul acela nu conține referințe.",
+    "endnote": {
+      "button": "Alege un fișier XML, RIS sau BibTeX",
+      "description": "Alege un fișier EndNote XML, RIS sau BibTeX. Oleafly adaugă referințele în bibliografia proiectului.",
+      "title": "EndNote, RIS sau BibTeX"
+    },
+    "failed": "Referințele acelea nu au putut fi importate.",
+    "nothingNew": "Nu există nimic nou de adăugat în {{target}}.",
+    "problems_one": "{{count}} problemă la import. {{details}}",
+    "problems_few": "{{count}} probleme la import. {{details}}",
+    "problems_other": "{{count}} de probleme la import. {{details}}",
+    "readFailed": "Fișierul acela nu a putut fi citit.",
+    "title": "Importă bibliotecă de referințe",
+    "unrecognized": "Tip de fișier nerecunoscut: {{name}}",
+    "zotero": {
+      "button": "Alege un fișier Zotero RDF",
+      "description": "În Zotero, alege File → Export Library → Zotero RDF. Apoi selectează fișierul exportat.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Rezultate parțiale. Fișierele greșit formate sau ilizibile pot omite unele apariții.",
+    "stale": "Se actualizează. Citările, simbolurile și intervalele din revizia anterioară sunt ascunse."
+  },
+  "panel": {
+    "ariaLabel": "Referințe (Shift-F12)",
+    "clearQuery": "Golește interogarea de referințe",
+    "cleanLibrary": "Curăță biblioteca de referințe",
+    "importAriaLabel": "Importă referințe",
+    "issues_one": "{{count}} problemă de referință sau de citare",
+    "issues_few": "{{count}} probleme de referință sau de citare",
+    "issues_other": "{{count}} de probleme de referință sau de citare",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Referințe",
+    "viewTabs": "Vizualizarea panoului de referințe"
+  },
+  "cleanLibrary": {
+    "title": "Curăță biblioteca de referințe",
+    "description": "Verifică cheile de citare și intrările duplicate înainte să îți modifici fișierele.",
+    "library": "Bibliotecă de referințe",
+    "entryCount_one": "{{count}} intrare",
+    "entryCount_few": "{{count}} intrări",
+    "entryCount_other": "{{count}} de intrări",
+    "footer": "Previzualizarea îți salvează fișierele deschise. Aplicarea verifică dacă ele încă se potrivesc cu previzualizarea și face o copie de siguranță a originalelor.",
+    "noBib": "Acest proiect nu are niciun fișier .bib de curățat.",
+    "entriesKept": "Vor rămâne {{kept}} din {{total}} intrări.",
+    "changes": "Modificări și observații",
+    "noChanges": "Nicio modificare de fișier de aplicat.",
+    "filesToUpdate": "Fișiere de actualizat: {{files}}",
+    "none": "Niciunul",
+    "introSafeChanges": "Cheile de citare sunt standardizate. Duplicatele după DOI se elimină doar atunci când toate detaliile lor pot fi păstrate.",
+    "introReview": "Titlurile asemănătoare și metadatele contradictorii rămân în bibliotecă pentru verificare.",
+    "preview": "Previzualizează",
+    "reviewTitle": "Verifică înainte de aplicare",
+    "reviewBody": "Previzualizează modificările ca să vezi ce intrări și citări vor fi actualizate.",
+    "statusAttention": "Necesită atenție",
+    "statusWorking": "Se lucrează…",
+    "statusPreviewReady": "Previzualizarea este gata",
+    "statusReady": "Gata de previzualizare",
+    "refreshPreview": "Reîmprospătează previzualizarea",
+    "previewChanges": "Previzualizează modificările",
+    "apply": "Aplică și rescrie citările",
+    "truncated": "Previzualizarea arată primele 500 de linii din fiecare versiune.",
+    "actionRenamed": "{{old}} a fost redenumit în {{new}}",
+    "actionDuplicate": "{{removed}} a fost eliminat ca duplicat al {{kept}} (potrivire după {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "Fișierele curățate nu au putut fi reîncărcate. Redeschide proiectul înainte să editezi.",
+    "cleaned": "Biblioteca a fost curățată. S-au păstrat {{kept}} din {{total}} intrări.",
+    "cleanedWithBackup": "Biblioteca a fost curățată. S-au păstrat {{kept}} din {{total}} intrări. Fișierele originale sunt salvate în {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Proiectul s-a schimbat după această interogare. Rulează din nou Găsește referințe ca să folosești intervalele curente din sursă.",
+      "title": "Rezultatele de referințe au expirat"
+    },
+    "noLocations": {
+      "detail": "Simbolul există în această revizie, dar nu are definiții sau apariții care să corespundă.",
+      "title": "Niciun loc găsit"
+    },
+    "none": {
+      "detail": "Pune cursorul pe o etichetă, o citare, o comandă sau un mediu și apasă Shift-F12.",
+      "title": "Nicio interogare de referințe"
+    }
+  },
+  "tabs": {
+    "citations": "Citări",
+    "results": "Referințe",
+    "symbols": "Simboluri"
+  },
+  "trees": {
+    "citations": "Citările proiectului",
+    "noCitations": "Nu s-au găsit intrări bibliografice sau utilizări de citări.",
+    "noSymbols": "Nu s-au găsit simboluri definite în proiect.",
+    "symbols": "Simbolurile proiectului"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Cea mai recentă revizie a proiectului nu a putut fi analizată. Fișierele sursă nu au fost modificate.",
+      "title": "Analiza proiectului a eșuat"
+    },
+    "indexing": {
+      "detail": "Referințele și citările vor apărea când revizia curentă a proiectului este gata.",
+      "title": "Se indexează inteligența de proiect"
+    },
+    "noProject": {
+      "detail": "Deschide un proiect de document ca să inspectezi citările, simbolurile și referințele dintre fișiere.",
+      "title": "Niciun proiect deschis"
+    },
+    "offline": {
+      "detail": "Referințele și citările nu pot fi verificate acum în acest spațiu de lucru.",
+      "title": "Serviciul de analiză nu este disponibil"
+    },
+    "unsupported": {
+      "detail": "Proiectul activ nu folosește un motor de documente acceptat.",
+      "title": "Inteligența de proiect nu este disponibilă"
+    },
+    "waiting": {
+      "detail": "Cea mai recentă revizie a proiectului nu a fost încă indexată.",
+      "title": "Se așteaptă analiza proiectului"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Boş",
+    "diagramsAndFigures": "Diyagramlar ve şekiller",
+    "cvsAndResumes": "CV'ler ve özgeçmişler",
+    "journalsAndConferences": "Dergiler ve konferanslar",
+    "bibliographies": "Kaynakçalar",
+    "assignments": "Ödevler",
+    "thesesAndReports": "Tezler ve raporlar",
+    "books": "Kitaplar",
+    "presentations": "Sunumlar",
+    "posters": "Posterler",
+    "newsletters": "Bültenler",
+    "calendars": "Takvimler",
+    "letters": "Mektuplar",
+    "aiGenerated": "Yapay zeka ile oluşturulan"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Özgeçmiş",
+    "diagramsAndFigures": "Diyagramlar",
+    "journalsAndConferences": "Dergiler"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Birçok modern özgeçmiş ve CV şablonunda kullanılan, sıcak görünümlü hümanist bir sans serif."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Ekranda ve baskıda rahat okunan, sade ve nötr bir sans serif."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Akademik ve kurumsal belgelere yakışan, zarif bir geçiş dönemi serif yazı tipi."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Akademik yazım paketi",
+      "description": "Araştırma ve hibe önerileri, literatür taramaları, niyet mektupları, referans mektupları, teknik raporlar ve tezler."
+    },
+    "beamer-themes": {
+      "label": "Beamer tema koleksiyonu",
+      "description": "Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla ve Pittsburgh beamer sunumları."
+    },
+    "business-documents": {
+      "label": "İş belgeleri",
+      "description": "Faturalar, kısa notlar, toplantı tutanakları, iş planları ve raporları, sertifikalar ve üç katlı bir broşür."
+    },
+    "conference-preprints": {
+      "label": "Konferans ön baskı stilleri",
+      "description": "NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv ve Interspeech stilinde ön baskılar."
+    },
+    "coursework": {
+      "label": "Ders çalışmaları paketi",
+      "description": "Ödevler, çalışma kâğıtları, kısa sınavlar, değerlendirme ölçekleri, ders notları, ders izlenceleri, matematik başvuru kâğıtları, sınavlar ve sözde kod yazımları."
+    },
+    "creative-misc": {
+      "label": "Yaratıcı ve çeşitli",
+      "description": "Yemek kitapları, davetiyeler, RPG karakter kâğıtları, yıllık takvim, tablo ve TikZ galerileri ve saha notları."
+    },
+    "cv-collection": {
+      "label": "CV ve özgeçmiş stil koleksiyonu",
+      "description": "ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds ve Jake tarzı özgeçmişler."
+    },
+    "reports-lab": {
+      "label": "Laboratuvar ve teknik raporlar",
+      "description": "Laboratuvar raporları, bilimsel ve teknik raporlar, proje ve staj raporları ve bir yıllık faaliyet raporu."
+    },
+    "resume-plus": {
+      "label": "Özgeçmiş ve CV genişletme paketi",
+      "description": "İki sütunlu teknik özgeçmiş, sade özgeçmiş, uzun soluklu akademik CV, ön yazı ve bir Typst CV'si."
+    },
+    "slides-posters": {
+      "label": "Slaytlar ve posterler",
+      "description": "Metropolis beamer sunumu, dikey ve yatay tikzposter ve better-poster düzeni."
+    },
+    "venue-classes": {
+      "label": "Dergi ve konferans sınıfları",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf ve Typst dergi başlangıç şablonları."
+    }
+  }
+}

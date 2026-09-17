@@ -23,13 +23,15 @@ The frontend uses `i18next` with `react-i18next`, pinned to exact versions. One 
 
 ## Locales
 
-Supported tags are declared once, in `packages/i18n-contract`. The first release ships `en` and `zh-Hans`. Chinese uses the script subtag so `zh-Hant` can be added later without renaming keys.
+Supported tags are declared once, in `packages/i18n-contract`. The app ships English, Simplified and Traditional Chinese, German, French, Spanish, Italian, Dutch, Brazilian Portuguese, Polish, Russian, Ukrainian, Turkish, Czech, Danish, Swedish, Norwegian Bokmål, Finnish, Romanian, Japanese and Korean. Chinese uses the script subtag, Portuguese the region subtag, and Norwegian the `nb` language tag; `pt`, `pt-PT`, `no` and `nn` resolve to the shipped neighbour through the alias table.
 
 Resolution order is the persisted preference, then the operating system locale from `tauri-plugin-os`, then `en`. The WebView's `navigator.language` is never consulted because it does not reflect the OS setting on macOS or Linux.
 
 The resolver matches BCP-47 tags by longest prefix and carries an alias table for Chinese: `zh`, `zh-CN`, `zh-SG` and `zh-Hans-*` resolve to `zh-Hans`; `zh-TW`, `zh-HK`, `zh-MO` and `zh-Hant-*` resolve to `zh-Hant` when it exists and otherwise fall back to `zh-Hans`.
 
-`<html lang>` and `dir` are set before first paint from the cached preference and again on every switch. CJK font stacks are pinned with `:lang()` selectors.
+`<html lang>` and `dir` are set before first paint from the cached preference and again on every switch. CJK font stacks are pinned with `html:lang()` selectors for Simplified Chinese, Traditional Chinese, Japanese and Korean.
+
+Plural forms follow the target locale's CLDR categories, not English's. French, Spanish, Italian and Portuguese carry `_many` next to `_one` and `_other`; Polish, Russian, Ukrainian and Czech carry `_few` and `_many`; Romanian carries `_few`; Japanese, Korean and Chinese carry `_other` only. The validator requires every category the locale has and rejects the ones it does not, because i18next falls back to English, not to the locale's `_other`, when a category key is missing.
 
 ## Catalogs
 
@@ -143,7 +145,10 @@ The Windows installer lists English and Simplified Chinese and shows the languag
 
 ## Adding a locale
 
-1. Add the tag, native name and direction to `packages/i18n-contract`.
+1. Add the tag, native name and direction to `packages/i18n-contract`, plus any alias that should resolve to it.
 2. Add glossary entries for the locale in `src/i18n/glossary.json` and, if the locale needs its own style checks, extend the validator.
-3. Provide the catalog files under `src/i18n/locales/<tag>/` and make `pnpm i18n:validate` pass.
-4. Add the installer language entries.
+3. Provide the catalog files under `src/i18n/locales/<tag>/` and make `pnpm i18n:validate` pass. Every plural base needs the CLDR categories of the locale.
+4. Register the `native` catalog in `src-tauri/src/i18n.rs` (`SUPPORTED` and `SOURCES`), because the menu is built before any WebView exists.
+5. Add the tag to the `shipped` list and the splash narration table in `index.html`, so the pre-paint script can pick the locale and the splash does not flash English. `src/i18n/splash.test.ts` checks both against the catalogs.
+6. Add the installer language entry in `src-tauri/tauri.conf.json` (`bundle.windows.nsis.languages`).
+7. Add the locale to `e2e/tests/98-interface-languages.spec.ts` by doing nothing: it walks `SUPPORTED_LOCALES`.

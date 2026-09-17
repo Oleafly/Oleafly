@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Lokit",
+    "showLogs": "Näytä käännöslokit",
+    "showPdf": "Näytä PDF-esikatselu",
+    "askAi": "Kysy tekoälyltä",
+    "more": "Lisää esikatselun säätimiä",
+    "duration": "{{seconds}} s",
+    "failed": "Epäonnistui",
+    "compiledWithErrors": "Kääntyi virheiden kanssa",
+    "compiledWithWarnings": "Kääntyi varoitusten kanssa",
+    "compiledSuccessfully": "Kääntyi onnistuneesti"
+  },
+  "pageLayout": {
+    "group": "Sivun taitto",
+    "single": "Yhden sivun näkymä",
+    "double": "Kahden sivun näkymä"
+  },
+  "pages": {
+    "previous": "Edellinen sivu",
+    "next": "Seuraava sivu",
+    "number": "Sivunumero",
+    "ofTotal": "/ {{total}}",
+    "pageOfTotal": "Sivu {{page}}/{{total}}"
+  },
+  "zoom": {
+    "in": "Lähennä",
+    "out": "Loitonna",
+    "fitToWidth": "Sovita leveyteen",
+    "fitToHeight": "Sovita korkeuteen",
+    "reset": "Palauta 100 prosenttiin",
+    "percent": "{{percent}} %",
+    "percentLabel": "Zoomaus {{percent}} prosenttia",
+    "menuLabel": "Zoomaus · {{percent}} %"
+  },
+  "outline": {
+    "open": "Dokumentin jäsennys",
+    "panel": "PDF-dokumentin jäsennys",
+    "title": "Dokumentin jäsennys",
+    "close": "Sulje dokumentin jäsennys",
+    "loading": "Ladataan jäsennystä…",
+    "empty": "Tässä PDF-tiedostossa ei ole dokumentin jäsennystä.",
+    "externalLink": "Ulkoinen linkki",
+    "externalBadge": "Linkki"
+  },
+  "search": {
+    "open": "Hae PDF-tiedostosta",
+    "panel": "Hae tästä PDF-tiedostosta",
+    "placeholder": "Hae dokumentista",
+    "input": "Hae PDF-tekstistä",
+    "previous": "Edellinen hakutulos",
+    "next": "Seuraava hakutulos",
+    "close": "Sulje PDF-haku"
+  },
+  "viewer": {
+    "scrollArea": "PDF:n jatkuva vieritysalue",
+    "crashedTitle": "PDF-esikatselu kaatui",
+    "crashedDetail": "Käännä nykyinen versio uudelleen tai yritä katselinta uudestaan.",
+    "retry": "Yritä katselinta uudelleen",
+    "loadingLatest": "Ladataan viimeisintä käännettyä PDF-tiedostoa…",
+    "retryingLoad": "Yritetään PDF:n latausta uudelleen…",
+    "retainedFailure": "{{detail}} Näytetään sen sijaan viimeisin onnistuneesti ladattu PDF.",
+    "retainedFailureDetail": "Nykyistä PDF-tiedostoa ei voitu ladata",
+    "invalidTitle": "Virheellinen PDF",
+    "emptyTitle": "Tyhjä PDF",
+    "unavailableTitle": "PDF-katselin ei ole käytettävissä",
+    "loadFailedTitle": "PDF:n lataus epäonnistui",
+    "loadFailedDetail": "PDF-tiedostoa ei voitu ladata."
+  },
+  "password": {
+    "title": "Salasana vaaditaan",
+    "label": "PDF:n salasana",
+    "placeholder": "PDF:n salasana",
+    "submit": "Avaa PDF"
+  },
+  "actions": {
+    "downloadImage": "Lataa kuva",
+    "downloadPdf": "Lataa PDF",
+    "downloadDisplayedPdf": "Lataa näytössä oleva PDF",
+    "downloadStalePdf": "Lataa vanhentunut, ei ajantasainen PDF",
+    "saveImage": "Tallenna kuva projektiin",
+    "savePdf": "Tallenna PDF projektiin",
+    "invert": "Käännä PDF-esikatselun värit",
+    "restoreColors": "Palauta värit",
+    "readerView": "Lukunäkymä",
+    "exitReaderView": "Poistu lukunäkymästä",
+    "rotate": "Kierrä myötäpäivään",
+    "rotateTooltip": "Kierrä PDF:ää myötäpäivään (90°). Nyt {{degrees}}°",
+    "openWindow": "Avaa esikatselu uuteen ikkunaan",
+    "hideToolbar": "Piilota työkalupalkki",
+    "showToolbar": "Näytä työkalupalkki",
+    "settings": "PDF-esikatselun asetukset",
+    "fullscreen": "Koko näytön esikatselu",
+    "exitFullscreen": "Poistu koko näytöstä",
+    "retryCompile": "Käännä uudelleen"
+  },
+  "stale": {
+    "badge": "Vanhentunut",
+    "badgeLabel": "Vanhentunut, ei ajantasainen esikatselu. Käännä uudelleen.",
+    "tooltip": "Esikatselu on vanhentunut editorin muutoksiin nähden. {{explanation}} {{syncTex}} Käännä uudelleen napsauttamalla.",
+    "explanation": "Tämä PDF ei vastaa projektin aktiivista versiota.",
+    "revisionExplanation": "Näytetään projektin versio {{displayed}}. Aktiivinen projekti on versio {{active}}.",
+    "noIdentity": "Näytetyllä PDF-tiedostolla ei ole varmennettua käännöstunnistetta aktiiviselle versiolle.",
+    "syncTexAvailable": "SyncTeX käyttää muokkauksissa lähintä muuttumatonta riviä.",
+    "syncTexUnavailable": "SyncTeX vaatii ajantasaisen käännöksen."
+  },
+  "save": {
+    "title": "Tallenna PDF projektiin",
+    "imageTitle": "Tallenna kuva projektiin",
+    "close": "Sulje tallennusikkuna",
+    "staleDescription": "Tallentaa näytössä olevan vanhentuneen PDF:n projektipuuhun. Se ei vastaa aktiivista versiota.",
+    "description": "Tallentaa näytössä olevan PDF:n projektipuuhun (vahvistetaan Git-tietovarastoon).",
+    "nameLabel": "Tallennusnimi projektissa",
+    "namePlaceholder": "dokumentti.pdf",
+    "imageSaved": "Kuva tallennettiin projektiin.",
+    "pdfSaved": "PDF tallennettiin projektiin.",
+    "failed": "Tallennus projektiin ei onnistunut."
+  },
+  "download": {
+    "pngFilter": "PNG-kuva",
+    "imageSaved": "Kuva tallennettu · {{name}}",
+    "pdfSaved": "PDF tallennettu · {{name}}",
+    "showInFolder": "Näytä kansiossa",
+    "folderUnavailable": "Tiedosto tallennettiin, mutta Oleafly ei voinut avata sen kansiota (käyttöoikeus evätty). Tarkista tallennusikkunassa valittu sijainti.",
+    "imageFailed": "Kuvan lataus ei onnistunut.",
+    "imageFailedDetail": "Kuvan lataus ei onnistunut: {{detail}}",
+    "pdfFailed": "PDF:n lataus ei onnistunut.",
+    "pdfFailedDetail": "PDF:n lataus ei onnistunut: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "PDF-kääntäminen ei ole juuri nyt käytettävissä.",
+    "compileFailed": "Kääntäminen epäonnistui. Avaa Lokit-välilehti, niin näet mikä meni vikaan."
+  },
+  "a11y": {
+    "stale": "Vanhentunut, ei ajantasainen PDF. {{explanation}}",
+    "page": "PDF-sivu {{page}}/{{total}}.",
+    "searchResult": "Hakutulos {{current}}/{{total}}."
+  },
+  "startup": {
+    "headingReady": "PDF-esikatselu valmis",
+    "headingPreparing": "Valmistellaan PDF-esikatselua",
+    "headingAttention": "Käynnistys vaatii huomiota",
+    "progressLabel": "Dokumentin käynnistys: {{completed}}/{{total}} vaihetta valmiina tai ohitettuna",
+    "doneCount": "{{completed}}/{{total}} valmiina",
+    "metaRunning": "{{stages}} käynnissä",
+    "metaQueued": "{{stages}} jonossa",
+    "metaFailed": "{{stages}} epäonnistui",
+    "compileNow": "Käännä nyt",
+    "noProject": "Ei aktiivista projektia",
+    "waitingForEngine": "Odotetaan dokumenttimoottoria",
+    "orPress": "tai paina <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "valmis",
+      "running": "käynnissä",
+      "queued": "jonossa",
+      "skipped": "ohitettu",
+      "failed": "epäonnistui"
+    },
+    "language": {
+      "serviceLabel": "Kielipalvelu",
+      "analysisLabel": "Kielianalyysi",
+      "openingFiles": "Avataan projektin tiedostoja",
+      "starting": "Käynnistetään kielipalvelua",
+      "restarting": "Käynnistetään kielipalvelua uudelleen",
+      "installing": "Asennetaan kielipalvelua",
+      "connected": "Käynnistetty ja yhdistetty",
+      "ready": "Valmis",
+      "localOnly": "Ei tarvita. Käytössä on paikallinen analyysi.",
+      "notApplicable": "Ei koske tätä projektia",
+      "unavailable": "Ei käytettävissä. Paikallinen analyysi on yhä käytettävissä.",
+      "waitingToStart": "Odottaa käynnistystä",
+      "waitingForFiles": "Odotetaan projektin tiedostoja",
+      "syncing": "Synkronoidaan projektin nykyisiä tiedostoja",
+      "analyzing": "Analysoidaan projektin rakennetta",
+      "analyzed": "Projektin nykyinen versio analysoitu",
+      "partial": "Käyttökelpoinen osittainen analyysi on valmis",
+      "needsAttention": "Analyysi vaatii huomiota",
+      "notAvailable": "Ei saatavilla tälle projektille",
+      "queued": "Jonossa nykyiselle versiolle",
+      "waitingForService": "Odotetaan kielipalvelua"
+    },
+    "compile": {
+      "label": "Käännetään",
+      "saving": "Tallennetaan nykyisiä muutoksia",
+      "downloading": "Ladataan tarvittavia LaTeX-paketteja",
+      "producing": "Tuotetaan ja varmennetaan PDF-tuloste",
+      "unavailable": "Kääntäjä ei ole käytettävissä",
+      "failed": "Kääntäminen epäonnistui. Avaa Lokit, niin näet tarkemmat tiedot.",
+      "accepted": "Varmennettu tuloste hyväksytty",
+      "waiting": "Odotetaan nykyisen version kääntämistä"
+    },
+    "render": {
+      "label": "Piirretään PDF",
+      "preparing": "Valmistellaan sivuja, tekstiä ja linkkejä",
+      "reading": "Luetaan PDF-tiedostoa · {{percent}} %",
+      "passwordRequired": "Salasana vaaditaan",
+      "needsAttention": "PDF:n piirto vaatii huomiota",
+      "ready": "Esikatselu valmis",
+      "waitingForRenderer": "Odotetaan varmennettua PDF-piirtäjää",
+      "waitingForCompile": "Odotetaan varmennettua käännöstulosta"
+    }
+  },
+  "window": {
+    "fitWidth": "Sovita leveyteen",
+    "fitHeight": "Sovita korkeuteen",
+    "invert": "Käännä värit",
+    "invertLabel": "Käännä PDF:n värit",
+    "rotateLabel": "Kierrä PDF:ää myötäpäivään",
+    "staleHeading": "Vanhentunut · ei ajantasainen esikatselu",
+    "staleCompiling": "Uudempaa projektin versiota käännetään. Tämä on viimeisin varmennettu PDF versiolle {{revision}}.",
+    "staleUnknownRevision": "tuntematon",
+    "staleCompileFailed": "{{detail}} Viimeisin varmennettu PDF pysyy näkyvissä.",
+    "staleCompileFailedDetail": "Uudempi käännös ei tuottanut käyttökelpoista PDF-tiedostoa",
+    "staleIdentity": "Tämä PDF ei vastaa viimeisintä hyväksyttyä käännöstunnistetta.",
+    "crashedDetail": "Yritä katselinta uudelleen tai käännä uudelleen pääikkunassa.",
+    "compilingTitle": "Käännetään PDF-tiedostoa",
+    "compileFailedTitle": "Kääntäminen epäonnistui",
+    "compileUnavailableTitle": "Kääntäminen ei ole käytettävissä",
+    "artifactUnavailableTitle": "PDF ei ole käytettävissä",
+    "noVerifiedTitle": "Ei varmennettua PDF-tiedostoa",
+    "compilingDetail": "Varmennettu PDF tulee näkyviin, kun kääntäminen valmistuu.",
+    "noVerifiedDetail": "Käännä projekti pääikkunassa. Tämä ikkuna näyttää vain tulosteen, jolla on varmennettu käännöstunniste.",
+    "loadingTitle": "Ladataan PDF-tiedostoa",
+    "loadingVerified": "Ladataan varmennettua PDF-tiedostoa…",
+    "restoringLast": "Palautetaan viimeisintä onnistuneesti ladattua PDF-tiedostoa…",
+    "retryingLoad": "Yritetään PDF:n latausta uudelleen…",
+    "unlocking": "Avataan PDF-tiedostoa…",
+    "rotating": "Kierretään PDF-tiedostoa…",
+    "retainedFailureDetail": "Viimeisintä PDF-tiedostoa ei voitu ladata",
+    "artifactFailure": "Käännettyä PDF-tiedostoa ei voitu varmentaa eikä lukea. Viimeisin onnistuneesti ladattu PDF säilytetään, jos sellainen on.",
+    "downloadStarted": "PDF:n lataus alkoi.",
+    "downloadSaved": "PDF tallennettiin onnistuneesti.",
+    "downloadFailed": "Näytössä olevaa PDF-tiedostoa ei voitu tallentaa."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "PDF:n salasanaa ei hyväksytty.",
+      "passwordRequired": "Tämä PDF on salasanasuojattu.",
+      "invalid": "Käännöstulos ei ole kelvollinen PDF. Käännä uudelleen tai tutki käännöslokia.",
+      "unavailable": "PDF-piirtäjä ei ole käytettävissä tässä ikkunassa. Yritä uudelleen, kun ikkuna on palautettu tai sovellus käynnistetty uudelleen.",
+      "generic": "PDF-tiedostoa ei voitu ladata. Käännä nykyinen versio uudelleen ja yritä uudestaan.",
+      "empty": "Käännetty PDF on tyhjä.",
+      "firstPage": "PDF aukesi, mutta sen ensimmäistä sivua ei voitu piirtää."
+    },
+    "link": {
+      "blockedScheme": "Tämä PDF-linkki käyttää estettyä URL-skeemaa."
+    },
+    "search": {
+      "failed": "Haku ei voinut lukea kaikkia sivuja. Yritä uudelleen, kun PDF on ladattu uudestaan."
+    },
+    "outline": {
+      "empty": "Tässä PDF-tiedostossa ei ole dokumentin jäsennystä.",
+      "failed": "PDF:n jäsennystä ei voitu ladata.",
+      "destinationUnavailable": "Tämä jäsennyksen kohde ei ole käytettävissä.",
+      "blockedScheme": "Tämä linkki käyttää estettyä URL-skeemaa.",
+      "noDestination": "Tällä jäsennyskohdalla ei ole kohdetta.",
+      "untitled": "Nimetön osa"
+    },
+    "status": {
+      "loading": "Ladataan PDF-tiedostoa…"
+    },
+    "a11y": {
+      "document": "PDF-dokumentin esikatselu",
+      "page": "PDF-sivu {{page}}/{{total}}",
+      "textLayer": "Valittavissa oleva teksti PDF-sivulla {{page}}"
+    },
+    "screenReader": {
+      "layer": "Ruudunlukijanäkymä, sivu {{page}}/{{total}}",
+      "title": "Ruudunlukijatila",
+      "pageLabel": "Sivu {{page}}/{{total}}",
+      "empty": "Tältä sivulta ei löytynyt luettavaa tekstiä."
+    }
+  }
+}

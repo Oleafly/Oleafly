@@ -1,0 +1,153 @@
+{
+  "citeOleafly": "Citera Oleafly i den här artikeln",
+  "empty": {
+    "citations": {
+      "detail": "Importera ett referensbibliotek eller lägg till en citering för att börja.",
+      "title": "Inga citeringar än"
+    },
+    "symbols": {
+      "detail": "Rubriker, etiketter, kommandon och miljöer visas här allteftersom projektet skrivs.",
+      "title": "Inga symboler än"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filtrera citeringar",
+    "ariaLabelResults": "Filtrera resultat",
+    "ariaLabelSymbols": "Filtrera symboler",
+    "clear": "Rensa filtret",
+    "noCitation": "Ingen citering matchar ”{{query}}”.",
+    "noResult": "Inget resultat matchar ”{{query}}”.",
+    "noSymbol": "Ingen symbol matchar ”{{query}}”.",
+    "placeholderCitations": "Filtrera nycklar, titlar, författare…",
+    "placeholderResults": "Filtrera platser…",
+    "placeholderSymbols": "Filtrera etiketter och kommandon…"
+  },
+  "import": {
+    "added_one": "{{count}} referens lades till i {{target}}.",
+    "added_other": "{{count}} referenser lades till i {{target}}.",
+    "addedWithDuplicates_one": "{{count}} referens lades till i {{target}}, {{duplicates}} fanns redan.",
+    "addedWithDuplicates_other": "{{count}} referenser lades till i {{target}}, {{duplicates}} fanns redan.",
+    "allDuplicates_one": "Den referensen finns redan i {{target}}.",
+    "allDuplicates_other": "De här {{count}} referenserna finns redan i {{target}}.",
+    "defaultTarget": "bibliografin",
+    "description": "Lägg till referenser från en referenshanterare eller en bibliografifil i det här projektet.",
+    "duplicateNote": "Referenser med en DOI som redan finns i bibliografin hoppas över.",
+    "empty": "Inga referenser hittades i den filen.",
+    "endnote": {
+      "button": "Välj XML-, RIS- eller BibTeX-fil",
+      "description": "Välj en EndNote XML-, RIS- eller BibTeX-fil. Oleafly lägger till referenserna i projektets bibliografi.",
+      "title": "EndNote, RIS eller BibTeX"
+    },
+    "failed": "Det gick inte att importera de referenserna.",
+    "nothingNew": "Inget nytt att lägga till i {{target}}.",
+    "problems_one": "{{count}} problem under importen. {{details}}",
+    "problems_other": "{{count}} problem under importen. {{details}}",
+    "readFailed": "Det gick inte att läsa den filen.",
+    "title": "Importera referensbibliotek",
+    "unrecognized": "Okänd filtyp: {{name}}",
+    "zotero": {
+      "button": "Välj Zotero RDF-fil",
+      "description": "I Zotero väljer du File → Export Library → Zotero RDF. Välj sedan den exporterade filen.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Ofullständiga resultat. Felformade filer och filer som inte går att läsa kan utelämna vissa förekomster.",
+    "stale": "Uppdaterar. Citeringar, symboler och intervall från föregående revision är dolda."
+  },
+  "panel": {
+    "ariaLabel": "Referenser (Shift-F12)",
+    "clearQuery": "Rensa referensfrågan",
+    "cleanLibrary": "Rensa referensbiblioteket",
+    "importAriaLabel": "Importera referenser",
+    "issues_one": "{{count}} problem med referenser eller citeringar",
+    "issues_other": "{{count}} problem med referenser eller citeringar",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Referenser",
+    "viewTabs": "Vy för referenspanelen"
+  },
+  "cleanLibrary": {
+    "title": "Rensa referensbiblioteket",
+    "description": "Gå igenom citeringsnycklar och dubblerade poster innan dina filer ändras.",
+    "library": "Referensbibliotek",
+    "entryCount_one": "{{count}} post",
+    "entryCount_other": "{{count}} poster",
+    "footer": "Förhandsvisningen sparar dina öppna filer. När du tillämpar kontrolleras att de fortfarande matchar förhandsvisningen, och originalen säkerhetskopieras.",
+    "noBib": "Det här projektet har ingen .bib-fil att rensa.",
+    "entriesKept": "{{kept}} av {{total}} poster kommer att finnas kvar.",
+    "changes": "Ändringar och anteckningar",
+    "noChanges": "Inga filändringar att tillämpa.",
+    "filesToUpdate": "Filer att uppdatera: {{files}}",
+    "none": "Inga",
+    "introSafeChanges": "Citeringsnycklarna standardiseras. Dubbletter med samma DOI tas bara bort när alla deras uppgifter kan bevaras.",
+    "introReview": "Liknande titlar och motstridiga metadata blir kvar i biblioteket för granskning.",
+    "preview": "Förhandsvisa",
+    "reviewTitle": "Granska innan du tillämpar",
+    "reviewBody": "Förhandsvisa ändringarna för att se vilka poster och citeringar som uppdateras.",
+    "statusAttention": "Kräver åtgärd",
+    "statusWorking": "Arbetar…",
+    "statusPreviewReady": "Förhandsvisningen är klar",
+    "statusReady": "Klar att förhandsvisa",
+    "refreshPreview": "Uppdatera förhandsvisningen",
+    "previewChanges": "Förhandsvisa ändringar",
+    "apply": "Tillämpa och skriv om citeringarna",
+    "truncated": "Förhandsvisningen visar de första 500 raderna av varje version.",
+    "actionRenamed": "{{old}} fick namnet {{new}}",
+    "actionDuplicate": "{{removed}} togs bort som dubblett av {{kept}} (matchad via {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "De rensade filerna kunde inte läsas in på nytt. Öppna projektet igen innan du redigerar.",
+    "cleaned": "Biblioteket är rensat. {{kept}} av {{total}} poster behölls.",
+    "cleanedWithBackup": "Biblioteket är rensat. {{kept}} av {{total}} poster behölls. Originalfilerna sparas i {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Projektet ändrades efter den här frågan. Kör Hitta referenser igen för att använda aktuella källintervall.",
+      "title": "Referensresultaten har gått ut"
+    },
+    "noLocations": {
+      "detail": "Symbolen finns i den här revisionen, men den har inga matchande definitioner eller förekomster.",
+      "title": "Inga platser hittades"
+    },
+    "none": {
+      "detail": "Placera markören på en etikett, en citering, ett kommando eller en miljö och tryck på Shift-F12.",
+      "title": "Ingen referensfråga"
+    }
+  },
+  "tabs": {
+    "citations": "Citeringar",
+    "results": "Referenser",
+    "symbols": "Symboler"
+  },
+  "trees": {
+    "citations": "Projektets citeringar",
+    "noCitations": "Inga bibliografiposter eller använda citeringar hittades.",
+    "noSymbols": "Inga projektdefinierade symboler hittades.",
+    "symbols": "Projektets symboler"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Den senaste projektrevisionen kunde inte analyseras. Källfilerna ändrades inte.",
+      "title": "Projektanalysen misslyckades"
+    },
+    "indexing": {
+      "detail": "Referenser och citeringar visas när den aktuella projektrevisionen är klar.",
+      "title": "Indexerar projektintelligens"
+    },
+    "noProject": {
+      "detail": "Öppna ett dokumentprojekt för att granska citeringar, symboler och referenser mellan filer.",
+      "title": "Inget projekt är öppet"
+    },
+    "offline": {
+      "detail": "Referenser och citeringar kan inte kontrolleras i den här arbetsytan just nu.",
+      "title": "Analystjänsten är inte tillgänglig"
+    },
+    "unsupported": {
+      "detail": "Det aktiva projektet använder ingen dokumentmotor som stöds.",
+      "title": "Projektintelligens är inte tillgänglig"
+    },
+    "waiting": {
+      "detail": "Den senaste projektrevisionen har inte indexerats än.",
+      "title": "Väntar på projektanalysen"
+    }
+  }
+}

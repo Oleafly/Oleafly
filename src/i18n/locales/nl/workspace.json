@@ -1,0 +1,198 @@
+{
+  "files": {
+    "collapseAll": "Alle mappen inklappen",
+    "confirmDelete": "{{path}} verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "conflict": {
+      "cancelAriaLabel": "Verplaatsen van bestand annuleren",
+      "createBody": "<destination>{{destination}}</destination> bestaat al. Houd beide bestanden met <suggestion>{{suggestion}}</suggestion>. Aanmaken vervangt nooit een bestaand bestand.",
+      "dialogAriaLabel": "Conflict bij verplaatsen van bestand",
+      "keepBoth": "Beide behouden",
+      "renameBody": "<destination>{{destination}}</destination> bestaat al. Houd beide bestanden met <suggestion>{{suggestion}}</suggestion>, of vervang de bestaande bestemming. Oleafly vervangt die alleen als je Vervangen kiest.",
+      "replace": "Vervangen",
+      "title": "Die naam is al in gebruik",
+      "unchanged": "Het oorspronkelijke pad en het bestemmingspad zijn ongewijzigd gebleven."
+    },
+    "createFailed": "Kon \"{{path}}\" niet aanmaken.",
+    "deleteFailed": "Kon \"{{path}}\" niet verwijderen.",
+    "expandAll": "Alle mappen uitklappen",
+    "importAriaLabel": "Importeren in de geselecteerde map",
+    "importFiles": "Bestand(en) importeren",
+    "importFolder": "Map importeren",
+    "importTitle": "Een bestand of map importeren (in de geselecteerde map)",
+    "makeCopy": "Een kopie maken",
+    "moreActions": "Meer acties voor {{name}}",
+    "moveFailed": "Kon \"{{path}}\" niet verplaatsen. Het oorspronkelijke pad is ongewijzigd gebleven.",
+    "newEntry": {
+      "fileInFolder": "Naam van nieuw bestand in map {{folder}}",
+      "fileInRoot": "Naam van nieuw bestand in de projecthoofdmap",
+      "filePlaceholder": "Naam van nieuw bestand",
+      "folderInFolder": "Naam van nieuwe map in map {{folder}}",
+      "folderInRoot": "Naam van nieuwe map in de projecthoofdmap",
+      "folderPlaceholder": "Naam van nieuwe map"
+    },
+    "newFile": "Nieuw bestand",
+    "newFileAriaLabel": "Nieuw bestand in de geselecteerde map",
+    "newFileTitle": "Nieuw bestand (in de geselecteerde map)",
+    "newFolder": "Nieuwe map",
+    "newFolderAriaLabel": "Nieuwe map in de geselecteerde map",
+    "newFolderTitle": "Nieuwe map (in de geselecteerde map)",
+    "renameAriaLabel": "Bestandsnaam wijzigen",
+    "renameFailed": "Kon de naam van \"{{path}}\" niet wijzigen. Het oorspronkelijke pad is ongewijzigd gebleven.",
+    "setMain": "Instellen als hoofddocument",
+    "title": "Verkenner",
+    "treeAriaLabel": "Bestandsboom van de verkenner"
+  },
+  "explorer": {
+    "resizeSections": "Formaat van {{first}} en {{second}} wijzigen"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "dubbelzinnig",
+      "cycle": "cyclus",
+      "definitions_one": "{{count}} definitie",
+      "definitions_other": "{{count}} definities",
+      "duplicate": "duplicaat",
+      "external": "extern",
+      "folded": "ingeklapt",
+      "incomplete": "onvolledig",
+      "missing": "ontbreekt"
+    },
+    "bibEntryIn": "{{type}}-item in {{file}}",
+    "duplicateKey": "Dubbele sleutel.",
+    "duplicateKeyIn": "Dubbele sleutel {{key}} in {{file}}",
+    "folded": {
+      "description": "Deze tak is ingeklapt om heel grote projectgrafieken vlot te houden.",
+      "label": "Open de gekoppelde bron om verder te gaan"
+    },
+    "fromFile": "{{kind}} uit {{file}}",
+    "groups": {
+      "bibliography": "Bibliografie",
+      "bibtexEntries": "BibTeX-items",
+      "commands": "Commando's",
+      "definitions_one": "Definitie",
+      "definitions_other": "Definities",
+      "dependencies": "Links en afhankelijkheden",
+      "duplicateCitations": "Dubbele citatiesleutels",
+      "environments": "Omgevingen",
+      "labels": "Labels en ankers",
+      "occurrences": "Voorkomens",
+      "sections": "Secties",
+      "unlinked": "Niet-gekoppelde bestanden",
+      "unresolvedCitations": "Niet gevonden citaties",
+      "unresolvedDuplicate": "Niet gevonden en dubbel"
+    },
+    "inFile": "{{kind}} in {{file}}",
+    "incompleteEntry": "Onvolledig item.",
+    "kinds": {
+      "anchor": "anker",
+      "asset": "mediabestand",
+      "bibentry": "bibliografie-item",
+      "bibliography": "bibliografie",
+      "citation": "citatie",
+      "environment": "omgeving",
+      "file": "bestand",
+      "glossary": "woordenlijst",
+      "import": "import",
+      "include": "include",
+      "label": "label",
+      "link": "link",
+      "macro": "macro",
+      "reference": "referentie",
+      "section": "sectie"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Documentoverzicht",
+    "collapseHeading": "{{title}} inklappen",
+    "collapseAll": "Alle koppen inklappen",
+    "empty": "Geen secties of includes in dit document.",
+    "emptyDetail": "Voeg een sectiekop toe om een navigeerbaar overzicht op te bouwen.",
+    "entryCount_one": "{{count}} item in het overzicht",
+    "entryCount_other": "{{count}} items in het overzicht",
+    "expandHeading": "{{title}} uitklappen",
+    "expandAll": "Alle koppen uitklappen",
+    "title": "Overzicht"
+  },
+  "panelError": {
+    "message": "Er ging iets mis met de paneelindeling. Je projectbestanden staan veilig op schijf.",
+    "reload": "Oleafly opnieuw laden"
+  },
+  "structure": {
+    "ariaLabel": "Documentstructuur",
+    "collapseAll": "Alle structuuritems inklappen",
+    "empty": "De projectkaart bevat geen ondersteunde bestanden.",
+    "filterLabel": "Projectstructuur filteren",
+    "filterPlaceholder": "Projectkaart filteren…",
+    "expandAll": "Alle structuuritems uitklappen",
+    "itemCount_one": "{{count}} structuuritem",
+    "itemCount_other": "{{count}} structuuritems",
+    "noMatch": "Geen structuur komt overeen met “{{query}}”.",
+    "notice": {
+      "partial": "Gedeeltelijke kaart. Onleesbare of onjuiste bestanden blijven waar mogelijk zichtbaar.",
+      "stale": "Bezig met bijwerken. De structuur van de vorige revisie is verborgen tot de actuele bronbereiken klaar zijn."
+    },
+    "title": "Structuur",
+    "treeLabel": "Projectstructuur",
+    "unavailable": {
+      "failed": {
+        "detail": "Het project kon niet worden geanalyseerd. Je bronbestanden zijn niet gewijzigd.",
+        "title": "De structuur kon niet worden opgebouwd"
+      },
+      "mapping": {
+        "detail": "Oleafly indexeert koppen, gekoppelde bestanden, symbolen en bibliografie-items.",
+        "title": "Projectstructuur in kaart brengen"
+      },
+      "noProject": {
+        "detail": "Open een documentproject om de lokale structuur en de projectstructuur te bekijken.",
+        "title": "Geen project geopend"
+      },
+      "noSource": {
+        "detail": "Open een ondersteund bron- of bibliografiebestand om de structuur ervan te zien.",
+        "title": "Geen actief bronbestand"
+      },
+      "offline": {
+        "detail": "Projectanalyse is op dit moment niet beschikbaar voor deze werkruimte.",
+        "title": "Structuurdienst niet beschikbaar"
+      },
+      "unsupported": {
+        "detail": "Voor dit bestandstype is er geen aanbieder van projectstructuur.",
+        "title": "Structuur is niet beschikbaar"
+      },
+      "waiting": {
+        "detail": "De nieuwste projectrevisie is nog niet geïndexeerd.",
+        "title": "Wachten op de projectstructuur"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Assistent laden",
+    "editor": "Editor laden",
+    "preview": "Voorbeeld laden",
+    "terminal": "Terminal laden"
+  },
+  "terminal": {
+    "closeCurrent": "Huidige sluiten",
+    "closeLeft": "Alles links sluiten",
+    "closeOthers": "Andere sluiten",
+    "closeRight": "Alles rechts sluiten",
+    "closeTab": "{{title}} sluiten",
+    "color": "Kleur",
+    "errors": {
+      "input": "De shell kon geen invoer aannemen",
+      "resize": "De terminal kon niet van formaat veranderen",
+      "start": "De shell kon niet starten"
+    },
+    "limitReached": "Sluit een terminal om er nog een te openen",
+    "newTerminal": "Nieuwe terminal",
+    "settings": "Terminalinstellingen",
+    "starting": "De projectshell starten…",
+    "tabs": "Terminals",
+    "titleInput": "Terminaltitel"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Filter wissen",
+    "filterPlaceholder": "Filteren…",
+    "noProject": "Geen project"
+  }
+}

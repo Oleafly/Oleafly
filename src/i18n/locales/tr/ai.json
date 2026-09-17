@@ -1,0 +1,739 @@
+{
+  "runtime": {
+    "ariaLabel": "Asistan çalışma zamanı",
+    "builtIn": "Oleafly Ajanı",
+    "cli": "CLI Ajanı"
+  },
+  "shell": {
+    "float": "Asistanı serbest bırak",
+    "floatAriaLabel": "Asistanı uygulamanın üzerinde serbest bırak",
+    "overlayTitle": "Yapay zeka asistanı",
+    "dockAriaLabel": "Sohbeti yeniden kenar çubuğuna yerleştir",
+    "floatingNotice": "Asistan uygulamanın üzerinde serbest duruyor.",
+    "dockBack": "Geri yerleştir",
+    "loadingAgents": "Ajanlar yükleniyor…",
+    "openProjectForCli": "Bir CLI ajanıyla çalışmak için bir proje açın."
+  },
+  "minimap": {
+    "ariaLabel": "Konuşma turları",
+    "jumpTo": "Şuraya git: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "Onay iste",
+        "description": "Dosya düzenlemelerinden, internet erişiminden ve komutlardan önce sorar."
+      },
+      "approveForMe": {
+        "label": "Benim için onayla",
+        "description": "Yalnızca riskli sayılan eylemlerden önce sorar."
+      },
+      "fullAccess": {
+        "label": "Tam erişim",
+        "description": "Araç eylemlerini onay istemeden çalıştırır."
+      },
+      "custom": {
+        "label": "Özel (approvals.toml)",
+        "description": "approvals.toml içindeki kuralları kullanır. Bunları Ayarlar'daki Yapay zeka asistanı bölümünden düzenleyin."
+      }
+    },
+    "selectorAriaLabel": "Onay kipi. {{mode}}",
+    "editProjectRules": "Proje kurallarını düzenle",
+    "confirm": {
+      "command": "Komutu onayla",
+      "externalTool": "Dış araç eylemini onayla",
+      "internet": "İnternet erişimini onayla",
+      "edit": "Yapay zeka düzenlemesini onayla"
+    },
+    "headline": {
+      "command": "Asistan bu komutu çalıştırmak istiyor",
+      "externalTool": "Asistan bir dış aracı kullanmak istiyor",
+      "internet": "Asistan internete erişmek istiyor",
+      "edit": "Asistan dosyalarınızı değiştirmek istiyor"
+    },
+    "mcpNote": "Bu işlem, aşağıdaki argümanları yapılandırılmış MCP sunucusuna gönderir.",
+    "line": "satır {{line}}",
+    "sessionAutoApprove": "Yazma işlemleri için oturum boyunca otomatik onay açık (silmeler yine de bir tıklama gerektirir).",
+    "commandLabel": "Komut",
+    "workingDirectory": "Çalışma dizini",
+    "mcpServer": "MCP sunucusu",
+    "toolLabel": "Araç",
+    "arguments": "Argümanlar",
+    "figureAlt": "Şekil önizlemesi",
+    "firstChange": "ilk değişiklik · S{{line}}",
+    "reject": "Reddet",
+    "alwaysInProject": "Bu projede her zaman",
+    "alwaysInProjectAriaLabel": "Bu projede her zaman izin ver",
+    "alwaysAllow": "Her zaman izin ver",
+    "approve": "Onayla",
+    "external": {
+      "title": "Dış ajan isteği (MCP)",
+      "moreWaiting_one": "{{count}} istek daha bekliyor",
+      "moreWaiting_other": "{{count}} istek daha bekliyor"
+    }
+  },
+  "attachments": {
+    "remove": "{{name}} ekini kaldır"
+  },
+  "chat": {
+    "pill": {
+      "plan": "PLAN",
+      "step": "ADIM {{current}}/{{total}}",
+      "review": "İNCELEME"
+    },
+    "plan": {
+      "detailsAriaLabel": "Plan ayrıntıları",
+      "headingPlan": "Plan",
+      "headingChanges": "Değişiklikler",
+      "approve": "Planı onayla",
+      "revise": "Gözden geçir",
+      "statusAwaiting": "Onay bekliyor",
+      "statusApproved": "Onaylandı"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "tamamlandı",
+        "inProgress": "sürüyor",
+        "pending": "beklemede",
+        "cancelled": "iptal edildi"
+      }
+    },
+    "fileChanges": {
+      "changed": "Değişenler",
+      "committed": "{{commit}} olarak işlendi"
+    },
+    "runSummary": {
+      "plan": "Plan",
+      "stepsDone": "{{done}}/{{total}} tamam",
+      "filesChanged_one": "{{count}} dosya değişti",
+      "filesChanged_other": "{{count}} dosya değişti"
+    },
+    "copyMessage": "İletiyi kopyala",
+    "exploration": {
+      "explored": "İnceledi",
+      "exploredItems": "{{items}} inceledi",
+      "files_one": "bir dosya",
+      "files_other": "{{count}} dosya",
+      "searches_one": "bir arama",
+      "searches_other": "{{count}} arama",
+      "lists_one": "bir liste",
+      "lists_other": "{{count}} liste"
+    },
+    "reasoning": {
+      "thinking": "Düşünüyor…",
+      "thoughtFor": "{{seconds}} sn düşündü",
+      "label": "Akıl yürütme"
+    },
+    "subagent": {
+      "finished": "Bitti",
+      "failed": "Başarısız",
+      "stopped": "Durduruldu",
+      "usingTool": "{{tool}} kullanılıyor",
+      "working": "Üzerinde çalışıyor",
+      "errorBody": "Ajan bu görevi tamamlayamadı.",
+      "stoppedBody": "Görev, yanıt vermeden önce durduruldu.",
+      "openTask": "Görevi aç"
+    },
+    "workedSteps": {
+      "duration": "{{seconds}} sn çalıştı",
+      "steps_one": "{{count}} adımı tamamladı",
+      "steps_other": "{{count}} adımı tamamladı"
+    },
+    "steered": "Yönlendirildi",
+    "toolOutputError": "Hata: {{message}}",
+    "errorHints": {
+      "invalidKey": "API anahtarınız geçersiz veya süresi dolmuş görünüyor. Ayarlar → Yapay zeka asistanı bölümünden güncelleyin ya da {{where}} sağlayıcı değiştirin.",
+      "outOfCredits": "Yapay zeka sağlayıcınızın kredisi veya kotası bitti. Hesabı doldurun ya da {{where}} başka bir sağlayıcıya (veya yerel Ollama'ya) geçin.",
+      "overloaded": "Sağlayıcının sunucuları şu anda aşırı yüklü (bu istek zaten yeniden denendi). Bir dakika bekleyip tekrar deneyin ya da {{where}} benzer bir modele geçin.",
+      "rateLimited": "Sağlayıcı istekleri hız sınırına takıyor. Biraz bekleyip yeniden deneyin ya da {{where}} sağlayıcı değiştirin.",
+      "retiredModel": "Sağlayıcı bu modeli kaldırdı veya kısıtladı. {{where}} daha yeni bir model seçin (Ayarlar → Yapay zeka asistanı, anahtarınızın kullanabileceklerini listeler).",
+      "unreachable": "Yapay zeka sağlayıcısına ulaşılamadı. Bağlantınızı denetleyin; Ollama kullanıyorsanız çalıştığından emin olun (Ayarlar → Yapay zeka asistanı → Ollama'yı denetle).",
+      "where": {
+        "inSettings": "Ayarlar'daki Yapay zeka asistanı bölümünden",
+        "modelMenu": "yukarıdaki model menüsünden"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "Bağlam ekle",
+    "mentionMenuAgentsAndFiles": "Ajanlar ve proje dosyaları",
+    "mentionMenuFiles": "Proje dosyaları",
+    "mentionHeadingAgents": "Bir ajana devret",
+    "mentionHeadingFiles": "Proje dosyaları",
+    "slashMenuAriaLabel": "Eğik çizgi komutları",
+    "placeholderEngineUnavailable": "Belge motoru kullanılamıyor. Yapay zeka düzenlemesi devre dışı",
+    "placeholderDefault": "Belgenizle ilgili yardım için yapay zekaya sorun…",
+    "planRevisionPlaceholder": "Planda neyin değişeceğini anlatın",
+    "prompts": "İstemler",
+    "promptShortcutsAriaLabel": "İstem kısayolları",
+    "persona": "Persona",
+    "personaActiveTooltip": "{{name}} etkin ve varsayılan yönergelerinizin yerine geçiyor.",
+    "personaChoose": "Persona seç",
+    "personaActiveAriaLabel": "Persona. {{name}} etkin ve varsayılan yönergelerin yerine geçiyor.",
+    "personaCreate": "Ayarlar'da bir persona oluşturun",
+    "personaNone": "Yok",
+    "planModeOn": "Plan kipi açık",
+    "planModeOff": "Plan kipi kapalı",
+    "planModeAriaLabel": "Plan kipi",
+    "plan": "Plan",
+    "planModeInfo": "Plan kipi hakkında",
+    "planModeHint": "Plan kipi: asistan düzenlemeden önce bir plan önerir. Asistana tüm araçlara doğrudan erişim vermek için Plan'ı kapatın.",
+    "stop": "Durdur",
+    "stopTitle": "Üretmeyi durdur",
+    "send": "Gönder",
+    "checkAgain": "Yeniden denetle"
+  },
+  "commands": {
+    "groups": {
+      "skills": "Beceriler"
+    },
+    "archive": {
+      "label": "Arşivle",
+      "description": "Bu sohbeti arşivler"
+    },
+    "forkChat": {
+      "label": "Sohbeti çatalla",
+      "description": "Bu konuşmadan yeni bir sohbet oluşturur"
+    },
+    "goal": {
+      "label": "Hedef",
+      "description": "Asistanın sürekli olarak neye çalışacağını belirler"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "Bağlı MCP sunucularını ve durumlarını gösterir"
+    },
+    "model": {
+      "label": "Model",
+      "description": "Bu sohbet için modeli seçer"
+    },
+    "planMode": {
+      "enableLabel": "Plan Kipini Aç",
+      "disableLabel": "Plan Kipini Kapat",
+      "description": "Yapılandırılmış planlamayı açar veya kapatır"
+    },
+    "recordSkill": {
+      "label": "Beceri kaydet",
+      "description": "Bu sohbetin yaklaşımını düzenlenebilir bir taslak olarak kaydeder"
+    },
+    "files": {
+      "label": "Dosyalar",
+      "description": "Bir sonraki iletinize dosya ekler"
+    },
+    "browser": {
+      "label": "Tarayıcı ekle",
+      "description": "Tarayıcıyı belgenizin yanında açar"
+    }
+  },
+  "models": {
+    "ariaLabel": "Yapay zeka modeli",
+    "placeholder": "Bir model seçin",
+    "triggerTooltip": "{{model}}. Sağlayıcı veya model değiştir",
+    "searchLabel": "Modellerde ara",
+    "searchPlaceholder": "Modellerde ara…",
+    "emptyTitle": "Model bulunamadı",
+    "emptyHint": "Başka bir arama deneyin.",
+    "trust": {
+      "verified": "Doğrulanmış",
+      "untested": "Denenmemiş",
+      "blocked": "Engellenmiş"
+    },
+    "trustTitle": {
+      "verified": "Oleafly asistanı bu modelde çalıştırdı",
+      "untested": "Asistanla henüz denenmedi. İlk kullanımda denetlenir",
+      "blocked": "Asistan bu modelde çalışamaz"
+    },
+    "chatOnlyHint": "Yalnızca sohbet, bu model araç kullanamaz",
+    "checkingHint": "Bu model denetleniyor",
+    "blockedWithReason": "Bu model asistan için engellendi: {{reason}}",
+    "blocked": "Bu model asistan için engellendi.",
+    "probeFailedWithDetail": "Bu model denetlenemedi. {{detail}}",
+    "probeFailed": "Bu model denetlenemedi."
+  },
+  "history": {
+    "title": "Sohbet geçmişi",
+    "closeBackdrop": "Sohbet geçmişini kapat",
+    "searchLabel": "Sohbetlerde ara",
+    "searchPlaceholder": "Başlıklarda ve iletilerde ara",
+    "emptyProject": "Bu proje için henüz kayıtlı sohbet yok.",
+    "emptySearch": "Bu aramayla eşleşen sohbet yok.",
+    "untitled": "Yeni sohbet",
+    "staleTitle": "Bu sohbet, projenin daha eski bir sürümünden başlatıldı",
+    "staleBadge": "eski sürüm",
+    "messages_one": "{{count}} ileti",
+    "messages_other": "{{count}} ileti",
+    "tokens": "~{{amount}} token",
+    "deleteAriaLabel": "{{title}} sohbetini sil",
+    "deleteFallbackTitle": "sohbet",
+    "deleteTitle": "Sohbeti sil",
+    "relative": {
+      "justNow": "az önce",
+      "minutes": "{{count}} dk önce",
+      "hours": "{{count}} sa önce",
+      "days": "{{count}} gün önce"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "Hiçbir zaman",
+      "everyTime": "Her seferinde, sohbette",
+      "askModeOnly": "Yalnızca Onay iste kipinde",
+      "unlessAllowed": "Evet, proje için izin verilmediyse"
+    },
+    "catalog": {
+      "readFile": "Bir proje dosyasını, uzun dosyalarda parça parça okur.",
+      "writeFile": "Dosyanın tamamını yazar, içindekilerin yerine geçer.",
+      "replaceInFile": "Bir dosyada tam bir bölüm bulur ve onu değiştirir.",
+      "createFile": "Projede yeni bir dosya veya klasör oluşturur.",
+      "renameFile": "Bir dosyayı veya klasörü yeniden adlandırır ya da taşır.",
+      "deleteFile": "Bir dosyayı veya klasörü siler.",
+      "listFiles": "Projedeki her dosyayı ve klasörü listeler.",
+      "searchProject": "Projenin metninde arar, dosya ve satır eşleşmeleri döndürür.",
+      "projectMap": "Belgenin anahattını okur: bölümler, etiketler, atıf anahtarları, makrolar, girdiler ve çözümlenmemiş her şey.",
+      "showLocation": "Bir dosyayı düzenleyicide belirli bir satırda açar ve PDF önizlemesini o noktaya taşır.",
+      "compile": "Projeyi kendi motoruyla derler ve hataları bildirir.",
+      "getLog": "Son derleme günlüğünü okur.",
+      "getPdfText": "Derlenmiş PDF'in metnini sayfa sayfa okur.",
+      "verifyPdfPages": "Bir görü modelinin düzeni denetleyebilmesi için derlenmiş sayfaları görsel olarak işler.",
+      "setMainDoc": "Projenin hangi dosyadan derleneceğini değiştirir.",
+      "literatureSearch": "OpenAlex'te anahtar sözcükle makale arar, anahtar gerekmez.",
+      "verifyCitation": "Bir DOI'yi veya başlığı doi.org ya da Crossref üzerinden doğrulanmış BibTeX'e dönüştürür.",
+      "projectLibrarySearch": "Projenin kendi metninde ve notlarında anahtar sözcükle arar.",
+      "alphaxivSearch": "alphaXiv üzerinden arXiv makalelerinde arar.",
+      "alphaxivPaperContent": "Bir arXiv makalesinin tam metnini alphaXiv üzerinden getirir.",
+      "previewFigure": "Bir TikZ veya PGFPlots şeklini tek başına derler ve sonucu sohbette gösterir.",
+      "insertFigure": "Bitmiş şekli imlecin olduğu yere başlık ve etiketle ekler, figures/ altına bir PNG kaydeder.",
+      "loadImage": "Projede zaten bulunan bir görsele bakar.",
+      "updateTodos": "Sohbette gösterilen adım adım planı yazar veya günceller.",
+      "getTodos": "Geçerli planı okur.",
+      "rememberNote": "Sonraki sohbetlerin göreceği bir proje notu kaydeder.",
+      "forgetNote": "Kayıtlı bir proje notunu kaldırır.",
+      "listNotes": "Kayıtlı proje notlarını listeler.",
+      "loadSkill": "Bir beceriyi izlemeden önce tüm yönergelerini yükler.",
+      "readSkillFile": "Bir beceriyle gelen başvuru dosyasını veya betiği okur.",
+      "spawnAgent": "Kendi görevi ve araçları olan bir yardımcı ajan başlatır.",
+      "sendMessage": "Çalışan bir yardımcı ajana ileti gönderir.",
+      "followupTask": "Bir yardımcı ajana bittikten sonra başka bir görev verir.",
+      "waitAgent": "Bir yardımcı ajanın bitmesini bekler ve sonucunu okur.",
+      "interruptAgent": "Bir yardımcı ajanın yaptığı işi durdurur.",
+      "listAgents": "Yardımcı ajanları ve durumlarını listeler.",
+      "closeAgent": "Bir yardımcı ajanı kapatır.",
+      "runCommand": "Proje klasöründe iki dakikalık sınırla bir shell komutu çalıştırır.",
+      "computerUse": "Asistanın tarayıcı penceresinde bir web sayfası açar.",
+      "toggleTheme": "Açık ve koyu kip arasında geçiş yapar."
+    },
+    "disableAll": "Tümünü kapat",
+    "emptyContext": "Bu bağlamda kullanılabilir araç yok.",
+    "enableAll": "Tümünü aç",
+    "enableTool": "{{name}} aracını aç",
+    "enabledCount": "{{total}} araçtan {{enabled}} tanesi açık",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "Ajanlar",
+      "buildAndPdf": "Derleme ve PDF",
+      "figures": "Şekiller",
+      "files": "Dosyalar",
+      "planAndMemory": "Plan ve bellek",
+      "research": "Araştırma",
+      "skills": "Beceriler",
+      "system": "Sistem"
+    },
+    "managerAriaLabel": "Ajan araçlarını yönet",
+    "managerHeading": "Araçlar",
+    "managerTooltip": "Araçlar",
+    "noDescription": "Açıklama verilmedi.",
+    "notes": {
+      "latexOnly": "Yalnızca LaTeX projeleri",
+      "pdfCaptureSetting": "PDF sayfa yakalama ayarı gerekir",
+      "alphaxivKey": "Tümleştirmeler bölümünde bir alphaXiv anahtarı gerekir",
+      "chatApproval": "Sohbette, her seferinde tek komut olarak onaylanır",
+      "browserSetting": "Web tarayıcısı ayarı gerekir"
+    },
+    "sourceGroups": {
+      "figure": "Şekil",
+      "mcp": "MCP",
+      "project": "Proje araçları",
+      "skills": "Beceriler"
+    },
+    "table": {
+      "tool": "Araç",
+      "whatItDoes": "Ne yapar",
+      "asksFirst": "Önce sorar"
+    }
+  },
+  "toolCard": {
+    "approved": "Onaylandı",
+    "rejected": "Reddedildi",
+    "binaryPreview": "Bu bağlantılı dosya ikili olduğu için burada önizlenemez.",
+    "previewTruncated": "Önizleme 256 KiB'de kesildi.",
+    "previewFailed": "Bu bağlantılı kaynak önizlenemedi.",
+    "showAll": "{{characters}} karakterin tümünü göster",
+    "loadingSource": "Kaynak yükleniyor",
+    "inspectSource": "Kaynağı incele",
+    "openFile": "Dosyayı aç",
+    "openSource": "Kaynağı aç",
+    "openSourceTitled": "Kaynağı aç: {{title}}",
+    "openTask": "Görevi aç",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "İşlenmiş şekil önizlemesi",
+    "toolImageAlt": "Araçtan gelen görsel",
+    "showFigure": "İşlenmiş şekli göster",
+    "showTikz": "TikZ kaynağını göster",
+    "figureTab": "Şekil",
+    "tikzTab": "TikZ",
+    "saving": "Kaydediliyor",
+    "saveToProject": "Projeye kaydet",
+    "copyCode": "Kodu kopyala",
+    "saved": "{{path}} kaydedildi",
+    "saveNeedsProject": "Bu şekli kaydetmek için bir proje açın.",
+    "saveFailed": "Şekil kaydedilemedi."
+  },
+  "transcript": {
+    "dialogTitle": "Devredilen görev dökümü",
+    "dialogDescription": "Devredilen ajanın bu görev üzerinde çalışırken okuduğu, çalıştırdığı ve yanıtladığı her şey.",
+    "loading": "Döküm yükleniyor",
+    "failed": "Döküm yüklenemedi.",
+    "empty": "Bu görev bir döküm kaydetmedi."
+  },
+  "subagents": {
+    "working": "Alt ajanlar çalışıyor",
+    "count": "Alt ajanlar ({{count}})",
+    "stopAll": "Tümünü durdur",
+    "stopFailed": "Alt ajanlar durdurulamadı.",
+    "updates": "{{count}} güncelleme",
+    "openTask": "Görevi aç",
+    "awaitingPermission": "Devredilen bir ajan izin bekliyor.",
+    "taskFailed": "Devredilen bir görev başarısız oldu. Hatayı okumak için açın.",
+    "transcriptTruncated": "Bu döküm, burada gösterilen bölümden daha uzun.",
+    "noTranscriptYet": "Bu görev henüz hiçbir döküm etkinliği bildirmedi.",
+    "noSessionInfo": "Bu görev, dökümünü açmaya yetecek oturum bilgisi kaydetmedi.",
+    "loadingTranscript": "Döküm yükleniyor…",
+    "transcriptFailed": "Döküm yüklenemedi.",
+    "stillWorking": "Bu alt ajan hâlâ çalışıyor. Tam dökümü bittiğinde açılır.",
+    "noFinalAnswer": "Bu ajan bir nihai yanıt kaydetmedi.",
+    "latest": "En son: {{text}}",
+    "workingDetail": "çalışıyor",
+    "status": {
+      "active": "çalışıyor",
+      "awaiting": "izin gerekiyor",
+      "updated": "güncellendi",
+      "interrupted": "durduruldu",
+      "completed": "bitti",
+      "failed": "başarısız"
+    }
+  },
+  "acp": {
+    "newConversation": "Yeni konuşma",
+    "savedConversations": "Kayıtlı konuşmalar",
+    "untitledConversation": "Adsız konuşma",
+    "agentSetup": "Ajan kurulumu",
+    "usageReport": "Kullanım raporu",
+    "permission": {
+      "ariaLabel": "Ajan izni",
+      "namedHeadline": "{{agent}} izin istiyor",
+      "headline": "Ajan izin istiyor",
+      "expired": "Bu isteğin süresi doldu. Ajandan yeniden denemesini isteyin.",
+      "dismiss": "Kapat"
+    },
+    "readiness": {
+      "managedBridge": "Köprü {{version}}, Oleafly tarafından kuruldu.",
+      "bridgeOnPath": "Köprü PATH üzerinde bulundu.",
+      "bridgeMissingWithCli": "{{cli}}, {{path}} konumunda bulundu. Bağlanmak için ACP köprüsü {{version}} sürümünü kurun.",
+      "bridgeMissing": "Bu ajanı bağlamak için ACP köprüsü {{version}} sürümünü kurun.",
+      "cliMissing": "{{cli}} PATH üzerinde değil. Kurun, sonra {{command}} komutunu çalıştırın.",
+      "cliNotFound": "Bu ajanın komut satırı aracı bulunamadı.",
+      "unavailable": "Bu ajan bu bilgisayarda çalışamaz."
+    },
+    "bridgeSource": {
+      "notInstalled": "Kurulu değil",
+      "managed": "Oleafly tarafından yönetiliyor",
+      "onPath": "PATH üzerinde"
+    },
+    "installing": "Kuruluyor",
+    "installBridge": "Köprüyü kur",
+    "assistantAriaLabel": "CLI ajanı asistanı",
+    "loadEarlier": "Daha eski etkinliği yükle",
+    "starting": "{{agent}} başlatılıyor",
+    "startingFallback": "ajan",
+    "startingHint": "Ajanın komut satırı aracı başlatılıyor. İlk seferde bu birkaç saniye sürer.",
+    "readySubtitle": "{{agent}} bu projede hazır",
+    "projectSubtitle": "\"{{project}}\" üzerinde çalışılıyor",
+    "signInFallback": "Bu ajanın CLI aracıyla oturum açın, sonra yeniden bağlanın.",
+    "reconnectAfterSignIn": "Oturum açtıktan sonra yeniden bağlan",
+    "reconnect": "Konuşmaya yeniden bağlan",
+    "resumeTask": "Bu çalışmayı sürdürmek için araştırma görevini açın.",
+    "delegatedConversation": "Bu konuşma, devredilmiş bir ajan çalıştırmasına ait.",
+    "noResume": "Bu ajan kayıtlı konuşmaları sürdüremez. Hazır olduğunuzda yeni bir konuşma başlatın.",
+    "imageTooLarge": "480 KiB'den küçük bir görsel seçin. En fazla dört görsel ekleyebilirsiniz.",
+    "imageReadFailed": "Görsel okunamadı.",
+    "removeImage": "{{name}} görselini kaldır",
+    "composerAriaLabel": "CLI ajanına ileti yaz",
+    "composerPlaceholderReady": "Ajandan bu proje üzerinde çalışmasını isteyin",
+    "composerPlaceholderIdle": "İleti göndermek için bir konuşma başlatın veya yeniden bağlanın",
+    "attachImage": "Görsel ekle",
+    "startConversation": "{{agent}} ile bir konuşma başlat",
+    "startConversationFallback": "bir ajan",
+    "agentModel": "Ajan modeli",
+    "modelManaged": "Model ajan tarafından yönetiliyor",
+    "stop": "Durdur",
+    "stopTitle": "Ajanı durdur",
+    "send": "Gönder",
+    "connecting": "Bağlanıyor",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "bağlanıyor",
+      "authRequired": "kimlik doğrulama gerekiyor",
+      "ready": "hazır",
+      "running": "çalışıyor",
+      "cancelling": "durduruluyor",
+      "cancelled": "durduruldu",
+      "disconnected": "bağlantı kesildi",
+      "failed": "başarısız"
+    },
+    "roster": {
+      "bridgeMissing": "köprüyü Ajan kurulumu bölümünden kurun",
+      "cliMissing": "CLI bu bilgisayarda bulunamadı",
+      "unavailable": "bu bilgisayarda kullanılamıyor",
+      "comingSoon": "yakında"
+    },
+    "messageTooLarge": "Bu ileti ve görselleri çok büyük. İletiyi kısaltın veya bir görseli kaldırın.",
+    "terminalCommand": "Ajan bir terminal komutu çalıştırıyor.",
+    "agentToolFallback": "Ajan aracı",
+    "agentReported": "Ajanın bildirdiği: {{detail}}",
+    "imageAttachmentName": "Görsel {{index}}",
+    "agentImage": "[Ajan bir görsel döndürdü.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "CLI ajanı",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "kurulu değil",
+    "cliDetail": "CLI ajanı · kendi hesabını kullanır",
+    "builtInDetail": "{{provider}} · Oleafly ajanı"
+  },
+  "home": {
+    "heading": "Bugün ne yapmak istersiniz?",
+    "headingAccent": "ne yapmak istersiniz?",
+    "skillCategories": "Beceri kategorileri",
+    "skillLockedTitle": "{{name}} bu proje için kapalı",
+    "recentChats": "Son sohbetler",
+    "recentStaleTitle": "Projenin daha eski bir sürümünden başlatıldı",
+    "recentUntitled": "Yeni sohbet",
+    "recentStaleBadge": "Eski sürüm",
+    "recentMessages_one": "{{count}} ileti",
+    "recentMessages_other": "{{count}} ileti",
+    "showAllHistory": "Tüm geçmişi göster ({{count}})"
+  },
+  "research": {
+    "noSourceLink": "Bu sonuçta bir kaynak bağlantısı yok.",
+    "sourceOpenFailed": "Kaynak açılamadı.",
+    "noProjectPath": "Bu sonuçta bir proje dosyası yolu yok.",
+    "resultOpenFailed": "Sonuç dosyası açılamadı."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "Yaz ve düzenle",
+      "citationsAndLiterature": "Atıflar ve literatür",
+      "review": "İnceleme",
+      "figuresAndTables": "Şekiller ve tablolar"
+    },
+    "improveWriting": {
+      "label": "Yazımı iyileştir",
+      "description": "Anlaşılırlığı, üslubu ve akışı düzeltir"
+    },
+    "fixGrammar": {
+      "label": "Dil bilgisini düzelt",
+      "description": "Dil bilgisini ve noktalamayı düzeltir"
+    },
+    "fixLatexErrors": {
+      "label": "LaTeX hatalarını düzelt",
+      "description": "Bozuk kodu ve derleme hatalarını onarır"
+    },
+    "writeEquation": {
+      "label": "Denklem yaz",
+      "description": "Doğal dilden LaTeX matematiğine"
+    },
+    "draftSection": {
+      "label": "Bölüm taslağı yaz",
+      "description": "Sizin üslubunuzla yeni bir bölüm yazar"
+    },
+    "paraphrase": {
+      "label": "Başka sözcüklerle anlat",
+      "description": "Anlamı koruyarak yeniden ifade eder"
+    },
+    "shorten": {
+      "label": "Kısalt",
+      "description": "Metni daha derli toplu yapar"
+    },
+    "expand": {
+      "label": "Genişlet",
+      "description": "Ayrıntı ekleyerek açar"
+    },
+    "journalFormat": {
+      "label": "Dergi biçimi",
+      "description": "Hedef bir etkinlik için yeniden biçimlendirir"
+    },
+    "writeAbstract": {
+      "label": "Özet yaz",
+      "description": "Makaleden bir özet taslağı çıkarır"
+    },
+    "generateTitle": {
+      "label": "Başlık üret",
+      "description": "Dikkat çekici makale başlıkları"
+    },
+    "keywords": {
+      "label": "Anahtar sözcükler",
+      "description": "Aranabilir anahtar sözcükleri çıkarır"
+    },
+    "continueWriting": {
+      "label": "Yazmaya devam et",
+      "description": "Kaldığınız yerden sürdürür"
+    },
+    "citationSearch": {
+      "label": "Atıf arama",
+      "description": "alphaXiv ve OpenAlex üzerinde makale arar"
+    },
+    "literatureReview": {
+      "label": "Literatür taraması",
+      "description": "İlgili çalışmaları gerçek kaynaklarla tarar"
+    },
+    "citeClaim": {
+      "label": "Bu iddiaya atıf ver",
+      "description": "Doğrulanmış bir kaynak bulur ve ekler"
+    },
+    "myLibrary": {
+      "label": "Kitaplığım",
+      "description": "İçe aktardığınız kaynaklarda arar"
+    },
+    "labSearch": {
+      "label": "Laboratuvar arama",
+      "description": "Araştırma laboratuvarlarını ve kurumları bulur"
+    },
+    "friendlyReview": {
+      "label": "Dostane inceleme",
+      "description": "Bu makaleye yapıcı, mentor üslubunda geri bildirim"
+    },
+    "fireReview": {
+      "label": "Sert inceleme",
+      "description": "İddiaları ve yöntemleri katı 2. Hakem gibi sınar"
+    },
+    "academicPresentation": {
+      "label": "Akademik sunum",
+      "description": "Makalenizden bir Beamer sunumu"
+    },
+    "academicPoster": {
+      "label": "Akademik poster",
+      "description": "Makalenizden bir konferans posteri"
+    },
+    "generateTable": {
+      "label": "Tablo üret",
+      "description": "Sohbette bir LaTeX tablosu taslağı hazırlar"
+    },
+    "tikzFigure": {
+      "label": "TikZ şekli",
+      "description": "Sohbette TikZ kodu taslağı hazırlar"
+    }
+  },
+  "turn": {
+    "thinking": "Düşünüyor…",
+    "continuing": "Sürdürüyor…",
+    "reasoning": "Akıl yürütüyor…",
+    "runningTool": "{{name}} çalıştırılıyor…",
+    "processingResult": "Sonuç işleniyor…",
+    "summarizing": "Önceki konuşma özetleniyor…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "Ajan oturumu açılamadı.",
+    "approvalModeSaveFailed": "Onay kipi kaydedilemedi.",
+    "skillDraftSaved": "Beceri taslağı kaydedildi. Etkinleştirmeden önce gözden geçirin.",
+    "skillDraftFailed": "Beceri taslağı kaydedilemedi. {{error}}",
+    "chatArchived": "Sohbet arşivlendi.",
+    "chatArchiveFailed": "Bu sohbet arşivlenemedi.",
+    "chatForked": "Sohbet çatallandı.",
+    "chatForkFailed": "Bu sohbet çatallanamadı.",
+    "engineNotLoaded": "Belge motoru ayrıntıları yüklü değil. Güvenlik için yapay zeka düzenlemesi devre dışı.",
+    "skillsLoadFailed": "Etkin beceriler yüklenemedi. Yeniden deneyin.",
+    "approvalModeLoadFailed": "Onay kipi yüklenemedi.",
+    "approvalRulesLoadFailed": "Proje onay kuralları yüklenemedi.",
+    "restored": "Proje dosyaları geri yüklendi. Konuşma korundu.",
+    "restoreFailed": "Geri yüklenemedi: {{error}}",
+    "steerFailed": "Çalışan tur yönlendirilemedi.",
+    "approvalRuleSaveFailed": "Proje onay kuralı kaydedilemedi.",
+    "attachmentTooLarge": "{{name}} çok büyük (en fazla 10 MB).",
+    "attachmentReadFailed": "{{name}} okunamadı.",
+    "tooManyTools": "{{enabled}} araç açık, ancak bir çalıştırma en fazla {{max}} aracı destekler. Araçlar bölümünden en az {{excess}} tanesini kapatıp yeniden deneyin."
+  },
+  "header": {
+    "mcpTooltip": "Asistan MCP sunucularını yapılandır",
+    "mcpAriaLabel": "Asistan MCP ayarları",
+    "settings": "Asistan ayarları",
+    "usageAriaLabel": "Yapay zeka kullanımını görüntüle",
+    "usageReport": "Kullanım raporu",
+    "newChat": "Yeni sohbet",
+    "chatHistory": "Sohbet geçmişi",
+    "staleChatHint": "Bu sohbet, projenin daha eski bir sürümünden başladı. Dosya içerikleri yapay zekanın gördüğünden farklı olabilir."
+  },
+  "usage": {
+    "lastRun": "Son çalıştırma",
+    "steps": "Adımlar",
+    "input": "Girdi",
+    "output": "Çıktı",
+    "thisChat": "Bu sohbet",
+    "runs": "Çalıştırmalar",
+    "tokens": "Token",
+    "cacheNote": "Önbellek kullanımı ve maliyet tahminleri kullanım raporunda.",
+    "summaryRunWithTokens_one": "Son çalıştırma: {{count}} adım, bildirilen {{tokens}} token",
+    "summaryRunWithTokens_other": "Son çalıştırma: {{count}} adım, bildirilen {{tokens}} token",
+    "summaryRunNoTokens_one": "Son çalıştırma: {{count}} adım, token toplamı yok",
+    "summaryRunNoTokens_other": "Son çalıştırma: {{count}} adım, token toplamı yok",
+    "summaryChat": "Bu sohbet: {{steps}} adım, {{tokens}} token",
+    "summaryFallback": "Yapay zeka kullanımı"
+  },
+  "provider": {
+    "connectTitle": "Devam etmek için bir yapay zeka sağlayıcısı bağlayın",
+    "connectBody": "Kendi API anahtarınızı getirin (OpenAI, Anthropic, Groq ve daha fazlası) veya Ollama ile yerel bir model çalıştırın. Asistan dosyaları okuyup düzenleyebilir, projenizi derleyebilir ve PDF'i doğrulayabilir.",
+    "connectButton": "Bir sağlayıcı bağla",
+    "runLocal": "Ollama ile yerel bir model çalıştır",
+    "quotaWarning": "Sohbet geçmişi deposu dolu. Eski sohbetler budandı ve yeni iletiler kaydedilmeyebilir. Yer açmak için geçmişten eski sohbetleri silin."
+  },
+  "conversation": {
+    "renderFailed": "Bu konuşma işlenemedi. Yeni bir sohbet başlatın veya geçmişten yeniden açın.",
+    "checkpointRestored": "Proje bu kontrol noktasına geri yüklendi",
+    "restoring": "Geri yükleniyor…",
+    "restoreCheckpoint": "Kodu bu yanıttan önceki haline geri yükle",
+    "restoreConfirm": "Proje dosyaları bu yanıttan önceki haline geri yüklensin mi? Bu işlem, sonraki yapay zeka yanıtlarının yaptığı kod değişikliklerini de siler. Konuşma burada kalır.",
+    "noResponse": "Bu ileti için yanıt gelmedi. Akış kesildi. Yeniden gönderin veya yeni bir sohbet başlatın.",
+    "scrollToBottom": "En alta kaydır",
+    "projectSubtitle": "\"{{project}}\" üzerinde çalışılıyor",
+    "noOutput": "Model hiçbir çıktı döndürmedi. Ayarlar → Yapay zeka asistanı bölümüne bakın."
+  },
+  "followUps": {
+    "steered": "Çalışan tura yönlendirildi: {{summary}}",
+    "sending": "Sonraki tur olarak gönderildi: {{summary}}",
+    "waiting": "Çalıştırmada güvenli bir nokta bekleniyor: {{summary}}",
+    "queued": "Sonraki tur için sıraya alındı: {{summary}}",
+    "steerNow": "Şimdi yönlendir",
+    "startingRun": "Çalıştırma başlatılıyor",
+    "discard": "Sıradaki iletiyi at"
+  },
+  "goal": {
+    "editAriaLabel": "Hedefi düzenle: {{goal}}",
+    "clear": "Hedefi temizle",
+    "formAriaLabel": "Kalıcı hedef belirle",
+    "label": "Hedef",
+    "placeholder": "Asistan sürekli olarak neye çalışmalı?",
+    "save": "Hedefi kaydet"
+  },
+  "suggestions": {
+    "literatureSweep": "Bu proje için literatürü tara",
+    "relatedWork": "İlgili çalışmalar bölümünün taslağını yaz",
+    "verifyClaims": "Her iddiayı kaynağıyla karşılaştır",
+    "reviewManuscript": "Hakem gibi incele",
+    "latexBuild": "Belgemdeki kaynak hatalarını düzelt",
+    "preSubmission": "Gönderime hazır hale getir",
+    "slides": "Bu makaleyi bir sunuma dönüştür",
+    "recompile": "Yeniden derle ve hataları denetle"
+  }
+}

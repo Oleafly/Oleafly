@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "空白",
+    "diagramsAndFigures": "圖表與圖片",
+    "cvsAndResumes": "履歷與 CV",
+    "journalsAndConferences": "期刊與研討會",
+    "bibliographies": "參考文獻",
+    "assignments": "作業",
+    "thesesAndReports": "學位論文與報告",
+    "books": "書籍",
+    "presentations": "簡報",
+    "posters": "海報",
+    "newsletters": "電子報",
+    "calendars": "行事曆",
+    "letters": "信件",
+    "aiGenerated": "AI 生成"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "履歷",
+    "diagramsAndFigures": "圖表",
+    "journalsAndConferences": "期刊"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "溫潤的人文風格無襯線字型，許多現代履歷範本都採用。"
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "乾淨中性的無襯線字型，在螢幕與紙本上都好讀。"
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "精緻的過渡型襯線字型，很適合學術與商務文件。"
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "學術寫作套組",
+      "description": "研究與經費申請計畫書、文獻回顧、讀書計畫、推薦信、白皮書與學位論文。"
+    },
+    "beamer-themes": {
+      "label": "Beamer 主題集",
+      "description": "Madrid、Warsaw、Berkeley、Singapore、Copenhagen、Frankfurt、Boadilla 與 Pittsburgh 等 beamer 簡報。"
+    },
+    "business-documents": {
+      "label": "商務文件",
+      "description": "發票、備忘錄、會議記錄、營運計畫與報告、證書，以及三摺頁手冊。"
+    },
+    "conference-preprints": {
+      "label": "研討會預印本樣式",
+      "description": "NeurIPS、ICML、ICLR、ACL、CVPR、AAAI、IJCAI、Springer LNCS、JMLR、arXiv 與 Interspeech 樣式的預印本。"
+    },
+    "coursework": {
+      "label": "課程作業套組",
+      "description": "作業、學習單、小考、評分規準、講義、課程大綱、數學參考表、考卷與虛擬碼說明。"
+    },
+    "creative-misc": {
+      "label": "創意與其他",
+      "description": "食譜書、邀請函、RPG 角色卡、年度行事曆、表格與 TikZ 範例集，以及田野筆記。"
+    },
+    "cv-collection": {
+      "label": "履歷樣式集",
+      "description": "ModernCV、AltaCV、Awesome-CV、Europass、Friggeri、Plasmati、Twenty Seconds 與 Jake's 樣式的履歷。"
+    },
+    "reports-lab": {
+      "label": "實驗與技術報告",
+      "description": "實驗報告、科學與技術報告、專題與實習報告，以及年度報告。"
+    },
+    "resume-plus": {
+      "label": "履歷擴充套組",
+      "description": "雙欄技術履歷、極簡履歷、長篇學術履歷、求職信，以及 Typst 履歷。"
+    },
+    "slides-posters": {
+      "label": "簡報與海報",
+      "description": "Metropolis beamer 簡報、直式與橫式 tikzposter，以及 better-poster 版面。"
+    },
+    "venue-classes": {
+      "label": "期刊與研討會文件類別",
+      "description": "REVTeX、ACS achemso、Elsevier、ACM sigconf 與 Typst 期刊起始範本。"
+    }
+  }
+}

@@ -1,0 +1,919 @@
+{
+  "about": {
+    "close": "Venster Over sluiten",
+    "closeBackdrop": "Over Oleafly sluiten",
+    "connect": "Blijf in contact met Oleafly",
+    "links": {
+      "discussions": {
+        "description": "Stel vragen en deel ideeën",
+        "label": "Discussions"
+      },
+      "docs": {
+        "description": "Leer elk onderdeel van Oleafly kennen",
+        "label": "Documentatie"
+      },
+      "issues": {
+        "description": "Meld een bug of vraag een functie aan",
+        "label": "Issues"
+      },
+      "social": {
+        "description": "Volg releases en ontwikkeling",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "Geef een ster op GitHub",
+    "tagline": "De opensource-werkruimte voor je hele artikel. Schrijf, compileer, proeflees, beheer citaties, bekijk PDF's, volg wijzigingen in Git en werk met de AI-modellen die jij kiest.",
+    "version": "Versie {{version}}",
+    "viewSource": "Broncode bekijken"
+  },
+  "addCitation": {
+    "added": "{{cite}} toegevoegd",
+    "adding": "Toevoegen…",
+    "close": "Citatievenster sluiten",
+    "confirm": "Aan .bib toevoegen en citeren",
+    "entry": "Item",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Titel"
+    },
+    "hint": "Plak een DOI, een arXiv-id of een URL om het item direct op te halen, of typ een titel om Crossref te doorzoeken. Probeer er een:",
+    "lookUp": "Opzoeken",
+    "lookingUp": "\"{{query}}\" opzoeken…",
+    "matches_one": "{{count}} resultaat uit Crossref. Kies er een:",
+    "matches_other": "{{count}} resultaten uit Crossref. Kies er een:",
+    "noResults": "Geen resultaten gevonden. Controleer de identificatie of probeer andere woorden uit de titel.",
+    "placeholder": "DOI, arXiv-id, URL of de titel van een artikel…",
+    "privacyNote": "Alleen de identificatie of de titel wordt verstuurd, naar doi.org, arXiv of Crossref.",
+    "title": "Citatie toevoegen"
+  },
+  "backendProtocol": {
+    "mismatch": "Dit venster en de bijbehorende backend zijn voor verschillende Oleafly-versies gebouwd, dus sommige functies werken mogelijk niet. Opnieuw installeren lost dit op."
+  },
+  "branding": {
+    "assistantMascot": "Mascotte van de Oleafly AI-assistent"
+  },
+  "browser": {
+    "address": "Zoek of voer een URL in",
+    "back": "Terug",
+    "closeTab": "Tabblad sluiten",
+    "copyUrl": "URL kopiëren",
+    "forward": "Vooruit",
+    "moreOptions": "Meer opties",
+    "newTab": "Nieuw tabblad",
+    "openExternal": "In je eigen browser openen",
+    "openTabs": "Geopende tabbladen",
+    "reload": "Opnieuw laden",
+    "setHomePage": "Instellen als startpagina"
+  },
+  "citeOleafly": {
+    "description": "Er is geen bibliografiebestand in dit project gevonden, dus er is niets gewijzigd. Kopieer het item hieronder naar je bibliografie, of vind het later terug bij Instellingen, Help en Over.",
+    "openHelp": "Help en Over openen",
+    "title": "Oleafly citeren in dit artikel"
+  },
+  "commandGroups": {
+    "commands": "Opdrachten",
+    "compile": "Compileren",
+    "editor": "Editor",
+    "insert": "Invoegen",
+    "project": "Project",
+    "settings": "Instellingen",
+    "tools": "Tools"
+  },
+  "commandPalette": {
+    "empty": "Geen resultaten gevonden.",
+    "label": "Opdrachtenpalet",
+    "placeholder": "Typ een opdracht of zoek…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / titel",
+      "label": "Citatie toevoegen"
+    },
+    "appearance": {
+      "keywords": "thema weergave modus",
+      "useDark": "Donkere weergave gebruiken",
+      "useLight": "Lichte weergave gebruiken",
+      "useSystem": "Systeemweergave gebruiken"
+    },
+    "autoCompile": {
+      "disable": "Automatisch compileren uitschakelen",
+      "enable": "Automatisch compileren inschakelen"
+    },
+    "bold": {
+      "label": "Vet"
+    },
+    "checkpoints": {
+      "label": "Checkpoints"
+    },
+    "citeOleafly": {
+      "keywords": "citatie bibtex bibliografie bedanken oleafly",
+      "label": "Oleafly citeren in dit artikel"
+    },
+    "clearCache": {
+      "keywords": "wissen build cache opschonen opnieuw bouwen verouderd resetten aux",
+      "label": "Buildcache wissen en opnieuw compileren"
+    },
+    "closeEnvironment": {
+      "keywords": "sluiten end omgeving begin latex",
+      "label": "LaTeX-omgeving sluiten"
+    },
+    "createProject": {
+      "keywords": "nieuw project maken sjabloon galerij",
+      "label": "Een nieuw project maken"
+    },
+    "diagramComposer": {
+      "keywords": "diagram figuur tikz editor tekenen canvas",
+      "label": "Diagrameditor openen"
+    },
+    "documentCitationScan": {
+      "keywords": "citaties literatuur scan document alinea referenties zoeken",
+      "label": "Citaties in het document zoeken"
+    },
+    "equation": {
+      "label": "Vergelijking"
+    },
+    "exportPdf": {
+      "label": "PDF exporteren…"
+    },
+    "figure": {
+      "label": "Figuur"
+    },
+    "generateFigure": {
+      "keywords": "figuur diagram tekenen tikz plot grafiek illustratie",
+      "label": "Een figuur genereren met AI"
+    },
+    "gitHistory": {
+      "label": "Git-geschiedenis"
+    },
+    "italic": {
+      "label": "Cursief"
+    },
+    "label": {
+      "label": "Label"
+    },
+    "list": {
+      "label": "Opsommingslijst"
+    },
+    "newProject": {
+      "label": "Nieuw project…"
+    },
+    "newTerminal": {
+      "keywords": "terminal shell console nieuw",
+      "label": "Nieuwe terminal"
+    },
+    "offline": {
+      "offline": "Offlinemodus (--only-cached)",
+      "online": "Onlinemodus (pakketten mogen worden opgehaald)"
+    },
+    "openTool": "{{name}} openen",
+    "recompile": {
+      "label": "Opnieuw compileren"
+    },
+    "section": {
+      "label": "Sectie"
+    },
+    "settings": {
+      "keywords": "instellingen voorkeuren opties",
+      "label": "Instellingen openen"
+    },
+    "spellcheck": {
+      "disable": "Spellingcontrole uitschakelen",
+      "enable": "Spellingcontrole inschakelen"
+    },
+    "surroundEnvironment": {
+      "keywords": "omsluiten omhullen omgeving begin end latex",
+      "label": "Omsluiten met een omgeving"
+    },
+    "synctex": {
+      "label": "Naar de PDF (SyncTeX)"
+    },
+    "table": {
+      "label": "Tabel"
+    },
+    "theme": {
+      "keywords": "thema donker licht weergave modus",
+      "toDark": "Overschakelen naar het donkere thema",
+      "toLight": "Overschakelen naar het lichte thema"
+    },
+    "tools": {
+      "keywords": "tools latex pdf vergelijking bibtex tabel lab zoeken deadlines galerij",
+      "label": "Oleafly Tools openen"
+    },
+    "vim": {
+      "disable": "Vim-modus uitschakelen",
+      "enable": "Vim-modus inschakelen"
+    },
+    "wordCount": {
+      "label": "Woordenteller"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "regel verwijderen wissen",
+        "duplicate": "dupliceren regel selectie kopiëren",
+        "lowercase": "kleine letters hoofdlettergebruik tekst",
+        "titleCase": "beginhoofdletters hoofdlettergebruik tekst",
+        "uppercase": "hoofdletters hoofdlettergebruik tekst"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Uit",
+      "on": "Aan",
+      "title": "Automatisch compileren"
+    },
+    "compile": "Compileren",
+    "compiler": {
+      "auto": "Automatisch <note>[systeem-TeX]</note>",
+      "help": "Tectonic is ingebouwd en heeft geen installatie nodig. De andere keuzes gebruiken de TeX van je systeem, die lokale bestanden kan lezen waar jouw account bij kan, dus gebruik die alleen voor projecten die je vertrouwt. Automatisch kiest de compiler op basis van de broncode. pdfLaTeX past bij de meeste tijdschriftsjablonen. XeLaTeX en LuaLaTeX voegen systeemlettertypen en Unicode toe.",
+      "lualatex": "LuaLaTeX <note>[systeem-TeX]</note>",
+      "pdflatex": "pdfLaTeX <note>[systeem-TeX]</note>",
+      "tectonic": "Tectonic <note>[ingebouwd]</note>",
+      "title": "Compiler (dit project)",
+      "xelatex": "XeLaTeX <note>[systeem-TeX]</note>"
+    },
+    "errors": {
+      "continue": "Toch proberen te compileren bij fouten",
+      "stop": "Stoppen bij de eerste fout",
+      "title": "Omgaan met compileerfouten"
+    },
+    "fromScratch": "Helemaal opnieuw compileren",
+    "mode": {
+      "fast": "Snel <note>[concept]</note>",
+      "normal": "Normaal",
+      "title": "Compileermodus"
+    },
+    "options": "Compileeropties",
+    "recompile": "Opnieuw compileren",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Compileren stoppen",
+    "syntax": {
+      "check": "Syntaxis controleren voor het compileren",
+      "skip": "Syntaxis niet controleren",
+      "title": "Syntaxiscontroles"
+    },
+    "texRootBroken": "% !TEX root in {{file}} wijst naar een ontbrekend bestand ({{target}})",
+    "texRootLabel": "TEX root",
+    "texRootName": "root: {{name}}",
+    "texRootOverride": "root: {{path}} (ingesteld door % !TEX root in {{file}})"
+  },
+  "datePicker": {
+    "placeholder": "Kies een datum"
+  },
+  "devMenu": {
+    "inspect": "Inspecteren",
+    "refreshApp": "App vernieuwen"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "AI-assistent verbergen",
+      "show": "AI-assistent tonen"
+    },
+    "browser": {
+      "close": "Browser sluiten ({{shortcut}})",
+      "open": "Browser openen ({{shortcut}})"
+    },
+    "settings": "Instellingen",
+    "sidebar": {
+      "hide": "Zijbalk verbergen ({{shortcut}})",
+      "show": "Zijbalk tonen ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Terminal verbergen ({{shortcut}})",
+      "show": "Terminal tonen ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "De fout past bij een bekend gat in de meegeleverde Tectonic-engine. Kies hoe dit project moet compileren. De keuze wordt in het project bewaard, dus medewerkers krijgen dezelfde instelling.",
+    "descriptionImportScan": "De importscan vond functies die de meegeleverde Tectonic-engine niet aanstuurt. Kies hoe dit project moet compileren. De keuze wordt in het project bewaard, dus medewerkers krijgen dezelfde instelling.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "pdfLaTeX via latexmk"
+    },
+    "recommended": "Aanbevolen",
+    "shellEscape": {
+      "label": "Externe opdrachten op deze computer toestaan",
+      "needed": "Dit project gebruikt functies die willekeurige externe opdrachten nodig hebben. Die blijven geblokkeerd totdat je ze toestaat.",
+      "warning": "Nodig voor minted en sommige PythonTeX-documenten. LaTeX kan programma's uitvoeren met jouw gebruikersrechten, dus zet dit alleen aan voor een project dat je vertrouwt. De eigen hulpprogramma's van TeX Live, zoals EPS-conversie, werken ook zonder."
+    },
+    "shellEscapeAllowed": "Externe opdrachten zijn voor dit project op deze computer toegestaan.",
+    "shellEscapeBlocked": "Willekeurige externe opdrachten zijn voor dit project geblokkeerd. De eigen hulpprogramma's van TeX Live, zoals EPS-conversie, werken nog wel.",
+    "shellEscapeFailed": "Kon de toegang voor externe opdrachten niet bijwerken.",
+    "switchFailed": "Kon niet van compileerengine wisselen.",
+    "switched": "Dit project compileert nu met {{engine}}.",
+    "switchedAfterInstall": "TinyTeX geïnstalleerd. Dit project compileert nu met {{engine}}.",
+    "systemTex": {
+      "alreadySelected": "Al geselecteerd",
+      "found": "Er is een TeX-distributie op deze computer gevonden. De TeX van je systeem kan lokale bestanden lezen waar jouw account bij kan, dus gebruik die alleen voor projecten die je vertrouwt. Willekeurige externe opdrachten blijven geblokkeerd tenzij je ze hieronder toestaat. TeX Live voert de hulpprogramma's op zijn eigen toegestane lijst, zoals EPS-conversie, nog steeds uit.",
+      "missing": "Er is geen TeX-distributie (MacTeX, TeX Live, MiKTeX, TinyTeX) op deze computer gevonden.",
+      "switchPdflatex": "Overschakelen naar pdfLaTeX en opnieuw compileren",
+      "title": "De LaTeX van mijn systeem gebruiken (latexmk)",
+      "titlePdflatex": "pdfLaTeX op de LaTeX van mijn systeem gebruiken (latexmk)",
+      "use": "Systeem-LaTeX gebruiken"
+    },
+    "tectonic": {
+      "description": "Geen installatie nodig, werkt offline. Prima voor gewone LaTeX en de meeste gangbare pakketten.",
+      "keep": "Tectonic houden",
+      "switchBack": "Terug naar Tectonic",
+      "title": "Tectonic blijven gebruiken",
+      "withFailures_one": "Geen installatie nodig, werkt offline. {{features}} zal naar verwachting blijven mislukken.",
+      "withFailures_other": "Geen installatie nodig, werkt offline. {{features}} zullen naar verwachting blijven mislukken."
+    },
+    "tinytex": {
+      "description": "Installeert een compacte TeX Live in je thuismap, zonder beheerdersrechten. De kerndownload is ongeveer 250 MB. Tijdschriftsjablonen kunnen later meer pakketten ophalen, tot ruwweg 1 GB in totaal.",
+      "download": "TinyTeX downloaden en gebruiken",
+      "resume": "Download hervatten ({{megabytes}} MB klaar)",
+      "title": "TinyTeX downloaden"
+    },
+    "titleCompileFailure": "Dit compileren vraagt meer dan de ingebouwde engine",
+    "titleImportScan": "Dit project vraagt meer dan de ingebouwde engine"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Diagnostiek kopiëren",
+    "description": "Oleafly liep tegen een onverwachte fout aan en kon dit scherm niet tekenen. Je projectbestanden staan nog op schijf. Hieronder staan de diagnostische gegevens.",
+    "halted": "Gestopt",
+    "logSaved": "Logboek opgeslagen in <path>{{path}}</path>",
+    "reload": "Oleafly opnieuw laden",
+    "report": "Melden op GitHub",
+    "runtimeError": "Runtimefout",
+    "specimen": {
+      "diagramLabel": "Decoratief specimendiagram",
+      "layer": "LAAG {{current}}/{{total}}",
+      "specimen": "SPECIMEN:",
+      "transversePlane": "DWARSDOORSNEDE",
+      "veinDensity": "NERFDICHTHEID:"
+    },
+    "specimenViewer": "Specimenviewer",
+    "stackTrace": "Stacktrace",
+    "surfaceCrashed": "Er is een fout opgetreden in {{surface}}.",
+    "surfaces": {
+      "aiAssistant": "de AI-assistent",
+      "assistantPanel": "het assistentpaneel",
+      "chat": "de chat",
+      "diagramComposer": "de diagrameditor",
+      "editor": "de editor",
+      "pdfPreview": "het PDF-voorbeeld",
+      "researchAssistant": "de onderzoeksassistent",
+      "terminalDock": "het terminaldock"
+    },
+    "title": "Er is iets misgegaan"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "GitHub-acties",
+    "connect": "GitHub verbinden…",
+    "connectedAs": "Verbonden als @{{login}}",
+    "copyRepositoryLink": "Repositorylink kopiëren",
+    "openInGithub": "Openen in GitHub",
+    "pushHint": "Push naar GitHub om deze beschikbaar te maken",
+    "settings": "GitHub-instellingen",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "Start",
+    "label": "Start",
+    "title": "Terug naar de bibliotheek",
+    "tooltip": "Terug naar de projectbibliotheek"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Logboek wissen",
+    "clearLogAriaLabel": "MCP-logboek wissen",
+    "live": "Live",
+    "off": "Uit",
+    "openSettings": "MCP-instellingen openen",
+    "serverOff": "De MCP-server staat uit.",
+    "timeWithDuration": "{{time}} · {{ms}}ms",
+    "toolsTitle": "Tools die via MCP beschikbaar zijn",
+    "waiting": "Wachten op externe agents…",
+    "waitingHint": "Tools die via MCP worden aangeroepen (Claude, Cursor, Grok, …) verschijnen hier live."
+  },
+  "omnibar": {
+    "bookmarked": "Met bladwijzer",
+    "createProject": "Een nieuw project maken",
+    "groups": {
+      "action": "Actie",
+      "documents": "Documenten",
+      "references": "Referenties"
+    },
+    "label": "Zoeken",
+    "noMatches": "Geen resultaten gevonden.",
+    "openReferences": "Referenties van dit project openen",
+    "placeholder": "Zoek projecten en documenten, of typ / voor opdrachten…",
+    "placeholderDocuments": "Zoek in documenten…",
+    "placeholderProjects": "Zoek projecten op naam, engine, soort, datum of metagegevens…",
+    "referencesNeedProject": "Open eerst een project om de referenties te bekijken.",
+    "slash": {
+      "create": "de sjabloongalerij openen",
+      "docs": "in documenten zoeken",
+      "projects": "je projecten doorzoeken",
+      "refs": "de referenties van dit project openen",
+      "settings": "de instellingen openen",
+      "theme": "van kleurthema wisselen"
+    },
+    "tryCommand": "Probeer een opdracht",
+    "unknownCommand": "Onbekende opdracht. Typ / om de beschikbare opdrachten te zien."
+  },
+  "projectSearch": {
+    "hint": "Doorzoek de bestanden van dit project.",
+    "noResults": "Geen resultaten.",
+    "placeholder": "Zoeken in project…",
+    "title": "Zoeken"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Je niet-opgeslagen wijzigingen blijven open staan. Blijf om het probleem op te lossen, of sluit toch af en raak ze kwijt.",
+      "descriptionRestart": "{{reason}} Je niet-opgeslagen wijzigingen blijven open staan. Blijf om het probleem op te lossen, of start toch opnieuw en raak ze kwijt.",
+      "quitAnyway": "Toch afsluiten",
+      "restartAnyway": "Toch opnieuw starten",
+      "stay": "Blijven",
+      "title": "Sommige bestanden konden niet worden opgeslagen"
+    },
+    "flushTimeout": "Het opslaan was niet binnen 5 seconden klaar.",
+    "installing": {
+      "description": "Je bestanden worden opgeslagen en de update wordt geïnstalleerd. Oleafly start opnieuw zodra dat klaar is.",
+      "title": "Opnieuw starten voorbereiden"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}} (bèta)",
+    "files": "Verkenner",
+    "mcp": "MCP-activiteit",
+    "pendingBadge_one": "{{count}} in behandeling",
+    "pendingBadge_other": "{{count}} in behandeling",
+    "preflight": "Preflight-controles",
+    "references": "Referenties en citaties",
+    "research": "Onderzoekswerkruimte",
+    "search": "Project doorzoeken",
+    "sourceControl": "Versiebeheer",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "Venster voor hernoemen sluiten",
+    "collision": "Er bestaat al een {{kind}} met de naam \"{{name}}\".",
+    "commit": "Naamswijziging doorvoeren",
+    "newName": "Nieuwe naam",
+    "planFiles_one": "{{count}} bestand",
+    "planFiles_other": "{{count}} bestanden",
+    "planSummary_one": "{{count}} bewerking in $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_other": "{{count}} bewerkingen in $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "referentie",
+      "bibentry": "bibliografie-item",
+      "cite": "citatie",
+      "environment": "omgeving",
+      "envuse": "omgevingsgebruik",
+      "file": "bestand",
+      "glossary": "woordenlijstitem",
+      "glossaryuse": "gebruik van de woordenlijst",
+      "inputedge": "include",
+      "label": "label",
+      "macro": "macro",
+      "macrouse": "macrogebruik",
+      "ref": "referentie",
+      "section": "sectie",
+      "theorem": "stelling"
+    },
+    "title": "<symbol>{{name}}</symbol> hernoemen"
+  },
+  "settings": {
+    "close": "Instellingen sluiten",
+    "data": {
+      "cloud": {
+        "comingSoon": "Binnenkort",
+        "description": "Houd projecten gesynchroniseerd tussen je apparaten zonder een Git-remote in te stellen. Elke overdracht wordt end-to-end versleuteld, dus je werk blijft onderweg privé. Je lokale projectmappen blijven de bron van waarheid.",
+        "title": "Cloudsynchronisatie"
+      },
+      "danger": {
+        "closeFailed": "Het geopende project kon niet veilig worden gesloten.",
+        "confirmDeleteAllAction": "Alle projecten verwijderen",
+        "confirmDeleteAllDescription": "Elk huidig project gaat naar de Prullenbak, inclusief de bestanden en de Git-geschiedenis. Je kunt projecten daarna één voor één terugzetten.",
+        "confirmDeleteAllTitle_one": "Alle {{count}} project verwijderen?",
+        "confirmDeleteAllTitle_other": "Alle {{count}} projecten verwijderen?",
+        "deleteAll": "Alle projecten verwijderen",
+        "deleteAllAction": "Alles verwijderen",
+        "deleteAllDescription": "Verplaatst elk project naar de Prullenbak. Er wordt niets definitief verwijderd.",
+        "deleting": "Verwijderen…",
+        "moveFailed": "Kon de projecten niet naar de Prullenbak verplaatsen.",
+        "movePartial": "{{count}} projecten verplaatst, maar de bewerking kon niet worden afgerond.",
+        "movedCount_one": "{{count}} project naar de Prullenbak verplaatst.",
+        "movedCount_other": "{{count}} projecten naar de Prullenbak verplaatst.",
+        "title": "Gevarenzone"
+      },
+      "githubHint": "Maak een back-up van een project of synchroniseer het tussen apparaten: verbind GitHub en gebruik daarna <push>Push</push> / <pull>Pull</pull> in Versiebeheer. <setup>GitHub instellen →</setup>",
+      "localFirst": "Oleafly is local-first. Alle projecten staan op je eigen schijf:",
+      "plainFolders": "Elk project is een gewone map. Git-geschiedenis is optioneel en er verlaat niets je computer tenzij je naar GitHub pusht.",
+      "recycleBin": {
+        "clearAll": "Alles wissen",
+        "clearFailed": "Kon de Prullenbak niet legen.",
+        "clearPartial": "{{count}} projecten definitief verwijderd, maar de Prullenbak kon niet helemaal worden geleegd.",
+        "clearedCount_one": "{{count}} project definitief verwijderd.",
+        "clearedCount_other": "{{count}} projecten definitief verwijderd.",
+        "clearing": "Legen…",
+        "confirmClearAction": "Prullenbak legen",
+        "confirmClearDescription": "Dit verwijdert elk project dat nu in de Prullenbak zit definitief, inclusief de bestanden en de Git-geschiedenis. Dit kan niet ongedaan worden gemaakt.",
+        "confirmClearTitle_one": "{{count}} project uit de Prullenbak wissen?",
+        "confirmClearTitle_other": "{{count}} projecten uit de Prullenbak wissen?",
+        "confirmDeleteAction": "Definitief verwijderen",
+        "confirmDeleteDescription": "Dit haalt het project, de bestanden en de Git-geschiedenis uit de Prullenbak. Dit kan niet ongedaan worden gemaakt.",
+        "confirmDeleteTitle": "“{{name}}” definitief verwijderen?",
+        "deleteFailed": "Kon \"{{name}}\" niet definitief verwijderen.",
+        "deleteOne": "{{name}} definitief verwijderen",
+        "deleted": "\"{{name}}\" definitief verwijderd.",
+        "deletedAt": "Verwijderd op {{date}} · {{size}}",
+        "empty": "De Prullenbak is leeg.",
+        "loading": "Prullenbak laden…",
+        "restore": "Terugzetten",
+        "restoreFailed": "Kon \"{{name}}\" niet terugzetten.",
+        "restored": "\"{{name}}\" teruggezet.",
+        "size": "{{size}} · geen automatische opschoning",
+        "subtitle": "Verwijderde projecten blijven hier tot je ze weghaalt",
+        "title": "Prullenbak"
+      },
+      "reveal": "Projectmap tonen in Finder",
+      "storage": {
+        "calculating": "Opslaggebruik berekenen…",
+        "desktopOnly": "Opslagdetails zijn beschikbaar in de desktop-app.",
+        "error": "De opslagdetails konden niet worden berekend.",
+        "refresh": "Opslaggebruik vernieuwen",
+        "stats": {
+          "appData": "App-gegevens",
+          "appDataDetail": "Bestanden en instellingen",
+          "buildCache": "Buildcache",
+          "buildCacheDetail": "Gegenereerde uitvoer",
+          "files": "Bestanden",
+          "folders_one": "{{count}} map",
+          "folders_other": "{{count}} mappen",
+          "gitHistory": "Git-geschiedenis",
+          "gitHistoryDetail": "Lokale versies",
+          "images": "Afbeeldingen",
+          "pdfs": "PDF's",
+          "projectFiles": "Projectbestanden",
+          "projectFilesDetail": "Broncode en metagegevens",
+          "projects": "Projecten"
+        },
+        "subtitle": "Projecten, voorbeelden, geschiedenis en app-gegevens",
+        "title": "Opslaggebruik",
+        "total": "{{size}} in de datamap van Oleafly",
+        "unreadable_one": "{{count}} ontoegankelijk item is niet meegerekend.",
+        "unreadable_other": "{{count}} ontoegankelijke items zijn niet meegerekend."
+      },
+      "tabs": {
+        "cloud": "Cloudsynchronisatie",
+        "local": "Lokale opslag"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Toon de galerij Oleafly Tools en de losse tools (PDF-import, vergelijkingen, tabellen, BibTeX, lab- en literatuurzoeken, deadlines) plus hun slash-opdrachten. Staat standaard uit zolang dit in bèta is.",
+        "label": "LaTeX-tools"
+      },
+      "visualEditor": {
+        "description": "Toon de schakelaar Visueel/Code in de documenteditor. Staat standaard uit, dus documenten openen alleen in de code-editor. Diagrammen houden altijd hun eigen canvasschakelaar.",
+        "label": "Visuele editor"
+      },
+      "warning": "Deze functies zijn experimenteel en nog in bèta. Ze zijn nog niet volledig getest en kunnen veranderen, stukgaan of in een volgende versie verdwijnen. Zet ze alleen aan als je werk in uitvoering wilt proberen.",
+      "webBrowser": {
+        "description": "Toon de ingebouwde webbrowser (de dockknop en de sneltoets) en laat de AI hem besturen met computergebruik. Staat standaard uit zolang dit in bèta is. Als het uitstaat, is er geen browserknop en heeft de AI geen browsertool.",
+        "label": "Webbrowser"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Engelse variant voor het proeflezen",
+        "description": "Pas de gekozen spelling, grammatica en regionale conventies toe.",
+        "label": "Engelse variant"
+      },
+      "dictionary": {
+        "ariaLabel": "Spellingwoordenboek voor het proeflezen",
+        "description": "Hunspell-pakket dat de spellingcontrole in Broncode en Visueel gebruikt. Talen buiten de vijf meegeleverde pakketten worden op verzoek gedownload.",
+        "label": "Spellingwoordenboek",
+        "downloadFailed": "Het woordenboek {{name}} kon niet worden gedownload.",
+        "downloaded": "{{name}} is klaar voor de spellingcontrole.",
+        "downloading": "{{name}} downloaden",
+        "offlineRefused": "De offlinemodus staat aan. Zet die uit om {{name}} te downloaden."
+      },
+      "harper": {
+        "description": "Controleer Engelse grammatica en stijl in LaTeX en Markdown, in Broncode en Visueel, plus in Typst-broncode, met oplossingen in één klik.",
+        "label": "Grammatica en stijl (Harper)"
+      },
+      "offline": {
+        "description": "Compileer met --only-cached en haal nooit pakketten op via het netwerk.",
+        "label": "Offlinemodus"
+      },
+      "proofreadingNote": "Het proeflezen draait lokaal in een achtergrondworker. Harper volgt de gekozen Engelse variant. De spelling gebruikt altijd precies het gekozen Hunspell-pakket. Wiskunde, code, commentaar, citatiesyntaxis, metagegevens en URL's blijven buiten beschouwing.",
+      "regionalism": {
+        "description": "Markeer termen die niet bij de gekozen Engelse variant passen. Zet dit uit als je zulke termen als product- of codenaam gebruikt.",
+        "label": "Suggesties voor regionale woorden"
+      },
+      "spellcheck": {
+        "description": "Onderstreep verkeerd gespelde woorden met het gekozen offline Hunspell-woordenboek en bied vervangingen aan in Broncode en Visueel.",
+        "label": "Spellingcontrole"
+      },
+      "wordChoice": {
+        "description": "Stel andere woorden voor (bijvoorbeeld “too” tegenover “to”). Zet dit uit om alleen spelling en grammatica te houden.",
+        "label": "Suggesties voor woordkeuze"
+      }
+    },
+    "help": {
+      "community": "Community",
+      "copyInfo": "Info kopiëren",
+      "forksTitle": "GitHub-forks",
+      "forks_one": "{{count}} GitHub-fork",
+      "forks_other": "{{count}} GitHub-forks",
+      "logoAlt": "Oleafly",
+      "project": "Project",
+      "resources": {
+        "documentation": "Documentatie",
+        "learn": "Leren",
+        "license": "Licentie",
+        "reportCrash": "Een crash melden (met logboeken)",
+        "startTour": "Rondleiding starten",
+        "whatsNew": "Wat is er nieuw"
+      },
+      "resourcesTitle": "Bronnen",
+      "starRepo": "Geef een ster en verken op GitHub",
+      "starsTitle": "GitHub-sterren",
+      "stars_one": "{{count}} GitHub-ster",
+      "stars_other": "{{count}} GitHub-sterren",
+      "support": "Als Oleafly je werk helpt, <star>geef het project dan een ster op GitHub</star>. Dat kleine klikje helpt meer onderzoekers het te vinden en steunt de verdere ontwikkeling.",
+      "supportAriaLabel": "Oleafly steunen",
+      "tagline": "Schrijf, compileer, proeflees, beheer citaties, bekijk PDF's, volg wijzigingen in Git en gebruik de AI-modellen die jij kiest. Alles in één opensource-werkruimte.",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "AI-assistent",
+      "appearance": "Weergave",
+      "data": "Gegevensopslag",
+      "dictionary": "Woordenboek",
+      "downloads": "Downloads",
+      "engine": "Engines",
+      "experimentation": "Experimenten",
+      "general": "Algemeen",
+      "help": "Help en Over",
+      "integrations": "Integraties",
+      "shortcuts": "Sneltoetsen"
+    },
+    "sectionsNav": "Instellingssecties",
+    "title": "Instellingen",
+    "tours": {
+      "confirmDescription": "Hiermee sluit je elke resterende rondleiding en zet je de rondleidingen uit. Je kunt ze bij Algemene instellingen weer aanzetten om opnieuw te beginnen.",
+      "disableConfirm": "Rondleidingen uitschakelen",
+      "disableTitle": "Rondleidingen uitschakelen?",
+      "dismissAll": "Alle rondleidingen sluiten",
+      "dismissAllConfirm": "Alles sluiten",
+      "dismissAllTitle": "Alle rondleidingen sluiten?",
+      "enable": "Rondleidingen inschakelen",
+      "enableAll": "Alle rondleidingen inschakelen",
+      "enableOne": "Rondleiding {{name}} inschakelen",
+      "progress": "Voortgang van de rondleidingen",
+      "progressDetail": "{{completed}} voltooid en {{dismissed}} gesloten.",
+      "status": {
+        "completed": "Voltooid",
+        "dismissed": "Gesloten",
+        "pending": "Nog niet gestart"
+      },
+      "summary": "{{completed}} voltooid · {{dismissed}} gesloten · {{total}} totaal"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Merge afbreken",
+    "abortMergeDescription": "De conflictoplossingen tot nu toe vervallen en de bestanden gaan terug naar hoe ze waren voordat de merge begon.",
+    "abortMergeTitle": "Deze merge afbreken?",
+    "aheadBehind": "{{ahead}} voor · {{behind}} achter op origin/{{branch}}",
+    "branch": "Branches",
+    "branchName": "Branchnaam",
+    "changeRepo": "Repo wijzigen",
+    "changes": "Wijzigingen",
+    "checking": "Versiebeheer controleren…",
+    "clean": "Geen wijzigingen. De werkmap is schoon.",
+    "commit": "Commit",
+    "commitActions": "Meer commit-acties",
+    "commitAmend": "Laatste commit aanvullen",
+    "amendedKeptMessage": "De laatste commit is aangevuld en het bericht is behouden.",
+    "commitAndPush": "Commit en push",
+    "commitAndSync": "Commit en sync",
+    "commitDescription": "Commitbeschrijving",
+    "commitDescriptionPlaceholder": "Beschrijving (optioneel)",
+    "commitTitle": "Committitel",
+    "committed": "Gecommit: \"{{subject}}\"",
+    "committedRemoteFailed": "Lokaal gecommit, maar {{step}} is mislukt: {{reason}}",
+    "committedWithConflicts": "Lokaal gecommit. Los de opgehaalde conflicten op voordat je pusht.",
+    "confirmDiscard": "Verwerpen bevestigen",
+    "confirmDiscardTitle": "Alle wijzigingen in dit bestand verwerpen",
+    "continueMerge": "Merge voltooien",
+    "copyCommitId": "Commit-ID kopiëren",
+    "create": "Aanmaken",
+    "createBranch": "Branch aanmaken…",
+    "credentialRemoved": "De opgeslagen inloggegevens zijn uit deze Git-remote verwijderd.",
+    "credentialWarning": "Oudere Oleafly-versies sloegen inloggegevens op in deze Git-remote.",
+    "discard": "Wijzigingen verwerpen",
+    "discardFor": "Wijzigingen in {{path}} verwerpen",
+    "discardAll": "Alle wijzigingen verwerpen",
+    "discardChangesDescription": "Deze wijzigingen in de werkmap gaan verloren. Dit kan niet ongedaan worden gemaakt.",
+    "discardChangesTitle": "Geselecteerde wijzigingen verwerpen?",
+    "discardTitle": "Wijzigingen verwerpen (terug naar de laatste versie)",
+    "enterTitle": "Vul een committitel in",
+    "finishMergeToCommit": "Voltooi de merge voordat je commit.",
+    "fetch": "Fetch",
+    "graph": "Grafiek",
+    "commitCount_one": "{{count}} commit",
+    "commitCount_other": "{{count}} commits",
+    "initialize": "Repository initialiseren",
+    "initialized": "Git geïnitialiseerd op {{branch}}.",
+    "linkCopied": "GitHub-link gekopieerd",
+    "markResolved": "Markeren als opgelost",
+    "mergeNeedsAttention": "Los mergeconflicten op",
+    "moreActions": "Meer acties voor versiebeheer",
+    "noHistory": "Nog geen commits",
+    "noProject": "Open een project om versiebeheer te gebruiken.",
+    "noStagedChanges": "Geen klaargezette wijzigingen",
+    "notInitialized": "Versiebeheer is niet geïnitialiseerd",
+    "notInitializedHint": "Oleafly commit niet automatisch naar een Git-repository.",
+    "nothingStaged": "Niets klaargezet om te committen.",
+    "openAllChanges": "Alle wijzigingen openen",
+    "openFile": "Bestand openen",
+    "openFileFor": "{{path}} openen",
+    "popStash": "Nieuwste stash toepassen",
+    "publish": "Publiceren op GitHub",
+    "published": "Gepubliceerd naar {{url}}",
+    "pull": "Pull vanaf origin",
+    "pullShort": "Pull",
+    "push": "Commit en push naar origin",
+    "pushShort": "Push",
+    "pushSkippedNoRemote": "⚠ Push overgeslagen - hieronder is geen remote origin ingesteld.",
+    "pushSkippedNoToken": "⚠ Push overgeslagen - geen GitHub-token (Instellingen → GitHub).",
+    "refresh": "Vernieuwen",
+    "remote": "Remote",
+    "remoteHint": "Maak een nieuwe repo aan of koppel een bestaande als remote van dit project en push daarna.",
+    "removeCredential": "Opgeslagen inloggegevens verwijderen",
+    "restoreCommit": "Versie terugzetten",
+    "restoreCommitDescription": "Dit vervangt elk gevolgd projectbestand door deze versie en verwijdert bestanden die later zijn toegevoegd. Je branch blijft op de huidige commit staan.",
+    "restoreCommitTitle": "Deze versie terugzetten?",
+    "sectionActions": "Meer acties voor {{section}}",
+    "stage": "Klaarzetten",
+    "stageFor": "{{path}} klaarzetten",
+    "stageAll": "Alles klaarzetten",
+    "stageFirst": "Zet eerst een bestand klaar",
+    "stageToCommit": "Zet een bestand klaar om te committen.",
+    "staged": "Klaargezet",
+    "stagedChanges": "Klaargezette wijzigingen",
+    "stagedChangeCount_one": "{{count}} klaargezette wijziging",
+    "stagedChangeCount_other": "{{count}} klaargezette wijzigingen",
+    "stash": "Wijzigingen stashen",
+    "stashNeedsAttention": "Los stashconflicten op",
+    "sync": "Sync",
+    "title": "Versiebeheer",
+    "titleRequired": "Een committitel is verplicht.",
+    "titleRequiredStatus": "Vul een committitel in voordat je commit.",
+    "unlink": "Ontkoppelen",
+    "unlinked": "Ontkoppeld van GitHub.",
+    "unstage": "Uit de commit halen",
+    "unstageFor": "{{path}} uit de commit halen",
+    "unstageAll": "Alles uit de commit halen",
+    "workingChangeCount_one": "{{count}} wijziging in de werkmap",
+    "workingChangeCount_other": "{{count}} wijzigingen in de werkmap",
+    "useCurrent": "Huidige gebruiken",
+    "useIncoming": "Binnenkomende gebruiken"
+  },
+  "splash": {
+    "initializing": "Oleafly initialiseren",
+    "loadingCore": "Oleafly Core laden",
+    "loadingHarness": "Oleafly Harness laden",
+    "loadingParsers": "Oleafly Parsers laden",
+    "starting": "Oleafly starten"
+  },
+  "theme": {
+    "dark": "Donker",
+    "light": "Licht",
+    "menuLabel": "Weergave: {{name}}",
+    "system": "Systeem",
+    "useDark": "Donker thema gebruiken",
+    "useLight": "Licht thema gebruiken",
+    "useSystem": "Systeemthema gebruiken"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Toch afsluiten",
+      "description": "{{phase}} op dit moment. Als je afsluit, pauzeert de installatie. Het gedownloade deel blijft bewaard en gaat verder zodra je Oleafly weer opent.",
+      "title": "TinyTeX wordt nog geïnstalleerd"
+    },
+    "wait": {
+      "description": "{{phase}} Je compilatie staat in de wachtrij en start automatisch zodra de engine klaar is.",
+      "title": "TinyTeX wordt nog gedownload"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "Annuleren (Esc)",
+    "closeForkDialog": "Forkvenster sluiten",
+    "compileFigureFirst": "Compileer de figuur eerst",
+    "compilePdfFirst": "Voor een PDF moet je eerst compileren",
+    "export": "Exporteren",
+    "exportComplete": "Export naar {{format}} voltooid",
+    "exportDocx": "Exporteren als Word (.docx)",
+    "exportEpub": "Exporteren als EPUB (.epub)",
+    "exportHtml": "Exporteren als HTML (.html)",
+    "exportMarkdown": "Exporteren als Markdown (.md)",
+    "exportPdf": "Exporteren als PDF",
+    "exportPdfVector": "Exporteren als PDF (vectorafbeelding)",
+    "exportPngRaster": "Exporteren als PNG (rasterafbeelding)",
+    "exportPagePng": "Pagina exporteren als PNG (rasterafbeelding)",
+    "exportAs": "Exporteren als {{format}}",
+    "exportPptx": "Exporteren als PowerPoint (.pptx)",
+    "exportSourceZip": "Broncode exporteren (.zip)",
+    "exportTxt": "Exporteren als platte tekst (.txt)",
+    "exportZipFailed": "Kon de project-zip niet exporteren",
+    "exporting": ".{{format}} exporteren…",
+    "fork": "Forken",
+    "forkDescription": "Kopieert <name>{{name}}</name> en de Git-geschiedenis naar een nieuw project. Checkpoints beginnen leeg.",
+    "forkFailed": "Het forken van het project is niet gelukt.",
+    "forkProject": "Project forken",
+    "layout": "Indeling",
+    "layouts": {
+      "aiOnly": "Alleen AI",
+      "editorAi": "Editor + AI",
+      "editorOnly": "Alleen editor",
+      "editorPreview": "Editor + voorbeeld",
+      "editorPreviewAi": "Editor + voorbeeld + AI",
+      "previewAi": "Voorbeeld + AI",
+      "previewOnly": "Alleen voorbeeld"
+    },
+    "newProjectName": "Naam van het nieuwe project",
+    "projectName": "Projectnaam",
+    "projectRenamed": "Project hernoemd",
+    "saveName": "Opslaan (Enter)",
+    "saveNameAriaLabel": "Naam opslaan",
+    "untitledProject": "project",
+    "versioning": "Versies",
+    "viewFile": "Bestand bekijken",
+    "views": {
+      "editor": "Broncodeweergave",
+      "pdf": "PDF-weergave",
+      "split": "Gesplitste weergave"
+    }
+  },
+  "tour": {
+    "chooseColor": "Kies je eigen kleur",
+    "diagramArrow": "Gebogen pijl die naar het diagramcanvas wijst",
+    "pointer": "Pijl van de rondleidingstip",
+    "quitConfirm": "Rondleiding afsluiten",
+    "quitDescription": "Je voortgang wordt niet bewaard. Je kunt elke rondleiding later opnieuw starten via het Help-menu.",
+    "quitTitle": "De rondleiding afsluiten?",
+    "setMood": "Bepaal de sfeer",
+    "showMeAround": "Leid me rond",
+    "skip": "Overslaan",
+    "step": "Stap {{step}}",
+    "stepOfTotal": "Stap {{step}} van {{total}}",
+    "stepOfTour": "Stap {{step}} · {{tour}}",
+    "useAccent": "De accentkleur {{name}} gebruiken",
+    "welcomeArrow": "Handgetekende pijl die naar de welkomsttekst wijst",
+    "welcomeBody": "Breng een artikel van eerste concept naar definitieve PDF in één opensource-werkruimte. Schrijf, compileer, proeflees, beheer citaties, bouw figuren, bekijk elke wijziging in Git en gebruik de AI-modellen die jij kiest. Je projecten blijven op je eigen computer.",
+    "welcomeTitle": "Welkom bij Oleafly"
+  },
+  "updateChecker": {
+    "available": "Update beschikbaar · v{{version}}",
+    "check": "Controleren op updates",
+    "checkAgain": "Opnieuw controleren",
+    "checkFailed": "Kon niet controleren op updates.",
+    "checking": "Controleren…",
+    "downloadFromGithub": "Downloaden van GitHub",
+    "downloading": "Downloaden… {{percent}}%",
+    "installing": "Installeren…",
+    "lastCheckFailed": "De laatste automatische controle is mislukt.",
+    "lastCheckFailedAt": "De laatste automatische controle is mislukt · {{when}}.",
+    "latest": "Je hebt de nieuwste versie",
+    "releaseNotes": "Releaseopmerkingen",
+    "restartNotice": "Oleafly start opnieuw om af te ronden.",
+    "tryAgain": "Opnieuw proberen",
+    "unsupported": "Updates worden beheerd door de desktop-app.",
+    "updateNow": "Nu bijwerken"
+  },
+  "updateWindow": {
+    "checking": "Controleren op updates…",
+    "currentVersion": "Je hebt v{{version}}",
+    "error": "De update kon niet worden voltooid. Probeer het later opnieuw.",
+    "later": "Later",
+    "looking": "Zoeken naar de nieuwste versie…",
+    "packageInstall": "Geïnstalleerd vanuit een pakket. Download de nieuwe versie om bij te werken.",
+    "ready": "Er staat een nieuwe versie klaar om te installeren.",
+    "upToDate": "Je bent up-to-date",
+    "upToDateGeneric": "Je gebruikt de nieuwste versie van Oleafly",
+    "upToDateHeadline": "Je bent helemaal bij!",
+    "upToDateVersion": "Oleafly v{{version}} is de nieuwste versie",
+    "viewRelease": "Release bekijken"
+  },
+  "windowControls": {
+    "group": "Vensterknoppen",
+    "maximize": "Maximaliseren",
+    "minimize": "Minimaliseren",
+    "restore": "Herstellen"
+  },
+  "windows": {
+    "preview": "Voorbeeld: {{title}}",
+    "update": "Oleafly-update"
+  }
+}

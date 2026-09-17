@@ -1,0 +1,31 @@
+{
+  "unknown": "Jokin meni vikaan. Katso tarkemmat tiedot sovelluslokista.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "Projektin nimi ei voi olla tyhjä.",
+    "name_conflict": "Projekti nimeltä {{name}} on jo olemassa.",
+    "folder_unavailable": "Uutta projektikansiota ei voitu varata."
+  },
+  "settings": {
+    "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."
+  },
+  "literature": {
+    "query_empty": "Hakulauseke ei voi olla tyhjä.",
+    "query_too_long": "Hakulauseke on liian pitkä (enintään {{max}} merkkiä).",
+    "unknown_source": "Tuntematon kirjallisuuslähde."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX ei sisällä tälle järjestelmälle sopivaa {{name}}-ohjelmaa.",
+    "package_operation_timeout": "Pakettitoiminto ylitti {{span}} rajan ja pysäytettiin, jotta kääntäminen onnistuu taas. TeX Live -peilipalvelin on todennäköisesti ruuhkainen. Yritä myöhemmin uudelleen tai aja tlmgr itse."
+  },
+  "github": {
+    "sign_in_expired": "Kirjautumiskoodi vanheni. Yritä uudelleen.",
+    "sign_in_cancelled": "GitHub-valtuutus peruutettiin.",
+    "sign_in_failed": "GitHub-kirjautuminen epäonnistui.",
+    "repositories_unavailable": "Repositorioita ei voitu ladata.",
+    "create_repo_failed": "Repositoriota ei voitu luoda ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "Täyttä käyttöoikeutta ei otettu käyttöön."
+  }
+}

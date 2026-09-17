@@ -1,0 +1,159 @@
+{
+  "citeOleafly": "Cita Oleafly in questo articolo",
+  "empty": {
+    "citations": {
+      "detail": "Importa una libreria di riferimenti o aggiungi una citazione per iniziare.",
+      "title": "Ancora nessuna citazione"
+    },
+    "symbols": {
+      "detail": "Titoli, etichette, comandi e ambienti compaiono qui man mano che scrivi il progetto.",
+      "title": "Ancora nessun simbolo"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filtra le citazioni",
+    "ariaLabelResults": "Filtra i risultati",
+    "ariaLabelSymbols": "Filtra i simboli",
+    "clear": "Cancella il filtro",
+    "noCitation": "Nessuna citazione corrisponde a “{{query}}”.",
+    "noResult": "Nessun risultato corrisponde a “{{query}}”.",
+    "noSymbol": "Nessun simbolo corrisponde a “{{query}}”.",
+    "placeholderCitations": "Filtra chiavi, titoli, autori…",
+    "placeholderResults": "Filtra le posizioni…",
+    "placeholderSymbols": "Filtra etichette e comandi…"
+  },
+  "import": {
+    "added_one": "{{count}} riferimento aggiunto a {{target}}.",
+    "added_many": "{{count}} riferimenti aggiunti a {{target}}.",
+    "added_other": "{{count}} riferimenti aggiunti a {{target}}.",
+    "addedWithDuplicates_one": "{{count}} riferimento aggiunto a {{target}}, {{duplicates}} già presenti.",
+    "addedWithDuplicates_many": "{{count}} riferimenti aggiunti a {{target}}, {{duplicates}} già presenti.",
+    "addedWithDuplicates_other": "{{count}} riferimenti aggiunti a {{target}}, {{duplicates}} già presenti.",
+    "allDuplicates_one": "Quel riferimento è già in {{target}}.",
+    "allDuplicates_many": "Quei {{count}} riferimenti sono già in {{target}}.",
+    "allDuplicates_other": "Quei {{count}} riferimenti sono già in {{target}}.",
+    "defaultTarget": "la bibliografia",
+    "description": "Aggiungi a questo progetto i riferimenti presi da un gestore di citazioni o da un file bibliografico.",
+    "duplicateNote": "I riferimenti con un DOI già presente nella bibliografia vengono saltati.",
+    "empty": "Nessun riferimento trovato in quel file.",
+    "endnote": {
+      "button": "Scegli un file XML, RIS o BibTeX",
+      "description": "Scegli un file EndNote XML, RIS o BibTeX. Oleafly aggiunge i riferimenti alla bibliografia del progetto.",
+      "title": "EndNote, RIS o BibTeX"
+    },
+    "failed": "Impossibile importare quei riferimenti.",
+    "nothingNew": "Niente di nuovo da aggiungere a {{target}}.",
+    "problems_one": "{{count}} problema durante l'importazione. {{details}}",
+    "problems_many": "{{count}} problemi durante l'importazione. {{details}}",
+    "problems_other": "{{count}} problemi durante l'importazione. {{details}}",
+    "readFailed": "Impossibile leggere quel file.",
+    "title": "Importa una libreria di riferimenti",
+    "unrecognized": "Tipo di file non riconosciuto: {{name}}",
+    "zotero": {
+      "button": "Scegli un file Zotero RDF",
+      "description": "In Zotero scegli File → Esporta libreria → Zotero RDF. Poi seleziona il file esportato.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Risultati parziali. I file malformati o illeggibili possono tralasciare alcune occorrenze.",
+    "stale": "Aggiornamento in corso. Citazioni, simboli e intervalli della revisione precedente sono nascosti."
+  },
+  "panel": {
+    "ariaLabel": "Riferimenti (Shift-F12)",
+    "clearQuery": "Cancella la ricerca dei riferimenti",
+    "cleanLibrary": "Pulisci la libreria dei riferimenti",
+    "importAriaLabel": "Importa riferimenti",
+    "issues_one": "{{count}} problema di riferimento o citazione",
+    "issues_many": "{{count}} problemi di riferimento o citazione",
+    "issues_other": "{{count}} problemi di riferimento o citazione",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Riferimenti",
+    "viewTabs": "Vista del pannello Riferimenti"
+  },
+  "cleanLibrary": {
+    "title": "Pulisci la libreria dei riferimenti",
+    "description": "Controlla le chiavi di citazione e le voci duplicate prima di modificare i tuoi file.",
+    "library": "Libreria dei riferimenti",
+    "entryCount_one": "{{count}} voce",
+    "entryCount_many": "{{count}} voci",
+    "entryCount_other": "{{count}} voci",
+    "footer": "L'anteprima salva i file aperti. L'applicazione verifica che corrispondano ancora all'anteprima e crea una copia di sicurezza degli originali.",
+    "noBib": "Questo progetto non ha nessun file .bib da pulire.",
+    "entriesKept": "Rimarranno {{kept}} voci su {{total}}.",
+    "changes": "Modifiche e note",
+    "noChanges": "Nessuna modifica ai file da applicare.",
+    "filesToUpdate": "File da aggiornare: {{files}}",
+    "none": "Nessuno",
+    "introSafeChanges": "Le chiavi di citazione vengono uniformate. I duplicati con lo stesso DOI vengono rimossi solo quando è possibile conservarne tutti i dettagli.",
+    "introReview": "Titoli simili e metadati in conflitto restano nella libreria per una verifica.",
+    "preview": "Anteprima",
+    "reviewTitle": "Controlla prima di applicare",
+    "reviewBody": "Genera l'anteprima delle modifiche per vedere quali voci e citazioni verranno aggiornate.",
+    "statusAttention": "Richiede attenzione",
+    "statusWorking": "Elaborazione…",
+    "statusPreviewReady": "Anteprima pronta",
+    "statusReady": "Pronto per l'anteprima",
+    "refreshPreview": "Aggiorna l'anteprima",
+    "previewChanges": "Anteprima delle modifiche",
+    "apply": "Applica e riscrivi le citazioni",
+    "truncated": "L'anteprima mostra le prime 500 righe di ogni versione.",
+    "actionRenamed": "{{old}} rinominata in {{new}}",
+    "actionDuplicate": "{{removed}} rimossa come duplicato di {{kept}} (corrispondenza per {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "Non è stato possibile ricaricare i file puliti. Riapri il progetto prima di modificarli.",
+    "cleaned": "Libreria pulita. Conservate {{kept}} voci su {{total}}.",
+    "cleanedWithBackup": "Libreria pulita. Conservate {{kept}} voci su {{total}}. I file originali sono salvati in {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Il progetto è cambiato dopo questa ricerca. Esegui di nuovo Trova riferimenti per usare gli intervalli del sorgente attuale.",
+      "title": "Risultati dei riferimenti scaduti"
+    },
+    "noLocations": {
+      "detail": "Il simbolo esiste in questa revisione, ma non ha definizioni o occorrenze corrispondenti.",
+      "title": "Nessuna posizione trovata"
+    },
+    "none": {
+      "detail": "Posiziona il cursore su un'etichetta, una citazione, un comando o un ambiente e premi Shift-F12.",
+      "title": "Nessuna ricerca di riferimenti"
+    }
+  },
+  "tabs": {
+    "citations": "Citazioni",
+    "results": "Riferimenti",
+    "symbols": "Simboli"
+  },
+  "trees": {
+    "citations": "Citazioni del progetto",
+    "noCitations": "Non sono state trovate voci bibliografiche né usi di citazioni.",
+    "noSymbols": "Non è stato trovato nessun simbolo definito nel progetto.",
+    "symbols": "Simboli del progetto"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Non è stato possibile analizzare l'ultima revisione del progetto. I file sorgente non sono stati modificati.",
+      "title": "Analisi del progetto non riuscita"
+    },
+    "indexing": {
+      "detail": "Riferimenti e citazioni compariranno quando la revisione attuale del progetto sarà pronta.",
+      "title": "Indicizzazione dell'analisi del progetto"
+    },
+    "noProject": {
+      "detail": "Apri un progetto di documento per esaminare citazioni, simboli e riferimenti tra file.",
+      "title": "Nessun progetto aperto"
+    },
+    "offline": {
+      "detail": "In questo momento non è possibile controllare riferimenti e citazioni in quest'area di lavoro.",
+      "title": "Servizio di analisi non disponibile"
+    },
+    "unsupported": {
+      "detail": "Il progetto attivo non usa un motore di documento supportato.",
+      "title": "Analisi del progetto non disponibile"
+    },
+    "waiting": {
+      "detail": "L'ultima revisione del progetto non è ancora stata indicizzata.",
+      "title": "In attesa dell'analisi del progetto"
+    }
+  }
+}

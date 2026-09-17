@@ -1,0 +1,647 @@
+{
+  "rules": {
+    "multi-column": {
+      "titleTwoColumn": "İki sütunlu düzen",
+      "detailTwoColumn": "Özgeçmiş ayrıştırıcıları iki sütunu çoğunlukla yanlış sırada düzleştirir. Bir ATS tarafından okunması gereken belgelerde tek sütunlu düzeni yeğleyin.",
+      "titleMultiColumn": "Çok sütunlu düzen",
+      "detailMultiColumn": "Özgeçmiş ayrıştırıcıları sütunları çoğunlukla yanlış sırada düzleştirir. ATS'ye gidecek belgelerde tek sütun kullanın."
+    },
+    "multi-column-reading-order-risk": {
+      "titleTwoColumn": "İki sütunlu okuma sırasını doğrulayın",
+      "detailTwoColumn": "Çok sütunlu yayın düzenleri, PDF etiket ağacı amaçlanan sırayı koruduğunda erişilebilir olabilir. Görsel sütunları tek başına bir başarısızlık saymak yerine derleyip gerçek okuyucu sırasını doğrulayın.",
+      "titleMultiColumn": "Çok sütunlu okuma sırasını doğrulayın",
+      "detailMultiColumn": "Sütunlar kendiliğinden erişilemez değildir, ancak etiket ve içerik sıralarının anlamlı kalması gerekir. Derleyip gerçek okuyucu sırasını inceleyin."
+    },
+    "no-glyphtounicode": {
+      "title": "Unicode çıkarma eşlemesi bildirilmemiş",
+      "detailEngineNeedsMap": "XeTeX ve onun üzerine kurulu paketlenmiş motor, glif ile Unicode arasındaki eşlemeyi kendiliğinden üretmez, bu yüzden çıkarılan metin okunamaz olabilir. Derleyip okuyucu görünümünü denetleyin ve tam Unicode eşlemesi olan bir yazı tipini yeğleyin.",
+      "detailAutomatic": "pdfLaTeX ve LuaLaTeX, LaTeX 2021-06-01 sürümünden beri bu eşlemeyi kendiliğinden üretir, bu yüzden bildirim gerekmez. Derleyip çıkarılan okuyucu metnini doğrulayın. XeTeX üzerinde cmap yükleyin veya motoru değiştirin."
+    },
+    "icon-near-contact": {
+      "title": "İletişim bilgisinin yanında simge",
+      "detail": "Yazı tipi simgeleri (\\faPhone veya \\faEnvelope gibi), bir ayrıştırıcının bilinmeyen karakter olarak okuduğu ve ekran okuyucunun adlandıramadığı glifler olarak işlenir; bu yüzden yanlarındaki iletişim bilgisi kaybolabilir. E-postanın veya telefonun düz, seçilebilir metin olarak da bulunduğundan emin olun."
+    },
+    "layout-table": {
+      "titleTable": "Tablo içeriği özgeçmiş alanı olarak ayrıştırılmayabilir",
+      "detailTable": "ATS araçları tablo içeriğini çoğu zaman öngörülemez biçimde düzleştirir. Özgeçmiş metnini yan yana yerleştirmek için tablo kullanmayın; gerçek araştırma veri tabloları Erişilebilirlik bölümünde ayrıca değerlendirilir.",
+      "titleTikz": "TikZ içeriği anlamsal bir alternatif gerektirir",
+      "detailTikz": "TikZ, görsel içerik çizer ama anlamını normal metin olarak sunmaz. Yayın çıktısı için erişilebilir bir açıklama ekleyin ve ATS'ye gidecek özgeçmiş içeriğinde kullanmayın."
+    },
+    "contact-in-header": {
+      "title": "Sayfa üst bilgisinde iletişim bilgisi",
+      "detail": "Bazı özgeçmiş ayrıştırıcıları sayfa üst ve alt bilgilerini atlar. Çıkarılan metnin bunları koruması için e-postanızı ve telefonunuzu belge gövdesine koyun."
+    },
+    "figure-alt": {
+      "title": "Alternatif metni olmayan görsel",
+      "detail": "Bu görselin açıklayıcı alternatif metni yok, bu yüzden ekran okuyucu onu aktaramaz. Bir açıklama ekleyin, örneğin \\includegraphics[alt={Yazarın vesikalık fotoğrafı}]{...}. Yalnızca süsleme amaçlı görselleri bunun yerine yapıntı olarak işaretleyin."
+    },
+    "link-text": {
+      "title": "Açıklayıcı olmayan bağlantı metni",
+      "detail": "'buraya tıklayın' gibi bir bağlantı metni veya çıplak bir URL, ekran okuyucu kullanıcısına hedef hakkında hiçbir şey söylemez. Hedefi adlandıran bir metin kullanın, örneğin 'portföyüm'."
+    },
+    "mathml-export-hint": {
+      "title": "Matematik erişilebilirliğini denetlemek için MathML içeren bir HTML kopyası dışa aktarın",
+      "detail": "Belge matematik içeriyor. Ekran okuyucular denklemleri en güvenilir biçimde MathML olduklarında okur. pandoc'un --mathml ile yazdığı HTML olarak dışa aktar seçeneğini kullanın ve gönderimden önce dosyayı bir ekran okuyucuyla ya da erişilebilirlik denetleyicisiyle açın."
+    },
+    "no-lang": {
+      "title": "Belge dili ayarlanmamış",
+      "detail": "PDF'in dili yok, bu yüzden bir ekran okuyucu onu yanlış telaffuz kurallarıyla okuyabilir. Bir dil ayarlayın, örneğin \\usepackage[english]{babel} veya hyperref'in pdflang=en-US anahtarı."
+    },
+    "no-title": {
+      "title": "PDF başlığı yok",
+      "detail": "PDF'in üst verisinde, yardımcı teknolojilerin ve tarayıcıların belgeyi duyurmak için kullandığı bir başlık yok. hyperref ile bir tane ayarlayın, örneğin \\hypersetup{pdftitle={Adınız, CV}}."
+    },
+    "heading-skip": {
+      "title": "Başlık düzeyi atlandı",
+      "detail": "Bu başlık, bir öncekinden bir düzeyden fazla derine iniyor; bu da ekran okuyucuların ve ayrıştırıcıların dayandığı belge anahattını bozar. Düzey atlamayın, örneğin önce section, sonra subsection, sonra subsubsection gidin."
+    },
+    "nonstandard-headings": {
+      "title": "Standart olmayan bölüm başlığı: \"{{heading}}\"",
+      "detail": "Ayrıştırıcılar bölümleri Deneyim, Eğitim ve Beceriler gibi standart başlıkları tanıyarak eşler. Yaratıcı bir başlık, o bölümü sınıflandırılmamış bırakabilir. Alışılmış bir başlık kullanmayı düşünün."
+    },
+    "color-only": {
+      "title": "Rengin tek ipucu olmadığını denetleyin",
+      "detail": "Ön denetim renkli içerik buldu ama anlamını kendiliğinden belirleyemiyor. Renk bir durumu veya kategoriyi ayırt ediyorsa yanına metin, şekil, kalınlık veya algılanabilir başka bir ipucu ekleyin."
+    },
+    "reading-order-risk": {
+      "title": "Okuma sırasını bozabilecek düzen",
+      "detail": "Kenar notları ve metin saran şekiller, içeriği ana akışın dışına koyar; bu yüzden ayrıştırıcılar ve ekran okuyucular onu sırasız okuyabilir. Derledikten sonra aşağıdaki önizlemede okuma sırasını denetleyin."
+    },
+    "ua-standard-without-title": {
+      "title": "Belge başlığı olmadan PDF/UA bildirilmiş",
+      "detailBoth": "Bu belge pdfstandard=ua bildiriyor ama ne pdftitle ne de pdfdisplaydoctitle=true ayarlıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir; bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın.",
+      "detailTitle": "Bu belge pdfstandard=ua bildiriyor ama pdftitle ayarlamıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir; bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın.",
+      "detailDisplay": "Bu belge pdfstandard=ua bildiriyor ama pdfdisplaydoctitle=true ayarlamıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir; bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın."
+    },
+    "ua-standard-on-tectonic": {
+      "title": "Paketlenmiş motor, bildirilen PDF/UA çıktısını üretemez",
+      "detail": "Bu belge pdfstandard=ua bildiriyor, ancak paketlenmiş motor etiket ağacı yazamaz; bu yüzden PDF, karşılamadığı bir PDF/UA iddiası taşır. TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile derleyin veya pdfstandard anahtarını kaldırın."
+    },
+    "table-header-rows": {
+      "title": "Tablo başlık satırı başlık olarak işaretlenmemiş",
+      "detail": "Bu tablo ilk satırının altına çizgi çekiyor, yani başlık gibi okunuyor, ama LaTeX varsayılan olarak her hücreyi veri hücresi olarak etiketler. Ekran okuyucu o zaman bir değeri sütunuyla ilişkilendiremez. Başlık satırını bildirin, örneğin \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "pdf-reading-order": {
+      "title": "Çıktıda sütunlar soldan sağa okunuyor",
+      "detail": "Bu sayfada iki sütunun metni aynı satırlara denk geliyor; bu yüzden bir ayrıştırıcı onları doğrudan yan yana okuyup karışık metin üretir ve ekran okuyucu sırasız duyurur. Ayrıştırılması gereken içerikte tek sütunlu düzen kullanın. Aşağıdaki okuyucu görünümüne bakın."
+    },
+    "pdf-garbled": {
+      "title": "Çıktıda bozuk veya eşlenmemiş metin",
+      "detail": "Çıkarılan metin, Unicode'a eşlenmeyen karakterler içeriyor; bu yüzden kopyala yapıştır ve ayrıştırıcılar bozuk çıktı görür ve ekran okuyucu okuyamaz. Bu genellikle eksik bir glif ile Unicode eşlemesi ya da metin olarak gömülmemiş bir yazı tipi anlamına gelir."
+    },
+    "pdf-selectable": {
+      "title": "Sayfada seçilebilir metin yok",
+      "detail": "Bu sayfa çok az çıkarılabilir metin içeriyor ya da hiç içermiyor; bu yüzden bir ayrıştırıcı ve ekran okuyucu hiçbir şey görmez. Büyük olasılıkla görsel olarak işlenmiş ya da metin olarak gömülmemiş yazı tipleri kullanıyor. İçeriğin gerçek, seçilebilir metin olduğundan emin olun."
+    },
+    "output-clipped-content": {
+      "title": "Metin sayfanın dışına taşıyor",
+      "detail": "Seçilebilir metin bu sayfanın ortam kutusunun dışında kalıyor ve baskıda ve yayıncı işlemesinde kırpılabilir veya kaybolabilir. Geniş denklemleri, tabloları, URL'leri ve konumlandırılmış içeriği inceleyin."
+    },
+    "output-small-text": {
+      "title": "Çok küçük metin bulundu",
+      "detail_one": "{{count}} metin bloğu yaklaşık 7 pt'nin altında ölçüldü. Küçük punto baskıda ve normal yakınlaştırmada okumayı zorlaştırır. Etkinliğin buna izin verdiğini doğrulayın ve gereksiz yere küçük etiketleri veya dipnotları büyütün.",
+      "detail_other": "{{count}} metin bloğu yaklaşık 7 pt'nin altında ölçüldü. Küçük punto baskıda ve normal yakınlaştırmada okumayı zorlaştırır. Etkinliğin buna izin verdiğini doğrulayın ve gereksiz yere küçük etiketleri veya dipnotları büyütün."
+    },
+    "pdf-no-bookmarks": {
+      "title": "Uzun PDF'in yer imi yok",
+      "detail": "Uzun belgeler, klavye ve yardımcı teknoloji kullanıcılarının her sayfayı sırayla okumadan bölümler arasında gezebilmesi için hiyerarşik bir yer imi anahattı sunmalıdır. Bu bir PDF/UA gereksinimi değil, WCAG en iyi uygulamasıdır. Bir tane üretmek için hyperref ya da bookmark yükleyin."
+    },
+    "pdf-metadata-extraction-failed": {
+      "title": "PDF üst verisi incelenemedi",
+      "detail": "Ön denetim PDF üst verisini okuyamadı, bu yüzden belge başlığını veya dilini doğrulayamıyor. Bu, o alanların eksik olduğunun kanıtı değil, bilinmeyen bir sonuçtur. Yeniden derleyip denetimi tekrar çalıştırın."
+    },
+    "pdf-lang-title": {
+      "titleBoth": "PDF'te dil ve başlık eksik",
+      "titleLang": "PDF'te dil eksik",
+      "titleTitle": "PDF'te başlık eksik",
+      "detail": "Yardımcı teknolojiler ve tarayıcılar, belgeyi doğru duyurmak için PDF'in katalog dilini ve başlığını kullanır. Bunları hyperref ile ayarlayın, örneğin \\hypersetup{pdftitle={Adınız, CV}, pdflang=tr-TR}."
+    },
+    "pdf-mark-info-extraction-failed": {
+      "title": "PDF etiketleme durumu incelenemedi",
+      "detail": "Ön denetim PDF'in MarkInfo sözlüğünü okuyamadı. Bu, iki yönde de kanıt değil, bilinmeyen bir sonuçtur; bu yüzden yalnızca bu denetime dayanarak çıktıyı etiketli ya da etiketsiz saymaz."
+    },
+    "compile-failed": {
+      "title": "En son derleme başarısız oldu",
+      "detail": "Gönderim çıktısı başarılı bir derlemeden gelmelidir. İlk derleyici hatasını düzeltin, yeniden derleyin ve Ön denetimi tekrar çalıştırın."
+    },
+    "compile-overfull-box": {
+      "title_one": "Çıktıda {{count}} taşan satır",
+      "title_other": "Çıktıda {{count}} taşan satır",
+      "detail": "Derleyici, metin kutusunun dışına taşan içerik bildiriyor, {{width}} pt'ye kadar. Bu konumları kırpılmış metin, denklem, tablo veya bağlantı açısından inceleyin."
+    },
+    "compile-missing-glyph": {
+      "title_one": "{{count}} eksik glif",
+      "title_other": "{{count}} eksik glif",
+      "detail": "Seçili yazı tipleri her karakteri işleyemiyor. Eksik glifler PDF'ten sessizce kaybolabilir; buna adlardaki, denklemlerdeki ve atıflardaki semboller de dahildir."
+    },
+    "compile-unresolved-references": {
+      "title": "Derlenen çıktıda çözümlenmemiş başvurular var",
+      "detail": "Derlemeden sonra en az bir atıf veya çapraz başvuru çözümlenmemiş kaldı. Gönderilen PDF [?] veya ?? içerebilir. Günlüğe bakın ve gerekli kaynakça ve LaTeX geçişlerini çalıştırın."
+    },
+    "compile-rerun-required": {
+      "title": "Bir derleme geçişi daha gerekiyor",
+      "detail": "En son günlük, etiketlerin, atıfların veya içindekiler tablosunun oturmadığını söylüyor. Dışa aktarmadan önce yeniden derleme uyarısı kaybolana kadar derleyin."
+    },
+    "compile-duplicate-destination": {
+      "title": "Yinelenen PDF hedefleri",
+      "detail": "İki çapa aynı hedefi paylaşıyor, bu yüzden bağlantılar veya yer imleri yanlış yere atlayabilir. Bu genellikle yinelenen etiketlerden veya sayfa numaralandırmasının sıfırlanmasından kaynaklanır."
+    },
+    "compile-mixed-page-sizes": {
+      "title": "Tek PDF'te karışık sayfa boyutları",
+      "detail_one": "PDF {{count}} sayfa boyutu içeriyor ({{sizes}}). Karışık ortam kutuları çoğu zaman yanlış dahil edilmiş bir sayfaya veya şekle işaret eder ve yayıncı üretim denetimlerinden geçemeyebilir.",
+      "detail_other": "PDF {{count}} sayfa boyutu içeriyor ({{sizes}}). Karışık ortam kutuları çoğu zaman yanlış dahil edilmiş bir sayfaya veya şekle işaret eder ve yayıncı üretim denetimlerinden geçemeyebilir."
+    },
+    "output-tagpdf-warning": {
+      "title_one": "Etiketleme {{count}} sorun bildirdi",
+      "title_other": "Etiketleme {{count}} sorun bildirdi",
+      "detail": "Etiketleme kodu bu uyarıları günlüğe yazdı: {{warnings}} Her biri, yapı ağacının içerikle örtüşmediği bir yerdir. Bunları kaynakta düzeltip yeniden derleyin."
+    },
+    "output-tagging-status": {
+      "title_one": "Etiketleme durumu raporu {{count}} öge işaretledi",
+      "title_other": "Etiketleme durumu raporu {{count}} öge işaretledi",
+      "detail": "LaTeX, derlemenin sonunda kendi etiketleme durumu raporunu yazdı.",
+      "partClass": "{{name}} sınıfı {{status}}.",
+      "partBlocking": "Etiketlemeyle uyumlu değil: {{files}}.",
+      "partUnproven": "Şunlar için kayıtlı bir sonuç yok: {{files}}.",
+      "partPartial": "Yalnızca kısmen etiketleniyor: {{files}}.",
+      "partAdvice": "Etiketlenemeyen her şey, bölümlerin tamamını yapı ağacının dışında bırakabilir; bu yüzden değiştirebildiklerinizi değiştirin."
+    },
+    "pdf-structure-single-pass": {
+      "title": "Etiket ağacı ilk derleme geçişi gibi görünüyor",
+      "detail": "PDF etiketli olarak işaretlenmiş ama yapı ağacında neredeyse hiçbir şey yok; bu da tek geçişin ürettiği sonuçtur. Etiketli çıktı iki geçiş gerektirir. Yeniden derleyip tekrar denetleyin."
+    },
+    "pdf-ua-claim-mismatch": {
+      "title": "Bu PDF, PDF/UA-{{part}} iddia ediyor ama karşılamıyor",
+      "detail": "XMP üst verisi pdfuaid:part {{part}} bildiriyor, ancak dosya bunu desteklemiyor.",
+      "partNoXmpTitle": "XMP üst verisinde belge başlığı yok.",
+      "partNoDisplayDocTitle": "DisplayDocTitle true olarak ayarlanmamış.",
+      "partNotTagged": "Dosya etiketlenmemiş.",
+      "partAdvice": "Bu iddiaya güvenen her şey, uygun olmadığı hâlde bu PDF'i uygun olarak bildirir; bu yüzden ya eksikleri kapatın ya da iddiayı bırakın. hyperref ile \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın ve etiketleme açıkken derleyin."
+    },
+    "pdf-xmp-title": {
+      "title": "Başlık yalnızca Info sözlüğünde",
+      "detail": "Belge başlığı Info sözlüğünde ayarlanmış ama XMP üst verisinde dc:title olarak yok; PDF/UA onu orada arar. hyperref'i pdftitle ile yüklemek ikisini de yazar."
+    },
+    "pdf-display-doc-title": {
+      "title": "Okuyucu başlığı değil dosya adını gösterecek",
+      "detail": "ViewerPreferences içinde true olarak ayarlanmış bir DisplayDocTitle girdisi yok; bu yüzden bir PDF okuyucu, penceresinde ve yardımcı teknolojilere dosya adını duyurur. Bunu hyperref ile ayarlayın, örneğin \\hypersetup{pdfdisplaydoctitle=true}."
+    },
+    "pdf-suspects": {
+      "title": "PDF, kendi etiketlemesini güvenilmez olarak işaretliyor",
+      "detail": "MarkInfo, Suspects değerini true yapıyor; bu, üreticinin etiket ağacının görünen içerikle örtüşmeyebileceğini söylemesidir. Güncel bir motorla yeniden derleyin ve günlükteki etiketleme uyarılarını denetleyin."
+    },
+    "pdf-link-alt": {
+      "title_one": "{{count}} bağlantı ek açıklamasının açıklaması yok",
+      "title_other": "{{count}} bağlantı ek açıklamasının açıklaması yok",
+      "detail": "Contents girdisi olmayan bir bağlantı ek açıklaması, bir sayfadaki bağlantıları listelerken ekran okuyucuya duyuracak hiçbir şey vermez. Hedefi bağlantı metninde anlatın ve hyperref'in bu metni ek açıklamaya taşımasına izin verin."
+    },
+    "pdf-untagged-content": {
+      "title": "Metnin %{{percent}} kadarı etiket ağacının dışında",
+      "detail": "{{total}} metin bloğundan {{untagged}} tanesi etiket ağacındaki hiçbir şeye bağlı değil, bu yüzden ekran okuyucu onları atlar. Yapıntılar sayılmaz. Gerçek içeriğin etiketlenmesi, süsleme içeriğinin ise yapıntı olarak işaretlenmesi gerekir, örneğin \\includegraphics[artifact]{...}."
+    },
+    "pdf-structure-extraction-failed": {
+      "title": "PDF yapısı tümüyle incelenemedi",
+      "detail_one": "{{pages}} sayfası için erişilebilirlik yapı ağacı çıkarılamadı. Ön denetim, ulaşılamayan yapıyı PDF'in etiketsiz olduğunun kanıtı saymaz.",
+      "detail_other": "{{pages}} sayfaları için erişilebilirlik yapı ağacı çıkarılamadı. Ön denetim, ulaşılamayan yapıyı PDF'in etiketsiz olduğunun kanıtı saymaz."
+    },
+    "pdf-untagged-output": {
+      "title": "Bu PDF etiketlenmemiş",
+      "detail": "Derlenen PDF hiç yapı ağacı taşımıyor, bu yüzden ekran okuyucu başlık, liste, tablo veya okuma sırası alamaz ve dosya PDF/UA-1 madde 7.1'i karşılayamaz. Etiketli çıktı, TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile ve \\DocumentMetadata{tagging=on} ile üretilir. Paketlenmiş motor etiket üretemez. Bu arada yukarıdaki kaynak ve çıktı denetimleri yine geçerlidir."
+    },
+    "pdf-structure-missing": {
+      "title": "Etiketli PDF'in okunabilir yapı ağacı yok",
+      "detail": "PDF kendini etiketli olarak bildiriyor, ancak Ön denetim gezilecek bir belge yapısı bulamadı. Ekran okuyucular başlıkları, listeleri, tabloları veya okuma sırasını almayabilir. Etiketleme iki derleme geçişi gerektirir; bu yüzden bunu kesin saymadan önce yeniden derleyip tekrar denetleyin."
+    },
+    "output-figure-alt": {
+      "title": "Etiketli şeklin alternatif metni yok",
+      "detail": "Bu şekil etiketlenmiş ama alternatif metin taşımıyor, bu yüzden ekran okuyucu onu betimleyemez. Kaynakta bir açıklama ekleyin, örneğin \\includegraphics[alt={...}]{...}. Süsleme görsellerini bunun yerine [artifact] ile işaretleyin."
+    },
+    "output-formula-alt": {
+      "title": "Denklemin metin alternatifi yok",
+      "detail": "PDF/UA-1 kapsamında bir Formula, Alt veya ActualText gerektirir. Kaynakta bir tane ekleyin, örneğin \\tagpdfsetup ile ya da denklemdeki bir alt anahtarıyla. PDF/UA-2 kapsamında ise LuaLaTeX ve \\DocumentMetadata{tagging-setup={math/setup=mathml-SE}} ile derleyerek MathML ilişkilendirebilirsiniz."
+    },
+    "output-table-headers": {
+      "title": "Etiketli tablonun başlık hücresi yok",
+      "detail": "Bu tabloda başlık (TH) hücresi yok, bu yüzden ekran okuyucu veriyi sütun veya satır başlığıyla ilişkilendiremez. Başlık satırını işaretleyin, örneğin \\DocumentMetadata{tagging-setup={table/header-rows={1}}}."
+    },
+    "output-heading-skip": {
+      "title": "Etiket ağacında başlık düzeyi atlandı",
+      "detail": "Etiketlenmiş başlıklar bir düzeyden fazla atlıyor (örneğin H1'den doğrudan H3'e); bu da ekran okuyucunun gezindiği anahattı bozar. Başlık düzeylerini atlamayın."
+    },
+    "ats-no-name": {
+      "title": "Bir ayrıştırıcı adınızı belirleyemedi",
+      "detail": "Çıkarılan metinde makul bir kişi adı bulunamadı. Adınızı belgenin başına yakın bir yerde, sayfa üst bilgilerinin, grafiklerin ve konumlandırılmış metin kutularının dışında düz metin olarak tutun."
+    },
+    "ats-no-email": {
+      "title": "Bir ayrıştırıcı e-postanızı bulamadı",
+      "detail": "Çıkarılan metinde e-posta adresi bulunamadı; oysa bir ayrıştırıcının en çok dayandığı alan budur. E-postanız bir simgenin yanında ya da üst bilgide duruyorsa seçilebilir metin olmayabilir. Onu gövdeye düz metin olarak koyun."
+    },
+    "ats-no-phone": {
+      "title": "Bir ayrıştırıcı telefon numarası bulamadı",
+      "detail": "Çıkarılan metinde telefon numarası bulunamadı. Varsa ama bir simgenin ardında ya da üst bilgide gizliyse, gövdeye düz, seçilebilir metin olarak ekleyin."
+    },
+    "ats-no-experience": {
+      "title": "Bir ayrıştırıcı İş Deneyimi bölümünü algılamadı",
+      "detail": "Standart bir Deneyim başlığı bulunamadı, bu yüzden bir ayrıştırıcı görevlerinizi iş geçmişi altında toplamayabilir. Deneyim veya İş Deneyimi gibi alışılmış bir başlığı gerçek, seçilebilir metin olarak kullanın."
+    },
+    "ats-long-resume": {
+      "title_one": "Özgeçmiş {{count}} sayfa",
+      "title_other": "Özgeçmiş {{count}} sayfa",
+      "detail": "Birçok işe alım akışı bir veya iki sayfa bekler, ancak üst düzey, akademik ve kamu CV'leri daha uzun olabilir. Bu uzunluğun role ve belge türüne uyduğunu doğrulayın."
+    },
+    "refs-incomplete-metadata": {
+      "title_one": "{{count}} kaynakça kaydının üst verisi eksik",
+      "title_other": "{{count}} kaynakça kaydının üst verisi eksik",
+      "detail": "Eksik kayıtlar, yayıncı stillerinde bozuk veya belirsiz başvurular üretebilir. {{examples}}.",
+      "detailTruncated": "Eksik kayıtlar, yayıncı stillerinde bozuk veya belirsiz başvurular üretebilir. {{examples}}; …"
+    },
+    "refs-malformed-doi": {
+      "title_one": "{{count}} DOI değeri bozuk görünüyor",
+      "title_other": "{{count}} DOI değeri bozuk görünüyor",
+      "detail": "{{keys}} için DOI alanlarını gözden geçirin. Açıklayıcı metin yerine yalnızca DOI tanımlayıcısını saklayın, örneğin 10.1000/example."
+    },
+    "refs-duplicate-title": {
+      "title_one": "{{count}} olası yinelenen kaynak",
+      "title_other": "{{count}} olası yinelenen kaynak grubu",
+      "detail": "Bu anahtarların normalleştirilmiş başlığı aynı: {{groups}}. Atıf stili ve üst veriler tutarlı kalsın diye gerçek kopyaları birleştirin."
+    },
+    "refs-uncited-entries": {
+      "title_one": "{{count}} atıf verilmemiş kaynakça kaydı",
+      "title_other": "{{count}} atıf verilmemiş kaynakça kaydı",
+      "detail": "Kullanılmayan kayıtlar gönderim üst verisine gürültü katar ve yineleme yönetimini zorlaştırır. {{keys}} kayıtlarını gözden geçirin.",
+      "detailTruncated": "Kullanılmayan kayıtlar gönderim üst verisine gürültü katar ve yineleme yönetimini zorlaştırır. {{keys}} kayıtlarını gözden geçirin, …"
+    },
+    "refs-project-duplicate-label": {
+      "title_one": "{{count}} etiket birden çok dosyada tanımlanmış",
+      "title_other": "{{count}} etiket birden çok dosyada tanımlanmış",
+      "detail": "{{labels}}"
+    },
+    "refs-unreferenced-floats": {
+      "title_one": "{{count}} şekil, tablo veya denklem etiketine hiç başvurulmamış",
+      "title_other": "{{count}} şekil, tablo veya denklem etiketine hiç başvurulmamış",
+      "detail": "Numaralandırılmış her sonucun metinde ele alındığını doğrulayın: {{labels}}.",
+      "detailTruncated": "Numaralandırılmış her sonucun metinde ele alındığını doğrulayın: {{labels}}, …"
+    },
+    "refs-undefined-cite": {
+      "title": "\"{{key}}\" atıfı hiçbir .bib dosyasında yok",
+      "detail": "Bu atıf anahtarı yüklü kaynakçada bulunamadı, bu yüzden PDF'te [?] olarak görünecek. Anahtarı denetleyin veya kaydı .bib dosyanıza ekleyin (Atıf ekle onu getirebilir)."
+    },
+    "refs-undefined-ref": {
+      "title": "\"{{label}}\" başvurusunun eşleşen bir \\label etiketi yok",
+      "detail": "Bu çapraz başvuru tanımlanmamış bir etiketi gösteriyor, bu yüzden PDF'te ?? olarak görünecek. Etiket adını denetleyin veya eksik \\label komutunu ekleyin."
+    },
+    "refs-duplicate-label": {
+      "title": "Yinelenen etiket \"{{label}}\"",
+      "detail": "Aynı etiket birden çok kez tanımlanmış, bu yüzden ona yapılan başvurular belirsizdir. Her etiketi benzersiz yapın."
+    },
+    "refs-missing-asset": {
+      "titleImage": "Görsel bulunamadı: {{file}}",
+      "detailImage": "Bu \\includegraphics, projede olmayan bir dosyayı gösteriyor; bu yüzden şekil eksik kalacak. Dosya adını ve yolu denetleyin.",
+      "titleInclude": "Dahil edilen dosya bulunamadı: {{file}}",
+      "detailInclude": "Bu \\input veya \\include, projede olmayan bir dosyayı gösteriyor. Dosya adını ve yolu denetleyin."
+    },
+    "refs-bib-missing": {
+      "title": "Kaynakça dosyası bulunamadı: {{file}}",
+      "detail": "Bu \\bibliography veya \\addbibresource, projede olmayan bir dosyayı gösteriyor; bu yüzden her atıf [?] olarak görünecek. Dosya adını denetleyin veya dosyayı oluşturmak için bir kaynak kitaplığı içe aktarın."
+    },
+    "refs-duplicate-bib": {
+      "title": "Yinelenen kaynakça kayıtları: {{keys}}",
+      "detail": "Bu kayıtlar {{doi}} DOI'sini paylaşıyor, yani farklı anahtarlar altındaki aynı kaynak. Birini tutup ona atıf verin, yoksa kaynakçanız onu iki kez listeler."
+    },
+    "submission-path-case": {
+      "title": "Dosya adının büyük küçük harf durumu eşleşmiyor: {{target}}",
+      "detailFigure": "Bu şekil yalnızca büyük küçük harf ayrımı yapmayan bir dosya sisteminde çözümleniyor. Projede \"{{match}}\" var; Linux tabanlı derleme sistemlerine göndermeden önce bu yazımı birebir eşleştirin.",
+      "detailInclude": "Bu dahil edilen dosya yalnızca büyük küçük harf ayrımı yapmayan bir dosya sisteminde çözümleniyor. Projede \"{{match}}\" var; Linux tabanlı derleme sistemlerine göndermeden önce bu yazımı birebir eşleştirin."
+    },
+    "submission-missing-project-file": {
+      "titleFigure": "Eksik şekil: {{target}}",
+      "titleInclude": "Eksik dahil edilen dosya: {{target}}",
+      "detail": "{{file}} içindeki bu başvuruyu çözümleyen bir proje dosyası yok. Yerel bir önbellek şu anda belgenin derlenmesini sağlasa bile temiz bir gönderim derlemesi başarısız olur."
+    },
+    "submission-missing-caption": {
+      "titleFigure": "başlıksız şekil",
+      "titleTable": "başlıksız tablo",
+      "detail": "Yayın şekilleri ve tabloları, kendilerine başvurulabilmesi ve tek başlarına anlaşılabilmesi için numaralandırılmış, açıklayıcı bir başlık taşımalıdır."
+    },
+    "submission-label-before-caption": {
+      "title": "Etiket başlığından önce geliyor",
+      "detail": "Etiketi başlıktan sonra koyun. Yoksa LaTeX onu önceki sayaca bağlayıp yanlış şekil veya tablo numarası üretebilir."
+    },
+    "privacy-sensitive-file": {
+      "title": "Hassas dosya dahil edilmiş: {{file}}",
+      "detail": "Kaynak arşivini dışa aktarmadan, eşitlemeden veya yayımlamadan önce kimlik bilgilerini ve özel anahtar dosyalarını projeden kaldırın."
+    },
+    "privacy-credential": {
+      "title": "{{file}} içinde olası kimlik bilgisi",
+      "detail": "Proje, bir API belirteci, bulut erişim anahtarı veya özel anahtar biçiminde metin içeriyor. Açığa çıkan kimlik bilgilerini iptal edin, sonra projeden ve Git geçmişinden kaldırın."
+    },
+    "privacy-internal-comment": {
+      "title": "{{file}} içinde iç not kalmış",
+      "detail": "Kaynak açıklamaları PDF'te görünmez, ancak bir konferans, dergi veya ön baskı kaynak arşivinde herkese açık olabilir. Özel editoryal notları gözden geçirip kaldırın."
+    },
+    "privacy-draft-artifact": {
+      "title": "Taslak işaretlemesi hâlâ açık",
+      "detail": "Kaynak; taslak, TODO, değişiklik izleme, filigran veya etiket ayıklama çıktısını etkinleştiriyor. Bunu kapatın ve gönderimden önce son PDF'i gözle inceleyin."
+    },
+    "privacy-blind-author": {
+      "title": "Kör hakemlik kaynağında yazar kimliği kalmış",
+      "detail": "Kaynak; anonim olmayan bir yazar, kurum, e-posta, adres veya teşekkür alanı içeriyor. Kimlik belirten içeriği etkinliğin anonim hakemlik kipini kullanarak değiştirin."
+    },
+    "privacy-blind-acknowledgements": {
+      "title": "Teşekkürler yazarları ele verebilir",
+      "detail": "Teşekkürler çoğu zaman kurumları, hibeleri, iş birlikçileri veya olanakları belli eder. Etkinlik açıkça izin vermedikçe bunları kör hakemlik gönderiminden çıkarın."
+    },
+    "privacy-pdf-author": {
+      "title": "PDF üst verisi bir yazarı belli ediyor",
+      "detail": "PDF Author alanı \"{{author}}\". Kör hakemlik PDF'i yüklemeden önce yazar üst verisini temizleyin."
+    },
+    "submission-nonportable-filename": {
+      "title": "Taşınabilir olmayan dosya adı: {{file}}",
+      "detail": "Bu profil yalnızca harflere, rakamlara, alt çizgiye, artı, eksi, nokta, virgül, eşittir işaretlerine ve dizin ayırıcılarına izin verir. Dosyayı yeniden adlandırın ve ona yapılan başvuruları güncelleyin."
+    },
+    "submission-absolute-path": {
+      "title": "{{file}} içinde makineye özgü yol",
+      "detail": "Mutlak yerel yollar yayıncı derleme sunucularında bulunmaz. Bağımlılığı projeye taşıyın ve göreli bir yolla başvurun."
+    },
+    "submission-shell-escape": {
+      "title": "{{file}} dış komut çalıştırma gerektiriyor",
+      "detail": "Birçok yayıncı ve arşiv derleyicisi shell escape özelliğini kapatır. Çıktıyı önceden üretin veya hedef etkinliğin bu paketi ve komutu desteklediğini doğrulayın."
+    },
+    "submission-generated-file": {
+      "title": "Üretilmiş derleme dosyası dahil edilmiş: {{file}}",
+      "detail": "Üretilmiş yardımcı dosyalar kaynak paketlerini gürültülü yapar ve eski durumu koruyabilir. Seçili etkinlik bu dosyayı açıkça istemedikçe dışarıda bırakın."
+    },
+    "submission-document-class": {
+      "title": "{{profile}} belge sınıfı etkin değil",
+      "detail": "Bu profil {{expected}} bekliyor, ancak proje {{actual}} kullanıyor. Etkinliğin güncel resmi şablonundan başlayın.",
+      "detailNoClass": "Bu profil {{expected}} bekliyor, ancak hiçbir belge sınıfı algılanmadı. Etkinliğin güncel resmi şablonundan başlayın."
+    },
+    "submission-no-abstract": {
+      "title": "Özet algılanmadı",
+      "detail": "Bu yayın profili, standart bir abstract ortamında özet bekliyor. Ekleyin veya ilgili etkinliğin özet istemediğini doğrulayın."
+    },
+    "submission-no-keywords": {
+      "title": "Yayın anahtar sözcükleri algılanmadı",
+      "detail": "{{profile}} profili, kendi standart şablon komutu veya ortamıyla anahtar sözcük bekliyor."
+    },
+    "submission-figure-format": {
+      "title": "Desteklenmeyen şekil biçimi: {{file}}",
+      "detail": "{{profile}}, desteklediği TeX akışları için {{formats}} şekil dosyalarını kabul eder. Yüklemeden önce bu şekli dönüştürün."
+    },
+    "submission-placeholder": {
+      "title": "Metinde taslak yer tutucusu kalmış",
+      "detail": "Kaynak; TODO, TBD, FIXME, yer tutucu metin veya soru işareti imleri içeriyor. Son gönderimi üretmeden önce her geçişi gözden geçirin."
+    },
+    "submission-pdf-version": {
+      "title": "PDF {{version}} gereken sürümün altında",
+      "detail": "{{profile}}, PDF {{minimum}} veya daha yenisini gerektirir. Derleyicinin PDF ayarlarını güncelleyip dosyayı yeniden üretin."
+    },
+    "submission-bookmarks": {
+      "title": "PDF yer imlerine izin verilmiyor",
+      "detail": "{{profile}} PDF yer imlerini kabul etmez. Bu gönderim profili için belge anahattını kaldırın."
+    },
+    "submission-links": {
+      "title": "PDF bağlantılarına izin verilmiyor",
+      "detail": "{{profile}} bağlantı ek açıklamalarını kabul etmez. Gönderilen PDF için üretilen köprüleri kapatın."
+    },
+    "submission-attachments": {
+      "title": "PDF gömülü ekler içeriyor",
+      "detail": "{{profile}} PDF eklerini ve paketlerini kabul etmez. Gönderimden önce gömülü tüm dosyaları kaldırın."
+    },
+    "submission-security": {
+      "title": "PDF güvenlik kısıtlamaları etkin",
+      "detail": "{{profile}}, parola veya izin kısıtlaması olmayan bir PDF gerektirir."
+    },
+    "submission-unembedded-font": {
+      "title_one": "{{count}} yazı tipi gömülü değil",
+      "title_other": "{{count}} yazı tipi gömülü değil",
+      "detail": "{{profile}}, metnin ve matematiğin güvenilir biçimde işlenmesi için her yazı tipinin gömülü ya da alt küme olmasını gerektirir. {{fonts}} yazı tiplerini düzeltin."
+    },
+    "submission-font-inspection-incomplete": {
+      "title": "Bazı yazı tiplerinin gömülü olduğu doğrulanamadı",
+      "detail": "Ön denetim {{fonts}} yazı tiplerinin gömülme durumunu kanıtlayamadı. Bunları etkinliğin resmi PDF denetleyicisiyle doğrulayın."
+    }
+  },
+  "lens": {
+    "ats": "ATS",
+    "a11y": "Erişilebilirlik",
+    "both": "ATS + Erişilebilirlik",
+    "refs": "Kaynaklar",
+    "compile": "Derleme",
+    "submission": "Gönderim",
+    "privacy": "Gizlilik"
+  },
+  "severity": {
+    "error": "Hata",
+    "warning": "Uyarı",
+    "info": "Not"
+  },
+  "scores": {
+    "ats": "ATS",
+    "compile": "Derleme",
+    "a11y": "Erişim",
+    "refs": "Kaynak",
+    "submission": "Gönderim",
+    "privacy": "Gizlilik"
+  },
+  "checks": {
+    "compile": {
+      "label": "Derleme ve düzen",
+      "who": "Her son belge için",
+      "info": "Derleme hataları, çözümlenmemiş başvurular, eksik glifler ve sayfa düzeni sorunları.",
+      "detail": "En son derleyici günlüğünü ve PDF'i; başarısız derlemeler, çözümlenmemiş başvurular, eksik glifler, taşan veya kırpılmış içerik, eski yeniden derleme uyarıları ve karışık sayfa boyutları açısından inceler."
+    },
+    "submission": {
+      "label": "Gönderime hazırlık",
+      "who": "Konferanslar, dergiler, ön baskılar ve tezler için",
+      "info": "Yayın profili kuralları ve kaynak paketinde gitmemesi gereken dosyalar.",
+      "detail": "Projenin tamamına bir yayın profili uygular: resmi belge sınıfı, taşınabilir kaynak yolları, şekil biçimleri, özet ve anahtar sözcükler, PDF kısıtlamaları, başlıklar ve temiz kaynak paketleme."
+    },
+    "ats": {
+      "label": "ATS hazırlığı",
+      "who": "Özgeçmişler ve CV'ler için",
+      "info": "Bir özgeçmiş ayrıştırıcısının kurtarabildiği iletişim bilgileri ve bölümler.",
+      "detail": "Bir Başvuru Takip Sisteminin (Workday, Taleo, Greenhouse) PDF'inizden ne çıkardığını benzetir ve bunu karıştıran düzen ile biçimlendirmeyi işaretler. Araştırma makaleleri için geçerli değildir."
+    },
+    "a11y": {
+      "label": "Erişilebilirlik",
+      "who": "Araştırma, kamu ve yayımlanmış PDF'ler için",
+      "info": "Etiketleme, alternatif metin, belge dili ve başlığı, görüntüleyici ayarları, yapı, bağlantılar ve okuma sırası.",
+      "detail": "Derlenen PDF'i, PDF/UA-1'in (ISO 14289-1) makineyle denetlenebilir bölümüne ve WCAG 2.2 PDF tekniklerine göre denetler: etiketleme, alternatif metin, belge dili ve başlığı, görüntüleyici ayarları, başlık ve tablo yapısı, bağlantı açıklamaları, okuma sırası ve seçilebilir metin. Kaynak denetimleri, siz derlemeden önce olası sorunları işaretler."
+    },
+    "refs": {
+      "label": "Kaynaklar ve varlıklar",
+      "who": "Araştırma ve çok dosyalı belgeler için",
+      "info": "Bozuk atıflar, yinelenen etiketler, eksik kaynakça kayıtları ve eksik varlıklar.",
+      "detail": "Tanımsız atıfları ve çapraz başvuruları, yinelenen etiketleri ve eksik şekil ya da dahil edilen dosyaları, gönderimde PDF'inizi bozmadan önce bulur."
+    },
+    "privacy": {
+      "label": "Gizlilik ve kör hakemlik",
+      "who": "Kaynağı paylaşmadan veya anonim göndermeden önce",
+      "info": "Sırlar, taslak notları, hassas dosyalar ve kör hakemlik sırasında kimlik sızıntıları.",
+      "detail": "Anonim hakemlik gönderimlerinde kimlik bilgilerini, özel anahtarları, iç açıklamaları, taslak işaretlemesini, hassas proje dosyalarını, yazar üst verisini ve kimlik sızıntılarını bulur."
+    }
+  },
+  "profiles": {
+    "generic": {
+      "label": "Genel yayın",
+      "description": "Taşınabilir kaynak, temiz çıktı, eksiksiz üst veri ve yaygın yayın riskleri."
+    },
+    "arxiv": {
+      "label": "arXiv",
+      "description": "arXiv'in büyük küçük harfe duyarlı gönderim sisteminde yeniden derlenebilecek taşınabilir kaynak."
+    },
+    "ieee": {
+      "label": "IEEE konferans / dergi",
+      "description": "IEEEtran kaynağı ve IEEE Xplore yayını için denetlenen PDF kısıtlamaları."
+    },
+    "acm": {
+      "label": "ACM konferans / dergi",
+      "description": "ACM acmart kaynak yapısı ve yayına hazır araştırma üst verisi."
+    },
+    "journal": {
+      "label": "Diğer dergi",
+      "description": "Yayıncıdan bağımsız dergi denetimleri. Gönderimden önce derginin kesin sınırlarını ekleyin."
+    },
+    "thesis": {
+      "label": "Tez / doktora tezi",
+      "description": "Uzun belge yapısı, gezinme, kaynaklar ve taşınabilir kaynak denetimleri."
+    }
+  },
+  "ats": {
+    "sections": {
+      "experience": "Deneyim",
+      "education": "Eğitim",
+      "skills": "Beceriler",
+      "projects": "Projeler",
+      "summary": "Özet"
+    }
+  },
+  "standards": {
+    "coverage": "PDF/UA-1: Makineyle denetlenebilir {{total}} kuraldan {{passed}} tanesi doğrulandı. Bu bir alt küme denetimidir, uygunluk beyanı değildir.",
+    "coverageWithBlindSpots": "PDF/UA-1: Makineyle denetlenebilir {{total}} kuraldan {{passed}} tanesi doğrulandı. Oleafly bu kuralların {{covered}} tanesini okur ve bunlardan {{unavailable}} tanesi bu dosyada denetlenemedi. Bu bir alt küme denetimidir, uygunluk beyanı değildir."
+  },
+  "taggingGate": {
+    "noSupport": "{{name}} sınıfı etiketli çıktı üretemez ve LaTeX Projesi bunu beklemiyor.",
+    "noSupportWithNote": "{{name}} sınıfı etiketli çıktı üretemez ve LaTeX Projesi bunu beklemiyor. {{note}}",
+    "currentlyIncompatible": "{{name}} sınıfı LaTeX etiketlemesiyle henüz uyumlu değil, bu yüzden bu kaynağı hazırlamak size erişilebilir bir PDF vermez.",
+    "currentlyIncompatibleWithNote": "{{name}} sınıfı LaTeX etiketlemesiyle henüz uyumlu değil, bu yüzden bu kaynağı hazırlamak size erişilebilir bir PDF vermez. {{note}}",
+    "partiallyCompatible": "{{name}} sınıfı etiketlemeyle yalnızca kısmen uyumlu, bu yüzden yapı ağacında boşluklar bekleyin.",
+    "partiallyCompatibleWithNote": "{{name}} sınıfı etiketlemeyle yalnızca kısmen uyumlu, bu yüzden yapı ağacında boşluklar bekleyin. {{note}}",
+    "unrecorded": "LaTeX Projesi {{name}} sınıfı için bir etiketleme durumu kaydetmemiş, bu yüzden sonuç kanıtlanmamıştır. Derleyip çıktıyı denetleyin."
+  },
+  "prep": {
+    "metadataUpdated": "Gerekli etiketleme anahtarları \\DocumentMetadata içinize eklendi.",
+    "metadataAdded": "\\DocumentMetadata ilk satır olarak eklendi (zorunludur, \\documentclass öncesinde olmalıdır).",
+    "headerRows": "Her tablonun ilk satırı başlık hücresi olarak etiketlensin diye table/header-rows 1 yapıldı. Bir tablonun başlık derinliği farklıysa sayıyı değiştirin.",
+    "unicodeMath": "Bu motorun etiketli matematik için gereksinim duyduğu \\usepackage{unicode-math} eklendi.",
+    "altPlaceholders_one": "{{count}} görsele alternatif metin yer tutucusu eklendi. TODO metnini gerçek bir açıklamayla değiştirin.",
+    "altPlaceholders_other": "{{count}} görsele alternatif metin yer tutucusu eklendi. TODO metnini gerçek bir açıklamayla değiştirin.",
+    "titleRequired": "PDF/UA, okuyucunun gösterdiği bir belge başlığı gerektirir. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın.",
+    "incompatiblePackages_one": "Bu paket etiketlemeyle uyumlu değil: {{packages}}. Ondan gelen içerik PDF'te etiketsiz kalabilir. Değiştirebiliyorsanız değiştirin.",
+    "incompatiblePackages_other": "Bu paketler etiketlemeyle uyumlu değil: {{packages}}. Onlardan gelen içerik PDF'te etiketsiz kalabilir. Değiştirebiliyorsanız değiştirin.",
+    "cautionPackages": "Bu paketler yalnızca kısmen etiketliyor ya da kayıtlı bir etiketleme sonucu taşımıyor: {{packages}}. Derleyip yapı ağacını boşluklar açısından denetleyin.",
+    "compileLua": "Hazırlanan kaynağı TeX Live 2025 veya daha yenisinden LuaLaTeX ile derleyin, sonra çıktıyı tekrar denetleyin.",
+    "compileAny": "Hazırlanan kaynağı TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile derleyin, sonra çıktıyı tekrar denetleyin. Erişilebilir matematik LuaLaTeX gerektirir. Paketlenmiş motor etiket üretemez."
+  },
+  "gate": {
+    "incompatiblePackages_one": "Bu paket etiketlemeyle uyumlu değil: {{packages}}. Ondan gelen içerik PDF'te etiketsiz kalabilir.",
+    "incompatiblePackages_other": "Bu paketler etiketlemeyle uyumlu değil: {{packages}}. Onlardan gelen içerik PDF'te etiketsiz kalabilir.",
+    "incompatiblePackagesTruncated": "Bu paketler etiketlemeyle uyumlu değil: {{packages}} ve {{more}} tane daha. Onlardan gelen içerik PDF'te etiketsiz kalabilir.",
+    "partialPackages": "Bu paketler yalnızca kısmen etiketliyor: {{packages}}.",
+    "partialPackagesTruncated": "Bu paketler yalnızca kısmen etiketliyor: {{packages}} ve {{more}} tane daha.",
+    "unknownPackages": "{{packages}} için kayıtlı bir etiketleme sonucu yok.",
+    "unknownPackagesTruncated": "{{packages}} ve {{more}} tane daha için kayıtlı bir etiketleme sonucu yok.",
+    "cautionAdvice": "Derleyip yapı ağacını boşluklar açısından denetleyin."
+  },
+  "panel": {
+    "title": "Ön denetim",
+    "readerDisabled": "Önce derleyip bir çıktı denetimi çalıştırın",
+    "readerEnabled": "PDF'ten çıkarılan metni aç",
+    "readerButton": "Okuyucunun gördüğünü göster",
+    "aboutLabel": "Ön denetim hakkında",
+    "aboutTitle": "Ön denetim neleri denetler",
+    "aboutIntro": "Ön denetim; proje kaynağını, derleyici günlüğünü ve geçerli PDF'i okur. Yalnızca bu belgeye uyan denetimleri açın.",
+    "aboutFooter": "Doğrulanmış bulgular doğrudan gözlemlerden gelir. Tavsiye niteliğindeki bulgular yine de sizin değerlendirmenizi gerektirir. Temiz bir rapor incelemede yardımcı olur, ancak kabul veya erişilebilirlik belgesi değildir. Tüm denetimler yerel olarak çalışır.",
+    "enableCheck": "{{check}} denetimini aç",
+    "runCheck": "{{check}} denetimini çalıştır",
+    "rerunCheck": "{{check}} denetimini yeniden çalıştır",
+    "run": "Çalıştır",
+    "rerun": "Yeniden çalıştır",
+    "collapse": "Daralt",
+    "expand": "Genişlet",
+    "publicationProfile": "Yayın profili",
+    "anonymousReview": "Anonim hakemlik",
+    "anonymousReviewHint": "Yazar alanlarını, teşekkürleri ve PDF üst verisini de inceler.",
+    "anonymousReviewToggle": "Anonim hakemlik kimliğini denetle",
+    "engineUnsupported": "{{engine}} kaynak denetimleri henüz uygulanmadı. Bu denetim yalnızca derlenen PDF'i kullanır ve eksik kaynak desteğini bir başarısızlık olarak bildirmez.",
+    "runToSeeResults": "Sonuçları görmek için bu denetimi çalıştırın.",
+    "analyzing": "Çözümleniyor…",
+    "runEnabled_one": "Açık olan {{count}} denetimi çalıştır",
+    "runEnabled_other": "Açık olan {{count}} denetimi çalıştır",
+    "rerunEnabled_one": "Açık olan {{count}} denetimi yeniden çalıştır",
+    "rerunEnabled_other": "Açık olan {{count}} denetimi yeniden çalıştır",
+    "failed": "Ön denetim başarısız oldu: {{error}}",
+    "standardsCaveat": "Oleafly, PDF/UA ve WCAG'ın dosyanın kendisinde denetlenebilen bölümünü okur. Alternatif metnin anlamlı olup olmadığını, okuma sırasının mantıklı olup olmadığını veya renk karşıtlığının yeterli olup olmadığını söyleyemez. Bunları bir insanın değerlendirmesi gerekir. Resmi bir uygunluk beyanı için veraPDF veya PAC 2024 ile doğrulayın.",
+    "pdfRequired": "PDF gerekli. Projeyi derleyip yeniden çalıştırın. Bu denetim henüz değerlendirilmedi.",
+    "compileFirst": "Önce projeyi derleyin. Ön denetim, derleme kalitesini değerlendirmek için güncel derleyici günlüğüne veya PDF'e ihtiyaç duyar.",
+    "partialCoverage": "Kaynak denetimleri tamamlandı. PDF düzeyindeki denetimleri bitirmek için projeyi derleyip yeniden çalıştırın.",
+    "unsupportedCoverage": "Değerlendirilmedi. Bu motor için kaynak denetimleri uygulanmadı.",
+    "groupSource": "Proje ve kaynak",
+    "groupOutput": "Derlenen çıktı",
+    "fixAll_one": "{{count}} tanesini yapay zeka ile düzelt",
+    "fixAll_other": "{{count}} tanesinin tümünü yapay zeka ile düzelt",
+    "noProblems": "Sorun bulunamadı."
+  },
+  "finding": {
+    "review": "İnceleme",
+    "manual": "Elle",
+    "page": "s.{{page}}",
+    "needsJudgment": "Sizin değerlendirmenizi gerektirir. Hiçbir araç bunu yalnızca dosyaya bakarak karara bağlayamaz.",
+    "jumpToSource": "Kaynağa atla",
+    "fixWithAi": "Yapay zeka ile düzelt"
+  },
+  "score": {
+    "notEvaluated": "{{label}} değerlendirilmedi",
+    "readiness": "{{label}} hazırlığı 100 üzerinden {{score}}",
+    "notScored": "Puanlanmadı"
+  },
+  "reader": {
+    "title": "Okuyucunun gördüğü",
+    "description": "Geçerli PDF'ten okuma sırasına göre çıkarılan metin. Bu, bir ekran okuyucunun veya otomatik ayrıştırıcının aldığına yakındır.",
+    "pagesNav": "PDF sayfaları",
+    "page": "Sayfa {{page}}",
+    "empty": "boş",
+    "extractedFrom": "{{page}}. sayfadan çıkarılan metin",
+    "pageOf": "Sayfa {{page}} / {{total}}",
+    "noText": "Bu sayfada seçilebilir metin bulunamadı."
+  },
+  "atsCard": {
+    "title": "Bir ayrıştırıcının çıkardıkları",
+    "notFound": "Bulunamadı",
+    "links_one": "{{count}} bağlantı",
+    "links_other": "{{count}} bağlantı",
+    "detected": "{{section}}: algılandı",
+    "requiredMissing": "{{section}}: zorunlu bölüm algılanmadı",
+    "optionalMissing": "{{section}}: isteğe bağlı bölüm algılanmadı",
+    "detectedTitle": "{{section}} bölümü algılandı",
+    "requiredMissingTitle": "{{section}} bekleniyordu ama algılanmadı",
+    "optionalMissingTitle": "{{section}} isteğe bağlıdır ve algılanmadı",
+    "optionalSuffix": ", isteğe bağlı"
+  },
+  "prepExport": {
+    "title": "Erişilebilir dışa aktarma",
+    "intro": "Bu belgeyi PDF/UA-2 hedefleyen etiketli çıktı için hazırlayın. Oleafly, pdfstandard=ua-2 ve tagging=on ile birlikte \\DocumentMetadata ekler, ayrıca doldurabildiği alternatif metin ve tablo ayarlarını yapar. Sonucu TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile derleyip tekrar denetleyin. Erişilebilir matematik LuaLaTeX gerektirir. Paketlenmiş motor etiket üretemez.",
+    "activeFileFallback": "Oleafly ana belgeyi yükleyemedi, bu yüzden düzenlemekte olduğunuz dosyayı denetledi. Derlemenizin gerçekte yüklediği sınıfı ve paketleri görmek için ana belgeyi açın.",
+    "prepare": "Erişilebilir dışa aktarma için hazırla",
+    "unavailable": "Bu belge sınıfı için hazırlık kapalı. Etiketleme kodunun desteklediği bir sınıfa geçin, sonra denetimi yeniden çalıştırın. Uyumluluk verileri LaTeX Projesi'nden alındı, {{retrieved}}.",
+    "unavailableUndated": "Bu belge sınıfı için hazırlık kapalı. Etiketleme kodunun desteklediği bir sınıfa geçin, sonra denetimi yeniden çalıştırın. Uyumluluk verileri LaTeX Projesi'nden alındı.",
+    "applied": "Uygulandı",
+    "apply": "Belgeye uygula",
+    "copied": "Kopyalandı",
+    "copy": "Kaynağı kopyala",
+    "compileTagged": "Etiketli derle ve doğrula",
+    "compileTaggedWarning": "Sistem LuaLaTeX'i yerel dosyaları okuyabilir. Onu yalnızca güvendiğiniz bir proje için çalıştırın.",
+    "noEngine": "Etiketli PDF'i uygulama içinde üretmek için Ayarlar'daki LaTeX Motoru bölümünden bir motor etkinleştirin. Ya da hazırlanan kaynağı TeX Live 2025 veya daha yenisinden kendi pdfLaTeX veya LuaLaTeX kurulumunuzla derleyin."
+  }
+}

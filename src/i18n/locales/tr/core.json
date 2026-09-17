@@ -1,0 +1,597 @@
+{
+  "accents": {
+    "blue": "Mavi",
+    "green": "Yeşil",
+    "orange": "Turuncu",
+    "purple": "Mor",
+    "rose": "Gül",
+    "teal": "Petrol yeşili"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Köprü gerekli",
+      "cliMissing": "CLI bulunamadı",
+      "ready": "Hazır",
+      "unavailable": "Kullanılamıyor"
+    },
+    "requestFailed": "ACP isteği tamamlanamadı."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Bu proje {{budget}} tutarındaki yapay zeka bütçesine ulaştı. Devam etmek için bütçeyi Ayarlar'dan yükseltin veya kaldırın.",
+    "warned": "Bu proje {{budget}} tutarındaki yapay zeka bütçesinin {{spent}} kadarını kullandı."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "Bu işlem için Oleafly asistanına geçildi."
+  },
+  "bibtex": {
+    "duplicateDoi": "Şunlarla paylaşılan yinelenen DOI: {{keys}}",
+    "duplicateKey": "Yinelenen atıf anahtarı",
+    "invalidYear": "\"{{year}}\" yılı dört basamaklı bir sayı değil",
+    "missingField": "Eksik zorunlu alan: {{fields}}",
+    "missingKey": "@{{type}} türündeki kaydın atıf anahtarı yok",
+    "unknownType": "Bilinmeyen kayıt türü @{{type}}",
+    "unreadableFields": "\"{{entry}}\" kaydının alanları okunamadı",
+    "unterminatedEntry": "{{position}} karakteri yakınında sonlandırılmamış kayıt",
+    "unusualField": "@{{type}} için olağan dışı alan: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} atıf içe aktarma sırasında değişti. Yeniden deneyin.",
+    "noArxivEntry": "arXiv kaydı bulunamadı.",
+    "noReferences": "Bu dosyada kaynak bulunamadı.",
+    "offline": "Atıf araması ağ bağlantısı gerektirir. Ayarlar'dan çevrimdışı kipi kapatın.",
+    "parseFailed": "Atıf ayrıştırılamadı.",
+    "projectChanged": "Proje, atıf içe aktarma sırasında değişti.",
+    "projectChangedNotInserted": "Proje, atıf içe aktarma sırasında değişti. Atıf eklenmedi.",
+    "projectChangedRetry": "Proje, atıf içe aktarma sırasında değişti. Özgün projede yeniden deneyin.",
+    "readFailed": "{{path}} okunamadı: {{detail}}",
+    "unrecognizedFile": "Tanınmayan dosya türü: {{name}}",
+    "writeFailed": "{{path}} yazılamadı: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Oleafly kaydı {{path}} dosyasına eklendi. {{markup}} ile atıf verin.",
+    "failed": "Oleafly atıfı eklenemedi. Bunun yerine Ayarlar'daki Yardım ve hakkında bölümünden kopyalayın.",
+    "present": "{{path}} zaten Oleafly kaydını içeriyor. {{markup}} ile atıf verin.",
+    "undo": "Geri al"
+  },
+  "compatibility": {
+    "biblatexBiber": "Bu proje kaynakça için biblatex/Biber kullanıyor.",
+    "blockerFinding_one": "{{title}}",
+    "blockerFinding_other": "{{title}} (+{{more}} daha)",
+    "chooseEngine": "Motor seç…",
+    "importNotes_one": "{{count}} içe aktarma notu: {{title}}",
+    "importNotes_other": "{{count}} içe aktarma notu: {{title}} (+{{more}} daha)"
+  },
+  "compile": {
+    "engineNotLoaded": "Belge motoru yüklenene kadar derleme devre dışı.",
+    "noOfflineMode": "{{engine}} çevrimdışı derleyici kipi sunmuyor. Normal biçimde derleniyor.",
+    "retry": "Yeniden derle"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Her geliştirme projesini Geri Dönüşüm Kutusu'na taşır. Hiçbir şey kalıcı olarak silinmez.",
+        "title": "Projeleri temizle"
+      },
+      "replayFirstRun": {
+        "description": "Her turu sıfırlar, geçerli projeyi kapatır ve karşılama akışına döner.",
+        "title": "İlk çalıştırmayı yeniden oynat"
+      },
+      "resetAndSeed": {
+        "description": "Geçerli projeleri Geri Dönüşüm Kutusu'na taşır, ardından sabitlenmiş {{count}} gerçek dünya örneğinin tümünü yerel önbellekten kopyalar.",
+        "title": "Sıfırla ve doldur"
+      },
+      "resetUiState": {
+        "description": "Projeleri silmeden Oleafly yerel ayarlarını ve saklanan arayüz durumunu temizler.",
+        "title": "Arayüz durumunu sıfırla"
+      },
+      "seedCorpus": {
+        "action": "Derlemi doldur",
+        "description": "~/Codespace/Oleafly/oleafly-seed konumundan {{count}} araştırma projesi kopyalar. LaTeX ve Typst genelinde makaleler, tezler, kitaplar, sunumlar, posterler ve şekiller; her birinin paketlenmiş motorlarla derlendiği doğrulanmıştır. Var olan örnekler korunur.",
+        "title": "Araştırma derlemini doldur"
+      }
+    },
+    "closeProjectFailed": "Açık proje güvenli biçimde kapatılamadı.",
+    "confirm": {
+      "clearProjects": {
+        "action": "Projeleri temizle",
+        "description": "Yalıtılmış geliştirme kitaplığındaki her proje kendi Geri Dönüşüm Kutusu'na taşınır. Üretimdeki Oleafly kitaplığınıza dokunulmaz.",
+        "title": "Tüm geliştirme projeleri temizlensin mi?"
+      },
+      "fallbackTitle": "Geliştirme işlemini onaylayın",
+      "resetAndSeed": {
+        "action": "Sıfırla ve doldur",
+        "description": "Geçerli her geliştirme projesi Geri Dönüşüm Kutusu'na taşınır, ardından Oleafly yerel oleafly-seed önbelleğinden {{count}} araştırma örneği kopyalar.",
+        "title": "Geliştirme kitaplığı sıfırlanıp doldurulsun mu?"
+      },
+      "resetBrowser": {
+        "action": "Arayüz durumunu sıfırla",
+        "description": "Bu işlem, bu geliştirme kaynağı için Oleafly ayarlarını, turları ve diğer tarayıcı durumunu temizler, sonra uygulamayı yeniden yükler. Proje dosyaları diskte kalır.",
+        "title": "Geliştirme arayüz durumu sıfırlansın mı?"
+      }
+    },
+    "debugOnly": {
+      "description": "Bu denetimler yalnızca Vite geliştirme derlemesinde yüklenir. İşaretçisi herhangi bir çıktı dosyasında görünürse üretim derlemeleri bu modülü reddeder.",
+      "title": "Yalnızca hata ayıklama derlemesi"
+    },
+    "library": {
+      "checking": "Kitaplık yolu denetleniyor…",
+      "label": "Geliştirme kitaplığı",
+      "locked": "Burası .oleafly-dev korumalı alanı olmadığı için proje denetimleri kilitli."
+    },
+    "nav": "Geliştirici",
+    "projectsRecycled_one": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı.",
+    "projectsRecycled_other": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı.",
+    "replayFailed": "İlk çalıştırma turu sıfırlanamadı.",
+    "resetAndSeedSummary": "{{removed}} proje Geri Dönüşüm Kutusu'na taşındı ve araştırma derlemi dolduruldu: {{created}} oluşturuldu, {{skipped}} zaten vardı.",
+    "resetFailed": "Geliştirme korumalı alanı sıfırlanamadı.",
+    "sandboxOnly": "Araştırma örnekleri yalnızca .oleafly-dev korumalı alanına kopyalanabilir.",
+    "seedFailed": "Araştırma derlemi doldurulamadı.",
+    "seedFailures_one": "{{summary}} {{count}} örnek başarısız oldu. İlk başarısızlık: {{name}}: {{message}}",
+    "seedFailures_other": "{{summary}} {{count}} örnek başarısız oldu. İlk başarısızlık: {{name}}: {{message}}",
+    "seedSummary": "Araştırma derlemi dolduruldu: {{created}} oluşturuldu, {{skipped}} zaten vardı.",
+    "unknownSeedError": "Bilinmeyen doldurma hatası"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "PNG görseli",
+      "zipArchive": "Zip arşivi"
+    }
+  },
+  "dictionary": {
+    "full": "Sözlüğünüz dolu, bu yüzden o sözcük bunun yerine bu belgede gizlendi. Kaydetmek için Ayarlar'dan birini kaldırın.",
+    "wordTooLong": "Bu, sözcük olarak kaydedilemeyecek kadar uzun, bu yüzden bunun yerine bu belgede gizlendi. Bir sözcük en fazla {{max}} karakter olabilir."
+  },
+  "documentScan": {
+    "complete": "Tarama tamamlandı",
+    "failed": "Belge taraması başarısız oldu",
+    "processed": "{{current}}/{{total}} paragraf işlendi…",
+    "processing": "{{current}}/{{total}} paragraf işleniyor…",
+    "skippedEmpty": "Boş sorgu atlandı ({{current}}/{{total}})",
+    "splitting": "Belge paragraflara ayrılıyor…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "Belge motoru ayrıntıları yüklenemedi. Motora özgü eylemler devre dışı.",
+      "renameReloadFailed": "Ana belge yeniden adlandırıldıktan sonra belge motoru ayrıntıları yüklenemedi.",
+      "stillLoading": "Belge motoru ayrıntıları hâlâ yükleniyor."
+    }
+  },
+  "export": {
+    "pdfFailed": "PDF kaydedilemedi",
+    "pdfFailedDetail": "PDF kaydedilemedi: {{detail}}",
+    "pngFailed": "PNG kaydedilemedi",
+    "pngFailedDetail": "PNG kaydedilemedi: {{detail}}",
+    "revealFailed": "Dosya kaydedildi, ancak Oleafly klasörünü açamadı (izin verilmedi). Kaydetme penceresinde seçtiğiniz konuma bakın.",
+    "saved": "{{kind}} kaydedildi · {{fileName}}",
+    "showInFolder": "Klasörde göster"
+  },
+  "externalChange": {
+    "deletionRestored": "Dışarıdan yapılan bir silme, kaydedilmemiş düzenlemelerle çakıştı. Yerel düzenlemeleriniz geri yüklendi.",
+    "localEditKept": "Kaydedilmemiş değişiklikleriniz varken \"{{path}}\" dosyasına dışarıdan bir düzenleme geldi. Yerel düzenlemeniz korundu.",
+    "persistExternalFailed": "\"{{path}}\" dosyasına gelen son dış güncelleme kalıcı hale getirilemedi.",
+    "preserveLocalFailed": "\"{{path}}\" dosyasındaki yerel güncellemeniz korunamadı.",
+    "reloadFailed": "Proje ayarları güncellendi, ancak değişen bazı dosyalar yeniden yüklenemedi.",
+    "restoreLocalFailed": "\"{{path}}\" dosyasındaki kaydedilmemiş güncellemeniz geri yüklenemedi."
+  },
+  "fonts": {
+    "systemDefault": "Sistem varsayılanı",
+    "terminalDefault": "Terminal varsayılanı"
+  },
+  "imageToLatex": {
+    "failed": "Görselden LaTeX'e dönüştürme başarısız oldu: {{detail}}",
+    "inserted": "Görselden LaTeX eklendi",
+    "transcribing": "Görsel metne dökülüyor…"
+  },
+  "import": {
+    "arxivImported": "arXiv kaynağı içe aktarıldı. Sonucu görmek için projeyi derleyin.",
+    "chooseOfferedProjectType": "Bu dosya için sunulan proje türlerinden birini seçin.",
+    "invalidArxivId": "Bir arXiv makale bağlantısı ya da 2301.01234 gibi bir kimlik yapıştırın.",
+    "supportedDocumentTypes": "Desteklenen belge türlerinden birini seçin.",
+    "conversionNotice": "İçeriğinizi LaTeX'e dönüştürdük. Özellikle tablolar, şekiller ve atıflar için biçimlendirmeyi düzenlemeniz gerekebilir.",
+    "figureSaved": "{{name}} kaydedildi",
+    "pdfProjectCreated": "PDF'ten proje oluşturuldu. Yeniden oluşturulan içeriğe güvenmeden önce gözden geçirin.",
+    "pickPdfOrDocx": "Bir .pdf veya .docx dosyası seçin",
+    "texSaved": ".tex kaydedildi",
+    "unsupportedFile": "Bir .zip, .docx, .md veya .markdown dosyası seçin.",
+    "zipSaveFailed": "ZIP arşivi kaydedilemedi.",
+    "zipSaved": ".zip kaydedildi"
+  },
+  "inlineAi": {
+    "concise": "Kısalt",
+    "expand": "Genişlet",
+    "fixSource": "Kaynağı düzelt",
+    "grammar": "Dil bilgisini düzelt",
+    "improve": "İyileştir",
+    "translate": "Çevir"
+  },
+  "intelligence": {
+    "analysisFailed": "Geçerli sürüm için proje çözümlemesi başarısız oldu.",
+    "analyzing": "Proje zekası geçerli sürümü çözümlüyor.",
+    "couldNotSend": "Proje çözümlemesi çalışana gönderilemedi.",
+    "disposed": "Proje zekası çalışanı kapatılmış durumda.",
+    "disposedDuringRequest": "Proje zekası çalışanı istek sürerken kapatıldı.",
+    "failed": "Proje zekası başarısız oldu.",
+    "identityMismatch": "Proje zekası yanıtının kimliği isteğiyle eşleşmedi.",
+    "malformedResponse": "Proje zekası çalışanı bozuk bir yanıt döndürdü.",
+    "malformedSnapshotIdentity": "Proje zekası anlık görüntü kimliği bozuktu.",
+    "noProject": "Etkin proje yok.",
+    "partialFiles_one": "{{count}} dosya kurtarılabilir kısmi çözümleme üretti.",
+    "partialFiles_other": "{{count}} dosya kurtarılabilir kısmi çözümleme üretti.",
+    "retainedStale": "Proje içeriği değişti. Geçerli sürüm çalışırken korunan çözümleme eski kalır.",
+    "sourceGraphRefreshing": "Proje dosyaları değişti. Kaynak grafiği yenileniyor.",
+    "sourceSnapshotsLoading": "Proje dosyaları değişti. Geçerli çözümleme için kaynak anlık görüntüleri yükleniyor.",
+    "staleSnapshot": "Proje zekası çalışanı bu anlık görüntü için çözümleme tutmuyor.",
+    "stopped": "Proje zekası durduruldu.",
+    "timedOut": "Proje zekası zaman aşımına uğradı.",
+    "typeMismatch": "Proje zekası yanıtının türü isteğiyle eşleşmedi.",
+    "unexpectedResponse": "Proje zekası çalışanı beklenmedik bir yanıt döndürdü.",
+    "workerFailed": "Proje zekası çalışanı başarısız oldu.",
+    "workerRestarted": "Proje zekası çalışanı zaman aşımından sonra yeniden başlatıldı.",
+    "workerUnavailable": "Proje zekası çalışanı kullanılamıyor."
+  },
+  "latexPackages": {
+    "algorithm2e": "Algoritma dizgisi",
+    "amsmath": "Gelişmiş matematik dizgisi",
+    "amssymb": "Genişletilmiş matematik sembolleri",
+    "amsthm": "Teorem ve ispat ortamları",
+    "array": "Genişletilmiş array ve tabular",
+    "authblk": "Yazar ve kurum blokları",
+    "babel": "Çok dilli destek ve belge dili",
+    "biblatex": "Gelişmiş kaynakça desteği",
+    "bookmark": "İyileştirilmiş PDF yer imleri",
+    "booktabs": "Profesyonel tablo çizgileri",
+    "caption": "Şekil ve tablo başlığı özelleştirme",
+    "cleveref": "Akıllı çapraz başvurular (hyperref'ten sonra yükleyin)",
+    "csquotes": "Bağlama duyarlı tırnaklar (biblatex için gerekli)",
+    "enumitem": "Liste özelleştirme",
+    "fancyhdr": "Özel üst ve alt bilgiler",
+    "float": "İyileştirilmiş kayan öge yerleşimi",
+    "fontspec": "OpenType yazı tipi seçimi (Xe/LuaLaTeX)",
+    "geometry": "Sayfa düzeni özelleştirme",
+    "graphicx": "Grafik ve görsel ekleme",
+    "hyperref": "Köprüler, yer imleri ve PDF üst verisi",
+    "inputenc": "Giriş kodlaması (Xe/LuaLaTeX'te gerekmez)",
+    "lineno": "İnceleme kopyaları için satır numaraları",
+    "lipsum": "Yer tutucu (lorem ipsum) metin",
+    "listings": "Kod listeleri (içerikleri etiketlenmez)",
+    "mathtools": "Düzeltme ve araçlarla genişletilmiş amsmath",
+    "microtype": "Mikro tipografi iyileştirmeleri",
+    "minted": "Pygments ile renklendirilmiş kod listeleri",
+    "multirow": "Çok satırlı tablo hücreleri",
+    "natbib": "Yazar yıl ve sayısal atıflar",
+    "parskip": "Paragraf aralığı",
+    "pdfpages": "Başka bir PDF'ten tam sayfa ekleme",
+    "setspace": "Satır aralığı denetimi",
+    "siunitx": "SI birimleri ve sayı biçimlendirme",
+    "subcaption": "Alt şekiller ve alt tablolar",
+    "subfig": "Eski alt şekil düzeni paketi",
+    "tabularx": "Otomatik genişlikli tablolar",
+    "threeparttable": "Altında notları olan tablolar",
+    "tikz": "Programlanabilir vektör grafikleri (elle alternatif metin gerekir)",
+    "titlesec": "Bölüm başlığı biçimlendirme",
+    "todonotes": "Taslaklar için kenar boşluğunda yapılacak notları",
+    "unicode-math": "Xe/LuaLaTeX için Unicode matematik (etiketli matematik için gerekli)",
+    "url": "URL dizgisi",
+    "wrapfig": "Metnin çevresini sardığı şekiller",
+    "xcolor": "Renk desteği"
+  },
+  "literatureSources": {
+    "arxiv": "Fizik, matematik, bilgisayar bilimi, niceliksel biyoloji ve ilgili alanlarda 2,4 milyondan fazla ön baskı.",
+    "crossref": "150 milyondan fazla araştırma çıktısının üst verisini tutan DOI kayıt sistemi.",
+    "googleScholar": "Serper üzerinden Google Scholar sonuçları. Ayarlar → Tümleştirmeler → Atıf Arama bölümünde bir Serper API anahtarı gerekir.",
+    "openalex": "Bilimsel çalışmaların, yazarların, kaynakların, kurumların, konuların, yayıncıların ve fon sağlayıcıların açık kataloğu.",
+    "pubmed": "MEDLINE dahil, biyomedikal ve yaşam bilimleri literatüründen 40 milyondan fazla atıf ve özet.",
+    "semanticScholar": "Atıf grafikleri, etkili atıf verileri ve TLDR özetleri içeren bilimsel bir dizin.",
+    "uspto": "Önceki teknik ve uygulamalı araştırma için ABD patent belgeleri ve yayımlanmış başvurular. Arama, PatentsView geçişi sırasında duraklatıldı.",
+    "usptoPaused": "USPTO, Open Data Portal geçişi sırasında PatentsView arama API'lerini geçici olarak duraklattı.",
+    "yearRangeInvalid": "Başlangıç yılı bitiş yılından sonra olamaz."
+  },
+  "mcp": {
+    "openProjectSummary": "{{id}} projesini aç",
+    "useToolSummary": "{{server}} MCP sunucusundaki {{tool}} aracını kullan"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "'{{name}}' MCP sunucusunun tür ve taşıma bildirimleri çelişiyor.",
+    "exactlyOneServer": "MCP sunucusu JSON'u tam olarak bir sunucu içermelidir.",
+    "fieldBoolean": "'{{name}}' MCP sunucusunun '{{field}}' alanı bir boole olmalıdır.",
+    "fieldString": "'{{name}}' MCP sunucusunun '{{field}}' alanı bir dize olmalıdır.",
+    "fieldStringArray": "'{{name}}' MCP sunucusunun '{{field}}' alanı dizelerden oluşan bir dizi olmalıdır.",
+    "fieldStringRecord": "'{{name}}' MCP sunucusunun '{{field}}' alanı dize değerlerinden oluşan bir nesne olmalıdır.",
+    "jsonMalformed": "MCP sunucusu JSON'u bozuk.",
+    "jsonNotObject": "MCP sunucusu JSON'u bir nesne olmalıdır.",
+    "mcpServersNotObject": "MCP sunucusu JSON'undaki 'mcpServers' alanı bir nesne olmalıdır.",
+    "serverNotObject": "'{{name}}' MCP sunucusu bir nesne olmalıdır.",
+    "structural": "{{detail}} Şunlardan biri bekleniyordu: {\"server-name\": {...}} veya {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Bilinmeyen sunucu",
+    "unsupportedTransport": "'{{name}}' MCP sunucusunun taşıma türü desteklenmiyor: '{{transport}}'.",
+    "unsupportedType": "'{{name}}' MCP sunucusunun türü desteklenmiyor: '{{type}}'."
+  },
+  "mermaid": {
+    "diagram": "Diyagram",
+    "renderFailed": "Diyagram işlenemedi.",
+    "rendering": "Diyagram işleniyor"
+  },
+  "missingPackages": {
+    "action_one": "{{name}} paketini bul ve kur",
+    "action_other": "{{count}} dosyayı bul ve kur",
+    "installing_one": "{{name}} kuruluyor. Bittiğinde derleme yeniden başlar.",
+    "installing_other": "{{count}} paket kuruluyor. Bittiklerinde derleme yeniden başlar.",
+    "summary_one": "Derleme \"{{name}}\" dosyasını bulamadı. TeX Live içinde onu sağlayan paketi arayın.",
+    "summary_other": "Derleme {{names}} dosyalarını bulamadı. TeX Live içinde paketlerini arayın."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "{{tokens}} token'lık bağlam penceresi",
+      "deprecated": {
+        "label": "Kullanımdan kaldırıldı",
+        "title": "Sağlayıcı bu modeli kullanımdan kaldırdı"
+      },
+      "reasoning": {
+        "label": "Akıl yürütme",
+        "title": "Akıl yürütme modeli"
+      },
+      "tools": {
+        "label": "Araçlar",
+        "title": "Araç çağırabilir"
+      },
+      "vision": {
+        "label": "Görü",
+        "title": "Görsel kabul eder"
+      }
+    },
+    "listChange": {
+      "none": "Değişiklik yok",
+      "summary": "{{added}} eklendi, {{removed}} kaldırıldı"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "Proje kaynak çözümlemesi kullanılamıyor.",
+    "analysisUpdating": "Proje kaynakları güncelleniyor.",
+    "definitionsFor": "{{name}} için tanımlar",
+    "edits_one": "{{count}} düzenleme",
+    "edits_other": "{{count}} düzenleme",
+    "files_one": "{{count}} dosya",
+    "files_other": "{{count}} dosya",
+    "nameExists": "\"{{name}}\" zaten var.",
+    "noDefinition": "\"{{name}}\" için tanım bulunamadı",
+    "noReferences": "\"{{name}}\" için kaynak yok",
+    "notRenamable": "Bu sembol yeniden adlandırılamaz.",
+    "nothingToRename": "Yeniden adlandırılacak bir şey yok.",
+    "referencesFor": "{{name}} kaynakları",
+    "renamePartial": "{{total}} dosyanın {{edited}} tanesinde \"{{name}}\" olarak yeniden adlandırıldı. {{files}} yazılamadı.",
+    "renamed": "\"{{name}}\" olarak yeniden adlandırıldı ($t(core:navigation.files, {\"count\": {{files}} }) içinde $t(core:navigation.edits, {\"count\": {{edits}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "pandoc indirilemedi. Elle kurup yeniden deneyin",
+    "downloadingPercent": "pandoc indiriliyor… %{{progress}}",
+    "downloadingSize": "pandoc indiriliyor… {{megabytes}} MB",
+    "installGuide": "Kurulum kılavuzu",
+    "installed": "pandoc kuruldu"
+  },
+  "project": {
+    "copyFailed": "\"{{path}}\" kopyalanamadı.",
+    "dateUnavailable": "Kullanılamıyor",
+    "importFailed": "İçe aktarılamadı. Ayrıntılar için uygulama günlüğüne bakın.",
+    "imported": "Proje içe aktarıldı.",
+    "openFailed": "Proje açılamadı. Ayrıntılar için uygulama günlüğüne bakın.",
+    "restoringUnsavedFiles": "Bir proje güncellemesi, kaydedilmemiş düzenlemeleri olan dosyaları kaldırdı. Oleafly düzenlemelerinizi korudu ve bu dosyaları geri yüklüyor.",
+    "saveBlockedClose": "Bir veya daha fazla dosya kaydedilemediği için proje açık kaldı.",
+    "saveBlockedDiscard": "Değişiklikleri at ve çık",
+    "saveBlockedMany": "{{count}} dosya kaydedilemedi: {{files}}. İlki, kaydedilmemiş değişiklikleriyle düzenleyicide açık ({{reason}}). Sorunu çözmek için kalın ya da bu dosyalardaki kaydedilmemiş değişiklikleri atıp çıkın.",
+    "saveBlockedOne": "{{file}} kaydedilemedi ({{reason}}). Kaydedilmemiş değişikliklerinizle düzenleyicide açık. Sorunu çözmek için kalın ya da bu değişiklikleri atıp çıkın.",
+    "saveBlockedStay": "Kal",
+    "saveBlockedSwitch": "Bir veya daha fazla dosya kaydedilemediği için proje açık kaldı.",
+    "saveBlockedTitle": "Bazı dosyalar kaydedilemedi",
+    "updatedDaysAgo_one": "{{count}} gün önce güncellendi",
+    "updatedDaysAgo_other": "{{count}} gün önce güncellendi",
+    "updatedOn": "{{date}} tarihinde güncellendi",
+    "updatedToday": "Bugün güncellendi",
+    "updatedYesterday": "Dün güncellendi"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Çözümleme başarısız oldu: {{message}}",
+    "beginIsHere": "{{command}} burada.",
+    "beginWithoutEnd": "{{command}} için eşleşen bir \\end yok.",
+    "bibliographyFileMissing": "Kaynakça dosyası \"{{file}}\" projede bulunamadı.",
+    "citationHasManyDefinitions_one": "\"{{name}}\" atıfının {{count}} olası tanımı var.",
+    "citationHasManyDefinitions_other": "\"{{name}}\" atıfının {{count}} olası tanımı var.",
+    "citationKeyDuplicated_one": "\"{{name}}\" atıf anahtarı {{count}} kez tanımlanmış.",
+    "citationKeyDuplicated_other": "\"{{name}}\" atıf anahtarı {{count}} kez tanımlanmış.",
+    "citationUnresolved": "\"{{name}}\" atıfı çözümlenemedi.",
+    "definedHere": "{{kind}} \"{{name}}\" burada tanımlanmış.",
+    "duplicateTargetDefined_one": "{{kind}} hedefi \"{{name}}\" {{count}} kez tanımlanmış.",
+    "duplicateTargetDefined_other": "{{kind}} hedefi \"{{name}}\" {{count}} kez tanımlanmış.",
+    "endWithoutBegin": "{{command}} için eşleşen bir \\begin yok.",
+    "entryMissingFieldList": "Kaynakça kaydı \"{{key}}\" bir alan listesi içermiyor.",
+    "expectedEndBefore": "{{found}} öncesinde {{expected}} bekleniyordu.",
+    "fieldIncompleteValue": "\"{{name}}\" alanının değeri eksik.",
+    "fieldMissingEquals": "\"{{name}}\" alanında \"=\" eksik.",
+    "fieldRepeated": "\"{{name}}\" alanı \"{{key}}\" kaynakça kaydında yineleniyor.",
+    "fileNotLoaded": "Kaynak dosya, geçerli proje çözümlemesi için yüklenmedi.",
+    "fileUnreadable": "Dosya okunamadı.",
+    "incompleteEntry": "Eksik @{{type}} kaydı.",
+    "invalidYear": "\"{{year}}\" yılı dört basamaklı bir BibTeX yılı değil.",
+    "kinds": {
+      "anchor": "çapa",
+      "asset": "varlık",
+      "bibentry": "kaynakça kaydı",
+      "bibliography": "kaynakça",
+      "environment": "ortam",
+      "file": "dosya",
+      "glossary": "sözlük kaydı",
+      "import": "içe aktarma",
+      "include": "dahil etme",
+      "label": "etiket",
+      "link": "bağlantı",
+      "macro": "makro",
+      "section": "bölüm"
+    },
+    "malformedDirective": "Bozuk BibTeX yönergesi veya kayıt türü.",
+    "missingCitationKey": "@{{type}} bir atıf anahtarı içermiyor.",
+    "missingRequiredField": "{{entry}} zorunlu {{fields}} alanını içermiyor.",
+    "possibleTarget": "Olası hedef: {{file}}",
+    "projectFileUnreadable": "Proje dosyası okunamadı.",
+    "referenceHasManyDefinitions_one": "\"{{name}}\" kaynağının {{count}} olası tanımı var.",
+    "referenceHasManyDefinitions_other": "\"{{name}}\" kaynağının {{count}} olası tanımı var.",
+    "referenceUnresolved": "\"{{name}}\" kaynağı çözümlenemedi.",
+    "targetMatchesManyFiles_one": "{{kind}} hedefi \"{{target}}\" {{count}} proje dosyasıyla eşleşiyor.",
+    "targetMatchesManyFiles_other": "{{kind}} hedefi \"{{target}}\" {{count}} proje dosyasıyla eşleşiyor.",
+    "targetUnresolved": "{{kind}} hedefi \"{{target}}\" çözümlenemedi.",
+    "typeDelimiterExpected": "@{{type}} ardından bir açılış küme parantezi veya parantez gelmelidir.",
+    "unclosedDelimiter": "Sınırlayıcı \"{{char}}\" \"{{expected}}\" ile kapatılmamış.",
+    "unclosedDirective": "@{{type}} yönergesi kapatılmamış.",
+    "unclosedEntry": "@{{type}} kaydı kapatılmamış.",
+    "unclosedEntryNamed": "Kaynakça kaydı \"{{key}}\" kapatılmamış.",
+    "unclosedFence": "Çitli kod bloğu kapatılmamış.",
+    "unclosedFrontMatter": "YAML ön bilgisi kapatılmamış.",
+    "unclosedString": "Dize sabiti kapatılmamış.",
+    "unclosedTypstComment": "Typst blok açıklaması kapatılmamış.",
+    "unexpectedClosingDelimiter": "Beklenmedik kapanış sınırlayıcısı \"{{char}}\".",
+    "unknownEntryType": "Bilinmeyen kaynakça kayıt türü @{{type}}.",
+    "unparsableField": "Bir @{{type}} alanı ayrıştırılamadı.",
+    "unparsableFieldNamed": "\"{{key}}\" içindeki bir alan ayrıştırılamadı."
+  },
+  "proofreading": {
+    "cancelled": "Redaksiyon iptal edildi.",
+    "couldNotStart": "Çevrimdışı redaksiyon başlatılamadı.",
+    "disposed": "Çevrimdışı redaksiyon kapatıldı.",
+    "invalidResponse": "Çevrimdışı redaksiyon geçersiz bir yanıt döndürdü.",
+    "outOfRangeDiagnostic": "Çevrimdışı redaksiyon aralık dışı bir tanılama döndürdü.",
+    "postFailed": "Belge çevrimdışı redaksiyona gönderilemedi.",
+    "restarted": "Çevrimdışı redaksiyon yeniden başlatıldı.",
+    "restartedAfterTimeout": "Çevrimdışı redaksiyon zaman aşımından sonra yeniden başlatıldı.",
+    "staleResponse": "Çevrimdışı redaksiyon eski bir yanıt döndürdü.",
+    "stopped": "Çevrimdışı redaksiyon beklenmedik biçimde durdu.",
+    "superseded": "Daha yeni bir redaksiyon isteği bunun yerini aldı.",
+    "timedOut": "Çevrimdışı redaksiyon zaman aşımına uğradı ve bir sonraki düzenlemede yeniden başlayacak.",
+    "dictionaryUnavailable": "Seçili yazım sözlüğü kurulu değil. Ayarlar'dan indirin."
+  },
+  "skillGroups": {
+    "shelf": "Alan rafı",
+    "user": "Becerileriniz"
+  },
+  "tagged": {
+    "compileFailed": "Etiketli derleme başarısız oldu. Motoru denetleyip yeniden deneyin.",
+    "compiled": "Etiketli PDF derlendi. Erişilebilirlik sonucunu aşağıda görebilirsiniz.",
+    "compiledWithErrors": "Etiketli derleme hatalarla bitti. Günlüğe bakın.",
+    "engineRequired": "Önce Ayarlar'daki LaTeX Motoru bölümünden bir etiketleme motoru etkinleştirin."
+  },
+  "terminal": {
+    "defaultTitle": "Terminal {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Bu proje {{pinned}} ile sabitlendi. Etkin {{local}} dağıtımında paketlerinin {{count}} tanesi eksik, bu yüzden o dağıtım yeniden kullanılana kadar derlemeler başarısız olabilir.",
+    "distributionSkew": "Bu proje {{pinned}} ile sabitlendi ve bu makine {{local}} ile derliyor. Çıktı biraz farklı olabilir.",
+    "installPinned_one": "Kur",
+    "installPinned_other": "{{count}} tanesinin tümünü kur",
+    "installingPinned_one": "{{count}} sabitlenmiş paket kuruluyor…",
+    "installingPinned_other": "{{count}} sabitlenmiş paket kuruluyor…",
+    "pinnedPackagesFailed": "Bazı sabitlenmiş paketler kurulamadı. Ayarlar → LaTeX Motoru bölümüne bakın.",
+    "pinnedPackagesInstalled": "Sabitlenmiş LaTeX paketleri kuruldu.",
+    "pinnedPackagesMissing_one": "Bu proje burada kurulu olmayan {{count}} LaTeX paketini sabitliyor.",
+    "pinnedPackagesMissing_other": "Bu proje burada kurulu olmayan {{count}} LaTeX paketini sabitliyor."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "Özel CSS; at kuralları, URL'ler veya seçiciler kullanamaz.",
+    "cssNotSimple": "Özel CSS yalnızca basit özellik bildirimleri içermelidir.",
+    "cssNotText": "Özel CSS metin olmalıdır.",
+    "cssPropertyNotAllowed": "Özel CSS özelliğine izin verilmiyor: {{property}}.",
+    "cssTooLarge": "Özel CSS 64 KiB'den büyük.",
+    "cssTooManyDeclarations": "Özel CSS en fazla 64 bildirim içerebilir.",
+    "cssUnsafeValue": "Özel CSS güvenli olmayan bir değer içeriyor.",
+    "customizationNotObject": "Tema özelleştirmesi bir nesne olmalıdır.",
+    "dark": {
+      "notObject": "Koyu tema CSS değişkenleri bir nesne olmalıdır.",
+      "tooManyEntries": "Koyu tema CSS değişkenleri {{max}} girdiden fazlasını listeliyor."
+    },
+    "fileMissingCssVars": "Tema dosyası, açık ve koyu girdileri olan cssVars içermelidir.",
+    "fileMissingModes": "Tema dosyası açık ve koyu CSS değişkenlerini içermelidir.",
+    "fileNotJson": "Tema dosyası geçerli JSON değil.",
+    "fileNotObject": "Tema dosyası bir nesne içermelidir.",
+    "fileNotText": "Tema dosyası metin olmalıdır.",
+    "fileTooLarge": "Tema dosyası 128 KiB'den büyük.",
+    "invalidColor": "Tema belirteci {{token}} geçersiz bir renk değeri içeriyor.",
+    "invalidRadius": "Köşe yarıçapı px, rem, em veya yüzde kullanmalıdır.",
+    "light": {
+      "notObject": "Açık tema CSS değişkenleri bir nesne olmalıdır.",
+      "tooManyEntries": "Açık tema CSS değişkenleri {{max}} girdiden fazlasını listeliyor."
+    },
+    "tokens": {
+      "notObject": "Tema belirteçleri bir nesne olmalıdır.",
+      "tooManyEntries": "Tema belirteçleri {{max}} girdiden fazlasını listeliyor."
+    },
+    "unknownProperty": "bilinmiyor",
+    "unsupportedToken": "Desteklenmeyen tema belirteci: {{token}}.",
+    "unsupportedVersion": "Bu tema dosyası desteklenmeyen bir sürüm kullanıyor."
+  },
+  "themes": {
+    "matchApp": "Uygulama temasıyla eşleştir"
+  },
+  "tinytex": {
+    "installFailed": "TinyTeX kurulamadı.",
+    "installGuide": "Kurulum kılavuzu",
+    "installed": "TinyTeX kuruldu.",
+    "phase": {
+      "addingPackages": "Paketler ekleniyor…",
+      "downloading": "İndiriliyor…",
+      "downloadingPercent": "İndiriliyor… %{{progress}}",
+      "installing": "Kuruluyor…",
+      "unpacking": "Arşiv açılıyor…"
+    },
+    "removeFailed": "TinyTeX kaldırılamadı",
+    "removed": "TinyTeX kaldırıldı"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Makaleyi oku",
+      "alphaxivSearch": "Makalelerde ara",
+      "compile": "Belgeyi derle",
+      "getLog": "Derleme günlüğünü oku",
+      "insertFigure": "Şekil ekle",
+      "listFiles": "Proje dosyalarını listele",
+      "literatureSearch": "Literatürde ara",
+      "previewFigure": "Şekli önizle",
+      "projectLibrarySearch": "Proje kaynaklarında ara",
+      "projectMap": "Projenin haritasını çıkar",
+      "readFile": "Dosya oku",
+      "readLinkedFile": "Bağlantılı dosyayı oku",
+      "readPdfText": "Derlenmiş PDF'i oku",
+      "readResearchRootFile": "Bağlantılı dosyayı oku",
+      "runCommand": "Komut çalıştır",
+      "searchProject": "Projede ara",
+      "sendMessage": "Devredilen görevi güncelle",
+      "spawnAgent": "Devredilen görevi başlat",
+      "verifyCitation": "Atıfı denetle",
+      "verifyPdfPages": "PDF sayfalarını denetle",
+      "waitAgent": "Devredilen görevi bekle"
+    },
+    "skillsBudgetNotice": "Codex becerilerinin tümünü listeleyemedi. Beceri açıklamaları için %2'lik bir bağlam bütçesi ayırır, bu yüzden beceriler klasörünü sadeleştirin veya bir beceriyi adıyla isteyin.",
+    "status": {
+      "cancelled": "Durduruldu",
+      "declined": "Reddedildi",
+      "done": "Bitti",
+      "failed": "Başarısız",
+      "failedWithCode": "{{code}} çıkış koduyla başarısız oldu",
+      "interrupted": "Kesildi",
+      "running": "Çalışıyor",
+      "timedOut": "Zaman aşımına uğradı"
+    },
+    "summary": {
+      "citationUnverified": "Eşleşen kayıt bulunamadı",
+      "citationVerified": "Atıf hizmeti tarafından doğrulandı",
+      "compileFailed": "Derleme başarısız oldu",
+      "compileSucceeded": "Başarıyla derlendi",
+      "diagnostics_one": "{{count}} tanılama",
+      "diagnostics_other": "{{count}} tanılama",
+      "papers_one": "{{count}} makale",
+      "papers_other": "{{count}} makale"
+    }
+  },
+  "ui": {
+    "transparent": "Saydam"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Kaydetme sırasında proje değişti. Lütfen güncellemeyi yeniden deneyin."
+  }
+}

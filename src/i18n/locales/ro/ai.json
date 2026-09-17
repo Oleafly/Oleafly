@@ -1,0 +1,749 @@
+{
+  "runtime": {
+    "ariaLabel": "Mediul de execuție al asistentului",
+    "builtIn": "Agentul Oleafly",
+    "cli": "Agent din linia de comandă"
+  },
+  "shell": {
+    "float": "Desprinde asistentul",
+    "floatAriaLabel": "Desprinde asistentul peste aplicație",
+    "overlayTitle": "Asistentul AI",
+    "dockAriaLabel": "Readu conversația în bara laterală",
+    "floatingNotice": "Asistentul plutește peste aplicație.",
+    "dockBack": "Readu-l la loc",
+    "loadingAgents": "Se încarcă agenții…",
+    "openProjectForCli": "Deschide un proiect ca să lucrezi cu un agent din linia de comandă."
+  },
+  "minimap": {
+    "ariaLabel": "Schimburile din conversație",
+    "jumpTo": "Sari la: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "Cere aprobare",
+        "description": "Întreabă înainte de modificări de fișiere, acces la internet și comenzi."
+      },
+      "approveForMe": {
+        "label": "Aprobă în locul meu",
+        "description": "Întreabă doar înaintea acțiunilor considerate riscante."
+      },
+      "fullAccess": {
+        "label": "Acces complet",
+        "description": "Rulează acțiunile instrumentelor fără să ceară aprobare."
+      },
+      "custom": {
+        "label": "Personalizat (approvals.toml)",
+        "description": "Folosește regulile din approvals.toml. Le modifici în Setări, Asistentul AI."
+      }
+    },
+    "selectorAriaLabel": "Modul de aprobare. {{mode}}",
+    "editProjectRules": "Modifică regulile proiectului",
+    "confirm": {
+      "command": "Confirmă comanda",
+      "externalTool": "Confirmă acțiunea instrumentului extern",
+      "internet": "Confirmă accesul la internet",
+      "edit": "Confirmă modificarea făcută de AI"
+    },
+    "headline": {
+      "command": "Asistentul vrea să ruleze această comandă",
+      "externalTool": "Asistentul vrea să folosească un instrument extern",
+      "internet": "Asistentul vrea să acceseze internetul",
+      "edit": "Asistentul vrea să îți modifice fișierele"
+    },
+    "mcpNote": "Aceasta trimite argumentele de mai jos către serverul MCP configurat.",
+    "line": "linia {{line}}",
+    "sessionAutoApprove": "Aprobarea automată pe sesiune este activă pentru scrieri (ștergerile încă cer un clic).",
+    "commandLabel": "Comandă",
+    "workingDirectory": "Director de lucru",
+    "mcpServer": "Server MCP",
+    "toolLabel": "Instrument",
+    "arguments": "Argumente",
+    "figureAlt": "Previzualizarea figurii",
+    "firstChange": "prima modificare · L{{line}}",
+    "reject": "Respinge",
+    "alwaysInProject": "Întotdeauna în acest proiect",
+    "alwaysInProjectAriaLabel": "Permite întotdeauna în acest proiect",
+    "alwaysAllow": "Permite întotdeauna",
+    "approve": "Aprobă",
+    "external": {
+      "title": "Cerere de la un agent extern (MCP)",
+      "moreWaiting_one": "încă {{count}} în așteptare",
+      "moreWaiting_few": "încă {{count}} în așteptare",
+      "moreWaiting_other": "încă {{count}} în așteptare"
+    }
+  },
+  "attachments": {
+    "remove": "Elimină {{name}}"
+  },
+  "chat": {
+    "pill": {
+      "plan": "PLAN",
+      "step": "PASUL {{current}}/{{total}}",
+      "review": "VERIFICARE"
+    },
+    "plan": {
+      "detailsAriaLabel": "Detaliile planului",
+      "headingPlan": "Plan",
+      "headingChanges": "Modificări",
+      "approve": "Aprobă planul",
+      "revise": "Revizuiește",
+      "statusAwaiting": "Se așteaptă aprobarea",
+      "statusApproved": "Aprobat"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "finalizat",
+        "inProgress": "în curs",
+        "pending": "în așteptare",
+        "cancelled": "anulat"
+      }
+    },
+    "fileChanges": {
+      "changed": "Modificate",
+      "committed": "Comise în {{commit}}"
+    },
+    "runSummary": {
+      "plan": "Plan",
+      "stepsDone": "{{done}}/{{total}} gata",
+      "filesChanged_one": "{{count}} fișier modificat",
+      "filesChanged_few": "{{count}} fișiere modificate",
+      "filesChanged_other": "{{count}} de fișiere modificate"
+    },
+    "copyMessage": "Copiază mesajul",
+    "exploration": {
+      "explored": "A explorat",
+      "exploredItems": "A explorat {{items}}",
+      "files_one": "un fișier",
+      "files_few": "{{count}} fișiere",
+      "files_other": "{{count}} de fișiere",
+      "searches_one": "o căutare",
+      "searches_few": "{{count}} căutări",
+      "searches_other": "{{count}} de căutări",
+      "lists_one": "o listare",
+      "lists_few": "{{count}} listări",
+      "lists_other": "{{count}} de listări"
+    },
+    "reasoning": {
+      "thinking": "Se gândește…",
+      "thoughtFor": "S-a gândit {{seconds}}s",
+      "label": "Raționament"
+    },
+    "subagent": {
+      "finished": "Terminat",
+      "failed": "Eșuat",
+      "stopped": "Oprit",
+      "usingTool": "Folosește {{tool}}",
+      "working": "Lucrează la asta",
+      "errorBody": "Agentul nu a putut duce la capăt această sarcină.",
+      "stoppedBody": "Sarcina a fost oprită înainte să răspundă.",
+      "openTask": "Deschide sarcina"
+    },
+    "workedSteps": {
+      "duration": "A lucrat {{seconds}}s",
+      "steps_one": "A parcurs {{count}} pas",
+      "steps_few": "A parcurs {{count}} pași",
+      "steps_other": "A parcurs {{count}} de pași"
+    },
+    "steered": "Direcționat",
+    "toolOutputError": "Eroare: {{message}}",
+    "errorHints": {
+      "invalidKey": "Cheia ta API pare nevalidă sau expirată. Actualizeaz-o în Setări → Asistentul AI sau schimbă furnizorul {{where}}.",
+      "outOfCredits": "Furnizorul tău AI a rămas fără credite sau fără cotă. Alimentează contul sau treci la alt furnizor (ori la Ollama local) {{where}}.",
+      "overloaded": "Serverele furnizorului sunt supraîncărcate acum (s-a reîncercat deja). Așteaptă un minut și încearcă din nou sau treci la un model înrudit {{where}}.",
+      "rateLimited": "Furnizorul limitează ritmul cererilor. Așteaptă puțin și reîncearcă sau schimbă furnizorul {{where}}.",
+      "retiredModel": "Furnizorul a retras sau a restricționat acest model. Alege un model mai nou {{where}} (Setări → Asistentul AI arată ce poate folosi cheia ta).",
+      "unreachable": "Furnizorul AI nu a putut fi contactat. Verifică-ți conexiunea, iar dacă folosești Ollama, asigură-te că rulează (Setări → Asistentul AI → Caută Ollama).",
+      "where": {
+        "inSettings": "în Setări, Asistentul AI",
+        "modelMenu": "din meniul de modele de mai sus"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "Adaugă context",
+    "mentionMenuAgentsAndFiles": "Agenți și fișiere de proiect",
+    "mentionMenuFiles": "Fișierele proiectului",
+    "mentionHeadingAgents": "Deleagă unui agent",
+    "mentionHeadingFiles": "Fișierele proiectului",
+    "slashMenuAriaLabel": "Comenzi cu bară oblică",
+    "placeholderEngineUnavailable": "Motorul de documente nu este disponibil. Editarea cu AI este dezactivată",
+    "placeholderDefault": "Cere-i AI-ului ajutor cu documentul tău…",
+    "planRevisionPlaceholder": "Descrie ce trebuie schimbat în plan",
+    "prompts": "Prompturi",
+    "promptShortcutsAriaLabel": "Scurtături de prompturi",
+    "persona": "Personaj",
+    "personaActiveTooltip": "{{name}} este activ și îți înlocuiește instrucțiunile implicite.",
+    "personaChoose": "Alege un personaj",
+    "personaActiveAriaLabel": "Personaj. {{name}} este activ și înlocuiește instrucțiunile implicite.",
+    "personaCreate": "Creează un personaj în Setări",
+    "personaNone": "Niciunul",
+    "planModeOn": "Modul Plan este pornit",
+    "planModeOff": "Modul Plan este oprit",
+    "planModeAriaLabel": "Modul Plan",
+    "plan": "Plan",
+    "planModeInfo": "Despre modul Plan",
+    "planModeHint": "Modul Plan: asistentul propune un plan înainte să editeze. Oprește Plan ca să îi dai asistentului acces direct la toate instrumentele.",
+    "stop": "Oprește",
+    "stopTitle": "Oprește generarea",
+    "send": "Trimite",
+    "checkAgain": "Verifică din nou"
+  },
+  "commands": {
+    "groups": {
+      "skills": "Abilități"
+    },
+    "archive": {
+      "label": "Arhivează",
+      "description": "Arhivează această conversație"
+    },
+    "forkChat": {
+      "label": "Bifurcă conversația",
+      "description": "Creează o conversație nouă pornind de la aceasta"
+    },
+    "goal": {
+      "label": "Obiectiv",
+      "description": "Stabilește spre ce trebuie să lucreze asistentul în continuare"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "Vezi serverele MCP conectate și starea lor"
+    },
+    "model": {
+      "label": "Model",
+      "description": "Alege modelul pentru această conversație"
+    },
+    "planMode": {
+      "enableLabel": "Activează modul Plan",
+      "disableLabel": "Dezactivează modul Plan",
+      "description": "Pornește sau oprește planificarea structurată"
+    },
+    "recordSkill": {
+      "label": "Înregistrează o abilitate",
+      "description": "Salvează abordarea acestei conversații ca ciornă editabilă"
+    },
+    "files": {
+      "label": "Fișiere",
+      "description": "Atașează fișiere la următorul tău mesaj"
+    },
+    "browser": {
+      "label": "Atașează browserul",
+      "description": "Deschide browserul lângă documentul tău"
+    }
+  },
+  "models": {
+    "ariaLabel": "Model AI",
+    "placeholder": "Alege un model",
+    "triggerTooltip": "{{model}}. Schimbă furnizorul sau modelul",
+    "searchLabel": "Caută modele",
+    "searchPlaceholder": "Caută modele…",
+    "emptyTitle": "Nu s-a găsit niciun model",
+    "emptyHint": "Încearcă altă căutare.",
+    "trust": {
+      "verified": "Verificat",
+      "untested": "Netestat",
+      "blocked": "Blocat"
+    },
+    "trustTitle": {
+      "verified": "Oleafly a rulat asistentul pe acest model",
+      "untested": "Încă nu a fost încercat cu asistentul. Se verifică la prima folosire",
+      "blocked": "Asistentul nu poate rula pe acest model"
+    },
+    "chatOnlyHint": "Doar conversație, acest model nu poate folosi instrumente",
+    "checkingHint": "Se verifică acest model",
+    "blockedWithReason": "Acest model este blocat pentru asistent: {{reason}}",
+    "blocked": "Acest model este blocat pentru asistent.",
+    "probeFailedWithDetail": "Acest model nu a putut fi verificat. {{detail}}",
+    "probeFailed": "Acest model nu a putut fi verificat."
+  },
+  "history": {
+    "title": "Istoricul conversațiilor",
+    "closeBackdrop": "Închide istoricul conversațiilor",
+    "searchLabel": "Caută conversații",
+    "searchPlaceholder": "Caută în titluri și mesaje",
+    "emptyProject": "Acest proiect nu are încă nicio conversație salvată.",
+    "emptySearch": "Nicio conversație nu corespunde acelei căutări.",
+    "untitled": "Conversație nouă",
+    "staleTitle": "Această conversație a pornit de la o versiune mai veche a proiectului",
+    "staleBadge": "versiune mai veche",
+    "messages_one": "{{count}} mesaj",
+    "messages_few": "{{count}} mesaje",
+    "messages_other": "{{count}} de mesaje",
+    "tokens": "~{{amount}} tok",
+    "deleteAriaLabel": "Șterge {{title}}",
+    "deleteFallbackTitle": "conversație",
+    "deleteTitle": "Șterge conversația",
+    "relative": {
+      "justNow": "chiar acum",
+      "minutes": "acum {{count}} min",
+      "hours": "acum {{count}} h",
+      "days": "acum {{count}} z"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "Niciodată",
+      "everyTime": "De fiecare dată, în conversație",
+      "askModeOnly": "Doar în modul Cere aprobare",
+      "unlessAllowed": "Da, dacă nu este deja permis pentru proiect"
+    },
+    "catalog": {
+      "readFile": "Citește un fișier din proiect, bucată cu bucată pentru cele lungi.",
+      "writeFile": "Scrie un fișier întreg, înlocuind ce era acolo.",
+      "replaceInFile": "Găsește un pasaj exact într-un fișier și îl înlocuiește.",
+      "createFile": "Creează un fișier sau un folder nou în proiect.",
+      "renameFile": "Redenumește sau mută un fișier ori un folder.",
+      "deleteFile": "Șterge un fișier sau un folder.",
+      "listFiles": "Listează toate fișierele și folderele din proiect.",
+      "searchProject": "Caută în textul proiectului și returnează fișierele și liniile găsite.",
+      "projectMap": "Citește structura documentului: secțiuni, etichete, chei de citare, macrouri, includeri și tot ce este nerezolvat.",
+      "showLocation": "Deschide un fișier la o anumită linie în editor și duce previzualizarea PDF în acel loc.",
+      "compile": "Compilează proiectul cu motorul lui și raportează erorile.",
+      "getLog": "Citește ultimul jurnal de compilare.",
+      "getPdfText": "Citește textul PDF-ului compilat, pagină cu pagină.",
+      "verifyPdfPages": "Randează paginile compilate ca imagini, ca un model de viziune să poată verifica aspectul.",
+      "setMainDoc": "Schimbă fișierul din care se compilează proiectul.",
+      "literatureSearch": "Caută lucrări în OpenAlex după cuvinte-cheie, fără cheie de acces.",
+      "verifyCitation": "Transformă un DOI sau un titlu în BibTeX verificat, prin doi.org sau Crossref.",
+      "projectLibrarySearch": "Caută după cuvinte-cheie în textul și notele proiectului.",
+      "alphaxivSearch": "Caută lucrări de pe arXiv prin alphaXiv.",
+      "alphaxivPaperContent": "Aduce textul complet al unei lucrări de pe arXiv prin alphaXiv.",
+      "previewFigure": "Compilează separat o figură TikZ sau PGFPlots și arată rezultatul în conversație.",
+      "insertFigure": "Inserează figura finită la cursor, cu legendă și etichetă, și salvează un PNG în figures/.",
+      "loadImage": "Se uită la o imagine care este deja în proiect.",
+      "updateTodos": "Scrie sau actualizează planul pas cu pas afișat în conversație.",
+      "getTodos": "Citește planul curent.",
+      "rememberNote": "Salvează o notă de proiect pe care o vor vedea conversațiile ulterioare.",
+      "forgetNote": "Elimină o notă de proiect salvată.",
+      "listNotes": "Listează notele de proiect salvate.",
+      "loadSkill": "Încarcă instrucțiunile complete ale unei abilități înainte să o urmeze.",
+      "readSkillFile": "Citește un fișier de referință sau un script care vine cu o abilitate.",
+      "spawnAgent": "Pornește un agent ajutător, cu sarcina și instrumentele lui.",
+      "sendMessage": "Trimite un mesaj unui agent ajutător care rulează.",
+      "followupTask": "Dă unui agent ajutător altă sarcină după ce termină.",
+      "waitAgent": "Așteaptă ca un agent ajutător să termine și îi citește rezultatul.",
+      "interruptAgent": "Oprește ce face un agent ajutător.",
+      "listAgents": "Listează agenții ajutători și starea lor.",
+      "closeAgent": "Închide un agent ajutător.",
+      "runCommand": "Rulează o comandă shell în folderul proiectului, cu o limită de două minute.",
+      "computerUse": "Deschide o pagină web în fereastra de browser a asistentului.",
+      "toggleTheme": "Comută între tema deschisă și cea întunecată."
+    },
+    "disableAll": "Dezactivează tot",
+    "emptyContext": "Niciun instrument nu este disponibil în acest context.",
+    "enableAll": "Activează tot",
+    "enableTool": "Activează {{name}}",
+    "enabledCount": "{{enabled}} din {{total}} activate",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "Agenți",
+      "buildAndPdf": "Compilare și PDF",
+      "figures": "Figuri",
+      "files": "Fișiere",
+      "planAndMemory": "Plan și memorie",
+      "research": "Cercetare",
+      "skills": "Abilități",
+      "system": "Sistem"
+    },
+    "managerAriaLabel": "Gestionează instrumentele agentului",
+    "managerHeading": "Instrumente",
+    "managerTooltip": "Instrumente",
+    "noDescription": "Nu s-a oferit nicio descriere.",
+    "notes": {
+      "latexOnly": "Doar pentru proiecte LaTeX",
+      "pdfCaptureSetting": "Necesită setarea de captură a paginilor PDF",
+      "alphaxivKey": "Necesită o cheie alphaXiv în Integrări",
+      "chatApproval": "Aprobat în conversație, câte o comandă pe rând",
+      "browserSetting": "Necesită setarea pentru browserul web"
+    },
+    "sourceGroups": {
+      "figure": "Figură",
+      "mcp": "MCP",
+      "project": "Instrumente de proiect",
+      "skills": "Abilități"
+    },
+    "table": {
+      "tool": "Instrument",
+      "whatItDoes": "Ce face",
+      "asksFirst": "Cere confirmare"
+    }
+  },
+  "toolCard": {
+    "approved": "Aprobat",
+    "rejected": "Respins",
+    "binaryPreview": "Acest fișier asociat este binar, așa că nu poate fi previzualizat aici.",
+    "previewTruncated": "Previzualizarea s-a oprit la 256 KiB.",
+    "previewFailed": "Această sursă asociată nu a putut fi previzualizată.",
+    "showAll": "Arată toate cele {{characters}} de caractere",
+    "loadingSource": "Se încarcă sursa",
+    "inspectSource": "Inspectează sursa",
+    "openFile": "Deschide fișierul",
+    "openSource": "Deschide sursa",
+    "openSourceTitled": "Deschide sursa: {{title}}",
+    "openTask": "Deschide sarcina",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "Previzualizarea figurii randate",
+    "toolImageAlt": "Imagine de la instrument",
+    "showFigure": "Arată figura randată",
+    "showTikz": "Arată sursa TikZ",
+    "figureTab": "Figură",
+    "tikzTab": "TikZ",
+    "saving": "Se salvează",
+    "saveToProject": "Salvează în proiect",
+    "copyCode": "Copiază codul",
+    "saved": "Salvat în {{path}}",
+    "saveNeedsProject": "Deschide un proiect ca să salvezi această figură.",
+    "saveFailed": "Figura nu a putut fi salvată."
+  },
+  "transcript": {
+    "dialogTitle": "Transcrierea sarcinii delegate",
+    "dialogDescription": "Tot ce a citit, a rulat și a răspuns agentul delegat cât timp a lucrat la această sarcină.",
+    "loading": "Se încarcă transcrierea",
+    "failed": "Transcrierea nu a putut fi încărcată.",
+    "empty": "Această sarcină nu a înregistrat o transcriere."
+  },
+  "subagents": {
+    "working": "Subagenți la lucru",
+    "count": "Subagenți ({{count}})",
+    "stopAll": "Oprește-i pe toți",
+    "stopFailed": "Subagenții nu au putut fi opriți.",
+    "updates": "{{count}} actualizări",
+    "openTask": "Deschide sarcina",
+    "awaitingPermission": "Un agent delegat așteaptă o permisiune.",
+    "taskFailed": "O sarcină delegată a eșuat. Deschide-o ca să citești eroarea.",
+    "transcriptTruncated": "Această transcriere este mai lungă decât porțiunea afișată aici.",
+    "noTranscriptYet": "Această sarcină nu a raportat încă nicio activitate în transcriere.",
+    "noSessionInfo": "Această sarcină nu a înregistrat destule informații de sesiune ca să i se poată deschide transcrierea.",
+    "loadingTranscript": "Se încarcă transcrierea…",
+    "transcriptFailed": "Transcrierea nu a putut fi încărcată.",
+    "stillWorking": "Acest subagent încă lucrează. Transcrierea lui completă se deschide când termină.",
+    "noFinalAnswer": "Acest agent nu a înregistrat un răspuns final.",
+    "latest": "Cel mai recent: {{text}}",
+    "workingDetail": "lucrează",
+    "status": {
+      "active": "lucrează",
+      "awaiting": "are nevoie de permisiune",
+      "updated": "actualizat",
+      "interrupted": "oprit",
+      "completed": "gata",
+      "failed": "eșuat"
+    }
+  },
+  "acp": {
+    "newConversation": "Conversație nouă",
+    "savedConversations": "Conversații salvate",
+    "untitledConversation": "Conversație fără titlu",
+    "agentSetup": "Configurarea agentului",
+    "usageReport": "Raport de utilizare",
+    "permission": {
+      "ariaLabel": "Permisiunea agentului",
+      "namedHeadline": "{{agent}} are nevoie de permisiune",
+      "headline": "Agentul are nevoie de permisiune",
+      "expired": "Această cerere a expirat. Cere-i agentului să încerce din nou.",
+      "dismiss": "Închide"
+    },
+    "readiness": {
+      "managedBridge": "Puntea {{version}} a fost instalată de Oleafly.",
+      "bridgeOnPath": "Puntea a fost găsită în PATH.",
+      "bridgeMissingWithCli": "{{cli}} a fost găsit la {{path}}. Instalează puntea ACP {{version}} ca să te poți conecta.",
+      "bridgeMissing": "Instalează puntea ACP {{version}} ca să conectezi acest agent.",
+      "cliMissing": "{{cli}} nu se află în PATH. Instalează-l, apoi rulează {{command}}.",
+      "cliNotFound": "Instrumentul de linie de comandă al acestui agent nu a fost găsit.",
+      "unavailable": "Acest agent nu poate rula pe acest computer."
+    },
+    "bridgeSource": {
+      "notInstalled": "Neinstalată",
+      "managed": "Gestionată de Oleafly",
+      "onPath": "În PATH"
+    },
+    "installing": "Se instalează",
+    "installBridge": "Instalează puntea",
+    "assistantAriaLabel": "Asistent cu agent din linia de comandă",
+    "loadEarlier": "Încarcă activitatea anterioară",
+    "starting": "Pornește {{agent}}",
+    "startingFallback": "agentul",
+    "startingHint": "Instrumentul de linie de comandă al agentului pornește. Prima dată durează câteva secunde.",
+    "readySubtitle": "{{agent}} este pregătit în acest proiect",
+    "projectSubtitle": "Lucrează la „{{project}}”",
+    "signInFallback": "Autentifică-te din linia de comandă a acestui agent, apoi reconectează-te.",
+    "reconnectAfterSignIn": "Reconectează-te după autentificare",
+    "reconnect": "Reconectează-te la conversație",
+    "resumeTask": "Deschide sarcina de cercetare ca să reiei această lucrare.",
+    "delegatedConversation": "Această conversație aparține unei rulări delegate unui agent.",
+    "noResume": "Acest agent nu poate relua conversațiile salvate. Începe o conversație nouă când ești pregătit.",
+    "imageTooLarge": "Alege o imagine mai mică de 480 KiB. Poți atașa până la patru imagini.",
+    "imageReadFailed": "Imaginea nu a putut fi citită.",
+    "removeImage": "Elimină {{name}}",
+    "composerAriaLabel": "Scrie agentului din linia de comandă",
+    "composerPlaceholderReady": "Cere-i agentului să lucreze la acest proiect",
+    "composerPlaceholderIdle": "Pornește sau reconectează o conversație ca să trimiți un mesaj",
+    "attachImage": "Atașează o imagine",
+    "startConversation": "Începe o conversație cu {{agent}}",
+    "startConversationFallback": "un agent",
+    "agentModel": "Modelul agentului",
+    "modelManaged": "Modelul este gestionat de agent",
+    "stop": "Oprește",
+    "stopTitle": "Oprește agentul",
+    "send": "Trimite",
+    "connecting": "Se conectează",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "se conectează",
+      "authRequired": "necesită autentificare",
+      "ready": "pregătit",
+      "running": "rulează",
+      "cancelling": "se oprește",
+      "cancelled": "oprit",
+      "disconnected": "deconectat",
+      "failed": "eșuat"
+    },
+    "roster": {
+      "bridgeMissing": "instalează puntea din Configurarea agentului",
+      "cliMissing": "instrumentul de linie de comandă nu a fost găsit pe acest computer",
+      "unavailable": "nu este disponibil pe acest computer",
+      "comingSoon": "în curând"
+    },
+    "messageTooLarge": "Acest mesaj și imaginile lui sunt prea mari. Scurtează mesajul sau elimină o imagine.",
+    "terminalCommand": "Agentul rulează o comandă în terminal.",
+    "agentToolFallback": "Instrument al agentului",
+    "agentReported": "Agentul a raportat: {{detail}}",
+    "imageAttachmentName": "Imaginea {{index}}",
+    "agentImage": "[Agentul a returnat o imagine.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "Agent din linia de comandă",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "neinstalat",
+    "cliDetail": "Agent din linia de comandă · folosește contul lui",
+    "builtInDetail": "{{provider}} · agent Oleafly"
+  },
+  "home": {
+    "heading": "Cu ce ai vrea să te ajut astăzi?",
+    "headingAccent": "să te ajut astăzi?",
+    "skillCategories": "Categorii de abilități",
+    "skillLockedTitle": "{{name}} este dezactivată pentru acest proiect",
+    "recentChats": "Conversații recente",
+    "recentStaleTitle": "Pornită de la o versiune mai veche a proiectului",
+    "recentUntitled": "Conversație nouă",
+    "recentStaleBadge": "Versiune mai veche",
+    "recentMessages_one": "{{count}} mesaj",
+    "recentMessages_few": "{{count}} mesaje",
+    "recentMessages_other": "{{count}} de mesaje",
+    "showAllHistory": "Arată tot istoricul ({{count}})"
+  },
+  "research": {
+    "noSourceLink": "Acest rezultat nu include o legătură către sursă.",
+    "sourceOpenFailed": "Sursa nu a putut fi deschisă.",
+    "noProjectPath": "Acest rezultat nu conține o cale de fișier din proiect.",
+    "resultOpenFailed": "Fișierul cu rezultatul nu a putut fi deschis."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "Scriere și editare",
+      "citationsAndLiterature": "Citări și literatură",
+      "review": "Recenzie",
+      "figuresAndTables": "Figuri și tabele"
+    },
+    "improveWriting": {
+      "label": "Îmbunătățește scrierea",
+      "description": "Șlefuiește claritatea, tonul și cursivitatea"
+    },
+    "fixGrammar": {
+      "label": "Corectează gramatica",
+      "description": "Îndreaptă gramatica și punctuația"
+    },
+    "fixLatexErrors": {
+      "label": "Repară erorile LaTeX",
+      "description": "Repară codul stricat și erorile de compilare"
+    },
+    "writeEquation": {
+      "label": "Scrie o ecuație",
+      "description": "Din limbaj natural în formule LaTeX"
+    },
+    "draftSection": {
+      "label": "Schițează o secțiune",
+      "description": "Scrie o secțiune nouă în stilul tău"
+    },
+    "paraphrase": {
+      "label": "Parafrazează",
+      "description": "Reformulează păstrând sensul"
+    },
+    "shorten": {
+      "label": "Scurtează",
+      "description": "Fă textul mai concis"
+    },
+    "expand": {
+      "label": "Dezvoltă",
+      "description": "Detaliază mai pe larg"
+    },
+    "journalFormat": {
+      "label": "Format de revistă",
+      "description": "Reformatează pentru un anumit loc de publicare"
+    },
+    "writeAbstract": {
+      "label": "Scrie rezumatul",
+      "description": "Schițează un rezumat pornind de la lucrare"
+    },
+    "generateTitle": {
+      "label": "Generează titluri",
+      "description": "Titluri de lucrare convingătoare"
+    },
+    "keywords": {
+      "label": "Cuvinte-cheie",
+      "description": "Extrage cuvinte-cheie pentru căutare"
+    },
+    "continueWriting": {
+      "label": "Continuă scrierea",
+      "description": "Reia de unde ai rămas"
+    },
+    "citationSearch": {
+      "label": "Caută citări",
+      "description": "Caută lucrări în alphaXiv și OpenAlex"
+    },
+    "literatureReview": {
+      "label": "Analiza literaturii",
+      "description": "Trece în revistă lucrările înrudite, cu surse reale"
+    },
+    "citeClaim": {
+      "label": "Citează această afirmație",
+      "description": "Găsește și adaugă o referință verificată"
+    },
+    "myLibrary": {
+      "label": "Biblioteca mea",
+      "description": "Caută în referințele tale importate"
+    },
+    "labSearch": {
+      "label": "Caută laboratoare",
+      "description": "Găsește laboratoare de cercetare și instituții"
+    },
+    "friendlyReview": {
+      "label": "Recenzie prietenoasă",
+      "description": "Feedback constructiv, ca de la un mentor, pentru această lucrare"
+    },
+    "fireReview": {
+      "label": "Recenzie dură",
+      "description": "Testul sever al recenzentului numărul 2 pentru afirmații și metode"
+    },
+    "academicPresentation": {
+      "label": "Prezentare academică",
+      "description": "O prezentare Beamer pornind de la lucrarea ta"
+    },
+    "academicPoster": {
+      "label": "Poster academic",
+      "description": "Un poster de conferință pornind de la lucrarea ta"
+    },
+    "generateTable": {
+      "label": "Generează un tabel",
+      "description": "Schițează un tabel LaTeX în conversație"
+    },
+    "tikzFigure": {
+      "label": "Figură TikZ",
+      "description": "Schițează cod TikZ în conversație"
+    }
+  },
+  "turn": {
+    "thinking": "Se gândește…",
+    "continuing": "Continuă…",
+    "reasoning": "Raționează…",
+    "runningTool": "Rulează {{name}}…",
+    "processingResult": "Se procesează rezultatul…",
+    "summarizing": "Se rezumă conversația anterioară…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "Sesiunea agentului nu a putut fi deschisă.",
+    "approvalModeSaveFailed": "Modul de aprobare nu a putut fi salvat.",
+    "skillDraftSaved": "Ciorna de abilitate a fost salvată. Verific-o înainte să o activezi.",
+    "skillDraftFailed": "Ciorna de abilitate nu a putut fi salvată. {{error}}",
+    "chatArchived": "Conversația a fost arhivată.",
+    "chatArchiveFailed": "Această conversație nu a putut fi arhivată.",
+    "chatForked": "Conversația a fost bifurcată.",
+    "chatForkFailed": "Această conversație nu a putut fi bifurcată.",
+    "engineNotLoaded": "Detaliile motorului de documente nu sunt încărcate. Editarea cu AI este dezactivată din motive de siguranță.",
+    "skillsLoadFailed": "Abilitățile activate nu au putut fi încărcate. Încearcă din nou.",
+    "approvalModeLoadFailed": "Modul de aprobare nu a putut fi încărcat.",
+    "approvalRulesLoadFailed": "Regulile de aprobare ale proiectului nu au putut fi încărcate.",
+    "restored": "Fișierele proiectului au fost restabilite. Conversația a fost păstrată.",
+    "restoreFailed": "Restabilirea nu a reușit: {{error}}",
+    "steerFailed": "Rularea în curs nu a putut fi direcționată.",
+    "approvalRuleSaveFailed": "Regula de aprobare a proiectului nu a putut fi salvată.",
+    "attachmentTooLarge": "{{name}} este prea mare (maximum 10 MB).",
+    "attachmentReadFailed": "{{name}} nu a putut fi citit.",
+    "tooManyTools": "Sunt activate {{enabled}} instrumente, dar o rulare acceptă cel mult {{max}}. Dezactivează cel puțin {{excess}} în Instrumente și încearcă din nou."
+  },
+  "header": {
+    "mcpTooltip": "Configurează serverele MCP ale asistentului",
+    "mcpAriaLabel": "Setările MCP ale asistentului",
+    "settings": "Setările asistentului",
+    "usageAriaLabel": "Vezi utilizarea AI",
+    "usageReport": "Raport de utilizare",
+    "newChat": "Conversație nouă",
+    "chatHistory": "Istoricul conversațiilor",
+    "staleChatHint": "Această conversație a pornit de la o versiune mai veche a proiectului. Conținutul fișierelor poate fi diferit de ce a văzut AI-ul."
+  },
+  "usage": {
+    "lastRun": "Ultima rulare",
+    "steps": "Pași",
+    "input": "Intrare",
+    "output": "Ieșire",
+    "thisChat": "Această conversație",
+    "runs": "Rulări",
+    "tokens": "Tokenuri",
+    "cacheNote": "Utilizarea cache-ului și costurile estimate se află în raportul de utilizare.",
+    "summaryRunWithTokens_one": "Ultima rulare: {{count}} pas, {{tokens}} tokenuri raportate",
+    "summaryRunWithTokens_few": "Ultima rulare: {{count}} pași, {{tokens}} tokenuri raportate",
+    "summaryRunWithTokens_other": "Ultima rulare: {{count}} de pași, {{tokens}} tokenuri raportate",
+    "summaryRunNoTokens_one": "Ultima rulare: {{count}} pas, totalul de tokenuri nu este disponibil",
+    "summaryRunNoTokens_few": "Ultima rulare: {{count}} pași, totalul de tokenuri nu este disponibil",
+    "summaryRunNoTokens_other": "Ultima rulare: {{count}} de pași, totalul de tokenuri nu este disponibil",
+    "summaryChat": "Această conversație: {{steps}} pași, {{tokens}} tokenuri",
+    "summaryFallback": "Utilizare AI"
+  },
+  "provider": {
+    "connectTitle": "Conectează un furnizor AI ca să continui",
+    "connectBody": "Adu-ți propria cheie API (OpenAI, Anthropic, Groq și altele) sau rulează un model local cu Ollama. Asistentul poate citi și modifica fișiere, îți poate compila proiectul și poate verifica PDF-ul.",
+    "connectButton": "Conectează un furnizor",
+    "runLocal": "Rulează un model local cu Ollama",
+    "quotaWarning": "Spațiul de stocare pentru istoricul conversațiilor este plin. Conversațiile mai vechi au fost curățate, iar mesajele noi s-ar putea să nu fie salvate. Șterge din istoric conversațiile vechi ca să eliberezi spațiu."
+  },
+  "conversation": {
+    "renderFailed": "Această conversație nu a putut fi afișată. Începe o conversație nouă sau redeschide-o din istoric.",
+    "checkpointRestored": "Proiectul a fost restabilit la acest punct de control",
+    "restoring": "Se restabilește…",
+    "restoreCheckpoint": "Restabilește codul la starea dinaintea acestui răspuns",
+    "restoreConfirm": "Restabilești fișierele proiectului la starea dinaintea acestui răspuns? Se pierd și modificările de cod făcute de răspunsurile AI ulterioare. Conversația rămâne aici.",
+    "noResponse": "Nu a sosit niciun răspuns la acest mesaj. Fluxul a fost întrerupt. Trimite-l din nou sau începe o conversație nouă.",
+    "scrollToBottom": "Derulează la sfârșit",
+    "projectSubtitle": "Lucrează la „{{project}}”",
+    "noOutput": "Modelul nu a returnat nimic. Verifică Setări → Asistentul AI."
+  },
+  "followUps": {
+    "steered": "Direcționat în rularea curentă: {{summary}}",
+    "sending": "Trimis ca următorul schimb: {{summary}}",
+    "waiting": "Se așteaptă un moment sigur din rulare: {{summary}}",
+    "queued": "Pus la coadă pentru următorul schimb: {{summary}}",
+    "steerNow": "Direcționează acum",
+    "startingRun": "Pornește rularea",
+    "discard": "Renunță la mesajul din coadă"
+  },
+  "goal": {
+    "editAriaLabel": "Modifică obiectivul: {{goal}}",
+    "clear": "Șterge obiectivul",
+    "formAriaLabel": "Stabilește un obiectiv permanent",
+    "label": "Obiectiv",
+    "placeholder": "Spre ce ar trebui să lucreze asistentul în continuare?",
+    "save": "Salvează obiectivul"
+  },
+  "suggestions": {
+    "literatureSweep": "Treci în revistă literatura pentru acest proiect",
+    "relatedWork": "Schițează secțiunea de lucrări înrudite",
+    "verifyClaims": "Verifică fiecare afirmație în raport cu sursa ei",
+    "reviewManuscript": "Recenzeaz-o ca un referent",
+    "latexBuild": "Repară erorile de sursă din documentul meu",
+    "preSubmission": "Pregătește-o pentru trimitere",
+    "slides": "Transformă lucrarea aceasta într-o prezentare",
+    "recompile": "Recompilează și caută erori"
+  }
+}

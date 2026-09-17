@@ -191,7 +191,7 @@ The symbol picker contains 236 unique commands in its **All** view. The category
 
 ### Source view and visual view
 
-Source view is the canonical representation. When the engine supports it, turn on the visual editor for LaTeX or Markdown and edit prose, equations, citations, tables, and figures on a page-oriented surface. The source stays available for Git, external editors, and manual edits.
+Source view is the canonical representation. When the engine supports it, turn on the visual editor for LaTeX or Markdown and edit prose, equations, citations, tables, and figures on a page-oriented surface. Math, footnotes, theorems, figures, tables and colours render as native, editable nodes; pasted rich text and images become LaTeX, and a floating toolbar edits tables in place. The source stays available for Git, external editors, and manual edits.
 
 Use the visual view for page-level editing. Return to source when you need exact control over commands, packages, environments, or layout.
 

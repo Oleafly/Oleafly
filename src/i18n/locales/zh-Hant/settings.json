@@ -1,0 +1,1451 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "執行檔",
+      "bridgeSourceLabel": "來源",
+      "bridgeTitle": "ACP 橋接",
+      "bridgeUnresolved": "尚未解析出橋接執行檔。",
+      "checkAgain": "再次檢查",
+      "checkFailedTitle": "無法檢查已安裝的代理程式",
+      "checkInstalled": "檢查已安裝的代理程式",
+      "checkingAction": "檢查中",
+      "checkingDescription": "這可能需要一點時間，Oleafly 正在檢查這台電腦上的命令列工具。",
+      "checkingInstalled": "正在檢查已安裝的代理程式",
+      "checkingTitle": "正在尋找命令列代理程式",
+      "cliNotOnPath": "在你的 PATH 中找不到 {{command}}。",
+      "cliPathLabel": "偵測位置",
+      "cliTitle": "命令列工具",
+      "copySignInCommand": "複製登入指令",
+      "emptyDescription": "請安裝支援的命令列代理程式，然後再次檢查。",
+      "emptyTitle": "找不到命令列代理程式",
+      "custom": {
+        "description": "貼上代理程式定義，即可註冊 Oleafly 未內建的代理程式。",
+        "hint": "貼上代理程式定義，其中要有鎖定版本的 npm 或 uv 套件、已驗證的執行檔，或已安裝的可執行程式。請勿在這份 JSON 中放入密碼與 API 金鑰。",
+        "label": "註冊自訂代理程式",
+        "submit": "註冊定義",
+        "title": "新增自訂代理程式",
+        "useExample": "使用範例"
+      },
+      "install": {
+        "confirm": "安裝",
+        "description": "Oleafly 會將這個鎖定版本的套件下載到自己的代理程式資料夾。開始對話時，代理程式會以你的 CLI 帳戶執行。",
+        "installing": "安裝中",
+        "location": "Oleafly 代理程式資料夾，{{id}}/{{version}}",
+        "locationLabel": "安裝位置",
+        "packageLabel": "套件",
+        "title": "安裝 {{name}} 橋接程式 {{version}}"
+      },
+      "installBridge": "安裝橋接程式",
+      "installBridgeNextStep": "先安裝 ACP 橋接程式，再透過命令列工具登入。",
+      "intro": "透過 ACP 連接本機代理程式。每個代理程式各自管理模型、工具與登入，API 供應商設定則維持獨立。請使用官方 CLI 帳戶登入：Oleafly 不會匯入帳戶權杖，也不會估算訂閱配額。",
+      "nextStepTitle": "下一步",
+      "notReported": "未回報",
+      "notice": {
+        "installed": "{{name}} 已安裝。開始對話前，請先透過它的 CLI 登入。",
+        "registered": "{{name}} 已註冊。註冊不會安裝或啟動它。",
+        "removed": "代理程式定義已移除。已安裝的檔案與已儲存的對話仍可使用。",
+        "terminalOpen": "專案終端機已開啟。請執行代理程式顯示的登入指令，然後重新連接對話。"
+      },
+      "openSignInTerminal": "開啟登入終端機",
+      "openTerminal": "開啟終端機",
+      "platformLabel": "平台",
+      "refreshingStatus": "正在重新整理代理程式狀態。目前的清單維持不變。",
+      "registry": {
+        "description": "在 ACP 註冊庫中搜尋其他團隊發布的代理程式。",
+        "hideDistribution": "隱藏發行資訊",
+        "register": "註冊代理程式",
+        "registered": "已註冊",
+        "reviewHint": "註冊庫項目由發布者自行描述其軟體。註冊或安裝前，請先審視發行內容。",
+        "search": "搜尋",
+        "searchLabel": "尋找 ACP 代理程式",
+        "searchPlaceholder": "搜尋 ACP 註冊庫",
+        "searching": "搜尋中",
+        "showDistribution": "顯示發行資訊",
+        "title": "尋找更多代理程式"
+      },
+      "sectionLabel": "ACP 代理程式",
+      "signInCommandLabel": "登入指令",
+      "versionLabel": "版本",
+      "updateBridge": "更新橋接程式"
+    },
+    "approvals": {
+      "file": {
+        "description": "自訂核准模式會讀取這個檔案。它位於 ~/.oleafly/approvals.toml，並套用到這台裝置上的每個專案。",
+        "discard": "捨棄變更",
+        "emptyFile": "這個檔案目前是空的。",
+        "help": {
+          "comments": "在這裡儲存時，以 # 開頭的註解會保留；但在核准卡片上選擇「在此專案中一律套用」時，重寫檔案會把註解移除。",
+          "modes": "第一個表格 <modesTable>[\"$approval_modes\"]</modesTable> 會為每個專案設定核准模式：<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full> 或 <custom>\"custom\"</custom>。未列出的專案會使用「代我核准」。",
+          "openProject": "目前開啟的專案 {{name}} 的 id 是 <projectId>{{id}}</projectId>。",
+          "projectIds": "專案 id 就是 ~/.oleafly/projects 底下的資料夾名稱。",
+          "rules": "接著每個專案 id 各有一個表格，為每個工具存放一條規則：<allow>\"allow\"</allow> 會直接執行工具而不詢問，<deny>\"deny\"</deny> 則會拒絕執行。拒絕規則在所有模式下都有效；允許規則只在自訂模式下生效，而 run_command 在其他模式下也會略過提示。",
+          "toolNames": "可使用的工具名稱：<names>{{names}}</names>，以及「工具」清單中任一 MCP 工具的完整名稱。"
+        },
+        "helpToggle": "這個檔案如何運作",
+        "insertExample": "插入範例",
+        "reload": "重新載入",
+        "saved": "已儲存。規則會在下一次工具呼叫時生效。",
+        "saving": "儲存中",
+        "title": "核准規則檔案"
+      },
+      "project": {
+        "allowed": "一律允許",
+        "denied": "一律拒絕",
+        "description": "{{name}} 的已儲存規則。核准模式為「自訂」時才會套用。移除規則後，該工具會改用標準風險政策。",
+        "empty": "目前沒有已儲存的規則。在核准提示上選擇「在此專案中一律套用」即可新增一條。",
+        "removeRule": "移除 {{tool}} 的規則",
+        "thisProject": "此專案",
+        "title": "工具核准"
+      }
+    },
+    "budget": {
+      "clear": "清除預算",
+      "inputLabel": "AI 預算（美元）",
+      "inputPlaceholder": "無預算",
+      "limit": "達到預算後會暫停執行。",
+      "save": "儲存預算",
+      "spent": "目前預估花費：{{amount}}。達到預算後會暫停執行。",
+      "title": "AI 預算"
+    },
+    "customProvider": {
+      "addDescription": "以基礎 URL 連接任何相容 OpenAI 的端點。",
+      "addTitle": "新增自訂供應商",
+      "baseUrlLabel": "基礎 URL",
+      "baseUrlNote": "已儲存的 API 金鑰會傳送到這個新位址。",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "變更名稱或基礎 URL。",
+      "editTitle": "編輯自訂供應商",
+      "errors": {
+        "addFailed": "無法新增這個供應商。",
+        "baseUrlHost": "這個 URL 缺少主機名稱。",
+        "baseUrlInvalid": "請輸入完整的 URL，例如 https://api.example.com/v1 或 http://localhost:1234/v1。",
+        "baseUrlProtocol": "請使用 https://，本機伺服器可用 http://。",
+        "baseUrlRequired": "必須填寫基礎 URL。",
+        "idFormat": "只能使用小寫英文字母、數字與連字號，例如 acme。",
+        "idRequired": "必須填寫 ID。",
+        "nameRequired": "必須填寫名稱。",
+        "saveFailed": "無法儲存這個供應商。"
+      },
+      "idLabel": "ID",
+      "idPlaceholder": "acme",
+      "keyLabel": "API 金鑰（選填）",
+      "keyLabelKeepSaved": "API 金鑰（留空即保留已儲存的金鑰）",
+      "keyPlaceholder": "若不需要金鑰請留空",
+      "keyPlaceholderStored": "除非輸入新金鑰，否則保留已儲存的金鑰",
+      "namePlaceholder": "Acme",
+      "submitAdd": "新增供應商"
+    },
+    "instructions": {
+      "capabilitiesTitle": "代理程式能力",
+      "customDescription": "會以你的個人風格與偏好加入每一次 AI 請求。助理會在內建行為之上遵循這些內容，但無法覆寫它的工具或安全規則。",
+      "customPlaceholder": "例如：一律使用英式英文寫作。說明保持簡短。清單優先使用 enumitem 套件。",
+      "customTitle": "自訂指示",
+      "defaultModelDescription": "每次開始新對話時都會使用。你仍可在對話面板為個別對話切換模型。",
+      "defaultModelTitle": "預設對話模型",
+      "pdfCaptureDescription": "允許代理程式將編譯後的頁面轉成點陣圖（verify_pdf_pages），以進行視覺版面檢查。若不想把頁面影像傳給供應商，請停用。",
+      "pdfCaptureLabel": "允許 AI 擷取 PDF 頁面",
+      "save": "儲存指示",
+      "saved": "已儲存",
+      "toolsHint": "你可以要求它「修正 LaTeX 錯誤」、「新增 Publications 章節」或「重新編譯並檢查 PDF」。",
+      "toolsTitle": "助理目前支援下列工具"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "這個模型已在清單中。",
+        "empty": "請輸入模型 ID。",
+        "spaces": "模型 ID 不能包含空格。"
+      },
+      "addPlaceholder": "新增模型 ID",
+      "changeSummary": "新增 {{added}} 個，移除 {{removed}} 個",
+      "custom": "自訂",
+      "deleteAriaLabel": "刪除模型 {{model}}",
+      "deleteDialog": {
+        "description": "要從這個供應商的模型清單中移除「{{model}}」嗎？內建模型可以透過「還原預設值」找回。自訂模型可以再用 ID 新增回來。",
+        "title": "刪除模型"
+      },
+      "deleteTooltip": "刪除模型",
+      "empty": "還沒有模型。請在下方新增一個。",
+      "invalidKey": "API 金鑰無效。",
+      "metadata": {
+        "refreshFailed": "無法重新整理模型資料。",
+        "unknownDate": "未知日期",
+        "updated": "模型資料更新於 {{date}}",
+        "updatedBundled": "模型資料更新於 {{date}}，隨應用程式提供",
+        "updatedFromCache": "模型資料更新於 {{date}}，來自上次下載"
+      },
+      "noChanges": "無變更",
+      "refresh": "重新整理",
+      "restore": "還原預設值",
+      "restoreTooltip": "重新加入這個供應商的內建模型",
+      "title": "模型",
+      "unreachable": "無法連上這個供應商。",
+      "unreadableList": "供應商回傳了 Oleafly 無法讀取的模型。",
+      "updated": "更新於 {{time}}"
+    },
+    "personas": {
+      "addStarter": "新增角色",
+      "addStarterFailed": "無法新增 {{name}}。{{error}}",
+      "addStarterNamed": "新增 {{name}} 角色",
+      "colors": {
+        "forest": "森林綠",
+        "grape": "葡萄紫",
+        "ocean": "海洋藍",
+        "slate": "石板灰",
+        "sunset": "日落橙"
+      },
+      "create": "建立角色",
+      "delete": "刪除角色",
+      "deleteDescription": "要刪除「{{name}}」嗎？它的提示詞會永久移除，使用它的對話會回到你的預設指示。",
+      "deleteNamed": "刪除角色 {{name}}",
+      "description": "可重複使用的指示，用來設定助理的工作方式。在對話中為某項任務選一個，選取期間它會取代你的預設指示。",
+      "edit": "編輯角色",
+      "editNamed": "編輯角色 {{name}}",
+      "empty": "尚未新增角色。",
+      "form": {
+        "color": "顏色",
+        "create": "建立",
+        "createTitle": "建立角色",
+        "description": "設定可重複使用的指示，說明助理該如何工作。",
+        "editTitle": "編輯角色",
+        "instructions": "指示",
+        "instructionsPlaceholder": "檢查我的文字是否清楚，並把最重要的問題排在前面。",
+        "namePlaceholder": "簡潔編輯",
+        "required": "名稱與提示詞為必填。",
+        "saveFailed": "無法儲存這個角色。"
+      },
+      "starters": {
+        "criticalReviewer": "找出論證、方法、證據與呈現方式的弱點。",
+        "documentEditor": "以聚焦而穩妥的修改處理文句、結構、引用與 LaTeX。",
+        "figure": "以 LaTeX TikZ 或 PGFPlots 產生出版品質的圖片與圖表。",
+        "researchWriter": "撰寫並組織學術文字，不憑空捏造證據或引用。"
+      },
+      "suggestedDescription": "先從其中一個開始，再修改它的指示來配合你的流程。",
+      "suggestedTitle": "建議角色",
+      "title": "角色"
+    },
+    "providers": {
+      "addCustom": "新增自訂供應商",
+      "badge": {
+        "connected": "已連線",
+        "notRunning": "未執行",
+        "running": "執行中"
+      },
+      "blurbs": {
+        "anthropic": "Claude 模型，擅長程式碼與寫作。",
+        "custom": "自訂供應商。",
+        "deepseek": "DeepSeek V4 模型。",
+        "google": "來自 Google AI Studio 的 Gemini 模型。",
+        "groq": "速度極快的開放模型推論。",
+        "mistral": "Mistral 與 Codestral 模型。",
+        "ollama": "在你的電腦上執行模型。不需要金鑰，只要安裝 Ollama 並拉取模型。",
+        "openai": "GPT 模型，預設之選。",
+        "openrouter": "一組金鑰即可使用多家實驗室的模型。",
+        "perplexity": "Sonar 模型，具備即時網路查證。",
+        "xai": "來自 xAI 的 Grok 模型。",
+        "zai": "透過 Z.AI GLM Coding Plan 訂閱使用 GLM 模型。"
+      },
+      "deleteKeyAriaLabel": "刪除 {{provider}} 金鑰",
+      "deleteKeyTooltip": "刪除金鑰",
+      "docs": "文件",
+      "editAriaLabel": "編輯 {{provider}}",
+      "editTooltip": "編輯名稱或端點",
+      "getKey": "取得金鑰",
+      "intro": "在下方連接你使用的供應商。金鑰只會存放在本機。儲存其中一組就會設為預設。你可以在對話面板的下拉選單中，切換已設定的供應商與模型。",
+      "keyPlaceholder": "在這裡貼上你的 API 金鑰",
+      "modelLabel": "模型",
+      "ollama": {
+        "active": "使用中",
+        "changeHost": "變更主機（進階）",
+        "check": "偵測 Ollama",
+        "checking": "檢查中…",
+        "disconnect": "中斷連線",
+        "hideHost": "隱藏主機",
+        "installedHint": "這台電腦已安裝 Ollama。啟動需要一點時間。",
+        "modelPlaceholder": "選擇要使用的模型",
+        "noModels": "Ollama 正在執行，但沒有安裝任何模型。請執行 <pull>ollama pull llama3.2</pull>，然後重新偵測。",
+        "noneResponding": "<host>{{host}}</host> 上沒有 Ollama 回應。",
+        "notChecked": "尚未檢查",
+        "notDetected": "未偵測到",
+        "recheck": "重新偵測",
+        "runningModels_other": "執行中 · {{count}} 個模型",
+        "setupSteps": "1. 從 <download>ollama.com <icon></icon></download> 安裝 · 2. 它會自動啟動（或執行 <serve>ollama serve</serve>）· 3. 拉取模型，例如 <pull>ollama pull llama3.2</pull> · 4. 重新偵測。",
+        "start": "啟動 Ollama"
+      },
+      "removeAriaLabel": "移除 {{provider}}",
+      "removeDialog": {
+        "description": "要移除「{{provider}}」嗎？它已儲存的金鑰與模型清單會一併刪除。",
+        "title": "移除自訂供應商"
+      },
+      "removeTooltip": "移除自訂供應商",
+      "replaceKey": "更換金鑰",
+      "status": {
+        "error": "錯誤：{{message}}",
+        "errorFallback": "無法驗證這組金鑰。",
+        "valid": "金鑰有效。下方的模型已就緒。",
+        "validating": "正在檢查金鑰…"
+      }
+    },
+    "section": {
+      "agentsLoading": "正在載入代理程式…",
+      "errors": {
+        "invalidKey": "API 金鑰無效。",
+        "keyNotKept": "基礎 URL 已儲存，但金鑰沒有存起來。請重新輸入金鑰。",
+        "providerGone": "這個供應商已經不存在。",
+        "providerIdInUse": "這個供應商 ID 已被使用。"
+      },
+      "messages": {
+        "keyRemoved": "{{provider}} 金鑰已移除。",
+        "keyRemovedAccessDisabled": "{{provider}} 金鑰已移除。AI 存取已停用。",
+        "keySavedAddModels": "{{provider}} 金鑰已儲存。請在下方手動新增模型。",
+        "keySavedCheckedOnUse": "{{provider}} 金鑰已儲存。會在首次使用時檢查。",
+        "ollamaConnected": "Ollama 已連線 · {{model}}",
+        "preferencesReset": "AI 助理偏好設定已還原為預設值。",
+        "providerAdded": "{{provider}} 已新增。",
+        "providerConnected": "{{provider}} 已連線。",
+        "providerUpdated": "{{provider}} 已更新。",
+        "providerUpdatedWithoutModels": "{{provider}} 已更新。它的模型清單無法重新整理。"
+      },
+      "reset": {
+        "confirmWithProject": "將 AI 助理偏好設定還原為預設值，包括模型可用性、已啟用的技能，以及這個專案的預算。目前的供應商與模型、供應商金鑰、角色、核准規則、用量歷史記錄與 MCP 伺服器都不會變動。",
+        "confirmWithoutProject": "將 AI 助理偏好設定還原為預設值，包括模型可用性與已啟用的技能。目前的供應商與模型、供應商金鑰、角色、核准規則、用量歷史記錄與 MCP 伺服器都不會變動。",
+        "sectionName": "AI 助理"
+      },
+      "tabs": {
+        "agents": "CLI 代理程式",
+        "instructions": "指示",
+        "mcp": "MCP",
+        "personas": "角色",
+        "providers": "供應商與金鑰",
+        "skills": "技能"
+      }
+    },
+    "skills": {
+      "addFolder": "新增資料夾",
+      "addFolderDialogTitle": "新增技能資料夾",
+      "catalog": {
+        "description": "針對特定研究領域的額外技能。安裝後就會加入上方的清單。",
+        "empty": "目錄中沒有可安裝的額外技能。",
+        "install": "安裝",
+        "loading": "正在載入目錄…",
+        "messages": {
+          "installed": "已安裝 {{name}}。",
+          "removed": "已移除 {{name}}。"
+        },
+        "progress": {
+          "downloading": "下載中…",
+          "downloadingPercent": "下載中 {{percent}}%",
+          "extracting": "解壓縮中…",
+          "extractingPercent": "解壓縮中 {{percent}}%",
+          "failed": "安裝失敗。",
+          "finishing": "正在完成安裝…"
+        },
+        "refresh": "重新整理",
+        "source": {
+          "bundled": "內建目錄",
+          "bundledOffline": "內建目錄，無法連上網路",
+          "cached": "來自 cdn.oleafly.com 的快取目錄，上次擷取於 {{when}}",
+          "cachedOffline": "來自 cdn.oleafly.com 的快取目錄，上次擷取於 {{when}}，無法連上網路",
+          "cachedUnknown": "來自 cdn.oleafly.com 的快取目錄，上次擷取時間未知",
+          "cachedUnknownOffline": "來自 cdn.oleafly.com 的快取目錄，上次擷取時間未知，無法連上網路",
+          "remote": "來自 cdn.oleafly.com 的目錄，擷取於 {{when}}",
+          "remoteUnknown": "來自 cdn.oleafly.com 的目錄，擷取時間未知"
+        },
+        "title": "領域技能庫",
+        "uninstall": "解除安裝",
+        "update": "更新"
+      },
+      "createSkill": "建立技能",
+      "description": "助理只有在判斷需要時才會載入技能的完整指示，若你在對話中輸入 /skill-id 則會立刻載入。在這裡開啟的技能會在每個專案中生效，除非某個專案另行覆寫。",
+      "editAria": "編輯 {{name}}",
+      "editor": {
+        "createDescription": "在你的 Oleafly 技能資料夾中建立 SKILL.md 草稿。",
+        "createTitle": "建立技能",
+        "descriptionPlaceholder": "檢查每項論點是否有依據。",
+        "editDescription": "調整 SKILL.md 中儲存的中繼資料與指示。",
+        "editTitle": "編輯技能",
+        "instructions": "指示",
+        "instructionsHint": "留空即可建立最精簡的指示骨架。",
+        "instructionsPlaceholder": "列出何時使用這項技能，以及助理應遵循的步驟。",
+        "namePlaceholder": "論點檢查器",
+        "requiredAll": "名稱、說明與指示為必填。",
+        "requiredBasics": "名稱與說明為必填。",
+        "submitCreate": "建立"
+      },
+      "empty": "找不到技能。請新增資料夾，或建立一個。",
+      "enableAria": "啟用 {{name}}",
+      "fileCount_other": "{{count}} 個檔案",
+      "groups": {
+        "shelf": "領域技能庫",
+        "user": "你的技能"
+      },
+      "inheritsDevice": "繼承裝置設定",
+      "invalidBadge": "無效",
+      "loadFailed": "無法載入技能。{{message}}",
+      "loading": "正在載入技能…",
+      "messages": {
+        "added": "已新增 {{name}}。",
+        "created": "已建立 {{name}}。",
+        "editorClosed": "技能編輯器已經關閉。",
+        "removed": "已移除 {{name}}。",
+        "saved": "已儲存 {{name}}。",
+        "updated": "已更新 {{name}}。"
+      },
+      "missingDescription": "這項技能需要填寫說明。",
+      "offForProject": "在此專案中已關閉",
+      "onForProject": "在此專案中已開啟",
+      "phases": {
+        "authoring": "撰寫",
+        "communication": "溝通",
+        "figures": "圖片",
+        "research": "研究",
+        "review": "審閱",
+        "submission": "投稿",
+        "tooling": "工具"
+      },
+      "removeAria": "移除 {{name}}",
+      "removeDialog": {
+        "description": "要從 Oleafly 移除「{{name}}」及其資料夾嗎？此操作無法復原。",
+        "title": "移除技能"
+      },
+      "share": {
+        "description": "把你的技能連結到這台電腦上其他程式設計代理程式已經在讀取的資料夾，技能只要寫一次，每個代理程式都能使用。",
+        "emptyBody": "這台電腦上找不到其他代理程式資料夾。",
+        "status": {
+          "linked": "已連結 {{linked}}/{{total}}",
+          "undetected": "在這台裝置上找不到",
+          "unsupported": "這個系統不支援"
+        },
+        "summary": {
+          "checking": "正在檢查代理程式資料夾",
+          "linked_other": "已連結 {{linked}}/{{count}} 個代理程式",
+          "none": "找不到其他代理程式資料夾"
+        },
+        "title": "與這台電腦上的其他代理程式共用技能"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "已新增",
+        "bundled": "內建",
+        "catalog": "已安裝"
+      },
+      "tier": {
+        "credits": "來自 {{credits}}",
+        "native": "Oleafly 工作流程",
+        "shelf": "領域技能庫技能",
+        "shelfWithLicense": "領域技能庫，{{license}}",
+        "user": "你自己的技能",
+        "vendored": "隨附的第三方技能"
+      },
+      "title": "技能",
+      "updateAction": "更新",
+      "updateDialog": {
+        "description": "要把「{{name}}」換成最新的內建版本嗎？它的檔案中所有本機修改都會遺失。",
+        "title": "更新技能"
+      },
+      "useDeviceSetting": "使用裝置設定",
+      "useDeviceSettingAria": "為 {{name}} 使用裝置設定",
+      "useInProject": "在此專案中使用",
+      "useInProjectAria": "在此專案中使用 {{name}}",
+      "validateAria": "驗證 {{name}}"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "用於按鈕、選取範圍與編輯器游標。",
+        "label": "強調色",
+        "swatchAriaLabel": "{{name}} 強調色"
+      },
+      "bgPattern": {
+        "description": "選擇專案架背後的圖樣。",
+        "dots": "點狀",
+        "grid": "格線",
+        "label": "背景圖樣"
+      },
+      "dock": {
+        "bottom": "下方",
+        "description": "選擇首頁 Dock 的位置。",
+        "label": "Dock 位置",
+        "left": "左側",
+        "right": "右側"
+      },
+      "font": {
+        "description": "字型未安裝時會改用系統備用字型。",
+        "label": "應用程式字型"
+      },
+      "fontSize": {
+        "description": "縮放選單、面板與按鈕中的文字。",
+        "label": "應用程式字型大小"
+      },
+      "theme": {
+        "description": "「系統」會跟隨作業系統，並隨它一起變更。",
+        "label": "外觀"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "瀏覽器首頁",
+        "description": "選擇開啟瀏覽器面板時載入的頁面。",
+        "label": "首頁"
+      },
+      "searchEngine": {
+        "description": "選擇文字搜尋使用的搜尋引擎。",
+        "label": "預設搜尋引擎"
+      }
+    },
+    "customTheme": {
+      "cleared": "主題自訂已清除。",
+      "customCss": {
+        "description": "這些選填的宣告只會在應用程式內生效。規則、匯入與 URL 都會被封鎖。",
+        "label": "限定範圍的 CSS 宣告"
+      },
+      "darkRestored": "深色模式色彩變數已還原。",
+      "description": "分別為每種模式變更應用程式的色彩變數。變更會存在本機，並立即生效。",
+      "exportTheme": "匯出主題",
+      "fileTooLarge": "主題檔案超過 128 KiB。",
+      "importFileAriaLabel": "匯入主題檔案",
+      "importTheme": "匯入主題",
+      "imported": "主題已匯入並套用。",
+      "importedSkippedMore_other": "主題已匯入並套用。已略過 {{count}} 個 Oleafly 未使用的色彩變數：{{tokens}} 等。",
+      "importedSkipped_other": "主題已匯入並套用。已略過 {{count}} 個 Oleafly 未使用的色彩變數：{{tokens}}。",
+      "lightRestored": "淺色模式色彩變數已還原。",
+      "modeDark": "深色模式",
+      "modeFieldsetAriaLabel": "要編輯的主題模式",
+      "modeLight": "淺色模式",
+      "pickColorDark": "為深色模式選擇 {{token}} 顏色",
+      "pickColorLight": "為淺色模式選擇 {{token}} 顏色",
+      "radius": {
+        "description": "請使用 8px、0.5rem 或 1em 之類的值。留空則使用預設值。",
+        "label": "圓角半徑"
+      },
+      "resetAll": "全部重設",
+      "resetMode": "重設此模式",
+      "title": "主題自訂",
+      "tokenInputDark": "深色模式的 {{token}} 色彩變數",
+      "tokenInputLight": "淺色模式的 {{token}} 色彩變數",
+      "tokens": {
+        "accent": "強調",
+        "accentForeground": "強調文字",
+        "background": "背景",
+        "border": "框線",
+        "card": "面板",
+        "cardForeground": "面板文字",
+        "destructive": "危險",
+        "destructiveForeground": "危險文字",
+        "foreground": "文字",
+        "input": "輸入框線",
+        "muted": "弱化",
+        "mutedForeground": "弱化文字",
+        "popover": "浮出視窗",
+        "popoverForeground": "浮出視窗文字",
+        "primary": "主要",
+        "primaryForeground": "主要文字",
+        "ring": "焦點外框",
+        "secondary": "次要",
+        "secondaryForeground": "次要文字",
+        "sidebar": "側邊欄",
+        "sidebarAccent": "側邊欄強調",
+        "sidebarAccentForeground": "側邊欄強調文字",
+        "sidebarBorder": "側邊欄框線",
+        "sidebarForeground": "側邊欄文字"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "自動插入對應的右括號。",
+        "label": "自動關閉括號"
+      },
+      "autoCloseEnvironments": {
+        "description": "在 \\begin 之後按 Enter 時自動插入 \\end。",
+        "label": "自動關閉環境"
+      },
+      "autoCloseMath": {
+        "description": "輸入時自動配對 $、\\( 與 \\[。",
+        "label": "自動關閉數學符號"
+      },
+      "autocomplete": {
+        "description": "輸入時顯示程式碼補完。關閉後仍可按 Ctrl+Space 開啟。",
+        "label": "自動完成"
+      },
+      "font": {
+        "description": "選擇原始檔案使用的等寬字型。",
+        "label": "編輯器字型"
+      },
+      "fontSize": {
+        "description": "設定原始碼編輯器的文字大小。",
+        "label": "編輯器字型大小"
+      },
+      "ghostCompletion": {
+        "description": "在游標後顯示可能的補完內容。按 Tab 即可接受。",
+        "label": "行內建議"
+      },
+      "nonBlinkingCursor": {
+        "description": "讓編輯器游標保持恆亮。",
+        "label": "游標不閃爍"
+      },
+      "stickyScroll": {
+        "description": "捲動時把目前的 LaTeX 章節與環境固定在頂端。",
+        "label": "固定捲動"
+      },
+      "theme": {
+        "description": "與應用程式主題分開設定原始碼的語法顏色。",
+        "label": "編輯器主題"
+      },
+      "keymap": {
+        "description": "選擇原始碼編輯器使用的按鍵組合。",
+        "label": "按鍵組合",
+        "options": {
+          "default": "預設",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "設定原始碼行與行之間的垂直間距。",
+        "label": "行高",
+        "options": {
+          "compact": "緊密",
+          "normal": "標準",
+          "wide": "寬鬆"
+        }
+      },
+      "lineWrap": {
+        "description": "讓長行自動換行，不必左右捲動。",
+        "label": "長行自動換行"
+      },
+      "tabSize": {
+        "description": "每一層縮排插入的空格數，也是 Tab 的顯示寬度。",
+        "label": "Tab 寬度"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "新增隱藏檔案樣式",
+        "description": "選擇哪些產生的檔案與資料夾不要出現在專案樹中。",
+        "inputAriaLabel": "要隱藏的檔案名稱或樣式",
+        "placeholder": "新增檔案名稱或樣式",
+        "removeAriaLabel": "從隱藏檔案中移除 {{pattern}}",
+        "title": "在檔案樹中隱藏檔案"
+      },
+      "homeView": {
+        "description": "選擇專案在專案庫中的排列方式。",
+        "grid": "格狀",
+        "label": "預設首頁檢視",
+        "list": "清單"
+      },
+      "openIn": {
+        "description": "選擇專案開啟時使用的版面配置。",
+        "label": "專案開啟方式"
+      },
+      "showTree": {
+        "description": "每次進入專案時都開啟原始檔案樹。",
+        "label": "開啟時顯示檔案樹"
+      }
+    },
+    "fontSizeOption": "{{size}}px",
+    "preview": {
+      "darkMode": {
+        "description": "預設反轉 PDF 的顏色。你仍可從預覽工具列切換顏色。",
+        "label": "PDF 深色模式"
+      },
+      "hoverPreview": {
+        "description": "在專案庫中把滑鼠停在專案上時，顯示上次編譯的頁面。",
+        "label": "滑鼠停留時預覽 PDF"
+      },
+      "zoomShortcuts": {
+        "description": "使用 Cmd/Ctrl +、- 和 0 縮放 PDF，而不是縮放應用程式視窗。",
+        "label": "PDF 縮放快捷鍵"
+      }
+    },
+    "sectionName": "外觀",
+    "tabs": {
+      "app": "應用程式",
+      "browser": "瀏覽器",
+      "editor": "編輯器",
+      "files": "專案",
+      "pdf": "PDF 預覽",
+      "terminal": "終端機"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "終端機配色主題",
+        "description": "選擇終端機的 ANSI 調色盤。",
+        "label": "配色主題",
+        "optionDark": "{{name}} · 深色",
+        "optionLight": "{{name}} · 淺色"
+      },
+      "colors": {
+        "background": "背景",
+        "backgroundAriaLabel": "終端機背景顏色",
+        "cursor": "游標",
+        "cursorAriaLabel": "終端機游標顏色",
+        "description": "在保留所選 ANSI 調色盤的前提下調整基本顏色。",
+        "followingAppTheme": "跟隨應用程式主題：深色模式使用深色調色盤，淺色模式使用淺色調色盤。請在上方選擇特定調色盤，才能自訂這些顏色。",
+        "foreground": "文字",
+        "foregroundAriaLabel": "終端機文字顏色",
+        "label": "終端機顏色"
+      },
+      "cursorBlink": {
+        "description": "讓終端機游標閃爍。",
+        "label": "游標閃爍"
+      },
+      "cursorStyle": {
+        "ariaLabel": "終端機游標樣式",
+        "bar": "直線",
+        "block": "方塊",
+        "description": "選擇終端機游標的形狀。",
+        "label": "游標樣式",
+        "underline": "底線"
+      },
+      "font": {
+        "ariaLabel": "終端機字型系列",
+        "description": "選擇終端機使用的等寬字型。",
+        "label": "終端機字型"
+      },
+      "fontSize": {
+        "description": "設定終端機中的文字大小。",
+        "label": "終端機字型大小"
+      },
+      "fontWeight": {
+        "description": "設定終端機一般文字的字重。",
+        "label": "一般字重"
+      },
+      "fontWeightBold": {
+        "description": "設定終端機粗體文字的字重。",
+        "label": "粗體字重"
+      },
+      "startWithProject": {
+        "description": "在專案開啟時就啟動 shell，而不是等到第一次顯示終端機。",
+        "label": "隨專案啟動 shell"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly 只會在原始碼有變更時於背景儲存。",
+      "label": "每次成功編譯後儲存檢查點"
+    },
+    "config": {
+      "loadFailed": "無法載入檢查點設定。",
+      "saveFailed": "無法儲存檢查點設定。"
+    },
+    "description": "檢查點會記錄一次成功編譯所使用的原始檔案。",
+    "notifyOnFailure": {
+      "description": "檢查點無法儲存時 Oleafly 會通知你，包括儲存空間問題或無法擷取的檔案。",
+      "label": "檢查點無法儲存時顯示通知"
+    },
+    "title": "檢查點"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "移除 API 金鑰",
+      "removeEmail": "移除電子郵件",
+      "removeKey": "移除金鑰",
+      "saveApiKey": "儲存 API 金鑰",
+      "saveEmail": "儲存電子郵件",
+      "saveKey": "儲存金鑰"
+    },
+    "connected": "已連線",
+    "description": "管理學術搜尋來源使用的憑證。",
+    "keyFree": {
+      "description": "這些來源不需要 API 金鑰即可使用。",
+      "title": "不需憑證的來源"
+    },
+    "openAlex": {
+      "docsLink": "OpenAlex 速率限制",
+      "emailLabel": "OpenAlex 聯絡電子郵件",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "無法移除 OpenAlex 聯絡電子郵件。",
+      "emailRemoved": "OpenAlex 聯絡電子郵件已移除",
+      "emailSaveFailed": "無法儲存 OpenAlex 聯絡電子郵件。",
+      "emailSaved": "OpenAlex 聯絡電子郵件已儲存",
+      "hint": "建議設定 API 金鑰。OpenAlex 一般存取需要金鑰，未帶金鑰的搜尋則共用少量的每日額度。填寫聯絡電子郵件也能改用較寬鬆的 polite pool。兩者都只會留在這台裝置上。",
+      "keyLabel": "OpenAlex API 金鑰",
+      "keyRemoveFailed": "無法移除 OpenAlex API 金鑰。",
+      "keyRemoved": "OpenAlex API 金鑰已移除",
+      "keySaveFailed": "無法儲存 OpenAlex API 金鑰。",
+      "keySaved": "OpenAlex API 金鑰已儲存"
+    },
+    "semanticScholar": {
+      "docsLink": "Semantic Scholar API 資訊",
+      "hint": "API 金鑰為選填。匿名搜尋會套用 Semantic Scholar 的公開限制。",
+      "keyLabel": "Semantic Scholar API 金鑰",
+      "keyRemoveFailed": "無法移除 Semantic Scholar API 金鑰。",
+      "keyRemoved": "Semantic Scholar API 金鑰已移除",
+      "keySaveFailed": "無法儲存 Semantic Scholar API 金鑰。",
+      "keySaved": "Semantic Scholar API 金鑰已儲存"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "選填。透過 Serper 在引用搜尋中啟用 Google Scholar 來源。沒有金鑰時，即使選取該來源也會略過。",
+      "keyLabel": "Serper API 金鑰",
+      "keyRemoveFailed": "無法移除 Serper API 金鑰。",
+      "keyRemoved": "Serper API 金鑰已移除",
+      "keySaveFailed": "無法儲存 Serper API 金鑰。",
+      "keySaved": "Serper API 金鑰已儲存"
+    },
+    "title": "引用搜尋"
+  },
+  "cite": {
+    "apa": "同一筆參考文獻的 APA 格式，放在 GitHub 的 Cite this repository 裡",
+    "copyBibtex": "複製 BibTeX",
+    "description": "Oleafly 是免費且開放原始碼的，而它能一直如此，靠的是有人知道它的存在。如果它幫上了一篇論文，參考文獻裡的一則條目就能讓下一位研究者知道這個工具從何而來。複製它，貼進你的 .bib 檔案，並引用 <citeKey>oleafly</citeKey> 這個鍵。",
+    "title": "在論文中引用 Oleafly"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "全部已下載",
+      "download": "下載",
+      "downloadAll": "全部下載"
+    },
+    "aiTemplates": {
+      "deleteDescription": "要從你的範本中刪除「{{name}}」嗎？已經用它建立的專案會保留自己的副本，不受影響。",
+      "deleteTitle": "刪除 AI 產生的範本",
+      "deleted": "已從你的範本中刪除「{{name}}」",
+      "empty": "還沒有 AI 產生的範本。請從範本庫建立一個。",
+      "fallbackDescription": "AI 產生的範本",
+      "toggle": "管理 AI 產生的範本"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "溫暖的人文風無襯線字型，許多現代履歷範本都採用。",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "乾淨中性的無襯線字型，在螢幕與紙本上都好讀。",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "精緻的過渡式襯線字型，很適合學術與商務文件。",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "沒有可下載的字型。",
+      "engineNote": "LuaLaTeX 引擎（用於標記式無障礙 PDF）在「LaTeX 引擎」區段中管理。",
+      "heading": "字型",
+      "tooltip": "有些範本會使用高品質的開源字型。為了讓 Oleafly 保持輕巧，這些字型會在需要時才下載：當你建立這類範本時，字型會被取得並複製到專案中，讓專案自成一體，也能離線編譯。你也可以在這裡預先下載，或移除它們以釋出空間。"
+    },
+    "packProgress": "第 {{index}} 個，共 {{total}} 個",
+    "progress": "{{label}}（第 {{index}} 個，共 {{total}} 個）",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "字型",
+      "templates": "範本",
+      "dictionaries": "字典"
+    },
+    "templates": {
+      "empty": "沒有可下載的範本包。",
+      "heading": "範本",
+      "tooltip": "額外的範本包會在需要時才下載，讓 Oleafly 保持輕巧。在這裡下載範本包就能離線使用其中的範本，之後也可以移除以釋出空間。"
+    },
+    "dictionaries": {
+      "empty": "目前還沒有下載其他語言。",
+      "heading": "拼字字典",
+      "note": "在「一般」區段選擇語言即可下載。內建的五個語言包一律可用，不會列在這裡。",
+      "tooltip": "Oleafly 內建五個語言包。其他語言會在你選為拼字字典時才下載，並保留在這裡，之後就能離線使用。移除其中一個會釋出空間，並回到應用程式的設定。"
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "僅適用於信任的專案。會執行本機 TeX 發行版，它可以讀取你帳戶能存取的檔案。支援完整套件集與多次編譯流程。主機指令執行仍是各專案獨立的權限。",
+        "name": "latexmk（系統 TeX）"
+      },
+      "tectonic": {
+        "detail": "隨 Oleafly 提供。快速、離線、免設定。涵蓋一般 LaTeX 與大多數常見套件。",
+        "name": "Tectonic（內建）"
+      }
+    },
+    "defaultEngine": {
+      "heading": "預設編譯引擎",
+      "tooltip": "套用於新專案。每個專案都會在 project.json 中鎖定自己的引擎，因此不論這項設定為何，開啟同一專案的協作者都會以相同方式編譯。"
+    },
+    "distributions": {
+      "empty": "這台電腦上沒有偵測到 TeX 發行版。",
+      "heading": "管理 TeX 發行版",
+      "rowTooltip": "隨附 {{tools}}。Oleafly 會從 {{binDir}} 執行它的 TeX 工具。",
+      "rowTooltipNoTools": "這個安裝中找不到 latexmk 或 tlmgr。Oleafly 會從 {{binDir}} 執行它的 TeX 工具。",
+      "tooltip": "latexmk 引擎在這台電腦上可以使用的所有項目。TinyTeX 會安裝到你的家目錄，不需要管理員權限。系統安裝（MacTeX、TeX Live、MiKTeX）會自動偵測。"
+    },
+    "latexmkMissing": "找不到 latexmk",
+    "markdown": {
+      "downloading": "下載中…",
+      "heading": "Markdown 編譯器",
+      "install": "安裝 pandoc",
+      "repair": "修復 Pandoc",
+      "note": "目前還無法為 Markdown 選擇其他 PDF 後端，也無法改用系統的 pandoc 取代託管版本。",
+      "status": {
+        "checking": "正在檢查 pandoc…",
+        "installing": "正在取得鎖定版本的 pandoc。第一次使用時需要一點時間。",
+        "missing": "在這台 Mac 上找不到。Oleafly 會把相容的 pandoc（2.19 以上）下載到自己的資料夾；系統上的其他部分都不會變動。",
+        "ready": "已偵測到。Markdown 專案會先用 pandoc 轉換成 LaTeX，再以內建的 Tectonic 編譯。"
+      },
+      "tectonicDetail": "為 pandoc 產生的 LaTeX 排版。隨 Oleafly 提供，不需要設定。",
+      "tooltip": "Markdown 專案會先用 pandoc（Pandoc Markdown：表格、註腳、引用、數學式）轉換成 LaTeX，再由內建的 Tectonic 排版成 PDF。Pandoc 會在第一次需要時才下載。"
+    },
+    "packages": {
+      "ariaLabel": "LaTeX 套件",
+      "badge": {
+        "breaks": "破壞標記",
+        "caution": "標記：注意"
+      },
+      "emptySearch": "找不到套件。請換個名稱或關鍵字。",
+      "emptySuggested": "沒有符合的建議套件。搜尋 TeX Live 以查看完整目錄。",
+      "error": {
+        "install": "無法安裝 {{name}}。",
+        "read": "無法讀取已安裝的套件。",
+        "remove": "無法移除 {{name}}。",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "尋找 LaTeX 套件",
+      "filterPlaceholder": "篩選套件…",
+      "heading": "套件",
+      "includedIn": "包含在 {{package}} 中。移除它也會移除該套件中的其他檔案。",
+      "intro": {
+        "available": "這些套件適用於使用 latexmk（系統 TeX）的專案。Tectonic 會使用自己的套件組合。",
+        "unavailable": "套件管理需要 TeX Live 或 TinyTeX。若使用 MiKTeX，請改用 MiKTeX Console。"
+      },
+      "refreshInstalled": "重新整理已安裝的套件",
+      "resultsCapped": "{{total}} 筆 TeX Live 結果。請用更明確的搜尋條件縮小清單。",
+      "results_other": "{{count}} 筆 TeX Live 結果。",
+      "search": "搜尋 TeX Live",
+      "searching": "搜尋中…",
+      "suggested": "建議套件。搜尋 TeX Live 可找到更多。",
+      "tree": {
+        "both": "兩個樹皆有",
+        "system": "系統樹中",
+        "user": "個人樹中"
+      }
+    },
+    "sectionName": "引擎",
+    "tagging": {
+      "heading": "標記式無障礙匯出",
+      "hint": {
+        "none": "請在上方的「管理 TeX 發行版」中安裝 TinyTeX，以啟用標記式匯出。",
+        "system": "已在你的系統上偵測到。不需要安裝。",
+        "tinytex": "由 TinyTeX 提供（在上方管理）。"
+      },
+      "status": {
+        "none": "未安裝標記引擎",
+        "system": "使用系統的 LuaLaTeX 或 TeX Live",
+        "tinytex": "已安裝 TinyTeX"
+      },
+      "tooltip": "預設引擎（Tectonic）快速且可離線，但無法產生符合 Section 508 或 PDF-UA 的標記式 PDF。那需要系統 LuaLaTeX，它可以讀取你帳戶能存取的本機檔案，因此只應該用在信任的專案上。Oleafly 可以使用既有的發行版，或由它管理的 TinyTeX。"
+    },
+    "tinytex": {
+      "detail": "放在你家目錄中的精簡版 TeX Live。核心下載約 250 MB。期刊範本之後可能再加入套件，總計最多約 1 GB。事先安裝好，就能在你明確選擇時使用系統 LaTeX。",
+      "download": "下載 TinyTeX（約 250 MB）",
+      "resume": "繼續下載（已完成 {{size}} MB）"
+    },
+    "typst": {
+      "detail": "隨 Oleafly 提供。快速、離線、免設定。可將 Typst 文件編譯成 PDF。",
+      "heading": "Typst 編譯器",
+      "name": "Typst（內建）",
+      "note": "Typst 專案一律使用內建的編譯器。目前還無法選擇編譯器版本，也無法使用系統的 Typst。",
+      "tooltip": "Typst 內建在 Oleafly 中，不需要安裝或設定。每個 Typst 專案都會以內建的編譯器編譯。"
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "已連線",
+      "disconnect": "中斷連線",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "連接",
+      "toggle": "進階：使用個人存取權杖",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "新建立與開啟的專案都會有 Git 儲存庫，讓 Git 面板可以追蹤變更。Oleafly 不會自行提交。",
+      "label": "為每個專案初始化 Git"
+    },
+    "config": {
+      "loadFailed": "無法載入 Git 設定。",
+      "saveFailed": "無法儲存 Git 設定。"
+    },
+    "connect": "連接 GitHub",
+    "description": "備份專案、在裝置之間同步，並從 Git 面板推送與拉取。",
+    "device": {
+      "openGithub": "開啟 GitHub",
+      "opened": "已在你的瀏覽器中開啟 <verificationLink>{{url}}</verificationLink>。請在該頁面貼上代碼，以授權 Oleafly。",
+      "timedOut": "GitHub 登入逾時。請再試一次。",
+      "title": "在 GitHub 上輸入這組代碼",
+      "waiting": "等待授權中…"
+    },
+    "hint": {
+      "oauth": "會在你的瀏覽器中以一次性代碼登入。",
+      "token": "這個版本尚未設定 OAuth 登入，請改為貼上權杖。"
+    },
+    "notice": {
+      "connected": "已以 @{{login}} 的身分連線",
+      "disconnected": "已中斷連線。"
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "連接",
+      "disconnect": "中斷連線"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "取得金鑰的方式：在 <siteLink>alphaxiv.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink>，產生一組金鑰（開頭是 <keyPrefix>axv1_</keyPrefix>），然後貼到下方。",
+      "apiKeyLabel": "alphaXiv API 金鑰",
+      "description": "提供給助理使用的文獻搜尋與論文分析工具。"
+    },
+    "cookies": {
+      "action": "匯入 Cookie",
+      "confirmAllDomains": "你即將從 {{browser}} 的 {{profile}} 設定檔匯入所有網域的 Cookie。Cookie 值會存放在應用程式內建瀏覽器中，而且只會傳送給對應的網站。Oleafly 在讀取設定檔之前，會再用系統對話框請你確認一次。",
+      "confirmDomain": "你即將從 {{browser}} 的 {{profile}} 設定檔匯入 {{domain}} 的 Cookie。Cookie 值會存放在應用程式內建瀏覽器中，而且只會傳送給對應的網站。Oleafly 在讀取設定檔之前，會再用系統對話框請你確認一次。",
+      "confirmTitle": "確認匯入 Cookie",
+      "description": "在 Oleafly 的內建瀏覽器中沿用現有的瀏覽器登入狀態。",
+      "detecting": "正在尋找已安裝的瀏覽器設定檔…",
+      "dialogDescription": "選擇一個已安裝的瀏覽器設定檔。Oleafly 只會在你審視並確認匯入之後才讀取。Chromium 的 Cookie 會透過 macOS Keychain 在本機解鎖。Oleafly 不會把 Cookie 值傳送到 Oleafly 的服務。",
+      "dialogTitle": "匯入瀏覽器 Cookie",
+      "empty": "找不到支援的瀏覽器設定檔。",
+      "errors": {
+        "chooseProfile": "請選擇一個可用的瀏覽器設定檔。",
+        "hostname": "請輸入主機名稱，例如 example.com。"
+      },
+      "hostnameHint": "輸入網站主機名稱，就只會匯入該網站能使用的 Cookie。留空則匯入這個設定檔中所有符合條件的 Cookie。",
+      "hostnameLabel": "目標主機名稱（選填）",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_other": "已從 {{browser}} 匯入 {{domain}} 的 {{count}} 個 Cookie。",
+      "importedProfileDomain_other": "已從 {{browser}} 的 {{profile}} 匯入 {{domain}} 的 {{count}} 個 Cookie。",
+      "importedProfile_other": "已從 {{browser}} 的 {{profile}} 匯入 {{count}} 個 Cookie。",
+      "imported_other": "已從 {{browser}} 匯入 {{count}} 個 Cookie。",
+      "importing": "正在匯入 Cookie…",
+      "profileGroupLabel": "瀏覽器設定檔",
+      "profileLegend": "瀏覽器設定檔",
+      "review": "審視匯入內容",
+      "status": {
+        "available": "可用",
+        "comingSoon": "即將推出",
+        "noCookieStore": "沒有 Cookie 資料庫",
+        "notInstalled": "未安裝"
+      },
+      "title": "匯入 Cookie",
+      "tryAgain": "再試一次"
+    },
+    "zotero": {
+      "apiKeyHint": "取得金鑰的方式：在 <siteLink>zotero.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink> 建立金鑰，並從同一頁複製你的數字使用者 ID。",
+      "apiKeyLabel": "Zotero API 金鑰",
+      "description": "從你的 Zotero 文獻庫匯入引用與參考文獻。",
+      "userIdLabel": "Zotero 使用者 ID",
+      "userIdPlaceholder": "使用者 ID"
+    }
+  },
+  "language": {
+    "ariaLabel": "介面語言",
+    "description": "選擇介面語言。「系統預設」會跟隨你的作業系統。",
+    "label": "語言",
+    "note": "變更介面語言不會變更文件語言或校對設定。",
+    "system": "系統預設"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "從 {{source}} 匯入 {{name}}",
+      "description": "從這台電腦上已安裝的工具中選擇伺服器。",
+      "detecting": "正在尋找 MCP 伺服器…",
+      "duplicateOverwritten": "已存在，將會覆寫。",
+      "duplicateSkipped": "已存在，將會略過。",
+      "duplicates": {
+        "legend": "名稱重複時",
+        "overwrite": {
+          "description": "改用選取的伺服器取代它。",
+          "label": "覆寫現有的"
+        },
+        "skip": {
+          "description": "保留 Oleafly 中已儲存的伺服器。",
+          "label": "略過現有的"
+        }
+      },
+      "emptyState": "找不到任何 MCP 伺服器設定。",
+      "importing": "正在匯入…",
+      "keys": {
+        "environment": "環境變數：{{names}}",
+        "headers": "標頭：{{names}}"
+      },
+      "sourceError": "{{source}}：{{message}}",
+      "submit": "匯入選取項目",
+      "summary": {
+        "commandFallback": "本機指令",
+        "remote": "遠端伺服器：{{origin}}。",
+        "remoteUnknown": "遠端伺服器。",
+        "stdio_other": "本機指令：{{command}}。{{count}} 個引數。"
+      },
+      "title": "匯入 MCP 伺服器"
+    },
+    "registry": {
+      "argumentsLine": "引數：{{args}}",
+      "description": "搜尋公開的伺服器中繼資料。這裡不會安裝或啟動任何東西。新增之前請先審視指令或 URL。",
+      "emptyQuery": "輸入伺服器名稱，即可搜尋官方 MCP 註冊庫。",
+      "environmentLine": "環境變數：{{names}}",
+      "loadMore": "載入更多",
+      "noResults": "沒有傳回符合的註冊庫項目。",
+      "review": "新增前先審視",
+      "searchLabel": "搜尋官方 MCP 註冊庫",
+      "searchPlaceholder": "搜尋伺服器名稱",
+      "title": "官方 MCP 註冊庫",
+      "unsupportedEntry": "這個項目沒有列出 Oleafly 可以審視的套件或遠端傳輸方式。",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "連接你的應用程式"
+      },
+      "description": "Claude Desktop、Claude Code、Cursor 與其他 MCP 用戶端可以讀取、編輯並編譯已開啟的專案，每一項變更都需要你核准。",
+      "enable": {
+        "ariaLabel": "啟用 MCP 伺服器",
+        "description": "只在 Oleafly 開啟期間於這台電腦上接聽。",
+        "label": "啟用 MCP 伺服器"
+      },
+      "footer": "伺服器只會在這台電腦上接聽（127.0.0.1），而且需要上方的權杖。在前兩種政策下，刪除檔案一律會在 Oleafly 中請你確認。瀏覽器中的 claude.ai 無法連到本機伺服器，請改用 Claude Desktop。",
+      "policy": {
+        "ask": {
+          "description": "寫入、重新命名與刪除都會先在 Oleafly 中顯示附有差異的核准卡片，才會實際套用。",
+          "label": "每項變更都要確認"
+        },
+        "autoWrites": {
+          "description": "寫入與重新命名會立即套用。刪除仍會顯示核准卡片。",
+          "label": "自動核准編輯，刪除需確認"
+        },
+        "legend": "核准政策",
+        "trust": {
+          "description": "檔案變更不會出現提示。shell 指令與電腦控制一律需要核准。你的 MCP 用戶端仍是另一道關卡。",
+          "label": "信任這個連線"
+        }
+      },
+      "port": {
+        "ariaLabel": "自動選取的 MCP 伺服器連接埠",
+        "label": "連接埠",
+        "restartAriaLabel": "重新啟動 MCP 伺服器並選擇可用的連接埠",
+        "restartTooltip": "重新啟動 MCP 伺服器。若這個連接埠仍可使用，Oleafly 會沿用，否則會另選一個空閒的連接埠。"
+      },
+      "readOnly": {
+        "ariaLabel": "唯讀模式",
+        "description": "外部應用程式可以讀取與編譯，但絕不會修改檔案。",
+        "label": "唯讀"
+      },
+      "status": {
+        "restartedAt": "已在 {{url}} 重新啟動",
+        "runningAt": "正在 {{url}} 執行"
+      },
+      "title": "Oleafly MCP 伺服器",
+      "token": {
+        "copyUrl": "複製 URL",
+        "enableToView": "啟用伺服器才能檢視權杖。",
+        "help": "顯示或複製 bearer 權杖、複製伺服器 URL，或為已連線的 MCP 用戶端重新產生權杖。",
+        "hide": "隱藏",
+        "label": "Bearer 權杖",
+        "regenerate": "重新產生",
+        "regenerateWarning": "現有的用戶端需要改用新的權杖。",
+        "reveal": "顯示"
+      }
+    },
+    "servers": {
+      "addServer": "新增伺服器",
+      "browseRegistry": "瀏覽註冊庫",
+      "card": {
+        "editLabel": "編輯 {{name}}",
+        "enableLabel": "啟用 {{name}}",
+        "noTools": "沒有回報任何工具。",
+        "removeLabel": "移除 {{name}}",
+        "toolCount_other": "{{count}} 個工具",
+        "toolsLabel": "來自 {{name}} 的工具",
+        "validate": "驗證",
+        "validateLabel": "驗證 {{name}}"
+      },
+      "description": "把 AI 助理連接到本機指令或遠端 MCP 端點。Oleafly 會在開啟這個頁面時、每分鐘，以及你要求時檢查每個已啟用的伺服器，並顯示各個伺服器提供的工具。",
+      "editor": {
+        "addAndValidate": "新增並驗證",
+        "argsHint": "每行輸入一個引數。",
+        "argsLabel": "引數",
+        "commandLabel": "指令",
+        "description": "已啟用的伺服器會在設定儲存前先經過檢查。",
+        "formView": "表單",
+        "jsonHint": "貼上以名稱為鍵的單一伺服器，或包在 mcpServers 中的區塊。",
+        "jsonLabel": "完整設定",
+        "jsonView": "JSON",
+        "nameLabel": "伺服器名稱",
+        "pairs": {
+          "addHeader": "新增標頭",
+          "addVariable": "新增變數",
+          "environmentKeyLabel": "環境變數鍵 {{index}}",
+          "environmentTitle": "環境變數",
+          "environmentValueLabel": "環境變數值 {{index}}",
+          "headerKeyLabel": "標頭鍵 {{index}}",
+          "headerValueLabel": "標頭值 {{index}}",
+          "headersTitle": "請求標頭",
+          "removeHeaderLabel": "移除標頭 {{index}}",
+          "removeVariableLabel": "移除變數 {{index}}",
+          "storedValuePlaceholder": "已儲存的值",
+          "valuePlaceholder": "值"
+        },
+        "saveAndValidate": "儲存並驗證",
+        "saveChanges": "儲存變更",
+        "titleAdd": "新增 MCP 伺服器",
+        "titleEdit": "編輯 MCP 伺服器",
+        "transportLegend": "傳輸方式",
+        "transportRemote": "遠端 URL",
+        "transportStdio": "本機指令",
+        "urlLabel": "遠端 URL",
+        "viewSwitchLabel": "設定編輯器"
+      },
+      "empty": {
+        "description": "新增伺服器可以給助理新的工具，也可以匯入你在其他編輯器中已經使用的伺服器。",
+        "title": "尚未新增伺服器"
+      },
+      "hideRegistry": "隱藏註冊庫",
+      "importButton": "從其他工具匯入",
+      "importFailure": "{{name}}：{{reason}}",
+      "importSummary": "已匯入 {{imported}} 個，略過 {{skipped}} 個，失敗 {{failed}} 個。",
+      "live": {
+        "checking": "正在檢查 {{name}}。",
+        "connected_other": "{{name}} 已連線。有 {{count}} 個工具可用。",
+        "disabled": "{{name}} 已停用。",
+        "disabledLastCheckFailed": "{{name}} 已停用。上次檢查失敗。",
+        "disabledLastCheckFound_other": "{{name}} 已停用。上次檢查找到 {{count}} 個工具。",
+        "failed": "{{name}} 驗證失敗。"
+      },
+      "loading": "正在載入伺服器…",
+      "remove": {
+        "confirm": "移除伺服器",
+        "description": "這會從 Oleafly 移除 {{name}}。之後可以再次新增。",
+        "descriptionFallback": "這會從 Oleafly 移除這個伺服器。之後可以再次新增。",
+        "title": "要移除伺服器嗎？"
+      },
+      "status": {
+        "checking": "檢查中…",
+        "connected": "已連線",
+        "disabled": "已停用",
+        "error": "錯誤"
+      },
+      "title": "助理的 MCP 伺服器"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "新增全域忽略的字詞",
+      "placeholder": "新增字詞或術語",
+      "projectAriaLabel": "新增在 {{project}} 中忽略的字詞",
+      "submitAriaLabel": "新增忽略的字詞"
+    },
+    "clear": {
+      "confirm": "清除字詞",
+      "descriptionFallback": "這會移除這個字典中的所有詞彙。它們會立刻重新接受檢查。",
+      "descriptionGlobal": "這會移除全域字典中的所有詞彙。它們會立刻重新接受檢查。",
+      "descriptionProject": "這會移除 {{project}} 中的所有詞彙。它們會立刻重新接受檢查。",
+      "descriptionSuppressed": "這會移除 {{project}} 中所有已關閉檢查結果的詞彙。它們會立刻重新接受檢查。",
+      "suppressedConfirm": "重新顯示",
+      "suppressedTitle": "要重新顯示已關閉的檢查結果嗎？",
+      "title": "要清除忽略的字詞嗎？"
+    },
+    "dismissed": {
+      "countTitle": "已關閉 {{dismissed}} 項，專案最多可記住 {{limit}} 項",
+      "hidden_other": "因為你選了「在此專案中忽略」，這個專案有 {{count}} 項文法檢查結果被隱藏。重新顯示後會再次加上底線。",
+      "none": "目前沒有關閉任何項目。當你對某項文法檢查結果選擇「在此專案中忽略」時，它就會列在這裡。",
+      "showAgain": "重新顯示",
+      "title": "已關閉的檢查結果",
+      "titleInProject": "{{project}} 中已關閉的檢查結果"
+    },
+    "global": {
+      "emptyDescription": "你在這裡加入的字詞，校對工具在每個專案中都會略過。",
+      "scope": "套用於每個專案"
+    },
+    "intro": "把字詞加入你的個人拼字檢查字典。這些字詞會存在本機設定中，並在所有專案中略過。比對會經過 Unicode 正規化，且不分大小寫。",
+    "profileRules": {
+      "description": "預設關閉，因為它們會妨礙論文寫作。你可以自行開啟需要的規則。",
+      "example": "範例：{{example}}",
+      "help": "Harper 是為聊天與電子郵件調校的。這些規則有的會推行論文不採用的寫法，例如把 kB 與 min 寫成完整字，有的則會被代表 LaTeX 標記的佔位符絆倒，所以 Oleafly 預設把它們關閉。每一條都會顯示它會標示什麼。想要那些檢查結果的話就開啟它。",
+      "reasons": {
+        "AvoidContractions": "要求把每個縮寫形式寫成完整形式。",
+        "CompoundNouns": "把寫成兩個字的複合名詞合併起來。",
+        "Dashes": "把輸入的 -- 或 --- 換成正確的破折號字元。",
+        "DiscourseMarkers": "標示以 however 這類詞開頭、後面卻少了逗號的句子。",
+        "EllipsisLength": "修正不是三個點的刪節號。",
+        "ExpandAlgorithm": "要求把 algo 寫成完整字。",
+        "ExpandArgument": "要求把 arg 寫成完整字。",
+        "ExpandCoordinate": "要求把 coord 寫成完整字。",
+        "ExpandMemoryShorthands": "要求把 KB 與 MB 寫成完整字。",
+        "ExpandParameter": "要求把 param 寫成完整字。",
+        "ExpandStandardInputAndOutput": "要求把 stdin 與 stdout 寫成完整字。",
+        "ExpandTimeShorthands": "要求把 min 與 sec 寫成完整字。",
+        "ExplainLikeImFive": "把首字母縮寫展開成完整字詞。",
+        "FillerWords": "標示它認為是贅字的詞。",
+        "Hedging": "標示模稜兩可的措辭，例如 I would argue that 與 to a certain degree。",
+        "LongSentences": "標示超過長度上限的句子。",
+        "MergeWords": "把被多餘空格拆成兩半的字合併回去，例如 to gether。",
+        "MoreAdjective": "偏好使用比較級，而不是 more 加形容詞。",
+        "NoFrenchSpaces": "移除法文排版在標點前使用的空格。",
+        "NoOxfordComma": "移除序列逗號。",
+        "NumericRangeEnDash": "要求在數字範圍的兩端之間使用連接號。",
+        "OxfordComma": "要求使用序列逗號。",
+        "SentenceCapitalization": "把句首第一個字改成大寫，包括接在遮蔽標記之後才開始的句子。",
+        "Spaces": "合併重複的空格，這些空格是文句遮罩在標記被清空處留下的。",
+        "SplitWords": "把應該分成兩個字的詞拆開，例如 alot。",
+        "TransposedSpace": "把落在標點錯誤一側的空格移到正確位置，這種情況常由遮蔽造成。"
+      },
+      "title": "學術設定檔預設關閉的規則",
+      "toggleAriaLabel": "開啟 {{rule}}"
+    },
+    "projects": {
+      "empty": "開啟專案後才能新增專案專屬的詞彙。",
+      "emptyDescription": "為這個專案新增的字詞，校對工具只會在這裡略過。",
+      "terms_other": "{{used}} / {{limit}} 個詞彙"
+    },
+    "reset": {
+      "confirmationDescription": "這會永久移除所有忽略的字詞，包括全域與各專案的，並重新開啟你關閉過的每一條文法規則。學術設定檔仍會讓它自己的規則保持關閉。校對會再次標示那些字詞。",
+      "sectionName": "字典"
+    },
+    "search": {
+      "ariaLabel": "搜尋忽略的字詞",
+      "placeholder": "搜尋字典"
+    },
+    "tabs": {
+      "global": "全域",
+      "projects": "專案"
+    },
+    "turnedOff": {
+      "description": "你關閉的規則，以及在這個專案中忽略的檢查結果。",
+      "help": "在編輯器中把滑鼠停在有底線的字或句子上，會出現一張小卡片，顯示 Harper 找到的問題，以及修正或忽略的動作。你從那張卡片關閉的規則，以及在這個專案中忽略的檢查結果，都會列在這裡，隨時可以復原。",
+      "listAriaLabel": "已關閉的文法規則",
+      "none": "你還沒有關閉任何規則。",
+      "restoreAriaLabel": "重新開啟 {{rule}} 規則",
+      "restoreTitle": "重新開啟「{{rule}}」規則",
+      "title": "文法規則與已關閉的檢查結果"
+    },
+    "words": {
+      "emptyCompact": "尚未忽略任何字詞。",
+      "emptyTitle": "尚未忽略任何字詞",
+      "listAriaLabel": "忽略的字詞",
+      "noMatches": "沒有符合這次搜尋的忽略字詞。",
+      "removeAriaLabel": "不再忽略 {{word}}",
+      "removeTitle": "不再忽略「{{word}}」"
+    }
+  },
+  "reset": {
+    "button": "重設為預設值",
+    "confirmDescription": "將「{{sectionName}}」偏好設定還原為預設值。其他設定不會變動。",
+    "confirmTitle": "要重設「{{sectionName}}」設定嗎？",
+    "description": "將「{{sectionName}}」偏好設定還原為預設值。",
+    "label": "重設設定"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "搜尋並執行 Oleafly 指令。",
+        "label": "指令面板"
+      },
+      "forwardSync": {
+        "description": "從編輯器游標跳到編譯後的 PDF。",
+        "label": "前往 PDF"
+      },
+      "recompile": {
+        "description": "編譯目前的專案並顯示它的 PDF。",
+        "label": "重新編譯"
+      },
+      "searchDocuments": {
+        "description": "跨專案與文件進行搜尋。",
+        "label": "搜尋所有文件"
+      },
+      "shortcutReference": {
+        "description": "開啟專案快捷鍵參考。",
+        "label": "快捷鍵參考"
+      },
+      "toggleBrowser": {
+        "description": "顯示或隱藏專案瀏覽器。",
+        "label": "切換瀏覽器"
+      },
+      "toggleSidebar": {
+        "description": "顯示或隱藏專案側邊欄。",
+        "label": "切換側邊欄"
+      },
+      "toggleTerminal": {
+        "description": "顯示或隱藏專案終端機。",
+        "label": "切換終端機"
+      }
+    },
+    "application": {
+      "editAriaLabel": "編輯 {{action}}，目前是 {{shortcut}}",
+      "heading": "應用程式快捷鍵",
+      "prompt": "請按下新的按鍵組合",
+      "recordAriaLabel": "正在錄製 {{action}}。請按下快捷鍵。",
+      "recording": "錄製中",
+      "resetAriaLabel": "重設 {{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "請 AI 編輯選取範圍",
+        "bold": "粗體",
+        "findAndReplace": "尋找與取代",
+        "findReferences": "尋找參考位置",
+        "goToDefinition": "前往定義",
+        "goToDefinitionWithPointer": "以滑鼠前往定義",
+        "indentOrAcceptAutocomplete": "縮排或接受自動完成",
+        "italic": "斜體",
+        "jumpToSourceFromPdf": "從 PDF 跳到原始碼",
+        "redo": "重做",
+        "renameSymbol": "在整個專案中重新命名符號",
+        "slashCommandMenu": "斜線指令插入選單",
+        "triggerAutocomplete": "觸發自動完成",
+        "undo": "復原"
+      },
+      "managed": "由編輯器管理"
+    },
+    "categories": {
+      "codeIntelligence": "程式碼智慧",
+      "editor": "編輯器",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "已指派給 {{action}}。",
+      "reserved": "{{shortcut}} 是作業系統保留的。"
+    },
+    "intro": "自訂應用程式快捷鍵，並檢視編輯器內建的按鍵組合。",
+    "reserved": {
+      "closeWindow": "關閉視窗",
+      "copy": "複製",
+      "cut": "剪下",
+      "paste": "貼上",
+      "quit": "結束",
+      "save": "儲存",
+      "selectAll": "全選",
+      "systemSearch": "系統搜尋",
+      "windowSwitching": "視窗切換"
+    },
+    "reset": {
+      "sectionName": "鍵盤快捷鍵"
+    },
+    "tabs": {
+      "application": "應用程式"
+    },
+    "editorKeys": {
+      "clearHint": "按 Backspace 可讓這個動作不綁定按鍵。",
+      "heading": "編輯器按鍵",
+      "intro": "這些按鍵在原始碼編輯器中有效。Vim 與 Emacs 模式會使用自己的按鍵設定。",
+      "labels": {
+        "addCursorAbove": "在上方新增游標",
+        "addCursorBelow": "在下方新增游標",
+        "deleteLine": "刪除整行",
+        "duplicate": "複製選取範圍或整行",
+        "gotoLine": "前往指定行",
+        "indentLess": "減少縮排",
+        "indentMore": "增加縮排",
+        "lowercase": "轉為小寫",
+        "selectNextOccurrence": "選取下一個相符處",
+        "titleCase": "轉為字首大寫",
+        "toggleComment": "切換註解",
+        "uppercase": "轉為大寫"
+      },
+      "unbound": "未設定"
+    }
+  }
+}

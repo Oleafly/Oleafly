@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Om Oleafly",
+    "checkUpdates": "Søg efter opdateringer…",
+    "reloadViews": "Genindlæs visninger",
+    "restartApp": "Genstart programmet",
+    "quit": "Slut Oleafly",
+    "edit": "Rediger",
+    "undo": "Fortryd",
+    "redo": "Gentag",
+    "cut": "Klip",
+    "copy": "Kopier",
+    "paste": "Sæt ind",
+    "selectAll": "Vælg alt",
+    "view": "Vis",
+    "toggleTerminal": "Vis eller skjul terminalen",
+    "toggleBrowser": "Vis eller skjul browseren"
+  },
+  "window": {
+    "browser": "Oleafly-browser",
+    "browserTitled": "{{title}} - Oleafly-browser"
+  },
+  "dialog": {
+    "cancel": "Annuller",
+    "fullAccess": {
+      "title": "Aktiver fuld adgang?",
+      "message": "Med fuld adgang kan assistenten køre shell-kommandoer og redigere filer uden at bede om godkendelse hver gang. Vil du aktivere fuld adgang?",
+      "confirm": "Aktiver fuld adgang"
+    },
+    "cookieImport": {
+      "title": "Bekræft import af cookies",
+      "messageHost": "Vil du importere cookies for {{hostname}} fra {{browser}}-profilen \"{{profile}}\" til Oleaflys indbyggede browser? Importerede cookies kan logge dig ind på websteder.",
+      "messageAll": "Vil du importere alle cookies fra {{browser}}-profilen \"{{profile}}\" til Oleaflys indbyggede browser? Importerede cookies kan logge dig ind på websteder.",
+      "confirm": "Importer cookies"
+    },
+    "mcpApprove": {
+      "title": "Godkend MCP-værktøj",
+      "confirm": "Brug værktøjet"
+    },
+    "tableImport": {
+      "title": "Vælg et regneark, der skal importeres",
+      "filter": "Regneark"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Programmenuen er ikke tilgængelig",
+    "viewMenuUnavailable": "Vis-menuen er ikke tilgængelig",
+    "menuItemUnavailable": "Menupunktet {{id}} er ikke tilgængeligt",
+    "fullAccessDismissed": "Bekræftelsen af fuld adgang blev lukket.",
+    "fullAccessDeclined": "Fuld adgang blev ikke aktiveret.",
+    "approvalDialogClosed": "Systemets godkendelsesdialog blev lukket uventet."
+  }
+}

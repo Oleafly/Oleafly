@@ -1,0 +1,31 @@
+{
+  "unknown": "Er is iets misgegaan. Bekijk het app-logboek voor details.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "De projectnaam mag niet leeg zijn.",
+    "name_conflict": "Er bestaat al een project met de naam {{name}}.",
+    "folder_unavailable": "Kon geen nieuwe projectmap reserveren."
+  },
+  "settings": {
+    "locale_unsupported": "De taal {{locale}} is niet beschikbaar."
+  },
+  "literature": {
+    "query_empty": "De zoekopdracht mag niet leeg zijn.",
+    "query_too_long": "De zoekopdracht is te lang (maximaal {{max}} tekens).",
+    "unknown_source": "Onbekende literatuurbron."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX heeft geen {{name}}-programma dat op dit systeem werkt.",
+    "package_operation_timeout": "De pakketbewerking duurde langer dan {{span}} en is gestopt, zodat je opnieuw kunt compileren. Waarschijnlijk is de TeX Live-mirror druk. Probeer het later opnieuw of voer tlmgr zelf uit."
+  },
+  "github": {
+    "sign_in_expired": "De aanmeldcode is verlopen. Probeer het opnieuw.",
+    "sign_in_cancelled": "De autorisatie bij GitHub is geannuleerd.",
+    "sign_in_failed": "Aanmelden bij GitHub is mislukt.",
+    "repositories_unavailable": "Kon de repository's niet laden.",
+    "create_repo_failed": "Kon de repository niet aanmaken ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "Volledige toegang is niet ingeschakeld."
+  }
+}

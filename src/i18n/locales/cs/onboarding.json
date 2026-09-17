@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Začínáme",
+    "overview": {
+      "title": "Domů",
+      "content": "Tady začínají vaše projekty i zakládání nových."
+    },
+    "create": {
+      "title": "Vytvořte skutečný projekt",
+      "content": "Zvolte Nový projekt a uvidíte, jak všechno může začít."
+    },
+    "kind": {
+      "title": "Tři způsoby, jak začít",
+      "content": "Založte výzkumný projekt, vložte rukopis, který už máte, nebo vyjděte z připravené šablony."
+    },
+    "kindTemplate": {
+      "title": "Vyjděte ze šablony",
+      "content": "Zvolte Použít šablonu a otevře se galerie. Zbylé dva začátky tu na vás počkají, kdykoli je budete potřebovat."
+    },
+    "gallery": {
+      "title": "Najděte svůj výchozí bod",
+      "content": "Procházejte kategorie, hledejte podle názvu a zužte výběr šablon podle překladače nebo dostupnosti offline."
+    },
+    "template": {
+      "title": "Vyberte šablonu",
+      "content": "Vyberte kteroukoli skutečnou šablonu a pokračujte. Její soubory se stanou vaším novým projektem."
+    },
+    "name": {
+      "title": "Pojmenujte projekt",
+      "content": "Zadejte název projektu. Tlačítko Další se zpřístupní, jakmile název nebude prázdný."
+    },
+    "color": {
+      "title": "Vyberte barvu obálky",
+      "content": "Podle této barvy projekt snadno poznáte na domovské obrazovce. Můžete nechat výchozí barvu šablony."
+    },
+    "createProject": {
+      "title": "Vytvořte projekt",
+      "content": "Klikněte na „Vytvořit projekt“ a projekt vznikne z vybrané šablony."
+    }
+  },
+  "workspace": {
+    "label": "Váš pracovní prostor",
+    "toolbar": {
+      "title": "Panel nástrojů projektu",
+      "content": "Tady najdete akce projektu a ovládání kompilace."
+    },
+    "sidebar": {
+      "title": "Navigace v pracovním prostoru",
+      "content": "Přecházejte mezi soubory, vyhledáváním, správou verzí, předletovou kontrolou, referencemi a aktivitou MCP."
+    },
+    "editor": {
+      "title": "Editor",
+      "content": "Pište a procházejte zdrojový kód s doplňováním, diagnostikou, formátováním a jazykovou inteligencí."
+    },
+    "wysiwygToggle": {
+      "title": "Vyzkoušejte režim WYSIWYG",
+      "content": "Přepínejte mezi čistým zdrojovým kódem a formátovaným zobrazením dokumentu ve stylu Google Docs."
+    },
+    "compile": {
+      "title": "Kompilace a opakovaná kompilace",
+      "content": "Tady sestavíte aktuální projekt. Prohlídka nikdy nekompiluje ani nemění váš zdrojový kód."
+    },
+    "logs": {
+      "title": "Protokoly sestavení",
+      "content": "Otevřete protokoly sestavení a prohlédněte si chyby, aniž byste měnili obsah projektu. Vedlejší údaj ukazuje čas poslední kompilace."
+    },
+    "preview": {
+      "title": "Náhled PDF",
+      "content": "Zkompilovaný dokument zůstává v rozděleném zobrazení vedle vašeho zdroje."
+    },
+    "zoom": {
+      "title": "Kompletní sada nástrojů pro PDF",
+      "content": "Otevřete osnovu, hledejte v textu, přeskakujte mezi stránkami, zvolte jedno nebo dvoustránkové rozvržení, přibližujte nebo přizpůsobte stránku, invertujte barvy, použijte přístupné čtecí zobrazení, otáčejte, stahujte, ukládejte do projektu, přepněte na celou obrazovku nebo otevřete náhled ve vlastním okně."
+    },
+    "sourceNavigation": {
+      "title": "Z PDF do zdroje",
+      "content": "Kliknutím do zkompilovaného PDF skočíte přímo na odpovídající místo ve zdroji."
+    }
+  },
+  "research": {
+    "label": "Výzkumný prostor",
+    "open": {
+      "title": "Výzkumný prostor",
+      "content": "Otevřete jej, když chcete předat výzkumné úlohy agentovi a propojit složky s četbou a datové sady, které máte jinde. Je to novinka v beta verzi, takže nám prosím hlaste, co nefunguje."
+    },
+    "tasks": {
+      "title": "Zařaďte výzkumné úlohy",
+      "content": "Popište kus práce a předejte jej agentovi. Každá úloha má vlastní konverzaci, výstupy i poznámky z revize."
+    },
+    "folders": {
+      "title": "Propojte složky, které už máte",
+      "content": "Nasměrujte pracovní prostor na složky s četbou a datové sady mimo projekt. Nic se nekopíruje ani nepřesouvá."
+    }
+  },
+  "settings": {
+    "label": "Nastavení",
+    "navigation": {
+      "title": "Nastavení",
+      "content": "Tady přecházíte mezi předvolbami a integracemi."
+    },
+    "general": {
+      "title": "Obecné předvolby",
+      "content": "Řiďte chování editoru, režim offline, klávesové zkratky a průvodce prohlídkami."
+    },
+    "appearance": {
+      "title": "Vzhled",
+      "content": "Zvolte motiv, typografii, výchozí rozvržení pracovního prostoru a barvu zvýraznění."
+    },
+    "dictionary": {
+      "title": "Slovník",
+      "content": "Projděte si slova, která kontrola pravopisu a gramatiky ignoruje v tomto projektu i globálně."
+    },
+    "data": {
+      "title": "Úložiště dat",
+      "content": "Prohlédněte si místní úložiště projektů a spravujte data aplikace."
+    },
+    "ai": {
+      "title": "Asistent AI",
+      "content": "Nastavte poskytovatele, modely, přihlašovací údaje a servery MCP, které může asistent používat."
+    },
+    "compiler": {
+      "title": "Překladač",
+      "content": "Zvolte a nastavte engine LaTeX, kterým se projekty sestavují."
+    },
+    "downloads": {
+      "title": "Stahování",
+      "content": "Spravujte balíčky a zdroje dostupné pro práci offline."
+    },
+    "integrations": {
+      "title": "Integrace",
+      "content": "Připojte GitHub, alphaXiv, Zotero, vyhledávání citací a místní server MCP aplikace Oleafly."
+    },
+    "shortcuts": {
+      "title": "Klávesové zkratky",
+      "content": "Procházejte, upravujte, nastavujte a obnovujte klávesové zkratky aplikace."
+    },
+    "mcp": {
+      "title": "MCP asistenta",
+      "content": "Zvolte, které servery MCP může asistent používat."
+    },
+    "help": {
+      "title": "Nápověda a informace",
+      "content": "Spusťte znovu kontextovou prohlídku, otevřete dokumentaci, zobrazte zkratky nebo nahlaste problém."
+    }
+  },
+  "aiSettings": {
+    "label": "Nastavení AI",
+    "tabs": {
+      "title": "Nastavení asistenta AI",
+      "content": "Tady spravujete poskytovatele a klíče, instrukce, persony, znovupoužitelné dovednosti a servery MCP."
+    },
+    "providers": {
+      "title": "Připojte poskytovatele",
+      "content": "Vložte klíč a ještě před uložením se ověří u poskytovatele. Připojení poskytovatelé mají zelený odznak a rozbalí se do seznamu modelů, který můžete přepínat, rozšiřovat i obnovovat. Klíče zůstávají zašifrované v tomto počítači."
+    },
+    "customProvider": {
+      "title": "Vlastní koncový bod",
+      "content": "Funguje tu jakákoli základní adresa URL kompatibilní s OpenAI, včetně místních serverů jako Ollama nebo LM Studio."
+    },
+    "openInstructions": {
+      "title": "Instrukce",
+      "content": "Pokračujte kliknutím na kartu Instrukce."
+    },
+    "defaultModel": {
+      "title": "Výchozí model",
+      "content": "Nové konverzace začínají s tímto modelem. Model můžete pro každou konverzaci přepnout přímo v panelu chatu."
+    },
+    "instructions": {
+      "title": "Vlastní instrukce",
+      "content": "Vaše trvalé stylové předvolby, které se přidají ke každému požadavku asistenta."
+    },
+    "openPersonas": {
+      "title": "Persony",
+      "content": "Pokračujte kliknutím na kartu Persony."
+    },
+    "personas": {
+      "title": "Vytvořte persony",
+      "content": "Pojmenované sady instrukcí s barvou, přepínatelné z nabídky Persona v chatu. Zkuste jazykového korektora, recenzenta nebo puristu na LaTeX."
+    }
+  },
+  "ai": {
+    "label": "Asistent AI",
+    "assistant": {
+      "title": "Asistent AI",
+      "content": "Pracujte s asistentem, který zná váš projekt, a během této prohlídky se nic neodesílá."
+    },
+    "runtime": {
+      "title": "Dva druhy agenta",
+      "content": "Agent Oleafly běží na poskytovateli modelu, kterého si nastavíte. Agent z příkazové řádky, zatím v beta verzi, řídí programovacího agenta už nainstalovaného v tomto počítači."
+    },
+    "connectProvider": {
+      "title": "Připojte poskytovatele",
+      "content": "Pokud nemáte nastaveného žádného poskytovatele, začněte tady. Prohlídka nikdy nežádá o přihlašovací údaje ani je nemění."
+    },
+    "providerModel": {
+      "title": "Poskytovatel a model",
+      "content": "Přepněte modely pro tuto konverzaci. Změny platí jen pro tuto relaci. Výchozí model se nastavuje v Nastavení. Loga označují poskytovatele každého modelu."
+    },
+    "prompts": {
+      "title": "Zkratky k promptům",
+      "content": "Zvolte hotový prompt a vloží se do pole chatu."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Zvolte, jak má asistent pracovat. Aktivní persona nahradí vaše výchozí instrukce, dokud ji nevypnete."
+    },
+    "input": {
+      "title": "Pole chatu",
+      "content": "Popište, co potřebujete. Asistent umí využít kontext projektu, ale tato prohlídka nikdy nic neodešle."
+    },
+    "attachments": {
+      "title": "Přílohy",
+      "content": "Připojte obrázky, PDF a zdrojové soubory, když konverzace potřebuje další kontext."
+    },
+    "history": {
+      "title": "Historie konverzací",
+      "content": "Znovu otevřete nedávnou i úplnou historii chatu, přičemž každá konverzace zůstává navázaná na stav svého projektu."
+    },
+    "usage": {
+      "title": "Využití",
+      "content": "U nastavených konverzací se tu zobrazí běhy, tokeny a odhadované náklady, pokud jsou k dispozici."
+    },
+    "restore": {
+      "title": "Obnovení stavu projektu",
+      "content": "Po úpravě od AI můžete ze záchytného bodu obnovit soubory projektu, aniž byste přišli o konverzaci."
+    }
+  },
+  "diagram": {
+    "label": "Skladatel diagramů",
+    "composer": {
+      "title": "Skladatel diagramů",
+      "content": "Tvořte diagramy vizuálně nebo z kódu TikZ. Prohlídka vaši práci nemění ani neukládá."
+    },
+    "import": {
+      "title": "Import souboru TikZ",
+      "content": "Máte už soubor .tikz nebo .tex? Importujte jej a nahradí tuto úvodní kresbu. Zůstane konceptem, dokud jej sami neuložíte."
+    },
+    "modes": {
+      "title": "Kreslení a kód",
+      "content": "V režimu kreslení pracujete přímo na plátně. Režim kódu ukazuje vygenerovaný TikZ a znovupoužitelné úryvky."
+    },
+    "palette": {
+      "title": "Paleta tvarů",
+      "content": "Zvolte tvar a pak jej kliknutím a tažením na plátně umístěte a natáhněte do velikosti."
+    },
+    "handles": {
+      "title": "Propojení a změna velikosti",
+      "content": "Vybraný tvar nabídne úchyty pro spojení a změnu velikosti, takže strukturu i rozměry nastavíte přesně."
+    },
+    "inspector": {
+      "title": "Inspektor",
+      "content": "Vyberte tvar nebo spojení a upravte jeho styl, text, vedení a pořadí vrstev."
+    },
+    "preview": {
+      "title": "Zkompilovaný náhled",
+      "content": "Kompilace otevře vedle editoru náhled s ovládáním měřítka a pozadí."
+    },
+    "compile": {
+      "title": "Kompilace",
+      "content": "Kompilace vykreslí samostatný náhled, aniž by diagram vložila do vašeho dokumentu."
+    },
+    "saveProject": {
+      "title": "Uložení jako projekt",
+      "content": "Hotový diagram uložte jako znovupoužitelný obrázkový projekt, který se objeví na domovské obrazovce."
+    },
+    "download": {
+      "title": "Stažení",
+      "content": "Stáhněte zkompilovaný diagram jako soubor PNG, aniž byste jej ukládali jako projekt."
+    }
+  }
+}

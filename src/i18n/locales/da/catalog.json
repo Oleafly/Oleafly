@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Tom",
+    "diagramsAndFigures": "Diagrammer og figurer",
+    "cvsAndResumes": "CV'er og resuméer",
+    "journalsAndConferences": "Tidsskrifter og konferencer",
+    "bibliographies": "Litteraturlister",
+    "assignments": "Opgaver",
+    "thesesAndReports": "Afhandlinger og rapporter",
+    "books": "Bøger",
+    "presentations": "Præsentationer",
+    "posters": "Plakater",
+    "newsletters": "Nyhedsbreve",
+    "calendars": "Kalendere",
+    "letters": "Breve",
+    "aiGenerated": "AI-genereret"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "CV",
+    "diagramsAndFigures": "Diagrammer",
+    "journalsAndConferences": "Tidsskrifter"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "En varm humanistisk sans-serif, som mange moderne CV-skabeloner bruger."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "En ren, neutral sans-serif, der læses godt både på skærm og på tryk."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "En forfinet transitional serif, der passer godt til akademiske og formelle dokumenter."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Pakke til akademisk skrivning",
+      "description": "Forsknings- og bevillingsansøgninger, litteraturoversigter, motiverede ansøgninger, anbefalingsbreve, hvidbøger og afhandlinger."
+    },
+    "beamer-themes": {
+      "label": "Samling af Beamer-temaer",
+      "description": "Beamer-præsentationer med temaerne Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla og Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Forretningsdokumenter",
+      "description": "Fakturaer, notater, mødereferater, forretningsplaner og rapporter, certifikater og en trefløjet brochure."
+    },
+    "conference-preprints": {
+      "label": "Preprint-stile til konferencer",
+      "description": "Preprints i stil med NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv og Interspeech."
+    },
+    "coursework": {
+      "label": "Pakke til kursusopgaver",
+      "description": "Hjemmeopgaver, opgaveark, quizzer, bedømmelseskriterier, forelæsningsnoter, studieplaner, matematiske opslagsark, eksamensopgaver og pseudokodebeskrivelser."
+    },
+    "creative-misc": {
+      "label": "Kreativt og diverse",
+      "description": "Kogebøger, invitationer, RPG-karakterark, en årskalender, tabel- og TikZ-gallerier samt feltnoter."
+    },
+    "cv-collection": {
+      "label": "Samling af CV-stile",
+      "description": "CV'er i stil med ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds og Jake's."
+    },
+    "reports-lab": {
+      "label": "Laboratorierapporter og tekniske rapporter",
+      "description": "Laboratorierapporter, videnskabelige og tekniske rapporter, projekt- og praktikrapporter samt en årsrapport."
+    },
+    "resume-plus": {
+      "label": "Udvidelse med flere CV'er",
+      "description": "Tospaltet tech-CV, minimalistisk CV, langt akademisk CV, ansøgning og et CV i Typst."
+    },
+    "slides-posters": {
+      "label": "Slides og plakater",
+      "description": "Metropolis-præsentation i beamer, tikzposter i stående og liggende format samt et better-poster-layout."
+    },
+    "venue-classes": {
+      "label": "Dokumentklasser til tidsskrifter og konferencer",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf og Typst-startskabeloner til tidsskrifter."
+    }
+  }
+}

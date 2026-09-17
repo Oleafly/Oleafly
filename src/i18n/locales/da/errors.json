@@ -1,0 +1,31 @@
+{
+  "unknown": "Noget gik galt. Se app-loggen for detaljer.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "Projektnavnet må ikke være tomt.",
+    "name_conflict": "Der findes allerede et projekt, der hedder {{name}}.",
+    "folder_unavailable": "Kunne ikke reservere en ny projektmappe."
+  },
+  "settings": {
+    "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."
+  },
+  "literature": {
+    "query_empty": "Søgeteksten må ikke være tom.",
+    "query_too_long": "Søgeteksten er for lang (højst {{max}} tegn).",
+    "unknown_source": "Ukendt litteraturkilde."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX har ingen {{name}}-binærfil, der passer til denne vært.",
+    "package_operation_timeout": "Pakkehandlingen overskred grænsen på {{span}} og blev stoppet, så du kan kompilere igen. TeX Live-spejlet er sandsynligvis optaget. Prøv igen senere, eller kør tlmgr selv."
+  },
+  "github": {
+    "sign_in_expired": "Loginkoden er udløbet. Prøv igen.",
+    "sign_in_cancelled": "GitHub-godkendelsen blev annulleret.",
+    "sign_in_failed": "Login på GitHub mislykkedes.",
+    "repositories_unavailable": "Kunne ikke indlæse repositories.",
+    "create_repo_failed": "Kunne ikke oprette repositoryet ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "Fuld adgang blev ikke aktiveret."
+  }
+}

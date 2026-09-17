@@ -29,6 +29,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `\begin{alignat}` arrives as `\begin{alignat}{2}`. The same goes for
   `array`, `tabularx`, `minipage`, `thebibliography`, `list`, `picture` and
   several others.
+- The visual editor renders math, footnotes, theorem-like environments,
+  coloured text, figures and tables in place instead of showing raw LaTeX
+  blocks. Click a formula to edit its source, with a live preview. Sectioning
+  commands from `\part` to `\subparagraph`, starred headings and short titles
+  round-trip exactly.
+- Paste formatted text, a LaTeX snippet or an image into the visual editor.
+  Rich text becomes bold, italic, lists and tables; an image is saved into the
+  project and inserted as a figure with the caption ready to type. Image
+  paste works in the source editor too, where it inserts the figure snippet.
+- Insert figure opens a dialog in both editors to choose or import an image
+  and set its width, caption and label.
+- Tables inserted from the size picker get a floating toolbar for rows,
+  columns, alignment, border styles including booktabs, captions, labels,
+  header rows and merged cells.
+- BibTeX files now edit like the rest of the project. Typing `@` at the start
+  of a line offers the entry types and writes the whole entry out, a line per
+  required field, with the caret in the key. Field names complete from the
+  fields that entry type takes. The checks run while you type rather than
+  waiting for the project index, so a missing required field, an unknown
+  entry type, a repeated field or a year that is not four digits shows up
+  straight away. `\bibliographystyle{` completes the usual styles, including
+  `plain`, `unsrt`, `plainnat`, `IEEEtran` and the REVTeX families.
+- Generated or hand-tuned source can opt out of the syntax check.
+  `%novalidate` alone on a comment line silences the LaTeX check for the
+  file, and `%begin novalidate` with `%end novalidate` silences a region: the
+  text inside is not read, so an environment opened in there is never
+  reported as unclosed. `.bib` files use `%%novalidate` for the same thing.
+  Compile errors, spelling and grammar checking are untouched.
+- The source editor can run Emacs keybindings as well as Vim. Settings >
+  Appearance > Editor now offers Default, Vim or Emacs. In Emacs mode `C-s`
+  and `C-r` open the search panel, `C-x C-s` saves, `C-a` and `C-e` move to
+  the ends of the visual line, and `C-k` kills to the end of it.
+- Editor appearance also has tab size (2, 4 or 8), line height (compact,
+  normal or wide), and a switch for wrapping long lines.
+- Case change, duplicate line or selection, delete line, add cursor above or
+  below, go to line and toggle comment now have default keys. The case,
+  duplicate and delete commands are in the command palette too.
+- Settings > Shortcuts > Editor lets you remap those editor keys. Record a new
+  chord, clear one with Backspace, reset a row, or reset the section. A chord
+  an application shortcut already owns, or one the operating system reserves,
+  is refused with the reason. The shortcut reference lists whatever you set.
+- Spell checking in more than sixty languages. Five packs still ship with the
+  app; picking any other language downloads it once, checks it against its
+  published checksum, and keeps it so it works offline afterwards.
+- A spell-check language per project. Set it in the Project info panel to
+  override the app-wide dictionary for one project. The choice is stored with
+  the project and survives reopening.
+- A Dictionaries tab under Settings > Downloads: what you have downloaded,
+  how much space it uses, and a way to remove it.
+- The interface is available in nineteen more languages: German, French,
+  Spanish, Italian, Dutch, Brazilian Portuguese, Polish, Russian, Ukrainian,
+  Turkish, Czech, Danish, Swedish, Norwegian Bokmål, Finnish, Romanian,
+  Japanese, Korean and Traditional Chinese. Pick one under Settings > General,
+  or leave the setting on the system language. Plural forms follow each
+  language's own rules, and the installer speaks the same languages.
 
 ### Changed
 
@@ -41,6 +96,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Checking for local agents now shows progress immediately, keeps the current
   list in place during a refresh, and explains empty or failed checks. The
   citation fallback dialog is also wider, so BibTeX is easier to read.
+- The spelling dictionary list groups languages by name and shows which are
+  ready and which still need a download.
 
 ### Fixed
 
@@ -51,6 +108,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by reading the edition record and a search hit instead. Author names from
   OpenLibrary now land in BibTeX as written, so `Ian Goodfellow` no longer
   becomes `Ian, G.`.
+- Ctrl-/ in the source editor used to toggle the comment and open the
+  shortcut reference at once. It now only toggles the comment; anywhere else
+  it still opens the reference.
 
 ## [0.4.1] - 2026-09-12
 

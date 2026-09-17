@@ -1,0 +1,618 @@
+{
+  "accents": {
+    "blue": "Albastru",
+    "green": "Verde",
+    "orange": "Portocaliu",
+    "purple": "Violet",
+    "rose": "Trandafiriu",
+    "teal": "Verde-albăstrui"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Este nevoie de punte",
+      "cliMissing": "Instrumentul de linie de comandă nu a fost găsit",
+      "ready": "Pregătit",
+      "unavailable": "Indisponibil"
+    },
+    "requestFailed": "Cererea ACP nu a putut fi finalizată."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Acest proiect și-a atins bugetul AI de {{budget}}. Mărește sau șterge bugetul din Setări ca să continui.",
+    "warned": "Acest proiect a folosit {{spent}} din bugetul său AI de {{budget}}."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "S-a trecut la asistentul Oleafly pentru această acțiune."
+  },
+  "bibtex": {
+    "duplicateDoi": "DOI duplicat, comun cu: {{keys}}",
+    "duplicateKey": "Cheie de citare duplicată",
+    "invalidYear": "Anul „{{year}}” nu este un număr din patru cifre",
+    "missingField": "Lipsește un câmp obligatoriu: {{fields}}",
+    "missingKey": "Intrării de tip @{{type}} îi lipsește cheia de citare",
+    "unknownType": "Tip de intrare necunoscut @{{type}}",
+    "unreadableFields": "Nu s-au putut citi câmpurile intrării „{{entry}}”",
+    "unterminatedEntry": "Intrare neterminată în apropierea caracterului {{position}}",
+    "unusualField": "Câmp neobișnuit pentru @{{type}}: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} s-a schimbat în timpul importului de citări. Încearcă din nou.",
+    "noArxivEntry": "Nu s-a găsit nicio intrare arXiv.",
+    "noReferences": "Fișierul acela nu conține referințe.",
+    "offline": "Căutarea de citări are nevoie de rețea. Dezactivează modul offline din Setări.",
+    "parseFailed": "Citarea nu a putut fi interpretată.",
+    "projectChanged": "Proiectul s-a schimbat în timpul importului de citări.",
+    "projectChangedNotInserted": "Proiectul s-a schimbat în timpul importului de citări. Citarea nu a fost inserată.",
+    "projectChangedRetry": "Proiectul s-a schimbat în timpul importului de citări. Încearcă din nou în proiectul original.",
+    "readFailed": "Nu s-a putut citi {{path}}: {{detail}}",
+    "unrecognizedFile": "Tip de fișier nerecunoscut: {{name}}",
+    "writeFailed": "Nu s-a putut scrie {{path}}: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Intrarea Oleafly a fost adăugată în {{path}}. Citeaz-o cu {{markup}}.",
+    "failed": "Citarea Oleafly nu a putut fi adăugată. Copiaz-o în schimb din Setări, Ajutor și Despre.",
+    "present": "{{path}} are deja intrarea Oleafly. Citeaz-o cu {{markup}}.",
+    "undo": "Anulează"
+  },
+  "compatibility": {
+    "biblatexBiber": "Acest proiect folosește biblatex/Biber pentru bibliografie.",
+    "blockerFinding_one": "{{title}}",
+    "blockerFinding_few": "{{title}} (încă {{more}})",
+    "blockerFinding_other": "{{title}} (încă {{more}})",
+    "chooseEngine": "Alege motorul…",
+    "importNotes_one": "{{count}} observație la import: {{title}}",
+    "importNotes_few": "{{count}} observații la import: {{title}} (încă {{more}})",
+    "importNotes_other": "{{count}} de observații la import: {{title}} (încă {{more}})"
+  },
+  "compile": {
+    "engineNotLoaded": "Compilarea este dezactivată până când se încarcă motorul de documente.",
+    "noOfflineMode": "{{engine}} nu oferă un mod de compilare offline. Se compilează normal.",
+    "retry": "Compilează din nou"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Mută în Coșul de reciclare fiecare proiect de dezvoltare. Nimic nu se șterge definitiv.",
+        "title": "Golește proiectele"
+      },
+      "replayFirstRun": {
+        "description": "Resetează fiecare tur, închide proiectul curent și revino la fluxul de bun venit.",
+        "title": "Reia prima pornire"
+      },
+      "resetAndSeed": {
+        "description": "Mută proiectele curente în Coșul de reciclare, apoi copiază toate cele {{count}} proiecte de test reale fixate din cache-ul local.",
+        "title": "Resetează și populează"
+      },
+      "resetUiState": {
+        "description": "Șterge setările locale Oleafly și starea de interfață salvată, fără să ștergi proiecte.",
+        "title": "Resetează starea interfeței"
+      },
+      "seedCorpus": {
+        "action": "Populează corpusul",
+        "description": "Copiază {{count}} proiecte de cercetare din ~/Codespace/Oleafly/oleafly-seed. Lucrări, teze, cărți, prezentări, postere și figuri în LaTeX și Typst, fiecare verificată că se compilează cu motoarele incluse. Proiectele de test existente sunt păstrate.",
+        "title": "Populează corpusul de cercetare"
+      }
+    },
+    "closeProjectFailed": "Proiectul deschis nu a putut fi închis în siguranță.",
+    "confirm": {
+      "clearProjects": {
+        "action": "Golește proiectele",
+        "description": "Fiecare proiect din biblioteca izolată de dezvoltare ajunge în Coșul ei de reciclare. Biblioteca ta Oleafly de producție nu este atinsă.",
+        "title": "Golești toate proiectele de dezvoltare?"
+      },
+      "fallbackTitle": "Confirmă acțiunea de dezvoltare",
+      "resetAndSeed": {
+        "action": "Resetează și populează",
+        "description": "Fiecare proiect curent de dezvoltare ajunge în Coșul de reciclare, apoi Oleafly copiază {{count}} proiecte de test de cercetare din cache-ul local oleafly-seed.",
+        "title": "Resetezi și populezi biblioteca de dezvoltare?"
+      },
+      "resetBrowser": {
+        "action": "Resetează starea interfeței",
+        "description": "Se șterg setările Oleafly, tururile și restul stării de browser pentru această origine de dezvoltare, apoi aplicația se reîncarcă. Fișierele proiectelor rămân pe disc.",
+        "title": "Resetezi starea interfeței de dezvoltare?"
+      }
+    },
+    "debugOnly": {
+      "description": "Aceste comenzi se încarcă doar în versiunea de dezvoltare Vite. Versiunile de producție resping acest modul dacă marcajul lui apare în vreun fișier generat.",
+      "title": "Doar în versiunea de depanare"
+    },
+    "library": {
+      "checking": "Se verifică calea bibliotecii…",
+      "label": "Bibliotecă de dezvoltare",
+      "locked": "Comenzile pentru proiecte sunt blocate fiindcă acesta nu este spațiul izolat .oleafly-dev."
+    },
+    "nav": "Dezvoltator",
+    "projectsRecycled_one": "{{count}} proiect a fost mutat în Coșul de reciclare.",
+    "projectsRecycled_few": "{{count}} proiecte au fost mutate în Coșul de reciclare.",
+    "projectsRecycled_other": "{{count}} de proiecte au fost mutate în Coșul de reciclare.",
+    "replayFailed": "Turul de primă pornire nu a putut fi resetat.",
+    "resetAndSeedSummary": "S-au mutat {{removed}} proiecte în Coșul de reciclare și s-a populat corpusul de cercetare: {{created}} create, {{skipped}} deja prezente.",
+    "resetFailed": "Spațiul izolat de dezvoltare nu a putut fi resetat.",
+    "sandboxOnly": "Proiectele de test de cercetare pot fi copiate doar în spațiul izolat .oleafly-dev.",
+    "seedFailed": "Corpusul de cercetare nu a putut fi populat.",
+    "seedFailures_one": "{{summary}} {{count}} proiect de test a eșuat. Primul eșec: {{name}}: {{message}}",
+    "seedFailures_few": "{{summary}} {{count}} proiecte de test au eșuat. Primul eșec: {{name}}: {{message}}",
+    "seedFailures_other": "{{summary}} {{count}} de proiecte de test au eșuat. Primul eșec: {{name}}: {{message}}",
+    "seedSummary": "Corpusul de cercetare a fost populat: {{created}} create, {{skipped}} deja prezente.",
+    "unknownSeedError": "Eroare necunoscută la populare"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "Imagine PNG",
+      "zipArchive": "Arhivă Zip"
+    }
+  },
+  "dictionary": {
+    "full": "Dicționarul tău este plin, așa că acel cuvânt este doar ascuns în documentul de față. Elimină unul din Setări ca să îl poți salva.",
+    "wordTooLong": "Este prea lung ca să fie salvat drept cuvânt, așa că este doar ascuns în documentul de față. Un cuvânt poate avea cel mult {{max}} de caractere."
+  },
+  "documentScan": {
+    "complete": "Scanare finalizată",
+    "failed": "Scanarea documentului a eșuat",
+    "processed": "S-au procesat {{current}}/{{total}} paragrafe…",
+    "processing": "Se procesează {{current}}/{{total}} paragrafe…",
+    "skippedEmpty": "S-a sărit o interogare goală ({{current}}/{{total}})",
+    "splitting": "Se împarte documentul în paragrafe…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "Detaliile motorului de documente nu au putut fi încărcate. Acțiunile specifice motorului sunt dezactivate.",
+      "renameReloadFailed": "Detaliile motorului de documente nu au putut fi încărcate după redenumirea documentului principal.",
+      "stillLoading": "Detaliile motorului de documente încă se încarcă."
+    }
+  },
+  "export": {
+    "pdfFailed": "PDF-ul nu a putut fi salvat",
+    "pdfFailedDetail": "PDF-ul nu a putut fi salvat: {{detail}}",
+    "pngFailed": "Fișierul PNG nu a putut fi salvat",
+    "pngFailedDetail": "Fișierul PNG nu a putut fi salvat: {{detail}}",
+    "revealFailed": "Fișierul a fost salvat, dar Oleafly nu a putut deschide folderul lui (permisiune refuzată). Verifică locul pe care l-ai ales în fereastra de salvare.",
+    "saved": "{{kind}} salvat · {{fileName}}",
+    "showInFolder": "Arată în folder"
+  },
+  "externalChange": {
+    "deletionRestored": "O ștergere din exterior s-a suprapus peste modificări nesalvate. Modificările tale locale au fost restabilite.",
+    "localEditKept": "O modificare din exterior asupra „{{path}}” a sosit în timp ce aveai modificări nesalvate. Modificarea ta locală a fost păstrată.",
+    "persistExternalFailed": "Cea mai recentă actualizare externă a „{{path}}” nu a putut fi salvată.",
+    "preserveLocalFailed": "Actualizarea ta locală a „{{path}}” nu a putut fi păstrată.",
+    "reloadFailed": "Setările proiectului au fost actualizate, dar unele fișiere modificate nu au putut fi reîncărcate.",
+    "restoreLocalFailed": "Actualizarea ta nesalvată a „{{path}}” nu a putut fi restabilită."
+  },
+  "fonts": {
+    "systemDefault": "Fontul implicit al sistemului",
+    "terminalDefault": "Fontul implicit al terminalului"
+  },
+  "imageToLatex": {
+    "failed": "Conversia din imagine în LaTeX a eșuat: {{detail}}",
+    "inserted": "S-a inserat cod LaTeX din imagine",
+    "transcribing": "Se transcrie imaginea…"
+  },
+  "import": {
+    "arxivImported": "Sursa de pe arXiv a fost importată. Compilează proiectul ca să verifici rezultatul.",
+    "chooseOfferedProjectType": "Alege unul dintre tipurile de proiect oferite pentru acest fișier.",
+    "invalidArxivId": "Lipește un link către o lucrare arXiv sau un identificator precum 2301.01234.",
+    "supportedDocumentTypes": "Alege unul dintre tipurile de documente acceptate.",
+    "conversionNotice": "Am convertit conținutul tău în LaTeX. Ar putea fi nevoie să ajustezi stilul, mai ales la tabele, figuri și citări.",
+    "figureSaved": "S-a salvat {{name}}",
+    "pdfProjectCreated": "Proiect creat din PDF. Verifică reconstrucția înainte să te bazezi pe ea.",
+    "pickPdfOrDocx": "Alege un fișier .pdf sau .docx",
+    "texSaved": "Fișierul .tex a fost salvat",
+    "unsupportedFile": "Alege un fișier .zip, .docx, .md sau .markdown.",
+    "zipSaveFailed": "Arhiva ZIP nu a putut fi salvată.",
+    "zipSaved": "Arhiva .zip a fost salvată"
+  },
+  "inlineAi": {
+    "concise": "Fă mai concis",
+    "expand": "Dezvoltă",
+    "fixSource": "Repară sursa",
+    "grammar": "Corectează gramatica",
+    "improve": "Îmbunătățește",
+    "translate": "Tradu"
+  },
+  "intelligence": {
+    "analysisFailed": "Analiza proiectului pentru revizia curentă a eșuat.",
+    "analyzing": "Inteligența de proiect analizează revizia curentă.",
+    "couldNotSend": "Analiza proiectului nu a putut fi trimisă către procesul de lucru.",
+    "disposed": "Procesul de inteligență de proiect este oprit.",
+    "disposedDuringRequest": "Procesul de inteligență de proiect s-a oprit.",
+    "failed": "Inteligența de proiect a eșuat.",
+    "identityMismatch": "Identitatea răspunsului de inteligență de proiect nu corespunde cererii lui.",
+    "malformedResponse": "Procesul de inteligență de proiect a returnat un răspuns greșit formatat.",
+    "malformedSnapshotIdentity": "Identitatea instantaneului de inteligență de proiect era greșit formatată.",
+    "noProject": "Niciun proiect nu este activ.",
+    "partialFiles_one": "{{count}} fișier a produs o analiză parțială recuperabilă.",
+    "partialFiles_few": "{{count}} fișiere au produs o analiză parțială recuperabilă.",
+    "partialFiles_other": "{{count}} de fișiere au produs o analiză parțială recuperabilă.",
+    "retainedStale": "Conținutul proiectului s-a schimbat. Analiza păstrată este învechită cât rulează revizia curentă.",
+    "sourceGraphRefreshing": "Fișierele proiectului s-au schimbat. Graful surselor se reîmprospătează.",
+    "sourceSnapshotsLoading": "Fișierele proiectului s-au schimbat. Se încarcă instantanee ale surselor pentru analiza curentă.",
+    "staleSnapshot": "Procesul de inteligență de proiect nu mai păstrează nicio analiză pentru acest instantaneu.",
+    "stopped": "Inteligența de proiect este oprită.",
+    "timedOut": "Inteligența de proiect a depășit timpul de așteptare.",
+    "typeMismatch": "Tipul răspunsului de inteligență de proiect nu corespunde cererii lui.",
+    "unexpectedResponse": "Procesul de inteligență de proiect a returnat un răspuns neașteptat.",
+    "workerFailed": "Procesul de inteligență de proiect a eșuat.",
+    "workerRestarted": "Procesul de inteligență de proiect a fost repornit după o depășire de timp.",
+    "workerUnavailable": "Procesul de inteligență de proiect nu este disponibil."
+  },
+  "latexPackages": {
+    "algorithm2e": "Tehnoredactarea algoritmilor",
+    "amsmath": "Tehnoredactare matematică avansată",
+    "amssymb": "Simboluri matematice suplimentare",
+    "amsthm": "Medii pentru teoreme și demonstrații",
+    "array": "Extinderea mediilor array și tabular",
+    "authblk": "Blocuri de autori și afilieri",
+    "babel": "Suport multilingv și limba documentului",
+    "biblatex": "Suport avansat pentru bibliografie",
+    "bookmark": "Semne de carte PDF îmbunătățite",
+    "booktabs": "Linii de tabel de calitate profesională",
+    "caption": "Personalizarea legendelor",
+    "cleveref": "Referințe încrucișate inteligente (se încarcă după hyperref)",
+    "csquotes": "Ghilimele sensibile la context (necesar pentru biblatex)",
+    "enumitem": "Personalizarea listelor",
+    "fancyhdr": "Antete și subsoluri personalizate",
+    "float": "Plasare îmbunătățită a elementelor flotante",
+    "fontspec": "Alegerea fonturilor OpenType (Xe/LuaLaTeX)",
+    "geometry": "Personalizarea aspectului paginii",
+    "graphicx": "Includerea graficelor și a imaginilor",
+    "hyperref": "Hiperlegături, semne de carte și metadate PDF",
+    "inputenc": "Codificarea intrării (inutil în Xe/LuaLaTeX)",
+    "lineno": "Numerotarea liniilor pentru copiile de recenzie",
+    "lipsum": "Text de umplutură (lorem ipsum)",
+    "listings": "Listinguri de cod (conținutul lor nu este etichetat)",
+    "mathtools": "Supraset al amsmath, cu corecturi și unelte",
+    "microtype": "Rafinamente de microtipografie",
+    "minted": "Listinguri de cod colorate cu Pygments",
+    "multirow": "Celule de tabel întinse pe mai multe rânduri",
+    "natbib": "Citări autor-an și numerice",
+    "parskip": "Spațierea paragrafelor",
+    "pdfpages": "Includerea de pagini întregi din alt PDF",
+    "setspace": "Controlul spațierii dintre linii",
+    "siunitx": "Unități SI și formatarea numerelor",
+    "subcaption": "Subfiguri și subtabele",
+    "subfig": "Pachet mai vechi pentru aranjarea subfigurilor",
+    "tabularx": "Tabele cu lățime automată",
+    "threeparttable": "Tabele cu note dedesubt",
+    "tikz": "Grafică vectorială programabilă (necesită text alternativ scris manual)",
+    "titlesec": "Formatarea titlurilor de secțiune",
+    "todonotes": "Note de lucru pe margine, pentru ciorne",
+    "unicode-math": "Matematică Unicode pentru Xe/LuaLaTeX (necesară pentru matematică etichetată)",
+    "url": "Tehnoredactarea adreselor URL",
+    "wrapfig": "Figuri cu text în jurul lor",
+    "xcolor": "Suport pentru culori"
+  },
+  "literatureSources": {
+    "arxiv": "Peste 2,4 milioane de preprinturi din fizică, matematică, informatică, biologie cantitativă și domenii înrudite.",
+    "crossref": "Registrul DOI, cu metadate pentru peste 150 de milioane de rezultate ale cercetării.",
+    "googleScholar": "Rezultate Google Scholar prin Serper. Necesită o cheie API Serper în Setări → Integrări → Căutare de citări.",
+    "openalex": "Un catalog deschis de lucrări științifice, autori, surse, instituții, subiecte, editori și finanțatori.",
+    "pubmed": "Peste 40 de milioane de citări și rezumate din literatura biomedicală și din științele vieții, inclusiv MEDLINE.",
+    "semanticScholar": "Un index științific cu grafuri de citare, date despre citările influente și rezumate TLDR.",
+    "uspto": "Brevete acordate în Statele Unite și cereri publicate, pentru stadiul tehnicii și cercetare aplicată. Căutarea este suspendată pe durata migrării PatentsView.",
+    "usptoPaused": "USPTO a suspendat temporar interfețele API de căutare PatentsView pe durata migrării către Open Data Portal.",
+    "yearRangeInvalid": "Anul de început nu poate fi după anul de sfârșit."
+  },
+  "mcp": {
+    "openProjectSummary": "Deschide proiectul {{id}}",
+    "useToolSummary": "Folosește {{tool}} de pe serverul MCP {{server}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "Serverul MCP „{{name}}” are declarații contradictorii de tip și de transport.",
+    "exactlyOneServer": "Fișierul JSON al serverului MCP trebuie să conțină exact un server.",
+    "fieldBoolean": "Câmpul „{{field}}” al serverului MCP „{{name}}” trebuie să fie boolean.",
+    "fieldString": "Câmpul „{{field}}” al serverului MCP „{{name}}” trebuie să fie un șir de caractere.",
+    "fieldStringArray": "Câmpul „{{field}}” al serverului MCP „{{name}}” trebuie să fie o listă de șiruri de caractere.",
+    "fieldStringRecord": "Câmpul „{{field}}” al serverului MCP „{{name}}” trebuie să fie un obiect cu valori de tip șir de caractere.",
+    "jsonMalformed": "Fișierul JSON al serverului MCP este greșit formatat.",
+    "jsonNotObject": "Fișierul JSON al serverului MCP trebuie să fie un obiect.",
+    "mcpServersNotObject": "Câmpul „mcpServers” din JSON-ul serverului MCP trebuie să fie un obiect.",
+    "serverNotObject": "Serverul MCP „{{name}}” trebuie să fie un obiect.",
+    "structural": "{{detail}} Se aștepta fie {\"server-name\": {...}}, fie {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Server necunoscut",
+    "unsupportedTransport": "Serverul MCP „{{name}}” folosește transportul neacceptat „{{transport}}”.",
+    "unsupportedType": "Serverul MCP „{{name}}” are tipul neacceptat „{{type}}”."
+  },
+  "mermaid": {
+    "diagram": "Diagramă",
+    "renderFailed": "Diagrama nu a putut fi randată.",
+    "rendering": "Se randează diagrama"
+  },
+  "missingPackages": {
+    "action_one": "Găsește și instalează {{name}}",
+    "action_few": "Găsește și instalează {{count}} fișiere",
+    "action_other": "Găsește și instalează {{count}} de fișiere",
+    "installing_one": "Se instalează {{name}}. Compilarea repornește la final.",
+    "installing_few": "Se instalează {{count}} pachete. Compilarea repornește la final.",
+    "installing_other": "Se instalează {{count}} de pachete. Compilarea repornește la final.",
+    "summary_one": "Compilarea nu a găsit „{{name}}”. Caută în TeX Live pachetul care îl oferă.",
+    "summary_few": "Compilarea nu a găsit {{names}}. Caută în TeX Live pachetele lor.",
+    "summary_other": "Compilarea nu a găsit {{names}}. Caută în TeX Live pachetele lor."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "Fereastră de context de {{tokens}} tokenuri",
+      "deprecated": {
+        "label": "Învechit",
+        "title": "Furnizorul a declarat acest model învechit"
+      },
+      "reasoning": {
+        "label": "Raționament",
+        "title": "Model cu raționament"
+      },
+      "tools": {
+        "label": "Instrumente",
+        "title": "Poate apela instrumente"
+      },
+      "vision": {
+        "label": "Viziune",
+        "title": "Acceptă imagini"
+      }
+    },
+    "listChange": {
+      "none": "Nicio modificare",
+      "summary": "{{added}} adăugate, {{removed}} eliminate"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "Analiza referințelor din proiect nu este disponibilă.",
+    "analysisUpdating": "Referințele proiectului se actualizează.",
+    "definitionsFor": "Definiții pentru {{name}}",
+    "edits_one": "{{count}} modificare",
+    "edits_few": "{{count}} modificări",
+    "edits_other": "{{count}} de modificări",
+    "files_one": "{{count}} fișier",
+    "files_few": "{{count}} fișiere",
+    "files_other": "{{count}} de fișiere",
+    "nameExists": "„{{name}}” există deja.",
+    "noDefinition": "Nu s-a găsit nicio definiție pentru „{{name}}”",
+    "noReferences": "Nicio referință la „{{name}}”",
+    "notRenamable": "Acest simbol nu poate fi redenumit.",
+    "nothingToRename": "Nu este nimic de redenumit.",
+    "referencesFor": "Referințe la {{name}}",
+    "renamePartial": "Redenumit în „{{name}}” în {{edited}} din {{total}} fișiere. Nu s-a putut scrie {{files}}.",
+    "renamed": "Redenumit în „{{name}}” ($t(core:navigation.edits, {\"count\": {{edits}} }) în $t(core:navigation.files, {\"count\": {{files}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "Pandoc nu a putut fi descărcat. Instalează-l manual, apoi încearcă din nou",
+    "downloadingPercent": "Se descarcă pandoc… {{progress}}%",
+    "downloadingSize": "Se descarcă pandoc… {{megabytes}} MB",
+    "installGuide": "Ghid de instalare",
+    "installed": "pandoc a fost instalat"
+  },
+  "project": {
+    "copyFailed": "„{{path}}” nu a putut fi copiat.",
+    "dateUnavailable": "Indisponibil",
+    "importFailed": "Importul nu a reușit. Consultă jurnalul aplicației pentru detalii.",
+    "imported": "Proiect importat.",
+    "openFailed": "Proiectul nu a putut fi deschis. Consultă jurnalul aplicației pentru detalii.",
+    "restoringUnsavedFiles": "O actualizare a proiectului a înlăturat fișiere cu modificări nesalvate. Oleafly ți-a păstrat modificările și restabilește acele fișiere.",
+    "saveBlockedClose": "Proiectul a rămas deschis fiindcă unul sau mai multe fișiere nu au putut fi salvate.",
+    "saveBlockedDiscard": "Renunță la modificări și ieși",
+    "saveBlockedMany": "{{count}} fișiere nu au putut fi salvate: {{files}}. Primul este deschis în editor, cu modificările lui nesalvate ({{reason}}). Rămâi ca să rezolvi problema sau renunță la modificările nesalvate din acele fișiere și ieși.",
+    "saveBlockedOne": "{{file}} nu a putut fi salvat ({{reason}}). Este deschis în editor, cu modificările tale nesalvate. Rămâi ca să rezolvi problema sau renunță la acele modificări și ieși.",
+    "saveBlockedStay": "Rămâi",
+    "saveBlockedSwitch": "Proiectul a rămas deschis fiindcă unul sau mai multe fișiere nu au putut fi salvate.",
+    "saveBlockedTitle": "Unele fișiere nu au putut fi salvate",
+    "updatedDaysAgo_one": "Actualizat acum {{count}} zi",
+    "updatedDaysAgo_few": "Actualizat acum {{count}} zile",
+    "updatedDaysAgo_other": "Actualizat acum {{count}} de zile",
+    "updatedOn": "Actualizat la {{date}}",
+    "updatedToday": "Actualizat astăzi",
+    "updatedYesterday": "Actualizat ieri"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Analiza a eșuat: {{message}}",
+    "beginIsHere": "{{command}} este aici.",
+    "beginWithoutEnd": "{{command}} nu are un \\end corespunzător.",
+    "bibliographyFileMissing": "Fișierul de bibliografie „{{file}}” nu a fost găsit în proiect.",
+    "citationHasManyDefinitions_one": "Citarea „{{name}}” are {{count}} definiție posibilă.",
+    "citationHasManyDefinitions_few": "Citarea „{{name}}” are {{count}} definiții posibile.",
+    "citationHasManyDefinitions_other": "Citarea „{{name}}” are {{count}} de definiții posibile.",
+    "citationKeyDuplicated_one": "Cheia de citare „{{name}}” este definită de {{count}} dată.",
+    "citationKeyDuplicated_few": "Cheia de citare „{{name}}” este definită de {{count}} ori.",
+    "citationKeyDuplicated_other": "Cheia de citare „{{name}}” este definită de {{count}} de ori.",
+    "citationUnresolved": "Citarea „{{name}}” nu a putut fi rezolvată.",
+    "definedHere": "{{kind}} „{{name}}” este definit aici.",
+    "duplicateTargetDefined_one": "Ținta {{kind}} „{{name}}” este definită de {{count}} dată.",
+    "duplicateTargetDefined_few": "Ținta {{kind}} „{{name}}” este definită de {{count}} ori.",
+    "duplicateTargetDefined_other": "Ținta {{kind}} „{{name}}” este definită de {{count}} de ori.",
+    "endWithoutBegin": "{{command}} nu are un \\begin corespunzător.",
+    "entryMissingFieldList": "Intrarea bibliografică „{{key}}” nu are listă de câmpuri.",
+    "expectedEndBefore": "Se aștepta {{expected}} înainte de {{found}}.",
+    "fieldIncompleteValue": "Câmpul „{{name}}” are o valoare incompletă.",
+    "fieldMissingEquals": "Câmpului „{{name}}” îi lipsește semnul „=”.",
+    "fieldRepeated": "Câmpul „{{name}}” se repetă în intrarea bibliografică „{{key}}”.",
+    "fileNotLoaded": "Fișierul sursă nu a fost încărcat pentru analiza curentă a proiectului.",
+    "fileUnreadable": "Fișierul nu a putut fi citit.",
+    "incompleteEntry": "Intrare @{{type}} incompletă.",
+    "invalidYear": "Anul „{{year}}” nu este un an BibTeX din patru cifre.",
+    "kinds": {
+      "anchor": "ancora",
+      "asset": "resursa",
+      "bibentry": "intrarea bibliografică",
+      "bibliography": "bibliografia",
+      "environment": "mediul",
+      "file": "fișierul",
+      "glossary": "intrarea de glosar",
+      "import": "importul",
+      "include": "includerea",
+      "label": "eticheta",
+      "link": "legătura",
+      "macro": "macroul",
+      "section": "secțiunea"
+    },
+    "malformedDirective": "Directivă sau tip de intrare BibTeX greșit formatat.",
+    "missingCitationKey": "@{{type}} nu are cheie de citare.",
+    "missingRequiredField": "{{entry}} nu are câmpul obligatoriu {{fields}}.",
+    "possibleTarget": "Țintă posibilă: {{file}}",
+    "projectFileUnreadable": "Fișierul proiectului nu a putut fi citit.",
+    "referenceHasManyDefinitions_one": "Referința „{{name}}” are {{count}} definiție posibilă.",
+    "referenceHasManyDefinitions_few": "Referința „{{name}}” are {{count}} definiții posibile.",
+    "referenceHasManyDefinitions_other": "Referința „{{name}}” are {{count}} de definiții posibile.",
+    "referenceUnresolved": "Referința „{{name}}” nu a putut fi rezolvată.",
+    "targetMatchesManyFiles_one": "Ținta {{kind}} „{{target}}” corespunde cu {{count}} fișier din proiect.",
+    "targetMatchesManyFiles_few": "Ținta {{kind}} „{{target}}” corespunde cu {{count}} fișiere din proiect.",
+    "targetMatchesManyFiles_other": "Ținta {{kind}} „{{target}}” corespunde cu {{count}} de fișiere din proiect.",
+    "targetUnresolved": "Ținta {{kind}} „{{target}}” nu a putut fi rezolvată.",
+    "typeDelimiterExpected": "După @{{type}} trebuie să urmeze o acoladă sau o paranteză deschisă.",
+    "unclosedDelimiter": "Delimitatorul „{{char}}” nu este închis cu „{{expected}}”.",
+    "unclosedDirective": "Directiva @{{type}} nu este închisă.",
+    "unclosedEntry": "Intrarea @{{type}} nu este închisă.",
+    "unclosedEntryNamed": "Intrarea bibliografică „{{key}}” nu este închisă.",
+    "unclosedFence": "Blocul de cod delimitat nu este închis.",
+    "unclosedFrontMatter": "Antetul YAML nu este închis.",
+    "unclosedString": "Șirul de caractere nu este închis.",
+    "unclosedTypstComment": "Comentariul de bloc Typst nu este închis.",
+    "unexpectedClosingDelimiter": "Delimitator de închidere neașteptat: „{{char}}”.",
+    "unknownEntryType": "Tip de intrare bibliografică necunoscut @{{type}}.",
+    "unparsableField": "Un câmp @{{type}} nu a putut fi interpretat.",
+    "unparsableFieldNamed": "Un câmp din „{{key}}” nu a putut fi interpretat."
+  },
+  "proofreading": {
+    "cancelled": "Corectura a fost anulată.",
+    "couldNotStart": "Corectura offline nu a putut porni.",
+    "disposed": "Corectura offline a fost oprită.",
+    "invalidResponse": "Corectura offline a returnat un răspuns nevalid.",
+    "outOfRangeDiagnostic": "Corectura offline a returnat un diagnostic în afara intervalului.",
+    "postFailed": "Documentul nu a putut fi trimis către corectura offline.",
+    "restarted": "Corectura offline a repornit.",
+    "restartedAfterTimeout": "Corectura offline a repornit după o depășire de timp.",
+    "staleResponse": "Corectura offline a returnat un răspuns învechit.",
+    "stopped": "Corectura offline s-a oprit neașteptat.",
+    "superseded": "O cerere de corectură mai nouă a înlocuit-o pe aceasta.",
+    "timedOut": "Corectura offline a depășit timpul de așteptare și va reporni la următoarea modificare.",
+    "dictionaryUnavailable": "Dicționarul ortografic selectat nu este instalat. Descarcă-l din Setări."
+  },
+  "skillGroups": {
+    "shelf": "Raftul pe domenii",
+    "user": "Abilitățile tale"
+  },
+  "tagged": {
+    "compileFailed": "Compilarea cu etichetare a eșuat. Verifică motorul și încearcă din nou.",
+    "compiled": "PDF etichetat compilat. Vezi verdictul de accesibilitate mai jos.",
+    "compiledWithErrors": "Compilarea cu etichetare s-a încheiat cu erori. Verifică jurnalul.",
+    "engineRequired": "Activează întâi un motor cu etichetare din Setări, Motor LaTeX."
+  },
+  "terminal": {
+    "defaultTitle": "Terminalul {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Acest proiect a fost fixat cu {{pinned}}. Distribuției active {{local}} îi lipsesc {{count}} dintre pachetele lui, așa că se poate ca unele compilări să eșueze până când folosești din nou acea distribuție.",
+    "distributionSkew": "Acest proiect a fost fixat cu {{pinned}}, iar această mașină compilează cu {{local}}. Rezultatul poate diferi ușor.",
+    "installPinned_one": "Instalează-l",
+    "installPinned_few": "Instalează-le pe toate {{count}}",
+    "installPinned_other": "Instalează-le pe toate {{count}}",
+    "installingPinned_one": "Se instalează {{count}} pachet fixat…",
+    "installingPinned_few": "Se instalează {{count}} pachete fixate…",
+    "installingPinned_other": "Se instalează {{count}} de pachete fixate…",
+    "pinnedPackagesFailed": "Unele pachete fixate nu au putut fi instalate. Vezi Setări → Motor LaTeX.",
+    "pinnedPackagesInstalled": "Pachetele LaTeX fixate au fost instalate.",
+    "pinnedPackagesMissing_one": "Acest proiect fixează {{count}} pachet LaTeX care nu este instalat aici.",
+    "pinnedPackagesMissing_few": "Acest proiect fixează {{count}} pachete LaTeX care nu sunt instalate aici.",
+    "pinnedPackagesMissing_other": "Acest proiect fixează {{count}} de pachete LaTeX care nu sunt instalate aici."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "Codul CSS personalizat nu poate folosi reguli at, adrese URL sau selectori.",
+    "cssNotSimple": "Codul CSS personalizat trebuie să conțină declarații simple de proprietăți.",
+    "cssNotText": "Codul CSS personalizat trebuie să fie text.",
+    "cssPropertyNotAllowed": "Proprietate CSS personalizată nepermisă: {{property}}.",
+    "cssTooLarge": "Codul CSS personalizat depășește 64 KiB.",
+    "cssTooManyDeclarations": "Codul CSS personalizat poate conține cel mult 64 de declarații.",
+    "cssUnsafeValue": "Codul CSS personalizat conține o valoare nesigură.",
+    "customizationNotObject": "Personalizarea temei trebuie să fie un obiect.",
+    "dark": {
+      "notObject": "Variabilele CSS pentru tema întunecată trebuie să fie un obiect.",
+      "tooManyEntries": "Variabilele CSS pentru tema întunecată depășesc {{max}} de intrări."
+    },
+    "fileMissingCssVars": "Fișierul temei trebuie să includă cssVars cu intrări pentru tema deschisă și cea întunecată.",
+    "fileMissingModes": "Fișierul temei trebuie să includă variabile CSS pentru tema deschisă și cea întunecată.",
+    "fileNotJson": "Fișierul temei nu este JSON valid.",
+    "fileNotObject": "Fișierul temei trebuie să conțină un obiect.",
+    "fileNotText": "Fișierul temei trebuie să fie text.",
+    "fileTooLarge": "Fișierul temei depășește 128 KiB.",
+    "invalidColor": "Elementul de temă {{token}} are o valoare de culoare nevalidă.",
+    "invalidRadius": "Raza colțurilor trebuie exprimată în px, rem, em sau procente.",
+    "light": {
+      "notObject": "Variabilele CSS pentru tema deschisă trebuie să fie un obiect.",
+      "tooManyEntries": "Variabilele CSS pentru tema deschisă depășesc {{max}} de intrări."
+    },
+    "tokens": {
+      "notObject": "Elementele temei trebuie să fie un obiect.",
+      "tooManyEntries": "Elementele temei depășesc {{max}} de intrări."
+    },
+    "unknownProperty": "necunoscută",
+    "unsupportedToken": "Element de temă neacceptat: {{token}}.",
+    "unsupportedVersion": "Acest fișier de temă folosește o versiune neacceptată."
+  },
+  "themes": {
+    "matchApp": "Urmează tema aplicației"
+  },
+  "tinytex": {
+    "installFailed": "TinyTeX nu a putut fi instalat.",
+    "installGuide": "Ghid de instalare",
+    "installed": "TinyTeX a fost instalat.",
+    "phase": {
+      "addingPackages": "Se adaugă pachete…",
+      "downloading": "Se descarcă…",
+      "downloadingPercent": "Se descarcă… {{progress}}%",
+      "installing": "Se instalează…",
+      "unpacking": "Se despachetează…"
+    },
+    "removeFailed": "TinyTeX nu a putut fi eliminat",
+    "removed": "TinyTeX a fost eliminat"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Citește lucrarea",
+      "alphaxivSearch": "Caută lucrări",
+      "compile": "Compilează documentul",
+      "getLog": "Citește jurnalul de compilare",
+      "insertFigure": "Inserează o figură",
+      "listFiles": "Listează fișierele proiectului",
+      "literatureSearch": "Caută în literatură",
+      "previewFigure": "Previzualizează figura",
+      "projectLibrarySearch": "Caută în sursele proiectului",
+      "projectMap": "Cartografiază proiectul",
+      "readFile": "Citește fișierul",
+      "readLinkedFile": "Citește fișierul asociat",
+      "readPdfText": "Citește PDF-ul compilat",
+      "readResearchRootFile": "Citește fișierul asociat",
+      "runCommand": "Rulează comanda",
+      "searchProject": "Caută în proiect",
+      "sendMessage": "Actualizează sarcina delegată",
+      "spawnAgent": "Pornește o sarcină delegată",
+      "verifyCitation": "Verifică citarea",
+      "verifyPdfPages": "Verifică paginile PDF",
+      "waitAgent": "Așteaptă sarcina delegată"
+    },
+    "skillsBudgetNotice": "Codex nu a putut lista toate abilitățile lui. Păstrează un buget de context de 2% pentru descrierile abilităților, așa că redu folderul de abilități sau cere o abilitate după nume.",
+    "status": {
+      "cancelled": "Oprit",
+      "declined": "Refuzat",
+      "done": "Gata",
+      "failed": "Eșuat",
+      "failedWithCode": "A eșuat cu codul de ieșire {{code}}",
+      "interrupted": "Întrerupt",
+      "running": "În curs",
+      "timedOut": "Timp expirat"
+    },
+    "summary": {
+      "citationUnverified": "Nu s-a găsit nicio înregistrare corespunzătoare",
+      "citationVerified": "Verificat de serviciul de citări",
+      "compileFailed": "Compilarea a eșuat",
+      "compileSucceeded": "Compilat cu succes",
+      "diagnostics_one": "{{count}} diagnostic",
+      "diagnostics_few": "{{count}} diagnostice",
+      "diagnostics_other": "{{count}} de diagnostice",
+      "papers_one": "{{count}} lucrare",
+      "papers_few": "{{count}} lucrări",
+      "papers_other": "{{count}} de lucrări"
+    }
+  },
+  "ui": {
+    "transparent": "Transparent"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Proiectul s-a schimbat în timpul salvării. Încearcă actualizarea din nou."
+  }
+}

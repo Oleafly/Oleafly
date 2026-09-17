@@ -1,0 +1,165 @@
+{
+  "citeOleafly": "Zacytuj Oleafly w tym artykule",
+  "empty": {
+    "citations": {
+      "detail": "Zaimportuj bibliotekę bibliograficzną albo dodaj cytowanie, aby zacząć.",
+      "title": "Nie ma jeszcze cytowań"
+    },
+    "symbols": {
+      "detail": "Nagłówki, etykiety, polecenia i środowiska pojawiają się tutaj w miarę pisania projektu.",
+      "title": "Nie ma jeszcze symboli"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filtruj cytowania",
+    "ariaLabelResults": "Filtruj wyniki",
+    "ariaLabelSymbols": "Filtruj symbole",
+    "clear": "Wyczyść filtr",
+    "noCitation": "Żadne cytowanie nie pasuje do „{{query}}”.",
+    "noResult": "Żaden wynik nie pasuje do „{{query}}”.",
+    "noSymbol": "Żaden symbol nie pasuje do „{{query}}”.",
+    "placeholderCitations": "Filtruj klucze, tytuły, autorów…",
+    "placeholderResults": "Filtruj lokalizacje…",
+    "placeholderSymbols": "Filtruj etykiety i polecenia…"
+  },
+  "import": {
+    "added_one": "Dodano {{count}} pozycję do {{target}}.",
+    "added_few": "Dodano {{count}} pozycje do {{target}}.",
+    "added_many": "Dodano {{count}} pozycji do {{target}}.",
+    "added_other": "Dodano {{count}} pozycji do {{target}}.",
+    "addedWithDuplicates_one": "Dodano {{count}} pozycję do {{target}}, {{duplicates}} już tam było.",
+    "addedWithDuplicates_few": "Dodano {{count}} pozycje do {{target}}, {{duplicates}} już tam było.",
+    "addedWithDuplicates_many": "Dodano {{count}} pozycji do {{target}}, {{duplicates}} już tam było.",
+    "addedWithDuplicates_other": "Dodano {{count}} pozycji do {{target}}, {{duplicates}} już tam było.",
+    "allDuplicates_one": "Ta pozycja jest już w {{target}}.",
+    "allDuplicates_few": "Te {{count}} pozycje są już w {{target}}.",
+    "allDuplicates_many": "Tych {{count}} pozycji jest już w {{target}}.",
+    "allDuplicates_other": "Tych {{count}} pozycji jest już w {{target}}.",
+    "defaultTarget": "bibliografii",
+    "description": "Dodaj do tego projektu pozycje z menedżera cytowań lub pliku bibliografii.",
+    "duplicateNote": "Pozycje z numerem DOI, który już jest w bibliografii, zostaną pominięte.",
+    "empty": "Nie znaleziono żadnych pozycji w tym pliku.",
+    "endnote": {
+      "button": "Wybierz plik XML, RIS lub BibTeX",
+      "description": "Wybierz plik EndNote XML, RIS lub BibTeX. Oleafly doda pozycje do bibliografii projektu.",
+      "title": "EndNote, RIS lub BibTeX"
+    },
+    "failed": "Nie udało się zaimportować tych pozycji.",
+    "nothingNew": "Nie ma nic nowego do dodania do {{target}}.",
+    "problems_one": "{{count}} problem podczas importu. {{details}}",
+    "problems_few": "{{count}} problemy podczas importu. {{details}}",
+    "problems_many": "{{count}} problemów podczas importu. {{details}}",
+    "problems_other": "{{count}} problemu podczas importu. {{details}}",
+    "readFailed": "Nie udało się odczytać tego pliku.",
+    "title": "Importuj bibliotekę bibliograficzną",
+    "unrecognized": "Nierozpoznany typ pliku: {{name}}",
+    "zotero": {
+      "button": "Wybierz plik Zotero RDF",
+      "description": "W programie Zotero wybierz Plik → Eksportuj bibliotekę → Zotero RDF. Następnie wskaż wyeksportowany plik.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Wyniki częściowe. Uszkodzone lub nieczytelne pliki mogą pomijać część wystąpień.",
+    "stale": "Trwa aktualizacja. Cytowania, symbole i zakresy z poprzedniej wersji są ukryte."
+  },
+  "panel": {
+    "ariaLabel": "Odwołania (Shift-F12)",
+    "clearQuery": "Wyczyść zapytanie o odwołania",
+    "cleanLibrary": "Uporządkuj bibliotekę bibliograficzną",
+    "importAriaLabel": "Importuj pozycje bibliograficzne",
+    "issues_one": "{{count}} problem z odwołaniem lub cytowaniem",
+    "issues_few": "{{count}} problemy z odwołaniami lub cytowaniami",
+    "issues_many": "{{count}} problemów z odwołaniami lub cytowaniami",
+    "issues_other": "{{count}} problemu z odwołaniem lub cytowaniem",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Odwołania",
+    "viewTabs": "Widok panelu odwołań"
+  },
+  "cleanLibrary": {
+    "title": "Uporządkuj bibliotekę bibliograficzną",
+    "description": "Przejrzyj klucze cytowań i zduplikowane pozycje, zanim pliki zostaną zmienione.",
+    "library": "Biblioteka bibliograficzna",
+    "entryCount_one": "{{count}} pozycja",
+    "entryCount_few": "{{count}} pozycje",
+    "entryCount_many": "{{count}} pozycji",
+    "entryCount_other": "{{count}} pozycji",
+    "footer": "Podgląd zapisuje otwarte pliki. Zastosowanie sprawdza, czy nadal odpowiadają podglądowi, i tworzy kopie zapasowe oryginałów.",
+    "noBib": "Ten projekt nie ma pliku .bib do uporządkowania.",
+    "entriesKept": "Pozostanie {{kept}} z {{total}} pozycji.",
+    "changes": "Zmiany i uwagi",
+    "noChanges": "Brak zmian w plikach do zastosowania.",
+    "filesToUpdate": "Pliki do zaktualizowania: {{files}}",
+    "none": "Brak",
+    "introSafeChanges": "Klucze cytowań zostaną ujednolicone. Duplikaty według DOI są usuwane tylko wtedy, gdy da się zachować wszystkie ich dane.",
+    "introReview": "Podobne tytuły i sprzeczne metadane pozostają w bibliotece do przejrzenia.",
+    "preview": "Podgląd",
+    "reviewTitle": "Przejrzyj przed zastosowaniem",
+    "reviewBody": "Wyświetl podgląd zmian, aby zobaczyć, które pozycje i cytowania zostaną zaktualizowane.",
+    "statusAttention": "Wymaga uwagi",
+    "statusWorking": "Przetwarzanie…",
+    "statusPreviewReady": "Podgląd gotowy",
+    "statusReady": "Gotowe do podglądu",
+    "refreshPreview": "Odśwież podgląd",
+    "previewChanges": "Pokaż podgląd zmian",
+    "apply": "Zastosuj i przepisz cytowania",
+    "truncated": "Podgląd pokazuje pierwsze 500 wierszy każdej wersji.",
+    "actionRenamed": "{{old}} zmieniono na {{new}}",
+    "actionDuplicate": "{{removed}} usunięto jako duplikat {{kept}} (dopasowanie po {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "Nie udało się ponownie wczytać uporządkowanych plików. Otwórz projekt na nowo przed edycją.",
+    "cleaned": "Biblioteka uporządkowana. Zachowano {{kept}} z {{total}} pozycji.",
+    "cleanedWithBackup": "Biblioteka uporządkowana. Zachowano {{kept}} z {{total}} pozycji. Oryginalne pliki zapisano w {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Projekt zmienił się po tym zapytaniu. Uruchom ponownie Znajdź odwołania, aby użyć aktualnych zakresów źródła.",
+      "title": "Wyniki odwołań wygasły"
+    },
+    "noLocations": {
+      "detail": "Symbol istnieje w tej wersji, ale nie ma pasujących definicji ani wystąpień.",
+      "title": "Nie znaleziono lokalizacji"
+    },
+    "none": {
+      "detail": "Ustaw kursor na etykiecie, cytowaniu, poleceniu lub środowisku i naciśnij Shift-F12.",
+      "title": "Brak zapytania o odwołania"
+    }
+  },
+  "tabs": {
+    "citations": "Cytowania",
+    "results": "Odwołania",
+    "symbols": "Symbole"
+  },
+  "trees": {
+    "citations": "Cytowania projektu",
+    "noCitations": "Nie znaleziono pozycji bibliografii ani użyć cytowań.",
+    "noSymbols": "Nie znaleziono symboli zdefiniowanych w projekcie.",
+    "symbols": "Symbole projektu"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Nie udało się przeanalizować najnowszej wersji projektu. Pliki źródłowe nie zostały zmienione.",
+      "title": "Analiza projektu nie powiodła się"
+    },
+    "indexing": {
+      "detail": "Odwołania i cytowania pojawią się, gdy bieżąca wersja projektu będzie gotowa.",
+      "title": "Indeksowanie danych o projekcie"
+    },
+    "noProject": {
+      "detail": "Otwórz projekt dokumentu, aby przejrzeć cytowania, symbole i odwołania między plikami.",
+      "title": "Nie otwarto projektu"
+    },
+    "offline": {
+      "detail": "W tym obszarze roboczym nie można teraz sprawdzić odwołań ani cytowań.",
+      "title": "Usługa analizy niedostępna"
+    },
+    "unsupported": {
+      "detail": "Aktywny projekt nie używa obsługiwanego silnika dokumentów.",
+      "title": "Dane o projekcie niedostępne"
+    },
+    "waiting": {
+      "detail": "Najnowsza wersja projektu nie została jeszcze zindeksowana.",
+      "title": "Oczekiwanie na analizę projektu"
+    }
+  }
+}

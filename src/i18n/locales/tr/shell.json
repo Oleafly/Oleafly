@@ -1,0 +1,919 @@
+{
+  "about": {
+    "close": "Hakkında penceresini kapat",
+    "closeBackdrop": "Oleafly Hakkında penceresini kapat",
+    "connect": "Oleafly ile bağlantıda kalın",
+    "links": {
+      "discussions": {
+        "description": "Soru sorun ve fikirlerinizi paylaşın",
+        "label": "Tartışmalar"
+      },
+      "docs": {
+        "description": "Oleafly'nin her parçasını öğrenin",
+        "label": "Belgeler"
+      },
+      "issues": {
+        "description": "Bir hata bildirin veya özellik isteyin",
+        "label": "Sorunlar"
+      },
+      "social": {
+        "description": "Sürümleri ve geliştirmeyi takip edin",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "GitHub'da yıldız verin",
+    "tagline": "Makalenin tamamı için açık kaynaklı çalışma alanı. Yazın, derleyin, redaksiyondan geçirin, atıfları yönetin, PDF'leri inceleyin, değişiklikleri Git ile izleyin ve seçtiğiniz yapay zeka modelleriyle çalışın.",
+    "version": "Sürüm {{version}}",
+    "viewSource": "Kaynağı görüntüle"
+  },
+  "addCitation": {
+    "added": "{{cite}} eklendi",
+    "adding": "Ekleniyor…",
+    "close": "Atıf penceresini kapat",
+    "confirm": ".bib dosyasına ekle ve atıf ver",
+    "entry": "Kayıt",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Başlık"
+    },
+    "hint": "Kaydı doğrudan getirmek için bir DOI, arXiv kimliği veya URL yapıştırın ya da Crossref'te aramak için bir başlık yazın. Birini deneyin:",
+    "lookUp": "Ara",
+    "lookingUp": "\"{{query}}\" aranıyor…",
+    "matches_one": "Crossref'ten {{count}} eşleşme. Birini seçin:",
+    "matches_other": "Crossref'ten {{count}} eşleşme. Birini seçin:",
+    "noResults": "Sonuç bulunamadı. Tanımlayıcıyı denetleyin veya başka başlık sözcükleri deneyin.",
+    "placeholder": "DOI, arXiv kimliği, URL veya bir makale başlığı…",
+    "privacyNote": "Yalnızca tanımlayıcı veya başlık doi.org, arXiv ya da Crossref'e gönderilir.",
+    "title": "Atıf ekle"
+  },
+  "backendProtocol": {
+    "mismatch": "Bu pencere ve arka ucu farklı Oleafly sürümleri için derlendi, bu yüzden bazı özellikler çalışmayabilir. Uygulamayı yeniden kurmak bunu düzeltir."
+  },
+  "branding": {
+    "assistantMascot": "Oleafly yapay zeka asistanı maskotu"
+  },
+  "browser": {
+    "address": "Arayın veya bir URL girin",
+    "back": "Geri",
+    "closeTab": "Sekmeyi kapat",
+    "copyUrl": "URL'yi kopyala",
+    "forward": "İleri",
+    "moreOptions": "Diğer seçenekler",
+    "newTab": "Yeni sekme",
+    "openExternal": "Kendi tarayıcınızda açın",
+    "openTabs": "Açık sekmeler",
+    "reload": "Yeniden yükle",
+    "setHomePage": "Ana sayfa olarak ayarla"
+  },
+  "citeOleafly": {
+    "description": "Bu projede kaynakça dosyası bulunamadı, bu yüzden hiçbir şey değişmedi. Aşağıdaki kaydı kaynakçanıza kopyalayın veya daha sonra Ayarlar'daki Yardım ve hakkında bölümünden yeniden bulun.",
+    "openHelp": "Yardım ve hakkında bölümünü aç",
+    "title": "Bu makalede Oleafly'ye atıf ver"
+  },
+  "commandGroups": {
+    "commands": "Komutlar",
+    "compile": "Derleme",
+    "editor": "Düzenleyici",
+    "insert": "Ekle",
+    "project": "Proje",
+    "settings": "Ayarlar",
+    "tools": "Araçlar"
+  },
+  "commandPalette": {
+    "empty": "Sonuç bulunamadı.",
+    "label": "Komut Paleti",
+    "placeholder": "Bir komut yazın veya arayın…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / başlık",
+      "label": "Atıf ekle"
+    },
+    "appearance": {
+      "keywords": "tema görünüm kip theme appearance mode",
+      "useDark": "Koyu görünümü kullan",
+      "useLight": "Açık görünümü kullan",
+      "useSystem": "Sistem görünümünü kullan"
+    },
+    "autoCompile": {
+      "disable": "Otomatik derlemeyi kapat",
+      "enable": "Otomatik derlemeyi aç"
+    },
+    "bold": {
+      "label": "Kalın"
+    },
+    "checkpoints": {
+      "label": "Kontrol noktaları"
+    },
+    "citeOleafly": {
+      "keywords": "atıf kaynakça citation bibtex bibliography acknowledge oleafly",
+      "label": "Bu makalede Oleafly'ye atıf ver"
+    },
+    "clearCache": {
+      "keywords": "önbellek temizle yeniden derle clear build cache clean rebuild stale reset aux",
+      "label": "Derleme önbelleğini temizle ve yeniden derle"
+    },
+    "closeEnvironment": {
+      "keywords": "ortam kapat close end environment begin latex",
+      "label": "LaTeX ortamını kapat"
+    },
+    "createProject": {
+      "keywords": "yeni proje şablon new project create template gallery",
+      "label": "Yeni bir proje oluştur"
+    },
+    "diagramComposer": {
+      "keywords": "diyagram şekil çiz tuval diagram figure tikz composer draw canvas",
+      "label": "Diyagram Oluşturucu'yu aç"
+    },
+    "documentCitationScan": {
+      "keywords": "atıf literatür tarama kaynak citations literature scan document paragraph references find",
+      "label": "Belgedeki atıfları bul"
+    },
+    "equation": {
+      "label": "Denklem"
+    },
+    "exportPdf": {
+      "label": "PDF olarak dışa aktar…"
+    },
+    "figure": {
+      "label": "Şekil"
+    },
+    "generateFigure": {
+      "keywords": "şekil diyagram çiz grafik figure diagram draw tikz plot chart illustration",
+      "label": "Yapay zeka ile şekil oluştur"
+    },
+    "gitHistory": {
+      "label": "Git geçmişi"
+    },
+    "italic": {
+      "label": "İtalik"
+    },
+    "label": {
+      "label": "Etiket"
+    },
+    "list": {
+      "label": "Madde imli liste"
+    },
+    "newProject": {
+      "label": "Yeni proje…"
+    },
+    "newTerminal": {
+      "keywords": "terminal shell konsol yeni console new",
+      "label": "Yeni terminal"
+    },
+    "offline": {
+      "offline": "Çevrimdışı kip (--only-cached)",
+      "online": "Çevrimiçi kip (paket indirmeye izin ver)"
+    },
+    "openTool": "{{name}} aracını aç",
+    "recompile": {
+      "label": "Yeniden derle"
+    },
+    "section": {
+      "label": "Alt bölüm"
+    },
+    "settings": {
+      "keywords": "ayarlar tercihler seçenekler settings preferences options",
+      "label": "Ayarları aç"
+    },
+    "spellcheck": {
+      "disable": "Yazım denetimini kapat",
+      "enable": "Yazım denetimini aç"
+    },
+    "surroundEnvironment": {
+      "keywords": "sar ortam surround wrap environment begin end latex",
+      "label": "Ortamla çevrele"
+    },
+    "synctex": {
+      "label": "PDF'e git (SyncTeX)"
+    },
+    "table": {
+      "label": "Tablo"
+    },
+    "theme": {
+      "keywords": "tema koyu açık görünüm theme dark light appearance mode",
+      "toDark": "Koyu temaya geç",
+      "toLight": "Açık temaya geç"
+    },
+    "tools": {
+      "keywords": "araçlar denklem tablo son tarih tools latex pdf equation bibtex table lab search deadlines gallery",
+      "label": "Oleafly Tools'u aç"
+    },
+    "vim": {
+      "disable": "Vim kipini kapat",
+      "enable": "Vim kipini aç"
+    },
+    "wordCount": {
+      "label": "Sözcük sayısı"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "satır sil kaldır delete line remove",
+        "duplicate": "satır çoğalt seçim kopyala duplicate line selection copy",
+        "lowercase": "küçük harf metin lowercase case text",
+        "titleCase": "her sözcük büyük harf title case capitalize text",
+        "uppercase": "büyük harf metin uppercase case text"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Kapalı",
+      "on": "Açık",
+      "title": "Otomatik derleme"
+    },
+    "compile": "Derle",
+    "compiler": {
+      "auto": "Otomatik <note>[sistem TeX]</note>",
+      "help": "Tectonic yerleşiktir ve kurulum gerektirmez. Diğer seçenekler, hesabınızın erişebildiği yerel dosyaları okuyabilen sistem TeX'ini çalıştırır; bu yüzden yalnızca güvendiğiniz projelerde kullanın. Otomatik, derleyiciyi kaynaktan seçer. pdfLaTeX çoğu dergi şablonuyla uyumludur. XeLaTeX ve LuaLaTeX sistem yazı tipleri ve Unicode desteği ekler.",
+      "lualatex": "LuaLaTeX <note>[sistem TeX]</note>",
+      "pdflatex": "pdfLaTeX <note>[sistem TeX]</note>",
+      "tectonic": "Tectonic <note>[yerleşik]</note>",
+      "title": "Derleyici (bu proje)",
+      "xelatex": "XeLaTeX <note>[sistem TeX]</note>"
+    },
+    "errors": {
+      "continue": "Hatalara rağmen derlemeyi dene",
+      "stop": "İlk hatada dur",
+      "title": "Derleme hatası işleme"
+    },
+    "fromScratch": "Sıfırdan yeniden derle",
+    "mode": {
+      "fast": "Hızlı <note>[taslak]</note>",
+      "normal": "Normal",
+      "title": "Derleme kipi"
+    },
+    "options": "Derleme seçenekleri",
+    "recompile": "Yeniden derle",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Derlemeyi durdur",
+    "syntax": {
+      "check": "Derlemeden önce sözdizimini denetle",
+      "skip": "Sözdizimini denetleme",
+      "title": "Sözdizimi denetimleri"
+    },
+    "texRootBroken": "{{file}} içindeki % !TEX root eksik bir dosyayı gösteriyor ({{target}})",
+    "texRootLabel": "TEX kökü",
+    "texRootName": "kök: {{name}}",
+    "texRootOverride": "kök: {{path}} ({{file}} içindeki % !TEX root ile belirlendi)"
+  },
+  "datePicker": {
+    "placeholder": "Bir tarih seçin"
+  },
+  "devMenu": {
+    "inspect": "İncele",
+    "refreshApp": "Uygulamayı Yenile"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "Yapay zeka asistanını gizle",
+      "show": "Yapay zeka asistanını göster"
+    },
+    "browser": {
+      "close": "Tarayıcıyı kapat ({{shortcut}})",
+      "open": "Tarayıcıyı aç ({{shortcut}})"
+    },
+    "settings": "Ayarlar",
+    "sidebar": {
+      "hide": "Kenar çubuğunu gizle ({{shortcut}})",
+      "show": "Kenar çubuğunu göster ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Terminali gizle ({{shortcut}})",
+      "show": "Terminali göster ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "Bu başarısızlık, paketlenmiş Tectonic motorunun bilinen bir eksiğiyle örtüşüyor. Bu projenin nasıl derleneceğini seçin. Seçim projede kaydedilir, böylece iş arkadaşlarınız da aynı kurulumu alır.",
+    "descriptionImportScan": "İçe aktarma taraması, paketlenmiş Tectonic motorunun yönetemediği özellikler buldu. Bu projenin nasıl derleneceğini seçin. Seçim projede kaydedilir, böylece iş arkadaşlarınız da aynı kurulumu alır.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "latexmk üzerinden pdfLaTeX"
+    },
+    "recommended": "Önerilen",
+    "shellEscape": {
+      "label": "Bu bilgisayarda dış komutlara izin ver",
+      "needed": "Bu proje, isteğe bağlı dış komutlar gerektiren özellikler kullanıyor. Siz izin verene kadar engellenmiş kalırlar.",
+      "warning": "minted ve bazı PythonTeX belgeleri için gereklidir. LaTeX, programları sizin kullanıcı izinlerinizle çalıştırabilir; bu yüzden bunu yalnızca güvendiğiniz bir projede açın. TeX Live'ın kendi yardımcıları, örneğin EPS dönüştürme, buna gerek duymadan çalışır."
+    },
+    "shellEscapeAllowed": "Bu bilgisayarda bu proje için dış komutlara izin veriliyor.",
+    "shellEscapeBlocked": "Bu proje için isteğe bağlı dış komutlar engellendi. TeX Live'ın kendi yardımcıları, örneğin EPS dönüştürme, yine de çalışır.",
+    "shellEscapeFailed": "Dış komut erişimi güncellenemedi.",
+    "switchFailed": "Derleme motoru değiştirilemedi.",
+    "switched": "Bu proje artık {{engine}} ile derleniyor.",
+    "switchedAfterInstall": "TinyTeX kuruldu. Bu proje artık {{engine}} ile derleniyor.",
+    "systemTex": {
+      "alreadySelected": "Zaten seçili",
+      "found": "Bu makinede bir TeX dağıtımı bulundu. Sistem TeX'i, hesabınızın erişebildiği yerel dosyaları okuyabilir; bu yüzden yalnızca güvendiğiniz projelerde kullanın. Aşağıdan izin vermediğiniz sürece isteğe bağlı dış komutlar engelli kalır. TeX Live, EPS dönüştürme gibi kendi izin listesindeki yardımcıları yine de çalıştırır.",
+      "missing": "Bu makinede bir TeX dağıtımı (MacTeX, TeX Live, MiKTeX, TinyTeX) bulunamadı.",
+      "switchPdflatex": "pdfLaTeX'e geç ve yeniden derle",
+      "title": "Sistemimdeki LaTeX'i kullan (latexmk)",
+      "titlePdflatex": "Sistemimdeki LaTeX üzerinde pdfLaTeX kullan (latexmk)",
+      "use": "Sistem LaTeX'ini kullan"
+    },
+    "tectonic": {
+      "description": "Kurulum gerektirmez, çevrimdışı çalışır. Düz LaTeX ve çoğu yaygın paket için yeterlidir.",
+      "keep": "Tectonic'te kal",
+      "switchBack": "Tectonic'e geri dön",
+      "title": "Tectonic kullanmayı sürdür",
+      "withFailures_one": "Kurulum gerektirmez, çevrimdışı çalışır. {{features}} için başarısızlığın süreceği bekleniyor.",
+      "withFailures_other": "Kurulum gerektirmez, çevrimdışı çalışır. {{features}} için başarısızlığın süreceği bekleniyor."
+    },
+    "tinytex": {
+      "description": "Ana klasörünüze derli toplu bir TeX Live kurar, yönetici izni gerekmez. Temel indirme yaklaşık 250 MB'tır. Dergi şablonları sonradan daha fazla paket çekebilir, toplamda kabaca 1 GB'a kadar.",
+      "download": "TinyTeX'i indir ve kullan",
+      "resume": "İndirmeyi sürdür ({{megabytes}} MB tamam)",
+      "title": "TinyTeX'i indir"
+    },
+    "titleCompileFailure": "Bu derleme yerleşik motordan fazlasını gerektiriyor",
+    "titleImportScan": "Bu proje yerleşik motordan fazlasını gerektiriyor"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Tanılamaları kopyala",
+    "description": "Oleafly beklenmedik bir hatayla karşılaştı ve bu ekranı işleyemedi. Proje dosyalarınız diskte duruyor. Tanılama ayrıntıları aşağıdadır.",
+    "halted": "Durduruldu",
+    "logSaved": "Günlük şuraya kaydedildi: <path>{{path}}</path>",
+    "reload": "Oleafly'yi yeniden yükle",
+    "report": "GitHub'da bildir",
+    "runtimeError": "Çalışma zamanı hatası",
+    "specimen": {
+      "diagramLabel": "Dekoratif örnek diyagramı",
+      "layer": "KATMAN {{current}}/{{total}}",
+      "specimen": "ÖRNEK:",
+      "transversePlane": "ENİNE KESİT",
+      "veinDensity": "DAMAR YOĞUNLUĞU:"
+    },
+    "specimenViewer": "Örnek Görüntüleyici",
+    "stackTrace": "Yığın izi",
+    "surfaceCrashed": "{{surface}} çöktü.",
+    "surfaces": {
+      "aiAssistant": "Yapay zeka asistanı",
+      "assistantPanel": "asistan paneli",
+      "chat": "sohbet",
+      "diagramComposer": "diyagram oluşturucu",
+      "editor": "düzenleyici",
+      "pdfPreview": "PDF önizlemesi",
+      "researchAssistant": "araştırma asistanı",
+      "terminalDock": "terminal yuvası"
+    },
+    "title": "Bir sorun oluştu"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "GitHub eylemleri",
+    "connect": "GitHub'ı bağla…",
+    "connectedAs": "@{{login}} olarak bağlı",
+    "copyRepositoryLink": "Depo bağlantısını kopyala",
+    "openInGithub": "GitHub'da aç",
+    "pushHint": "Bunları etkinleştirmek için GitHub'a gönderin",
+    "settings": "GitHub ayarları",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "Ana ekran",
+    "label": "Ana ekran",
+    "title": "Kitaplığa dön",
+    "tooltip": "Proje kitaplığına geri dön"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Günlüğü temizle",
+    "clearLogAriaLabel": "MCP günlüğünü temizle",
+    "live": "Canlı",
+    "off": "Kapalı",
+    "openSettings": "MCP ayarlarını aç",
+    "serverOff": "MCP sunucusu kapalı.",
+    "timeWithDuration": "{{time}} · {{ms}}ms",
+    "toolsTitle": "MCP üzerinden kullanılabilen araçlar",
+    "waiting": "Dış ajanlar bekleniyor…",
+    "waitingHint": "MCP üzerinden çağrılan araçlar (Claude, Cursor, Grok, …) burada canlı olarak görünür."
+  },
+  "omnibar": {
+    "bookmarked": "Yer imli",
+    "createProject": "Yeni bir proje oluştur",
+    "groups": {
+      "action": "Eylem",
+      "documents": "Belgeler",
+      "references": "Kaynaklar"
+    },
+    "label": "Ara",
+    "noMatches": "Eşleşme bulunamadı.",
+    "openReferences": "Bu projenin kaynaklarını aç",
+    "placeholder": "Projelerde veya belgelerde arayın ya da komutlar için / yazın…",
+    "placeholderDocuments": "Belgelerin içinde arayın…",
+    "placeholderProjects": "Projelerde ada, motora, türe, tarihe veya üst veriye göre arayın…",
+    "referencesNeedProject": "Kaynaklara göz atmak için önce bir proje açın.",
+    "slash": {
+      "create": "şablon galerisini açar",
+      "docs": "belgelerin içinde arar",
+      "projects": "projelerinizde arar",
+      "refs": "bu projenin kaynaklarını açar",
+      "settings": "ayarları açar",
+      "theme": "renk temasını değiştirir"
+    },
+    "tryCommand": "Bir komut deneyin",
+    "unknownCommand": "Bilinmeyen komut. Kullanılabilir komutları görmek için / yazın."
+  },
+  "projectSearch": {
+    "hint": "Bu projenin dosyalarında arayın.",
+    "noResults": "Sonuç yok.",
+    "placeholder": "Projede bul…",
+    "title": "Ara"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Kaydedilmemiş değişiklikleriniz açık tutuldu. Sorunu çözmek için kalın ya da yine de çıkıp onları kaybedin.",
+      "descriptionRestart": "{{reason}} Kaydedilmemiş değişiklikleriniz açık tutuldu. Sorunu çözmek için kalın ya da yine de yeniden başlatıp onları kaybedin.",
+      "quitAnyway": "Yine de çık",
+      "restartAnyway": "Yine de yeniden başlat",
+      "stay": "Kal",
+      "title": "Bazı dosyalar kaydedilemedi"
+    },
+    "flushTimeout": "Kaydetme 5 saniye içinde tamamlanmadı.",
+    "installing": {
+      "description": "Dosyalarınız kaydediliyor ve güncelleme kuruluyor. Oleafly hazır olduğunda yeniden başlayacak.",
+      "title": "Yeniden başlatmaya hazırlanıyor"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}} (beta)",
+    "files": "Gezgin",
+    "mcp": "MCP etkinliği",
+    "pendingBadge_one": "{{count}} bekliyor",
+    "pendingBadge_other": "{{count}} bekliyor",
+    "preflight": "Ön Denetimler",
+    "references": "Kaynaklar ve atıflar",
+    "research": "Araştırma çalışma alanı",
+    "search": "Projede Ara",
+    "sourceControl": "Kaynak Denetimi",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "Yeniden adlandırma penceresini kapat",
+    "collision": "\"{{name}}\" adlı bir {{kind}} zaten var.",
+    "commit": "Yeniden adlandırmayı uygula",
+    "newName": "Yeni ad",
+    "planFiles_one": "{{count}} dosya",
+    "planFiles_other": "{{count}} dosya",
+    "planSummary_one": "$t(shell:renameDialog.planFiles, { \"count\": {{files}} }) genelinde {{count}} düzenleme",
+    "planSummary_other": "$t(shell:renameDialog.planFiles, { \"count\": {{files}} }) genelinde {{count}} düzenleme",
+    "symbolKinds": {
+      "atuse": "başvuru",
+      "bibentry": "kaynakça kaydı",
+      "cite": "atıf",
+      "environment": "ortam",
+      "envuse": "ortam kullanımı",
+      "file": "dosya",
+      "glossary": "sözlük kaydı",
+      "glossaryuse": "sözlük kullanımı",
+      "inputedge": "dahil etme",
+      "label": "etiket",
+      "macro": "makro",
+      "macrouse": "makro kullanımı",
+      "ref": "başvuru",
+      "section": "bölüm",
+      "theorem": "teorem"
+    },
+    "title": "<symbol>{{name}}</symbol> ögesini yeniden adlandır"
+  },
+  "settings": {
+    "close": "Ayarları kapat",
+    "data": {
+      "cloud": {
+        "comingSoon": "Yakında",
+        "description": "Bir Git uzak deposu yapılandırmadan projelerinizi cihazlarınız arasında eşitleyin. Her aktarım uçtan uca şifrelenecek, böylece çalışmanız yolda gizli kalacak. Yerel proje klasörleriniz doğruluk kaynağı olmayı sürdürecek.",
+        "title": "Bulut eşitleme"
+      },
+      "danger": {
+        "closeFailed": "Açık proje güvenli biçimde kapatılamadı.",
+        "confirmDeleteAllAction": "Tüm projeleri sil",
+        "confirmDeleteAllDescription": "Geçerli her proje, dosyaları ve Git geçmişiyle birlikte Geri Dönüşüm Kutusu'na taşınacak. Sonrasında projeleri tek tek geri yükleyebilirsiniz.",
+        "confirmDeleteAllTitle_one": "{{count}} projenin tümü silinsin mi?",
+        "confirmDeleteAllTitle_other": "{{count}} projenin tümü silinsin mi?",
+        "deleteAll": "Tüm projeleri sil",
+        "deleteAllAction": "Tümünü sil",
+        "deleteAllDescription": "Her projeyi Geri Dönüşüm Kutusu'na taşır. Hiçbir şey kalıcı olarak silinmez.",
+        "deleting": "Siliniyor…",
+        "moveFailed": "Projeler Geri Dönüşüm Kutusu'na taşınamadı.",
+        "movePartial": "{{count}} proje taşındı, ancak işlem tamamlanamadı.",
+        "movedCount_one": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı.",
+        "movedCount_other": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı.",
+        "title": "Tehlikeli bölge"
+      },
+      "githubHint": "Bir projeyi yedekleyin veya cihazlar arasında eşitleyin: GitHub'ı bağlayın, sonra Kaynak Denetimi'nde <push>Gönder</push> / <pull>Çek</pull> düğmelerini kullanın. <setup>GitHub'ı kur →</setup>",
+      "localFirst": "Oleafly yerel önceliklidir. Tüm projeler diskinizde durur:",
+      "plainFolders": "Her proje düz bir klasördür. Git geçmişi isteğe bağlıdır ve siz GitHub'a göndermedikçe hiçbir şey makinenizden çıkmaz.",
+      "recycleBin": {
+        "clearAll": "Tümünü temizle",
+        "clearFailed": "Geri Dönüşüm Kutusu temizlenemedi.",
+        "clearPartial": "{{count}} proje kalıcı olarak silindi, ancak Geri Dönüşüm Kutusu'nun tamamı temizlenemedi.",
+        "clearedCount_one": "{{count}} proje kalıcı olarak silindi.",
+        "clearedCount_other": "{{count}} proje kalıcı olarak silindi.",
+        "clearing": "Temizleniyor…",
+        "confirmClearAction": "Geri Dönüşüm Kutusu'nu temizle",
+        "confirmClearDescription": "Bu işlem, Geri Dönüşüm Kutusu'ndaki her projeyi dosyaları ve Git geçmişiyle birlikte kalıcı olarak siler. Bu işlem geri alınamaz.",
+        "confirmClearTitle_one": "Geri Dönüşüm Kutusu'ndaki {{count}} proje temizlensin mi?",
+        "confirmClearTitle_other": "Geri Dönüşüm Kutusu'ndaki {{count}} proje temizlensin mi?",
+        "confirmDeleteAction": "Kalıcı olarak sil",
+        "confirmDeleteDescription": "Bu işlem, projeyi, dosyalarını ve Git geçmişini Geri Dönüşüm Kutusu'ndan kaldırır. Bu işlem geri alınamaz.",
+        "confirmDeleteTitle": "“{{name}}” kalıcı olarak silinsin mi?",
+        "deleteFailed": "\"{{name}}\" kalıcı olarak silinemedi.",
+        "deleteOne": "{{name}} projesini kalıcı olarak sil",
+        "deleted": "\"{{name}}\" kalıcı olarak silindi.",
+        "deletedAt": "{{date}} tarihinde silindi · {{size}}",
+        "empty": "Geri Dönüşüm Kutusu boş.",
+        "loading": "Geri Dönüşüm Kutusu yükleniyor…",
+        "restore": "Geri yükle",
+        "restoreFailed": "\"{{name}}\" geri yüklenemedi.",
+        "restored": "\"{{name}}\" geri yüklendi.",
+        "size": "{{size}} · otomatik temizlik yok",
+        "subtitle": "Silinen projeler siz kaldırana kadar burada durur",
+        "title": "Geri Dönüşüm Kutusu"
+      },
+      "reveal": "Proje klasörünü Finder'da göster",
+      "storage": {
+        "calculating": "Depolama kullanımı hesaplanıyor…",
+        "desktopOnly": "Depolama ayrıntıları masaüstü uygulamasında görülebilir.",
+        "error": "Depolama ayrıntıları hesaplanamadı.",
+        "refresh": "Depolama kullanımını yenile",
+        "stats": {
+          "appData": "Uygulama verileri",
+          "appDataDetail": "Varlıklar ve ayarlar",
+          "buildCache": "Derleme önbelleği",
+          "buildCacheDetail": "Üretilen çıktı",
+          "files": "Dosyalar",
+          "folders_one": "{{count}} klasör",
+          "folders_other": "{{count}} klasör",
+          "gitHistory": "Git geçmişi",
+          "gitHistoryDetail": "Yerel sürümler",
+          "images": "Görseller",
+          "pdfs": "PDF'ler",
+          "projectFiles": "Proje dosyaları",
+          "projectFilesDetail": "Kaynaklar ve üst veriler",
+          "projects": "Projeler"
+        },
+        "subtitle": "Projeler, önizlemeler, geçmiş ve uygulama verileri",
+        "title": "Depolama kullanımı",
+        "total": "Oleafly veri klasöründe toplam {{size}}",
+        "unreadable_one": "{{count}} erişilemeyen öge dışarıda bırakıldı.",
+        "unreadable_other": "{{count}} erişilemeyen öge dışarıda bırakıldı."
+      },
+      "tabs": {
+        "cloud": "Bulut eşitleme",
+        "local": "Yerel depo"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Oleafly Tools galerisini ve tek tek araçları (PDF içe aktarma, denklemler, tablolar, BibTeX, laboratuvar ve literatür arama, son tarihler) ve bunların eğik çizgi komutlarını gösterir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
+        "label": "LaTeX araçları"
+      },
+      "visualEditor": {
+        "description": "Belge düzenleyicide Görsel/Kod geçişini gösterir. Varsayılan olarak kapalıdır, bu yüzden belgeler yalnızca kod düzenleyicide açılır. Diyagramlar her zaman kendi tuval geçişini korur.",
+        "label": "Görsel düzenleyici"
+      },
+      "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır; değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
+      "webBrowser": {
+        "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır; kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
+        "label": "Web tarayıcısı"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Redaksiyon için İngilizce lehçesi",
+        "description": "Seçili yazım, dil bilgisi ve bölgesel kuralları uygular.",
+        "label": "İngilizce lehçesi"
+      },
+      "dictionary": {
+        "ariaLabel": "Redaksiyon yazım sözlüğü",
+        "description": "Kaynak ve Görsel yazım denetimlerinin kullandığı Hunspell paketi. Birlikte gelen beş paketin dışındaki diller istendiğinde indirilir.",
+        "label": "Yazım sözlüğü",
+        "downloadFailed": "{{name}} sözlüğü indirilemedi.",
+        "downloaded": "{{name}} yazım denetimi için hazır.",
+        "downloading": "{{name}} indiriliyor",
+        "offlineRefused": "Çevrimdışı kip açık. {{name}} sözlüğünü indirmek için kapatın."
+      },
+      "harper": {
+        "description": "LaTeX ve Markdown Kaynak ve Görsel düzenlemede, ayrıca Typst Kaynak düzenlemede İngilizce dil bilgisini ve üslubu tek tıklamalık düzeltmelerle denetler.",
+        "label": "Dil bilgisi ve üslup (Harper)"
+      },
+      "offline": {
+        "description": "--only-cached ile derler ve paketleri ağ üzerinden hiç indirmez.",
+        "label": "Çevrimdışı kip"
+      },
+      "proofreadingNote": "Redaksiyon yerel olarak bir arka plan çalışanında yürür. Harper seçili İngilizce lehçesini izler; yazım denetimi her zaman tam olarak seçili Hunspell paketini kullanır. Matematik, kod, açıklamalar, atıf sözdizimi, üst veriler ve URL'ler dışarıda bırakılır.",
+      "regionalism": {
+        "description": "Seçili İngilizce lehçesine uymayan terimleri işaretler. Bu tür terimleri ürün veya kod adı olarak kullanıyorsanız kapatın.",
+        "label": "Bölgesel kullanım önerileri"
+      },
+      "spellcheck": {
+        "description": "Yanlış yazılmış sözcüklerin altını seçili çevrimdışı Hunspell sözlüğüyle çizer ve Kaynak ile Görsel düzenlemede değiştirme önerileri sunar.",
+        "label": "Yazım denetimi"
+      },
+      "wordChoice": {
+        "description": "Alternatif sözcükler önerir (örneğin “too” yerine “to”). Yalnızca yazım ve dil bilgisi kalsın isterseniz kapatın.",
+        "label": "Sözcük seçimi önerileri"
+      }
+    },
+    "help": {
+      "community": "Topluluk",
+      "copyInfo": "Bilgiyi Kopyala",
+      "forksTitle": "GitHub çatalları",
+      "forks_one": "{{count}} GitHub çatalı",
+      "forks_other": "{{count}} GitHub çatalı",
+      "logoAlt": "Oleafly",
+      "project": "Proje deposu",
+      "resources": {
+        "documentation": "Belgeler",
+        "learn": "Öğren",
+        "license": "Lisans",
+        "reportCrash": "Çökme bildir (günlükleri ekleyin)",
+        "startTour": "Turu başlat",
+        "whatsNew": "Yenilikler"
+      },
+      "resourcesTitle": "Kaynaklar",
+      "starRepo": "GitHub'da yıldız verin ve keşfedin",
+      "starsTitle": "GitHub yıldızları",
+      "stars_one": "{{count}} GitHub yıldızı",
+      "stars_other": "{{count}} GitHub yıldızı",
+      "support": "Oleafly işinize yarıyorsa lütfen <star>projeye GitHub'da yıldız verin</star>. O küçük tıklama, daha fazla araştırmacının projeyi bulmasına ve geliştirmenin sürmesine yardımcı olur.",
+      "supportAriaLabel": "Oleafly'ye destek olun",
+      "tagline": "Yazın, derleyin, redaksiyondan geçirin, atıfları yönetin, PDF'leri inceleyin, değişiklikleri Git ile izleyin ve seçtiğiniz yapay zeka modellerini kullanın. Hepsi tek bir açık kaynaklı çalışma alanında.",
+      "versionShort": "s{{version}}"
+    },
+    "nav": {
+      "ai": "Yapay Zeka Asistanı",
+      "appearance": "Görünüm",
+      "data": "Veri Depolama",
+      "dictionary": "Sözlük",
+      "downloads": "İndirilenler",
+      "engine": "Motorlar",
+      "experimentation": "Deneysel Özellikler",
+      "general": "Genel",
+      "help": "Yardım ve Hakkında",
+      "integrations": "Tümleştirmeler",
+      "shortcuts": "Klavye Kısayolları"
+    },
+    "sectionsNav": "Ayar bölümleri",
+    "title": "Ayarlar",
+    "tours": {
+      "confirmDescription": "Bu işlem, kalan tüm turları kapatır ve tur rehberlerini devre dışı bırakır. Baştan başlamak için Genel ayarlardan yeniden açabilirsiniz.",
+      "disableConfirm": "Turları kapat",
+      "disableTitle": "Tur rehberleri kapatılsın mı?",
+      "dismissAll": "Tüm turları kapat",
+      "dismissAllConfirm": "Tümünü kapat",
+      "dismissAllTitle": "Tüm turlar kapatılsın mı?",
+      "enable": "Tur rehberlerini aç",
+      "enableAll": "Tüm tur rehberlerini aç",
+      "enableOne": "{{name}} turunu aç",
+      "progress": "Tur ilerlemesi",
+      "progressDetail": "{{completed}} tamamlandı, {{dismissed}} kapatıldı.",
+      "status": {
+        "completed": "Tamamlandı",
+        "dismissed": "Kapatıldı",
+        "pending": "Beklemede"
+      },
+      "summary": "{{completed}} tamamlandı · {{dismissed}} kapatıldı · {{total}} toplam"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Birleştirmeyi iptal et",
+    "abortMergeDescription": "Şimdiye kadar yapılan çakışma çözümleri atılır ve dosyalar birleştirme başlamadan önceki haline döner.",
+    "abortMergeTitle": "Bu birleştirme iptal edilsin mi?",
+    "aheadBehind": "origin/{{branch}} dalından {{ahead}} önde · {{behind}} geride",
+    "branch": "Dallar",
+    "branchName": "Dal adı",
+    "changeRepo": "Depoyu değiştir",
+    "changes": "Değişiklikler",
+    "checking": "Kaynak Denetimi denetleniyor…",
+    "clean": "Değişiklik yok. Çalışma ağacı temiz.",
+    "commit": "İşle",
+    "commitActions": "Diğer işleme eylemleri",
+    "commitAmend": "Son işlemeyi düzelt",
+    "amendedKeptMessage": "Son işleme düzeltildi ve iletisi korundu.",
+    "commitAndPush": "İşle ve Gönder",
+    "commitAndSync": "İşle ve Eşitle",
+    "commitDescription": "İşleme açıklaması",
+    "commitDescriptionPlaceholder": "Açıklama (isteğe bağlı)",
+    "commitTitle": "İşleme başlığı",
+    "committed": "İşlendi: \"{{subject}}\"",
+    "committedRemoteFailed": "Yerelde işlendi, ancak {{step}} başarısız oldu: {{reason}}",
+    "committedWithConflicts": "Yerelde işlendi. Göndermeden önce çekilen çakışmaları çözün.",
+    "confirmDiscard": "Atmayı onayla",
+    "confirmDiscardTitle": "Bu dosyadaki tüm değişiklikleri at",
+    "continueMerge": "Birleştirmeyi tamamla",
+    "copyCommitId": "İşleme kimliğini kopyala",
+    "create": "Oluştur",
+    "createBranch": "Dal oluştur…",
+    "credentialRemoved": "Kayıtlı kimlik bilgisi bu Git uzak deposundan kaldırıldı.",
+    "credentialWarning": "Eski Oleafly sürümleri bu Git uzak deposuna bir kimlik bilgisi kaydetmişti.",
+    "discard": "Değişiklikleri at",
+    "discardFor": "{{path}} dosyasındaki değişiklikleri at",
+    "discardAll": "Tüm değişiklikleri at",
+    "discardChangesDescription": "Bu çalışma ağacı değişiklikleri kaybolacak. Bu işlem geri alınamaz.",
+    "discardChangesTitle": "Seçili değişiklikler atılsın mı?",
+    "discardTitle": "Değişiklikleri at (son sürüme dön)",
+    "enterTitle": "Bir işleme başlığı girin",
+    "finishMergeToCommit": "İşlemeden önce birleştirmeyi tamamlayın.",
+    "fetch": "Getir",
+    "graph": "Grafik",
+    "commitCount_one": "{{count}} işleme",
+    "commitCount_other": "{{count}} işleme",
+    "initialize": "Depoyu Başlat",
+    "initialized": "Git, {{branch}} dalında başlatıldı.",
+    "linkCopied": "GitHub bağlantısı kopyalandı",
+    "markResolved": "Çözüldü olarak işaretle",
+    "mergeNeedsAttention": "Birleştirme çakışmalarını çözün",
+    "moreActions": "Diğer Kaynak Denetimi eylemleri",
+    "noHistory": "Henüz işleme yok",
+    "noProject": "Kaynak Denetimi'ni kullanmak için bir proje açın.",
+    "noStagedChanges": "Hazırlanan değişiklik yok",
+    "notInitialized": "Kaynak Denetimi başlatılmadı",
+    "notInitializedHint": "Oleafly bir Git deposuna kendiliğinden işleme yapmaz.",
+    "nothingStaged": "İşlenecek hazırlanmış bir şey yok.",
+    "openAllChanges": "Tüm değişiklikleri aç",
+    "openFile": "Dosyayı aç",
+    "openFileFor": "{{path}} dosyasını aç",
+    "popStash": "En son zulayı uygula",
+    "publish": "GitHub'da yayımla",
+    "published": "{{url}} adresinde yayımlandı",
+    "pull": "origin deposundan çek",
+    "pullShort": "Çek",
+    "push": "İşle ve origin deposuna gönder",
+    "pushShort": "Gönder",
+    "pushSkippedNoRemote": "⚠ Gönderim atlandı - aşağıda origin uzak deposu ayarlı değil.",
+    "pushSkippedNoToken": "⚠ Gönderim atlandı - GitHub belirteci yok (Ayarlar → GitHub).",
+    "refresh": "Yenile",
+    "remote": "Uzak depo",
+    "remoteHint": "Bu projenin uzak deposu olarak yeni bir depo oluşturun veya var olan birini bağlayın, sonra gönderin.",
+    "removeCredential": "Kayıtlı kimlik bilgisini kaldır",
+    "restoreCommit": "Sürümü geri yükle",
+    "restoreCommitDescription": "Bu işlem, izlenen her proje dosyasının yerine bu sürümü koyar ve sonradan eklenen dosyaları kaldırır. Dalınız geçerli işlemesinde kalır.",
+    "restoreCommitTitle": "Bu sürüm geri yüklensin mi?",
+    "sectionActions": "{{section}} için diğer eylemler",
+    "stage": "Hazırla",
+    "stageFor": "{{path}} dosyasını hazırla",
+    "stageAll": "Tümünü hazırla",
+    "stageFirst": "Önce bir dosya hazırlayın",
+    "stageToCommit": "İşlemek için bir dosya hazırlayın.",
+    "staged": "Hazırlanan",
+    "stagedChanges": "Hazırlanan Değişiklikler",
+    "stagedChangeCount_one": "{{count}} hazırlanan değişiklik",
+    "stagedChangeCount_other": "{{count}} hazırlanan değişiklik",
+    "stash": "Değişiklikleri zulala",
+    "stashNeedsAttention": "Zula çakışmalarını çözün",
+    "sync": "Eşitle",
+    "title": "Kaynak Denetimi",
+    "titleRequired": "İşleme başlığı zorunludur.",
+    "titleRequiredStatus": "İşlemeden önce bir işleme başlığı girin.",
+    "unlink": "Bağlantıyı kaldır",
+    "unlinked": "GitHub bağlantısı kaldırıldı.",
+    "unstage": "Hazırlıktan çıkar",
+    "unstageFor": "{{path}} dosyasını hazırlıktan çıkar",
+    "unstageAll": "Tümünü hazırlıktan çıkar",
+    "workingChangeCount_one": "{{count}} çalışma değişikliği",
+    "workingChangeCount_other": "{{count}} çalışma değişikliği",
+    "useCurrent": "Geçerli olanı kullan",
+    "useIncoming": "Geleni kullan"
+  },
+  "splash": {
+    "initializing": "Oleafly başlatılıyor",
+    "loadingCore": "Oleafly Core yükleniyor",
+    "loadingHarness": "Oleafly Harness yükleniyor",
+    "loadingParsers": "Oleafly Parsers yükleniyor",
+    "starting": "Oleafly açılıyor"
+  },
+  "theme": {
+    "dark": "Koyu",
+    "light": "Açık",
+    "menuLabel": "Görünüm: {{name}}",
+    "system": "Sistem",
+    "useDark": "Koyu temayı kullan",
+    "useLight": "Açık temayı kullan",
+    "useSystem": "Sistem temasını kullan"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Yine de çık",
+      "description": "{{phase}} Şimdi çıkarsanız kurulum duraklar. İnen kısım korunur ve Oleafly'yi bir dahaki açışınızda sürdürülür.",
+      "title": "TinyTeX hâlâ kuruluyor"
+    },
+    "wait": {
+      "description": "{{phase}} Derlemeniz sıraya alındı ve motor hazır olur olmaz kendiliğinden başlar.",
+      "title": "TinyTeX hâlâ indiriliyor"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "İptal (Esc)",
+    "closeForkDialog": "Çatallama penceresini kapat",
+    "compileFigureFirst": "Önce şekli derleyin",
+    "compilePdfFirst": "PDF için önce bir derleme gerekir",
+    "export": "Dışa aktar",
+    "exportComplete": "{{format}} dışa aktarma tamamlandı",
+    "exportDocx": "Word olarak dışa aktar (.docx)",
+    "exportEpub": "EPUB olarak dışa aktar (.epub)",
+    "exportHtml": "HTML olarak dışa aktar (.html)",
+    "exportMarkdown": "Markdown olarak dışa aktar (.md)",
+    "exportPdf": "PDF olarak dışa aktar",
+    "exportPdfVector": "PDF olarak dışa aktar (vektör görsel)",
+    "exportPngRaster": "PNG olarak dışa aktar (raster görsel)",
+    "exportPagePng": "Sayfayı PNG olarak dışa aktar (raster görsel)",
+    "exportAs": "{{format}} olarak dışa aktar",
+    "exportPptx": "PowerPoint olarak dışa aktar (.pptx)",
+    "exportSourceZip": "Kaynağı dışa aktar (.zip)",
+    "exportTxt": "Düz metin olarak dışa aktar (.txt)",
+    "exportZipFailed": "Proje zip dosyası dışa aktarılamadı",
+    "exporting": ".{{format}} dışa aktarılıyor…",
+    "fork": "Çatalla",
+    "forkDescription": "<name>{{name}}</name> projesini ve Git geçmişini yeni bir projeye kopyalar. Kontrol noktaları boş başlar.",
+    "forkFailed": "Proje çatallanamadı.",
+    "forkProject": "Projeyi çatalla",
+    "layout": "Düzen",
+    "layouts": {
+      "aiOnly": "Yalnızca Yapay Zeka",
+      "editorAi": "Düzenleyici + Yapay Zeka",
+      "editorOnly": "Yalnızca Düzenleyici",
+      "editorPreview": "Düzenleyici + Önizleme",
+      "editorPreviewAi": "Düzenleyici + Önizleme + Yapay Zeka",
+      "previewAi": "Önizleme + Yapay Zeka",
+      "previewOnly": "Yalnızca Önizleme"
+    },
+    "newProjectName": "Yeni proje adı",
+    "projectName": "Proje adı",
+    "projectRenamed": "Proje yeniden adlandırıldı",
+    "saveName": "Kaydet (Enter)",
+    "saveNameAriaLabel": "Adı kaydet",
+    "untitledProject": "proje",
+    "versioning": "Sürüm yönetimi",
+    "viewFile": "Dosyayı Görüntüle",
+    "views": {
+      "editor": "Kaynak Görünümü",
+      "pdf": "PDF Görünümü",
+      "split": "Bölünmüş Görünüm"
+    }
+  },
+  "tour": {
+    "chooseColor": "İmza renginizi seçin",
+    "diagramArrow": "Diyagram tuvalini gösteren kavisli ok",
+    "pointer": "Tur ipucu göstergesi",
+    "quitConfirm": "Turdan çık",
+    "quitDescription": "İlerlemeniz kaydedilmez. Herhangi bir turu daha sonra Yardım menüsünden yeniden başlatabilirsiniz.",
+    "quitTitle": "Turdan çıkılsın mı?",
+    "setMood": "Havayı belirleyin",
+    "showMeAround": "Bana etrafı gezdir",
+    "skip": "Atla",
+    "step": "Adım {{step}}",
+    "stepOfTotal": "Adım {{step}} / {{total}}",
+    "stepOfTour": "Adım {{step}} · {{tour}}",
+    "useAccent": "{{name}} vurgu rengini kullan",
+    "welcomeArrow": "Karşılama paragrafını gösteren el çizimi ok",
+    "welcomeBody": "Bir makaleyi ilk taslaktan son PDF'e kadar tek bir açık kaynaklı çalışma alanında götürün. Yazın, derleyin, redaksiyondan geçirin, atıfları yönetin, şekiller hazırlayın, her değişikliği Git'te inceleyin ve seçtiğiniz yapay zeka modellerini kullanın. Projeleriniz makinenizde kalır.",
+    "welcomeTitle": "Oleafly'ye hoş geldiniz"
+  },
+  "updateChecker": {
+    "available": "Güncelleme var · s{{version}}",
+    "check": "Güncellemeleri denetle",
+    "checkAgain": "Yeniden denetle",
+    "checkFailed": "Güncellemeler denetlenemedi.",
+    "checking": "Denetleniyor…",
+    "downloadFromGithub": "GitHub'dan indir",
+    "downloading": "İndiriliyor… %{{percent}}",
+    "installing": "Kuruluyor…",
+    "lastCheckFailed": "Son otomatik denetim başarısız oldu.",
+    "lastCheckFailedAt": "Son otomatik denetim başarısız oldu · {{when}}.",
+    "latest": "En son sürümü kullanıyorsunuz",
+    "releaseNotes": "Sürüm notları",
+    "restartNotice": "Oleafly tamamlamak için yeniden başlayacak.",
+    "tryAgain": "Yeniden deneyin",
+    "unsupported": "Güncellemeler masaüstü uygulaması tarafından yönetilir.",
+    "updateNow": "Şimdi güncelle"
+  },
+  "updateWindow": {
+    "checking": "Güncellemeler denetleniyor…",
+    "currentVersion": "s{{version}} sürümünü kullanıyorsunuz",
+    "error": "Güncelleme tamamlanamadı. Lütfen daha sonra yeniden deneyin.",
+    "later": "Daha sonra",
+    "looking": "En son sürüm aranıyor…",
+    "packageInstall": "Bir paketten kuruldu. Güncellemek için yeni sürümü indirin.",
+    "ready": "Kurulmaya hazır yeni bir sürüm var.",
+    "upToDate": "Güncelsiniz",
+    "upToDateGeneric": "Oleafly'nin en son sürümünü kullanıyorsunuz",
+    "upToDateHeadline": "Güncelsiniz!",
+    "upToDateVersion": "Oleafly s{{version}} en son sürümdür",
+    "viewRelease": "Sürümü görüntüle"
+  },
+  "windowControls": {
+    "group": "Pencere denetimleri",
+    "maximize": "Tam boyut",
+    "minimize": "Simge durumuna küçült",
+    "restore": "Geri yükle"
+  },
+  "windows": {
+    "preview": "Önizleme: {{title}}",
+    "update": "Oleafly Güncellemesi"
+  }
+}

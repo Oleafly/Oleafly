@@ -1,0 +1,198 @@
+{
+  "files": {
+    "collapseAll": "Slå sammen alle mapper",
+    "confirmDelete": "Slette {{path}}? Dette kan ikke angres.",
+    "conflict": {
+      "cancelAriaLabel": "Avbryt flyttingen av filen",
+      "createBody": "<destination>{{destination}}</destination> finnes allerede. Behold begge filene ved å bruke <suggestion>{{suggestion}}</suggestion>. Å opprette erstatter aldri en fil som finnes fra før.",
+      "dialogAriaLabel": "Konflikt ved flytting av fil",
+      "keepBoth": "Behold begge",
+      "renameBody": "<destination>{{destination}}</destination> finnes allerede. Behold begge filene ved å bruke <suggestion>{{suggestion}}</suggestion>, eller erstatt filen som ligger der. Oleafly erstatter den ikke med mindre du velger Erstatt.",
+      "replace": "Erstatt",
+      "title": "Navnet er allerede i bruk",
+      "unchanged": "Både den opprinnelige stien og målstien ble stående uendret."
+    },
+    "createFailed": "Kunne ikke opprette \"{{path}}\".",
+    "deleteFailed": "Kunne ikke slette \"{{path}}\".",
+    "expandAll": "Utvid alle mapper",
+    "importAriaLabel": "Importer til den valgte mappen",
+    "importFiles": "Importer fil(er)",
+    "importFolder": "Importer mappe",
+    "importTitle": "Importer en fil eller mappe (til den valgte mappen)",
+    "makeCopy": "Lag en kopi",
+    "moreActions": "Flere handlinger for {{name}}",
+    "moveFailed": "Kunne ikke flytte \"{{path}}\". Den opprinnelige stien ble stående uendret.",
+    "newEntry": {
+      "fileInFolder": "Navn på ny fil i mappen {{folder}}",
+      "fileInRoot": "Navn på ny fil i prosjektroten",
+      "filePlaceholder": "Navn på ny fil",
+      "folderInFolder": "Navn på ny mappe i mappen {{folder}}",
+      "folderInRoot": "Navn på ny mappe i prosjektroten",
+      "folderPlaceholder": "Navn på ny mappe"
+    },
+    "newFile": "Ny fil",
+    "newFileAriaLabel": "Ny fil i den valgte mappen",
+    "newFileTitle": "Ny fil (i den valgte mappen)",
+    "newFolder": "Ny mappe",
+    "newFolderAriaLabel": "Ny mappe i den valgte mappen",
+    "newFolderTitle": "Ny mappe (i den valgte mappen)",
+    "renameAriaLabel": "Gi filen nytt navn",
+    "renameFailed": "Kunne ikke gi \"{{path}}\" nytt navn. Den opprinnelige stien ble stående uendret.",
+    "setMain": "Bruk som hoveddokument",
+    "title": "Utforsker",
+    "treeAriaLabel": "Filtreet i utforskeren"
+  },
+  "explorer": {
+    "resizeSections": "Endre størrelse på {{first}} og {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "flertydig",
+      "cycle": "sykel",
+      "definitions_one": "{{count}} definisjon",
+      "definitions_other": "{{count}} definisjoner",
+      "duplicate": "duplikat",
+      "external": "ekstern",
+      "folded": "sammenslått",
+      "incomplete": "ufullstendig",
+      "missing": "mangler"
+    },
+    "bibEntryIn": "{{type}}-oppføring i {{file}}",
+    "duplicateKey": "Duplisert nøkkel.",
+    "duplicateKeyIn": "Duplisert nøkkel {{key}} i {{file}}",
+    "folded": {
+      "description": "Denne grenen er slått sammen for å holde svært store prosjektgrafer responsive.",
+      "label": "Åpne den lenkede kilden for å fortsette"
+    },
+    "fromFile": "{{kind}} fra {{file}}",
+    "groups": {
+      "bibliography": "Litteraturliste",
+      "bibtexEntries": "BibTeX-oppføringer",
+      "commands": "Kommandoer",
+      "definitions_one": "Definisjon",
+      "definitions_other": "Definisjoner",
+      "dependencies": "Lenker og avhengigheter",
+      "duplicateCitations": "Dupliserte siteringsnøkler",
+      "environments": "Miljøer",
+      "labels": "Etiketter og ankere",
+      "occurrences": "Forekomster",
+      "sections": "Seksjoner",
+      "unlinked": "Ulenkede filer",
+      "unresolvedCitations": "Uløste siteringer",
+      "unresolvedDuplicate": "Uløste og dupliserte"
+    },
+    "inFile": "{{kind}} i {{file}}",
+    "incompleteEntry": "Ufullstendig oppføring.",
+    "kinds": {
+      "anchor": "anker",
+      "asset": "ressurs",
+      "bibentry": "bibliografioppføring",
+      "bibliography": "litteraturliste",
+      "citation": "sitering",
+      "environment": "miljø",
+      "file": "fil",
+      "glossary": "ordliste",
+      "import": "import",
+      "include": "inkludering",
+      "label": "etikett",
+      "link": "lenke",
+      "macro": "makro",
+      "reference": "referanse",
+      "section": "seksjon"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Dokumentdisposisjon",
+    "collapseHeading": "Slå sammen {{title}}",
+    "collapseAll": "Slå sammen alle overskrifter",
+    "empty": "Ingen seksjoner eller inkluderinger i dette dokumentet.",
+    "emptyDetail": "Legg til en seksjonsoverskrift for å bygge en disposisjon du kan navigere i.",
+    "entryCount_one": "{{count}} oppføring i disposisjonen",
+    "entryCount_other": "{{count}} oppføringer i disposisjonen",
+    "expandHeading": "Utvid {{title}}",
+    "expandAll": "Utvid alle overskrifter",
+    "title": "Disposisjon"
+  },
+  "panelError": {
+    "message": "Panelutformingen støtte på et problem. Prosjektfilene dine er trygge på disken.",
+    "reload": "Last Oleafly på nytt"
+  },
+  "structure": {
+    "ariaLabel": "Dokumentstruktur",
+    "collapseAll": "Slå sammen alle strukturelementer",
+    "empty": "Prosjektkartet inneholder ingen støttede filer.",
+    "filterLabel": "Filtrer prosjektstrukturen",
+    "filterPlaceholder": "Filtrer prosjektkartet…",
+    "expandAll": "Utvid alle strukturelementer",
+    "itemCount_one": "{{count}} strukturelement",
+    "itemCount_other": "{{count}} strukturelementer",
+    "noMatch": "Ingen struktur passer «{{query}}».",
+    "notice": {
+      "partial": "Delvis kart. Filer som ikke kan leses eller er feilformede, vises der det er mulig.",
+      "stale": "Oppdaterer. Strukturen fra forrige revisjon er skjult til gjeldende kildeområder er klare."
+    },
+    "title": "Struktur",
+    "treeLabel": "Prosjektstruktur",
+    "unavailable": {
+      "failed": {
+        "detail": "Prosjektet kunne ikke analyseres. Kildefilene dine ble ikke endret.",
+        "title": "Strukturen kunne ikke bygges"
+      },
+      "mapping": {
+        "detail": "Oleafly indekserer overskrifter, lenkede filer, symboler og oppføringer i litteraturlisten.",
+        "title": "Kartlegger prosjektstrukturen"
+      },
+      "noProject": {
+        "detail": "Åpne et dokumentprosjekt for å bla i den lokale strukturen og prosjektstrukturen.",
+        "title": "Ingen prosjekter er åpne"
+      },
+      "noSource": {
+        "detail": "Åpne en støttet kildefil eller litteraturfil for å se strukturen i den.",
+        "title": "Ingen aktiv kildefil"
+      },
+      "offline": {
+        "detail": "Prosjektanalyse er ikke tilgjengelig for dette arbeidsområdet akkurat nå.",
+        "title": "Strukturtjenesten er utilgjengelig"
+      },
+      "unsupported": {
+        "detail": "Denne filtypen har ingen leverandør av prosjektstruktur.",
+        "title": "Strukturen er utilgjengelig"
+      },
+      "waiting": {
+        "detail": "Den nyeste prosjektrevisjonen er ikke indeksert ennå.",
+        "title": "Venter på prosjektstrukturen"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Laster assistenten",
+    "editor": "Laster editoren",
+    "preview": "Laster forhåndsvisningen",
+    "terminal": "Laster terminalen"
+  },
+  "terminal": {
+    "closeCurrent": "Lukk denne",
+    "closeLeft": "Lukk alle til venstre",
+    "closeOthers": "Lukk de andre",
+    "closeRight": "Lukk alle til høyre",
+    "closeTab": "Lukk {{title}}",
+    "color": "Farge",
+    "errors": {
+      "input": "Kunne ikke sende inndata til shell",
+      "resize": "Terminalen kunne ikke endre størrelse",
+      "start": "Kunne ikke starte shell"
+    },
+    "limitReached": "Lukk en terminal for å åpne en ny",
+    "newTerminal": "Ny terminal",
+    "settings": "Terminalinnstillinger",
+    "starting": "Starter prosjektets shell…",
+    "tabs": "Terminaler",
+    "titleInput": "Terminaltittel"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Tøm filteret",
+    "filterPlaceholder": "Filtrer…",
+    "noProject": "Ingen prosjekter"
+  }
+}

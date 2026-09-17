@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Kom godt i gang",
+    "overview": {
+      "title": "Start",
+      "content": "Her begynder dine projekter, og her opretter du nye."
+    },
+    "create": {
+      "title": "Opret et rigtigt projekt",
+      "content": "Vælg Nyt projekt for at se, hvordan et stykke arbejde kan begynde."
+    },
+    "kind": {
+      "title": "Tre måder at begynde på",
+      "content": "Start et forskningsprojekt, hent et manuskript, du allerede har, eller tag udgangspunkt i en færdig skabelon."
+    },
+    "kindTemplate": {
+      "title": "Tag udgangspunkt i en skabelon",
+      "content": "Vælg Brug en skabelon for at åbne galleriet. De to andre startpunkter er der, når du får brug for dem."
+    },
+    "gallery": {
+      "title": "Find dit startpunkt",
+      "content": "Gennemse kategorier, søg efter navn, og indsnævr skabelonerne efter kompilator, eller efter om de virker offline."
+    },
+    "template": {
+      "title": "Vælg en skabelon",
+      "content": "Vælg en rigtig skabelon for at fortsætte. Dens filer bliver til dit nye projekt."
+    },
+    "name": {
+      "title": "Giv projektet et navn",
+      "content": "Skriv et projektnavn. Næste bliver aktiv, når navnet ikke er tomt."
+    },
+    "color": {
+      "title": "Vælg en omslagsfarve",
+      "content": "Farven gør projektet let at få øje på under Start. Du kan også beholde skabelonens standardfarve."
+    },
+    "createProject": {
+      "title": "Opret dit projekt",
+      "content": "Klik på \"Opret projekt\" for at oprette et projekt ud fra den valgte skabelon."
+    }
+  },
+  "workspace": {
+    "label": "Dit arbejdsområde",
+    "toolbar": {
+      "title": "Projektets værktøjslinje",
+      "content": "Her ligger projektets handlinger og knapperne til kompilering."
+    },
+    "sidebar": {
+      "title": "Navigation i arbejdsområdet",
+      "content": "Skift mellem filer, søgning, versionsstyring, preflight, referencer og MCP-aktivitet."
+    },
+    "editor": {
+      "title": "Editor",
+      "content": "Skriv og naviger i kildekoden med fuldførelse, diagnostik, formatering og kodeindsigt."
+    },
+    "wysiwygToggle": {
+      "title": "Prøv WYSIWYG-tilstand",
+      "content": "Skift mellem ren kildekode og en formateret visning af dokumentet i stil med Google Docs."
+    },
+    "compile": {
+      "title": "Kompiler og kompiler igen",
+      "content": "Byg det aktuelle projekt her. Rundvisningen kompilerer aldrig og ændrer aldrig din kildekode."
+    },
+    "logs": {
+      "title": "Byggelogfiler",
+      "content": "Åbn byggelogfilerne for at undersøge fejl uden at ændre projektets indhold. Statussen ved siden af viser den seneste kompileringstid."
+    },
+    "preview": {
+      "title": "PDF-forhåndsvisning",
+      "content": "Det kompilerede dokument bliver stående ved siden af kildekoden i delt visning."
+    },
+    "zoom": {
+      "title": "Hele din PDF-værktøjskasse",
+      "content": "Åbn dispositionen, søg i teksten, hop mellem sider, vælg én eller to sider ad gangen, zoom eller tilpas siden, inverter farver, brug den tilgængelige læsevisning, roter, download, gem i projektet, gå i fuld skærm, eller åbn forhåndsvisningen i sit eget vindue."
+    },
+    "sourceNavigation": {
+      "title": "Fra PDF til kildekode",
+      "content": "Klik på indhold i den kompilerede PDF for at hoppe direkte til den tilsvarende kildekode."
+    }
+  },
+  "research": {
+    "label": "Forskningsarbejdsområde",
+    "open": {
+      "title": "Forskningsarbejdsområde",
+      "content": "Åbn det for at give forskningsopgaver videre til en agent og for at tilknytte læsemapper og datasæt, du har liggende andre steder. Det er nyt og i beta, så sig endelig til, hvis noget går i stykker."
+    },
+    "tasks": {
+      "title": "Sæt forskningsopgaver i kø",
+      "content": "Beskriv et stykke arbejde, og giv det til en agent. Hver opgave har sin egen samtale, sine egne resultater og sine egne gennemgangsnoter."
+    },
+    "folders": {
+      "title": "Tilknyt mapper, du allerede har",
+      "content": "Peg arbejdsområdet mod læsemapper og datasæt uden for projektet. Intet bliver kopieret eller flyttet."
+    }
+  },
+  "settings": {
+    "label": "Indstillinger",
+    "navigation": {
+      "title": "Indstillinger",
+      "content": "Her skifter du mellem præferencer og integrationer."
+    },
+    "general": {
+      "title": "Generelle præferencer",
+      "content": "Styr redigeringsadfærd, offlinetilstand, genveje og rundvisninger."
+    },
+    "appearance": {
+      "title": "Udseende",
+      "content": "Vælg tema, typografi, standardlayout for arbejdsområdet og accentfarve."
+    },
+    "dictionary": {
+      "title": "Ordbog",
+      "content": "Gennemgå de projektspecifikke og globale ord, som stave- og grammatikkontrollen ser bort fra."
+    },
+    "data": {
+      "title": "Datalagring",
+      "content": "Se den lokale projektlagring, og administrer programmets data."
+    },
+    "ai": {
+      "title": "AI-assistent",
+      "content": "Konfigurer udbydere, modeller, adgangsoplysninger og de MCP-servere, assistenten kan bruge."
+    },
+    "compiler": {
+      "title": "Kompilator",
+      "content": "Vælg og konfigurer den LaTeX-motor, der bygger projekterne."
+    },
+    "downloads": {
+      "title": "Downloads",
+      "content": "Administrer de pakker og ressourcer, der er tilgængelige, når du arbejder offline."
+    },
+    "integrations": {
+      "title": "Integrationer",
+      "content": "Forbind GitHub, alphaXiv, Zotero, citationssøgning og Oleaflys lokale MCP-server."
+    },
+    "shortcuts": {
+      "title": "Tastaturgenveje",
+      "content": "Gennemse, rediger, angiv og nulstil programmets tastaturgenveje."
+    },
+    "mcp": {
+      "title": "MCP til assistenten",
+      "content": "Vælg, hvilke MCP-servere assistenten kan bruge."
+    },
+    "help": {
+      "title": "Hjælp og Om",
+      "content": "Start den kontekstafhængige rundvisning igen, åbn dokumentationen, se genveje, eller meld et problem."
+    }
+  },
+  "aiSettings": {
+    "label": "AI-indstillinger",
+    "tabs": {
+      "title": "Indstillinger for AI-assistenten",
+      "content": "Her styrer du udbydere og nøgler, instruktioner, personaer, genbrugelige færdigheder og MCP-servere."
+    },
+    "providers": {
+      "title": "Forbind udbydere",
+      "content": "Indsæt en nøgle, så bliver den kontrolleret hos udbyderen, før den gemmes. Forbundne udbydere får et grønt mærke og folder sig ud til en modelliste, du kan slå til og fra, udvide eller gendanne. Nøglerne forbliver krypteret på denne computer."
+    },
+    "customProvider": {
+      "title": "Brug dit eget endpoint",
+      "content": "Enhver OpenAI-kompatibel base-URL virker her, også lokale servere som Ollama eller LM Studio."
+    },
+    "openInstructions": {
+      "title": "Instruktioner",
+      "content": "Klik på fanen Instruktioner for at fortsætte."
+    },
+    "defaultModel": {
+      "title": "Standardmodel",
+      "content": "Nye chats starter med denne model. Du kan stadig skifte model for den enkelte samtale i chatpanelet."
+    },
+    "instructions": {
+      "title": "Egne instruktioner",
+      "content": "Dine faste stilpræferencer, som lægges til hver eneste forespørgsel, assistenten sender."
+    },
+    "openPersonas": {
+      "title": "Personaer",
+      "content": "Klik på fanen Personaer for at fortsætte."
+    },
+    "personas": {
+      "title": "Opret personaer",
+      "content": "Navngivne instruktionssæt med en farve, som du kan skifte imellem i chattens Persona-menu. Prøv en korrekturlæser, en bedømmer eller en LaTeX-purist."
+    }
+  },
+  "ai": {
+    "label": "AI-assistent",
+    "assistant": {
+      "title": "AI-assistent",
+      "content": "Arbejd med en assistent, der kender dit projekt, uden at der bliver sendt noget under denne rundvisning."
+    },
+    "runtime": {
+      "title": "To slags agenter",
+      "content": "Oleafly-agenten kører hos den modeludbyder, du konfigurerer. CLI-agenten, som er i beta, styrer en kodeagent, der allerede er installeret på denne computer."
+    },
+    "connectProvider": {
+      "title": "Forbind en udbyder",
+      "content": "Start her, hvis der ikke er konfigureret nogen udbyder. Rundvisningen beder aldrig om og ændrer aldrig adgangsoplysninger."
+    },
+    "providerModel": {
+      "title": "Udbyder og model",
+      "content": "Skift model for denne samtale. Ændringerne gælder kun denne session. Din standardmodel vælges under Indstillinger. Logoerne viser, hvilken udbyder hver model kommer fra."
+    },
+    "prompts": {
+      "title": "Genveje til prompter",
+      "content": "Vælg en færdig prompt for at lægge den i chatfeltet."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Vælg, hvordan assistenten skal arbejde. En aktiv persona erstatter dine standardinstruktioner, indtil du slår den fra."
+    },
+    "input": {
+      "title": "Chatfelt",
+      "content": "Beskriv, hvad du har brug for. Assistenten kan bruge projektets kontekst, men denne rundvisning sender aldrig en forespørgsel."
+    },
+    "attachments": {
+      "title": "Vedhæftede filer",
+      "content": "Vedhæft billeder, PDF-filer og kildefiler, når en samtale har brug for ekstra kontekst."
+    },
+    "history": {
+      "title": "Samtalehistorik",
+      "content": "Åbn de seneste chats og hele historikken igen, mens hver samtale bliver ved med at høre til sin projekttilstand."
+    },
+    "usage": {
+      "title": "Forbrug",
+      "content": "Konfigurerede samtaler viser her forbrug af kørsler og tokens samt anslåede omkostninger, når tallene findes."
+    },
+    "restore": {
+      "title": "Gendan projektets tilstand",
+      "content": "Efter en AI-redigering kan et kontrolpunkt gendanne projektets filer uden at fjerne samtalen."
+    }
+  },
+  "diagram": {
+    "label": "Diagrameditor",
+    "composer": {
+      "title": "Diagrameditor",
+      "content": "Byg diagrammer visuelt eller ud fra TikZ-kode. Rundvisningen ændrer eller gemmer ikke dit arbejde."
+    },
+    "import": {
+      "title": "Importer en TikZ-fil",
+      "content": "Har du allerede en .tikz- eller .tex-fil? Importer den for at erstatte denne starttegning. Den bliver ved med at være et udkast, indtil du vælger at gemme den."
+    },
+    "modes": {
+      "title": "Tegn og Kode",
+      "content": "I tegnetilstand arbejder du direkte på lærredet. I kodetilstand ser du den genererede TikZ og genbrugelige kodestumper."
+    },
+    "palette": {
+      "title": "Figurpalet",
+      "content": "Vælg en figur, og klik og træk så på lærredet for at placere den og give den størrelse."
+    },
+    "handles": {
+      "title": "Forbind og skift størrelse",
+      "content": "En markeret figur får håndtag til forbindelser og størrelse, så struktur og mål bliver præcise."
+    },
+    "inspector": {
+      "title": "Inspektør",
+      "content": "Marker en figur eller en forbindelse for at justere dens stil, tekst, forløb og rækkefølge i stakken."
+    },
+    "preview": {
+      "title": "Kompileret forhåndsvisning",
+      "content": "Kompilering åbner en forhåndsvisning ved siden af editoren med knapper til skalering og baggrund."
+    },
+    "compile": {
+      "title": "Kompiler",
+      "content": "Kompilering danner en selvstændig forhåndsvisning uden at indsætte diagrammet i dit dokument."
+    },
+    "saveProject": {
+      "title": "Gem som projekt",
+      "content": "Gem et færdigt diagram som et genbrugeligt billedprojekt, der dukker op under Start."
+    },
+    "download": {
+      "title": "Download",
+      "content": "Download det kompilerede diagram som en PNG-fil uden at gemme det som et projekt."
+    }
+  }
+}

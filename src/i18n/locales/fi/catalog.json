@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Tyhjä",
+    "diagramsAndFigures": "Kaaviot ja kuvat",
+    "cvsAndResumes": "CV:t ja ansioluettelot",
+    "journalsAndConferences": "Tiedelehdet ja konferenssit",
+    "bibliographies": "Lähdeluettelot",
+    "assignments": "Harjoitustyöt",
+    "thesesAndReports": "Opinnäytteet ja raportit",
+    "books": "Kirjat",
+    "presentations": "Esitykset",
+    "posters": "Posterit",
+    "newsletters": "Uutiskirjeet",
+    "calendars": "Kalenterit",
+    "letters": "Kirjeet",
+    "aiGenerated": "Tekoälyn luomat"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "CV",
+    "diagramsAndFigures": "Kaaviot",
+    "journalsAndConferences": "Lehdet"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Lämmin humanistinen groteski, jota moni nykyaikainen CV- ja ansioluettelomalli käyttää."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Selkeä ja neutraali groteski, joka on helppolukuinen niin näytöllä kuin painettuna."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Hillitty siirtymäkauden antiikva, joka sopii hyvin tieteellisiin ja virallisiin asiakirjoihin."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Tieteellisen kirjoittamisen paketti",
+      "description": "Tutkimus- ja rahoitushakemukset, kirjallisuuskatsaukset, motivaatiokirjeet, suosituskirjeet, valkoiset kirjat ja opinnäytteet."
+    },
+    "beamer-themes": {
+      "label": "Beamer-teemakokoelma",
+      "description": "Beamer-esitykset teemoilla Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla ja Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Liiketoiminnan asiakirjat",
+      "description": "Laskut, muistiot, kokouspöytäkirjat, liiketoimintasuunnitelmat ja raportit, todistukset sekä kolmitaitteinen esite."
+    },
+    "conference-preprints": {
+      "label": "Konferenssien preprint-tyylit",
+      "description": "Preprint-tyylit NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv ja Interspeech."
+    },
+    "coursework": {
+      "label": "Kurssitöiden paketti",
+      "description": "Kotitehtävät, tehtävämonisteet, tietovisat, arviointikriteerit, luentomuistiinpanot, opinto-oppaat, matematiikan kaavakokoelmat, kokeet ja pseudokoodiraportit."
+    },
+    "creative-misc": {
+      "label": "Luova ja sekalainen",
+      "description": "Reseptikirjat, kutsut, roolipelien hahmolomakkeet, vuosikalenteri, taulukko- ja TikZ-galleriat sekä kenttämuistiinpanot."
+    },
+    "cv-collection": {
+      "label": "CV- ja ansioluettelotyylien kokoelma",
+      "description": "Ansioluettelot tyyleillä ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds ja Jake's."
+    },
+    "reports-lab": {
+      "label": "Labra- ja tekniset raportit",
+      "description": "Labraraportit, tieteelliset ja tekniset raportit, projekti- ja harjoitteluraportit sekä vuosikertomus."
+    },
+    "resume-plus": {
+      "label": "Ansioluettelo- ja CV-laajennus",
+      "description": "Kaksipalstainen tekniikan alan ansioluettelo, pelkistetty ansioluettelo, laaja akateeminen CV, hakemuskirje ja Typst-CV."
+    },
+    "slides-posters": {
+      "label": "Kalvot ja posterit",
+      "description": "Metropolis-teeman Beamer-esitys, tikzposter pysty- ja vaakasuunnassa sekä better-poster-taitto."
+    },
+    "venue-classes": {
+      "label": "Tiedelehtien ja konferenssien luokat",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf ja Typst-lehtipohjat."
+    }
+  }
+}

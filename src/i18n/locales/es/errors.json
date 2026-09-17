@@ -1,0 +1,31 @@
+{
+  "unknown": "Se produjo un error. Consulta el registro de la aplicación para ver los detalles.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "El nombre del proyecto no puede estar vacío.",
+    "name_conflict": "Ya existe un proyecto con el nombre {{name}}.",
+    "folder_unavailable": "No se pudo reservar una carpeta nueva para el proyecto."
+  },
+  "settings": {
+    "locale_unsupported": "El idioma {{locale}} no está disponible."
+  },
+  "literature": {
+    "query_empty": "La consulta de búsqueda no puede estar vacía.",
+    "query_too_long": "La consulta de búsqueda es demasiado larga (máximo {{max}} caracteres).",
+    "unknown_source": "Fuente bibliográfica desconocida."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX no tiene un binario {{name}} compatible con este sistema.",
+    "package_operation_timeout": "La operación con paquetes superó su límite de {{span}} y se detuvo, para que puedas volver a compilar. Lo más probable es que el servidor de TeX Live esté saturado. Inténtalo más tarde o ejecuta tlmgr por tu cuenta."
+  },
+  "github": {
+    "sign_in_expired": "El código de inicio de sesión caducó. Inténtalo de nuevo.",
+    "sign_in_cancelled": "Se canceló la autorización de GitHub.",
+    "sign_in_failed": "No se pudo iniciar sesión en GitHub.",
+    "repositories_unavailable": "No se pudieron cargar los repositorios.",
+    "create_repo_failed": "No se pudo crear el repositorio ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "No se activó el acceso completo."
+  }
+}

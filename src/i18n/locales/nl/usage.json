@@ -1,0 +1,188 @@
+{
+  "dialog": {
+    "title": "Verbruiksrapport",
+    "description": "Geregistreerd tokenverbruik per project, agent, provider, model en sessie.",
+    "from": "Van",
+    "through": "Tot en met",
+    "quickRangesLegend": "Snelle periodes",
+    "utcNote": "Datums en uren zijn in UTC.",
+    "apply": "Toepassen",
+    "refresh": "Vernieuwen",
+    "refreshLabel": "Verbruiksrapport vernieuwen",
+    "loading": "Verbruik laden…",
+    "loadFailed": "Het verbruiksrapport kon niet worden geladen.",
+    "loadFailedHint": "Probeer het zo meteen opnieuw.",
+    "tryAgain": "Opnieuw proberen",
+    "emptyTitle": "Er is geen verbruik geregistreerd voor deze filters.",
+    "emptyDescription": "Pas de periode aan of haal een filter weg."
+  },
+  "quickRanges": {
+    "days7": "7 d",
+    "days30": "30 d",
+    "days90": "90 d",
+    "month": "Deze maand"
+  },
+  "filters": {
+    "project": "Project",
+    "projectAll": "Alle projecten",
+    "agent": "Agent",
+    "agentAll": "Alle agents",
+    "provider": "Provider",
+    "providerAll": "Alle providers",
+    "model": "Model",
+    "modelAll": "Alle modellen",
+    "session": "Sessie",
+    "sessionAll": "Alle sessies"
+  },
+  "report": {
+    "range": "{{start}} tot {{end}} (UTC)",
+    "costDisclaimer": "Kostenramingen gebruiken opgeslagen prijsgegevens, niet de factuur van je provider of je abonnementsquotum.",
+    "exportCsv": "CSV exporteren",
+    "exportSaved": "Opgeslagen in {{path}}",
+    "exportFailed": "Het verbruiksrapport kon niet worden opgeslagen.",
+    "inputTokens": "Invoertokens",
+    "inputIncludesCache": "Inclusief invoer uit de cache",
+    "outputTokens": "Uitvoertokens",
+    "outputIncludesReasoning": "Inclusief redeneertokens",
+    "cacheReads": "Cacheleesacties",
+    "costEstimate": "Kostenraming",
+    "allRecordsPriced": "Alle records geprijsd",
+    "sessions": "Sessies",
+    "dailyTokens": "Tokens per dag",
+    "activityByHour": "Activiteit per uur",
+    "projects": "Projecten",
+    "agents": "Agents",
+    "providers": "Providers",
+    "models": "Modellen"
+  },
+  "counts": {
+    "records_one": "{{total}} record",
+    "records_other": "{{total}} records",
+    "sessions_one": "{{total}} sessie",
+    "sessions_other": "{{total}} sessies",
+    "tokens_one": "{{total}} token",
+    "tokens_other": "{{total}} tokens",
+    "inputUnknown_one": "{{total}} record zonder invoertelling",
+    "inputUnknown_other": "{{total}} records zonder invoertelling",
+    "outputUnknown_one": "{{total}} record zonder uitvoertelling",
+    "outputUnknown_other": "{{total}} records zonder uitvoertelling",
+    "cacheUnknown_one": "{{total}} record zonder vergelijkbare cachegegevens",
+    "cacheUnknown_other": "{{total}} records zonder vergelijkbare cachegegevens",
+    "unpriced_one": "{{total}} record zonder prijs",
+    "unpriced_other": "{{total}} records zonder prijs",
+    "partlyUnpriced_one": "{{unpriced}} van {{total}} record zonder prijs",
+    "partlyUnpriced_other": "{{unpriced}} van {{total}} records zonder prijs",
+    "onPlan_one": "{{total}} record via een abonnement of lokaal",
+    "onPlan_other": "{{total}} records via een abonnement of lokaal",
+    "childRuns_one": "{{total}} onderliggende run",
+    "childRuns_other": "{{total}} onderliggende runs",
+    "usageRecords_one": "{{total}} verbruiksrecord",
+    "usageRecords_other": "{{total}} verbruiksrecords",
+    "excludedChildRecords_one": "{{total}} onderliggend record telt al mee in een bovenliggend totaal en wordt dus niet dubbel geteld.",
+    "excludedChildRecords_other": "{{total}} onderliggende records tellen al mee in een bovenliggend totaal en worden dus niet dubbel geteld.",
+    "unmeasured_one": "{{total}} record zonder gemeten tokenaantallen.",
+    "unmeasured_other": "{{total}} records zonder gemeten tokenaantallen."
+  },
+  "cache": {
+    "rate": "{{percent}}% van de vergelijkbare invoer",
+    "rateWithUnknown": "{{percent}}% van de vergelijkbare invoer, {{unknown}} niet vergelijkbaar"
+  },
+  "cost": {
+    "local": "Lokaal",
+    "plan": "Abonnement",
+    "notBilledPerToken": "Niet per token gefactureerd",
+    "noEstimate": "Geen raming",
+    "noSavedPrice": "Geen opgeslagen prijs voor deze records",
+    "priceSource": "Prijsbron: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Dagelijkse trend van invoer- en uitvoertokens",
+    "chartTitle": "Dagelijks tokenverbruik",
+    "empty": "Geen dagelijkse activiteit.",
+    "tokensUnavailable": "Tokenaantallen niet beschikbaar",
+    "inOut": "{{input}} in, {{output}} uit",
+    "incompleteDays": "Dagen met onvolledige tokenaantallen staan niet in de lijn.",
+    "day": "Dag",
+    "inputTokens": "Invoertokens",
+    "outputTokens": "Uitvoertokens"
+  },
+  "heatmap": {
+    "label": "Tokenactiviteit per weekdag en uur in UTC",
+    "cell": "{{weekday}} {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "Geen geregistreerde activiteit",
+    "tokenUnavailable": "Tokenaantal niet beschikbaar",
+    "hoursInUtc": "Uren in UTC",
+    "less": "Minder",
+    "more": "Meer",
+    "weekdays": {
+      "sun": "zo",
+      "mon": "ma",
+      "tue": "di",
+      "wed": "wo",
+      "thu": "do",
+      "fri": "vr",
+      "sat": "za"
+    }
+  },
+  "breakdown": {
+    "empty": "Geen geregistreerd verbruik.",
+    "name": "Naam",
+    "tokens": "Tokens",
+    "cost": "Kosten",
+    "sessions": "Sessies"
+  },
+  "sessions": {
+    "title": "Sessies",
+    "subtitle": "Chats, taken, subagentruns en hulpaanroepen, de meest recente eerst.",
+    "emptyTitle": "Geen sessies die aan deze filters voldoen",
+    "emptyDescription": "Pas de periode aan of haal een filter weg.",
+    "session": "Sessie",
+    "project": "Project",
+    "agent": "Agent",
+    "model": "Model",
+    "lastActivity": "Laatste activiteit (UTC)",
+    "input": "Invoer",
+    "output": "Uitvoer",
+    "cost": "Kosten",
+    "billing": "Facturering",
+    "status": "Status",
+    "rowsPerPage": "Rijen per pagina",
+    "page": "Pagina {{page}} van {{pageCount}}",
+    "previous": "Vorige",
+    "next": "Volgende"
+  },
+  "labels": {
+    "unknown": "Onbekend",
+    "mixed": "Gemengd",
+    "generalProject": "Algemeen",
+    "runtimeBuiltIn": "Oleafly-assistent",
+    "runtimeHelper": "Hulpaanroepen",
+    "runtimeAcp": "CLI-agents"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Abonnement",
+    "local": "Lokaal",
+    "unknown": "Onbekend",
+    "mixed": "Gemengd"
+  },
+  "scope": {
+    "child": "Subagent",
+    "task": "Taak",
+    "helper": "Hulpaanroep"
+  },
+  "status": {
+    "in_progress": "Bezig",
+    "completed": "Voltooid",
+    "failed": "Mislukt",
+    "cancelled": "Geannuleerd",
+    "interrupted": "Onderbroken"
+  },
+  "measurement": {
+    "provider_reported": "Geteld door de provider",
+    "runtime_reported": "Geteld door de agent",
+    "estimated": "Lokaal geschat",
+    "unavailable": "Niet gemeten",
+    "mixed_or_unavailable": "Deels gemeten"
+  }
+}

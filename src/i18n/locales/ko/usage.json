@@ -1,0 +1,175 @@
+{
+  "dialog": {
+    "title": "사용량 보고서",
+    "description": "프로젝트, 에이전트, 제공자, 모델, 세션별로 기록된 토큰 활동입니다.",
+    "from": "시작",
+    "through": "종료",
+    "quickRangesLegend": "빠른 기간 선택",
+    "utcNote": "날짜와 시간은 UTC 기준입니다.",
+    "apply": "적용",
+    "refresh": "새로 고침",
+    "refreshLabel": "사용량 보고서 새로 고침",
+    "loading": "사용량을 불러오는 중…",
+    "loadFailed": "사용량 보고서를 불러오지 못했습니다.",
+    "loadFailedHint": "잠시 후 다시 시도하세요.",
+    "tryAgain": "다시 시도",
+    "emptyTitle": "이 필터로 기록된 사용량이 없습니다.",
+    "emptyDescription": "기간을 바꾸거나 필터를 해제하세요."
+  },
+  "quickRanges": {
+    "days7": "7일",
+    "days30": "30일",
+    "days90": "90일",
+    "month": "이번 달"
+  },
+  "filters": {
+    "project": "프로젝트",
+    "projectAll": "모든 프로젝트",
+    "agent": "에이전트",
+    "agentAll": "모든 에이전트",
+    "provider": "제공자",
+    "providerAll": "모든 제공자",
+    "model": "모델",
+    "modelAll": "모든 모델",
+    "session": "세션",
+    "sessionAll": "모든 세션"
+  },
+  "report": {
+    "range": "{{start}} ~ {{end}}(UTC)",
+    "costDisclaimer": "비용 추정치는 저장된 가격 데이터를 기준으로 하며, 제공자의 청구서나 요금제 할당량이 아닙니다.",
+    "exportCsv": "CSV 내보내기",
+    "exportSaved": "{{path}}에 저장했습니다",
+    "exportFailed": "사용량 보고서를 저장하지 못했습니다.",
+    "inputTokens": "입력 토큰",
+    "inputIncludesCache": "캐시된 입력 포함",
+    "outputTokens": "출력 토큰",
+    "outputIncludesReasoning": "추론 토큰 포함",
+    "cacheReads": "캐시 읽기",
+    "costEstimate": "예상 비용",
+    "allRecordsPriced": "모든 기록에 가격 적용됨",
+    "sessions": "세션",
+    "dailyTokens": "일별 토큰",
+    "activityByHour": "시간대별 활동",
+    "projects": "프로젝트",
+    "agents": "에이전트",
+    "providers": "제공자",
+    "models": "모델"
+  },
+  "counts": {
+    "records_other": "기록 {{total}}건",
+    "sessions_other": "세션 {{total}}개",
+    "tokens_other": "토큰 {{total}}개",
+    "inputUnknown_other": "입력 수치가 없는 기록 {{total}}건",
+    "outputUnknown_other": "출력 수치가 없는 기록 {{total}}건",
+    "cacheUnknown_other": "비교 가능한 캐시 데이터가 없는 기록 {{total}}건",
+    "unpriced_other": "가격이 적용되지 않은 기록 {{total}}건",
+    "partlyUnpriced_other": "전체 {{total}}건 중 {{unpriced}}건에 가격 미적용",
+    "onPlan_other": "요금제 또는 로컬 기록 {{total}}건",
+    "childRuns_other": "하위 실행 {{total}}회",
+    "usageRecords_other": "사용량 기록 {{total}}건",
+    "excludedChildRecords_other": "상위 합계에 이미 포함된 하위 기록 {{total}}건은 중복으로 세지 않았습니다.",
+    "unmeasured_other": "토큰 수가 측정되지 않은 기록 {{total}}건."
+  },
+  "cache": {
+    "rate": "비교 가능한 입력의 {{percent}}%",
+    "rateWithUnknown": "비교 가능한 입력의 {{percent}}%, {{unknown}}은(는) 비교 불가"
+  },
+  "cost": {
+    "local": "로컬",
+    "plan": "요금제",
+    "notBilledPerToken": "토큰 단위로 청구되지 않음",
+    "noEstimate": "추정치 없음",
+    "noSavedPrice": "이 기록에 저장된 가격이 없음",
+    "priceSource": "가격 출처: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "일별 입력 및 출력 토큰 추이",
+    "chartTitle": "일별 토큰 사용량",
+    "empty": "일별 활동이 없습니다.",
+    "tokensUnavailable": "토큰 수를 알 수 없음",
+    "inOut": "입력 {{input}}, 출력 {{output}}",
+    "incompleteDays": "토큰 수가 완전하지 않은 날짜는 선에서 제외합니다.",
+    "day": "날짜",
+    "inputTokens": "입력 토큰",
+    "outputTokens": "출력 토큰"
+  },
+  "heatmap": {
+    "label": "UTC 요일 및 시간대별 토큰 활동",
+    "cell": "{{weekday}} {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "기록된 활동 없음",
+    "tokenUnavailable": "토큰 수를 알 수 없음",
+    "hoursInUtc": "시간은 UTC 기준",
+    "less": "적음",
+    "more": "많음",
+    "weekdays": {
+      "sun": "일",
+      "mon": "월",
+      "tue": "화",
+      "wed": "수",
+      "thu": "목",
+      "fri": "금",
+      "sat": "토"
+    }
+  },
+  "breakdown": {
+    "empty": "기록된 사용량이 없습니다.",
+    "name": "이름",
+    "tokens": "토큰",
+    "cost": "비용",
+    "sessions": "세션"
+  },
+  "sessions": {
+    "title": "세션",
+    "subtitle": "채팅, 작업, 서브에이전트 실행, 헬퍼 호출을 최신순으로 보여 줍니다.",
+    "emptyTitle": "이 필터와 일치하는 세션이 없습니다",
+    "emptyDescription": "기간을 바꾸거나 필터를 해제하세요.",
+    "session": "세션",
+    "project": "프로젝트",
+    "agent": "에이전트",
+    "model": "모델",
+    "lastActivity": "마지막 활동(UTC)",
+    "input": "입력",
+    "output": "출력",
+    "cost": "비용",
+    "billing": "청구",
+    "status": "상태",
+    "rowsPerPage": "페이지당 행 수",
+    "page": "{{pageCount}}페이지 중 {{page}}페이지",
+    "previous": "이전",
+    "next": "다음"
+  },
+  "labels": {
+    "unknown": "알 수 없음",
+    "mixed": "혼합",
+    "generalProject": "일반",
+    "runtimeBuiltIn": "Oleafly 어시스턴트",
+    "runtimeHelper": "헬퍼 호출",
+    "runtimeAcp": "CLI 에이전트"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "요금제",
+    "local": "로컬",
+    "unknown": "알 수 없음",
+    "mixed": "혼합"
+  },
+  "scope": {
+    "child": "서브에이전트",
+    "task": "작업",
+    "helper": "헬퍼"
+  },
+  "status": {
+    "in_progress": "진행 중",
+    "completed": "완료됨",
+    "failed": "실패",
+    "cancelled": "취소됨",
+    "interrupted": "중단됨"
+  },
+  "measurement": {
+    "provider_reported": "제공자가 집계",
+    "runtime_reported": "에이전트가 집계",
+    "estimated": "로컬에서 추정",
+    "unavailable": "측정 안 됨",
+    "mixed_or_unavailable": "일부만 측정됨"
+  }
+}

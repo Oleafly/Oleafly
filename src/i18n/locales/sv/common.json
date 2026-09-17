@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "Avbryt",
+    "close": "Stäng",
+    "save": "Spara",
+    "delete": "Radera",
+    "remove": "Ta bort",
+    "rename": "Byt namn",
+    "open": "Öppna",
+    "copy": "Kopiera",
+    "copied": "Kopierat",
+    "retry": "Försök igen",
+    "back": "Tillbaka",
+    "next": "Nästa",
+    "done": "Klar",
+    "edit": "Redigera",
+    "add": "Lägg till",
+    "search": "Sök",
+    "clear": "Rensa",
+    "apply": "Tillämpa",
+    "confirm": "Bekräfta",
+    "ok": "OK",
+    "yes": "Ja",
+    "no": "Nej",
+    "learnMore": "Läs mer",
+    "showMore": "Visa mer",
+    "showLess": "Visa mindre"
+  },
+  "state": {
+    "loading": "Läser in…",
+    "saving": "Sparar…",
+    "none": "Ingen",
+    "unknown": "Okänd",
+    "enabled": "Aktiverad",
+    "disabled": "Inaktiverad",
+    "on": "På",
+    "off": "Av",
+    "beta": "Beta",
+    "new": "Ny",
+    "default": "Standard"
+  },
+  "labels": {
+    "name": "Namn",
+    "type": "Typ",
+    "size": "Storlek",
+    "date": "Datum",
+    "status": "Status",
+    "description": "Beskrivning",
+    "optional": "Valfritt",
+    "required": "Obligatoriskt"
+  }
+}

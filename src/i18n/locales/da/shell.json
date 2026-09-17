@@ -1,0 +1,919 @@
+{
+  "about": {
+    "close": "Luk dialogen Om",
+    "closeBackdrop": "Luk Om Oleafly",
+    "connect": "Kom i kontakt med Oleafly",
+    "links": {
+      "discussions": {
+        "description": "Stil spørgsmål, og del idéer",
+        "label": "Diskussioner"
+      },
+      "docs": {
+        "description": "Lær alle dele af Oleafly at kende",
+        "label": "Dokumentation"
+      },
+      "issues": {
+        "description": "Meld en fejl, eller foreslå en funktion",
+        "label": "Issues"
+      },
+      "social": {
+        "description": "Følg udgivelser og udvikling",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "Giv en stjerne på GitHub",
+    "tagline": "Det open source-arbejdsrum til hele artiklen. Skriv, kompiler, korrekturlæs, hold styr på citationer, gennemgå PDF-filer, følg ændringer i Git, og arbejd med de AI-modeller, du selv vælger.",
+    "version": "Version {{version}}",
+    "viewSource": "Se kildekoden"
+  },
+  "addCitation": {
+    "added": "Tilføjede {{cite}}",
+    "adding": "Tilføjer…",
+    "close": "Luk citationsdialogen",
+    "confirm": "Føj til .bib, og citer",
+    "entry": "Post",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Titel"
+    },
+    "hint": "Indsæt en DOI, et arXiv-id eller en URL for at hente posten direkte, eller skriv en titel for at søge i Crossref. Prøv en af dem:",
+    "lookUp": "Slå op",
+    "lookingUp": "Slår \"{{query}}\" op…",
+    "matches_one": "{{count}} træf fra Crossref. Vælg et:",
+    "matches_other": "{{count}} træf fra Crossref. Vælg et:",
+    "noResults": "Der blev ikke fundet nogen resultater. Tjek identifikatoren, eller prøv andre ord i titlen.",
+    "placeholder": "DOI, arXiv-id, URL eller en artikeltitel…",
+    "privacyNote": "Kun identifikatoren eller titlen bliver sendt, til doi.org, arXiv eller Crossref.",
+    "title": "Tilføj citation"
+  },
+  "backendProtocol": {
+    "mismatch": "Dette vindue og dets backend er bygget til forskellige versioner af Oleafly, så nogle funktioner virker måske ikke. En geninstallation af appen løser det."
+  },
+  "branding": {
+    "assistantMascot": "Maskot for Oleaflys AI-assistent"
+  },
+  "browser": {
+    "address": "Søg, eller skriv en URL",
+    "back": "Tilbage",
+    "closeTab": "Luk fanen",
+    "copyUrl": "Kopier URL",
+    "forward": "Frem",
+    "moreOptions": "Flere muligheder",
+    "newTab": "Ny fane",
+    "openExternal": "Åbn i din browser",
+    "openTabs": "Åbne faner",
+    "reload": "Genindlæs",
+    "setHomePage": "Vælg som startside"
+  },
+  "citeOleafly": {
+    "description": "Der blev ikke fundet nogen litteraturfil i dette projekt, så intet blev ændret. Kopier posten nedenfor ind i din litteraturliste, eller find den igen senere under Indstillinger, Hjælp og Om.",
+    "openHelp": "Åbn Hjælp og Om",
+    "title": "Citer Oleafly i denne artikel"
+  },
+  "commandGroups": {
+    "commands": "Kommandoer",
+    "compile": "Kompilering",
+    "editor": "Editor",
+    "insert": "Indsæt",
+    "project": "Projekt",
+    "settings": "Indstillinger",
+    "tools": "Værktøjer"
+  },
+  "commandPalette": {
+    "empty": "Der blev ikke fundet nogen resultater.",
+    "label": "Kommandopalet",
+    "placeholder": "Skriv en kommando, eller søg…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / titel",
+      "label": "Tilføj citation"
+    },
+    "appearance": {
+      "keywords": "tema udseende tilstand theme appearance mode",
+      "useDark": "Brug mørkt udseende",
+      "useLight": "Brug lyst udseende",
+      "useSystem": "Brug systemets udseende"
+    },
+    "autoCompile": {
+      "disable": "Slå automatisk kompilering fra",
+      "enable": "Slå automatisk kompilering til"
+    },
+    "bold": {
+      "label": "Fed"
+    },
+    "checkpoints": {
+      "label": "Kontrolpunkter"
+    },
+    "citeOleafly": {
+      "keywords": "citation bibtex litteraturliste krediter oleafly bibliography acknowledge",
+      "label": "Citer Oleafly i denne artikel"
+    },
+    "clearCache": {
+      "keywords": "ryd byggecache rens genopbyg forældet nulstil aux clear build cache clean rebuild stale reset",
+      "label": "Ryd byggecachen, og kompiler igen"
+    },
+    "closeEnvironment": {
+      "keywords": "luk afslut miljø begynd latex close end environment begin",
+      "label": "Luk LaTeX-miljøet"
+    },
+    "createProject": {
+      "keywords": "nyt projekt opret skabelon galleri new project create template gallery",
+      "label": "Opret et nyt projekt"
+    },
+    "diagramComposer": {
+      "keywords": "diagram figur tikz editor tegn lærred figure composer draw canvas",
+      "label": "Åbn diagrameditoren"
+    },
+    "documentCitationScan": {
+      "keywords": "citationer litteratur skan dokument afsnit referencer find citations literature scan document paragraph references",
+      "label": "Find citationer i dokumentet"
+    },
+    "equation": {
+      "label": "Ligning"
+    },
+    "exportPdf": {
+      "label": "Eksporter PDF…"
+    },
+    "figure": {
+      "label": "Figur"
+    },
+    "generateFigure": {
+      "keywords": "figur diagram tegn tikz graf kurve illustration figure draw plot chart illustration",
+      "label": "Generer en figur med AI"
+    },
+    "gitHistory": {
+      "label": "Git-historik"
+    },
+    "italic": {
+      "label": "Kursiv"
+    },
+    "label": {
+      "label": "Etiket"
+    },
+    "list": {
+      "label": "Punktopstilling"
+    },
+    "newProject": {
+      "label": "Nyt projekt…"
+    },
+    "newTerminal": {
+      "keywords": "terminal shell konsol ny console new",
+      "label": "Ny terminal"
+    },
+    "offline": {
+      "offline": "Offlinetilstand (--only-cached)",
+      "online": "Onlinetilstand (tillad hentning af pakker)"
+    },
+    "openTool": "Åbn {{name}}",
+    "recompile": {
+      "label": "Kompiler igen"
+    },
+    "section": {
+      "label": "Afsnit"
+    },
+    "settings": {
+      "keywords": "indstillinger præferencer valgmuligheder settings preferences options",
+      "label": "Åbn indstillinger"
+    },
+    "spellcheck": {
+      "disable": "Slå stavekontrol fra",
+      "enable": "Slå stavekontrol til"
+    },
+    "surroundEnvironment": {
+      "keywords": "omslut ombryd miljø begynd afslut latex surround wrap environment begin end",
+      "label": "Omslut med et miljø"
+    },
+    "synctex": {
+      "label": "Gå til PDF (SyncTeX)"
+    },
+    "table": {
+      "label": "Tabel"
+    },
+    "theme": {
+      "keywords": "tema mørkt lyst udseende tilstand theme dark light appearance mode",
+      "toDark": "Skift til mørkt tema",
+      "toLight": "Skift til lyst tema"
+    },
+    "tools": {
+      "keywords": "værktøjer latex pdf ligning bibtex tabel forskergruppe søgning frister galleri tools equation table lab search deadlines gallery",
+      "label": "Åbn Oleafly-værktøjer"
+    },
+    "vim": {
+      "disable": "Slå Vim-tilstand fra",
+      "enable": "Slå Vim-tilstand til"
+    },
+    "wordCount": {
+      "label": "Ordoptælling"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "slet linje fjern delete line remove",
+        "duplicate": "dubler linje markering kopier duplicate line selection copy",
+        "lowercase": "små bogstaver tekst lowercase case text",
+        "titleCase": "stort begyndelsesbogstav tekst title case capitalize",
+        "uppercase": "store bogstaver tekst uppercase case text"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Fra",
+      "on": "Til",
+      "title": "Automatisk kompilering"
+    },
+    "compile": "Kompiler",
+    "compiler": {
+      "auto": "Auto <note>[system-TeX]</note>",
+      "help": "Tectonic er indbygget og kræver ingen opsætning. De andre valg kører system-TeX, som kan læse de lokale filer, din konto har adgang til, og bør kun bruges til projekter, du har tillid til. Auto vælger kompilator ud fra kilden. pdfLaTeX passer til de fleste skabeloner fra tidsskrifter. XeLaTeX og LuaLaTeX tilføjer systemets skrifttyper og Unicode.",
+      "lualatex": "LuaLaTeX <note>[system-TeX]</note>",
+      "pdflatex": "pdfLaTeX <note>[system-TeX]</note>",
+      "tectonic": "Tectonic <note>[indbygget]</note>",
+      "title": "Kompilator (dette projekt)",
+      "xelatex": "XeLaTeX <note>[system-TeX]</note>"
+    },
+    "errors": {
+      "continue": "Prøv at kompilere trods fejl",
+      "stop": "Stop ved første fejl",
+      "title": "Håndtering af kompileringsfejl"
+    },
+    "fromScratch": "Kompiler helt forfra",
+    "mode": {
+      "fast": "Hurtig <note>[udkast]</note>",
+      "normal": "Normal",
+      "title": "Kompileringstilstand"
+    },
+    "options": "Kompileringsindstillinger",
+    "recompile": "Kompiler igen",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Stop kompileringen",
+    "syntax": {
+      "check": "Tjek syntaksen før kompilering",
+      "skip": "Tjek ikke syntaksen",
+      "title": "Syntakstjek"
+    },
+    "texRootBroken": "% !TEX root i {{file}} peger på en fil, der mangler ({{target}})",
+    "texRootLabel": "TEX-rod",
+    "texRootName": "rod: {{name}}",
+    "texRootOverride": "rod: {{path}} (sat af % !TEX root i {{file}})"
+  },
+  "datePicker": {
+    "placeholder": "Vælg en dato"
+  },
+  "devMenu": {
+    "inspect": "Inspicer",
+    "refreshApp": "Genindlæs appen"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "Skjul AI-assistenten",
+      "show": "Vis AI-assistenten"
+    },
+    "browser": {
+      "close": "Luk browseren ({{shortcut}})",
+      "open": "Åbn browseren ({{shortcut}})"
+    },
+    "settings": "Indstillinger",
+    "sidebar": {
+      "hide": "Skjul sidepanelet ({{shortcut}})",
+      "show": "Vis sidepanelet ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Skjul terminalen ({{shortcut}})",
+      "show": "Vis terminalen ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "Fejlen svarer til et kendt hul i den medfølgende Tectonic-motor. Vælg, hvordan dette projekt skal kompileres. Valget gemmes i projektet, så samarbejdspartnere får den samme opsætning.",
+    "descriptionImportScan": "Skanningen ved importen fandt funktioner, som den medfølgende Tectonic-motor ikke styrer. Vælg, hvordan dette projekt skal kompileres. Valget gemmes i projektet, så samarbejdspartnere får den samme opsætning.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "pdfLaTeX via latexmk"
+    },
+    "recommended": "Anbefalet",
+    "shellEscape": {
+      "label": "Tillad eksterne kommandoer på denne computer",
+      "needed": "Projektet bruger funktioner, der kræver vilkårlige eksterne kommandoer. De er blokeret, indtil du tillader dem.",
+      "warning": "Kræves af minted og nogle PythonTeX-dokumenter. LaTeX kan køre programmer med dine brugerrettigheder, så slå kun dette til for et projekt, du har tillid til. TeX Live's egne hjælpeprogrammer, som konvertering af EPS, kører uden."
+    },
+    "shellEscapeAllowed": "Eksterne kommandoer er tilladt for dette projekt på denne computer.",
+    "shellEscapeBlocked": "Vilkårlige eksterne kommandoer er blokeret for dette projekt. TeX Live's egne hjælpeprogrammer, som konvertering af EPS, kører stadig.",
+    "shellEscapeFailed": "Kunne ikke opdatere adgangen til eksterne kommandoer.",
+    "switchFailed": "Kunne ikke skifte kompileringsmotor.",
+    "switched": "Projektet kompileres nu med {{engine}}.",
+    "switchedAfterInstall": "TinyTeX er installeret. Projektet kompileres nu med {{engine}}.",
+    "systemTex": {
+      "alreadySelected": "Allerede valgt",
+      "found": "Der blev fundet en TeX-distribution på denne maskine. System-TeX kan læse de lokale filer, din konto har adgang til, så brug den kun til projekter, du har tillid til. Vilkårlige eksterne kommandoer er stadig blokeret, medmindre du tillader dem nedenfor. TeX Live kører fortsat de hjælpeprogrammer, der står på dens egen liste, som konvertering af EPS.",
+      "missing": "Der blev ikke fundet nogen TeX-distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) på denne maskine.",
+      "switchPdflatex": "Skift til pdfLaTeX, og kompiler igen",
+      "title": "Brug min systeminstallation af LaTeX (latexmk)",
+      "titlePdflatex": "Brug pdfLaTeX i min systeminstallation af LaTeX (latexmk)",
+      "use": "Brug system-LaTeX"
+    },
+    "tectonic": {
+      "description": "Ingen opsætning, virker offline. Fint til almindelig LaTeX og de mest gængse pakker.",
+      "keep": "Behold Tectonic",
+      "switchBack": "Skift tilbage til Tectonic",
+      "title": "Bliv ved med at bruge Tectonic",
+      "withFailures_one": "Ingen opsætning, virker offline. {{features}} vil formentlig blive ved med at fejle.",
+      "withFailures_other": "Ingen opsætning, virker offline. {{features}} vil formentlig blive ved med at fejle."
+    },
+    "tinytex": {
+      "description": "Installerer en kompakt TeX Live i din hjemmemappe, uden at der kræves administratorrettigheder. Kernen fylder cirka 250 MB. Skabeloner fra tidsskrifter kan hente flere pakker senere, op til cirka 1 GB i alt.",
+      "download": "Download, og brug TinyTeX",
+      "resume": "Genoptag downloaden ({{megabytes}} MB hentet)",
+      "title": "Download TinyTeX"
+    },
+    "titleCompileFailure": "Denne kompilering kræver mere end den indbyggede motor",
+    "titleImportScan": "Dette projekt kræver mere end den indbyggede motor"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Kopier diagnostikken",
+    "description": "Oleafly løb ind i en uventet fejl og kunne ikke vise denne skærm. Dine projektfiler ligger stadig på disken. Diagnostiske detaljer står nedenfor.",
+    "halted": "Standset",
+    "logSaved": "Loggen er gemt i <path>{{path}}</path>",
+    "reload": "Genindlæs Oleafly",
+    "report": "Meld det på GitHub",
+    "runtimeError": "Kørselsfejl",
+    "specimen": {
+      "diagramLabel": "Dekorativt præparatdiagram",
+      "layer": "LAG {{current}}/{{total}}",
+      "specimen": "PRÆPARAT:",
+      "transversePlane": "TVÆRSNIT",
+      "veinDensity": "RIBBETÆTHED:"
+    },
+    "specimenViewer": "Præparatfremviser",
+    "stackTrace": "Stakspor",
+    "surfaceCrashed": "{{surface}} gik ned.",
+    "surfaces": {
+      "aiAssistant": "AI-assistenten",
+      "assistantPanel": "assistentpanelet",
+      "chat": "chatten",
+      "diagramComposer": "diagrameditoren",
+      "editor": "editoren",
+      "pdfPreview": "PDF-forhåndsvisningen",
+      "researchAssistant": "forskningsassistenten",
+      "terminalDock": "terminaldokken"
+    },
+    "title": "Noget gik galt"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "GitHub-handlinger",
+    "connect": "Forbind GitHub…",
+    "connectedAs": "Forbundet som @{{login}}",
+    "copyRepositoryLink": "Kopier linket til repositoryet",
+    "openInGithub": "Åbn på GitHub",
+    "pushHint": "Push til GitHub for at kunne bruge disse",
+    "settings": "GitHub-indstillinger",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "Start",
+    "label": "Start",
+    "title": "Tilbage til biblioteket",
+    "tooltip": "Gå tilbage til projektbiblioteket"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Ryd loggen",
+    "clearLogAriaLabel": "Ryd MCP-loggen",
+    "live": "Kører",
+    "off": "Slukket",
+    "openSettings": "Åbn MCP-indstillinger",
+    "serverOff": "MCP-serveren er slukket.",
+    "timeWithDuration": "{{time}} · {{ms}} ms",
+    "toolsTitle": "Værktøjer, der er tilgængelige over MCP",
+    "waiting": "Venter på eksterne agenter…",
+    "waitingHint": "Værktøjer, der kaldes over MCP (Claude, Cursor, Grok, …), dukker op her, mens det sker."
+  },
+  "omnibar": {
+    "bookmarked": "Bogmærket",
+    "createProject": "Opret et nyt projekt",
+    "groups": {
+      "action": "Handling",
+      "documents": "Dokumenter",
+      "references": "Referencer"
+    },
+    "label": "Søg",
+    "noMatches": "Der blev ikke fundet nogen træf.",
+    "openReferences": "Åbn referencerne for dette projekt",
+    "placeholder": "Søg i projekter og dokumenter, eller skriv / for kommandoer…",
+    "placeholderDocuments": "Søg inde i dokumenterne…",
+    "placeholderProjects": "Søg i projekter efter navn, motor, type, dato eller metadata…",
+    "referencesNeedProject": "Åbn først et projekt for at gennemse dets referencer.",
+    "slash": {
+      "create": "åbn skabelongalleriet",
+      "docs": "søg inde i dokumenterne",
+      "projects": "søg i dine projekter",
+      "refs": "åbn referencerne for dette projekt",
+      "settings": "åbn indstillinger",
+      "theme": "skift farvetema"
+    },
+    "tryCommand": "Prøv en kommando",
+    "unknownCommand": "Ukendt kommando. Skriv / for at se de kommandoer, der findes."
+  },
+  "projectSearch": {
+    "hint": "Søg på tværs af projektets filer.",
+    "noResults": "Ingen resultater.",
+    "placeholder": "Find i projektet…",
+    "title": "Søg"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Dine ugemte ændringer er stadig åbne. Bliv her for at løse problemet, eller afslut alligevel og mist dem.",
+      "descriptionRestart": "{{reason}} Dine ugemte ændringer er stadig åbne. Bliv her for at løse problemet, eller genstart alligevel og mist dem.",
+      "quitAnyway": "Afslut alligevel",
+      "restartAnyway": "Genstart alligevel",
+      "stay": "Bliv her",
+      "title": "Nogle filer kunne ikke gemmes"
+    },
+    "flushTimeout": "Der blev ikke gemt færdigt inden for 5 sekunder.",
+    "installing": {
+      "description": "Gemmer dine filer og installerer opdateringen. Oleafly genstarter, når den er klar.",
+      "title": "Forbereder genstart"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}} (beta)",
+    "files": "Filer",
+    "mcp": "MCP-aktivitet",
+    "pendingBadge_one": "{{count}} afventer",
+    "pendingBadge_other": "{{count}} afventer",
+    "preflight": "Preflight-tjek",
+    "references": "Referencer og citationer",
+    "research": "Forskningsarbejdsområde",
+    "search": "Søg i projektet",
+    "sourceControl": "Versionsstyring",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "renameDialog": {
+    "close": "Luk omdøbningsdialogen",
+    "collision": "{{kind}} med navnet \"{{name}}\" findes allerede.",
+    "commit": "Gennemfør omdøbningen",
+    "newName": "Nyt navn",
+    "planFiles_one": "{{count}} fil",
+    "planFiles_other": "{{count}} filer",
+    "planSummary_one": "{{count}} ændring fordelt på $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "planSummary_other": "{{count}} ændringer fordelt på $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "reference",
+      "bibentry": "litteraturpost",
+      "cite": "citation",
+      "environment": "miljø",
+      "envuse": "brug af miljø",
+      "file": "fil",
+      "glossary": "ordlistepost",
+      "glossaryuse": "brug af ordliste",
+      "inputedge": "inkludering",
+      "label": "etiket",
+      "macro": "makro",
+      "macrouse": "brug af makro",
+      "ref": "reference",
+      "section": "afsnit",
+      "theorem": "sætning"
+    },
+    "title": "Omdøb <symbol>{{name}}</symbol>"
+  },
+  "settings": {
+    "close": "Luk indstillinger",
+    "data": {
+      "cloud": {
+        "comingSoon": "På vej",
+        "description": "Hold projekterne synkroniseret på tværs af dine enheder uden at skulle sætte en Git-remote op. Hver overførsel bliver end-to-end-krypteret, så dit arbejde forbliver privat undervejs. Dine lokale projektmapper bliver ved med at være den rigtige kilde.",
+        "title": "Synkronisering i skyen"
+      },
+      "danger": {
+        "closeFailed": "Det åbne projekt kunne ikke lukkes sikkert.",
+        "confirmDeleteAllAction": "Slet alle projekter",
+        "confirmDeleteAllDescription": "Alle nuværende projekter flyttes til papirkurven, inklusive deres filer og Git-historik. Du kan gendanne projekterne enkeltvis bagefter.",
+        "confirmDeleteAllTitle_one": "Vil du slette {{count}} projekt?",
+        "confirmDeleteAllTitle_other": "Vil du slette alle {{count}} projekter?",
+        "deleteAll": "Slet alle projekter",
+        "deleteAllAction": "Slet alle",
+        "deleteAllDescription": "Flytter alle projekter til papirkurven. Intet bliver slettet permanent.",
+        "deleting": "Sletter…",
+        "moveFailed": "Kunne ikke flytte projekterne til papirkurven.",
+        "movePartial": "Flyttede {{count}} projekter, men kunne ikke gøre handlingen færdig.",
+        "movedCount_one": "Flyttede {{count}} projekt til papirkurven.",
+        "movedCount_other": "Flyttede {{count}} projekter til papirkurven.",
+        "title": "Farezone"
+      },
+      "githubHint": "Tag backup af et projekt, eller synkroniser det mellem enheder: forbind GitHub, og brug så <push>Push</push> / <pull>Pull</pull> under Versionsstyring. <setup>Sæt GitHub op →</setup>",
+      "localFirst": "Oleafly er local-first. Alle projekter ligger på din disk:",
+      "plainFolders": "Hvert projekt er en helt almindelig mappe. Git-historik er valgfri, og intet forlader din maskine, medmindre du pusher til GitHub.",
+      "recycleBin": {
+        "clearAll": "Ryd alt",
+        "clearFailed": "Kunne ikke tømme papirkurven.",
+        "clearPartial": "Slettede {{count}} projekter permanent, men kunne ikke tømme hele papirkurven.",
+        "clearedCount_one": "Slettede {{count}} projekt permanent.",
+        "clearedCount_other": "Slettede {{count}} projekter permanent.",
+        "clearing": "Tømmer…",
+        "confirmClearAction": "Tøm papirkurven",
+        "confirmClearDescription": "Det sletter permanent alle projekter, der lige nu ligger i papirkurven, inklusive deres filer og Git-historik. Handlingen kan ikke fortrydes.",
+        "confirmClearTitle_one": "Vil du fjerne {{count}} projekt fra papirkurven?",
+        "confirmClearTitle_other": "Vil du fjerne {{count}} projekter fra papirkurven?",
+        "confirmDeleteAction": "Slet permanent",
+        "confirmDeleteDescription": "Det fjerner projektet, dets filer og dets Git-historik fra papirkurven. Handlingen kan ikke fortrydes.",
+        "confirmDeleteTitle": "Vil du slette »{{name}}« permanent?",
+        "deleteFailed": "Kunne ikke slette \"{{name}}\" permanent.",
+        "deleteOne": "Slet {{name}} permanent",
+        "deleted": "Slettede \"{{name}}\" permanent.",
+        "deletedAt": "Slettet {{date}} · {{size}}",
+        "empty": "Papirkurven er tom.",
+        "loading": "Indlæser papirkurven…",
+        "restore": "Gendan",
+        "restoreFailed": "Kunne ikke gendanne \"{{name}}\".",
+        "restored": "Gendannede \"{{name}}\".",
+        "size": "{{size}} · ingen automatisk oprydning",
+        "subtitle": "Slettede projekter bliver her, indtil du fjerner dem",
+        "title": "Papirkurv"
+      },
+      "reveal": "Vis projektmappen i Finder",
+      "storage": {
+        "calculating": "Beregner lagerforbrug…",
+        "desktopOnly": "Oplysninger om lagerplads findes i skrivebordsappen.",
+        "error": "Oplysningerne om lagerplads kunne ikke beregnes.",
+        "refresh": "Opdater lagerforbruget",
+        "stats": {
+          "appData": "Appdata",
+          "appDataDetail": "Ressourcer og indstillinger",
+          "buildCache": "Byggecache",
+          "buildCacheDetail": "Genereret resultat",
+          "files": "Filer",
+          "folders_one": "{{count}} mappe",
+          "folders_other": "{{count}} mapper",
+          "gitHistory": "Git-historik",
+          "gitHistoryDetail": "Lokale versioner",
+          "images": "Billeder",
+          "pdfs": "PDF-filer",
+          "projectFiles": "Projektfiler",
+          "projectFilesDetail": "Kilder og metadata",
+          "projects": "Projekter"
+        },
+        "subtitle": "Projekter, forhåndsvisninger, historik og appdata",
+        "title": "Lagerforbrug",
+        "total": "{{size}} i Oleaflys datamappe",
+        "unreadable_one": "{{count}} utilgængeligt element blev udeladt.",
+        "unreadable_other": "{{count}} utilgængelige elementer blev udeladt."
+      },
+      "tabs": {
+        "cloud": "Synkronisering i skyen",
+        "local": "Lokalt lager"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Vis galleriet Oleafly-værktøjer og de enkelte værktøjer (PDF-import, ligninger, tabeller, BibTeX, søgning efter forskergrupper og litteratur, frister) samt deres skråstregskommandoer. Slået fra som udgangspunkt, mens det stadig er i beta.",
+        "label": "LaTeX-værktøjer"
+      },
+      "visualEditor": {
+        "description": "Vis knappen Visuel/Kode i dokumenteditoren. Slået fra som udgangspunkt, så dokumenter kun åbner i kodeeditoren. Diagrammer beholder altid deres egen knap til lærredet.",
+        "label": "Visuel editor"
+      },
+      "warning": "Disse funktioner er eksperimentelle og stadig i beta. De er ikke testet færdigt og kan ændre sig, gå i stykker eller forsvinde i en fremtidig udgivelse. Slå dem kun til, hvis du vil prøve noget, der er under udvikling.",
+      "webBrowser": {
+        "description": "Vis den indbyggede webbrowser (dens knap i dokken og dens genvej), og lad AI styre den via computerbrug. Slået fra som udgangspunkt, mens det stadig er i beta. Når det er slået fra, er der ingen browserknap, og AI har intet browserværktøj.",
+        "label": "Webbrowser"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Engelsk dialekt til korrekturlæsning",
+        "description": "Brug de valgte konventioner for stavning, grammatik og region.",
+        "label": "Engelsk dialekt"
+      },
+      "dictionary": {
+        "ariaLabel": "Staveordbog til korrekturlæsning",
+        "description": "Hunspell-pakke, som stavekontrollen i Kilde og Visuel bruger. Sprog ud over de fem medfølgende pakker hentes efter behov.",
+        "label": "Staveordbog",
+        "downloadFailed": "Ordbogen {{name}} kunne ikke downloades.",
+        "downloaded": "{{name}} er klar til stavekontrol.",
+        "downloading": "Downloader {{name}}",
+        "offlineRefused": "Offlinetilstand er slået til. Slå den fra for at downloade {{name}}."
+      },
+      "harper": {
+        "description": "Tjek engelsk grammatik og stil i Kilde- og Visuel-redigering af LaTeX og Markdown samt i Kilde-redigering af Typst, med rettelser på ét klik.",
+        "label": "Grammatik og stil (Harper)"
+      },
+      "offline": {
+        "description": "Kompiler med --only-cached, og hent aldrig pakker over netværket.",
+        "label": "Offlinetilstand"
+      },
+      "proofreadingNote": "Korrekturlæsningen kører lokalt i en baggrundsworker. Harper følger den valgte engelske dialekt, mens stavningen altid bruger præcis den valgte Hunspell-pakke. Matematik, kode, kommentarer, citationssyntaks, metadata og URL'er er undtaget.",
+      "regionalism": {
+        "description": "Marker udtryk, der ikke passer til den valgte engelske dialekt. Slå fra, hvis du bruger den slags udtryk som produkt- eller kodenavne.",
+        "label": "Forslag om regionale udtryk"
+      },
+      "spellcheck": {
+        "description": "Understreg forkert stavede ord med den valgte Hunspell-ordbog offline, og giv forslag til erstatninger i Kilde- og Visuel-redigering.",
+        "label": "Stavekontrol"
+      },
+      "wordChoice": {
+        "description": "Foreslå andre ord (f.eks. »too« over for »to«). Slå fra for kun at beholde stavning og grammatik.",
+        "label": "Forslag til ordvalg"
+      }
+    },
+    "help": {
+      "community": "Fællesskab",
+      "copyInfo": "Kopier oplysninger",
+      "forksTitle": "Forks på GitHub",
+      "forks_one": "{{count}} fork på GitHub",
+      "forks_other": "{{count}} forks på GitHub",
+      "logoAlt": "Oleafly",
+      "project": "Projekt",
+      "resources": {
+        "documentation": "Dokumentation",
+        "learn": "Lær",
+        "license": "Licens",
+        "reportCrash": "Meld et nedbrud (vedhæft logfiler)",
+        "startTour": "Start rundvisningen",
+        "whatsNew": "Nyheder"
+      },
+      "resourcesTitle": "Ressourcer",
+      "starRepo": "Giv en stjerne, og se mere på GitHub",
+      "starsTitle": "Stjerner på GitHub",
+      "stars_one": "{{count}} stjerne på GitHub",
+      "stars_other": "{{count}} stjerner på GitHub",
+      "support": "Hvis Oleafly hjælper dig i dit arbejde, så <star>giv projektet en stjerne på GitHub</star>. Det lille klik hjælper flere forskere med at finde det og støtter den videre udvikling.",
+      "supportAriaLabel": "Støt Oleafly",
+      "tagline": "Skriv, kompiler, korrekturlæs, hold styr på citationer, gennemgå PDF-filer, følg ændringer i Git, og brug de AI-modeller, du selv vælger. Alt sammen i ét open source-arbejdsrum.",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "AI-assistent",
+      "appearance": "Udseende",
+      "data": "Datalagring",
+      "dictionary": "Ordbog",
+      "downloads": "Downloads",
+      "engine": "Motorer",
+      "experimentation": "Eksperimenter",
+      "general": "Generelt",
+      "help": "Hjælp og Om",
+      "integrations": "Integrationer",
+      "shortcuts": "Tastaturgenveje"
+    },
+    "sectionsNav": "Afsnit i indstillinger",
+    "title": "Indstillinger",
+    "tours": {
+      "confirmDescription": "Det lukker alle resterende rundvisninger og slår rundvisninger fra. Du kan slå dem til igen under Generelt for at starte forfra.",
+      "disableConfirm": "Slå rundvisninger fra",
+      "disableTitle": "Vil du slå rundvisninger fra?",
+      "dismissAll": "Luk alle rundvisninger",
+      "dismissAllConfirm": "Luk alle",
+      "dismissAllTitle": "Vil du lukke alle rundvisninger?",
+      "enable": "Slå rundvisninger til",
+      "enableAll": "Slå alle rundvisninger til",
+      "enableOne": "Slå rundvisningen {{name}} til",
+      "progress": "Fremdrift i rundvisninger",
+      "progressDetail": "{{completed}} fuldført og {{dismissed}} lukket.",
+      "status": {
+        "completed": "Fuldført",
+        "dismissed": "Lukket",
+        "pending": "Ikke startet"
+      },
+      "summary": "{{completed}} fuldført · {{dismissed}} lukket · {{total}} i alt"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Afbryd fletningen",
+    "abortMergeDescription": "De konflikter, du har løst indtil nu, bliver kasseret, og filerne vender tilbage til, som de var, før fletningen begyndte.",
+    "abortMergeTitle": "Vil du afbryde denne fletning?",
+    "aheadBehind": "{{ahead}} foran · {{behind}} bagud i forhold til origin/{{branch}}",
+    "branch": "Brancher",
+    "branchName": "Navn på branch",
+    "changeRepo": "Skift repo",
+    "changes": "Ændringer",
+    "checking": "Tjekker versionsstyring…",
+    "clean": "Ingen ændringer. Arbejdstræet er rent.",
+    "commit": "Commit",
+    "commitActions": "Flere commit-handlinger",
+    "commitAmend": "Ret den seneste commit",
+    "amendedKeptMessage": "Rettede den seneste commit og beholdt dens besked.",
+    "commitAndPush": "Commit og push",
+    "commitAndSync": "Commit og synkroniser",
+    "commitDescription": "Beskrivelse til commit",
+    "commitDescriptionPlaceholder": "Beskrivelse (valgfri)",
+    "commitTitle": "Titel på commit",
+    "committed": "Committet: \"{{subject}}\"",
+    "committedRemoteFailed": "Committet lokalt, men {{step}} mislykkedes: {{reason}}",
+    "committedWithConflicts": "Committet lokalt. Løs konflikterne fra pull, før du pusher.",
+    "confirmDiscard": "Bekræft, at ændringerne kasseres",
+    "confirmDiscardTitle": "Kasser alle ændringer i denne fil",
+    "continueMerge": "Fuldfør fletningen",
+    "copyCommitId": "Kopier commit-id",
+    "create": "Opret",
+    "createBranch": "Opret branch…",
+    "credentialRemoved": "Fjernede de gemte adgangsoplysninger fra denne Git-remote.",
+    "credentialWarning": "Ældre versioner af Oleafly gemte adgangsoplysninger i denne Git-remote.",
+    "discard": "Kasser ændringerne",
+    "discardFor": "Kasser ændringerne i {{path}}",
+    "discardAll": "Kasser alle ændringer",
+    "discardChangesDescription": "Ændringerne i arbejdstræet går tabt. Det kan ikke fortrydes.",
+    "discardChangesTitle": "Vil du kassere de valgte ændringer?",
+    "discardTitle": "Kasser ændringerne (gå tilbage til seneste version)",
+    "enterTitle": "Skriv en titel til din commit",
+    "finishMergeToCommit": "Fuldfør fletningen, før du committer.",
+    "fetch": "Fetch",
+    "graph": "Graf",
+    "commitCount_one": "{{count}} commit",
+    "commitCount_other": "{{count}} commits",
+    "initialize": "Initialiser repository",
+    "initialized": "Initialiserede Git på {{branch}}.",
+    "linkCopied": "Linket til GitHub er kopieret",
+    "markResolved": "Marker som løst",
+    "mergeNeedsAttention": "Løs konflikterne fra fletningen",
+    "moreActions": "Flere handlinger i versionsstyring",
+    "noHistory": "Ingen commits endnu",
+    "noProject": "Åbn et projekt for at bruge versionsstyring.",
+    "noStagedChanges": "Ingen ændringer i staging",
+    "notInitialized": "Versionsstyring er ikke initialiseret",
+    "notInitializedHint": "Oleafly committer ikke automatisk til et Git-repository.",
+    "nothingStaged": "Der er intet i staging at committe.",
+    "openAllChanges": "Åbn alle ændringer",
+    "openFile": "Åbn filen",
+    "openFileFor": "Åbn {{path}}",
+    "popStash": "Anvend den seneste stash",
+    "publish": "Udgiv på GitHub",
+    "published": "Udgivet på {{url}}",
+    "pull": "Pull fra origin",
+    "pullShort": "Pull",
+    "push": "Commit og push til origin",
+    "pushShort": "Push",
+    "pushSkippedNoRemote": "⚠ Sprang push over - der er ikke sat nogen remote origin nedenfor.",
+    "pushSkippedNoToken": "⚠ Sprang push over - intet GitHub-token (Indstillinger → GitHub).",
+    "refresh": "Opdater",
+    "remote": "Remote",
+    "remoteHint": "Opret et nyt repo, eller tilknyt et eksisterende som projektets remote, og push så.",
+    "removeCredential": "Fjern de gemte adgangsoplysninger",
+    "restoreCommit": "Gendan version",
+    "restoreCommitDescription": "Det erstatter alle sporede projektfiler med denne version og fjerner filer, der er tilføjet senere. Din branch bliver stående på sin nuværende commit.",
+    "restoreCommitTitle": "Vil du gendanne denne version?",
+    "sectionActions": "Flere handlinger for {{section}}",
+    "stage": "Læg i staging",
+    "stageFor": "Læg {{path}} i staging",
+    "stageAll": "Læg alt i staging",
+    "stageFirst": "Læg først en fil i staging",
+    "stageToCommit": "Læg en fil i staging for at committe.",
+    "staged": "I staging",
+    "stagedChanges": "Ændringer i staging",
+    "stagedChangeCount_one": "{{count}} ændring i staging",
+    "stagedChangeCount_other": "{{count}} ændringer i staging",
+    "stash": "Stash ændringerne",
+    "stashNeedsAttention": "Løs konflikterne fra stashen",
+    "sync": "Synkroniser",
+    "title": "Versionsstyring",
+    "titleRequired": "Der skal være en titel på din commit.",
+    "titleRequiredStatus": "Skriv en titel, før du committer.",
+    "unlink": "Fjern tilknytningen",
+    "unlinked": "Tilknytningen til GitHub er fjernet.",
+    "unstage": "Tag ud af staging",
+    "unstageFor": "Tag {{path}} ud af staging",
+    "unstageAll": "Tag alt ud af staging",
+    "workingChangeCount_one": "{{count}} ændring i arbejdstræet",
+    "workingChangeCount_other": "{{count}} ændringer i arbejdstræet",
+    "useCurrent": "Brug den nuværende",
+    "useIncoming": "Brug den indkomne"
+  },
+  "splash": {
+    "initializing": "Initialiserer Oleafly",
+    "loadingCore": "Indlæser Oleafly Core",
+    "loadingHarness": "Indlæser Oleafly Harness",
+    "loadingParsers": "Indlæser Oleafly Parsers",
+    "starting": "Starter Oleafly"
+  },
+  "theme": {
+    "dark": "Mørkt",
+    "light": "Lyst",
+    "menuLabel": "Udseende: {{name}}",
+    "system": "System",
+    "useDark": "Brug mørkt tema",
+    "useLight": "Brug lyst tema",
+    "useSystem": "Brug systemets tema"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Afslut alligevel",
+      "description": "{{phase}} lige nu. Hvis du afslutter, sættes installationen på pause. Den del, der er hentet, bliver bevaret og fortsætter, næste gang du åbner Oleafly.",
+      "title": "TinyTeX installerer stadig"
+    },
+    "wait": {
+      "description": "{{phase}} Din kompilering står i kø og starter automatisk, så snart motoren er klar.",
+      "title": "TinyTeX downloader stadig"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "Annuller (Esc)",
+    "closeForkDialog": "Luk forgreningsdialogen",
+    "compileFigureFirst": "Kompiler figuren først",
+    "compilePdfFirst": "PDF kræver, at der først kompileres",
+    "export": "Eksporter",
+    "exportComplete": "Eksporten til {{format}} er færdig",
+    "exportDocx": "Eksporter som Word (.docx)",
+    "exportEpub": "Eksporter som EPUB (.epub)",
+    "exportHtml": "Eksporter som HTML (.html)",
+    "exportMarkdown": "Eksporter som Markdown (.md)",
+    "exportPdf": "Eksporter som PDF",
+    "exportPdfVector": "Eksporter som PDF (vektorbillede)",
+    "exportPngRaster": "Eksporter som PNG (rasterbillede)",
+    "exportPagePng": "Eksporter siden som PNG (rasterbillede)",
+    "exportAs": "Eksporter som {{format}}",
+    "exportPptx": "Eksporter som PowerPoint (.pptx)",
+    "exportSourceZip": "Eksporter kilden (.zip)",
+    "exportTxt": "Eksporter som ren tekst (.txt)",
+    "exportZipFailed": "Kunne ikke eksportere projektets zip-fil",
+    "exporting": "Eksporterer .{{format}}…",
+    "fork": "Forgren",
+    "forkDescription": "Kopierer <name>{{name}}</name> og projektets Git-historik over i et nyt projekt. Kontrolpunkterne starter tomme.",
+    "forkFailed": "Kunne ikke forgrene projektet.",
+    "forkProject": "Forgren projektet",
+    "layout": "Layout",
+    "layouts": {
+      "aiOnly": "Kun AI",
+      "editorAi": "Editor + AI",
+      "editorOnly": "Kun editor",
+      "editorPreview": "Editor + forhåndsvisning",
+      "editorPreviewAi": "Editor + forhåndsvisning + AI",
+      "previewAi": "Forhåndsvisning + AI",
+      "previewOnly": "Kun forhåndsvisning"
+    },
+    "newProjectName": "Navn på nyt projekt",
+    "projectName": "Projektnavn",
+    "projectRenamed": "Projektet er omdøbt",
+    "saveName": "Gem (Enter)",
+    "saveNameAriaLabel": "Gem navnet",
+    "untitledProject": "projekt",
+    "versioning": "Versionering",
+    "viewFile": "Vis filen",
+    "views": {
+      "editor": "Kildevisning",
+      "pdf": "PDF-visning",
+      "split": "Delt visning"
+    }
+  },
+  "tour": {
+    "chooseColor": "Vælg din signaturfarve",
+    "diagramArrow": "Buet pil, der peger på diagramlærredet",
+    "pointer": "Pil på rundvisningens tekstboble",
+    "quitConfirm": "Afslut rundvisningen",
+    "quitDescription": "Din fremdrift bliver ikke gemt. Du kan starte enhver rundvisning forfra senere fra menuen Hjælp.",
+    "quitTitle": "Vil du afslutte rundvisningen?",
+    "setMood": "Sæt stemningen",
+    "showMeAround": "Vis mig rundt",
+    "skip": "Spring over",
+    "step": "Trin {{step}}",
+    "stepOfTotal": "Trin {{step}} af {{total}}",
+    "stepOfTour": "Trin {{step}} · {{tour}}",
+    "useAccent": "Brug accentfarven {{name}}",
+    "welcomeArrow": "Håndtegnet pil, der peger på velkomstafsnittet",
+    "welcomeBody": "Tag en artikel fra første udkast til færdig PDF i ét open source-arbejdsrum. Skriv, kompiler, korrekturlæs, hold styr på citationer, byg figurer, gennemgå hver ændring i Git, og brug de AI-modeller, du selv vælger. Dine projekter bliver på din egen maskine.",
+    "welcomeTitle": "Velkommen til Oleafly"
+  },
+  "updateChecker": {
+    "available": "Opdatering klar · v{{version}}",
+    "check": "Søg efter opdateringer",
+    "checkAgain": "Søg igen",
+    "checkFailed": "Kunne ikke søge efter opdateringer.",
+    "checking": "Søger…",
+    "downloadFromGithub": "Download fra GitHub",
+    "downloading": "Downloader… {{percent}} %",
+    "installing": "Installerer…",
+    "lastCheckFailed": "Den seneste automatiske søgning mislykkedes.",
+    "lastCheckFailedAt": "Den seneste automatiske søgning mislykkedes · {{when}}.",
+    "latest": "Du har den nyeste version",
+    "releaseNotes": "Udgivelsesnoter",
+    "restartNotice": "Oleafly genstarter for at gøre det færdigt.",
+    "tryAgain": "Prøv igen",
+    "unsupported": "Opdateringer styres af skrivebordsappen.",
+    "updateNow": "Opdater nu"
+  },
+  "updateWindow": {
+    "checking": "Søger efter opdateringer…",
+    "currentVersion": "Du har v{{version}}",
+    "error": "Opdateringen kunne ikke gøres færdig. Prøv igen senere.",
+    "later": "Senere",
+    "looking": "Leder efter den nyeste version…",
+    "packageInstall": "Installeret fra en pakke. Download den nye version for at opdatere.",
+    "ready": "En ny version er klar til at blive installeret.",
+    "upToDate": "Du er opdateret",
+    "upToDateGeneric": "Du kører den nyeste version af Oleafly",
+    "upToDateHeadline": "Du er helt opdateret!",
+    "upToDateVersion": "Oleafly v{{version}} er den nyeste version",
+    "viewRelease": "Se udgivelsen"
+  },
+  "windowControls": {
+    "group": "Vindueskontroller",
+    "maximize": "Maksimer",
+    "minimize": "Minimer",
+    "restore": "Gendan"
+  },
+  "windows": {
+    "preview": "Forhåndsvisning: {{title}}",
+    "update": "Oleafly-opdatering"
+  }
+}

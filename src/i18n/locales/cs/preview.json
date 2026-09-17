@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Protokoly",
+    "showLogs": "Zobrazit protokoly kompilace",
+    "showPdf": "Zobrazit náhled PDF",
+    "askAi": "Zeptat se AI",
+    "more": "Další ovládání náhledu",
+    "duration": "{{seconds}} s",
+    "failed": "Selhalo",
+    "compiledWithErrors": "Zkompilováno s chybami",
+    "compiledWithWarnings": "Zkompilováno s varováními",
+    "compiledSuccessfully": "Zkompilováno úspěšně"
+  },
+  "pageLayout": {
+    "group": "Rozvržení stránek",
+    "single": "Zobrazení jedné stránky",
+    "double": "Zobrazení dvou stránek"
+  },
+  "pages": {
+    "previous": "Předchozí stránka",
+    "next": "Další stránka",
+    "number": "Číslo stránky",
+    "ofTotal": "z {{total}}",
+    "pageOfTotal": "Stránka {{page}} z {{total}}"
+  },
+  "zoom": {
+    "in": "Přiblížit",
+    "out": "Oddálit",
+    "fitToWidth": "Přizpůsobit šířce",
+    "fitToHeight": "Přizpůsobit výšce",
+    "reset": "Vrátit na 100 %",
+    "percent": "{{percent}} %",
+    "percentLabel": "Přiblížení {{percent}} procent",
+    "menuLabel": "Přiblížení · {{percent}} %"
+  },
+  "outline": {
+    "open": "Osnova dokumentu",
+    "panel": "Osnova dokumentu PDF",
+    "title": "Osnova dokumentu",
+    "close": "Zavřít osnovu dokumentu",
+    "loading": "Načítá se osnova…",
+    "empty": "Toto PDF neobsahuje osnovu dokumentu.",
+    "externalLink": "Externí odkaz",
+    "externalBadge": "Odkaz"
+  },
+  "search": {
+    "open": "Hledat v PDF",
+    "panel": "Hledat v tomto PDF",
+    "placeholder": "Hledat v dokumentu",
+    "input": "Hledat v textu PDF",
+    "previous": "Předchozí výsledek hledání",
+    "next": "Další výsledek hledání",
+    "close": "Zavřít hledání v PDF"
+  },
+  "viewer": {
+    "scrollArea": "Oblast plynulého posuvu PDF",
+    "crashedTitle": "Náhled PDF spadl",
+    "crashedDetail": "Zkompilujte aktuální revizi znovu nebo zkuste prohlížeč načíst znovu.",
+    "retry": "Načíst prohlížeč znovu",
+    "loadingLatest": "Načítá se poslední zkompilované PDF…",
+    "retryingLoad": "Opakuje se načtení PDF…",
+    "retainedFailure": "{{detail}} Místo něj se zobrazuje poslední úspěšně načtené PDF.",
+    "retainedFailureDetail": "Aktuální PDF se nepodařilo načíst",
+    "invalidTitle": "Neplatné PDF",
+    "emptyTitle": "Prázdné PDF",
+    "unavailableTitle": "Prohlížeč PDF není k dispozici",
+    "loadFailedTitle": "Načtení PDF selhalo",
+    "loadFailedDetail": "PDF se nepodařilo načíst."
+  },
+  "password": {
+    "title": "Je vyžadováno heslo",
+    "label": "Heslo k PDF",
+    "placeholder": "Heslo k PDF",
+    "submit": "Odemknout PDF"
+  },
+  "actions": {
+    "downloadImage": "Stáhnout obrázek",
+    "downloadPdf": "Stáhnout PDF",
+    "downloadDisplayedPdf": "Stáhnout zobrazené PDF",
+    "downloadStalePdf": "Stáhnout zastaralé, neaktuální PDF",
+    "saveImage": "Uložit obrázek do projektu",
+    "savePdf": "Uložit PDF do projektu",
+    "invert": "Invertovat barvy náhledu PDF",
+    "restoreColors": "Obnovit barvy",
+    "readerView": "Čtecí zobrazení",
+    "exitReaderView": "Ukončit čtecí zobrazení",
+    "rotate": "Otočit po směru hodinových ručiček",
+    "rotateTooltip": "Otočit PDF po směru hodinových ručiček (90°). Aktuálně {{degrees}}°",
+    "openWindow": "Otevřít náhled v novém okně",
+    "hideToolbar": "Skrýt panel nástrojů",
+    "showToolbar": "Zobrazit panel nástrojů",
+    "settings": "Nastavení náhledu PDF",
+    "fullscreen": "Náhled na celou obrazovku",
+    "exitFullscreen": "Ukončit celou obrazovku",
+    "retryCompile": "Zkusit kompilaci znovu"
+  },
+  "stale": {
+    "badge": "Zastaralé",
+    "badgeLabel": "Zastaralý, neaktuální náhled. Zkompilujte znovu.",
+    "tooltip": "Náhled neodpovídá změnám v editoru. {{explanation}} {{syncTex}} Kliknutím spustíte novou kompilaci.",
+    "explanation": "Toto PDF neodpovídá aktivní revizi projektu.",
+    "revisionExplanation": "Zobrazuje se revize projektu {{displayed}}. Aktivní projekt je v revizi {{active}}.",
+    "noIdentity": "Zobrazené PDF nemá ověřenou identitu kompilace pro aktivní revizi.",
+    "syncTexAvailable": "SyncTeX u úprav používá nejbližší nezměněný řádek.",
+    "syncTexUnavailable": "SyncTeX vyžaduje aktuální kompilaci."
+  },
+  "save": {
+    "title": "Uložení PDF do projektu",
+    "imageTitle": "Uložení obrázku do projektu",
+    "close": "Zavřít dialog ukládání",
+    "staleDescription": "Uloží do stromu projektu zobrazené zastaralé PDF. Neodpovídá aktivní revizi.",
+    "description": "Uloží zobrazené PDF do stromu projektu (zapíše se přes Git).",
+    "nameLabel": "Název pro uložení do projektu",
+    "namePlaceholder": "dokument.pdf",
+    "imageSaved": "Obrázek byl uložen do projektu.",
+    "pdfSaved": "PDF bylo uloženo do projektu.",
+    "failed": "Do projektu se nepodařilo uložit."
+  },
+  "download": {
+    "pngFilter": "Obrázek PNG",
+    "imageSaved": "Obrázek uložen · {{name}}",
+    "pdfSaved": "PDF uloženo · {{name}}",
+    "showInFolder": "Zobrazit ve složce",
+    "folderUnavailable": "Soubor byl uložen, ale Oleafly nedokázal otevřít jeho složku (přístup byl odepřen). Zkontrolujte umístění, které jste zvolili v dialogu ukládání.",
+    "imageFailed": "Obrázek se nepodařilo stáhnout.",
+    "imageFailedDetail": "Obrázek se nepodařilo stáhnout: {{detail}}",
+    "pdfFailed": "PDF se nepodařilo stáhnout.",
+    "pdfFailedDetail": "PDF se nepodařilo stáhnout: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "Kompilace do PDF teď není k dispozici.",
+    "compileFailed": "Kompilace selhala. Otevřete kartu Protokoly a zjistěte, co se pokazilo."
+  },
+  "a11y": {
+    "stale": "Zastaralé, neaktuální PDF. {{explanation}}",
+    "page": "Stránka PDF {{page}} z {{total}}.",
+    "searchResult": "Výsledek hledání {{current}} z {{total}}."
+  },
+  "startup": {
+    "headingReady": "Náhled PDF je připraven",
+    "headingPreparing": "Připravuje se náhled PDF",
+    "headingAttention": "Spuštění vyžaduje pozornost",
+    "progressLabel": "Spuštění dokumentu: {{completed}} z {{total}} fází dokončeno nebo přeskočeno",
+    "doneCount": "{{completed}}/{{total}} hotovo",
+    "metaRunning": "{{stages}} probíhá",
+    "metaQueued": "{{stages}} ve frontě",
+    "metaFailed": "{{stages}} selhalo",
+    "compileNow": "Zkompilovat hned",
+    "noProject": "Žádný aktivní projekt",
+    "waitingForEngine": "Čeká se na dokumentový engine",
+    "orPress": "nebo stiskněte <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "hotovo",
+      "running": "probíhá",
+      "queued": "ve frontě",
+      "skipped": "přeskočeno",
+      "failed": "selhalo"
+    },
+    "language": {
+      "serviceLabel": "Jazyková služba",
+      "analysisLabel": "Jazyková analýza",
+      "openingFiles": "Otevírají se soubory projektu",
+      "starting": "Spouští se jazyková služba",
+      "restarting": "Restartuje se jazyková služba",
+      "installing": "Instaluje se jazyková služba",
+      "connected": "Spuštěno a připojeno",
+      "ready": "Připraveno",
+      "localOnly": "Není potřeba. Používá se místní analýza.",
+      "notApplicable": "Pro tento projekt se nepoužívá",
+      "unavailable": "Není k dispozici. Místní analýza zůstává dostupná.",
+      "waitingToStart": "Čeká se na spuštění",
+      "waitingForFiles": "Čeká se na soubory projektu",
+      "syncing": "Synchronizují se aktuální soubory projektu",
+      "analyzing": "Analyzuje se struktura projektu",
+      "analyzed": "Aktuální revize projektu je zanalyzována",
+      "partial": "Použitelná částečná analýza je připravena",
+      "needsAttention": "Analýza vyžaduje pozornost",
+      "notAvailable": "Pro tento projekt není k dispozici",
+      "queued": "Ve frontě pro aktuální revizi",
+      "waitingForService": "Čeká se na jazykovou službu"
+    },
+    "compile": {
+      "label": "Kompilace",
+      "saving": "Ukládají se aktuální změny",
+      "downloading": "Stahují se potřebné balíčky LaTeX",
+      "producing": "Vytváří se a ověřuje výstupní PDF",
+      "unavailable": "Překladač není k dispozici",
+      "failed": "Kompilace selhala. Podrobnosti najdete v protokolech.",
+      "accepted": "Ověřený výstup byl přijat",
+      "waiting": "Čeká se na kompilaci aktuální revize"
+    },
+    "render": {
+      "label": "Vykreslování PDF",
+      "preparing": "Připravují se stránky, text a odkazy",
+      "reading": "Čte se PDF · {{percent}} %",
+      "passwordRequired": "Je vyžadováno heslo",
+      "needsAttention": "Vykreslování PDF vyžaduje pozornost",
+      "ready": "Náhled je připraven",
+      "waitingForRenderer": "Čeká se na ověřený vykreslovač PDF",
+      "waitingForCompile": "Čeká se na ověřený výstup kompilace"
+    }
+  },
+  "window": {
+    "fitWidth": "Přizpůsobit šířce",
+    "fitHeight": "Přizpůsobit výšce",
+    "invert": "Invertovat barvy",
+    "invertLabel": "Invertovat barvy PDF",
+    "rotateLabel": "Otočit PDF po směru hodinových ručiček",
+    "staleHeading": "Zastaralý · neaktuální náhled",
+    "staleCompiling": "Kompiluje se novější revize projektu. Toto je poslední ověřené PDF pro revizi {{revision}}.",
+    "staleUnknownRevision": "neznámá",
+    "staleCompileFailed": "{{detail}} Poslední ověřené PDF zůstává zobrazené.",
+    "staleCompileFailedDetail": "Novější kompilace nevytvořila použitelné PDF",
+    "staleIdentity": "Toto PDF neodpovídá poslední přijaté identitě kompilace.",
+    "crashedDetail": "Zkuste načíst tento prohlížeč znovu nebo spusťte kompilaci v hlavním okně.",
+    "compilingTitle": "Kompiluje se PDF",
+    "compileFailedTitle": "Kompilace selhala",
+    "compileUnavailableTitle": "Kompilace není k dispozici",
+    "artifactUnavailableTitle": "PDF není k dispozici",
+    "noVerifiedTitle": "Žádné ověřené PDF",
+    "compilingDetail": "Ověřené PDF se objeví po dokončení kompilace.",
+    "noVerifiedDetail": "Zkompilujte projekt v hlavním okně. Toto okno zobrazuje jen výstup s ověřenou identitou kompilace.",
+    "loadingTitle": "Načítá se PDF",
+    "loadingVerified": "Načítá se ověřené PDF…",
+    "restoringLast": "Obnovuje se poslední úspěšně načtené PDF…",
+    "retryingLoad": "Opakuje se načtení PDF…",
+    "unlocking": "Odemyká se PDF…",
+    "rotating": "Otáčí se PDF…",
+    "retainedFailureDetail": "Nejnovější PDF se nepodařilo načíst",
+    "artifactFailure": "Zkompilované PDF se nepodařilo ověřit ani přečíst. Pokud je k dispozici, zůstane zobrazené poslední úspěšně načtené PDF.",
+    "downloadStarted": "Stahování PDF bylo zahájeno.",
+    "downloadSaved": "PDF bylo úspěšně uloženo.",
+    "downloadFailed": "Zobrazené PDF se nepodařilo uložit."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "Heslo k PDF nebylo přijato.",
+      "passwordRequired": "Toto PDF je chráněno heslem.",
+      "invalid": "Zkompilovaný výstup není platné PDF. Zkompilujte znovu nebo si prohlédněte protokol kompilace.",
+      "unavailable": "Vykreslovač PDF není v tomto okně k dispozici. Zkuste to znovu po obnovení okna nebo restartu aplikace.",
+      "generic": "PDF se nepodařilo načíst. Zkompilujte aktuální revizi znovu a zkuste to zase.",
+      "empty": "Zkompilované PDF je prázdné.",
+      "firstPage": "PDF se otevřelo, ale jeho první stránku se nepodařilo vykreslit."
+    },
+    "link": {
+      "blockedScheme": "Tento odkaz v PDF používá blokované schéma URL."
+    },
+    "search": {
+      "failed": "Hledání nedokázalo přečíst všechny stránky. Zkuste to znovu po opětovném načtení PDF."
+    },
+    "outline": {
+      "empty": "Toto PDF neobsahuje osnovu dokumentu.",
+      "failed": "Osnovu PDF se nepodařilo načíst.",
+      "destinationUnavailable": "Tento cíl v osnově není k dispozici.",
+      "blockedScheme": "Tento odkaz používá blokované schéma URL.",
+      "noDestination": "Tato položka osnovy nemá žádný cíl.",
+      "untitled": "Kapitola bez názvu"
+    },
+    "status": {
+      "loading": "Načítá se PDF…"
+    },
+    "a11y": {
+      "document": "Náhled dokumentu PDF",
+      "page": "Stránka PDF {{page}} z {{total}}",
+      "textLayer": "Vybíratelný text stránky PDF {{page}}"
+    },
+    "screenReader": {
+      "layer": "Zobrazení pro čtečku obrazovky, stránka {{page}} z {{total}}",
+      "title": "Režim čtečky obrazovky",
+      "pageLabel": "Stránka {{page}} z {{total}}",
+      "empty": "Na této stránce nebyl nalezen žádný čitelný text."
+    }
+  }
+}

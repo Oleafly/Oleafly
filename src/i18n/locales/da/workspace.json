@@ -1,0 +1,198 @@
+{
+  "files": {
+    "collapseAll": "Fold alle mapper sammen",
+    "confirmDelete": "Vil du slette {{path}}? Det kan ikke fortrydes.",
+    "conflict": {
+      "cancelAriaLabel": "Annuller flytningen af filen",
+      "createBody": "<destination>{{destination}}</destination> findes allerede. Behold begge filer ved at bruge <suggestion>{{suggestion}}</suggestion>. Oprettelse erstatter aldrig en eksisterende fil.",
+      "dialogAriaLabel": "Konflikt ved flytning af fil",
+      "keepBoth": "Behold begge",
+      "renameBody": "<destination>{{destination}}</destination> findes allerede. Behold begge filer ved at bruge <suggestion>{{suggestion}}</suggestion>, eller erstat den eksisterende destination. Oleafly erstatter den kun, hvis du vælger Erstat.",
+      "replace": "Erstat",
+      "title": "Det navn er allerede i brug",
+      "unchanged": "Den oprindelige sti og destinationsstien blev ikke ændret."
+    },
+    "createFailed": "Kunne ikke oprette \"{{path}}\".",
+    "deleteFailed": "Kunne ikke slette \"{{path}}\".",
+    "expandAll": "Fold alle mapper ud",
+    "importAriaLabel": "Importer til den valgte mappe",
+    "importFiles": "Importer fil(er)",
+    "importFolder": "Importer mappe",
+    "importTitle": "Importer en fil eller mappe (til den valgte mappe)",
+    "makeCopy": "Lav en kopi",
+    "moreActions": "Flere handlinger for {{name}}",
+    "moveFailed": "Kunne ikke flytte \"{{path}}\". Den oprindelige sti blev ikke ændret.",
+    "newEntry": {
+      "fileInFolder": "Navn på ny fil i mappen {{folder}}",
+      "fileInRoot": "Navn på ny fil i projektets rod",
+      "filePlaceholder": "Navn på ny fil",
+      "folderInFolder": "Navn på ny mappe i mappen {{folder}}",
+      "folderInRoot": "Navn på ny mappe i projektets rod",
+      "folderPlaceholder": "Navn på ny mappe"
+    },
+    "newFile": "Ny fil",
+    "newFileAriaLabel": "Ny fil i den valgte mappe",
+    "newFileTitle": "Ny fil (i den valgte mappe)",
+    "newFolder": "Ny mappe",
+    "newFolderAriaLabel": "Ny mappe i den valgte mappe",
+    "newFolderTitle": "Ny mappe (i den valgte mappe)",
+    "renameAriaLabel": "Omdøb filen",
+    "renameFailed": "Kunne ikke omdøbe \"{{path}}\". Den oprindelige sti blev ikke ændret.",
+    "setMain": "Vælg som hoveddokument",
+    "title": "Filer",
+    "treeAriaLabel": "Filtræ i filpanelet"
+  },
+  "explorer": {
+    "resizeSections": "Tilpas størrelsen på {{first}} og {{second}}"
+  },
+  "intelligence": {
+    "badges": {
+      "ambiguous": "flertydig",
+      "cycle": "cyklus",
+      "definitions_one": "{{count}} definition",
+      "definitions_other": "{{count}} definitioner",
+      "duplicate": "dublet",
+      "external": "ekstern",
+      "folded": "foldet",
+      "incomplete": "ufuldstændig",
+      "missing": "mangler"
+    },
+    "bibEntryIn": "{{type}}-post i {{file}}",
+    "duplicateKey": "Dubleret nøgle.",
+    "duplicateKeyIn": "Dubleret nøgle {{key}} i {{file}}",
+    "folded": {
+      "description": "Denne gren er foldet sammen, så meget store projektgrafer stadig reagerer hurtigt.",
+      "label": "Åbn den tilknyttede kilde for at fortsætte"
+    },
+    "fromFile": "{{kind}} fra {{file}}",
+    "groups": {
+      "bibliography": "Litteraturliste",
+      "bibtexEntries": "BibTeX-poster",
+      "commands": "Kommandoer",
+      "definitions_one": "Definition",
+      "definitions_other": "Definitioner",
+      "dependencies": "Links og afhængigheder",
+      "duplicateCitations": "Dublerede citationsnøgler",
+      "environments": "Miljøer",
+      "labels": "Etiketter og ankre",
+      "occurrences": "Forekomster",
+      "sections": "Afsnit",
+      "unlinked": "Filer uden forbindelse",
+      "unresolvedCitations": "Uløste citationer",
+      "unresolvedDuplicate": "Uløste og dublerede"
+    },
+    "inFile": "{{kind}} i {{file}}",
+    "incompleteEntry": "Ufuldstændig post.",
+    "kinds": {
+      "anchor": "anker",
+      "asset": "ressource",
+      "bibentry": "litteraturpost",
+      "bibliography": "litteraturliste",
+      "citation": "citation",
+      "environment": "miljø",
+      "file": "fil",
+      "glossary": "ordliste",
+      "import": "import",
+      "include": "inkludering",
+      "label": "etiket",
+      "link": "link",
+      "macro": "makro",
+      "reference": "reference",
+      "section": "afsnit"
+    }
+  },
+  "outline": {
+    "ariaLabel": "Dokumentets disposition",
+    "collapseHeading": "Fold {{title}} sammen",
+    "collapseAll": "Fold alle overskrifter sammen",
+    "empty": "Ingen afsnit eller inkluderinger i dette dokument.",
+    "emptyDetail": "Tilføj en afsnitsoverskrift for at få en disposition, du kan navigere i.",
+    "entryCount_one": "{{count}} punkt i dispositionen",
+    "entryCount_other": "{{count}} punkter i dispositionen",
+    "expandHeading": "Fold {{title}} ud",
+    "expandAll": "Fold alle overskrifter ud",
+    "title": "Disposition"
+  },
+  "panelError": {
+    "message": "Panelopsætningen løb ind i et problem. Dine projektfiler ligger uberørt på disken.",
+    "reload": "Genindlæs Oleafly"
+  },
+  "structure": {
+    "ariaLabel": "Dokumentets struktur",
+    "collapseAll": "Fold alle strukturpunkter sammen",
+    "empty": "Der er ingen understøttede filer i projektkortet.",
+    "filterLabel": "Filtrer projektets struktur",
+    "filterPlaceholder": "Filtrer projektkortet…",
+    "expandAll": "Fold alle strukturpunkter ud",
+    "itemCount_one": "{{count}} strukturpunkt",
+    "itemCount_other": "{{count}} strukturpunkter",
+    "noMatch": "Ingen struktur matcher »{{query}}«.",
+    "notice": {
+      "partial": "Delvist kort. Ulæselige eller ugyldige filer vises fortsat, hvor det er muligt.",
+      "stale": "Opdaterer. Strukturen fra den forrige revision er skjult, indtil de aktuelle kildeområder er klar."
+    },
+    "title": "Struktur",
+    "treeLabel": "Projektets struktur",
+    "unavailable": {
+      "failed": {
+        "detail": "Projektet kunne ikke analyseres. Dine kildefiler blev ikke ændret.",
+        "title": "Strukturen kunne ikke bygges"
+      },
+      "mapping": {
+        "detail": "Oleafly indekserer overskrifter, tilknyttede filer, symboler og poster i litteraturlisten.",
+        "title": "Kortlægger projektets struktur"
+      },
+      "noProject": {
+        "detail": "Åbn et dokumentprojekt for at gennemse dets lokale struktur og projektstruktur.",
+        "title": "Intet projekt er åbent"
+      },
+      "noSource": {
+        "detail": "Åbn en understøttet kildefil eller litteraturfil for at se dens struktur.",
+        "title": "Ingen aktiv kildefil"
+      },
+      "offline": {
+        "detail": "Projektanalyse er ikke tilgængelig for dette arbejdsområde lige nu.",
+        "title": "Strukturtjenesten er ikke tilgængelig"
+      },
+      "unsupported": {
+        "detail": "Denne filtype har ingen udbyder af projektstruktur.",
+        "title": "Strukturen er ikke tilgængelig"
+      },
+      "waiting": {
+        "detail": "Den seneste projektrevision er endnu ikke indekseret.",
+        "title": "Venter på projektets struktur"
+      }
+    }
+  },
+  "surfaces": {
+    "assistant": "Indlæser assistenten",
+    "editor": "Indlæser editoren",
+    "preview": "Indlæser forhåndsvisningen",
+    "terminal": "Indlæser terminalen"
+  },
+  "terminal": {
+    "closeCurrent": "Luk den aktuelle",
+    "closeLeft": "Luk alle til venstre",
+    "closeOthers": "Luk de øvrige",
+    "closeRight": "Luk alle til højre",
+    "closeTab": "Luk {{title}}",
+    "color": "Farve",
+    "errors": {
+      "input": "Din shell kunne ikke tage imod input",
+      "resize": "Terminalen kunne ikke skifte størrelse",
+      "start": "Din shell kunne ikke starte"
+    },
+    "limitReached": "Luk en terminal for at åbne en ny",
+    "newTerminal": "Ny terminal",
+    "settings": "Terminalindstillinger",
+    "starting": "Starter projektets shell…",
+    "tabs": "Terminaler",
+    "titleInput": "Terminalens titel"
+  },
+  "tree": {
+    "breadcrumbWithProject": "{{project}}, {{path}}",
+    "clearFilter": "Ryd filteret",
+    "filterPlaceholder": "Filtrer…",
+    "noProject": "Intet projekt"
+  }
+}

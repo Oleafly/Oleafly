@@ -1,0 +1,153 @@
+{
+  "citeOleafly": "Viittaa Oleaflyyn tässä artikkelissa",
+  "empty": {
+    "citations": {
+      "detail": "Aloita tuomalla lähdekirjasto tai lisäämällä viittaus.",
+      "title": "Ei vielä viittauksia"
+    },
+    "symbols": {
+      "detail": "Otsikot, nimikkeet, komennot ja ympäristöt ilmestyvät tähän sitä mukaa kuin projektia kirjoitetaan.",
+      "title": "Ei vielä symboleja"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Suodata viittauksia",
+    "ariaLabelResults": "Suodata tuloksia",
+    "ariaLabelSymbols": "Suodata symboleja",
+    "clear": "Tyhjennä suodatin",
+    "noCitation": "Mikään viittaus ei vastaa hakua ”{{query}}”.",
+    "noResult": "Mikään tulos ei vastaa hakua ”{{query}}”.",
+    "noSymbol": "Mikään symboli ei vastaa hakua ”{{query}}”.",
+    "placeholderCitations": "Suodata avaimia, otsikoita, tekijöitä…",
+    "placeholderResults": "Suodata sijainteja…",
+    "placeholderSymbols": "Suodata nimikkeitä ja komentoja…"
+  },
+  "import": {
+    "added_one": "Kohteeseen {{target}} lisättiin {{count}} viite.",
+    "added_other": "Kohteeseen {{target}} lisättiin {{count}} viitettä.",
+    "addedWithDuplicates_one": "Kohteeseen {{target}} lisättiin {{count}} viite, {{duplicates}} oli jo siellä.",
+    "addedWithDuplicates_other": "Kohteeseen {{target}} lisättiin {{count}} viitettä, {{duplicates}} oli jo siellä.",
+    "allDuplicates_one": "Tämä viite on jo kohteessa {{target}}.",
+    "allDuplicates_other": "Nämä {{count}} viitettä ovat jo kohteessa {{target}}.",
+    "defaultTarget": "lähdeluettelo",
+    "description": "Lisää tähän projektiin viitteitä lähdehallintaohjelmasta tai lähdeluettelotiedostosta.",
+    "duplicateNote": "Viitteet, joiden DOI on jo lähdeluettelossa, ohitetaan.",
+    "empty": "Tiedostosta ei löytynyt yhtään viitettä.",
+    "endnote": {
+      "button": "Valitse XML-, RIS- tai BibTeX-tiedosto",
+      "description": "Valitse EndNote XML-, RIS- tai BibTeX-tiedosto. Oleafly lisää viitteet projektin lähdeluetteloon.",
+      "title": "EndNote, RIS tai BibTeX"
+    },
+    "failed": "Viitteitä ei voitu tuoda.",
+    "nothingNew": "Kohteeseen {{target}} ei ole mitään uutta lisättävää.",
+    "problems_one": "{{count}} ongelma tuonnin aikana. {{details}}",
+    "problems_other": "{{count}} ongelmaa tuonnin aikana. {{details}}",
+    "readFailed": "Tiedostoa ei voitu lukea.",
+    "title": "Tuo lähdekirjasto",
+    "unrecognized": "Tunnistamaton tiedostotyyppi: {{name}}",
+    "zotero": {
+      "button": "Valitse Zotero RDF -tiedosto",
+      "description": "Valitse Zoterossa File → Export Library → Zotero RDF. Valitse sitten viety tiedosto.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Osittaiset tulokset. Virheellisistä tai lukukelvottomista tiedostoista voi jäädä esiintymiä pois.",
+    "stale": "Päivitetään. Edellisen version viittaukset, symbolit ja alueet ovat piilossa."
+  },
+  "panel": {
+    "ariaLabel": "Viitteet (Shift-F12)",
+    "clearQuery": "Tyhjennä viitehaku",
+    "cleanLibrary": "Siivoa lähdekirjasto",
+    "importAriaLabel": "Tuo viitteitä",
+    "issues_one": "{{count}} viitteen tai viittauksen ongelma",
+    "issues_other": "{{count}} viitteen tai viittauksen ongelmaa",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "Viitteet",
+    "viewTabs": "Viitepaneelin näkymä"
+  },
+  "cleanLibrary": {
+    "title": "Siivoa lähdekirjasto",
+    "description": "Käy läpi viiteavaimet ja kaksoiskappaleet ennen tiedostojen muuttamista.",
+    "library": "Lähdekirjasto",
+    "entryCount_one": "{{count}} viite",
+    "entryCount_other": "{{count}} viitettä",
+    "footer": "Esikatselu tallentaa avoimet tiedostot. Käyttöönotto tarkistaa, että ne vastaavat yhä esikatselua, ja varmuuskopioi alkuperäiset.",
+    "noBib": "Tässä projektissa ei ole .bib-tiedostoa siivottavaksi.",
+    "entriesKept": "{{kept}}/{{total}} viitteestä jää jäljelle.",
+    "changes": "Muutokset ja huomiot",
+    "noChanges": "Ei tiedostomuutoksia otettavaksi käyttöön.",
+    "filesToUpdate": "Päivitettävät tiedostot: {{files}}",
+    "none": "Ei mitään",
+    "introSafeChanges": "Viiteavaimet yhtenäistetään. DOI-kaksoiskappaleet poistetaan vain, jos kaikki niiden tiedot voidaan säilyttää.",
+    "introReview": "Samankaltaiset otsikot ja ristiriitaiset metatiedot jäävät kirjastoon tarkistettaviksi.",
+    "preview": "Esikatsele",
+    "reviewTitle": "Tarkista ennen käyttöönottoa",
+    "reviewBody": "Esikatsele muutokset, niin näkyviin tulee, mitkä viitteet ja viittaukset päivittyvät.",
+    "statusAttention": "Vaatii huomiota",
+    "statusWorking": "Käsitellään…",
+    "statusPreviewReady": "Esikatselu valmis",
+    "statusReady": "Valmis esikatseluun",
+    "refreshPreview": "Päivitä esikatselu",
+    "previewChanges": "Esikatsele muutokset",
+    "apply": "Ota käyttöön ja kirjoita viittaukset uudelleen",
+    "truncated": "Esikatselu näyttää kustakin versiosta 500 ensimmäistä riviä.",
+    "actionRenamed": "{{old}} nimettiin uudelleen: {{new}}",
+    "actionDuplicate": "{{removed}} poistettiin viitteen {{kept}} kaksoiskappaleena (vastaavuus: {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "Siivottuja tiedostoja ei voitu ladata uudelleen. Avaa projekti uudelleen ennen muokkaamista.",
+    "cleaned": "Kirjasto siivottu. {{kept}}/{{total}} viitteestä säilytettiin.",
+    "cleanedWithBackup": "Kirjasto siivottu. {{kept}}/{{total}} viitteestä säilytettiin. Alkuperäiset tiedostot on tallennettu kohteeseen {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "Projekti muuttui tämän haun jälkeen. Aja Etsi viitteet uudelleen, niin käytössä ovat nykyiset lähdealueet.",
+      "title": "Viitetulokset vanhentuivat"
+    },
+    "noLocations": {
+      "detail": "Symboli on olemassa tässä versiossa, mutta sille ei löydy määritelmiä eikä esiintymiä.",
+      "title": "Sijainteja ei löytynyt"
+    },
+    "none": {
+      "detail": "Vie kohdistin nimikkeen, viittauksen, komennon tai ympäristön kohdalle ja paina Shift-F12.",
+      "title": "Ei viitehakua"
+    }
+  },
+  "tabs": {
+    "citations": "Viittaukset",
+    "results": "Viitteet",
+    "symbols": "Symbolit"
+  },
+  "trees": {
+    "citations": "Projektin viittaukset",
+    "noCitations": "Lähdeviitteitä tai viittausten käyttöä ei löytynyt.",
+    "noSymbols": "Projektin määrittelemiä symboleja ei löytynyt.",
+    "symbols": "Projektin symbolit"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "Projektin uusinta versiota ei voitu analysoida. Lähdetiedostoihin ei koskettu.",
+      "title": "Projektin analyysi epäonnistui"
+    },
+    "indexing": {
+      "detail": "Viitteet ja viittaukset tulevat näkyviin, kun projektin nykyinen versio on valmis.",
+      "title": "Indeksoidaan projektin analyysitietoja"
+    },
+    "noProject": {
+      "detail": "Avaa dokumenttiprojekti, niin viittauksia, symboleja ja tiedostojen välisiä viitteitä voi tarkastella.",
+      "title": "Yhtään projektia ei ole auki"
+    },
+    "offline": {
+      "detail": "Viitteitä ja viittauksia ei voi juuri nyt tarkistaa tässä työtilassa.",
+      "title": "Analyysipalvelu ei ole käytettävissä"
+    },
+    "unsupported": {
+      "detail": "Aktiivinen projekti ei käytä tuettua dokumenttimoottoria.",
+      "title": "Projektin analyysitiedot eivät ole käytettävissä"
+    },
+    "waiting": {
+      "detail": "Projektin uusinta versiota ei ole vielä indeksoitu.",
+      "title": "Odotetaan projektin analyysiä"
+    }
+  }
+}

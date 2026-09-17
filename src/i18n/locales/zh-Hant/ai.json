@@ -1,0 +1,729 @@
+{
+  "runtime": {
+    "ariaLabel": "助理執行環境",
+    "builtIn": "Oleafly 代理程式",
+    "cli": "CLI 代理程式"
+  },
+  "shell": {
+    "float": "浮動顯示助理",
+    "floatAriaLabel": "讓助理浮動顯示在應用程式上方",
+    "overlayTitle": "AI 助理",
+    "dockAriaLabel": "將聊天停駐回側邊欄",
+    "floatingNotice": "助理正浮動顯示在應用程式上方。",
+    "dockBack": "停駐回原位",
+    "loadingAgents": "正在載入代理程式…",
+    "openProjectForCli": "開啟專案以使用 CLI 代理程式。"
+  },
+  "minimap": {
+    "ariaLabel": "對話輪次",
+    "jumpTo": "跳至：{{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "要求核准",
+        "description": "在編輯檔案、存取網際網路與執行指令前先詢問。"
+      },
+      "approveForMe": {
+        "label": "替我核准",
+        "description": "只在動作被判定為有風險時才詢問。"
+      },
+      "fullAccess": {
+        "label": "完整存取權",
+        "description": "執行工具動作時不要求核准。"
+      },
+      "custom": {
+        "label": "自訂（approvals.toml）",
+        "description": "使用 approvals.toml 中的規則。可在設定的 AI 助理中編輯。"
+      }
+    },
+    "selectorAriaLabel": "核准模式。{{mode}}",
+    "editProjectRules": "編輯專案規則",
+    "confirm": {
+      "command": "確認指令",
+      "externalTool": "確認外部工具動作",
+      "internet": "確認網際網路存取",
+      "edit": "確認 AI 編輯"
+    },
+    "headline": {
+      "command": "助理想要執行這個指令",
+      "externalTool": "助理想要使用外部工具",
+      "internet": "助理想要存取網際網路",
+      "edit": "助理想要修改你的檔案"
+    },
+    "mcpNote": "這會把下方的引數傳送到已設定的 MCP 伺服器。",
+    "line": "第 {{line}} 行",
+    "sessionAutoApprove": "本次工作階段已對寫入啟用自動核准（刪除仍需點按確認）。",
+    "commandLabel": "指令",
+    "workingDirectory": "工作目錄",
+    "mcpServer": "MCP 伺服器",
+    "toolLabel": "工具",
+    "arguments": "引數",
+    "figureAlt": "圖片預覽",
+    "firstChange": "第一處變更 · L{{line}}",
+    "reject": "拒絕",
+    "alwaysInProject": "此專案一律允許",
+    "alwaysInProjectAriaLabel": "在此專案中一律允許",
+    "alwaysAllow": "一律允許",
+    "approve": "核准",
+    "external": {
+      "title": "外部代理程式請求（MCP）",
+      "moreWaiting_other": "還有 {{count}} 項等待中"
+    }
+  },
+  "attachments": {
+    "remove": "移除 {{name}}"
+  },
+  "chat": {
+    "pill": {
+      "plan": "計畫",
+      "step": "步驟 {{current}}/{{total}}",
+      "review": "待審閱"
+    },
+    "plan": {
+      "detailsAriaLabel": "計畫詳細資料",
+      "headingPlan": "計畫",
+      "headingChanges": "變更",
+      "approve": "核准計畫",
+      "revise": "修改",
+      "statusAwaiting": "等待核准",
+      "statusApproved": "已核准"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}：{{content}}",
+      "status": {
+        "completed": "已完成",
+        "inProgress": "進行中",
+        "pending": "待處理",
+        "cancelled": "已取消"
+      }
+    },
+    "fileChanges": {
+      "changed": "已變更",
+      "committed": "已提交 {{commit}}"
+    },
+    "runSummary": {
+      "plan": "計畫",
+      "stepsDone": "已完成 {{done}}/{{total}}",
+      "filesChanged_other": "已變更 {{count}} 個檔案"
+    },
+    "copyMessage": "複製訊息",
+    "exploration": {
+      "explored": "已探索",
+      "exploredItems": "已探索 {{items}}",
+      "files_other": "{{count}} 個檔案",
+      "searches_other": "{{count}} 次搜尋",
+      "lists_other": "{{count}} 份目錄清單"
+    },
+    "reasoning": {
+      "thinking": "思考中…",
+      "thoughtFor": "思考了 {{seconds}} 秒",
+      "label": "推理"
+    },
+    "subagent": {
+      "finished": "已完成",
+      "failed": "失敗",
+      "stopped": "已停止",
+      "usingTool": "正在使用 {{tool}}",
+      "working": "處理中",
+      "errorBody": "代理程式無法完成這項任務。",
+      "stoppedBody": "這項任務在回答前就被停止了。",
+      "openTask": "開啟任務"
+    },
+    "workedSteps": {
+      "duration": "執行了 {{seconds}} 秒",
+      "steps_other": "完成了 {{count}} 個步驟"
+    },
+    "steered": "已介入",
+    "toolOutputError": "錯誤：{{message}}",
+    "errorHints": {
+      "invalidKey": "你的 API 金鑰似乎無效或已過期。請在設定 → AI 助理中更新，或{{where}}切換供應商。",
+      "outOfCredits": "你的 AI 供應商額度或配額已用盡。請為帳戶儲值，或{{where}}改用其他供應商（或本機 Ollama）。",
+      "overloaded": "供應商的伺服器目前超載（已經重試過）。請稍候片刻再試一次，或{{where}}改用同系列的其他模型。",
+      "rateLimited": "供應商正在限制請求頻率。請稍候片刻再重試，或{{where}}切換供應商。",
+      "retiredModel": "供應商已淘汰或限制這個模型。請{{where}}選擇較新的模型（設定 → AI 助理會列出你的金鑰可用的模型）。",
+      "unreachable": "無法連線到 AI 供應商。請檢查網路連線；如果你使用 Ollama，請確認它正在執行（設定 → AI 助理 → 檢查 Ollama）。",
+      "where": {
+        "inSettings": "在設定的 AI 助理中",
+        "modelMenu": "在上方的模型選單中"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "新增上下文",
+    "mentionMenuAgentsAndFiles": "代理程式與專案檔案",
+    "mentionMenuFiles": "專案檔案",
+    "mentionHeadingAgents": "委派給代理程式",
+    "mentionHeadingFiles": "專案檔案",
+    "slashMenuAriaLabel": "斜線指令",
+    "placeholderEngineUnavailable": "文件引擎無法使用。AI 編輯已停用",
+    "placeholderDefault": "讓 AI 協助處理你的文件…",
+    "planRevisionPlaceholder": "描述計畫中要修改的地方",
+    "prompts": "提示詞",
+    "promptShortcutsAriaLabel": "提示詞捷徑",
+    "persona": "角色",
+    "personaActiveTooltip": "{{name}} 已啟用，會取代你的預設指示。",
+    "personaChoose": "選擇角色",
+    "personaActiveAriaLabel": "角色。{{name}} 已啟用，正在取代預設指示。",
+    "personaCreate": "在設定中建立角色",
+    "personaNone": "無",
+    "planModeOn": "計畫模式已開啟",
+    "planModeOff": "計畫模式已關閉",
+    "planModeAriaLabel": "計畫模式",
+    "plan": "計畫",
+    "planModeInfo": "關於計畫模式",
+    "planModeHint": "計畫模式：助理會先提出計畫再動手編輯。關閉「計畫」可讓助理直接使用所有工具。",
+    "stop": "停止",
+    "stopTitle": "停止生成",
+    "send": "傳送",
+    "checkAgain": "重新檢查"
+  },
+  "commands": {
+    "groups": {
+      "skills": "技能"
+    },
+    "archive": {
+      "label": "封存",
+      "description": "封存這個聊天"
+    },
+    "forkChat": {
+      "label": "分支聊天",
+      "description": "從這段對話建立新的聊天"
+    },
+    "goal": {
+      "label": "目標",
+      "description": "設定助理要持續朝向的目標"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "檢視已連線的 MCP 伺服器與其狀態"
+    },
+    "model": {
+      "label": "模型",
+      "description": "為這個聊天選擇模型"
+    },
+    "planMode": {
+      "enableLabel": "啟用計畫模式",
+      "disableLabel": "停用計畫模式",
+      "description": "開啟或關閉結構化計畫"
+    },
+    "recordSkill": {
+      "label": "錄製技能",
+      "description": "將這個聊天的做法存成可編輯的草稿"
+    },
+    "files": {
+      "label": "檔案",
+      "description": "把檔案附加到你的下一則訊息"
+    },
+    "browser": {
+      "label": "附加瀏覽器",
+      "description": "在文件旁開啟瀏覽器"
+    }
+  },
+  "models": {
+    "ariaLabel": "AI 模型",
+    "placeholder": "選擇模型",
+    "triggerTooltip": "{{model}}。切換供應商或模型",
+    "searchLabel": "搜尋模型",
+    "searchPlaceholder": "搜尋模型…",
+    "emptyTitle": "找不到模型",
+    "emptyHint": "請試試其他搜尋條件。",
+    "trust": {
+      "verified": "已驗證",
+      "untested": "未測試",
+      "blocked": "已封鎖"
+    },
+    "trustTitle": {
+      "verified": "Oleafly 已在這個模型上執行過助理",
+      "untested": "尚未與助理搭配測試過。首次使用時會進行檢查",
+      "blocked": "助理無法在這個模型上執行"
+    },
+    "chatOnlyHint": "僅限聊天，這個模型無法使用工具",
+    "checkingHint": "正在檢查這個模型",
+    "blockedWithReason": "助理無法使用這個模型：{{reason}}",
+    "blocked": "助理無法使用這個模型。",
+    "probeFailedWithDetail": "無法檢查這個模型。{{detail}}",
+    "probeFailed": "無法檢查這個模型。"
+  },
+  "history": {
+    "title": "聊天歷史記錄",
+    "closeBackdrop": "關閉聊天歷史記錄",
+    "searchLabel": "搜尋聊天",
+    "searchPlaceholder": "搜尋標題與訊息",
+    "emptyProject": "這個專案還沒有已儲存的聊天。",
+    "emptySearch": "沒有符合搜尋條件的聊天。",
+    "untitled": "新聊天",
+    "staleTitle": "這個聊天是從舊版本的專案開始的",
+    "staleBadge": "舊版本",
+    "messages_other": "{{count}} 則訊息",
+    "tokens": "約 {{amount}} token",
+    "deleteAriaLabel": "刪除 {{title}}",
+    "deleteFallbackTitle": "聊天",
+    "deleteTitle": "刪除聊天",
+    "relative": {
+      "justNow": "剛剛",
+      "minutes": "{{count}} 分鐘前",
+      "hours": "{{count}} 小時前",
+      "days": "{{count}} 天前"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "從不",
+      "everyTime": "每次都在聊天中詢問",
+      "askModeOnly": "僅在「要求核准」模式下",
+      "unlessAllowed": "是，除非已在專案中允許"
+    },
+    "catalog": {
+      "readFile": "讀取專案檔案，長檔案會分段讀取。",
+      "writeFile": "寫入整個檔案，取代原有內容。",
+      "replaceInFile": "在檔案中找出完全相符的段落並取代。",
+      "createFile": "在專案中建立新的檔案或資料夾。",
+      "renameFile": "重新命名或移動檔案、資料夾。",
+      "deleteFile": "刪除檔案或資料夾。",
+      "listFiles": "列出專案中的所有檔案與資料夾。",
+      "searchProject": "搜尋專案文字，取得相符的檔案與行號。",
+      "projectMap": "讀取文件大綱：章節、標籤、引用鍵、巨集、引入的檔案，以及所有未解析的項目。",
+      "showLocation": "在編輯器中開啟檔案的指定行，並把 PDF 預覽移到該處。",
+      "compile": "以專案的引擎編譯，並回報錯誤。",
+      "getLog": "讀取上一次的編譯記錄檔。",
+      "getPdfText": "逐頁讀取編譯後 PDF 的文字。",
+      "verifyPdfPages": "把編譯後的頁面算繪成影像，讓視覺模型檢查版面配置。",
+      "setMainDoc": "變更專案要從哪個檔案編譯。",
+      "literatureSearch": "以關鍵字在 OpenAlex 搜尋論文，不需要金鑰。",
+      "verifyCitation": "透過 doi.org 或 Crossref 把 DOI 或標題轉成已驗證的 BibTeX。",
+      "projectLibrarySearch": "以關鍵字搜尋專案本身的文字與筆記。",
+      "alphaxivSearch": "透過 alphaXiv 搜尋 arXiv 論文。",
+      "alphaxivPaperContent": "透過 alphaXiv 取得 arXiv 論文的全文。",
+      "previewFigure": "單獨編譯 TikZ 或 PGFPlots 圖片，並在聊天中顯示結果。",
+      "insertFigure": "在游標處插入完成的圖片，附上圖說與標籤，並在 figures/ 下儲存一張 PNG。",
+      "loadImage": "檢視專案中已有的影像。",
+      "updateTodos": "撰寫或更新聊天中顯示的逐步計畫。",
+      "getTodos": "讀取目前的計畫。",
+      "rememberNote": "儲存一則專案筆記，供後續的聊天參考。",
+      "forgetNote": "移除一則已儲存的專案筆記。",
+      "listNotes": "列出已儲存的專案筆記。",
+      "loadSkill": "依照技能操作前，先載入該技能的完整說明。",
+      "readSkillFile": "讀取技能隨附的參考檔案或指令碼。",
+      "spawnAgent": "啟動一個擁有自己任務與工具的輔助代理程式。",
+      "sendMessage": "傳送訊息給執行中的輔助代理程式。",
+      "followupTask": "在輔助代理程式完成後，再交付另一項任務。",
+      "waitAgent": "等待輔助代理程式完成，並讀取它的結果。",
+      "interruptAgent": "停止輔助代理程式正在進行的工作。",
+      "listAgents": "列出輔助代理程式與它們的狀態。",
+      "closeAgent": "關閉輔助代理程式。",
+      "runCommand": "在專案資料夾中執行 shell 指令，限時兩分鐘。",
+      "computerUse": "在助理的瀏覽器視窗中開啟網頁。",
+      "toggleTheme": "在淺色與深色模式之間切換。"
+    },
+    "disableAll": "全部停用",
+    "emptyContext": "這個情境中沒有可用的工具。",
+    "enableAll": "全部啟用",
+    "enableTool": "啟用 {{name}}",
+    "enabledCount": "已啟用 {{enabled}}/{{total}}",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "代理程式",
+      "buildAndPdf": "建置與 PDF",
+      "figures": "圖片",
+      "files": "檔案",
+      "planAndMemory": "計畫與記憶",
+      "research": "研究",
+      "skills": "技能",
+      "system": "系統"
+    },
+    "managerAriaLabel": "管理代理工具",
+    "managerHeading": "工具",
+    "managerTooltip": "工具",
+    "noDescription": "未提供說明。",
+    "notes": {
+      "latexOnly": "僅限 LaTeX 專案",
+      "pdfCaptureSetting": "需要啟用 PDF 頁面擷取設定",
+      "alphaxivKey": "需要在「整合」中設定 alphaXiv 金鑰",
+      "chatApproval": "在聊天中逐一核准指令",
+      "browserSetting": "需要啟用網頁瀏覽器設定"
+    },
+    "sourceGroups": {
+      "figure": "圖片",
+      "mcp": "MCP",
+      "project": "專案工具",
+      "skills": "技能"
+    },
+    "table": {
+      "tool": "工具",
+      "whatItDoes": "功能說明",
+      "asksFirst": "是否先詢問"
+    }
+  },
+  "toolCard": {
+    "approved": "已核准",
+    "rejected": "已拒絕",
+    "binaryPreview": "這個連結的檔案是二進位檔案，無法在此預覽。",
+    "previewTruncated": "預覽在 256 KiB 處停止。",
+    "previewFailed": "無法預覽這個連結的來源。",
+    "showAll": "顯示全部 {{characters}} 個字元",
+    "loadingSource": "正在載入來源",
+    "inspectSource": "檢視來源",
+    "openFile": "開啟檔案",
+    "openSource": "開啟來源",
+    "openSourceTitled": "開啟來源：{{title}}",
+    "openTask": "開啟任務",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "算繪後的圖片預覽",
+    "toolImageAlt": "工具提供的影像",
+    "showFigure": "顯示算繪後的圖片",
+    "showTikz": "顯示 TikZ 原始碼",
+    "figureTab": "圖片",
+    "tikzTab": "TikZ",
+    "saving": "儲存中",
+    "saveToProject": "儲存到專案",
+    "copyCode": "複製程式碼",
+    "saved": "已儲存 {{path}}",
+    "saveNeedsProject": "請開啟專案以儲存這張圖片。",
+    "saveFailed": "無法儲存這張圖片。"
+  },
+  "transcript": {
+    "dialogTitle": "委派任務執行記錄",
+    "dialogDescription": "委派的代理程式處理這項任務期間，讀取、執行與回答的所有內容。",
+    "loading": "正在載入執行記錄",
+    "failed": "無法載入執行記錄。",
+    "empty": "這項任務沒有留下執行記錄。"
+  },
+  "subagents": {
+    "working": "子代理執行中",
+    "count": "子代理（{{count}}）",
+    "stopAll": "全部停止",
+    "stopFailed": "無法停止子代理。",
+    "updates": "{{count}} 則更新",
+    "openTask": "開啟任務",
+    "awaitingPermission": "有委派的代理程式正在等待權限。",
+    "taskFailed": "有一項委派任務失敗。開啟它即可查看錯誤。",
+    "transcriptTruncated": "這份執行記錄比這裡顯示的內容更長。",
+    "noTranscriptYet": "這項任務尚未回報任何執行記錄。",
+    "noSessionInfo": "這項任務記錄的工作階段資訊不足，無法開啟它的執行記錄。",
+    "loadingTranscript": "正在載入執行記錄…",
+    "transcriptFailed": "無法載入執行記錄。",
+    "stillWorking": "這個子代理仍在執行中。完成後會開啟完整的執行記錄。",
+    "noFinalAnswer": "這個代理程式沒有留下最終回答。",
+    "latest": "最新：{{text}}",
+    "workingDetail": "處理中",
+    "status": {
+      "active": "執行中",
+      "awaiting": "需要權限",
+      "updated": "已更新",
+      "interrupted": "已停止",
+      "completed": "已完成",
+      "failed": "失敗"
+    }
+  },
+  "acp": {
+    "newConversation": "新對話",
+    "savedConversations": "已儲存的對話",
+    "untitledConversation": "未命名對話",
+    "agentSetup": "代理程式設定",
+    "usageReport": "用量報告",
+    "permission": {
+      "ariaLabel": "代理程式權限",
+      "namedHeadline": "{{agent}} 需要權限",
+      "headline": "代理程式需要權限",
+      "expired": "這個請求已過期。請讓代理程式再試一次。",
+      "dismiss": "關閉"
+    },
+    "readiness": {
+      "managedBridge": "橋接程式 {{version}} 已由 Oleafly 安裝。",
+      "bridgeOnPath": "已在 PATH 中找到橋接程式。",
+      "bridgeMissingWithCli": "已在 {{path}} 找到 {{cli}}。請安裝 ACP 橋接程式 {{version}} 以建立連線。",
+      "bridgeMissing": "請安裝 ACP 橋接程式 {{version}} 以連線這個代理程式。",
+      "cliMissing": "{{cli}} 不在你的 PATH 中。請先安裝，然後執行 {{command}}。",
+      "cliNotFound": "找不到這個代理程式的命令列工具。",
+      "unavailable": "這個代理程式無法在這台電腦上執行。"
+    },
+    "bridgeSource": {
+      "notInstalled": "未安裝",
+      "managed": "由 Oleafly 管理",
+      "onPath": "位於 PATH"
+    },
+    "installing": "安裝中",
+    "installBridge": "安裝橋接程式",
+    "assistantAriaLabel": "CLI 代理程式助理",
+    "loadEarlier": "載入更早的活動",
+    "starting": "正在啟動 {{agent}}",
+    "startingFallback": "該代理程式",
+    "startingHint": "代理程式的命令列工具正在啟動。第一次需要幾秒鐘。",
+    "readySubtitle": "{{agent}} 已在這個專案中就緒",
+    "projectSubtitle": "正在處理「{{project}}」",
+    "signInFallback": "請用這個代理程式的 CLI 登入，然後重新連線。",
+    "reconnectAfterSignIn": "登入後重新連線",
+    "reconnect": "重新連線到對話",
+    "resumeTask": "開啟研究任務以繼續這項工作。",
+    "delegatedConversation": "這個對話屬於一次委派的代理程式執行。",
+    "noResume": "這個代理程式無法接續已儲存的對話。準備好之後再開始新的對話。",
+    "imageTooLarge": "請選擇小於 480 KiB 的影像。最多可附加四張影像。",
+    "imageReadFailed": "無法讀取這個影像。",
+    "removeImage": "移除 {{name}}",
+    "composerAriaLabel": "傳送訊息給 CLI 代理程式",
+    "composerPlaceholderReady": "請代理程式處理這個專案",
+    "composerPlaceholderIdle": "先開始或重新連線對話，才能傳送訊息",
+    "attachImage": "附加影像",
+    "startConversation": "與 {{agent}} 開始對話",
+    "startConversationFallback": "某個代理程式",
+    "agentModel": "代理程式模型",
+    "modelManaged": "模型由代理程式管理",
+    "stop": "停止",
+    "stopTitle": "停止代理程式",
+    "send": "傳送",
+    "connecting": "連線中",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "連線中",
+      "authRequired": "需要登入",
+      "ready": "就緒",
+      "running": "執行中",
+      "cancelling": "取消中",
+      "cancelled": "已取消",
+      "disconnected": "已中斷連線",
+      "failed": "失敗"
+    },
+    "roster": {
+      "bridgeMissing": "請在代理程式設定中安裝橋接程式",
+      "cliMissing": "在這台電腦上找不到 CLI",
+      "unavailable": "在這台電腦上無法使用",
+      "comingSoon": "即將推出"
+    },
+    "messageTooLarge": "這則訊息連同影像太大了。請縮短訊息或移除一張影像。",
+    "terminalCommand": "代理程式正在執行終端機指令。",
+    "agentToolFallback": "代理工具",
+    "agentReported": "代理程式回報：{{detail}}",
+    "imageAttachmentName": "影像 {{index}}",
+    "agentImage": "[代理程式傳回了一張影像。]"
+  },
+  "agents": {
+    "pickerAriaLabel": "CLI 代理程式",
+    "unavailableTooltip": "{{name}}：{{hint}}",
+    "notInstalled": "未安裝",
+    "cliDetail": "CLI 代理程式 · 使用自己的帳戶",
+    "builtInDetail": "{{provider}} · Oleafly 代理程式"
+  },
+  "home": {
+    "heading": "你今天想做什麼？",
+    "headingAccent": "做什麼？",
+    "skillCategories": "技能分類",
+    "skillLockedTitle": "{{name}} 已在這個專案中停用",
+    "recentChats": "最近的聊天",
+    "recentStaleTitle": "從舊版本的專案開始",
+    "recentUntitled": "新聊天",
+    "recentStaleBadge": "舊版本",
+    "recentMessages_other": "{{count}} 則訊息",
+    "showAllHistory": "顯示全部歷史記錄（{{count}}）"
+  },
+  "research": {
+    "noSourceLink": "這筆結果沒有附上來源連結。",
+    "sourceOpenFailed": "無法開啟來源。",
+    "noProjectPath": "這筆結果沒有包含專案檔案路徑。",
+    "resultOpenFailed": "無法開啟結果檔案。"
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "寫作與編輯",
+      "citationsAndLiterature": "引用與文獻",
+      "review": "審閱",
+      "figuresAndTables": "圖片與表格"
+    },
+    "improveWriting": {
+      "label": "改進寫作",
+      "description": "潤飾清晰度、語氣與行文流暢度"
+    },
+    "fixGrammar": {
+      "label": "修正文法",
+      "description": "修正文法與標點"
+    },
+    "fixLatexErrors": {
+      "label": "修正 LaTeX 錯誤",
+      "description": "修復壞掉的程式碼與編譯錯誤"
+    },
+    "writeEquation": {
+      "label": "撰寫方程式",
+      "description": "把自然語言寫成 LaTeX 數學式"
+    },
+    "draftSection": {
+      "label": "草擬章節",
+      "description": "依你的文風撰寫新章節"
+    },
+    "paraphrase": {
+      "label": "改寫",
+      "description": "換個說法，保留原意"
+    },
+    "shorten": {
+      "label": "精簡",
+      "description": "讓文字更簡潔"
+    },
+    "expand": {
+      "label": "擴寫",
+      "description": "補充細節，加以闡述"
+    },
+    "journalFormat": {
+      "label": "期刊格式",
+      "description": "依目標期刊或研討會重新排版"
+    },
+    "writeAbstract": {
+      "label": "撰寫摘要",
+      "description": "依論文內容草擬摘要"
+    },
+    "generateTitle": {
+      "label": "生成標題",
+      "description": "有吸引力的論文標題"
+    },
+    "keywords": {
+      "label": "關鍵字",
+      "description": "擷取可供檢索的關鍵字"
+    },
+    "continueWriting": {
+      "label": "繼續寫作",
+      "description": "從上次停下的地方接著寫"
+    },
+    "citationSearch": {
+      "label": "引用搜尋",
+      "description": "在 alphaXiv 與 OpenAlex 搜尋論文"
+    },
+    "literatureReview": {
+      "label": "文獻回顧",
+      "description": "以真實來源盤點相關研究"
+    },
+    "citeClaim": {
+      "label": "為這項論點加上引用",
+      "description": "找出並加入已驗證的參考文獻"
+    },
+    "myLibrary": {
+      "label": "我的文獻庫",
+      "description": "搜尋你匯入的參考文獻"
+    },
+    "labSearch": {
+      "label": "實驗室搜尋",
+      "description": "尋找研究實驗室與機構"
+    },
+    "friendlyReview": {
+      "label": "友善審閱",
+      "description": "以指導者的口吻給這篇論文建設性意見"
+    },
+    "fireReview": {
+      "label": "嚴苛審閱",
+      "description": "以嚴格的二號審稿人壓力測試論點與方法"
+    },
+    "academicPresentation": {
+      "label": "學術簡報",
+      "description": "由你的論文做出 Beamer 投影片"
+    },
+    "academicPoster": {
+      "label": "學術海報",
+      "description": "由你的論文做出研討會海報"
+    },
+    "generateTable": {
+      "label": "生成表格",
+      "description": "在聊天中草擬 LaTeX 表格"
+    },
+    "tikzFigure": {
+      "label": "TikZ 圖片",
+      "description": "在聊天中草擬 TikZ 程式碼"
+    }
+  },
+  "turn": {
+    "thinking": "思考中…",
+    "continuing": "繼續中…",
+    "reasoning": "推理中…",
+    "runningTool": "正在執行 {{name}}…",
+    "processingResult": "正在處理結果…",
+    "summarizing": "正在摘要先前的對話…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "無法開啟代理程式的工作階段。",
+    "approvalModeSaveFailed": "無法儲存核准模式。",
+    "skillDraftSaved": "技能草稿已儲存。啟用前請先審閱。",
+    "skillDraftFailed": "無法儲存技能草稿。{{error}}",
+    "chatArchived": "聊天已封存。",
+    "chatArchiveFailed": "無法封存這個聊天。",
+    "chatForked": "已從聊天建立分支。",
+    "chatForkFailed": "無法從這個聊天建立分支。",
+    "engineNotLoaded": "文件引擎的詳細資料尚未載入。為了安全，AI 編輯已停用。",
+    "skillsLoadFailed": "無法載入已啟用的技能。請再試一次。",
+    "approvalModeLoadFailed": "無法載入核准模式。",
+    "approvalRulesLoadFailed": "無法載入專案的核准規則。",
+    "restored": "已還原專案檔案。對話已保留。",
+    "restoreFailed": "無法還原：{{error}}",
+    "steerFailed": "無法介入正在執行的輪次。",
+    "approvalRuleSaveFailed": "無法儲存專案的核准規則。",
+    "attachmentTooLarge": "{{name}} 太大（上限 10 MB）。",
+    "attachmentReadFailed": "無法讀取 {{name}}。",
+    "tooManyTools": "已啟用 {{enabled}} 個工具，但單次執行最多支援 {{max}} 個。請在「工具」中至少停用 {{excess}} 個後再試一次。"
+  },
+  "header": {
+    "mcpTooltip": "設定助理的 MCP 伺服器",
+    "mcpAriaLabel": "助理 MCP 設定",
+    "settings": "助理設定",
+    "usageAriaLabel": "檢視 AI 用量",
+    "usageReport": "用量報告",
+    "newChat": "新增聊天",
+    "chatHistory": "聊天歷史記錄",
+    "staleChatHint": "這個聊天是從舊版本的專案開始的。檔案內容可能和 AI 當時看到的不同。"
+  },
+  "usage": {
+    "lastRun": "上次執行",
+    "steps": "步數",
+    "input": "輸入",
+    "output": "輸出",
+    "thisChat": "這個聊天",
+    "runs": "執行次數",
+    "tokens": "token 數",
+    "cacheNote": "快取用量與費用估算請見用量報告。",
+    "summaryRunWithTokens_other": "上次執行：{{count}} 個步驟，回報 {{tokens}} 個 token",
+    "summaryRunNoTokens_other": "上次執行：{{count}} 個步驟，無法取得 token 總數",
+    "summaryChat": "這個聊天：{{steps}} 個步驟，{{tokens}} 個 token",
+    "summaryFallback": "AI 用量"
+  },
+  "provider": {
+    "connectTitle": "連接 AI 供應商以繼續",
+    "connectBody": "使用你自己的 API 金鑰（OpenAI、Anthropic、Groq 等），或用 Ollama 在本機執行模型。助理可以讀取與編輯檔案、編譯專案，並驗證 PDF。",
+    "connectButton": "連接供應商",
+    "runLocal": "用 Ollama 執行本機模型",
+    "quotaWarning": "聊天歷史記錄的儲存空間已滿。較舊的聊天已被清除，新訊息可能無法儲存。請從歷史記錄中刪除舊聊天以釋出空間。"
+  },
+  "conversation": {
+    "renderFailed": "這個對話無法顯示。請開始新的聊天，或從歷史記錄中重新開啟。",
+    "checkpointRestored": "專案已還原到這個檢查點",
+    "restoring": "還原中…",
+    "restoreCheckpoint": "把程式碼還原到這則回覆之前",
+    "restoreConfirm": "要把專案檔案還原到這則回覆之前嗎？這也會捨棄之後的 AI 回覆所做的程式碼變更。對話會留在這裡。",
+    "noResponse": "這則訊息沒有收到任何回應，串流已中斷。請重新傳送，或開始新的聊天。",
+    "scrollToBottom": "捲動到底部",
+    "projectSubtitle": "正在處理「{{project}}」",
+    "noOutput": "模型沒有傳回任何輸出。請檢查設定 → AI 助理。"
+  },
+  "followUps": {
+    "steered": "已介入正在執行的輪次：{{summary}}",
+    "sending": "已作為下一輪送出：{{summary}}",
+    "waiting": "正在等待這次執行中的安全時機：{{summary}}",
+    "queued": "已排入下一輪的佇列：{{summary}}",
+    "steerNow": "立即介入",
+    "startingRun": "正在開始這次執行",
+    "discard": "捨棄已排入佇列的訊息"
+  },
+  "goal": {
+    "editAriaLabel": "編輯目標：{{goal}}",
+    "clear": "清除目標",
+    "formAriaLabel": "設定持續目標",
+    "label": "目標",
+    "placeholder": "助理應該持續朝什麼目標努力？",
+    "save": "儲存目標"
+  },
+  "suggestions": {
+    "literatureSweep": "為這個專案全面梳理文獻",
+    "relatedWork": "草擬相關研究章節",
+    "verifyClaims": "逐一核對每項論點與它的來源",
+    "reviewManuscript": "像審稿人一樣審閱這份稿件",
+    "latexBuild": "修正我文件中的原始碼錯誤",
+    "preSubmission": "把它準備好投稿",
+    "slides": "把這篇論文變成一場演講",
+    "recompile": "重新編譯並檢查錯誤"
+  }
+}

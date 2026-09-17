@@ -1,0 +1,175 @@
+{
+  "dialog": {
+    "title": "用量報告",
+    "description": "依專案、代理程式、供應商、模型與工作階段記錄的 token 活動。",
+    "from": "起始",
+    "through": "結束",
+    "quickRangesLegend": "快速區間",
+    "utcNote": "日期與時間皆為 UTC。",
+    "apply": "套用",
+    "refresh": "重新整理",
+    "refreshLabel": "重新整理用量報告",
+    "loading": "正在載入用量…",
+    "loadFailed": "無法載入用量報告。",
+    "loadFailedHint": "請稍後再試一次。",
+    "tryAgain": "再試一次",
+    "emptyTitle": "這些篩選條件沒有記錄到用量。",
+    "emptyDescription": "請調整日期範圍或移除篩選條件。"
+  },
+  "quickRanges": {
+    "days7": "7 天",
+    "days30": "30 天",
+    "days90": "90 天",
+    "month": "本月"
+  },
+  "filters": {
+    "project": "專案",
+    "projectAll": "所有專案",
+    "agent": "代理程式",
+    "agentAll": "所有代理程式",
+    "provider": "供應商",
+    "providerAll": "所有供應商",
+    "model": "模型",
+    "modelAll": "所有模型",
+    "session": "工作階段",
+    "sessionAll": "所有工作階段"
+  },
+  "report": {
+    "range": "{{start}} 至 {{end}}（UTC）",
+    "costDisclaimer": "費用估算採用已儲存的價格資料，不是供應商帳單或方案配額。",
+    "exportCsv": "匯出 CSV",
+    "exportSaved": "已儲存到 {{path}}",
+    "exportFailed": "無法儲存用量報告。",
+    "inputTokens": "輸入 token",
+    "inputIncludesCache": "含快取的輸入",
+    "outputTokens": "輸出 token",
+    "outputIncludesReasoning": "含推理 token",
+    "cacheReads": "快取讀取",
+    "costEstimate": "費用估算",
+    "allRecordsPriced": "所有記錄皆已計價",
+    "sessions": "工作階段",
+    "dailyTokens": "每日 token",
+    "activityByHour": "每小時活動",
+    "projects": "專案",
+    "agents": "代理程式",
+    "providers": "供應商",
+    "models": "模型"
+  },
+  "counts": {
+    "records_other": "{{total}} 筆記錄",
+    "sessions_other": "{{total}} 個工作階段",
+    "tokens_other": "{{total}} 個 token",
+    "inputUnknown_other": "{{total}} 筆記錄沒有輸入計數",
+    "outputUnknown_other": "{{total}} 筆記錄沒有輸出計數",
+    "cacheUnknown_other": "{{total}} 筆記錄沒有可比較的快取資料",
+    "unpriced_other": "{{total}} 筆記錄未計價",
+    "partlyUnpriced_other": "{{total}} 筆記錄中有 {{unpriced}} 筆未計價",
+    "onPlan_other": "{{total}} 筆記錄屬於方案或本機",
+    "childRuns_other": "{{total}} 次子代理執行",
+    "usageRecords_other": "{{total}} 筆用量記錄",
+    "excludedChildRecords_other": "{{total}} 筆子記錄已計入上層總計，因此不會重複計算。",
+    "unmeasured_other": "{{total}} 筆記錄沒有實測的 token 數。"
+  },
+  "cache": {
+    "rate": "佔可比較輸入的 {{percent}}%",
+    "rateWithUnknown": "佔可比較輸入的 {{percent}}%，另有 {{unknown}} 無法比較"
+  },
+  "cost": {
+    "local": "本機",
+    "plan": "方案",
+    "notBilledPerToken": "不按 token 計費",
+    "noEstimate": "無估算",
+    "noSavedPrice": "這些記錄沒有已儲存的價格",
+    "priceSource": "價格來源：{{version}}"
+  },
+  "trend": {
+    "chartLabel": "每日輸入與輸出 token 趨勢",
+    "chartTitle": "每日 token 用量",
+    "empty": "沒有每日活動。",
+    "tokensUnavailable": "無法取得 token 數",
+    "inOut": "輸入 {{input}}，輸出 {{output}}",
+    "incompleteDays": "token 計數不完整的日期不會納入折線。",
+    "day": "日期",
+    "inputTokens": "輸入 token",
+    "outputTokens": "輸出 token"
+  },
+  "heatmap": {
+    "label": "依 UTC 星期與小時顯示的 token 活動",
+    "cell": "{{weekday}} {{hour}}:00 UTC：{{detail}}",
+    "noActivity": "沒有記錄到活動",
+    "tokenUnavailable": "無法取得 token 數",
+    "hoursInUtc": "時間為 UTC",
+    "less": "少",
+    "more": "多",
+    "weekdays": {
+      "sun": "週日",
+      "mon": "週一",
+      "tue": "週二",
+      "wed": "週三",
+      "thu": "週四",
+      "fri": "週五",
+      "sat": "週六"
+    }
+  },
+  "breakdown": {
+    "empty": "沒有記錄到用量。",
+    "name": "名稱",
+    "tokens": "token 數",
+    "cost": "費用",
+    "sessions": "工作階段"
+  },
+  "sessions": {
+    "title": "工作階段",
+    "subtitle": "聊天、任務、子代理執行與輔助呼叫，最新的排在前面。",
+    "emptyTitle": "沒有符合這些篩選條件的工作階段",
+    "emptyDescription": "請調整日期範圍或移除篩選條件。",
+    "session": "工作階段",
+    "project": "專案",
+    "agent": "代理程式",
+    "model": "模型",
+    "lastActivity": "最後活動（UTC）",
+    "input": "輸入",
+    "output": "輸出",
+    "cost": "費用",
+    "billing": "計費",
+    "status": "狀態",
+    "rowsPerPage": "每頁列數",
+    "page": "第 {{page}} 頁，共 {{pageCount}} 頁",
+    "previous": "上一頁",
+    "next": "下一頁"
+  },
+  "labels": {
+    "unknown": "未知",
+    "mixed": "混合",
+    "generalProject": "一般",
+    "runtimeBuiltIn": "Oleafly 助理",
+    "runtimeHelper": "輔助呼叫",
+    "runtimeAcp": "CLI 代理程式"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "方案",
+    "local": "本機",
+    "unknown": "未知",
+    "mixed": "混合"
+  },
+  "scope": {
+    "child": "子代理",
+    "task": "任務",
+    "helper": "輔助"
+  },
+  "status": {
+    "in_progress": "進行中",
+    "completed": "已完成",
+    "failed": "失敗",
+    "cancelled": "已取消",
+    "interrupted": "已中斷"
+  },
+  "measurement": {
+    "provider_reported": "由供應商計算",
+    "runtime_reported": "由代理程式計算",
+    "estimated": "本機估算",
+    "unavailable": "未測量",
+    "mixed_or_unavailable": "部分測量"
+  }
+}

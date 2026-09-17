@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "À propos d'Oleafly",
+    "checkUpdates": "Rechercher des mises à jour…",
+    "reloadViews": "Recharger les vues",
+    "restartApp": "Redémarrer l'application",
+    "quit": "Quitter Oleafly",
+    "edit": "Édition",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "cut": "Couper",
+    "copy": "Copier",
+    "paste": "Coller",
+    "selectAll": "Tout sélectionner",
+    "view": "Affichage",
+    "toggleTerminal": "Afficher ou masquer le terminal",
+    "toggleBrowser": "Afficher ou masquer le navigateur"
+  },
+  "window": {
+    "browser": "Navigateur Oleafly",
+    "browserTitled": "{{title}} - Navigateur Oleafly"
+  },
+  "dialog": {
+    "cancel": "Annuler",
+    "fullAccess": {
+      "title": "Activer l'accès complet ?",
+      "message": "L'accès complet permet à l'assistant d'exécuter des commandes shell et de modifier des fichiers sans demander votre autorisation à chaque fois. Activer l'accès complet ?",
+      "confirm": "Activer l'accès complet"
+    },
+    "cookieImport": {
+      "title": "Confirmer l'importation des cookies",
+      "messageHost": "Importer les cookies de {{hostname}} depuis le profil {{browser}} « {{profile}} » vers le navigateur intégré d'Oleafly ? Les cookies importés peuvent vous connecter à des sites web.",
+      "messageAll": "Importer tous les cookies du profil {{browser}} « {{profile}} » vers le navigateur intégré d'Oleafly ? Les cookies importés peuvent vous connecter à des sites web.",
+      "confirm": "Importer les cookies"
+    },
+    "mcpApprove": {
+      "title": "Autoriser l'outil MCP",
+      "confirm": "Utiliser l'outil"
+    },
+    "tableImport": {
+      "title": "Choisir un tableur à importer",
+      "filter": "Tableurs"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Le menu de l'application est indisponible",
+    "viewMenuUnavailable": "Le menu Affichage est indisponible",
+    "menuItemUnavailable": "L'élément de menu {{id}} est indisponible",
+    "fullAccessDismissed": "La confirmation d'accès complet a été fermée.",
+    "fullAccessDeclined": "L'accès complet n'a pas été activé.",
+    "approvalDialogClosed": "La boîte de dialogue d'autorisation native s'est fermée de façon inattendue."
+  }
+}

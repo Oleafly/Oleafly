@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Om Oleafly",
+    "checkUpdates": "Sök efter uppdateringar…",
+    "reloadViews": "Läs in vyer på nytt",
+    "restartApp": "Starta om appen",
+    "quit": "Avsluta Oleafly",
+    "edit": "Redigera",
+    "undo": "Ångra",
+    "redo": "Gör om",
+    "cut": "Klipp ut",
+    "copy": "Kopiera",
+    "paste": "Klistra in",
+    "selectAll": "Markera allt",
+    "view": "Visa",
+    "toggleTerminal": "Visa eller dölj terminalen",
+    "toggleBrowser": "Visa eller dölj webbläsaren"
+  },
+  "window": {
+    "browser": "Oleafly-webbläsaren",
+    "browserTitled": "{{title}} - Oleafly-webbläsaren"
+  },
+  "dialog": {
+    "cancel": "Avbryt",
+    "fullAccess": {
+      "title": "Aktivera fullständig åtkomst?",
+      "message": "Med fullständig åtkomst kan assistenten köra shell-kommandon och redigera filer utan att fråga om godkännande varje gång. Vill du aktivera fullständig åtkomst?",
+      "confirm": "Aktivera fullständig åtkomst"
+    },
+    "cookieImport": {
+      "title": "Bekräfta import av cookies",
+      "messageHost": "Vill du importera cookies för {{hostname}} från {{browser}}-profilen \"{{profile}}\" till Oleaflys inbyggda webbläsare? Importerade cookies kan logga in dig på webbplatser.",
+      "messageAll": "Vill du importera alla cookies från {{browser}}-profilen \"{{profile}}\" till Oleaflys inbyggda webbläsare? Importerade cookies kan logga in dig på webbplatser.",
+      "confirm": "Importera cookies"
+    },
+    "mcpApprove": {
+      "title": "Godkänn MCP-verktyg",
+      "confirm": "Använd verktyget"
+    },
+    "tableImport": {
+      "title": "Välj ett kalkylblad att importera",
+      "filter": "Kalkylblad"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Programmenyn är inte tillgänglig",
+    "viewMenuUnavailable": "Menyn Visa är inte tillgänglig",
+    "menuItemUnavailable": "Menyalternativet {{id}} är inte tillgängligt",
+    "fullAccessDismissed": "Bekräftelsen av fullständig åtkomst stängdes.",
+    "fullAccessDeclined": "Fullständig åtkomst aktiverades inte.",
+    "approvalDialogClosed": "Systemets godkännandedialog stängdes oväntat."
+  }
+}

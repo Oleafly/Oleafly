@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Pusty",
+    "diagramsAndFigures": "Diagramy i rysunki",
+    "cvsAndResumes": "CV i życiorysy",
+    "journalsAndConferences": "Czasopisma i konferencje",
+    "bibliographies": "Bibliografie",
+    "assignments": "Zadania",
+    "thesesAndReports": "Prace dyplomowe i raporty",
+    "books": "Książki",
+    "presentations": "Prezentacje",
+    "posters": "Plakaty",
+    "newsletters": "Biuletyny",
+    "calendars": "Kalendarze",
+    "letters": "Listy",
+    "aiGenerated": "Wygenerowane przez AI"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "CV",
+    "diagramsAndFigures": "Diagramy",
+    "journalsAndConferences": "Czasopisma"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Ciepły humanistyczny krój bezszeryfowy, używany w wielu nowoczesnych szablonach CV i życiorysów."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Czysty, neutralny krój bezszeryfowy, dobrze czytelny na ekranie i w druku."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Dopracowany szeryfowy krój przejściowy, dobrze pasujący do dokumentów naukowych i biznesowych."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Pakiet pisania naukowego",
+      "description": "Wnioski badawcze i grantowe, przeglądy literatury, listy motywacyjne na studia, listy polecające, raporty analityczne i prace dyplomowe."
+    },
+    "beamer-themes": {
+      "label": "Kolekcja motywów Beamer",
+      "description": "Prezentacje beamer w motywach Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla i Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Dokumenty biznesowe",
+      "description": "Faktury, notatki służbowe, protokoły spotkań, biznesplany i raporty, certyfikaty oraz broszura składana na trzy części."
+    },
+    "conference-preprints": {
+      "label": "Style preprintów konferencyjnych",
+      "description": "Preprinty w stylach NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv i Interspeech."
+    },
+    "coursework": {
+      "label": "Pakiet materiałów dydaktycznych",
+      "description": "Prace domowe, karty pracy, kartkówki, kryteria oceny, notatki z wykładów, sylabusy, matematyczne karty wzorów, egzaminy i opisy pseudokodu."
+    },
+    "creative-misc": {
+      "label": "Kreatywne i różne",
+      "description": "Książki kucharskie, zaproszenia, karty postaci RPG, kalendarz roczny, galerie tabel i TikZ oraz notatki terenowe."
+    },
+    "cv-collection": {
+      "label": "Kolekcja stylów CV i życiorysów",
+      "description": "Życiorysy w stylach ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds i Jake's."
+    },
+    "reports-lab": {
+      "label": "Raporty laboratoryjne i techniczne",
+      "description": "Sprawozdania laboratoryjne, raporty naukowe i techniczne, raporty z projektów i praktyk oraz raport roczny."
+    },
+    "resume-plus": {
+      "label": "Rozszerzenie CV i życiorysów",
+      "description": "Dwukolumnowe CV techniczne, minimalistyczne CV, obszerne CV naukowe, list motywacyjny oraz CV w Typst."
+    },
+    "slides-posters": {
+      "label": "Slajdy i plakaty",
+      "description": "Prezentacja beamer w motywie Metropolis, tikzposter w pionie i w poziomie oraz układ better-poster."
+    },
+    "venue-classes": {
+      "label": "Klasy czasopism i konferencji",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf oraz startery czasopism w Typst."
+    }
+  }
+}

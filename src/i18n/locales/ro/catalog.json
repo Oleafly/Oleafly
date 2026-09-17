@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Gol",
+    "diagramsAndFigures": "Diagrame și figuri",
+    "cvsAndResumes": "CV-uri",
+    "journalsAndConferences": "Reviste și conferințe",
+    "bibliographies": "Bibliografii",
+    "assignments": "Teme",
+    "thesesAndReports": "Teze și rapoarte",
+    "books": "Cărți",
+    "presentations": "Prezentări",
+    "posters": "Postere",
+    "newsletters": "Buletine informative",
+    "calendars": "Calendare",
+    "letters": "Scrisori",
+    "aiGenerated": "Generate cu AI"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "CV",
+    "diagramsAndFigures": "Diagrame",
+    "journalsAndConferences": "Reviste"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Un font sans-serif umanist și cald, folosit de multe șabloane moderne de CV."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Un sans-serif curat și neutru, care se citește bine pe ecran și pe hârtie."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Un serif de tranziție rafinat, potrivit pentru documente academice și executive."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Pachet de scriere academică",
+      "description": "Propuneri de cercetare și de finanțare, analize ale literaturii, scrisori de intenție, scrisori de recomandare, documente de poziție și teze."
+    },
+    "beamer-themes": {
+      "label": "Colecție de teme Beamer",
+      "description": "Prezentări beamer Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla și Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Documente de afaceri",
+      "description": "Facturi, note interne, procese-verbale, planuri și rapoarte de afaceri, diplome și o broșură pliată în trei."
+    },
+    "conference-preprints": {
+      "label": "Stiluri de preprint pentru conferințe",
+      "description": "Preprinturi în stil NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv și Interspeech."
+    },
+    "coursework": {
+      "label": "Pachet pentru cursuri",
+      "description": "Teme, fișe de lucru, teste, bareme, note de curs, programe analitice, fișe de formule, examene și prezentări de pseudocod."
+    },
+    "creative-misc": {
+      "label": "Creativ și diverse",
+      "description": "Cărți de bucate, invitații, fișe de personaj RPG, un calendar anual, galerii de tabele și TikZ și note de teren."
+    },
+    "cv-collection": {
+      "label": "Colecție de stiluri pentru CV",
+      "description": "CV-uri în stil ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds și Jake."
+    },
+    "reports-lab": {
+      "label": "Rapoarte de laborator și tehnice",
+      "description": "Rapoarte de laborator, rapoarte științifice și tehnice, rapoarte de proiect și de practică și un raport anual."
+    },
+    "resume-plus": {
+      "label": "Extindere pentru CV-uri",
+      "description": "CV tehnic pe două coloane, CV minimal, CV academic detaliat, scrisoare de intenție și un CV în Typst."
+    },
+    "slides-posters": {
+      "label": "Prezentări și postere",
+      "description": "Prezentare beamer Metropolis, tikzposter în format portret și peisaj și un aspect better-poster."
+    },
+    "venue-classes": {
+      "label": "Clase pentru reviste și conferințe",
+      "description": "Șabloane de start REVTeX, ACS achemso, Elsevier, ACM sigconf și pentru reviste în Typst."
+    }
+  }
+}

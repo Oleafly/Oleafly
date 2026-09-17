@@ -32,11 +32,15 @@ const limits = {
   // +420 KB for the interface localization runtime and the English catalogs,
   // which stay in the entry so every key has its fallback before first paint.
   // The merged entry measures 3.80 MB; keep about 100 KB of build-tool drift.
-  largestJavaScript: 3_900_000,
+  // +180 KB for the Emacs keybinding mode, the remappable editor keymap, the
+  // BibTeX completion and linter, the dictionary catalog picker and the figure
+  // dialog: the entry measures 3.98 MB. The visual editor package stays out
+  // of the entry through the insertion registry the lazy editor fills in.
+  largestJavaScript: 4_100_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 3_900_000,
+  entryJavaScript: 4_100_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -83,9 +87,16 @@ const limits = {
   // work on main (13.14 MB there) plus the skills settings tab, catalog,
   // sharing card and slash invocation: combined graph measures 13.17 MB.
   // The citation workspace adds Citation.js, citeproc, and five CSL styles in
-  // an on-demand chunk. Localization adds the runtime, English catalogs, and
-  // one lazy zh-Hans chunk. Keep the combined graph below this ceiling.
+  // an on-demand chunk. Localization adds the runtime and the English
+  // catalogs to the entry; every other interface language is its own lazy
+  // locale-<tag> chunk, counted separately below because at most one of them
+  // ever loads. Keep the combined graph below this ceiling.
   totalJavaScript: 18_600_000,
+  // One translated catalog set, emitted as a single lazy chunk per locale.
+  // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
+  // 620 KB; keep narrow headroom so a namespace accidentally bundled twice
+  // fails loudly.
+  largestLocaleChunk: 800_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
@@ -99,7 +110,10 @@ const limits = {
   pdfFallbacks: 1,
 };
 
-const javascript = assets.filter((asset) => /\.(?:js|mjs)$/.test(asset.name));
+const allJavascript = assets.filter((asset) => /\.(?:js|mjs)$/.test(asset.name));
+const isLocaleChunk = (asset) => /^locale-[A-Za-z]+(?:-[A-Za-z]+)?-[^.]+\.js$/.test(asset.name);
+const localeChunks = allJavascript.filter(isLocaleChunk);
+const javascript = allJavascript.filter((asset) => !isLocaleChunk(asset));
 const css = assets.filter((asset) => asset.name.endsWith(".css"));
 const workers = assets.filter((asset) => /^pdf\.worker-[^.]+\.js$/.test(asset.name));
 const fallbacks = assets.filter((asset) => /^pdf\.worker\.min-[^.]+\.js$/.test(asset.name));
@@ -144,6 +158,10 @@ const fontSources = fontDirective?.trim().split(/\s+/).slice(1) ?? [];
 
 if (largestJavaScript > limits.largestJavaScript) {
   failures.push(`largest JavaScript asset is ${largestJavaScript} bytes`);
+}
+const largestLocaleChunk = Math.max(0, ...localeChunks.map((asset) => asset.bytes));
+if (largestLocaleChunk > limits.largestLocaleChunk) {
+  failures.push(`largest locale chunk is ${largestLocaleChunk} bytes`);
 }
 const indexHtml = productionTextArtifacts.find(([name]) => name === "index.html")?.[1] ?? "";
 const entrySrc = indexHtml.match(/<script[^>]+src="\/assets\/([^"]+\.js)"/)?.[1];
@@ -218,6 +236,8 @@ console.log(
     largestJavaScript,
     entryJavaScript: entryAsset?.bytes ?? 0,
     totalJavaScript,
+    localeChunks: localeChunks.length,
+    largestLocaleChunk,
     largestCss,
     harperWasm: harper.bytes,
     pdfWorkers: workers.length,

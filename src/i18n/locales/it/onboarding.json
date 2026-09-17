@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Per iniziare",
+    "overview": {
+      "title": "Home",
+      "content": "Qui trovi i tuoi progetti e da qui ne crei di nuovi."
+    },
+    "create": {
+      "title": "Crea un progetto vero",
+      "content": "Scegli Nuovo progetto per vedere i modi in cui può iniziare un lavoro."
+    },
+    "kind": {
+      "title": "Tre modi per iniziare",
+      "content": "Avvia un progetto di ricerca, importa un manoscritto che hai già oppure parti da un modello pronto."
+    },
+    "kindTemplate": {
+      "title": "Parti da un modello",
+      "content": "Scegli Usa un modello per aprire la galleria. Gli altri due punti di partenza restano disponibili quando ti servono."
+    },
+    "gallery": {
+      "title": "Trova il tuo punto di partenza",
+      "content": "Sfoglia le categorie, cerca per nome e restringi i modelli per compilatore o per disponibilità offline."
+    },
+    "template": {
+      "title": "Scegli un modello",
+      "content": "Seleziona un modello qualsiasi per continuare. I suoi file diventeranno il tuo nuovo progetto."
+    },
+    "name": {
+      "title": "Dai un nome al progetto",
+      "content": "Inserisci il nome del progetto. Avanti si attiva quando il nome non è vuoto."
+    },
+    "color": {
+      "title": "Scegli un colore per la copertina",
+      "content": "Questo colore rende il progetto facile da riconoscere nella Home. Puoi anche tenere quello predefinito del modello."
+    },
+    "createProject": {
+      "title": "Crea il tuo progetto",
+      "content": "Fai clic su \"Crea il progetto\" per creare un progetto con il modello selezionato."
+    }
+  },
+  "workspace": {
+    "label": "La tua area di lavoro",
+    "toolbar": {
+      "title": "Barra degli strumenti del progetto",
+      "content": "Qui trovi le azioni del progetto e i comandi di compilazione."
+    },
+    "sidebar": {
+      "title": "Navigazione dell'area di lavoro",
+      "content": "Passa tra file, ricerca, controllo del codice, Preflight, riferimenti e attività MCP."
+    },
+    "editor": {
+      "title": "Editor",
+      "content": "Scrivi e naviga il sorgente con completamento, diagnostiche, formattazione e analisi del codice."
+    },
+    "wysiwygToggle": {
+      "title": "Prova la modalità WYSIWYG",
+      "content": "Passa dal sorgente grezzo a una vista formattata del documento, in stile Google Docs."
+    },
+    "compile": {
+      "title": "Compila e ricompila",
+      "content": "Da qui compili il progetto attuale. Il tour non compila mai e non modifica il tuo sorgente."
+    },
+    "logs": {
+      "title": "Log di compilazione",
+      "content": "Apri i log di compilazione per esaminare gli errori senza toccare il contenuto del progetto. Lo stato accanto mostra l'ora dell'ultima compilazione."
+    },
+    "preview": {
+      "title": "Anteprima PDF",
+      "content": "Il documento compilato resta accanto al sorgente nella vista divisa."
+    },
+    "zoom": {
+      "title": "Tutti gli strumenti per il PDF",
+      "content": "Apri la struttura, cerca nel testo, salta da una pagina all'altra, scegli il layout a una o due pagine, ingrandisci o adatta la pagina, inverti i colori, usa la vista lettura accessibile, ruota, scarica, salva nel progetto, passa a schermo intero oppure apri l'anteprima in una finestra a parte."
+    },
+    "sourceNavigation": {
+      "title": "Dal PDF al sorgente",
+      "content": "Fai clic sul contenuto del PDF compilato per saltare direttamente al sorgente corrispondente."
+    }
+  },
+  "research": {
+    "label": "Area di lavoro per la ricerca",
+    "open": {
+      "title": "Area di lavoro per la ricerca",
+      "content": "Aprila per affidare attività di ricerca a un agente e per collegare cartelle di lettura e dataset che tieni altrove. È una novità in beta, quindi segnalaci qualsiasi cosa non funzioni."
+    },
+    "tasks": {
+      "title": "Metti in coda le attività di ricerca",
+      "content": "Descrivi un lavoro e affidalo a un agente. Ogni attività conserva la propria conversazione, i risultati e le note di revisione."
+    },
+    "folders": {
+      "title": "Collega le cartelle che hai già",
+      "content": "Indica all'area di lavoro le cartelle di lettura e i dataset esterni al progetto. Niente viene copiato o spostato."
+    }
+  },
+  "settings": {
+    "label": "Impostazioni",
+    "navigation": {
+      "title": "Impostazioni",
+      "content": "Da qui ti sposti tra preferenze e integrazioni."
+    },
+    "general": {
+      "title": "Preferenze generali",
+      "content": "Controlla il comportamento dell'editor, la modalità offline, le scorciatoie e i tour guidati."
+    },
+    "appearance": {
+      "title": "Aspetto",
+      "content": "Scegli il tema, la tipografia, il layout predefinito dell'area di lavoro e il colore d'accento."
+    },
+    "dictionary": {
+      "title": "Dizionario",
+      "content": "Rivedi le parole, di progetto e globali, ignorate dai controlli di ortografia e grammatica."
+    },
+    "data": {
+      "title": "Archiviazione dati",
+      "content": "Esamina l'archiviazione locale dei progetti e gestisci i dati dell'applicazione."
+    },
+    "ai": {
+      "title": "Assistente AI",
+      "content": "Configura provider, modelli, credenziali e i server MCP che l'assistente può usare."
+    },
+    "compiler": {
+      "title": "Compilatore",
+      "content": "Scegli e configura il motore LaTeX usato per compilare i progetti."
+    },
+    "downloads": {
+      "title": "Download",
+      "content": "Gestisci i pacchetti e le risorse disponibili per lavorare offline."
+    },
+    "integrations": {
+      "title": "Integrazioni",
+      "content": "Collega GitHub, alphaXiv, Zotero, la ricerca di citazioni e il server MCP locale di Oleafly."
+    },
+    "shortcuts": {
+      "title": "Scorciatoie da tastiera",
+      "content": "Consulta, modifica, imposta e reimposta le scorciatoie da tastiera dell'applicazione."
+    },
+    "mcp": {
+      "title": "MCP dell'assistente",
+      "content": "Scegli quali server MCP può usare l'assistente."
+    },
+    "help": {
+      "title": "Aiuto e informazioni",
+      "content": "Riavvia il tour contestuale, apri la documentazione, consulta le scorciatoie o segnala un problema."
+    }
+  },
+  "aiSettings": {
+    "label": "Impostazioni AI",
+    "tabs": {
+      "title": "Impostazioni dell'assistente AI",
+      "content": "Qui gestisci provider e chiavi, istruzioni, persona, skill riutilizzabili e server MCP."
+    },
+    "providers": {
+      "title": "Collega i provider",
+      "content": "Incolla una chiave e viene convalidata presso il provider prima del salvataggio. I provider collegati mostrano un badge verde e si aprono su un elenco di modelli che puoi attivare, ampliare o ripristinare. Le chiavi restano cifrate su questo computer."
+    },
+    "customProvider": {
+      "title": "Usa il tuo endpoint",
+      "content": "Qui funziona qualsiasi URL di base compatibile con OpenAI, compresi i server locali come Ollama o LM Studio."
+    },
+    "openInstructions": {
+      "title": "Istruzioni",
+      "content": "Fai clic sulla scheda Istruzioni per continuare."
+    },
+    "defaultModel": {
+      "title": "Modello predefinito",
+      "content": "Le nuove chat partono da questo modello. Puoi comunque cambiare modello per ogni conversazione dal pannello della chat."
+    },
+    "instructions": {
+      "title": "Istruzioni personalizzate",
+      "content": "Le tue preferenze di stile permanenti, aggiunte a ogni richiesta dell'assistente."
+    },
+    "openPersonas": {
+      "title": "Persona",
+      "content": "Fai clic sulla scheda Persona per continuare."
+    },
+    "personas": {
+      "title": "Crea le persona",
+      "content": "Insiemi di istruzioni con un nome e un colore, selezionabili dal menu Persona della chat. Prova con un revisore di bozze, un referee o un purista di LaTeX."
+    }
+  },
+  "ai": {
+    "label": "Assistente AI",
+    "assistant": {
+      "title": "Assistente AI",
+      "content": "Lavora con un assistente che conosce il progetto, senza inviare nulla durante questo tour."
+    },
+    "runtime": {
+      "title": "Due tipi di agente",
+      "content": "L'agente Oleafly usa il provider di modelli che configuri. L'agente da riga di comando, in beta, pilota un agente di programmazione già installato su questo computer."
+    },
+    "connectProvider": {
+      "title": "Collega un provider",
+      "content": "Se non hai configurato nessun provider, parti da qui. Il tour non chiede né modifica mai le credenziali."
+    },
+    "providerModel": {
+      "title": "Provider e modello",
+      "content": "Cambia modello per questa conversazione. Le modifiche valgono solo per questa sessione. Il modello predefinito si imposta nelle impostazioni. I loghi indicano il provider di ogni modello."
+    },
+    "prompts": {
+      "title": "Prompt rapidi",
+      "content": "Scegli un prompt già pronto per inserirlo nel campo della chat."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Scegli come deve lavorare l'assistente. Una persona attiva sostituisce le tue istruzioni predefinite finché non la disattivi."
+    },
+    "input": {
+      "title": "Campo della chat",
+      "content": "Descrivi quello che ti serve. L'assistente può usare il contesto del progetto, ma questo tour non invia mai nessuna richiesta."
+    },
+    "attachments": {
+      "title": "Allegati",
+      "content": "Allega immagini, PDF e file sorgente quando una conversazione ha bisogno di contesto in più."
+    },
+    "history": {
+      "title": "Cronologia delle conversazioni",
+      "content": "Riapri le chat recenti e l'intera cronologia, con ogni conversazione legata allo stato del suo progetto."
+    },
+    "usage": {
+      "title": "Utilizzo",
+      "content": "Quando disponibili, le conversazioni configurate mostrano qui esecuzioni, token e costo stimato."
+    },
+    "restore": {
+      "title": "Ripristina lo stato del progetto",
+      "content": "Dopo una modifica dell'AI, un checkpoint può ripristinare i file del progetto senza eliminare la conversazione."
+    }
+  },
+  "diagram": {
+    "label": "Compositore di diagrammi",
+    "composer": {
+      "title": "Compositore di diagrammi",
+      "content": "Costruisci diagrammi in modo visuale o dal codice TikZ. Il tour non modifica e non salva il tuo lavoro."
+    },
+    "import": {
+      "title": "Importa un file TikZ",
+      "content": "Hai già un file .tikz o .tex? Importalo al posto di questo disegno iniziale. Resta una bozza finché non scegli di salvarlo."
+    },
+    "modes": {
+      "title": "Disegna e Codice",
+      "content": "La modalità Disegna ti fa lavorare direttamente sull'area di disegno. La modalità Codice mostra il TikZ generato e gli snippet riutilizzabili."
+    },
+    "palette": {
+      "title": "Tavolozza delle forme",
+      "content": "Scegli una forma, poi fai clic e trascina sull'area di disegno per posizionarla e dimensionarla."
+    },
+    "handles": {
+      "title": "Collega e ridimensiona",
+      "content": "Una forma selezionata mostra le maniglie di collegamento e di ridimensionamento, per una struttura e dimensioni precise."
+    },
+    "inspector": {
+      "title": "Ispettore",
+      "content": "Seleziona una forma o un collegamento per regolarne stile, testo, percorso e ordine di sovrapposizione."
+    },
+    "preview": {
+      "title": "Anteprima compilata",
+      "content": "La compilazione apre un'anteprima accanto all'editor, con i controlli di scala e sfondo."
+    },
+    "compile": {
+      "title": "Compila",
+      "content": "La compilazione genera un'anteprima isolata senza inserire il diagramma nel documento."
+    },
+    "saveProject": {
+      "title": "Salva come progetto",
+      "content": "Salva un diagramma finito come progetto immagine riutilizzabile, che compare nella Home."
+    },
+    "download": {
+      "title": "Scarica",
+      "content": "Scarica il diagramma compilato come file PNG senza salvarlo come progetto."
+    }
+  }
+}

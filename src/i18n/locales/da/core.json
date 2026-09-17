@@ -1,0 +1,597 @@
+{
+  "accents": {
+    "blue": "Blå",
+    "green": "Grøn",
+    "orange": "Orange",
+    "purple": "Lilla",
+    "rose": "Rosé",
+    "teal": "Blågrøn"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Bro mangler",
+      "cliMissing": "CLI blev ikke fundet",
+      "ready": "Klar",
+      "unavailable": "Ikke tilgængelig"
+    },
+    "requestFailed": "ACP-forespørgslen kunne ikke gennemføres."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Projektet har nået sit AI-budget på {{budget}}. Hæv eller ryd budgettet under Indstillinger for at fortsætte.",
+    "warned": "Projektet har brugt {{spent}} af sit AI-budget på {{budget}}."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "Skiftede til Oleafly-assistenten til denne handling."
+  },
+  "bibtex": {
+    "duplicateDoi": "Samme DOI som: {{keys}}",
+    "duplicateKey": "Dubleret citationsnøgle",
+    "invalidYear": "Året \"{{year}}\" er ikke et firecifret tal",
+    "missingField": "Påkrævet felt mangler: {{fields}}",
+    "missingKey": "Posten af typen @{{type}} mangler en citationsnøgle",
+    "unknownType": "Ukendt posttype @{{type}}",
+    "unreadableFields": "Kunne ikke læse felterne i \"{{entry}}\"",
+    "unterminatedEntry": "Uafsluttet post nær tegn {{position}}",
+    "unusualField": "Usædvanligt felt til @{{type}}: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} blev ændret under importen af citationer. Prøv igen.",
+    "noArxivEntry": "Der blev ikke fundet nogen arXiv-post.",
+    "noReferences": "Der blev ikke fundet nogen referencer i den fil.",
+    "offline": "Opslag af citationer kræver netværk. Slå offlinetilstand fra under Indstillinger.",
+    "parseFailed": "Kunne ikke fortolke citationen.",
+    "projectChanged": "Projektet blev ændret under importen af citationer.",
+    "projectChangedNotInserted": "Projektet blev ændret under importen af citationer. Citationen blev ikke indsat.",
+    "projectChangedRetry": "Projektet blev ændret under importen af citationer. Prøv igen i det oprindelige projekt.",
+    "readFailed": "Kunne ikke læse {{path}}: {{detail}}",
+    "unrecognizedFile": "Ukendt filtype: {{name}}",
+    "writeFailed": "Kunne ikke skrive {{path}}: {{detail}}"
+  },
+  "citeOleafly": {
+    "added": "Tilføjede Oleafly-posten til {{path}}. Citer den med {{markup}}.",
+    "failed": "Kunne ikke tilføje Oleafly-citationen. Kopier den i stedet fra Indstillinger, Hjælp og Om.",
+    "present": "{{path}} har allerede Oleafly-posten. Citer den med {{markup}}.",
+    "undo": "Fortryd"
+  },
+  "compatibility": {
+    "biblatexBiber": "Dette projekt bruger biblatex/Biber til litteraturlisten.",
+    "blockerFinding_one": "{{title}}",
+    "blockerFinding_other": "{{title}} (+{{more}} mere)",
+    "chooseEngine": "Vælg motor…",
+    "importNotes_one": "{{count}} importnote: {{title}}",
+    "importNotes_other": "{{count}} importnoter: {{title}} (+{{more}} mere)"
+  },
+  "compile": {
+    "engineNotLoaded": "Kompilering er slået fra, indtil dokumentmotoren er indlæst.",
+    "noOfflineMode": "{{engine}} har ingen offlinetilstand for kompilatoren. Kompilerer på normal vis.",
+    "retry": "Kompiler igen"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Flyt alle udviklingsprojekter til papirkurven. Intet bliver slettet permanent.",
+        "title": "Ryd projekter"
+      },
+      "replayFirstRun": {
+        "description": "Nulstil alle rundvisninger, luk det aktuelle projekt, og vend tilbage til velkomstforløbet.",
+        "title": "Afspil første kørsel igen"
+      },
+      "resetAndSeed": {
+        "description": "Flyt de nuværende projekter til papirkurven, og kopier så alle {{count}} fastlåste virkelige testprojekter fra den lokale cache.",
+        "title": "Nulstil og fyld op"
+      },
+      "resetUiState": {
+        "description": "Ryd Oleaflys lokale indstillinger og gemt tilstand i brugerfladen uden at slette projekter.",
+        "title": "Nulstil tilstanden i brugerfladen"
+      },
+      "seedCorpus": {
+        "action": "Fyld korpus op",
+        "description": "Kopier {{count}} forskningsprojekter fra ~/Codespace/Oleafly/oleafly-seed. Artikler, afhandlinger, bøger, oplæg, plakater og figurer i både LaTeX og Typst, hver især kontrolleret til at kunne kompilere med de medfølgende motorer. Eksisterende testprojekter bevares.",
+        "title": "Fyld forskningskorpus op"
+      }
+    },
+    "closeProjectFailed": "Det åbne projekt kunne ikke lukkes sikkert.",
+    "confirm": {
+      "clearProjects": {
+        "action": "Ryd projekter",
+        "description": "Hvert projekt i det isolerede udviklingsbibliotek flyttes til dets papirkurv. Dit rigtige Oleafly-bibliotek bliver ikke rørt.",
+        "title": "Vil du rydde alle udviklingsprojekter?"
+      },
+      "fallbackTitle": "Bekræft udviklingshandling",
+      "resetAndSeed": {
+        "action": "Nulstil og fyld op",
+        "description": "Hvert nuværende udviklingsprojekt flyttes til papirkurven, og derefter kopierer Oleafly {{count}} forskningstestprojekter fra den lokale oleafly-seed-cache.",
+        "title": "Vil du nulstille og fylde udviklingsbiblioteket op?"
+      },
+      "resetBrowser": {
+        "action": "Nulstil tilstanden i brugerfladen",
+        "description": "Det rydder Oleaflys indstillinger, rundvisninger og anden browsertilstand for dette udviklings-origin og genindlæser derefter appen. Projektfilerne bliver liggende på disken.",
+        "title": "Vil du nulstille brugerfladens tilstand i udviklingsmiljøet?"
+      }
+    },
+    "debugOnly": {
+      "description": "Disse knapper indlæses kun af Vites udviklingsbuild. Produktionsbuilds afviser dette modul, hvis dets sentinel dukker op i en udsendt fil.",
+      "title": "Kun i debugbuild"
+    },
+    "library": {
+      "checking": "Kontrollerer stien til biblioteket…",
+      "label": "Udviklingsbibliotek",
+      "locked": "Projektknapperne er låst, fordi dette ikke er .oleafly-dev-sandkassen."
+    },
+    "nav": "Udvikler",
+    "projectsRecycled_one": "Flyttede {{count}} projekt til papirkurven.",
+    "projectsRecycled_other": "Flyttede {{count}} projekter til papirkurven.",
+    "replayFailed": "Kunne ikke nulstille rundvisningen til første kørsel.",
+    "resetAndSeedSummary": "Flyttede {{removed}} projekter til papirkurven og fyldte forskningskorpusset op: {{created}} oprettet, {{skipped}} fandtes allerede.",
+    "resetFailed": "Kunne ikke nulstille udviklingssandkassen.",
+    "sandboxOnly": "Forskningstestprojekter kan kun kopieres ind i .oleafly-dev-sandkassen.",
+    "seedFailed": "Kunne ikke fylde forskningskorpusset op.",
+    "seedFailures_one": "{{summary}} {{count}} testprojekt fejlede. Første fejl: {{name}}: {{message}}",
+    "seedFailures_other": "{{summary}} {{count}} testprojekter fejlede. Første fejl: {{name}}: {{message}}",
+    "seedSummary": "Fyldte forskningskorpusset op: {{created}} oprettet, {{skipped}} fandtes allerede.",
+    "unknownSeedError": "Ukendt fejl ved opfyldning"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "PNG-billede",
+      "zipArchive": "Zip-arkiv"
+    }
+  },
+  "dictionary": {
+    "full": "Din ordbog er fuld, så ordet bliver i stedet skjult i dette dokument. Fjern et ord under Indstillinger for at gemme det.",
+    "wordTooLong": "Det er for langt til at gemme som et ord, så det bliver i stedet skjult i dette dokument. Et ord kan være op til {{max}} tegn."
+  },
+  "documentScan": {
+    "complete": "Skanningen er færdig",
+    "failed": "Skanningen af dokumentet mislykkedes",
+    "processed": "Behandlede {{current}}/{{total}} afsnit…",
+    "processing": "Behandler {{current}}/{{total}} afsnit…",
+    "skippedEmpty": "Sprang tom forespørgsel over ({{current}}/{{total}})",
+    "splitting": "Deler dokumentet op i afsnit…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "Oplysningerne om dokumentmotoren kunne ikke indlæses. Handlinger, der afhænger af motoren, er slået fra.",
+      "renameReloadFailed": "Oplysningerne om dokumentmotoren kunne ikke indlæses, efter at hoveddokumentet blev omdøbt.",
+      "stillLoading": "Oplysningerne om dokumentmotoren indlæses stadig."
+    }
+  },
+  "export": {
+    "pdfFailed": "Kunne ikke gemme PDF'en",
+    "pdfFailedDetail": "Kunne ikke gemme PDF'en: {{detail}}",
+    "pngFailed": "Kunne ikke gemme PNG-filen",
+    "pngFailedDetail": "Kunne ikke gemme PNG-filen: {{detail}}",
+    "revealFailed": "Filen blev gemt, men Oleafly kunne ikke åbne dens mappe (adgang nægtet). Se efter på den placering, du valgte i dialogen.",
+    "saved": "{{kind}} gemt · {{fileName}}",
+    "showInFolder": "Vis i mappen"
+  },
+  "externalChange": {
+    "deletionRestored": "En sletning udefra kom på tværs af ugemte ændringer. Dine lokale ændringer blev gendannet.",
+    "localEditKept": "En ændring udefra i \"{{path}}\" kom, mens du havde ugemte ændringer. Din lokale ændring blev bevaret.",
+    "persistExternalFailed": "Den seneste opdatering udefra af \"{{path}}\" kunne ikke gemmes.",
+    "preserveLocalFailed": "Din lokale opdatering af \"{{path}}\" kunne ikke bevares.",
+    "reloadFailed": "Projektindstillingerne blev opdateret, men nogle ændrede filer kunne ikke genindlæses.",
+    "restoreLocalFailed": "Din ugemte opdatering af \"{{path}}\" kunne ikke gendannes."
+  },
+  "fonts": {
+    "systemDefault": "Systemets standard",
+    "terminalDefault": "Terminalens standard"
+  },
+  "imageToLatex": {
+    "failed": "Billede til LaTeX mislykkedes: {{detail}}",
+    "inserted": "Indsatte LaTeX fra billedet",
+    "transcribing": "Transskriberer billedet…"
+  },
+  "import": {
+    "arxivImported": "arXiv-kilden er importeret. Kompiler projektet for at se resultatet.",
+    "chooseOfferedProjectType": "Vælg en af de projekttyper, der tilbydes til denne fil.",
+    "invalidArxivId": "Indsæt et link til en arXiv-artikel eller et id som 2301.01234.",
+    "supportedDocumentTypes": "Vælg en af de understøttede dokumenttyper.",
+    "conversionNotice": "Vi har konverteret dit indhold til LaTeX. Du skal måske rette i stilen, især for tabeller, figurer og citationer.",
+    "figureSaved": "Gemte {{name}}",
+    "pdfProjectCreated": "Projektet er oprettet ud fra en PDF. Gennemgå det, før du stoler på rekonstruktionen.",
+    "pickPdfOrDocx": "Vælg en .pdf- eller .docx-fil",
+    "texSaved": "Gemte .tex",
+    "unsupportedFile": "Vælg en .zip-, .docx-, .md- eller .markdown-fil.",
+    "zipSaveFailed": "Kunne ikke gemme ZIP-arkivet.",
+    "zipSaved": "Gemte .zip"
+  },
+  "inlineAi": {
+    "concise": "Gør kortere",
+    "expand": "Uddyb",
+    "fixSource": "Ret kilden",
+    "grammar": "Ret grammatik",
+    "improve": "Forbedr",
+    "translate": "Oversæt"
+  },
+  "intelligence": {
+    "analysisFailed": "Projektanalysen af den aktuelle revision mislykkedes.",
+    "analyzing": "Projektindsigt analyserer den aktuelle revision.",
+    "couldNotSend": "Kunne ikke sende projektanalysen til workeren.",
+    "disposed": "Workeren til projektindsigt er lukket ned.",
+    "disposedDuringRequest": "Workeren til projektindsigt blev lukket ned undervejs.",
+    "failed": "Projektindsigt mislykkedes.",
+    "identityMismatch": "Identiteten på svaret fra projektindsigt passede ikke til forespørgslen.",
+    "malformedResponse": "Workeren til projektindsigt gav et ugyldigt svar.",
+    "malformedSnapshotIdentity": "Snapshot-identiteten fra projektindsigt var ugyldig.",
+    "noProject": "Intet projekt er aktivt.",
+    "partialFiles_one": "{{count}} fil gav en delvis analyse, der kunne bruges.",
+    "partialFiles_other": "{{count}} filer gav en delvis analyse, der kunne bruges.",
+    "retainedStale": "Projektets indhold er ændret. Den bevarede analyse er forældet, mens den aktuelle revision kører.",
+    "sourceGraphRefreshing": "Projektets filer er ændret. Kildegrafen bliver opdateret.",
+    "sourceSnapshotsLoading": "Projektets filer er ændret. Kildesnapshots bliver indlæst til den aktuelle analyse.",
+    "staleSnapshot": "Workeren til projektindsigt har ingen analyse for dette snapshot.",
+    "stopped": "Projektindsigt er stoppet.",
+    "timedOut": "Projektindsigt fik timeout.",
+    "typeMismatch": "Svartypen fra projektindsigt passede ikke til forespørgslen.",
+    "unexpectedResponse": "Workeren til projektindsigt gav et uventet svar.",
+    "workerFailed": "Workeren til projektindsigt fejlede.",
+    "workerRestarted": "Workeren til projektindsigt blev genstartet efter en timeout.",
+    "workerUnavailable": "Workeren til projektindsigt er ikke tilgængelig."
+  },
+  "latexPackages": {
+    "algorithm2e": "Opsætning af algoritmer",
+    "amsmath": "Avanceret opsætning af matematik",
+    "amssymb": "Udvidede matematiske symboler",
+    "amsthm": "Miljøer til sætninger og beviser",
+    "array": "Udvidet array og tabular",
+    "authblk": "Blokke til forfattere og tilknytninger",
+    "babel": "Flersprogsunderstøttelse og dokumentsprog",
+    "biblatex": "Avanceret understøttelse af litteraturlister",
+    "bookmark": "Forbedrede bogmærker i PDF",
+    "booktabs": "Professionelle streger i tabeller",
+    "caption": "Tilpasning af figur- og tabeltekster",
+    "cleveref": "Smarte krydsreferencer (indlæs efter hyperref)",
+    "csquotes": "Kontekstafhængige anførselstegn (kræves af biblatex)",
+    "enumitem": "Tilpasning af lister",
+    "fancyhdr": "Egne sidehoveder og sidefødder",
+    "float": "Bedre placering af flydende elementer",
+    "fontspec": "Valg af OpenType-skrifttyper (Xe/LuaLaTeX)",
+    "geometry": "Tilpasning af sidelayout",
+    "graphicx": "Indsæt grafik og billeder",
+    "hyperref": "Hyperlinks, bogmærker og PDF-metadata",
+    "inputenc": "Indtastningskodning (unødvendig i Xe/LuaLaTeX)",
+    "lineno": "Linjenumre til bedømmelseseksemplarer",
+    "lipsum": "Pladsholdertekst (lorem ipsum)",
+    "listings": "Kodeudsnit (deres indhold bliver ikke tagget)",
+    "mathtools": "Udvidelse af amsmath med rettelser og værktøjer",
+    "microtype": "Finjustering af mikrotypografi",
+    "minted": "Kodeudsnit med farvekodning fra Pygments",
+    "multirow": "Tabelceller over flere rækker",
+    "natbib": "Citationer med forfatter-år og numre",
+    "parskip": "Afstand mellem afsnit",
+    "pdfpages": "Indsæt hele sider fra en anden PDF",
+    "setspace": "Styring af linjeafstand",
+    "siunitx": "SI-enheder og talformatering",
+    "subcaption": "Delfigurer og deltabeller",
+    "subfig": "Ældre pakke til layout af delfigurer",
+    "tabularx": "Tabeller med automatisk bredde",
+    "threeparttable": "Tabeller med noter nedenunder",
+    "tikz": "Programmerbar vektorgrafik (kræver alternativ tekst skrevet i hånden)",
+    "titlesec": "Formatering af afsnitsoverskrifter",
+    "todonotes": "Huskenoter i marginen til udkast",
+    "unicode-math": "Unicode-matematik til Xe/LuaLaTeX (kræves til tagget matematik)",
+    "url": "Opsætning af URL'er",
+    "wrapfig": "Figurer med tekst ombrudt omkring",
+    "xcolor": "Understøttelse af farver"
+  },
+  "literatureSources": {
+    "arxiv": "Mere end 2,4 millioner preprints inden for fysik, matematik, datalogi, kvantitativ biologi og beslægtede felter.",
+    "crossref": "DOI-registret med metadata for mere end 150 millioner forskningsresultater.",
+    "googleScholar": "Resultater fra Google Scholar via Serper. Kræver en Serper API-nøgle under Indstillinger → Integrationer → Citationssøgning.",
+    "openalex": "Et åbent katalog over videnskabelige værker, forfattere, kilder, institutioner, emner, forlag og bevillingsgivere.",
+    "pubmed": "Mere end 40 millioner referencer og resuméer fra biomedicinsk og biovidenskabelig litteratur, herunder MEDLINE.",
+    "semanticScholar": "Et videnskabeligt indeks med citationsgrafer, data om indflydelsesrige citationer og TLDR-resuméer.",
+    "uspto": "Amerikanske patenter og offentliggjorte ansøgninger til kendt teknik og anvendt forskning. Søgningen er sat på pause under migreringen af PatentsView.",
+    "usptoPaused": "USPTO har midlertidigt sat søge-API'erne i PatentsView på pause under migreringen til Open Data Portal.",
+    "yearRangeInvalid": "Startåret kan ikke ligge efter slutåret."
+  },
+  "mcp": {
+    "openProjectSummary": "Åbn projektet {{id}}",
+    "useToolSummary": "Brug {{tool}} fra MCP-serveren {{server}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "MCP-serveren '{{name}}' har modstridende angivelser af type og transport.",
+    "exactlyOneServer": "JSON for MCP-serveren skal indeholde præcis én server.",
+    "fieldBoolean": "Feltet '{{field}}' i MCP-serveren '{{name}}' skal være en boolesk værdi.",
+    "fieldString": "Feltet '{{field}}' i MCP-serveren '{{name}}' skal være en streng.",
+    "fieldStringArray": "Feltet '{{field}}' i MCP-serveren '{{name}}' skal være en liste af strenge.",
+    "fieldStringRecord": "Feltet '{{field}}' i MCP-serveren '{{name}}' skal være et objekt med strengværdier.",
+    "jsonMalformed": "JSON for MCP-serveren er ugyldig.",
+    "jsonNotObject": "JSON for MCP-serveren skal være et objekt.",
+    "mcpServersNotObject": "Feltet 'mcpServers' i JSON for MCP-serveren skal være et objekt.",
+    "serverNotObject": "MCP-serveren '{{name}}' skal være et objekt.",
+    "structural": "{{detail}} Forventede enten {\"server-name\": {...}} eller {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Ukendt server",
+    "unsupportedTransport": "MCP-serveren '{{name}}' bruger transporten '{{transport}}', som ikke understøttes.",
+    "unsupportedType": "MCP-serveren '{{name}}' har typen '{{type}}', som ikke understøttes."
+  },
+  "mermaid": {
+    "diagram": "Diagram",
+    "renderFailed": "Diagrammet kunne ikke gengives.",
+    "rendering": "Gengiver diagram"
+  },
+  "missingPackages": {
+    "action_one": "Find og installer {{name}}",
+    "action_other": "Find og installer {{count}} filer",
+    "installing_one": "Installerer {{name}}. Kompileringen starter forfra, når den er færdig.",
+    "installing_other": "Installerer {{count}} pakker. Kompileringen starter forfra, når de er færdige.",
+    "summary_one": "Kompileringen kunne ikke finde \"{{name}}\". Led efter den pakke i TeX Live, der indeholder den.",
+    "summary_other": "Kompileringen kunne ikke finde {{names}}. Led efter deres pakker i TeX Live."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "Kontekstvindue på {{tokens}} tokens",
+      "deprecated": {
+        "label": "Udfaset",
+        "title": "Udbyderen har udfaset denne model"
+      },
+      "reasoning": {
+        "label": "Ræsonnement",
+        "title": "Ræsonnerende model"
+      },
+      "tools": {
+        "label": "Værktøjer",
+        "title": "Kan kalde værktøjer"
+      },
+      "vision": {
+        "label": "Syn",
+        "title": "Tager imod billeder"
+      }
+    },
+    "listChange": {
+      "none": "Ingen ændringer",
+      "summary": "{{added}} tilføjet, {{removed}} fjernet"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "Analyse af projektets referencer er ikke tilgængelig.",
+    "analysisUpdating": "Projektets referencer opdateres.",
+    "definitionsFor": "Definitioner af {{name}}",
+    "edits_one": "{{count}} ændring",
+    "edits_other": "{{count}} ændringer",
+    "files_one": "{{count}} fil",
+    "files_other": "{{count}} filer",
+    "nameExists": "\"{{name}}\" findes allerede.",
+    "noDefinition": "Der blev ikke fundet nogen definition af \"{{name}}\"",
+    "noReferences": "Ingen referencer til \"{{name}}\"",
+    "notRenamable": "Dette symbol kan ikke omdøbes.",
+    "nothingToRename": "Der er intet at omdøbe.",
+    "referencesFor": "Referencer til {{name}}",
+    "renamePartial": "Omdøbt til \"{{name}}\" i {{edited}} af {{total}} filer. Kunne ikke skrive {{files}}.",
+    "renamed": "Omdøbt til \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
+  },
+  "pandoc": {
+    "downloadFailed": "Kunne ikke downloade pandoc. Installer den manuelt, og prøv igen",
+    "downloadingPercent": "Downloader pandoc… {{progress}} %",
+    "downloadingSize": "Downloader pandoc… {{megabytes}} MB",
+    "installGuide": "Installationsvejledning",
+    "installed": "pandoc er installeret"
+  },
+  "project": {
+    "copyFailed": "Kunne ikke kopiere \"{{path}}\".",
+    "dateUnavailable": "Ikke tilgængelig",
+    "importFailed": "Kunne ikke importere. Se app-loggen for detaljer.",
+    "imported": "Projektet er importeret.",
+    "openFailed": "Kunne ikke åbne projektet. Se app-loggen for detaljer.",
+    "restoringUnsavedFiles": "En projektopdatering fjernede filer med ugemte ændringer. Oleafly beholdt dine ændringer og er ved at gendanne filerne.",
+    "saveBlockedClose": "Projektet forblev åbent, fordi en eller flere filer ikke kunne gemmes.",
+    "saveBlockedDiscard": "Kasser ændringerne, og gå videre",
+    "saveBlockedMany": "{{count}} filer kunne ikke gemmes: {{files}}. Den første er åben i editoren med sine ugemte ændringer ({{reason}}). Bliv her for at løse problemet, eller kasser de ugemte ændringer i de filer, og gå videre.",
+    "saveBlockedOne": "{{file}} kunne ikke gemmes ({{reason}}). Den er åben i editoren med dine ugemte ændringer. Bliv her for at løse problemet, eller kasser ændringerne, og gå videre.",
+    "saveBlockedStay": "Bliv her",
+    "saveBlockedSwitch": "Projektet forblev åbent, fordi en eller flere filer ikke kunne gemmes.",
+    "saveBlockedTitle": "Nogle filer kunne ikke gemmes",
+    "updatedDaysAgo_one": "Opdateret for {{count}} dag siden",
+    "updatedDaysAgo_other": "Opdateret for {{count}} dage siden",
+    "updatedOn": "Opdateret {{date}}",
+    "updatedToday": "Opdateret i dag",
+    "updatedYesterday": "Opdateret i går"
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Analysen mislykkedes: {{message}}",
+    "beginIsHere": "{{command}} står her.",
+    "beginWithoutEnd": "{{command}} har ingen tilsvarende \\end.",
+    "bibliographyFileMissing": "Litteraturfilen \"{{file}}\" blev ikke fundet i projektet.",
+    "citationHasManyDefinitions_one": "Citationen \"{{name}}\" har {{count}} mulig definition.",
+    "citationHasManyDefinitions_other": "Citationen \"{{name}}\" har {{count}} mulige definitioner.",
+    "citationKeyDuplicated_one": "Citationsnøglen \"{{name}}\" er defineret {{count}} gang.",
+    "citationKeyDuplicated_other": "Citationsnøglen \"{{name}}\" er defineret {{count}} gange.",
+    "citationUnresolved": "Citationen \"{{name}}\" kunne ikke slås op.",
+    "definedHere": "{{kind}} \"{{name}}\" er defineret her.",
+    "duplicateTargetDefined_one": "Målet {{kind}} \"{{name}}\" er defineret {{count}} gang.",
+    "duplicateTargetDefined_other": "Målet {{kind}} \"{{name}}\" er defineret {{count}} gange.",
+    "endWithoutBegin": "{{command}} har ingen tilsvarende \\begin.",
+    "entryMissingFieldList": "Posten \"{{key}}\" i litteraturlisten har ingen feltliste.",
+    "expectedEndBefore": "Forventede {{expected}} før {{found}}.",
+    "fieldIncompleteValue": "Feltet \"{{name}}\" har en ufuldstændig værdi.",
+    "fieldMissingEquals": "Feltet \"{{name}}\" mangler \"=\".",
+    "fieldRepeated": "Feltet \"{{name}}\" gentages i posten \"{{key}}\" i litteraturlisten.",
+    "fileNotLoaded": "Kildefilen er ikke indlæst til den aktuelle projektanalyse.",
+    "fileUnreadable": "Filen kunne ikke læses.",
+    "incompleteEntry": "Ufuldstændig @{{type}}-post.",
+    "invalidYear": "Året \"{{year}}\" er ikke et firecifret BibTeX-år.",
+    "kinds": {
+      "anchor": "anker",
+      "asset": "ressource",
+      "bibentry": "litteraturpost",
+      "bibliography": "litteraturliste",
+      "environment": "miljø",
+      "file": "fil",
+      "glossary": "ordlistepost",
+      "import": "import",
+      "include": "inkludering",
+      "label": "etiket",
+      "link": "link",
+      "macro": "makro",
+      "section": "afsnit"
+    },
+    "malformedDirective": "Ugyldigt BibTeX-direktiv eller ugyldig posttype.",
+    "missingCitationKey": "@{{type}} mangler en citationsnøgle.",
+    "missingRequiredField": "{{entry}} mangler det påkrævede felt {{fields}}.",
+    "possibleTarget": "Muligt mål: {{file}}",
+    "projectFileUnreadable": "Projektfilen kunne ikke læses.",
+    "referenceHasManyDefinitions_one": "Referencen \"{{name}}\" har {{count}} mulig definition.",
+    "referenceHasManyDefinitions_other": "Referencen \"{{name}}\" har {{count}} mulige definitioner.",
+    "referenceUnresolved": "Referencen \"{{name}}\" kunne ikke slås op.",
+    "targetMatchesManyFiles_one": "Målet {{kind}} \"{{target}}\" matcher {{count}} projektfil.",
+    "targetMatchesManyFiles_other": "Målet {{kind}} \"{{target}}\" matcher {{count}} projektfiler.",
+    "targetUnresolved": "Målet {{kind}} \"{{target}}\" kunne ikke slås op.",
+    "typeDelimiterExpected": "@{{type}} skal efterfølges af en åbnende tuborgklamme eller parentes.",
+    "unclosedDelimiter": "Skilletegnet \"{{char}}\" er ikke lukket med \"{{expected}}\".",
+    "unclosedDirective": "Direktivet @{{type}} er ikke lukket.",
+    "unclosedEntry": "Posten @{{type}} er ikke lukket.",
+    "unclosedEntryNamed": "Posten \"{{key}}\" i litteraturlisten er ikke lukket.",
+    "unclosedFence": "Den indhegnede kodeblok er ikke lukket.",
+    "unclosedFrontMatter": "YAML-hovedet er ikke lukket.",
+    "unclosedString": "Strengliteralen er ikke lukket.",
+    "unclosedTypstComment": "Typst-blokkommentaren er ikke lukket.",
+    "unexpectedClosingDelimiter": "Uventet lukkende skilletegn \"{{char}}\".",
+    "unknownEntryType": "Ukendt posttype i litteraturlisten @{{type}}.",
+    "unparsableField": "Kunne ikke fortolke et felt i @{{type}}.",
+    "unparsableFieldNamed": "Kunne ikke fortolke et felt i \"{{key}}\"."
+  },
+  "proofreading": {
+    "cancelled": "Korrekturlæsningen blev annulleret.",
+    "couldNotStart": "Offlinekorrekturlæsningen kunne ikke starte.",
+    "disposed": "Offlinekorrekturlæsningen blev lukket ned.",
+    "invalidResponse": "Offlinekorrekturlæsningen gav et ugyldigt svar.",
+    "outOfRangeDiagnostic": "Offlinekorrekturlæsningen gav en diagnostik uden for området.",
+    "postFailed": "Dokumentet kunne ikke sendes til offlinekorrekturlæsning.",
+    "restarted": "Offlinekorrekturlæsningen er genstartet.",
+    "restartedAfterTimeout": "Offlinekorrekturlæsningen blev genstartet efter en timeout.",
+    "staleResponse": "Offlinekorrekturlæsningen gav et forældet svar.",
+    "stopped": "Offlinekorrekturlæsningen stoppede uventet.",
+    "superseded": "En nyere anmodning om korrekturlæsning erstattede denne.",
+    "timedOut": "Offlinekorrekturlæsningen fik timeout og starter igen ved næste redigering.",
+    "dictionaryUnavailable": "Den valgte staveordbog er ikke installeret. Download den under Indstillinger."
+  },
+  "skillGroups": {
+    "shelf": "Fagområdehylde",
+    "user": "Dine færdigheder"
+  },
+  "tagged": {
+    "compileFailed": "Den taggede kompilering mislykkedes. Tjek motoren, og prøv igen.",
+    "compiled": "Den taggede PDF er kompileret. Se vurderingen af tilgængeligheden nedenfor.",
+    "compiledWithErrors": "Den taggede kompilering sluttede med fejl. Se loggen.",
+    "engineRequired": "Slå først en motor med tagging til under Indstillinger, LaTeX-motor."
+  },
+  "terminal": {
+    "defaultTitle": "Terminal {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Projektet blev låst fast med {{pinned}}. Den aktive {{local}} mangler {{count}} af dens pakker, så kompileringer kan fejle, indtil den distribution bruges igen.",
+    "distributionSkew": "Projektet blev låst fast med {{pinned}}, og denne maskine kompilerer med {{local}}. Resultatet kan afvige en smule.",
+    "installPinned_one": "Installer den",
+    "installPinned_other": "Installer alle {{count}}",
+    "installingPinned_one": "Installerer {{count}} fastlåst pakke…",
+    "installingPinned_other": "Installerer {{count}} fastlåste pakker…",
+    "pinnedPackagesFailed": "Nogle fastlåste pakker kunne ikke installeres. Se Indstillinger → LaTeX-motor.",
+    "pinnedPackagesInstalled": "De fastlåste LaTeX-pakker er installeret.",
+    "pinnedPackagesMissing_one": "Projektet låser {{count}} LaTeX-pakke fast, som ikke er installeret her.",
+    "pinnedPackagesMissing_other": "Projektet låser {{count}} LaTeX-pakker fast, som ikke er installeret her."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "Egen CSS må ikke bruge at-regler, URL'er eller selektorer.",
+    "cssNotSimple": "Egen CSS skal indeholde enkle egenskabsangivelser.",
+    "cssNotText": "Egen CSS skal være tekst.",
+    "cssPropertyNotAllowed": "Denne egenskab er ikke tilladt i egen CSS: {{property}}.",
+    "cssTooLarge": "Egen CSS fylder mere end 64 KiB.",
+    "cssTooManyDeclarations": "Egen CSS må højst indeholde 64 angivelser.",
+    "cssUnsafeValue": "Egen CSS indeholder en usikker værdi.",
+    "customizationNotObject": "Tematilpasning skal være et objekt.",
+    "dark": {
+      "notObject": "CSS-variablerne til mørkt tema skal være et objekt.",
+      "tooManyEntries": "CSS-variablerne til mørkt tema har mere end {{max}} poster."
+    },
+    "fileMissingCssVars": "Temafilen skal indeholde cssVars med poster til lyst og mørkt tema.",
+    "fileMissingModes": "Temafilen skal indeholde CSS-variabler til lyst og mørkt tema.",
+    "fileNotJson": "Temafilen er ikke gyldig JSON.",
+    "fileNotObject": "Temafilen skal indeholde et objekt.",
+    "fileNotText": "Temafilen skal være tekst.",
+    "fileTooLarge": "Temafilen fylder mere end 128 KiB.",
+    "invalidColor": "Temaets token {{token}} har en ugyldig farveværdi.",
+    "invalidRadius": "Hjørneradius skal angives i px, rem, em eller procent.",
+    "light": {
+      "notObject": "CSS-variablerne til lyst tema skal være et objekt.",
+      "tooManyEntries": "CSS-variablerne til lyst tema har mere end {{max}} poster."
+    },
+    "tokens": {
+      "notObject": "Temaets tokens skal være et objekt.",
+      "tooManyEntries": "Temaets tokens har mere end {{max}} poster."
+    },
+    "unknownProperty": "ukendt",
+    "unsupportedToken": "Tematokenet {{token}} understøttes ikke.",
+    "unsupportedVersion": "Denne temafil bruger en version, der ikke understøttes."
+  },
+  "themes": {
+    "matchApp": "Følg appens tema"
+  },
+  "tinytex": {
+    "installFailed": "Kunne ikke installere TinyTeX.",
+    "installGuide": "Installationsvejledning",
+    "installed": "TinyTeX er installeret.",
+    "phase": {
+      "addingPackages": "Tilføjer pakker…",
+      "downloading": "Downloader…",
+      "downloadingPercent": "Downloader… {{progress}} %",
+      "installing": "Installerer…",
+      "unpacking": "Pakker ud…"
+    },
+    "removeFailed": "Kunne ikke fjerne TinyTeX",
+    "removed": "Fjernede TinyTeX"
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Læs artikel",
+      "alphaxivSearch": "Søg i artikler",
+      "compile": "Kompiler dokumentet",
+      "getLog": "Læs kompileringsloggen",
+      "insertFigure": "Indsæt figur",
+      "listFiles": "Vis projektets filer",
+      "literatureSearch": "Søg i litteratur",
+      "previewFigure": "Forhåndsvis figur",
+      "projectLibrarySearch": "Søg i projektets kilder",
+      "projectMap": "Kortlæg projektet",
+      "readFile": "Læs fil",
+      "readLinkedFile": "Læs tilknyttet fil",
+      "readPdfText": "Læs den kompilerede PDF",
+      "readResearchRootFile": "Læs tilknyttet fil",
+      "runCommand": "Kør kommando",
+      "searchProject": "Søg i projektet",
+      "sendMessage": "Opdater den uddelegerede opgave",
+      "spawnAgent": "Start en uddelegeret opgave",
+      "verifyCitation": "Kontroller citation",
+      "verifyPdfPages": "Kontroller sider i PDF",
+      "waitAgent": "Vent på den uddelegerede opgave"
+    },
+    "skillsBudgetNotice": "Codex kunne ikke vise alle sine færdigheder. Den holder 2 % af kontekstbudgettet til beskrivelser af færdigheder, så skær ned i mappen med færdigheder, eller bed om en færdighed ved navn.",
+    "status": {
+      "cancelled": "Stoppet",
+      "declined": "Afvist",
+      "done": "Færdig",
+      "failed": "Mislykkedes",
+      "failedWithCode": "Mislykkedes med afslutningskode {{code}}",
+      "interrupted": "Afbrudt",
+      "running": "Kører",
+      "timedOut": "Fik timeout"
+    },
+    "summary": {
+      "citationUnverified": "Der blev ikke fundet nogen matchende post",
+      "citationVerified": "Bekræftet af citationstjenesten",
+      "compileFailed": "Kompileringen mislykkedes",
+      "compileSucceeded": "Kompileret uden problemer",
+      "diagnostics_one": "{{count}} diagnostik",
+      "diagnostics_other": "{{count}} diagnostikker",
+      "papers_one": "{{count}} artikel",
+      "papers_other": "{{count}} artikler"
+    }
+  },
+  "ui": {
+    "transparent": "Gennemsigtig"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Projektet blev ændret, mens der blev gemt. Prøv opdateringen igen."
+  }
+}

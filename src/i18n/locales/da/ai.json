@@ -1,0 +1,739 @@
+{
+  "runtime": {
+    "ariaLabel": "Assistentens runtime",
+    "builtIn": "Oleafly-agent",
+    "cli": "CLI-agent"
+  },
+  "shell": {
+    "float": "Løsriv assistenten",
+    "floatAriaLabel": "Løsriv assistenten, så den svæver over appen",
+    "overlayTitle": "AI-assistent",
+    "dockAriaLabel": "Sæt chatten tilbage i sidepanelet",
+    "floatingNotice": "Assistenten svæver over appen.",
+    "dockBack": "Sæt den tilbage",
+    "loadingAgents": "Indlæser agenter…",
+    "openProjectForCli": "Åbn et projekt for at arbejde med en CLI-agent."
+  },
+  "minimap": {
+    "ariaLabel": "Ture i samtalen",
+    "jumpTo": "Hop til: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "Spørg om godkendelse",
+        "description": "Spørg før ændringer i filer, adgang til internettet og kommandoer."
+      },
+      "approveForMe": {
+        "label": "Godkend for mig",
+        "description": "Spørg kun før handlinger, der er vurderet som risikable."
+      },
+      "fullAccess": {
+        "label": "Fuld adgang",
+        "description": "Kør værktøjshandlinger uden at spørge om godkendelse."
+      },
+      "custom": {
+        "label": "Egne regler (approvals.toml)",
+        "description": "Brug reglerne i approvals.toml. Rediger dem under Indstillinger, AI-assistent."
+      }
+    },
+    "selectorAriaLabel": "Godkendelsestilstand. {{mode}}",
+    "editProjectRules": "Rediger projektets regler",
+    "confirm": {
+      "command": "Bekræft kommandoen",
+      "externalTool": "Bekræft handlingen i det eksterne værktøj",
+      "internet": "Bekræft adgang til internettet",
+      "edit": "Bekræft AI-ændringen"
+    },
+    "headline": {
+      "command": "Assistenten vil køre denne kommando",
+      "externalTool": "Assistenten vil bruge et eksternt værktøj",
+      "internet": "Assistenten vil have adgang til internettet",
+      "edit": "Assistenten vil ændre dine filer"
+    },
+    "mcpNote": "Det sender argumenterne nedenfor til den konfigurerede MCP-server.",
+    "line": "linje {{line}}",
+    "sessionAutoApprove": "Automatisk godkendelse i denne session er slået til for skrivninger (sletninger kræver stadig et klik).",
+    "commandLabel": "Kommando",
+    "workingDirectory": "Arbejdsmappe",
+    "mcpServer": "MCP-server",
+    "toolLabel": "Værktøj",
+    "arguments": "Argumenter",
+    "figureAlt": "Forhåndsvisning af figuren",
+    "firstChange": "første ændring · L{{line}}",
+    "reject": "Afvis",
+    "alwaysInProject": "Altid i dette projekt",
+    "alwaysInProjectAriaLabel": "Tillad altid i dette projekt",
+    "alwaysAllow": "Tillad altid",
+    "approve": "Godkend",
+    "external": {
+      "title": "Forespørgsel fra ekstern agent (MCP)",
+      "moreWaiting_one": "{{count}} mere venter",
+      "moreWaiting_other": "{{count}} flere venter"
+    }
+  },
+  "attachments": {
+    "remove": "Fjern {{name}}"
+  },
+  "chat": {
+    "pill": {
+      "plan": "PLAN",
+      "step": "TRIN {{current}}/{{total}}",
+      "review": "GENNEMGANG"
+    },
+    "plan": {
+      "detailsAriaLabel": "Detaljer om planen",
+      "headingPlan": "Plan",
+      "headingChanges": "Ændringer",
+      "approve": "Godkend planen",
+      "revise": "Ret til",
+      "statusAwaiting": "Afventer godkendelse",
+      "statusApproved": "Godkendt"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "fuldført",
+        "inProgress": "i gang",
+        "pending": "ikke påbegyndt",
+        "cancelled": "annulleret"
+      }
+    },
+    "fileChanges": {
+      "changed": "Ændret",
+      "committed": "Committet {{commit}}"
+    },
+    "runSummary": {
+      "plan": "Plan",
+      "stepsDone": "{{done}}/{{total}} færdige",
+      "filesChanged_one": "{{count}} fil ændret",
+      "filesChanged_other": "{{count}} filer ændret"
+    },
+    "copyMessage": "Kopier beskeden",
+    "exploration": {
+      "explored": "Undersøgte",
+      "exploredItems": "Undersøgte {{items}}",
+      "files_one": "en fil",
+      "files_other": "{{count}} filer",
+      "searches_one": "en søgning",
+      "searches_other": "{{count}} søgninger",
+      "lists_one": "en liste",
+      "lists_other": "{{count}} lister"
+    },
+    "reasoning": {
+      "thinking": "Tænker…",
+      "thoughtFor": "Tænkte i {{seconds}} s",
+      "label": "Ræsonnement"
+    },
+    "subagent": {
+      "finished": "Færdig",
+      "failed": "Mislykkedes",
+      "stopped": "Stoppet",
+      "usingTool": "Bruger {{tool}}",
+      "working": "Arbejder på det",
+      "errorBody": "Agenten kunne ikke gøre denne opgave færdig.",
+      "stoppedBody": "Opgaven blev stoppet, før den svarede.",
+      "openTask": "Åbn opgaven"
+    },
+    "workedSteps": {
+      "duration": "Arbejdede i {{seconds}} s",
+      "steps_one": "Kom igennem {{count}} trin",
+      "steps_other": "Kom igennem {{count}} trin"
+    },
+    "steered": "Styret",
+    "toolOutputError": "Fejl: {{message}}",
+    "errorHints": {
+      "invalidKey": "Din API-nøgle ser ugyldig eller udløbet ud. Opdater den under Indstillinger → AI-assistent, eller skift udbyder {{where}}.",
+      "outOfCredits": "Din AI-udbyder er løbet tør for kredit eller kvote. Fyld kontoen op, eller skift til en anden udbyder (eller lokal Ollama) {{where}}.",
+      "overloaded": "Udbyderens servere er overbelastede lige nu (der er allerede prøvet igen). Vent et minut, og prøv igen, eller skift til en beslægtet model {{where}}.",
+      "rateLimited": "Udbyderen begrænser antallet af forespørgsler. Vent et øjeblik, og prøv igen, eller skift udbyder {{where}}.",
+      "retiredModel": "Udbyderen har udfaset eller begrænset denne model. Vælg en nyere model {{where}} (Indstillinger → AI-assistent viser, hvad din nøgle kan bruge).",
+      "unreachable": "Kunne ikke få fat i AI-udbyderen. Tjek din forbindelse, og hvis du bruger Ollama, så sørg for, at den kører (Indstillinger → AI-assistent → Søg efter Ollama).",
+      "where": {
+        "inSettings": "under Indstillinger, AI-assistent",
+        "modelMenu": "i modelmenuen ovenfor"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "Tilføj kontekst",
+    "mentionMenuAgentsAndFiles": "Agenter og projektfiler",
+    "mentionMenuFiles": "Projektfiler",
+    "mentionHeadingAgents": "Uddeleger til en agent",
+    "mentionHeadingFiles": "Projektfiler",
+    "slashMenuAriaLabel": "Skråstregskommandoer",
+    "placeholderEngineUnavailable": "Dokumentmotoren er ikke tilgængelig. AI-redigering er slået fra",
+    "placeholderDefault": "Bed AI om hjælp til dit dokument…",
+    "planRevisionPlaceholder": "Beskriv, hvad der skal ændres i planen",
+    "prompts": "Prompter",
+    "promptShortcutsAriaLabel": "Genveje til prompter",
+    "persona": "Persona",
+    "personaActiveTooltip": "{{name}} er aktiv og erstatter dine standardinstruktioner.",
+    "personaChoose": "Vælg persona",
+    "personaActiveAriaLabel": "Persona. {{name}} er aktiv og erstatter standardinstruktionerne.",
+    "personaCreate": "Opret en persona under Indstillinger",
+    "personaNone": "Ingen",
+    "planModeOn": "Plantilstand til",
+    "planModeOff": "Plantilstand fra",
+    "planModeAriaLabel": "Plantilstand",
+    "plan": "Plan",
+    "planModeInfo": "Om plantilstand",
+    "planModeHint": "Plantilstand: assistenten foreslår en plan, før den redigerer. Slå Plan fra for at give assistenten direkte adgang til alle værktøjer.",
+    "stop": "Stop",
+    "stopTitle": "Stop genereringen",
+    "send": "Send",
+    "checkAgain": "Tjek igen"
+  },
+  "commands": {
+    "groups": {
+      "skills": "Færdigheder"
+    },
+    "archive": {
+      "label": "Arkiver",
+      "description": "Arkiver denne chat"
+    },
+    "forkChat": {
+      "label": "Forgren chatten",
+      "description": "Opret en ny chat ud fra denne samtale"
+    },
+    "goal": {
+      "label": "Mål",
+      "description": "Angiv, hvad assistenten hele tiden skal arbejde hen imod"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "Se de forbundne MCP-servere og deres status"
+    },
+    "model": {
+      "label": "Model",
+      "description": "Vælg model til denne chat"
+    },
+    "planMode": {
+      "enableLabel": "Slå plantilstand til",
+      "disableLabel": "Slå plantilstand fra",
+      "description": "Slå struktureret planlægning til eller fra"
+    },
+    "recordSkill": {
+      "label": "Optag en færdighed",
+      "description": "Gem chattens fremgangsmåde som et udkast, du kan redigere"
+    },
+    "files": {
+      "label": "Filer",
+      "description": "Vedhæft filer til din næste besked"
+    },
+    "browser": {
+      "label": "Vedhæft browseren",
+      "description": "Åbn browseren ved siden af dit dokument"
+    }
+  },
+  "models": {
+    "ariaLabel": "AI-model",
+    "placeholder": "Vælg en model",
+    "triggerTooltip": "{{model}}. Skift udbyder eller model",
+    "searchLabel": "Søg i modeller",
+    "searchPlaceholder": "Søg i modeller…",
+    "emptyTitle": "Der blev ikke fundet nogen modeller",
+    "emptyHint": "Prøv en anden søgning.",
+    "trust": {
+      "verified": "Bekræftet",
+      "untested": "Ikke testet",
+      "blocked": "Blokeret"
+    },
+    "trustTitle": {
+      "verified": "Oleafly har kørt assistenten på denne model",
+      "untested": "Endnu ikke prøvet med assistenten. Den bliver tjekket ved første brug",
+      "blocked": "Assistenten kan ikke køre på denne model"
+    },
+    "chatOnlyHint": "Kun chat, denne model kan ikke bruge værktøjer",
+    "checkingHint": "Tjekker denne model",
+    "blockedWithReason": "Denne model er blokeret for assistenten: {{reason}}",
+    "blocked": "Denne model er blokeret for assistenten.",
+    "probeFailedWithDetail": "Kunne ikke tjekke denne model. {{detail}}",
+    "probeFailed": "Kunne ikke tjekke denne model."
+  },
+  "history": {
+    "title": "Chathistorik",
+    "closeBackdrop": "Luk chathistorikken",
+    "searchLabel": "Søg i chats",
+    "searchPlaceholder": "Søg i titler og beskeder",
+    "emptyProject": "Der er endnu ingen gemte chats for dette projekt.",
+    "emptySearch": "Ingen chats matcher den søgning.",
+    "untitled": "Ny chat",
+    "staleTitle": "Denne chat blev startet fra en ældre version af projektet",
+    "staleBadge": "ældre version",
+    "messages_one": "{{count}} besked",
+    "messages_other": "{{count}} beskeder",
+    "tokens": "~{{amount}} tok",
+    "deleteAriaLabel": "Slet {{title}}",
+    "deleteFallbackTitle": "chatten",
+    "deleteTitle": "Slet chatten",
+    "relative": {
+      "justNow": "lige nu",
+      "minutes": "for {{count}} min siden",
+      "hours": "for {{count}} t siden",
+      "days": "for {{count}} d siden"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "Aldrig",
+      "everyTime": "Hver gang, i chatten",
+      "askModeOnly": "Kun i tilstanden Spørg om godkendelse",
+      "unlessAllowed": "Ja, medmindre det er tilladt for projektet"
+    },
+    "catalog": {
+      "readFile": "Læs en projektfil, et stykke ad gangen for de lange.",
+      "writeFile": "Skriv en hel fil, og erstat det, der var.",
+      "replaceInFile": "Find et præcist stykke i en fil, og erstat det.",
+      "createFile": "Opret en ny fil eller mappe i projektet.",
+      "renameFile": "Omdøb eller flyt en fil eller mappe.",
+      "deleteFile": "Slet en fil eller mappe.",
+      "listFiles": "Vis alle filer og mapper i projektet.",
+      "searchProject": "Søg i projektets tekst, og få træf med fil og linje.",
+      "projectMap": "Læs dokumentets disposition: afsnit, etiketter, citationsnøgler, makroer, inputs og alt, der er uløst.",
+      "showLocation": "Åbn en fil på en bestemt linje i editoren, og flyt PDF-forhåndsvisningen til det sted.",
+      "compile": "Kompiler projektet med dets motor, og meld fejlene.",
+      "getLog": "Læs den seneste kompileringslog.",
+      "getPdfText": "Læs teksten i den kompilerede PDF side for side.",
+      "verifyPdfPages": "Gengiv de kompilerede sider som billeder, så en visionsmodel kan tjekke layoutet.",
+      "setMainDoc": "Skift, hvilken fil projektet kompileres fra.",
+      "literatureSearch": "Søg efter artikler i OpenAlex på nøgleord, uden at der kræves en nøgle.",
+      "verifyCitation": "Lav en DOI eller en titel om til bekræftet BibTeX via doi.org eller Crossref.",
+      "projectLibrarySearch": "Søg på nøgleord i projektets egen tekst og noter.",
+      "alphaxivSearch": "Søg i arXiv-artikler via alphaXiv.",
+      "alphaxivPaperContent": "Hent hele teksten til en arXiv-artikel via alphaXiv.",
+      "previewFigure": "Kompiler en figur i TikZ eller PGFPlots for sig, og vis resultatet i chatten.",
+      "insertFigure": "Indsæt den færdige figur ved markøren med figurtekst og etiket, og gem en PNG under figures/.",
+      "loadImage": "Se på et billede, der allerede ligger i projektet.",
+      "updateTodos": "Skriv eller opdater den trinvise plan, der vises i chatten.",
+      "getTodos": "Læs den aktuelle plan.",
+      "rememberNote": "Gem en projektnote, som senere chats kan se.",
+      "forgetNote": "Fjern en gemt projektnote.",
+      "listNotes": "Vis de gemte projektnoter.",
+      "loadSkill": "Indlæs hele vejledningen til en færdighed, før den følges.",
+      "readSkillFile": "Læs en opslagsfil eller et script, der følger med en færdighed.",
+      "spawnAgent": "Start en hjælpeagent med sin egen opgave og sine egne værktøjer.",
+      "sendMessage": "Send en besked til en hjælpeagent, der kører.",
+      "followupTask": "Giv en hjælpeagent en ny opgave, når den er færdig.",
+      "waitAgent": "Vent på, at en hjælpeagent bliver færdig, og læs dens resultat.",
+      "interruptAgent": "Stop det, en hjælpeagent er i gang med.",
+      "listAgents": "Vis hjælpeagenterne og deres tilstand.",
+      "closeAgent": "Luk en hjælpeagent.",
+      "runCommand": "Kør en shell-kommando i projektmappen med en grænse på to minutter.",
+      "computerUse": "Åbn en webside i assistentens browservindue.",
+      "toggleTheme": "Skift mellem lyst og mørkt tema."
+    },
+    "disableAll": "Slå alle fra",
+    "emptyContext": "Der er ingen værktøjer tilgængelige i denne sammenhæng.",
+    "enableAll": "Slå alle til",
+    "enableTool": "Slå {{name}} til",
+    "enabledCount": "{{enabled}} af {{total}} slået til",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "Agenter",
+      "buildAndPdf": "Build og PDF",
+      "figures": "Figurer",
+      "files": "Filer",
+      "planAndMemory": "Plan og hukommelse",
+      "research": "Forskning",
+      "skills": "Færdigheder",
+      "system": "System"
+    },
+    "managerAriaLabel": "Administrer agentens værktøjer",
+    "managerHeading": "Værktøjer",
+    "managerTooltip": "Værktøjer",
+    "noDescription": "Der er ikke angivet nogen beskrivelse.",
+    "notes": {
+      "latexOnly": "Kun i LaTeX-projekter",
+      "pdfCaptureSetting": "Kræver indstillingen for optagelse af PDF-sider",
+      "alphaxivKey": "Kræver en alphaXiv-nøgle under Integrationer",
+      "chatApproval": "Godkendes i chatten, én kommando ad gangen",
+      "browserSetting": "Kræver indstillingen for webbrowseren"
+    },
+    "sourceGroups": {
+      "figure": "Figur",
+      "mcp": "MCP",
+      "project": "Projektværktøjer",
+      "skills": "Færdigheder"
+    },
+    "table": {
+      "tool": "Værktøj",
+      "whatItDoes": "Hvad det gør",
+      "asksFirst": "Spørger først"
+    }
+  },
+  "toolCard": {
+    "approved": "Godkendt",
+    "rejected": "Afvist",
+    "binaryPreview": "Den tilknyttede fil er binær og kan derfor ikke forhåndsvises her.",
+    "previewTruncated": "Forhåndsvisningen stoppede ved 256 KiB.",
+    "previewFailed": "Den tilknyttede kilde kunne ikke forhåndsvises.",
+    "showAll": "Vis alle {{characters}} tegn",
+    "loadingSource": "Indlæser kilden",
+    "inspectSource": "Se kilden",
+    "openFile": "Åbn filen",
+    "openSource": "Åbn kilden",
+    "openSourceTitled": "Åbn kilden: {{title}}",
+    "openTask": "Åbn opgaven",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "Forhåndsvisning af den gengivne figur",
+    "toolImageAlt": "Billede fra værktøjet",
+    "showFigure": "Vis den gengivne figur",
+    "showTikz": "Vis TikZ-kilden",
+    "figureTab": "Figur",
+    "tikzTab": "TikZ",
+    "saving": "Gemmer",
+    "saveToProject": "Gem i projektet",
+    "copyCode": "Kopier koden",
+    "saved": "Gemte {{path}}",
+    "saveNeedsProject": "Åbn et projekt for at gemme denne figur.",
+    "saveFailed": "Figuren kunne ikke gemmes."
+  },
+  "transcript": {
+    "dialogTitle": "Udskrift af den uddelegerede opgave",
+    "dialogDescription": "Alt, hvad den uddelegerede agent læste, kørte og svarede, mens den arbejdede på opgaven.",
+    "loading": "Indlæser udskriften",
+    "failed": "Udskriften kunne ikke indlæses.",
+    "empty": "Denne opgave gemte ingen udskrift."
+  },
+  "subagents": {
+    "working": "Underagenter arbejder",
+    "count": "Underagenter ({{count}})",
+    "stopAll": "Stop alle",
+    "stopFailed": "Underagenterne kunne ikke stoppes.",
+    "updates": "{{count}} opdateringer",
+    "openTask": "Åbn opgaven",
+    "awaitingPermission": "En uddelegeret agent venter på tilladelse.",
+    "taskFailed": "En uddelegeret opgave mislykkedes. Åbn den for at læse fejlen.",
+    "transcriptTruncated": "Udskriften er længere end det stykke, der vises her.",
+    "noTranscriptYet": "Denne opgave har endnu ikke meldt noget til udskriften.",
+    "noSessionInfo": "Denne opgave gemte ikke nok oplysninger om sessionen til at åbne sin udskrift.",
+    "loadingTranscript": "Indlæser udskriften…",
+    "transcriptFailed": "Udskriften kunne ikke indlæses.",
+    "stillWorking": "Denne underagent arbejder stadig. Hele udskriften åbner, når den er færdig.",
+    "noFinalAnswer": "Denne agent gemte ikke noget endeligt svar.",
+    "latest": "Senest: {{text}}",
+    "workingDetail": "arbejder",
+    "status": {
+      "active": "arbejder",
+      "awaiting": "kræver tilladelse",
+      "updated": "opdateret",
+      "interrupted": "stoppet",
+      "completed": "færdig",
+      "failed": "mislykkedes"
+    }
+  },
+  "acp": {
+    "newConversation": "Ny samtale",
+    "savedConversations": "Gemte samtaler",
+    "untitledConversation": "Samtale uden titel",
+    "agentSetup": "Opsætning af agenten",
+    "usageReport": "Forbrugsrapport",
+    "permission": {
+      "ariaLabel": "Tilladelse til agenten",
+      "namedHeadline": "{{agent}} har brug for tilladelse",
+      "headline": "Agenten har brug for tilladelse",
+      "expired": "Forespørgslen er udløbet. Bed agenten om at prøve igen.",
+      "dismiss": "Luk"
+    },
+    "readiness": {
+      "managedBridge": "Bro {{version}} er installeret af Oleafly.",
+      "bridgeOnPath": "Broen blev fundet i PATH.",
+      "bridgeMissingWithCli": "{{cli}} blev fundet i {{path}}. Installer ACP-broen {{version}} for at oprette forbindelse.",
+      "bridgeMissing": "Installer ACP-broen {{version}} for at forbinde denne agent.",
+      "cliMissing": "{{cli}} findes ikke i din PATH. Installer den, og kør så {{command}}.",
+      "cliNotFound": "Agentens kommandolinjeværktøj blev ikke fundet.",
+      "unavailable": "Denne agent kan ikke køre på denne computer."
+    },
+    "bridgeSource": {
+      "notInstalled": "Ikke installeret",
+      "managed": "Styret af Oleafly",
+      "onPath": "I PATH"
+    },
+    "installing": "Installerer",
+    "installBridge": "Installer broen",
+    "assistantAriaLabel": "Assistent med CLI-agent",
+    "loadEarlier": "Indlæs tidligere aktivitet",
+    "starting": "Starter {{agent}}",
+    "startingFallback": "agenten",
+    "startingHint": "Agentens kommandolinjeværktøj er ved at starte. Det tager et par sekunder første gang.",
+    "readySubtitle": "{{agent}} er klar i dette projekt",
+    "projectSubtitle": "Arbejder på \"{{project}}\"",
+    "signInFallback": "Log ind via agentens CLI, og opret forbindelse igen.",
+    "reconnectAfterSignIn": "Opret forbindelse igen efter login",
+    "reconnect": "Opret forbindelse til samtalen igen",
+    "resumeTask": "Åbn forskningsopgaven for at fortsætte arbejdet.",
+    "delegatedConversation": "Denne samtale hører til en uddelegeret agentkørsel.",
+    "noResume": "Denne agent kan ikke genoptage gemte samtaler. Start en ny samtale, når du er klar.",
+    "imageTooLarge": "Vælg et billede, der fylder mindre end 480 KiB. Du kan vedhæfte op til fire billeder.",
+    "imageReadFailed": "Billedet kunne ikke læses.",
+    "removeImage": "Fjern {{name}}",
+    "composerAriaLabel": "Skriv til CLI-agenten",
+    "composerPlaceholderReady": "Bed agenten om at arbejde på dette projekt",
+    "composerPlaceholderIdle": "Start eller genopret en samtale for at sende en besked",
+    "attachImage": "Vedhæft billede",
+    "startConversation": "Start en samtale med {{agent}}",
+    "startConversationFallback": "en agent",
+    "agentModel": "Agentens model",
+    "modelManaged": "Modellen styres af agenten",
+    "stop": "Stop",
+    "stopTitle": "Stop agenten",
+    "send": "Send",
+    "connecting": "Opretter forbindelse",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "opretter forbindelse",
+      "authRequired": "login kræves",
+      "ready": "klar",
+      "running": "kører",
+      "cancelling": "annullerer",
+      "cancelled": "annulleret",
+      "disconnected": "afbrudt",
+      "failed": "mislykkedes"
+    },
+    "roster": {
+      "bridgeMissing": "installer broen under Opsætning af agenten",
+      "cliMissing": "CLI blev ikke fundet på denne computer",
+      "unavailable": "ikke tilgængelig på denne computer",
+      "comingSoon": "på vej"
+    },
+    "messageTooLarge": "Beskeden og dens billeder fylder for meget. Gør beskeden kortere, eller fjern et billede.",
+    "terminalCommand": "Agenten kører en kommando i terminalen.",
+    "agentToolFallback": "Agentværktøj",
+    "agentReported": "Agenten meldte: {{detail}}",
+    "imageAttachmentName": "Billede {{index}}",
+    "agentImage": "[Agenten returnerede et billede.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "CLI-agent",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "ikke installeret",
+    "cliDetail": "CLI-agent · bruger sin egen konto",
+    "builtInDetail": "{{provider}} · Oleafly-agent"
+  },
+  "home": {
+    "heading": "Hvad vil du lave i dag?",
+    "headingAccent": "lave i dag?",
+    "skillCategories": "Kategorier af færdigheder",
+    "skillLockedTitle": "{{name}} er slået fra for dette projekt",
+    "recentChats": "Seneste chats",
+    "recentStaleTitle": "Startet fra en ældre version af projektet",
+    "recentUntitled": "Ny chat",
+    "recentStaleBadge": "Ældre version",
+    "recentMessages_one": "{{count}} besked",
+    "recentMessages_other": "{{count}} beskeder",
+    "showAllHistory": "Vis hele historikken ({{count}})"
+  },
+  "research": {
+    "noSourceLink": "Dette resultat indeholder ikke noget link til kilden.",
+    "sourceOpenFailed": "Kilden kunne ikke åbnes.",
+    "noProjectPath": "Dette resultat indeholder ingen sti til en projektfil.",
+    "resultOpenFailed": "Resultatfilen kunne ikke åbnes."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "Skriv og rediger",
+      "citationsAndLiterature": "Citationer og litteratur",
+      "review": "Gennemgang",
+      "figuresAndTables": "Figurer og tabeller"
+    },
+    "improveWriting": {
+      "label": "Forbedr teksten",
+      "description": "Pudser klarhed, tone og flow"
+    },
+    "fixGrammar": {
+      "label": "Ret grammatik",
+      "description": "Retter grammatik og tegnsætning"
+    },
+    "fixLatexErrors": {
+      "label": "Ret LaTeX-fejl",
+      "description": "Reparerer ødelagt kode og kompileringsfejl"
+    },
+    "writeEquation": {
+      "label": "Skriv en ligning",
+      "description": "Fra almindeligt sprog til LaTeX-matematik"
+    },
+    "draftSection": {
+      "label": "Skriv et afsnit",
+      "description": "Skriver et nyt afsnit i din stil"
+    },
+    "paraphrase": {
+      "label": "Omskriv",
+      "description": "Formulerer om og bevarer betydningen"
+    },
+    "shorten": {
+      "label": "Forkort",
+      "description": "Gør teksten kortere"
+    },
+    "expand": {
+      "label": "Uddyb",
+      "description": "Uddyber med flere detaljer"
+    },
+    "journalFormat": {
+      "label": "Tidsskriftsformat",
+      "description": "Formaterer om til et bestemt sted"
+    },
+    "writeAbstract": {
+      "label": "Skriv et resumé",
+      "description": "Laver et resumé ud fra artiklen"
+    },
+    "generateTitle": {
+      "label": "Generer en titel",
+      "description": "Fængende titler til artiklen"
+    },
+    "keywords": {
+      "label": "Nøgleord",
+      "description": "Trækker søgbare nøgleord ud"
+    },
+    "continueWriting": {
+      "label": "Skriv videre",
+      "description": "Tager fat, hvor du slap"
+    },
+    "citationSearch": {
+      "label": "Citationssøgning",
+      "description": "Søger efter artikler i alphaXiv og OpenAlex"
+    },
+    "literatureReview": {
+      "label": "Litteraturoversigt",
+      "description": "Gennemgår beslægtet arbejde med rigtige kilder"
+    },
+    "citeClaim": {
+      "label": "Citer denne påstand",
+      "description": "Finder og tilføjer en bekræftet reference"
+    },
+    "myLibrary": {
+      "label": "Mit bibliotek",
+      "description": "Søger i dine importerede referencer"
+    },
+    "labSearch": {
+      "label": "Søg efter forskergrupper",
+      "description": "Finder forskergrupper og institutioner"
+    },
+    "friendlyReview": {
+      "label": "Venlig gennemgang",
+      "description": "Konstruktiv feedback på artiklen i mentorstil"
+    },
+    "fireReview": {
+      "label": "Hård gennemgang",
+      "description": "Streng stresstest af påstande og metoder i stil med Reviewer #2"
+    },
+    "academicPresentation": {
+      "label": "Akademisk præsentation",
+      "description": "En Beamer-præsentation ud fra din artikel"
+    },
+    "academicPoster": {
+      "label": "Akademisk plakat",
+      "description": "En konferenceplakat ud fra din artikel"
+    },
+    "generateTable": {
+      "label": "Generer en tabel",
+      "description": "Laver et udkast til en LaTeX-tabel i chatten"
+    },
+    "tikzFigure": {
+      "label": "TikZ-figur",
+      "description": "Laver et udkast til TikZ-kode i chatten"
+    }
+  },
+  "turn": {
+    "thinking": "Tænker…",
+    "continuing": "Fortsætter…",
+    "reasoning": "Ræsonnerer…",
+    "runningTool": "Kører {{name}}…",
+    "processingResult": "Behandler resultatet…",
+    "summarizing": "Opsummerer den tidligere samtale…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "Agentsessionen kunne ikke åbnes.",
+    "approvalModeSaveFailed": "Kunne ikke gemme godkendelsestilstanden.",
+    "skillDraftSaved": "Udkastet til færdigheden er gemt. Gennemgå det, før du slår det til.",
+    "skillDraftFailed": "Kunne ikke gemme udkastet til færdigheden. {{error}}",
+    "chatArchived": "Chatten er arkiveret.",
+    "chatArchiveFailed": "Kunne ikke arkivere denne chat.",
+    "chatForked": "Chatten er forgrenet.",
+    "chatForkFailed": "Kunne ikke forgrene denne chat.",
+    "engineNotLoaded": "Oplysningerne om dokumentmotoren er ikke indlæst. AI-redigering er slået fra for en sikkerheds skyld.",
+    "skillsLoadFailed": "Kunne ikke indlæse de aktive færdigheder. Prøv igen.",
+    "approvalModeLoadFailed": "Kunne ikke indlæse godkendelsestilstanden.",
+    "approvalRulesLoadFailed": "Kunne ikke indlæse projektets godkendelsesregler.",
+    "restored": "Projektfilerne er gendannet. Samtalen blev bevaret.",
+    "restoreFailed": "Kunne ikke gendanne: {{error}}",
+    "steerFailed": "Den igangværende tur kunne ikke styres.",
+    "approvalRuleSaveFailed": "Kunne ikke gemme projektets godkendelsesregel.",
+    "attachmentTooLarge": "{{name}} er for stor (højst 10 MB).",
+    "attachmentReadFailed": "Kunne ikke læse {{name}}.",
+    "tooManyTools": "{{enabled}} værktøjer er slået til, men en kørsel understøtter op til {{max}}. Slå mindst {{excess}} fra under Værktøjer, og prøv igen."
+  },
+  "header": {
+    "mcpTooltip": "Konfigurer assistentens MCP-servere",
+    "mcpAriaLabel": "Indstillinger for assistentens MCP",
+    "settings": "Indstillinger for assistenten",
+    "usageAriaLabel": "Se AI-forbrug",
+    "usageReport": "Forbrugsrapport",
+    "newChat": "Ny chat",
+    "chatHistory": "Chathistorik",
+    "staleChatHint": "Denne chat startede fra en ældre version af projektet. Filernes indhold kan afvige fra det, AI'en så."
+  },
+  "usage": {
+    "lastRun": "Seneste kørsel",
+    "steps": "Trin",
+    "input": "Input",
+    "output": "Output",
+    "thisChat": "Denne chat",
+    "runs": "Kørsler",
+    "tokens": "Tokens",
+    "cacheNote": "Cacheforbrug og prisoverslag findes i forbrugsrapporten.",
+    "summaryRunWithTokens_one": "Seneste kørsel: {{count}} trin, {{tokens}} rapporterede tokens",
+    "summaryRunWithTokens_other": "Seneste kørsel: {{count}} trin, {{tokens}} rapporterede tokens",
+    "summaryRunNoTokens_one": "Seneste kørsel: {{count}} trin, samlet tokental er ikke tilgængeligt",
+    "summaryRunNoTokens_other": "Seneste kørsel: {{count}} trin, samlet tokental er ikke tilgængeligt",
+    "summaryChat": "Denne chat: {{steps}} trin, {{tokens}} tokens",
+    "summaryFallback": "AI-forbrug"
+  },
+  "provider": {
+    "connectTitle": "Forbind en AI-udbyder for at fortsætte",
+    "connectBody": "Brug din egen API-nøgle (OpenAI, Anthropic, Groq og flere), eller kør en model lokalt med Ollama. Assistenten kan læse og redigere filer, kompilere dit projekt og kontrollere PDF'en.",
+    "connectButton": "Forbind en udbyder",
+    "runLocal": "Kør en lokal model med Ollama",
+    "quotaWarning": "Lagerpladsen til chathistorik er fuld. Ældre chats er blevet ryddet, og nye beskeder bliver måske ikke gemt. Slet gamle chats fra historikken for at frigøre plads."
+  },
+  "conversation": {
+    "renderFailed": "Denne samtale kunne ikke vises. Start en ny chat, eller åbn den igen fra historikken.",
+    "checkpointRestored": "Projektet er gendannet til dette kontrolpunkt",
+    "restoring": "Gendanner…",
+    "restoreCheckpoint": "Gendan koden til før dette svar",
+    "restoreConfirm": "Vil du gendanne projektets filer til før dette svar? Det kasserer også kodeændringer fra senere AI-svar. Samtalen bliver stående.",
+    "noResponse": "Der kom intet svar på denne besked. Strømmen blev afbrudt. Send den igen, eller start en ny chat.",
+    "scrollToBottom": "Rul til bunden",
+    "projectSubtitle": "Arbejder på \"{{project}}\"",
+    "noOutput": "Modellen gav intet resultat. Se Indstillinger → AI-assistent."
+  },
+  "followUps": {
+    "steered": "Styret ind i den igangværende tur: {{summary}}",
+    "sending": "Sendt som den næste tur: {{summary}}",
+    "waiting": "Venter på et sikkert sted i kørslen: {{summary}}",
+    "queued": "Sat i kø til den næste tur: {{summary}}",
+    "steerNow": "Styr nu",
+    "startingRun": "Starter kørslen",
+    "discard": "Kasser beskeden i køen"
+  },
+  "goal": {
+    "editAriaLabel": "Rediger målet: {{goal}}",
+    "clear": "Ryd målet",
+    "formAriaLabel": "Angiv et vedvarende mål",
+    "label": "Mål",
+    "placeholder": "Hvad skal assistenten hele tiden arbejde hen imod?",
+    "save": "Gem målet"
+  },
+  "suggestions": {
+    "literatureSweep": "Gennemsøg litteraturen til dette projekt",
+    "relatedWork": "Skriv afsnittet om beslægtet arbejde",
+    "verifyClaims": "Tjek hver påstand mod dens kilde",
+    "reviewManuscript": "Gennemgå det som en fagfællebedømmer",
+    "latexBuild": "Ret fejlene i kilden til mit dokument",
+    "preSubmission": "Gør det klar til indsendelse",
+    "slides": "Lav artiklen om til et oplæg",
+    "recompile": "Kompiler igen, og se efter fejl"
+  }
+}

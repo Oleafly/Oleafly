@@ -1,0 +1,52 @@
+{
+  "actions": {
+    "cancel": "Anuluj",
+    "close": "Zamknij",
+    "save": "Zapisz",
+    "delete": "Usuń",
+    "remove": "Usuń",
+    "rename": "Zmień nazwę",
+    "open": "Otwórz",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano",
+    "retry": "Ponów",
+    "back": "Wstecz",
+    "next": "Dalej",
+    "done": "Gotowe",
+    "edit": "Edytuj",
+    "add": "Dodaj",
+    "search": "Szukaj",
+    "clear": "Wyczyść",
+    "apply": "Zastosuj",
+    "confirm": "Potwierdź",
+    "ok": "OK",
+    "yes": "Tak",
+    "no": "Nie",
+    "learnMore": "Dowiedz się więcej",
+    "showMore": "Pokaż więcej",
+    "showLess": "Pokaż mniej"
+  },
+  "state": {
+    "loading": "Wczytywanie…",
+    "saving": "Zapisywanie…",
+    "none": "Brak",
+    "unknown": "Nieznane",
+    "enabled": "Włączone",
+    "disabled": "Wyłączone",
+    "on": "Wł.",
+    "off": "Wył.",
+    "beta": "Beta",
+    "new": "Nowość",
+    "default": "Domyślne"
+  },
+  "labels": {
+    "name": "Nazwa",
+    "type": "Typ",
+    "size": "Rozmiar",
+    "date": "Data",
+    "status": "Status",
+    "description": "Opis",
+    "optional": "Opcjonalne",
+    "required": "Wymagane"
+  }
+}

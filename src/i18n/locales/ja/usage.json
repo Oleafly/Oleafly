@@ -1,0 +1,175 @@
+{
+  "dialog": {
+    "title": "使用状況レポート",
+    "description": "記録されたトークンの利用状況を、プロジェクト、エージェント、プロバイダ、モデル、セッション別に表示します。",
+    "from": "開始",
+    "through": "終了",
+    "quickRangesLegend": "期間のショートカット",
+    "utcNote": "日付と時刻は UTC です。",
+    "apply": "適用",
+    "refresh": "更新",
+    "refreshLabel": "使用状況レポートを更新",
+    "loading": "使用状況を読み込み中…",
+    "loadFailed": "使用状況レポートを読み込めませんでした。",
+    "loadFailedHint": "しばらくしてからもう一度お試しください。",
+    "tryAgain": "再試行",
+    "emptyTitle": "この条件では使用状況が記録されていません。",
+    "emptyDescription": "期間を変えるか、絞り込みを外してください。"
+  },
+  "quickRanges": {
+    "days7": "7 日",
+    "days30": "30 日",
+    "days90": "90 日",
+    "month": "今月"
+  },
+  "filters": {
+    "project": "プロジェクト",
+    "projectAll": "すべてのプロジェクト",
+    "agent": "エージェント",
+    "agentAll": "すべてのエージェント",
+    "provider": "プロバイダ",
+    "providerAll": "すべてのプロバイダ",
+    "model": "モデル",
+    "modelAll": "すべてのモデル",
+    "session": "セッション",
+    "sessionAll": "すべてのセッション"
+  },
+  "report": {
+    "range": "{{start}} から {{end}} まで（UTC）",
+    "costDisclaimer": "費用の見積もりは保存された価格データに基づくもので、プロバイダの請求額やプランの上限ではありません。",
+    "exportCsv": "CSV を書き出す",
+    "exportSaved": "{{path}} に保存しました",
+    "exportFailed": "使用状況レポートを保存できませんでした。",
+    "inputTokens": "入力トークン",
+    "inputIncludesCache": "キャッシュされた入力を含みます",
+    "outputTokens": "出力トークン",
+    "outputIncludesReasoning": "推論トークンを含みます",
+    "cacheReads": "キャッシュの読み取り",
+    "costEstimate": "費用の見積もり",
+    "allRecordsPriced": "すべての記録に価格があります",
+    "sessions": "セッション数",
+    "dailyTokens": "日ごとのトークン",
+    "activityByHour": "時間帯別の利用状況",
+    "projects": "プロジェクト",
+    "agents": "エージェント",
+    "providers": "プロバイダ",
+    "models": "モデル"
+  },
+  "counts": {
+    "records_other": "{{total}} 件の記録",
+    "sessions_other": "{{total}} 件のセッション",
+    "tokens_other": "{{total}} トークン",
+    "inputUnknown_other": "入力数が記録されていない記録が {{total}} 件",
+    "outputUnknown_other": "出力数が記録されていない記録が {{total}} 件",
+    "cacheUnknown_other": "比較できるキャッシュ情報がない記録が {{total}} 件",
+    "unpriced_other": "価格のない記録が {{total}} 件",
+    "partlyUnpriced_other": "{{total}} 件中 {{unpriced}} 件に価格がありません",
+    "onPlan_other": "プランまたはローカルの記録が {{total}} 件",
+    "childRuns_other": "{{total}} 件の子実行",
+    "usageRecords_other": "{{total}} 件の使用記録",
+    "excludedChildRecords_other": "親の合計にすでに含まれている子の記録が {{total}} 件あるため、二重には数えていません。",
+    "unmeasured_other": "トークン数が計測されていない記録が {{total}} 件あります。"
+  },
+  "cache": {
+    "rate": "比較できる入力の {{percent}}%",
+    "rateWithUnknown": "比較できる入力の {{percent}}%、{{unknown}} は比較できません"
+  },
+  "cost": {
+    "local": "ローカル",
+    "plan": "プラン",
+    "notBilledPerToken": "トークン単位の課金ではありません",
+    "noEstimate": "見積もりなし",
+    "noSavedPrice": "これらの記録に保存された価格がありません",
+    "priceSource": "価格の出典: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "日ごとの入力トークンと出力トークンの推移",
+    "chartTitle": "日ごとのトークン使用量",
+    "empty": "日ごとの利用はありません。",
+    "tokensUnavailable": "トークン数を取得できません",
+    "inOut": "入力 {{input}}、出力 {{output}}",
+    "incompleteDays": "トークン数が不完全な日は折れ線から除いています。",
+    "day": "日付",
+    "inputTokens": "入力トークン",
+    "outputTokens": "出力トークン"
+  },
+  "heatmap": {
+    "label": "UTC の曜日と時間帯ごとのトークン利用状況",
+    "cell": "{{weekday}} {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "記録された利用はありません",
+    "tokenUnavailable": "トークン数を取得できません",
+    "hoursInUtc": "時刻は UTC",
+    "less": "少ない",
+    "more": "多い",
+    "weekdays": {
+      "sun": "日",
+      "mon": "月",
+      "tue": "火",
+      "wed": "水",
+      "thu": "木",
+      "fri": "金",
+      "sat": "土"
+    }
+  },
+  "breakdown": {
+    "empty": "記録された使用状況はありません。",
+    "name": "名前",
+    "tokens": "トークン",
+    "cost": "費用",
+    "sessions": "セッション数"
+  },
+  "sessions": {
+    "title": "セッション",
+    "subtitle": "チャット、タスク、サブエージェントの実行、補助的な呼び出しを新しい順に表示します。",
+    "emptyTitle": "この条件に合うセッションはありません",
+    "emptyDescription": "期間を変えるか、絞り込みを外してください。",
+    "session": "セッション",
+    "project": "プロジェクト",
+    "agent": "エージェント",
+    "model": "モデル",
+    "lastActivity": "最終利用（UTC）",
+    "input": "入力",
+    "output": "出力",
+    "cost": "費用",
+    "billing": "課金",
+    "status": "状態",
+    "rowsPerPage": "1 ページあたりの行数",
+    "page": "{{pageCount}} ページ中 {{page}} ページ目",
+    "previous": "前へ",
+    "next": "次へ"
+  },
+  "labels": {
+    "unknown": "不明",
+    "mixed": "混在",
+    "generalProject": "全般",
+    "runtimeBuiltIn": "Oleafly アシスタント",
+    "runtimeHelper": "補助的な呼び出し",
+    "runtimeAcp": "CLI エージェント"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "プラン",
+    "local": "ローカル",
+    "unknown": "不明",
+    "mixed": "混在"
+  },
+  "scope": {
+    "child": "サブエージェント",
+    "task": "タスク",
+    "helper": "ヘルパー"
+  },
+  "status": {
+    "in_progress": "実行中",
+    "completed": "完了",
+    "failed": "失敗",
+    "cancelled": "キャンセル",
+    "interrupted": "中断"
+  },
+  "measurement": {
+    "provider_reported": "プロバイダによる計測",
+    "runtime_reported": "エージェントによる計測",
+    "estimated": "ローカルでの推定",
+    "unavailable": "未計測",
+    "mixed_or_unavailable": "一部のみ計測"
+  }
+}

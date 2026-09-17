@@ -1,0 +1,31 @@
+{
+  "unknown": "Algo deu errado. Consulte o log do aplicativo para ver os detalhes.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "O nome do projeto não pode ficar vazio.",
+    "name_conflict": "Já existe um projeto chamado {{name}}.",
+    "folder_unavailable": "Não foi possível reservar uma nova pasta de projeto."
+  },
+  "settings": {
+    "locale_unsupported": "O idioma {{locale}} não está disponível."
+  },
+  "literature": {
+    "query_empty": "O termo de busca não pode ficar vazio.",
+    "query_too_long": "O termo de busca é longo demais ({{max}} caracteres no máximo).",
+    "unknown_source": "Fonte de literatura desconhecida."
+  },
+  "tex": {
+    "no_host_binary": "O TinyTeX não tem um binário {{name}} compatível com este sistema.",
+    "package_operation_timeout": "A operação com pacotes passou do limite de {{span}} e foi interrompida, para que você possa compilar de novo. O espelho do TeX Live provavelmente está sobrecarregado. Tente mais tarde ou execute o tlmgr você mesmo."
+  },
+  "github": {
+    "sign_in_expired": "O código de login expirou. Tente de novo.",
+    "sign_in_cancelled": "A autorização do GitHub foi cancelada.",
+    "sign_in_failed": "O login no GitHub falhou.",
+    "repositories_unavailable": "Não foi possível carregar os repositórios.",
+    "create_repo_failed": "Não foi possível criar o repositório ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "O acesso total não foi ativado."
+  }
+}

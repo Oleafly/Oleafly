@@ -1,0 +1,1467 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "Çalıştırılabilir dosya",
+      "bridgeSourceLabel": "Kaynak",
+      "bridgeTitle": "ACP köprüsü",
+      "bridgeUnresolved": "Henüz bir köprü çalıştırılabiliri bulunamadı.",
+      "checkAgain": "Yeniden denetle",
+      "checkFailedTitle": "Kurulu ajanlar denetlenemedi",
+      "checkInstalled": "Kurulu ajanları denetle",
+      "checkingAction": "Denetleniyor",
+      "checkingDescription": "Oleafly bu bilgisayardaki komut satırı araçlarını denetlerken bu biraz sürebilir.",
+      "checkingInstalled": "Kurulu ajanlar denetleniyor",
+      "checkingTitle": "Komut satırı ajanları aranıyor",
+      "cliNotOnPath": "{{command}} PATH üzerinde bulunamadı.",
+      "cliPathLabel": "Bulunduğu yer",
+      "cliTitle": "Komut satırı aracı",
+      "copySignInCommand": "Oturum açma komutunu kopyala",
+      "emptyDescription": "Desteklenen bir komut satırı ajanı kurun, sonra yeniden denetleyin.",
+      "emptyTitle": "Komut satırı ajanı bulunamadı",
+      "custom": {
+        "description": "Oleafly ile gelmeyen bir ajanı kaydetmek için bir ajan tanımı yapıştırın.",
+        "hint": "Sabitlenmiş bir npm veya uv paketi, doğrulanmış bir ikili dosya ya da kurulu bir çalıştırılabilir içeren bir ajan tanımı yapıştırın. Parolaları ve API anahtarlarını bu JSON'un dışında tutun.",
+        "label": "Özel bir ajan kaydet",
+        "submit": "Tanımı kaydet",
+        "title": "Özel ajan ekle",
+        "useExample": "Örneği kullan"
+      },
+      "install": {
+        "confirm": "Kur",
+        "description": "Oleafly bu sabitlenmiş paketi kendi ajan klasörüne indirir. Ajan, siz bir konuşma başlattığınızda kendi CLI hesabınızla çalışır.",
+        "installing": "Kuruluyor",
+        "location": "Oleafly ajanlar klasörü, {{id}}/{{version}}",
+        "locationLabel": "Kurulacağı yer",
+        "packageLabel": "Paket",
+        "title": "{{name}} köprüsü {{version}} sürümünü kur"
+      },
+      "installBridge": "Köprüyü kur",
+      "installBridgeNextStep": "ACP köprüsünü kurun, sonra komut satırı aracından oturum açın.",
+      "intro": "Yerel bir ajanı ACP üzerinden bağlayın. Her ajan kendi modellerini, araçlarını ve oturum açma işlemini yönetir; API sağlayıcı ayarları ayrı kalır. Oturum açmak için resmi CLI hesabını kullanın: Oleafly hesap belirteçlerini içe aktarmaz ve abonelik kotalarını kestirmez.",
+      "nextStepTitle": "Sonraki adım",
+      "notReported": "Bildirilmedi",
+      "notice": {
+        "installed": "{{name}} kuruldu. Bir konuşma başlatmadan önce CLI aracından oturum açın.",
+        "registered": "{{name}} kaydedildi. Kayıt onu kurmaz veya başlatmaz.",
+        "removed": "Ajan tanımı kaldırıldı. Kurulu dosyalar ve kayıtlı konuşmalar kullanılabilir durumda kalır.",
+        "terminalOpen": "Proje terminali açık. Ajanınız için gösterilen oturum açma komutunu çalıştırın, sonra konuşmaya yeniden bağlanın."
+      },
+      "openSignInTerminal": "Oturum açma terminalini aç",
+      "openTerminal": "Terminali aç",
+      "platformLabel": "Platform",
+      "refreshingStatus": "Ajan durumu yenileniyor. Geçerli liste yerinde kalır.",
+      "registry": {
+        "description": "Başka ekiplerin yayımladığı ajanlar için ACP kayıt defterinde arayın.",
+        "hideDistribution": "Dağıtımı gizle",
+        "register": "Ajanı kaydet",
+        "registered": "Kaydedildi",
+        "reviewHint": "Kayıt defteri girdileri yazılımı yayıncılarının anlatımıyla tanıtır. Kaydetmeden veya kurmadan önce dağıtımı inceleyin.",
+        "search": "Ara",
+        "searchLabel": "Bir ACP ajanı bul",
+        "searchPlaceholder": "ACP kayıt defterinde ara",
+        "searching": "Aranıyor",
+        "showDistribution": "Dağıtımı göster",
+        "title": "Daha fazla ajan bul"
+      },
+      "sectionLabel": "ACP ajanları",
+      "signInCommandLabel": "Oturum açma komutu",
+      "versionLabel": "Sürüm",
+      "updateBridge": "Köprüyü güncelle"
+    },
+    "approvals": {
+      "file": {
+        "description": "Özel onay kipi bu dosyayı okur. Dosya ~/.oleafly/approvals.toml konumunda durur ve bu cihazdaki her projeye uygulanır.",
+        "discard": "Değişiklikleri at",
+        "emptyFile": "Dosya şu ana kadar boş.",
+        "help": {
+          "comments": "# ile başlayan açıklamalar burada kaydettiğinizde korunur, ancak bir onay kartındaki \"Bu projede her zaman\" seçimi dosyayı onlar olmadan yeniden yazar.",
+          "modes": "İlk tablo, <modesTable>[\"$approval_modes\"]</modesTable>, proje başına onay kipini belirler: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> veya <custom>\"custom\"</custom>. Listelenmeyen bir proje Benim için onayla kipini kullanır.",
+          "openProject": "Açık proje, {{name}}, şu kimliğe sahip: <projectId>{{id}}</projectId>.",
+          "projectIds": "Proje kimlikleri, ~/.oleafly/projects altındaki klasör adlarıdır.",
+          "rules": "Sonra proje kimliği başına bir tablo gelir ve her araç için bir kural tutar: <allow>\"allow\"</allow> aracı sormadan çalıştırır, <deny>\"deny\"</deny> ise reddeder. Deny kuralları her kipte geçerlidir; allow kuralları Özel kipte etkilidir ve run_command için diğer kiplerde de sormayı atlar.",
+          "toolNames": "Kullanabileceğiniz araç adları: <names>{{names}}</names> ve Araçlar listesindeki tam adıyla her MCP aracı."
+        },
+        "helpToggle": "Dosya nasıl çalışır",
+        "insertExample": "Bir örnek ekle",
+        "reload": "Yeniden yükle",
+        "saved": "Kaydedildi. Kurallar bir sonraki araç çağrısında geçerli olur.",
+        "saving": "Kaydediliyor",
+        "title": "Onay kuralları dosyası"
+      },
+      "project": {
+        "allowed": "Her zaman izinli",
+        "denied": "Her zaman reddedilir",
+        "description": "{{name}} için kayıtlı kurallar. Onay kipi Özel olduğunda geçerlidir. O araç için standart risk ilkesini kullanmak istiyorsanız kuralı kaldırın.",
+        "empty": "Henüz kayıtlı kural yok. Bir tane eklemek için onay isteminde \"Bu projede her zaman\" seçeneğini kullanın.",
+        "removeRule": "{{tool}} kuralını kaldır",
+        "thisProject": "bu proje",
+        "title": "Araç onayları"
+      }
+    },
+    "budget": {
+      "clear": "Bütçeyi kaldır",
+      "inputLabel": "ABD doları cinsinden yapay zeka bütçesi",
+      "inputPlaceholder": "Bütçe yok",
+      "limit": "Bütçeye ulaşıldığında çalıştırmalar duraklar.",
+      "save": "Bütçeyi kaydet",
+      "spent": "Şu ana kadar tahmini harcama: {{amount}}. Bütçeye ulaşıldığında çalıştırmalar duraklar.",
+      "title": "Yapay zeka bütçesi"
+    },
+    "customProvider": {
+      "addDescription": "OpenAI uyumlu her uç noktayı temel URL'siyle bağlayın.",
+      "addTitle": "Özel sağlayıcı ekle",
+      "baseUrlLabel": "Temel URL",
+      "baseUrlNote": "Kayıtlı API anahtarınız bu yeni adrese gönderilecek.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "Adı veya temel URL'yi değiştirin.",
+      "editTitle": "Özel sağlayıcıyı düzenle",
+      "errors": {
+        "addFailed": "Bu sağlayıcı eklenemedi.",
+        "baseUrlHost": "URL'de ana makine adı eksik.",
+        "baseUrlInvalid": "Tam bir URL girin, örneğin https://api.example.com/v1 veya http://localhost:1234/v1.",
+        "baseUrlProtocol": "https:// kullanın; yerel bir sunucu içinse http://.",
+        "baseUrlRequired": "Temel URL zorunludur.",
+        "idFormat": "Yalnızca küçük harf, rakam ve kısa çizgi kullanın, örneğin acme.",
+        "idRequired": "Kimlik zorunludur.",
+        "nameRequired": "Ad zorunludur.",
+        "saveFailed": "Bu sağlayıcı kaydedilemedi."
+      },
+      "idLabel": "Kimlik",
+      "idPlaceholder": "acme",
+      "keyLabel": "API anahtarı (isteğe bağlı)",
+      "keyLabelKeepSaved": "API anahtarı (kayıtlı anahtarı korumak için boş bırakın)",
+      "keyPlaceholder": "Gerekmiyorsa boş bırakın",
+      "keyPlaceholderStored": "Yeni bir anahtar girmedikçe kayıtlı anahtar kalır",
+      "namePlaceholder": "Acme",
+      "submitAdd": "Sağlayıcı ekle"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Ajan yetenekleri",
+      "customDescription": "Kişisel üslubunuz ve tercihleriniz olarak her yapay zeka isteğine eklenir. Asistan bunları kendi yerleşik davranışının üstüne uygular. Araçlarını veya güvenlik kurallarını geçersiz kılamazlar.",
+      "customPlaceholder": "örneğin Her zaman İngiliz İngilizcesiyle yaz. Açıklamaları kısa tut. Listeler için enumitem paketini yeğle.",
+      "customTitle": "Özel yönergeler",
+      "defaultModelDescription": "Yeni bir sohbet başlattığınızda kullanılır. Yine de sohbet panelinden tek bir konuşma için modeli değiştirebilirsiniz.",
+      "defaultModelTitle": "Varsayılan sohbet modeli",
+      "pdfCaptureDescription": "Ajanın, görü tabanlı düzen denetimleri için derlenmiş sayfaları görsele çevirmesine (verify_pdf_pages) izin verir. Sayfa görsellerini sağlayıcınıza göndermek istemiyorsanız kapatın.",
+      "pdfCaptureLabel": "Yapay zeka için PDF sayfa yakalamaya izin ver",
+      "save": "Yönergeleri kaydet",
+      "saved": "Kaydedildi",
+      "toolsHint": "Ona \"LaTeX hatalarını düzelt\", \"Yayınlar bölümü ekle\" veya \"yeniden derle ve PDF'i denetle\" gibi şeyler söyleyin.",
+      "toolsTitle": "Asistan şu anda bu araçları destekliyor"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "Bu model listede zaten var.",
+        "empty": "Bir model kimliği girin.",
+        "spaces": "Model kimlikleri boşluk içeremez."
+      },
+      "addPlaceholder": "Bir model kimliği ekleyin",
+      "changeSummary": "{{added}} eklendi, {{removed}} kaldırıldı",
+      "custom": "Özel",
+      "deleteAriaLabel": "{{model}} modelini sil",
+      "deleteDialog": {
+        "description": "\"{{model}}\" bu sağlayıcının model listesinden kaldırılsın mı? Yerleşik modeller Varsayılanları geri yükle ile geri gelebilir. Özel modeller kimlikleriyle yeniden eklenebilir.",
+        "title": "Modeli sil"
+      },
+      "deleteTooltip": "Modeli sil",
+      "empty": "Henüz model yok. Aşağıdan bir tane ekleyin.",
+      "invalidKey": "Geçersiz API anahtarı.",
+      "metadata": {
+        "refreshFailed": "Model verileri yenilenemedi.",
+        "unknownDate": "bilinmeyen tarih",
+        "updated": "Model verileri {{date}} tarihinde güncellendi",
+        "updatedBundled": "Model verileri {{date}} tarihinde güncellendi, uygulamayla birlikte gelir",
+        "updatedFromCache": "Model verileri {{date}} tarihinde güncellendi, son indirmeden"
+      },
+      "noChanges": "Değişiklik yok",
+      "refresh": "Yenile",
+      "restore": "Varsayılanları geri yükle",
+      "restoreTooltip": "Bu sağlayıcının yerleşik modellerini yeniden ekle",
+      "title": "Modeller",
+      "unreachable": "Sağlayıcıya ulaşılamadı.",
+      "unreadableList": "Sağlayıcı, Oleafly'nin okuyamadığı modeller döndürdü.",
+      "updated": "{{time}} tarihinde güncellendi"
+    },
+    "personas": {
+      "addStarter": "Persona ekle",
+      "addStarterFailed": "{{name}} eklenemedi. {{error}}",
+      "addStarterNamed": "{{name}} personasını ekle",
+      "colors": {
+        "forest": "Orman",
+        "grape": "Üzüm",
+        "ocean": "Okyanus",
+        "slate": "Arduvaz",
+        "sunset": "Gün batımı"
+      },
+      "create": "Persona oluştur",
+      "delete": "Personayı sil",
+      "deleteDescription": "\"{{name}}\" silinsin mi? İstemi kalıcı olarak kaldırılır ve onu kullanan her sohbet varsayılan yönergelerinize döner.",
+      "deleteNamed": "{{name}} personasını sil",
+      "description": "Asistanın nasıl çalışacağına dair yeniden kullanılabilir yönergeler. Bir görev için sohbette birini seçin. Seçiliyken varsayılan yönergelerinizin yerine geçer.",
+      "edit": "Personayı düzenle",
+      "editNamed": "{{name}} personasını düzenle",
+      "empty": "Henüz persona eklenmedi.",
+      "form": {
+        "color": "Renk",
+        "create": "Oluştur",
+        "createTitle": "Persona oluştur",
+        "description": "Asistanın nasıl çalışacağına dair yeniden kullanılabilir yönergeler belirleyin.",
+        "editTitle": "Personayı düzenle",
+        "instructions": "Yönergeler",
+        "instructionsPlaceholder": "Yazdıklarımı anlaşılırlık açısından incele ve en önemli sorunları önce sırala.",
+        "namePlaceholder": "Az Konuşan Editör",
+        "required": "Ad ve istem zorunludur.",
+        "saveFailed": "Bu persona kaydedilemedi."
+      },
+      "starters": {
+        "criticalReviewer": "Savlardaki, yöntemlerdeki, kanıtlardaki ve sunumdaki zayıflıkları bulur.",
+        "documentEditor": "Metni, yapıyı, atıfları ve LaTeX kodunu odaklı ve güvenli değişikliklerle düzeltir.",
+        "figure": "Yayın kalitesinde şekilleri ve diyagramları LaTeX TikZ veya PGFPlots olarak üretir.",
+        "researchWriter": "Kanıt veya atıf uydurmadan bilimsel metin yazar ve yapılandırır."
+      },
+      "suggestedDescription": "Bunlardan biriyle başlayın, sonra yönergelerini kendi çalışma biçiminize göre düzenleyin.",
+      "suggestedTitle": "Önerilen personalar",
+      "title": "Personalar"
+    },
+    "providers": {
+      "addCustom": "Özel sağlayıcı ekle",
+      "badge": {
+        "connected": "Bağlı",
+        "notRunning": "Çalışmıyor",
+        "running": "Çalışıyor"
+      },
+      "blurbs": {
+        "anthropic": "Claude modelleri - kod ve yazımda güçlü.",
+        "custom": "Özel sağlayıcı.",
+        "deepseek": "DeepSeek V4 modelleri.",
+        "google": "Google AI Studio'dan Gemini modelleri.",
+        "groq": "Çok hızlı açık model çıkarımı.",
+        "mistral": "Mistral ve Codestral modelleri.",
+        "ollama": "Modelleri makinenizde çalıştırır. Anahtar gerekmez - Ollama'yı kurun ve bir model indirin.",
+        "openai": "GPT modelleri. Varsayılan seçenek.",
+        "openrouter": "Tek anahtarla birçok laboratuvarın modellerine erişin.",
+        "perplexity": "Canlı web dayanağı olan Sonar modelleri.",
+        "xai": "xAI'den Grok modelleri.",
+        "zai": "Z.AI GLM Coding Plan aboneliğiyle GLM modelleri."
+      },
+      "deleteKeyAriaLabel": "{{provider}} anahtarını sil",
+      "deleteKeyTooltip": "Anahtarı sil",
+      "docs": "Belgeler",
+      "editAriaLabel": "{{provider}} sağlayıcısını düzenle",
+      "editTooltip": "Adı veya uç noktayı düzenle",
+      "getKey": "Anahtar al",
+      "intro": "Kullandığınız sağlayıcıları aşağıdan bağlayın. Anahtarlar yalnızca yerelde saklanır. Bir anahtar kaydetmek onu varsayılan yapar. Yapılandırdığınız sağlayıcılar ve modeller arasında sohbet panelindeki açılır menüden geçiş yapabilirsiniz.",
+      "keyPlaceholder": "API anahtarınızı buraya yapıştırın",
+      "modelLabel": "Model",
+      "ollama": {
+        "active": "Etkin",
+        "changeHost": "Ana makineyi değiştir (gelişmiş)",
+        "check": "Ollama'yı denetle",
+        "checking": "Denetleniyor…",
+        "disconnect": "Bağlantıyı kes",
+        "hideHost": "Ana makineyi gizle",
+        "installedHint": "Ollama burada kurulu. Başlatılması biraz sürer.",
+        "modelPlaceholder": "Kullanılacak bir model seçin",
+        "noModels": "Ollama çalışıyor ancak kurulu model yok. <pull>ollama pull llama3.2</pull> komutunu çalıştırın, sonra Yeniden denetle.",
+        "noneResponding": "<host>{{host}}</host> adresinde yanıt veren Ollama yok.",
+        "notChecked": "Henüz denetlenmedi",
+        "notDetected": "Algılanmadı",
+        "recheck": "Yeniden denetle",
+        "runningModels_one": "Çalışıyor · {{count}} model",
+        "runningModels_other": "Çalışıyor · {{count}} model",
+        "setupSteps": "1. <download>ollama.com <icon></icon></download> adresinden kurun · 2. Kendiliğinden başlar (ya da <serve>ollama serve</serve> çalıştırın) · 3. Bir model indirin, örneğin <pull>ollama pull llama3.2</pull> · 4. Yeniden denetleyin.",
+        "start": "Ollama'yı başlat"
+      },
+      "removeAriaLabel": "{{provider}} sağlayıcısını kaldır",
+      "removeDialog": {
+        "description": "\"{{provider}}\" kaldırılsın mı? Kayıtlı anahtarı ve model listesi de birlikte silinir.",
+        "title": "Özel sağlayıcıyı kaldır"
+      },
+      "removeTooltip": "Özel sağlayıcıyı kaldır",
+      "replaceKey": "Anahtarı değiştir",
+      "status": {
+        "error": "Hata: {{message}}",
+        "errorFallback": "Anahtar doğrulanamadı.",
+        "valid": "Anahtar geçerli. Modeller aşağıda hazır.",
+        "validating": "Anahtar denetleniyor..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Ajanlar yükleniyor…",
+      "errors": {
+        "invalidKey": "Geçersiz API anahtarı.",
+        "keyNotKept": "Temel URL kaydedildi ama anahtar kaydedilmedi. Anahtarı yeniden girin.",
+        "providerGone": "Bu sağlayıcı artık yok.",
+        "providerIdInUse": "Bu sağlayıcı kimliği zaten kullanılıyor."
+      },
+      "messages": {
+        "keyRemoved": "{{provider}} anahtarı kaldırıldı.",
+        "keyRemovedAccessDisabled": "{{provider}} anahtarı kaldırıldı. Yapay zeka erişimi devre dışı.",
+        "keySavedAddModels": "{{provider}} anahtarı kaydedildi. Modelleri aşağıdan elle ekleyin.",
+        "keySavedCheckedOnUse": "{{provider}} anahtarı kaydedildi. İlk kullanımda denetlenir.",
+        "ollamaConnected": "Ollama bağlandı · {{model}}",
+        "preferencesReset": "Yapay zeka asistanı tercihleri varsayılanlarına döndürüldü.",
+        "providerAdded": "{{provider}} eklendi.",
+        "providerConnected": "{{provider}} bağlandı.",
+        "providerUpdated": "{{provider}} güncellendi.",
+        "providerUpdatedWithoutModels": "{{provider}} güncellendi. Model listesi yenilenemedi."
+      },
+      "reset": {
+        "confirmWithProject": "Yapay zeka asistanı tercihlerini; model kullanılabilirliği, etkin beceriler ve bu projenin bütçesi dahil olmak üzere varsayılanlarına döndürür. Etkin sağlayıcı ve model, sağlayıcı anahtarları, personalar, onay kuralları, kullanım geçmişi ve MCP sunucuları değişmeden kalır.",
+        "confirmWithoutProject": "Yapay zeka asistanı tercihlerini, model kullanılabilirliği ve etkin beceriler dahil olmak üzere varsayılanlarına döndürür. Etkin sağlayıcı ve model, sağlayıcı anahtarları, personalar, onay kuralları, kullanım geçmişi ve MCP sunucuları değişmeden kalır.",
+        "sectionName": "Yapay Zeka Asistanı"
+      },
+      "tabs": {
+        "agents": "CLI ajanları",
+        "instructions": "Yönergeler",
+        "mcp": "MCP",
+        "personas": "Personalar",
+        "providers": "Sağlayıcılar ve anahtarlar",
+        "skills": "Beceriler"
+      }
+    },
+    "skills": {
+      "addFolder": "Klasör ekle",
+      "addFolderDialogTitle": "Beceri klasörü ekle",
+      "catalog": {
+        "description": "Belirli araştırma alanları için ek beceriler. Yukarıdaki listenize eklemek için birini kurun.",
+        "empty": "Katalogda kurulacak ek beceri yok.",
+        "install": "Kur",
+        "loading": "Katalog yükleniyor...",
+        "messages": {
+          "installed": "{{name}} kuruldu.",
+          "removed": "{{name}} kaldırıldı."
+        },
+        "progress": {
+          "downloading": "İndiriliyor...",
+          "downloadingPercent": "İndiriliyor %{{percent}}",
+          "extracting": "Açılıyor...",
+          "extractingPercent": "Açılıyor %{{percent}}",
+          "failed": "Kurulum başarısız oldu.",
+          "finishing": "Kurulum tamamlanıyor..."
+        },
+        "refresh": "Yenile",
+        "source": {
+          "bundled": "Yerleşik katalog",
+          "bundledOffline": "Yerleşik katalog, ağa ulaşılamadı",
+          "cached": "cdn.oleafly.com adresinden önbelleğe alınan katalog, son getirilme {{when}}",
+          "cachedOffline": "cdn.oleafly.com adresinden önbelleğe alınan katalog, son getirilme {{when}}, ağa ulaşılamadı",
+          "cachedUnknown": "cdn.oleafly.com adresinden önbelleğe alınan katalog, son getirilme zamanı bilinmiyor",
+          "cachedUnknownOffline": "cdn.oleafly.com adresinden önbelleğe alınan katalog, son getirilme zamanı bilinmiyor, ağa ulaşılamadı",
+          "remote": "cdn.oleafly.com adresinden katalog, getirilme {{when}}",
+          "remoteUnknown": "cdn.oleafly.com adresinden katalog, getirilme zamanı bilinmiyor"
+        },
+        "title": "Alan rafı",
+        "uninstall": "Kaldır",
+        "update": "Güncelle"
+      },
+      "createSkill": "Beceri oluştur",
+      "description": "Asistan, bir becerinin tüm yönergelerini yalnızca gerektiğine karar verdiğinde yükler; sohbete /beceri-kimliği yazarsanız hemen yükler. Burada açtığınız bir beceri, bir proje onu geçersiz kılana kadar her projede açıktır.",
+      "editAria": "{{name}} becerisini düzenle",
+      "editor": {
+        "createDescription": "Oleafly beceriler klasörünüzde bir SKILL.md taslağı oluşturun.",
+        "createTitle": "Beceri oluştur",
+        "descriptionPlaceholder": "Her iddianın dayanağı var mı denetle.",
+        "editDescription": "SKILL.md içinde saklanan üst veriyi ve yönergeleri düzenleyin.",
+        "editTitle": "Beceriyi düzenle",
+        "instructions": "Yönergeler",
+        "instructionsHint": "En sade yönerge iskeletini oluşturmak için burayı boş bırakın.",
+        "instructionsPlaceholder": "Bu becerinin ne zaman kullanılacağını ve asistanın izleyeceği adımları yazın.",
+        "namePlaceholder": "İddia Denetleyici",
+        "requiredAll": "Ad, açıklama ve yönergeler zorunludur.",
+        "requiredBasics": "Ad ve açıklama zorunludur.",
+        "submitCreate": "Oluştur"
+      },
+      "empty": "Beceri bulunamadı. Bir klasör ekleyin ya da yeni bir tane oluşturun.",
+      "enableAria": "{{name}} becerisini aç",
+      "fileCount_one": "{{count}} dosya",
+      "fileCount_other": "{{count}} dosya",
+      "groups": {
+        "shelf": "Alan rafı",
+        "user": "Becerileriniz"
+      },
+      "inheritsDevice": "Cihaz ayarını devralır",
+      "invalidBadge": "Geçersiz",
+      "loadFailed": "Beceriler yüklenemedi. {{message}}",
+      "loading": "Beceriler yükleniyor...",
+      "messages": {
+        "added": "{{name}} eklendi.",
+        "created": "{{name}} oluşturuldu.",
+        "editorClosed": "Beceri düzenleyici artık açık değil.",
+        "removed": "{{name}} kaldırıldı.",
+        "saved": "{{name}} kaydedildi.",
+        "updated": "{{name}} güncellendi."
+      },
+      "missingDescription": "Bu becerinin bir açıklamaya ihtiyacı var.",
+      "offForProject": "Bu proje için kapalı",
+      "onForProject": "Bu proje için açık",
+      "phases": {
+        "authoring": "Yazım",
+        "communication": "İletişim",
+        "figures": "Şekiller",
+        "research": "Araştırma",
+        "review": "İnceleme",
+        "submission": "Gönderim",
+        "tooling": "Araçlar"
+      },
+      "removeAria": "{{name}} becerisini kaldır",
+      "removeDialog": {
+        "description": "\"{{name}}\" ve klasörü Oleafly'den kaldırılsın mı? Bu işlem geri alınamaz.",
+        "title": "Beceriyi kaldır"
+      },
+      "share": {
+        "description": "Becerilerinizi, bu bilgisayardaki diğer kodlama ajanlarının zaten okuduğu klasörlere bağlayın; böylece bir beceriyi bir kez yazın ve her ajan kullanabilsin.",
+        "emptyBody": "Bu bilgisayarda başka ajan klasörü bulunamadı.",
+        "status": {
+          "linked": "{{total}} tanesinden {{linked}} tanesi bağlı",
+          "undetected": "Bu cihazda bulunamadı",
+          "unsupported": "Bu sistemde desteklenmiyor"
+        },
+        "summary": {
+          "checking": "Ajan klasörleri denetleniyor",
+          "linked_one": "{{count}} ajandan {{linked}} tanesi bağlı",
+          "linked_other": "{{count}} ajandan {{linked}} tanesi bağlı",
+          "none": "Başka ajan klasörü bulunamadı"
+        },
+        "title": "Becerileri bu bilgisayardaki diğer ajanlarla paylaş"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "Eklenen",
+        "bundled": "Yerleşik",
+        "catalog": "Kurulu"
+      },
+      "tier": {
+        "credits": "{{credits}} kaynağından",
+        "native": "Oleafly iş akışı",
+        "shelf": "Alan rafı becerisi",
+        "shelfWithLicense": "Alan rafı, {{license}}",
+        "user": "Kendi beceriniz",
+        "vendored": "Dışarıdan alınan beceri"
+      },
+      "title": "Beceriler",
+      "updateAction": "Güncelle",
+      "updateDialog": {
+        "description": "\"{{name}}\" en son yerleşik sürümle değiştirilsin mi? Dosyalarında yaptığınız yerel düzenlemeler kaybolur.",
+        "title": "Beceriyi güncelle"
+      },
+      "useDeviceSetting": "Cihaz ayarını kullan",
+      "useDeviceSettingAria": "{{name}} için cihaz ayarını kullan",
+      "useInProject": "Bu projede kullan",
+      "useInProjectAria": "{{name}} becerisini bu projede kullan",
+      "validateAria": "{{name}} becerisini doğrula"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Düğmeler, seçimler ve düzenleyici imleci için kullanılır.",
+        "label": "Vurgu rengi",
+        "swatchAriaLabel": "{{name}} vurgusu"
+      },
+      "bgPattern": {
+        "description": "Proje rafının arkasındaki deseni seçin.",
+        "dots": "Noktalar",
+        "grid": "Izgara",
+        "label": "Arka plan deseni"
+      },
+      "dock": {
+        "bottom": "Alt",
+        "description": "Ana ekran yuvasının nerede duracağını seçin.",
+        "label": "Yuva konumu",
+        "left": "Sol",
+        "right": "Sağ"
+      },
+      "font": {
+        "description": "Bir yazı tipi kurulu değilse sistem yedeğini kullanır.",
+        "label": "Uygulama yazı tipi"
+      },
+      "fontSize": {
+        "description": "Menülerdeki, panellerdeki ve düğmelerdeki metni ölçekler.",
+        "label": "Uygulama yazı tipi boyutu"
+      },
+      "theme": {
+        "description": "Sistem, işletim sistemini izler ve o değiştiğinde değişir.",
+        "label": "Görünüm"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "Tarayıcı ana sayfası",
+        "description": "Tarayıcı yuvasıyla birlikte açılacak sayfayı seçin.",
+        "label": "Ana sayfa"
+      },
+      "searchEngine": {
+        "description": "Metin aramaları için kullanılacak arama motorunu seçin.",
+        "label": "Varsayılan arama motoru"
+      }
+    },
+    "customTheme": {
+      "cleared": "Tema özelleştirmesi temizlendi.",
+      "customCss": {
+        "description": "İsteğe bağlı bildirimler yalnızca uygulama içinde geçerlidir. Kurallar, içe aktarmalar ve URL'ler engellidir.",
+        "label": "Kapsamlı CSS bildirimleri"
+      },
+      "darkRestored": "Koyu tema belirteçleri geri yüklendi.",
+      "description": "Her kip için uygulama renk belirteçlerini değiştirin. Değişiklikler yerelde saklanır ve hemen etkili olur.",
+      "exportTheme": "Temayı dışa aktar",
+      "fileTooLarge": "Tema dosyası 128 KiB'den büyük.",
+      "importFileAriaLabel": "Tema dosyasını içe aktar",
+      "importTheme": "Tema içe aktar",
+      "imported": "Tema içe aktarıldı ve uygulandı.",
+      "importedSkippedMore_one": "Tema içe aktarıldı ve uygulandı. Oleafly'nin kullanmadığı {{count}} belirteç atlandı: {{tokens}} ve daha fazlası.",
+      "importedSkippedMore_other": "Tema içe aktarıldı ve uygulandı. Oleafly'nin kullanmadığı {{count}} belirteç atlandı: {{tokens}} ve daha fazlası.",
+      "importedSkipped_one": "Tema içe aktarıldı ve uygulandı. Oleafly'nin kullanmadığı {{count}} belirteç atlandı: {{tokens}}.",
+      "importedSkipped_other": "Tema içe aktarıldı ve uygulandı. Oleafly'nin kullanmadığı {{count}} belirteç atlandı: {{tokens}}.",
+      "lightRestored": "Açık tema belirteçleri geri yüklendi.",
+      "modeDark": "Koyu kip",
+      "modeFieldsetAriaLabel": "Düzenlenecek tema kipi",
+      "modeLight": "Açık kip",
+      "pickColorDark": "Koyu kip için {{token}} rengini seç",
+      "pickColorLight": "Açık kip için {{token}} rengini seç",
+      "radius": {
+        "description": "8px, 0.5rem veya 1em gibi bir değer kullanın. Varsayılan için boş bırakın.",
+        "label": "Köşe yarıçapı"
+      },
+      "resetAll": "Tümünü sıfırla",
+      "resetMode": "Bu kipi sıfırla",
+      "title": "Tema özelleştirme",
+      "tokenInputDark": "Koyu kip için {{token}} belirteci",
+      "tokenInputLight": "Açık kip için {{token}} belirteci",
+      "tokens": {
+        "accent": "Vurgu",
+        "accentForeground": "Vurgu metni",
+        "background": "Arka plan",
+        "border": "Kenarlık",
+        "card": "Panel",
+        "cardForeground": "Panel metni",
+        "destructive": "Tehlike",
+        "destructiveForeground": "Tehlike metni",
+        "foreground": "Metin",
+        "input": "Girdi kenarlığı",
+        "muted": "Soluk",
+        "mutedForeground": "Soluk metin",
+        "popover": "Açılır kutu",
+        "popoverForeground": "Açılır kutu metni",
+        "primary": "Birincil",
+        "primaryForeground": "Birincil metin",
+        "ring": "Odak halkası",
+        "secondary": "İkincil",
+        "secondaryForeground": "İkincil metin",
+        "sidebar": "Kenar çubuğu",
+        "sidebarAccent": "Kenar çubuğu vurgusu",
+        "sidebarAccentForeground": "Kenar çubuğu vurgu metni",
+        "sidebarBorder": "Kenar çubuğu kenarlığı",
+        "sidebarForeground": "Kenar çubuğu metni"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Kapanış köşeli parantezlerini ve parantezleri kendiliğinden ekler.",
+        "label": "Parantezleri otomatik kapat"
+      },
+      "autoCloseEnvironments": {
+        "description": "\\begin sonrasında Enter'a bastığınızda \\end ekler.",
+        "label": "Ortamları otomatik kapat"
+      },
+      "autoCloseMath": {
+        "description": "Siz yazdıkça $, \\( ve \\[ işaretlerini eşler.",
+        "label": "Matematiği otomatik kapat"
+      },
+      "autocomplete": {
+        "description": "Siz yazdıkça kod tamamlamalarını gösterir. Bu kapalıyken de Ctrl+Space onları açar.",
+        "label": "Otomatik tamamlama"
+      },
+      "font": {
+        "description": "Kaynak dosyalar için kullanılan eş aralıklı yazı tipini seçin.",
+        "label": "Düzenleyici yazı tipi"
+      },
+      "fontSize": {
+        "description": "Kaynak düzenleyicinin metin boyutunu belirleyin.",
+        "label": "Düzenleyici yazı tipi boyutu"
+      },
+      "ghostCompletion": {
+        "description": "Olası tamamlamayı imlecin ardında gösterir. Kabul etmek için Tab tuşuna basın.",
+        "label": "Satır içi öneri"
+      },
+      "nonBlinkingCursor": {
+        "description": "Düzenleyici imlecini sabit tutar.",
+        "label": "Yanıp sönmeyen imleç"
+      },
+      "stickyScroll": {
+        "description": "Siz kaydırırken geçerli LaTeX bölümlerini ve ortamlarını üstte tutar.",
+        "label": "Yapışkan kaydırma"
+      },
+      "theme": {
+        "description": "Kaynak sözdizimi renklerini uygulama temasından ayrı belirleyin.",
+        "label": "Düzenleyici teması"
+      },
+      "keymap": {
+        "description": "Kaynak düzenleyicinin kullanacağı tuş atama kümesini seçin.",
+        "label": "Tuş atamaları",
+        "options": {
+          "default": "Varsayılan",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Kaynak satırları arasındaki dikey aralığı belirleyin.",
+        "label": "Satır yüksekliği",
+        "options": {
+          "compact": "Sıkışık",
+          "normal": "Normal",
+          "wide": "Geniş"
+        }
+      },
+      "lineWrap": {
+        "description": "Uzun satırları yana kaydırmak yerine alt satıra taşır.",
+        "label": "Uzun satırları kaydır"
+      },
+      "tabSize": {
+        "description": "Her girinti düzeyi için eklenen boşluk sayısı ve bir sekmenin gösterildiği genişlik.",
+        "label": "Sekme genişliği"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Gizli dosya deseni ekle",
+        "description": "Hangi üretilmiş dosya ve klasörlerin proje ağacının dışında kalacağını seçin.",
+        "inputAriaLabel": "Gizlenecek dosya adı veya deseni",
+        "placeholder": "Bir dosya adı veya desen ekleyin",
+        "removeAriaLabel": "{{pattern}} desenini gizli dosyalardan kaldır",
+        "title": "Dosyaları dosya ağacından gizle"
+      },
+      "homeView": {
+        "description": "Projelerin kitaplıkta nasıl dizileceğini seçin.",
+        "grid": "Izgara",
+        "label": "Varsayılan ana ekran görünümü",
+        "list": "Liste"
+      },
+      "openIn": {
+        "description": "Bir proje açıldığında kullanılacak düzeni seçin.",
+        "label": "Projeleri şu düzende aç"
+      },
+      "showTree": {
+        "description": "Bir projeye her girdiğinizde kaynak dosya ağacını açar.",
+        "label": "Açılışta dosya ağacını göster"
+      }
+    },
+    "fontSizeOption": "{{size}}px",
+    "preview": {
+      "darkMode": {
+        "description": "PDF renklerini varsayılan olarak tersine çevirir. Renkleri yine de önizleme araç çubuğundan değiştirebilirsiniz.",
+        "label": "PDF koyu kip"
+      },
+      "hoverPreview": {
+        "description": "Kitaplıkta bir projenin üzerine geldiğinizde en son derlenen sayfayı gösterir.",
+        "label": "Üzerine gelince PDF'i önizle"
+      },
+      "zoomShortcuts": {
+        "description": "Uygulama penceresi yerine PDF'i yakınlaştırmak için Cmd/Ctrl +, - ve 0 tuşlarını kullanır.",
+        "label": "PDF yakınlaştırma kısayolları"
+      }
+    },
+    "sectionName": "Görünüm",
+    "tabs": {
+      "app": "Uygulama",
+      "browser": "Tarayıcı",
+      "editor": "Düzenleyici",
+      "files": "Proje",
+      "pdf": "PDF Önizleme",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Terminal renk teması",
+        "description": "Terminalin ANSI renk paletini seçin.",
+        "label": "Renk teması",
+        "optionDark": "{{name}} · koyu",
+        "optionLight": "{{name}} · açık"
+      },
+      "colors": {
+        "background": "Arka plan",
+        "backgroundAriaLabel": "Terminal arka plan rengi",
+        "cursor": "İmleç",
+        "cursorAriaLabel": "Terminal imleç rengi",
+        "description": "Seçili ANSI paletini korurken temel renkleri ayarlayın.",
+        "followingAppTheme": "Uygulama temasını izliyor: koyu kipte koyu palet, açık kipte açık palet. Bunları özelleştirmek için yukarıdan belirli bir palet seçin.",
+        "foreground": "Metin",
+        "foregroundAriaLabel": "Terminal metin rengi",
+        "label": "Terminal renkleri"
+      },
+      "cursorBlink": {
+        "description": "Terminal imlecini yanıp söndürür.",
+        "label": "İmleci yanıp söndür"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Terminal imleç stili",
+        "bar": "Çubuk",
+        "block": "Blok",
+        "description": "Terminal imlecinin biçimini seçin.",
+        "label": "İmleç stili",
+        "underline": "Alt çizgi"
+      },
+      "font": {
+        "ariaLabel": "Terminal yazı tipi ailesi",
+        "description": "Terminalin kullandığı eş aralıklı yazı tipini seçin.",
+        "label": "Terminal yazı tipi"
+      },
+      "fontSize": {
+        "description": "Terminaldeki metin boyutunu belirleyin.",
+        "label": "Terminal yazı tipi boyutu"
+      },
+      "fontWeight": {
+        "description": "Normal terminal metninin kalınlığını belirleyin.",
+        "label": "Normal yazı kalınlığı"
+      },
+      "fontWeightBold": {
+        "description": "Kalın terminal metninin kalınlığını belirleyin.",
+        "label": "Kalın yazı kalınlığı"
+      },
+      "startWithProject": {
+        "description": "shell'i, terminali ilk gösterdiğinizde değil, bir proje açıldığında başlatır.",
+        "label": "shell'i projeyle birlikte başlat"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly bunu arka planda ve yalnızca kaynak değiştiğinde kaydeder.",
+      "label": "Her başarılı derlemeden sonra bir kontrol noktası kaydet"
+    },
+    "config": {
+      "loadFailed": "Kontrol noktası ayarları yüklenemedi.",
+      "saveFailed": "Kontrol noktası ayarları kaydedilemedi."
+    },
+    "description": "Bir kontrol noktası, başarılı bir derlemenin kullandığı kaynak dosyaları kaydeder.",
+    "notifyOnFailure": {
+      "description": "Bir kontrol noktası kaydedilemediğinde Oleafly size bunu bildirir; depolama sorunları ve yakalayamadığı dosyalar dahil.",
+      "label": "Bir kontrol noktası kaydedilemediğinde bildirim göster"
+    },
+    "title": "Kontrol noktaları"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "API anahtarını kaldır",
+      "removeEmail": "E-postayı kaldır",
+      "removeKey": "Anahtarı kaldır",
+      "saveApiKey": "API anahtarını kaydet",
+      "saveEmail": "E-postayı kaydet",
+      "saveKey": "Anahtarı kaydet"
+    },
+    "connected": "Bağlı",
+    "description": "Bilimsel arama kaynaklarının kullandığı kimlik bilgilerini yönetin.",
+    "keyFree": {
+      "description": "Bu kaynaklar API anahtarı olmadan kullanılabilir.",
+      "title": "Kimlik bilgisi gerektirmeyen kaynaklar"
+    },
+    "openAlex": {
+      "docsLink": "OpenAlex hız sınırları",
+      "emailLabel": "OpenAlex iletişim e-postası",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "OpenAlex iletişim e-postası kaldırılamadı.",
+      "emailRemoved": "OpenAlex iletişim e-postası kaldırıldı",
+      "emailSaveFailed": "OpenAlex iletişim e-postası kaydedilemedi.",
+      "emailSaved": "OpenAlex iletişim e-postası kaydedildi",
+      "hint": "API anahtarı önerilir. OpenAlex düzenli erişim için anahtar ister, anahtarsız aramalar ise küçük bir günlük havuzu paylaşır. Bir iletişim e-postası da nazik havuzu açar. İkisi de bu cihazda kalır.",
+      "keyLabel": "OpenAlex API anahtarı",
+      "keyRemoveFailed": "OpenAlex API anahtarı kaldırılamadı.",
+      "keyRemoved": "OpenAlex API anahtarı kaldırıldı",
+      "keySaveFailed": "OpenAlex API anahtarı kaydedilemedi.",
+      "keySaved": "OpenAlex API anahtarı kaydedildi"
+    },
+    "semanticScholar": {
+      "docsLink": "Semantic Scholar API bilgileri",
+      "hint": "API anahtarı isteğe bağlıdır. Anonim aramalar Semantic Scholar'ın herkese açık sınırlarını kullanır.",
+      "keyLabel": "Semantic Scholar API anahtarı",
+      "keyRemoveFailed": "Semantic Scholar API anahtarı kaldırılamadı.",
+      "keyRemoved": "Semantic Scholar API anahtarı kaldırıldı",
+      "keySaveFailed": "Semantic Scholar API anahtarı kaydedilemedi.",
+      "keySaved": "Semantic Scholar API anahtarı kaydedildi"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "İsteğe bağlı. Atıf Arama içinde Serper üzerinden Google Scholar kaynağını etkinleştirir. Anahtar olmadan, seçilse bile bu kaynak atlanır.",
+      "keyLabel": "Serper API anahtarı",
+      "keyRemoveFailed": "Serper API anahtarı kaldırılamadı.",
+      "keyRemoved": "Serper API anahtarı kaldırıldı",
+      "keySaveFailed": "Serper API anahtarı kaydedilemedi.",
+      "keySaved": "Serper API anahtarı kaydedildi"
+    },
+    "title": "Atıf Arama"
+  },
+  "cite": {
+    "apa": "Aynı kaynağın APA biçimi GitHub'daki Cite this repository bölümünde",
+    "copyBibtex": "BibTeX'i kopyala",
+    "description": "Oleafly ücretsiz ve açık kaynaklıdır ve insanlar varlığından haberdar oldukça öyle kalır. Bir makalenize yardımı dokunduysa kaynakçanızdaki tek bir kayıt, bir sonraki araştırmacıya bu aracın nereden geldiğini anlatır. Kopyalayın, .bib dosyanıza yapıştırın ve <citeKey>oleafly</citeKey> anahtarıyla atıf verin.",
+    "title": "Makalenizde Oleafly'ye atıf verin"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Tümü indirildi",
+      "download": "İndir",
+      "downloadAll": "Tümünü indir"
+    },
+    "aiTemplates": {
+      "deleteDescription": "\"{{name}}\" kitaplığınızdan silinsin mi? Ondan oluşturulmuş projeler kendi kopyalarını korur ve etkilenmez.",
+      "deleteTitle": "Yapay zeka ile oluşturulan şablonu sil",
+      "deleted": "\"{{name}}\" kitaplığınızdan silindi",
+      "empty": "Henüz yapay zeka ile oluşturulmuş şablon yok. Şablon galerisinden bir tane oluşturun.",
+      "fallbackDescription": "Yapay zeka ile oluşturulan şablon",
+      "toggle": "Yapay zeka ile oluşturulan şablonları yönet"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "Birçok modern özgeçmiş ve CV şablonunda kullanılan, sıcak görünümlü hümanist bir sans serif.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "Ekranda ve baskıda rahat okunan, sade ve nötr bir sans serif.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "Akademik ve kurumsal belgelere yakışan, zarif bir geçiş dönemi serif yazı tipi.",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "İndirilebilir yazı tipi yok.",
+      "engineNote": "LuaLaTeX motoru (etiketli, erişilebilir PDF'ler için) LaTeX Motoru bölümünden yönetilir.",
+      "heading": "Yazı tipleri",
+      "tooltip": "Bazı şablonlar premium açık kaynaklı yazı tipleri kullanır. Oleafly küçük kalsın diye bu yazı tipleri istendiğinde indirilir: böyle bir şablon oluşturduğunuzda yazı tipleri getirilir ve projeye kopyalanır; böylece proje kendi kendine yeter ve çevrimdışı derlenir. Onları buradan önceden de indirebilir ya da yer açmak için kaldırabilirsiniz."
+    },
+    "packProgress": "{{total}} içinden {{index}}",
+    "progress": "{{label}} ({{total}} içinden {{index}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Yazı tipleri",
+      "templates": "Şablonlar",
+      "dictionaries": "Sözlükler"
+    },
+    "templates": {
+      "empty": "İndirilebilir şablon paketi yok.",
+      "heading": "Şablonlar",
+      "tooltip": "Oleafly küçük kalsın diye ek şablon paketleri istendiğinde indirilir. Bir paketin şablonlarını çevrimdışı kullanmak için paketi buradan indirin ya da yer açmak için sonradan kaldırın."
+    },
+    "dictionaries": {
+      "empty": "Henüz ek dil indirilmedi.",
+      "heading": "Yazım sözlükleri",
+      "note": "Bir dili indirmek için Genel bölümünden seçin. Birlikte gelen beş paket her zaman kullanılabilir ve burada listelenmez.",
+      "tooltip": "Oleafly ile beş dil paketi gelir. Diğer diller, yazım sözlüğü olarak seçtiğinizde istendiğinde indirilir ve sonrasında çevrimdışı çalışsın diye burada tutulur. Birini kaldırmak yer açar ve uygulama ayarına döner."
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "Yalnızca güvendiğiniz projeler için. Hesabınızın erişebildiği dosyaları okuyabilen yerel bir TeX dağıtımı çalıştırır. Tam paket kümelerini ve çok geçişli iş akışlarını destekler. Ana sistemde komut çalıştırma, proje başına ayrı bir izin olarak kalır.",
+        "name": "latexmk (sistem TeX)"
+      },
+      "tectonic": {
+        "detail": "Oleafly ile birlikte gelir. Hızlı, çevrimdışı, kurulum gerektirmez. Düz LaTeX'i ve çoğu yaygın paketi kapsar.",
+        "name": "Tectonic (yerleşik)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Varsayılan derleme motoru",
+      "tooltip": "Yeni projeler için geçerlidir. Her proje kendi motorunu project.json içinde sabitler; böylece aynı projeyi açan iş arkadaşlarınız bu ayardan bağımsız olarak onu aynı şekilde derler."
+    },
+    "distributions": {
+      "empty": "Bu makinede TeX dağıtımı algılanmadı.",
+      "heading": "TeX dağıtımlarını yönet",
+      "rowTooltip": "{{tools}} ile birlikte gelir. Oleafly TeX araçlarını {{binDir}} konumundan çalıştırır.",
+      "rowTooltipNoTools": "Bu kurulumda latexmk veya tlmgr bulunamadı. Oleafly TeX araçlarını {{binDir}} konumundan çalıştırır.",
+      "tooltip": "latexmk motorunun bu makinede kullanabileceği her şey. TinyTeX, yönetici izni gerekmeden ana klasörünüze kurulur. Sistem kurulumları (MacTeX, TeX Live, MiKTeX) kendiliğinden algılanır."
+    },
+    "latexmkMissing": "latexmk bulunamadı",
+    "markdown": {
+      "downloading": "İndiriliyor…",
+      "heading": "Markdown derleyicisi",
+      "install": "pandoc kur",
+      "repair": "Pandoc'u onar",
+      "note": "Markdown için farklı bir PDF arka ucu ya da yönetilen pandoc yerine sistem pandoc'u seçmek henüz kullanılamıyor.",
+      "status": {
+        "checking": "pandoc aranıyor…",
+        "installing": "Sabitlenmiş bir pandoc sürümü getiriliyor. İlk kullanımda bu biraz sürer.",
+        "missing": "Bu Mac'te bulunamadı. Oleafly uyumlu bir pandoc (2.19 veya daha yenisi) kendi klasörüne indirir; sisteminizde başka hiçbir şey değişmez.",
+        "ready": "Algılandı. Markdown projeleri pandoc ile LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile derlenir."
+      },
+      "tectonicDetail": "pandoc'un ürettiği LaTeX'i dizer. Oleafly ile birlikte gelir; yapılandırılacak bir şey yoktur.",
+      "tooltip": "Markdown projeleri pandoc ile (Pandoc Markdown: tablolar, dipnotlar, atıflar, matematik) LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile PDF'e dizilir. Pandoc, ilk gerektiğinde istendiğinde indirilir."
+    },
+    "packages": {
+      "ariaLabel": "LaTeX paketleri",
+      "badge": {
+        "breaks": "etiketlemeyi bozar",
+        "caution": "etiketleme: dikkat"
+      },
+      "emptySearch": "Paket bulunamadı. Başka bir ad veya anahtar sözcük deneyin.",
+      "emptySuggested": "Eşleşen önerilen paket yok. Tam kataloğu görmek için TeX Live'da arayın.",
+      "error": {
+        "install": "{{name}} kurulamadı.",
+        "read": "Kurulu paketler okunamadı.",
+        "remove": "{{name}} kaldırılamadı.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "LaTeX paketlerini bul",
+      "filterPlaceholder": "Paketleri filtrele…",
+      "heading": "Paketler",
+      "includedIn": "{{package}} içinde yer alır. Onu kaldırmak o paketteki diğer dosyaları da kaldırır.",
+      "intro": {
+        "available": "Bu paketler latexmk (sistem TeX) kullanan projeler içindir. Tectonic kendi paket kümesini kullanır.",
+        "unavailable": "Paket yönetimi TeX Live veya TinyTeX gerektirir. MiKTeX için MiKTeX Console'u kullanın."
+      },
+      "refreshInstalled": "Kurulu paketleri yenile",
+      "resultsCapped": "{{total}} TeX Live sonucu. Bu listeyi daraltmak için daha belirgin bir arama kullanın.",
+      "results_one": "{{count}} TeX Live sonucu.",
+      "results_other": "{{count}} TeX Live sonucu.",
+      "search": "TeX Live'da ara",
+      "searching": "Aranıyor…",
+      "suggested": "Önerilen paketler. Daha fazlası için TeX Live'da arayın.",
+      "tree": {
+        "both": "her iki ağaçta",
+        "system": "sistem ağacında",
+        "user": "kişisel ağacınızda"
+      }
+    },
+    "sectionName": "Motorlar",
+    "tagging": {
+      "heading": "Etiketli / erişilebilir dışa aktarma",
+      "hint": {
+        "none": "Etiketli dışa aktarmayı açmak için yukarıdaki “TeX dağıtımlarını yönet” bölümünden TinyTeX kurun.",
+        "system": "Sisteminizde algılandı. Kurulacak bir şey yok.",
+        "tinytex": "TinyTeX tarafından sağlanır (yukarıdan yönetilir)."
+      },
+      "status": {
+        "none": "Kurulu etiketleme motoru yok",
+        "system": "Bir sistem LuaLaTeX / TeX Live kullanılıyor",
+        "tinytex": "TinyTeX kurulu"
+      },
+      "tooltip": "Varsayılan motor (Tectonic) hızlı ve çevrimdışıdır ama etiketli, Section 508 / PDF-UA uyumlu PDF üretemez. Bunun için, hesabınızın erişebildiği yerel dosyaları okuyabilen ve yalnızca güvendiğiniz projelerde kullanılması gereken sistem LuaLaTeX'i gerekir. Oleafly var olan bir dağıtımı ya da yönetilen TinyTeX'i kullanabilir."
+    },
+    "tinytex": {
+      "detail": "Ana klasörünüzde derli toplu bir TeX Live. Temel indirme yaklaşık 250 MB'tır. Dergi şablonları sonradan paket ekleyebilir, toplamda yaklaşık 1 GB'a kadar. Önceden kurmak, açıkça seçtiğinizde sistem LaTeX'ini kullanılabilir kılar.",
+      "download": "TinyTeX'i indir (~250 MB)",
+      "resume": "İndirmeyi sürdür ({{size}} MB tamam)"
+    },
+    "typst": {
+      "detail": "Oleafly ile birlikte gelir. Hızlı, çevrimdışı, kurulum gerektirmez. Typst belgelerini PDF'e derler.",
+      "heading": "Typst derleyicisi",
+      "name": "Typst (yerleşik)",
+      "note": "Typst projeleri her zaman paketlenmiş derleyiciyi kullanır. Derleyici sürümü seçmek ve sistem Typst'i kullanmak henüz mümkün değil.",
+      "tooltip": "Typst, Oleafly'nin içinde gelir; kurulacak veya yapılandırılacak bir şey yoktur. Her Typst projesi paketlenmiş derleyiciyle derlenir."
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "Bağlı",
+      "disconnect": "Bağlantıyı kes",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "Bağlan",
+      "toggle": "Gelişmiş: kişisel erişim belirteci kullan",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "Yeni ve açılan projelere, Git panelinin değişiklikleri izleyebilmesi için bir Git deposu eklenir. Oleafly kendiliğinden hiçbir zaman işleme yapmaz.",
+      "label": "Her proje için Git'i başlat"
+    },
+    "config": {
+      "loadFailed": "Git ayarları yüklenemedi.",
+      "saveFailed": "Git ayarları kaydedilemedi."
+    },
+    "connect": "GitHub'ı bağla",
+    "description": "Projeleri yedekleyin, cihazlar arasında eşitleyin ve Git panelinden gönderip çekin.",
+    "device": {
+      "openGithub": "GitHub'ı aç",
+      "opened": "Tarayıcınızda <verificationLink>{{url}}</verificationLink> adresini açtık. Oleafly'ye yetki vermek için kodu oraya yapıştırın.",
+      "timedOut": "GitHub oturum açma işlemi zaman aşımına uğradı. Yeniden deneyin.",
+      "title": "Bu kodu GitHub'a girin",
+      "waiting": "Yetkilendirme bekleniyor…"
+    },
+    "hint": {
+      "oauth": "Tarayıcınızda tek kullanımlık bir kodla oturum açmanızı sağlar.",
+      "token": "Bu derlemede OAuth ile oturum açma henüz yapılandırılmadı, bu yüzden onun yerine bir belirteç yapıştırın."
+    },
+    "notice": {
+      "connected": "@{{login}} olarak bağlandı",
+      "disconnected": "Bağlantı kesildi."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Bağlan",
+      "disconnect": "Bağlantıyı kes"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "Anahtar almak için: <siteLink>alphaxiv.org</siteLink> adresinde oturum açın, <keyLink>API anahtarı sayfanızı</keyLink> açın, bir anahtar üretin (<keyPrefix>axv1_</keyPrefix> ile başlar) ve aşağıya yapıştırın.",
+      "apiKeyLabel": "alphaXiv API anahtarı",
+      "description": "Asistan için literatür arama ve makale çözümleme araçları."
+    },
+    "cookies": {
+      "action": "Cookie'leri içe aktar",
+      "confirmAllDomains": "{{browser}} tarayıcısının {{profile}} profilindeki tüm alan adlarına ait cookie'leri içe aktarmak üzeresiniz. Cookie değerleri uygulama içi tarayıcıda saklanır ve yalnızca eşleştikleri web sitelerine gönderilir. Oleafly, profili okumadan önce yerel bir pencerede bir kez daha onay isteyecek.",
+      "confirmDomain": "{{browser}} tarayıcısının {{profile}} profilinden {{domain}} için cookie'leri içe aktarmak üzeresiniz. Cookie değerleri uygulama içi tarayıcıda saklanır ve yalnızca eşleştikleri web sitelerine gönderilir. Oleafly, profili okumadan önce yerel bir pencerede bir kez daha onay isteyecek.",
+      "confirmTitle": "Cookie içe aktarmayı onaylayın",
+      "description": "Var olan bir tarayıcı oturumunu Oleafly'nin uygulama içi tarayıcısında kullanın.",
+      "detecting": "Kurulu tarayıcı profilleri aranıyor...",
+      "dialogDescription": "Kurulu bir tarayıcı profili seçin. Oleafly onu yalnızca siz içe aktarmayı inceleyip onayladıktan sonra okur. Chromium cookie'lerinin kilidi macOS Anahtar Zinciri üzerinden yerel olarak açılır. Oleafly cookie değerlerini bir Oleafly hizmetine göndermez.",
+      "dialogTitle": "Tarayıcı cookie'lerini içe aktar",
+      "empty": "Desteklenen tarayıcı profili bulunamadı.",
+      "errors": {
+        "chooseProfile": "Kullanılabilir bir tarayıcı profili seçin.",
+        "hostname": "example.com gibi bir ana makine adı girin."
+      },
+      "hostnameHint": "Yalnızca o sitenin kullanabileceği cookie'leri aktarmak için bir site ana makine adı girin. Bu profildeki uygun tüm cookie'leri aktarmak için boş bırakın.",
+      "hostnameLabel": "Hedef ana makine adı (isteğe bağlı)",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_one": "{{domain}} için {{browser}} tarayıcısından {{count}} cookie içe aktarıldı.",
+      "importedDomain_other": "{{domain}} için {{browser}} tarayıcısından {{count}} cookie içe aktarıldı.",
+      "importedProfileDomain_one": "{{domain}} için {{browser}}, {{profile}} profilinden {{count}} cookie içe aktarıldı.",
+      "importedProfileDomain_other": "{{domain}} için {{browser}}, {{profile}} profilinden {{count}} cookie içe aktarıldı.",
+      "importedProfile_one": "{{browser}}, {{profile}} profilinden {{count}} cookie içe aktarıldı.",
+      "importedProfile_other": "{{browser}}, {{profile}} profilinden {{count}} cookie içe aktarıldı.",
+      "imported_one": "{{browser}} tarayıcısından {{count}} cookie içe aktarıldı.",
+      "imported_other": "{{browser}} tarayıcısından {{count}} cookie içe aktarıldı.",
+      "importing": "Cookie'ler içe aktarılıyor...",
+      "profileGroupLabel": "Tarayıcı profilleri",
+      "profileLegend": "Tarayıcı profili",
+      "review": "İçe aktarmayı incele",
+      "status": {
+        "available": "Kullanılabilir",
+        "comingSoon": "Yakında",
+        "noCookieStore": "Cookie deposu yok",
+        "notInstalled": "Kurulu değil"
+      },
+      "title": "Cookie'leri içe aktar",
+      "tryAgain": "Yeniden deneyin"
+    },
+    "zotero": {
+      "apiKeyHint": "Anahtar almak için: <siteLink>zotero.org</siteLink> adresinde oturum açın, anahtar oluşturmak için <keyLink>API anahtarı sayfanızı</keyLink> açın ve aynı sayfadaki sayısal kullanıcı kimliğinizi kopyalayın.",
+      "apiKeyLabel": "Zotero API anahtarı",
+      "description": "Zotero kitaplığınızdan atıfları ve kaynakları içe aktarın.",
+      "userIdLabel": "Zotero kullanıcı kimliği",
+      "userIdPlaceholder": "Kullanıcı kimliği"
+    }
+  },
+  "language": {
+    "ariaLabel": "Arayüz dili",
+    "description": "Arayüz dilini seçin. Sistem varsayılanı işletim sisteminizi izler.",
+    "label": "Dil",
+    "note": "Arayüz dilini değiştirmek belge dilini veya redaksiyon ayarlarını değiştirmez.",
+    "system": "Sistem varsayılanı"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "{{name}} sunucusunu {{source}} kaynağından içe aktar",
+      "description": "Bu bilgisayarda kurulu araçlardan sunucular seçin.",
+      "detecting": "MCP sunucuları aranıyor...",
+      "duplicateOverwritten": "Zaten var. Üzerine yazılacak.",
+      "duplicateSkipped": "Zaten var. Atlanacak.",
+      "duplicates": {
+        "legend": "Adlar eşleştiğinde",
+        "overwrite": {
+          "description": "Onun yerine seçili sunucuyu koyar.",
+          "label": "Var olanın üzerine yaz"
+        },
+        "skip": {
+          "description": "Oleafly'de zaten kayıtlı olan sunucuyu korur.",
+          "label": "Var olanı atla"
+        }
+      },
+      "emptyState": "MCP sunucusu yapılandırması bulunamadı.",
+      "importing": "İçe aktarılıyor...",
+      "keys": {
+        "environment": "Ortam: {{names}}",
+        "headers": "Başlıklar: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Seçilenleri içe aktar",
+      "summary": {
+        "commandFallback": "Yerel komut",
+        "remote": "Uzak sunucu: {{origin}}.",
+        "remoteUnknown": "Uzak sunucu.",
+        "stdio_one": "Yerel komut: {{command}}. {{count}} argüman.",
+        "stdio_other": "Yerel komut: {{command}}. {{count}} argüman."
+      },
+      "title": "MCP sunucularını içe aktar"
+    },
+    "registry": {
+      "argumentsLine": "Argümanlar: {{args}}",
+      "description": "Herkese açık sunucu üst verilerinde arayın. Burada hiçbir şey kurulmaz veya başlatılmaz. Eklemeden önce komutu ya da URL'yi inceleyin.",
+      "emptyQuery": "Resmi MCP kayıt defterinde aramak için bir sunucu adı girin.",
+      "environmentLine": "Ortam: {{names}}",
+      "loadMore": "Daha fazla yükle",
+      "noResults": "Eşleşen kayıt defteri girdisi döndürülmedi.",
+      "review": "Eklemeden önce inceleyin",
+      "searchLabel": "Resmi MCP kayıt defterinde ara",
+      "searchPlaceholder": "Sunucu adlarında ara",
+      "title": "Resmi MCP kayıt defteri",
+      "unsupportedEntry": "Bu girdi, Oleafly'nin inceleyebileceği bir paket veya uzak taşıma belirtmiyor.",
+      "version": "s{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Uygulamalarınızı bağlayın"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor ve diğer MCP istemcileri açık projeyi okuyabilir, düzenleyebilir ve derleyebilir; her değişiklik için sizin onayınızla.",
+      "enable": {
+        "ariaLabel": "MCP sunucusunu aç",
+        "description": "Yalnızca Oleafly açıkken bu bilgisayarda dinler.",
+        "label": "MCP sunucusunu aç"
+      },
+      "footer": "Sunucu yalnızca bu bilgisayarda (127.0.0.1) dinler ve yukarıdaki belirteci gerektirir. İlk iki ilkede, dosya silmek Oleafly'de her zaman onayınızı ister. Tarayıcıdaki claude.ai yerel bir sunucuya ulaşamaz. Onun yerine Claude Desktop'ı kullanın.",
+      "policy": {
+        "ask": {
+          "description": "Yazma, yeniden adlandırma ve silme işlemleri, hiçbir şey uygulanmadan önce Oleafly'de farkıyla birlikte bir onay kartı gösterir.",
+          "label": "Her değişikliği onayla"
+        },
+        "autoWrites": {
+          "description": "Yazma ve yeniden adlandırma hemen uygulanır. Silmeler yine de onay kartı gösterir.",
+          "label": "Düzenlemeleri otomatik onayla, silmeleri sor"
+        },
+        "legend": "Onay ilkesi",
+        "trust": {
+          "description": "Dosya değişiklikleri sormaz. Shell komutları ve bilgisayar denetimi her zaman onay gerektirir. MCP istemciniz ek bir kapı olarak kalır.",
+          "label": "Bu bağlantıya güven"
+        }
+      },
+      "port": {
+        "ariaLabel": "Kendiliğinden seçilen MCP sunucusu bağlantı noktası",
+        "label": "Bağlantı noktası",
+        "restartAriaLabel": "MCP sunucusunu yeniden başlat ve kullanılabilir bir bağlantı noktası seç",
+        "restartTooltip": "MCP sunucusunu yeniden başlatır. Oleafly uygunsa bu bağlantı noktasını yeniden kullanır, değilse başka bir boş nokta seçer."
+      },
+      "readOnly": {
+        "ariaLabel": "Salt okunur kip",
+        "description": "Dış uygulamalar okuyabilir ve derleyebilir ama dosyaları hiçbir zaman değiştiremez.",
+        "label": "Salt okunur"
+      },
+      "status": {
+        "restartedAt": "{{url}} adresinde yeniden başlatıldı",
+        "runningAt": "{{url}} adresinde çalışıyor"
+      },
+      "title": "Oleafly MCP sunucusu",
+      "token": {
+        "copyUrl": "URL'yi kopyala",
+        "enableToView": "Belirteci görmek için sunucuyu açın.",
+        "help": "Taşıyıcı belirteci gösterin veya kopyalayın, sunucu URL'sini kopyalayın ya da bağlı MCP istemcileri için belirteci yeniden üretin.",
+        "hide": "Gizle",
+        "label": "Taşıyıcı belirteç",
+        "regenerate": "Yeniden üret",
+        "regenerateWarning": "Var olan istemcilerin yeni belirtece ihtiyacı olacak.",
+        "reveal": "Göster"
+      }
+    },
+    "servers": {
+      "addServer": "Sunucu ekle",
+      "browseRegistry": "Kayıt defterine göz at",
+      "card": {
+        "editLabel": "{{name}} sunucusunu düzenle",
+        "enableLabel": "{{name}} sunucusunu aç",
+        "noTools": "Bildirilen araç yok.",
+        "removeLabel": "{{name}} sunucusunu kaldır",
+        "toolCount_one": "{{count}} araç",
+        "toolCount_other": "{{count}} araç",
+        "toolsLabel": "{{name}} sunucusundaki araçlar",
+        "validate": "Doğrula",
+        "validateLabel": "{{name}} sunucusunu doğrula"
+      },
+      "description": "Yapay zeka asistanını yerel komutlara veya uzak MCP uç noktalarına bağlayın. Oleafly, bu sayfa açıldığında, her dakika ve istediğinizde açık olan her sunucuyu denetler. Ayrıca her sunucunun sağladığı araçları gösterir.",
+      "editor": {
+        "addAndValidate": "Ekle ve doğrula",
+        "argsHint": "Her satıra bir argüman girin.",
+        "argsLabel": "Argümanlar",
+        "commandLabel": "Komut",
+        "description": "Açık sunucular, ayarları kaydedilmeden önce denetlenir.",
+        "formView": "Form",
+        "jsonHint": "Adına göre anahtarlanmış tek bir sunucu ya da mcpServers içine sarılmış bir blok yapıştırın.",
+        "jsonLabel": "Tam yapılandırma",
+        "jsonView": "JSON",
+        "nameLabel": "Sunucu adı",
+        "pairs": {
+          "addHeader": "Başlık ekle",
+          "addVariable": "Değişken ekle",
+          "environmentKeyLabel": "Ortam anahtarı {{index}}",
+          "environmentTitle": "Ortam değişkenleri",
+          "environmentValueLabel": "Ortam değeri {{index}}",
+          "headerKeyLabel": "Başlık anahtarı {{index}}",
+          "headerValueLabel": "Başlık değeri {{index}}",
+          "headersTitle": "İstek başlıkları",
+          "removeHeaderLabel": "{{index}} numaralı başlığı kaldır",
+          "removeVariableLabel": "{{index}} numaralı değişkeni kaldır",
+          "storedValuePlaceholder": "Kayıtlı değer",
+          "valuePlaceholder": "Değer"
+        },
+        "saveAndValidate": "Kaydet ve doğrula",
+        "saveChanges": "Değişiklikleri kaydet",
+        "titleAdd": "MCP sunucusu ekle",
+        "titleEdit": "MCP sunucusunu düzenle",
+        "transportLegend": "Taşıma",
+        "transportRemote": "Uzak URL",
+        "transportStdio": "Yerel komut",
+        "urlLabel": "Uzak URL",
+        "viewSwitchLabel": "Yapılandırma düzenleyici"
+      },
+      "empty": {
+        "description": "Asistana yeni araçlar vermek için bir sunucu ekleyin ya da başka bir düzenleyicide zaten kullandıklarınızı içe aktarın.",
+        "title": "Eklenmiş sunucu yok"
+      },
+      "hideRegistry": "Kayıt defterini gizle",
+      "importButton": "Diğer araçlardan içe aktar",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "{{imported}} içe aktarıldı, {{skipped}} atlandı, {{failed}} başarısız oldu.",
+      "live": {
+        "checking": "{{name}} denetleniyor.",
+        "connected_one": "{{name}} bağlandı. {{count}} araç kullanılabilir.",
+        "connected_other": "{{name}} bağlandı. {{count}} araç kullanılabilir.",
+        "disabled": "{{name}} kapalı.",
+        "disabledLastCheckFailed": "{{name}} kapalı. Son denetim başarısız oldu.",
+        "disabledLastCheckFound_one": "{{name}} kapalı. Son denetimde {{count}} araç bulundu.",
+        "disabledLastCheckFound_other": "{{name}} kapalı. Son denetimde {{count}} araç bulundu.",
+        "failed": "{{name}} doğrulaması başarısız oldu."
+      },
+      "loading": "Sunucular yükleniyor...",
+      "remove": {
+        "confirm": "Sunucuyu kaldır",
+        "description": "Bu işlem {{name}} sunucusunu Oleafly'den kaldırır. Daha sonra yeniden ekleyebilirsiniz.",
+        "descriptionFallback": "Bu işlem sunucuyu Oleafly'den kaldırır. Daha sonra yeniden ekleyebilirsiniz.",
+        "title": "Sunucu kaldırılsın mı?"
+      },
+      "status": {
+        "checking": "Denetleniyor...",
+        "connected": "Bağlı",
+        "disabled": "Kapalı",
+        "error": "Hata"
+      },
+      "title": "Asistan MCP sunucuları"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Genel olarak yok sayılan bir sözcük ekle",
+      "placeholder": "Bir sözcük veya terim ekleyin",
+      "projectAriaLabel": "{{project}} projesinde yok sayılan bir sözcük ekle",
+      "submitAriaLabel": "Yok sayılan sözcüğü ekle"
+    },
+    "clear": {
+      "confirm": "Sözcükleri temizle",
+      "descriptionFallback": "Bu işlem, bu sözlükteki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
+      "descriptionGlobal": "Bu işlem, genel sözlükteki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
+      "descriptionProject": "Bu işlem, {{project}} projesindeki tüm terimleri kaldırır. Hemen yeniden denetlenirler.",
+      "descriptionSuppressed": "Bu işlem, {{project}} projesinde kapatılmış bulguların tümünü kaldırır. Hemen yeniden denetlenirler.",
+      "suppressedConfirm": "Yeniden göster",
+      "suppressedTitle": "Kapatılan bulgular yeniden gösterilsin mi?",
+      "title": "Yok sayılan sözcükler temizlensin mi?"
+    },
+    "dismissed": {
+      "countTitle": "Projenin hatırlayabileceği {{limit}} bulgudan {{dismissed}} tanesi kapatıldı",
+      "hidden_one": "“Bu projede yok say” seçeneğini kullandığınız için {{count}} dil bilgisi bulgusu bu projede gizli. Yeniden göstermek onların altını tekrar çizer.",
+      "hidden_other": "“Bu projede yok say” seçeneğini kullandığınız için {{count}} dil bilgisi bulgusu bu projede gizli. Yeniden göstermek onların altını tekrar çizer.",
+      "none": "Kapatılmış bir şey yok. Bir dil bilgisi bulgusunda “Bu projede yok say” seçeneğini kullandığınızda burada listelenir.",
+      "showAgain": "Yeniden göster",
+      "title": "Kapatılan bulgular",
+      "titleInProject": "{{project}} projesinde kapatılan bulgular"
+    },
+    "global": {
+      "emptyDescription": "Buraya eklediğiniz sözcükler her projede redaksiyon tarafından atlanır.",
+      "scope": "Her projede geçerlidir"
+    },
+    "intro": "Kişisel yazım denetimi sözlüğünüze sözcük ekleyin. Bu sözcükler yerel ayarlarda saklanır ve projeler genelinde yok sayılır. Eşleştirme Unicode normalleştirmesi kullanır ve büyük küçük harfe duyarsızdır.",
+    "profileRules": {
+      "description": "Makalelerin önüne geçtikleri için varsayılan olarak kapalıdırlar. İstediklerinizi açın.",
+      "example": "Örnek: {{example}}",
+      "help": "Harper, sohbet ve e-posta için ayarlanmıştır. Bu kurallar ya makalelerin izlemediği bir üslubu dayatır, örneğin kB ve min birimlerini açık yazmak, ya da LaTeX işaretlemesinin yerine geçen yer tutuculara takılır; bu yüzden Oleafly onları kapalı tutar. Her biri neyi işaretleyeceğini gösterir. O bulguları istiyorsanız açın.",
+      "reasons": {
+        "AvoidContractions": "Her kısaltılmış biçimi açık yazmanızı ister.",
+        "CompoundNouns": "İki sözcük olarak yazılmış bir birleşik adı birleştirir.",
+        "Dashes": "Yazılan -- veya --- işaretini uygun çizgi karakteriyle değiştirir.",
+        "DiscourseMarkers": "however gibi bir belirteçle başlayıp ardından virgül koymayan cümleleri işaretler.",
+        "EllipsisLength": "Üç nokta olmayan bir üç noktayı düzeltir.",
+        "ExpandAlgorithm": "algo kısaltmasının açık yazılmasını ister.",
+        "ExpandArgument": "arg kısaltmasının açık yazılmasını ister.",
+        "ExpandCoordinate": "coord kısaltmasının açık yazılmasını ister.",
+        "ExpandMemoryShorthands": "KB ve MB birimlerinin açık yazılmasını ister.",
+        "ExpandParameter": "param kısaltmasının açık yazılmasını ister.",
+        "ExpandStandardInputAndOutput": "stdin ve stdout adlarının açık yazılmasını ister.",
+        "ExpandTimeShorthands": "min ve sec kısaltmalarının açık yazılmasını ister.",
+        "ExplainLikeImFive": "Bir kısaltmayı tam sözcüklerine açar.",
+        "FillerWords": "Dolgu saydığı sözcükleri işaretler.",
+        "Hedging": "I would argue that ve to a certain degree gibi çekingen ifadeleri işaretler.",
+        "LongSentences": "Uzunluk sınırını aşan her cümleyi işaretler.",
+        "MergeWords": "Araya kaçmış bir boşluğun ikiye böldüğü sözcüğü birleştirir, örneğin to gether.",
+        "MoreAdjective": "more artı sıfat yerine karşılaştırma biçimini yeğler.",
+        "NoFrenchSpaces": "Fransız tipografisinin noktalamadan önce kullandığı boşluğu kaldırır.",
+        "NoOxfordComma": "Dizi virgülünü kaldırır.",
+        "NumericRangeEnDash": "Bir sayı aralığının uçları arasına kısa çizgi yerine uzun çizgi ister.",
+        "OxfordComma": "Dizi virgülünü zorunlu kılar.",
+        "SentenceCapitalization": "Cümlenin ilk sözcüğünü büyük harfle başlatır, maskelenmiş işaretlemeden sonra başlayanlar dahil.",
+        "Spaces": "Yinelenen boşlukları birleştirir; metin maskesi, işaretlemenin silindiği her yerde bunları bırakır.",
+        "SplitWords": "İki sözcük olması gereken bir sözcüğü ayırır, örneğin alot.",
+        "TransposedSpace": "Noktalamanın yanlış tarafında kalan boşluğu taşır; maskeleme bunu sık üretir."
+      },
+      "title": "Akademik profilin kapalı tuttuğu kurallar",
+      "toggleAriaLabel": "{{rule}} kuralını aç"
+    },
+    "projects": {
+      "empty": "Projeye özel terimler eklemek için bir proje açın.",
+      "emptyDescription": "Bu proje için eklenen sözcükler yalnızca burada redaksiyon tarafından atlanır.",
+      "terms_one": "{{used}} / {{limit}} terim",
+      "terms_other": "{{used}} / {{limit}} terim"
+    },
+    "reset": {
+      "confirmationDescription": "Bu işlem, genel ve proje başına yok sayılan her sözcüğü kalıcı olarak kaldırır ve kapattığınız her dil bilgisi kuralını yeniden açar. Akademik profil kendi kurallarını kapalı tutar. Redaksiyon bu sözcükleri yeniden işaretleyecek.",
+      "sectionName": "Sözlük"
+    },
+    "search": {
+      "ariaLabel": "Yok sayılan sözcüklerde ara",
+      "placeholder": "Sözlükte ara"
+    },
+    "tabs": {
+      "global": "Genel",
+      "projects": "Projeler"
+    },
+    "turnedOff": {
+      "description": "Bu projede kapattığınız kurallar ve yok saydığınız bulgular.",
+      "help": "Düzenleyicide altı çizili bir sözcüğün veya cümlenin üzerine gelin; küçük bir kart Harper'ın ne bulduğunu, düzeltme ve yok sayma eylemleriyle birlikte gösterir. O karttan kapattığınız kurallar ve bu projede yok saydığınız bulgular burada listelenir, böylece istediğinizi geri getirebilirsiniz.",
+      "listAriaLabel": "Kapatılan dil bilgisi kuralları",
+      "none": "Hiçbir kuralı kapatmadınız.",
+      "restoreAriaLabel": "{{rule}} kuralını yeniden aç",
+      "restoreTitle": "“{{rule}}” kuralını yeniden aç",
+      "title": "Dil bilgisi kuralları ve kapatılan bulgular"
+    },
+    "words": {
+      "emptyCompact": "Henüz yok sayılan bir şey yok.",
+      "emptyTitle": "Henüz yok sayılan bir şey yok",
+      "listAriaLabel": "Yok sayılan sözcükler",
+      "noMatches": "Bu aramayla eşleşen yok sayılmış sözcük yok.",
+      "removeAriaLabel": "{{word}} sözcüğünü yok saymayı bırak",
+      "removeTitle": "“{{word}}” sözcüğünü yok saymayı bırak"
+    }
+  },
+  "reset": {
+    "button": "Varsayılanlara sıfırla",
+    "confirmDescription": "{{sectionName}} tercihlerini varsayılanlarına döndürür. Diğer ayarlar değişmeden kalır.",
+    "confirmTitle": "{{sectionName}} ayarları sıfırlansın mı?",
+    "description": "{{sectionName}} tercihlerini varsayılanlarına döndürür.",
+    "label": "Ayarları sıfırla"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Oleafly komutlarını arayın ve çalıştırın.",
+        "label": "Komut paleti"
+      },
+      "forwardSync": {
+        "description": "Düzenleyici imlecinden derlenen PDF'e atlayın.",
+        "label": "PDF'e git"
+      },
+      "recompile": {
+        "description": "Geçerli projeyi derleyin ve PDF'ini gösterin.",
+        "label": "Yeniden derle"
+      },
+      "searchDocuments": {
+        "description": "Projelerde ve belgelerde arayın.",
+        "label": "Tüm belgelerde ara"
+      },
+      "shortcutReference": {
+        "description": "Proje kısayol başvurusunu açın.",
+        "label": "Kısayol başvurusu"
+      },
+      "toggleBrowser": {
+        "description": "Proje tarayıcısını gösterin veya gizleyin.",
+        "label": "Tarayıcıyı aç/kapat"
+      },
+      "toggleSidebar": {
+        "description": "Proje kenar çubuğunu gösterin veya gizleyin.",
+        "label": "Kenar çubuğunu aç/kapat"
+      },
+      "toggleTerminal": {
+        "description": "Proje terminalini gösterin veya gizleyin.",
+        "label": "Terminali aç/kapat"
+      }
+    },
+    "application": {
+      "editAriaLabel": "{{action}} kısayolunu düzenle, şu anda {{shortcut}}",
+      "heading": "Uygulama kısayolları",
+      "prompt": "Yeni tuş birleşimine basın",
+      "recordAriaLabel": "{{action}} kaydediliyor. Bir kısayola basın.",
+      "recording": "Kaydediliyor",
+      "resetAriaLabel": "{{action}} kısayolunu sıfırla"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "Seçimi düzenlemesi için yapay zekaya sor",
+        "bold": "Kalın",
+        "findAndReplace": "Bul ve değiştir",
+        "findReferences": "Kaynakları bul",
+        "goToDefinition": "Tanıma git",
+        "goToDefinitionWithPointer": "İşaretçiyle tanıma git",
+        "indentOrAcceptAutocomplete": "Girinti ver veya otomatik tamamlamayı kabul et",
+        "italic": "İtalik",
+        "jumpToSourceFromPdf": "PDF'ten kaynağa atla",
+        "redo": "Yinele",
+        "renameSymbol": "Sembolü proje genelinde yeniden adlandır",
+        "slashCommandMenu": "Eğik çizgi komutu ekleme menüsü",
+        "triggerAutocomplete": "Otomatik tamamlamayı başlat",
+        "undo": "Geri al"
+      },
+      "managed": "Düzenleyici tarafından yönetilir"
+    },
+    "categories": {
+      "codeIntelligence": "Kod zekası",
+      "editor": "Düzenleyici",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "Zaten {{action}} eylemine atanmış.",
+      "reserved": "{{shortcut}} işletim sistemi tarafından ayrılmış."
+    },
+    "intro": "Uygulama kısayollarını özelleştirin ve düzenleyiciye özgü tuş birleşimlerini gözden geçirin.",
+    "reserved": {
+      "closeWindow": "Pencereyi kapat",
+      "copy": "Kopyala",
+      "cut": "Kes",
+      "paste": "Yapıştır",
+      "quit": "Çık",
+      "save": "Kaydet",
+      "selectAll": "Tümünü seç",
+      "systemSearch": "Sistem araması",
+      "windowSwitching": "Pencere değiştirme"
+    },
+    "reset": {
+      "sectionName": "Klavye Kısayolları"
+    },
+    "tabs": {
+      "application": "Uygulama"
+    },
+    "editorKeys": {
+      "clearHint": "Bu eylemi atamasız bırakmak için Backspace tuşuna basın.",
+      "heading": "Düzenleyici tuşları",
+      "intro": "Bu tuşlar kaynak düzenleyicinin içinde çalışır. Vim ve Emacs kipleri kendi atamalarını korur.",
+      "labels": {
+        "addCursorAbove": "Üste imleç ekle",
+        "addCursorBelow": "Alta imleç ekle",
+        "deleteLine": "Satırı sil",
+        "duplicate": "Seçimi veya satırı çoğalt",
+        "gotoLine": "Satıra git",
+        "indentLess": "Girintiyi azalt",
+        "indentMore": "Girinti ver",
+        "lowercase": "Küçük harf",
+        "selectNextOccurrence": "Sonraki geçişi seç",
+        "titleCase": "Her sözcük büyük harf",
+        "toggleComment": "Açıklama satırı yap/kaldır",
+        "uppercase": "Büyük harf"
+      },
+      "unbound": "Atanmadı"
+    }
+  }
+}

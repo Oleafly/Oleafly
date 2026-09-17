@@ -1,0 +1,188 @@
+{
+  "dialog": {
+    "title": "Nutzungsbericht",
+    "description": "Erfasste Token-Aktivität nach Projekt, Agent, Anbieter, Modell und Sitzung.",
+    "from": "Von",
+    "through": "Bis",
+    "quickRangesLegend": "Schnellauswahl",
+    "utcNote": "Datum und Uhrzeit in UTC.",
+    "apply": "Übernehmen",
+    "refresh": "Aktualisieren",
+    "refreshLabel": "Nutzungsbericht aktualisieren",
+    "loading": "Nutzung wird geladen…",
+    "loadFailed": "Der Nutzungsbericht konnte nicht geladen werden.",
+    "loadFailedHint": "Versuchen Sie es gleich noch einmal.",
+    "tryAgain": "Erneut versuchen",
+    "emptyTitle": "Für diese Filter wurde keine Nutzung erfasst.",
+    "emptyDescription": "Ändern Sie den Zeitraum oder entfernen Sie einen Filter."
+  },
+  "quickRanges": {
+    "days7": "7 T",
+    "days30": "30 T",
+    "days90": "90 T",
+    "month": "Dieser Monat"
+  },
+  "filters": {
+    "project": "Projekt",
+    "projectAll": "Alle Projekte",
+    "agent": "Agent",
+    "agentAll": "Alle Agenten",
+    "provider": "Anbieter",
+    "providerAll": "Alle Anbieter",
+    "model": "Modell",
+    "modelAll": "Alle Modelle",
+    "session": "Sitzung",
+    "sessionAll": "Alle Sitzungen"
+  },
+  "report": {
+    "range": "{{start}} bis {{end}} (UTC)",
+    "costDisclaimer": "Kostenschätzungen beruhen auf gespeicherten Preisdaten, nicht auf Ihrer Abrechnung oder Ihrem Tarifkontingent.",
+    "exportCsv": "Als CSV exportieren",
+    "exportSaved": "Gespeichert unter {{path}}",
+    "exportFailed": "Der Nutzungsbericht konnte nicht gespeichert werden.",
+    "inputTokens": "Eingabe-Token",
+    "inputIncludesCache": "Einschließlich zwischengespeicherter Eingabe",
+    "outputTokens": "Ausgabe-Token",
+    "outputIncludesReasoning": "Einschließlich Token für Schlussfolgerungen",
+    "cacheReads": "Lesezugriffe auf den Zwischenspeicher",
+    "costEstimate": "Kostenschätzung",
+    "allRecordsPriced": "Alle Datensätze bepreist",
+    "sessions": "Sitzungen",
+    "dailyTokens": "Token pro Tag",
+    "activityByHour": "Aktivität nach Stunde",
+    "projects": "Projekte",
+    "agents": "Agenten",
+    "providers": "Anbieter",
+    "models": "Modelle"
+  },
+  "counts": {
+    "records_one": "{{total}} Datensatz",
+    "records_other": "{{total}} Datensätze",
+    "sessions_one": "{{total}} Sitzung",
+    "sessions_other": "{{total}} Sitzungen",
+    "tokens_one": "{{total}} Token",
+    "tokens_other": "{{total}} Token",
+    "inputUnknown_one": "{{total}} Datensatz ohne Zählung der Eingabe",
+    "inputUnknown_other": "{{total}} Datensätze ohne Zählung der Eingabe",
+    "outputUnknown_one": "{{total}} Datensatz ohne Zählung der Ausgabe",
+    "outputUnknown_other": "{{total}} Datensätze ohne Zählung der Ausgabe",
+    "cacheUnknown_one": "{{total}} Datensatz ohne vergleichbare Daten zum Zwischenspeicher",
+    "cacheUnknown_other": "{{total}} Datensätze ohne vergleichbare Daten zum Zwischenspeicher",
+    "unpriced_one": "{{total}} Datensatz ohne Preis",
+    "unpriced_other": "{{total}} Datensätze ohne Preis",
+    "partlyUnpriced_one": "{{unpriced}} von {{total}} Datensatz ohne Preis",
+    "partlyUnpriced_other": "{{unpriced}} von {{total}} Datensätzen ohne Preis",
+    "onPlan_one": "{{total}} Datensatz über einen Tarif oder lokal",
+    "onPlan_other": "{{total}} Datensätze über einen Tarif oder lokal",
+    "childRuns_one": "{{total}} untergeordneter Lauf",
+    "childRuns_other": "{{total}} untergeordnete Läufe",
+    "usageRecords_one": "{{total}} Nutzungsdatensatz",
+    "usageRecords_other": "{{total}} Nutzungsdatensätze",
+    "excludedChildRecords_one": "{{total}} untergeordneter Datensatz steckt bereits in einer übergeordneten Summe und wird nicht doppelt gezählt.",
+    "excludedChildRecords_other": "{{total}} untergeordnete Datensätze stecken bereits in einer übergeordneten Summe und werden nicht doppelt gezählt.",
+    "unmeasured_one": "{{total}} Datensatz ohne gemessene Token-Zahlen.",
+    "unmeasured_other": "{{total}} Datensätze ohne gemessene Token-Zahlen."
+  },
+  "cache": {
+    "rate": "{{percent}} % der vergleichbaren Eingabe",
+    "rateWithUnknown": "{{percent}} % der vergleichbaren Eingabe, {{unknown}} nicht vergleichbar"
+  },
+  "cost": {
+    "local": "Lokal",
+    "plan": "Tarif",
+    "notBilledPerToken": "Keine Abrechnung pro Token",
+    "noEstimate": "Keine Schätzung",
+    "noSavedPrice": "Kein gespeicherter Preis für diese Datensätze",
+    "priceSource": "Preisquelle: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Täglicher Verlauf der Eingabe- und Ausgabe-Token",
+    "chartTitle": "Tägliche Token-Nutzung",
+    "empty": "Keine tägliche Aktivität.",
+    "tokensUnavailable": "Token-Zahlen nicht verfügbar",
+    "inOut": "{{input}} ein, {{output}} aus",
+    "incompleteDays": "Tage mit unvollständigen Token-Zahlen bleiben in der Linie ausgespart.",
+    "day": "Tag",
+    "inputTokens": "Eingabe-Token",
+    "outputTokens": "Ausgabe-Token"
+  },
+  "heatmap": {
+    "label": "Token-Aktivität nach Wochentag und Stunde in UTC",
+    "cell": "{{weekday}} {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "Keine erfasste Aktivität",
+    "tokenUnavailable": "Token-Zahl nicht verfügbar",
+    "hoursInUtc": "Stunden in UTC",
+    "less": "Weniger",
+    "more": "Mehr",
+    "weekdays": {
+      "sun": "So",
+      "mon": "Mo",
+      "tue": "Di",
+      "wed": "Mi",
+      "thu": "Do",
+      "fri": "Fr",
+      "sat": "Sa"
+    }
+  },
+  "breakdown": {
+    "empty": "Keine erfasste Nutzung.",
+    "name": "Name",
+    "tokens": "Token",
+    "cost": "Kosten",
+    "sessions": "Sitzungen"
+  },
+  "sessions": {
+    "title": "Sitzungen",
+    "subtitle": "Chats, Aufgaben, Läufe von Unteragenten und Hilfsaufrufe, neueste zuerst.",
+    "emptyTitle": "Keine Sitzung passt zu diesen Filtern",
+    "emptyDescription": "Ändern Sie den Zeitraum oder entfernen Sie einen Filter.",
+    "session": "Sitzung",
+    "project": "Projekt",
+    "agent": "Agent",
+    "model": "Modell",
+    "lastActivity": "Letzte Aktivität (UTC)",
+    "input": "Eingabe",
+    "output": "Ausgabe",
+    "cost": "Kosten",
+    "billing": "Abrechnung",
+    "status": "Status",
+    "rowsPerPage": "Zeilen pro Seite",
+    "page": "Seite {{page}} von {{pageCount}}",
+    "previous": "Zurück",
+    "next": "Weiter"
+  },
+  "labels": {
+    "unknown": "Unbekannt",
+    "mixed": "Gemischt",
+    "generalProject": "Allgemein",
+    "runtimeBuiltIn": "Oleafly Assistent",
+    "runtimeHelper": "Hilfsaufrufe",
+    "runtimeAcp": "CLI-Agenten"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Tarif",
+    "local": "Lokal",
+    "unknown": "Unbekannt",
+    "mixed": "Gemischt"
+  },
+  "scope": {
+    "child": "Unteragent",
+    "task": "Aufgabe",
+    "helper": "Hilfsaufruf"
+  },
+  "status": {
+    "in_progress": "Läuft",
+    "completed": "Abgeschlossen",
+    "failed": "Fehlgeschlagen",
+    "cancelled": "Abgebrochen",
+    "interrupted": "Unterbrochen"
+  },
+  "measurement": {
+    "provider_reported": "Vom Anbieter gezählt",
+    "runtime_reported": "Vom Agenten gezählt",
+    "estimated": "Lokal geschätzt",
+    "unavailable": "Nicht gemessen",
+    "mixed_or_unavailable": "Teilweise gemessen"
+  }
+}

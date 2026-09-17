@@ -1,0 +1,903 @@
+{
+  "about": {
+    "close": "情報ダイアログを閉じる",
+    "closeBackdrop": "Oleafly についてを閉じる",
+    "connect": "Oleafly とつながる",
+    "links": {
+      "discussions": {
+        "description": "質問したり、アイデアを共有したりできます",
+        "label": "ディスカッション"
+      },
+      "docs": {
+        "description": "Oleafly のすべてを学べます",
+        "label": "ドキュメント"
+      },
+      "issues": {
+        "description": "不具合の報告や機能の要望を送れます",
+        "label": "Issue"
+      },
+      "social": {
+        "description": "リリースと開発の様子をフォローできます",
+        "label": "@OleaflyHQ"
+      }
+    },
+    "star": "GitHub でスターを付ける",
+    "tagline": "論文づくりのすべてをまかなうオープンソースのワークスペース。執筆、コンパイル、校正、引用の管理、PDF の確認、Git での変更の追跡ができ、好きな AI モデルと一緒に作業できます。",
+    "version": "バージョン {{version}}",
+    "viewSource": "ソースを見る"
+  },
+  "addCitation": {
+    "added": "{{cite}} を追加しました",
+    "adding": "追加中…",
+    "close": "引用ダイアログを閉じる",
+    "confirm": ".bib に追加して引用",
+    "entry": "項目",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "タイトル"
+    },
+    "hint": "DOI、arXiv の ID、URL を貼り付けると項目を直接取得します。タイトルを入力すると Crossref を検索します。例:",
+    "lookUp": "検索",
+    "lookingUp": "「{{query}}」を検索中…",
+    "matches_other": "Crossref に {{count}} 件の候補があります。1 つ選んでください:",
+    "noResults": "結果が見つかりません。識別子を確認するか、別のタイトルの語で試してください。",
+    "placeholder": "DOI、arXiv の ID、URL、論文タイトル…",
+    "privacyNote": "送信されるのは識別子またはタイトルだけで、送信先は doi.org、arXiv、Crossref です。",
+    "title": "引用を追加"
+  },
+  "backendProtocol": {
+    "mismatch": "このウィンドウとバックエンドは異なるバージョンの Oleafly 向けにビルドされているため、一部の機能が動かないことがあります。アプリを再インストールすると解決します。"
+  },
+  "branding": {
+    "assistantMascot": "Oleafly の AI アシスタントのマスコット"
+  },
+  "browser": {
+    "address": "検索または URL を入力",
+    "back": "戻る",
+    "closeTab": "タブを閉じる",
+    "copyUrl": "URL をコピー",
+    "forward": "進む",
+    "moreOptions": "その他の操作",
+    "newTab": "新しいタブ",
+    "openExternal": "外部のブラウザで開く",
+    "openTabs": "開いているタブ",
+    "reload": "再読み込み",
+    "setHomePage": "ホームページに設定"
+  },
+  "citeOleafly": {
+    "description": "このプロジェクトに参考文献ファイルが見つからなかったため、何も変更していません。下の項目を参考文献ファイルにコピーしてください。あとから設定の「ヘルプと情報」でも見つけられます。",
+    "openHelp": "ヘルプと情報を開く",
+    "title": "この論文で Oleafly を引用する"
+  },
+  "commandGroups": {
+    "commands": "コマンド",
+    "compile": "コンパイル",
+    "editor": "エディタ",
+    "insert": "挿入",
+    "project": "プロジェクト",
+    "settings": "設定",
+    "tools": "ツール"
+  },
+  "commandPalette": {
+    "empty": "結果が見つかりません。",
+    "label": "コマンドパレット",
+    "placeholder": "コマンドを入力または検索…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / タイトル",
+      "label": "引用を追加"
+    },
+    "appearance": {
+      "keywords": "テーマ 外観 モード",
+      "useDark": "ダークの外観を使う",
+      "useLight": "ライトの外観を使う",
+      "useSystem": "システムの外観を使う"
+    },
+    "autoCompile": {
+      "disable": "自動コンパイルを無効にする",
+      "enable": "自動コンパイルを有効にする"
+    },
+    "bold": {
+      "label": "太字"
+    },
+    "checkpoints": {
+      "label": "チェックポイント"
+    },
+    "citeOleafly": {
+      "keywords": "引用 bibtex 参考文献 謝辞 oleafly",
+      "label": "この論文で Oleafly を引用する"
+    },
+    "clearCache": {
+      "keywords": "消去 ビルド キャッシュ クリーン 再ビルド 古い リセット aux",
+      "label": "ビルドキャッシュを消去して再コンパイル"
+    },
+    "closeEnvironment": {
+      "keywords": "閉じる 終了 環境 begin latex",
+      "label": "LaTeX の環境を閉じる"
+    },
+    "createProject": {
+      "keywords": "新規 プロジェクト 作成 テンプレート ギャラリー",
+      "label": "新しいプロジェクトを作成"
+    },
+    "diagramComposer": {
+      "keywords": "ダイアグラム 図 tikz コンポーザー 描画 キャンバス",
+      "label": "ダイアグラムコンポーザーを開く"
+    },
+    "documentCitationScan": {
+      "keywords": "引用 文献 スキャン 文書 段落 参考文献 検索",
+      "label": "文書内の引用を探す"
+    },
+    "equation": {
+      "label": "数式"
+    },
+    "exportPdf": {
+      "label": "PDF を書き出す…"
+    },
+    "figure": {
+      "label": "図"
+    },
+    "generateFigure": {
+      "keywords": "図 ダイアグラム 描画 tikz プロット グラフ イラスト",
+      "label": "AI で図を生成"
+    },
+    "gitHistory": {
+      "label": "Git の履歴"
+    },
+    "italic": {
+      "label": "斜体"
+    },
+    "label": {
+      "label": "ラベル"
+    },
+    "list": {
+      "label": "箇条書き"
+    },
+    "newProject": {
+      "label": "新規プロジェクト…"
+    },
+    "newTerminal": {
+      "keywords": "ターミナル shell コンソール 新規",
+      "label": "新規ターミナル"
+    },
+    "offline": {
+      "offline": "オフラインモード（--only-cached）",
+      "online": "オンラインモード（パッケージの取得を許可）"
+    },
+    "openTool": "{{name}} を開く",
+    "recompile": {
+      "label": "再コンパイル"
+    },
+    "section": {
+      "label": "節"
+    },
+    "settings": {
+      "keywords": "設定 環境設定 オプション",
+      "label": "設定を開く"
+    },
+    "spellcheck": {
+      "disable": "スペルチェックを無効にする",
+      "enable": "スペルチェックを有効にする"
+    },
+    "surroundEnvironment": {
+      "keywords": "囲む 環境 begin end latex",
+      "label": "環境で囲む"
+    },
+    "synctex": {
+      "label": "PDF へ移動（SyncTeX）"
+    },
+    "table": {
+      "label": "表"
+    },
+    "theme": {
+      "keywords": "テーマ ダーク ライト 外観 モード",
+      "toDark": "ダークテーマに切り替え",
+      "toLight": "ライトテーマに切り替え"
+    },
+    "tools": {
+      "keywords": "ツール latex pdf 数式 bibtex 表 研究室 検索 締め切り ギャラリー",
+      "label": "Oleafly ツールを開く"
+    },
+    "vim": {
+      "disable": "Vim モードを無効にする",
+      "enable": "Vim モードを有効にする"
+    },
+    "wordCount": {
+      "label": "文字数と単語数"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "行 削除 消す",
+        "duplicate": "複製 行 選択 コピー",
+        "lowercase": "小文字 大文字小文字 テキスト",
+        "titleCase": "各単語の先頭を大文字 テキスト",
+        "uppercase": "大文字 大文字小文字 テキスト"
+      }
+    }
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "オフ",
+      "on": "オン",
+      "title": "自動コンパイル"
+    },
+    "compile": "コンパイル",
+    "compiler": {
+      "auto": "自動 <note>[システム TeX]</note>",
+      "help": "Tectonic は組み込みで、設定は不要です。ほかの選択肢はシステム TeX を使います。システム TeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。「自動」はソースからコンパイラを判断します。pdfLaTeX はほとんどの論文誌テンプレートに合います。XeLaTeX と LuaLaTeX はシステムフォントと Unicode を扱えます。",
+      "lualatex": "LuaLaTeX <note>[システム TeX]</note>",
+      "pdflatex": "pdfLaTeX <note>[システム TeX]</note>",
+      "tectonic": "Tectonic <note>[組み込み]</note>",
+      "title": "コンパイラ（このプロジェクト）",
+      "xelatex": "XeLaTeX <note>[システム TeX]</note>"
+    },
+    "errors": {
+      "continue": "エラーがあってもコンパイルを試みる",
+      "stop": "最初のエラーで中止する",
+      "title": "コンパイルエラーの扱い"
+    },
+    "fromScratch": "最初から再コンパイル",
+    "mode": {
+      "fast": "高速 <note>[下書き]</note>",
+      "normal": "通常",
+      "title": "コンパイルモード"
+    },
+    "options": "コンパイルのオプション",
+    "recompile": "再コンパイル",
+    "runTooltip": "{{action}} {{engine}}（{{shortcut}}）",
+    "stop": "コンパイルを停止",
+    "syntax": {
+      "check": "コンパイル前に構文を確認する",
+      "skip": "構文を確認しない",
+      "title": "構文チェック"
+    },
+    "texRootBroken": "{{file}} の % !TEX root が存在しないファイル（{{target}}）を指しています",
+    "texRootLabel": "TEX root",
+    "texRootName": "root: {{name}}",
+    "texRootOverride": "root: {{path}}（{{file}} の % !TEX root による指定）"
+  },
+  "datePicker": {
+    "placeholder": "日付を選択"
+  },
+  "devMenu": {
+    "inspect": "検証",
+    "refreshApp": "アプリを更新"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "AI アシスタントを隠す",
+      "show": "AI アシスタントを表示"
+    },
+    "browser": {
+      "close": "ブラウザを閉じる（{{shortcut}}）",
+      "open": "ブラウザを開く（{{shortcut}}）"
+    },
+    "settings": "設定",
+    "sidebar": {
+      "hide": "サイドバーを隠す（{{shortcut}}）",
+      "show": "サイドバーを表示（{{shortcut}}）"
+    },
+    "terminal": {
+      "hide": "ターミナルを隠す（{{shortcut}}）",
+      "show": "ターミナルを表示（{{shortcut}}）"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "この失敗は、同梱の Tectonic エンジンで知られている制約に当てはまります。このプロジェクトのコンパイル方法を選んでください。選択はプロジェクトに保存されるため、共同作業者にも同じ設定が適用されます。",
+    "descriptionImportScan": "読み込み時のスキャンで、同梱の Tectonic エンジンでは扱えない機能が見つかりました。このプロジェクトのコンパイル方法を選んでください。選択はプロジェクトに保存されるため、共同作業者にも同じ設定が適用されます。",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "latexmk 経由の pdfLaTeX"
+    },
+    "recommended": "おすすめ",
+    "shellEscape": {
+      "label": "このコンピュータで外部コマンドを許可する",
+      "needed": "このプロジェクトは任意の外部コマンドを必要とする機能を使っています。許可するまでブロックされたままです。",
+      "warning": "minted や一部の PythonTeX 文書に必要です。LaTeX はあなたの権限でプログラムを実行できるため、信頼できるプロジェクトでのみ有効にしてください。EPS 変換など TeX Live 自身の補助ツールは、これがなくても動きます。"
+    },
+    "shellEscapeAllowed": "このコンピュータでは、このプロジェクトの外部コマンドが許可されています。",
+    "shellEscapeBlocked": "このプロジェクトでは任意の外部コマンドがブロックされています。EPS 変換など TeX Live 自身の補助ツールは引き続き動きます。",
+    "shellEscapeFailed": "外部コマンドの許可設定を更新できませんでした。",
+    "switchFailed": "コンパイルエンジンを切り替えられませんでした。",
+    "switched": "このプロジェクトは {{engine}} でコンパイルするようになりました。",
+    "switchedAfterInstall": "TinyTeX をインストールしました。このプロジェクトは {{engine}} でコンパイルするようになりました。",
+    "systemTex": {
+      "alreadySelected": "すでに選択済み",
+      "found": "このマシンに TeX ディストリビューションが見つかりました。システム TeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。任意の外部コマンドは、下で許可しない限りブロックされたままです。TeX Live は EPS 変換など自身の許可リストにある補助ツールを引き続き実行します。",
+      "missing": "このマシンに TeX ディストリビューション（MacTeX、TeX Live、MiKTeX、TinyTeX）が見つかりませんでした。",
+      "switchPdflatex": "pdfLaTeX に切り替えて再コンパイル",
+      "title": "システムの LaTeX を使う（latexmk）",
+      "titlePdflatex": "システムの LaTeX で pdfLaTeX を使う（latexmk）",
+      "use": "システムの LaTeX を使う"
+    },
+    "tectonic": {
+      "description": "設定不要で、オフラインでも動きます。素の LaTeX とよく使われるパッケージなら問題ありません。",
+      "keep": "Tectonic のままにする",
+      "switchBack": "Tectonic に戻す",
+      "title": "Tectonic を使い続ける",
+      "withFailures_other": "設定不要で、オフラインでも動きます。{{features}} は引き続き失敗する見込みです。"
+    },
+    "tinytex": {
+      "description": "コンパクトな TeX Live をホームフォルダにインストールします。管理者権限は不要です。最初のダウンロードは約 250 MB です。論文誌のテンプレートがあとからパッケージを追加で取得し、合計でおよそ 1 GB になることがあります。",
+      "download": "TinyTeX をダウンロードして使う",
+      "resume": "ダウンロードを再開（{{megabytes}} MB 完了）",
+      "title": "TinyTeX をダウンロード"
+    },
+    "titleCompileFailure": "このコンパイルには組み込みエンジン以上の機能が必要です",
+    "titleImportScan": "このプロジェクトには組み込みエンジン以上の機能が必要です"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "診断情報をコピー",
+    "description": "Oleafly で予期しないエラーが発生し、この画面を表示できませんでした。プロジェクトのファイルはディスク上に残っています。診断の詳細は下に表示されています。",
+    "halted": "停止",
+    "logSaved": "ログを <path>{{path}}</path> に保存しました",
+    "reload": "Oleafly を再読み込み",
+    "report": "GitHub に報告",
+    "runtimeError": "実行時エラー",
+    "specimen": {
+      "diagramLabel": "装飾用の標本図",
+      "layer": "LAYER {{current}}/{{total}}",
+      "specimen": "SPECIMEN:",
+      "transversePlane": "TRANSVERSE PLANE",
+      "veinDensity": "VEIN DENSITY:"
+    },
+    "specimenViewer": "標本ビューア",
+    "stackTrace": "スタックトレース",
+    "surfaceCrashed": "{{surface}}がクラッシュしました。",
+    "surfaces": {
+      "aiAssistant": "AI アシスタント",
+      "assistantPanel": "アシスタントパネル",
+      "chat": "チャット",
+      "diagramComposer": "ダイアグラムコンポーザー",
+      "editor": "エディタ",
+      "pdfPreview": "PDF プレビュー",
+      "researchAssistant": "リサーチアシスタント",
+      "terminalDock": "ターミナルドック"
+    },
+    "title": "問題が発生しました"
+  },
+  "githubMenu": {
+    "accountAriaLabel": "GitHub: {{login}}",
+    "actions": "GitHub の操作",
+    "connect": "GitHub に接続…",
+    "connectedAs": "@{{login}} として接続中",
+    "copyRepositoryLink": "リポジトリのリンクをコピー",
+    "openInGithub": "GitHub で開く",
+    "pushHint": "GitHub にプッシュすると使えるようになります",
+    "settings": "GitHub の設定",
+    "tooltip": "GitHub"
+  },
+  "home": {
+    "ariaLabel": "ホーム",
+    "label": "ホーム",
+    "title": "ライブラリに戻る",
+    "tooltip": "プロジェクトライブラリに戻ります"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "ログを消去",
+    "clearLogAriaLabel": "MCP のログを消去",
+    "live": "稼働中",
+    "off": "停止中",
+    "openSettings": "MCP の設定を開く",
+    "serverOff": "MCP サーバーは停止しています。",
+    "timeWithDuration": "{{time}} · {{ms}}ms",
+    "toolsTitle": "MCP 経由で使えるツール",
+    "waiting": "外部エージェントを待っています…",
+    "waitingHint": "MCP 経由で呼び出されたツール（Claude、Cursor、Grok など）が、ここにリアルタイムで表示されます。"
+  },
+  "omnibar": {
+    "bookmarked": "ブックマーク済み",
+    "createProject": "新しいプロジェクトを作成",
+    "groups": {
+      "action": "操作",
+      "documents": "文書",
+      "references": "参考文献"
+    },
+    "label": "検索",
+    "noMatches": "一致するものが見つかりません。",
+    "openReferences": "このプロジェクトの参考文献を開く",
+    "placeholder": "プロジェクトや文書を検索、または / でコマンド…",
+    "placeholderDocuments": "文書の中を検索…",
+    "placeholderProjects": "名前、エンジン、種類、日付、メタデータでプロジェクトを検索…",
+    "referencesNeedProject": "参考文献を見るには、先にプロジェクトを開いてください。",
+    "slash": {
+      "create": "テンプレートギャラリーを開く",
+      "docs": "文書の中を検索する",
+      "projects": "プロジェクトを検索する",
+      "refs": "このプロジェクトの参考文献を開く",
+      "settings": "設定を開く",
+      "theme": "配色テーマを切り替える"
+    },
+    "tryCommand": "コマンドを試す",
+    "unknownCommand": "不明なコマンドです。/ を入力すると使えるコマンドが表示されます。"
+  },
+  "projectSearch": {
+    "hint": "このプロジェクトのファイル全体を検索します。",
+    "noResults": "結果がありません。",
+    "placeholder": "プロジェクト内を検索…",
+    "title": "検索"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} 未保存の変更は開いたまま保持されています。このまま問題を直すか、そのまま終了して変更を失うかを選んでください。",
+      "descriptionRestart": "{{reason}} 未保存の変更は開いたまま保持されています。このまま問題を直すか、そのまま再起動して変更を失うかを選んでください。",
+      "quitAnyway": "そのまま終了",
+      "restartAnyway": "そのまま再起動",
+      "stay": "このまま続ける",
+      "title": "保存できないファイルがあります"
+    },
+    "flushTimeout": "保存が 5 秒以内に終わりませんでした。",
+    "installing": {
+      "description": "ファイルを保存し、アップデートをインストールしています。準備ができると Oleafly が再起動します。",
+      "title": "再起動の準備中"
+    }
+  },
+  "rail": {
+    "betaTab": "{{label}}（ベータ）",
+    "files": "エクスプローラー",
+    "mcp": "MCP の動作状況",
+    "pendingBadge_other": "保留中 {{count}} 件",
+    "preflight": "プリフライトチェック",
+    "references": "参考文献と引用",
+    "research": "リサーチワークスペース",
+    "search": "プロジェクトを検索",
+    "sourceControl": "ソース管理",
+    "withShortcut": "{{label}}（{{shortcut}}）"
+  },
+  "renameDialog": {
+    "close": "名前変更のダイアログを閉じる",
+    "collision": "「{{name}}」という名前の{{kind}}はすでに存在します。",
+    "commit": "名前の変更を確定",
+    "newName": "新しい名前",
+    "planFiles_other": "{{count}} 件のファイル",
+    "planSummary_other": "$t(shell:renameDialog.planFiles, { \"count\": {{files}} }) にまたがる {{count}} 件の編集",
+    "symbolKinds": {
+      "atuse": "参照",
+      "bibentry": "参考文献の項目",
+      "cite": "引用",
+      "environment": "環境",
+      "envuse": "環境の使用箇所",
+      "file": "ファイル",
+      "glossary": "用語集の項目",
+      "glossaryuse": "用語集の使用箇所",
+      "inputedge": "インクルード",
+      "label": "ラベル",
+      "macro": "マクロ",
+      "macrouse": "マクロの使用箇所",
+      "ref": "参照",
+      "section": "セクション",
+      "theorem": "定理"
+    },
+    "title": "<symbol>{{name}}</symbol> の名前を変更"
+  },
+  "settings": {
+    "close": "設定を閉じる",
+    "data": {
+      "cloud": {
+        "comingSoon": "近日対応",
+        "description": "Git のリモートを設定しなくても、複数の端末でプロジェクトを同期できるようになります。通信はすべて端末間で暗号化されるため、転送中も内容は守られます。正となるのは、これまでどおりローカルのプロジェクトフォルダです。",
+        "title": "クラウド同期"
+      },
+      "danger": {
+        "closeFailed": "開いているプロジェクトを安全に閉じられませんでした。",
+        "confirmDeleteAllAction": "すべてのプロジェクトを削除",
+        "confirmDeleteAllDescription": "現在のプロジェクトはすべて、ファイルと Git の履歴ごとごみ箱に移動します。あとから 1 件ずつ復元できます。",
+        "confirmDeleteAllTitle_other": "{{count}} 件のプロジェクトをすべて削除しますか？",
+        "deleteAll": "すべてのプロジェクトを削除",
+        "deleteAllAction": "すべて削除",
+        "deleteAllDescription": "すべてのプロジェクトをごみ箱に移動します。完全に削除されるものはありません。",
+        "deleting": "削除中…",
+        "moveFailed": "プロジェクトをごみ箱に移動できませんでした。",
+        "movePartial": "{{count}} 件のプロジェクトを移動しましたが、処理を完了できませんでした。",
+        "movedCount_other": "{{count}} 件のプロジェクトをごみ箱に移動しました。",
+        "title": "危険な操作"
+      },
+      "githubHint": "プロジェクトをバックアップしたり端末間で同期したりするには、GitHub に接続してから、ソース管理で<push>プッシュ</push> / <pull>プル</pull>を使います。<setup>GitHub を設定 →</setup>",
+      "localFirst": "Oleafly はローカルファーストです。すべてのプロジェクトはあなたのディスク上にあります:",
+      "plainFolders": "各プロジェクトはただのフォルダです。Git の履歴は任意で、GitHub にプッシュしない限り、何もこのマシンの外には出ません。",
+      "recycleBin": {
+        "clearAll": "すべて削除",
+        "clearFailed": "ごみ箱を空にできませんでした。",
+        "clearPartial": "{{count}} 件のプロジェクトを完全に削除しましたが、ごみ箱全体は空にできませんでした。",
+        "clearedCount_other": "{{count}} 件のプロジェクトを完全に削除しました。",
+        "clearing": "削除中…",
+        "confirmClearAction": "ごみ箱を空にする",
+        "confirmClearDescription": "現在ごみ箱にあるすべてのプロジェクトが、ファイルと Git の履歴ごと完全に削除されます。この操作は取り消せません。",
+        "confirmClearTitle_other": "ごみ箱から {{count}} 件のプロジェクトを削除しますか？",
+        "confirmDeleteAction": "完全に削除",
+        "confirmDeleteDescription": "プロジェクトとそのファイル、Git の履歴をごみ箱から取り除きます。この操作は取り消せません。",
+        "confirmDeleteTitle": "「{{name}}」を完全に削除しますか？",
+        "deleteFailed": "「{{name}}」を完全に削除できませんでした。",
+        "deleteOne": "{{name}} を完全に削除",
+        "deleted": "「{{name}}」を完全に削除しました。",
+        "deletedAt": "削除日 {{date}} · {{size}}",
+        "empty": "ごみ箱は空です。",
+        "loading": "ごみ箱を読み込み中…",
+        "restore": "復元",
+        "restoreFailed": "「{{name}}」を復元できませんでした。",
+        "restored": "「{{name}}」を復元しました。",
+        "size": "{{size}} · 自動削除は行いません",
+        "subtitle": "削除したプロジェクトは、取り除くまでここに残ります",
+        "title": "ごみ箱"
+      },
+      "reveal": "Finder でプロジェクトフォルダを表示",
+      "storage": {
+        "calculating": "使用容量を計算中…",
+        "desktopOnly": "保存領域の詳細はデスクトップアプリで確認できます。",
+        "error": "保存領域の詳細を計算できませんでした。",
+        "refresh": "使用容量を更新",
+        "stats": {
+          "appData": "アプリのデータ",
+          "appDataDetail": "アセットと設定",
+          "buildCache": "ビルドキャッシュ",
+          "buildCacheDetail": "生成された出力",
+          "files": "ファイル",
+          "folders_other": "{{count}} 件のフォルダ",
+          "gitHistory": "Git の履歴",
+          "gitHistoryDetail": "ローカルのバージョン",
+          "images": "画像",
+          "pdfs": "PDF",
+          "projectFiles": "プロジェクトのファイル",
+          "projectFilesDetail": "ソースとメタデータ",
+          "projects": "プロジェクト"
+        },
+        "subtitle": "プロジェクト、プレビュー、履歴、アプリのデータ",
+        "title": "使用容量",
+        "total": "Oleafly のデータフォルダ全体で {{size}}",
+        "unreadable_other": "アクセスできない項目 {{count}} 件を除外しました。"
+      },
+      "tabs": {
+        "cloud": "クラウド同期",
+        "local": "ローカルの保存領域"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Oleafly ツールのギャラリーと個々のツール（PDF の読み込み、数式、表、BibTeX、研究室と文献の検索、締め切り）、およびそのスラッシュコマンドを表示します。ベータ版のため、既定ではオフです。",
+        "label": "LaTeX ツール"
+      },
+      "visualEditor": {
+        "description": "文書エディタにビジュアルとコードの切り替えを表示します。既定ではオフで、文書はコードエディタだけで開きます。ダイアグラムは常に独自のキャンバス切り替えを持ちます。",
+        "label": "ビジュアルエディタ"
+      },
+      "warning": "これらの機能は実験的で、まだベータ版です。十分にテストされておらず、今後のリリースで変更、不具合、削除の可能性があります。開発中のものを試したい場合にのみ有効にしてください。",
+      "webBrowser": {
+        "description": "アプリ内のウェブブラウザ（ドックの切り替えとショートカット）を表示し、AI がコンピュータ操作で動かせるようにします。ベータ版のため既定ではオフで、オフのときはブラウザのボタンも AI のブラウザツールもありません。",
+        "label": "ウェブブラウザ"
+      }
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "校正に使う英語の方言",
+        "description": "選んだスペル、文法、地域ごとの慣習を適用します。",
+        "label": "英語の方言"
+      },
+      "dictionary": {
+        "ariaLabel": "校正に使うスペル辞書",
+        "description": "ソース編集とビジュアル編集のスペルチェックで使う Hunspell のパックです。同梱の 5 つ以外の言語は必要に応じてダウンロードされます。",
+        "label": "スペル辞書",
+        "downloadFailed": "{{name}} の辞書をダウンロードできませんでした。",
+        "downloaded": "{{name}} をスペルチェックで使えるようになりました。",
+        "downloading": "{{name}} をダウンロード中",
+        "offlineRefused": "オフラインモードが有効です。{{name}} をダウンロードするにはオフにしてください。"
+      },
+      "harper": {
+        "description": "LaTeX と Markdown のソース編集とビジュアル編集、および Typst のソース編集で、英語の文法と文体をチェックし、ワンクリックで修正できます。",
+        "label": "文法と文体（Harper）"
+      },
+      "offline": {
+        "description": "--only-cached でコンパイルし、ネットワーク経由でパッケージを取得しません。",
+        "label": "オフラインモード"
+      },
+      "proofreadingNote": "校正はバックグラウンドのワーカーでローカルに実行されます。Harper は選択した英語の方言に従い、スペルチェックは選択した Hunspell のパックをそのまま使います。数式、コード、コメント、引用の記法、メタデータ、URL は対象外です。",
+      "regionalism": {
+        "description": "選択した英語の方言に合わない語を指摘します。そうした語を製品名やコード名として使う場合はオフにしてください。",
+        "label": "地域表現の指摘"
+      },
+      "spellcheck": {
+        "description": "選択したオフラインの Hunspell 辞書でつづりの誤りに下線を引き、ソース編集とビジュアル編集で置き換えの候補を示します。",
+        "label": "スペルチェック"
+      },
+      "wordChoice": {
+        "description": "別の語を提案します（例:「too」と「to」）。スペルと文法だけにしたい場合はオフにしてください。",
+        "label": "語の選び方の提案"
+      }
+    },
+    "help": {
+      "community": "コミュニティ",
+      "copyInfo": "情報をコピー",
+      "forksTitle": "GitHub のフォーク",
+      "forks_other": "GitHub のフォーク {{count}} 件",
+      "logoAlt": "Oleafly",
+      "project": "プロジェクト",
+      "resources": {
+        "documentation": "ドキュメント",
+        "learn": "学ぶ",
+        "license": "ライセンス",
+        "reportCrash": "クラッシュを報告（ログを添付）",
+        "startTour": "ツアーを開始",
+        "whatsNew": "新着情報"
+      },
+      "resourcesTitle": "リソース",
+      "starRepo": "GitHub でスターを付けて見てみる",
+      "starsTitle": "GitHub のスター",
+      "stars_other": "GitHub のスター {{count}} 件",
+      "support": "Oleafly が役に立っているなら、<star>GitHub でこのプロジェクトにスターを付けて</star>いただけると嬉しいです。その小さなクリックが、より多くの研究者に届けることと、開発を続けることにつながります。",
+      "supportAriaLabel": "Oleafly を応援する",
+      "tagline": "執筆、コンパイル、校正、引用の管理、PDF の確認、Git での変更の追跡ができ、好きな AI モデルを使えます。それらがすべて 1 つのオープンソースのワークスペースにあります。",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "AI アシスタント",
+      "appearance": "外観",
+      "data": "データの保存",
+      "dictionary": "辞書",
+      "downloads": "ダウンロード",
+      "engine": "エンジン",
+      "experimentation": "実験的な機能",
+      "general": "一般",
+      "help": "ヘルプと情報",
+      "integrations": "連携",
+      "shortcuts": "キーボードショートカット"
+    },
+    "sectionsNav": "設定のセクション",
+    "title": "設定",
+    "tours": {
+      "confirmDescription": "残りのツアーをすべて閉じ、ツアーガイドをオフにします。一般設定から再び有効にすれば、最初からやり直せます。",
+      "disableConfirm": "ツアーを無効にする",
+      "disableTitle": "ツアーガイドを無効にしますか？",
+      "dismissAll": "すべてのツアーを閉じる",
+      "dismissAllConfirm": "すべて閉じる",
+      "dismissAllTitle": "すべてのツアーを閉じますか？",
+      "enable": "ツアーガイドを有効にする",
+      "enableAll": "すべてのツアーガイドを有効にする",
+      "enableOne": "{{name}} のツアーを有効にする",
+      "progress": "ツアーの進み具合",
+      "progressDetail": "完了 {{completed}} 件、閉じた {{dismissed}} 件。",
+      "status": {
+        "completed": "完了",
+        "dismissed": "閉じた",
+        "pending": "未開始"
+      },
+      "summary": "完了 {{completed}} 件 · 閉じた {{dismissed}} 件 · 全 {{total}} 件"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "マージを中止",
+    "abortMergeDescription": "ここまでの衝突の解決は破棄され、ファイルはマージを始める前の状態に戻ります。",
+    "abortMergeTitle": "このマージを中止しますか？",
+    "aheadBehind": "origin/{{branch}} より {{ahead}} 件先行 · {{behind}} 件遅れ",
+    "branch": "ブランチ",
+    "branchName": "ブランチ名",
+    "changeRepo": "リポジトリを変更",
+    "changes": "変更",
+    "checking": "ソース管理を確認中…",
+    "clean": "変更はありません。作業ツリーはきれいです。",
+    "commit": "コミット",
+    "commitActions": "コミットのその他の操作",
+    "commitAmend": "直前のコミットを修正",
+    "amendedKeptMessage": "直前のコミットを修正し、メッセージはそのままにしました。",
+    "commitAndPush": "コミットしてプッシュ",
+    "commitAndSync": "コミットして同期",
+    "commitDescription": "コミットの説明",
+    "commitDescriptionPlaceholder": "説明（任意）",
+    "commitTitle": "コミットのタイトル",
+    "committed": "コミットしました:「{{subject}}」",
+    "committedRemoteFailed": "ローカルにコミットしましたが、{{step}} に失敗しました: {{reason}}",
+    "committedWithConflicts": "ローカルにコミットしました。プッシュする前に、プルで生じた衝突を解決してください。",
+    "confirmDiscard": "破棄を確認",
+    "confirmDiscardTitle": "このファイルの変更をすべて破棄",
+    "continueMerge": "マージを完了",
+    "copyCommitId": "コミット ID をコピー",
+    "create": "作成",
+    "createBranch": "ブランチを作成…",
+    "credentialRemoved": "この Git のリモートから、保存された資格情報を削除しました。",
+    "credentialWarning": "以前のバージョンの Oleafly が、この Git のリモートに資格情報を保存していました。",
+    "discard": "変更を破棄",
+    "discardFor": "{{path}} の変更を破棄",
+    "discardAll": "すべての変更を破棄",
+    "discardChangesDescription": "作業ツリーのこれらの変更は失われます。この操作は取り消せません。",
+    "discardChangesTitle": "選択した変更を破棄しますか？",
+    "discardTitle": "変更を破棄（最後のバージョンに戻す）",
+    "enterTitle": "コミットのタイトルを入力",
+    "finishMergeToCommit": "コミットする前にマージを完了してください。",
+    "fetch": "フェッチ",
+    "graph": "グラフ",
+    "commitCount_other": "{{count}} 件のコミット",
+    "initialize": "リポジトリを初期化",
+    "initialized": "{{branch}} で Git を初期化しました。",
+    "linkCopied": "GitHub のリンクをコピーしました",
+    "markResolved": "解決済みにする",
+    "mergeNeedsAttention": "マージの衝突を解決してください",
+    "moreActions": "ソース管理のその他の操作",
+    "noHistory": "コミットはまだありません",
+    "noProject": "ソース管理を使うには、プロジェクトを開いてください。",
+    "noStagedChanges": "ステージされた変更はありません",
+    "notInitialized": "ソース管理は初期化されていません",
+    "notInitializedHint": "Oleafly が自動で Git リポジトリにコミットすることはありません。",
+    "nothingStaged": "コミットするものがステージされていません。",
+    "openAllChanges": "すべての変更を開く",
+    "openFile": "ファイルを開く",
+    "openFileFor": "{{path}} を開く",
+    "popStash": "最新のスタッシュを適用",
+    "publish": "GitHub に公開",
+    "published": "{{url}} に公開しました",
+    "pull": "origin からプル",
+    "pullShort": "プル",
+    "push": "コミットして origin にプッシュ",
+    "pushShort": "プッシュ",
+    "pushSkippedNoRemote": "⚠ プッシュをスキップしました - 下でリモート origin が設定されていません。",
+    "pushSkippedNoToken": "⚠ プッシュをスキップしました - GitHub のトークンがありません（設定 → GitHub）。",
+    "refresh": "更新",
+    "remote": "リモート",
+    "remoteHint": "新しいリポジトリを作るか、既存のものをこのプロジェクトのリモートとしてリンクしてから、プッシュしてください。",
+    "removeCredential": "保存された資格情報を削除",
+    "restoreCommit": "このバージョンを復元",
+    "restoreCommitDescription": "追跡されているプロジェクトのファイルをすべてこのバージョンで置き換え、あとから追加されたファイルを削除します。ブランチは現在のコミットのままです。",
+    "restoreCommitTitle": "このバージョンを復元しますか？",
+    "sectionActions": "{{section}} のその他の操作",
+    "stage": "ステージ",
+    "stageFor": "{{path}} をステージ",
+    "stageAll": "すべてステージ",
+    "stageFirst": "先にファイルをステージしてください",
+    "stageToCommit": "コミットするファイルをステージしてください。",
+    "staged": "ステージ済み",
+    "stagedChanges": "ステージされた変更",
+    "stagedChangeCount_other": "ステージされた変更 {{count}} 件",
+    "stash": "変更をスタッシュ",
+    "stashNeedsAttention": "スタッシュの衝突を解決してください",
+    "sync": "同期",
+    "title": "ソース管理",
+    "titleRequired": "コミットのタイトルは必須です。",
+    "titleRequiredStatus": "コミットする前にタイトルを入力してください。",
+    "unlink": "リンクを解除",
+    "unlinked": "GitHub とのリンクを解除しました。",
+    "unstage": "ステージから外す",
+    "unstageFor": "{{path}} をステージから外す",
+    "unstageAll": "すべてステージから外す",
+    "workingChangeCount_other": "作業ツリーの変更 {{count}} 件",
+    "useCurrent": "現在のものを使う",
+    "useIncoming": "取り込むものを使う"
+  },
+  "splash": {
+    "initializing": "Oleafly を初期化しています",
+    "loadingCore": "Oleafly Core を読み込んでいます",
+    "loadingHarness": "Oleafly Harness を読み込んでいます",
+    "loadingParsers": "Oleafly Parsers を読み込んでいます",
+    "starting": "Oleafly を起動しています"
+  },
+  "theme": {
+    "dark": "ダーク",
+    "light": "ライト",
+    "menuLabel": "外観: {{name}}",
+    "system": "システム",
+    "useDark": "ダークテーマを使う",
+    "useLight": "ライトテーマを使う",
+    "useSystem": "システムのテーマを使う"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "そのまま終了",
+      "description": "{{phase}}。終了するとインストールは一時停止します。ダウンロード済みの部分は保持され、次に Oleafly を開いたときに再開します。",
+      "title": "TinyTeX をインストール中です"
+    },
+    "wait": {
+      "description": "{{phase}} コンパイルは順番待ちに入っており、エンジンの準備ができ次第、自動的に始まります。",
+      "title": "TinyTeX をダウンロード中です"
+    }
+  },
+  "toolbar": {
+    "cancelRename": "キャンセル（Esc）",
+    "closeForkDialog": "フォークのダイアログを閉じる",
+    "compileFigureFirst": "先に図をコンパイルしてください",
+    "compilePdfFirst": "PDF には先にコンパイルが必要です",
+    "export": "書き出し",
+    "exportComplete": "{{format}} の書き出しが完了しました",
+    "exportDocx": "Word（.docx）として書き出す",
+    "exportEpub": "EPUB（.epub）として書き出す",
+    "exportHtml": "HTML（.html）として書き出す",
+    "exportMarkdown": "Markdown（.md）として書き出す",
+    "exportPdf": "PDF として書き出す",
+    "exportPdfVector": "PDF（ベクタ画像）として書き出す",
+    "exportPngRaster": "PNG（ラスタ画像）として書き出す",
+    "exportPagePng": "ページを PNG（ラスタ画像）として書き出す",
+    "exportAs": "{{format}} として書き出す",
+    "exportPptx": "PowerPoint（.pptx）として書き出す",
+    "exportSourceZip": "ソースを書き出す（.zip）",
+    "exportTxt": "プレーンテキスト（.txt）として書き出す",
+    "exportZipFailed": "プロジェクトの zip を書き出せませんでした",
+    "exporting": ".{{format}} を書き出し中…",
+    "fork": "フォーク",
+    "forkDescription": "<name>{{name}}</name>とその Git の履歴を新しいプロジェクトにコピーします。チェックポイントは空の状態から始まります。",
+    "forkFailed": "プロジェクトをフォークできませんでした。",
+    "forkProject": "プロジェクトをフォーク",
+    "layout": "レイアウト",
+    "layouts": {
+      "aiOnly": "AI のみ",
+      "editorAi": "エディタ + AI",
+      "editorOnly": "エディタのみ",
+      "editorPreview": "エディタ + プレビュー",
+      "editorPreviewAi": "エディタ + プレビュー + AI",
+      "previewAi": "プレビュー + AI",
+      "previewOnly": "プレビューのみ"
+    },
+    "newProjectName": "新しいプロジェクト名",
+    "projectName": "プロジェクト名",
+    "projectRenamed": "プロジェクトの名前を変更しました",
+    "saveName": "保存（Enter）",
+    "saveNameAriaLabel": "名前を保存",
+    "untitledProject": "プロジェクト",
+    "versioning": "バージョン管理",
+    "viewFile": "ファイルを表示",
+    "views": {
+      "editor": "ソース表示",
+      "pdf": "PDF 表示",
+      "split": "分割表示"
+    }
+  },
+  "tour": {
+    "chooseColor": "あなたらしい色を選んでください",
+    "diagramArrow": "ダイアグラムのキャンバスを指す曲がった矢印",
+    "pointer": "ツアーのツールチップの矢印",
+    "quitConfirm": "ツアーを終了",
+    "quitDescription": "進み具合は保存されません。ツアーはあとからヘルプメニューでいつでもやり直せます。",
+    "quitTitle": "ツアーを終了しますか？",
+    "setMood": "雰囲気を決める",
+    "showMeAround": "案内してもらう",
+    "skip": "スキップ",
+    "step": "ステップ {{step}}",
+    "stepOfTotal": "{{total}} ステップ中 {{step}} ステップ目",
+    "stepOfTour": "ステップ {{step}} · {{tour}}",
+    "useAccent": "{{name}} のアクセントカラーを使う",
+    "welcomeArrow": "ようこその段落を指す手描きの矢印",
+    "welcomeBody": "最初の草稿から完成した PDF まで、1 つのオープンソースのワークスペースで論文を仕上げられます。執筆、コンパイル、校正、引用の管理、図の作成、Git でのすべての変更の確認ができ、好きな AI モデルを使えます。プロジェクトはあなたのマシンに残ります。",
+    "welcomeTitle": "Oleafly へようこそ"
+  },
+  "updateChecker": {
+    "available": "アップデートがあります · v{{version}}",
+    "check": "アップデートを確認",
+    "checkAgain": "もう一度確認",
+    "checkFailed": "アップデートを確認できませんでした。",
+    "checking": "確認中…",
+    "downloadFromGithub": "GitHub からダウンロード",
+    "downloading": "ダウンロード中… {{percent}}%",
+    "installing": "インストール中…",
+    "lastCheckFailed": "前回の自動確認に失敗しました。",
+    "lastCheckFailedAt": "前回の自動確認に失敗しました · {{when}}。",
+    "latest": "最新のバージョンを使っています",
+    "releaseNotes": "リリースノート",
+    "restartNotice": "完了するために Oleafly が再起動します。",
+    "tryAgain": "再試行",
+    "unsupported": "アップデートはデスクトップアプリが管理します。",
+    "updateNow": "今すぐ更新"
+  },
+  "updateWindow": {
+    "checking": "アップデートを確認中…",
+    "currentVersion": "現在のバージョンは v{{version}} です",
+    "error": "アップデートを完了できませんでした。しばらくしてからもう一度お試しください。",
+    "later": "あとで",
+    "looking": "最新のバージョンを探しています…",
+    "packageInstall": "パッケージからインストールされています。更新するには新しいバージョンをダウンロードしてください。",
+    "ready": "新しいバージョンをインストールできます。",
+    "upToDate": "最新の状態です",
+    "upToDateGeneric": "最新バージョンの Oleafly を使っています",
+    "upToDateHeadline": "最新の状態です",
+    "upToDateVersion": "Oleafly v{{version}} が最新バージョンです",
+    "viewRelease": "リリースを見る"
+  },
+  "windowControls": {
+    "group": "ウィンドウの操作",
+    "maximize": "最大化",
+    "minimize": "最小化",
+    "restore": "元のサイズに戻す"
+  },
+  "windows": {
+    "preview": "プレビュー: {{title}}",
+    "update": "Oleafly のアップデート"
+  }
+}

@@ -1,0 +1,274 @@
+{
+  "toolbar": {
+    "logs": "Journaux",
+    "showLogs": "Afficher les journaux de compilation",
+    "showPdf": "Afficher l'aperçu PDF",
+    "askAi": "Demander à l'IA",
+    "more": "Plus de commandes d'aperçu",
+    "duration": "{{seconds}} s",
+    "failed": "Échec",
+    "compiledWithErrors": "Compilé avec des erreurs",
+    "compiledWithWarnings": "Compilé avec des avertissements",
+    "compiledSuccessfully": "Compilé sans erreur"
+  },
+  "pageLayout": {
+    "group": "Disposition des pages",
+    "single": "Vue une page",
+    "double": "Vue deux pages"
+  },
+  "pages": {
+    "previous": "Page précédente",
+    "next": "Page suivante",
+    "number": "Numéro de page",
+    "ofTotal": "sur {{total}}",
+    "pageOfTotal": "Page {{page}} sur {{total}}"
+  },
+  "zoom": {
+    "in": "Zoom avant",
+    "out": "Zoom arrière",
+    "fitToWidth": "Ajuster à la largeur",
+    "fitToHeight": "Ajuster à la hauteur",
+    "reset": "Rétablir à 100 %",
+    "percent": "{{percent}} %",
+    "percentLabel": "Zoom à {{percent}} pour cent",
+    "menuLabel": "Zoom · {{percent}} %"
+  },
+  "outline": {
+    "open": "Plan du document",
+    "panel": "Plan du document PDF",
+    "title": "Plan du document",
+    "close": "Fermer le plan du document",
+    "loading": "Chargement du plan…",
+    "empty": "Ce PDF ne contient pas de plan de document.",
+    "externalLink": "Lien externe",
+    "externalBadge": "Lien"
+  },
+  "search": {
+    "open": "Rechercher dans le PDF",
+    "panel": "Rechercher dans ce PDF",
+    "placeholder": "Rechercher dans le document",
+    "input": "Rechercher du texte dans le PDF",
+    "previous": "Résultat précédent",
+    "next": "Résultat suivant",
+    "close": "Fermer la recherche PDF"
+  },
+  "viewer": {
+    "scrollArea": "Zone de défilement continu du PDF",
+    "crashedTitle": "L'aperçu PDF a planté",
+    "crashedDetail": "Recompilez la révision actuelle ou relancez la visionneuse.",
+    "retry": "Relancer la visionneuse",
+    "loadingLatest": "Chargement du dernier PDF compilé…",
+    "retryingLoad": "Nouvelle tentative de chargement du PDF…",
+    "retainedFailure": "{{detail}} Le dernier PDF chargé correctement est affiché à la place.",
+    "retainedFailureDetail": "Le PDF actuel n'a pas pu être chargé",
+    "invalidTitle": "PDF invalide",
+    "emptyTitle": "PDF vide",
+    "unavailableTitle": "Visionneuse PDF indisponible",
+    "loadFailedTitle": "Échec du chargement du PDF",
+    "loadFailedDetail": "Le PDF n'a pas pu être chargé."
+  },
+  "password": {
+    "title": "Mot de passe requis",
+    "label": "Mot de passe du PDF",
+    "placeholder": "Mot de passe du PDF",
+    "submit": "Déverrouiller le PDF"
+  },
+  "actions": {
+    "downloadImage": "Télécharger l'image",
+    "downloadPdf": "Télécharger le PDF",
+    "downloadDisplayedPdf": "Télécharger le PDF affiché",
+    "downloadStalePdf": "Télécharger le PDF obsolète, non à jour",
+    "saveImage": "Enregistrer l'image dans le projet",
+    "savePdf": "Enregistrer le PDF dans le projet",
+    "invert": "Inverser les couleurs de l'aperçu PDF",
+    "restoreColors": "Rétablir les couleurs",
+    "readerView": "Vue lecture",
+    "exitReaderView": "Quitter la vue lecture",
+    "rotate": "Pivoter dans le sens horaire",
+    "rotateTooltip": "Pivoter le PDF dans le sens horaire (90°). Actuellement {{degrees}}°",
+    "openWindow": "Ouvrir l'aperçu dans une nouvelle fenêtre",
+    "hideToolbar": "Masquer la barre d'outils",
+    "showToolbar": "Afficher la barre d'outils",
+    "settings": "Paramètres de l'aperçu PDF",
+    "fullscreen": "Aperçu en plein écran",
+    "exitFullscreen": "Quitter le plein écran",
+    "retryCompile": "Relancer la compilation"
+  },
+  "stale": {
+    "badge": "Obsolète",
+    "badgeLabel": "Aperçu obsolète, non à jour. Recompilez.",
+    "tooltip": "L'aperçu est obsolète par rapport aux modifications de l'éditeur. {{explanation}} {{syncTex}} Cliquez pour recompiler.",
+    "explanation": "Ce PDF ne représente pas la révision active du projet.",
+    "revisionExplanation": "Révision {{displayed}} du projet affichée. Le projet actif est à la révision {{active}}.",
+    "noIdentity": "Le PDF affiché n'a aucune identité de compilation vérifiée pour la révision active.",
+    "syncTexAvailable": "SyncTeX utilise la ligne inchangée la plus proche pour les modifications.",
+    "syncTexUnavailable": "SyncTeX exige une compilation à jour."
+  },
+  "save": {
+    "title": "Enregistrer le PDF dans le projet",
+    "imageTitle": "Enregistrer l'image dans le projet",
+    "close": "Fermer la boîte de dialogue d'enregistrement",
+    "staleDescription": "Enregistre dans l'arborescence du projet le PDF obsolète affiché. Il ne représente pas la révision active.",
+    "description": "Enregistre le PDF affiché dans l'arborescence du projet (avec un commit Git).",
+    "nameLabel": "Nom d'enregistrement dans le projet",
+    "namePlaceholder": "document.pdf",
+    "imageSaved": "Image enregistrée dans le projet.",
+    "pdfSaved": "PDF enregistré dans le projet.",
+    "failed": "Impossible d'enregistrer dans le projet."
+  },
+  "download": {
+    "pngFilter": "Image PNG",
+    "imageSaved": "Image enregistrée · {{name}}",
+    "pdfSaved": "PDF enregistré · {{name}}",
+    "showInFolder": "Afficher dans le dossier",
+    "folderUnavailable": "Le fichier a été enregistré, mais Oleafly n'a pas pu ouvrir son dossier (autorisation refusée). Vérifiez l'emplacement que vous avez choisi dans la boîte de dialogue d'enregistrement.",
+    "imageFailed": "Impossible de télécharger l'image.",
+    "imageFailedDetail": "Impossible de télécharger l'image : {{detail}}",
+    "pdfFailed": "Impossible de télécharger le PDF.",
+    "pdfFailedDetail": "Impossible de télécharger le PDF : {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "La compilation PDF est actuellement indisponible.",
+    "compileFailed": "La compilation a échoué. Ouvrez l'onglet Journaux pour voir ce qui s'est passé."
+  },
+  "a11y": {
+    "stale": "PDF obsolète, non à jour. {{explanation}}",
+    "page": "Page {{page}} sur {{total}} du PDF.",
+    "searchResult": "Résultat {{current}} sur {{total}}."
+  },
+  "startup": {
+    "headingReady": "Aperçu PDF prêt",
+    "headingPreparing": "Préparation de l'aperçu PDF",
+    "headingAttention": "Le démarrage demande votre attention",
+    "progressLabel": "Démarrage du document : {{completed}} étapes sur {{total}} terminées ou ignorées",
+    "doneCount": "{{completed}}/{{total}} terminées",
+    "metaRunning": "{{stages}} en cours",
+    "metaQueued": "{{stages}} en attente",
+    "metaFailed": "{{stages}} en échec",
+    "compileNow": "Compiler maintenant",
+    "noProject": "Aucun projet actif",
+    "waitingForEngine": "En attente du moteur de document",
+    "orPress": "ou appuyez sur <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "terminé",
+      "running": "en cours",
+      "queued": "en attente",
+      "skipped": "ignoré",
+      "failed": "échec"
+    },
+    "language": {
+      "serviceLabel": "Service de langage",
+      "analysisLabel": "Analyse de langage",
+      "openingFiles": "Ouverture des fichiers du projet",
+      "starting": "Démarrage du service de langage",
+      "restarting": "Redémarrage du service de langage",
+      "installing": "Installation du service de langage",
+      "connected": "Démarré et connecté",
+      "ready": "Prêt",
+      "localOnly": "Non requis. Analyse locale utilisée.",
+      "notApplicable": "Sans objet pour ce projet",
+      "unavailable": "Indisponible. L'analyse locale reste disponible.",
+      "waitingToStart": "En attente de démarrage",
+      "waitingForFiles": "En attente des fichiers du projet",
+      "syncing": "Synchronisation des fichiers actuels du projet",
+      "analyzing": "Analyse de la structure du projet",
+      "analyzed": "Révision actuelle du projet analysée",
+      "partial": "Une analyse partielle exploitable est prête",
+      "needsAttention": "L'analyse demande votre attention",
+      "notAvailable": "Non disponible pour ce projet",
+      "queued": "En attente pour la révision actuelle",
+      "waitingForService": "En attente du service de langage"
+    },
+    "compile": {
+      "label": "Compilation",
+      "saving": "Enregistrement des modifications en cours",
+      "downloading": "Téléchargement des paquets LaTeX requis",
+      "producing": "Production et vérification de la sortie PDF",
+      "unavailable": "Compilateur indisponible",
+      "failed": "La compilation a échoué. Ouvrez les Journaux pour en savoir plus.",
+      "accepted": "Sortie vérifiée acceptée",
+      "waiting": "En attente de compilation de la révision actuelle"
+    },
+    "render": {
+      "label": "Rendu du PDF",
+      "preparing": "Préparation des pages, du texte et des liens",
+      "reading": "Lecture du PDF · {{percent}} %",
+      "passwordRequired": "Mot de passe requis",
+      "needsAttention": "Le rendu du PDF demande votre attention",
+      "ready": "Aperçu prêt",
+      "waitingForRenderer": "En attente du moteur de rendu PDF vérifié",
+      "waitingForCompile": "En attente d'une sortie de compilation vérifiée"
+    }
+  },
+  "window": {
+    "fitWidth": "Ajuster la largeur",
+    "fitHeight": "Ajuster à la hauteur",
+    "invert": "Inverser les couleurs",
+    "invertLabel": "Inverser les couleurs du PDF",
+    "rotateLabel": "Pivoter le PDF dans le sens horaire",
+    "staleHeading": "Obsolète · aperçu non à jour",
+    "staleCompiling": "Une révision plus récente du projet est en cours de compilation. Voici le dernier PDF vérifié pour la révision {{revision}}.",
+    "staleUnknownRevision": "inconnue",
+    "staleCompileFailed": "{{detail}} Le dernier PDF vérifié reste visible.",
+    "staleCompileFailedDetail": "La compilation plus récente n'a pas produit de PDF exploitable",
+    "staleIdentity": "Ce PDF ne représente pas la dernière identité de compilation acceptée.",
+    "crashedDetail": "Relancez cette visionneuse ou compilez à nouveau depuis la fenêtre principale.",
+    "compilingTitle": "Compilation du PDF",
+    "compileFailedTitle": "Échec de la compilation",
+    "compileUnavailableTitle": "Compilation indisponible",
+    "artifactUnavailableTitle": "PDF indisponible",
+    "noVerifiedTitle": "Aucun PDF vérifié",
+    "compilingDetail": "Le PDF vérifié apparaîtra une fois la compilation terminée.",
+    "noVerifiedDetail": "Compilez le projet dans la fenêtre principale. Cette fenêtre n'affiche que des sorties dont l'identité de compilation est vérifiée.",
+    "loadingTitle": "Chargement du PDF",
+    "loadingVerified": "Chargement du PDF vérifié…",
+    "restoringLast": "Restauration du dernier PDF chargé correctement…",
+    "retryingLoad": "Nouvelle tentative de chargement du PDF…",
+    "unlocking": "Déverrouillage du PDF…",
+    "rotating": "Rotation du PDF…",
+    "retainedFailureDetail": "Le dernier PDF n'a pas pu être chargé",
+    "artifactFailure": "Le PDF compilé n'a pas pu être vérifié ni lu. Le dernier PDF chargé correctement est conservé lorsqu'il est disponible.",
+    "downloadStarted": "Téléchargement du PDF lancé.",
+    "downloadSaved": "PDF enregistré.",
+    "downloadFailed": "Le PDF affiché n'a pas pu être enregistré."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "Le mot de passe du PDF a été refusé.",
+      "passwordRequired": "Ce PDF est protégé par un mot de passe.",
+      "invalid": "La sortie compilée n'est pas un PDF valide. Recompilez ou examinez le journal de compilation.",
+      "unavailable": "Le moteur de rendu PDF est indisponible dans cette fenêtre. Réessayez après avoir restauré la fenêtre ou redémarré l'application.",
+      "generic": "Le PDF n'a pas pu être chargé. Recompilez la révision actuelle et réessayez.",
+      "empty": "Le PDF compilé est vide.",
+      "firstPage": "Le PDF s'est ouvert, mais sa première page n'a pas pu être affichée."
+    },
+    "link": {
+      "blockedScheme": "Ce lien PDF utilise un schéma d'URL bloqué."
+    },
+    "search": {
+      "failed": "La recherche n'a pas pu lire toutes les pages. Réessayez après avoir rechargé le PDF."
+    },
+    "outline": {
+      "empty": "Ce PDF ne contient pas de plan de document.",
+      "failed": "Le plan du PDF n'a pas pu être chargé.",
+      "destinationUnavailable": "Cette destination du plan est indisponible.",
+      "blockedScheme": "Ce lien utilise un schéma d'URL bloqué.",
+      "noDestination": "Cet élément du plan n'a aucune destination.",
+      "untitled": "Section sans titre"
+    },
+    "status": {
+      "loading": "Chargement du PDF…"
+    },
+    "a11y": {
+      "document": "Aperçu du document PDF",
+      "page": "Page {{page}} sur {{total}} du PDF",
+      "textLayer": "Texte sélectionnable de la page {{page}} du PDF"
+    },
+    "screenReader": {
+      "layer": "Vue lecteur d'écran, page {{page}} sur {{total}}",
+      "title": "Mode lecteur d'écran",
+      "pageLabel": "Page {{page}} sur {{total}}",
+      "empty": "Aucun texte lisible n'a été trouvé sur cette page."
+    }
+  }
+}

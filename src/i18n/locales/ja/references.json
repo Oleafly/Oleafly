@@ -1,0 +1,147 @@
+{
+  "citeOleafly": "この論文で Oleafly を引用する",
+  "empty": {
+    "citations": {
+      "detail": "参考文献ライブラリを読み込むか、引用を追加して始めてください。",
+      "title": "引用はまだありません"
+    },
+    "symbols": {
+      "detail": "プロジェクトを書き進めると、見出し、ラベル、コマンド、環境がここに表示されます。",
+      "title": "シンボルはまだありません"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "引用を絞り込む",
+    "ariaLabelResults": "結果を絞り込む",
+    "ariaLabelSymbols": "シンボルを絞り込む",
+    "clear": "絞り込みを解除",
+    "noCitation": "「{{query}}」に一致する引用はありません。",
+    "noResult": "「{{query}}」に一致する結果はありません。",
+    "noSymbol": "「{{query}}」に一致するシンボルはありません。",
+    "placeholderCitations": "キー、タイトル、著者で絞り込み…",
+    "placeholderResults": "場所で絞り込み…",
+    "placeholderSymbols": "ラベルとコマンドで絞り込み…"
+  },
+  "import": {
+    "added_other": "{{count}} 件の参考文献を {{target}} に追加しました。",
+    "addedWithDuplicates_other": "{{count}} 件の参考文献を {{target}} に追加しました。{{duplicates}} 件はすでにありました。",
+    "allDuplicates_other": "その {{count}} 件の参考文献はすでに {{target}} にあります。",
+    "defaultTarget": "参考文献ファイル",
+    "description": "文献管理ソフトや参考文献ファイルから、このプロジェクトに文献を追加します。",
+    "duplicateNote": "参考文献ファイルにすでに存在する DOI を持つ文献はスキップされます。",
+    "empty": "そのファイルに参考文献は見つかりませんでした。",
+    "endnote": {
+      "button": "XML、RIS、または BibTeX ファイルを選択",
+      "description": "EndNote XML、RIS、または BibTeX のファイルを選んでください。Oleafly がプロジェクトの参考文献ファイルに文献を追加します。",
+      "title": "EndNote、RIS、BibTeX"
+    },
+    "failed": "それらの参考文献を読み込めませんでした。",
+    "nothingNew": "{{target}} に新しく追加するものはありません。",
+    "problems_other": "読み込み中に {{count}} 件の問題がありました。{{details}}",
+    "readFailed": "そのファイルを読み取れませんでした。",
+    "title": "参考文献ライブラリの読み込み",
+    "unrecognized": "認識できないファイル形式です: {{name}}",
+    "zotero": {
+      "button": "Zotero RDF ファイルを選択",
+      "description": "Zotero で「ファイル」→「ライブラリをエクスポート」→「Zotero RDF」を選びます。書き出したファイルを選んでください。",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "部分的な結果です。形式が不正なファイルや読み取れないファイルがあると、一部の箇所が抜けることがあります。",
+    "stale": "更新中です。以前のリビジョンの引用、シンボル、範囲は表示されていません。"
+  },
+  "panel": {
+    "ariaLabel": "参考文献（Shift-F12）",
+    "clearQuery": "参照クエリを消去",
+    "cleanLibrary": "参考文献ライブラリを整理",
+    "importAriaLabel": "参考文献を読み込む",
+    "issues_other": "参照または引用の問題が {{count}} 件",
+    "tabWithCount": "{{label}}、{{count}}",
+    "title": "参考文献",
+    "viewTabs": "参考文献パネルの表示"
+  },
+  "cleanLibrary": {
+    "title": "参考文献ライブラリの整理",
+    "description": "ファイルを変更する前に、引用キーと重複する文献を確認します。",
+    "library": "参考文献ライブラリ",
+    "entryCount_other": "{{count}} 件",
+    "footer": "プレビューすると開いているファイルが保存されます。適用時には、ファイルがプレビューと一致しているか確認し、元のファイルをバックアップします。",
+    "noBib": "このプロジェクトには整理できる .bib ファイルがありません。",
+    "entriesKept": "{{total}} 件中 {{kept}} 件が残ります。",
+    "changes": "変更点と注意",
+    "noChanges": "適用するファイルの変更はありません。",
+    "filesToUpdate": "更新するファイル: {{files}}",
+    "none": "なし",
+    "introSafeChanges": "引用キーは統一されます。DOI が重複する文献は、すべての情報を保持できる場合のみ削除されます。",
+    "introReview": "タイトルが似ているものや情報が食い違うものは、確認のためライブラリに残します。",
+    "preview": "プレビュー",
+    "reviewTitle": "適用する前に確認",
+    "reviewBody": "変更をプレビューして、どの文献と引用が更新されるか確認してください。",
+    "statusAttention": "確認が必要",
+    "statusWorking": "処理中…",
+    "statusPreviewReady": "プレビューの準備ができました",
+    "statusReady": "プレビューできます",
+    "refreshPreview": "プレビューを更新",
+    "previewChanges": "変更をプレビュー",
+    "apply": "適用して引用を書き換える",
+    "truncated": "プレビューには各バージョンの先頭 500 行を表示します。",
+    "actionRenamed": "{{old}} を {{new}} に変更しました",
+    "actionDuplicate": "{{removed}} を {{kept}} の重複として削除しました（{{by}} で一致）",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "整理したファイルを再読み込みできませんでした。編集する前にプロジェクトを開き直してください。",
+    "cleaned": "ライブラリを整理しました。{{total}} 件中 {{kept}} 件を残しました。",
+    "cleanedWithBackup": "ライブラリを整理しました。{{total}} 件中 {{kept}} 件を残しました。元のファイルは {{path}} に保存されています。"
+  },
+  "query": {
+    "expired": {
+      "detail": "このクエリの後にプロジェクトが変更されました。現在のソース範囲を使うには、参照の検索をもう一度実行してください。",
+      "title": "参照の結果は期限切れです"
+    },
+    "noLocations": {
+      "detail": "このリビジョンにシンボルは存在しますが、一致する定義や出現箇所がありません。",
+      "title": "該当する箇所が見つかりません"
+    },
+    "none": {
+      "detail": "ラベル、引用、コマンド、環境にカーソルを置いて Shift-F12 を押してください。",
+      "title": "参照クエリがありません"
+    }
+  },
+  "tabs": {
+    "citations": "引用",
+    "results": "参照",
+    "symbols": "シンボル"
+  },
+  "trees": {
+    "citations": "プロジェクトの引用",
+    "noCitations": "参考文献の項目も引用の使用箇所も見つかりませんでした。",
+    "noSymbols": "プロジェクトで定義されたシンボルが見つかりませんでした。",
+    "symbols": "プロジェクトのシンボル"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "最新のプロジェクトリビジョンを解析できませんでした。ソースファイルは変更されていません。",
+      "title": "プロジェクトの解析に失敗しました"
+    },
+    "indexing": {
+      "detail": "現在のプロジェクトリビジョンの準備ができると、参照と引用が表示されます。",
+      "title": "プロジェクトインテリジェンスを索引付けしています"
+    },
+    "noProject": {
+      "detail": "引用、シンボル、ファイルをまたぐ参照を調べるには、ドキュメントプロジェクトを開いてください。",
+      "title": "プロジェクトが開かれていません"
+    },
+    "offline": {
+      "detail": "このワークスペースでは現在、参照と引用を確認できません。",
+      "title": "解析サービスを利用できません"
+    },
+    "unsupported": {
+      "detail": "現在のプロジェクトは対応しているドキュメントエンジンを使っていません。",
+      "title": "プロジェクトインテリジェンスを利用できません"
+    },
+    "waiting": {
+      "detail": "最新のプロジェクトリビジョンはまだ索引付けされていません。",
+      "title": "プロジェクトの解析を待っています"
+    }
+  }
+}

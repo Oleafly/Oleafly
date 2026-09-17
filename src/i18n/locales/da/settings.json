@@ -1,0 +1,1467 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "Programfil",
+      "bridgeSourceLabel": "Kilde",
+      "bridgeTitle": "ACP-bro",
+      "bridgeUnresolved": "Der er endnu ikke fundet en programfil til broen.",
+      "checkAgain": "Tjek igen",
+      "checkFailedTitle": "Kunne ikke tjekke de installerede agenter",
+      "checkInstalled": "Tjek installerede agenter",
+      "checkingAction": "Tjekker",
+      "checkingDescription": "Det kan tage et øjeblik, mens Oleafly tjekker kommandolinjeværktøjerne på denne computer.",
+      "checkingInstalled": "Tjekker installerede agenter",
+      "checkingTitle": "Leder efter kommandolinjeagenter",
+      "cliNotOnPath": "{{command}} blev ikke fundet i din PATH.",
+      "cliPathLabel": "Fundet i",
+      "cliTitle": "Kommandolinjeværktøj",
+      "copySignInCommand": "Kopier login-kommandoen",
+      "emptyDescription": "Installer en understøttet kommandolinjeagent, og tjek så igen.",
+      "emptyTitle": "Der blev ikke fundet nogen kommandolinjeagenter",
+      "custom": {
+        "description": "Indsæt en agentdefinition for at registrere en agent, der ikke følger med Oleafly.",
+        "hint": "Indsæt en agentdefinition med en fastlåst npm- eller uv-pakke, en verificeret binær fil eller en installeret programfil. Hold adgangskoder og API-nøgler ude af denne JSON.",
+        "label": "Registrer en egen agent",
+        "submit": "Registrer definitionen",
+        "title": "Tilføj en egen agent",
+        "useExample": "Brug eksemplet"
+      },
+      "install": {
+        "confirm": "Installer",
+        "description": "Oleafly henter denne fastlåste pakke ned i sin egen agentmappe. Agenten kører derefter med din CLI-konto, når du starter en samtale.",
+        "installing": "Installerer",
+        "location": "Oleaflys agentmappe, {{id}}/{{version}}",
+        "locationLabel": "Installeres i",
+        "packageLabel": "Pakke",
+        "title": "Installer {{name}}-broen {{version}}"
+      },
+      "installBridge": "Installer broen",
+      "installBridgeNextStep": "Installer ACP-broen, og log så ind gennem kommandolinjeværktøjet.",
+      "intro": "Forbind en lokal agent gennem ACP. Hver agent styrer selv sine modeller, værktøjer og login, og indstillingerne for API-udbydere holdes adskilt. Brug den officielle CLI-konto til login: Oleafly importerer ikke kontotokens og gætter ikke på kvoter for abonnementer.",
+      "nextStepTitle": "Næste skridt",
+      "notReported": "Ikke oplyst",
+      "notice": {
+        "installed": "{{name}} er installeret. Log ind gennem dens CLI, før du starter en samtale.",
+        "registered": "{{name}} er registreret. Registreringen installerer eller starter den ikke.",
+        "removed": "Agentdefinitionen er fjernet. Installerede filer og gemte samtaler er der stadig.",
+        "terminalOpen": "Projektets terminal er åben. Kør den login-kommando, der vises for din agent, og forbind så samtalen igen."
+      },
+      "openSignInTerminal": "Åbn terminal til login",
+      "openTerminal": "Åbn terminal",
+      "platformLabel": "Platform",
+      "refreshingStatus": "Opdaterer agenternes status. Den nuværende liste bliver stående.",
+      "registry": {
+        "description": "Søg i ACP-registret efter agenter, som andre teams har udgivet.",
+        "hideDistribution": "Skjul distributionen",
+        "register": "Registrer agenten",
+        "registered": "Registreret",
+        "reviewHint": "Poster i registret beskriver software, sådan som udgiverne selv fremstiller den. Gennemgå distributionen, før du registrerer eller installerer den.",
+        "search": "Søg",
+        "searchLabel": "Find en ACP-agent",
+        "searchPlaceholder": "Søg i ACP-registret",
+        "searching": "Søger",
+        "showDistribution": "Vis distributionen",
+        "title": "Find flere agenter"
+      },
+      "sectionLabel": "ACP-agenter",
+      "signInCommandLabel": "Login-kommando",
+      "versionLabel": "Version",
+      "updateBridge": "Opdater broen"
+    },
+    "approvals": {
+      "file": {
+        "description": "Godkendelsestilstanden Egne regler læser denne fil. Den ligger i ~/.oleafly/approvals.toml og gælder for alle projekter på denne enhed.",
+        "discard": "Kasser ændringerne",
+        "emptyFile": "Filen er tom indtil videre.",
+        "help": {
+          "comments": "Kommentarer, der starter med #, bevares, når du gemmer her, men et valg af »Altid i dette projekt« på et godkendelseskort skriver filen om uden dem.",
+          "modes": "Den første tabel, <modesTable>[\"$approval_modes\"]</modesTable>, sætter godkendelsestilstanden for hvert projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> eller <custom>\"custom\"</custom>. Et projekt, der ikke står på listen, bruger Godkend for mig.",
+          "openProject": "Det åbne projekt, {{name}}, har id'et <projectId>{{id}}</projectId>.",
+          "projectIds": "Projekt-id'er er navnene på mapperne under ~/.oleafly/projects.",
+          "rules": "Derefter én tabel pr. projekt-id med en regel for hvert værktøj: <allow>\"allow\"</allow> kører værktøjet uden at spørge, og <deny>\"deny\"</deny> afviser det. Deny-regler gælder i alle tilstande. Allow-regler virker i tilstanden Egne regler, og for run_command springer de også spørgsmålet over i de andre tilstande.",
+          "toolNames": "Værktøjsnavne, du kan bruge: <names>{{names}}</names> og ethvert MCP-værktøj med dets fulde navn fra listen Værktøjer."
+        },
+        "helpToggle": "Sådan virker filen",
+        "insertExample": "Indsæt et eksempel",
+        "reload": "Indlæs igen",
+        "saved": "Gemt. Reglerne gælder fra det næste værktøjskald.",
+        "saving": "Gemmer",
+        "title": "Fil med godkendelsesregler"
+      },
+      "project": {
+        "allowed": "Altid tilladt",
+        "denied": "Altid afvist",
+        "description": "Gemte regler for {{name}}. De gælder, når godkendelsestilstanden er Egne regler. Fjern en regel for at bruge den almindelige risikopolitik for det værktøj.",
+        "empty": "Der er endnu ingen gemte regler. Brug »Altid i dette projekt« på et godkendelsesspørgsmål for at tilføje en.",
+        "removeRule": "Fjern reglen for {{tool}}",
+        "thisProject": "dette projekt",
+        "title": "Godkendelser af værktøjer"
+      }
+    },
+    "budget": {
+      "clear": "Ryd budgettet",
+      "inputLabel": "AI-budget i amerikanske dollar",
+      "inputPlaceholder": "Intet budget",
+      "limit": "Kørsler sættes på pause, når budgettet er nået.",
+      "save": "Gem budgettet",
+      "spent": "Anslået forbrug indtil nu: {{amount}}. Kørsler sættes på pause, når budgettet er nået.",
+      "title": "AI-budget"
+    },
+    "customProvider": {
+      "addDescription": "Forbind et hvilket som helst OpenAI-kompatibelt endepunkt ud fra dets grund-URL.",
+      "addTitle": "Tilføj egen udbyder",
+      "baseUrlLabel": "Grund-URL",
+      "baseUrlNote": "Din gemte API-nøgle bliver sendt til denne nye adresse.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "Ret navnet eller grund-URL'en.",
+      "editTitle": "Rediger egen udbyder",
+      "errors": {
+        "addFailed": "Den udbyder kunne ikke tilføjes.",
+        "baseUrlHost": "URL'en mangler et værtsnavn.",
+        "baseUrlInvalid": "Indtast en fuld URL, for eksempel https://api.example.com/v1 eller http://localhost:1234/v1.",
+        "baseUrlProtocol": "Brug https:// eller http:// til en lokal server.",
+        "baseUrlRequired": "Grund-URL er påkrævet.",
+        "idFormat": "Brug kun små bogstaver, tal og bindestreger, for eksempel acme.",
+        "idRequired": "Id er påkrævet.",
+        "nameRequired": "Navn er påkrævet.",
+        "saveFailed": "Den udbyder kunne ikke gemmes."
+      },
+      "idLabel": "Id",
+      "idPlaceholder": "acme",
+      "keyLabel": "API-nøgle (valgfri)",
+      "keyLabelKeepSaved": "API-nøgle (lad feltet stå tomt for at beholde den gemte nøgle)",
+      "keyPlaceholder": "Lad feltet stå tomt, hvis ingen er nødvendig",
+      "keyPlaceholderStored": "Den gemte nøgle bliver, medmindre du indtaster en ny",
+      "namePlaceholder": "Acme",
+      "submitAdd": "Tilføj udbyderen"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Agentens evner",
+      "customDescription": "Føjes til hver AI-forespørgsel som din personlige stil og dine præferencer. Assistenten følger dem oven på sin indbyggede adfærd. De kan ikke tilsidesætte dens værktøjer eller sikkerhedsregler.",
+      "customPlaceholder": "For eksempel: Skriv altid på britisk engelsk. Hold forklaringerne korte. Brug helst pakken enumitem til lister.",
+      "customTitle": "Egne instruktioner",
+      "defaultModelDescription": "Bruges, hver gang du starter en ny chat. Du kan stadig skifte model for en enkelt samtale i chatpanelet.",
+      "defaultModelTitle": "Standardmodel til chat",
+      "pdfCaptureDescription": "Lader agenten rastrere kompilerede sider (verify_pdf_pages) til visuelle tjek af layoutet. Slå det fra, hvis du helst ikke vil sende billeder af siderne til din udbyder.",
+      "pdfCaptureLabel": "Tillad, at AI tager billeder af PDF-sider",
+      "save": "Gem instruktionerne",
+      "saved": "Gemt",
+      "toolsHint": "Bed den om ting som »ret LaTeX-fejlene«, »tilføj et afsnit med publikationer« eller »kompiler igen, og tjek PDF'en«.",
+      "toolsTitle": "Assistenten understøtter disse værktøjer lige nu"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "Den model står allerede på listen.",
+        "empty": "Indtast et model-id.",
+        "spaces": "Model-id'er må ikke indeholde mellemrum."
+      },
+      "addPlaceholder": "Tilføj et model-id",
+      "changeSummary": "{{added}} tilføjet, {{removed}} fjernet",
+      "custom": "Egen",
+      "deleteAriaLabel": "Slet modellen {{model}}",
+      "deleteDialog": {
+        "description": "Vil du fjerne »{{model}}« fra denne udbyders modelliste? Indbyggede modeller kan komme tilbage med Gendan standarderne. Egne modeller kan tilføjes igen med deres id.",
+        "title": "Slet modellen"
+      },
+      "deleteTooltip": "Slet modellen",
+      "empty": "Ingen modeller endnu. Tilføj en nedenfor.",
+      "invalidKey": "Ugyldig API-nøgle.",
+      "metadata": {
+        "refreshFailed": "Modeldataene kunne ikke opdateres.",
+        "unknownDate": "ukendt dato",
+        "updated": "Modeldata opdateret {{date}}",
+        "updatedBundled": "Modeldata opdateret {{date}}, følger med appen",
+        "updatedFromCache": "Modeldata opdateret {{date}}, fra den seneste hentning"
+      },
+      "noChanges": "Ingen ændringer",
+      "refresh": "Opdater",
+      "restore": "Gendan standarderne",
+      "restoreTooltip": "Tilføj denne udbyders indbyggede modeller igen",
+      "title": "Modeller",
+      "unreachable": "Der kunne ikke opnås forbindelse til udbyderen.",
+      "unreadableList": "Udbyderen returnerede modeller, som Oleafly ikke kunne læse.",
+      "updated": "Opdateret {{time}}"
+    },
+    "personas": {
+      "addStarter": "Tilføj persona",
+      "addStarterFailed": "{{name}} kunne ikke tilføjes. {{error}}",
+      "addStarterNamed": "Tilføj personaen {{name}}",
+      "colors": {
+        "forest": "Skov",
+        "grape": "Drue",
+        "ocean": "Hav",
+        "slate": "Skifer",
+        "sunset": "Solnedgang"
+      },
+      "create": "Opret persona",
+      "delete": "Slet personaen",
+      "deleteDescription": "Vil du slette »{{name}}«? Dens prompt fjernes permanent, og chats, der bruger den, falder tilbage til dine standardinstruktioner.",
+      "deleteNamed": "Slet personaen {{name}}",
+      "description": "Instruktioner, du kan genbruge, om hvordan assistenten skal arbejde. Vælg en i chatten til en opgave. Så længe den er valgt, erstatter den dine standardinstruktioner.",
+      "edit": "Rediger personaen",
+      "editNamed": "Rediger personaen {{name}}",
+      "empty": "Der er endnu ikke tilføjet nogen personaer.",
+      "form": {
+        "color": "Farve",
+        "create": "Opret",
+        "createTitle": "Opret persona",
+        "description": "Skriv instruktioner, du kan genbruge, om hvordan assistenten skal arbejde.",
+        "editTitle": "Rediger persona",
+        "instructions": "Instruktioner",
+        "instructionsPlaceholder": "Gennemgå min tekst for klarhed, og nævn de vigtigste problemer først.",
+        "namePlaceholder": "Kortfattet redaktør",
+        "required": "Navn og prompt er påkrævet.",
+        "saveFailed": "Den persona kunne ikke gemmes."
+      },
+      "starters": {
+        "criticalReviewer": "Finder svagheder i argumenter, metode, evidens og fremstilling.",
+        "documentEditor": "Retter prosa, struktur, citationer og LaTeX med fokuserede, sikre ændringer.",
+        "figure": "Laver figurer og diagrammer i udgivelseskvalitet som LaTeX TikZ eller PGFPlots.",
+        "researchWriter": "Skriver og strukturerer videnskabelig tekst uden at opfinde evidens eller citationer."
+      },
+      "suggestedDescription": "Start med en af disse, og ret så dens instruktioner til, så de passer til din måde at arbejde på.",
+      "suggestedTitle": "Foreslåede personaer",
+      "title": "Personaer"
+    },
+    "providers": {
+      "addCustom": "Tilføj egen udbyder",
+      "badge": {
+        "connected": "Forbundet",
+        "notRunning": "Kører ikke",
+        "running": "Kører"
+      },
+      "blurbs": {
+        "anthropic": "Claude-modeller, stærke til kode og skrivning.",
+        "custom": "Egen udbyder.",
+        "deepseek": "DeepSeek V4-modeller.",
+        "google": "Gemini-modeller fra Google AI Studio.",
+        "groq": "Meget hurtig inferens på åbne modeller.",
+        "mistral": "Mistral- og Codestral-modeller.",
+        "ollama": "Kører modeller på din maskine. Ingen nøgle nødvendig, bare installer Ollama, og hent en model.",
+        "openai": "GPT-modeller. Standardvalget.",
+        "openrouter": "Én nøgle, adgang til modeller fra mange laboratorier.",
+        "perplexity": "Sonar-modeller med direkte forankring i nettet.",
+        "xai": "Grok-modeller fra xAI.",
+        "zai": "GLM-modeller via et abonnement på Z.AI GLM Coding Plan."
+      },
+      "deleteKeyAriaLabel": "Slet nøglen til {{provider}}",
+      "deleteKeyTooltip": "Slet nøglen",
+      "docs": "Dokumentation",
+      "editAriaLabel": "Rediger {{provider}}",
+      "editTooltip": "Rediger navn eller endepunkt",
+      "getKey": "Hent en nøgle",
+      "intro": "Forbind de udbydere, du bruger, nedenfor. Nøgler gemmes kun lokalt. Når du gemmer en, bliver den standard. Du kan skifte mellem konfigurerede udbydere og modeller i rullemenuen i chatpanelet.",
+      "keyPlaceholder": "Indsæt din API-nøgle her",
+      "modelLabel": "Model",
+      "ollama": {
+        "active": "Aktiv",
+        "changeHost": "Skift vært (avanceret)",
+        "check": "Se efter Ollama",
+        "checking": "Tjekker…",
+        "disconnect": "Afbryd forbindelsen",
+        "hideHost": "Skjul værten",
+        "installedHint": "Ollama er installeret her. Det tager et øjeblik at starte den.",
+        "modelPlaceholder": "Vælg en model, du vil bruge",
+        "noModels": "Ollama kører, men der er ingen modeller installeret. Kør <pull>ollama pull llama3.2</pull>, og tjek så igen.",
+        "noneResponding": "Der svarer ingen Ollama på <host>{{host}}</host>.",
+        "notChecked": "Ikke tjekket endnu",
+        "notDetected": "Ikke fundet",
+        "recheck": "Tjek igen",
+        "runningModels_one": "Kører · {{count}} model",
+        "runningModels_other": "Kører · {{count}} modeller",
+        "setupSteps": "1. Installer fra <download>ollama.com <icon></icon></download> · 2. Den starter automatisk (eller kør <serve>ollama serve</serve>) · 3. Hent en model, for eksempel <pull>ollama pull llama3.2</pull> · 4. Tjek igen.",
+        "start": "Start Ollama"
+      },
+      "removeAriaLabel": "Fjern {{provider}}",
+      "removeDialog": {
+        "description": "Vil du fjerne »{{provider}}«? Dens gemte nøgle og modelliste slettes sammen med den.",
+        "title": "Fjern egen udbyder"
+      },
+      "removeTooltip": "Fjern egen udbyder",
+      "replaceKey": "Erstat nøglen",
+      "status": {
+        "error": "Fejl: {{message}}",
+        "errorFallback": "Nøglen kunne ikke valideres.",
+        "valid": "Nøglen er gyldig. Modellerne er klar nedenfor.",
+        "validating": "Tjekker nøglen..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Indlæser agenter…",
+      "errors": {
+        "invalidKey": "Ugyldig API-nøgle.",
+        "keyNotKept": "Grund-URL'en blev gemt, men nøglen blev ikke. Indtast nøglen igen.",
+        "providerGone": "Den udbyder findes ikke længere.",
+        "providerIdInUse": "Det udbyder-id er allerede i brug."
+      },
+      "messages": {
+        "keyRemoved": "Nøglen til {{provider}} er fjernet.",
+        "keyRemovedAccessDisabled": "Nøglen til {{provider}} er fjernet. AI-adgang er slået fra.",
+        "keySavedAddModels": "Nøglen til {{provider}} er gemt. Tilføj modeller manuelt nedenfor.",
+        "keySavedCheckedOnUse": "Nøglen til {{provider}} er gemt. Den bliver tjekket, første gang den bruges.",
+        "ollamaConnected": "Ollama er forbundet · {{model}}",
+        "preferencesReset": "Indstillingerne for AI-assistenten er gendannet til standarderne.",
+        "providerAdded": "{{provider}} er tilføjet.",
+        "providerConnected": "{{provider}} er forbundet.",
+        "providerUpdated": "{{provider}} er opdateret.",
+        "providerUpdatedWithoutModels": "{{provider}} er opdateret. Dens modelliste kunne ikke opdateres."
+      },
+      "reset": {
+        "confirmWithProject": "Gendan indstillingerne for AI-assistenten til standarderne, herunder hvilke modeller der er tilgængelige, hvilke færdigheder der er slået til, og dette projekts budget. Den aktive udbyder og model, udbydernøgler, personaer, godkendelsesregler, forbrugshistorik og MCP-servere ændres ikke.",
+        "confirmWithoutProject": "Gendan indstillingerne for AI-assistenten til standarderne, herunder hvilke modeller der er tilgængelige, og hvilke færdigheder der er slået til. Den aktive udbyder og model, udbydernøgler, personaer, godkendelsesregler, forbrugshistorik og MCP-servere ændres ikke.",
+        "sectionName": "AI-assistent"
+      },
+      "tabs": {
+        "agents": "CLI-agenter",
+        "instructions": "Instruktioner",
+        "mcp": "MCP",
+        "personas": "Personaer",
+        "providers": "Udbydere og nøgler",
+        "skills": "Færdigheder"
+      }
+    },
+    "skills": {
+      "addFolder": "Tilføj mappe",
+      "addFolderDialogTitle": "Tilføj mappe med færdigheder",
+      "catalog": {
+        "description": "Ekstra færdigheder til bestemte forskningsområder. Installer en for at føje den til din liste ovenfor.",
+        "empty": "Kataloget har ingen ekstra færdigheder at installere.",
+        "install": "Installer",
+        "loading": "Indlæser kataloget...",
+        "messages": {
+          "installed": "{{name}} er installeret.",
+          "removed": "{{name}} er fjernet."
+        },
+        "progress": {
+          "downloading": "Henter...",
+          "downloadingPercent": "Henter {{percent}} %",
+          "extracting": "Pakker ud...",
+          "extractingPercent": "Pakker ud {{percent}} %",
+          "failed": "Installationen mislykkedes.",
+          "finishing": "Gør installationen færdig..."
+        },
+        "refresh": "Opdater",
+        "source": {
+          "bundled": "Indbygget katalog",
+          "bundledOffline": "Indbygget katalog, der kunne ikke opnås forbindelse til netværket",
+          "cached": "Katalog fra cachen, hentet fra cdn.oleafly.com {{when}}",
+          "cachedOffline": "Katalog fra cachen, hentet fra cdn.oleafly.com {{when}}, der kunne ikke opnås forbindelse til netværket",
+          "cachedUnknown": "Katalog fra cachen, hentet fra cdn.oleafly.com på et ukendt tidspunkt",
+          "cachedUnknownOffline": "Katalog fra cachen, hentet fra cdn.oleafly.com på et ukendt tidspunkt, der kunne ikke opnås forbindelse til netværket",
+          "remote": "Katalog fra cdn.oleafly.com, hentet {{when}}",
+          "remoteUnknown": "Katalog fra cdn.oleafly.com, hentet på et ukendt tidspunkt"
+        },
+        "title": "Fagområdehylde",
+        "uninstall": "Afinstaller",
+        "update": "Opdater"
+      },
+      "createSkill": "Opret færdighed",
+      "description": "Assistenten indlæser først hele vejledningen til en færdighed, når den selv vurderer, at den har brug for en, eller med det samme, hvis du skriver /skill-id i chatten. En færdighed, du slår til her, er slået til i alle projekter, indtil et projekt tilsidesætter det.",
+      "editAria": "Rediger {{name}}",
+      "editor": {
+        "createDescription": "Opret et udkast til SKILL.md i din Oleafly-mappe med færdigheder.",
+        "createTitle": "Opret færdighed",
+        "descriptionPlaceholder": "Tjek, om hver påstand har belæg.",
+        "editDescription": "Finpuds de metadata og instruktioner, der ligger i SKILL.md.",
+        "editTitle": "Rediger færdighed",
+        "instructions": "Instruktioner",
+        "instructionsHint": "Lad feltet stå tomt for at oprette et minimalt skelet til instruktionerne.",
+        "instructionsPlaceholder": "Beskriv, hvornår denne færdighed skal bruges, og hvilke trin assistenten skal følge.",
+        "namePlaceholder": "Påstandstjekker",
+        "requiredAll": "Navn, beskrivelse og instruktioner er påkrævet.",
+        "requiredBasics": "Navn og beskrivelse er påkrævet.",
+        "submitCreate": "Opret"
+      },
+      "empty": "Der blev ikke fundet nogen færdigheder. Tilføj en mappe, eller opret en færdighed.",
+      "enableAria": "Slå {{name}} til",
+      "fileCount_one": "{{count}} fil",
+      "fileCount_other": "{{count}} filer",
+      "groups": {
+        "shelf": "Fagområdehylde",
+        "user": "Dine færdigheder"
+      },
+      "inheritsDevice": "Arver enhedens indstilling",
+      "invalidBadge": "Ugyldig",
+      "loadFailed": "Færdighederne kunne ikke indlæses. {{message}}",
+      "loading": "Indlæser færdigheder...",
+      "messages": {
+        "added": "{{name}} er tilføjet.",
+        "created": "{{name}} er oprettet.",
+        "editorClosed": "Editoren til færdigheder er ikke åben længere.",
+        "removed": "{{name}} er fjernet.",
+        "saved": "{{name}} er gemt.",
+        "updated": "{{name}} er opdateret."
+      },
+      "missingDescription": "Denne færdighed mangler en beskrivelse.",
+      "offForProject": "Slået fra i dette projekt",
+      "onForProject": "Slået til i dette projekt",
+      "phases": {
+        "authoring": "Skrivefasen",
+        "communication": "Formidling",
+        "figures": "Figurer",
+        "research": "Forskning",
+        "review": "Gennemgang",
+        "submission": "Indsendelse",
+        "tooling": "Værktøjer"
+      },
+      "removeAria": "Fjern {{name}}",
+      "removeDialog": {
+        "description": "Vil du fjerne »{{name}}« og dens mappe fra Oleafly? Det kan ikke fortrydes.",
+        "title": "Fjern færdigheden"
+      },
+      "share": {
+        "description": "Tilknyt dine færdigheder til de mapper, som andre kodningsagenter på denne computer allerede læser, så du kun skriver en færdighed én gang, og alle agenter kan bruge den.",
+        "emptyBody": "Der blev ikke fundet mapper til andre agenter på denne computer.",
+        "status": {
+          "linked": "{{linked}} af {{total}} tilknyttet",
+          "undetected": "Ikke fundet på denne enhed",
+          "unsupported": "Ikke understøttet på dette system"
+        },
+        "summary": {
+          "checking": "Tjekker agentmapperne",
+          "linked_one": "{{linked}} af {{count}} agent tilknyttet",
+          "linked_other": "{{linked}} af {{count}} agenter tilknyttet",
+          "none": "Der blev ikke fundet mapper til andre agenter"
+        },
+        "title": "Del færdigheder med andre agenter på denne computer"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "Tilføjet",
+        "bundled": "Indbygget",
+        "catalog": "Installeret"
+      },
+      "tier": {
+        "credits": "Fra {{credits}}",
+        "native": "Oleafly-arbejdsgang",
+        "shelf": "Færdighed fra fagområdehylden",
+        "shelfWithLicense": "Fagområdehylde, {{license}}",
+        "user": "Din egen færdighed",
+        "vendored": "Medleveret færdighed"
+      },
+      "title": "Færdigheder",
+      "updateAction": "Opdater",
+      "updateDialog": {
+        "description": "Vil du erstatte »{{name}}« med den nyeste medfølgende version? Lokale ændringer i dens filer går tabt.",
+        "title": "Opdater færdigheden"
+      },
+      "useDeviceSetting": "Brug enhedens indstilling",
+      "useDeviceSettingAria": "Brug enhedens indstilling for {{name}}",
+      "useInProject": "Brug i dette projekt",
+      "useInProjectAria": "Brug {{name}} i dette projekt",
+      "validateAria": "Valider {{name}}"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Bruges til knapper, markeringer og markøren i editoren.",
+        "label": "Accentfarve",
+        "swatchAriaLabel": "Accenten {{name}}"
+      },
+      "bgPattern": {
+        "description": "Vælg mønstret bag projekthylden.",
+        "dots": "Prikker",
+        "grid": "Gitter",
+        "label": "Baggrundsmønster"
+      },
+      "dock": {
+        "bottom": "Nederst",
+        "description": "Vælg, hvor docken på startskærmen skal sidde.",
+        "label": "Placering af dock",
+        "left": "Til venstre",
+        "right": "Til højre"
+      },
+      "font": {
+        "description": "Bruger systemets reserveskrifttype, hvis en skrifttype ikke er installeret.",
+        "label": "Appens skrifttype"
+      },
+      "fontSize": {
+        "description": "Skaler teksten i menuer, paneler og knapper.",
+        "label": "Appens skriftstørrelse"
+      },
+      "theme": {
+        "description": "System følger styresystemet og skifter, når det skifter.",
+        "label": "Udseende"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "Browserens startside",
+        "description": "Vælg den side, der åbnes sammen med browserdocken.",
+        "label": "Startside"
+      },
+      "searchEngine": {
+        "description": "Vælg den søgemaskine, der bruges til tekstsøgninger.",
+        "label": "Standardsøgemaskine"
+      }
+    },
+    "customTheme": {
+      "cleared": "Tematilpasningen er ryddet.",
+      "customCss": {
+        "description": "Valgfrie angivelser gælder kun inde i appen. At-regler, imports og URL'er er blokeret.",
+        "label": "Afgrænsede CSS-angivelser"
+      },
+      "darkRestored": "De mørke tokens er gendannet.",
+      "description": "Ret appens farvetokens for hver tilstand. Ændringerne gemmes lokalt og træder i kraft med det samme.",
+      "exportTheme": "Eksporter tema",
+      "fileTooLarge": "Temafilen fylder mere end 128 KiB.",
+      "importFileAriaLabel": "Importer temafil",
+      "importTheme": "Importer tema",
+      "imported": "Temaet er importeret og taget i brug.",
+      "importedSkippedMore_one": "Temaet er importeret og taget i brug. Sprang {{count}} token over, som Oleafly ikke bruger: {{tokens}}, og flere.",
+      "importedSkippedMore_other": "Temaet er importeret og taget i brug. Sprang {{count}} tokens over, som Oleafly ikke bruger: {{tokens}}, og flere.",
+      "importedSkipped_one": "Temaet er importeret og taget i brug. Sprang {{count}} token over, som Oleafly ikke bruger: {{tokens}}.",
+      "importedSkipped_other": "Temaet er importeret og taget i brug. Sprang {{count}} tokens over, som Oleafly ikke bruger: {{tokens}}.",
+      "lightRestored": "De lyse tokens er gendannet.",
+      "modeDark": "Mørk tilstand",
+      "modeFieldsetAriaLabel": "Den tematilstand, der redigeres",
+      "modeLight": "Lys tilstand",
+      "pickColorDark": "Vælg farven {{token}} til mørk tilstand",
+      "pickColorLight": "Vælg farven {{token}} til lys tilstand",
+      "radius": {
+        "description": "Brug en værdi som 8px, 0.5rem eller 1em. Lad feltet stå tomt for standardværdien.",
+        "label": "Hjørneradius"
+      },
+      "resetAll": "Nulstil alle",
+      "resetMode": "Nulstil denne tilstand",
+      "title": "Tematilpasning",
+      "tokenInputDark": "Token {{token}} til mørk tilstand",
+      "tokenInputLight": "Token {{token}} til lys tilstand",
+      "tokens": {
+        "accent": "Accent",
+        "accentForeground": "Accenttekst",
+        "background": "Baggrund",
+        "border": "Kant",
+        "card": "Panel",
+        "cardForeground": "Paneltekst",
+        "destructive": "Fare",
+        "destructiveForeground": "Faretekst",
+        "foreground": "Tekst",
+        "input": "Kant om felter",
+        "muted": "Dæmpet",
+        "mutedForeground": "Dæmpet tekst",
+        "popover": "Pop op",
+        "popoverForeground": "Pop op-tekst",
+        "primary": "Primær",
+        "primaryForeground": "Primær tekst",
+        "ring": "Fokusring",
+        "secondary": "Sekundær",
+        "secondaryForeground": "Sekundær tekst",
+        "sidebar": "Sidepanel",
+        "sidebarAccent": "Sidepanelets accent",
+        "sidebarAccentForeground": "Accenttekst i sidepanelet",
+        "sidebarBorder": "Sidepanelets kant",
+        "sidebarForeground": "Sidepanelets tekst"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Indsæt afsluttende klammer og parenteser automatisk.",
+        "label": "Luk klammer automatisk"
+      },
+      "autoCloseEnvironments": {
+        "description": "Indsæt \\end, når du trykker Enter efter \\begin.",
+        "label": "Luk miljøer automatisk"
+      },
+      "autoCloseMath": {
+        "description": "Par $, \\( og \\[, mens du skriver.",
+        "label": "Luk matematik automatisk"
+      },
+      "autocomplete": {
+        "description": "Vis kodefuldførelser, mens du skriver. Ctrl+Space åbner dem stadig, når dette er slået fra.",
+        "label": "Automatisk fuldførelse"
+      },
+      "font": {
+        "description": "Vælg den monospace-skrifttype, der bruges til kildefiler.",
+        "label": "Editorens skrifttype"
+      },
+      "fontSize": {
+        "description": "Indstil tekststørrelsen i kildeeditoren.",
+        "label": "Editorens skriftstørrelse"
+      },
+      "ghostCompletion": {
+        "description": "Vis den sandsynlige fuldførelse efter markøren. Tryk Tab for at acceptere den.",
+        "label": "Forslag i linjen"
+      },
+      "nonBlinkingCursor": {
+        "description": "Hold markøren i editoren fast, så den ikke blinker.",
+        "label": "Markør, der ikke blinker"
+      },
+      "stickyScroll": {
+        "description": "Hold de aktuelle LaTeX-afsnit og LaTeX-miljøer øverst, mens du ruller.",
+        "label": "Fastlåst rulning"
+      },
+      "theme": {
+        "description": "Vælg farver til syntaksen i kildekoden uafhængigt af appens tema.",
+        "label": "Editorens tema"
+      },
+      "keymap": {
+        "description": "Vælg det sæt tastaturgenveje, som kildeeditoren bruger.",
+        "label": "Tastaturgenveje",
+        "options": {
+          "default": "Standard",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Indstil den lodrette afstand mellem linjer i kildekoden.",
+        "label": "Linjehøjde",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Normal",
+          "wide": "Bred"
+        }
+      },
+      "lineWrap": {
+        "description": "Ombryd lange linjer i stedet for at rulle sidelæns.",
+        "label": "Ombryd lange linjer"
+      },
+      "tabSize": {
+        "description": "Antal mellemrum pr. indrykningsniveau og den bredde, en tabulator vises med.",
+        "label": "Tabulatorbredde"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Tilføj mønster for skjulte filer",
+        "description": "Vælg, hvilke genererede filer og mapper der holdes ude af projekttræet.",
+        "inputAriaLabel": "Filnavn eller mønster, der skal skjules",
+        "placeholder": "Tilføj et filnavn eller et mønster",
+        "removeAriaLabel": "Fjern {{pattern}} fra de skjulte filer",
+        "title": "Skjul filer i filtræet"
+      },
+      "homeView": {
+        "description": "Vælg, hvordan projekter er ordnet i biblioteket.",
+        "grid": "Gitter",
+        "label": "Standardvisning på startsiden",
+        "list": "Liste"
+      },
+      "openIn": {
+        "description": "Vælg det layout, der bruges, når et projekt åbnes.",
+        "label": "Åbn projekter i"
+      },
+      "showTree": {
+        "description": "Åbn filtræet med kildefiler, hver gang du går ind i et projekt.",
+        "label": "Vis filtræet ved åbning"
+      }
+    },
+    "fontSizeOption": "{{size}} px",
+    "preview": {
+      "darkMode": {
+        "description": "Vend PDF'ens farver om som udgangspunkt. Du kan stadig skifte farver på forhåndsvisningens værktøjslinje.",
+        "label": "Mørk tilstand til PDF"
+      },
+      "hoverPreview": {
+        "description": "Vis den senest kompilerede side, når du holder musen over et projekt i biblioteket.",
+        "label": "Forhåndsvis PDF, når musen holdes over"
+      },
+      "zoomShortcuts": {
+        "description": "Brug Cmd/Ctrl +, - og 0 til at zoome i PDF'en i stedet for i appens vindue.",
+        "label": "Zoomgenveje til PDF"
+      }
+    },
+    "sectionName": "Udseende",
+    "tabs": {
+      "app": "App",
+      "browser": "Browser",
+      "editor": "Editor",
+      "files": "Projekt",
+      "pdf": "PDF-forhåndsvisning",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Terminalens farvetema",
+        "description": "Vælg terminalens ANSI-farvepalet.",
+        "label": "Farvetema",
+        "optionDark": "{{name}} · mørk",
+        "optionLight": "{{name}} · lys"
+      },
+      "colors": {
+        "background": "Baggrund",
+        "backgroundAriaLabel": "Terminalens baggrundsfarve",
+        "cursor": "Markør",
+        "cursorAriaLabel": "Farven på terminalens markør",
+        "description": "Juster grundfarverne, mens den valgte ANSI-palet beholdes.",
+        "followingAppTheme": "Følger appens tema: mørk palet i mørk tilstand, lys palet i lys tilstand. Vælg en bestemt palet ovenfor for at tilpasse disse.",
+        "foreground": "Tekst",
+        "foregroundAriaLabel": "Terminalens tekstfarve",
+        "label": "Terminalens farver"
+      },
+      "cursorBlink": {
+        "description": "Få terminalens markør til at blinke.",
+        "label": "Blinkende markør"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Udseendet på terminalens markør",
+        "bar": "Streg",
+        "block": "Blok",
+        "description": "Vælg formen på terminalens markør.",
+        "label": "Markørens udseende",
+        "underline": "Understregning"
+      },
+      "font": {
+        "ariaLabel": "Terminalens skrifttype",
+        "description": "Vælg den monospace-skrifttype, terminalen bruger.",
+        "label": "Terminalens skrifttype"
+      },
+      "fontSize": {
+        "description": "Indstil tekststørrelsen i terminalen.",
+        "label": "Terminalens skriftstørrelse"
+      },
+      "fontWeight": {
+        "description": "Indstil vægten for almindelig tekst i terminalen.",
+        "label": "Vægt for almindelig skrift"
+      },
+      "fontWeightBold": {
+        "description": "Indstil vægten for fed tekst i terminalen.",
+        "label": "Vægt for fed skrift"
+      },
+      "startWithProject": {
+        "description": "Start shell, når et projekt åbnes, i stedet for første gang du viser terminalen.",
+        "label": "Start shell sammen med projektet"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly gemmer det i baggrunden og kun, når kildekoden er ændret.",
+      "label": "Gem et kontrolpunkt efter hver vellykket kompilering"
+    },
+    "config": {
+      "loadFailed": "Kunne ikke indlæse indstillingerne for kontrolpunkter.",
+      "saveFailed": "Kunne ikke gemme indstillingerne for kontrolpunkter."
+    },
+    "description": "Et kontrolpunkt registrerer de kildefiler, en vellykket kompilering brugte.",
+    "notifyOnFailure": {
+      "description": "Oleafly siger til, når et kontrolpunkt ikke kan gemmes, også ved problemer med lagerplads eller filer, det ikke kunne fange.",
+      "label": "Vis en besked, når et kontrolpunkt ikke kan gemmes"
+    },
+    "title": "Kontrolpunkter"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "Fjern API-nøglen",
+      "removeEmail": "Fjern e-mailadressen",
+      "removeKey": "Fjern nøglen",
+      "saveApiKey": "Gem API-nøglen",
+      "saveEmail": "Gem e-mailadressen",
+      "saveKey": "Gem nøglen"
+    },
+    "connected": "Forbundet",
+    "description": "Administrer de legitimationsoplysninger, de videnskabelige søgekilder bruger.",
+    "keyFree": {
+      "description": "Disse kilder er tilgængelige uden en API-nøgle.",
+      "title": "Kilder uden legitimationsoplysninger"
+    },
+    "openAlex": {
+      "docsLink": "OpenAlex' grænser for forespørgsler",
+      "emailLabel": "Kontakt-e-mail til OpenAlex",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "Kontakt-e-mailen til OpenAlex kunne ikke fjernes.",
+      "emailRemoved": "Kontakt-e-mailen til OpenAlex er fjernet",
+      "emailSaveFailed": "Kontakt-e-mailen til OpenAlex kunne ikke gemmes.",
+      "emailSaved": "Kontakt-e-mailen til OpenAlex er gemt",
+      "hint": "En API-nøgle anbefales. OpenAlex kræver nøgler til almindelig adgang, mens søgninger uden nøgle deler en lille daglig pulje. En kontakt-e-mail giver desuden adgang til den høflige pulje. Begge dele bliver på denne enhed.",
+      "keyLabel": "API-nøgle til OpenAlex",
+      "keyRemoveFailed": "API-nøglen til OpenAlex kunne ikke fjernes.",
+      "keyRemoved": "API-nøglen til OpenAlex er fjernet",
+      "keySaveFailed": "API-nøglen til OpenAlex kunne ikke gemmes.",
+      "keySaved": "API-nøglen til OpenAlex er gemt"
+    },
+    "semanticScholar": {
+      "docsLink": "Oplysninger om Semantic Scholar API",
+      "hint": "En API-nøgle er valgfri. Anonyme søgninger bruger Semantic Scholars offentlige grænser.",
+      "keyLabel": "API-nøgle til Semantic Scholar",
+      "keyRemoveFailed": "API-nøglen til Semantic Scholar kunne ikke fjernes.",
+      "keyRemoved": "API-nøglen til Semantic Scholar er fjernet",
+      "keySaveFailed": "API-nøglen til Semantic Scholar kunne ikke gemmes.",
+      "keySaved": "API-nøglen til Semantic Scholar er gemt"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "Valgfri. Giver adgang til kilden Google Scholar i Citationssøgning via Serper. Uden en nøgle springes den kilde over, selv om den er valgt.",
+      "keyLabel": "API-nøgle til Serper",
+      "keyRemoveFailed": "API-nøglen til Serper kunne ikke fjernes.",
+      "keyRemoved": "API-nøglen til Serper er fjernet",
+      "keySaveFailed": "API-nøglen til Serper kunne ikke gemmes.",
+      "keySaved": "API-nøglen til Serper er gemt"
+    },
+    "title": "Citationssøgning"
+  },
+  "cite": {
+    "apa": "Den samme reference i APA ligger bag Cite this repository på GitHub",
+    "copyBibtex": "Kopier BibTeX",
+    "description": "Oleafly er gratis og open source, og det bliver ved med at være det, når folk ved, at det findes. Har det hjulpet en artikel på vej, fortæller én post i din litteraturliste den næste forsker, hvor værktøjet kommer fra. Kopier den, indsæt den i din .bib-fil, og citer nøglen <citeKey>oleafly</citeKey>.",
+    "title": "Citer Oleafly i din artikel"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Alt er hentet",
+      "download": "Hent",
+      "downloadAll": "Hent alle"
+    },
+    "aiTemplates": {
+      "deleteDescription": "Vil du slette »{{name}}« fra dit bibliotek? Projekter, der allerede er oprettet ud fra den, beholder deres egen kopi og påvirkes ikke.",
+      "deleteTitle": "Slet AI-genereret skabelon",
+      "deleted": "Slettede »{{name}}« fra dit bibliotek",
+      "empty": "Der er endnu ingen AI-genererede skabeloner. Opret en fra skabelongalleriet.",
+      "fallbackDescription": "AI-genereret skabelon",
+      "toggle": "Administrer AI-genererede skabeloner"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "En varm humanistisk grotesk, som mange moderne CV-skabeloner bruger.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "En ren, neutral grotesk, der læses godt på skærm og på tryk.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "En forfinet overgangsantikva, der passer godt til akademiske og formelle dokumenter.",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "Der er ingen skrifttyper at hente.",
+      "engineNote": "LuaLaTeX-motoren (til taggede, tilgængelige PDF-filer) styres i afsnittet om LaTeX-motoren.",
+      "heading": "Skrifttyper",
+      "tooltip": "Nogle skabeloner bruger open source-skrifttyper af høj kvalitet. For at holde Oleafly lille hentes de skrifttyper først, når der er brug for dem: når du opretter sådan en skabelon, hentes skrifttyperne og kopieres ind i projektet, så det er selvstændigt og kan kompileres offline. Du kan også hente dem på forhånd her eller fjerne dem for at frigøre plads."
+    },
+    "packProgress": "{{index}} af {{total}}",
+    "progress": "{{label}} ({{index}} af {{total}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Skrifttyper",
+      "templates": "Skabeloner",
+      "dictionaries": "Ordbøger"
+    },
+    "templates": {
+      "empty": "Der er ingen skabelonpakker at hente.",
+      "heading": "Skabeloner",
+      "tooltip": "Ekstra skabelonpakker hentes først, når der er brug for dem, så Oleafly holdes lille. Hent en pakke her for at bruge dens skabeloner offline, eller fjern den senere for at frigøre plads."
+    },
+    "dictionaries": {
+      "empty": "Der er endnu ikke hentet nogen ekstra sprog.",
+      "heading": "Staveordbøger",
+      "note": "Vælg et sprog under Generelt for at hente det. De fem medfølgende pakker er altid tilgængelige og står ikke her.",
+      "tooltip": "Fem sprogpakker følger med Oleafly. Alle andre sprog hentes, når du vælger dem som din staveordbog, og gemmes her, så de virker offline bagefter. Fjerner du et, frigøres pladsen, og appens indstilling bruges i stedet."
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "Kun til projekter, du stoler på. Kører en lokal TeX-distribution, som kan læse de filer, din konto har adgang til. Understøtter fulde pakkesæt og arbejdsgange med flere gennemløb. Kørsel af kommandoer på værten er stadig en separat tilladelse pr. projekt.",
+        "name": "latexmk (system-TeX)"
+      },
+      "tectonic": {
+        "detail": "Følger med Oleafly. Hurtig, offline og uden opsætning. Dækker almindelig LaTeX og de fleste udbredte pakker.",
+        "name": "Tectonic (indbygget)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Standardmotor til kompilering",
+      "tooltip": "Gælder for nye projekter. Hvert projekt fastlåser sin egen motor i project.json, så samarbejdspartnere, der åbner det samme projekt, kompilerer det på samme måde uanset denne indstilling."
+    },
+    "distributions": {
+      "empty": "Der blev ikke fundet nogen TeX-distribution på denne maskine.",
+      "heading": "Administrer TeX-distributioner",
+      "rowTooltip": "Leveres med {{tools}}. Oleafly kører sine TeX-værktøjer fra {{binDir}}.",
+      "rowTooltipNoTools": "Der blev hverken fundet latexmk eller tlmgr i denne installation. Oleafly kører sine TeX-værktøjer fra {{binDir}}.",
+      "tooltip": "Alt det, latexmk-motoren kan bruge på denne maskine. TinyTeX installeres i din hjemmemappe uden administratorrettigheder. Systeminstallationer (MacTeX, TeX Live, MiKTeX) findes automatisk."
+    },
+    "latexmkMissing": "ingen latexmk fundet",
+    "markdown": {
+      "downloading": "Henter…",
+      "heading": "Markdown-kompilator",
+      "install": "Installer pandoc",
+      "repair": "Reparer Pandoc",
+      "note": "Det er endnu ikke muligt at vælge en anden PDF-backend til Markdown eller at bruge systemets pandoc frem for den, Oleafly styrer.",
+      "status": {
+        "checking": "Ser efter pandoc…",
+        "installing": "Henter en fastlåst udgave af pandoc. Det tager et øjeblik, første gang den bruges.",
+        "missing": "Ikke fundet på denne Mac. Oleafly henter en kompatibel pandoc (2.19 eller nyere) ned i sin egen mappe, og intet andet på dit system ændres.",
+        "ready": "Fundet. Markdown-projekter konverteres til LaTeX med pandoc og kompileres derefter med den medfølgende Tectonic."
+      },
+      "tectonicDetail": "Sætter den LaTeX, pandoc laver. Følger med Oleafly, og der er intet at konfigurere.",
+      "tooltip": "Markdown-projekter konverteres med pandoc (Pandoc Markdown: tabeller, fodnoter, citationer, matematik) til LaTeX og sættes derefter til PDF af den medfølgende Tectonic. Pandoc hentes, første gang der er brug for den."
+    },
+    "packages": {
+      "ariaLabel": "LaTeX-pakker",
+      "badge": {
+        "breaks": "ødelægger tagging",
+        "caution": "tagging: pas på"
+      },
+      "emptySearch": "Der blev ikke fundet nogen pakker. Prøv et andet navn eller nøgleord.",
+      "emptySuggested": "Ingen af de foreslåede pakker matcher. Søg i TeX Live for at se hele kataloget.",
+      "error": {
+        "install": "{{name}} kunne ikke installeres.",
+        "read": "De installerede pakker kunne ikke læses.",
+        "remove": "{{name}} kunne ikke fjernes.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "Find LaTeX-pakker",
+      "filterPlaceholder": "Filtrer pakker…",
+      "heading": "Pakker",
+      "includedIn": "Indgår i {{package}}. Fjerner du den, fjernes de andre filer i den pakke også.",
+      "intro": {
+        "available": "Disse pakker er til projekter, der bruger latexmk (system-TeX). Tectonic bruger sin egen pakkesamling.",
+        "unavailable": "Pakkestyring kræver TeX Live eller TinyTeX. Brug MiKTeX Console til MiKTeX."
+      },
+      "refreshInstalled": "Opdater de installerede pakker",
+      "resultsCapped": "{{total}} resultater fra TeX Live. Søg mere præcist for at indsnævre listen.",
+      "results_one": "{{count}} resultat fra TeX Live.",
+      "results_other": "{{count}} resultater fra TeX Live.",
+      "search": "Søg i TeX Live",
+      "searching": "Søger…",
+      "suggested": "Foreslåede pakker. Søg i TeX Live efter flere.",
+      "tree": {
+        "both": "i begge træer",
+        "system": "i systemets træ",
+        "user": "i dit personlige træ"
+      }
+    },
+    "sectionName": "Motorer",
+    "tagging": {
+      "heading": "Tagget og tilgængelig eksport",
+      "hint": {
+        "none": "Installer TinyTeX under »Administrer TeX-distributioner« ovenfor for at få tagget eksport.",
+        "system": "Fundet på dit system. Der er intet at installere.",
+        "tinytex": "Leveres af TinyTeX (styres ovenfor)."
+      },
+      "status": {
+        "none": "Der er ikke installeret nogen motor til tagging",
+        "system": "Bruger systemets LuaLaTeX / TeX Live",
+        "tinytex": "TinyTeX er installeret"
+      },
+      "tooltip": "Standardmotoren (Tectonic) er hurtig og virker offline, men den kan ikke lave taggede PDF-filer efter Section 508 / PDF-UA. Det kræver systemets LuaLaTeX, som kan læse de lokale filer, din konto har adgang til, og som kun bør bruges til projekter, du stoler på. Oleafly kan bruge en eksisterende distribution eller en TinyTeX, den selv styrer."
+    },
+    "tinytex": {
+      "detail": "En kompakt TeX Live i din hjemmemappe. Selve hentningen fylder omkring 250 MB. Tidsskriftsskabeloner kan tilføje pakker senere, op til omkring 1 GB i alt. Installerer du på forhånd, er system-LaTeX klar, når du udtrykkeligt vælger den.",
+      "download": "Hent TinyTeX (~250 MB)",
+      "resume": "Fortsæt hentningen ({{size}} MB hentet)"
+    },
+    "typst": {
+      "detail": "Følger med Oleafly. Hurtig, offline og uden opsætning. Kompilerer Typst-dokumenter til PDF.",
+      "heading": "Typst-kompilator",
+      "name": "Typst (indbygget)",
+      "note": "Typst-projekter bruger altid den medfølgende kompilator. Det er endnu ikke muligt at vælge en kompilatorversion eller at bruge systemets Typst.",
+      "tooltip": "Typst følger med inde i Oleafly, så der er intet at installere eller konfigurere. Alle Typst-projekter kompileres med den medfølgende kompilator."
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "Forbundet",
+      "disconnect": "Afbryd forbindelsen",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "Forbind",
+      "toggle": "Avanceret: brug en personlig adgangstoken",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "Nye og åbnede projekter får et Git-arkiv, så Git-panelet kan følge ændringerne. Oleafly committer aldrig af sig selv.",
+      "label": "Klargør Git til alle projekter"
+    },
+    "config": {
+      "loadFailed": "Kunne ikke indlæse Git-indstillingerne.",
+      "saveFailed": "Kunne ikke gemme Git-indstillingerne."
+    },
+    "connect": "Forbind GitHub",
+    "description": "Sikkerhedskopier projekter, synkroniser på tværs af enheder, og push og pull fra Git-panelet.",
+    "device": {
+      "openGithub": "Åbn GitHub",
+      "opened": "Vi åbnede <verificationLink>{{url}}</verificationLink> i din browser. Indsæt koden der for at give Oleafly adgang.",
+      "timedOut": "Tiden løb ud for login på GitHub. Prøv igen.",
+      "title": "Indtast denne kode på GitHub",
+      "waiting": "Venter på godkendelse…"
+    },
+    "hint": {
+      "oauth": "Logger dig ind med en engangskode i din browser.",
+      "token": "Login med OAuth er endnu ikke sat op i denne version, så indsæt en token i stedet."
+    },
+    "notice": {
+      "connected": "Forbundet som @{{login}}",
+      "disconnected": "Forbindelsen er afbrudt."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Forbind",
+      "disconnect": "Afbryd forbindelsen"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "Sådan får du en nøgle: log ind på <siteLink>alphaxiv.org</siteLink>, åbn din <keyLink>side med API-nøgler</keyLink>, generer en nøgle (den starter med <keyPrefix>axv1_</keyPrefix>), og indsæt den nedenfor.",
+      "apiKeyLabel": "API-nøgle til alphaXiv",
+      "description": "Værktøjer til litteratursøgning og analyse af artikler til assistenten."
+    },
+    "cookies": {
+      "action": "Importer cookies",
+      "confirmAllDomains": "Du er ved at importere cookies fra profilen {{profile}} i {{browser}} for alle domæner. Cookieværdierne gemmes i appens indbyggede browser og sendes kun til de websteder, de hører til. Oleafly beder dig bekræfte en gang til i en systemdialog, før profilen læses.",
+      "confirmDomain": "Du er ved at importere cookies fra profilen {{profile}} i {{browser}} for {{domain}}. Cookieværdierne gemmes i appens indbyggede browser og sendes kun til de websteder, de hører til. Oleafly beder dig bekræfte en gang til i en systemdialog, før profilen læses.",
+      "confirmTitle": "Bekræft import af cookies",
+      "description": "Brug et eksisterende browserlogin i Oleaflys indbyggede browser.",
+      "detecting": "Leder efter installerede browserprofiler...",
+      "dialogDescription": "Vælg én installeret browserprofil. Oleafly læser den først, når du har gennemgået og bekræftet importen. Cookies fra Chromium låses op lokalt via macOS Keychain. Oleafly sender ikke cookieværdier til en Oleafly-tjeneste.",
+      "dialogTitle": "Importer cookies fra browseren",
+      "empty": "Der blev ikke fundet nogen understøttede browserprofiler.",
+      "errors": {
+        "chooseProfile": "Vælg en tilgængelig browserprofil.",
+        "hostname": "Indtast et værtsnavn som example.com."
+      },
+      "hostnameHint": "Indtast et værtsnavn for kun at importere de cookies, det websted kan bruge. Lad feltet stå tomt for at importere alle egnede cookies i denne profil.",
+      "hostnameLabel": "Værtsnavn (valgfrit)",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_one": "Importerede {{count}} cookie fra {{browser}} for {{domain}}.",
+      "importedDomain_other": "Importerede {{count}} cookies fra {{browser}} for {{domain}}.",
+      "importedProfileDomain_one": "Importerede {{count}} cookie fra {{browser}}, {{profile}} for {{domain}}.",
+      "importedProfileDomain_other": "Importerede {{count}} cookies fra {{browser}}, {{profile}} for {{domain}}.",
+      "importedProfile_one": "Importerede {{count}} cookie fra {{browser}}, {{profile}}.",
+      "importedProfile_other": "Importerede {{count}} cookies fra {{browser}}, {{profile}}.",
+      "imported_one": "Importerede {{count}} cookie fra {{browser}}.",
+      "imported_other": "Importerede {{count}} cookies fra {{browser}}.",
+      "importing": "Importerer cookies...",
+      "profileGroupLabel": "Browserprofiler",
+      "profileLegend": "Browserprofil",
+      "review": "Gennemgå importen",
+      "status": {
+        "available": "Tilgængelig",
+        "comingSoon": "På vej",
+        "noCookieStore": "Intet cookielager",
+        "notInstalled": "Ikke installeret"
+      },
+      "title": "Importer cookies",
+      "tryAgain": "Prøv igen"
+    },
+    "zotero": {
+      "apiKeyHint": "Sådan får du en nøgle: log ind på <siteLink>zotero.org</siteLink>, åbn din <keyLink>side med API-nøgler</keyLink> for at oprette en nøgle, og kopier dit numeriske bruger-id fra samme side.",
+      "apiKeyLabel": "API-nøgle til Zotero",
+      "description": "Importer citationer og referencer fra dit Zotero-bibliotek.",
+      "userIdLabel": "Bruger-id til Zotero",
+      "userIdPlaceholder": "Bruger-id"
+    }
+  },
+  "language": {
+    "ariaLabel": "Sprog i brugerfladen",
+    "description": "Vælg sproget i brugerfladen. Systemets standard følger dit styresystem.",
+    "label": "Sprog",
+    "note": "Når du skifter sprog i brugerfladen, ændres dokumentets sprog og indstillingerne for korrekturlæsning ikke.",
+    "system": "Systemets standard"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "Importer {{name}} fra {{source}}",
+      "description": "Vælg servere fra de værktøjer, der er installeret på denne computer.",
+      "detecting": "Leder efter MCP-servere...",
+      "duplicateOverwritten": "Findes allerede. Den bliver overskrevet.",
+      "duplicateSkipped": "Findes allerede. Den bliver sprunget over.",
+      "duplicates": {
+        "legend": "Når navne er ens",
+        "overwrite": {
+          "description": "Erstat den med den valgte server.",
+          "label": "Overskriv den eksisterende"
+        },
+        "skip": {
+          "description": "Behold den server, der allerede er gemt i Oleafly.",
+          "label": "Spring den eksisterende over"
+        }
+      },
+      "emptyState": "Der blev ikke fundet nogen konfigurationer af MCP-servere.",
+      "importing": "Importerer...",
+      "keys": {
+        "environment": "Miljø: {{names}}",
+        "headers": "Headere: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Importer de valgte",
+      "summary": {
+        "commandFallback": "Lokal kommando",
+        "remote": "Fjernserver: {{origin}}.",
+        "remoteUnknown": "Fjernserver.",
+        "stdio_one": "Lokal kommando: {{command}}. {{count}} argument.",
+        "stdio_other": "Lokal kommando: {{command}}. {{count}} argumenter."
+      },
+      "title": "Importer MCP-servere"
+    },
+    "registry": {
+      "argumentsLine": "Argumenter: {{args}}",
+      "description": "Søg i offentlige metadata om servere. Intet bliver installeret eller startet her. Gennemgå kommandoen eller URL'en, før du tilføjer den.",
+      "emptyQuery": "Indtast et servernavn for at søge i det officielle MCP-register.",
+      "environmentLine": "Miljø: {{names}}",
+      "loadMore": "Indlæs flere",
+      "noResults": "Der blev ikke returneret nogen poster fra registret, der matcher.",
+      "review": "Gennemgå, før du tilføjer",
+      "searchLabel": "Søg i det officielle MCP-register",
+      "searchPlaceholder": "Søg i servernavne",
+      "title": "Officielt MCP-register",
+      "unsupportedEntry": "Denne post angiver hverken en pakke eller en fjerntransport, som Oleafly kan gennemgå.",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Forbind dine apps"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor og andre MCP-klienter kan læse, redigere og kompilere det åbne projekt, og du godkender hver ændring.",
+      "enable": {
+        "ariaLabel": "Slå MCP-serveren til",
+        "description": "Lytter kun på denne computer, mens Oleafly er åben.",
+        "label": "Slå MCP-serveren til"
+      },
+      "footer": "Serveren lytter kun på denne computer (127.0.0.1) og kræver det token, der står ovenfor. Under de to første politikker beder Oleafly altid om din bekræftelse, før filer slettes. claude.ai i browseren kan ikke nå en lokal server. Brug Claude Desktop i stedet.",
+      "policy": {
+        "ask": {
+          "description": "Skrivninger, omdøbninger og sletninger viser et godkendelseskort i Oleafly med en forskel, før noget anvendes.",
+          "label": "Bekræft hver ændring"
+        },
+        "autoWrites": {
+          "description": "Skrivninger og omdøbninger anvendes med det samme. Sletninger viser stadig et godkendelseskort.",
+          "label": "Godkend ændringer automatisk, bekræft sletninger"
+        },
+        "legend": "Godkendelsespolitik",
+        "trust": {
+          "description": "Filændringer spørger ikke. Kommandoer i en shell og styring af computeren kræver altid godkendelse. Din MCP-klient er stadig en ekstra spærre.",
+          "label": "Stol på denne forbindelse"
+        }
+      },
+      "port": {
+        "ariaLabel": "Automatisk valgt port til MCP-serveren",
+        "label": "Port",
+        "restartAriaLabel": "Genstart MCP-serveren, og vælg en ledig port",
+        "restartTooltip": "Genstart MCP-serveren. Oleafly genbruger denne port, hvis den er ledig, eller vælger en anden ledig port."
+      },
+      "readOnly": {
+        "ariaLabel": "Skrivebeskyttet tilstand",
+        "description": "Eksterne apps kan læse og kompilere, men aldrig ændre filer.",
+        "label": "Skrivebeskyttet"
+      },
+      "status": {
+        "restartedAt": "Genstartet på {{url}}",
+        "runningAt": "Kører på {{url}}"
+      },
+      "title": "Oleaflys MCP-server",
+      "token": {
+        "copyUrl": "Kopier URL",
+        "enableToView": "Slå serveren til for at se tokenet.",
+        "help": "Vis eller kopier bearer-tokenet, kopier serverens URL, eller generer tokenet igen til de tilsluttede MCP-klienter.",
+        "hide": "Skjul",
+        "label": "Bearer-token",
+        "regenerate": "Generer igen",
+        "regenerateWarning": "Eksisterende klienter får brug for det nye token.",
+        "reveal": "Vis"
+      }
+    },
+    "servers": {
+      "addServer": "Tilføj server",
+      "browseRegistry": "Gennemse registret",
+      "card": {
+        "editLabel": "Rediger {{name}}",
+        "enableLabel": "Slå {{name}} til",
+        "noTools": "Der blev ikke meldt nogen værktøjer.",
+        "removeLabel": "Fjern {{name}}",
+        "toolCount_one": "{{count}} værktøj",
+        "toolCount_other": "{{count}} værktøjer",
+        "toolsLabel": "Værktøjer fra {{name}}",
+        "validate": "Valider",
+        "validateLabel": "Valider {{name}}"
+      },
+      "description": "Forbind AI-assistenten til lokale kommandoer eller MCP-endepunkter på afstand. Oleafly tjekker hver server, der er slået til, når denne side åbnes, hvert minut og når du beder om det. Den viser også de værktøjer, hver server stiller til rådighed.",
+      "editor": {
+        "addAndValidate": "Tilføj, og valider",
+        "argsHint": "Indtast ét argument pr. linje.",
+        "argsLabel": "Argumenter",
+        "commandLabel": "Kommando",
+        "description": "Servere, der er slået til, bliver tjekket, før deres indstillinger gemmes.",
+        "formView": "Formular",
+        "jsonHint": "Indsæt én server med navnet som nøgle, eller en blok pakket ind i mcpServers.",
+        "jsonLabel": "Hele konfigurationen",
+        "jsonView": "JSON",
+        "nameLabel": "Servernavn",
+        "pairs": {
+          "addHeader": "Tilføj header",
+          "addVariable": "Tilføj variabel",
+          "environmentKeyLabel": "Miljønøgle {{index}}",
+          "environmentTitle": "Miljøvariabler",
+          "environmentValueLabel": "Miljøværdi {{index}}",
+          "headerKeyLabel": "Headernøgle {{index}}",
+          "headerValueLabel": "Headerværdi {{index}}",
+          "headersTitle": "Headere i forespørgslen",
+          "removeHeaderLabel": "Fjern header {{index}}",
+          "removeVariableLabel": "Fjern variabel {{index}}",
+          "storedValuePlaceholder": "Gemt værdi",
+          "valuePlaceholder": "Værdi"
+        },
+        "saveAndValidate": "Gem, og valider",
+        "saveChanges": "Gem ændringerne",
+        "titleAdd": "Tilføj MCP-server",
+        "titleEdit": "Rediger MCP-server",
+        "transportLegend": "Transport",
+        "transportRemote": "URL på afstand",
+        "transportStdio": "Lokal kommando",
+        "urlLabel": "URL på afstand",
+        "viewSwitchLabel": "Editor til konfigurationen"
+      },
+      "empty": {
+        "description": "Tilføj en server for at give assistenten nye værktøjer, eller importer dem, du allerede bruger i en anden editor.",
+        "title": "Der er ikke tilføjet nogen servere"
+      },
+      "hideRegistry": "Skjul registret",
+      "importButton": "Importer fra andre værktøjer",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "Importerede {{imported}}, sprang {{skipped}} over, {{failed}} mislykkedes.",
+      "live": {
+        "checking": "Tjekker {{name}}.",
+        "connected_one": "{{name}} er forbundet. {{count}} værktøj er tilgængeligt.",
+        "connected_other": "{{name}} er forbundet. {{count}} værktøjer er tilgængelige.",
+        "disabled": "{{name}} er slået fra.",
+        "disabledLastCheckFailed": "{{name}} er slået fra. Det seneste tjek mislykkedes.",
+        "disabledLastCheckFound_one": "{{name}} er slået fra. Det seneste tjek fandt {{count}} værktøj.",
+        "disabledLastCheckFound_other": "{{name}} er slået fra. Det seneste tjek fandt {{count}} værktøjer.",
+        "failed": "Valideringen af {{name}} mislykkedes."
+      },
+      "loading": "Indlæser servere...",
+      "remove": {
+        "confirm": "Fjern serveren",
+        "description": "Det fjerner {{name}} fra Oleafly. Du kan tilføje den igen senere.",
+        "descriptionFallback": "Det fjerner serveren fra Oleafly. Du kan tilføje den igen senere.",
+        "title": "Vil du fjerne serveren?"
+      },
+      "status": {
+        "checking": "Tjekker...",
+        "connected": "Forbundet",
+        "disabled": "Slået fra",
+        "error": "Fejl"
+      },
+      "title": "Assistentens MCP-servere"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Tilføj et ord, der ignoreres overalt",
+      "placeholder": "Tilføj et ord eller en term",
+      "projectAriaLabel": "Tilføj et ord, der ignoreres i {{project}}",
+      "submitAriaLabel": "Tilføj ignoreret ord"
+    },
+    "clear": {
+      "confirm": "Ryd ordene",
+      "descriptionFallback": "Det fjerner alle termer fra denne ordbog. De bliver tjekket igen med det samme.",
+      "descriptionGlobal": "Det fjerner alle termer fra den globale ordbog. De bliver tjekket igen med det samme.",
+      "descriptionProject": "Det fjerner alle termer fra {{project}}. De bliver tjekket igen med det samme.",
+      "descriptionSuppressed": "Det fjerner alle termer fra de lukkede fund i {{project}}. De bliver tjekket igen med det samme.",
+      "suppressedConfirm": "Vis igen",
+      "suppressedTitle": "Vil du vise de lukkede fund igen?",
+      "title": "Vil du rydde de ignorerede ord?"
+    },
+    "dismissed": {
+      "countTitle": "{{dismissed}} lukket ud af de {{limit}}, projektet kan huske",
+      "hidden_one": "{{count}} grammatikfund er skjult i dette projekt, fordi du valgte Ignorer i dette projekt. Viser du det igen, bliver det understreget på ny.",
+      "hidden_other": "{{count}} grammatikfund er skjult i dette projekt, fordi du valgte Ignorer i dette projekt. Viser du dem igen, bliver de understreget på ny.",
+      "none": "Der er intet lukket. Når du vælger Ignorer i dette projekt på et grammatikfund, står det her.",
+      "showAgain": "Vis dem igen",
+      "title": "Lukkede fund",
+      "titleInProject": "Lukkede fund i {{project}}"
+    },
+    "global": {
+      "emptyDescription": "Ord, du tilføjer her, springer korrekturlæsningen over i alle projekter.",
+      "scope": "Gælder for alle projekter"
+    },
+    "intro": "Føj ord til din personlige ordbog til stavekontrol. Ordene gemmes i de lokale indstillinger og ignoreres på tværs af projekter. Sammenligningen er Unicode-normaliseret og skelner ikke mellem store og små bogstaver.",
+    "profileRules": {
+      "description": "Slået fra som udgangspunkt, fordi de står i vejen for artikler. Slå dem til, du vil bruge.",
+      "example": "Eksempel: {{example}}",
+      "help": "Harper er indstillet til chat og e-mail. Disse regler skubber enten mod en stil, artikler ikke følger, som at skrive kB og min helt ud, eller de snubler over de pladsholdere, der står i stedet for LaTeX-opmærkning, så Oleafly holder dem slået fra. Hver regel viser, hvad den ville markere. Slå den til, hvis du vil have de fund.",
+      "reasons": {
+        "AvoidContractions": "Beder dig om at skrive alle sammentrækninger helt ud.",
+        "CompoundNouns": "Slår et sammensat navneord sammen, når det er skrevet som to ord.",
+        "Dashes": "Erstatter et indtastet -- eller --- med det rigtige stregtegn.",
+        "DiscourseMarkers": "Markerer en sætning, der begynder med et ord som however uden komma efter.",
+        "EllipsisLength": "Retter en ellipse, der ikke består af tre prikker.",
+        "ExpandAlgorithm": "Vil have algo skrevet helt ud.",
+        "ExpandArgument": "Vil have arg skrevet helt ud.",
+        "ExpandCoordinate": "Vil have coord skrevet helt ud.",
+        "ExpandMemoryShorthands": "Vil have KB og MB skrevet helt ud.",
+        "ExpandParameter": "Vil have param skrevet helt ud.",
+        "ExpandStandardInputAndOutput": "Vil have stdin og stdout skrevet helt ud.",
+        "ExpandTimeShorthands": "Vil have min og sec skrevet helt ud.",
+        "ExplainLikeImFive": "Skriver en forkortelse ud i sine fulde ord.",
+        "FillerWords": "Markerer ord, den regner for fyld.",
+        "Hedging": "Markerer forbeholdne vendinger som I would argue that og to a certain degree.",
+        "LongSentences": "Markerer enhver sætning, der er længere end grænsen.",
+        "MergeWords": "Samler et ord, som et løbsk mellemrum har delt i to, for eksempel to gether.",
+        "MoreAdjective": "Foretrækker komparativformen frem for more plus et tillægsord.",
+        "NoFrenchSpaces": "Fjerner det mellemrum før tegnsætning, som fransk typografi bruger.",
+        "NoOxfordComma": "Fjerner kommaet før det sidste led i en opremsning.",
+        "NumericRangeEnDash": "Vil have en tankestreg mellem enderne af et talinterval.",
+        "OxfordComma": "Kræver komma før det sidste led i en opremsning.",
+        "SentenceCapitalization": "Sætter stort begyndelsesbogstav på det første ord i en sætning, også når den starter efter maskeret opmærkning.",
+        "Spaces": "Slår gentagne mellemrum sammen, som prosamasken efterlader, hvor opmærkning er blevet tømt.",
+        "SplitWords": "Deler et ord, der burde være to, for eksempel alot.",
+        "TransposedSpace": "Flytter et mellemrum, der sidder på den forkerte side af et tegn, hvilket maskeringen ofte giver."
+      },
+      "title": "Regler, som den akademiske profil holder slået fra",
+      "toggleAriaLabel": "Slå {{rule}} til"
+    },
+    "projects": {
+      "empty": "Åbn et projekt for at tilføje termer, der kun gælder det projekt.",
+      "emptyDescription": "Ord, der er tilføjet til dette projekt, springer korrekturlæsningen kun over her.",
+      "terms_one": "{{used}} / {{limit}} term",
+      "terms_other": "{{used}} / {{limit}} termer"
+    },
+    "reset": {
+      "confirmationDescription": "Det fjerner permanent alle ignorerede ord, både globalt og pr. projekt, og slår alle de grammatikregler til igen, som du har slået fra. Den akademiske profil holder sine egne regler slået fra. Korrekturlæsningen markerer de ord igen.",
+      "sectionName": "Ordbog"
+    },
+    "search": {
+      "ariaLabel": "Søg i ignorerede ord",
+      "placeholder": "Søg i ordbogen"
+    },
+    "tabs": {
+      "global": "Globalt",
+      "projects": "Projekter"
+    },
+    "turnedOff": {
+      "description": "Regler, du har slået fra, og fund, du har ignoreret i dette projekt.",
+      "help": "Hold musen over et understreget ord eller en understreget sætning i editoren, så viser et lille kort, hvad Harper fandt, med knapper til at rette eller ignorere det. Regler, du har slået fra på det kort, og fund, du har ignoreret i dette projekt, står her, så du kan hente dem tilbage.",
+      "listAriaLabel": "Grammatikregler, der er slået fra",
+      "none": "Du har ikke slået nogen regler fra.",
+      "restoreAriaLabel": "Slå reglen {{rule}} til igen",
+      "restoreTitle": "Slå reglen »{{rule}}« til igen",
+      "title": "Grammatikregler og lukkede fund"
+    },
+    "words": {
+      "emptyCompact": "Der er endnu intet ignoreret.",
+      "emptyTitle": "Der er endnu intet ignoreret",
+      "listAriaLabel": "Ignorerede ord",
+      "noMatches": "Ingen ignorerede ord matcher denne søgning.",
+      "removeAriaLabel": "Hold op med at ignorere {{word}}",
+      "removeTitle": "Hold op med at ignorere »{{word}}«"
+    }
+  },
+  "reset": {
+    "button": "Nulstil til standarderne",
+    "confirmDescription": "Gendan indstillingerne under {{sectionName}} til standarderne. Andre indstillinger ændres ikke.",
+    "confirmTitle": "Vil du nulstille indstillingerne under {{sectionName}}?",
+    "description": "Gendan indstillingerne under {{sectionName}} til standarderne.",
+    "label": "Nulstil indstillinger"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Søg efter og kør Oleafly-kommandoer.",
+        "label": "Kommandopalet"
+      },
+      "forwardSync": {
+        "description": "Spring fra markøren i editoren til den kompilerede PDF.",
+        "label": "Gå til PDF"
+      },
+      "recompile": {
+        "description": "Kompiler det aktuelle projekt, og vis dets PDF.",
+        "label": "Kompiler igen"
+      },
+      "searchDocuments": {
+        "description": "Søg på tværs af projekter og dokumenter.",
+        "label": "Søg i alle dokumenter"
+      },
+      "shortcutReference": {
+        "description": "Åbn oversigten over projektets genveje.",
+        "label": "Genvejsoversigt"
+      },
+      "toggleBrowser": {
+        "description": "Vis eller skjul projektets browser.",
+        "label": "Vis eller skjul browseren"
+      },
+      "toggleSidebar": {
+        "description": "Vis eller skjul projektets sidepanel.",
+        "label": "Vis eller skjul sidepanelet"
+      },
+      "toggleTerminal": {
+        "description": "Vis eller skjul projektets terminal.",
+        "label": "Vis eller skjul terminalen"
+      }
+    },
+    "application": {
+      "editAriaLabel": "Rediger {{action}}, i øjeblikket {{shortcut}}",
+      "heading": "Genveje i appen",
+      "prompt": "Tryk på den nye tastekombination",
+      "recordAriaLabel": "Optager {{action}}. Tryk på en genvej.",
+      "recording": "Optager",
+      "resetAriaLabel": "Nulstil {{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "Bed AI om at redigere markeringen",
+        "bold": "Fed",
+        "findAndReplace": "Find og erstat",
+        "findReferences": "Find referencer",
+        "goToDefinition": "Gå til definitionen",
+        "goToDefinitionWithPointer": "Gå til definitionen med musen",
+        "indentOrAcceptAutocomplete": "Indryk eller accepter fuldførelsen",
+        "italic": "Kursiv",
+        "jumpToSourceFromPdf": "Spring til kildekoden fra PDF'en",
+        "redo": "Gentag",
+        "renameSymbol": "Omdøb symbolet i hele projektet",
+        "slashCommandMenu": "Indsætningsmenu med skråstregskommandoer",
+        "triggerAutocomplete": "Udløs automatisk fuldførelse",
+        "undo": "Fortryd"
+      },
+      "managed": "Styres af editoren"
+    },
+    "categories": {
+      "codeIntelligence": "Kodeindsigt",
+      "editor": "Editor",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "Allerede tildelt {{action}}.",
+      "reserved": "{{shortcut}} er reserveret af styresystemet."
+    },
+    "intro": "Tilpas appens genveje, og se editorens egne tastekombinationer.",
+    "reserved": {
+      "closeWindow": "Luk vinduet",
+      "copy": "Kopier",
+      "cut": "Klip",
+      "paste": "Sæt ind",
+      "quit": "Slut",
+      "save": "Gem",
+      "selectAll": "Vælg alt",
+      "systemSearch": "Systemsøgning",
+      "windowSwitching": "Skift mellem vinduer"
+    },
+    "reset": {
+      "sectionName": "Tastaturgenveje"
+    },
+    "tabs": {
+      "application": "App"
+    },
+    "editorKeys": {
+      "clearHint": "Tryk Backspace for at lade denne handling stå uden genvej.",
+      "heading": "Taster i editoren",
+      "intro": "Disse taster virker inde i kildeeditoren. Vim- og Emacs-tilstand har deres egne genveje.",
+      "labels": {
+        "addCursorAbove": "Tilføj markør ovenover",
+        "addCursorBelow": "Tilføj markør nedenunder",
+        "deleteLine": "Slet linjen",
+        "duplicate": "Dupliker markeringen eller linjen",
+        "gotoLine": "Gå til linje",
+        "indentLess": "Ryk ud",
+        "indentMore": "Indryk",
+        "lowercase": "Små bogstaver",
+        "selectNextOccurrence": "Marker næste forekomst",
+        "titleCase": "Stort begyndelsesbogstav",
+        "toggleComment": "Slå kommentar til eller fra",
+        "uppercase": "Store bogstaver"
+      },
+      "unbound": "Ikke angivet"
+    }
+  }
+}

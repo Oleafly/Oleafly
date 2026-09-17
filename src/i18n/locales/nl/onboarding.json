@@ -1,0 +1,271 @@
+{
+  "home": {
+    "label": "Aan de slag",
+    "overview": {
+      "title": "Start",
+      "content": "Hier staan je projecten en hier maak je nieuwe aan."
+    },
+    "create": {
+      "title": "Maak een echt project",
+      "content": "Kies Nieuw project om te zien op welke manieren werk kan beginnen."
+    },
+    "kind": {
+      "title": "Drie manieren om te beginnen",
+      "content": "Begin een onderzoeksproject, haal een manuscript binnen dat je al hebt, of werk vanuit een kant-en-klaar sjabloon."
+    },
+    "kindTemplate": {
+      "title": "Werk vanuit een sjabloon",
+      "content": "Kies Een sjabloon gebruiken om de galerij te openen. De andere twee startpunten blijven beschikbaar wanneer je ze nodig hebt."
+    },
+    "gallery": {
+      "title": "Vind je startpunt",
+      "content": "Blader door categorieën, zoek op naam en filter sjablonen op compiler of offline beschikbaarheid."
+    },
+    "template": {
+      "title": "Kies een sjabloon",
+      "content": "Selecteer een echt sjabloon om verder te gaan. De bestanden ervan worden je nieuwe project."
+    },
+    "name": {
+      "title": "Geef je project een naam",
+      "content": "Vul een projectnaam in. Volgende wordt beschikbaar zodra de naam niet leeg is."
+    },
+    "color": {
+      "title": "Kies een omslagkleur",
+      "content": "Met deze kleur herken je het project snel op Start. Je kunt de standaardkleur van het sjabloon houden."
+    },
+    "createProject": {
+      "title": "Maak je project aan",
+      "content": "Klik op \"Project aanmaken\" om een project met het gekozen sjabloon te maken."
+    }
+  },
+  "workspace": {
+    "label": "Je werkruimte",
+    "toolbar": {
+      "title": "Projectwerkbalk",
+      "content": "Hier vind je projectacties en de knoppen om te compileren."
+    },
+    "sidebar": {
+      "title": "Navigatie in de werkruimte",
+      "content": "Wissel tussen bestanden, zoeken, versiebeheer, preflight, referenties en MCP-activiteit."
+    },
+    "editor": {
+      "title": "Editor",
+      "content": "Schrijf en doorzoek je broncode met aanvulling, diagnostiek, opmaak en code-intelligentie."
+    },
+    "wysiwygToggle": {
+      "title": "Probeer de WYSIWYG-modus",
+      "content": "Wissel tussen de ruwe broncode en een opgemaakte weergave van je document in de stijl van Google Docs."
+    },
+    "compile": {
+      "title": "Compileren en opnieuw compileren",
+      "content": "Bouw hier het huidige project. De rondleiding compileert nooit en wijzigt je broncode niet."
+    },
+    "logs": {
+      "title": "Buildlogboeken",
+      "content": "Open de buildlogboeken om fouten te bekijken zonder de inhoud van het project te wijzigen. De status ernaast toont de laatste compileertijd."
+    },
+    "preview": {
+      "title": "PDF-voorbeeld",
+      "content": "Het gecompileerde document blijft in de gesplitste weergave naast je broncode staan."
+    },
+    "zoom": {
+      "title": "Je complete PDF-gereedschap",
+      "content": "Open de inhoudsopgave, zoek in de tekst, spring tussen pagina's, kies een weergave met één of twee pagina's, zoom in of pas de pagina in, keer de kleuren om, gebruik de toegankelijke leesweergave, draai, download, sla op in het project, ga naar volledig scherm of open het voorbeeld in een eigen venster."
+    },
+    "sourceNavigation": {
+      "title": "Van PDF naar broncode",
+      "content": "Klik op inhoud in de gecompileerde PDF om direct naar de bijbehorende broncode te springen."
+    }
+  },
+  "research": {
+    "label": "Onderzoekswerkruimte",
+    "open": {
+      "title": "Onderzoekswerkruimte",
+      "content": "Open deze om onderzoekstaken aan een agent te geven en om leesmappen en datasets te koppelen die je elders bewaart. Dit is nieuw en in bèta, dus meld het gerust als er iets stukgaat."
+    },
+    "tasks": {
+      "title": "Zet onderzoekstaken in de wachtrij",
+      "content": "Beschrijf een stuk werk en geef het aan een agent. Elke taak houdt zijn eigen gesprek, resultaten en beoordelingsnotities bij."
+    },
+    "folders": {
+      "title": "Koppel mappen die je al hebt",
+      "content": "Wijs de werkruimte naar leesmappen en datasets buiten het project. Er wordt niets gekopieerd of verplaatst."
+    }
+  },
+  "settings": {
+    "label": "Instellingen",
+    "navigation": {
+      "title": "Instellingen",
+      "content": "Wissel hier tussen voorkeuren en integraties."
+    },
+    "general": {
+      "title": "Algemene voorkeuren",
+      "content": "Regel het bewerkgedrag, de offlinemodus, sneltoetsen en rondleidingen."
+    },
+    "appearance": {
+      "title": "Weergave",
+      "content": "Kies het thema, de typografie, de standaardindeling van de werkruimte en de accentkleur."
+    },
+    "dictionary": {
+      "title": "Woordenboek",
+      "content": "Bekijk de projectspecifieke en algemene woorden die de spelling- en grammaticacontrole negeert."
+    },
+    "data": {
+      "title": "Gegevensopslag",
+      "content": "Bekijk de lokale projectopslag en beheer de gegevens van de app."
+    },
+    "ai": {
+      "title": "AI-assistent",
+      "content": "Stel providers, modellen, sleutels en de MCP-servers in die de assistent mag gebruiken."
+    },
+    "compiler": {
+      "title": "Compiler",
+      "content": "Kies en configureer de LaTeX-engine waarmee projecten worden gebouwd."
+    },
+    "downloads": {
+      "title": "Downloads",
+      "content": "Beheer de pakketten en bronnen die offline beschikbaar zijn."
+    },
+    "integrations": {
+      "title": "Integraties",
+      "content": "Verbind GitHub, alphaXiv, Zotero, citatie-zoeken en de lokale MCP-server van Oleafly."
+    },
+    "shortcuts": {
+      "title": "Sneltoetsen",
+      "content": "Bekijk, bewerk, stel in en herstel de sneltoetsen van de app."
+    },
+    "mcp": {
+      "title": "MCP voor de assistent",
+      "content": "Kies welke MCP-servers de assistent mag gebruiken."
+    },
+    "help": {
+      "title": "Help en Over",
+      "content": "Start de contextuele rondleiding opnieuw, open de documentatie, bekijk sneltoetsen of meld een probleem."
+    }
+  },
+  "aiSettings": {
+    "label": "AI-instellingen",
+    "tabs": {
+      "title": "Instellingen voor de AI-assistent",
+      "content": "Beheer hier providers en sleutels, instructies, persona's, herbruikbare vaardigheden en MCP-servers."
+    },
+    "providers": {
+      "title": "Providers verbinden",
+      "content": "Plak een sleutel en die wordt bij de provider gecontroleerd voordat hij wordt opgeslagen. Verbonden providers krijgen een groen label en klappen uit naar een modellijst die je kunt aan- en uitzetten, uitbreiden of herstellen. Sleutels blijven versleuteld op deze computer."
+    },
+    "customProvider": {
+      "title": "Gebruik je eigen endpoint",
+      "content": "Elke OpenAI-compatibele basis-URL werkt hier, ook lokale servers zoals Ollama of LM Studio."
+    },
+    "openInstructions": {
+      "title": "Instructies",
+      "content": "Klik op het tabblad Instructies om verder te gaan."
+    },
+    "defaultModel": {
+      "title": "Standaardmodel",
+      "content": "Nieuwe chats beginnen met dit model. Je kunt per gesprek nog van model wisselen in het chatpaneel."
+    },
+    "instructions": {
+      "title": "Eigen instructies",
+      "content": "Je vaste stijlvoorkeuren, die aan elk verzoek van de assistent worden toegevoegd."
+    },
+    "openPersonas": {
+      "title": "Persona's",
+      "content": "Klik op het tabblad Persona's om verder te gaan."
+    },
+    "personas": {
+      "title": "Persona's maken",
+      "content": "Instructiesets met een naam en een kleur, die je wisselt via het menu Persona in de chat. Probeer eens een tekstredacteur, een reviewer of een LaTeX-purist."
+    }
+  },
+  "ai": {
+    "label": "AI-assistent",
+    "assistant": {
+      "title": "AI-assistent",
+      "content": "Werk met een assistent die je project kent, zonder dat er tijdens deze rondleiding iets wordt verstuurd."
+    },
+    "runtime": {
+      "title": "Twee soorten agent",
+      "content": "De Oleafly-agent draait op de modelprovider die je instelt. De CLI-agent, nog in bèta, bestuurt een codeeragent die al op deze computer staat."
+    },
+    "connectProvider": {
+      "title": "Een provider verbinden",
+      "content": "Als er nog geen provider is ingesteld, begin je hier. De rondleiding vraagt nooit om sleutels en wijzigt ze niet."
+    },
+    "providerModel": {
+      "title": "Provider en model",
+      "content": "Wissel van model voor dit gesprek. Wijzigingen gelden alleen voor deze sessie. Je standaardmodel stel je in bij Instellingen. Aan het logo zie je bij welke provider elk model hoort."
+    },
+    "prompts": {
+      "title": "Promptsnelkoppelingen",
+      "content": "Kies een kant-en-klare prompt om die in het chatveld te zetten."
+    },
+    "persona": {
+      "title": "Persona",
+      "content": "Kies hoe de assistent moet werken. Een actieve persona vervangt je standaardinstructies totdat je hem uitzet."
+    },
+    "input": {
+      "title": "Chatveld",
+      "content": "Beschrijf wat je nodig hebt. De assistent kan de context van je project gebruiken, maar deze rondleiding verstuurt nooit een verzoek."
+    },
+    "attachments": {
+      "title": "Bijlagen",
+      "content": "Voeg afbeeldingen, PDF's en bronbestanden toe als een gesprek extra context nodig heeft."
+    },
+    "history": {
+      "title": "Gespreksgeschiedenis",
+      "content": "Open recente en volledige chatgeschiedenis opnieuw, terwijl elk gesprek gekoppeld blijft aan de staat van het project."
+    },
+    "usage": {
+      "title": "Verbruik",
+      "content": "Bij ingestelde gesprekken zie je hier het verbruik aan runs, tokens en geschatte kosten, als dat beschikbaar is."
+    },
+    "restore": {
+      "title": "Projectstaat herstellen",
+      "content": "Na een AI-bewerking kan een checkpoint de projectbestanden herstellen zonder het gesprek te verwijderen."
+    }
+  },
+  "diagram": {
+    "label": "Diagrameditor",
+    "composer": {
+      "title": "Diagrameditor",
+      "content": "Bouw diagrammen visueel of met TikZ-code. De rondleiding wijzigt je werk niet en slaat niets op."
+    },
+    "import": {
+      "title": "Een TikZ-bestand importeren",
+      "content": "Heb je al een .tikz- of .tex-bestand? Importeer het om deze starttekening te vervangen. Het blijft een concept totdat je het zelf opslaat."
+    },
+    "modes": {
+      "title": "Tekenen en Code",
+      "content": "In de tekenmodus werk je direct op het canvas. De codemodus toont de gegenereerde TikZ en herbruikbare fragmenten."
+    },
+    "palette": {
+      "title": "Vormenpalet",
+      "content": "Kies een vorm en sleep daarna op het canvas om hem te plaatsen en groot te maken."
+    },
+    "handles": {
+      "title": "Verbinden en formaat wijzigen",
+      "content": "Een geselecteerde vorm toont verbindings- en formaatgrepen voor een precieze structuur en grootte."
+    },
+    "inspector": {
+      "title": "Inspecteur",
+      "content": "Selecteer een vorm of verbinding om de stijl, tekst, route en stapelvolgorde aan te passen."
+    },
+    "preview": {
+      "title": "Gecompileerd voorbeeld",
+      "content": "Compileren opent naast de editor een voorbeeld met knoppen voor schaal en achtergrond."
+    },
+    "compile": {
+      "title": "Compileren",
+      "content": "Compileren maakt een los voorbeeld zonder het diagram in je document te zetten."
+    },
+    "saveProject": {
+      "title": "Opslaan als project",
+      "content": "Sla een voltooid diagram op als herbruikbaar afbeeldingsproject dat op Start verschijnt."
+    },
+    "download": {
+      "title": "Downloaden",
+      "content": "Download het gecompileerde diagram als PNG-bestand zonder het als project op te slaan."
+    }
+  }
+}

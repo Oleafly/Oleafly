@@ -40,6 +40,27 @@ Citation Search **Review** mode streams Friendly (constructive mentor) or Fire
 (Reviewer #2) feedback for the active document or captured selection, using the
 configured AI provider.
 
+## BibTeX editing
+
+A `.bib` file has its own completion and its own checks. Neither waits for the
+project index.
+
+- Typing `@` at the start of a line offers the entry types, standard BibTeX
+  and the common biblatex ones. Accepting one writes the entry out: braces, a
+  placeholder key, and a line for every required field. Tab steps through the
+  placeholders. `@string`, `@preamble` and `@comment` are in the same list.
+- Inside an entry, a field name completes from the fields that entry type
+  takes, with the required ones first.
+- In a LaTeX file, `\bibliographystyle{` offers the classic BibTeX styles,
+  the natbib variants, the common journal styles and the REVTeX families.
+- Entries are checked while you type. A missing required field is marked on
+  the key, an unknown entry type on the type, a repeated field on the repeat,
+  and a year that is not four digits on the value. Where BibTeX and biblatex
+  disagree on a name, either spelling counts, so `journaltitle` satisfies
+  `journal` and `date` satisfies `year`.
+- `%%novalidate` on a line of its own turns the checks off for the file, and
+  `%%begin novalidate` with `%%end novalidate` turns them off for a region.
+
 ## OpenAlex contact email and Serper
 
 Optional OpenAlex polite-pool contact email is stored under Integrations as
@@ -68,4 +89,8 @@ and incomplete metadata are reported as states rather than silently guessed.
 - `src/components/tools/PaperReviewPanel.tsx`: Friendly/Fire review UI.
 - `src/store/project-index.ts`: bibliography and reference indexing.
 - `packages/preflight/src/refs-rules.ts`: reference diagnostics.
+- `packages/latex/src/bibtex-entry-types.ts`: the one table of entry types
+  and required fields shared by completion, the inline linter and preflight.
+- `packages/editor/src/bibtex-completions.ts` and `bibtex-linter.ts`: the
+  `.bib` completion source and the always-on entry checks.
 - `src/contributions/tabs.tsx`: references rail tab.

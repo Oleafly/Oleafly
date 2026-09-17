@@ -1,0 +1,1467 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "Ohjelmatiedosto",
+      "bridgeSourceLabel": "Lähde",
+      "bridgeTitle": "ACP-silta",
+      "bridgeUnresolved": "Sillan ohjelmatiedostoa ei ole vielä selvitetty.",
+      "checkAgain": "Tarkista uudelleen",
+      "checkFailedTitle": "Asennettuja agentteja ei voitu tarkistaa",
+      "checkInstalled": "Tarkista asennetut agentit",
+      "checkingAction": "Tarkistetaan",
+      "checkingDescription": "Tämä voi kestää hetken, kun Oleafly tarkistaa tämän koneen komentorivityökalut.",
+      "checkingInstalled": "Tarkistetaan asennettuja agentteja",
+      "checkingTitle": "Etsitään komentoriviagentteja",
+      "cliNotOnPath": "{{command}} ei löytynyt PATH-polustasi.",
+      "cliPathLabel": "Havaittu sijainnissa",
+      "cliTitle": "Komentorivityökalu",
+      "copySignInCommand": "Kopioi kirjautumiskomento",
+      "emptyDescription": "Asenna tuettu komentoriviagentti ja tarkista sitten uudelleen.",
+      "emptyTitle": "Komentoriviagentteja ei löytynyt",
+      "custom": {
+        "description": "Liitä agentin määrittely, niin voit rekisteröidä agentin, joka ei tule Oleaflyn mukana.",
+        "hint": "Liitä agentin määrittely, jossa on kiinnitetty npm- tai uv-paketti, varmennettu ohjelmatiedosto tai asennettu suoritettava tiedosto. Älä laita salasanoja tai API-avaimia tähän JSONiin.",
+        "label": "Rekisteröi mukautettu agentti",
+        "submit": "Rekisteröi määrittely",
+        "title": "Lisää mukautettu agentti",
+        "useExample": "Käytä esimerkkiä"
+      },
+      "install": {
+        "confirm": "Asenna",
+        "description": "Oleafly lataa tämän kiinnitetyn paketin omaan agenttikansioonsa. Agentti toimii sitten komentorivityökalun tililläsi, kun aloitat keskustelun.",
+        "installing": "Asennetaan",
+        "location": "Oleaflyn agenttikansio, {{id}}/{{version}}",
+        "locationLabel": "Asennetaan kohteeseen",
+        "packageLabel": "Paketti",
+        "title": "Asenna {{name}}-silta {{version}}"
+      },
+      "installBridge": "Asenna silta",
+      "installBridgeNextStep": "Asenna ACP-silta ja kirjaudu sitten sisään komentorivityökalulla.",
+      "intro": "Yhdistä paikallinen agentti ACP:n kautta. Jokainen agentti hallitsee omat mallinsa, työkalunsa ja kirjautumisensa, ja API-palveluiden asetukset pysyvät erillään. Käytä kirjautumiseen agentin virallista komentorivitiliä: Oleafly ei tuo tilitokeneita eikä arvioi tilausten kiintiöitä.",
+      "nextStepTitle": "Seuraava vaihe",
+      "notReported": "Ei raportoitu",
+      "notice": {
+        "installed": "{{name}} on asennettu. Kirjaudu sisään sen komentorivityökalulla ennen keskustelun aloittamista.",
+        "registered": "{{name}} on rekisteröity. Rekisteröinti ei asenna eikä käynnistä sitä.",
+        "removed": "Agentin määrittely poistettiin. Asennetut tiedostot ja tallennetut keskustelut ovat yhä käytettävissä.",
+        "terminalOpen": "Projektin pääte on auki. Aja agentillesi näytetty kirjautumiskomento ja yhdistä keskustelu sitten uudelleen."
+      },
+      "openSignInTerminal": "Avaa kirjautumispääte",
+      "openTerminal": "Avaa pääte",
+      "platformLabel": "Alusta",
+      "refreshingStatus": "Päivitetään agenttien tilaa. Nykyinen luettelo pysyy paikallaan.",
+      "registry": {
+        "description": "Hae ACP-rekisteristä muiden tiimien julkaisemia agentteja.",
+        "hideDistribution": "Piilota jakelutiedot",
+        "register": "Rekisteröi agentti",
+        "registered": "Rekisteröity",
+        "reviewHint": "Rekisterin tiedot kuvaavat ohjelmistoa sen julkaisijoiden sanoin. Tarkista jakelu ennen rekisteröintiä tai asennusta.",
+        "search": "Hae",
+        "searchLabel": "Etsi ACP-agentti",
+        "searchPlaceholder": "Hae ACP-rekisteristä",
+        "searching": "Haetaan",
+        "showDistribution": "Näytä jakelutiedot",
+        "title": "Etsi lisää agentteja"
+      },
+      "sectionLabel": "ACP-agentit",
+      "signInCommandLabel": "Kirjautumiskomento",
+      "versionLabel": "Versio",
+      "updateBridge": "Päivitä silta"
+    },
+    "approvals": {
+      "file": {
+        "description": "Mukautettu hyväksyntätila lukee tämän tiedoston. Se sijaitsee polussa ~/.oleafly/approvals.toml ja koskee jokaista tämän laitteen projektia.",
+        "discard": "Hylkää muutokset",
+        "emptyFile": "Tiedosto on toistaiseksi tyhjä.",
+        "help": {
+          "comments": "Merkillä # alkavat kommentit säilyvät, kun tallennat täällä, mutta hyväksyntäkortin valinta \"Aina tässä projektissa\" kirjoittaa tiedoston uudelleen ilman niitä.",
+          "modes": "Ensimmäinen taulu, <modesTable>[\"$approval_modes\"]</modesTable>, asettaa hyväksyntätilan projektikohtaisesti: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> tai <custom>\"custom\"</custom>. Projekti, jota ei ole listattu, käyttää tilaa Hyväksy puolestani.",
+          "openProject": "Avoimen projektin {{name}} tunnus on <projectId>{{id}}</projectId>.",
+          "projectIds": "Projektien tunnukset ovat kansionimiä polussa ~/.oleafly/projects.",
+          "rules": "Sen jälkeen yksi taulu projektitunnusta kohden, ja siinä yksi sääntö työkalua kohden: <allow>\"allow\"</allow> ajaa työkalun kysymättä ja <deny>\"deny\"</deny> estää sen. Deny-sääntöjä noudatetaan joka tilassa; allow-säännöt vaikuttavat mukautetussa tilassa, ja run_command-työkalun osalta ne ohittavat kysymisen myös muissa tiloissa.",
+          "toolNames": "Käytettävissä olevat työkalunimet: <names>{{names}}</names> sekä mikä tahansa MCP-työkalu koko nimellään Työkalut-luettelosta."
+        },
+        "helpToggle": "Miten tiedosto toimii",
+        "insertExample": "Lisää esimerkki",
+        "reload": "Lataa uudelleen",
+        "saved": "Tallennettu. Säännöt vaikuttavat seuraavasta työkalukutsusta alkaen.",
+        "saving": "Tallennetaan",
+        "title": "Hyväksyntäsääntöjen tiedosto"
+      },
+      "project": {
+        "allowed": "Aina sallittu",
+        "denied": "Aina estetty",
+        "description": "Projektin {{name}} tallennetut säännöt. Ne vaikuttavat, kun hyväksyntätila on Mukautettu. Poista sääntö, niin kyseiseen työkaluun sovelletaan tavallista riskikäytäntöä.",
+        "empty": "Ei vielä tallennettuja sääntöjä. Käytä hyväksyntäkehotteessa valintaa \"Aina tässä projektissa\", niin sääntö syntyy.",
+        "removeRule": "Poista työkalun {{tool}} sääntö",
+        "thisProject": "tämä projekti",
+        "title": "Työkalujen hyväksynnät"
+      }
+    },
+    "budget": {
+      "clear": "Tyhjennä budjetti",
+      "inputLabel": "Tekoälybudjetti Yhdysvaltain dollareina",
+      "inputPlaceholder": "Ei budjettia",
+      "limit": "Ajot keskeytyvät, kun budjetti täyttyy.",
+      "save": "Tallenna budjetti",
+      "spent": "Arvioitu kulutus tähän mennessä: {{amount}}. Ajot keskeytyvät, kun budjetti täyttyy.",
+      "title": "Tekoälybudjetti"
+    },
+    "customProvider": {
+      "addDescription": "Yhdistä mikä tahansa OpenAI-yhteensopiva päätepiste sen perus-URL-osoitteella.",
+      "addTitle": "Lisää mukautettu palvelu",
+      "baseUrlLabel": "Perus-URL",
+      "baseUrlNote": "Tallennettu API-avaimesi lähetetään tähän uuteen osoitteeseen.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "Vaihda nimi tai perus-URL.",
+      "editTitle": "Muokkaa mukautettua palvelua",
+      "errors": {
+        "addFailed": "Palvelua ei voitu lisätä.",
+        "baseUrlHost": "URL-osoitteesta puuttuu palvelinnimi.",
+        "baseUrlInvalid": "Anna täydellinen URL, esimerkiksi https://api.example.com/v1 tai http://localhost:1234/v1.",
+        "baseUrlProtocol": "Käytä muotoa https:// tai paikallisella palvelimella http://.",
+        "baseUrlRequired": "Perus-URL on pakollinen.",
+        "idFormat": "Käytä vain pieniä kirjaimia, numeroita ja väliviivoja, esimerkiksi acme.",
+        "idRequired": "Tunnus on pakollinen.",
+        "nameRequired": "Nimi on pakollinen.",
+        "saveFailed": "Palvelua ei voitu tallentaa."
+      },
+      "idLabel": "Tunnus",
+      "idPlaceholder": "acme",
+      "keyLabel": "API-avain (valinnainen)",
+      "keyLabelKeepSaved": "API-avain (jätä tyhjäksi, niin tallennettu avain säilyy)",
+      "keyPlaceholder": "Jätä tyhjäksi, jos avainta ei vaadita",
+      "keyPlaceholderStored": "Tallennettu avain säilyy, ellet anna uutta",
+      "namePlaceholder": "Acme",
+      "submitAdd": "Lisää palvelu"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Agentin kyvyt",
+      "customDescription": "Lisätään jokaiseen tekoälypyyntöön omana tyylinäsi ja mieltymyksinäsi. Avustaja noudattaa näitä sisäänrakennetun toimintansa päälle. Ne eivät voi ohittaa sen työkaluja eivätkä turvallisuussääntöjä.",
+      "customPlaceholder": "Esimerkiksi: kirjoita aina brittienglannilla. Pidä selitykset lyhyinä. Käytä luetteloissa mieluiten enumitem-pakettia.",
+      "customTitle": "Omat ohjeet",
+      "defaultModelDescription": "Käytetään aina, kun aloitat uuden keskustelun. Mallin voi silti vaihtaa yksittäisessä keskustelussa keskustelupaneelista.",
+      "defaultModelTitle": "Keskustelun oletusmalli",
+      "pdfCaptureDescription": "Sallii agentin rasteroida käännetyt sivut (verify_pdf_pages) konenäöllä tehtäviä taittotarkistuksia varten. Poista käytöstä, jos et halua lähettää sivukuvia palvelullesi.",
+      "pdfCaptureLabel": "Salli PDF-sivujen kaappaus tekoälylle",
+      "save": "Tallenna ohjeet",
+      "saved": "Tallennettu",
+      "toolsHint": "Pyydä esimerkiksi \"korjaa LaTeX-virheet\", \"lisää Julkaisut-osio\" tai \"käännä uudelleen ja tarkista PDF\".",
+      "toolsTitle": "Avustaja tukee tällä hetkellä näitä työkaluja"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "Tämä malli on jo luettelossa.",
+        "empty": "Anna mallin tunnus.",
+        "spaces": "Mallien tunnuksissa ei voi olla välilyöntejä."
+      },
+      "addPlaceholder": "Lisää mallin tunnus",
+      "changeSummary": "{{added}} lisätty, {{removed}} poistettu",
+      "custom": "Mukautettu",
+      "deleteAriaLabel": "Poista malli {{model}}",
+      "deleteDialog": {
+        "description": "Poistetaanko \"{{model}}\" tämän palvelun malliluettelosta? Sisäänrakennetut mallit voi palauttaa Palauta oletukset -toiminnolla. Mukautetut mallit voi lisätä uudelleen tunnuksella.",
+        "title": "Poista malli"
+      },
+      "deleteTooltip": "Poista malli",
+      "empty": "Ei vielä malleja. Lisää yksi alta.",
+      "invalidKey": "Virheellinen API-avain.",
+      "metadata": {
+        "refreshFailed": "Mallien tietoja ei voitu päivittää.",
+        "unknownDate": "tuntematon päivämäärä",
+        "updated": "Mallien tiedot päivitetty {{date}}",
+        "updatedBundled": "Mallien tiedot päivitetty {{date}}, sovelluksen mukana",
+        "updatedFromCache": "Mallien tiedot päivitetty {{date}}, viimeisimmästä latauksesta"
+      },
+      "noChanges": "Ei muutoksia",
+      "refresh": "Päivitä",
+      "restore": "Palauta oletukset",
+      "restoreTooltip": "Lisää tämän palvelun sisäänrakennetut mallit takaisin",
+      "title": "Mallit",
+      "unreachable": "Palveluun ei saatu yhteyttä.",
+      "unreadableList": "Palvelu palautti malleja, joita Oleafly ei voinut lukea.",
+      "updated": "Päivitetty {{time}}"
+    },
+    "personas": {
+      "addStarter": "Lisää persoona",
+      "addStarterFailed": "Kohdetta {{name}} ei voitu lisätä. {{error}}",
+      "addStarterNamed": "Lisää persoona {{name}}",
+      "colors": {
+        "forest": "Metsä",
+        "grape": "Viinirypäle",
+        "ocean": "Valtameri",
+        "slate": "Liuske",
+        "sunset": "Auringonlasku"
+      },
+      "create": "Luo persoona",
+      "delete": "Poista persoona",
+      "deleteDescription": "Poistetaanko \"{{name}}\"? Sen kehote poistetaan pysyvästi, ja sitä käyttävät keskustelut palaavat oletusohjeisiin.",
+      "deleteNamed": "Poista persoona {{name}}",
+      "description": "Uudelleenkäytettäviä ohjeita siitä, miten avustajan tulee työskennellä. Valitse yksi keskustelussa tehtävää varten. Valittuna se korvaa oletusohjeesi.",
+      "edit": "Muokkaa persoonaa",
+      "editNamed": "Muokkaa persoonaa {{name}}",
+      "empty": "Persoonia ei ole vielä lisätty.",
+      "form": {
+        "color": "Väri",
+        "create": "Luo",
+        "createTitle": "Luo persoona",
+        "description": "Aseta uudelleenkäytettävät ohjeet siitä, miten avustajan tulee työskennellä.",
+        "editTitle": "Muokkaa persoonaa",
+        "instructions": "Ohjeet",
+        "instructionsPlaceholder": "Käy tekstini läpi selkeyden kannalta ja listaa tärkeimmät ongelmat ensin.",
+        "namePlaceholder": "Napakka toimittaja",
+        "required": "Nimi ja kehote ovat pakollisia.",
+        "saveFailed": "Persoonaa ei voitu tallentaa."
+      },
+      "starters": {
+        "criticalReviewer": "Etsii heikkouksia argumenteista, menetelmistä, näytöstä ja esitystavasta.",
+        "documentEditor": "Korjaa proosaa, rakennetta, viitteitä ja LaTeXia täsmällisin ja turvallisin muutoksin.",
+        "figure": "Luo julkaisulaatuisia kuvia ja kaavioita LaTeX TikZ- tai PGFPlots-muodossa.",
+        "researchWriter": "Luonnostelee ja jäsentää tieteellistä tekstiä keksimättä näyttöä tai viitteitä."
+      },
+      "suggestedDescription": "Aloita jostakin näistä ja muokkaa sitten sen ohjeita työtapaasi sopiviksi.",
+      "suggestedTitle": "Ehdotetut persoonat",
+      "title": "Persoonat"
+    },
+    "providers": {
+      "addCustom": "Lisää mukautettu palvelu",
+      "badge": {
+        "connected": "Yhdistetty",
+        "notRunning": "Ei käynnissä",
+        "running": "Käynnissä"
+      },
+      "blurbs": {
+        "anthropic": "Claude-mallit, vahvoja koodissa ja kirjoittamisessa.",
+        "custom": "Mukautettu palvelu.",
+        "deepseek": "DeepSeek V4 -mallit.",
+        "google": "Gemini-mallit Google AI Studiosta.",
+        "groq": "Erittäin nopea avointen mallien päättely.",
+        "mistral": "Mistral- ja Codestral-mallit.",
+        "ollama": "Ajaa malleja omalla koneellasi. Avainta ei tarvita, asenna Ollama ja nouda malli.",
+        "openai": "GPT-mallit. Oletusvalinta.",
+        "openrouter": "Yksi avain, pääsy monen tutkimusryhmän malleihin.",
+        "perplexity": "Sonar-mallit, joissa on elävä verkkoperustaisuus.",
+        "xai": "xAI:n Grok-mallit.",
+        "zai": "GLM-mallit Z.AI GLM Coding Plan -tilauksen kautta."
+      },
+      "deleteKeyAriaLabel": "Poista palvelun {{provider}} avain",
+      "deleteKeyTooltip": "Poista avain",
+      "docs": "Dokumentaatio",
+      "editAriaLabel": "Muokkaa palvelua {{provider}}",
+      "editTooltip": "Muokkaa nimeä tai päätepistettä",
+      "getKey": "Hanki avain",
+      "intro": "Yhdistä alta käyttämäsi palvelut. Avaimet tallennetaan vain paikallisesti. Ensimmäisen tallentaminen asettaa sen oletukseksi. Määritettyjen palveluiden ja mallien välillä voi vaihtaa keskustelupaneelin valikosta.",
+      "keyPlaceholder": "Liitä API-avaimesi tähän",
+      "modelLabel": "Malli",
+      "ollama": {
+        "active": "Käytössä",
+        "changeHost": "Vaihda palvelinosoite (lisäasetus)",
+        "check": "Etsi Ollama",
+        "checking": "Tarkistetaan…",
+        "disconnect": "Katkaise yhteys",
+        "hideHost": "Piilota palvelinosoite",
+        "installedHint": "Ollama on asennettu tänne. Käynnistyminen kestää hetken.",
+        "modelPlaceholder": "Valitse käytettävä malli",
+        "noModels": "Ollama on käynnissä, mutta yhtään mallia ei ole asennettu. Aja <pull>ollama pull llama3.2</pull> ja tarkista sitten uudelleen.",
+        "noneResponding": "Osoitteessa <host>{{host}}</host> ei vastaa Ollama.",
+        "notChecked": "Ei vielä tarkistettu",
+        "notDetected": "Ei havaittu",
+        "recheck": "Tarkista uudelleen",
+        "runningModels_one": "Käynnissä · {{count}} malli",
+        "runningModels_other": "Käynnissä · {{count}} mallia",
+        "setupSteps": "1. Asenna osoitteesta <download>ollama.com <icon></icon></download> · 2. Se käynnistyy automaattisesti (tai aja <serve>ollama serve</serve>) · 3. Nouda malli, esimerkiksi <pull>ollama pull llama3.2</pull> · 4. Tarkista uudelleen.",
+        "start": "Käynnistä Ollama"
+      },
+      "removeAriaLabel": "Poista palvelu {{provider}}",
+      "removeDialog": {
+        "description": "Poistetaanko \"{{provider}}\"? Sen tallennettu avain ja malliluettelo poistetaan sen mukana.",
+        "title": "Poista mukautettu palvelu"
+      },
+      "removeTooltip": "Poista mukautettu palvelu",
+      "replaceKey": "Korvaa avain",
+      "status": {
+        "error": "Virhe: {{message}}",
+        "errorFallback": "Avainta ei voitu vahvistaa.",
+        "valid": "Avain kelpaa. Mallit ovat valmiina alla.",
+        "validating": "Tarkistetaan avainta..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Ladataan agentteja…",
+      "errors": {
+        "invalidKey": "Virheellinen API-avain.",
+        "keyNotKept": "Perus-URL tallennettiin, mutta avainta ei. Anna avain uudelleen.",
+        "providerGone": "Tuota palvelua ei ole enää olemassa.",
+        "providerIdInUse": "Tuo palvelutunnus on jo käytössä."
+      },
+      "messages": {
+        "keyRemoved": "Palvelun {{provider}} avain poistettiin.",
+        "keyRemovedAccessDisabled": "Palvelun {{provider}} avain poistettiin. Tekoälyn käyttö on pois käytöstä.",
+        "keySavedAddModels": "Palvelun {{provider}} avain tallennettiin. Lisää mallit käsin alta.",
+        "keySavedCheckedOnUse": "Palvelun {{provider}} avain tallennettiin. Se tarkistetaan ensimmäisellä käyttökerralla.",
+        "ollamaConnected": "Ollama yhdistetty · {{model}}",
+        "preferencesReset": "Tekoälyavustajan asetukset palautettiin oletuksiin.",
+        "providerAdded": "{{provider}} lisättiin.",
+        "providerConnected": "{{provider}} yhdistettiin.",
+        "providerUpdated": "{{provider}} päivitettiin.",
+        "providerUpdatedWithoutModels": "{{provider}} päivitettiin. Sen malliluetteloa ei voitu päivittää."
+      },
+      "reset": {
+        "confirmWithProject": "Palauta tekoälyavustajan asetukset oletuksiin, mukaan lukien mallien saatavuus, käytössä olevat taidot ja tämän projektin budjetti. Aktiivinen palvelu ja malli, palveluiden avaimet, persoonat, hyväksyntäsäännöt, käyttöhistoria ja MCP-palvelimet säilyvät ennallaan.",
+        "confirmWithoutProject": "Palauta tekoälyavustajan asetukset oletuksiin, mukaan lukien mallien saatavuus ja käytössä olevat taidot. Aktiivinen palvelu ja malli, palveluiden avaimet, persoonat, hyväksyntäsäännöt, käyttöhistoria ja MCP-palvelimet säilyvät ennallaan.",
+        "sectionName": "Tekoälyavustaja"
+      },
+      "tabs": {
+        "agents": "Komentoriviagentit",
+        "instructions": "Ohjeet",
+        "mcp": "MCP",
+        "personas": "Persoonat",
+        "providers": "Palvelut ja avaimet",
+        "skills": "Taidot"
+      }
+    },
+    "skills": {
+      "addFolder": "Lisää kansio",
+      "addFolderDialogTitle": "Lisää taitokansio",
+      "catalog": {
+        "description": "Lisätaitoja tietyille tutkimusaloille. Asenna yksi, niin se lisätään yllä olevaan luetteloosi.",
+        "empty": "Luettelossa ei ole asennettavia lisätaitoja.",
+        "install": "Asenna",
+        "loading": "Ladataan luetteloa...",
+        "messages": {
+          "installed": "{{name}} asennettiin.",
+          "removed": "{{name}} poistettiin."
+        },
+        "progress": {
+          "downloading": "Ladataan...",
+          "downloadingPercent": "Ladataan {{percent}} %",
+          "extracting": "Puretaan...",
+          "extractingPercent": "Puretaan {{percent}} %",
+          "failed": "Asennus epäonnistui.",
+          "finishing": "Viimeistellään asennusta..."
+        },
+        "refresh": "Päivitä",
+        "source": {
+          "bundled": "Sisäänrakennettu luettelo",
+          "bundledOffline": "Sisäänrakennettu luettelo, verkkoon ei saatu yhteyttä",
+          "cached": "Välimuistissa oleva luettelo osoitteesta cdn.oleafly.com, haettu viimeksi {{when}}",
+          "cachedOffline": "Välimuistissa oleva luettelo osoitteesta cdn.oleafly.com, haettu viimeksi {{when}}, verkkoon ei saatu yhteyttä",
+          "cachedUnknown": "Välimuistissa oleva luettelo osoitteesta cdn.oleafly.com, haettu viimeksi tuntemattomana ajankohtana",
+          "cachedUnknownOffline": "Välimuistissa oleva luettelo osoitteesta cdn.oleafly.com, haettu viimeksi tuntemattomana ajankohtana, verkkoon ei saatu yhteyttä",
+          "remote": "Luettelo osoitteesta cdn.oleafly.com, haettu {{when}}",
+          "remoteUnknown": "Luettelo osoitteesta cdn.oleafly.com, haettu tuntemattomana ajankohtana"
+        },
+        "title": "Aihealueen hylly",
+        "uninstall": "Poista asennus",
+        "update": "Päivitä"
+      },
+      "createSkill": "Luo taito",
+      "description": "Avustaja lataa taidon täydet ohjeet vasta, kun se päättää tarvitsevansa sitä, tai heti, jos kirjoitat keskusteluun /taidon-tunnus. Täällä käyttöön otettu taito on käytössä jokaisessa projektissa, kunnes projekti ohittaa asetuksen.",
+      "editAria": "Muokkaa {{name}}",
+      "editor": {
+        "createDescription": "Luo SKILL.md-luonnos Oleaflyn taitokansioosi.",
+        "createTitle": "Luo taito",
+        "descriptionPlaceholder": "Tarkista, onko jokaisella väitteellä tuki.",
+        "editDescription": "Hio SKILL.md-tiedostoon tallennettuja metatietoja ja ohjeita.",
+        "editTitle": "Muokkaa taitoa",
+        "instructions": "Ohjeet",
+        "instructionsHint": "Jätä tämä tyhjäksi, niin syntyy pelkistetty ohjerunko.",
+        "instructionsPlaceholder": "Kerro, milloin tätä taitoa käytetään ja mitä vaiheita avustajan tulee noudattaa.",
+        "namePlaceholder": "Väitteiden tarkistaja",
+        "requiredAll": "Nimi, kuvaus ja ohjeet ovat pakollisia.",
+        "requiredBasics": "Nimi ja kuvaus ovat pakollisia.",
+        "submitCreate": "Luo"
+      },
+      "empty": "Taitoja ei löytynyt. Lisää kansio tai luo taito.",
+      "enableAria": "Ota käyttöön {{name}}",
+      "fileCount_one": "{{count}} tiedosto",
+      "fileCount_other": "{{count}} tiedostoa",
+      "groups": {
+        "shelf": "Aihealueen hylly",
+        "user": "Omat taidot"
+      },
+      "inheritsDevice": "Perii laitteen asetuksen",
+      "invalidBadge": "Virheellinen",
+      "loadFailed": "Taitoja ei voitu ladata. {{message}}",
+      "loading": "Ladataan taitoja...",
+      "messages": {
+        "added": "{{name}} lisättiin.",
+        "created": "{{name}} luotiin.",
+        "editorClosed": "Taitoeditori ei ole enää auki.",
+        "removed": "{{name}} poistettiin.",
+        "saved": "{{name}} tallennettiin.",
+        "updated": "{{name}} päivitettiin."
+      },
+      "missingDescription": "Tämä taito tarvitsee kuvauksen.",
+      "offForProject": "Pois tässä projektissa",
+      "onForProject": "Käytössä tässä projektissa",
+      "phases": {
+        "authoring": "Kirjoittaminen",
+        "communication": "Viestintä",
+        "figures": "Kuvat",
+        "research": "Tutkimus",
+        "review": "Arviointi",
+        "submission": "Lähettäminen",
+        "tooling": "Työkalut"
+      },
+      "removeAria": "Poista {{name}}",
+      "removeDialog": {
+        "description": "Poistetaanko \"{{name}}\" ja sen kansio Oleaflystä? Tätä ei voi kumota.",
+        "title": "Poista taito"
+      },
+      "share": {
+        "description": "Linkitä taitosi niihin kansioihin, joita muut tämän koneen koodiagentit jo lukevat, niin kirjoitat taidon kerran ja jokainen agentti voi käyttää sitä.",
+        "emptyBody": "Muiden agenttien kansioita ei löytynyt tältä koneelta.",
+        "status": {
+          "linked": "{{linked}}/{{total}} linkitetty",
+          "undetected": "Ei löytynyt tältä laitteelta",
+          "unsupported": "Ei tuettu tässä järjestelmässä"
+        },
+        "summary": {
+          "checking": "Tarkistetaan agenttien kansioita",
+          "linked_one": "{{linked}}/{{count}} agentti linkitetty",
+          "linked_other": "{{linked}}/{{count}} agenttia linkitetty",
+          "none": "Muiden agenttien kansioita ei löytynyt"
+        },
+        "title": "Jaa taidot muiden tämän koneen agenttien kanssa"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "Lisätty",
+        "bundled": "Sisäänrakennettu",
+        "catalog": "Asennettu"
+      },
+      "tier": {
+        "credits": "Lähde: {{credits}}",
+        "native": "Oleafly-työnkulku",
+        "shelf": "Aihealueen hyllyn taito",
+        "shelfWithLicense": "Aihealueen hylly, {{license}}",
+        "user": "Oma taitosi",
+        "vendored": "Mukaan otettu taito"
+      },
+      "title": "Taidot",
+      "updateAction": "Päivitä",
+      "updateDialog": {
+        "description": "Korvataanko \"{{name}}\" uusimmalla mukana tulevalla versiolla? Sen tiedostoihin tehdyt paikalliset muokkaukset menetetään.",
+        "title": "Päivitä taito"
+      },
+      "useDeviceSetting": "Käytä laitteen asetusta",
+      "useDeviceSettingAria": "Käytä laitteen asetusta taidolle {{name}}",
+      "useInProject": "Käytä tässä projektissa",
+      "useInProjectAria": "Käytä taitoa {{name}} tässä projektissa",
+      "validateAria": "Tarkista {{name}}"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Käytetään painikkeissa, valinnoissa ja editorin kohdistimessa.",
+        "label": "Korostusväri",
+        "swatchAriaLabel": "Korostusväri {{name}}"
+      },
+      "bgPattern": {
+        "description": "Valitse projektihyllyn takana oleva kuvio.",
+        "dots": "Pisteet",
+        "grid": "Ruudukko",
+        "label": "Taustakuvio"
+      },
+      "dock": {
+        "bottom": "Alhaalla",
+        "description": "Valitse, missä aloitusnäkymän telakka sijaitsee.",
+        "label": "Telakan sijainti",
+        "left": "Vasemmalla",
+        "right": "Oikealla"
+      },
+      "font": {
+        "description": "Käyttää järjestelmän varafonttia, jos fonttia ei ole asennettu.",
+        "label": "Sovelluksen fontti"
+      },
+      "fontSize": {
+        "description": "Skaalaa tekstin kokoa valikoissa, paneeleissa ja painikkeissa.",
+        "label": "Sovelluksen fonttikoko"
+      },
+      "theme": {
+        "description": "Järjestelmä seuraa käyttöjärjestelmää ja muuttuu sen mukana.",
+        "label": "Ulkoasu"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "Selaimen aloitussivu",
+        "description": "Valitse sivu, joka avautuu selaintelakan kanssa.",
+        "label": "Aloitussivu"
+      },
+      "searchEngine": {
+        "description": "Valitse hakukone, jota tekstihaut käyttävät.",
+        "label": "Oletushakukone"
+      }
+    },
+    "customTheme": {
+      "cleared": "Teeman mukautukset tyhjennettiin.",
+      "customCss": {
+        "description": "Valinnaiset määrittelyt vaikuttavat vain sovelluksen sisällä. Säännöt, tuonnit ja URL-osoitteet on estetty.",
+        "label": "Rajatut CSS-määrittelyt"
+      },
+      "darkRestored": "Tumman teeman tunnukset palautettiin.",
+      "description": "Muuta sovelluksen väritunnuksia kummallekin tilalle. Muutokset tallennetaan paikallisesti ja tulevat voimaan heti.",
+      "exportTheme": "Vie teema",
+      "fileTooLarge": "Teematiedosto on suurempi kuin 128 KiB.",
+      "importFileAriaLabel": "Tuo teematiedosto",
+      "importTheme": "Tuo teema",
+      "imported": "Teema tuotiin ja otettiin käyttöön.",
+      "importedSkippedMore_one": "Teema tuotiin ja otettiin käyttöön. Ohitettiin {{count}} tunnus, jota Oleafly ei käytä: {{tokens}}, ja lisää.",
+      "importedSkippedMore_other": "Teema tuotiin ja otettiin käyttöön. Ohitettiin {{count}} tunnusta, joita Oleafly ei käytä: {{tokens}}, ja lisää.",
+      "importedSkipped_one": "Teema tuotiin ja otettiin käyttöön. Ohitettiin {{count}} tunnus, jota Oleafly ei käytä: {{tokens}}.",
+      "importedSkipped_other": "Teema tuotiin ja otettiin käyttöön. Ohitettiin {{count}} tunnusta, joita Oleafly ei käytä: {{tokens}}.",
+      "lightRestored": "Vaalean teeman tunnukset palautettiin.",
+      "modeDark": "Tumma tila",
+      "modeFieldsetAriaLabel": "Muokattava teematila",
+      "modeLight": "Vaalea tila",
+      "pickColorDark": "Valitse tunnuksen {{token}} väri tummaan tilaan",
+      "pickColorLight": "Valitse tunnuksen {{token}} väri vaaleaan tilaan",
+      "radius": {
+        "description": "Käytä arvoa kuten 8px, 0.5rem tai 1em. Jätä tyhjäksi, niin käytetään oletusta.",
+        "label": "Kulman pyöristys"
+      },
+      "resetAll": "Palauta kaikki",
+      "resetMode": "Palauta tämä tila",
+      "title": "Teeman mukautus",
+      "tokenInputDark": "Tunnus {{token}} tummaan tilaan",
+      "tokenInputLight": "Tunnus {{token}} vaaleaan tilaan",
+      "tokens": {
+        "accent": "Korostus",
+        "accentForeground": "Korostuksen teksti",
+        "background": "Tausta",
+        "border": "Reunus",
+        "card": "Paneeli",
+        "cardForeground": "Paneelin teksti",
+        "destructive": "Vaara",
+        "destructiveForeground": "Vaaran teksti",
+        "foreground": "Teksti",
+        "input": "Kentän reunus",
+        "muted": "Vaimennettu",
+        "mutedForeground": "Vaimennettu teksti",
+        "popover": "Ponnahdusikkuna",
+        "popoverForeground": "Ponnahdusikkunan teksti",
+        "primary": "Ensisijainen",
+        "primaryForeground": "Ensisijaisen teksti",
+        "ring": "Kohdistusrengas",
+        "secondary": "Toissijainen",
+        "secondaryForeground": "Toissijaisen teksti",
+        "sidebar": "Sivupalkki",
+        "sidebarAccent": "Sivupalkin korostus",
+        "sidebarAccentForeground": "Sivupalkin korostuksen teksti",
+        "sidebarBorder": "Sivupalkin reunus",
+        "sidebarForeground": "Sivupalkin teksti"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Lisää sulkevat hakasulkeet ja kaarisulkeet automaattisesti.",
+        "label": "Sulje sulkeet automaattisesti"
+      },
+      "autoCloseEnvironments": {
+        "description": "Lisää \\end, kun painat Enteriä \\begin-komennon jälkeen.",
+        "label": "Sulje ympäristöt automaattisesti"
+      },
+      "autoCloseMath": {
+        "description": "Parita merkit $, \\( ja \\[ kirjoittaessa.",
+        "label": "Sulje matematiikka automaattisesti"
+      },
+      "autocomplete": {
+        "description": "Näytä koodin täydennykset kirjoittaessa. Ctrl+Space avaa ne edelleen, vaikka tämä olisi pois.",
+        "label": "Automaattitäydennys"
+      },
+      "font": {
+        "description": "Valitse lähdetiedostoissa käytettävä tasalevyinen fontti.",
+        "label": "Editorin fontti"
+      },
+      "fontSize": {
+        "description": "Aseta lähdekoodieditorin tekstikoko.",
+        "label": "Editorin fonttikoko"
+      },
+      "ghostCompletion": {
+        "description": "Näytä todennäköinen täydennys kohdistimen jälkeen. Hyväksy se painamalla Tab.",
+        "label": "Tekstin sisäinen ehdotus"
+      },
+      "nonBlinkingCursor": {
+        "description": "Pidä editorin kohdistin yhtenäisenä.",
+        "label": "Vilkkumaton kohdistin"
+      },
+      "stickyScroll": {
+        "description": "Pidä nykyiset LaTeX-luvut ja -ympäristöt ylhäällä vierittäessä.",
+        "label": "Tarttuva vieritys"
+      },
+      "theme": {
+        "description": "Aseta lähdekoodin syntaksivärit erikseen sovelluksen teemasta.",
+        "label": "Editorin teema"
+      },
+      "keymap": {
+        "description": "Valitse näppäinkomentojoukko, jota lähdekoodieditori käyttää.",
+        "label": "Näppäinkomennot",
+        "options": {
+          "default": "Oletus",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Aseta lähdekoodirivien pystysuuntainen väli.",
+        "label": "Riviväli",
+        "options": {
+          "compact": "Tiivis",
+          "normal": "Normaali",
+          "wide": "Väljä"
+        }
+      },
+      "lineWrap": {
+        "description": "Rivitä pitkät rivit sen sijaan että vieritettäisiin sivusuunnassa.",
+        "label": "Rivitä pitkät rivit"
+      },
+      "tabSize": {
+        "description": "Sisennystasoa kohden lisättävät välilyönnit ja leveys, jolla sarkain piirretään.",
+        "label": "Sarkaimen koko"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Lisää piilotettavien tiedostojen kuvio",
+        "description": "Valitse, mitkä muodostetut tiedostot ja kansiot jäävät projektipuun ulkopuolelle.",
+        "inputAriaLabel": "Piilotettava tiedostonimi tai kuvio",
+        "placeholder": "Lisää tiedostonimi tai kuvio",
+        "removeAriaLabel": "Poista {{pattern}} piilotetuista tiedostoista",
+        "title": "Piilota tiedostoja tiedostopuusta"
+      },
+      "homeView": {
+        "description": "Valitse, miten projektit järjestetään kirjastossa.",
+        "grid": "Ruudukko",
+        "label": "Aloitusnäkymän oletus",
+        "list": "Luettelo"
+      },
+      "openIn": {
+        "description": "Valitse asettelu, jota käytetään projektin avautuessa.",
+        "label": "Avaa projektit näkymään"
+      },
+      "showTree": {
+        "description": "Avaa lähdetiedostopuu aina projektiin siirryttäessä.",
+        "label": "Näytä tiedostopuu avattaessa"
+      }
+    },
+    "fontSizeOption": "{{size}} px",
+    "preview": {
+      "darkMode": {
+        "description": "Käännä PDF:n värit oletuksena. Värit voi silti vaihtaa esikatselun työkalupalkista.",
+        "label": "PDF:n tumma tila"
+      },
+      "hoverPreview": {
+        "description": "Näytä viimeisin käännetty sivu, kun viet osoittimen projektin päälle kirjastossa.",
+        "label": "Esikatsele PDF osoittimella"
+      },
+      "zoomShortcuts": {
+        "description": "Zoomaa PDF:ää näppäimillä Cmd/Ctrl +, - ja 0 sovellusikkunan sijaan.",
+        "label": "PDF:n zoomauspikanäppäimet"
+      }
+    },
+    "sectionName": "Ulkoasu",
+    "tabs": {
+      "app": "Sovellus",
+      "browser": "Selain",
+      "editor": "Editori",
+      "files": "Projekti",
+      "pdf": "PDF-esikatselu",
+      "terminal": "Pääte"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Päätteen väriteema",
+        "description": "Valitse päätteen ANSI-väripaletti.",
+        "label": "Väriteema",
+        "optionDark": "{{name}} · tumma",
+        "optionLight": "{{name}} · vaalea"
+      },
+      "colors": {
+        "background": "Tausta",
+        "backgroundAriaLabel": "Päätteen taustaväri",
+        "cursor": "Kohdistin",
+        "cursorAriaLabel": "Päätteen kohdistimen väri",
+        "description": "Säädä perusvärejä valitun ANSI-paletin säilyessä.",
+        "followingAppTheme": "Seuraa sovelluksen teemaa: tumma paletti tummassa tilassa, vaalea paletti vaaleassa tilassa. Valitse yllä tietty paletti, niin näitä voi mukauttaa.",
+        "foreground": "Teksti",
+        "foregroundAriaLabel": "Päätteen tekstin väri",
+        "label": "Päätteen värit"
+      },
+      "cursorBlink": {
+        "description": "Laita päätteen kohdistin vilkkumaan.",
+        "label": "Vilkkuva kohdistin"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Päätteen kohdistimen tyyli",
+        "bar": "Pystyviiva",
+        "block": "Lohko",
+        "description": "Valitse päätteen kohdistimen muoto.",
+        "label": "Kohdistimen tyyli",
+        "underline": "Alleviivaus"
+      },
+      "font": {
+        "ariaLabel": "Päätteen fonttiperhe",
+        "description": "Valitse päätteen käyttämä tasalevyinen fontti.",
+        "label": "Päätteen fontti"
+      },
+      "fontSize": {
+        "description": "Aseta päätteen tekstikoko.",
+        "label": "Päätteen fonttikoko"
+      },
+      "fontWeight": {
+        "description": "Aseta päätteen tavallisen tekstin paksuus.",
+        "label": "Tavallisen tekstin paksuus"
+      },
+      "fontWeightBold": {
+        "description": "Aseta päätteen lihavoidun tekstin paksuus.",
+        "label": "Lihavoidun tekstin paksuus"
+      },
+      "startWithProject": {
+        "description": "Käynnistä shell-prosessi projektin avautuessa eikä vasta, kun pääte näytetään ensimmäisen kerran.",
+        "label": "Käynnistä shell projektin mukana"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly tallentaa sen taustalla ja vain, jos lähdekoodi muuttui.",
+      "label": "Tallenna tarkistuspiste jokaisen onnistuneen käännöksen jälkeen"
+    },
+    "config": {
+      "loadFailed": "Tarkistuspisteiden asetuksia ei voitu ladata.",
+      "saveFailed": "Tarkistuspisteiden asetuksia ei voitu tallentaa."
+    },
+    "description": "Tarkistuspiste kirjaa lähdetiedostot, joita onnistunut käännös käytti.",
+    "notifyOnFailure": {
+      "description": "Oleafly kertoo, kun tarkistuspistettä ei voida tallentaa, esimerkiksi tallennustilan ongelmista tai tiedostoista, joita se ei saanut talteen.",
+      "label": "Näytä ilmoitus, kun tarkistuspistettä ei voida tallentaa"
+    },
+    "title": "Tarkistuspisteet"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "Poista API-avain",
+      "removeEmail": "Poista sähköpostiosoite",
+      "removeKey": "Poista avain",
+      "saveApiKey": "Tallenna API-avain",
+      "saveEmail": "Tallenna sähköpostiosoite",
+      "saveKey": "Tallenna avain"
+    },
+    "connected": "Yhdistetty",
+    "description": "Hallitse tunnistetietoja, joita tieteelliset hakulähteet käyttävät.",
+    "keyFree": {
+      "description": "Nämä lähteet ovat käytettävissä ilman API-avainta.",
+      "title": "Lähteet ilman tunnistetietoja"
+    },
+    "openAlex": {
+      "docsLink": "OpenAlexin käyttörajat",
+      "emailLabel": "OpenAlexin yhteyssähköposti",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "OpenAlexin yhteyssähköpostia ei voitu poistaa.",
+      "emailRemoved": "OpenAlexin yhteyssähköposti poistettiin",
+      "emailSaveFailed": "OpenAlexin yhteyssähköpostia ei voitu tallentaa.",
+      "emailSaved": "OpenAlexin yhteyssähköposti tallennettiin",
+      "hint": "API-avainta suositellaan. OpenAlex vaatii avaimen säännölliseen käyttöön, ja avaimettomat haut jakavat pienen päivittäisen kiintiön. Yhteyssähköposti avaa lisäksi kohteliaan jonon. Molemmat pysyvät tällä laitteella.",
+      "keyLabel": "OpenAlexin API-avain",
+      "keyRemoveFailed": "OpenAlexin API-avainta ei voitu poistaa.",
+      "keyRemoved": "OpenAlexin API-avain poistettiin",
+      "keySaveFailed": "OpenAlexin API-avainta ei voitu tallentaa.",
+      "keySaved": "OpenAlexin API-avain tallennettiin"
+    },
+    "semanticScholar": {
+      "docsLink": "Semantic Scholarin API-tiedot",
+      "hint": "API-avain on valinnainen. Anonyymit haut käyttävät Semantic Scholarin julkisia rajoja.",
+      "keyLabel": "Semantic Scholarin API-avain",
+      "keyRemoveFailed": "Semantic Scholarin API-avainta ei voitu poistaa.",
+      "keyRemoved": "Semantic Scholarin API-avain poistettiin",
+      "keySaveFailed": "Semantic Scholarin API-avainta ei voitu tallentaa.",
+      "keySaved": "Semantic Scholarin API-avain tallennettiin"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "Valinnainen. Ottaa käyttöön Google Scholar -lähteen viitehaussa Serperin kautta. Ilman avainta tuo lähde ohitetaan, vaikka se olisi valittu.",
+      "keyLabel": "Serperin API-avain",
+      "keyRemoveFailed": "Serperin API-avainta ei voitu poistaa.",
+      "keyRemoved": "Serperin API-avain poistettiin",
+      "keySaveFailed": "Serperin API-avainta ei voitu tallentaa.",
+      "keySaved": "Serperin API-avain tallennettiin"
+    },
+    "title": "Viitehaku"
+  },
+  "cite": {
+    "apa": "Sama viite APA-muodossa on GitHubissa kohdan Cite this repository takana",
+    "copyBibtex": "Kopioi BibTeX",
+    "description": "Oleafly on maksuton ja avointa lähdekoodia, ja se pysyy sellaisena, kun ihmiset tietävät siitä. Jos se auttoi artikkelia eteenpäin, yksi merkintä lähdeluettelossasi kertoo seuraavalle tutkijalle, mistä työkalu on peräisin. Kopioi se, liitä se .bib-tiedostoosi ja viittaa avaimella <citeKey>oleafly</citeKey>.",
+    "title": "Viittaa Oleaflyyn artikkelissasi"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Kaikki ladattu",
+      "download": "Lataa",
+      "downloadAll": "Lataa kaikki"
+    },
+    "aiTemplates": {
+      "deleteDescription": "Poistetaanko \"{{name}}\" kirjastostasi? Siitä jo luodut projektit säilyttävät oman kopionsa, eikä poisto vaikuta niihin.",
+      "deleteTitle": "Poista tekoälyn luoma mallipohja",
+      "deleted": "\"{{name}}\" poistettiin kirjastostasi",
+      "empty": "Ei vielä tekoälyn luomia mallipohjia. Luo sellainen mallipohjagalleriasta.",
+      "fallbackDescription": "Tekoälyn luoma mallipohja",
+      "toggle": "Hallitse tekoälyn luomia mallipohjia"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "Lämmin humanistinen groteski, jota moni nykyaikainen CV- ja ansioluettelomalli käyttää.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "Selkeä ja neutraali groteski, joka on helppolukuinen niin näytöllä kuin painettuna.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "Hillitty siirtymäkauden antiikva, joka sopii hyvin tieteellisiin ja virallisiin asiakirjoihin.",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "Ei ladattavia fontteja.",
+      "engineNote": "LuaLaTeX-moottoria (merkittyihin, saavutettaviin PDF-tiedostoihin) hallitaan LaTeX-moottorin osiossa.",
+      "heading": "Fontit",
+      "tooltip": "Osa mallipohjista käyttää laadukkaita avoimen lähdekoodin fontteja. Jotta Oleafly pysyy pienenä, nämä fontit ladataan tarvittaessa: kun luot tällaisen mallipohjan, fontit haetaan ja kopioidaan projektiin, jolloin se pysyy itsenäisenä ja kääntyy ilman verkkoa. Ne voi myös ladata etukäteen täällä tai poistaa tilan vapauttamiseksi."
+    },
+    "packProgress": "{{index}}/{{total}}",
+    "progress": "{{label}} ({{index}}/{{total}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Fontit",
+      "templates": "Mallipohjat",
+      "dictionaries": "Sanakirjat"
+    },
+    "templates": {
+      "empty": "Ei ladattavia mallipohjapaketteja.",
+      "heading": "Mallipohjat",
+      "tooltip": "Lisämallipohjapaketit ladataan tarvittaessa, jotta Oleafly pysyy pienenä. Lataa paketti täällä, niin sen mallipohjia voi käyttää ilman verkkoa, tai poista ne myöhemmin tilan vapauttamiseksi."
+    },
+    "dictionaries": {
+      "empty": "Lisäkieliä ei ole vielä ladattu.",
+      "heading": "Oikolukusanakirjat",
+      "note": "Valitse kieli Yleiset-osiossa, niin se ladataan. Viisi mukana tulevaa pakettia ovat aina käytettävissä eikä niitä listata tässä.",
+      "tooltip": "Oleaflyn mukana tulee viisi kielipakettia. Mikä tahansa muu kieli ladataan tarvittaessa, kun valitset sen oikolukusanakirjaksi, ja se säilytetään täällä, jotta se toimii jatkossa ilman verkkoa. Poistaminen vapauttaa tilan ja palaa sovelluksen asetukseen."
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "Vain luotetuille projekteille. Ajaa paikallista TeX-jakelua, joka voi lukea käyttäjätunnuksesi ulottuvilla olevia tiedostoja. Tukee täysiä pakettikokoelmia ja monen kierroksen työnkulkuja. Koneen komentojen suorittaminen on edelleen erillinen projektikohtainen lupa.",
+        "name": "latexmk (järjestelmän TeX)"
+      },
+      "tectonic": {
+        "detail": "Tulee Oleaflyn mukana. Nopea, toimii ilman verkkoa, ei vaadi asennusta. Kattaa tavallisen LaTeXin ja useimmat yleiset paketit.",
+        "name": "Tectonic (sisäänrakennettu)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Oletuskäännösmoottori",
+      "tooltip": "Koskee uusia projekteja. Jokainen projekti kiinnittää oman moottorinsa tiedostoon project.json, joten saman projektin avaavat yhteistyökumppanit kääntävät sen samalla tavalla tästä asetuksesta riippumatta."
+    },
+    "distributions": {
+      "empty": "Tältä koneelta ei havaittu TeX-jakelua.",
+      "heading": "Hallitse TeX-jakeluita",
+      "rowTooltip": "Mukana tulevat {{tools}}. Oleafly ajaa TeX-työkalunsa hakemistosta {{binDir}}.",
+      "rowTooltipNoTools": "Tästä asennuksesta ei löytynyt latexmkiä eikä tlmgriä. Oleafly ajaa TeX-työkalunsa hakemistosta {{binDir}}.",
+      "tooltip": "Kaikki, mitä latexmk-moottori voi käyttää tällä koneella. TinyTeX asentuu kotikansioosi ilman pääkäyttäjän oikeuksia. Järjestelmäasennukset (MacTeX, TeX Live, MiKTeX) havaitaan automaattisesti."
+    },
+    "latexmkMissing": "latexmkiä ei löytynyt",
+    "markdown": {
+      "downloading": "Ladataan…",
+      "heading": "Markdown-kääntäjä",
+      "install": "Asenna pandoc",
+      "repair": "Korjaa Pandoc",
+      "note": "Toisen PDF-taustaosan valitseminen Markdownille tai järjestelmän pandocin käyttäminen hallitun sijaan ei ole vielä mahdollista.",
+      "status": {
+        "checking": "Etsitään pandocia…",
+        "installing": "Haetaan kiinnitettyä pandoc-julkaisua. Tämä kestää hetken ensimmäisellä kerralla.",
+        "missing": "Ei löytynyt tältä Macilta. Oleafly lataa yhteensopivan pandocin (2.19 tai uudempi) omaan kansioonsa; mikään muu järjestelmässäsi ei muutu.",
+        "ready": "Havaittu. Markdown-projektit muunnetaan LaTeXiksi pandocilla ja käännetään sitten mukana tulevalla Tectonicilla."
+      },
+      "tectonicDetail": "Latoo pandocin tuottaman LaTeXin. Tulee Oleaflyn mukana, eikä sitä tarvitse määrittää.",
+      "tooltip": "Markdown-projektit muunnetaan pandocilla (Pandoc Markdown: taulukot, alaviitteet, viittaukset, matematiikka) LaTeXiksi, jonka mukana tuleva Tectonic latoo PDF:ksi. Pandoc ladataan tarvittaessa ensimmäisellä käyttökerralla."
+    },
+    "packages": {
+      "ariaLabel": "LaTeX-paketit",
+      "badge": {
+        "breaks": "rikkoo merkinnän",
+        "caution": "merkintä: varauksella"
+      },
+      "emptySearch": "Paketteja ei löytynyt. Kokeile toista nimeä tai hakusanaa.",
+      "emptySuggested": "Mikään ehdotettu paketti ei vastaa hakua. Hae TeX Livestä, niin näet koko luettelon.",
+      "error": {
+        "install": "Pakettia {{name}} ei voitu asentaa.",
+        "read": "Asennettuja paketteja ei voitu lukea.",
+        "remove": "Pakettia {{name}} ei voitu poistaa.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "Etsi LaTeX-paketteja",
+      "filterPlaceholder": "Suodata paketteja…",
+      "heading": "Paketit",
+      "includedIn": "Sisältyy pakettiin {{package}}. Sen poistaminen poistaa myös paketin muut tiedostot.",
+      "intro": {
+        "available": "Nämä paketit ovat projekteille, jotka käyttävät latexmkiä (järjestelmän TeX). Tectonic käyttää omaa pakettikokoelmaansa.",
+        "unavailable": "Pakettien hallinta vaatii TeX Liven tai TinyTeXin. MiKTeXissä käytä MiKTeX Consolea."
+      },
+      "refreshInstalled": "Päivitä asennetut paketit",
+      "resultsCapped": "{{total}} TeX Live -tulosta. Rajaa luetteloa tarkemmalla haulla.",
+      "results_one": "{{count}} TeX Live -tulos.",
+      "results_other": "{{count}} TeX Live -tulosta.",
+      "search": "Hae TeX Livestä",
+      "searching": "Haetaan…",
+      "suggested": "Ehdotetut paketit. Hae lisää TeX Livestä.",
+      "tree": {
+        "both": "molemmissa puissa",
+        "system": "järjestelmän puussa",
+        "user": "omassa puussasi"
+      }
+    },
+    "sectionName": "Moottorit",
+    "tagging": {
+      "heading": "Merkitty ja saavutettava vienti",
+      "hint": {
+        "none": "Asenna TinyTeX yllä kohdassa ”Hallitse TeX-jakeluita”, niin merkitty vienti tulee käyttöön.",
+        "system": "Havaittu järjestelmässäsi. Ei tarvitse asentaa mitään.",
+        "tinytex": "Tulee TinyTeXin mukana (hallitaan yllä)."
+      },
+      "status": {
+        "none": "Merkintämoottoria ei ole asennettu",
+        "system": "Käytössä järjestelmän LuaLaTeX tai TeX Live",
+        "tinytex": "TinyTeX asennettu"
+      },
+      "tooltip": "Oletusmoottori (Tectonic) on nopea ja toimii ilman verkkoa, mutta se ei osaa tuottaa merkittyjä, Section 508- tai PDF/UA-yhteensopivia PDF-tiedostoja. Siihen tarvitaan järjestelmän LuaLaTeX, joka voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja ja jota tulisi käyttää vain luotettujen projektien kanssa. Oleafly voi käyttää olemassa olevaa jakelua tai hallittua TinyTeXiä."
+    },
+    "tinytex": {
+      "detail": "Kompakti TeX Live kotikansiossasi. Ydinlataus on noin 250 MB. Lehtien mallipohjat voivat lisätä paketteja myöhemmin, yhteensä noin 1 GB asti. Etukäteen asentaminen tekee järjestelmän LaTeXista käytettävän, kun valitset sen erikseen.",
+      "download": "Lataa TinyTeX (~250 MB)",
+      "resume": "Jatka latausta ({{size}} MB valmiina)"
+    },
+    "typst": {
+      "detail": "Tulee Oleaflyn mukana. Nopea, toimii ilman verkkoa, ei vaadi asennusta. Kääntää Typst-dokumentit PDF-muotoon.",
+      "heading": "Typst-kääntäjä",
+      "name": "Typst (sisäänrakennettu)",
+      "note": "Typst-projektit käyttävät aina mukana tulevaa kääntäjää. Kääntäjän version valinta ja järjestelmän Typst eivät ole vielä käytettävissä.",
+      "tooltip": "Typst tulee Oleaflyn sisällä, joten mitään ei tarvitse asentaa tai määrittää. Jokainen Typst-projekti kääntyy mukana tulevalla kääntäjällä."
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "Yhdistetty",
+      "disconnect": "Katkaise yhteys",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "Yhdistä",
+      "toggle": "Lisäasetus: käytä henkilökohtaista käyttöoikeustokenia",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "Uudet ja avatut projektit saavat Git-repositorion, jotta Git-paneeli voi seurata muutoksia. Oleafly ei koskaan tee committeja omin päin.",
+      "label": "Alusta Git jokaiselle projektille"
+    },
+    "config": {
+      "loadFailed": "Git-asetuksia ei voitu ladata.",
+      "saveFailed": "Git-asetuksia ei voitu tallentaa."
+    },
+    "connect": "Yhdistä GitHub",
+    "description": "Varmuuskopioi projekteja, synkronoi laitteiden välillä ja työnnä tai nouda Git-paneelista.",
+    "device": {
+      "openGithub": "Avaa GitHub",
+      "opened": "Avasimme selaimeesi osoitteen <verificationLink>{{url}}</verificationLink>. Liitä koodi sinne, niin Oleafly saa valtuutuksen.",
+      "timedOut": "GitHub-kirjautuminen aikakatkaistiin. Yritä uudelleen.",
+      "title": "Syötä tämä koodi GitHubissa",
+      "waiting": "Odotetaan valtuutusta…"
+    },
+    "hint": {
+      "oauth": "Kirjaa sinut sisään kertakoodilla selaimessa.",
+      "token": "OAuth-kirjautumista ei ole vielä määritetty tässä versiossa, joten liitä sen sijaan token."
+    },
+    "notice": {
+      "connected": "Yhdistetty tunnuksella @{{login}}",
+      "disconnected": "Yhteys katkaistu."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Yhdistä",
+      "disconnect": "Katkaise yhteys"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>alphaxiv.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink>, luo avain (se alkaa merkeillä <keyPrefix>axv1_</keyPrefix>) ja liitä se alle.",
+      "apiKeyLabel": "alphaXivin API-avain",
+      "description": "Kirjallisuushaun ja artikkelien analyysin työkalut avustajalle."
+    },
+    "cookies": {
+      "action": "Tuo cookiet",
+      "confirmAllDomains": "Olet tuomassa cookieita selaimen {{browser}} profiilista {{profile}} kaikille verkkotunnuksille. Cookie-arvot tallennetaan sovelluksen sisäiseen selaimeen ja lähetetään vain niitä vastaaville sivustoille. Oleafly pyytää vielä yhden vahvistuksen järjestelmän ikkunassa ennen profiilin lukemista.",
+      "confirmDomain": "Olet tuomassa cookieita selaimen {{browser}} profiilista {{profile}} verkkotunnukselle {{domain}}. Cookie-arvot tallennetaan sovelluksen sisäiseen selaimeen ja lähetetään vain niitä vastaaville sivustoille. Oleafly pyytää vielä yhden vahvistuksen järjestelmän ikkunassa ennen profiilin lukemista.",
+      "confirmTitle": "Vahvista cookieiden tuonti",
+      "description": "Käytä olemassa olevaa selainkirjautumista Oleaflyn sisäisessä selaimessa.",
+      "detecting": "Etsitään asennettuja selainprofiileja...",
+      "dialogDescription": "Valitse yksi asennettu selainprofiili. Oleafly lukee sen vasta, kun olet tarkistanut ja vahvistanut tuonnin. Chromium-cookiet avataan paikallisesti macOS-avainnipun kautta. Oleafly ei lähetä cookie-arvoja Oleaflyn palveluun.",
+      "dialogTitle": "Tuo selaimen cookiet",
+      "empty": "Tuettuja selainprofiileja ei löytynyt.",
+      "errors": {
+        "chooseProfile": "Valitse käytettävissä oleva selainprofiili.",
+        "hostname": "Anna palvelinnimi, esimerkiksi example.com."
+      },
+      "hostnameHint": "Anna sivuston palvelinnimi, niin tuodaan vain ne cookiet, joita kyseinen sivusto voi käyttää. Jätä tyhjäksi, niin tuodaan kaikki tämän profiilin kelpaavat cookiet.",
+      "hostnameLabel": "Kohdepalvelinnimi (valinnainen)",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_one": "Tuotiin {{count}} cookie selaimesta {{browser}} verkkotunnukselle {{domain}}.",
+      "importedDomain_other": "Tuotiin {{count}} cookieta selaimesta {{browser}} verkkotunnukselle {{domain}}.",
+      "importedProfileDomain_one": "Tuotiin {{count}} cookie selaimesta {{browser}}, profiilista {{profile}} verkkotunnukselle {{domain}}.",
+      "importedProfileDomain_other": "Tuotiin {{count}} cookieta selaimesta {{browser}}, profiilista {{profile}} verkkotunnukselle {{domain}}.",
+      "importedProfile_one": "Tuotiin {{count}} cookie selaimesta {{browser}}, profiilista {{profile}}.",
+      "importedProfile_other": "Tuotiin {{count}} cookieta selaimesta {{browser}}, profiilista {{profile}}.",
+      "imported_one": "Tuotiin {{count}} cookie selaimesta {{browser}}.",
+      "imported_other": "Tuotiin {{count}} cookieta selaimesta {{browser}}.",
+      "importing": "Tuodaan cookieita...",
+      "profileGroupLabel": "Selainprofiilit",
+      "profileLegend": "Selainprofiili",
+      "review": "Tarkista tuonti",
+      "status": {
+        "available": "Käytettävissä",
+        "comingSoon": "Tulossa pian",
+        "noCookieStore": "Ei cookie-varastoa",
+        "notInstalled": "Ei asennettu"
+      },
+      "title": "Tuo cookiet",
+      "tryAgain": "Yritä uudelleen"
+    },
+    "zotero": {
+      "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>zotero.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink> ja luo avain, ja kopioi numeerinen käyttäjätunnuksesi samalta sivulta.",
+      "apiKeyLabel": "Zoteron API-avain",
+      "description": "Tuo viittauksia ja viitteitä Zotero-kirjastostasi.",
+      "userIdLabel": "Zoteron käyttäjätunnus",
+      "userIdPlaceholder": "Käyttäjätunnus"
+    }
+  },
+  "language": {
+    "ariaLabel": "Käyttöliittymän kieli",
+    "description": "Valitse käyttöliittymän kieli. Järjestelmän oletus seuraa käyttöjärjestelmääsi.",
+    "label": "Kieli",
+    "note": "Käyttöliittymän kielen vaihtaminen ei muuta dokumentin kieltä eikä kielentarkistuksen asetuksia.",
+    "system": "Järjestelmän oletus"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "Tuo {{name}} lähteestä {{source}}",
+      "description": "Valitse palvelimia tälle koneelle asennetuista työkaluista.",
+      "detecting": "Etsitään MCP-palvelimia...",
+      "duplicateOverwritten": "On jo olemassa. Se korvataan.",
+      "duplicateSkipped": "On jo olemassa. Se ohitetaan.",
+      "duplicates": {
+        "legend": "Kun nimet täsmäävät",
+        "overwrite": {
+          "description": "Korvaa se valitulla palvelimella.",
+          "label": "Korvaa olemassa oleva"
+        },
+        "skip": {
+          "description": "Säilytä Oleaflyyn jo tallennettu palvelin.",
+          "label": "Ohita olemassa oleva"
+        }
+      },
+      "emptyState": "MCP-palvelinten määrityksiä ei löytynyt.",
+      "importing": "Tuodaan...",
+      "keys": {
+        "environment": "Ympäristö: {{names}}",
+        "headers": "Otsikot: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Tuo valitut",
+      "summary": {
+        "commandFallback": "Paikallinen komento",
+        "remote": "Etäpalvelin: {{origin}}.",
+        "remoteUnknown": "Etäpalvelin.",
+        "stdio_one": "Paikallinen komento: {{command}}. {{count}} argumentti.",
+        "stdio_other": "Paikallinen komento: {{command}}. {{count}} argumenttia."
+      },
+      "title": "Tuo MCP-palvelimia"
+    },
+    "registry": {
+      "argumentsLine": "Argumentit: {{args}}",
+      "description": "Hae julkisia palvelinten metatietoja. Täällä ei asenneta eikä käynnistetä mitään. Tarkista komento tai URL ennen lisäämistä.",
+      "emptyQuery": "Anna palvelimen nimi, niin virallisesta MCP-rekisteristä haetaan.",
+      "environmentLine": "Ympäristö: {{names}}",
+      "loadMore": "Lataa lisää",
+      "noResults": "Vastaavia rekisterimerkintöjä ei palautunut.",
+      "review": "Tarkista ennen lisäämistä",
+      "searchLabel": "Hae virallisesta MCP-rekisteristä",
+      "searchPlaceholder": "Hae palvelinten nimiä",
+      "title": "Virallinen MCP-rekisteri",
+      "unsupportedEntry": "Tämä merkintä ei ilmoita pakettia eikä etäyhteystapaa, jonka Oleafly voisi tarkistaa.",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Yhdistä sovelluksesi"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor ja muut MCP-asiakkaat voivat lukea, muokata ja kääntää avointa projektia, ja jokainen muutos vaatii hyväksyntäsi.",
+      "enable": {
+        "ariaLabel": "Ota MCP-palvelin käyttöön",
+        "description": "Kuuntelee vain tällä koneella silloin, kun Oleafly on auki.",
+        "label": "Ota MCP-palvelin käyttöön"
+      },
+      "footer": "Palvelin kuuntelee vain tällä koneella (127.0.0.1) ja vaatii yllä olevan tokenin. Kahdessa ensimmäisessä käytännössä tiedostojen poisto pyytää aina vahvistuksen Oleaflyssä. Selaimen claude.ai ei tavoita paikallista palvelinta. Käytä sen sijaan Claude Desktopia.",
+      "policy": {
+        "ask": {
+          "description": "Kirjoitukset, uudelleennimeämiset ja poistot näyttävät Oleaflyssä hyväksyntäkortin ja vertailun ennen kuin mitään otetaan käyttöön.",
+          "label": "Vahvista jokainen muutos"
+        },
+        "autoWrites": {
+          "description": "Kirjoitukset ja uudelleennimeämiset otetaan käyttöön heti. Poistot näyttävät yhä hyväksyntäkortin.",
+          "label": "Hyväksy muokkaukset automaattisesti, vahvista poistot"
+        },
+        "legend": "Hyväksyntäkäytäntö",
+        "trust": {
+          "description": "Tiedostomuutokset eivät kysy lupaa. Shell-komennot ja tietokoneen ohjaus vaativat aina hyväksynnän. MCP-asiakkaasi toimii silti lisäporttina.",
+          "label": "Luota tähän yhteyteen"
+        }
+      },
+      "port": {
+        "ariaLabel": "Automaattisesti valittu MCP-palvelimen portti",
+        "label": "Portti",
+        "restartAriaLabel": "Käynnistä MCP-palvelin uudelleen ja valitse vapaa portti",
+        "restartTooltip": "Käynnistä MCP-palvelin uudelleen. Oleafly käyttää tätä porttia uudelleen, jos se on vapaa, tai valitsee toisen vapaan portin."
+      },
+      "readOnly": {
+        "ariaLabel": "Vain luku -tila",
+        "description": "Ulkoiset sovellukset voivat lukea ja kääntää mutta eivät koskaan muuttaa tiedostoja.",
+        "label": "Vain luku"
+      },
+      "status": {
+        "restartedAt": "Käynnistettiin uudelleen osoitteessa {{url}}",
+        "runningAt": "Käynnissä osoitteessa {{url}}"
+      },
+      "title": "Oleaflyn MCP-palvelin",
+      "token": {
+        "copyUrl": "Kopioi URL",
+        "enableToView": "Ota palvelin käyttöön, niin tokenin voi nähdä.",
+        "help": "Paljasta tai kopioi bearer-token, kopioi palvelimen URL tai luo token uudelleen yhdistetyille MCP-asiakkaille.",
+        "hide": "Piilota",
+        "label": "Bearer-token",
+        "regenerate": "Luo uudelleen",
+        "regenerateWarning": "Olemassa olevat asiakkaat tarvitsevat uuden tokenin.",
+        "reveal": "Paljasta"
+      }
+    },
+    "servers": {
+      "addServer": "Lisää palvelin",
+      "browseRegistry": "Selaa rekisteriä",
+      "card": {
+        "editLabel": "Muokkaa {{name}}",
+        "enableLabel": "Ota käyttöön {{name}}",
+        "noTools": "Työkaluja ei raportoitu.",
+        "removeLabel": "Poista {{name}}",
+        "toolCount_one": "{{count}} työkalu",
+        "toolCount_other": "{{count}} työkalua",
+        "toolsLabel": "Palvelimen {{name}} työkalut",
+        "validate": "Tarkista",
+        "validateLabel": "Tarkista {{name}}"
+      },
+      "description": "Yhdistä tekoälyavustaja paikallisiin komentoihin tai MCP-etäpäätepisteisiin. Oleafly tarkistaa jokaisen käytössä olevan palvelimen, kun tämä sivu avataan, minuutin välein ja pyynnöstä. Se näyttää myös kunkin palvelimen tarjoamat työkalut.",
+      "editor": {
+        "addAndValidate": "Lisää ja tarkista",
+        "argsHint": "Kirjoita yksi argumentti riviä kohden.",
+        "argsLabel": "Argumentit",
+        "commandLabel": "Komento",
+        "description": "Käytössä olevat palvelimet tarkistetaan ennen kuin niiden asetukset tallennetaan.",
+        "formView": "Lomake",
+        "jsonHint": "Liitä yksi palvelin nimen alla tai lohko mcpServers-kentän sisällä.",
+        "jsonLabel": "Koko määritys",
+        "jsonView": "JSON",
+        "nameLabel": "Palvelimen nimi",
+        "pairs": {
+          "addHeader": "Lisää otsikko",
+          "addVariable": "Lisää muuttuja",
+          "environmentKeyLabel": "Ympäristömuuttujan avain {{index}}",
+          "environmentTitle": "Ympäristömuuttujat",
+          "environmentValueLabel": "Ympäristömuuttujan arvo {{index}}",
+          "headerKeyLabel": "Otsikon avain {{index}}",
+          "headerValueLabel": "Otsikon arvo {{index}}",
+          "headersTitle": "Pyyntöotsikot",
+          "removeHeaderLabel": "Poista otsikko {{index}}",
+          "removeVariableLabel": "Poista muuttuja {{index}}",
+          "storedValuePlaceholder": "Tallennettu arvo",
+          "valuePlaceholder": "Arvo"
+        },
+        "saveAndValidate": "Tallenna ja tarkista",
+        "saveChanges": "Tallenna muutokset",
+        "titleAdd": "Lisää MCP-palvelin",
+        "titleEdit": "Muokkaa MCP-palvelinta",
+        "transportLegend": "Yhteystapa",
+        "transportRemote": "Etä-URL",
+        "transportStdio": "Paikallinen komento",
+        "urlLabel": "Etä-URL",
+        "viewSwitchLabel": "Määrityksen editori"
+      },
+      "empty": {
+        "description": "Lisää palvelin, niin avustaja saa uusia työkaluja, tai tuo ne, joita jo käytät toisessa editorissa.",
+        "title": "Palvelimia ei ole lisätty"
+      },
+      "hideRegistry": "Piilota rekisteri",
+      "importButton": "Tuo muista työkaluista",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "Tuotiin {{imported}}, ohitettiin {{skipped}}, epäonnistui {{failed}}.",
+      "live": {
+        "checking": "Tarkistetaan {{name}}.",
+        "connected_one": "{{name}} yhdistetty. {{count}} työkalu käytettävissä.",
+        "connected_other": "{{name}} yhdistetty. {{count}} työkalua käytettävissä.",
+        "disabled": "{{name}} ei ole käytössä.",
+        "disabledLastCheckFailed": "{{name}} ei ole käytössä. Viimeisin tarkistus epäonnistui.",
+        "disabledLastCheckFound_one": "{{name}} ei ole käytössä. Viimeisin tarkistus löysi {{count}} työkalun.",
+        "disabledLastCheckFound_other": "{{name}} ei ole käytössä. Viimeisin tarkistus löysi {{count}} työkalua.",
+        "failed": "{{name}}: tarkistus epäonnistui."
+      },
+      "loading": "Ladataan palvelimia...",
+      "remove": {
+        "confirm": "Poista palvelin",
+        "description": "Tämä poistaa palvelimen {{name}} Oleaflystä. Sen voi lisätä myöhemmin uudelleen.",
+        "descriptionFallback": "Tämä poistaa palvelimen Oleaflystä. Sen voi lisätä myöhemmin uudelleen.",
+        "title": "Poistetaanko palvelin?"
+      },
+      "status": {
+        "checking": "Tarkistetaan...",
+        "connected": "Yhdistetty",
+        "disabled": "Ei käytössä",
+        "error": "Virhe"
+      },
+      "title": "Avustajan MCP-palvelimet"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Lisää kaikkialla ohitettava sana",
+      "placeholder": "Lisää sana tai termi",
+      "projectAriaLabel": "Lisää projektissa {{project}} ohitettava sana",
+      "submitAriaLabel": "Lisää ohitettava sana"
+    },
+    "clear": {
+      "confirm": "Tyhjennä sanat",
+      "descriptionFallback": "Tämä poistaa kaikki termit tästä sanakirjasta. Ne tarkistetaan heti uudelleen.",
+      "descriptionGlobal": "Tämä poistaa kaikki termit yleisestä sanakirjasta. Ne tarkistetaan heti uudelleen.",
+      "descriptionProject": "Tämä poistaa kaikki termit projektista {{project}}. Ne tarkistetaan heti uudelleen.",
+      "descriptionSuppressed": "Tämä poistaa kaikki termit projektin {{project}} ohitetuista huomioista. Ne tarkistetaan heti uudelleen.",
+      "suppressedConfirm": "Näytä uudelleen",
+      "suppressedTitle": "Näytetäänkö ohitetut huomiot uudelleen?",
+      "title": "Tyhjennetäänkö ohitetut sanat?"
+    },
+    "dismissed": {
+      "countTitle": "{{dismissed}} ohitettu, ja projekti voi muistaa {{limit}}",
+      "hidden_one": "{{count}} kielioppihuomio on piilotettu tässä projektissa, koska valitsit Ohita tässä projektissa. Uudelleen näyttäminen alleviivaa ne taas.",
+      "hidden_other": "{{count}} kielioppihuomiota on piilotettu tässä projektissa, koska valitsit Ohita tässä projektissa. Uudelleen näyttäminen alleviivaa ne taas.",
+      "none": "Mitään ei ole ohitettu. Kun valitset kielioppihuomion kohdalla Ohita tässä projektissa, se listataan tässä.",
+      "showAgain": "Näytä ne uudelleen",
+      "title": "Ohitetut huomiot",
+      "titleInProject": "Projektissa {{project}} ohitetut huomiot"
+    },
+    "global": {
+      "emptyDescription": "Tähän lisätyt sanat ohitetaan kielentarkistuksessa jokaisessa projektissa.",
+      "scope": "Koskee jokaista projektia"
+    },
+    "intro": "Lisää sanoja henkilökohtaiseen oikolukusanakirjaasi. Nämä sanat tallennetaan paikallisiin asetuksiin ja ohitetaan kaikissa projekteissa. Vertailu on Unicode-normalisoitua eikä erota kirjainkokoa.",
+    "profileRules": {
+      "description": "Oletuksena pois päältä, koska ne haittaavat artikkeleiden kirjoittamista. Ota käyttöön ne, jotka haluat.",
+      "example": "Esimerkki: {{example}}",
+      "help": "Harper on viritetty keskusteluun ja sähköpostiin. Nämä säännöt joko ajavat tyyliä, jota artikkelit eivät noudata, kuten yksiköiden kB ja min kirjoittamista auki, tai kompastuvat paikanvaraajiin, jotka korvaavat LaTeX-merkinnän, joten Oleafly pitää ne pois päältä. Jokainen näyttää, mitä se nostaisi esiin. Ota se käyttöön, jos haluat nuo huomiot.",
+      "reasons": {
+        "AvoidContractions": "Pyytää kirjoittamaan jokaisen lyhentymän auki.",
+        "CompoundNouns": "Yhdistää yhdyssanan, joka on kirjoitettu kahdeksi sanaksi.",
+        "Dashes": "Korvaa kirjoitetun -- tai --- oikealla viivamerkillä.",
+        "DiscourseMarkers": "Nostaa esiin virkkeen, joka alkaa merkitsimellä kuten however ja jättää sen jälkeisen pilkun pois.",
+        "EllipsisLength": "Korjaa kolmen pisteen ellipsin, jos pisteitä on eri määrä.",
+        "ExpandAlgorithm": "Haluaa lyhenteen algo kirjoitettavan auki.",
+        "ExpandArgument": "Haluaa lyhenteen arg kirjoitettavan auki.",
+        "ExpandCoordinate": "Haluaa lyhenteen coord kirjoitettavan auki.",
+        "ExpandMemoryShorthands": "Haluaa lyhenteet KB ja MB kirjoitettavan auki.",
+        "ExpandParameter": "Haluaa lyhenteen param kirjoitettavan auki.",
+        "ExpandStandardInputAndOutput": "Haluaa lyhenteet stdin ja stdout kirjoitettavan auki.",
+        "ExpandTimeShorthands": "Haluaa lyhenteet min ja sec kirjoitettavan auki.",
+        "ExplainLikeImFive": "Purkaa lyhenteen sen täysiksi sanoiksi.",
+        "FillerWords": "Nostaa esiin sanat, jotka se laskee täytesanoiksi.",
+        "Hedging": "Nostaa esiin varauksellisia ilmauksia, kuten I would argue that ja to a certain degree.",
+        "LongSentences": "Nostaa esiin jokaisen virkkeen, joka ylittää pituusrajan.",
+        "MergeWords": "Yhdistää sanan, jonka eksynyt välilyönti on katkaissut kahtia, esimerkiksi to gether.",
+        "MoreAdjective": "Suosii vertailumuotoa sanaparin more ja adjektiivi sijaan.",
+        "NoFrenchSpaces": "Poistaa välimerkkiä edeltävän välilyönnin, jota ranskalainen typografia käyttää.",
+        "NoOxfordComma": "Poistaa luettelon viimeisen pilkun.",
+        "NumericRangeEnDash": "Haluaa lukuvälin päiden väliin ajatusviivan.",
+        "OxfordComma": "Vaatii luettelon viimeisen pilkun.",
+        "SentenceCapitalization": "Kirjoittaa virkkeen ensimmäisen sanan isolla alkukirjaimella, myös silloin kun virke alkaa peitetyn merkinnän jälkeen.",
+        "Spaces": "Tiivistää toistuvat välilyönnit, joita proosapeite jättää jokaiseen kohtaan, josta merkintä on tyhjennetty.",
+        "SplitWords": "Jakaa sanan, jonka pitäisi olla kaksi, esimerkiksi alot.",
+        "TransposedSpace": "Siirtää välilyönnin, joka on välimerkin väärällä puolella, mitä peittäminen usein tuottaa."
+      },
+      "title": "Säännöt, jotka akateeminen profiili pitää pois päältä",
+      "toggleAriaLabel": "Ota käyttöön {{rule}}"
+    },
+    "projects": {
+      "empty": "Avaa projekti, niin projektikohtaisia termejä voi lisätä.",
+      "emptyDescription": "Tälle projektille lisätyt sanat ohitetaan kielentarkistuksessa vain täällä.",
+      "terms_one": "{{used}} / {{limit}} termi",
+      "terms_other": "{{used}} / {{limit}} termiä"
+    },
+    "reset": {
+      "confirmationDescription": "Tämä poistaa pysyvästi jokaisen ohitetun sanan, sekä yleiset että projektikohtaiset, ja ottaa takaisin käyttöön jokaisen pois kytkemäsi kielioppisäännön. Akateeminen profiili pitää omat sääntönsä pois päältä. Kielentarkistus nostaa nuo sanat taas esiin.",
+      "sectionName": "Sanakirja"
+    },
+    "search": {
+      "ariaLabel": "Hae ohitettuja sanoja",
+      "placeholder": "Hae sanakirjasta"
+    },
+    "tabs": {
+      "global": "Yleiset",
+      "projects": "Projektit"
+    },
+    "turnedOff": {
+      "description": "Säännöt, jotka kytkit pois, ja huomiot, jotka ohitit tässä projektissa.",
+      "help": "Vie osoitin alleviivatun sanan tai virkkeen päälle editorissa, niin pieni kortti näyttää, mitä Harper löysi, ja tarjoaa toiminnot korjaamiseen tai ohittamiseen. Tuolta kortilta pois kytketyt säännöt ja tässä projektissa ohitetut huomiot listataan tässä, joten mikä tahansa niistä on palautettavissa.",
+      "listAriaLabel": "Pois kytketyt kielioppisäännöt",
+      "none": "Et ole kytkenyt yhtään sääntöä pois.",
+      "restoreAriaLabel": "Ota sääntö {{rule}} takaisin käyttöön",
+      "restoreTitle": "Ota sääntö ”{{rule}}” takaisin käyttöön",
+      "title": "Kielioppisäännöt ja ohitetut huomiot"
+    },
+    "words": {
+      "emptyCompact": "Mitään ei ole vielä ohitettu.",
+      "emptyTitle": "Mitään ei ole vielä ohitettu",
+      "listAriaLabel": "Ohitetut sanat",
+      "noMatches": "Yksikään ohitettu sana ei vastaa tätä hakua.",
+      "removeAriaLabel": "Lopeta sanan {{word}} ohittaminen",
+      "removeTitle": "Lopeta sanan ”{{word}}” ohittaminen"
+    }
+  },
+  "reset": {
+    "button": "Palauta oletukset",
+    "confirmDescription": "Palauta osion {{sectionName}} asetukset oletuksiin. Muut asetukset säilyvät ennallaan.",
+    "confirmTitle": "Palautetaanko osion {{sectionName}} asetukset?",
+    "description": "Palauta osion {{sectionName}} asetukset oletuksiin.",
+    "label": "Palauta asetukset"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Hae ja suorita Oleaflyn komentoja.",
+        "label": "Komentopaletti"
+      },
+      "forwardSync": {
+        "description": "Hyppää editorin kohdistimesta käännettyyn PDF:ään.",
+        "label": "Siirry PDF:ään"
+      },
+      "recompile": {
+        "description": "Käännä nykyinen projekti ja näytä sen PDF.",
+        "label": "Käännä uudelleen"
+      },
+      "searchDocuments": {
+        "description": "Hae projekteista ja dokumenteista.",
+        "label": "Hae kaikista dokumenteista"
+      },
+      "shortcutReference": {
+        "description": "Avaa projektin pikanäppäinluettelo.",
+        "label": "Pikanäppäinluettelo"
+      },
+      "toggleBrowser": {
+        "description": "Näytä tai piilota projektin selain.",
+        "label": "Näytä tai piilota selain"
+      },
+      "toggleSidebar": {
+        "description": "Näytä tai piilota projektin sivupalkki.",
+        "label": "Näytä tai piilota sivupalkki"
+      },
+      "toggleTerminal": {
+        "description": "Näytä tai piilota projektin pääte.",
+        "label": "Näytä tai piilota pääte"
+      }
+    },
+    "application": {
+      "editAriaLabel": "Muokkaa toimintoa {{action}}, nyt {{shortcut}}",
+      "heading": "Sovelluksen pikanäppäimet",
+      "prompt": "Paina uutta näppäinyhdistelmää",
+      "recordAriaLabel": "Tallennetaan toimintoa {{action}}. Paina pikanäppäintä.",
+      "recording": "Tallennetaan",
+      "resetAriaLabel": "Palauta {{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "Pyydä tekoälyä muokkaamaan valintaa",
+        "bold": "Lihavointi",
+        "findAndReplace": "Etsi ja korvaa",
+        "findReferences": "Etsi viitteet",
+        "goToDefinition": "Siirry määritelmään",
+        "goToDefinitionWithPointer": "Siirry määritelmään osoittimella",
+        "indentOrAcceptAutocomplete": "Sisennä tai hyväksy täydennys",
+        "italic": "Kursivointi",
+        "jumpToSourceFromPdf": "Hyppää PDF:stä lähdekoodiin",
+        "redo": "Tee uudelleen",
+        "renameSymbol": "Nimeä symboli uudelleen koko projektissa",
+        "slashCommandMenu": "Kauttaviivakomentojen lisäysvalikko",
+        "triggerAutocomplete": "Käynnistä automaattitäydennys",
+        "undo": "Kumoa"
+      },
+      "managed": "Editorin hallitsema"
+    },
+    "categories": {
+      "codeIntelligence": "Koodiäly",
+      "editor": "Editori",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "On jo varattu toiminnolle {{action}}.",
+      "reserved": "{{shortcut}} on käyttöjärjestelmän varaama."
+    },
+    "intro": "Mukauta sovelluksen pikanäppäimiä ja tarkastele editorin omia näppäinyhdistelmiä.",
+    "reserved": {
+      "closeWindow": "Sulje ikkuna",
+      "copy": "Kopioi",
+      "cut": "Leikkaa",
+      "paste": "Liitä",
+      "quit": "Lopeta",
+      "save": "Tallenna",
+      "selectAll": "Valitse kaikki",
+      "systemSearch": "Järjestelmähaku",
+      "windowSwitching": "Ikkunoiden vaihto"
+    },
+    "reset": {
+      "sectionName": "Pikanäppäimet"
+    },
+    "tabs": {
+      "application": "Sovellus"
+    },
+    "editorKeys": {
+      "clearHint": "Paina Backspace, niin toiminto jää ilman näppäintä.",
+      "heading": "Editorin näppäimet",
+      "intro": "Nämä näppäimet toimivat lähdekoodieditorissa. Vim- ja Emacs-tiloilla on omat näppäinkomentonsa.",
+      "labels": {
+        "addCursorAbove": "Lisää kohdistin yläpuolelle",
+        "addCursorBelow": "Lisää kohdistin alapuolelle",
+        "deleteLine": "Poista rivi",
+        "duplicate": "Kahdenna valinta tai rivi",
+        "gotoLine": "Siirry riville",
+        "indentLess": "Vähennä sisennystä",
+        "indentMore": "Sisennä",
+        "lowercase": "Pienet kirjaimet",
+        "selectNextOccurrence": "Valitse seuraava esiintymä",
+        "titleCase": "Isot alkukirjaimet",
+        "toggleComment": "Kommentoi tai poista kommentointi",
+        "uppercase": "Isot kirjaimet"
+      },
+      "unbound": "Ei asetettu"
+    }
+  }
+}

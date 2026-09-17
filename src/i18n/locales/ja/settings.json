@@ -1,0 +1,1451 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "実行ファイル",
+      "bridgeSourceLabel": "入手元",
+      "bridgeTitle": "ACP ブリッジ",
+      "bridgeUnresolved": "ブリッジの実行ファイルはまだ特定できていません。",
+      "checkAgain": "もう一度確認",
+      "checkFailedTitle": "インストール済みのエージェントを確認できませんでした",
+      "checkInstalled": "インストール済みのエージェントを確認",
+      "checkingAction": "確認中",
+      "checkingDescription": "Oleafly がこのコンピュータのコマンドラインツールを調べるため、少し時間がかかることがあります。",
+      "checkingInstalled": "インストール済みのエージェントを確認しています",
+      "checkingTitle": "コマンドラインのエージェントを探しています",
+      "cliNotOnPath": "{{command}} は PATH に見つかりませんでした。",
+      "cliPathLabel": "検出場所",
+      "cliTitle": "コマンドラインツール",
+      "copySignInCommand": "サインインのコマンドをコピー",
+      "emptyDescription": "対応しているコマンドラインのエージェントをインストールしてから、もう一度確認してください。",
+      "emptyTitle": "コマンドラインのエージェントが見つかりません",
+      "custom": {
+        "description": "エージェントの定義を貼り付けると、Oleafly に同梱されていないエージェントを登録できます。",
+        "hint": "バージョンを固定した npm や uv のパッケージ、検証済みのバイナリ、インストール済みの実行ファイルを指すエージェント定義を貼り付けてください。この JSON にパスワードや API キーを書かないでください。",
+        "label": "カスタムエージェントを登録",
+        "submit": "定義を登録",
+        "title": "カスタムエージェントを追加",
+        "useExample": "例を使う"
+      },
+      "install": {
+        "confirm": "インストール",
+        "description": "Oleafly が、バージョンを固定したこのパッケージを専用のエージェントフォルダにダウンロードします。会話を始めると、そのエージェントはあなたの CLI のアカウントで動きます。",
+        "installing": "インストール中",
+        "location": "Oleafly のエージェントフォルダ、{{id}}/{{version}}",
+        "locationLabel": "インストール先",
+        "packageLabel": "パッケージ",
+        "title": "{{name}} のブリッジ {{version}} をインストール"
+      },
+      "installBridge": "ブリッジをインストール",
+      "installBridgeNextStep": "ACP ブリッジをインストールしてから、コマンドラインツールでサインインしてください。",
+      "intro": "ローカルのエージェントを ACP で接続します。各エージェントは自分でモデル、ツール、サインインを管理し、API プロバイダの設定とは切り離されています。サインインには公式の CLI のアカウントを使ってください。Oleafly はアカウントのトークンを取り込んだり、サブスクリプションの利用枠を推定したりはしません。",
+      "nextStepTitle": "次の手順",
+      "notReported": "報告なし",
+      "notice": {
+        "installed": "{{name}} をインストールしました。会話を始める前に、その CLI でサインインしてください。",
+        "registered": "{{name}} を登録しました。登録だけではインストールも起動もされません。",
+        "removed": "エージェントの定義を削除しました。インストール済みのファイルと保存された会話はそのまま使えます。",
+        "terminalOpen": "プロジェクトのターミナルが開いています。エージェントに表示されているサインインのコマンドを実行してから、会話に接続し直してください。"
+      },
+      "openSignInTerminal": "サインイン用のターミナルを開く",
+      "openTerminal": "ターミナルを開く",
+      "platformLabel": "プラットフォーム",
+      "refreshingStatus": "エージェントの状態を更新しています。現在の一覧はそのまま表示されます。",
+      "registry": {
+        "description": "ほかのチームが公開したエージェントを ACP のレジストリから検索します。",
+        "hideDistribution": "配布情報を隠す",
+        "register": "エージェントを登録",
+        "registered": "登録済み",
+        "reviewHint": "レジストリの項目は、その公開者によるソフトウェアの説明です。登録やインストールの前に、配布情報を確認してください。",
+        "search": "検索",
+        "searchLabel": "ACP のエージェントを探す",
+        "searchPlaceholder": "ACP のレジストリを検索",
+        "searching": "検索中",
+        "showDistribution": "配布情報を表示",
+        "title": "ほかのエージェントを探す"
+      },
+      "sectionLabel": "ACP エージェント",
+      "signInCommandLabel": "サインインのコマンド",
+      "versionLabel": "バージョン",
+      "updateBridge": "ブリッジを更新"
+    },
+    "approvals": {
+      "file": {
+        "description": "「カスタム」の承認モードは、このファイルを読みます。ファイルは ~/.oleafly/approvals.toml にあり、この端末のすべてのプロジェクトに適用されます。",
+        "discard": "変更を破棄",
+        "emptyFile": "ファイルはまだ空です。",
+        "help": {
+          "comments": "# で始まるコメントは、ここで保存しても残ります。ただし承認カードで「このプロジェクトでは常に許可」を選ぶと、コメントなしでファイルが書き直されます。",
+          "modes": "最初のテーブル <modesTable>[\"$approval_modes\"]</modesTable> は、プロジェクトごとの承認モードを設定します。<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full>、<custom>\"custom\"</custom> のいずれかです。記載のないプロジェクトは「自動で承認する」を使います。",
+          "openProject": "開いているプロジェクト {{name}} の ID は <projectId>{{id}}</projectId> です。",
+          "projectIds": "プロジェクトの ID は、~/.oleafly/projects 以下のフォルダ名です。",
+          "rules": "続いて、プロジェクトの ID ごとにテーブルを 1 つ置き、ツールごとにルールを書きます。<allow>\"allow\"</allow> は確認なしでツールを実行し、<deny>\"deny\"</deny> は拒否します。deny のルールはどのモードでも有効です。allow のルールはカスタムモードで効き、run_command についてはほかのモードでも確認を省きます。",
+          "toolNames": "使えるツール名: <names>{{names}}</names>。MCP のツールは、「ツール」の一覧にある正式名で指定できます。"
+        },
+        "helpToggle": "このファイルの仕組み",
+        "insertExample": "例を挿入",
+        "reload": "再読み込み",
+        "saved": "保存しました。ルールは次のツール呼び出しから適用されます。",
+        "saving": "保存中",
+        "title": "承認ルールのファイル"
+      },
+      "project": {
+        "allowed": "常に許可",
+        "denied": "常に拒否",
+        "description": "{{name}} に保存されたルールです。承認モードが「カスタム」のときに適用されます。ルールを削除すると、そのツールには標準のリスク判定が使われます。",
+        "empty": "保存されたルールはまだありません。承認の確認で「このプロジェクトでは常に許可」を選ぶと追加されます。",
+        "removeRule": "{{tool}} のルールを削除",
+        "thisProject": "このプロジェクト",
+        "title": "ツールの承認"
+      }
+    },
+    "budget": {
+      "clear": "予算を解除",
+      "inputLabel": "AI の予算（米ドル）",
+      "inputPlaceholder": "予算なし",
+      "limit": "予算に達すると実行が一時停止します。",
+      "spent": "これまでの推定利用額: {{amount}}。予算に達すると実行が一時停止します。",
+      "save": "予算を保存",
+      "title": "AI の予算"
+    },
+    "customProvider": {
+      "addDescription": "OpenAI 互換のエンドポイントを、そのベース URL で接続します。",
+      "addTitle": "カスタムプロバイダを追加",
+      "baseUrlLabel": "ベース URL",
+      "baseUrlNote": "保存済みの API キーが、この新しいアドレスに送信されます。",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "editDescription": "名前またはベース URL を変更します。",
+      "editTitle": "カスタムプロバイダを編集",
+      "errors": {
+        "addFailed": "そのプロバイダを追加できませんでした。",
+        "baseUrlHost": "URL にホストが含まれていません。",
+        "baseUrlInvalid": "完全な URL を入力してください。例: https://api.example.com/v1 または http://localhost:1234/v1。",
+        "baseUrlProtocol": "https:// を使ってください。ローカルのサーバーであれば http:// でもかまいません。",
+        "baseUrlRequired": "ベース URL は必須です。",
+        "idFormat": "小文字の英字、数字、ハイフンのみを使ってください。例: acme。",
+        "idRequired": "ID は必須です。",
+        "nameRequired": "名前は必須です。",
+        "saveFailed": "そのプロバイダを保存できませんでした。"
+      },
+      "idLabel": "ID",
+      "idPlaceholder": "acme",
+      "keyLabel": "API キー（任意）",
+      "keyLabelKeepSaved": "API キー（空欄にすると保存済みのキーを保持します）",
+      "keyPlaceholder": "不要な場合は空欄のままにしてください",
+      "keyPlaceholderStored": "新しく入力しない限り、保存済みのキーが使われます",
+      "namePlaceholder": "Acme",
+      "submitAdd": "プロバイダを追加"
+    },
+    "instructions": {
+      "capabilitiesTitle": "エージェントの機能",
+      "customDescription": "あなたの文体や好みとして、すべての AI のリクエストに追加されます。アシスタントは本来の動作に加えてこれに従います。ツールや安全上の規則を上書きすることはできません。",
+      "customPlaceholder": "例: 常にイギリス英語で書く。説明は短くする。リストには enumitem パッケージを使う。",
+      "customTitle": "カスタム指示",
+      "defaultModelDescription": "新しいチャットを始めるときに使われます。会話ごとにチャットパネルからモデルを切り替えることもできます。",
+      "defaultModelTitle": "既定のチャットモデル",
+      "pdfCaptureDescription": "コンパイルしたページを画像化（verify_pdf_pages）して、画像認識でレイアウトを確認できるようにします。ページの画像をプロバイダに送りたくない場合は無効にしてください。",
+      "pdfCaptureLabel": "AI による PDF ページの取り込みを許可",
+      "save": "指示を保存",
+      "saved": "保存しました",
+      "toolsHint": "「LaTeX のエラーを直して」「Publications のセクションを追加して」「再コンパイルして PDF を確認して」のように頼めます。",
+      "toolsTitle": "アシスタントが現在使えるツール"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "そのモデルはすでに一覧にあります。",
+        "empty": "モデルの ID を入力してください。",
+        "spaces": "モデルの ID に空白は使えません。"
+      },
+      "addPlaceholder": "モデルの ID を追加",
+      "changeSummary": "追加 {{added}} 件、削除 {{removed}} 件",
+      "custom": "カスタム",
+      "deleteAriaLabel": "モデル {{model}} を削除",
+      "deleteDialog": {
+        "description": "このプロバイダのモデル一覧から「{{model}}」を削除しますか？組み込みのモデルは「既定に戻す」で元に戻せます。カスタムのモデルは ID を指定して再追加できます。",
+        "title": "モデルを削除"
+      },
+      "deleteTooltip": "モデルを削除",
+      "empty": "モデルがまだありません。下から追加してください。",
+      "invalidKey": "API キーが正しくありません。",
+      "metadata": {
+        "refreshFailed": "モデルの情報を更新できませんでした。",
+        "unknownDate": "不明な日付",
+        "updated": "モデルの情報の更新日 {{date}}",
+        "updatedBundled": "モデルの情報の更新日 {{date}}、アプリに同梱",
+        "updatedFromCache": "モデルの情報の更新日 {{date}}、前回のダウンロードによるもの"
+      },
+      "noChanges": "変更なし",
+      "refresh": "更新",
+      "restore": "既定に戻す",
+      "restoreTooltip": "このプロバイダの組み込みモデルを追加し直します",
+      "title": "モデル",
+      "unreachable": "プロバイダに接続できませんでした。",
+      "unreadableList": "プロバイダが、Oleafly では読めない形式のモデルを返しました。",
+      "updated": "更新 {{time}}"
+    },
+    "personas": {
+      "addStarter": "ペルソナを追加",
+      "addStarterFailed": "{{name}} を追加できませんでした。{{error}}",
+      "addStarterNamed": "{{name}} のペルソナを追加",
+      "colors": {
+        "forest": "フォレスト",
+        "grape": "グレープ",
+        "ocean": "オーシャン",
+        "slate": "スレート",
+        "sunset": "サンセット"
+      },
+      "create": "ペルソナを作成",
+      "delete": "ペルソナを削除",
+      "deleteDescription": "「{{name}}」を削除しますか？そのプロンプトは完全に削除され、使っていたチャットは既定の指示に戻ります。",
+      "deleteNamed": "ペルソナ {{name}} を削除",
+      "description": "アシスタントの働き方を決める、使い回せる指示です。作業に合わせてチャットで選びます。選んでいる間は、既定の指示の代わりに使われます。",
+      "edit": "ペルソナを編集",
+      "editNamed": "ペルソナ {{name}} を編集",
+      "empty": "ペルソナはまだ追加されていません。",
+      "form": {
+        "color": "色",
+        "create": "作成",
+        "createTitle": "ペルソナを作成",
+        "description": "アシスタントの働き方を決める、使い回せる指示を設定します。",
+        "editTitle": "ペルソナを編集",
+        "instructions": "指示",
+        "instructionsPlaceholder": "わかりやすさの観点で文章を確認し、重要な問題から順に挙げてください。",
+        "namePlaceholder": "簡潔な編集者",
+        "required": "名前とプロンプトは必須です。",
+        "saveFailed": "そのペルソナを保存できませんでした。"
+      },
+      "starters": {
+        "criticalReviewer": "主張、手法、根拠、見せ方の弱点を見つけます。",
+        "documentEditor": "文章、構成、引用、LaTeX を、要点を絞った安全な変更で直します。",
+        "figure": "出版に耐える図やダイアグラムを、LaTeX の TikZ や PGFPlots で作ります。",
+        "researchWriter": "根拠や引用を捏造せずに、学術的な文章を書いて構成します。"
+      },
+      "suggestedDescription": "まずはこの中から 1 つ選び、指示を自分の進め方に合わせて編集してください。",
+      "suggestedTitle": "おすすめのペルソナ",
+      "title": "ペルソナ"
+    },
+    "providers": {
+      "addCustom": "カスタムプロバイダを追加",
+      "badge": {
+        "connected": "接続済み",
+        "notRunning": "起動していません",
+        "running": "稼働中"
+      },
+      "blurbs": {
+        "anthropic": "Claude のモデル。コードと文章に強みがあります。",
+        "custom": "カスタムプロバイダ。",
+        "deepseek": "DeepSeek V4 のモデル。",
+        "google": "Google AI Studio の Gemini のモデル。",
+        "groq": "オープンモデルを非常に高速に推論します。",
+        "mistral": "Mistral と Codestral のモデル。",
+        "ollama": "このマシンでモデルを動かします。キーは不要です。Ollama をインストールしてモデルを取得してください。",
+        "openai": "GPT のモデル。標準的な選択肢です。",
+        "openrouter": "1 つのキーで、多くの研究機関のモデルを使えます。",
+        "perplexity": "ウェブの最新情報に基づく Sonar のモデル。",
+        "xai": "xAI の Grok のモデル。",
+        "zai": "Z.AI GLM Coding Plan の契約で使える GLM のモデル。"
+      },
+      "deleteKeyAriaLabel": "{{provider}} のキーを削除",
+      "deleteKeyTooltip": "キーを削除",
+      "docs": "ドキュメント",
+      "editAriaLabel": "{{provider}} を編集",
+      "editTooltip": "名前またはエンドポイントを編集",
+      "getKey": "キーを取得",
+      "intro": "使っているプロバイダを下から接続してください。キーはこの端末にのみ保存されます。保存すると、そのプロバイダが既定になります。設定済みのプロバイダとモデルは、チャットパネルのドロップダウンから切り替えられます。",
+      "keyPlaceholder": "API キーをここに貼り付けてください",
+      "modelLabel": "モデル",
+      "ollama": {
+        "active": "使用中",
+        "changeHost": "ホストを変更（詳細設定）",
+        "check": "Ollama を確認",
+        "checking": "確認中…",
+        "disconnect": "接続を解除",
+        "hideHost": "ホストを隠す",
+        "installedHint": "Ollama はここにインストールされています。起動には少し時間がかかります。",
+        "modelPlaceholder": "使うモデルを選択",
+        "noModels": "Ollama は動いていますが、モデルがインストールされていません。<pull>ollama pull llama3.2</pull> を実行してから、再確認してください。",
+        "noneResponding": "<host>{{host}}</host> で応答する Ollama がありません。",
+        "notChecked": "未確認",
+        "notDetected": "検出されませんでした",
+        "recheck": "再確認",
+        "runningModels_other": "稼働中 · モデル {{count}} 件",
+        "setupSteps": "1. <download>ollama.com <icon></icon></download> からインストール · 2. 自動的に起動します（または <serve>ollama serve</serve> を実行） · 3. モデルを取得します。例: <pull>ollama pull llama3.2</pull> · 4. 再確認。",
+        "start": "Ollama を起動"
+      },
+      "removeAriaLabel": "{{provider}} を削除",
+      "removeDialog": {
+        "description": "「{{provider}}」を削除しますか？保存されたキーとモデルの一覧も一緒に削除されます。",
+        "title": "カスタムプロバイダを削除"
+      },
+      "removeTooltip": "カスタムプロバイダを削除",
+      "replaceKey": "キーを差し替え",
+      "status": {
+        "error": "エラー: {{message}}",
+        "errorFallback": "キーを検証できませんでした。",
+        "valid": "キーは有効です。下にモデルが表示されます。",
+        "validating": "キーを確認しています..."
+      }
+    },
+    "section": {
+      "agentsLoading": "エージェントを読み込み中…",
+      "errors": {
+        "invalidKey": "API キーが正しくありません。",
+        "keyNotKept": "ベース URL は保存されましたが、キーは保存されませんでした。キーをもう一度入力してください。",
+        "providerGone": "そのプロバイダはもう存在しません。",
+        "providerIdInUse": "そのプロバイダ ID はすでに使われています。"
+      },
+      "messages": {
+        "keyRemoved": "{{provider}} のキーを削除しました。",
+        "keyRemovedAccessDisabled": "{{provider}} のキーを削除しました。AI の利用は無効になっています。",
+        "keySavedAddModels": "{{provider}} のキーを保存しました。モデルは下から手動で追加してください。",
+        "keySavedCheckedOnUse": "{{provider}} のキーを保存しました。初回利用時に確認されます。",
+        "ollamaConnected": "Ollama に接続しました · {{model}}",
+        "preferencesReset": "AI アシスタントの設定を既定に戻しました。",
+        "providerAdded": "{{provider}} を追加しました。",
+        "providerConnected": "{{provider}} に接続しました。",
+        "providerUpdated": "{{provider}} を更新しました。",
+        "providerUpdatedWithoutModels": "{{provider}} を更新しました。モデルの一覧は更新できませんでした。"
+      },
+      "reset": {
+        "confirmWithProject": "AI アシスタントの設定を既定に戻します。モデルの利用可否、有効なスキル、このプロジェクトの予算も対象です。使用中のプロバイダとモデル、プロバイダのキー、ペルソナ、承認ルール、使用履歴、MCP サーバーは変わりません。",
+        "confirmWithoutProject": "AI アシスタントの設定を既定に戻します。モデルの利用可否と有効なスキルも対象です。使用中のプロバイダとモデル、プロバイダのキー、ペルソナ、承認ルール、使用履歴、MCP サーバーは変わりません。",
+        "sectionName": "AI アシスタント"
+      },
+      "tabs": {
+        "agents": "CLI エージェント",
+        "instructions": "指示",
+        "mcp": "MCP",
+        "personas": "ペルソナ",
+        "providers": "プロバイダとキー",
+        "skills": "スキル"
+      }
+    },
+    "skills": {
+      "addFolder": "フォルダを追加",
+      "addFolderDialogTitle": "スキルのフォルダを追加",
+      "catalog": {
+        "description": "特定の研究分野向けの追加スキルです。インストールすると上の一覧に加わります。",
+        "empty": "カタログにインストールできる追加スキルはありません。",
+        "install": "インストール",
+        "loading": "カタログを読み込んでいます...",
+        "messages": {
+          "installed": "{{name}} をインストールしました。",
+          "removed": "{{name}} を削除しました。"
+        },
+        "progress": {
+          "downloading": "ダウンロード中...",
+          "downloadingPercent": "ダウンロード中 {{percent}}%",
+          "extracting": "展開中...",
+          "extractingPercent": "展開中 {{percent}}%",
+          "failed": "インストールに失敗しました。",
+          "finishing": "インストールを仕上げています..."
+        },
+        "refresh": "更新",
+        "source": {
+          "bundled": "組み込みのカタログ",
+          "bundledOffline": "組み込みのカタログ、ネットワークに接続できませんでした",
+          "cached": "cdn.oleafly.com のキャッシュ済みカタログ、最終取得 {{when}}",
+          "cachedOffline": "cdn.oleafly.com のキャッシュ済みカタログ、最終取得 {{when}}、ネットワークに接続できませんでした",
+          "cachedUnknown": "cdn.oleafly.com のキャッシュ済みカタログ、最終取得の時刻は不明",
+          "cachedUnknownOffline": "cdn.oleafly.com のキャッシュ済みカタログ、最終取得の時刻は不明、ネットワークに接続できませんでした",
+          "remote": "cdn.oleafly.com のカタログ、取得 {{when}}",
+          "remoteUnknown": "cdn.oleafly.com のカタログ、取得の時刻は不明"
+        },
+        "title": "分野別の棚",
+        "uninstall": "アンインストール",
+        "update": "更新"
+      },
+      "createSkill": "スキルを作成",
+      "description": "アシスタントがスキルの完全な指示を読み込むのは、必要だと判断したときだけです。チャットで /skill-id と入力すれば、すぐに読み込ませることもできます。ここで有効にしたスキルは、プロジェクト側で上書きしない限り、すべてのプロジェクトで有効です。",
+      "editAria": "{{name}} を編集",
+      "editor": {
+        "createDescription": "Oleafly のスキルフォルダに SKILL.md の下書きを作ります。",
+        "createTitle": "スキルを作成",
+        "descriptionPlaceholder": "各主張に裏付けがあるかを確認します。",
+        "editDescription": "SKILL.md に保存されているメタデータと指示を調整します。",
+        "editTitle": "スキルを編集",
+        "instructions": "指示",
+        "instructionsHint": "空欄のままにすると、最小限の指示の雛形を作ります。",
+        "instructionsPlaceholder": "このスキルを使う場面と、アシスタントがたどる手順を書いてください。",
+        "namePlaceholder": "主張チェッカー",
+        "requiredAll": "名前、説明、指示は必須です。",
+        "requiredBasics": "名前と説明は必須です。",
+        "submitCreate": "作成"
+      },
+      "empty": "スキルが見つかりません。フォルダを追加するか、新しく作成してください。",
+      "enableAria": "{{name}} を有効にする",
+      "fileCount_other": "{{count}} 件のファイル",
+      "groups": {
+        "shelf": "分野別の棚",
+        "user": "自分のスキル"
+      },
+      "inheritsDevice": "端末の設定を引き継ぎます",
+      "invalidBadge": "不正",
+      "loadFailed": "スキルを読み込めませんでした。{{message}}",
+      "loading": "スキルを読み込んでいます...",
+      "messages": {
+        "added": "{{name}} を追加しました。",
+        "created": "{{name}} を作成しました。",
+        "editorClosed": "スキルのエディタはすでに開いていません。",
+        "removed": "{{name}} を削除しました。",
+        "saved": "{{name}} を保存しました。",
+        "updated": "{{name}} を更新しました。"
+      },
+      "missingDescription": "このスキルには説明が必要です。",
+      "offForProject": "このプロジェクトでは無効",
+      "onForProject": "このプロジェクトでは有効",
+      "phases": {
+        "authoring": "執筆",
+        "communication": "発信",
+        "figures": "図の作成",
+        "research": "調査",
+        "review": "レビュー",
+        "submission": "投稿",
+        "tooling": "ツール"
+      },
+      "removeAria": "{{name}} を削除",
+      "removeDialog": {
+        "description": "「{{name}}」とそのフォルダを Oleafly から削除しますか？この操作は取り消せません。",
+        "title": "スキルを削除"
+      },
+      "share": {
+        "description": "このコンピュータのほかのコーディングエージェントがすでに読んでいるフォルダに、自分のスキルをリンクします。スキルを一度書けば、どのエージェントからも使えます。",
+        "emptyBody": "このコンピュータに、ほかのエージェントのフォルダは見つかりませんでした。",
+        "status": {
+          "linked": "{{total}} 件中 {{linked}} 件をリンク",
+          "undetected": "この端末には見つかりません",
+          "unsupported": "このシステムでは利用できません"
+        },
+        "summary": {
+          "checking": "エージェントのフォルダを確認しています",
+          "linked_other": "{{count}} 件中 {{linked}} 件のエージェントにリンク済み",
+          "none": "ほかのエージェントのフォルダは見つかりませんでした"
+        },
+        "title": "このコンピュータのほかのエージェントとスキルを共有"
+      },
+      "size": {
+        "bytes": "{{value}} B",
+        "kilobytes": "{{value}} KB",
+        "megabytes": "{{value}} MB"
+      },
+      "source": {
+        "added": "追加",
+        "bundled": "組み込み",
+        "catalog": "インストール済み"
+      },
+      "tier": {
+        "credits": "提供元: {{credits}}",
+        "native": "Oleafly のワークフロー",
+        "shelf": "分野別の棚のスキル",
+        "shelfWithLicense": "分野別の棚、{{license}}",
+        "user": "自分で作ったスキル",
+        "vendored": "同梱された外部スキル"
+      },
+      "title": "スキル",
+      "updateAction": "更新",
+      "updateDialog": {
+        "description": "「{{name}}」を同梱の最新版で置き換えますか？そのファイルへのローカルの編集は失われます。",
+        "title": "スキルを更新"
+      },
+      "useDeviceSetting": "端末の設定を使う",
+      "useDeviceSettingAria": "{{name}} に端末の設定を使う",
+      "useInProject": "このプロジェクトで使う",
+      "useInProjectAria": "このプロジェクトで {{name}} を使う",
+      "validateAria": "{{name}} を検証"
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "ボタン、選択範囲、エディタのカーソルに使われます。",
+        "label": "アクセントカラー",
+        "swatchAriaLabel": "{{name}} のアクセント"
+      },
+      "bgPattern": {
+        "description": "プロジェクトの棚の背景の模様を選びます。",
+        "dots": "ドット",
+        "grid": "グリッド",
+        "label": "背景の模様"
+      },
+      "dock": {
+        "bottom": "下",
+        "description": "ホーム画面のドックを置く場所を選びます。",
+        "label": "ドックの位置",
+        "left": "左",
+        "right": "右"
+      },
+      "font": {
+        "description": "フォントがインストールされていない場合は、システムの代替フォントを使います。",
+        "label": "アプリのフォント"
+      },
+      "fontSize": {
+        "description": "メニュー、パネル、ボタンの文字の大きさを調整します。",
+        "label": "アプリの文字サイズ"
+      },
+      "theme": {
+        "description": "「システム」はオペレーティングシステムに従い、その設定が変わると一緒に変わります。",
+        "label": "外観"
+      }
+    },
+    "browser": {
+      "homePage": {
+        "ariaLabel": "ブラウザのホームページ",
+        "description": "ブラウザのドックと一緒に開くページを選びます。",
+        "label": "ホームページ"
+      },
+      "searchEngine": {
+        "description": "テキスト検索に使う検索エンジンを選びます。",
+        "label": "既定の検索エンジン"
+      }
+    },
+    "customTheme": {
+      "cleared": "テーマのカスタマイズを解除しました。",
+      "customCss": {
+        "description": "任意の宣言はアプリ内にのみ適用されます。規則、インポート、URL はブロックされます。",
+        "label": "適用範囲を限定した CSS 宣言"
+      },
+      "darkRestored": "ダークのトークンを元に戻しました。",
+      "description": "モードごとにアプリの色トークンを変更します。変更はこの端末に保存され、すぐに反映されます。",
+      "exportTheme": "テーマを書き出す",
+      "fileTooLarge": "テーマファイルが 128 KiB を超えています。",
+      "importFileAriaLabel": "テーマファイルを読み込む",
+      "importTheme": "テーマを読み込む",
+      "imported": "テーマを読み込んで適用しました。",
+      "importedSkippedMore_other": "テーマを読み込んで適用しました。Oleafly が使わないトークンを {{count}} 件スキップしました: {{tokens}} ほか。",
+      "importedSkipped_other": "テーマを読み込んで適用しました。Oleafly が使わないトークンを {{count}} 件スキップしました: {{tokens}}。",
+      "lightRestored": "ライトのトークンを元に戻しました。",
+      "modeDark": "ダークモード",
+      "modeFieldsetAriaLabel": "編集するテーマのモード",
+      "modeLight": "ライトモード",
+      "pickColorDark": "ダークモードの {{token}} の色を選択",
+      "pickColorLight": "ライトモードの {{token}} の色を選択",
+      "radius": {
+        "description": "8px、0.5rem、1em のような値を使います。空欄のままにすると既定値になります。",
+        "label": "角の丸み"
+      },
+      "resetAll": "すべてリセット",
+      "resetMode": "このモードをリセット",
+      "title": "テーマのカスタマイズ",
+      "tokenInputDark": "ダークモードの {{token}} トークン",
+      "tokenInputLight": "ライトモードの {{token}} トークン",
+      "tokens": {
+        "accent": "アクセント",
+        "accentForeground": "アクセントの文字",
+        "background": "背景",
+        "border": "枠線",
+        "card": "パネル",
+        "cardForeground": "パネルの文字",
+        "destructive": "危険",
+        "destructiveForeground": "危険の文字",
+        "foreground": "文字",
+        "input": "入力欄の枠線",
+        "muted": "控えめ",
+        "mutedForeground": "控えめの文字",
+        "popover": "ポップオーバー",
+        "popoverForeground": "ポップオーバーの文字",
+        "primary": "プライマリ",
+        "primaryForeground": "プライマリの文字",
+        "ring": "フォーカスリング",
+        "secondary": "セカンダリ",
+        "secondaryForeground": "セカンダリの文字",
+        "sidebar": "サイドバー",
+        "sidebarAccent": "サイドバーのアクセント",
+        "sidebarAccentForeground": "サイドバーのアクセントの文字",
+        "sidebarBorder": "サイドバーの枠線",
+        "sidebarForeground": "サイドバーの文字"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "閉じ括弧を自動で挿入します。",
+        "label": "括弧の自動補完"
+      },
+      "autoCloseEnvironments": {
+        "description": "\\begin のあとで Enter を押すと \\end を挿入します。",
+        "label": "環境の自動補完"
+      },
+      "autoCloseMath": {
+        "description": "入力に合わせて $、\\(、\\[ を対にします。",
+        "label": "数式の自動補完"
+      },
+      "autocomplete": {
+        "description": "入力に合わせてコードの候補を表示します。オフでも Ctrl+Space で開けます。",
+        "label": "自動補完"
+      },
+      "font": {
+        "description": "ソースファイルに使う等幅フォントを選びます。",
+        "label": "エディタのフォント"
+      },
+      "fontSize": {
+        "description": "ソースエディタの文字の大きさを設定します。",
+        "label": "エディタの文字サイズ"
+      },
+      "ghostCompletion": {
+        "description": "カーソルの後ろに、候補となる補完を表示します。Tab で確定します。",
+        "label": "インラインの候補表示"
+      },
+      "nonBlinkingCursor": {
+        "description": "エディタのカーソルを点滅させずに表示します。",
+        "label": "点滅しないカーソル"
+      },
+      "stickyScroll": {
+        "description": "スクロール中も、現在の LaTeX のセクションと環境を上部に表示し続けます。",
+        "label": "スティッキースクロール"
+      },
+      "theme": {
+        "description": "ソースの構文の色を、アプリのテーマとは別に設定します。",
+        "label": "エディタのテーマ"
+      },
+      "keymap": {
+        "description": "ソースエディタで使うキーバインドの体系を選びます。",
+        "label": "キーバインド",
+        "options": {
+          "default": "既定",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "ソースの行間を設定します。",
+        "label": "行の高さ",
+        "options": {
+          "compact": "狭い",
+          "normal": "標準",
+          "wide": "広い"
+        }
+      },
+      "lineWrap": {
+        "description": "横スクロールの代わりに、長い行を折り返します。",
+        "label": "長い行を折り返す"
+      },
+      "tabSize": {
+        "description": "インデント 1 段階あたりの空白の数と、タブを表示する幅です。",
+        "label": "タブ幅"
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "非表示にするファイルのパターンを追加",
+        "description": "生成されたファイルやフォルダのうち、プロジェクトツリーに出さないものを選びます。",
+        "inputAriaLabel": "非表示にするファイル名またはパターン",
+        "placeholder": "ファイル名またはパターンを追加",
+        "removeAriaLabel": "{{pattern}} を非表示の一覧から削除",
+        "title": "ファイルツリーから隠すファイル"
+      },
+      "homeView": {
+        "description": "ライブラリでのプロジェクトの並べ方を選びます。",
+        "grid": "グリッド",
+        "label": "既定のホーム表示",
+        "list": "リスト"
+      },
+      "openIn": {
+        "description": "プロジェクトを開いたときのレイアウトを選びます。",
+        "label": "プロジェクトを開くときの表示"
+      },
+      "showTree": {
+        "description": "プロジェクトに入るたびに、ソースのファイルツリーを開きます。",
+        "label": "開いたときにファイルツリーを表示"
+      }
+    },
+    "fontSizeOption": "{{size}}px",
+    "preview": {
+      "darkMode": {
+        "description": "既定で PDF の色を反転します。プレビューのツールバーからいつでも切り替えられます。",
+        "label": "PDF のダークモード"
+      },
+      "hoverPreview": {
+        "description": "ライブラリでプロジェクトにカーソルを合わせると、最後にコンパイルしたページを表示します。",
+        "label": "カーソルを合わせて PDF をプレビュー"
+      },
+      "zoomShortcuts": {
+        "description": "Cmd/Ctrl と +、-、0 を、アプリのウィンドウではなく PDF の拡大縮小に使います。",
+        "label": "PDF の拡大縮小ショートカット"
+      }
+    },
+    "sectionName": "外観",
+    "tabs": {
+      "app": "アプリ",
+      "browser": "ブラウザ",
+      "editor": "エディタ",
+      "files": "プロジェクト",
+      "pdf": "PDF プレビュー",
+      "terminal": "ターミナル"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "ターミナルの配色テーマ",
+        "description": "ターミナルの ANSI の配色を選びます。",
+        "label": "配色テーマ",
+        "optionDark": "{{name}} · ダーク",
+        "optionLight": "{{name}} · ライト"
+      },
+      "colors": {
+        "background": "背景",
+        "backgroundAriaLabel": "ターミナルの背景色",
+        "cursor": "カーソル",
+        "cursorAriaLabel": "ターミナルのカーソルの色",
+        "description": "選んだ ANSI の配色はそのままに、基本の色を調整します。",
+        "followingAppTheme": "アプリのテーマに従っています。ダークモードではダークの配色、ライトモードではライトの配色になります。これらを調整するには、上で配色を 1 つ選んでください。",
+        "foreground": "文字",
+        "foregroundAriaLabel": "ターミナルの文字色",
+        "label": "ターミナルの色"
+      },
+      "cursorBlink": {
+        "description": "ターミナルのカーソルを点滅させます。",
+        "label": "カーソルを点滅"
+      },
+      "cursorStyle": {
+        "ariaLabel": "ターミナルのカーソルの形",
+        "bar": "縦線",
+        "block": "ブロック",
+        "description": "ターミナルのカーソルの形を選びます。",
+        "label": "カーソルの形",
+        "underline": "下線"
+      },
+      "font": {
+        "ariaLabel": "ターミナルのフォント",
+        "description": "ターミナルで使う等幅フォントを選びます。",
+        "label": "ターミナルのフォント"
+      },
+      "fontSize": {
+        "description": "ターミナルの文字の大きさを設定します。",
+        "label": "ターミナルの文字サイズ"
+      },
+      "fontWeight": {
+        "description": "ターミナルの通常の文字の太さを設定します。",
+        "label": "通常の文字の太さ"
+      },
+      "fontWeightBold": {
+        "description": "ターミナルの太字の太さを設定します。",
+        "label": "太字の太さ"
+      },
+      "startWithProject": {
+        "description": "ターミナルを初めて表示したときではなく、プロジェクトを開いたときに shell を起動します。",
+        "label": "プロジェクトと一緒に shell を起動"
+      }
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly はバックグラウンドで、ソースが変わったときだけ保存します。",
+      "label": "コンパイルが成功するたびにチェックポイントを保存"
+    },
+    "config": {
+      "loadFailed": "チェックポイントの設定を読み込めませんでした。",
+      "saveFailed": "チェックポイントの設定を保存できませんでした。"
+    },
+    "description": "チェックポイントは、成功したコンパイルが使ったソースファイルを記録します。",
+    "notifyOnFailure": {
+      "description": "保存領域の問題や取り込めなかったファイルなど、チェックポイントを保存できない事情があれば Oleafly が知らせます。",
+      "label": "チェックポイントを保存できないときに通知する"
+    },
+    "title": "チェックポイント"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "API キーを削除",
+      "removeEmail": "メールアドレスを削除",
+      "removeKey": "キーを削除",
+      "saveApiKey": "API キーを保存",
+      "saveEmail": "メールアドレスを保存",
+      "saveKey": "キーを保存"
+    },
+    "connected": "接続済み",
+    "description": "学術検索のソースが使う資格情報を管理します。",
+    "keyFree": {
+      "description": "これらのソースは API キーなしで利用できます。",
+      "title": "資格情報の不要なソース"
+    },
+    "openAlex": {
+      "docsLink": "OpenAlex のレート制限",
+      "emailLabel": "OpenAlex の連絡先メールアドレス",
+      "emailPlaceholder": "you@example.com",
+      "emailRemoveFailed": "OpenAlex の連絡先メールアドレスを削除できませんでした。",
+      "emailRemoved": "OpenAlex の連絡先メールアドレスを削除しました",
+      "emailSaveFailed": "OpenAlex の連絡先メールアドレスを保存できませんでした。",
+      "emailSaved": "OpenAlex の連絡先メールアドレスを保存しました",
+      "hint": "API キーの設定をおすすめします。OpenAlex は通常の利用にキーを求めており、キーなしの検索は小さな 1 日あたりの枠を共有します。連絡先メールアドレスを設定すると、優先的な利用枠も使えます。どちらもこの端末に保存されます。",
+      "keyLabel": "OpenAlex の API キー",
+      "keyRemoveFailed": "OpenAlex の API キーを削除できませんでした。",
+      "keyRemoved": "OpenAlex の API キーを削除しました",
+      "keySaveFailed": "OpenAlex の API キーを保存できませんでした。",
+      "keySaved": "OpenAlex の API キーを保存しました"
+    },
+    "semanticScholar": {
+      "docsLink": "Semantic Scholar の API についての情報",
+      "hint": "API キーは任意です。匿名での検索には Semantic Scholar の公開の制限が適用されます。",
+      "keyLabel": "Semantic Scholar の API キー",
+      "keyRemoveFailed": "Semantic Scholar の API キーを削除できませんでした。",
+      "keyRemoved": "Semantic Scholar の API キーを削除しました",
+      "keySaveFailed": "Semantic Scholar の API キーを保存できませんでした。",
+      "keySaved": "Semantic Scholar の API キーを保存しました"
+    },
+    "serper": {
+      "docsLink": "Serper API",
+      "hint": "任意です。引用検索で、Serper 経由の Google Scholar のソースを使えるようになります。キーがない場合、そのソースを選んでも読み飛ばされます。",
+      "keyLabel": "Serper の API キー",
+      "keyRemoveFailed": "Serper の API キーを削除できませんでした。",
+      "keyRemoved": "Serper の API キーを削除しました",
+      "keySaveFailed": "Serper の API キーを保存できませんでした。",
+      "keySaved": "Serper の API キーを保存しました"
+    },
+    "title": "引用検索"
+  },
+  "cite": {
+    "apa": "同じ文献の APA 形式は、GitHub の「Cite this repository」から確認できます",
+    "copyBibtex": "BibTeX をコピー",
+    "description": "Oleafly は無料でオープンソースです。それを続けられるのは、存在が知られているからです。論文づくりの役に立ったなら、参考文献の 1 項目が、次の研究者にこのツールの出どころを伝えてくれます。コピーして .bib ファイルに貼り付け、キー <citeKey>oleafly</citeKey> で引用してください。",
+    "title": "論文で Oleafly を引用する"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "すべてダウンロード済み",
+      "download": "ダウンロード",
+      "downloadAll": "すべてダウンロード"
+    },
+    "aiTemplates": {
+      "deleteDescription": "ライブラリから「{{name}}」を削除しますか？すでに作成したプロジェクトは独自のコピーを持っているため、影響はありません。",
+      "deleteTitle": "AI 生成のテンプレートを削除",
+      "deleted": "ライブラリから「{{name}}」を削除しました",
+      "empty": "AI 生成のテンプレートはまだありません。テンプレートギャラリーから作成できます。",
+      "fallbackDescription": "AI 生成のテンプレート",
+      "toggle": "AI 生成のテンプレートを管理"
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "多くの現代的な履歴書・職務経歴書テンプレートで使われる、温かみのあるヒューマニストサンセリフ体です。",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "画面でも印刷でも読みやすい、すっきりとした中立的なサンセリフ体です。",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "洗練されたトランジショナルセリフ体で、学術文書やビジネス文書によく合います。",
+        "label": "PT Serif"
+      }
+    },
+    "fonts": {
+      "empty": "ダウンロードできるフォントはありません。",
+      "engineNote": "LuaLaTeX エンジン（タグ付きのアクセシブルな PDF 向け）は、「LaTeX エンジン」のセクションで管理します。",
+      "heading": "フォント",
+      "tooltip": "一部のテンプレートは、高品質なオープンソースのフォントを使います。Oleafly を小さく保つため、それらのフォントは必要になったときにダウンロードします。そうしたテンプレートを作成すると、フォントを取得してプロジェクトにコピーするため、プロジェクトは単体で完結し、オフラインでもコンパイルできます。ここで先にダウンロードしておくことも、削除して容量を空けることもできます。"
+    },
+    "packProgress": "{{total}} 件中 {{index}} 件目",
+    "progress": "{{label}}（{{total}} 件中 {{index}} 件目）",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "フォント",
+      "templates": "テンプレート",
+      "dictionaries": "辞書"
+    },
+    "templates": {
+      "empty": "ダウンロードできるテンプレートパックはありません。",
+      "heading": "テンプレート",
+      "tooltip": "Oleafly を小さく保つため、追加のテンプレートパックは必要になったときにダウンロードします。ここでパックをダウンロードするとオフラインでもテンプレートを使え、あとから削除して容量を空けることもできます。"
+    },
+    "dictionaries": {
+      "empty": "追加の言語はまだダウンロードされていません。",
+      "heading": "スペル辞書",
+      "note": "ダウンロードするには、「一般」のセクションで言語を選んでください。同梱の 5 つのパックは常に使えるため、ここには表示されません。",
+      "tooltip": "Oleafly には 5 つの言語パックが同梱されています。それ以外の言語は、スペル辞書として選んだときにダウンロードされ、その後オフラインでも使えるようにここへ保存されます。削除すると容量が空き、アプリの設定に戻ります。"
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "信頼できるプロジェクト専用です。ローカルの TeX ディストリビューションを実行し、あなたのアカウントで読めるファイルにアクセスできます。完全なパッケージ群と複数回のパスに対応します。ホストでのコマンド実行は、プロジェクトごとの別の許可のままです。",
+        "name": "latexmk（システム TeX）"
+      },
+      "tectonic": {
+        "detail": "Oleafly に同梱されています。高速でオフラインでも動き、設定は不要です。素の LaTeX とよく使われるパッケージに対応します。",
+        "name": "Tectonic（組み込み）"
+      }
+    },
+    "defaultEngine": {
+      "heading": "既定のコンパイルエンジン",
+      "tooltip": "新しいプロジェクトに適用されます。各プロジェクトは project.json に自分のエンジンを固定するため、同じプロジェクトを開いた共同作業者は、この設定にかかわらず同じ方法でコンパイルします。"
+    },
+    "distributions": {
+      "empty": "このマシンに TeX ディストリビューションは検出されませんでした。",
+      "heading": "TeX ディストリビューションの管理",
+      "rowTooltip": "{{tools}} が同梱されています。Oleafly は {{binDir}} から TeX のツールを実行します。",
+      "rowTooltipNoTools": "このインストールには latexmk も tlmgr も見つかりませんでした。Oleafly は {{binDir}} から TeX のツールを実行します。",
+      "tooltip": "このマシンで latexmk エンジンが使えるものの一覧です。TinyTeX は管理者権限なしでホームフォルダにインストールされます。システムへのインストール（MacTeX、TeX Live、MiKTeX）は自動的に検出されます。"
+    },
+    "latexmkMissing": "latexmk が見つかりません",
+    "markdown": {
+      "downloading": "ダウンロード中…",
+      "heading": "Markdown のコンパイラ",
+      "install": "pandoc をインストール",
+      "repair": "Pandoc を修復",
+      "note": "Markdown 用に別の PDF バックエンドを選ぶことや、管理された pandoc の代わりにシステムの pandoc を使うことは、まだできません。",
+      "status": {
+        "checking": "pandoc を確認中…",
+        "installing": "バージョンを固定した pandoc を取得しています。初回は少し時間がかかります。",
+        "missing": "この Mac には見つかりませんでした。Oleafly は互換性のある pandoc（2.19 以降）を専用のフォルダにダウンロードします。システムのほかの部分は変わりません。",
+        "ready": "検出しました。Markdown のプロジェクトは pandoc で LaTeX に変換してから、同梱の Tectonic でコンパイルします。"
+      },
+      "tectonicDetail": "pandoc が生成した LaTeX を組版します。Oleafly に同梱されており、設定は不要です。",
+      "tooltip": "Markdown のプロジェクトは pandoc（Pandoc Markdown の表、脚注、引用、数式）で LaTeX に変換され、同梱の Tectonic が PDF に組版します。pandoc は最初に必要になったときにダウンロードされます。"
+    },
+    "packages": {
+      "ariaLabel": "LaTeX のパッケージ",
+      "badge": {
+        "breaks": "タグ付けを壊します",
+        "caution": "タグ付け: 注意"
+      },
+      "emptySearch": "パッケージが見つかりません。別の名前やキーワードで試してください。",
+      "emptySuggested": "一致するおすすめのパッケージはありません。TeX Live を検索して全カタログを確認してください。",
+      "error": {
+        "install": "{{name}} をインストールできませんでした。",
+        "read": "インストール済みのパッケージを読み取れませんでした。",
+        "remove": "{{name}} を削除できませんでした。",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "LaTeX のパッケージを探す",
+      "filterPlaceholder": "パッケージを絞り込み…",
+      "heading": "パッケージ",
+      "includedIn": "{{package}} に含まれています。削除すると、そのパッケージのほかのファイルも削除されます。",
+      "intro": {
+        "available": "これらのパッケージは、latexmk（システム TeX）を使うプロジェクト向けです。Tectonic は独自のパッケージ群を使います。",
+        "unavailable": "パッケージの管理には TeX Live か TinyTeX が必要です。MiKTeX の場合は MiKTeX Console を使ってください。"
+      },
+      "refreshInstalled": "インストール済みのパッケージを更新",
+      "resultsCapped": "TeX Live の結果が {{total}} 件あります。検索語を絞って一覧を短くしてください。",
+      "results_other": "TeX Live の結果が {{count}} 件あります。",
+      "search": "TeX Live を検索",
+      "searching": "検索中…",
+      "suggested": "おすすめのパッケージです。ほかは TeX Live を検索してください。",
+      "tree": {
+        "both": "両方のツリーにあります",
+        "system": "システムのツリーにあります",
+        "user": "個人のツリーにあります"
+      }
+    },
+    "sectionName": "エンジン",
+    "tagging": {
+      "heading": "タグ付き・アクセシブルな書き出し",
+      "hint": {
+        "none": "タグ付きの書き出しを使うには、上の「TeX ディストリビューションの管理」から TinyTeX をインストールしてください。",
+        "system": "システム上で検出されました。インストールは不要です。",
+        "tinytex": "TinyTeX（上で管理）が提供します。"
+      },
+      "status": {
+        "none": "タグ付けに使えるエンジンがありません",
+        "system": "システムの LuaLaTeX / TeX Live を使用中",
+        "tinytex": "TinyTeX がインストール済み"
+      },
+      "tooltip": "既定のエンジン（Tectonic）は高速でオフラインでも動きますが、Section 508 / PDF-UA に対応したタグ付き PDF は作れません。それにはシステムの LuaLaTeX が必要です。LuaLaTeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。Oleafly は既存のディストリビューションでも、管理された TinyTeX でも利用できます。"
+    },
+    "tinytex": {
+      "detail": "ホームフォルダに置くコンパクトな TeX Live です。最初のダウンロードは約 250 MB です。論文誌のテンプレートがあとからパッケージを追加し、合計でおよそ 1 GB になることがあります。先にインストールしておくと、明示的に選んだときにシステムの LaTeX を使えます。",
+      "download": "TinyTeX をダウンロード（約 250 MB）",
+      "resume": "ダウンロードを再開（{{size}} MB 完了）"
+    },
+    "typst": {
+      "detail": "Oleafly に同梱されています。高速でオフラインでも動き、設定は不要です。Typst の文書を PDF にコンパイルします。",
+      "heading": "Typst のコンパイラ",
+      "name": "Typst（組み込み）",
+      "note": "Typst のプロジェクトは常に同梱のコンパイラを使います。コンパイラのバージョンの選択と、システムの Typst の利用は、まだできません。",
+      "tooltip": "Typst は Oleafly の中に同梱されているため、インストールも設定も不要です。Typst のプロジェクトはすべて同梱のコンパイラでコンパイルします。"
+    }
+  },
+  "github": {
+    "account": {
+      "connected": "接続済み",
+      "disconnect": "接続を解除",
+      "handle": "@{{login}}"
+    },
+    "advanced": {
+      "connect": "接続",
+      "toggle": "詳細設定: パーソナルアクセストークンを使う",
+      "tokenPlaceholder": "ghp_…"
+    },
+    "autoInit": {
+      "description": "新しく作ったプロジェクトや開いたプロジェクトに Git リポジトリを用意し、Git パネルで変更を追えるようにします。Oleafly が自分からコミットすることはありません。",
+      "label": "すべてのプロジェクトで Git を初期化する"
+    },
+    "config": {
+      "loadFailed": "Git の設定を読み込めませんでした。",
+      "saveFailed": "Git の設定を保存できませんでした。"
+    },
+    "connect": "GitHub に接続",
+    "description": "プロジェクトをバックアップし、端末間で同期し、Git パネルからプッシュとプルができます。",
+    "device": {
+      "openGithub": "GitHub を開く",
+      "opened": "ブラウザで <verificationLink>{{url}}</verificationLink> を開きました。そこにコードを貼り付けて、Oleafly を認可してください。",
+      "timedOut": "GitHub へのサインインがタイムアウトしました。もう一度お試しください。",
+      "title": "GitHub でこのコードを入力してください",
+      "waiting": "認可を待っています…"
+    },
+    "hint": {
+      "oauth": "ブラウザで使い捨てのコードを入力してサインインします。",
+      "token": "このビルドでは OAuth のサインインがまだ設定されていないため、代わりにトークンを貼り付けてください。"
+    },
+    "notice": {
+      "connected": "@{{login}} として接続しました",
+      "disconnected": "接続を解除しました。"
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "接続",
+      "disconnect": "接続を解除"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "キーの取得方法: <siteLink>alphaxiv.org</siteLink> でサインインし、<keyLink>API キーのページ</keyLink>を開いてキーを生成し（<keyPrefix>axv1_</keyPrefix> で始まります）、下に貼り付けます。",
+      "apiKeyLabel": "alphaXiv の API キー",
+      "description": "アシスタント向けの文献検索と論文分析のツールです。"
+    },
+    "cookies": {
+      "action": "Cookie を読み込む",
+      "confirmAllDomains": "{{browser}} のプロファイル {{profile}} から、すべてのドメインの Cookie を読み込もうとしています。Cookie の値はアプリ内ブラウザに保存され、対応するウェブサイトにのみ送信されます。プロファイルを読む前に、Oleafly がネイティブのダイアログでもう一度確認します。",
+      "confirmDomain": "{{browser}} のプロファイル {{profile}} から、{{domain}} の Cookie を読み込もうとしています。Cookie の値はアプリ内ブラウザに保存され、対応するウェブサイトにのみ送信されます。プロファイルを読む前に、Oleafly がネイティブのダイアログでもう一度確認します。",
+      "confirmTitle": "Cookie の読み込みの確認",
+      "description": "既存のブラウザのサインイン状態を、Oleafly のアプリ内ブラウザで使います。",
+      "detecting": "インストール済みのブラウザのプロファイルを探しています...",
+      "dialogDescription": "インストール済みのブラウザのプロファイルを 1 つ選んでください。Oleafly は、あなたが内容を確認して読み込みを承認したあとにだけ読み取ります。Chromium 系の cookie は macOS のキーチェーンを使ってローカルで復号します。Oleafly が cookie の値を Oleafly のサービスに送ることはありません。",
+      "dialogTitle": "ブラウザの cookie を読み込む",
+      "empty": "対応しているブラウザのプロファイルは見つかりませんでした。",
+      "errors": {
+        "chooseProfile": "利用できるブラウザのプロファイルを選んでください。",
+        "hostname": "example.com のようなホスト名を入力してください。"
+      },
+      "hostnameHint": "サイトのホスト名を入力すると、そのサイトが使える cookie だけを読み込みます。空欄にすると、このプロファイルの対象となる cookie をすべて読み込みます。",
+      "hostnameLabel": "対象のホスト名（任意）",
+      "hostnamePlaceholder": "example.com",
+      "importedDomain_other": "{{browser}} から {{domain}} の cookie を {{count}} 件読み込みました。",
+      "importedProfileDomain_other": "{{browser}} のプロファイル {{profile}} から、{{domain}} の cookie を {{count}} 件読み込みました。",
+      "importedProfile_other": "{{browser}} のプロファイル {{profile}} から cookie を {{count}} 件読み込みました。",
+      "imported_other": "{{browser}} から cookie を {{count}} 件読み込みました。",
+      "importing": "cookie を読み込んでいます...",
+      "profileGroupLabel": "ブラウザのプロファイル",
+      "profileLegend": "ブラウザのプロファイル",
+      "review": "読み込む内容を確認",
+      "status": {
+        "available": "利用できます",
+        "comingSoon": "近日対応",
+        "noCookieStore": "cookie の保存領域がありません",
+        "notInstalled": "未インストール"
+      },
+      "title": "cookie を読み込む",
+      "tryAgain": "再試行"
+    },
+    "zotero": {
+      "apiKeyHint": "キーの取得方法: <siteLink>zotero.org</siteLink> でサインインし、<keyLink>API キーのページ</keyLink>を開いてキーを作成し、同じページから数字のユーザー ID をコピーします。",
+      "apiKeyLabel": "Zotero の API キー",
+      "description": "Zotero のライブラリから引用と参考文献を読み込みます。",
+      "userIdLabel": "Zotero のユーザー ID",
+      "userIdPlaceholder": "ユーザー ID"
+    }
+  },
+  "language": {
+    "ariaLabel": "インターフェースの言語",
+    "description": "インターフェースの言語を選びます。「システムの既定」はオペレーティングシステムに従います。",
+    "label": "言語",
+    "note": "インターフェースの言語を変えても、文書の言語や校正の設定は変わりません。",
+    "system": "システムの既定"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "{{source}} から {{name}} を読み込む",
+      "description": "このコンピュータにインストールされているツールから、サーバーを選びます。",
+      "detecting": "MCP サーバーを探しています...",
+      "duplicateOverwritten": "すでに存在します。上書きされます。",
+      "duplicateSkipped": "すでに存在します。読み飛ばされます。",
+      "duplicates": {
+        "legend": "名前が重なったとき",
+        "overwrite": {
+          "description": "選んだサーバーで置き換えます。",
+          "label": "既存を上書き"
+        },
+        "skip": {
+          "description": "Oleafly にすでに保存されているサーバーを残します。",
+          "label": "既存を残す"
+        }
+      },
+      "emptyState": "MCP サーバーの設定は見つかりませんでした。",
+      "importing": "読み込んでいます...",
+      "keys": {
+        "environment": "環境変数: {{names}}",
+        "headers": "ヘッダー: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "選択したものを読み込む",
+      "summary": {
+        "commandFallback": "ローカルのコマンド",
+        "remote": "リモートのサーバー: {{origin}}。",
+        "remoteUnknown": "リモートのサーバー。",
+        "stdio_other": "ローカルのコマンド: {{command}}。引数 {{count}} 個。"
+      },
+      "title": "MCP サーバーを読み込む"
+    },
+    "registry": {
+      "argumentsLine": "引数: {{args}}",
+      "description": "公開されているサーバーの情報を検索します。ここでインストールや起動は行いません。追加する前にコマンドや URL を確認してください。",
+      "emptyQuery": "公式の MCP レジストリを検索するには、サーバー名を入力してください。",
+      "environmentLine": "環境変数: {{names}}",
+      "loadMore": "さらに読み込む",
+      "noResults": "一致するレジストリの項目はありませんでした。",
+      "review": "追加する前に確認",
+      "searchLabel": "公式の MCP レジストリを検索",
+      "searchPlaceholder": "サーバー名を検索",
+      "title": "公式の MCP レジストリ",
+      "unsupportedEntry": "この項目には、Oleafly が確認できるパッケージやリモートの通信方式が記載されていません。",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "アプリを接続する"
+      },
+      "description": "Claude Desktop、Claude Code、Cursor などの MCP クライアントは、開いているプロジェクトを読み、編集し、コンパイルできます。変更のたびにあなたの承認が必要です。",
+      "enable": {
+        "ariaLabel": "MCP サーバーを有効にする",
+        "description": "Oleafly が開いている間、このコンピュータ上でのみ待ち受けます。",
+        "label": "MCP サーバーを有効にする"
+      },
+      "footer": "サーバーはこのコンピュータ（127.0.0.1）でのみ待ち受け、上のトークンを必要とします。最初の 2 つのポリシーでは、ファイルの削除には必ず Oleafly での確認が必要です。ブラウザ版の claude.ai はローカルのサーバーに接続できません。代わりに Claude Desktop を使ってください。",
+      "policy": {
+        "ask": {
+          "description": "書き込み、名前の変更、削除は、適用される前に差分付きの承認カードを Oleafly に表示します。",
+          "label": "すべての変更を確認する"
+        },
+        "autoWrites": {
+          "description": "書き込みと名前の変更はすぐに適用されます。削除は引き続き承認カードを表示します。",
+          "label": "編集は自動承認、削除は確認"
+        },
+        "legend": "承認のポリシー",
+        "trust": {
+          "description": "ファイルの変更では確認しません。シェルのコマンドとコンピュータの操作には常に承認が必要です。MCP のクライアント側の確認も引き続き有効です。",
+          "label": "この接続を信頼する"
+        }
+      },
+      "port": {
+        "ariaLabel": "自動的に選ばれた MCP サーバーのポート番号",
+        "label": "ポート番号",
+        "restartAriaLabel": "MCP サーバーを再起動して、空いているポートを選ぶ",
+        "restartTooltip": "MCP サーバーを再起動します。Oleafly は、空いていればこのポートを再利用し、なければ別の空きポートを選びます。"
+      },
+      "readOnly": {
+        "ariaLabel": "読み取り専用モード",
+        "description": "外部のアプリは読み取りとコンパイルはできますが、ファイルを変更することはできません。",
+        "label": "読み取り専用"
+      },
+      "status": {
+        "restartedAt": "{{url}} で再起動しました",
+        "runningAt": "{{url}} で稼働中"
+      },
+      "title": "Oleafly の MCP サーバー",
+      "token": {
+        "copyUrl": "URL をコピー",
+        "enableToView": "トークンを見るには、サーバーを有効にしてください。",
+        "help": "ベアラートークンを表示またはコピーしたり、サーバーの URL をコピーしたり、接続中の MCP クライアント向けにトークンを再発行したりできます。",
+        "hide": "隠す",
+        "label": "ベアラートークン",
+        "regenerate": "再発行",
+        "regenerateWarning": "既存のクライアントには新しいトークンが必要になります。",
+        "reveal": "表示"
+      }
+    },
+    "servers": {
+      "addServer": "サーバーを追加",
+      "browseRegistry": "レジストリを見る",
+      "card": {
+        "editLabel": "{{name}} を編集",
+        "enableLabel": "{{name}} を有効にする",
+        "noTools": "ツールの報告はありません。",
+        "removeLabel": "{{name}} を削除",
+        "toolCount_other": "{{count}} 件のツール",
+        "toolsLabel": "{{name}} のツール",
+        "validate": "検証",
+        "validateLabel": "{{name}} を検証"
+      },
+      "description": "AI アシスタントを、ローカルのコマンドやリモートの MCP エンドポイントに接続します。Oleafly は、このページを開いたとき、1 分ごと、そして必要に応じて、有効な各サーバーを確認します。各サーバーが提供するツールも表示します。",
+      "editor": {
+        "addAndValidate": "追加して検証",
+        "argsHint": "引数は 1 行に 1 つ入力してください。",
+        "argsLabel": "引数",
+        "commandLabel": "コマンド",
+        "description": "有効なサーバーは、設定を保存する前に確認されます。",
+        "formView": "フォーム",
+        "jsonHint": "名前をキーにしたサーバーを 1 つ、または mcpServers で囲んだブロックを貼り付けてください。",
+        "jsonLabel": "設定全体",
+        "jsonView": "JSON",
+        "nameLabel": "サーバー名",
+        "pairs": {
+          "addHeader": "ヘッダーを追加",
+          "addVariable": "変数を追加",
+          "environmentKeyLabel": "環境変数のキー {{index}}",
+          "environmentTitle": "環境変数",
+          "environmentValueLabel": "環境変数の値 {{index}}",
+          "headerKeyLabel": "ヘッダーのキー {{index}}",
+          "headerValueLabel": "ヘッダーの値 {{index}}",
+          "headersTitle": "リクエストのヘッダー",
+          "removeHeaderLabel": "ヘッダー {{index}} を削除",
+          "removeVariableLabel": "変数 {{index}} を削除",
+          "storedValuePlaceholder": "保存済みの値",
+          "valuePlaceholder": "値"
+        },
+        "saveAndValidate": "保存して検証",
+        "saveChanges": "変更を保存",
+        "titleAdd": "MCP サーバーを追加",
+        "titleEdit": "MCP サーバーを編集",
+        "transportLegend": "通信方式",
+        "transportRemote": "リモートの URL",
+        "transportStdio": "ローカルのコマンド",
+        "urlLabel": "リモートの URL",
+        "viewSwitchLabel": "設定のエディタ"
+      },
+      "empty": {
+        "description": "サーバーを追加するとアシスタントが新しいツールを使えるようになります。ほかのエディタで使っているものを読み込むこともできます。",
+        "title": "サーバーが追加されていません"
+      },
+      "hideRegistry": "レジストリを隠す",
+      "importButton": "ほかのツールから読み込む",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "読み込み {{imported}} 件、スキップ {{skipped}} 件、失敗 {{failed}} 件。",
+      "live": {
+        "checking": "{{name}} を確認しています。",
+        "connected_other": "{{name}} に接続しました。{{count}} 件のツールが使えます。",
+        "disabled": "{{name}} は無効です。",
+        "disabledLastCheckFailed": "{{name}} は無効です。前回の確認は失敗しました。",
+        "disabledLastCheckFound_other": "{{name}} は無効です。前回の確認では {{count}} 件のツールが見つかりました。",
+        "failed": "{{name}} の検証に失敗しました。"
+      },
+      "loading": "サーバーを読み込んでいます...",
+      "remove": {
+        "confirm": "サーバーを削除",
+        "description": "{{name}} を Oleafly から削除します。あとから追加し直せます。",
+        "descriptionFallback": "このサーバーを Oleafly から削除します。あとから追加し直せます。",
+        "title": "サーバーを削除しますか？"
+      },
+      "status": {
+        "checking": "確認中...",
+        "connected": "接続済み",
+        "disabled": "無効",
+        "error": "エラー"
+      },
+      "title": "アシスタントの MCP サーバー"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "全体で無視する単語を追加",
+      "placeholder": "単語や用語を追加",
+      "projectAriaLabel": "{{project}} で無視する単語を追加",
+      "submitAriaLabel": "無視する単語を追加"
+    },
+    "clear": {
+      "confirm": "単語を消去",
+      "descriptionFallback": "この辞書からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
+      "descriptionGlobal": "全体の辞書からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
+      "descriptionProject": "{{project}} からすべての用語を削除します。それらはすぐにまたチェックの対象になります。",
+      "descriptionSuppressed": "{{project}} で非表示にした指摘をすべて解除します。それらはすぐにまたチェックの対象になります。",
+      "suppressedConfirm": "また表示する",
+      "suppressedTitle": "非表示にした指摘をまた表示しますか？",
+      "title": "無視する単語を消去しますか？"
+    },
+    "dismissed": {
+      "countTitle": "このプロジェクトが記憶できる {{limit}} 件のうち、{{dismissed}} 件が非表示です",
+      "hidden_other": "「このプロジェクトでは無視」を選んだため、このプロジェクトでは {{count}} 件の文法の指摘が非表示になっています。また表示すると、再び下線が引かれます。",
+      "none": "非表示にしたものはありません。文法の指摘で「このプロジェクトでは無視」を選ぶと、ここに一覧表示されます。",
+      "showAgain": "また表示する",
+      "title": "非表示にした指摘",
+      "titleInProject": "{{project}} で非表示にした指摘"
+    },
+    "global": {
+      "emptyDescription": "ここに追加した単語は、すべてのプロジェクトで校正の対象から外れます。",
+      "scope": "すべてのプロジェクトに適用されます"
+    },
+    "intro": "自分用のスペルチェック辞書に単語を追加します。これらの単語はローカルの設定に保存され、プロジェクトをまたいで無視されます。照合は Unicode 正規化のうえ、大文字と小文字を区別せずに行われます。",
+    "profileRules": {
+      "description": "論文の執筆では邪魔になるため、既定ではオフです。必要なものを有効にしてください。",
+      "example": "例: {{example}}",
+      "help": "Harper はチャットやメール向けに調整されています。これらのルールは、kB や min を書き下すなど論文では使わない文体を求めるか、LaTeX の記法を置き換えたプレースホルダにつまずくため、Oleafly ではオフにしています。それぞれ、どんな指摘をするかを示しています。その指摘が欲しい場合は有効にしてください。",
+      "reasons": {
+        "AvoidContractions": "短縮形をすべて書き下すよう求めます。",
+        "CompoundNouns": "2 語で書かれた複合名詞をつなげます。",
+        "Dashes": "入力された -- や --- を、正式なダッシュ文字に置き換えます。",
+        "DiscourseMarkers": "however などの接続表現で始まる文で、その後のカンマが抜けているものを指摘します。",
+        "EllipsisLength": "3 点になっていない省略記号を修正します。",
+        "ExpandAlgorithm": "algo を書き下すよう求めます。",
+        "ExpandArgument": "arg を書き下すよう求めます。",
+        "ExpandCoordinate": "coord を書き下すよう求めます。",
+        "ExpandMemoryShorthands": "KB や MB を書き下すよう求めます。",
+        "ExpandParameter": "param を書き下すよう求めます。",
+        "ExpandStandardInputAndOutput": "stdin と stdout を書き下すよう求めます。",
+        "ExpandTimeShorthands": "min と sec を書き下すよう求めます。",
+        "ExplainLikeImFive": "頭字語を元の語に展開します。",
+        "FillerWords": "余分だとみなした語を指摘します。",
+        "Hedging": "I would argue that や to a certain degree のような、断定を避ける表現を指摘します。",
+        "LongSentences": "決められた長さを超える文をすべて指摘します。",
+        "MergeWords": "to gether のように、余計な空白で分かれてしまった語をつなげます。",
+        "MoreAdjective": "more と形容詞の組み合わせより、比較級を優先します。",
+        "NoFrenchSpaces": "フランス語の組版で使う、句読点の前の空白を取り除きます。",
+        "NoOxfordComma": "列挙の最後のカンマを取り除きます。",
+        "NumericRangeEnDash": "数値の範囲の間に、ダッシュを入れるよう求めます。",
+        "OxfordComma": "列挙の最後のカンマを求めます。",
+        "SentenceCapitalization": "文の最初の語を大文字にします。記法を隠した直後から始まる文も対象です。",
+        "Spaces": "連続した空白をまとめます。記法を隠した部分には、この空白がよく残ります。",
+        "SplitWords": "alot のように、2 語に分けるべき語を分割します。",
+        "TransposedSpace": "句読点の反対側に付いてしまった空白を移動します。記法を隠したときによく起きます。"
+      },
+      "title": "学術プロファイルでオフにしているルール",
+      "toggleAriaLabel": "{{rule}} を有効にする"
+    },
+    "projects": {
+      "empty": "プロジェクト固有の用語を追加するには、プロジェクトを開いてください。",
+      "emptyDescription": "このプロジェクト向けに追加した単語は、ここでのみ校正の対象から外れます。",
+      "terms_other": "{{used}} / {{limit}} 語"
+    },
+    "reset": {
+      "confirmationDescription": "全体とプロジェクトごとの両方で、無視する単語をすべて完全に削除し、オフにした文法ルールをすべて元に戻します。学術プロファイルのルールは引き続きオフのままです。校正はそれらの単語を再び指摘します。",
+      "sectionName": "辞書"
+    },
+    "search": {
+      "ariaLabel": "無視する単語を検索",
+      "placeholder": "辞書を検索"
+    },
+    "tabs": {
+      "global": "全体",
+      "projects": "プロジェクト"
+    },
+    "turnedOff": {
+      "description": "このプロジェクトでオフにしたルールと、無視した指摘です。",
+      "help": "エディタで下線の引かれた語や文にカーソルを合わせると、Harper が見つけた内容と、修正や無視の操作が小さなカードに表示されます。そのカードからオフにしたルールと、このプロジェクトで無視した指摘がここに一覧表示され、いつでも元に戻せます。",
+      "listAriaLabel": "オフにした文法ルール",
+      "none": "オフにしたルールはありません。",
+      "restoreAriaLabel": "{{rule}} のルールを元に戻す",
+      "restoreTitle": "「{{rule}}」のルールを元に戻す",
+      "title": "文法ルールと非表示にした指摘"
+    },
+    "words": {
+      "emptyCompact": "まだ何も無視していません。",
+      "emptyTitle": "まだ何も無視していません",
+      "listAriaLabel": "無視する単語",
+      "noMatches": "この検索に一致する単語はありません。",
+      "removeAriaLabel": "{{word}} を無視するのをやめる",
+      "removeTitle": "「{{word}}」を無視するのをやめる"
+    }
+  },
+  "reset": {
+    "button": "既定に戻す",
+    "confirmDescription": "{{sectionName}} の設定を既定に戻します。ほかの設定は変わりません。",
+    "confirmTitle": "{{sectionName}} の設定をリセットしますか？",
+    "description": "{{sectionName}} の設定を既定に戻します。",
+    "label": "設定をリセット"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Oleafly のコマンドを検索して実行します。",
+        "label": "コマンドパレット"
+      },
+      "forwardSync": {
+        "description": "エディタのカーソル位置から、コンパイル済みの PDF へ移動します。",
+        "label": "PDF へ移動"
+      },
+      "recompile": {
+        "description": "現在のプロジェクトをコンパイルして PDF を表示します。",
+        "label": "再コンパイル"
+      },
+      "searchDocuments": {
+        "description": "プロジェクトと文書全体を検索します。",
+        "label": "すべての文書を検索"
+      },
+      "shortcutReference": {
+        "description": "プロジェクトのショートカット一覧を開きます。",
+        "label": "ショートカット一覧"
+      },
+      "toggleBrowser": {
+        "description": "プロジェクトのブラウザを表示または非表示にします。",
+        "label": "ブラウザの表示を切り替え"
+      },
+      "toggleSidebar": {
+        "description": "プロジェクトのサイドバーを表示または非表示にします。",
+        "label": "サイドバーの表示を切り替え"
+      },
+      "toggleTerminal": {
+        "description": "プロジェクトのターミナルを表示または非表示にします。",
+        "label": "ターミナルの表示を切り替え"
+      }
+    },
+    "application": {
+      "editAriaLabel": "{{action}} を編集、現在は {{shortcut}}",
+      "heading": "アプリケーションのショートカット",
+      "prompt": "新しいキーの組み合わせを押してください",
+      "recordAriaLabel": "{{action}} を記録中です。ショートカットを押してください。",
+      "recording": "記録中",
+      "resetAriaLabel": "{{action}} をリセット"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "選択範囲の編集を AI に依頼",
+        "bold": "太字",
+        "findAndReplace": "検索と置換",
+        "findReferences": "参照を検索",
+        "goToDefinition": "定義へ移動",
+        "goToDefinitionWithPointer": "ポインタで定義へ移動",
+        "indentOrAcceptAutocomplete": "インデント、または補完を確定",
+        "italic": "斜体",
+        "jumpToSourceFromPdf": "PDF からソースへ移動",
+        "redo": "やり直す",
+        "renameSymbol": "プロジェクト全体でシンボルの名前を変更",
+        "slashCommandMenu": "スラッシュコマンドの挿入メニュー",
+        "triggerAutocomplete": "補完を呼び出す",
+        "undo": "元に戻す"
+      },
+      "managed": "エディタが管理します"
+    },
+    "categories": {
+      "codeIntelligence": "コードインテリジェンス",
+      "editor": "エディタ",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "すでに {{action}} に割り当てられています。",
+      "reserved": "{{shortcut}} はオペレーティングシステムが使用しています。"
+    },
+    "intro": "アプリケーションのショートカットをカスタマイズし、エディタ本来のキーの組み合わせを確認できます。",
+    "reserved": {
+      "closeWindow": "ウィンドウを閉じる",
+      "copy": "コピー",
+      "cut": "カット",
+      "paste": "ペースト",
+      "quit": "終了",
+      "save": "保存",
+      "selectAll": "すべてを選択",
+      "systemSearch": "システムの検索",
+      "windowSwitching": "ウィンドウの切り替え"
+    },
+    "reset": {
+      "sectionName": "キーボードショートカット"
+    },
+    "tabs": {
+      "application": "アプリケーション"
+    },
+    "editorKeys": {
+      "clearHint": "Backspace を押すと、この操作の割り当てを外せます。",
+      "heading": "エディタのキー",
+      "intro": "これらのキーはソースエディタの中で有効です。Vim と Emacs のモードは独自のキーバインドを使います。",
+      "labels": {
+        "addCursorAbove": "上にカーソルを追加",
+        "addCursorBelow": "下にカーソルを追加",
+        "deleteLine": "行を削除",
+        "duplicate": "選択範囲または行を複製",
+        "gotoLine": "行へ移動",
+        "indentLess": "インデントを減らす",
+        "indentMore": "インデントを増やす",
+        "lowercase": "小文字にする",
+        "selectNextOccurrence": "次の一致を選択",
+        "titleCase": "各単語の先頭を大文字にする",
+        "toggleComment": "コメントを切り替え",
+        "uppercase": "大文字にする"
+      },
+      "unbound": "未設定"
+    }
+  }
+}

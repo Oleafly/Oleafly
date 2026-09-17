@@ -1,0 +1,739 @@
+{
+  "runtime": {
+    "ariaLabel": "Assistentens körmiljö",
+    "builtIn": "Oleafly-agent",
+    "cli": "CLI-agent"
+  },
+  "shell": {
+    "float": "Låt assistenten sväva",
+    "floatAriaLabel": "Låt assistenten sväva över appen",
+    "overlayTitle": "AI-assistent",
+    "dockAriaLabel": "Docka tillbaka chatten till sidofältet",
+    "floatingNotice": "Assistenten svävar över appen.",
+    "dockBack": "Docka tillbaka den",
+    "loadingAgents": "Läser in agenter…",
+    "openProjectForCli": "Öppna ett projekt för att arbeta med en CLI-agent."
+  },
+  "minimap": {
+    "ariaLabel": "Turer i konversationen",
+    "jumpTo": "Hoppa till: {{text}}"
+  },
+  "approval": {
+    "modes": {
+      "askForApproval": {
+        "label": "Fråga om godkännande",
+        "description": "Fråga före filändringar, internetåtkomst och kommandon."
+      },
+      "approveForMe": {
+        "label": "Godkänn åt mig",
+        "description": "Fråga bara före åtgärder som klassas som riskfyllda."
+      },
+      "fullAccess": {
+        "label": "Fullständig åtkomst",
+        "description": "Kör verktygsåtgärder utan att fråga om godkännande."
+      },
+      "custom": {
+        "label": "Anpassad (approvals.toml)",
+        "description": "Använd reglerna i approvals.toml. Redigera dem under Inställningar, AI-assistent."
+      }
+    },
+    "selectorAriaLabel": "Godkännandeläge. {{mode}}",
+    "editProjectRules": "Redigera projektets regler",
+    "confirm": {
+      "command": "Bekräfta kommandot",
+      "externalTool": "Bekräfta åtgärden i det externa verktyget",
+      "internet": "Bekräfta internetåtkomst",
+      "edit": "Bekräfta AI-ändringen"
+    },
+    "headline": {
+      "command": "Assistenten vill köra det här kommandot",
+      "externalTool": "Assistenten vill använda ett externt verktyg",
+      "internet": "Assistenten vill komma åt internet",
+      "edit": "Assistenten vill ändra dina filer"
+    },
+    "mcpNote": "Det här skickar argumenten nedan till den konfigurerade MCP-servern.",
+    "line": "rad {{line}}",
+    "sessionAutoApprove": "Automatiskt godkännande för sessionen är på för skrivningar (raderingar kräver fortfarande ett klick).",
+    "commandLabel": "Kommando",
+    "workingDirectory": "Arbetskatalog",
+    "mcpServer": "MCP-server",
+    "toolLabel": "Verktyg",
+    "arguments": "Argument",
+    "figureAlt": "Förhandsvisning av figur",
+    "firstChange": "första ändringen · R{{line}}",
+    "reject": "Avvisa",
+    "alwaysInProject": "Alltid i det här projektet",
+    "alwaysInProjectAriaLabel": "Tillåt alltid i det här projektet",
+    "alwaysAllow": "Tillåt alltid",
+    "approve": "Godkänn",
+    "external": {
+      "title": "Begäran från extern agent (MCP)",
+      "moreWaiting_one": "{{count}} till väntar",
+      "moreWaiting_other": "{{count}} till väntar"
+    }
+  },
+  "attachments": {
+    "remove": "Ta bort {{name}}"
+  },
+  "chat": {
+    "pill": {
+      "plan": "PLAN",
+      "step": "STEG {{current}}/{{total}}",
+      "review": "GRANSKA"
+    },
+    "plan": {
+      "detailsAriaLabel": "Planens detaljer",
+      "headingPlan": "Plan",
+      "headingChanges": "Ändringar",
+      "approve": "Godkänn planen",
+      "revise": "Revidera",
+      "statusAwaiting": "Väntar på godkännande",
+      "statusApproved": "Godkänd"
+    },
+    "todos": {
+      "ariaLabel": "{{status}}: {{content}}",
+      "status": {
+        "completed": "klar",
+        "inProgress": "pågår",
+        "pending": "väntar",
+        "cancelled": "avbruten"
+      }
+    },
+    "fileChanges": {
+      "changed": "Ändrade",
+      "committed": "Incheckad {{commit}}"
+    },
+    "runSummary": {
+      "plan": "Plan",
+      "stepsDone": "{{done}}/{{total}} klara",
+      "filesChanged_one": "{{count}} fil ändrad",
+      "filesChanged_other": "{{count}} filer ändrade"
+    },
+    "copyMessage": "Kopiera meddelandet",
+    "exploration": {
+      "explored": "Utforskade",
+      "exploredItems": "Utforskade {{items}}",
+      "files_one": "en fil",
+      "files_other": "{{count}} filer",
+      "searches_one": "en sökning",
+      "searches_other": "{{count}} sökningar",
+      "lists_one": "en listning",
+      "lists_other": "{{count}} listningar"
+    },
+    "reasoning": {
+      "thinking": "Tänker…",
+      "thoughtFor": "Tänkte i {{seconds}} s",
+      "label": "Resonemang"
+    },
+    "subagent": {
+      "finished": "Klar",
+      "failed": "Misslyckades",
+      "stopped": "Stoppad",
+      "usingTool": "Använder {{tool}}",
+      "working": "Arbetar på det",
+      "errorBody": "Agenten kunde inte slutföra uppgiften.",
+      "stoppedBody": "Uppgiften stoppades innan den besvarades.",
+      "openTask": "Öppna uppgiften"
+    },
+    "workedSteps": {
+      "duration": "Arbetade i {{seconds}} s",
+      "steps_one": "Arbetade igenom {{count}} steg",
+      "steps_other": "Arbetade igenom {{count}} steg"
+    },
+    "steered": "Styrd",
+    "toolOutputError": "Fel: {{message}}",
+    "errorHints": {
+      "invalidKey": "Din API-nyckel ser ogiltig eller utgången ut. Uppdatera den under Inställningar → AI-assistent, eller byt leverantör {{where}}.",
+      "outOfCredits": "Din AI-leverantör har slut på krediter eller kvot. Fyll på kontot, eller byt till en annan leverantör (eller lokal Ollama) {{where}}.",
+      "overloaded": "Leverantörens servrar är överbelastade just nu (försöket har redan gjorts om). Vänta en minut och försök igen, eller byt till en systermodell {{where}}.",
+      "rateLimited": "Leverantören begränsar antalet förfrågningar. Vänta en stund och försök igen, eller byt leverantör {{where}}.",
+      "retiredModel": "Leverantören har pensionerat eller begränsat den här modellen. Välj en nyare modell {{where}} (Inställningar → AI-assistent visar vad din nyckel får använda).",
+      "unreachable": "Det gick inte att nå AI-leverantören. Kontrollera din anslutning, och om du använder Ollama, se till att det körs (Inställningar → AI-assistent → Sök efter Ollama).",
+      "where": {
+        "inSettings": "under Inställningar, AI-assistent",
+        "modelMenu": "i modellmenyn ovan"
+      }
+    }
+  },
+  "composer": {
+    "addContext": "Lägg till sammanhang",
+    "mentionMenuAgentsAndFiles": "Agenter och projektfiler",
+    "mentionMenuFiles": "Projektfiler",
+    "mentionHeadingAgents": "Delegera till en agent",
+    "mentionHeadingFiles": "Projektfiler",
+    "slashMenuAriaLabel": "Snedstreckskommandon",
+    "placeholderEngineUnavailable": "Dokumentmotorn är inte tillgänglig. AI-redigering är avstängd",
+    "placeholderDefault": "Be AI hjälpa till med ditt dokument…",
+    "planRevisionPlaceholder": "Beskriv vad som ska ändras i planen",
+    "prompts": "Prompter",
+    "promptShortcutsAriaLabel": "Snabbprompter",
+    "persona": "Persona",
+    "personaActiveTooltip": "{{name}} är aktiv och ersätter dina standardinstruktioner.",
+    "personaChoose": "Välj persona",
+    "personaActiveAriaLabel": "Persona. {{name}} är aktiv och ersätter standardinstruktionerna.",
+    "personaCreate": "Skapa en persona i Inställningar",
+    "personaNone": "Ingen",
+    "planModeOn": "Planläget är på",
+    "planModeOff": "Planläget är av",
+    "planModeAriaLabel": "Planläge",
+    "plan": "Plan",
+    "planModeInfo": "Om planläget",
+    "planModeHint": "Planläge: assistenten föreslår en plan innan den redigerar. Stäng av Plan för att ge assistenten direkt tillgång till alla verktyg.",
+    "stop": "Stoppa",
+    "stopTitle": "Sluta generera",
+    "send": "Skicka",
+    "checkAgain": "Kontrollera igen"
+  },
+  "commands": {
+    "groups": {
+      "skills": "Färdigheter"
+    },
+    "archive": {
+      "label": "Arkivera",
+      "description": "Arkivera den här chatten"
+    },
+    "forkChat": {
+      "label": "Förgrena chatten",
+      "description": "Skapa en ny chatt utifrån den här konversationen"
+    },
+    "goal": {
+      "label": "Mål",
+      "description": "Ange vad assistenten ska fortsätta arbeta mot"
+    },
+    "mcp": {
+      "label": "MCP",
+      "description": "Visa anslutna MCP-servrar och deras status"
+    },
+    "model": {
+      "label": "Modell",
+      "description": "Välj modell för den här chatten"
+    },
+    "planMode": {
+      "enableLabel": "Aktivera planläget",
+      "disableLabel": "Stäng av planläget",
+      "description": "Slå på eller av strukturerad planering"
+    },
+    "recordSkill": {
+      "label": "Spela in en färdighet",
+      "description": "Spara chattens arbetssätt som ett redigerbart utkast"
+    },
+    "files": {
+      "label": "Filer",
+      "description": "Bifoga filer till ditt nästa meddelande"
+    },
+    "browser": {
+      "label": "Bifoga webbläsare",
+      "description": "Öppna webbläsaren bredvid ditt dokument"
+    }
+  },
+  "models": {
+    "ariaLabel": "AI-modell",
+    "placeholder": "Välj en modell",
+    "triggerTooltip": "{{model}}. Byt leverantör eller modell",
+    "searchLabel": "Sök modeller",
+    "searchPlaceholder": "Sök modeller…",
+    "emptyTitle": "Inga modeller hittades",
+    "emptyHint": "Prova en annan sökning.",
+    "trust": {
+      "verified": "Verifierad",
+      "untested": "Otestad",
+      "blocked": "Blockerad"
+    },
+    "trustTitle": {
+      "verified": "Oleafly har kört assistenten på den här modellen",
+      "untested": "Inte prövad med assistenten än. Den kontrolleras vid första användningen",
+      "blocked": "Assistenten kan inte köras på den här modellen"
+    },
+    "chatOnlyHint": "Bara chatt, den här modellen kan inte använda verktyg",
+    "checkingHint": "Kontrollerar den här modellen",
+    "blockedWithReason": "Den här modellen är blockerad för assistenten: {{reason}}",
+    "blocked": "Den här modellen är blockerad för assistenten.",
+    "probeFailedWithDetail": "Det gick inte att kontrollera den här modellen. {{detail}}",
+    "probeFailed": "Det gick inte att kontrollera den här modellen."
+  },
+  "history": {
+    "title": "Chatthistorik",
+    "closeBackdrop": "Stäng chatthistoriken",
+    "searchLabel": "Sök chattar",
+    "searchPlaceholder": "Sök titlar och meddelanden",
+    "emptyProject": "Inga sparade chattar för det här projektet än.",
+    "emptySearch": "Inga chattar matchar sökningen.",
+    "untitled": "Ny chatt",
+    "staleTitle": "Den här chatten startades från en äldre version av projektet",
+    "staleBadge": "äldre version",
+    "messages_one": "{{count}} medd.",
+    "messages_other": "{{count}} medd.",
+    "tokens": "~{{amount}} tok",
+    "deleteAriaLabel": "Radera {{title}}",
+    "deleteFallbackTitle": "chatt",
+    "deleteTitle": "Radera chatten",
+    "relative": {
+      "justNow": "just nu",
+      "minutes": "för {{count}} min sedan",
+      "hours": "för {{count}} tim sedan",
+      "days": "för {{count}} dgr sedan"
+    }
+  },
+  "tools": {
+    "approval": {
+      "never": "Aldrig",
+      "everyTime": "Varje gång, i chatten",
+      "askModeOnly": "Bara i läget Fråga om godkännande",
+      "unlessAllowed": "Ja, om det inte är tillåtet för projektet"
+    },
+    "catalog": {
+      "readFile": "Läser en projektfil, en bit i taget för långa filer.",
+      "writeFile": "Skriver en hel fil och ersätter det som fanns där.",
+      "replaceInFile": "Hittar ett exakt avsnitt i en fil och ersätter det.",
+      "createFile": "Skapar en ny fil eller mapp i projektet.",
+      "renameFile": "Byter namn på eller flyttar en fil eller mapp.",
+      "deleteFile": "Raderar en fil eller mapp.",
+      "listFiles": "Listar alla filer och mappar i projektet.",
+      "searchProject": "Söker i projektets text och ger träffar med fil och rad.",
+      "projectMap": "Läser dokumentets disposition: avsnitt, etiketter, citeringsnycklar, makron, inkluderingar och allt som är olöst.",
+      "showLocation": "Öppnar en fil vid en rad i redigeraren och flyttar PDF-förhandsvisningen till samma ställe.",
+      "compile": "Kompilerar projektet med dess motor och rapporterar fel.",
+      "getLog": "Läser den senaste kompileringsloggen.",
+      "getPdfText": "Läser texten i den kompilerade PDF:en sida för sida.",
+      "verifyPdfPages": "Renderar kompilerade sidor som bilder så att en bildmodell kan kontrollera layouten.",
+      "setMainDoc": "Ändrar vilken fil projektet kompileras från.",
+      "literatureSearch": "Söker artiklar i OpenAlex på nyckelord, ingen nyckel behövs.",
+      "verifyCitation": "Gör om en DOI eller en titel till verifierad BibTeX via doi.org eller Crossref.",
+      "projectLibrarySearch": "Söker i projektets egen text och egna anteckningar på nyckelord.",
+      "alphaxivSearch": "Söker arXiv-artiklar via alphaXiv.",
+      "alphaxivPaperContent": "Hämtar hela texten i en arXiv-artikel via alphaXiv.",
+      "previewFigure": "Kompilerar en TikZ- eller PGFPlots-figur för sig och visar resultatet i chatten.",
+      "insertFigure": "Infogar den färdiga figuren vid markören med bildtext och etikett, och sparar en PNG under figures/.",
+      "loadImage": "Tittar på en bild som redan finns i projektet.",
+      "updateTodos": "Skriver eller uppdaterar den stegvisa planen som visas i chatten.",
+      "getTodos": "Läser den aktuella planen.",
+      "rememberNote": "Sparar en projektanteckning som senare chattar ser.",
+      "forgetNote": "Tar bort en sparad projektanteckning.",
+      "listNotes": "Listar de sparade projektanteckningarna.",
+      "loadSkill": "Läser in hela instruktionen för en färdighet innan den följs.",
+      "readSkillFile": "Läser en referensfil eller ett skript som följer med en färdighet.",
+      "spawnAgent": "Startar en hjälpagent med en egen uppgift och egna verktyg.",
+      "sendMessage": "Skickar ett meddelande till en hjälpagent som körs.",
+      "followupTask": "Ger en hjälpagent en ny uppgift när den är klar.",
+      "waitAgent": "Väntar på att en hjälpagent blir klar och läser dess resultat.",
+      "interruptAgent": "Stoppar det en hjälpagent håller på med.",
+      "listAgents": "Listar hjälpagenterna och deras tillstånd.",
+      "closeAgent": "Stänger en hjälpagent.",
+      "runCommand": "Kör ett shell-kommando i projektmappen, med en gräns på två minuter.",
+      "computerUse": "Öppnar en webbsida i assistentens webbläsarfönster.",
+      "toggleTheme": "Växlar mellan ljust och mörkt läge."
+    },
+    "disableAll": "Stäng av alla",
+    "emptyContext": "Inga verktyg är tillgängliga i det här sammanhanget.",
+    "enableAll": "Aktivera alla",
+    "enableTool": "Aktivera {{name}}",
+    "enabledCount": "{{enabled}} av {{total}} aktiverade",
+    "groupHeading": "{{label}} {{server}}",
+    "groups": {
+      "agents": "Agenter",
+      "buildAndPdf": "Bygge och PDF",
+      "figures": "Figurer",
+      "files": "Filer",
+      "planAndMemory": "Plan och minne",
+      "research": "Forskning",
+      "skills": "Färdigheter",
+      "system": "System"
+    },
+    "managerAriaLabel": "Hantera agentens verktyg",
+    "managerHeading": "Verktyg",
+    "managerTooltip": "Verktyg",
+    "noDescription": "Ingen beskrivning angiven.",
+    "notes": {
+      "latexOnly": "Bara LaTeX-projekt",
+      "pdfCaptureSetting": "Kräver inställningen för att fånga PDF-sidor",
+      "alphaxivKey": "Kräver en alphaXiv-nyckel under Integrationer",
+      "chatApproval": "Godkänns i chatten, ett kommando i taget",
+      "browserSetting": "Kräver inställningen för webbläsare"
+    },
+    "sourceGroups": {
+      "figure": "Figur",
+      "mcp": "MCP",
+      "project": "Projektverktyg",
+      "skills": "Färdigheter"
+    },
+    "table": {
+      "tool": "Verktyg",
+      "whatItDoes": "Vad det gör",
+      "asksFirst": "Frågar först"
+    }
+  },
+  "toolCard": {
+    "approved": "Godkänt",
+    "rejected": "Avvisat",
+    "binaryPreview": "Den här länkade filen är binär och kan inte förhandsvisas här.",
+    "previewTruncated": "Förhandsvisningen stannade vid 256 KiB.",
+    "previewFailed": "Den här länkade källan kunde inte förhandsvisas.",
+    "showAll": "Visa alla {{characters}} tecken",
+    "loadingSource": "Läser in källan",
+    "inspectSource": "Granska källan",
+    "openFile": "Öppna filen",
+    "openSource": "Öppna källan",
+    "openSourceTitled": "Öppna källan: {{title}}",
+    "openTask": "Öppna uppgiften",
+    "doi": "DOI {{doi}}"
+  },
+  "toolPicture": {
+    "figurePreviewAlt": "Renderad förhandsvisning av figuren",
+    "toolImageAlt": "Bild från verktyget",
+    "showFigure": "Visa den renderade figuren",
+    "showTikz": "Visa TikZ-källan",
+    "figureTab": "Figur",
+    "tikzTab": "TikZ",
+    "saving": "Sparar",
+    "saveToProject": "Spara i projektet",
+    "copyCode": "Kopiera koden",
+    "saved": "Sparade {{path}}",
+    "saveNeedsProject": "Öppna ett projekt för att spara den här figuren.",
+    "saveFailed": "Figuren kunde inte sparas."
+  },
+  "transcript": {
+    "dialogTitle": "Utskrift från den delegerade uppgiften",
+    "dialogDescription": "Allt den delegerade agenten läste, körde och svarade medan den arbetade med uppgiften.",
+    "loading": "Läser in utskriften",
+    "failed": "Utskriften kunde inte läsas in.",
+    "empty": "Den här uppgiften registrerade ingen utskrift."
+  },
+  "subagents": {
+    "working": "Underagenter arbetar",
+    "count": "Underagenter ({{count}})",
+    "stopAll": "Stoppa alla",
+    "stopFailed": "Underagenterna kunde inte stoppas.",
+    "updates": "{{count}} uppdateringar",
+    "openTask": "Öppna uppgiften",
+    "awaitingPermission": "En delegerad agent väntar på behörighet.",
+    "taskFailed": "En delegerad uppgift misslyckades. Öppna den för att läsa felet.",
+    "transcriptTruncated": "Den här utskriften är längre än den del som visas här.",
+    "noTranscriptYet": "Den här uppgiften har inte rapporterat någon aktivitet i utskriften än.",
+    "noSessionInfo": "Den här uppgiften registrerade inte tillräckligt med sessionsinformation för att öppna sin utskrift.",
+    "loadingTranscript": "Läser in utskriften…",
+    "transcriptFailed": "Utskriften kunde inte läsas in.",
+    "stillWorking": "Den här underagenten arbetar fortfarande. Hela utskriften öppnas när den är klar.",
+    "noFinalAnswer": "Den här agenten registrerade inget slutligt svar.",
+    "latest": "Senast: {{text}}",
+    "workingDetail": "arbetar",
+    "status": {
+      "active": "arbetar",
+      "awaiting": "behöver behörighet",
+      "updated": "uppdaterad",
+      "interrupted": "stoppad",
+      "completed": "klar",
+      "failed": "misslyckades"
+    }
+  },
+  "acp": {
+    "newConversation": "Ny konversation",
+    "savedConversations": "Sparade konversationer",
+    "untitledConversation": "Namnlös konversation",
+    "agentSetup": "Agentkonfiguration",
+    "usageReport": "Användningsrapport",
+    "permission": {
+      "ariaLabel": "Agentens behörighet",
+      "namedHeadline": "{{agent}} behöver behörighet",
+      "headline": "Agenten behöver behörighet",
+      "expired": "Den här begäran har gått ut. Be agenten försöka igen.",
+      "dismiss": "Stäng"
+    },
+    "readiness": {
+      "managedBridge": "Brygga {{version}} installerad av Oleafly.",
+      "bridgeOnPath": "Bryggan hittades i PATH.",
+      "bridgeMissingWithCli": "{{cli}} hittades i {{path}}. Installera ACP-bryggan {{version}} för att ansluta.",
+      "bridgeMissing": "Installera ACP-bryggan {{version}} för att ansluta den här agenten.",
+      "cliMissing": "{{cli}} finns inte i din PATH. Installera det och kör sedan {{command}}.",
+      "cliNotFound": "Den här agentens kommandoradsverktyg hittades inte.",
+      "unavailable": "Den här agenten kan inte köras på den här datorn."
+    },
+    "bridgeSource": {
+      "notInstalled": "Inte installerad",
+      "managed": "Hanteras av Oleafly",
+      "onPath": "I PATH"
+    },
+    "installing": "Installerar",
+    "installBridge": "Installera bryggan",
+    "assistantAriaLabel": "Assistent med CLI-agent",
+    "loadEarlier": "Läs in tidigare aktivitet",
+    "starting": "Startar {{agent}}",
+    "startingFallback": "agenten",
+    "startingHint": "Agentens kommandoradsverktyg startar. Det tar några sekunder första gången.",
+    "readySubtitle": "{{agent}} är klar i det här projektet",
+    "projectSubtitle": "Arbetar med \"{{project}}\"",
+    "signInFallback": "Logga in via den här agentens CLI och anslut sedan igen.",
+    "reconnectAfterSignIn": "Anslut igen efter inloggningen",
+    "reconnect": "Anslut till konversationen igen",
+    "resumeTask": "Öppna forskningsuppgiften för att återuppta arbetet.",
+    "delegatedConversation": "Den här konversationen hör till en delegerad agentkörning.",
+    "noResume": "Den här agenten kan inte återuppta sparade konversationer. Starta en ny konversation när du är redo.",
+    "imageTooLarge": "Välj en bild som är mindre än 480 KiB. Du kan bifoga upp till fyra bilder.",
+    "imageReadFailed": "Bilden kunde inte läsas.",
+    "removeImage": "Ta bort {{name}}",
+    "composerAriaLabel": "Meddelande till CLI-agenten",
+    "composerPlaceholderReady": "Be agenten arbeta med det här projektet",
+    "composerPlaceholderIdle": "Starta eller återanslut en konversation för att skicka ett meddelande",
+    "attachImage": "Bifoga bild",
+    "startConversation": "Starta en konversation med {{agent}}",
+    "startConversationFallback": "en agent",
+    "agentModel": "Agentens modell",
+    "modelManaged": "Modellen hanteras av agenten",
+    "stop": "Stoppa",
+    "stopTitle": "Stoppa agenten",
+    "send": "Skicka",
+    "connecting": "Ansluter",
+    "sessionStatusPill": "{{agent}} · {{status}}",
+    "sessionStatus": {
+      "connecting": "ansluter",
+      "authRequired": "inloggning krävs",
+      "ready": "klar",
+      "running": "körs",
+      "cancelling": "avbryter",
+      "cancelled": "avbruten",
+      "disconnected": "frånkopplad",
+      "failed": "misslyckades"
+    },
+    "roster": {
+      "bridgeMissing": "installera bryggan under Agentkonfiguration",
+      "cliMissing": "CLI hittades inte på den här datorn",
+      "unavailable": "inte tillgänglig på den här datorn",
+      "comingSoon": "kommer snart"
+    },
+    "messageTooLarge": "Det här meddelandet och dess bilder är för stora. Korta ner meddelandet eller ta bort en bild.",
+    "terminalCommand": "Agenten kör ett terminalkommando.",
+    "agentToolFallback": "Agentverktyg",
+    "agentReported": "Agenten rapporterade: {{detail}}",
+    "imageAttachmentName": "Bild {{index}}",
+    "agentImage": "[Agenten returnerade en bild.]"
+  },
+  "agents": {
+    "pickerAriaLabel": "CLI-agent",
+    "unavailableTooltip": "{{name}}: {{hint}}",
+    "notInstalled": "inte installerad",
+    "cliDetail": "CLI-agent · använder sitt eget konto",
+    "builtInDetail": "{{provider}} · Oleafly-agent"
+  },
+  "home": {
+    "heading": "Vad vill du göra i dag?",
+    "headingAccent": "göra i dag?",
+    "skillCategories": "Färdighetskategorier",
+    "skillLockedTitle": "{{name}} är avstängd för det här projektet",
+    "recentChats": "Senaste chattar",
+    "recentStaleTitle": "Startad från en äldre version av projektet",
+    "recentUntitled": "Ny chatt",
+    "recentStaleBadge": "Äldre version",
+    "recentMessages_one": "{{count}} medd.",
+    "recentMessages_other": "{{count}} medd.",
+    "showAllHistory": "Visa hela historiken ({{count}})"
+  },
+  "research": {
+    "noSourceLink": "Det här resultatet innehåller ingen länk till källan.",
+    "sourceOpenFailed": "Källan kunde inte öppnas.",
+    "noProjectPath": "Det här resultatet innehåller ingen sökväg till en projektfil.",
+    "resultOpenFailed": "Resultatfilen kunde inte öppnas."
+  },
+  "shortcuts": {
+    "categories": {
+      "writeAndEdit": "Skriva och redigera",
+      "citationsAndLiterature": "Citeringar och litteratur",
+      "review": "Granskning",
+      "figuresAndTables": "Figurer och tabeller"
+    },
+    "improveWriting": {
+      "label": "Förbättra texten",
+      "description": "Putsa tydlighet, ton och flyt"
+    },
+    "fixGrammar": {
+      "label": "Rätta grammatiken",
+      "description": "Korrigera grammatik och skiljetecken"
+    },
+    "fixLatexErrors": {
+      "label": "Rätta LaTeX-fel",
+      "description": "Reparera trasig kod och kompileringsfel"
+    },
+    "writeEquation": {
+      "label": "Skriv ekvation",
+      "description": "Från naturligt språk till LaTeX-matematik"
+    },
+    "draftSection": {
+      "label": "Skissa ett avsnitt",
+      "description": "Skriv ett nytt avsnitt i din stil"
+    },
+    "paraphrase": {
+      "label": "Omformulera",
+      "description": "Skriv om men behåll innebörden"
+    },
+    "shorten": {
+      "label": "Korta ner",
+      "description": "Gör texten mer koncis"
+    },
+    "expand": {
+      "label": "Utveckla",
+      "description": "Fördjupa med detaljer"
+    },
+    "journalFormat": {
+      "label": "Tidskriftsformat",
+      "description": "Formatera om för ett visst publiceringsforum"
+    },
+    "writeAbstract": {
+      "label": "Skriv sammanfattning",
+      "description": "Skissa en sammanfattning utifrån artikeln"
+    },
+    "generateTitle": {
+      "label": "Generera titel",
+      "description": "Slagkraftiga artikeltitlar"
+    },
+    "keywords": {
+      "label": "Nyckelord",
+      "description": "Plocka ut sökbara nyckelord"
+    },
+    "continueWriting": {
+      "label": "Fortsätt skriva",
+      "description": "Ta vid där du slutade"
+    },
+    "citationSearch": {
+      "label": "Citeringssökning",
+      "description": "Sök artiklar i alphaXiv och OpenAlex"
+    },
+    "literatureReview": {
+      "label": "Litteraturöversikt",
+      "description": "Gå igenom relaterat arbete med riktiga källor"
+    },
+    "citeClaim": {
+      "label": "Citera det här påståendet",
+      "description": "Hitta och lägg till en verifierad referens"
+    },
+    "myLibrary": {
+      "label": "Mitt bibliotek",
+      "description": "Sök bland dina importerade referenser"
+    },
+    "labSearch": {
+      "label": "Sök forskargrupper",
+      "description": "Hitta forskargrupper och lärosäten"
+    },
+    "friendlyReview": {
+      "label": "Vänlig granskning",
+      "description": "Konstruktiv återkoppling i mentorstil på den här artikeln"
+    },
+    "fireReview": {
+      "label": "Hård granskning",
+      "description": "Sträng stresstestning av påståenden och metoder i rollen som Granskare 2"
+    },
+    "academicPresentation": {
+      "label": "Akademisk presentation",
+      "description": "En Beamer-presentation utifrån din artikel"
+    },
+    "academicPoster": {
+      "label": "Akademisk poster",
+      "description": "En konferensposter utifrån din artikel"
+    },
+    "generateTable": {
+      "label": "Generera tabell",
+      "description": "Skissa en LaTeX-tabell i chatten"
+    },
+    "tikzFigure": {
+      "label": "TikZ-figur",
+      "description": "Skissa TikZ-kod i chatten"
+    }
+  },
+  "turn": {
+    "thinking": "Tänker…",
+    "continuing": "Fortsätter…",
+    "reasoning": "Resonerar…",
+    "runningTool": "Kör {{name}}…",
+    "processingResult": "Bearbetar resultatet…",
+    "summarizing": "Sammanfattar tidigare konversation…"
+  },
+  "toasts": {
+    "sessionOpenFailed": "Agentsessionen kunde inte öppnas.",
+    "approvalModeSaveFailed": "Det gick inte att spara godkännandeläget.",
+    "skillDraftSaved": "Utkastet till färdighet är sparat. Granska det innan du aktiverar det.",
+    "skillDraftFailed": "Det gick inte att spara utkastet till färdighet. {{error}}",
+    "chatArchived": "Chatten är arkiverad.",
+    "chatArchiveFailed": "Det gick inte att arkivera den här chatten.",
+    "chatForked": "Chatten är förgrenad.",
+    "chatForkFailed": "Det gick inte att förgrena den här chatten.",
+    "engineNotLoaded": "Uppgifterna om dokumentmotorn är inte inlästa. AI-redigering är avstängd av säkerhetsskäl.",
+    "skillsLoadFailed": "Det gick inte att läsa in aktiverade färdigheter. Försök igen.",
+    "approvalModeLoadFailed": "Det gick inte att läsa in godkännandeläget.",
+    "approvalRulesLoadFailed": "Det gick inte att läsa in projektets godkännanderegler.",
+    "restored": "Projektfilerna är återställda. Konversationen behölls.",
+    "restoreFailed": "Det gick inte att återställa: {{error}}",
+    "steerFailed": "Den pågående turen kunde inte styras.",
+    "approvalRuleSaveFailed": "Det gick inte att spara projektets godkännanderegel.",
+    "attachmentTooLarge": "{{name}} är för stor (högst 10 MB).",
+    "attachmentReadFailed": "Det gick inte att läsa {{name}}.",
+    "tooManyTools": "{{enabled}} verktyg är aktiverade, men en körning stöder högst {{max}}. Stäng av minst {{excess}} under Verktyg och försök igen."
+  },
+  "header": {
+    "mcpTooltip": "Konfigurera assistentens MCP-servrar",
+    "mcpAriaLabel": "Inställningar för assistentens MCP",
+    "settings": "Assistentens inställningar",
+    "usageAriaLabel": "Visa AI-användning",
+    "usageReport": "Användningsrapport",
+    "newChat": "Ny chatt",
+    "chatHistory": "Chatthistorik",
+    "staleChatHint": "Den här chatten startade från en äldre version av projektet. Filinnehållet kan skilja sig från det AI:n såg."
+  },
+  "usage": {
+    "lastRun": "Senaste körningen",
+    "steps": "Steg",
+    "input": "In",
+    "output": "Ut",
+    "thisChat": "Den här chatten",
+    "runs": "Körningar",
+    "tokens": "Tokens",
+    "cacheNote": "Cacheanvändning och kostnadsuppskattningar finns i användningsrapporten.",
+    "summaryRunWithTokens_one": "Senaste körningen: {{count}} steg, {{tokens}} rapporterade tokens",
+    "summaryRunWithTokens_other": "Senaste körningen: {{count}} steg, {{tokens}} rapporterade tokens",
+    "summaryRunNoTokens_one": "Senaste körningen: {{count}} steg, totalt antal tokens saknas",
+    "summaryRunNoTokens_other": "Senaste körningen: {{count}} steg, totalt antal tokens saknas",
+    "summaryChat": "Den här chatten: {{steps}} steg, {{tokens}} tokens",
+    "summaryFallback": "AI-användning"
+  },
+  "provider": {
+    "connectTitle": "Anslut en AI-leverantör för att fortsätta",
+    "connectBody": "Använd din egen API-nyckel (OpenAI, Anthropic, Groq med flera) eller kör en modell lokalt med Ollama. Assistenten kan läsa och redigera filer, kompilera ditt projekt och verifiera PDF:en.",
+    "connectButton": "Anslut en leverantör",
+    "runLocal": "Kör en lokal modell med Ollama",
+    "quotaWarning": "Lagringen för chatthistoriken är full. Äldre chattar rensades bort och nya meddelanden kanske inte sparas. Radera gamla chattar ur historiken för att frigöra utrymme."
+  },
+  "conversation": {
+    "renderFailed": "Den här konversationen kunde inte renderas. Starta en ny chatt eller öppna den igen från historiken.",
+    "checkpointRestored": "Projektet är återställt till den här kontrollpunkten",
+    "restoring": "Återställer…",
+    "restoreCheckpoint": "Återställ koden till läget före det här svaret",
+    "restoreConfirm": "Vill du återställa projektfilerna till läget före det här svaret? Det slänger också kodändringar från senare AI-svar. Konversationen ligger kvar.",
+    "noResponse": "Inget svar kom på det här meddelandet. Strömmen avbröts. Skicka det igen, eller starta en ny chatt.",
+    "scrollToBottom": "Rulla längst ner",
+    "projectSubtitle": "Arbetar med \"{{project}}\"",
+    "noOutput": "Modellen gav ingen utdata. Kontrollera Inställningar → AI-assistent."
+  },
+  "followUps": {
+    "steered": "Styrd in i den pågående turen: {{summary}}",
+    "sending": "Skickat som nästa tur: {{summary}}",
+    "waiting": "Väntar på ett säkert läge i körningen: {{summary}}",
+    "queued": "I kö till nästa tur: {{summary}}",
+    "steerNow": "Styr nu",
+    "startingRun": "Startar körningen",
+    "discard": "Släng meddelandet i kön"
+  },
+  "goal": {
+    "editAriaLabel": "Redigera målet: {{goal}}",
+    "clear": "Rensa målet",
+    "formAriaLabel": "Ange ett bestående mål",
+    "label": "Mål",
+    "placeholder": "Vad ska assistenten fortsätta arbeta mot?",
+    "save": "Spara målet"
+  },
+  "suggestions": {
+    "literatureSweep": "Gå igenom litteraturen för det här projektet",
+    "relatedWork": "Skissa avsnittet om relaterat arbete",
+    "verifyClaims": "Kontrollera varje påstående mot sin källa",
+    "reviewManuscript": "Granska det som en referee",
+    "latexBuild": "Rätta eventuella källkodsfel i mitt dokument",
+    "preSubmission": "Gör det klart för inlämning",
+    "slides": "Gör den här artikeln till en presentation",
+    "recompile": "Kompilera om och leta efter fel"
+  }
+}

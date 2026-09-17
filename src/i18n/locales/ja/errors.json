@@ -1,0 +1,31 @@
+{
+  "unknown": "問題が発生しました。詳細はアプリのログを確認してください。",
+  "withDetail": "{{message}}（{{detail}}）",
+  "project": {
+    "name_empty": "プロジェクト名は空にできません。",
+    "name_conflict": "{{name}} という名前のプロジェクトはすでに存在します。",
+    "folder_unavailable": "新しいプロジェクトフォルダを確保できませんでした。"
+  },
+  "settings": {
+    "locale_unsupported": "言語 {{locale}} は利用できません。"
+  },
+  "literature": {
+    "query_empty": "検索キーワードは空にできません。",
+    "query_too_long": "検索キーワードが長すぎます（最大 {{max}} 文字）。",
+    "unknown_source": "不明な文献ソースです。"
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX にこのホストで動作する {{name}} のバイナリがありません。",
+    "package_operation_timeout": "パッケージ操作が {{span}} の上限を超えたため停止しました。再度コンパイルできます。TeX Live のミラーが混雑している可能性があります。しばらくしてから再試行するか、tlmgr を自分で実行してください。"
+  },
+  "github": {
+    "sign_in_expired": "サインインコードの有効期限が切れました。もう一度お試しください。",
+    "sign_in_cancelled": "GitHub の認可がキャンセルされました。",
+    "sign_in_failed": "GitHub へのサインインに失敗しました。",
+    "repositories_unavailable": "リポジトリを読み込めませんでした。",
+    "create_repo_failed": "リポジトリを作成できませんでした（{{status}}）。"
+  },
+  "approvals": {
+    "full_access_declined": "フルアクセスは有効になりませんでした。"
+  }
+}

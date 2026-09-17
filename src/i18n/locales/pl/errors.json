@@ -1,0 +1,31 @@
+{
+  "unknown": "Wystąpił błąd. Szczegóły znajdują się w dzienniku aplikacji.",
+  "withDetail": "{{message}} ({{detail}})",
+  "project": {
+    "name_empty": "Nazwa projektu nie może być pusta.",
+    "name_conflict": "Projekt o nazwie {{name}} już istnieje.",
+    "folder_unavailable": "Nie udało się zarezerwować nowego folderu projektu."
+  },
+  "settings": {
+    "locale_unsupported": "Język {{locale}} nie jest dostępny."
+  },
+  "literature": {
+    "query_empty": "Zapytanie wyszukiwania nie może być puste.",
+    "query_too_long": "Zapytanie wyszukiwania jest za długie (maksymalnie {{max}} znaków).",
+    "unknown_source": "Nieznane źródło literatury."
+  },
+  "tex": {
+    "no_host_binary": "TinyTeX nie ma pliku wykonywalnego {{name}} zgodnego z tym systemem.",
+    "package_operation_timeout": "Operacja na pakietach przekroczyła limit {{span}} i została zatrzymana, więc można ponownie skompilować dokument. Serwer lustrzany TeX Live jest prawdopodobnie zajęty. Spróbuj ponownie później albo uruchom tlmgr samodzielnie."
+  },
+  "github": {
+    "sign_in_expired": "Kod logowania wygasł. Spróbuj ponownie.",
+    "sign_in_cancelled": "Autoryzacja w GitHub została anulowana.",
+    "sign_in_failed": "Logowanie do GitHub nie powiodło się.",
+    "repositories_unavailable": "Nie udało się wczytać repozytoriów.",
+    "create_repo_failed": "Nie udało się utworzyć repozytorium ({{status}})."
+  },
+  "approvals": {
+    "full_access_declined": "Pełny dostęp nie został włączony."
+  }
+}

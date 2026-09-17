@@ -1,0 +1,54 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "Про Oleafly",
+    "checkUpdates": "Перевірити оновлення…",
+    "reloadViews": "Перезавантажити вигляди",
+    "restartApp": "Перезапустити застосунок",
+    "quit": "Вийти з Oleafly",
+    "edit": "Редагування",
+    "undo": "Скасувати дію",
+    "redo": "Повторити дію",
+    "cut": "Вирізати",
+    "copy": "Копіювати",
+    "paste": "Вставити",
+    "selectAll": "Виділити все",
+    "view": "Вигляд",
+    "toggleTerminal": "Перемкнути термінал",
+    "toggleBrowser": "Перемкнути браузер"
+  },
+  "window": {
+    "browser": "Браузер Oleafly",
+    "browserTitled": "{{title}} - Браузер Oleafly"
+  },
+  "dialog": {
+    "cancel": "Скасувати",
+    "fullAccess": {
+      "title": "Увімкнути повний доступ?",
+      "message": "Повний доступ дозволяє асистенту виконувати команди shell і редагувати файли, не питаючи дозволу щоразу. Увімкнути повний доступ?",
+      "confirm": "Увімкнути повний доступ"
+    },
+    "cookieImport": {
+      "title": "Підтвердьте імпорт cookie",
+      "messageHost": "Імпортувати cookie для {{hostname}} з профілю «{{profile}}» браузера {{browser}} у вбудований браузер Oleafly? Імпортовані cookie можуть автоматично авторизувати вас на сайтах.",
+      "messageAll": "Імпортувати всі cookie з профілю «{{profile}}» браузера {{browser}} у вбудований браузер Oleafly? Імпортовані cookie можуть автоматично авторизувати вас на сайтах.",
+      "confirm": "Імпортувати cookie"
+    },
+    "mcpApprove": {
+      "title": "Схвалити інструмент MCP",
+      "confirm": "Використати інструмент"
+    },
+    "tableImport": {
+      "title": "Виберіть таблицю для імпорту",
+      "filter": "Електронні таблиці"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Меню застосунку недоступне",
+    "viewMenuUnavailable": "Меню «Вигляд» недоступне",
+    "menuItemUnavailable": "Пункт меню {{id}} недоступний",
+    "fullAccessDismissed": "Підтвердження повного доступу було закрито.",
+    "fullAccessDeclined": "Повний доступ не увімкнено.",
+    "approvalDialogClosed": "Системне вікно схвалення несподівано закрилося."
+  }
+}
