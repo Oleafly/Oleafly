@@ -19,7 +19,7 @@ approach before you invest time.
 | --- | --- | --- |
 | [Node.js](https://nodejs.org) | 22.13+ | Required by pnpm 11 |
 | [pnpm](https://pnpm.io) | 11.9+ | Enable Corepack or install the version declared in `package.json` |
-| [Rust](https://rustup.rs) | stable (1.77+) | includes `cargo` |
+| [Rust](https://rustup.rs) | pinned in `rust-toolchain.toml` | rustup installs that version the first time you run `cargo` in the repo. It is the version CI uses. |
 | Platform deps | - | See the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS (on Linux: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `patchelf`, …) |
 
 ## Getting started

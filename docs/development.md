@@ -40,7 +40,9 @@ covers the port pattern, the contribution registry, and the alias wiring.
 
 - Node.js 22.13+ and pnpm 11.9+ (the exact pnpm version is declared in
   `package.json`)
-- Rust (stable) via [rustup](https://rustup.rs)
+- Rust via [rustup](https://rustup.rs). The version is pinned in
+  `rust-toolchain.toml`, and rustup installs it the first time you run `cargo`
+  inside the repo.
 - [Tauri 2 system dependencies](https://v2.tauri.app/start/prerequisites/) for your OS
 - No system document engines are required. The setup scripts stage the same pinned Tectonic, Biber, Pandoc, and Typst binaries shipped with Oleafly.
 
@@ -113,6 +115,29 @@ cargo deny --workspace --all-features --config src-tauri/deny.toml check  # Rust
 The two audit commands require registry/network access. CI records their
 current results on every code change. An offline local run cannot certify that
 the dependency graph is advisory-free.
+
+### The Rust toolchain pin
+
+`rust-toolchain.toml` names one Rust version. rustup applies it to every plain
+`cargo` call in the repo, so the pre-commit hook, CI, the e2e builds, and the
+release workflow all compile and lint with the same compiler. Before the pin,
+CI floated on the latest stable while local machines stayed wherever they
+were, and a commit could pass clippy locally and then fail it on CI with no
+code change behind the break.
+
+To move to a newer Rust:
+
+1. Change `channel` in `rust-toolchain.toml` to an exact version, for example
+   `1.99.0`. CI rejects `stable` and version ranges on purpose.
+2. Run `cargo fmt --all -- --check`,
+   `cargo clippy --workspace --all-targets -- -D warnings`, and
+   `cargo test --workspace --all-targets`. rustup downloads the new version on
+   the first call.
+3. Fix what the newer clippy reports in the same pull request, so the bump
+   lands green.
+
+The 1.77 minimum for `oleafly-core` and `oleaflyc` is a separate promise. CI
+checks it with an explicit `cargo +1.77.0`, which takes priority over the pin.
 
 For user-facing changes, also run the end-to-end suite (real app and real
 compiles, see [e2e/README.md](../e2e/README.md)):

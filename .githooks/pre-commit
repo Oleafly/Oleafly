@@ -38,7 +38,10 @@ if printf '%s\n' "$staged" | grep -qE '^(src/|packages/|package\.json|pnpm-lock\
 fi
 
 # Rust gate: any workspace crate or workspace configuration.
-if printf '%s\n' "$staged" | grep -qE '^(src-tauri/|crates/|Cargo\.(toml|lock)$|\.cargo/)'; then
+if printf '%s\n' "$staged" | grep -qE '^(src-tauri/|crates/|Cargo\.(toml|lock)$|\.cargo/|rust-toolchain\.toml$)'; then
+  # rustup resolves the version from rust-toolchain.toml, which CI installs too,
+  # so these gates lint with the compiler CI will use.
+  echo "→ rust: $(rustc --version)"
   echo "→ rust: fmt check"
   cargo fmt --all -- --check || fail "cargo fmt"
   echo "→ rust: clippy"
