@@ -1,0 +1,16 @@
+diff --git a/dist/index.js b/dist/index.js
+index ca249560e55c89a461ca946add7f3bf5d18d99a7..6454958065502f5722bdee8bead4a582e2b2c105 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -646,9 +646,9 @@ const emacsKeys = {
+     "Esc": "unsetTransientMark"
+ };
+ for (let i in emacsKeys) {
+-    /*@__PURE__*/EmacsHandler.bindKey(i, emacsKeys[i]);
++    EmacsHandler.bindKey(i, emacsKeys[i]);
+ }
+-/*@__PURE__*/EmacsHandler.addCommands({
++EmacsHandler.addCommands({
+     unsetTransientMark: function (handler) {
+         handler.setEmacsMark(null);
+         return false;

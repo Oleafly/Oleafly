@@ -94,18 +94,30 @@ async function pressInEditor(
     `(() => {
       const apple = /Mac|iPhone|iPad/.test(navigator.platform);
       const target = document.querySelector('.cm-content');
-      target.dispatchEvent(new KeyboardEvent('keydown', {
-        key: ${JSON.stringify(key)},
-        code: ${JSON.stringify(code)},
-        keyCode: ${keyCode},
-        which: ${keyCode},
-        altKey: ${!!mods.alt},
-        ctrlKey: ${!!mods.ctrl} || (${!!mods.mod} && !apple),
-        metaKey: ${!!mods.mod} && apple,
-        shiftKey: ${!!mods.shift},
-        bubbles: true,
-        cancelable: true,
-      }));
+      const errors = [];
+      const original = console.error;
+      console.error = (...args) => {
+        errors.push(args.map((arg) => (arg instanceof Error ? arg.stack ?? arg.message : String(arg))).join(" "));
+        original.apply(console, args);
+      };
+      let handled = false;
+      try {
+        handled = !target.dispatchEvent(new KeyboardEvent('keydown', {
+          key: ${JSON.stringify(key)},
+          code: ${JSON.stringify(code)},
+          keyCode: ${keyCode},
+          which: ${keyCode},
+          altKey: ${!!mods.alt},
+          ctrlKey: ${!!mods.ctrl} || (${!!mods.mod} && !apple),
+          metaKey: ${!!mods.mod} && apple,
+          shiftKey: ${!!mods.shift},
+          bubbles: true,
+          cancelable: true,
+        }));
+      } finally {
+        console.error = original;
+      }
+      window.__e2eLastKey = { handled, errors };
       return 1;
     })()`,
   );
@@ -143,15 +155,27 @@ async function chooseLineHeight(page: Page, optionLabel: string): Promise<number
   );
 }
 
-async function selectionSummary(page: Page): Promise<{ anchor: number; head: number; emacs: boolean; editors: number }> {
-  return page.evaluate<{ anchor: number; head: number; emacs: boolean; editors: number }>(
+interface SelectionSummary {
+  anchor: number;
+  head: number;
+  emacs: boolean;
+  editors: number;
+  handled: boolean | null;
+  errors: string[];
+}
+
+async function selectionSummary(page: Page): Promise<SelectionSummary> {
+  return page.evaluate<SelectionSummary>(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
       const main = getEditorView().state.selection.main;
+      const last = window.__e2eLastKey ?? { handled: null, errors: [] };
       return {
         anchor: main.anchor,
         head: main.head,
         emacs: !!document.querySelector('.cm-scroller.cm-emacsMode'),
         editors: document.querySelectorAll('.cm-content').length,
+        handled: last.handled,
+        errors: last.errors,
       };
     })`,
   );
@@ -446,11 +470,11 @@ test("the keybinding mode switches between Default, Emacs and Vim", async ({
   await pressInEditor(tauriPage, "b", "KeyB", 66, { alt: true });
   await expect
     .poll(async () => await selectionSummary(tauriPage), { timeout: 10_000 })
-    .toEqual({ anchor: 1, head: 1, emacs: true, editors: 1 });
+    .toEqual({ anchor: 1, head: 1, emacs: true, editors: 1, handled: true, errors: [] });
   await pressInEditor(tauriPage, "a", "KeyA", 65, { ctrl: true });
   await expect
     .poll(async () => await selectionSummary(tauriPage), { timeout: 10_000 })
-    .toEqual({ anchor: 0, head: 0, emacs: true, editors: 1 });
+    .toEqual({ anchor: 0, head: 0, emacs: true, editors: 1, handled: true, errors: [] });
 
   await chooseEditorSetting(tauriPage, "settings-editor-keymap-trigger", "Vim");
   await waitLong(tauriPage, `!!document.querySelector('.cm-vim-panel')`, 10_000);
