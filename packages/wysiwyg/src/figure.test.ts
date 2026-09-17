@@ -53,6 +53,9 @@ describe("figureWidthPercent", () => {
     expect(figureWidthPercent("0.5\\linewidth")).toBe("50%");
     expect(figureWidthPercent("\\textwidth")).toBe("100%");
     expect(figureWidthPercent(".25\\columnwidth")).toBe("25%");
+    expect(figureWidthPercent("1\\linewidth")).toBe("100%");
+    expect(figureWidthPercent("1.5\\textwidth")).toBe("100%");
+    expect(figureWidthPercent(`${"0".repeat(5000)}x`)).toBeNull();
     expect(figureWidthPercent("3cm")).toBeNull();
     expect(figureWidthPercent(null)).toBeNull();
   });

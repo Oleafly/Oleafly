@@ -16,6 +16,7 @@
     "@unified-latex/unified-latex-types": "*",
     "@unified-latex/unified-latex-util-parse": "*",
     "@unified-latex/unified-latex-util-print-raw": "*",
+    "dompurify": "*",
     "tiptap-markdown": "*"
   },
   "devDependencies": {

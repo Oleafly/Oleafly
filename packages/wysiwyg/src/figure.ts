@@ -53,7 +53,7 @@ export function createFigure(options: CreateFigureOptions): JSONContent {
 
 export function figureWidthPercent(width: string | null): string | null {
   if (width === null) return null;
-  const match = /^([0-9]*\.?[0-9]+)?\\(?:linewidth|textwidth|columnwidth)$/u.exec(width.trim());
+  const match = /^([0-9]+(?:\.[0-9]+)?|\.[0-9]+)?\\(?:linewidth|textwidth|columnwidth)$/u.exec(width.trim());
   if (!match) return null;
   const fraction = match[1] === undefined ? 1 : Number(match[1]);
   return `${Math.min(100, Math.max(0, fraction * 100))}%`;

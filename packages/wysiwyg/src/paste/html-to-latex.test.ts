@@ -143,3 +143,19 @@ describe("htmlToLatex", () => {
     expect(htmlToLatex("<p><code>a\nb</code></p>")).toBe("\\texttt{a b}");
   });
 });
+
+describe("sanitizes pasted markup", () => {
+  it("drops scripts and event handlers before converting", () => {
+    const latex = htmlToLatex('<p>Hi<script>alert(1)</script><img src="x" onerror="alert(1)"> there</p>');
+    expect(latex).toBe("Hi there");
+  });
+
+  it("drops javascript links", () => {
+    expect(htmlToLatex('<p><a href="javascript:alert(1)">x</a></p>')).toBe("x");
+  });
+
+  it("escapes every LaTeX special character in a link", () => {
+    const latex = htmlToLatex('<p><a href="https://x.test/a\\b?c=1&d=_2#f{g}">x</a></p>');
+    expect(latex).toBe(String.raw`\href{https://x.test/a\%5Cb?c=1\&d=\_2\#f\{g\}}{x}`);
+  });
+});

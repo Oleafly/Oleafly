@@ -28,6 +28,18 @@ describe("theoremEnvironmentsFromPreamble", () => {
     ]);
   });
 
+  it("reads a declaretheorem whose options carry a command", () => {
+    const preamble = "\\declaretheorem[name=\\textbf{Claim}, style=plain]{claim}\n\\declaretheorem[sibling=claim]{conjecture}";
+    expect(theoremEnvironmentsFromPreamble(preamble)).toEqual(["claim", "conjecture"]);
+  });
+
+  it("stays linear on an unterminated optional argument repeated many times", () => {
+    const preamble = "\\declaretheorem[".repeat(4000);
+    const started = performance.now();
+    expect(theoremEnvironmentsFromPreamble(preamble)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
   it("drops duplicate and malformed names", () => {
     expect(theoremEnvironmentsFromPreamble("\\newtheorem{a}{A}\\newtheorem{a}{B}\\newtheorem{1bad}{C}")).toEqual(["a"]);
     expect(theoremEnvironmentsFromPreamble("")).toEqual([]);

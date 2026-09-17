@@ -18,7 +18,7 @@ export const STANDARD_THEOREM_ENVIRONMENTS = [
 export type StandardTheoremEnvironment = (typeof STANDARD_THEOREM_ENVIRONMENTS)[number];
 
 const NEW_THEOREM = /\\newtheorem\*?\s*\{([^{}]+)\}/gu;
-const DECLARE_THEOREM = /\\declaretheorem(?:\s*\[[^\]]*\])?\s*\{([^{}]+)\}/gu;
+const DECLARE_THEOREM = /\\declaretheorem(?:\s*\[[^\][]*\])?\s*\{([^{}]+)\}/gu;
 
 export function theoremEnvironmentsFromPreamble(preamble: string): string[] {
   const names = new Set<string>();

@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { escapeLatexText } from "../latex/serialize-unknown";
 
 export interface HtmlToLatexOptions {
@@ -108,11 +109,8 @@ function loneElement(body: Element): Element | null {
   }
 }
 
-function isOfficeDocument(html: string, document: Document): boolean {
-  return (
-    document.querySelector('meta[name="ProgId" i]') !== null ||
-    /urn:schemas-microsoft-com:office/iu.test(html)
-  );
+function isOfficeDocument(html: string): boolean {
+  return /name=["']?ProgId["' ]/iu.test(html) || /urn:schemas-microsoft-com:office/iu.test(html);
 }
 
 function normalizeSpace(text: string): string {
@@ -126,8 +124,18 @@ function paragraphsFrom(text: string): string[] {
     .filter((paragraph) => paragraph !== "");
 }
 
+const URL_ESCAPES: Readonly<Record<string, string>> = {
+  "\\": String.raw`\%5C`,
+  "%": String.raw`\%`,
+  "#": String.raw`\#`,
+  "&": String.raw`\&`,
+  _: String.raw`\_`,
+  "{": String.raw`\{`,
+  "}": String.raw`\}`,
+};
+
 function escapeUrl(url: string): string {
-  return url.replace(/([%#&_{}])/gu, "\\$1");
+  return url.replace(/[\\%#&_{}]/gu, (ch) => URL_ESCAPES[ch] ?? ch);
 }
 
 function inlineCode(element: Element): string {
@@ -476,10 +484,10 @@ function renderTable(table: Element, context: Context): string {
 
 export function htmlToLatex(html: string, options: HtmlToLatexOptions = {}): string | null {
   if (typeof DOMParser === "undefined") return null;
-  const parsed = new DOMParser().parseFromString(html, "text/html");
+  const parsed = new DOMParser().parseFromString(DOMPurify.sanitize(html), "text/html");
   const lone = loneElement(parsed.body);
   const loneTag = lone ? tagOf(lone) : null;
-  if (options.hasFiles && !isOfficeDocument(html, parsed) && loneTag !== "table") return null;
+  if (options.hasFiles && !isOfficeDocument(html) && loneTag !== "table") return null;
   if (loneTag === "pre") return null;
   const text = renderBlocks(parsed.body, { inTable: false }).join("\n\n").trim();
   return text === "" ? null : text;
