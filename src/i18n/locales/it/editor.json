@@ -39,7 +39,10 @@
     "insertPlaceholder": "Inserisci un segnaposto",
     "cancel": "Annulla",
     "insert": "Inserisci la figura",
-    "selectImage": "Seleziona un'immagine per inserirla."
+    "selectImage": "Seleziona un'immagine per inserirla.",
+    "editTitle": "Modifica l'immagine",
+    "editDescription": "Sostituisci l'immagine oppure cambiane la larghezza. Didascalia ed etichetta restano come sono.",
+    "save": "Salva l'immagine"
   },
   "tableToolbar": {
     "label": "Strumenti tabella",
@@ -629,7 +632,14 @@
       "unsafeOutput": "Non è stato possibile produrre un'anteprima sicura.",
       "unsupported": "Questa espressione è incompleta o non supportata.",
       "missingClosing": "Manca la chiusura {{delimiter}}.",
-      "notRendered": "Non è stato possibile rappresentare questa espressione."
+      "notRendered": "Non è stato possibile rappresentare questa espressione.",
+      "preview": {
+        "moreOptions": "Altre opzioni",
+        "hide": "Nascondi",
+        "hideDescription": "Nasconde l'anteprima finché non esci da questa equazione.",
+        "disable": "Disattiva",
+        "disableDescription": "Spegne l'anteprima delle equazioni. Puoi riattivarla nelle impostazioni."
+      }
     },
     "latex": {
       "command": {
@@ -914,6 +924,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Tipo di voce bibliografica sconosciuto @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Caricamento dell'immagine",
+        "loadFailed": "Non è stato possibile caricare questa immagine.",
+        "edit": "Modifica la figura"
+      },
+      "preamble": {
+        "show": "Mostra il preambolo del documento",
+        "hide": "Nascondi il preambolo del documento"
+      },
+      "endOfDocument": "Fine del documento",
+      "abstract": "Abstract",
+      "keywordsLabel": "Parole chiave",
+      "theorem": {
+        "theorem": "Teorema",
+        "lemma": "Lemma",
+        "corollary": "Corollario",
+        "proof": "Dimostrazione"
+      },
+      "footnote": "Nota a piè di pagina",
+      "endnote": "Nota finale",
+      "citation": "Citazione",
+      "reference": "Riferimento",
+      "label": "Etichetta",
+      "includedFile": "File incluso",
+      "table": {
+        "captionPlacement": "Didascalia",
+        "captionAbove": "Didascalia sopra",
+        "captionBelow": "Didascalia sotto",
+        "noCaption": "Nessuna didascalia",
+        "captionNeedsTable": "Per una didascalia serve un ambiente table attorno al tabular.",
+        "borders": "Bordi",
+        "noBorders": "Nessun bordo",
+        "allBorders": "Tutti i bordi",
+        "booktabs": "Filetti booktabs",
+        "customBorders": "Bordi personalizzati",
+        "alignment": "Allineamento",
+        "alignLeft": "Allinea a sinistra",
+        "alignCenter": "Allinea al centro",
+        "alignRight": "Allinea a destra",
+        "alignJustify": "Giustifica",
+        "selectColumnToAlign": "Seleziona una colonna per cambiarne l'allineamento.",
+        "columnWidth": "Larghezza della colonna",
+        "selectColumnForWidth": "Seleziona una colonna per cambiarne la larghezza.",
+        "fitToContent": "Adatta al contenuto",
+        "fixedWidth": "Larghezza fissa",
+        "setColumnWidth": "Imposta la larghezza della colonna",
+        "widthValue": "Larghezza",
+        "widthUnit": "Unità",
+        "widthPercentHelp": "Una percentuale della larghezza del testo.",
+        "widthCustom": "Personalizzata",
+        "widthCustomHelp": "Qualsiasi lunghezza LaTeX, per esempio 4cm oppure 0.4\\linewidth.",
+        "widthNeedsArray": "Le larghezze fisse richiedono il pacchetto array nel preambolo.",
+        "columnWidthIndicator": "Larghezza della colonna",
+        "mergeCells": "Unisci le celle",
+        "unmergeCells": "Dividi le celle",
+        "selectCellsToMerge": "Seleziona le celle da unire.",
+        "deleteRowOrColumn": "Elimina",
+        "selectRowOrColumnToDelete": "Seleziona una riga o una colonna da eliminare.",
+        "insert": "Inserisci",
+        "insertRowsAbove": "Inserisci una riga sopra",
+        "insertRowsBelow": "Inserisci una riga sotto",
+        "insertColumnsLeft": "Inserisci una colonna a sinistra",
+        "insertColumnsRight": "Inserisci una colonna a destra",
+        "removeTable": "Rimuovi la tabella",
+        "help": "Aiuto",
+        "helpTitle": "Modificare le tabelle",
+        "helpIntro": "La tabella è il tuo sorgente LaTeX. Ogni modifica fatta qui riscrive il tabular nel file.",
+        "helpSupportedTitle": "Cosa gestisce la griglia",
+        "helpSupportedColumns": "L'allineamento delle colonne e le larghezze fisse, tramite la specifica delle colonne.",
+        "helpSupportedRules": "I filetti orizzontali e verticali, compresi quelli di booktabs.",
+        "helpSupportedMerged": "Le celle unite scritte come \\multicolumn.",
+        "helpSupportedCaption": "La didascalia e l'etichetta dell'ambiente table che circonda la tabella.",
+        "helpUnsupported": "Ciò che la griglia non riesce a rappresentare resta sorgente e la tabella viene mostrata in sola lettura.",
+        "helpShortcutsTitle": "Tastiera",
+        "shortcutMove": "Le frecce spostano da una cella all'altra.",
+        "shortcutExtend": "Shift con una freccia estende la selezione.",
+        "shortcutNext": "Tab passa alla cella successiva, Shift+Tab a quella precedente.",
+        "shortcutEdit": "Enter avvia la modifica della cella selezionata.",
+        "shortcutCancel": "Escape interrompe la modifica e lascia la cella selezionata.",
+        "shortcutClear": "Backspace o Delete svuotano le celle selezionate.",
+        "shortcutUndo": "Annulla e ripeti funzionano come nel resto dell'editor.",
+        "ok": "Fatto",
+        "cancel": "Annulla",
+        "close": "Chiudi",
+        "selectRow": "Seleziona la riga",
+        "selectColumn": "Seleziona la colonna",
+        "cellInput": "Cella",
+        "errorTitle": "Non è stato possibile mostrare questa tabella",
+        "errorBody": "Il tabular usa qualcosa che la griglia non sa ancora mostrare. Modificala come sorgente.",
+        "viewSource": "Modifica come sorgente"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Posizione nel documento",
+    "goTo": "Vai a {{title}}",
+    "untitled": "Senza titolo"
   }
 }

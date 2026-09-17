@@ -39,7 +39,10 @@
     "insertPlaceholder": "Inserir marcador",
     "cancel": "Cancelar",
     "insert": "Inserir figura",
-    "selectImage": "Selecione uma imagem para inseri-la."
+    "selectImage": "Selecione uma imagem para inseri-la.",
+    "editTitle": "Editar imagem",
+    "editDescription": "Troque a imagem ou mude a largura dela. A legenda e o rótulo continuam como estão.",
+    "save": "Salvar imagem"
   },
   "tableToolbar": {
     "label": "Ferramentas de tabela",
@@ -629,7 +632,14 @@
       "unsafeOutput": "Não foi possível produzir uma prévia segura.",
       "unsupported": "Esta expressão está incompleta ou não é compatível.",
       "missingClosing": "Falta o {{delimiter}} de fechamento.",
-      "notRendered": "Não foi possível renderizar esta expressão."
+      "notRendered": "Não foi possível renderizar esta expressão.",
+      "preview": {
+        "moreOptions": "Mais opções",
+        "hide": "Ocultar",
+        "hideDescription": "Oculta a prévia até você sair desta equação.",
+        "disable": "Desativar",
+        "disableDescription": "Desliga a prévia de equações. Ligue de novo em Configurações."
+      }
     },
     "latex": {
       "command": {
@@ -914,6 +924,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Tipo de entrada de bibliografia desconhecido @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Carregando a imagem",
+        "loadFailed": "Não foi possível carregar esta imagem.",
+        "edit": "Editar a figura"
+      },
+      "preamble": {
+        "show": "Mostrar o preâmbulo do documento",
+        "hide": "Ocultar o preâmbulo do documento"
+      },
+      "endOfDocument": "Fim do documento",
+      "abstract": "Resumo",
+      "keywordsLabel": "Palavras-chave",
+      "theorem": {
+        "theorem": "Teorema",
+        "lemma": "Lema",
+        "corollary": "Corolário",
+        "proof": "Demonstração"
+      },
+      "footnote": "Nota de rodapé",
+      "endnote": "Nota de fim",
+      "citation": "Citação",
+      "reference": "Referência",
+      "label": "Rótulo",
+      "includedFile": "Arquivo incluído",
+      "table": {
+        "captionPlacement": "Legenda",
+        "captionAbove": "Legenda acima",
+        "captionBelow": "Legenda abaixo",
+        "noCaption": "Sem legenda",
+        "captionNeedsTable": "Uma legenda precisa de um ambiente table em volta do tabular.",
+        "borders": "Bordas",
+        "noBorders": "Sem bordas",
+        "allBorders": "Todas as bordas",
+        "booktabs": "Filetes do booktabs",
+        "customBorders": "Bordas personalizadas",
+        "alignment": "Alinhamento",
+        "alignLeft": "Alinhar à esquerda",
+        "alignCenter": "Centralizar",
+        "alignRight": "Alinhar à direita",
+        "alignJustify": "Justificar",
+        "selectColumnToAlign": "Selecione uma coluna para mudar o alinhamento dela.",
+        "columnWidth": "Largura da coluna",
+        "selectColumnForWidth": "Selecione uma coluna para mudar a largura dela.",
+        "fitToContent": "Ajustar ao conteúdo",
+        "fixedWidth": "Largura fixa",
+        "setColumnWidth": "Definir a largura da coluna",
+        "widthValue": "Largura",
+        "widthUnit": "Unidade",
+        "widthPercentHelp": "Uma porcentagem da largura do texto.",
+        "widthCustom": "Personalizada",
+        "widthCustomHelp": "Qualquer comprimento LaTeX, como 4cm ou 0.4\\linewidth.",
+        "widthNeedsArray": "Larguras fixas precisam do pacote array no preâmbulo.",
+        "columnWidthIndicator": "Largura da coluna",
+        "mergeCells": "Mesclar células",
+        "unmergeCells": "Dividir células",
+        "selectCellsToMerge": "Selecione as células que quer mesclar.",
+        "deleteRowOrColumn": "Excluir",
+        "selectRowOrColumnToDelete": "Selecione uma linha ou uma coluna para excluir.",
+        "insert": "Inserir",
+        "insertRowsAbove": "Inserir linha acima",
+        "insertRowsBelow": "Inserir linha abaixo",
+        "insertColumnsLeft": "Inserir coluna à esquerda",
+        "insertColumnsRight": "Inserir coluna à direita",
+        "removeTable": "Remover tabela",
+        "help": "Ajuda",
+        "helpTitle": "Editar tabelas",
+        "helpIntro": "A tabela é o seu código LaTeX. Toda edição aqui reescreve o tabular no arquivo.",
+        "helpSupportedTitle": "O que a grade aceita",
+        "helpSupportedColumns": "Alinhamento de colunas e larguras fixas pela especificação de colunas.",
+        "helpSupportedRules": "Filetes horizontais e verticais, incluindo os do booktabs.",
+        "helpSupportedMerged": "Células mescladas escritas como \\multicolumn.",
+        "helpSupportedCaption": "A legenda e o rótulo do ambiente table em volta.",
+        "helpUnsupported": "Tudo o que a grade não consegue representar continua como código, e a tabela aparece somente leitura.",
+        "helpShortcutsTitle": "Teclado",
+        "shortcutMove": "As setas circulam entre as células.",
+        "shortcutExtend": "Shift com uma seta amplia a seleção.",
+        "shortcutNext": "Tab vai para a próxima célula, Shift+Tab para a anterior.",
+        "shortcutEdit": "Enter começa a editar a célula selecionada.",
+        "shortcutCancel": "Esc encerra a edição e mantém a célula selecionada.",
+        "shortcutClear": "Backspace ou Delete esvazia as células selecionadas.",
+        "shortcutUndo": "Desfazer e refazer funcionam como no resto do editor.",
+        "ok": "Concluir",
+        "cancel": "Cancelar",
+        "close": "Fechar",
+        "selectRow": "Selecionar linha",
+        "selectColumn": "Selecionar coluna",
+        "cellInput": "Célula",
+        "errorTitle": "Não foi possível renderizar esta tabela",
+        "errorBody": "O tabular usa algo que a grade ainda não consegue mostrar. Edite como código.",
+        "viewSource": "Editar como código"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Local no documento",
+    "goTo": "Ir para {{title}}",
+    "untitled": "Sem título"
   }
 }

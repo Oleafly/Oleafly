@@ -635,6 +635,10 @@
       "tabSize": {
         "description": "Liczba spacji wstawianych na poziom wcięcia i szerokość, z jaką renderowany jest znak tabulacji.",
         "label": "Rozmiar tabulacji"
+      },
+      "mathPreview": {
+        "description": "Pokazuj wyrenderowany wzór nad tym, w którym stoi kursor.",
+        "label": "Podgląd wzoru"
       }
     },
     "files": {

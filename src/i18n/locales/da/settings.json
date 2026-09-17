@@ -625,6 +625,10 @@
       "tabSize": {
         "description": "Antal mellemrum pr. indrykningsniveau og den bredde, en tabulator vises med.",
         "label": "Tabulatorbredde"
+      },
+      "mathPreview": {
+        "description": "Vis den gengivne ligning over den, som markøren står i.",
+        "label": "Forhåndsvisning af matematik"
       }
     },
     "files": {

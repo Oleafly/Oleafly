@@ -39,7 +39,10 @@
     "insertPlaceholder": "Platzhalter einfügen",
     "cancel": "Abbrechen",
     "insert": "Abbildung einfügen",
-    "selectImage": "Wählen Sie ein Bild aus, um es einzufügen."
+    "selectImage": "Wählen Sie ein Bild aus, um es einzufügen.",
+    "editTitle": "Bild bearbeiten",
+    "editDescription": "Tauschen Sie das Bild aus oder ändern Sie seine Breite. Bildunterschrift und Label bleiben, wie sie sind.",
+    "save": "Bild speichern"
   },
   "tableToolbar": {
     "label": "Tabellenwerkzeuge",
@@ -622,7 +625,14 @@
       "unsafeOutput": "Es ließ sich keine sichere Vorschau erzeugen.",
       "unsupported": "Dieser Ausdruck ist unvollständig oder wird nicht unterstützt.",
       "missingClosing": "Es fehlt ein schließendes {{delimiter}}.",
-      "notRendered": "Dieser Ausdruck konnte nicht dargestellt werden."
+      "notRendered": "Dieser Ausdruck konnte nicht dargestellt werden.",
+      "preview": {
+        "moreOptions": "Weitere Optionen",
+        "hide": "Ausblenden",
+        "hideDescription": "Blendet die Vorschau aus, bis Sie diese Formel verlassen.",
+        "disable": "Deaktivieren",
+        "disableDescription": "Schaltet die Formelvorschau aus. In den Einstellungen lässt sie sich wieder einschalten."
+      }
     },
     "latex": {
       "command": {
@@ -905,6 +915,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Unbekannter Typ eines Literatureintrags @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Bild wird geladen",
+        "loadFailed": "Dieses Bild konnte nicht geladen werden.",
+        "edit": "Abbildung bearbeiten"
+      },
+      "preamble": {
+        "show": "Präambel des Dokuments anzeigen",
+        "hide": "Präambel des Dokuments ausblenden"
+      },
+      "endOfDocument": "Ende des Dokuments",
+      "abstract": "Zusammenfassung",
+      "keywordsLabel": "Schlagwörter",
+      "theorem": {
+        "theorem": "Satz",
+        "lemma": "Lemma",
+        "corollary": "Korollar",
+        "proof": "Beweis"
+      },
+      "footnote": "Fußnote",
+      "endnote": "Endnote",
+      "citation": "Zitation",
+      "reference": "Referenz",
+      "label": "Label",
+      "includedFile": "Eingebundene Datei",
+      "table": {
+        "captionPlacement": "Beschriftung",
+        "captionAbove": "Beschriftung oben",
+        "captionBelow": "Beschriftung unten",
+        "noCaption": "Keine Beschriftung",
+        "captionNeedsTable": "Für eine Beschriftung braucht die tabular eine table-Umgebung darum herum.",
+        "borders": "Linien",
+        "noBorders": "Keine Linien",
+        "allBorders": "Alle Linien",
+        "booktabs": "booktabs-Linien",
+        "customBorders": "Eigene Linien",
+        "alignment": "Ausrichtung",
+        "alignLeft": "Linksbündig",
+        "alignCenter": "Zentriert",
+        "alignRight": "Rechtsbündig",
+        "alignJustify": "Blocksatz",
+        "selectColumnToAlign": "Wählen Sie eine Spalte, um ihre Ausrichtung zu ändern.",
+        "columnWidth": "Spaltenbreite",
+        "selectColumnForWidth": "Wählen Sie eine Spalte, um ihre Breite zu ändern.",
+        "fitToContent": "An den Inhalt anpassen",
+        "fixedWidth": "Feste Breite",
+        "setColumnWidth": "Spaltenbreite festlegen",
+        "widthValue": "Breite",
+        "widthUnit": "Einheit",
+        "widthPercentHelp": "Ein Anteil der Textbreite in Prozent.",
+        "widthCustom": "Eigene",
+        "widthCustomHelp": "Jede LaTeX-Länge, etwa 4cm oder 0.4\\linewidth.",
+        "widthNeedsArray": "Feste Breiten brauchen das Paket array in der Präambel.",
+        "columnWidthIndicator": "Spaltenbreite",
+        "mergeCells": "Zellen verbinden",
+        "unmergeCells": "Zellen teilen",
+        "selectCellsToMerge": "Wählen Sie die Zellen aus, die verbunden werden sollen.",
+        "deleteRowOrColumn": "Löschen",
+        "selectRowOrColumnToDelete": "Wählen Sie eine Zeile oder eine Spalte zum Löschen.",
+        "insert": "Einfügen",
+        "insertRowsAbove": "Zeile darüber einfügen",
+        "insertRowsBelow": "Zeile darunter einfügen",
+        "insertColumnsLeft": "Spalte links einfügen",
+        "insertColumnsRight": "Spalte rechts einfügen",
+        "removeTable": "Tabelle entfernen",
+        "help": "Hilfe",
+        "helpTitle": "Tabellen bearbeiten",
+        "helpIntro": "Die Tabelle ist Ihr LaTeX-Quelltext. Jede Änderung hier schreibt die tabular in der Datei neu.",
+        "helpSupportedTitle": "Was das Raster beherrscht",
+        "helpSupportedColumns": "Spaltenausrichtung und feste Breiten über die Spaltendefinition.",
+        "helpSupportedRules": "Waagerechte und senkrechte Linien, auch die von booktabs.",
+        "helpSupportedMerged": "Verbundene Zellen, die als \\multicolumn geschrieben sind.",
+        "helpSupportedCaption": "Beschriftung und Label der umgebenden table-Umgebung.",
+        "helpUnsupported": "Was das Raster nicht abbilden kann, bleibt Quelltext, und die Tabelle wird stattdessen nur zum Lesen angezeigt.",
+        "helpShortcutsTitle": "Tastatur",
+        "shortcutMove": "Mit den Pfeiltasten wechseln Sie zwischen den Zellen.",
+        "shortcutExtend": "Shift mit einer Pfeiltaste erweitert die Auswahl.",
+        "shortcutNext": "Tab springt zur nächsten Zelle, Shift+Tab zur vorherigen.",
+        "shortcutEdit": "Enter beginnt die Bearbeitung der ausgewählten Zelle.",
+        "shortcutCancel": "Escape beendet die Bearbeitung und hält die Zelle ausgewählt.",
+        "shortcutClear": "Backspace oder Delete leert die ausgewählten Zellen.",
+        "shortcutUndo": "Rückgängig und Wiederholen funktionieren wie im übrigen Editor.",
+        "ok": "Fertig",
+        "cancel": "Abbrechen",
+        "close": "Schließen",
+        "selectRow": "Zeile auswählen",
+        "selectColumn": "Spalte auswählen",
+        "cellInput": "Zelle",
+        "errorTitle": "Diese Tabelle konnte nicht dargestellt werden",
+        "errorBody": "Die tabular nutzt etwas, das das Raster noch nicht zeigen kann. Bearbeiten Sie sie stattdessen als Quelltext.",
+        "viewSource": "Als Quelltext bearbeiten"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Position im Dokument",
+    "goTo": "Zu {{title}} springen",
+    "untitled": "Ohne Titel"
   }
 }

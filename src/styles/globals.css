@@ -364,7 +364,7 @@
   border-radius: 0.375rem;
 }
 .wysiwyg-content .ProseMirror img.ProseMirror-selectednode {
-  outline: 2px solid var(--primary);
+  filter: brightness(0.94);
 }
 
 .wysiwyg-content .ProseMirror > * + * {
@@ -488,8 +488,7 @@
   white-space: pre;
 }
 .wysiwyg-content .ProseMirror [data-type="raw-block"].ProseMirror-selectednode {
-  outline: 2px solid var(--ring);
-  outline-offset: 3px;
+  background: color-mix(in srgb, var(--ring) 12%, transparent);
 }
 .wysiwyg-content .ProseMirror [data-type="raw-inline"] {
   display: inline-flex;
@@ -537,8 +536,7 @@
 }
 .wysiwyg-content .ProseMirror .raw-inline-edit:focus-visible,
 .wysiwyg-content .ProseMirror .raw-inline-input:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 1px;
+  background: color-mix(in srgb, var(--ring) 10%, transparent);
 }
 .wysiwyg-content .ProseMirror .raw-inline-input {
   box-sizing: border-box;
@@ -556,8 +554,7 @@
   white-space: pre;
 }
 .wysiwyg-content .ProseMirror [data-type="raw-inline"].ProseMirror-selectednode {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  background: color-mix(in srgb, var(--ring) 12%, transparent);
 }
 .wysiwyg-content .ProseMirror [data-type="raw-inline"] .raw-inline-edit {
   position: absolute;
@@ -600,8 +597,7 @@
   text-decoration-style: wavy;
 }
 .wysiwyg-content .ProseMirror .wysiwyg-project-intelligence:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  background: color-mix(in srgb, var(--ring) 10%, transparent);
 }
 .wysiwyg-content .ProseMirror .wysiwyg-proofreading {
   cursor: pointer;
@@ -629,8 +625,7 @@
   background: color-mix(in srgb, var(--accent) 72%, transparent);
 }
 .wysiwyg-content .ProseMirror .wysiwyg-proofreading:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 1px;
+  background: color-mix(in srgb, var(--ring) 10%, transparent);
 }
 
 @theme inline {
@@ -737,8 +732,7 @@
   button:focus-visible,
   [role="button"]:focus-visible,
   [role="menuitem"]:focus-visible {
-    outline: 1px solid var(--ring);
-    outline-offset: 2px;
+    background: color-mix(in srgb, var(--ring) 10%, transparent);
   }
   input,
   textarea,
@@ -1732,8 +1726,7 @@ body[data-tour-active] [data-tour-hide] {
 .wysiwyg-content .ProseMirror [data-type="math-display"].ProseMirror-selectednode,
 .wysiwyg-content .ProseMirror [data-type="footnote"].ProseMirror-selectednode,
 .wysiwyg-content .ProseMirror [data-type="figure"].ProseMirror-selectednode {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  background: color-mix(in srgb, var(--ring) 12%, transparent);
   border-radius: 0.25rem;
 }
 .wysiwyg-content .ProseMirror [data-type="footnote"] {
@@ -1903,8 +1896,7 @@ body[data-tour-active] [data-tour-hide] {
 .wysiwyg-content .ProseMirror .math-input:focus-visible,
 .wysiwyg-content .ProseMirror .footnote-input:focus-visible,
 .wysiwyg-content .ProseMirror .theorem-title-input:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 1px;
+  background: color-mix(in srgb, var(--ring) 10%, transparent);
 }
 .wysiwyg-content .ProseMirror [data-type="figure-caption"],
 .wysiwyg-content .ProseMirror [data-type="table-caption"] {
@@ -1960,3 +1952,19 @@ body[data-tour-active] [data-tour-hide] {
   padding: 0 0.15em;
 }
 /* ---- end visual editor native LaTeX nodes ---- */
+
+*,
+*::before,
+*::after {
+  outline: none !important;
+}
+:focus,
+:focus-visible,
+:focus-within {
+  outline: none !important;
+}
+:focus,
+:focus-visible {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}

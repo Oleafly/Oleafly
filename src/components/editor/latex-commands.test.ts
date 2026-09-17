@@ -1,7 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Editor } from "@tiptap/core";
-import { createWysiwygExtensions, serializeLatexBody } from "@oleafly/wysiwyg";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const controller = vi.hoisted(() => ({
   insertEnvironment: vi.fn(),
@@ -11,13 +9,6 @@ const controller = vi.hoisted(() => ({
 
 vi.mock("@/components/editor/cm/controller", () => controller);
 
-import {
-  setWysiwygDocumentContext,
-  setWysiwygEditor,
-  setWysiwygInsertions,
-  setWysiwygVisible,
-} from "@/components/editor/wysiwyg/controller";
-import { visualInsertions } from "@/components/editor/wysiwyg/insert";
 import { useFigureDialogStore } from "@/store/figure-dialog";
 import { useFilesStore } from "@/store/files";
 import {
@@ -49,117 +40,71 @@ function headingLevel(cmd: string) {
   return level;
 }
 
-let editors: Editor[] = [];
-
-function activateVisualEditor(content = "<p>Hello</p>"): Editor {
-  const element = document.createElement("div");
-  document.body.append(element);
-  const editor = new Editor({
-    element,
-    extensions: createWysiwygExtensions(),
-    content,
-    editorProps: { handleScrollToSelection: () => true },
-  });
-  editors.push(editor);
-  editor.commands.setTextSelection(6);
-  setWysiwygEditor(editor as never);
-  setWysiwygInsertions(visualInsertions);
-  setWysiwygVisible(true);
-  return editor;
-}
-
-function latexOf(editor: Editor): string {
-  return serializeLatexBody(editor.getJSON());
-}
-
-describe("latex-commands wysiwyg native routing", () => {
+describe("latex-commands", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    setWysiwygEditor(null);
-    setWysiwygInsertions(null);
-    setWysiwygVisible(false);
-    setWysiwygDocumentContext(null);
-    useFigureDialogStore.setState({ open: false });
+    useFigureDialogStore.setState({ open: false, edit: null });
     useFilesStore.setState({ mainDoc: "main.tex" } as never);
   });
 
-  afterEach(() => {
-    for (const editor of editors) editor.destroy();
-    editors = [];
-    document.body.replaceChildren();
-  });
-
-  it("falls back to the LaTeX text path when wysiwyg is not active", () => {
+  it("writes LaTeX into the document for every formatting command", () => {
     insertBold();
     expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\textbf{", "}", "text");
-    insertHeading(headingLevel("part"));
-    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\part{", "}\n", "Part Title");
+    insertItalic();
+    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\textit{", "}", "text");
+    insertCode();
+    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\texttt{", "}", "text");
+    insertUnderline();
+    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\underline{", "}", "text");
+    insertFootnote();
+    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\footnote{", "}", "note text");
+    insertRef();
+    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\ref{", "}", "label");
+  });
+
+  it("writes every sectioning command as source", () => {
+    for (const cmd of ["part", "chapter", "section", "subsection", "subsubsection", "paragraph", "subparagraph"]) {
+      const level = headingLevel(cmd);
+      insertHeading(level);
+      expect(controller.wrapSelectionOrPlaceholder).toHaveBeenLastCalledWith(
+        `\\${cmd}{`,
+        "}\n",
+        level.placeholder,
+      );
+    }
+  });
+
+  it("puts the caret inside the first placeholder of a template", () => {
+    insertLink();
+    expect(controller.insertTemplate).toHaveBeenLastCalledWith("\\href{url}{link text}", 6, 9);
     insertFraction();
     expect(controller.insertTemplate).toHaveBeenLastCalledWith("\\frac{numerator}{denominator}", 6, 15);
   });
 
-  it("toggles the native bold/italic/code marks when wysiwyg is active", () => {
-    const editor = activateVisualEditor();
-    editor.commands.setTextSelection({ from: 1, to: 6 });
-    insertBold();
-    insertItalic();
-    expect(latexOf(editor)).toBe("\\textbf{\\textit{Hello}}\n");
-    insertCode();
-    expect(latexOf(editor)).toBe("\\texttt{Hello}\n");
-    expect(controller.wrapSelectionOrPlaceholder).not.toHaveBeenCalled();
-  });
-
-  it("sets every sectioning command as a native heading and toggles it back off", () => {
-    const editor = activateVisualEditor();
-    for (const cmd of ["part", "chapter", "section", "subsection", "subsubsection", "paragraph", "subparagraph"]) {
-      insertHeading(headingLevel(cmd));
-      expect(latexOf(editor)).toBe(`\\${cmd}{Hello}\n`);
-    }
-    insertHeading(headingLevel("subparagraph"));
-    expect(latexOf(editor)).toBe("Hello\n");
-    expect(controller.wrapSelectionOrPlaceholder).not.toHaveBeenCalled();
-  });
-
-  it("switches a part heading to a section without going through raw text", () => {
-    const editor = activateVisualEditor("<h1 data-command=\"part\">Hello</h1>");
-    insertHeading(headingLevel("section"));
-    expect(latexOf(editor)).toBe("\\section{Hello}\n");
-  });
-
-  it("toggles native lists and blockquote", () => {
-    const editor = activateVisualEditor();
-    insertItemize();
-    expect(latexOf(editor)).toContain("\\begin{itemize}");
-    insertItemize();
-    insertEnumerate();
-    expect(latexOf(editor)).toContain("\\begin{enumerate}");
-    insertEnumerate();
-    insertBlockquote();
-    expect(latexOf(editor)).toContain("\\begin{quote}");
-    expect(controller.insertEnvironment).not.toHaveBeenCalled();
-  });
-
-  it("routes wrap and template commands through the visual inserter", () => {
-    activateVisualEditor();
-    insertUnderline();
-    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenLastCalledWith("\\underline{", "}", "text");
-    insertFootnote();
-    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenLastCalledWith("\\footnote{", "}", "note text");
-    insertRef();
-    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenLastCalledWith("\\ref{", "}", "label");
-    insertLink();
-    expect(controller.insertTemplate).toHaveBeenLastCalledWith("\\href{url}{link text}", 6, 9);
-    insertFraction();
-    expect(controller.insertTemplate).toHaveBeenLastCalledWith("$\\frac{numerator}{denominator}$", 0, 0);
+  it("inserts list and math environments as source", () => {
     insertAlign();
     expect(controller.insertEnvironment).toHaveBeenLastCalledWith("align");
     insertEquation();
     expect(controller.insertEnvironment).toHaveBeenLastCalledWith("equation");
+    insertBlockquote();
+    expect(controller.insertEnvironment).toHaveBeenLastCalledWith("quote");
+
+    insertItemize();
+    let [template, start, end] = controller.insertTemplate.mock.lastCall as [string, number, number];
+    expect(template).toContain("\\begin{itemize}");
+    expect(template.slice(0, start)).toMatch(/\\item $/u);
+    expect(end).toBe(start);
+
+    insertEnumerate();
+    [template, start, end] = controller.insertTemplate.mock.lastCall as [string, number, number];
+    expect(template).toContain("\\begin{enumerate}");
+    expect(template.slice(0, start)).toMatch(/\\item $/u);
   });
 
   it("opens the figure dialog from the toolbar command and keeps the placeholder snippet", () => {
     insertFigure();
     expect(useFigureDialogStore.getState().open).toBe(true);
+    expect(useFigureDialogStore.getState().edit).toBeNull();
     expect(controller.insertTemplate).not.toHaveBeenCalled();
     insertFigurePlaceholder();
     const [template, start, end] = controller.insertTemplate.mock.lastCall as [string, number, number];
@@ -184,31 +129,12 @@ describe("latex-commands wysiwyg native routing", () => {
     expect(bare.selStart).toBe(bare.template.length);
   });
 
-  it("inserts dialog figures as snippets in Source mode and as nodes in Visual mode", () => {
+  it("rewrites the dialog figure path relative to the main document", () => {
     useFilesStore.setState({ mainDoc: "src/main.tex" } as never);
     insertFigureFromDialog({ path: "figures/plot.png", width: "\\linewidth", caption: "Growth", label: "fig:plot" });
     const [template] = controller.insertTemplate.mock.lastCall as [string, number, number];
     expect(template).toContain("\\includegraphics[width=\\linewidth]{../figures/plot.png}");
     expect(template).toContain("\\label{fig:plot}");
-
-    const editor = activateVisualEditor();
-    insertFigureFromDialog({ path: "src/figures/b.png", width: null, caption: null, label: null });
-    expect(latexOf(editor)).toBe(
-      "Hello\n\n\\begin{figure}[htbp]\n    \\centering\n    \\includegraphics{figures/b.png}\n\\end{figure}\n",
-    );
-    expect(controller.insertTemplate).toHaveBeenCalledTimes(1);
-  });
-
-  it("inserts native tables in Visual mode using booktabs only when the preamble loads it", () => {
-    const editor = activateVisualEditor();
-    insertTable(2, 3);
-    expect(latexOf(editor)).toContain("\\begin{tabular}{lll}");
-    expect(latexOf(editor)).toContain("\\hline");
-    expect(editor.state.selection.$from.parent.type.name).toBe("tableCaption");
-    setWysiwygDocumentContext({ theoremEnvironments: [], booktabs: true });
-    insertTable(1, 1);
-    expect(latexOf(editor)).toContain("\\toprule");
-    expect(controller.insertTemplate).not.toHaveBeenCalled();
   });
 
   it("generates every 1..8 by 1..10 toolbar table without changing its dimensions", () => {

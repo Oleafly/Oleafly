@@ -630,6 +630,10 @@
       "tabSize": {
         "description": "Espacios que se insertan por nivel de sangría y ancho con el que se dibuja un tabulador.",
         "label": "Tamaño de la tabulación"
+      },
+      "mathPreview": {
+        "description": "Muestra la fórmula compuesta encima de aquella en la que está el cursor.",
+        "label": "Vista previa de fórmulas"
       }
     },
     "files": {

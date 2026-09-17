@@ -97,34 +97,70 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
 
 ## Visual editor
 
-Inline and display math render through KaTeX. Click any formula to edit its
-source in place; Enter (or Ctrl+Enter for display math) commits, Escape
-cancels. Footnotes show as a marker that opens a small editor. Theorem-like
-environments, including ones declared with `\newtheorem` in the preamble,
-render with their name and optional title. Every sectioning command from
-`\part` to `\subparagraph` is a heading, and `\textcolor` and `\colorbox`
-show their colours.
+Visual mode is the same editor with a different set of decorations. The
+`.tex` file is still the only copy of your work. The toolbar toggle switches
+between Code and Visual, and the choice is remembered per project. Line
+numbers, folding, find and replace, spelling, grammar and the compile
+diagnostics all keep working.
 
-Figures render the image from the project (with or without an extension, as
-LaTeX resolves it) with width, label and caption controls. Tables render as
-editable grids; a toolbar above the table adds or removes rows and columns,
-sets column alignment, switches between no borders, horizontal rules, all
-borders and booktabs rules, places the caption above or below, sets the
-label, toggles the header row and merges or splits cells. Merged cells
-serialize as `\multicolumn`.
+Markup is hidden while you read and comes back while you write. Put the
+cursor inside a heading, an equation or a command and its source appears on
+that line, with syntax colours. Move away and the rendered form returns.
+Everything below behaves that way, so there is no separate edit step and
+nothing to commit.
 
-Pasting formatted text from a browser or an office suite converts it to bold,
-italic, lists and tables. Pasting text that already contains LaTeX inserts it
-as native nodes. Pasting or dropping an image file saves it into the project
+What renders:
+
+- Sectioning commands from `\part` to `\subparagraph` as headings, sized by
+  level.
+- Inline math and display math through KaTeX. Display environments such as
+  `equation`, `align`, `gather` and `multline` become centred blocks.
+- Footnotes and endnotes as a small grey marker.
+- Theorem-like environments, including ones declared with `\newtheorem`,
+  with the name in bold, the optional title in parentheses and a rule across
+  the line. `\theoremstyle` decides whether the body is italic.
+- `\textcolor` and `\colorbox` in their colours, named, HTML, `rgb`, `gray`
+  and `xcolor` mixes alike.
+- `figure` and `table` environments as a panel. The `\centering` line is
+  hidden, the caption shows as its text and the label as a small chip.
+- `\includegraphics` as the image itself, resolved from the project the way
+  LaTeX resolves it. An edit button opens the figure dialog to swap the image
+  or change its width.
+- `tabular` as a grid you can type into. Select a cell and a toolbar appears
+  above the table for rows, columns, alignment, border styles including
+  booktabs, the caption, the label and merged cells.
+- Lists with their markers, quotes with a left border, `verbatim` and
+  `lstlisting` as monospace panels, and `abstract` with its heading.
+- Citations, references and labels as chips, links underlined, `\LaTeX` and
+  `\TeX` as their logos, `~` as a space you cannot break, and the usual
+  character and spacing commands as the characters they produce.
+
+Everything before `\begin{document}` collapses into a "Show document
+preamble" bar at the top. Click it to expand the preamble in place, click
+again to collapse it. `\end{document}` becomes a centred "End of document"
+bar. Both show their source when the cursor is on them, and a file opens with
+the cursor after the preamble.
+
+Above the editor, a breadcrumb bar names the file and the sections the cursor
+sits in, for example `main.tex > Widgets > Rendering > Inline and display
+math`. Click a crumb to jump to that heading. The bar is there in Code mode
+too.
+
+In both modes, the math preview shows the rendered result of the equation the
+cursor is in. Its menu can hide the preview until you leave the equation, or
+switch it off entirely. Settings > Appearance > Editor > Math preview brings
+it back.
+
+Pasting formatted text from a browser or an office suite converts it to
+LaTeX. Pasting or dropping an image file saves it into the project
 (`figures/` when that folder exists, otherwise next to the main document) and
-inserts a figure with the caption focused. The same works in the source
-editor, which inserts the figure snippet instead.
+inserts a figure snippet.
 
-Insert figure opens a dialog in both editors: choose an image from the
-project or import one from disk, pick a width, and decide whether to add a
-caption and a label. Citations, references, labels and unknown commands stay
-as raw source chips, and so do `\multirow`, `\cline`, `tabular*`, `tabularx`,
-`figure*`, subfigures and `\caption[short]`, which round-trip untouched.
+Every toolbar action writes ordinary LaTeX into the document, in Visual mode
+exactly as in Code mode. Insert figure opens a dialog to choose an image from
+the project or import one from disk, then set its width, caption and label.
+
+Markdown files keep the rich-text visual editor they have always had.
 
 ## LaTeX controls at a glance
 

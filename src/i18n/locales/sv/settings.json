@@ -625,6 +625,10 @@
       "tabSize": {
         "description": "Antal mellanslag per indragsnivå, och bredden en tabb ritas med.",
         "label": "Tabbstorlek"
+      },
+      "mathPreview": {
+        "description": "Visa den renderade ekvationen ovanför den som markören står i.",
+        "label": "Förhandsvisning av matematik"
       }
     },
     "files": {

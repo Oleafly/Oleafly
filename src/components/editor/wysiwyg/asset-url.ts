@@ -10,10 +10,15 @@ export interface AssetLookupContext {
   mainDoc: string;
 }
 
+export interface ResolvedVisualAsset {
+  url: string;
+  path: string;
+}
+
 interface ResolverCache {
   projectId: string | null;
   tree: readonly FileEntry[] | null;
-  entries: Map<string, Promise<string | null>>;
+  entries: Map<string, Promise<ResolvedVisualAsset | null>>;
 }
 
 const cache: ResolverCache = { projectId: null, tree: null, entries: new Map() };
@@ -59,7 +64,7 @@ function syncCache(projectId: string, tree: readonly FileEntry[]): void {
   cache.entries.clear();
 }
 
-export function resolveVisualAssetUrl(path: string): Promise<string | null> {
+export function resolveVisualAsset(path: string): Promise<ResolvedVisualAsset | null> {
   const state = useFilesStore.getState();
   const projectId = state.projectId;
   if (!projectId) return Promise.resolve(null);
@@ -69,7 +74,15 @@ export function resolveVisualAssetUrl(path: string): Promise<string | null> {
   if (cached) return cached;
   const known = new Set(state.tree.filter((entry) => !entry.is_dir).map((entry) => entry.path));
   const candidate = candidateAssetPaths(path, state).find((option) => known.has(option)) ?? null;
-  const resolved = candidate ? loadAssetThumbnail(projectId, candidate) : Promise.resolve(null);
+  const resolved = candidate
+    ? loadAssetThumbnail(projectId, candidate).then((url) =>
+        url === null ? null : { url, path: candidate },
+      )
+    : Promise.resolve(null);
   cache.entries.set(key, resolved);
   return resolved;
+}
+
+export function resolveVisualAssetUrl(path: string): Promise<string | null> {
+  return resolveVisualAsset(path).then((asset) => asset?.url ?? null);
 }

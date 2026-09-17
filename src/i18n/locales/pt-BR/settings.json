@@ -630,6 +630,10 @@
       "tabSize": {
         "description": "Espaços inseridos por nível de recuo e largura com que uma tabulação é desenhada.",
         "label": "Tamanho da tabulação"
+      },
+      "mathPreview": {
+        "description": "Mostra a equação renderizada acima daquela em que o cursor está.",
+        "label": "Prévia da matemática"
       }
     },
     "files": {

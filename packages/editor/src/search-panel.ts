@@ -439,8 +439,7 @@ const searchTheme = EditorView.theme({
     color: "var(--accent-foreground, #111)",
   },
   ".cm-vs-btn:focus-visible": {
-    outline: "2px solid var(--ring, #2563eb)",
-    outlineOffset: "1px",
+    background: "color-mix(in srgb, var(--ring, #2563eb) 12%, transparent)",
   },
   ".cm-vs-btn.active": {
     background: "color-mix(in srgb, var(--primary, #2563eb) 20%, transparent)",

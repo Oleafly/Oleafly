@@ -625,6 +625,10 @@
       "tabSize": {
         "description": "Sisennystasoa kohden lisättävät välilyönnit ja leveys, jolla sarkain piirretään.",
         "label": "Sarkaimen koko"
+      },
+      "mathPreview": {
+        "description": "Näytä piirretty kaava sen kaavan yläpuolella, jossa kohdistin on.",
+        "label": "Matematiikan esikatselu"
       }
     },
     "files": {

@@ -399,7 +399,7 @@ export function Library() {
               return (
                 <Item key={c.hex} onClick={() => setProjectColor(p.id, c.hex)}>
                   <span
-                    className="mr-2 size-3.5 shrink-0 rounded-full ring-1 ring-black/10"
+                    className="mr-2 size-3.5 shrink-0 rounded-full border border-black/10"
                     style={{ background: c.hex }}
                   />
                   {colorLabels[c.name] ?? c.name}
@@ -814,7 +814,7 @@ export function Library() {
                 >
                   <span
                     aria-hidden="true"
-                    className="relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-inset ring-black/10 shadow-sm"
+                    className="relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] border border-black/10 shadow-sm"
                     style={{ backgroundColor: color }}
                   >
                     {hoverPreview &&
@@ -1253,7 +1253,7 @@ export function Library() {
             closeOnClick={false}
             className={cn(
               HOME_DOCK_GLASS_SURFACE,
-              "relative flex w-96 flex-col gap-3 overflow-hidden rounded-2xl !border-white/25 !bg-background/70 p-4 ring-1 ring-inset ring-white/10 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:!border-white/15 dark:!bg-background/65 [&>*]:relative [&>*]:z-[1]",
+              "relative flex w-96 flex-col gap-3 overflow-hidden rounded-2xl !border-white/25 !bg-background/70 p-4 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:!border-white/15 dark:!bg-background/65 [&>*]:relative [&>*]:z-[1]",
             )}
             triggerClassName={cn(
               HOME_DOCK_GLASS_SURFACE,

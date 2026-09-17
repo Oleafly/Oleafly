@@ -775,6 +775,9 @@ interface SettingsState {
   /** Pin the enclosing sections and environments to the top while scrolling. */
   editorStickyScroll: boolean;
   setEditorStickyScroll: (v: boolean) => void;
+  /** Show the rendered result of the equation the cursor is in. */
+  editorMathPreview: boolean;
+  setEditorMathPreview: (v: boolean) => void;
   spellcheck: boolean;
   toggleSpellcheck: () => void;
   harper: boolean;
@@ -975,6 +978,7 @@ const PREF_DEFAULTS = {
   editorGhostCompletion: true,
   editorNonBlinkingCursor: false,
   editorStickyScroll: true,
+  editorMathPreview: true,
   spellcheck: true,
   harper: true,
   grammarDialect: "american" as GrammarDialect,
@@ -1081,6 +1085,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorNonBlinkingCursor: (v) => {
     saveLs("oleafly.editor.solidCursor", v ? "1" : "0");
     set({ editorNonBlinkingCursor: v });
+  },
+  editorMathPreview: ls("oleafly.editor.mathPreview", "1") !== "0",
+  setEditorMathPreview: (v) => {
+    saveLs("oleafly.editor.mathPreview", v ? "1" : "0");
+    set({ editorMathPreview: v });
   },
   spellcheck: ls("oleafly.spellcheck", "1") !== "0",
   toggleSpellcheck: () => {
@@ -1590,6 +1599,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs(
       "oleafly.editor.stickyScroll",
       PREF_DEFAULTS.editorStickyScroll ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.editor.mathPreview",
+      PREF_DEFAULTS.editorMathPreview ? "1" : "0",
     );
     saveLs("oleafly.terminal.fontSize", String(PREF_DEFAULTS.terminalFontSize));
     saveLs("oleafly.terminal.fontFamily", PREF_DEFAULTS.terminalFontFamily);

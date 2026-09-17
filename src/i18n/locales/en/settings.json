@@ -625,6 +625,10 @@
       "tabSize": {
         "description": "Spaces inserted per indentation level, and the width a tab renders at.",
         "label": "Tab size"
+      },
+      "mathPreview": {
+        "description": "Show the rendered equation above the one the cursor is in.",
+        "label": "Math preview"
       }
     },
     "files": {

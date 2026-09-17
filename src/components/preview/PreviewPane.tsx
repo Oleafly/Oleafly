@@ -2710,7 +2710,7 @@ export function DocumentStartupProgress({
       className={cn(
         "block w-full text-left text-foreground",
         compact
-          ? "max-w-[22rem] rounded-lg bg-background/75 px-3 py-2.5 shadow-sm ring-1 ring-border/40 backdrop-blur-sm"
+          ? "max-w-[22rem] rounded-lg bg-background/75 px-3 py-2.5 shadow-sm border border-border/40 backdrop-blur-sm"
           : "max-w-lg",
       )}
       aria-live="polite"

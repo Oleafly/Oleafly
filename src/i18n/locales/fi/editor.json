@@ -39,7 +39,10 @@
     "insertPlaceholder": "Lisää paikanvaraaja",
     "cancel": "Peruuta",
     "insert": "Lisää kuva",
-    "selectImage": "Valitse lisättävä kuva."
+    "selectImage": "Valitse lisättävä kuva.",
+    "editTitle": "Muokkaa kuvaa",
+    "editDescription": "Vaihda kuva tai muuta sen leveyttä. Kuvateksti ja nimike säilyvät ennallaan.",
+    "save": "Tallenna kuva"
   },
   "tableToolbar": {
     "label": "Taulukkotyökalut",
@@ -622,7 +625,14 @@
       "unsafeOutput": "Turvallista esikatselua ei voitu tuottaa.",
       "unsupported": "Tämä lauseke on puutteellinen tai sitä ei tueta.",
       "missingClosing": "Sulkeva {{delimiter}} puuttuu.",
-      "notRendered": "Tätä lauseketta ei voitu piirtää."
+      "notRendered": "Tätä lauseketta ei voitu piirtää.",
+      "preview": {
+        "moreOptions": "Lisää vaihtoehtoja",
+        "hide": "Piilota",
+        "hideDescription": "Piilottaa esikatselun, kunnes poistut tästä kaavasta.",
+        "disable": "Poista käytöstä",
+        "disableDescription": "Poistaa kaavojen esikatselun käytöstä. Voit ottaa sen takaisin käyttöön asetuksissa."
+      }
     },
     "latex": {
       "command": {
@@ -905,6 +915,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Tuntematon lähdeviitteen tyyppi @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Ladataan kuvaa",
+        "loadFailed": "Tätä kuvaa ei voitu ladata.",
+        "edit": "Muokkaa kuvaa"
+      },
+      "preamble": {
+        "show": "Näytä dokumentin esittelyosa",
+        "hide": "Piilota dokumentin esittelyosa"
+      },
+      "endOfDocument": "Dokumentin loppu",
+      "abstract": "Tiivistelmä",
+      "keywordsLabel": "Avainsanat",
+      "theorem": {
+        "theorem": "Lause",
+        "lemma": "Lemma",
+        "corollary": "Seurauslause",
+        "proof": "Todistus"
+      },
+      "footnote": "Alaviite",
+      "endnote": "Loppuviite",
+      "citation": "Viittaus",
+      "reference": "Viite",
+      "label": "Nimike",
+      "includedFile": "Sisällytetty tiedosto",
+      "table": {
+        "captionPlacement": "Taulukkoteksti",
+        "captionAbove": "Taulukkoteksti yläpuolella",
+        "captionBelow": "Taulukkoteksti alapuolella",
+        "noCaption": "Ei taulukkotekstiä",
+        "captionNeedsTable": "Taulukkoteksti vaatii table-ympäristön tabular-ympäristön ympärille.",
+        "borders": "Viivat",
+        "noBorders": "Ei viivoja",
+        "allBorders": "Kaikki viivat",
+        "booktabs": "booktabs-viivat",
+        "customBorders": "Mukautetut viivat",
+        "alignment": "Tasaus",
+        "alignLeft": "Tasaa vasemmalle",
+        "alignCenter": "Keskitä",
+        "alignRight": "Tasaa oikealle",
+        "alignJustify": "Tasaa molemmat reunat",
+        "selectColumnToAlign": "Valitse sarake, jonka tasausta haluat muuttaa.",
+        "columnWidth": "Sarakkeen leveys",
+        "selectColumnForWidth": "Valitse sarake, jonka leveyttä haluat muuttaa.",
+        "fitToContent": "Sovita sisältöön",
+        "fixedWidth": "Kiinteä leveys",
+        "setColumnWidth": "Aseta sarakkeen leveys",
+        "widthValue": "Leveys",
+        "widthUnit": "Yksikkö",
+        "widthPercentHelp": "Prosenttiosuus tekstin leveydestä.",
+        "widthCustom": "Mukautettu",
+        "widthCustomHelp": "Mikä tahansa LaTeX-pituus, esimerkiksi 4cm tai 0.4\\linewidth.",
+        "widthNeedsArray": "Kiinteät leveydet vaativat array-paketin esittelyosaan.",
+        "columnWidthIndicator": "Sarakkeen leveys",
+        "mergeCells": "Yhdistä solut",
+        "unmergeCells": "Jaa solut",
+        "selectCellsToMerge": "Valitse yhdistettävät solut.",
+        "deleteRowOrColumn": "Poista",
+        "selectRowOrColumnToDelete": "Valitse poistettava rivi tai sarake.",
+        "insert": "Lisää",
+        "insertRowsAbove": "Lisää rivi yläpuolelle",
+        "insertRowsBelow": "Lisää rivi alapuolelle",
+        "insertColumnsLeft": "Lisää sarake vasemmalle",
+        "insertColumnsRight": "Lisää sarake oikealle",
+        "removeTable": "Poista taulukko",
+        "help": "Ohje",
+        "helpTitle": "Taulukoiden muokkaaminen",
+        "helpIntro": "Taulukko on LaTeX-lähdekoodiasi. Jokainen muokkaus täällä kirjoittaa tiedoston tabular-ympäristön uudelleen.",
+        "helpSupportedTitle": "Mitä ruudukko osaa",
+        "helpSupportedColumns": "Sarakkeiden tasaus ja kiinteät leveydet sarakemäärittelyn kautta.",
+        "helpSupportedRules": "Vaaka- ja pystyviivat, myös booktabs.",
+        "helpSupportedMerged": "Yhdistetyt solut, jotka on kirjoitettu komennolla \\multicolumn.",
+        "helpSupportedCaption": "Ympäröivän table-ympäristön taulukkoteksti ja nimike.",
+        "helpUnsupported": "Kaikki, mitä ruudukko ei pysty esittämään, jää lähdekoodiksi, ja taulukko näytetään sen sijaan vain luettavana.",
+        "helpShortcutsTitle": "Näppäimistö",
+        "shortcutMove": "Nuolinäppäimet siirtävät solusta toiseen.",
+        "shortcutExtend": "Shift ja nuolinäppäin laajentavat valintaa.",
+        "shortcutNext": "Tab siirtää seuraavaan soluun, Shift+Tab edelliseen.",
+        "shortcutEdit": "Enter aloittaa valitun solun muokkaamisen.",
+        "shortcutCancel": "Escape lopettaa muokkaamisen ja jättää solun valituksi.",
+        "shortcutClear": "Backspace tai Delete tyhjentää valitut solut.",
+        "shortcutUndo": "Kumoaminen ja uudelleen tekeminen toimivat kuten muuallakin editorissa.",
+        "ok": "Valmis",
+        "cancel": "Peruuta",
+        "close": "Sulje",
+        "selectRow": "Valitse rivi",
+        "selectColumn": "Valitse sarake",
+        "cellInput": "Solu",
+        "errorTitle": "Tätä taulukkoa ei voitu piirtää",
+        "errorBody": "Tabular-ympäristö käyttää jotain, mitä ruudukko ei vielä osaa näyttää. Muokkaa sitä sen sijaan lähdekoodina.",
+        "viewSource": "Muokkaa lähdekoodina"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Sijainti dokumentissa",
+    "goTo": "Siirry kohteeseen {{title}}",
+    "untitled": "Nimetön"
   }
 }

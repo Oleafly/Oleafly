@@ -39,7 +39,10 @@
     "insertPlaceholder": "Вставити заповнювач",
     "cancel": "Скасувати",
     "insert": "Вставити рисунок",
-    "selectImage": "Виберіть зображення, щоб вставити його."
+    "selectImage": "Виберіть зображення, щоб вставити його.",
+    "editTitle": "Редагувати зображення",
+    "editDescription": "Замініть зображення або змініть його ширину. Підпис і мітка залишаться незмінними.",
+    "save": "Зберегти зображення"
   },
   "tableToolbar": {
     "label": "Інструменти таблиці",
@@ -636,7 +639,14 @@
       "unsafeOutput": "Не вдалося створити безпечний перегляд.",
       "unsupported": "Цей вираз неповний або непідтримуваний.",
       "missingClosing": "Бракує закривного {{delimiter}}.",
-      "notRendered": "Цей вираз не вдалося відтворити."
+      "notRendered": "Цей вираз не вдалося відтворити.",
+      "preview": {
+        "moreOptions": "Більше параметрів",
+        "hide": "Сховати",
+        "hideDescription": "Ховає перегляд, доки ви не вийдете з цієї формули.",
+        "disable": "Вимкнути",
+        "disableDescription": "Вимикає перегляд формул. Знову ввімкнути його можна в Налаштуваннях."
+      }
     },
     "latex": {
       "command": {
@@ -923,6 +933,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Невідомий тип запису бібліографії @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Завантаження зображення",
+        "loadFailed": "Це зображення не вдалося завантажити.",
+        "edit": "Редагувати рисунок"
+      },
+      "preamble": {
+        "show": "Показати преамбулу документа",
+        "hide": "Сховати преамбулу документа"
+      },
+      "endOfDocument": "Кінець документа",
+      "abstract": "Анотація",
+      "keywordsLabel": "Ключові слова",
+      "theorem": {
+        "theorem": "Теорема",
+        "lemma": "Лема",
+        "corollary": "Наслідок",
+        "proof": "Доведення"
+      },
+      "footnote": "Виноска",
+      "endnote": "Кінцева виноска",
+      "citation": "Цитування",
+      "reference": "Посилання",
+      "label": "Мітка",
+      "includedFile": "Включений файл",
+      "table": {
+        "captionPlacement": "Підпис",
+        "captionAbove": "Підпис зверху",
+        "captionBelow": "Підпис знизу",
+        "noCaption": "Без підпису",
+        "captionNeedsTable": "Для підпису потрібне середовище table навколо tabular.",
+        "borders": "Лінії",
+        "noBorders": "Без ліній",
+        "allBorders": "Усі лінії",
+        "booktabs": "Лінійки booktabs",
+        "customBorders": "Власні лінії",
+        "alignment": "Вирівнювання",
+        "alignLeft": "Вирівняти ліворуч",
+        "alignCenter": "Вирівняти по центру",
+        "alignRight": "Вирівняти праворуч",
+        "alignJustify": "За шириною",
+        "selectColumnToAlign": "Виберіть колонку, щоб змінити її вирівнювання.",
+        "columnWidth": "Ширина колонки",
+        "selectColumnForWidth": "Виберіть колонку, щоб змінити її ширину.",
+        "fitToContent": "За вмістом",
+        "fixedWidth": "Фіксована ширина",
+        "setColumnWidth": "Задати ширину колонки",
+        "widthValue": "Ширина",
+        "widthUnit": "Одиниця",
+        "widthPercentHelp": "Відсоток від ширини тексту.",
+        "widthCustom": "Власна",
+        "widthCustomHelp": "Будь-яка довжина LaTeX, наприклад 4cm або 0.4\\linewidth.",
+        "widthNeedsArray": "Для фіксованої ширини потрібен пакунок array у преамбулі.",
+        "columnWidthIndicator": "Ширина колонки",
+        "mergeCells": "Об’єднати комірки",
+        "unmergeCells": "Розділити комірки",
+        "selectCellsToMerge": "Виберіть комірки для об’єднання.",
+        "deleteRowOrColumn": "Видалити",
+        "selectRowOrColumnToDelete": "Виберіть рядок або колонку для видалення.",
+        "insert": "Вставити",
+        "insertRowsAbove": "Вставити рядок вище",
+        "insertRowsBelow": "Вставити рядок нижче",
+        "insertColumnsLeft": "Вставити колонку ліворуч",
+        "insertColumnsRight": "Вставити колонку праворуч",
+        "removeTable": "Вилучити таблицю",
+        "help": "Довідка",
+        "helpTitle": "Редагування таблиць",
+        "helpIntro": "Ця таблиця і є ваш код LaTeX. Кожна зміна тут переписує tabular у файлі.",
+        "helpSupportedTitle": "Що вміє сітка",
+        "helpSupportedColumns": "Вирівнювання колонок і фіксована ширина через специфікацію колонок.",
+        "helpSupportedRules": "Горизонтальні та вертикальні лінійки, зокрема booktabs.",
+        "helpSupportedMerged": "Об’єднані комірки, записані як \\multicolumn.",
+        "helpSupportedCaption": "Підпис і мітка зовнішнього середовища table.",
+        "helpUnsupported": "Усе, що сітка не може показати, лишається кодом, а таблиця показується лише для читання.",
+        "helpShortcutsTitle": "Клавіатура",
+        "shortcutMove": "Стрілки переміщують між комірками.",
+        "shortcutExtend": "Shift зі стрілкою розширює виділення.",
+        "shortcutNext": "Tab переходить до наступної комірки, Shift+Tab до попередньої.",
+        "shortcutEdit": "Enter починає редагування вибраної комірки.",
+        "shortcutCancel": "Escape завершує редагування і залишає комірку вибраною.",
+        "shortcutClear": "Backspace або Delete очищає вибрані комірки.",
+        "shortcutUndo": "Скасування та повторення працюють так само, як в іншій частині редактора.",
+        "ok": "Готово",
+        "cancel": "Скасувати",
+        "close": "Закрити",
+        "selectRow": "Вибрати рядок",
+        "selectColumn": "Вибрати колонку",
+        "cellInput": "Комірка",
+        "errorTitle": "Цю таблицю не вдалося відтворити",
+        "errorBody": "У tabular є те, чого сітка поки не вміє показувати. Редагуйте його як код.",
+        "viewSource": "Редагувати як код"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Розташування в документі",
+    "goTo": "Перейти до {{title}}",
+    "untitled": "Без назви"
   }
 }

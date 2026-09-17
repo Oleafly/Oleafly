@@ -39,7 +39,10 @@
     "insertPlaceholder": "插入佔位圖",
     "cancel": "取消",
     "insert": "插入圖片",
-    "selectImage": "請選擇要插入的影像。"
+    "selectImage": "請選擇要插入的影像。",
+    "editTitle": "編輯影像",
+    "editDescription": "更換影像或調整寬度。圖說與標籤維持不變。",
+    "save": "儲存影像"
   },
   "tableToolbar": {
     "label": "表格工具",
@@ -615,7 +618,14 @@
       "unsafeOutput": "無法產生安全的預覽。",
       "unsupported": "這個運算式不完整或不受支援。",
       "missingClosing": "缺少結尾的 {{delimiter}}。",
-      "notRendered": "無法顯示這個運算式。"
+      "notRendered": "無法顯示這個運算式。",
+      "preview": {
+        "moreOptions": "更多選項",
+        "hide": "隱藏",
+        "hideDescription": "在離開這個公式之前隱藏預覽。",
+        "disable": "停用",
+        "disableDescription": "關閉公式預覽。可以在設定中重新開啟。"
+      }
     },
     "latex": {
       "command": {
@@ -896,6 +906,104 @@
         "source": "BibTeX",
         "unknownEntryType": "未知的參考文獻條目類型 @{{type}}。"
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "載入影像中",
+        "loadFailed": "無法載入這張影像。",
+        "edit": "編輯圖片"
+      },
+      "preamble": {
+        "show": "顯示文件序言區",
+        "hide": "隱藏文件序言區"
+      },
+      "endOfDocument": "文件結尾",
+      "abstract": "摘要",
+      "keywordsLabel": "關鍵詞",
+      "theorem": {
+        "theorem": "定理",
+        "lemma": "引理",
+        "corollary": "推論",
+        "proof": "證明"
+      },
+      "footnote": "註腳",
+      "endnote": "尾註",
+      "citation": "引用",
+      "reference": "參照",
+      "label": "標籤",
+      "includedFile": "引入的檔案",
+      "table": {
+        "captionPlacement": "表格說明",
+        "captionAbove": "表格說明在上方",
+        "captionBelow": "表格說明在下方",
+        "noCaption": "無表格說明",
+        "captionNeedsTable": "表格說明需要在 tabular 外面加上 table 環境。",
+        "borders": "框線",
+        "noBorders": "無框線",
+        "allBorders": "全部框線",
+        "booktabs": "booktabs 表線",
+        "customBorders": "自訂框線",
+        "alignment": "對齊方式",
+        "alignLeft": "靠左對齊",
+        "alignCenter": "置中對齊",
+        "alignRight": "靠右對齊",
+        "alignJustify": "左右對齊",
+        "selectColumnToAlign": "請選擇要變更對齊方式的欄。",
+        "columnWidth": "欄寬",
+        "selectColumnForWidth": "請選擇要變更寬度的欄。",
+        "fitToContent": "依內容調整",
+        "fixedWidth": "固定寬度",
+        "setColumnWidth": "設定欄寬",
+        "widthValue": "寬度",
+        "widthUnit": "單位",
+        "widthPercentHelp": "文字寬度的百分比。",
+        "widthCustom": "自訂",
+        "widthCustomHelp": "任何 LaTeX 長度，例如 4cm 或 0.4\\linewidth。",
+        "widthNeedsArray": "固定寬度需要在序言區載入 array 套件。",
+        "columnWidthIndicator": "欄寬",
+        "mergeCells": "合併儲存格",
+        "unmergeCells": "分割儲存格",
+        "selectCellsToMerge": "請選擇要合併的儲存格。",
+        "deleteRowOrColumn": "刪除",
+        "selectRowOrColumnToDelete": "請選擇要刪除的列或欄。",
+        "insert": "插入",
+        "insertRowsAbove": "在上方插入列",
+        "insertRowsBelow": "在下方插入列",
+        "insertColumnsLeft": "在左側插入欄",
+        "insertColumnsRight": "在右側插入欄",
+        "removeTable": "移除表格",
+        "help": "說明",
+        "helpTitle": "編輯表格",
+        "helpIntro": "這個表格就是你的 LaTeX 原始碼。在這裡的每一次編輯，都會改寫檔案中的 tabular。",
+        "helpSupportedTitle": "格線可以處理的部分",
+        "helpSupportedColumns": "透過欄位規格設定的欄對齊方式與固定寬度。",
+        "helpSupportedRules": "橫線與直線，包含 booktabs。",
+        "helpSupportedMerged": "以 \\multicolumn 寫成的合併儲存格。",
+        "helpSupportedCaption": "外層 table 環境的表格說明與標籤。",
+        "helpUnsupported": "格線無法呈現的內容會保留為原始碼，這時表格只會以唯讀方式顯示。",
+        "helpShortcutsTitle": "鍵盤",
+        "shortcutMove": "方向鍵可在儲存格之間移動。",
+        "shortcutExtend": "Shift 加方向鍵可延伸選取範圍。",
+        "shortcutNext": "Tab 移到下一個儲存格，Shift+Tab 移到上一個。",
+        "shortcutEdit": "Enter 開始編輯選取的儲存格。",
+        "shortcutCancel": "Escape 停止編輯，並保持儲存格為選取狀態。",
+        "shortcutClear": "Backspace 或 Delete 可清空選取的儲存格。",
+        "shortcutUndo": "復原與重做的用法和編輯器其他地方相同。",
+        "ok": "完成",
+        "cancel": "取消",
+        "close": "關閉",
+        "selectRow": "選取列",
+        "selectColumn": "選取欄",
+        "cellInput": "儲存格",
+        "errorTitle": "無法顯示這個表格",
+        "errorBody": "這個 tabular 使用了格線還無法顯示的內容。請改用原始碼編輯。",
+        "viewSource": "以原始碼編輯"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "文件中的位置",
+    "goTo": "前往 {{title}}",
+    "untitled": "未命名"
   }
 }

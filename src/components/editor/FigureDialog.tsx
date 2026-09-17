@@ -24,6 +24,7 @@ import {
   suggestedFigureLabel,
 } from "@/components/editor/figure-import";
 import { insertFigureFromDialog, insertFigurePlaceholder } from "@/components/editor/latex-commands";
+import { applyFigureEdit } from "@/components/editor/figure-edit";
 import { resolveVisualAssetUrl } from "@/components/editor/wysiwyg/asset-url";
 
 type WidthChoice = "quarter" | "half" | "threeQuarters" | "full" | "custom";
@@ -68,6 +69,14 @@ export function figureWidthValue(form: Pick<FigureForm, "width" | "customWidth">
   if (form.width !== "custom") return WIDTH_VALUES[form.width];
   const custom = form.customWidth.trim();
   return custom === "" ? null : custom;
+}
+
+export function widthChoiceFor(width: string | null): Pick<FigureForm, "width" | "customWidth"> {
+  if (width === null) return { width: "custom", customWidth: "" };
+  for (const [choice, value] of Object.entries(WIDTH_VALUES)) {
+    if (value === width) return { width: choice as WidthChoice, customWidth: "" };
+  }
+  return { width: "custom", customWidth: width };
 }
 
 function Thumbnail({ path }: Readonly<{ path: string }>) {
@@ -124,7 +133,7 @@ function ImageGrid({
           onClick={() => onChoose(path)}
           className={cn(
             "flex w-full flex-col gap-1 rounded-md border p-2 text-left transition-colors hover:bg-accent",
-            selected === path ? "border-primary ring-1 ring-primary" : "border-border",
+            selected === path ? "border-primary bg-primary/5" : "border-border",
           )}
         >
           <Thumbnail path={path} />
@@ -138,7 +147,12 @@ function ImageGrid({
 function FigureOptions({
   form,
   onChange,
-}: Readonly<{ form: FigureForm; onChange: (patch: Partial<FigureForm>) => void }>) {
+  imageOnly = false,
+}: Readonly<{
+  form: FigureForm;
+  onChange: (patch: Partial<FigureForm>) => void;
+  imageOnly?: boolean;
+}>) {
   const { t } = useTranslation(["common", "editor"]);
   const widthLabels: Record<WidthChoice, string> = {
     quarter: t(($) => $.editor.figureDialog.widthQuarter),
@@ -176,6 +190,7 @@ function FigureOptions({
           />
         )}
       </fieldset>
+      {imageOnly ? null : (
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <label htmlFor="figure-dialog-caption-toggle" className="text-sm">
@@ -198,6 +213,8 @@ function FigureOptions({
           />
         )}
       </div>
+      )}
+      {imageOnly ? null : (
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <label htmlFor="figure-dialog-label-toggle" className="text-sm">
@@ -221,6 +238,7 @@ function FigureOptions({
           />
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -237,6 +255,7 @@ async function pickImageSource(filterName: string): Promise<string | null> {
 export function FigureDialog() {
   const { t } = useTranslation(["common", "editor"]);
   const open = useFigureDialogStore((state) => state.open);
+  const edit = useFigureDialogStore((state) => state.edit);
   const setOpen = useFigureDialogStore((state) => state.setOpen);
   const tree = useFilesStore((state) => state.tree);
   const projectId = useFilesStore((state) => state.projectId);
@@ -250,12 +269,12 @@ export function FigureDialog() {
 
   useEffect(() => {
     if (!open) return;
-    setSelected(null);
-    setForm(INITIAL_FORM);
+    setSelected(edit?.path ?? null);
+    setForm(edit ? { ...INITIAL_FORM, ...widthChoiceFor(edit.width) } : INITIAL_FORM);
     setImporting(false);
     setError(null);
     insertedRef.current = false;
-  }, [open]);
+  }, [open, edit]);
 
   const patch = (changes: Partial<FigureForm>) => setForm((current) => ({ ...current, ...changes }));
 
@@ -288,6 +307,11 @@ export function FigureDialog() {
   const insert = () => {
     if (!selected) return;
     insertedRef.current = true;
+    if (edit) {
+      setOpen(false);
+      applyFigureEdit(edit, { path: selected, width: figureWidthValue(form) });
+      return;
+    }
     setOpen(false);
     insertFigureFromDialog({
       path: selected,
@@ -313,8 +337,14 @@ export function FigureDialog() {
         }}
       >
         <DialogHeader className="border-b px-5 py-4 pr-12">
-          <DialogTitle className="text-sm leading-tight">{t(($) => $.editor.figureDialog.title)}</DialogTitle>
-          <DialogDescription className="text-xs">{t(($) => $.editor.figureDialog.description)}</DialogDescription>
+          <DialogTitle className="text-sm leading-tight">
+            {edit ? t(($) => $.editor.figureDialog.editTitle) : t(($) => $.editor.figureDialog.title)}
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            {edit
+              ? t(($) => $.editor.figureDialog.editDescription)
+              : t(($) => $.editor.figureDialog.description)}
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-5 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_15rem]">
           <section className="min-w-0">
@@ -345,18 +375,22 @@ export function FigureDialog() {
               </p>
             )}
           </section>
-          <FigureOptions form={form} onChange={patch} />
+          <FigureOptions form={form} onChange={patch} imageOnly={edit !== null} />
         </div>
         <DialogFooter className="border-t px-5 py-3 sm:justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            data-testid="figure-dialog-placeholder"
-            onClick={placeholder}
-          >
-            {t(($) => $.editor.figureDialog.insertPlaceholder)}
-          </Button>
+          {edit ? (
+            <span />
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-testid="figure-dialog-placeholder"
+              onClick={placeholder}
+            >
+              {t(($) => $.editor.figureDialog.insertPlaceholder)}
+            </Button>
+          )}
           <div className="flex items-center gap-2">
             {!selected && (
               <span className="text-xs text-muted-foreground">{t(($) => $.editor.figureDialog.selectImage)}</span>
@@ -365,7 +399,7 @@ export function FigureDialog() {
               {t(($) => $.editor.figureDialog.cancel)}
             </Button>
             <Button type="button" size="sm" disabled={!selected} data-testid="figure-dialog-insert" onClick={insert}>
-              {t(($) => $.editor.figureDialog.insert)}
+              {edit ? t(($) => $.editor.figureDialog.save) : t(($) => $.editor.figureDialog.insert)}
             </Button>
           </div>
         </DialogFooter>

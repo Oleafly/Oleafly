@@ -39,7 +39,10 @@
     "insertPlaceholder": "Vložit zástupný obrázek",
     "cancel": "Zrušit",
     "insert": "Vložit obrázek",
-    "selectImage": "Vyberte obrázek, který chcete vložit."
+    "selectImage": "Vyberte obrázek, který chcete vložit.",
+    "editTitle": "Upravit obrázek",
+    "editDescription": "Vyměňte obrázek nebo změňte jeho šířku. Popisek a návěští zůstanou beze změny.",
+    "save": "Uložit obrázek"
   },
   "tableToolbar": {
     "label": "Nástroje tabulky",
@@ -636,7 +639,14 @@
       "unsafeOutput": "Bezpečný náhled se nepodařilo vytvořit.",
       "unsupported": "Tento výraz je neúplný nebo nepodporovaný.",
       "missingClosing": "Chybí uzavírací {{delimiter}}.",
-      "notRendered": "Tento výraz se nepodařilo vykreslit."
+      "notRendered": "Tento výraz se nepodařilo vykreslit.",
+      "preview": {
+        "moreOptions": "Další možnosti",
+        "hide": "Skrýt",
+        "hideDescription": "Skryje náhled, dokud tuto rovnici neopustíte.",
+        "disable": "Vypnout",
+        "disableDescription": "Vypne náhled rovnic. Znovu jej zapnete v Nastavení."
+      }
     },
     "latex": {
       "command": {
@@ -923,6 +933,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Neznámý typ záznamu bibliografie @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Načítá se obrázek",
+        "loadFailed": "Tento obrázek se nepodařilo načíst.",
+        "edit": "Upravit obrázek"
+      },
+      "preamble": {
+        "show": "Zobrazit preambuli dokumentu",
+        "hide": "Skrýt preambuli dokumentu"
+      },
+      "endOfDocument": "Konec dokumentu",
+      "abstract": "Abstrakt",
+      "keywordsLabel": "Klíčová slova",
+      "theorem": {
+        "theorem": "Věta",
+        "lemma": "Lemma",
+        "corollary": "Důsledek",
+        "proof": "Důkaz"
+      },
+      "footnote": "Poznámka pod čarou",
+      "endnote": "Poznámka na konci",
+      "citation": "Citace",
+      "reference": "Reference",
+      "label": "Návěští",
+      "includedFile": "Vložený soubor",
+      "table": {
+        "captionPlacement": "Popisek",
+        "captionAbove": "Popisek nahoře",
+        "captionBelow": "Popisek dole",
+        "noCaption": "Bez popisku",
+        "captionNeedsTable": "Popisek vyžaduje prostředí table kolem prostředí tabular.",
+        "borders": "Linky",
+        "noBorders": "Bez linek",
+        "allBorders": "Všechny linky",
+        "booktabs": "Linky booktabs",
+        "customBorders": "Vlastní linky",
+        "alignment": "Zarovnání",
+        "alignLeft": "Zarovnat vlevo",
+        "alignCenter": "Zarovnat na střed",
+        "alignRight": "Zarovnat vpravo",
+        "alignJustify": "Zarovnat do bloku",
+        "selectColumnToAlign": "Vyberte sloupec, jehož zarovnání chcete změnit.",
+        "columnWidth": "Šířka sloupce",
+        "selectColumnForWidth": "Vyberte sloupec, jehož šířku chcete změnit.",
+        "fitToContent": "Podle obsahu",
+        "fixedWidth": "Pevná šířka",
+        "setColumnWidth": "Nastavit šířku sloupce",
+        "widthValue": "Šířka",
+        "widthUnit": "Jednotka",
+        "widthPercentHelp": "Procento šířky textu.",
+        "widthCustom": "Vlastní",
+        "widthCustomHelp": "Libovolná délka LaTeXu, například 4cm nebo 0.4\\linewidth.",
+        "widthNeedsArray": "Pevné šířky vyžadují balíček array v preambuli.",
+        "columnWidthIndicator": "Šířka sloupce",
+        "mergeCells": "Sloučit buňky",
+        "unmergeCells": "Rozdělit buňky",
+        "selectCellsToMerge": "Vyberte buňky, které chcete sloučit.",
+        "deleteRowOrColumn": "Smazat",
+        "selectRowOrColumnToDelete": "Vyberte řádek nebo sloupec, který chcete smazat.",
+        "insert": "Vložit",
+        "insertRowsAbove": "Vložit řádek nad",
+        "insertRowsBelow": "Vložit řádek pod",
+        "insertColumnsLeft": "Vložit sloupec vlevo",
+        "insertColumnsRight": "Vložit sloupec vpravo",
+        "removeTable": "Odebrat tabulku",
+        "help": "Nápověda",
+        "helpTitle": "Úpravy tabulek",
+        "helpIntro": "Tabulka je váš zdroj v LaTeXu. Každá úprava tady přepíše prostředí tabular v souboru.",
+        "helpSupportedTitle": "Co mřížka zvládne",
+        "helpSupportedColumns": "Zarovnání sloupců a pevné šířky přes specifikaci sloupců.",
+        "helpSupportedRules": "Vodorovné a svislé linky včetně booktabs.",
+        "helpSupportedMerged": "Sloučené buňky zapsané jako \\multicolumn.",
+        "helpSupportedCaption": "Popisek a návěští okolního prostředí table.",
+        "helpUnsupported": "Co mřížka neumí zobrazit, zůstane zdrojem a tabulka se místo toho ukáže jen ke čtení.",
+        "helpShortcutsTitle": "Klávesnice",
+        "shortcutMove": "Šipky přecházejí mezi buňkami.",
+        "shortcutExtend": "Shift se šipkou rozšíří výběr.",
+        "shortcutNext": "Tab přejde na další buňku, Shift+Tab na předchozí.",
+        "shortcutEdit": "Enter začne upravovat vybranou buňku.",
+        "shortcutCancel": "Escape úpravy ukončí a buňka zůstane vybraná.",
+        "shortcutClear": "Backspace nebo Delete vyprázdní vybrané buňky.",
+        "shortcutUndo": "Vrácení zpět a znovu fungují stejně jako ve zbytku editoru.",
+        "ok": "Hotovo",
+        "cancel": "Zrušit",
+        "close": "Zavřít",
+        "selectRow": "Vybrat řádek",
+        "selectColumn": "Vybrat sloupec",
+        "cellInput": "Buňka",
+        "errorTitle": "Tuto tabulku se nepodařilo vykreslit",
+        "errorBody": "Prostředí tabular používá něco, co mřížka zatím neumí zobrazit. Upravte je proto jako zdroj.",
+        "viewSource": "Upravit jako zdroj"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Umístění v dokumentu",
+    "goTo": "Přejít na {{title}}",
+    "untitled": "Bez názvu"
   }
 }

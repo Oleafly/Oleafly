@@ -39,7 +39,10 @@
     "insertPlaceholder": "Wstaw symbol zastępczy",
     "cancel": "Anuluj",
     "insert": "Wstaw rysunek",
-    "selectImage": "Wybierz obraz, aby go wstawić."
+    "selectImage": "Wybierz obraz, aby go wstawić.",
+    "editTitle": "Edytuj obraz",
+    "editDescription": "Zmień obraz albo jego szerokość. Podpis i etykieta zostają bez zmian.",
+    "save": "Zapisz obraz"
   },
   "tableToolbar": {
     "label": "Narzędzia tabeli",
@@ -636,7 +639,14 @@
       "unsafeOutput": "Nie udało się przygotować bezpiecznego podglądu.",
       "unsupported": "To wyrażenie jest niekompletne lub nieobsługiwane.",
       "missingClosing": "Brak zamykającego {{delimiter}}.",
-      "notRendered": "Nie udało się wyrenderować tego wyrażenia."
+      "notRendered": "Nie udało się wyrenderować tego wyrażenia.",
+      "preview": {
+        "moreOptions": "Więcej opcji",
+        "hide": "Ukryj",
+        "hideDescription": "Ukrywa podgląd, dopóki nie opuścisz tego wzoru.",
+        "disable": "Wyłącz",
+        "disableDescription": "Wyłącza podgląd wzorów. Włączysz go z powrotem w Ustawieniach."
+      }
     },
     "latex": {
       "command": {
@@ -923,6 +933,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Nieznany typ pozycji bibliografii @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Wczytywanie obrazu",
+        "loadFailed": "Nie udało się wczytać tego obrazu.",
+        "edit": "Edytuj rysunek"
+      },
+      "preamble": {
+        "show": "Pokaż preambułę dokumentu",
+        "hide": "Ukryj preambułę dokumentu"
+      },
+      "endOfDocument": "Koniec dokumentu",
+      "abstract": "Streszczenie",
+      "keywordsLabel": "Słowa kluczowe",
+      "theorem": {
+        "theorem": "Twierdzenie",
+        "lemma": "Lemat",
+        "corollary": "Wniosek",
+        "proof": "Dowód"
+      },
+      "footnote": "Przypis",
+      "endnote": "Przypis końcowy",
+      "citation": "Cytowanie",
+      "reference": "Odwołanie",
+      "label": "Etykieta",
+      "includedFile": "Dołączony plik",
+      "table": {
+        "captionPlacement": "Podpis",
+        "captionAbove": "Podpis nad tabelą",
+        "captionBelow": "Podpis pod tabelą",
+        "noCaption": "Bez podpisu",
+        "captionNeedsTable": "Podpis wymaga środowiska table wokół tabular.",
+        "borders": "Krawędzie",
+        "noBorders": "Bez krawędzi",
+        "allBorders": "Wszystkie krawędzie",
+        "booktabs": "Linie booktabs",
+        "customBorders": "Własne krawędzie",
+        "alignment": "Wyrównanie",
+        "alignLeft": "Wyrównaj do lewej",
+        "alignCenter": "Wyśrodkuj",
+        "alignRight": "Wyrównaj do prawej",
+        "alignJustify": "Wyjustuj",
+        "selectColumnToAlign": "Wybierz kolumnę, aby zmienić jej wyrównanie.",
+        "columnWidth": "Szerokość kolumny",
+        "selectColumnForWidth": "Wybierz kolumnę, aby zmienić jej szerokość.",
+        "fitToContent": "Dopasuj do treści",
+        "fixedWidth": "Stała szerokość",
+        "setColumnWidth": "Ustaw szerokość kolumny",
+        "widthValue": "Szerokość",
+        "widthUnit": "Jednostka",
+        "widthPercentHelp": "Procent szerokości tekstu.",
+        "widthCustom": "Własna",
+        "widthCustomHelp": "Dowolna długość LaTeX, na przykład 4cm lub 0.4\\linewidth.",
+        "widthNeedsArray": "Stałe szerokości wymagają pakietu array w preambule.",
+        "columnWidthIndicator": "Szerokość kolumny",
+        "mergeCells": "Scal komórki",
+        "unmergeCells": "Podziel komórki",
+        "selectCellsToMerge": "Wybierz komórki do scalenia.",
+        "deleteRowOrColumn": "Usuń",
+        "selectRowOrColumnToDelete": "Wybierz wiersz lub kolumnę do usunięcia.",
+        "insert": "Wstaw",
+        "insertRowsAbove": "Wstaw wiersz powyżej",
+        "insertRowsBelow": "Wstaw wiersz poniżej",
+        "insertColumnsLeft": "Wstaw kolumnę z lewej",
+        "insertColumnsRight": "Wstaw kolumnę z prawej",
+        "removeTable": "Usuń tabelę",
+        "help": "Pomoc",
+        "helpTitle": "Edytowanie tabel",
+        "helpIntro": "Ta tabela to twój kod LaTeX. Każda zmiana tutaj przepisuje tabular w pliku.",
+        "helpSupportedTitle": "Co obsługuje siatka",
+        "helpSupportedColumns": "Wyrównanie kolumn i stałe szerokości przez specyfikację kolumn.",
+        "helpSupportedRules": "Linie poziome i pionowe, w tym linie booktabs.",
+        "helpSupportedMerged": "Scalone komórki zapisane jako \\multicolumn.",
+        "helpSupportedCaption": "Podpis i etykieta otaczającego środowiska table.",
+        "helpUnsupported": "Wszystko, czego siatka nie potrafi przedstawić, zostaje kodem, a tabela jest pokazywana tylko do odczytu.",
+        "helpShortcutsTitle": "Klawiatura",
+        "shortcutMove": "Strzałki przenoszą między komórkami.",
+        "shortcutExtend": "Shift ze strzałką rozszerza zaznaczenie.",
+        "shortcutNext": "Tab przechodzi do następnej komórki, Shift+Tab do poprzedniej.",
+        "shortcutEdit": "Enter rozpoczyna edycję zaznaczonej komórki.",
+        "shortcutCancel": "Escape kończy edycję i zostawia komórkę zaznaczoną.",
+        "shortcutClear": "Backspace lub Delete opróżnia zaznaczone komórki.",
+        "shortcutUndo": "Cofanie i ponawianie działają tak jak w reszcie edytora.",
+        "ok": "Gotowe",
+        "cancel": "Anuluj",
+        "close": "Zamknij",
+        "selectRow": "Zaznacz wiersz",
+        "selectColumn": "Zaznacz kolumnę",
+        "cellInput": "Komórka",
+        "errorTitle": "Nie udało się wyrenderować tej tabeli",
+        "errorBody": "Tabular używa czegoś, czego siatka jeszcze nie potrafi pokazać. Edytuj go jako kod źródłowy.",
+        "viewSource": "Edytuj jako kod źródłowy"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Położenie w dokumencie",
+    "goTo": "Przejdź do {{title}}",
+    "untitled": "Bez tytułu"
   }
 }

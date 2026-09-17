@@ -23,7 +23,7 @@ vi.mock("@/lib/editor-mutation-lease", () => ({
   isEditorMutationLocked: () => mocks.locked(),
 }));
 
-import { classifyPaste, createVisualPasteHandlers, looksLikeLatex, type PasteData } from "./paste";
+import { classifyPaste, createVisualPasteHandlers, type PasteData } from "./paste";
 
 let editors: Editor[] = [];
 
@@ -73,80 +73,35 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("looksLikeLatex", () => {
-  it("detects commands and complete math but not prose", () => {
-    expect(looksLikeLatex("Use \\textbf{this}")).toBe(true);
-    expect(looksLikeLatex("Energy is $E = mc^2$ here")).toBe(true);
-    expect(looksLikeLatex("Plain sentence with no markup.")).toBe(false);
-    expect(looksLikeLatex("An unfinished $formula")).toBe(false);
-  });
-});
-
 describe("classifyPaste", () => {
   it("imports image files when no plain text accompanies them", () => {
     const intent = classifyPaste(transfer({}, [pngFile()]));
     expect(intent.kind).toBe("files");
   });
 
-  it("prefers HTML tables and Office markup over accompanying image files", () => {
-    const html = "<table><tr><td>a</td><td>b</td></tr></table>";
-    const intent = classifyPaste(transfer({ "text/plain": "a\tb", "text/html": html }, [pngFile()]));
-    expect(intent).toMatchObject({ kind: "latex" });
-    expect((intent as { latex: string }).latex).toContain("\\begin{tabular}");
-  });
-
-  it("ignores files when plain text is present and the HTML is only an image wrapper", () => {
-    const intent = classifyPaste(
-      transfer({ "text/plain": "caption", "text/html": '<img src="x.png">' }, [pngFile()]),
+  it("leaves anything that carries plain text to the rich-text editor", () => {
+    expect(classifyPaste(transfer({ "text/plain": "caption", "text/html": '<img src="x.png">' }, [pngFile()])).kind).toBe(
+      "default",
     );
-    expect(intent.kind).toBe("default");
-  });
-
-  it("converts rich HTML and falls back to the default paste when it equals the plain text", () => {
-    expect(classifyPaste(transfer({ "text/plain": "Bold", "text/html": "<b>Bold</b>" }))).toEqual({
-      kind: "latex",
-      latex: "\\textbf{Bold}",
-    });
-    expect(classifyPaste(transfer({ "text/plain": "Same", "text/html": "<p>Same</p>" }))).toEqual({
-      kind: "default",
-    });
-  });
-
-  it("parses plain text that contains LaTeX", () => {
-    expect(classifyPaste(transfer({ "text/plain": "See $x^2$ and \\emph{it}" }))).toEqual({
-      kind: "latex",
-      latex: "See $x^2$ and \\emph{it}",
-    });
+    expect(classifyPaste(transfer({ "text/plain": "Bold", "text/html": "<b>Bold</b>" })).kind).toBe("default");
+    expect(classifyPaste(transfer({ "text/plain": "See $x^2$" })).kind).toBe("default");
   });
 });
 
 describe("createVisualPasteHandlers", () => {
-  const handlers = createVisualPasteHandlers({ theoremEnvironments: () => ["observation"] });
+  const handlers = createVisualPasteHandlers();
 
-  it("inserts converted HTML as native nodes", () => {
+  it("leaves text and markup to the default paste", () => {
     const editor = mount();
-    const handled = handlers.handlePaste(
-      editor.view,
-      pasteEvent(transfer({ "text/plain": "Bold", "text/html": "<p><b>Bold</b> and <i>it</i></p>" })),
-    );
-    expect(handled).toBe(true);
-    expect(serializeLatexBody(editor.getJSON())).toBe("Hello\\textbf{Bold} and \\textit{it}\n");
-  });
-
-  it("parses pasted LaTeX text into math and theorem nodes", () => {
-    const editor = mount();
-    handlers.handlePaste(
-      editor.view,
-      pasteEvent(transfer({ "text/plain": "\\begin{observation}\nSee $a^2$.\n\\end{observation}" })),
-    );
-    expect(editor.getJSON().content?.[1]).toMatchObject({ type: "theorem", attrs: { environment: "observation" } });
-    expect(serializeLatexBody(editor.getJSON())).toContain("$a^2$");
-  });
-
-  it("leaves ordinary text to the default paste", () => {
-    const editor = mount();
+    expect(
+      handlers.handlePaste(
+        editor.view,
+        pasteEvent(transfer({ "text/plain": "Bold", "text/html": "<p><b>Bold</b></p>" })),
+      ),
+    ).toBe(false);
     expect(handlers.handlePaste(editor.view, pasteEvent(transfer({ "text/plain": "just words" })))).toBe(false);
     expect(handlers.handlePaste(editor.view, { clipboardData: null } as unknown as ClipboardEvent)).toBe(false);
+    expect(serializeLatexBody(editor.getJSON())).toBe("Hello\n");
   });
 
   it("does nothing while the document is leased", () => {

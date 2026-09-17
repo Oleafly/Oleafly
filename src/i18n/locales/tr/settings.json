@@ -625,6 +625,10 @@
       "tabSize": {
         "description": "Her girinti düzeyi için eklenen boşluk sayısı ve bir sekmenin gösterildiği genişlik.",
         "label": "Sekme genişliği"
+      },
+      "mathPreview": {
+        "description": "İmlecin içinde bulunduğu denklemin işlenmiş halini üstünde gösterir.",
+        "label": "Matematik önizlemesi"
       }
     },
     "files": {

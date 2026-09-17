@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { useTranslation } from "react-i18next";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { FileText, Loader2, Settings2, X } from "lucide-react";
+import { Breadcrumbs } from "./Breadcrumbs";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { EditorToolbar } from "./EditorToolbar";
@@ -22,7 +23,7 @@ import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { IMAGE_EXTS, imageMime } from "@/lib/image-mime";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
-import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
+import { useVisualModeStore, visualModeAvailable } from "@/store/visual-mode";
 import { setWysiwygVisibilityController } from "./wysiwyg/controller";
 import { ProofreadingNotifications } from "./ProofreadingNotifications";
 const WysiwygEditor = lazy(() =>
@@ -181,7 +182,7 @@ export function Editor() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const visualEditor = useSettingsStore((s) => s.visualEditor);
-  const visualEnabled = projectKind === "diagram" || visualEditor;
+  const visualEnabled = visualModeAvailable(visualEditor, projectKind);
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const isDiagramMainFile = projectKind === "diagram" && activePath === mainDoc;
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
@@ -198,17 +199,19 @@ export function Editor() {
   const showTypstToolbar =
     engineLoaded && formattingProfile === "typst" && pathUsesEngineSource(engine, activePath);
 
-  const [wysiwygState, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
+  const wysiwygState = useVisualModeStore((s) => s.enabled);
+  const loadVisualMode = useVisualModeStore((s) => s.loadProject);
   useEffect(() => {
-    if (projectId) setWysiwygState(getWysiwygMode(projectId));
-  }, [projectId]);
+    loadVisualMode(projectId);
+  }, [projectId, loadVisualMode]);
   const setWysiwyg = useCallback((next: boolean) => {
-    if (!projectId) return;
-    setWysiwygMode(projectId, next);
-    setWysiwygState(next);
-  }, [projectId]);
+    useVisualModeStore.getState().setEnabled(next);
+  }, []);
   const toggleWysiwyg = () => setWysiwyg(!wysiwygState);
   const wysiwyg = visualEnabled && wysiwygState;
+  const markdownVisual = wysiwyg && isMarkdownFile;
+  const showBreadcrumbs =
+    !isDiagramMainFile && /\.(?:tex|latex|ltx)$/iu.test(activePath ?? "");
 
   useEffect(() => {
     setWysiwygVisibilityController(setWysiwyg);
@@ -287,35 +290,38 @@ export function Editor() {
             {t(($) => $.editor.shell.managedFileReadOnly, { file: activePath })}
           </output>
         ) : null}
+        {showBreadcrumbs ? <Breadcrumbs visual={wysiwyg} /> : null}
         <div className="relative min-h-0 flex-1 overflow-hidden">
-        <div
-          aria-hidden={!wysiwyg}
-          inert={!wysiwyg ? true : undefined}
-          className={cn(
-            "absolute inset-0",
-            !wysiwyg && "invisible pointer-events-none select-none",
-          )}
-        >
-          <Suspense
-            fallback={
-              <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-              </div>
-            }
+        {isMarkdownFile ? (
+          <div
+            aria-hidden={!markdownVisual}
+            inert={!markdownVisual ? true : undefined}
+            className={cn(
+              "absolute inset-0",
+              !markdownVisual && "invisible pointer-events-none select-none",
+            )}
           >
-            <WysiwygEditor wysiwyg={wysiwyg} />
-          </Suspense>
-        </div>
+            <Suspense
+              fallback={
+                <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
+                </div>
+              }
+            >
+              <WysiwygEditor wysiwyg={markdownVisual} />
+            </Suspense>
+          </div>
+        ) : null}
         <div
-          aria-hidden={wysiwyg}
-          inert={wysiwyg ? true : undefined}
+          aria-hidden={markdownVisual}
+          inert={markdownVisual ? true : undefined}
           className={cn(
             "absolute inset-0",
-            wysiwyg && "invisible pointer-events-none select-none",
+            markdownVisual && "invisible pointer-events-none select-none",
           )}
         >
           <EditorContextMenu>
-            <CodeMirrorEditor active={!wysiwyg} />
+            <CodeMirrorEditor active={!markdownVisual} />
           </EditorContextMenu>
           <SelectionActionMenu />
         </div>
@@ -474,7 +480,7 @@ export function Editor() {
       {!diffFocused ? (
         <ProofreadingNotifications
           path={activePath}
-          surface={wysiwyg ? "visual" : "source"}
+          surface={markdownVisual ? "visual" : "source"}
         />
       ) : null}
       {renderBody()}

@@ -1,14 +1,8 @@
 import type { JSONContent } from "@tiptap/core";
+import { escapeLatexText } from "@oleafly/latex";
 import { isDevelopmentBuild } from "./dev";
 
-export function escapeLatexText(text: string): string {
-  return text.replace(/([\\{}&%$#_^~])/g, (ch) => {
-    if (ch === "\\") return String.raw`\textbackslash{}`;
-    if (ch === "^") return String.raw`\textasciicircum{}`;
-    if (ch === "~") return String.raw`\textasciitilde{}`;
-    return `\\${ch}`;
-  });
-}
+export { escapeLatexText };
 
 export function textContentOf(node: JSONContent): string {
   if (node.type === "text") return node.text ?? "";

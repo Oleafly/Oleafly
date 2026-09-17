@@ -88,7 +88,9 @@ describe("CodeMirrorEditor measurement", () => {
         nonBlinkingCursor: false,
         ghostCompletion: true,
       stickyScroll: false,
+      mathPreview: false,
       }),
+      useVisualMode: () => false,
       useEditorKeymap: () => ({}),
       useLintRefreshDeps: () => [],
     };
@@ -129,7 +131,9 @@ describe("CodeMirrorEditor measurement", () => {
         nonBlinkingCursor: false,
         ghostCompletion: true,
       stickyScroll: false,
+      mathPreview: false,
       }),
+      useVisualMode: () => false,
       useEditorKeymap: () => ({}),
       useLintRefreshDeps: () => [],
     };
@@ -174,7 +178,9 @@ describe("CodeMirrorEditor Vim integration", () => {
         nonBlinkingCursor: false,
         ghostCompletion: false,
         stickyScroll: false,
+        mathPreview: false,
       }),
+      useVisualMode: () => false,
       useEditorKeymap: () => ({}),
       useLintRefreshDeps: () => [],
     };
@@ -272,7 +278,8 @@ it("blocks document commands during a mutation while allowing authoritative sync
     setContent,
     isEditLocked: () => locked,
     registerMutationOwner: (value) => { owner = value; return () => {}; },
-    useSettings: () => ({ keymap: "default", tabSize: 4, lineWrap: true, spellcheck: false, harper: false, editorTheme: "system", autocomplete: false, autoCloseBrackets: false, nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false }),
+    useSettings: () => ({ keymap: "default", tabSize: 4, lineWrap: true, spellcheck: false, harper: false, editorTheme: "system", autocomplete: false, autoCloseBrackets: false, nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false, mathPreview: false }),
+    useVisualMode: () => false,
     useEditorKeymap: () => ({}),
     useLintRefreshDeps: () => [],
   };
@@ -322,8 +329,10 @@ describe("CodeMirrorEditor keybinding modes and layout preferences", () => {
         nonBlinkingCursor: false,
         ghostCompletion: false,
         stickyScroll: false,
+        mathPreview: false,
         ...overrides,
       }),
+      useVisualMode: () => false,
       useEditorKeymap: () => editorKeys,
       useLintRefreshDeps: () => [],
     };
@@ -432,7 +441,8 @@ describe("BibTeX source tools", () => {
       useCompletionSyntax: () => "bibtex",
       getContent: () => BIB,
       setContent: () => {},
-      useSettings: () => ({ keymap: "default", tabSize: 2, lineWrap: true, spellcheck: false, harper: false, editorTheme: "system", autocomplete: true, autoCloseBrackets: true, nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false }),
+      useSettings: () => ({ keymap: "default", tabSize: 2, lineWrap: true, spellcheck: false, harper: false, editorTheme: "system", autocomplete: true, autoCloseBrackets: true, nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false, mathPreview: false }),
+      useVisualMode: () => false,
       useEditorKeymap: () => ({}),
       useLintRefreshDeps: () => [],
     };

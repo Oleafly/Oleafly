@@ -39,7 +39,10 @@
     "insertPlaceholder": "Insérer un espace réservé",
     "cancel": "Annuler",
     "insert": "Insérer la figure",
-    "selectImage": "Sélectionnez une image pour l'insérer."
+    "selectImage": "Sélectionnez une image pour l'insérer.",
+    "editTitle": "Modifier l'image",
+    "editDescription": "Remplacez l'image ou changez sa largeur. La légende et l'étiquette restent telles quelles.",
+    "save": "Enregistrer l'image"
   },
   "tableToolbar": {
     "label": "Outils de tableau",
@@ -629,7 +632,14 @@
       "unsafeOutput": "Aucun aperçu sûr n'a pu être produit.",
       "unsupported": "Cette expression est incomplète ou non prise en charge.",
       "missingClosing": "Il manque un {{delimiter}} fermant.",
-      "notRendered": "Cette expression n'a pas pu être affichée."
+      "notRendered": "Cette expression n'a pas pu être affichée.",
+      "preview": {
+        "moreOptions": "Plus d'options",
+        "hide": "Masquer",
+        "hideDescription": "Masque l'aperçu jusqu'à ce que vous quittiez cette équation.",
+        "disable": "Désactiver",
+        "disableDescription": "Désactive l'aperçu des équations. Vous pouvez le réactiver dans les Paramètres."
+      }
     },
     "latex": {
       "command": {
@@ -914,6 +924,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Type d'entrée bibliographique inconnu @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Chargement de l'image",
+        "loadFailed": "Impossible de charger cette image.",
+        "edit": "Modifier la figure"
+      },
+      "preamble": {
+        "show": "Afficher le préambule du document",
+        "hide": "Masquer le préambule du document"
+      },
+      "endOfDocument": "Fin du document",
+      "abstract": "Résumé",
+      "keywordsLabel": "Mots-clés",
+      "theorem": {
+        "theorem": "Théorème",
+        "lemma": "Lemme",
+        "corollary": "Corollaire",
+        "proof": "Démonstration"
+      },
+      "footnote": "Note de bas de page",
+      "endnote": "Note de fin",
+      "citation": "Citation",
+      "reference": "Référence",
+      "label": "Étiquette",
+      "includedFile": "Fichier inclus",
+      "table": {
+        "captionPlacement": "Légende",
+        "captionAbove": "Légende au-dessus",
+        "captionBelow": "Légende en dessous",
+        "noCaption": "Aucune légende",
+        "captionNeedsTable": "Une légende exige un environnement table autour du tabular.",
+        "borders": "Bordures",
+        "noBorders": "Aucune bordure",
+        "allBorders": "Toutes les bordures",
+        "booktabs": "Filets booktabs",
+        "customBorders": "Bordures personnalisées",
+        "alignment": "Alignement",
+        "alignLeft": "Aligner à gauche",
+        "alignCenter": "Centrer",
+        "alignRight": "Aligner à droite",
+        "alignJustify": "Justifier",
+        "selectColumnToAlign": "Sélectionnez une colonne pour changer son alignement.",
+        "columnWidth": "Largeur de colonne",
+        "selectColumnForWidth": "Sélectionnez une colonne pour changer sa largeur.",
+        "fitToContent": "Ajuster au contenu",
+        "fixedWidth": "Largeur fixe",
+        "setColumnWidth": "Définir la largeur de colonne",
+        "widthValue": "Largeur",
+        "widthUnit": "Unité",
+        "widthPercentHelp": "Un pourcentage de la largeur du texte.",
+        "widthCustom": "Personnalisée",
+        "widthCustomHelp": "N'importe quelle longueur LaTeX, par exemple 4cm ou 0.4\\linewidth.",
+        "widthNeedsArray": "Les largeurs fixes exigent le paquet array dans le préambule.",
+        "columnWidthIndicator": "Largeur de colonne",
+        "mergeCells": "Fusionner les cellules",
+        "unmergeCells": "Scinder les cellules",
+        "selectCellsToMerge": "Sélectionnez les cellules à fusionner.",
+        "deleteRowOrColumn": "Supprimer",
+        "selectRowOrColumnToDelete": "Sélectionnez une ligne ou une colonne à supprimer.",
+        "insert": "Insérer",
+        "insertRowsAbove": "Insérer une ligne au-dessus",
+        "insertRowsBelow": "Insérer une ligne en dessous",
+        "insertColumnsLeft": "Insérer une colonne à gauche",
+        "insertColumnsRight": "Insérer une colonne à droite",
+        "removeTable": "Retirer le tableau",
+        "help": "Aide",
+        "helpTitle": "Modifier les tableaux",
+        "helpIntro": "Le tableau est votre source LaTeX. Chaque modification faite ici réécrit le tabular dans le fichier.",
+        "helpSupportedTitle": "Ce que la grille prend en charge",
+        "helpSupportedColumns": "L'alignement des colonnes et les largeurs fixes, par la spécification de colonnes.",
+        "helpSupportedRules": "Les filets horizontaux et verticaux, y compris ceux de booktabs.",
+        "helpSupportedMerged": "Les cellules fusionnées écrites en \\multicolumn.",
+        "helpSupportedCaption": "La légende et l'étiquette de l'environnement table qui entoure le tableau.",
+        "helpUnsupported": "Tout ce que la grille ne sait pas représenter reste du source, et le tableau s'affiche alors en lecture seule.",
+        "helpShortcutsTitle": "Clavier",
+        "shortcutMove": "Les flèches déplacent d'une cellule à l'autre.",
+        "shortcutExtend": "Shift avec une flèche étend la sélection.",
+        "shortcutNext": "Tab passe à la cellule suivante, Shift+Tab à la précédente.",
+        "shortcutEdit": "Enter commence la modification de la cellule sélectionnée.",
+        "shortcutCancel": "Escape arrête la modification et garde la cellule sélectionnée.",
+        "shortcutClear": "Backspace ou Delete vide les cellules sélectionnées.",
+        "shortcutUndo": "Annuler et rétablir fonctionnent comme dans le reste de l'éditeur.",
+        "ok": "Terminé",
+        "cancel": "Annuler",
+        "close": "Fermer",
+        "selectRow": "Sélectionner la ligne",
+        "selectColumn": "Sélectionner la colonne",
+        "cellInput": "Cellule",
+        "errorTitle": "Impossible d'afficher ce tableau",
+        "errorBody": "Le tabular utilise quelque chose que la grille ne sait pas encore montrer. Modifiez-le plutôt en mode source.",
+        "viewSource": "Modifier en mode source"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Emplacement dans le document",
+    "goTo": "Aller à {{title}}",
+    "untitled": "Sans titre"
   }
 }

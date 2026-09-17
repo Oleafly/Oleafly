@@ -1,13 +1,5 @@
-import type { Editor } from "@tiptap/core";
 import { insertEnvironment, insertTemplate, wrapSelectionOrPlaceholder } from "@/components/editor/cm/controller";
 import { i18n } from "@/i18n";
-import {
-  getWysiwygDocumentContext,
-  getWysiwygEditor,
-  getWysiwygInsertions,
-  isWysiwygActive,
-  type WysiwygInsertions,
-} from "@/components/editor/wysiwyg/controller";
 import { latexGraphicsPath } from "@/components/editor/figure-import";
 import { useFigureDialogStore } from "@/store/figure-dialog";
 import { useFilesStore } from "@/store/files";
@@ -56,53 +48,20 @@ export const HEADING_LEVELS: HeadingLevel[] = [
   },
 ];
 
-function visualEditor(): Editor | null {
-  return isWysiwygActive() ? getWysiwygEditor() : null;
-}
-
-function visualTarget(): { editor: Editor; insertions: WysiwygInsertions } | null {
-  const editor = visualEditor();
-  const insertions = getWysiwygInsertions();
-  return editor && insertions ? { editor, insertions } : null;
-}
-
 export function insertHeading(level: HeadingLevel) {
-  const target = visualTarget();
-  if (target?.insertions.setHeading(target.editor, level.cmd)) return;
   wrapSelectionOrPlaceholder(`\\${level.cmd}{`, "}\n", level.placeholder);
 }
 
 export function insertBold() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleBold().run();
-      return;
-    }
-  }
   wrapSelectionOrPlaceholder(String.raw`\textbf{`, "}", "text");
 }
 export function insertItalic() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleItalic().run();
-      return;
-    }
-  }
   wrapSelectionOrPlaceholder(String.raw`\textit{`, "}", "text");
 }
 export function insertUnderline() {
   wrapSelectionOrPlaceholder(String.raw`\underline{`, "}", "text");
 }
 export function insertCode() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleCode().run();
-      return;
-    }
-  }
   wrapSelectionOrPlaceholder(String.raw`\texttt{`, "}", "text");
 }
 export function insertFootnote() {
@@ -123,10 +82,6 @@ export function insertLink() {
 
 export function insertFraction() {
   const template = String.raw`\frac{numerator}{denominator}`;
-  if (isWysiwygActive()) {
-    insertTemplate(`$${template}$`, 0, 0);
-    return;
-  }
   const start = String.raw`\frac{`.length;
   insertTemplate(template, start, start + "numerator".length);
 }
@@ -181,18 +136,6 @@ export interface FigureInsertOptions {
 
 export function insertFigureFromDialog(options: FigureInsertOptions) {
   const path = latexGraphicsPath(options.path, useFilesStore.getState().mainDoc);
-  const target = visualTarget();
-  if (target) {
-    target.insertions.insertFigure(target.editor.view, {
-      path,
-      width: options.width,
-      placement: "htbp",
-      centering: true,
-      label: options.label,
-      caption: options.caption,
-    });
-    return;
-  }
   const snippet = figureSnippet({ path, width: options.width, caption: options.caption, label: options.label });
   insertTemplate(snippet.template, snippet.selStart, snippet.selEnd);
 }
@@ -204,13 +147,6 @@ export function insertEquation() {
   insertEnvironment("equation");
 }
 export function insertBlockquote() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleBlockquote().run();
-      return;
-    }
-  }
   insertEnvironment("quote");
 }
 function insertFirstItem(template: string): void {
@@ -218,33 +154,13 @@ function insertFirstItem(template: string): void {
   insertTemplate(template, cursor, cursor);
 }
 export function insertItemize() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleBulletList().run();
-      return;
-    }
-  }
   insertFirstItem("\\begin{itemize}\n  \\item \n\\end{itemize}\n");
 }
 export function insertEnumerate() {
-  if (isWysiwygActive()) {
-    const editor = getWysiwygEditor();
-    if (editor) {
-      editor.chain().focus().toggleOrderedList().run();
-      return;
-    }
-  }
   insertFirstItem("\\begin{enumerate}\n  \\item \n\\end{enumerate}\n");
 }
 
 export function insertTable(rows: number, cols: number) {
-  const target = visualTarget();
-  if (target) {
-    const preset = getWysiwygDocumentContext().booktabs ? "booktabs" : "horizontal";
-    target.insertions.insertTable(target.editor.view, rows, cols, preset);
-    return;
-  }
   const cells = Array.from({ length: Math.max(1, cols) }, () => " ").join(" & ");
   const body = Array.from({ length: Math.max(1, rows) }, () => `    ${cells} \\\\`).join("\n");
   const colsSpec = Array.from({ length: Math.max(1, cols) }, () => "l").join("");

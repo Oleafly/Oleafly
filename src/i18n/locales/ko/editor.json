@@ -39,7 +39,10 @@
     "insertPlaceholder": "자리 표시자 삽입",
     "cancel": "취소",
     "insert": "그림 삽입",
-    "selectImage": "삽입할 이미지를 고르세요."
+    "selectImage": "삽입할 이미지를 고르세요.",
+    "editTitle": "이미지 편집",
+    "editDescription": "이미지를 바꾸거나 너비를 조정하세요. 캡션과 레이블은 그대로 유지됩니다.",
+    "save": "이미지 저장"
   },
   "tableToolbar": {
     "label": "표 도구",
@@ -615,7 +618,14 @@
       "unsafeOutput": "안전한 미리보기를 만들지 못했습니다.",
       "unsupported": "이 식은 완전하지 않거나 지원되지 않습니다.",
       "missingClosing": "닫는 {{delimiter}}이(가) 없습니다.",
-      "notRendered": "이 식을 렌더링하지 못했습니다."
+      "notRendered": "이 식을 렌더링하지 못했습니다.",
+      "preview": {
+        "moreOptions": "추가 옵션",
+        "hide": "숨기기",
+        "hideDescription": "이 수식에서 벗어날 때까지 미리보기를 숨깁니다.",
+        "disable": "사용 안 함",
+        "disableDescription": "수식 미리보기를 끕니다. 설정에서 다시 켤 수 있습니다."
+      }
     },
     "latex": {
       "command": {
@@ -896,6 +906,104 @@
         "source": "BibTeX",
         "unknownEntryType": "알 수 없는 참고문헌 항목 형식 @{{type}}입니다."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "이미지를 불러오는 중",
+        "loadFailed": "이 이미지를 불러오지 못했습니다.",
+        "edit": "그림 편집"
+      },
+      "preamble": {
+        "show": "문서 프리앰블 표시",
+        "hide": "문서 프리앰블 숨기기"
+      },
+      "endOfDocument": "문서 끝",
+      "abstract": "초록",
+      "keywordsLabel": "키워드",
+      "theorem": {
+        "theorem": "정리",
+        "lemma": "보조정리",
+        "corollary": "따름정리",
+        "proof": "증명"
+      },
+      "footnote": "각주",
+      "endnote": "미주",
+      "citation": "인용",
+      "reference": "참조",
+      "label": "레이블",
+      "includedFile": "포함된 파일",
+      "table": {
+        "captionPlacement": "캡션",
+        "captionAbove": "캡션 위",
+        "captionBelow": "캡션 아래",
+        "noCaption": "캡션 없음",
+        "captionNeedsTable": "캡션을 넣으려면 tabular를 감싸는 table 환경이 필요합니다.",
+        "borders": "테두리",
+        "noBorders": "테두리 없음",
+        "allBorders": "모든 테두리",
+        "booktabs": "booktabs 괘선",
+        "customBorders": "사용자 지정 테두리",
+        "alignment": "정렬",
+        "alignLeft": "왼쪽 정렬",
+        "alignCenter": "가운데 정렬",
+        "alignRight": "오른쪽 정렬",
+        "alignJustify": "양쪽 정렬",
+        "selectColumnToAlign": "정렬을 바꿀 열을 선택하세요.",
+        "columnWidth": "열 너비",
+        "selectColumnForWidth": "너비를 바꿀 열을 선택하세요.",
+        "fitToContent": "내용에 맞춤",
+        "fixedWidth": "고정 너비",
+        "setColumnWidth": "열 너비 설정",
+        "widthValue": "너비",
+        "widthUnit": "단위",
+        "widthPercentHelp": "본문 너비에 대한 백분율입니다.",
+        "widthCustom": "사용자 지정",
+        "widthCustomHelp": "4cm이나 0.4\\linewidth처럼 LaTeX 길이를 쓸 수 있습니다.",
+        "widthNeedsArray": "고정 너비를 쓰려면 프리앰블에 array 패키지가 필요합니다.",
+        "columnWidthIndicator": "열 너비",
+        "mergeCells": "셀 병합",
+        "unmergeCells": "셀 분할",
+        "selectCellsToMerge": "병합할 셀을 선택하세요.",
+        "deleteRowOrColumn": "삭제",
+        "selectRowOrColumnToDelete": "삭제할 행이나 열을 선택하세요.",
+        "insert": "삽입",
+        "insertRowsAbove": "위에 행 삽입",
+        "insertRowsBelow": "아래에 행 삽입",
+        "insertColumnsLeft": "왼쪽에 열 삽입",
+        "insertColumnsRight": "오른쪽에 열 삽입",
+        "removeTable": "표 제거",
+        "help": "도움말",
+        "helpTitle": "표 편집하기",
+        "helpIntro": "이 표가 곧 LaTeX 소스입니다. 여기서 수정할 때마다 파일 안의 tabular가 다시 작성됩니다.",
+        "helpSupportedTitle": "격자가 다루는 것",
+        "helpSupportedColumns": "열 지정자를 통한 열 정렬과 고정 너비.",
+        "helpSupportedRules": "booktabs를 포함한 가로 괘선과 세로 괘선.",
+        "helpSupportedMerged": "\\multicolumn으로 작성한 병합 셀.",
+        "helpSupportedCaption": "표를 감싸는 table 환경의 캡션과 레이블.",
+        "helpUnsupported": "격자로 표현할 수 없는 것은 소스로 남고, 그럴 때는 표가 읽기 전용으로 표시됩니다.",
+        "helpShortcutsTitle": "키보드",
+        "shortcutMove": "화살표 키로 셀 사이를 이동합니다.",
+        "shortcutExtend": "Shift와 화살표 키를 함께 누르면 선택 범위가 넓어집니다.",
+        "shortcutNext": "Tab은 다음 셀로, Shift+Tab은 이전 셀로 이동합니다.",
+        "shortcutEdit": "Enter를 누르면 선택한 셀을 편집합니다.",
+        "shortcutCancel": "Escape를 누르면 편집을 멈추고 셀 선택은 유지합니다.",
+        "shortcutClear": "Backspace나 Delete를 누르면 선택한 셀이 비워집니다.",
+        "shortcutUndo": "실행 취소와 다시 실행은 편집기의 다른 곳과 똑같이 동작합니다.",
+        "ok": "완료",
+        "cancel": "취소",
+        "close": "닫기",
+        "selectRow": "행 선택",
+        "selectColumn": "열 선택",
+        "cellInput": "셀",
+        "errorTitle": "이 표를 표시하지 못했습니다",
+        "errorBody": "이 tabular에는 격자가 아직 보여 줄 수 없는 것이 있습니다. 소스로 편집하세요.",
+        "viewSource": "소스로 편집"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "문서 내 위치",
+    "goTo": "{{title}}(으)로 이동",
+    "untitled": "제목 없음"
   }
 }

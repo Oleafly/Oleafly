@@ -39,7 +39,10 @@
     "insertPlaceholder": "Yer tutucu ekle",
     "cancel": "İptal",
     "insert": "Şekil ekle",
-    "selectImage": "Eklemek için bir görsel seçin."
+    "selectImage": "Eklemek için bir görsel seçin.",
+    "editTitle": "Görseli düzenle",
+    "editDescription": "Görseli değiştirin ya da genişliğini ayarlayın. Başlık ve etiket olduğu gibi kalır.",
+    "save": "Görseli kaydet"
   },
   "tableToolbar": {
     "label": "Tablo araçları",
@@ -622,7 +625,14 @@
       "unsafeOutput": "Güvenli bir önizleme üretilemedi.",
       "unsupported": "Bu ifade eksik veya desteklenmiyor.",
       "missingClosing": "Kapanış {{delimiter}} eksik.",
-      "notRendered": "Bu ifade işlenemedi."
+      "notRendered": "Bu ifade işlenemedi.",
+      "preview": {
+        "moreOptions": "Diğer seçenekler",
+        "hide": "Gizle",
+        "hideDescription": "Bu denklemden çıkana kadar önizlemeyi gizler.",
+        "disable": "Devre dışı bırak",
+        "disableDescription": "Denklem önizlemesini kapatır. Ayarlar bölümünden yeniden açabilirsiniz."
+      }
     },
     "latex": {
       "command": {
@@ -905,6 +915,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Bilinmeyen kaynakça kayıt türü @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Görsel yükleniyor",
+        "loadFailed": "Bu görsel yüklenemedi.",
+        "edit": "Şekli düzenle"
+      },
+      "preamble": {
+        "show": "Belge ön bölümünü göster",
+        "hide": "Belge ön bölümünü gizle"
+      },
+      "endOfDocument": "Belgenin sonu",
+      "abstract": "Özet",
+      "keywordsLabel": "Anahtar sözcükler",
+      "theorem": {
+        "theorem": "Teorem",
+        "lemma": "Önerme",
+        "corollary": "Sonuç",
+        "proof": "İspat"
+      },
+      "footnote": "Dipnot",
+      "endnote": "Son not",
+      "citation": "Atıf",
+      "reference": "Başvuru",
+      "label": "Etiket",
+      "includedFile": "Dahil edilen dosya",
+      "table": {
+        "captionPlacement": "Başlık",
+        "captionAbove": "Başlık üstte",
+        "captionBelow": "Başlık altta",
+        "noCaption": "Başlık yok",
+        "captionNeedsTable": "Başlık için tabular çevresinde bir table ortamı gerekir.",
+        "borders": "Kenarlıklar",
+        "noBorders": "Kenarlık yok",
+        "allBorders": "Tüm kenarlıklar",
+        "booktabs": "booktabs çizgileri",
+        "customBorders": "Özel kenarlıklar",
+        "alignment": "Hizalama",
+        "alignLeft": "Sola hizala",
+        "alignCenter": "Ortala",
+        "alignRight": "Sağa hizala",
+        "alignJustify": "İki yana yasla",
+        "selectColumnToAlign": "Hizalamasını değiştirmek için bir sütun seçin.",
+        "columnWidth": "Sütun genişliği",
+        "selectColumnForWidth": "Genişliğini değiştirmek için bir sütun seçin.",
+        "fitToContent": "İçeriğe göre",
+        "fixedWidth": "Sabit genişlik",
+        "setColumnWidth": "Sütun genişliğini ayarla",
+        "widthValue": "Genişlik",
+        "widthUnit": "Birim",
+        "widthPercentHelp": "Metin genişliğinin yüzdesi.",
+        "widthCustom": "Özel",
+        "widthCustomHelp": "4cm veya 0.4\\linewidth gibi herhangi bir LaTeX uzunluğu.",
+        "widthNeedsArray": "Sabit genişlikler için ön bölümde array paketi gerekir.",
+        "columnWidthIndicator": "Sütun genişliği",
+        "mergeCells": "Hücreleri birleştir",
+        "unmergeCells": "Hücreleri böl",
+        "selectCellsToMerge": "Birleştirilecek hücreleri seçin.",
+        "deleteRowOrColumn": "Sil",
+        "selectRowOrColumnToDelete": "Silmek için bir satır ya da sütun seçin.",
+        "insert": "Ekle",
+        "insertRowsAbove": "Üste satır ekle",
+        "insertRowsBelow": "Alta satır ekle",
+        "insertColumnsLeft": "Sola sütun ekle",
+        "insertColumnsRight": "Sağa sütun ekle",
+        "removeTable": "Tabloyu kaldır",
+        "help": "Yardım",
+        "helpTitle": "Tabloları düzenleme",
+        "helpIntro": "Bu tablo sizin LaTeX kaynağınızdır. Buradaki her düzenleme dosyadaki tabular ortamını yeniden yazar.",
+        "helpSupportedTitle": "Izgaranın desteklediği özellikler",
+        "helpSupportedColumns": "Sütun belirtimi üzerinden sütun hizalaması ve sabit genişlikler.",
+        "helpSupportedRules": "booktabs dahil yatay ve dikey çizgiler.",
+        "helpSupportedMerged": "\\multicolumn olarak yazılmış birleştirilmiş hücreler.",
+        "helpSupportedCaption": "Çevresindeki table ortamının başlığı ve etiketi.",
+        "helpUnsupported": "Izgaranın gösteremediği her şey kaynak olarak kalır ve tablo bunun yerine salt okunur gösterilir.",
+        "helpShortcutsTitle": "Klavye",
+        "shortcutMove": "Ok tuşları hücreler arasında gezinir.",
+        "shortcutExtend": "Shift ile bir ok tuşu seçimi genişletir.",
+        "shortcutNext": "Tab sonraki hücreye, Shift+Tab önceki hücreye geçer.",
+        "shortcutEdit": "Enter seçili hücreyi düzenlemeye başlar.",
+        "shortcutCancel": "Escape düzenlemeyi bitirir ve hücreyi seçili bırakır.",
+        "shortcutClear": "Backspace ya da Delete seçili hücreleri boşaltır.",
+        "shortcutUndo": "Geri alma ve yineleme, düzenleyicinin geri kalanındaki gibi çalışır.",
+        "ok": "Bitti",
+        "cancel": "İptal",
+        "close": "Kapat",
+        "selectRow": "Satırı seç",
+        "selectColumn": "Sütunu seç",
+        "cellInput": "Hücre",
+        "errorTitle": "Bu tablo işlenemedi",
+        "errorBody": "tabular, ızgaranın henüz gösteremediği bir şey kullanıyor. Onun yerine kaynak olarak düzenleyin.",
+        "viewSource": "Kaynak olarak düzenle"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Belgedeki konum",
+    "goTo": "{{title}} bölümüne git",
+    "untitled": "Adsız"
   }
 }

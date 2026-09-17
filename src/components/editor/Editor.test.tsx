@@ -9,6 +9,7 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
+import { useVisualModeStore } from "@/store/visual-mode";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -19,13 +20,17 @@ const tauri = vi.hoisted(() => ({
 }));
 
 const wrapSelection = vi.hoisted(() => vi.fn());
+const controller = vi.hoisted(() => ({
+  getEditorView: vi.fn(() => null),
+  gotoRange: vi.fn(),
+}));
 
 vi.mock("@/lib/tauri", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/tauri")>();
   return { ...actual, ...tauri };
 });
 
-vi.mock("./cm/controller", () => ({ wrapSelection }));
+vi.mock("./cm/controller", () => ({ wrapSelection, ...controller }));
 
 vi.mock("./CodeMirrorEditor", () => ({
   CodeMirrorEditor: () => <div data-testid="codemirror" />,
@@ -113,7 +118,7 @@ describe("Editor shell", () => {
     });
     render(<Editor />);
 
-    expect(screen.getByText("intro.tex")).toBeInTheDocument();
+    expect(screen.getAllByText("intro.tex").length).toBeGreaterThan(0);
     expect(screen.getByText("notes.md")).toBeInTheDocument();
     expect(
       screen.getByLabelText(shell.closeFile.replace("{{name}}", "notes.md")),
@@ -232,13 +237,26 @@ describe("Editor shell", () => {
     expect(screen.getByText(common.state.loading)).toBeInTheDocument();
   });
 
-  it("keeps the visual surface mounted next to the source surface", async () => {
+  it("renders LaTeX Visual mode inside the source editor without the rich-text surface", () => {
+    setWysiwygMode("project", true);
     useSettingsStore.setState({ visualEditor: true });
     openFile("main.tex");
     render(<Editor />);
 
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+    expect(screen.queryByTestId("wysiwyg")).not.toBeInTheDocument();
+    expect(screen.getByTestId("editor-breadcrumbs")).toBeInTheDocument();
+    setWysiwygMode("project", false);
+  });
+
+  it("keeps the Markdown visual surface mounted next to the source surface", async () => {
+    useSettingsStore.setState({ visualEditor: true });
+    openFile("notes.md");
+    render(<Editor />);
+
     expect(await screen.findByTestId("wysiwyg")).toBeInTheDocument();
     expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+    expect(screen.queryByTestId("editor-breadcrumbs")).not.toBeInTheDocument();
   });
 
   it("locks the surface while an external mutation holds the lease", () => {
@@ -260,11 +278,12 @@ describe("Editor shell", () => {
     const { revealSourceEditor } = await import("./wysiwyg/controller");
     render(<Editor />);
 
-    expect(await screen.findByTestId("wysiwyg")).toBeInTheDocument();
+    expect(useVisualModeStore.getState().enabled).toBe(true);
 
     act(() => revealSourceEditor());
 
     expect(getWysiwygMode("project")).toBe(false);
+    expect(useVisualModeStore.getState().enabled).toBe(false);
   });
 
   it("edits the diagram main file on the canvas or in its source", async () => {

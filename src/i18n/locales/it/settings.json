@@ -630,6 +630,10 @@
       "tabSize": {
         "description": "Spazi inseriti per ogni livello di rientro, e larghezza con cui viene rappresentato un tab.",
         "label": "Dimensione del tab"
+      },
+      "mathPreview": {
+        "description": "Mostra l'equazione composta sopra a quella in cui si trova il cursore.",
+        "label": "Anteprima della matematica"
       }
     },
     "files": {

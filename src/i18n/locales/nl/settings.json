@@ -625,6 +625,10 @@
       "tabSize": {
         "description": "Het aantal spaties per inspringniveau, en de breedte waarop een tab wordt getoond.",
         "label": "Tabgrootte"
+      },
+      "mathPreview": {
+        "description": "Toon de opgemaakte vergelijking boven de vergelijking waarin de cursor staat.",
+        "label": "Wiskundevoorbeeld"
       }
     },
     "files": {

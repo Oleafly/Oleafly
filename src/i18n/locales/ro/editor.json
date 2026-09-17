@@ -39,7 +39,10 @@
     "insertPlaceholder": "Inserează un marcaj",
     "cancel": "Anulează",
     "insert": "Inserează figura",
-    "selectImage": "Selectează o imagine ca să o inserezi."
+    "selectImage": "Selectează o imagine ca să o inserezi.",
+    "editTitle": "Editează imaginea",
+    "editDescription": "Înlocuiește imaginea sau schimbă-i lățimea. Legenda și eticheta rămân neschimbate.",
+    "save": "Salvează imaginea"
   },
   "tableToolbar": {
     "label": "Instrumente pentru tabel",
@@ -629,7 +632,14 @@
       "unsafeOutput": "Nu s-a putut produce o previzualizare sigură.",
       "unsupported": "Această expresie este incompletă sau neacceptată.",
       "missingClosing": "Lipsește {{delimiter}} de închidere.",
-      "notRendered": "Această expresie nu a putut fi randată."
+      "notRendered": "Această expresie nu a putut fi randată.",
+      "preview": {
+        "moreOptions": "Mai multe opțiuni",
+        "hide": "Ascunde",
+        "hideDescription": "Ascunde previzualizarea până când ieși din această formulă.",
+        "disable": "Dezactivează",
+        "disableDescription": "Oprește previzualizarea formulelor. O poți reactiva din Setări."
+      }
     },
     "latex": {
       "command": {
@@ -914,6 +924,104 @@
         "addCaption": "Adaugă o legendă",
         "captionPlaceholder": "Legendă"
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Se încarcă imaginea",
+        "loadFailed": "Această imagine nu a putut fi încărcată.",
+        "edit": "Editează figura"
+      },
+      "preamble": {
+        "show": "Arată preambulul documentului",
+        "hide": "Ascunde preambulul documentului"
+      },
+      "endOfDocument": "Sfârșitul documentului",
+      "abstract": "Rezumat",
+      "keywordsLabel": "Cuvinte-cheie",
+      "theorem": {
+        "theorem": "Teoremă",
+        "lemma": "Lemă",
+        "corollary": "Corolar",
+        "proof": "Demonstrație"
+      },
+      "footnote": "Notă de subsol",
+      "endnote": "Notă de final",
+      "citation": "Citare",
+      "reference": "Referință",
+      "label": "Etichetă",
+      "includedFile": "Fișier inclus",
+      "table": {
+        "captionPlacement": "Legendă",
+        "captionAbove": "Legendă deasupra",
+        "captionBelow": "Legendă dedesubt",
+        "noCaption": "Fără legendă",
+        "captionNeedsTable": "O legendă are nevoie de un mediu table în jurul lui tabular.",
+        "borders": "Chenare",
+        "noBorders": "Fără chenare",
+        "allBorders": "Toate chenarele",
+        "booktabs": "Linii booktabs",
+        "customBorders": "Chenare personalizate",
+        "alignment": "Aliniere",
+        "alignLeft": "Aliniază la stânga",
+        "alignCenter": "Centrează",
+        "alignRight": "Aliniază la dreapta",
+        "alignJustify": "Justifică",
+        "selectColumnToAlign": "Selectează o coloană ca să îi schimbi alinierea.",
+        "columnWidth": "Lățimea coloanei",
+        "selectColumnForWidth": "Selectează o coloană ca să îi schimbi lățimea.",
+        "fitToContent": "După conținut",
+        "fixedWidth": "Lățime fixă",
+        "setColumnWidth": "Stabilește lățimea coloanei",
+        "widthValue": "Lățime",
+        "widthUnit": "Unitate",
+        "widthPercentHelp": "Un procent din lățimea textului.",
+        "widthCustom": "Personalizată",
+        "widthCustomHelp": "Orice lungime LaTeX, de exemplu 4cm sau 0.4\\linewidth.",
+        "widthNeedsArray": "Lățimile fixe au nevoie de pachetul array în preambul.",
+        "columnWidthIndicator": "Lățimea coloanei",
+        "mergeCells": "Îmbină celulele",
+        "unmergeCells": "Împarte celulele",
+        "selectCellsToMerge": "Selectează celulele pe care vrei să le îmbini.",
+        "deleteRowOrColumn": "Șterge",
+        "selectRowOrColumnToDelete": "Selectează un rând sau o coloană de șters.",
+        "insert": "Inserează",
+        "insertRowsAbove": "Inserează un rând deasupra",
+        "insertRowsBelow": "Inserează un rând dedesubt",
+        "insertColumnsLeft": "Inserează o coloană la stânga",
+        "insertColumnsRight": "Inserează o coloană la dreapta",
+        "removeTable": "Elimină tabelul",
+        "help": "Ajutor",
+        "helpTitle": "Editarea tabelelor",
+        "helpIntro": "Tabelul este chiar sursa ta LaTeX. Fiecare modificare de aici rescrie mediul tabular din fișier.",
+        "helpSupportedTitle": "Ce acoperă grila",
+        "helpSupportedColumns": "Alinierea coloanelor și lățimile fixe, prin specificația de coloane.",
+        "helpSupportedRules": "Liniile orizontale și verticale, inclusiv booktabs.",
+        "helpSupportedMerged": "Celulele îmbinate, scrise cu \\multicolumn.",
+        "helpSupportedCaption": "Legenda și eticheta mediului table din jur.",
+        "helpUnsupported": "Tot ce nu poate fi reprezentat în grilă rămâne sursă, iar tabelul este afișat doar pentru citire.",
+        "helpShortcutsTitle": "Tastatură",
+        "shortcutMove": "Săgețile mută selecția de la o celulă la alta.",
+        "shortcutExtend": "Shift cu o săgeată extinde selecția.",
+        "shortcutNext": "Tab trece la celula următoare, iar Shift+Tab la cea anterioară.",
+        "shortcutEdit": "Enter începe editarea celulei selectate.",
+        "shortcutCancel": "Escape oprește editarea și păstrează celula selectată.",
+        "shortcutClear": "Backspace sau Delete golește celulele selectate.",
+        "shortcutUndo": "Anularea și refacerea funcționează ca în restul editorului.",
+        "ok": "Gata",
+        "cancel": "Anulează",
+        "close": "Închide",
+        "selectRow": "Selectează rândul",
+        "selectColumn": "Selectează coloana",
+        "cellInput": "Celulă",
+        "errorTitle": "Acest tabel nu a putut fi afișat",
+        "errorBody": "Mediul tabular folosește ceva ce grila nu poate arăta încă. Editează-l ca sursă.",
+        "viewSource": "Editează ca sursă"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Poziția în document",
+    "goTo": "Mergi la {{title}}",
+    "untitled": "Fără titlu"
   }
 }

@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
-import { createWysiwygExtensions, parseLatexBody, serializeLatexBody } from "@oleafly/wysiwyg";
+import { createWysiwygExtensions, serializeLatexBody } from "@oleafly/wysiwyg";
 import {
   insertLatexIntoVisualEditor,
-  insertParsedLatex,
   insertVisualFigure,
-  insertVisualTable,
   latexToVisualContent,
   positionAfterEnclosing,
 } from "./insert";
@@ -152,29 +150,7 @@ describe("insertLatexIntoVisualEditor", () => {
   });
 });
 
-describe("insertParsedLatex", () => {
-  it("inserts converted HTML as native nodes at the selection", () => {
-    const editor = mountAfterHello();
-    const inserted = insertParsedLatex(
-      editor.view,
-      "\\textbf{Bold} text\n\n\\begin{itemize}\n    \\item One\n\\end{itemize}",
-      [],
-    );
-    expect(inserted).toBe(true);
-    const latex = serializeLatexBody(editor.getJSON());
-    expect(latex).toContain("\\textbf{Bold} text");
-    expect(latex).toContain("\\begin{itemize}\n  \\item One\n\\end{itemize}");
-  });
-
-  it("inserts at an explicit position and reports nothing for empty input", () => {
-    const editor = mount("<p>Hello</p>");
-    expect(insertParsedLatex(editor.view, "   ", [])).toBe(false);
-    expect(insertParsedLatex(editor.view, "$a$", [], 1)).toBe(true);
-    expect(serializeLatexBody(editor.getJSON())).toBe("$a$Hello\n");
-  });
-});
-
-describe("insertVisualFigure and insertVisualTable", () => {
+describe("insertVisualFigure", () => {
   it("inserts a figure with a focused empty caption and a position after it", () => {
     const editor = mountAfterHello();
     insertVisualFigure(editor.view, {
@@ -189,42 +165,6 @@ describe("insertVisualFigure and insertVisualTable", () => {
     expect(serializeLatexBody(editor.getJSON())).toBe(
       "Hello\n\n\\begin{figure}[htbp]\n    \\centering\n    \\includegraphics[width=0.8\\linewidth]{figures/plot.png}\n    \\caption{}\n    \\label{fig:plot}\n\\end{figure}\n",
     );
-  });
-
-  it("inserts a table with a header row, an empty caption above and the chosen rules", () => {
-    const editor = mountAfterHello();
-    insertVisualTable(editor.view, 2, 2, "horizontal");
-    expect(editor.state.selection.$from.parent.type.name).toBe("tableCaption");
-    const latex = serializeLatexBody(editor.getJSON());
-    expect(latex).toBe(
-      [
-        "Hello",
-        "",
-        "\\begin{table}[htbp]",
-        "    \\centering",
-        "    \\caption{}",
-        "    \\begin{tabular}{ll}",
-        "        \\hline",
-        "         &  \\\\",
-        "        \\hline",
-        "         &  \\\\",
-        "        \\hline",
-        "    \\end{tabular}",
-        "\\end{table}",
-        "",
-      ].join("\n"),
-    );
-    expect(parseLatexBody(latex).content?.[1]).toMatchObject({ type: "tableFloat" });
-  });
-
-  it("uses booktabs rules when asked", () => {
-    const editor = mount("");
-    insertVisualTable(editor.view, 3, 1, "booktabs");
-    const latex = serializeLatexBody(editor.getJSON());
-    expect(latex).toContain("\\toprule");
-    expect(latex).toContain("\\midrule");
-    expect(latex).toContain("\\bottomrule");
-    expect(latex).not.toContain("\\hline");
   });
 
   it("returns null from positionAfterEnclosing outside the node type", () => {

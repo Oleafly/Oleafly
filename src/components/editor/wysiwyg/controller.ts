@@ -12,10 +12,6 @@ export interface VisualFigureOptions {
 
 export interface WysiwygInsertions {
   insertLatex(view: EditorView, source: string, block: boolean, theoremEnvironments: readonly string[]): void;
-  insertFigure(view: EditorView, options: VisualFigureOptions): boolean;
-  insertTable(view: EditorView, rows: number, cols: number, preset: "booktabs" | "horizontal"): boolean;
-  currentHeadingCommand(editor: Editor): string | null;
-  setHeading(editor: Editor, command: string): boolean;
 }
 
 let insertions: WysiwygInsertions | null = null;

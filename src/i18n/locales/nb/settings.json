@@ -625,6 +625,10 @@
       "tabSize": {
         "description": "Mellomrom per innrykksnivå, og bredden en tabulator tegnes med.",
         "label": "Tabulatorbredde"
+      },
+      "mathPreview": {
+        "description": "Vis den gjengitte ligningen over den som markøren står i.",
+        "label": "Forhåndsvisning av matematikk"
       }
     },
     "files": {

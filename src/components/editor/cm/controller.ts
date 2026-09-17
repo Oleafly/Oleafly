@@ -37,13 +37,6 @@ function insertRawIntoWysiwyg(source: string, block: boolean): boolean {
   return true;
 }
 
-function wysiwygSelectedText(): string {
-  const editor = getWysiwygEditor();
-  if (!editor) return "";
-  const { from, to } = editor.state.selection;
-  return from === to ? "" : editor.state.doc.textBetween(from, to, " ");
-}
-
 export function insertAtCursor(text: string) {
   if (isWysiwygActive() && insertRawIntoWysiwyg(text, text.includes("\n"))) return;
   coreInsertAtCursor(text);
@@ -54,24 +47,14 @@ export function insertText(text: string) {
 }
 
 export function wrapSelectionOrPlaceholder(before: string, after: string, placeholder: string) {
-  if (isWysiwygActive()) {
-    const selected = wysiwygSelectedText();
-    const content = selected.trim() === "" ? placeholder : selected;
-    if (insertRawIntoWysiwyg(`${before}${content}${after}`, false)) return;
-  }
   coreWrapSelectionOrPlaceholder(before, after, placeholder);
 }
 
 export function insertTemplate(template: string, selStart: number, selEnd: number) {
-  if (isWysiwygActive() && insertRawIntoWysiwyg(template, template.includes("\n"))) return;
   coreInsertTemplate(template, selStart, selEnd);
 }
 
 export function insertEnvironment(name: string) {
-  if (isWysiwygActive()) {
-    const template = `\\begin{${name}}\n  \n\\end{${name}}\n`;
-    if (insertRawIntoWysiwyg(template, true)) return;
-  }
   coreInsertEnvironment(name);
 }
 

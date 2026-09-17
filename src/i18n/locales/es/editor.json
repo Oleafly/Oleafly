@@ -39,7 +39,10 @@
     "insertPlaceholder": "Insertar un marcador de posición",
     "cancel": "Cancelar",
     "insert": "Insertar una figura",
-    "selectImage": "Selecciona una imagen para insertarla."
+    "selectImage": "Selecciona una imagen para insertarla.",
+    "editTitle": "Editar la imagen",
+    "editDescription": "Cambia la imagen o su ancho. El pie y la etiqueta se quedan como están.",
+    "save": "Guardar la imagen"
   },
   "tableToolbar": {
     "label": "Herramientas de tabla",
@@ -629,7 +632,14 @@
       "unsafeOutput": "No se pudo generar una vista previa segura.",
       "unsupported": "Esta expresión está incompleta o no es compatible.",
       "missingClosing": "Falta el {{delimiter}} de cierre.",
-      "notRendered": "No se pudo representar esta expresión."
+      "notRendered": "No se pudo representar esta expresión.",
+      "preview": {
+        "moreOptions": "Más opciones",
+        "hide": "Ocultar",
+        "hideDescription": "Oculta la vista previa hasta que salgas de esta ecuación.",
+        "disable": "Desactivar",
+        "disableDescription": "Apaga la vista previa de las ecuaciones. Puedes volver a activarla en Ajustes."
+      }
     },
     "latex": {
       "command": {
@@ -914,6 +924,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Tipo de entrada de bibliografía desconocido @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Cargando la imagen",
+        "loadFailed": "No se pudo cargar esta imagen.",
+        "edit": "Editar la figura"
+      },
+      "preamble": {
+        "show": "Mostrar el preámbulo del documento",
+        "hide": "Ocultar el preámbulo del documento"
+      },
+      "endOfDocument": "Fin del documento",
+      "abstract": "Resumen",
+      "keywordsLabel": "Palabras clave",
+      "theorem": {
+        "theorem": "Teorema",
+        "lemma": "Lema",
+        "corollary": "Corolario",
+        "proof": "Demostración"
+      },
+      "footnote": "Nota al pie",
+      "endnote": "Nota al final",
+      "citation": "Cita",
+      "reference": "Referencia",
+      "label": "Etiqueta",
+      "includedFile": "Archivo incluido",
+      "table": {
+        "captionPlacement": "Pie",
+        "captionAbove": "Pie encima",
+        "captionBelow": "Pie debajo",
+        "noCaption": "Sin pie",
+        "captionNeedsTable": "Un pie necesita un entorno table alrededor del tabular.",
+        "borders": "Filetes",
+        "noBorders": "Sin filetes",
+        "allBorders": "Todos los filetes",
+        "booktabs": "Filetes de booktabs",
+        "customBorders": "Filetes personalizados",
+        "alignment": "Alineación",
+        "alignLeft": "Alinear a la izquierda",
+        "alignCenter": "Centrar",
+        "alignRight": "Alinear a la derecha",
+        "alignJustify": "Justificar",
+        "selectColumnToAlign": "Selecciona una columna para cambiar su alineación.",
+        "columnWidth": "Ancho de columna",
+        "selectColumnForWidth": "Selecciona una columna para cambiar su ancho.",
+        "fitToContent": "Ajustar al contenido",
+        "fixedWidth": "Ancho fijo",
+        "setColumnWidth": "Definir el ancho de columna",
+        "widthValue": "Ancho",
+        "widthUnit": "Unidad",
+        "widthPercentHelp": "Un porcentaje del ancho del texto.",
+        "widthCustom": "Personalizado",
+        "widthCustomHelp": "Cualquier longitud de LaTeX, como 4cm o 0.4\\linewidth.",
+        "widthNeedsArray": "Los anchos fijos necesitan el paquete array en el preámbulo.",
+        "columnWidthIndicator": "Ancho de columna",
+        "mergeCells": "Combinar las celdas",
+        "unmergeCells": "Dividir las celdas",
+        "selectCellsToMerge": "Selecciona las celdas que quieres combinar.",
+        "deleteRowOrColumn": "Eliminar",
+        "selectRowOrColumnToDelete": "Selecciona una fila o una columna para eliminarla.",
+        "insert": "Insertar",
+        "insertRowsAbove": "Insertar una fila encima",
+        "insertRowsBelow": "Insertar una fila debajo",
+        "insertColumnsLeft": "Insertar una columna a la izquierda",
+        "insertColumnsRight": "Insertar una columna a la derecha",
+        "removeTable": "Quitar la tabla",
+        "help": "Ayuda",
+        "helpTitle": "Editar tablas",
+        "helpIntro": "La tabla es tu código de LaTeX. Cada cambio que haces aquí reescribe el tabular del archivo.",
+        "helpSupportedTitle": "Lo que admite la cuadrícula",
+        "helpSupportedColumns": "La alineación de las columnas y los anchos fijos, mediante la especificación de columnas.",
+        "helpSupportedRules": "Los filetes horizontales y verticales, incluidos los de booktabs.",
+        "helpSupportedMerged": "Las celdas combinadas escritas como \\multicolumn.",
+        "helpSupportedCaption": "El pie y la etiqueta del entorno table que rodea la tabla.",
+        "helpUnsupported": "Lo que la cuadrícula no puede representar se queda como código, y entonces la tabla se muestra en solo lectura.",
+        "helpShortcutsTitle": "Teclado",
+        "shortcutMove": "Las flechas te mueven entre las celdas.",
+        "shortcutExtend": "Shift con una flecha amplía la selección.",
+        "shortcutNext": "Tab pasa a la celda siguiente y Shift+Tab a la anterior.",
+        "shortcutEdit": "Enter empieza a editar la celda seleccionada.",
+        "shortcutCancel": "Escape deja de editar y mantiene la celda seleccionada.",
+        "shortcutClear": "Backspace o Delete vacían las celdas seleccionadas.",
+        "shortcutUndo": "Deshacer y rehacer funcionan igual que en el resto del editor.",
+        "ok": "Listo",
+        "cancel": "Cancelar",
+        "close": "Cerrar",
+        "selectRow": "Seleccionar la fila",
+        "selectColumn": "Seleccionar la columna",
+        "cellInput": "Celda",
+        "errorTitle": "No se pudo mostrar esta tabla",
+        "errorBody": "El tabular usa algo que la cuadrícula todavía no puede mostrar. Edítalo como código.",
+        "viewSource": "Editar como código"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Ubicación en el documento",
+    "goTo": "Ir a {{title}}",
+    "untitled": "Sin título"
   }
 }

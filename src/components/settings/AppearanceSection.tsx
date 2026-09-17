@@ -179,7 +179,7 @@ function AppAppearanceTab() {
                 className={cn(
                   "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
                   active
-                    ? "border-foreground ring-1 ring-foreground/20"
+                    ? "border-foreground"
                     : "border-border",
                 )}
                 style={{ backgroundColor: accent.color }}
@@ -316,6 +316,10 @@ function EditorAppearanceTab() {
   );
   const setEditorNonBlinkingCursor = useSettingsStore(
     (state) => state.setEditorNonBlinkingCursor,
+  );
+  const editorMathPreview = useSettingsStore((state) => state.editorMathPreview);
+  const setEditorMathPreview = useSettingsStore(
+    (state) => state.setEditorMathPreview,
   );
   const editorStickyScroll = useSettingsStore((state) => state.editorStickyScroll);
   const setEditorStickyScroll = useSettingsStore(
@@ -559,6 +563,12 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.stickyScroll.description)}
         checked={editorStickyScroll}
         onChange={setEditorStickyScroll}
+      />
+      <SettingsToggleRow
+        label={t(($) => $.settings.appearance.editor.mathPreview.label)}
+        description={t(($) => $.settings.appearance.editor.mathPreview.description)}
+        checked={editorMathPreview}
+        onChange={setEditorMathPreview}
       />
     </div>
   );

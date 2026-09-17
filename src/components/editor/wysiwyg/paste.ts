@@ -1,6 +1,5 @@
 import type { EditorView } from "@tiptap/pm/view";
-import { scanMathExpressions } from "@oleafly/editor/math-source";
-import { htmlToLatex, WYSIWYG_NODE_NAMES } from "@oleafly/wysiwyg";
+import { WYSIWYG_NODE_NAMES } from "@oleafly/wysiwyg";
 import { i18n } from "@/i18n";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import { toast } from "@/lib/toast";
@@ -11,7 +10,7 @@ import {
   PASTED_FIGURE_WIDTH,
   suggestedFigureLabel,
 } from "@/components/editor/figure-import";
-import { insertParsedLatex, insertVisualFigure, positionAfterEnclosing } from "./insert";
+import { insertVisualFigure, positionAfterEnclosing } from "./insert";
 
 export interface PasteData {
   types: readonly string[];
@@ -21,37 +20,17 @@ export interface PasteData {
 
 export type PasteIntent =
   | { kind: "files"; files: File[] }
-  | { kind: "latex"; latex: string }
   | { kind: "default" };
-
-export interface VisualPasteContext {
-  theoremEnvironments: () => readonly string[];
-}
 
 export interface VisualPasteHandlers {
   handlePaste: (view: EditorView, event: ClipboardEvent) => boolean;
   handleDrop: (view: EditorView, event: DragEvent, slice: unknown, moved: boolean) => boolean;
 }
 
-const LATEX_COMMAND = /\\[A-Za-z]+/u;
-
-export function looksLikeLatex(text: string): boolean {
-  if (LATEX_COMMAND.test(text)) return true;
-  return scanMathExpressions(text, { format: "latex" }).some((expression) => expression.status === "complete");
-}
-
 export function classifyPaste(data: PasteData): PasteIntent {
   const files = importableImageFiles(data.files);
-  const types = new Set(data.types);
-  const hasPlain = types.has("text/plain");
+  const hasPlain = new Set(data.types).has("text/plain");
   if (files.length > 0 && !hasPlain) return { kind: "files", files };
-  const plain = hasPlain ? data.getData("text/plain") : "";
-  const html = types.has("text/html") ? data.getData("text/html") : "";
-  if (html !== "") {
-    const latex = htmlToLatex(html, { hasFiles: files.length > 0 });
-    if (latex !== null && latex.trim() !== plain.trim()) return { kind: "latex", latex };
-  }
-  if (plain.trim() !== "" && looksLikeLatex(plain)) return { kind: "latex", latex: plain };
   return { kind: "default" };
 }
 
@@ -80,13 +59,12 @@ async function importFigures(view: EditorView, files: File[], at: number | null)
   }
 }
 
-export function createVisualPasteHandlers(context: VisualPasteContext): VisualPasteHandlers {
+export function createVisualPasteHandlers(): VisualPasteHandlers {
   const handlePaste = (view: EditorView, event: ClipboardEvent): boolean => {
     const data = event.clipboardData;
     if (!data || mutationLocked()) return false;
     const intent = classifyPaste(data);
     if (intent.kind === "default") return false;
-    if (intent.kind === "latex") return insertParsedLatex(view, intent.latex, context.theoremEnvironments());
     void importFigures(view, intent.files, null);
     return true;
   };

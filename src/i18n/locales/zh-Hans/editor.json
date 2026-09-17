@@ -39,7 +39,10 @@
     "insertPlaceholder": "插入占位符",
     "cancel": "取消",
     "insert": "插入图片",
-    "selectImage": "请选择要插入的图片。"
+    "selectImage": "请选择要插入的图片。",
+    "editTitle": "编辑图片",
+    "editDescription": "更换图片或调整宽度。图注和标签保持不变。",
+    "save": "保存图片"
   },
   "tableToolbar": {
     "label": "表格工具",
@@ -615,7 +618,14 @@
       "unsafeOutput": "无法生成安全的预览。",
       "unsupported": "该表达式不完整或不受支持。",
       "missingClosing": "缺少闭合定界符 {{delimiter}}",
-      "notRendered": "无法渲染该表达式。"
+      "notRendered": "无法渲染该表达式。",
+      "preview": {
+        "moreOptions": "更多选项",
+        "hide": "隐藏",
+        "hideDescription": "在离开该公式之前隐藏预览。",
+        "disable": "禁用",
+        "disableDescription": "关闭公式预览。可以在设置中重新开启。"
+      }
     },
     "latex": {
       "command": {
@@ -896,6 +906,104 @@
         "source": "BibTeX",
         "unknownEntryType": "未知的参考文献条目类型 @{{type}}。"
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "正在加载图片",
+        "loadFailed": "无法加载这张图片。",
+        "edit": "编辑插图"
+      },
+      "preamble": {
+        "show": "显示文档导言区",
+        "hide": "隐藏文档导言区"
+      },
+      "endOfDocument": "文档结尾",
+      "abstract": "摘要",
+      "keywordsLabel": "关键词",
+      "theorem": {
+        "theorem": "定理",
+        "lemma": "引理",
+        "corollary": "推论",
+        "proof": "证明"
+      },
+      "footnote": "脚注",
+      "endnote": "尾注",
+      "citation": "引用",
+      "reference": "交叉引用",
+      "label": "标签",
+      "includedFile": "引入的文件",
+      "table": {
+        "captionPlacement": "表注",
+        "captionAbove": "表注在上",
+        "captionBelow": "表注在下",
+        "noCaption": "无表注",
+        "captionNeedsTable": "添加表注需要在 tabular 外面套一层 table 环境。",
+        "borders": "边框",
+        "noBorders": "无边框",
+        "allBorders": "全部边框",
+        "booktabs": "booktabs 横线",
+        "customBorders": "自定义边框",
+        "alignment": "对齐方式",
+        "alignLeft": "左对齐",
+        "alignCenter": "居中对齐",
+        "alignRight": "右对齐",
+        "alignJustify": "两端对齐",
+        "selectColumnToAlign": "请选择要更改对齐方式的列。",
+        "columnWidth": "列宽",
+        "selectColumnForWidth": "请选择要更改宽度的列。",
+        "fitToContent": "按内容调整",
+        "fixedWidth": "固定宽度",
+        "setColumnWidth": "设置列宽",
+        "widthValue": "宽度",
+        "widthUnit": "单位",
+        "widthPercentHelp": "相对于正文宽度的百分比。",
+        "widthCustom": "自定义",
+        "widthCustomHelp": "任意 LaTeX 长度，例如 4cm 或 0.4\\linewidth。",
+        "widthNeedsArray": "固定宽度需要在导言区加载 array 宏包。",
+        "columnWidthIndicator": "列宽",
+        "mergeCells": "合并单元格",
+        "unmergeCells": "拆分单元格",
+        "selectCellsToMerge": "请选择要合并的单元格。",
+        "deleteRowOrColumn": "删除",
+        "selectRowOrColumnToDelete": "请选择要删除的行或列。",
+        "insert": "插入",
+        "insertRowsAbove": "在上方插入行",
+        "insertRowsBelow": "在下方插入行",
+        "insertColumnsLeft": "在左侧插入列",
+        "insertColumnsRight": "在右侧插入列",
+        "removeTable": "移除表格",
+        "help": "帮助",
+        "helpTitle": "编辑表格",
+        "helpIntro": "这个表格就是你的 LaTeX 源码。这里的每一次修改都会改写文件中的 tabular。",
+        "helpSupportedTitle": "网格能处理的内容",
+        "helpSupportedColumns": "通过列格式设置的列对齐方式和固定宽度。",
+        "helpSupportedRules": "横线和竖线，包括 booktabs。",
+        "helpSupportedMerged": "用 \\multicolumn 写成的合并单元格。",
+        "helpSupportedCaption": "外层 table 环境的表注和标签。",
+        "helpUnsupported": "网格无法表示的内容会保留为源码，这时表格只以只读方式显示。",
+        "helpShortcutsTitle": "键盘",
+        "shortcutMove": "方向键在单元格之间移动。",
+        "shortcutExtend": "Shift 加方向键可扩大选区。",
+        "shortcutNext": "Tab 移到下一个单元格，Shift+Tab 移到上一个。",
+        "shortcutEdit": "Enter 开始编辑选中的单元格。",
+        "shortcutCancel": "Escape 停止编辑，并保持单元格为选中状态。",
+        "shortcutClear": "Backspace 或 Delete 可清空选中的单元格。",
+        "shortcutUndo": "撤销和重做与编辑器其他位置一致。",
+        "ok": "完成",
+        "cancel": "取消",
+        "close": "关闭",
+        "selectRow": "选择行",
+        "selectColumn": "选择列",
+        "cellInput": "单元格",
+        "errorTitle": "无法显示该表格",
+        "errorBody": "这个 tabular 使用了网格暂时无法显示的内容。请改用源码编辑。",
+        "viewSource": "以源码编辑"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "文档中的位置",
+    "goTo": "跳转到 {{title}}",
+    "untitled": "未命名"
   }
 }

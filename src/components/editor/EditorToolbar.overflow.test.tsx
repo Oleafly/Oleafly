@@ -13,12 +13,6 @@ const controller = vi.hoisted(() => ({
   getEditorView: vi.fn<() => unknown>(() => ({ id: "view" })),
 }));
 
-const wysiwyg = vi.hoisted(() => ({
-  isWysiwygActive: vi.fn(() => false),
-  goToWysiwygDefinition: vi.fn(() => false),
-  findWysiwygReferences: vi.fn(() => false),
-}));
-
 const nav = vi.hoisted(() => ({
   goToDefinition: vi.fn(),
   findReferences: vi.fn(),
@@ -28,10 +22,6 @@ const nav = vi.hoisted(() => ({
 const toasts = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn(), success: vi.fn() }));
 
 vi.mock("./cm/controller", () => controller);
-vi.mock("./wysiwyg/controller", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./wysiwyg/controller")>();
-  return { ...actual, ...wysiwyg };
-});
 vi.mock("@/lib/index/nav", () => nav);
 vi.mock("@/lib/toast", () => ({ toast: toasts }));
 vi.mock("@oleafly/preview", () => ({
@@ -50,9 +40,6 @@ const toolbar = en.toolbar;
 describe("EditorToolbar overflow menu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    wysiwyg.isWysiwygActive.mockReturnValue(false);
-    wysiwyg.goToWysiwygDefinition.mockReturnValue(false);
-    wysiwyg.findWysiwygReferences.mockReturnValue(false);
     controller.getEditorView.mockReturnValue({ id: "view" });
     useFilesStore.setState({
       projectKind: "",
@@ -93,39 +80,14 @@ describe("EditorToolbar overflow menu", () => {
     expect(toasts.info).not.toHaveBeenCalled();
   });
 
-  it("asks the writer to select a citation when the visual surface cannot navigate", () => {
-    wysiwyg.isWysiwygActive.mockReturnValue(true);
-    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+  it("keeps code navigation available while Visual mode is on", () => {
+    render(<EditorToolbar wysiwyg={true} onToggleWysiwyg={vi.fn()} />);
     fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
     fireEvent.click(screen.getByLabelText(toolbar.codeIntelligence));
 
     fireEvent.click(screen.getByText(toolbar.goToDefinition));
 
-    expect(nav.goToDefinition).not.toHaveBeenCalled();
-    expect(toasts.info).toHaveBeenCalledWith(toolbar.selectCitationFirst);
-  });
-
-  it("says a rename needs the source surface", () => {
-    wysiwyg.isWysiwygActive.mockReturnValue(true);
-    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
-    fireEvent.click(screen.getByLabelText(toolbar.codeIntelligence));
-
-    fireEvent.click(screen.getByText(toolbar.renameSymbol));
-
-    expect(nav.startRename).not.toHaveBeenCalled();
-    expect(toasts.info).toHaveBeenCalledWith(toolbar.renameSourceOnly);
-  });
-
-  it("stays quiet when the visual surface handled the jump itself", () => {
-    wysiwyg.isWysiwygActive.mockReturnValue(true);
-    wysiwyg.goToWysiwygDefinition.mockReturnValue(true);
-    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
-    fireEvent.click(screen.getByLabelText(toolbar.codeIntelligence));
-
-    fireEvent.click(screen.getByText(toolbar.goToDefinition));
-
+    expect(nav.goToDefinition).toHaveBeenCalledWith({ id: "view" });
     expect(toasts.info).not.toHaveBeenCalled();
   });
 

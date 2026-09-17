@@ -630,6 +630,10 @@
       "tabSize": {
         "description": "Spațiile inserate pentru fiecare nivel de indentare și lățimea cu care se afișează un tab.",
         "label": "Dimensiunea tabului"
+      },
+      "mathPreview": {
+        "description": "Arată formula randată deasupra celei în care se află cursorul.",
+        "label": "Previzualizarea formulelor"
       }
     },
     "files": {

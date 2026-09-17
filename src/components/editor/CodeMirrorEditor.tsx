@@ -6,6 +6,8 @@ import type { KeyBinding } from "@codemirror/view";
 import {
   CodeMirrorEditor as CodeMirrorEditorCore,
   type EditorHost,
+  type VisualImage,
+  type VisualPorts,
 } from "@oleafly/editor/CodeMirrorEditor";
 import {
   setSpellHost,
@@ -22,6 +24,7 @@ import { i18n } from "@/i18n";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
 import { imagePasteExtension } from "./cm/image-paste";
+import { cursorSignalExtension } from "./cm/cursor-signal";
 import { codeIntel } from "./cm/code-intel";
 import { hoverIntel } from "./cm/hover-intel";
 import { inlineDiffPlugin } from "./cm/inline-ai/plugin";
@@ -34,11 +37,14 @@ import {
   languageServiceCompletion,
   languageServiceEditorExtensions,
 } from "./cm/language-service";
+import { resolveVisualAsset } from "./wysiwyg/asset-url";
+import { openFigureEditorAt } from "./figure-edit";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
 import { useCompileStore } from "@/store/compile";
+import { useVisualModeStore, visualModeAvailable } from "@/store/visual-mode";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
 import { installAuxNumbers } from "@/lib/aux-numbers";
 import { installLatexCorpus } from "@/lib/latex-corpus";
@@ -178,6 +184,21 @@ setBibKeysProvider(() => {
 installLatexCorpus();
 installAuxNumbers();
 
+function imageKind(path: string): VisualImage["kind"] {
+  const lower = path.toLowerCase();
+  if (lower.endsWith(".svg")) return "svg";
+  if (lower.endsWith(".pdf")) return "pdf";
+  return "raster";
+}
+
+const VISUAL_PORTS: VisualPorts = {
+  resolveImage: (path) =>
+    resolveVisualAsset(path).then((asset) =>
+      asset ? { url: asset.url, kind: imageKind(asset.path) } : null,
+    ),
+  openFigureEditor: openFigureEditorAt,
+};
+
 // Module-level so the host identity is stable across renders (its use* members are hooks).
 const HOST: EditorHost = {
   t: packageMessage,
@@ -224,8 +245,17 @@ const HOST: EditorHost = {
     nonBlinkingCursor: useSettingsStore((s) => s.editorNonBlinkingCursor),
     ghostCompletion: useSettingsStore((s) => s.editorGhostCompletion),
     stickyScroll: useSettingsStore((s) => s.editorStickyScroll),
+    mathPreview: useSettingsStore((s) => s.editorMathPreview),
   }),
+  setMathPreview: (enabled) => useSettingsStore.getState().setEditorMathPreview(enabled),
   useEditorKeymap: () => useEditorKeymapStore((s) => s.keys),
+  useVisualMode: () => {
+    const enabled = useVisualModeStore((s) => s.enabled);
+    const setting = useSettingsStore((s) => s.visualEditor);
+    const projectKind = useFilesStore((s) => s.projectKind);
+    return enabled && visualModeAvailable(setting, projectKind);
+  },
+  visualPorts: VISUAL_PORTS,
   useLintRefreshDeps: () => [
     useSettingsStore((s) => s.showRegionalism),
     useSettingsStore((s) => s.showWordChoice),
@@ -234,6 +264,8 @@ const HOST: EditorHost = {
     useCompileStore((s) => s.errors),
   ],
 };
+
+const SHELL_EXTENSIONS: Extension[] = [inlineDiffPlugin, cursorSignalExtension()];
 
 const LATEX_EXTENSIONS: Extension[] = [
   createPreflightLinter(),
@@ -287,7 +319,7 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
     <CodeMirrorEditorCore
       active={active}
       host={HOST}
-      extraExtensions={[inlineDiffPlugin]}
+      extraExtensions={SHELL_EXTENSIONS}
       extraExtensionsForPath={(path) => {
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i.test(path)) {
           return [];

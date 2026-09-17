@@ -620,6 +620,10 @@
       "tabSize": {
         "description": "インデント 1 段階あたりの空白の数と、タブを表示する幅です。",
         "label": "タブ幅"
+      },
+      "mathPreview": {
+        "description": "カーソルのある数式の上に、描画した数式を表示します。",
+        "label": "数式のプレビュー"
       }
     },
     "files": {

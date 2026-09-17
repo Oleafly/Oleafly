@@ -630,7 +630,7 @@ function TimelineEntry({
     >
       <span
         aria-hidden
-        className="absolute left-[14px] top-[18px] z-10 size-2.5 rounded-full border-2 border-popover bg-primary ring-1 ring-primary/35"
+        className="absolute left-[14px] top-[18px] z-10 size-2.5 rounded-full border-2 border-popover bg-primary"
       />
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">

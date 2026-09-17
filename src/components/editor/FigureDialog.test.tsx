@@ -6,6 +6,7 @@ import type { FileEntry } from "@oleafly/backend-port";
 const mocks = vi.hoisted(() => ({
   insertFigureFromDialog: vi.fn(),
   insertFigurePlaceholder: vi.fn(),
+  applyFigureEdit: vi.fn(),
   pickOpenPath: vi.fn(),
   resolveVisualAssetUrl: vi.fn(async (path: string) => (path.endsWith(".png") ? `data:${path}` : null)),
 }));
@@ -14,6 +15,7 @@ vi.mock("@/components/editor/latex-commands", () => ({
   insertFigureFromDialog: mocks.insertFigureFromDialog,
   insertFigurePlaceholder: mocks.insertFigurePlaceholder,
 }));
+vi.mock("@/components/editor/figure-edit", () => ({ applyFigureEdit: mocks.applyFigureEdit }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: mocks.pickOpenPath }));
 vi.mock("@/components/editor/wysiwyg/asset-url", () => ({ resolveVisualAssetUrl: mocks.resolveVisualAssetUrl }));
 vi.mock("@/lib/toast", () => ({ notifyError: vi.fn(), toast: { success: vi.fn(), error: vi.fn() } }));
@@ -47,6 +49,19 @@ function openDialog() {
   const view = render(<FigureDialog />);
   act(() => {
     useFigureDialogStore.getState().setOpen(true);
+  });
+  return view;
+}
+
+function openEditDialog(width: string | null) {
+  const view = render(<FigureDialog />);
+  act(() => {
+    useFigureDialogStore.getState().openForEdit({
+      from: 10,
+      to: 60,
+      path: "figures/plot.png",
+      width,
+    });
   });
   return view;
 }
@@ -127,6 +142,31 @@ describe("FigureDialog", () => {
     });
     expect(useFilesStore.getState().importPaths).toHaveBeenCalledWith("figures", ["/Users/me/Downloads/new.png"]);
     expect((screen.getByTestId("figure-dialog-label") as HTMLInputElement).value).toBe("fig:new");
+  });
+
+  it("edits an existing image without touching its caption or label", () => {
+    openEditDialog("\\linewidth");
+    expect(screen.getByText("Edit image")).toBeInTheDocument();
+    expect(screen.queryByTestId("figure-dialog-caption")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("figure-dialog-label")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("figure-dialog-placeholder")).not.toBeInTheDocument();
+    expect(screen.getByTestId("figure-dialog-width-full")).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByTestId("figure-dialog-width-half"));
+    fireEvent.click(screen.getByTestId("figure-dialog-insert"));
+
+    expect(mocks.applyFigureEdit).toHaveBeenCalledWith(
+      { from: 10, to: 60, path: "figures/plot.png", width: "\\linewidth" },
+      { path: "figures/plot.png", width: "0.5\\linewidth" },
+    );
+    expect(mocks.insertFigureFromDialog).not.toHaveBeenCalled();
+    expect(useFigureDialogStore.getState().open).toBe(false);
+  });
+
+  it("offers a custom width when the image carries one the presets do not cover", () => {
+    openEditDialog("7cm");
+    expect(screen.getByTestId("figure-dialog-width-custom")).toHaveAttribute("aria-pressed", "true");
+    expect((screen.getByLabelText("Custom width") as HTMLInputElement).value).toBe("7cm");
   });
 
   it("shows the empty state without images and keeps a cancelled picker quiet", async () => {

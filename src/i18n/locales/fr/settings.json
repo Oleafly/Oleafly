@@ -630,6 +630,10 @@
       "tabSize": {
         "description": "Espaces insérés par niveau d'indentation, et largeur d'affichage d'une tabulation.",
         "label": "Taille de tabulation"
+      },
+      "mathPreview": {
+        "description": "Afficher l'équation composée au-dessus de celle où se trouve le curseur.",
+        "label": "Aperçu des maths"
       }
     },
     "files": {

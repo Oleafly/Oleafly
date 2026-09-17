@@ -29,20 +29,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `\begin{alignat}` arrives as `\begin{alignat}{2}`. The same goes for
   `array`, `tabularx`, `minipage`, `thebibliography`, `list`, `picture` and
   several others.
-- The visual editor renders math, footnotes, theorem-like environments,
-  coloured text, figures and tables in place instead of showing raw LaTeX
-  blocks. Click a formula to edit its source, with a live preview. Sectioning
-  commands from `\part` to `\subparagraph`, starred headings and short titles
-  round-trip exactly.
-- Paste formatted text, a LaTeX snippet or an image into the visual editor.
-  Rich text becomes bold, italic, lists and tables; an image is saved into the
-  project and inserted as a figure with the caption ready to type. Image
-  paste works in the source editor too, where it inserts the figure snippet.
-- Insert figure opens a dialog in both editors to choose or import an image
-  and set its width, caption and label.
-- Tables inserted from the size picker get a floating toolbar for rows,
-  columns, alignment, border styles including booktabs, captions, labels,
-  header rows and merged cells.
+- Visual mode for LaTeX now runs inside the source editor. Headings, math,
+  footnotes, theorem-like environments, coloured text, lists, quotes,
+  citations, figures and tables render in place, and the markup for whatever
+  the cursor is in comes back as source so you can edit it there. The `.tex`
+  file is the only copy, so line numbers, folding, find and replace,
+  spelling, grammar and compile diagnostics keep working, and every toolbar
+  action writes plain LaTeX in either mode.
+- The preamble collapses into a bar at the top of the document that expands
+  in place, `\end{document}` becomes an end-of-document bar, and a breadcrumb
+  above the editor names the file and the sections around the cursor. Click a
+  crumb to jump to that heading.
+- Tables render as a grid. Select a cell and a toolbar appears above it for
+  rows, columns, alignment, border styles including booktabs, captions,
+  labels, header rows and merged cells.
+- The math preview shows the rendered equation the cursor is in, in both
+  modes. It can be hidden until you leave the equation, or switched off in
+  Settings > Appearance > Editor.
+- Paste formatted text or an image into either mode. Rich text becomes
+  LaTeX; an image is saved into the project and inserted as a figure.
+- Insert figure opens a dialog to choose or import an image and set its
+  width, caption and label, and the edit button on a rendered image reopens
+  it to swap the file or change the width.
 - BibTeX files now edit like the rest of the project. Typing `@` at the start
   of a line offers the entry types and writes the whole entry out, a line per
   required field, with the caret in the key. Field names complete from the

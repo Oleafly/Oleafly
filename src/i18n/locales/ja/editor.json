@@ -39,7 +39,10 @@
     "insertPlaceholder": "プレースホルダを挿入",
     "cancel": "キャンセル",
     "insert": "図を挿入",
-    "selectImage": "画像を選ぶと挿入できます。"
+    "selectImage": "画像を選ぶと挿入できます。",
+    "editTitle": "画像を編集",
+    "editDescription": "画像を差し替えるか、幅を変更します。キャプションとラベルはそのままです。",
+    "save": "画像を保存"
   },
   "tableToolbar": {
     "label": "表のツール",
@@ -615,7 +618,14 @@
       "unsafeOutput": "安全なプレビューを作成できませんでした。",
       "unsupported": "この式は不完全か、対応していません。",
       "missingClosing": "閉じる {{delimiter}} がありません。",
-      "notRendered": "この式は描画できませんでした。"
+      "notRendered": "この式は描画できませんでした。",
+      "preview": {
+        "moreOptions": "その他の操作",
+        "hide": "隠す",
+        "hideDescription": "この数式から離れるまでプレビューを隠します。",
+        "disable": "無効にする",
+        "disableDescription": "数式のプレビューをオフにします。設定から再びオンにできます。"
+      }
     },
     "latex": {
       "command": {
@@ -896,6 +906,104 @@
         "source": "BibTeX",
         "unknownEntryType": "不明な参考文献の項目の種類 @{{type}} です。"
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "画像を読み込み中",
+        "loadFailed": "この画像は読み込めませんでした。",
+        "edit": "図を編集"
+      },
+      "preamble": {
+        "show": "文書のプリアンブルを表示",
+        "hide": "文書のプリアンブルを隠す"
+      },
+      "endOfDocument": "文書の終わり",
+      "abstract": "概要",
+      "keywordsLabel": "キーワード",
+      "theorem": {
+        "theorem": "定理",
+        "lemma": "補題",
+        "corollary": "系",
+        "proof": "証明"
+      },
+      "footnote": "脚注",
+      "endnote": "後注",
+      "citation": "引用",
+      "reference": "参照",
+      "label": "ラベル",
+      "includedFile": "取り込んだファイル",
+      "table": {
+        "captionPlacement": "キャプション",
+        "captionAbove": "キャプションを上に",
+        "captionBelow": "キャプションを下に",
+        "noCaption": "キャプションなし",
+        "captionNeedsTable": "キャプションには、tabular を囲む table 環境が必要です。",
+        "borders": "罫線",
+        "noBorders": "罫線なし",
+        "allBorders": "すべての罫線",
+        "booktabs": "booktabs の罫線",
+        "customBorders": "カスタムの罫線",
+        "alignment": "配置",
+        "alignLeft": "左揃え",
+        "alignCenter": "中央揃え",
+        "alignRight": "右揃え",
+        "alignJustify": "両端揃え",
+        "selectColumnToAlign": "配置を変える列を選んでください。",
+        "columnWidth": "列の幅",
+        "selectColumnForWidth": "幅を変える列を選んでください。",
+        "fitToContent": "内容に合わせる",
+        "fixedWidth": "固定幅",
+        "setColumnWidth": "列の幅を設定",
+        "widthValue": "幅",
+        "widthUnit": "単位",
+        "widthPercentHelp": "テキスト幅に対する割合です。",
+        "widthCustom": "カスタム",
+        "widthCustomHelp": "4cm や 0.4\\linewidth など、LaTeX の長さを指定できます。",
+        "widthNeedsArray": "固定幅を使うには、プリアンブルに array パッケージが必要です。",
+        "columnWidthIndicator": "列の幅",
+        "mergeCells": "セルを結合",
+        "unmergeCells": "セルを分割",
+        "selectCellsToMerge": "結合するセルを選んでください。",
+        "deleteRowOrColumn": "削除",
+        "selectRowOrColumnToDelete": "削除する行または列を選んでください。",
+        "insert": "挿入",
+        "insertRowsAbove": "上に行を挿入",
+        "insertRowsBelow": "下に行を挿入",
+        "insertColumnsLeft": "左に列を挿入",
+        "insertColumnsRight": "右に列を挿入",
+        "removeTable": "表を取り除く",
+        "help": "ヘルプ",
+        "helpTitle": "表の編集",
+        "helpIntro": "この表は LaTeX のソースそのものです。ここでの編集は、すべてファイル内の tabular に書き戻されます。",
+        "helpSupportedTitle": "グリッドで扱えること",
+        "helpSupportedColumns": "列指定による列の配置と固定幅。",
+        "helpSupportedRules": "booktabs を含む、横罫線と縦罫線。",
+        "helpSupportedMerged": "\\multicolumn で書かれた結合セル。",
+        "helpSupportedCaption": "外側の table 環境のキャプションとラベル。",
+        "helpUnsupported": "グリッドで表せないものはソースのまま残り、その場合は表が読み取り専用で表示されます。",
+        "helpShortcutsTitle": "キーボード",
+        "shortcutMove": "矢印キーでセル間を移動します。",
+        "shortcutExtend": "Shift と矢印キーで選択範囲を広げます。",
+        "shortcutNext": "Tab で次のセル、Shift+Tab で前のセルに移動します。",
+        "shortcutEdit": "Enter を押すと、選択中のセルの編集を始めます。",
+        "shortcutCancel": "Escape で編集をやめ、セルは選択したまま残ります。",
+        "shortcutClear": "Backspace または Delete で、選択したセルを空にします。",
+        "shortcutUndo": "元に戻すとやり直しは、エディタの他の場所と同じように使えます。",
+        "ok": "完了",
+        "cancel": "キャンセル",
+        "close": "閉じる",
+        "selectRow": "行を選択",
+        "selectColumn": "列を選択",
+        "cellInput": "セル",
+        "errorTitle": "この表は表示できませんでした",
+        "errorBody": "この tabular には、グリッドがまだ表示できないものが含まれています。ソースとして編集してください。",
+        "viewSource": "ソースとして編集"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "文書内の位置",
+    "goTo": "{{title}} へ移動",
+    "untitled": "無題"
   }
 }

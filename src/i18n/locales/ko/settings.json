@@ -620,6 +620,10 @@
       "tabSize": {
         "description": "들여쓰기 한 단계에 넣는 공백 수이자 탭이 표시되는 너비입니다.",
         "label": "탭 크기"
+      },
+      "mathPreview": {
+        "description": "커서가 있는 수식 위에 렌더링한 수식을 보여 줍니다.",
+        "label": "수식 미리보기"
       }
     },
     "files": {

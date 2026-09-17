@@ -39,7 +39,10 @@
     "insertPlaceholder": "Infoga platshållare",
     "cancel": "Avbryt",
     "insert": "Infoga figur",
-    "selectImage": "Välj en bild för att infoga den."
+    "selectImage": "Välj en bild för att infoga den.",
+    "editTitle": "Redigera bilden",
+    "editDescription": "Byt ut bilden eller ändra dess bredd. Bildtexten och etiketten lämnas som de är.",
+    "save": "Spara bilden"
   },
   "tableToolbar": {
     "label": "Tabellverktyg",
@@ -622,7 +625,14 @@
       "unsafeOutput": "Det gick inte att skapa en säker förhandsvisning.",
       "unsupported": "Uttrycket är ofullständigt eller stöds inte.",
       "missingClosing": "Saknad avslutande {{delimiter}}.",
-      "notRendered": "Uttrycket kunde inte renderas."
+      "notRendered": "Uttrycket kunde inte renderas.",
+      "preview": {
+        "moreOptions": "Fler alternativ",
+        "hide": "Dölj",
+        "hideDescription": "Döljer förhandsvisningen tills du lämnar den här ekvationen.",
+        "disable": "Stäng av",
+        "disableDescription": "Stänger av förhandsvisningen av ekvationer. Slå på den igen i Inställningar."
+      }
     },
     "latex": {
       "command": {
@@ -905,6 +915,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Okänd typ av bibliografipost @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Läser in bilden",
+        "loadFailed": "Bilden kunde inte läsas in.",
+        "edit": "Redigera figuren"
+      },
+      "preamble": {
+        "show": "Visa dokumentets ingress",
+        "hide": "Dölj dokumentets ingress"
+      },
+      "endOfDocument": "Dokumentets slut",
+      "abstract": "Sammanfattning",
+      "keywordsLabel": "Nyckelord",
+      "theorem": {
+        "theorem": "Sats",
+        "lemma": "Lemma",
+        "corollary": "Följdsats",
+        "proof": "Bevis"
+      },
+      "footnote": "Fotnot",
+      "endnote": "Slutnot",
+      "citation": "Citering",
+      "reference": "Referens",
+      "label": "Etikett",
+      "includedFile": "Inkluderad fil",
+      "table": {
+        "captionPlacement": "Bildtext",
+        "captionAbove": "Bildtext ovanför",
+        "captionBelow": "Bildtext nedanför",
+        "noCaption": "Ingen bildtext",
+        "captionNeedsTable": "En bildtext kräver en table-miljö runt tabular.",
+        "borders": "Kantlinjer",
+        "noBorders": "Inga kantlinjer",
+        "allBorders": "Alla kantlinjer",
+        "booktabs": "booktabs-linjer",
+        "customBorders": "Egna kantlinjer",
+        "alignment": "Justering",
+        "alignLeft": "Vänsterjustera",
+        "alignCenter": "Centrera",
+        "alignRight": "Högerjustera",
+        "alignJustify": "Marginaljustera",
+        "selectColumnToAlign": "Välj en kolumn för att ändra dess justering.",
+        "columnWidth": "Kolumnbredd",
+        "selectColumnForWidth": "Välj en kolumn för att ändra dess bredd.",
+        "fitToContent": "Anpassa efter innehållet",
+        "fixedWidth": "Fast bredd",
+        "setColumnWidth": "Ange kolumnbredd",
+        "widthValue": "Bredd",
+        "widthUnit": "Enhet",
+        "widthPercentHelp": "En andel av textbredden i procent.",
+        "widthCustom": "Egen",
+        "widthCustomHelp": "Vilken LaTeX-längd som helst, till exempel 4cm eller 0.4\\linewidth.",
+        "widthNeedsArray": "Fasta bredder kräver paketet array i ingressen.",
+        "columnWidthIndicator": "Kolumnbredd",
+        "mergeCells": "Sammanfoga celler",
+        "unmergeCells": "Dela celler",
+        "selectCellsToMerge": "Välj cellerna som ska sammanfogas.",
+        "deleteRowOrColumn": "Radera",
+        "selectRowOrColumnToDelete": "Välj en rad eller en kolumn att radera.",
+        "insert": "Infoga",
+        "insertRowsAbove": "Infoga rad ovanför",
+        "insertRowsBelow": "Infoga rad nedanför",
+        "insertColumnsLeft": "Infoga kolumn till vänster",
+        "insertColumnsRight": "Infoga kolumn till höger",
+        "removeTable": "Ta bort tabellen",
+        "help": "Hjälp",
+        "helpTitle": "Redigera tabeller",
+        "helpIntro": "Tabellen är din LaTeX-källkod. Varje ändring här skriver om tabular i filen.",
+        "helpSupportedTitle": "Vad rutnätet klarar",
+        "helpSupportedColumns": "Kolumnjustering och fasta bredder via kolumnspecifikationen.",
+        "helpSupportedRules": "Vågräta och lodräta linjer, inklusive booktabs.",
+        "helpSupportedMerged": "Sammanfogade celler skrivna som \\multicolumn.",
+        "helpSupportedCaption": "Bildtexten och etiketten i den omgivande table-miljön.",
+        "helpUnsupported": "Allt som rutnätet inte kan återge blir kvar som källkod, och tabellen visas skrivskyddad i stället.",
+        "helpShortcutsTitle": "Tangentbord",
+        "shortcutMove": "Piltangenterna flyttar mellan cellerna.",
+        "shortcutExtend": "Shift och en piltangent utökar markeringen.",
+        "shortcutNext": "Tab flyttar till nästa cell, Shift+Tab till föregående.",
+        "shortcutEdit": "Enter börjar redigera den markerade cellen.",
+        "shortcutCancel": "Escape avslutar redigeringen och cellen förblir markerad.",
+        "shortcutClear": "Backspace eller Delete tömmer de markerade cellerna.",
+        "shortcutUndo": "Ångra och gör om fungerar som i resten av redigeraren.",
+        "ok": "Klar",
+        "cancel": "Avbryt",
+        "close": "Stäng",
+        "selectRow": "Markera raden",
+        "selectColumn": "Markera kolumnen",
+        "cellInput": "Cell",
+        "errorTitle": "Den här tabellen kunde inte renderas",
+        "errorBody": "Miljön tabular använder något som rutnätet inte kan visa än. Redigera den som källkod i stället.",
+        "viewSource": "Redigera som källkod"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Plats i dokumentet",
+    "goTo": "Gå till {{title}}",
+    "untitled": "Namnlöst"
   }
 }

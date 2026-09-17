@@ -11,3 +11,5 @@ export * from "./import-compat";
 export * from "./outline-title";
 export * from "./bibliography-resolve";
 export * from "./bibtex-entry-types";
+export * from "./html-to-latex";
+export * from "./latex-color";

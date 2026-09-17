@@ -625,6 +625,10 @@
       "tabSize": {
         "description": "Leerzeichen je Einrückungsebene und die Breite, mit der ein Tabulator dargestellt wird.",
         "label": "Tabulatorbreite"
+      },
+      "mathPreview": {
+        "description": "Die gesetzte Formel über der Formel anzeigen, in der der Cursor steht.",
+        "label": "Formelvorschau"
       }
     },
     "files": {

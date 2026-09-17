@@ -109,87 +109,53 @@ describe("cm/controller mode-aware routing", () => {
     expect(core.insertAtCursor).not.toHaveBeenCalled();
   });
 
-  it("keeps unparseable multi-line templates as rawBlock nodes", () => {
+  it("keeps unparseable multi-line source as rawBlock nodes", () => {
     const editor = activateVisualEditor();
-    insertTemplate("\\begin{figure}\n\\end{figure}\n", 0, 0);
+    insertAtCursor("\\begin{figure}\n\\end{figure}\n");
     expect(editor.getJSON().content?.[1]).toMatchObject({
       type: "rawBlock",
       attrs: { source: "\\begin{figure}\n\\end{figure}\n" },
     });
-    expect(core.insertTemplate).not.toHaveBeenCalled();
+    expect(core.insertAtCursor).not.toHaveBeenCalled();
   });
 
-  it("turns the footnote placeholder into a footnote node with its editor open", () => {
-    const editor = activateVisualEditor();
+  it("sends wrap, template and environment commands to the source document in both modes", () => {
+    activateVisualEditor();
     wrapSelectionOrPlaceholder("\\footnote{", "}", "note text");
-    expect(latexOf(editor)).toBe("Hello\\footnote{note text}\n");
-    expect(editor.view.dom.querySelector('[data-footnote-editing="true"] textarea.footnote-input')).not.toBeNull();
-    expect(core.wrapSelectionOrPlaceholder).not.toHaveBeenCalled();
-  });
-
-  it("wraps the selected text instead of the placeholder", () => {
-    const editor = activateVisualEditor();
-    editor.commands.setTextSelection({ from: 1, to: 6 });
-    wrapSelectionOrPlaceholder("\\underline{", "}", "text");
-    expect(latexOf(editor)).toBe("\\underline{Hello}\n");
-    expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
-      type: "text",
-      text: "Hello",
-      marks: [{ type: "underline" }],
-    });
-  });
-
-  it("keeps references and citations raw", () => {
-    const editor = activateVisualEditor();
-    wrapSelectionOrPlaceholder("\\ref{", "}", "label");
-    insertAtCursor("\\cite{key}");
-    expect(editor.getJSON().content?.[0].content?.slice(1)).toEqual([
-      { type: "rawInline", attrs: { source: "\\ref{label}" } },
-      { type: "rawInline", attrs: { source: "\\cite{key}" } },
-    ]);
-  });
-
-  it("inserts math environments as display math with the source editor open", () => {
-    const editor = activateVisualEditor();
+    expect(core.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("\\footnote{", "}", "note text");
+    insertTemplate("$\\frac{a}{b}$", 0, 0);
+    expect(core.insertTemplate).toHaveBeenCalledWith("$\\frac{a}{b}$", 0, 0);
     insertEnvironment("align");
-    expect(editor.getJSON().content?.[1]).toEqual({
-      type: "mathDisplay",
-      attrs: { source: "\\begin{align}\n  \n\\end{align}" },
-    });
-    expect(editor.view.dom.querySelector('[data-math-editing="true"] textarea.math-input')).not.toBeNull();
-    expect(core.insertEnvironment).not.toHaveBeenCalled();
+    expect(core.insertEnvironment).toHaveBeenCalledWith("align");
   });
 
-  it("inserts delimited templates as inline math", () => {
+  it("keeps citations raw and turns delimited snippets into math", () => {
     const editor = activateVisualEditor();
-    insertTemplate("$\\frac{numerator}{denominator}$", 0, 0);
+    insertAtCursor("\\cite{key}");
     expect(editor.getJSON().content?.[0].content?.[1]).toEqual({
+      type: "rawInline",
+      attrs: { source: "\\cite{key}" },
+    });
+    insertAtCursor("$\\frac{numerator}{denominator}$");
+    expect(editor.getJSON().content?.[0].content?.[2]).toEqual({
       type: "mathInline",
       attrs: { source: "$\\frac{numerator}{denominator}$" },
     });
   });
 
-  it("parses figure, table, heading and theorem templates into native nodes", () => {
+  it("parses figure and table source into native nodes", () => {
     const editor = activateVisualEditor();
     setWysiwygDocumentContext({ theoremEnvironments: ["observation"], booktabs: false });
-    insertTemplate(
+    insertAtCursor(
       "\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{image-filename}\n  \\caption{Caption text}\n  \\label{fig:label}\n\\end{figure}\n",
-      0,
-      0,
     );
     insertAtCursor("\n\\begin{table}[htbp]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n     &   \\\\\n  \\end{tabular}\n\\end{table}\n");
-    wrapSelectionOrPlaceholder("\\part{", "}\n", "Part Title");
-    insertEnvironment("observation");
     const types = editor.getJSON().content?.map((node) => node.type);
     expect(types).toContain("figure");
     expect(types).toContain("tableFloat");
-    expect(types).toContain("heading");
-    expect(types).toContain("theorem");
     const latex = latexOf(editor);
     expect(latex).toContain("\\includegraphics[width=0.8\\textwidth]{image-filename}");
     expect(latex).toContain("\\begin{tabular}{ll}");
-    expect(latex).toContain("\\part{Part Title}");
-    expect(latex).toContain("\\begin{observation}");
   });
 
   it("falls back to CodeMirror when wysiwyg is marked active but no editor is registered", () => {

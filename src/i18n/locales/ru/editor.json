@@ -39,7 +39,10 @@
     "insertPlaceholder": "Вставить заполнитель",
     "cancel": "Отмена",
     "insert": "Вставить рисунок",
-    "selectImage": "Выберите изображение, чтобы вставить его."
+    "selectImage": "Выберите изображение, чтобы вставить его.",
+    "editTitle": "Изменить изображение",
+    "editDescription": "Замените изображение или измените его ширину. Подпись и метка останутся прежними.",
+    "save": "Сохранить изображение"
   },
   "tableToolbar": {
     "label": "Инструменты таблицы",
@@ -636,7 +639,14 @@
       "unsafeOutput": "Безопасный просмотр создать не удалось.",
       "unsupported": "Это выражение неполное или не поддерживается.",
       "missingClosing": "Не хватает закрывающего {{delimiter}}.",
-      "notRendered": "Это выражение не удалось отрисовать."
+      "notRendered": "Это выражение не удалось отрисовать.",
+      "preview": {
+        "moreOptions": "Другие параметры",
+        "hide": "Скрыть",
+        "hideDescription": "Скрывает просмотр, пока вы не выйдете из этой формулы.",
+        "disable": "Отключить",
+        "disableDescription": "Выключает просмотр формул. Снова включить его можно в Настройках."
+      }
     },
     "latex": {
       "command": {
@@ -923,6 +933,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Неизвестный тип записи библиографии @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Загрузка изображения",
+        "loadFailed": "Это изображение не удалось загрузить.",
+        "edit": "Изменить рисунок"
+      },
+      "preamble": {
+        "show": "Показать преамбулу документа",
+        "hide": "Скрыть преамбулу документа"
+      },
+      "endOfDocument": "Конец документа",
+      "abstract": "Аннотация",
+      "keywordsLabel": "Ключевые слова",
+      "theorem": {
+        "theorem": "Теорема",
+        "lemma": "Лемма",
+        "corollary": "Следствие",
+        "proof": "Доказательство"
+      },
+      "footnote": "Сноска",
+      "endnote": "Концевая сноска",
+      "citation": "Цитата",
+      "reference": "Ссылка",
+      "label": "Метка",
+      "includedFile": "Включённый файл",
+      "table": {
+        "captionPlacement": "Подпись",
+        "captionAbove": "Подпись сверху",
+        "captionBelow": "Подпись снизу",
+        "noCaption": "Без подписи",
+        "captionNeedsTable": "Для подписи нужно окружение table вокруг tabular.",
+        "borders": "Границы",
+        "noBorders": "Без границ",
+        "allBorders": "Все границы",
+        "booktabs": "Линейки booktabs",
+        "customBorders": "Свои границы",
+        "alignment": "Выравнивание",
+        "alignLeft": "Выровнять по левому краю",
+        "alignCenter": "Выровнять по центру",
+        "alignRight": "Выровнять по правому краю",
+        "alignJustify": "По ширине",
+        "selectColumnToAlign": "Выберите колонку, чтобы изменить её выравнивание.",
+        "columnWidth": "Ширина колонки",
+        "selectColumnForWidth": "Выберите колонку, чтобы изменить её ширину.",
+        "fitToContent": "По содержимому",
+        "fixedWidth": "Фиксированная ширина",
+        "setColumnWidth": "Задать ширину колонки",
+        "widthValue": "Ширина",
+        "widthUnit": "Единица",
+        "widthPercentHelp": "Процент от ширины текста.",
+        "widthCustom": "Своя",
+        "widthCustomHelp": "Любая длина LaTeX, например 4cm или 0.4\\linewidth.",
+        "widthNeedsArray": "Для фиксированной ширины нужен пакет array в преамбуле.",
+        "columnWidthIndicator": "Ширина колонки",
+        "mergeCells": "Объединить ячейки",
+        "unmergeCells": "Разделить ячейки",
+        "selectCellsToMerge": "Выберите ячейки для объединения.",
+        "deleteRowOrColumn": "Удалить",
+        "selectRowOrColumnToDelete": "Выберите строку или колонку для удаления.",
+        "insert": "Вставить",
+        "insertRowsAbove": "Вставить строку выше",
+        "insertRowsBelow": "Вставить строку ниже",
+        "insertColumnsLeft": "Вставить колонку слева",
+        "insertColumnsRight": "Вставить колонку справа",
+        "removeTable": "Убрать таблицу",
+        "help": "Справка",
+        "helpTitle": "Правка таблиц",
+        "helpIntro": "Эта таблица и есть ваш исходник LaTeX. Каждая правка здесь переписывает tabular в файле.",
+        "helpSupportedTitle": "Что умеет сетка",
+        "helpSupportedColumns": "Выравнивание колонок и фиксированная ширина через спецификацию колонок.",
+        "helpSupportedRules": "Горизонтальные и вертикальные линейки, включая booktabs.",
+        "helpSupportedMerged": "Объединённые ячейки, записанные как \\multicolumn.",
+        "helpSupportedCaption": "Подпись и метка внешнего окружения table.",
+        "helpUnsupported": "Всё, что сетка не может показать, остаётся исходником, а таблица показывается только для чтения.",
+        "helpShortcutsTitle": "Клавиатура",
+        "shortcutMove": "Стрелки перемещают между ячейками.",
+        "shortcutExtend": "Shift со стрелкой расширяет выделение.",
+        "shortcutNext": "Tab переходит к следующей ячейке, Shift+Tab к предыдущей.",
+        "shortcutEdit": "Enter начинает правку выбранной ячейки.",
+        "shortcutCancel": "Escape завершает правку и оставляет ячейку выбранной.",
+        "shortcutClear": "Backspace или Delete очищает выбранные ячейки.",
+        "shortcutUndo": "Отмена и повтор работают так же, как в остальном редакторе.",
+        "ok": "Готово",
+        "cancel": "Отмена",
+        "close": "Закрыть",
+        "selectRow": "Выбрать строку",
+        "selectColumn": "Выбрать колонку",
+        "cellInput": "Ячейка",
+        "errorTitle": "Эту таблицу не удалось отрисовать",
+        "errorBody": "В tabular есть то, что сетка пока не умеет показывать. Правьте его как исходник.",
+        "viewSource": "Править как исходник"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Положение в документе",
+    "goTo": "Перейти к {{title}}",
+    "untitled": "Без названия"
   }
 }

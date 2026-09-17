@@ -39,7 +39,10 @@
     "insertPlaceholder": "Plaatshouder invoegen",
     "cancel": "Annuleren",
     "insert": "Figuur invoegen",
-    "selectImage": "Selecteer een afbeelding om die in te voegen."
+    "selectImage": "Selecteer een afbeelding om die in te voegen.",
+    "editTitle": "Afbeelding bewerken",
+    "editDescription": "Vervang de afbeelding of wijzig de breedte. Het bijschrift en het label blijven zoals ze zijn.",
+    "save": "Afbeelding opslaan"
   },
   "tableToolbar": {
     "label": "Tabelgereedschap",
@@ -622,7 +625,14 @@
       "unsafeOutput": "Er kon geen veilig voorbeeld worden gemaakt.",
       "unsupported": "Deze uitdrukking is onvolledig of wordt niet ondersteund.",
       "missingClosing": "Ontbrekende sluitende {{delimiter}}.",
-      "notRendered": "Deze uitdrukking kon niet worden weergegeven."
+      "notRendered": "Deze uitdrukking kon niet worden weergegeven.",
+      "preview": {
+        "moreOptions": "Meer opties",
+        "hide": "Verbergen",
+        "hideDescription": "Verbergt het voorbeeld totdat je deze vergelijking verlaat.",
+        "disable": "Uitschakelen",
+        "disableDescription": "Zet het voorbeeld van vergelijkingen uit. Je zet het weer aan bij Instellingen."
+      }
     },
     "latex": {
       "command": {
@@ -905,6 +915,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Onbekend type bibliografie-item @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Afbeelding laden",
+        "loadFailed": "Deze afbeelding kon niet worden geladen.",
+        "edit": "Figuur bewerken"
+      },
+      "preamble": {
+        "show": "Documentpreambule tonen",
+        "hide": "Documentpreambule verbergen"
+      },
+      "endOfDocument": "Einde van het document",
+      "abstract": "Samenvatting",
+      "keywordsLabel": "Trefwoorden",
+      "theorem": {
+        "theorem": "Stelling",
+        "lemma": "Lemma",
+        "corollary": "Gevolg",
+        "proof": "Bewijs"
+      },
+      "footnote": "Voetnoot",
+      "endnote": "Eindnoot",
+      "citation": "Citatie",
+      "reference": "Verwijzing",
+      "label": "Label",
+      "includedFile": "Ingesloten bestand",
+      "table": {
+        "captionPlacement": "Bijschrift",
+        "captionAbove": "Bijschrift erboven",
+        "captionBelow": "Bijschrift eronder",
+        "noCaption": "Geen bijschrift",
+        "captionNeedsTable": "Voor een bijschrift is een table-omgeving om de tabular heen nodig.",
+        "borders": "Randen",
+        "noBorders": "Geen randen",
+        "allBorders": "Alle randen",
+        "booktabs": "Booktabs-lijnen",
+        "customBorders": "Aangepaste randen",
+        "alignment": "Uitlijning",
+        "alignLeft": "Links uitlijnen",
+        "alignCenter": "Centreren",
+        "alignRight": "Rechts uitlijnen",
+        "alignJustify": "Uitvullen",
+        "selectColumnToAlign": "Selecteer een kolom om de uitlijning te wijzigen.",
+        "columnWidth": "Kolombreedte",
+        "selectColumnForWidth": "Selecteer een kolom om de breedte te wijzigen.",
+        "fitToContent": "Aanpassen aan de inhoud",
+        "fixedWidth": "Vaste breedte",
+        "setColumnWidth": "Kolombreedte instellen",
+        "widthValue": "Breedte",
+        "widthUnit": "Eenheid",
+        "widthPercentHelp": "Een percentage van de tekstbreedte.",
+        "widthCustom": "Aangepast",
+        "widthCustomHelp": "Elke LaTeX-lengte, bijvoorbeeld 4cm of 0.4\\linewidth.",
+        "widthNeedsArray": "Voor vaste breedtes is het pakket array in de preambule nodig.",
+        "columnWidthIndicator": "Kolombreedte",
+        "mergeCells": "Cellen samenvoegen",
+        "unmergeCells": "Cellen splitsen",
+        "selectCellsToMerge": "Selecteer de cellen die je wilt samenvoegen.",
+        "deleteRowOrColumn": "Verwijderen",
+        "selectRowOrColumnToDelete": "Selecteer een rij of een kolom om te verwijderen.",
+        "insert": "Invoegen",
+        "insertRowsAbove": "Rij erboven invoegen",
+        "insertRowsBelow": "Rij eronder invoegen",
+        "insertColumnsLeft": "Kolom links invoegen",
+        "insertColumnsRight": "Kolom rechts invoegen",
+        "removeTable": "Tabel weghalen",
+        "help": "Help",
+        "helpTitle": "Tabellen bewerken",
+        "helpIntro": "De tabel is je LaTeX-broncode. Elke wijziging hier herschrijft de tabular in het bestand.",
+        "helpSupportedTitle": "Wat het raster aankan",
+        "helpSupportedColumns": "Kolomuitlijning en vaste breedtes via de kolomspecificatie.",
+        "helpSupportedRules": "Horizontale en verticale lijnen, ook die van booktabs.",
+        "helpSupportedMerged": "Samengevoegde cellen die als \\multicolumn geschreven zijn.",
+        "helpSupportedCaption": "Het bijschrift en het label van de omliggende table-omgeving.",
+        "helpUnsupported": "Wat het raster niet kan weergeven, blijft broncode en de tabel wordt dan alleen-lezen getoond.",
+        "helpShortcutsTitle": "Toetsenbord",
+        "shortcutMove": "Met de pijltjestoetsen ga je van cel naar cel.",
+        "shortcutExtend": "Shift met een pijltjestoets breidt de selectie uit.",
+        "shortcutNext": "Tab gaat naar de volgende cel, Shift+Tab naar de vorige.",
+        "shortcutEdit": "Enter begint met het bewerken van de geselecteerde cel.",
+        "shortcutCancel": "Escape stopt het bewerken en houdt de cel geselecteerd.",
+        "shortcutClear": "Backspace of Delete maakt de geselecteerde cellen leeg.",
+        "shortcutUndo": "Ongedaan maken en opnieuw werken net als in de rest van de editor.",
+        "ok": "Klaar",
+        "cancel": "Annuleren",
+        "close": "Sluiten",
+        "selectRow": "Rij selecteren",
+        "selectColumn": "Kolom selecteren",
+        "cellInput": "Cel",
+        "errorTitle": "Deze tabel kon niet worden weergegeven",
+        "errorBody": "De tabular gebruikt iets dat het raster nog niet kan tonen. Bewerk hem in plaats daarvan als broncode.",
+        "viewSource": "Als broncode bewerken"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Positie in het document",
+    "goTo": "Naar {{title}}",
+    "untitled": "Naamloos"
   }
 }

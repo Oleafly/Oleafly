@@ -198,7 +198,7 @@ export function Book({
               </div>
             )}
 
-            <div className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-inset ring-black/10" />
+            <div className="pointer-events-none absolute inset-0 rounded-md border border-black/10" />
           </div>
         </div>
         </div>

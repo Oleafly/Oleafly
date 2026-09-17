@@ -137,7 +137,7 @@ function TerminalTabItem({
   const hoverOnly = "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
   const closeClass = cn(controlBase, active ? "opacity-100" : hoverOnly);
   const hex = terminalColorHex(tab.color);
-  const swatchClass = "size-2 shrink-0 rounded-full ring-1 ring-foreground/50";
+  const swatchClass = "size-2 shrink-0 rounded-full border border-foreground/50";
 
   return (
     <ContextMenu>

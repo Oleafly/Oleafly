@@ -39,7 +39,10 @@
     "insertPlaceholder": "Indsæt en pladsholder",
     "cancel": "Annuller",
     "insert": "Indsæt figur",
-    "selectImage": "Vælg et billede for at indsætte det."
+    "selectImage": "Vælg et billede for at indsætte det.",
+    "editTitle": "Rediger billedet",
+    "editDescription": "Byt billedet ud, eller ændr dets bredde. Figurteksten og etiketten bliver, som de er.",
+    "save": "Gem billedet"
   },
   "tableToolbar": {
     "label": "Tabelværktøjer",
@@ -622,7 +625,14 @@
       "unsafeOutput": "Der kunne ikke laves en sikker forhåndsvisning.",
       "unsupported": "Udtrykket er ufuldstændigt eller understøttes ikke.",
       "missingClosing": "Der mangler et afsluttende {{delimiter}}.",
-      "notRendered": "Udtrykket kunne ikke gengives."
+      "notRendered": "Udtrykket kunne ikke gengives.",
+      "preview": {
+        "moreOptions": "Flere muligheder",
+        "hide": "Skjul",
+        "hideDescription": "Skjuler forhåndsvisningen, indtil du forlader denne ligning.",
+        "disable": "Slå fra",
+        "disableDescription": "Slår forhåndsvisningen af ligninger fra. Du kan slå den til igen under Indstillinger."
+      }
     },
     "latex": {
       "command": {
@@ -905,6 +915,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Ukendt posttype i litteraturlisten @{{type}}."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Indlæser billedet",
+        "loadFailed": "Billedet kunne ikke indlæses.",
+        "edit": "Rediger figuren"
+      },
+      "preamble": {
+        "show": "Vis dokumentets præambel",
+        "hide": "Skjul dokumentets præambel"
+      },
+      "endOfDocument": "Dokumentets slutning",
+      "abstract": "Resumé",
+      "keywordsLabel": "Nøgleord",
+      "theorem": {
+        "theorem": "Sætning",
+        "lemma": "Lemma",
+        "corollary": "Korollar",
+        "proof": "Bevis"
+      },
+      "footnote": "Fodnote",
+      "endnote": "Slutnote",
+      "citation": "Citation",
+      "reference": "Reference",
+      "label": "Etiket",
+      "includedFile": "Inkluderet fil",
+      "table": {
+        "captionPlacement": "Tabeltekst",
+        "captionAbove": "Tabeltekst over",
+        "captionBelow": "Tabeltekst under",
+        "noCaption": "Ingen tabeltekst",
+        "captionNeedsTable": "En tabeltekst kræver et table-miljø omkring tabular.",
+        "borders": "Streger",
+        "noBorders": "Ingen streger",
+        "allBorders": "Alle streger",
+        "booktabs": "booktabs-streger",
+        "customBorders": "Egne streger",
+        "alignment": "Justering",
+        "alignLeft": "Juster til venstre",
+        "alignCenter": "Centrer",
+        "alignRight": "Juster til højre",
+        "alignJustify": "Lige margener",
+        "selectColumnToAlign": "Vælg en kolonne for at ændre dens justering.",
+        "columnWidth": "Kolonnebredde",
+        "selectColumnForWidth": "Vælg en kolonne for at ændre dens bredde.",
+        "fitToContent": "Tilpas til indholdet",
+        "fixedWidth": "Fast bredde",
+        "setColumnWidth": "Angiv kolonnebredden",
+        "widthValue": "Bredde",
+        "widthUnit": "Enhed",
+        "widthPercentHelp": "En procentdel af tekstbredden.",
+        "widthCustom": "Eget mål",
+        "widthCustomHelp": "En hvilken som helst LaTeX-længde, for eksempel 4cm eller 0.4\\linewidth.",
+        "widthNeedsArray": "Faste bredder kræver pakken array i præamblen.",
+        "columnWidthIndicator": "Kolonnebredde",
+        "mergeCells": "Flet cellerne",
+        "unmergeCells": "Opdel cellerne",
+        "selectCellsToMerge": "Vælg de celler, der skal flettes.",
+        "deleteRowOrColumn": "Slet",
+        "selectRowOrColumnToDelete": "Vælg en række eller en kolonne, der skal slettes.",
+        "insert": "Indsæt",
+        "insertRowsAbove": "Indsæt en række over",
+        "insertRowsBelow": "Indsæt en række under",
+        "insertColumnsLeft": "Indsæt en kolonne til venstre",
+        "insertColumnsRight": "Indsæt en kolonne til højre",
+        "removeTable": "Fjern tabellen",
+        "help": "Hjælp",
+        "helpTitle": "Redigering af tabeller",
+        "helpIntro": "Tabellen er din LaTeX-kode. Hver redigering her skriver tabular om i filen.",
+        "helpSupportedTitle": "Hvad gitteret klarer",
+        "helpSupportedColumns": "Kolonnejustering og faste bredder via kolonnespecifikationen.",
+        "helpSupportedRules": "Vandrette og lodrette streger, herunder booktabs.",
+        "helpSupportedMerged": "Flettede celler skrevet som \\multicolumn.",
+        "helpSupportedCaption": "Tabelteksten og etiketten i det omgivende table-miljø.",
+        "helpUnsupported": "Alt, gitteret ikke kan vise, bliver stående som kode, og tabellen vises i stedet skrivebeskyttet.",
+        "helpShortcutsTitle": "Tastatur",
+        "shortcutMove": "Piletasterne flytter mellem cellerne.",
+        "shortcutExtend": "Shift og en piletast udvider markeringen.",
+        "shortcutNext": "Tab flytter til næste celle, Shift+Tab til den forrige.",
+        "shortcutEdit": "Enter begynder at redigere den markerede celle.",
+        "shortcutCancel": "Escape stopper redigeringen og holder cellen markeret.",
+        "shortcutClear": "Backspace eller Delete tømmer de markerede celler.",
+        "shortcutUndo": "Fortryd og gentag virker som i resten af editoren.",
+        "ok": "Færdig",
+        "cancel": "Annuller",
+        "close": "Luk",
+        "selectRow": "Markér rækken",
+        "selectColumn": "Markér kolonnen",
+        "cellInput": "Celle",
+        "errorTitle": "Denne tabel kunne ikke gengives",
+        "errorBody": "Miljøet tabular bruger noget, gitteret ikke kan vise endnu. Rediger det som kode i stedet.",
+        "viewSource": "Rediger som kode"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Placering i dokumentet",
+    "goTo": "Gå til {{title}}",
+    "untitled": "Uden titel"
   }
 }

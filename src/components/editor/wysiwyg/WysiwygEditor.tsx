@@ -42,7 +42,6 @@ import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
 import {
-  getWysiwygDocumentContext,
   getWysiwygProjectSessionGeneration,
   setWysiwygDocumentContext,
   setWysiwygEditor,
@@ -62,8 +61,6 @@ import {
 import { useIndexStore } from "@/store/project-index";
 import { resolveVisualAssetUrl } from "./asset-url";
 import { createVisualPasteHandlers } from "./paste";
-import { tableFloatPosition } from "./table-commands";
-import { TableToolbar } from "./TableToolbar";
 import {
   applyVisualProofreadingSuggestion,
   ignoreVisualProofreadingIssue,
@@ -89,9 +86,7 @@ const PACKAGE_EXTENSIONS = createWysiwygExtensions({
   renderMath: renderMathExpression,
   resolveAssetUrl: resolveVisualAssetUrl,
 });
-const PASTE_HANDLERS = createVisualPasteHandlers({
-  theoremEnvironments: () => getWysiwygDocumentContext().theoremEnvironments,
-});
+const PASTE_HANDLERS = createVisualPasteHandlers();
 
 export function documentContextForPreamble(preamble: string): WysiwygDocumentContext {
   return {
@@ -509,7 +504,6 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   const [preamble, setPreamble] = useState("");
   const [hasDocumentEnv, setHasDocumentEnv] = useState(false);
   const [showPreamble, setShowPreamble] = useState(false);
-  const [tablePosition, setTablePosition] = useState<number | null>(null);
   const [proofreadingIssue, setProofreadingIssue] =
     useState<VisualProofreadingIssue | null>(null);
   const closeProofreading = useCallback(
@@ -736,16 +730,6 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
     projectDictionary,
   ]);
 
-  useEffect(() => {
-    if (!editor) return;
-    const update = () => setTablePosition(wysiwyg ? tableFloatPosition(editor.state) : null);
-    editor.on("transaction", update);
-    update();
-    return () => {
-      editor.off("transaction", update);
-    };
-  }, [editor, wysiwyg]);
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: the analysis-state object/path deliberately retrigger the imperative ProseMirror decoration refresh; their current composite value is held in a ref.
   useEffect(() => {
     if (editor) {
@@ -897,9 +881,6 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
           </div>
         )}
       </div>
-      {editor && wysiwyg && tablePosition !== null && (
-        <TableToolbar editor={editor} position={tablePosition} />
-      )}
       {editor && proofreadingIssue && wysiwyg && (
         <VisualProofreadingPopover
           editor={editor}

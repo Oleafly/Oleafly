@@ -39,7 +39,10 @@
     "insertPlaceholder": "Sett inn plassholder",
     "cancel": "Avbryt",
     "insert": "Sett inn figur",
-    "selectImage": "Velg et bilde for å sette det inn."
+    "selectImage": "Velg et bilde for å sette det inn.",
+    "editTitle": "Rediger bildet",
+    "editDescription": "Bytt ut bildet eller endre bredden. Bildeteksten og etiketten blir stående som de er.",
+    "save": "Lagre bildet"
   },
   "tableToolbar": {
     "label": "Tabellverktøy",
@@ -622,7 +625,14 @@
       "unsafeOutput": "Kunne ikke lage en trygg forhåndsvisning.",
       "unsupported": "Dette uttrykket er ufullstendig eller støttes ikke.",
       "missingClosing": "Mangler avsluttende {{delimiter}}.",
-      "notRendered": "Dette uttrykket kunne ikke tegnes opp."
+      "notRendered": "Dette uttrykket kunne ikke tegnes opp.",
+      "preview": {
+        "moreOptions": "Flere valg",
+        "hide": "Skjul",
+        "hideDescription": "Skjuler forhåndsvisningen til du forlater denne ligningen.",
+        "disable": "Slå av",
+        "disableDescription": "Slår av forhåndsvisningen av ligninger. Du slår den på igjen i Innstillinger."
+      }
     },
     "latex": {
       "command": {
@@ -905,6 +915,104 @@
         "source": "BibTeX",
         "unknownEntryType": "Ukjent oppføringstype @{{type}} i litteraturlisten."
       }
+    },
+    "visual": {
+      "graphics": {
+        "loading": "Laster bildet",
+        "loadFailed": "Dette bildet kunne ikke lastes.",
+        "edit": "Rediger figuren"
+      },
+      "preamble": {
+        "show": "Vis innledningen i dokumentet",
+        "hide": "Skjul innledningen i dokumentet"
+      },
+      "endOfDocument": "Slutten av dokumentet",
+      "abstract": "Sammendrag",
+      "keywordsLabel": "Nøkkelord",
+      "theorem": {
+        "theorem": "Teorem",
+        "lemma": "Lemma",
+        "corollary": "Korollar",
+        "proof": "Bevis"
+      },
+      "footnote": "Fotnote",
+      "endnote": "Sluttnote",
+      "citation": "Sitering",
+      "reference": "Referanse",
+      "label": "Etikett",
+      "includedFile": "Inkludert fil",
+      "table": {
+        "captionPlacement": "Tabelltekst",
+        "captionAbove": "Tabelltekst over",
+        "captionBelow": "Tabelltekst under",
+        "noCaption": "Ingen tabelltekst",
+        "captionNeedsTable": "En tabelltekst krever et table-miljø rundt tabular.",
+        "borders": "Kantlinjer",
+        "noBorders": "Ingen kantlinjer",
+        "allBorders": "Alle kantlinjer",
+        "booktabs": "booktabs-streker",
+        "customBorders": "Egendefinerte kantlinjer",
+        "alignment": "Justering",
+        "alignLeft": "Venstrejuster",
+        "alignCenter": "Midtstill",
+        "alignRight": "Høyrejuster",
+        "alignJustify": "Blokkjuster",
+        "selectColumnToAlign": "Velg en kolonne for å endre justeringen.",
+        "columnWidth": "Kolonnebredde",
+        "selectColumnForWidth": "Velg en kolonne for å endre bredden.",
+        "fitToContent": "Tilpass til innholdet",
+        "fixedWidth": "Fast bredde",
+        "setColumnWidth": "Angi kolonnebredde",
+        "widthValue": "Bredde",
+        "widthUnit": "Enhet",
+        "widthPercentHelp": "En prosentandel av tekstbredden.",
+        "widthCustom": "Egendefinert",
+        "widthCustomHelp": "En hvilken som helst LaTeX-lengde, for eksempel 4cm eller 0.4\\linewidth.",
+        "widthNeedsArray": "Faste bredder krever pakken array i innledningen.",
+        "columnWidthIndicator": "Kolonnebredde",
+        "mergeCells": "Slå sammen cellene",
+        "unmergeCells": "Del cellene",
+        "selectCellsToMerge": "Velg cellene som skal slås sammen.",
+        "deleteRowOrColumn": "Slett",
+        "selectRowOrColumnToDelete": "Velg en rad eller en kolonne som skal slettes.",
+        "insert": "Sett inn",
+        "insertRowsAbove": "Sett inn rad over",
+        "insertRowsBelow": "Sett inn rad under",
+        "insertColumnsLeft": "Sett inn kolonne til venstre",
+        "insertColumnsRight": "Sett inn kolonne til høyre",
+        "removeTable": "Fjern tabellen",
+        "help": "Hjelp",
+        "helpTitle": "Redigere tabeller",
+        "helpIntro": "Tabellen er LaTeX-kilden din. Hver endring her skriver om tabular i filen.",
+        "helpSupportedTitle": "Hva rutenettet klarer",
+        "helpSupportedColumns": "Kolonnejustering og faste bredder via kolonnespesifikasjonen.",
+        "helpSupportedRules": "Vannrette og loddrette streker, inkludert booktabs.",
+        "helpSupportedMerged": "Sammenslåtte celler skrevet som \\multicolumn.",
+        "helpSupportedCaption": "Tabellteksten og etiketten i table-miljøet rundt.",
+        "helpUnsupported": "Alt rutenettet ikke kan gjengi, blir stående som kildekode, og tabellen vises skrivebeskyttet i stedet.",
+        "helpShortcutsTitle": "Tastatur",
+        "shortcutMove": "Piltastene flytter mellom cellene.",
+        "shortcutExtend": "Shift og en piltast utvider merkingen.",
+        "shortcutNext": "Tab flytter til neste celle, Shift+Tab til den forrige.",
+        "shortcutEdit": "Enter begynner å redigere den merkede cellen.",
+        "shortcutCancel": "Escape avslutter redigeringen og lar cellen være merket.",
+        "shortcutClear": "Backspace eller Delete tømmer de merkede cellene.",
+        "shortcutUndo": "Angre og gjør om virker som i resten av editoren.",
+        "ok": "Ferdig",
+        "cancel": "Avbryt",
+        "close": "Lukk",
+        "selectRow": "Merk raden",
+        "selectColumn": "Merk kolonnen",
+        "cellInput": "Celle",
+        "errorTitle": "Denne tabellen kunne ikke vises",
+        "errorBody": "Miljøet tabular bruker noe rutenettet ikke kan vise ennå. Rediger det som kildekode i stedet.",
+        "viewSource": "Rediger som kildekode"
+      }
     }
+  },
+  "breadcrumbs": {
+    "label": "Plassering i dokumentet",
+    "goTo": "Gå til {{title}}",
+    "untitled": "Uten navn"
   }
 }

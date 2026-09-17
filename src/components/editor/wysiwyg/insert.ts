@@ -1,14 +1,10 @@
-import type { Editor, JSONContent } from "@tiptap/core";
+import type { JSONContent } from "@tiptap/core";
 import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection, TextSelection, type EditorState } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { scanMathExpressions } from "@oleafly/editor/math-source";
 import {
   createFigure,
-  createTableFloat,
-  headingCommandForLevel,
-  headingLevelForCommand,
-  isSectioningCommand,
   mathNodeJSON,
   openSelectedSourceEditor,
   parseLatexBody,
@@ -16,7 +12,6 @@ import {
   type CreateFigureOptions,
 } from "@oleafly/wysiwyg";
 import type { WysiwygInsertions } from "./controller";
-import { withBorderPreset, type BorderPreset } from "./table-commands";
 
 const SOURCE_EDITED_TYPES = new Set<string>([
   WYSIWYG_NODE_NAMES.footnote,
@@ -145,22 +140,6 @@ export function insertLatexIntoVisualEditor(
   settleAfterInsert(view, content, from);
 }
 
-export function insertParsedLatex(
-  view: EditorView,
-  latex: string,
-  theoremEnvironments: readonly string[],
-  at: number | null = null,
-): boolean {
-  const blocks = parseLatexSnippet(latex, theoremEnvironments);
-  if (blocks.length === 0) return false;
-  const [only] = blocks;
-  const content = blocks.length === 1 && only.type === WYSIWYG_NODE_NAMES.paragraph ? (only.content ?? []) : blocks;
-  if (content.length === 0) return false;
-  insertVisualContent(view, content, at);
-  view.focus();
-  return true;
-}
-
 export function positionAfterEnclosing(state: EditorState, typeName: string): number | null {
   const { $from } = state.selection;
   for (let depth = $from.depth; depth > 0; depth--) {
@@ -175,46 +154,6 @@ export function insertVisualFigure(view: EditorView, options: CreateFigureOption
   return true;
 }
 
-export function insertVisualTable(view: EditorView, rows: number, cols: number, preset: BorderPreset): boolean {
-  const float = withBorderPreset(createTableFloat(rows, cols, { header: true }), preset);
-  const content = [...(float.content ?? []), { type: WYSIWYG_NODE_NAMES.tableCaption }];
-  const from = insertVisualContent(view, [{ ...float, content }]);
-  if (!focusInsertedCaption(view, WYSIWYG_NODE_NAMES.tableFloat, from)) view.focus();
-  return true;
-}
-
-export function currentHeadingCommand(editor: Editor): string | null {
-  const block = editor.state.selection.$from.parent;
-  if (block.type.name !== WYSIWYG_NODE_NAMES.heading) return null;
-  const command = block.attrs.command;
-  if (typeof command === "string" && isSectioningCommand(command)) return command;
-  return headingCommandForLevel(Number(block.attrs.level ?? 1));
-}
-
-export function setVisualHeading(editor: Editor, cmd: string): boolean {
-  if (!isSectioningCommand(cmd)) return false;
-  if (currentHeadingCommand(editor) === cmd) {
-    editor.chain().focus().setParagraph().run();
-    return true;
-  }
-  const block = editor.state.selection.$from.parent;
-  editor
-    .chain()
-    .focus()
-    .setNode(WYSIWYG_NODE_NAMES.heading, {
-      level: headingLevelForCommand(cmd),
-      command: cmd,
-      starred: block.attrs.starred === true,
-      shortTitle: typeof block.attrs.shortTitle === "string" ? block.attrs.shortTitle : null,
-    })
-    .run();
-  return true;
-}
-
 export const visualInsertions: WysiwygInsertions = {
   insertLatex: insertLatexIntoVisualEditor,
-  insertFigure: insertVisualFigure,
-  insertTable: insertVisualTable,
-  currentHeadingCommand,
-  setHeading: setVisualHeading,
 };

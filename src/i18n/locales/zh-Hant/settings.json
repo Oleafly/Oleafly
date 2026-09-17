@@ -620,6 +620,10 @@
       "tabSize": {
         "description": "每一層縮排插入的空格數，也是 Tab 的顯示寬度。",
         "label": "Tab 寬度"
+      },
+      "mathPreview": {
+        "description": "在游標所在的公式上方顯示排版後的公式。",
+        "label": "公式預覽"
       }
     },
     "files": {

@@ -635,6 +635,10 @@
       "tabSize": {
         "description": "Počet mezer vložených na jednu úroveň odsazení a šířka, na kterou se vykreslí tabulátor.",
         "label": "Velikost tabulátoru"
+      },
+      "mathPreview": {
+        "description": "Zobrazovat vykreslenou rovnici nad tou, ve které je kurzor.",
+        "label": "Náhled matematiky"
       }
     },
     "files": {
