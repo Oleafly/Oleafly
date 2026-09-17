@@ -196,7 +196,8 @@ export function parseTabular(node: SyntaxNode, state: EditorState): ParsedTable 
   const { rows: working, rowSeparators } = parseBody(body, state);
   const trailing = working.at(-1);
   let rulesBelow: RuleInfo[] = [];
-  if (working.length > 1 && trailing && trailing.cells.length === 1 && trailing.cells[0].content.trim() === "") {
+  const blankTrailing = trailing?.cells.length === 1 && trailing.cells[0].content.trim() === "";
+  if (working.length > 1 && blankTrailing) {
     working.pop();
     rulesBelow = trailing.rules;
     const previous = working.at(-1);

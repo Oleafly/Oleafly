@@ -34,13 +34,13 @@ const DialogFrame: FC<{ title: string; onClose: () => void; children: ReactNode 
   }, [container, onClose]);
 
   return createPortal(
-    <div
-      className="ofl-visual-table-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
+    <div className="ofl-visual-table-backdrop">
+      <button
+        type="button"
+        className="ofl-visual-table-backdrop-close"
+        aria-label={editorMessage("visual.table.close")}
+        onMouseDown={onClose}
+      />
       <dialog className="ofl-visual-table-dialog" open aria-modal="true" aria-label={title}>
         <h2>{title}</h2>
         {children}

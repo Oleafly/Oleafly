@@ -146,15 +146,17 @@ function mergedBorderChanges(
   preset: BorderPreset,
   changes: ChangeSpec[],
 ): void {
+  const border = preset === "all" ? 1 : 0;
   for (const row of parsed.model.rows) {
     for (const cell of row.cells) {
-      if (!cell.multiColumn) continue;
-      const merged = readSpec(state, cell.multiColumn.spec);
+      const spec = cell.multiColumn?.spec;
+      if (!spec) continue;
+      const merged = readSpec(state, spec);
       for (const column of merged) {
-        column.borderLeft = preset === "all" ? 1 : 0;
-        column.borderRight = preset === "all" ? 1 : 0;
+        column.borderLeft = border;
+        column.borderRight = border;
       }
-      specChange(state, cell.multiColumn.spec, merged, changes);
+      specChange(state, spec, merged, changes);
     }
   }
 }

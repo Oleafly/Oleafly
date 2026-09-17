@@ -314,8 +314,17 @@ export const tableTheme = EditorView.theme({
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.35)",
   },
+  ".ofl-visual-table-backdrop-close": {
+    position: "absolute",
+    inset: "0",
+    margin: "0",
+    padding: "0",
+    border: "0",
+    backgroundColor: "transparent",
+    cursor: "default",
+  },
   ".ofl-visual-table-dialog": {
-    position: "static",
+    position: "relative",
     margin: "0",
     height: "auto",
     width: "min(440px, 92vw)",
