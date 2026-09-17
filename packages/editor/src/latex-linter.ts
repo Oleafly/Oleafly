@@ -521,6 +521,55 @@ interface LatexLintScan {
   readonly environments: OpenEnvironment[];
   readonly math: OpenMath[];
   readonly labels: Map<string, number>;
+  disabled: boolean;
+}
+
+export type NovalidateDirective = "file" | "begin" | "end" | null;
+
+const NOVALIDATE_LINE =
+  /^[ \t]*%+[ \t]*(?:(begin|end)[ \t]+)?novalidate[ \t]*\r?$/u;
+
+export function novalidateDirective(line: string): NovalidateDirective {
+  const match = NOVALIDATE_LINE.exec(line);
+  if (!match) return null;
+  return (match[1] as "begin" | "end" | undefined) ?? "file";
+}
+
+function skipNovalidateRegion(text: string, from: number): number {
+  let lineStart = text[from] === "\n" ? from + 1 : from;
+  while (lineStart < text.length) {
+    const lineEnd = text.indexOf("\n", lineStart);
+    const stop = lineEnd < 0 ? text.length : lineEnd;
+    if (novalidateDirective(text.slice(lineStart, stop)) === "end") {
+      return lineEnd < 0 ? text.length : lineEnd + 1;
+    }
+    if (lineEnd < 0) return text.length;
+    lineStart = lineEnd + 1;
+  }
+  return text.length;
+}
+
+function commentOwnsLine(text: string, cursor: number): boolean {
+  let index = cursor - 1;
+  while (index >= 0 && (text[index] === " " || text[index] === "\t")) {
+    index -= 1;
+  }
+  return index < 0 || text[index] === "\n";
+}
+
+function commentStep(scan: LatexLintScan, cursor: number): number | null {
+  const text = scan.text;
+  const lineEnd = text.indexOf("\n", cursor + 1);
+  const stop = lineEnd < 0 ? text.length : lineEnd;
+  if (commentOwnsLine(text, cursor)) {
+    const directive = novalidateDirective(text.slice(cursor, stop));
+    if (directive === "file") {
+      scan.disabled = true;
+      return null;
+    }
+    if (directive === "begin") return skipNovalidateRegion(text, stop);
+  }
+  return lineEnd < 0 ? text.length : lineEnd + 1;
 }
 
 function closeBraceStep(scan: LatexLintScan, cursor: number): number {
@@ -933,10 +982,7 @@ function lintLatexStep(scan: LatexLintScan, cursor: number): number | null {
   const text = scan.text;
   const char = text[cursor];
 
-  if (char === "%") {
-    const newline = text.indexOf("\n", cursor + 1);
-    return newline < 0 ? text.length : newline + 1;
-  }
+  if (char === "%") return commentStep(scan, cursor);
   if (char === "{") {
     scan.braces.push({ from: cursor, to: cursor + 1 });
     return cursor + 1;
@@ -999,6 +1045,7 @@ export function lintLatexText(text: string): Diagnostic[] {
     environments: [],
     math: [],
     labels: new Map<string, number>(),
+    disabled: false,
   };
 
   let cursor = 0;
@@ -1007,6 +1054,8 @@ export function lintLatexText(text: string): Diagnostic[] {
     if (next === null) break;
     cursor = next;
   }
+
+  if (scan.disabled) return [];
 
   reportUnclosedTokens(scan);
 

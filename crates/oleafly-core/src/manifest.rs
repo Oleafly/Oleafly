@@ -259,6 +259,8 @@ pub struct ProjectManifest {
     pub tex: Option<TexSpec>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dictionary_locale: Option<String>,
     #[serde(default)]
     pub color: String,
     #[serde(default)]
@@ -283,6 +285,7 @@ impl Default for ProjectManifest {
             engine: default_engine(),
             tex: None,
             tex_flavor: None,
+            dictionary_locale: None,
             color: String::new(),
             kind: String::new(),
             exports: Vec::new(),

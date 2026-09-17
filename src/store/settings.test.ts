@@ -314,9 +314,17 @@ describe("useSettingsStore reset", () => {
     settings.setEditorAutoCloseEnvironments(false);
     settings.setEditorGhostCompletion(false);
     settings.setEditorNonBlinkingCursor(true);
+    settings.setEditorKeymap("emacs");
+    settings.setEditorTabSize(2);
+    settings.setEditorLineWrap(false);
+    settings.setEditorLineHeight("wide");
 
     expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("0");
     expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("0");
+    expect(localStorage.getItem("oleafly.editor.keymap")).toBe("emacs");
+    expect(localStorage.getItem("oleafly.editor.tabSize")).toBe("2");
+    expect(localStorage.getItem("oleafly.editor.lineWrap")).toBe("0");
+    expect(localStorage.getItem("oleafly.editor.lineHeight")).toBe("wide");
 
     settings.resetToDefaults();
 
@@ -327,6 +335,11 @@ describe("useSettingsStore reset", () => {
       editorAutoCloseEnvironments: true,
       editorGhostCompletion: true,
       editorNonBlinkingCursor: false,
+      editorKeymap: "default",
+      vim: false,
+      editorTabSize: 4,
+      editorLineWrap: true,
+      editorLineHeight: "normal",
     });
     expect(localStorage.getItem("oleafly.editor.autocomplete")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.closeBrackets")).toBe("1");
@@ -334,6 +347,77 @@ describe("useSettingsStore reset", () => {
     expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.ghostCompletion")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.solidCursor")).toBe("0");
+    expect(localStorage.getItem("oleafly.editor.keymap")).toBe("default");
+    expect(localStorage.getItem("oleafly.vim")).toBe("0");
+    expect(localStorage.getItem("oleafly.editor.tabSize")).toBe("4");
+    expect(localStorage.getItem("oleafly.editor.lineWrap")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.lineHeight")).toBe("normal");
+  });
+
+  it("keeps the derived vim flag in step with the keymap mode", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorKeymap("vim");
+    expect(useSettingsStore.getState().vim).toBe(true);
+    expect(localStorage.getItem("oleafly.vim")).toBe("1");
+
+    useSettingsStore.getState().toggleVim();
+    expect(useSettingsStore.getState()).toMatchObject({ editorKeymap: "default", vim: false });
+
+    useSettingsStore.getState().toggleVim();
+    expect(useSettingsStore.getState()).toMatchObject({ editorKeymap: "vim", vim: true });
+
+    settings.setEditorKeymap("emacs");
+    expect(useSettingsStore.getState().vim).toBe(false);
+    settings.resetToDefaults();
+  });
+
+  it("rejects a tab size outside the offered set", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorTabSize(3);
+    expect(useSettingsStore.getState().editorTabSize).toBe(4);
+    settings.setEditorTabSize(8);
+    expect(useSettingsStore.getState().editorTabSize).toBe(8);
+    settings.resetToDefaults();
+  });
+});
+
+describe("editor keymap migration", () => {
+  it("promotes a stored Vim flag to the keymap mode once", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.vim", "1");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState()).toMatchObject({
+      editorKeymap: "vim",
+      vim: true,
+    });
+    expect(localStorage.getItem("oleafly.editor.keymap")).toBe("vim");
+  });
+
+  it("prefers an explicit keymap mode over the legacy flag", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.vim", "1");
+    lsValues.set("oleafly.editor.keymap", "default");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState()).toMatchObject({
+      editorKeymap: "default",
+      vim: false,
+    });
+  });
+
+  it("falls back to the default mode for an unknown stored value", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editor.keymap", "acme");
+    lsValues.set("oleafly.editor.tabSize", "7");
+    lsValues.set("oleafly.editor.lineHeight", "huge");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState()).toMatchObject({
+      editorKeymap: "default",
+      editorTabSize: 4,
+      editorLineHeight: "normal",
+    });
   });
 });
 

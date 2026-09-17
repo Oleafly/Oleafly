@@ -235,6 +235,7 @@ interface FilesStore {
   // Project kind: "" for a normal document project, "image" for a single-figure
   // project (hides doc-only tools like Insert diagram).
   projectKind: string;
+  projectDictionaryLocale: string | null;
   mainDoc: string;
   engine: DocumentEngineDescriptor;
   engineLoaded: boolean;
@@ -826,6 +827,7 @@ async function loadOpenedProject(
   set({
     projectName: meta.name,
     projectKind: meta.kind ?? "",
+    projectDictionaryLocale: meta.dictionary_locale ?? null,
     mainDoc: meta.main_doc,
     tree,
     ...engine.state,
@@ -913,7 +915,13 @@ async function openProjectTransition(
 
 type ProjectMetadataState = Pick<
   FilesStore,
-  "projectName" | "projectKind" | "mainDoc" | "engine" | "engineLoaded" | "engineError"
+  | "projectName"
+  | "projectKind"
+  | "projectDictionaryLocale"
+  | "mainDoc"
+  | "engine"
+  | "engineLoaded"
+  | "engineError"
 >;
 
 interface ReloadedProjectFiles {
@@ -945,6 +953,7 @@ function projectMetadataState(event: ProjectStateChanged): ProjectMetadataState 
   return {
     projectName: event.project.name,
     projectKind: event.project.kind ?? "",
+    projectDictionaryLocale: event.project.dictionary_locale ?? null,
     mainDoc: event.project.main_doc,
     engine: event.engine,
     engineLoaded: true,
@@ -1078,6 +1087,7 @@ const EMPTY_PROJECT_STATE = {
   projectId: null,
   projectName: "",
   projectKind: "",
+  projectDictionaryLocale: null,
   mainDoc: "main.tex",
   engine: UNKNOWN_ENGINE,
   engineLoaded: false,
@@ -1095,6 +1105,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   projectId: null,
   projectName: "",
   projectKind: "",
+  projectDictionaryLocale: null,
   mainDoc: "main.tex",
   engine: UNKNOWN_ENGINE,
   engineLoaded: false,

@@ -10,3 +10,4 @@ export * from "./compile-log/biber-log";
 export * from "./import-compat";
 export * from "./outline-title";
 export * from "./bibliography-resolve";
+export * from "./bibtex-entry-types";

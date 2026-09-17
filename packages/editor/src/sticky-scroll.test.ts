@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { stickyScroll } from "./sticky-scroll";
+import { EDITOR_LINE_HEIGHT_CSS } from "./theme";
 
 let view: EditorView | null = null;
 
@@ -55,7 +56,7 @@ describe("stickyScroll", () => {
     const mounted = mount(1);
     const container = mounted.dom.querySelector(".cm-stickyScroll");
     expect(container).not.toBeNull();
-    expect(getComputedStyle(container as HTMLElement).lineHeight).toBe("1.7");
+    expect(getComputedStyle(container as HTMLElement).lineHeight).toBe(EDITOR_LINE_HEIGHT_CSS);
 
     mounted.destroy();
     view = null;

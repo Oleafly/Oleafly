@@ -2,7 +2,7 @@ import { syntaxTree } from "@codemirror/language";
 import type { Extension, Text } from "@codemirror/state";
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { highlightTree } from "@lezer/highlight";
-import { EDITOR_LINE_HEIGHT, editorHighlightStyle } from "./theme";
+import { EDITOR_LINE_HEIGHT_CSS, editorHighlightStyle } from "./theme";
 import { scopesAtLine, stickyScopes, type StickyScope } from "./sticky-structure";
 
 /** How many nested scopes may be pinned before the viewport starts to suffer. */
@@ -29,7 +29,7 @@ const stickyTheme = EditorView.theme({
     overflow: "hidden",
     fontFamily: "var(--cm-font-family, var(--font-mono))",
     fontSize: "var(--cm-font-size, 13px)",
-    lineHeight: EDITOR_LINE_HEIGHT,
+    lineHeight: EDITOR_LINE_HEIGHT_CSS,
     backgroundColor: "var(--cm-editor-bg, var(--background))",
     boxShadow: "0 4px 8px -6px rgb(0 0 0 / 0.45)",
     borderBottom: "1px solid var(--border)",

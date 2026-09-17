@@ -52,6 +52,7 @@
     "resources": [
       "resources/templates/**/*",
       "resources/font-packs.json",
+      "resources/dictionary-packs.json",
       "resources/template-packs.json",
       "resources/deadlines-seed.json",
       "resources/deadlines-extra.json",
@@ -70,7 +71,7 @@
     },
     "windows": {
       "nsis": {
-        "languages": ["English", "SimpChinese"],
+        "languages": ["English", "SimpChinese", "TradChinese", "German", "French", "Spanish", "Italian", "Dutch", "PortugueseBR", "Polish", "Russian", "Ukrainian", "Turkish", "Czech", "Danish", "Swedish", "Norwegian", "Finnish", "Romanian", "Japanese", "Korean"],
         "displayLanguageSelector": true
       }
     }

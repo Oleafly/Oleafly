@@ -94,13 +94,21 @@ describe("parseBibtexIntelligence", () => {
       },
       {
         key: "missingRequiredField",
-        params: { entry: "@article{a}", fields: "journal" },
+        params: { entry: "@article{a}", fields: "journal or journaltitle" },
       },
       {
         key: "missingRequiredField",
-        params: { entry: "@article{a}", fields: "year" },
+        params: { entry: "@article{a}", fields: "year or date" },
       },
     ]);
+  });
+
+  it("accepts the biblatex spelling of a required field", () => {
+    expect(
+      messages(
+        "@article{a, author={A}, title={T}, journaltitle={J}, date={2026-01-01}}",
+      ),
+    ).toEqual([]);
   });
 
   it("accepts either alternative of a required field pair", () => {

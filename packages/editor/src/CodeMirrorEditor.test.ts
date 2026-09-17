@@ -4,17 +4,30 @@ import { createElement } from "react";
 import { fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
+import { indentUnit } from "@codemirror/language";
 import type { CompletionSource } from "@codemirror/autocomplete";
 import { getCM, Vim } from "@replit/codemirror-vim";
 import type { CodeMirrorV } from "@replit/codemirror-vim";
+import { forceLinting, forEachDiagnostic } from "@codemirror/lint";
 import {
   CodeMirrorEditor,
+  isBibtexSourcePath,
   isLatexSourcePath,
   isProseSourcePath,
   type EditorHost,
 } from "./CodeMirrorEditor";
 import { getEditorView } from "./controller";
-import { englishEditorMessage } from "./test-messages";
+import {
+  englishEditorMessage,
+  installEnglishEditorMessages,
+} from "./test-messages";
+
+if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
+  Object.defineProperty(Range.prototype, "getClientRects", {
+    configurable: true,
+    value: () => [],
+  });
+}
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -64,7 +77,9 @@ describe("CodeMirrorEditor measurement", () => {
       getContent: () => "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}\n",
       setContent: vi.fn(),
       useSettings: () => ({
-        vim: false,
+        keymap: "default",
+        tabSize: 4,
+        lineWrap: true,
         spellcheck: false,
         harper: false,
         editorTheme: "system",
@@ -74,6 +89,7 @@ describe("CodeMirrorEditor measurement", () => {
         ghostCompletion: true,
       stickyScroll: false,
       }),
+      useEditorKeymap: () => ({}),
       useLintRefreshDeps: () => [],
     };
 
@@ -102,7 +118,9 @@ describe("CodeMirrorEditor measurement", () => {
       getContent: () => "@alp",
       setContent: vi.fn(),
       useSettings: () => ({
-        vim: false,
+        keymap: "default",
+        tabSize: 4,
+        lineWrap: true,
         spellcheck: false,
         harper: false,
         editorTheme: "system",
@@ -112,6 +130,7 @@ describe("CodeMirrorEditor measurement", () => {
         ghostCompletion: true,
       stickyScroll: false,
       }),
+      useEditorKeymap: () => ({}),
       useLintRefreshDeps: () => [],
     };
 
@@ -144,7 +163,9 @@ describe("CodeMirrorEditor Vim integration", () => {
       setContent: vi.fn(),
       saveActive,
       useSettings: () => ({
-        vim: true,
+        keymap: "vim",
+        tabSize: 4,
+        lineWrap: true,
         spellcheck: false,
         harper: false,
         editorTheme: "system",
@@ -154,6 +175,7 @@ describe("CodeMirrorEditor Vim integration", () => {
         ghostCompletion: false,
         stickyScroll: false,
       }),
+      useEditorKeymap: () => ({}),
       useLintRefreshDeps: () => [],
     };
   }
@@ -250,7 +272,8 @@ it("blocks document commands during a mutation while allowing authoritative sync
     setContent,
     isEditLocked: () => locked,
     registerMutationOwner: (value) => { owner = value; return () => {}; },
-    useSettings: () => ({ vim: false, spellcheck: false, harper: false, editorTheme: "system", autocomplete: false, autoCloseBrackets: false, nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false }),
+    useSettings: () => ({ keymap: "default", tabSize: 4, lineWrap: true, spellcheck: false, harper: false, editorTheme: "system", autocomplete: false, autoCloseBrackets: false, nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false }),
+    useEditorKeymap: () => ({}),
     useLintRefreshDeps: () => [],
   };
   const mounted = render(createElement(CodeMirrorEditor, { host }));
@@ -270,4 +293,167 @@ it("blocks document commands during a mutation while allowing authoritative sync
   view!.dispatch({ changes: { from: 7, insert: " edit" } });
   expect(setContent).toHaveBeenLastCalledWith("notes.txt", "Applied edit");
   mounted.unmount();
+});
+
+describe("CodeMirrorEditor keybinding modes and layout preferences", () => {
+  function settingsHost(
+    overrides: Partial<ReturnType<EditorHost["useSettings"]>> = {},
+    editorKeys: Record<string, string> = {},
+    saveActive = vi.fn(),
+  ): EditorHost {
+    return {
+      t: englishEditorMessage,
+      useActivePath: () => "main.tex",
+      getActivePath: () => "main.tex",
+      useDocVersion: () => 0,
+      useCompletionSyntax: () => "latex",
+      getContent: () => "alpha beta\nsecond line\n",
+      setContent: vi.fn(),
+      saveActive,
+      useSettings: () => ({
+        keymap: "default",
+        tabSize: 4,
+        lineWrap: true,
+        spellcheck: false,
+        harper: false,
+        editorTheme: "system",
+        autocomplete: false,
+        autoCloseBrackets: false,
+        nonBlinkingCursor: false,
+        ghostCompletion: false,
+        stickyScroll: false,
+        ...overrides,
+      }),
+      useEditorKeymap: () => editorKeys,
+      useLintRefreshDeps: () => [],
+    };
+  }
+
+  it("applies the tab size to both the indent unit and the rendered tab width", () => {
+    const mounted = render(createElement(CodeMirrorEditor, { host: settingsHost({ tabSize: 2 }) }));
+    const view = getEditorView();
+    expect(view!.state.tabSize).toBe(2);
+    expect(view!.state.facet(indentUnit)).toBe("  ");
+    mounted.unmount();
+  });
+
+  it("drops the wrapping class when line wrapping is off", () => {
+    const wrapped = render(createElement(CodeMirrorEditor, { host: settingsHost() }));
+    expect(getEditorView()!.contentDOM.classList.contains("cm-lineWrapping")).toBe(true);
+    wrapped.unmount();
+
+    const unwrapped = render(
+      createElement(CodeMirrorEditor, { host: settingsHost({ lineWrap: false }) }),
+    );
+    expect(getEditorView()!.contentDOM.classList.contains("cm-lineWrapping")).toBe(false);
+    unwrapped.unmount();
+  });
+
+  it("runs a remapped editor key ahead of CodeMirror's own binding for that chord", () => {
+    const mounted = render(
+      createElement(CodeMirrorEditor, {
+        host: settingsHost({}, { deleteLine: "Mod-d", uppercase: "Ctrl-u" }),
+      }),
+    );
+    const view = getEditorView();
+    view!.dispatch({ selection: { anchor: 3 } });
+    fireEvent.keyDown(view!.contentDOM, { key: "u", code: "KeyU", keyCode: 85, ctrlKey: true });
+    expect(view!.state.doc.toString()).toBe("ALPHA beta\nsecond line\n");
+
+    fireEvent.keyDown(view!.contentDOM, { key: "d", code: "KeyD", keyCode: 68, ctrlKey: true });
+    expect(view!.state.doc.toString()).toBe("second line\n");
+    mounted.unmount();
+  });
+
+  it("leaves a chord to CodeMirror when the action is unbound", () => {
+    const mounted = render(
+      createElement(CodeMirrorEditor, { host: settingsHost({}, { deleteLine: "" }) }),
+    );
+    const view = getEditorView();
+    view!.dispatch({ selection: { anchor: 3 } });
+    fireEvent.keyDown(view!.contentDOM, { key: "d", code: "KeyD", keyCode: 68, ctrlKey: true });
+    expect(view!.state.doc.toString()).toBe("alpha beta\nsecond line\n");
+    mounted.unmount();
+  });
+
+  it("loads Emacs mode with visual line movement, no Vim panel, and C-x C-s saving", () => {
+    const saveActive = vi.fn();
+    const mounted = render(
+      createElement(CodeMirrorEditor, {
+        host: settingsHost({ keymap: "emacs" }, {}, saveActive),
+      }),
+    );
+    const view = getEditorView();
+    expect(view!.scrollDOM.classList.contains("cm-emacsMode")).toBe(true);
+    expect(document.querySelector(".cm-vim-panel")).toBeNull();
+
+    view!.dispatch({ selection: { anchor: 4 } });
+    fireEvent.keyDown(view!.contentDOM, { key: "e", code: "KeyE", ctrlKey: true });
+    expect(view!.state.selection.main.head).toBe(10);
+    fireEvent.keyDown(view!.contentDOM, { key: "a", code: "KeyA", ctrlKey: true });
+    expect(view!.state.selection.main.head).toBe(0);
+
+    fireEvent.keyDown(view!.contentDOM, { key: "x", code: "KeyX", ctrlKey: true });
+    fireEvent.keyDown(view!.contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
+    expect(saveActive).toHaveBeenCalledOnce();
+    mounted.unmount();
+  });
+
+  it("kills to the end of the line with C-k in Emacs mode", () => {
+    const mounted = render(
+      createElement(CodeMirrorEditor, { host: settingsHost({ keymap: "emacs" }) }),
+    );
+    const view = getEditorView();
+    view!.dispatch({ selection: { anchor: 5 } });
+    fireEvent.keyDown(view!.contentDOM, { key: "k", code: "KeyK", ctrlKey: true });
+    expect(view!.state.doc.toString()).toBe("alpha\nsecond line\n");
+    mounted.unmount();
+  });
+});
+
+describe("isBibtexSourcePath", () => {
+  it("recognizes a bibliography database whatever its case", () => {
+    expect(isBibtexSourcePath("references.bib")).toBe(true);
+    expect(isBibtexSourcePath("REFERENCES.BIB")).toBe(true);
+    expect(isBibtexSourcePath("main.tex")).toBe(false);
+    expect(isBibtexSourcePath(null)).toBe(false);
+  });
+});
+
+describe("BibTeX source tools", () => {
+  const BIB = "@article{knuth84,\n  author = {K},\n  title = {T},\n  journal = {J},\n}\n";
+
+  function bibHost(): EditorHost {
+    return {
+      t: englishEditorMessage,
+      useActivePath: () => "refs.bib",
+      getActivePath: () => "refs.bib",
+      useDocVersion: () => 0,
+      useCompletionSyntax: () => "bibtex",
+      getContent: () => BIB,
+      setContent: () => {},
+      useSettings: () => ({ keymap: "default", tabSize: 2, lineWrap: true, spellcheck: false, harper: false, editorTheme: "system", autocomplete: true, autoCloseBrackets: true, nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false }),
+      useEditorKeymap: () => ({}),
+      useLintRefreshDeps: () => [],
+    };
+  }
+
+  it("names a missing required field without any project index", async () => {
+    installEnglishEditorMessages();
+    const mounted = render(createElement(CodeMirrorEditor, { host: bibHost() }));
+    const view = getEditorView();
+    expect(view).not.toBeNull();
+
+    forceLinting(view!);
+    await vi.waitFor(
+      () => {
+        const messages: string[] = [];
+        forEachDiagnostic(view!.state, (found) => messages.push(found.message));
+        expect(messages.some((text) => text.includes("year or date"))).toBe(true);
+      },
+      { timeout: 5_000, interval: 100 },
+    );
+
+    mounted.unmount();
+  }, 10_000);
 });

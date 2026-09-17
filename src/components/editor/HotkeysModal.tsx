@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";
+import {
+  EDITOR_KEY_DEFINITIONS,
+  editorKeyTokens,
+  useEditorKeymapStore,
+  type EditorKeyId,
+} from "@/store/editor-keymap";
 import { i18n } from "@/i18n";
 import { shortcut } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -41,9 +47,12 @@ function shortcutTokens(keys: string, mac: boolean): string[] {
   return tokens;
 }
 
-function ShortcutKeys({ keys }: Readonly<{ keys: string }>) {
+function ShortcutKeys({
+  keys,
+  tokens: explicit,
+}: Readonly<{ keys: string; tokens?: readonly string[] }>) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-  const tokens = shortcutTokens(keys, mac);
+  const tokens = explicit ?? shortcutTokens(keys, mac);
 
   return (
     <KbdGroup className="shrink-0">
@@ -64,6 +73,23 @@ interface ShortcutRow {
   category: () => string;
   keys: string;
   desc: () => string;
+  tokens?: readonly string[];
+}
+
+function editorKeyRows(keys: Readonly<Record<EditorKeyId, string>>): ShortcutRow[] {
+  return EDITOR_KEY_DEFINITIONS.flatMap(({ id }) => {
+    const tokens = editorKeyTokens(keys[id]);
+    if (tokens.length === 0) return [];
+    return [
+      {
+        id: `editor-key-${id}`,
+        category: () => i18n.t(($) => $.editor.hotkeys.categories.editor),
+        keys: tokens.join(" "),
+        desc: () => i18n.t(($) => $.settings.shortcuts.editorKeys.labels[id]),
+        tokens,
+      },
+    ];
+  });
 }
 
 const SHORTCUTS: ShortcutRow[] = [
@@ -202,18 +228,21 @@ export function HotkeysModal() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const [q, setQ] = useState("");
+  const editorKeys = useEditorKeymapStore((s) => s.keys);
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
+
+  const rows = useMemo(() => [...SHORTCUTS, ...editorKeyRows(editorKeys)], [editorKeys]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: t re-runs the filter when the interface language changes.
   const filtered = useMemo(
     () =>
-      SHORTCUTS.filter(
+      rows.filter(
         (s) =>
           s.desc().toLowerCase().includes(q.toLowerCase()) ||
           s.category().toLowerCase().includes(q.toLowerCase()) ||
           s.keys.toLowerCase().includes(q.toLowerCase())
       ),
-    [q, t]
+    [q, rows, t]
   );
 
   const categories = useMemo(
@@ -296,7 +325,7 @@ export function HotkeysModal() {
                 .map((s) => (
                   <div key={s.id} className="flex items-center justify-between py-1.5">
                     <span className="text-sm">{s.desc()}</span>
-                    <ShortcutKeys keys={s.keys} />
+                    <ShortcutKeys keys={s.keys} tokens={s.tokens} />
                   </div>
                 ))}
             </div>

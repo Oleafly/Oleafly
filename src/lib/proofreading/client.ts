@@ -11,6 +11,11 @@ import {
 import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import { grammarSuppressionsFor } from "@/lib/dictionary";
+import { readDictionary } from "@/lib/tauri";
+import {
+  effectiveDictionaryLocale,
+  isBundledDictionary,
+} from "./dictionary-catalog";
 import "./actions";
 
 type ProofreadingDocumentInput = Omit<
@@ -66,6 +71,16 @@ interface RetainedProofreading {
   result: ProofreadingResult;
 }
 
+class DictionaryDeliveryError extends Error {
+  constructor(
+    readonly locale: string,
+    readonly cause: unknown,
+  ) {
+    super(`The ${locale} spelling dictionary could not be delivered.`);
+    this.name = "DictionaryDeliveryError";
+  }
+}
+
 export class ProofreadingWorkerError extends Error {
   constructor(
     message: string,
@@ -77,6 +92,7 @@ export class ProofreadingWorkerError extends Error {
   }
 }
 
+const MAX_DELIVERED_DICTIONARIES = 2;
 const MIN_REQUEST_TIMEOUT_MS = 25_000;
 const MAX_REQUEST_TIMEOUT_MS = 120_000;
 
@@ -123,6 +139,7 @@ class ProofreadingWorkerClient {
     ProofreadingSurface,
     RetainedProofreading
   >();
+  private delivered: string[] = [];
 
   proofread(
     input: ProofreadingDocumentInput,
@@ -153,19 +170,10 @@ class ProofreadingWorkerClient {
         dialect:
           workerInput.preferences.dialect ??
           useSettingsStore.getState().grammarDialect,
-        dictionaryLocale:
-          workerInput.preferences.dictionaryLocale ??
-          useSettingsStore.getState().dictionaryLocale ??
-          ({
-            american: "en_US",
-            british: "en_GB",
-            australian: "en_AU",
-            canadian: "en_CA",
-            indian: "en_IN",
-          } as const)[
-            workerInput.preferences.dialect ??
-              useSettingsStore.getState().grammarDialect
-          ],
+        dictionaryLocale: effectiveDictionaryLocale({
+          project: workerInput.preferences.dictionaryLocale,
+          global: useSettingsStore.getState().dictionaryLocale,
+        }),
       },
     };
 
@@ -185,6 +193,7 @@ class ProofreadingWorkerClient {
       return Promise.reject(error);
     }
 
+    const deliverable = worker;
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         const pending = this.pending.get(request.requestId);
@@ -215,20 +224,86 @@ class ProofreadingWorkerClient {
         timeout,
       });
       this.pendingByLane.set(lane, request.requestId);
-      try {
-        worker.postMessage(request);
-      } catch {
-        const error = new ProofreadingWorkerError(
-          i18n.t(($) => $.core.proofreading.postFailed),
-          "post_message_failed",
-          true,
-        );
-        this.rejectRequest(request.requestId, error);
-        useProofreadingStore
-          .getState()
-          .fail(request.identity, error.message);
+      const locale = request.preferences.dictionaryLocale;
+      if (!this.needsDictionaryDelivery(locale)) {
+        this.postRequest(deliverable, request);
+        return;
       }
+      void this.deliverDictionary(deliverable, locale)
+        .then(() => {
+          if (this.pending.has(request.requestId)) {
+            this.postRequest(deliverable, request);
+          }
+        })
+        .catch((cause) => this.failDelivery(deliverable, request, cause));
     });
+  }
+
+  private needsDictionaryDelivery(locale: string | undefined): boolean {
+    return (
+      !!locale &&
+      !isBundledDictionary(locale) &&
+      !this.delivered.includes(locale)
+    );
+  }
+
+  private postRequest(
+    worker: WorkerLike,
+    request: PendingRequest["request"],
+  ): void {
+    try {
+      worker.postMessage(request);
+    } catch {
+      const error = new ProofreadingWorkerError(
+        i18n.t(($) => $.core.proofreading.postFailed),
+        "post_message_failed",
+        true,
+      );
+      this.rejectRequest(request.requestId, error);
+      useProofreadingStore.getState().fail(request.identity, error.message);
+    }
+  }
+
+  private failDelivery(
+    worker: WorkerLike,
+    request: PendingRequest["request"],
+    cause: unknown,
+  ): void {
+    if (!this.pending.has(request.requestId)) return;
+    if (cause instanceof DictionaryDeliveryError) {
+      this.postRequest(worker, request);
+      return;
+    }
+    const error = new ProofreadingWorkerError(
+      i18n.t(($) => $.core.proofreading.postFailed),
+      "post_message_failed",
+      true,
+    );
+    this.rejectRequest(request.requestId, error);
+    useProofreadingStore.getState().fail(request.identity, error.message, "error");
+  }
+
+  private async deliverDictionary(
+    worker: WorkerLike,
+    locale: string,
+  ): Promise<void> {
+    let payload: { aff: Uint8Array; dic: Uint8Array };
+    try {
+      payload = await readDictionary(locale);
+    } catch (cause) {
+      throw new DictionaryDeliveryError(locale, cause);
+    }
+    worker.postMessage({
+      protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+      type: "dictionary",
+      locale,
+      aff: payload.aff,
+      dic: payload.dic,
+    });
+    this.delivered = [
+      ...this.delivered.filter((entry) => entry !== locale),
+      locale,
+    ].slice(-MAX_DELIVERED_DICTIONARIES);
   }
 
   cancel(surface: ProofreadingSurface, path?: string) {
@@ -311,6 +386,7 @@ class ProofreadingWorkerClient {
 
   private ensureWorker(): WorkerLike {
     if (this.worker) return this.worker;
+    this.delivered = [];
     const worker = new Worker(
       new URL("./proofreading.worker.ts", import.meta.url),
       {

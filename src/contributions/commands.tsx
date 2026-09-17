@@ -1,8 +1,13 @@
 import {
   Bold,
+  CaseLower,
+  CaseSensitive,
+  CaseUpper,
   Command as CommandIcon,
+  CopyPlus,
   Crosshair,
   Download,
+  Eraser,
   FolderPlus,
   Image as ImageIcon,
   Italic,
@@ -36,7 +41,12 @@ import { clearBuildCache } from "@/lib/tauri";
 import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
 import {
   closeEnvironmentAtCursor,
+  deleteLineCommand,
+  duplicateSelection,
+  lowercaseSelection,
   surroundSelectionWithEnvironment,
+  titleCaseSelection,
+  uppercaseSelection,
 } from "@oleafly/editor";
 import { handoffToAssistant } from "@/features/assistant-handoff";
 import { forwardFromCursor } from "@/features/synctex";
@@ -106,6 +116,22 @@ const ENGLISH_KEYWORDS = {
   surroundEnvironment: "surround wrap environment begin end latex",
   appearance: "theme appearance mode",
 } as const;
+
+const EDITOR_COMMAND_KEYWORDS = {
+  uppercase: "uppercase upper case capitals selection",
+  lowercase: "lowercase lower case selection",
+  titleCase: "title case capitalize selection",
+  duplicate: "duplicate copy line selection",
+  deleteLine: "delete remove line",
+} as const;
+
+const EDITOR_COMMAND_PALETTE = [
+  { id: "uppercase", run: uppercaseSelection, icon: CaseUpper, order: 491 },
+  { id: "lowercase", run: lowercaseSelection, icon: CaseLower, order: 492 },
+  { id: "titleCase", run: titleCaseSelection, icon: CaseSensitive, order: 493 },
+  { id: "duplicate", run: duplicateSelection, icon: CopyPlus, order: 494 },
+  { id: "deleteLine", run: deleteLineCommand, icon: Eraser, order: 495 },
+] as const;
 
 const APPEARANCE_LABEL = {
   system: () => i18n.t(($) => $.shell.commands.appearance.useSystem),
@@ -542,6 +568,23 @@ export function registerPaletteCommands() {
       if (surroundSelectionWithEnvironment(view)) view.focus();
     },
   });
+  for (const entry of EDITOR_COMMAND_PALETTE) {
+    palette({
+      id: `palette.editor-${entry.id}`,
+      group: () => i18n.t(($) => $.shell.commandGroups.editor),
+      label: () => i18n.t(($) => $.settings.shortcuts.editorKeys.labels[entry.id]),
+      keywords: () =>
+        `${i18n.t(($) => $.shell.commands.editorCommands.keywords[entry.id])} ${EDITOR_COMMAND_KEYWORDS[entry.id]}`,
+      icon: () => <entry.icon className="size-4" />,
+      order: entry.order,
+      run: () => {
+        const view = getEditorView();
+        if (!view) return;
+        entry.run(view);
+        view.focus();
+      },
+    });
+  }
 
   palette({
     id: "palette.theme",

@@ -53,6 +53,7 @@ import { projectDiagnosticText } from "@/lib/project-intelligence/reason";
 import type {
   CitationCompletion,
   ProjectDefinition,
+  ProjectDiagnostic,
   ProjectIntelligenceSnapshot,
   ProjectIntelligenceState,
   ProjectUse,
@@ -1294,6 +1295,13 @@ export function currentFileReferenceDiagnostics(
   return diagnostics;
 }
 
+function ownedByBibtexLinter(
+  path: string,
+  code: ProjectDiagnostic["code"],
+): boolean {
+  return code === "bibtex-validation" && /\.bib$/i.test(path);
+}
+
 export function projectIntelligenceExtensions(): Extension[] {
   const diagnostics = linter(
     (view): Diagnostic[] => {
@@ -1312,7 +1320,11 @@ export function projectIntelligenceExtensions(): Extension[] {
       const partial = current.snapshot.status === "partial";
       const length = view.state.doc.length;
       return current.snapshot.diagnostics
-        .filter((diagnostic) => diagnostic.location.file === current.path)
+        .filter(
+          (diagnostic) =>
+            diagnostic.location.file === current.path &&
+            !ownedByBibtexLinter(current.path, diagnostic.code),
+        )
         .map((diagnostic) => {
           const from = Math.min(
             Math.max(0, diagnostic.location.range.from),

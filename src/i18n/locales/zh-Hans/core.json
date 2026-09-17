@@ -448,7 +448,8 @@
     "staleResponse": "离线校对返回了过期响应。",
     "stopped": "离线校对意外停止。",
     "superseded": "更新的校对请求已取代此请求。",
-    "timedOut": "离线校对超时，将在下次编辑时重启。"
+    "timedOut": "离线校对超时，将在下次编辑时重启。",
+    "dictionaryUnavailable": "所选拼写词典尚未安装，请在设置中下载。"
   },
   "skillGroups": {
     "shelf": "领域技能库",

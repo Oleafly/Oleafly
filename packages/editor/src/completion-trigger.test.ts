@@ -22,8 +22,19 @@ describe("completion lexical triggers", () => {
     ["typst", "#cite(<knuth"],
     ["typst", "#ref(<intro"],
     ["bibtex", "crossref = {knuth"],
+    ["bibtex", "@art"],
+    ["bibtex", "@misc{m, title = {T}}\n\n  @bo"],
+    ["bibtex", "@article{k,\n  au"],
+    ["bibtex", "@article{k,\n  "],
   ] as const)("recognizes a trigger in %s: %s", (syntax, source) => {
     expect(triggered(source, syntax)).toBe(true);
+  });
+
+  it.each([
+    "an email address in prose",
+    "a citation key alone",
+  ])("leaves %s without a BibTeX trigger", (source) => {
+    expect(triggered(source, "bibtex")).toBe(false);
   });
 
   it.each(["latex", "markdown", "typst", "bibtex"] as const)(

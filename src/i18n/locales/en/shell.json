@@ -206,6 +206,15 @@
     },
     "wordCount": {
       "label": "Word count"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "delete line remove",
+        "duplicate": "duplicate line selection copy",
+        "lowercase": "lowercase case text",
+        "titleCase": "title case capitalize text",
+        "uppercase": "uppercase case text"
+      }
     }
   },
   "compile": {
@@ -581,8 +590,12 @@
       },
       "dictionary": {
         "ariaLabel": "Proofreading spelling dictionary",
-        "description": "Exact offline Hunspell pack used by Source and Visual spelling checks.",
-        "label": "Spelling dictionary"
+        "description": "Hunspell pack used by Source and Visual spelling checks. Languages beyond the five included packs are downloaded on demand.",
+        "label": "Spelling dictionary",
+        "downloadFailed": "The {{name}} dictionary could not be downloaded.",
+        "downloaded": "{{name}} is ready for spell check.",
+        "downloading": "Downloading {{name}}",
+        "offlineRefused": "Offline mode is on. Turn it off to download {{name}}."
       },
       "harper": {
         "description": "Check English grammar and style in LaTeX and Markdown Source and Visual editing, plus Typst Source, with one-click fixes.",

@@ -70,14 +70,15 @@ import { isLocalePreference, type LocalePreference } from "@oleafly/i18n-contrac
 import { i18n } from "@/i18n";
 import { changeLocalePreference } from "@/i18n/desktop";
 
-export type DictionaryLocale = "en_US" | "en_GB" | "en_AU" | "de_DE" | "fr_FR";
-export const DICTIONARY_LOCALES: { id: DictionaryLocale; name: string }[] = [
-  { id: "en_US", name: "English (US)" },
-  { id: "en_GB", name: "English (UK)" },
-  { id: "en_AU", name: "English (Australia)" },
-  { id: "de_DE", name: "Deutsch" },
-  { id: "fr_FR", name: "Français" },
-];
+export type DictionaryLocale = string;
+export const DEFAULT_DICTIONARY_LOCALE = "en_US";
+const DICTIONARY_LOCALE_ID = /^[a-z]{2,3}(?:_[A-Za-z]{2,4})?$/u;
+export function readDictionaryLocale(raw: string): DictionaryLocale {
+  const normalized = raw.trim().replace("-", "_");
+  return DICTIONARY_LOCALE_ID.test(normalized)
+    ? normalized
+    : DEFAULT_DICTIONARY_LOCALE;
+}
 export type EditorThemeId =
   | "system"
   | "linear"
@@ -721,9 +722,41 @@ export const GRAMMAR_DIALECTS: {
   { id: "indian", name: "English (India)" },
 ];
 
+export type EditorKeymapMode = "default" | "vim" | "emacs";
+
+export const EDITOR_KEYMAP_MODES: readonly EditorKeymapMode[] = [
+  "default",
+  "vim",
+  "emacs",
+];
+
+export type EditorLineHeight = "compact" | "normal" | "wide";
+
+export const EDITOR_LINE_HEIGHTS: Readonly<Record<EditorLineHeight, number>> = {
+  compact: 1.4,
+  normal: 1.7,
+  wide: 2,
+};
+
+export const EDITOR_LINE_HEIGHT_OPTIONS: readonly EditorLineHeight[] = [
+  "compact",
+  "normal",
+  "wide",
+];
+
+export const EDITOR_TAB_SIZES: readonly number[] = [2, 4, 8];
+
 interface SettingsState {
+  editorKeymap: EditorKeymapMode;
+  setEditorKeymap: (v: EditorKeymapMode) => void;
   vim: boolean;
   toggleVim: () => void;
+  editorTabSize: number;
+  setEditorTabSize: (v: number) => void;
+  editorLineWrap: boolean;
+  setEditorLineWrap: (v: boolean) => void;
+  editorLineHeight: EditorLineHeight;
+  setEditorLineHeight: (v: EditorLineHeight) => void;
   /** Completion popups while typing (Ctrl+Space always works). */
   editorAutocomplete: boolean;
   setEditorAutocomplete: (v: boolean) => void;
@@ -904,8 +937,38 @@ function readDefaultLatexEngine(raw: string): DefaultLatexEngine {
   return raw === "latexmk" ? "latexmk" : "tectonic";
 }
 
+function readEditorKeymap(): EditorKeymapMode {
+  const stored = ls("oleafly.editor.keymap", "");
+  if (EDITOR_KEYMAP_MODES.includes(stored as EditorKeymapMode)) {
+    return stored as EditorKeymapMode;
+  }
+  if (ls("oleafly.vim", "0") === "1") {
+    saveLs("oleafly.editor.keymap", "vim");
+    return "vim";
+  }
+  return "default";
+}
+
+function readEditorTabSize(): number {
+  const stored = Number(ls("oleafly.editor.tabSize", ""));
+  return EDITOR_TAB_SIZES.includes(stored) ? stored : 4;
+}
+
+function readEditorLineHeight(): EditorLineHeight {
+  const stored = ls("oleafly.editor.lineHeight", "");
+  return EDITOR_LINE_HEIGHT_OPTIONS.includes(stored as EditorLineHeight)
+    ? (stored as EditorLineHeight)
+    : "normal";
+}
+
+const initialEditorKeymap = readEditorKeymap();
+
 const PREF_DEFAULTS = {
+  editorKeymap: "default" as EditorKeymapMode,
   vim: false,
+  editorTabSize: 4,
+  editorLineWrap: true,
+  editorLineHeight: "normal" as EditorLineHeight,
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
   editorAutoCloseMath: true,
@@ -917,7 +980,7 @@ const PREF_DEFAULTS = {
   harper: true,
   grammarDialect: "american" as GrammarDialect,
   uiLocalePreference: "system" as LocalePreference,
-  dictionaryLocale: "en_US" as DictionaryLocale,
+  dictionaryLocale: DEFAULT_DICTIONARY_LOCALE as DictionaryLocale,
   showRegionalism: true,
   showWordChoice: true,
   harperDisabledRules: [] as readonly string[],
@@ -960,12 +1023,30 @@ const PREF_DEFAULTS = {
 } as const;
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  vim: ls("oleafly.vim", "0") === "1",
-  toggleVim: () =>
-    set((s) => {
-      saveLs("oleafly.vim", s.vim ? "0" : "1");
-      return { vim: !s.vim };
-    }),
+  editorKeymap: initialEditorKeymap,
+  setEditorKeymap: (v) => {
+    saveLs("oleafly.editor.keymap", v);
+    saveLs("oleafly.vim", v === "vim" ? "1" : "0");
+    set({ editorKeymap: v, vim: v === "vim" });
+  },
+  vim: initialEditorKeymap === "vim",
+  toggleVim: () => get().setEditorKeymap(get().vim ? "default" : "vim"),
+  editorTabSize: readEditorTabSize(),
+  setEditorTabSize: (v) => {
+    const size = EDITOR_TAB_SIZES.includes(v) ? v : PREF_DEFAULTS.editorTabSize;
+    saveLs("oleafly.editor.tabSize", String(size));
+    set({ editorTabSize: size });
+  },
+  editorLineWrap: ls("oleafly.editor.lineWrap", "1") !== "0",
+  setEditorLineWrap: (v) => {
+    saveLs("oleafly.editor.lineWrap", v ? "1" : "0");
+    set({ editorLineWrap: v });
+  },
+  editorLineHeight: readEditorLineHeight(),
+  setEditorLineHeight: (v) => {
+    saveLs("oleafly.editor.lineHeight", v);
+    set({ editorLineHeight: v });
+  },
   editorAutocomplete: ls("oleafly.editor.autocomplete", "1") !== "0",
   setEditorAutocomplete: (v) => {
     saveLs("oleafly.editor.autocomplete", v ? "1" : "0");
@@ -1033,12 +1114,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ uiLocalePreference: v });
     void changeLocalePreference(v);
   },
-  dictionaryLocale: (() => {
-    const raw = ls("oleafly.dictionary.locale", "en_US") as DictionaryLocale;
-    return DICTIONARY_LOCALES.some((locale) => locale.id === raw) ? raw : "en_US";
-  })(),
+  dictionaryLocale: readDictionaryLocale(
+    ls("oleafly.dictionary.locale", DEFAULT_DICTIONARY_LOCALE),
+  ),
   setDictionaryLocale: (v) => {
-    const locale = DICTIONARY_LOCALES.some((item) => item.id === v) ? v : "en_US";
+    const locale = readDictionaryLocale(v);
     saveLs("oleafly.dictionary.locale", locale);
     set({ dictionaryLocale: locale });
     notifyProofreadingSettingsChanged("dictionaryLocale", get());
@@ -1479,7 +1559,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     notifyProofreadingSettingsChanged("reset", get());
   },
   resetAppearancePreferences: () => {
+    saveLs("oleafly.editor.keymap", PREF_DEFAULTS.editorKeymap);
     saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
+    saveLs("oleafly.editor.tabSize", String(PREF_DEFAULTS.editorTabSize));
+    saveLs("oleafly.editor.lineWrap", PREF_DEFAULTS.editorLineWrap ? "1" : "0");
+    saveLs("oleafly.editor.lineHeight", PREF_DEFAULTS.editorLineHeight);
     saveLs(
       "oleafly.editor.autocomplete",
       PREF_DEFAULTS.editorAutocomplete ? "1" : "0",
@@ -1555,7 +1639,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
     saveLs("oleafly.library.projectLayout", PREF_DEFAULTS.homeProjectLayout);
     set({
+      editorKeymap: PREF_DEFAULTS.editorKeymap,
       vim: PREF_DEFAULTS.vim,
+      editorTabSize: PREF_DEFAULTS.editorTabSize,
+      editorLineWrap: PREF_DEFAULTS.editorLineWrap,
+      editorLineHeight: PREF_DEFAULTS.editorLineHeight,
       editorAutocomplete: PREF_DEFAULTS.editorAutocomplete,
       editorAutoCloseBrackets: PREF_DEFAULTS.editorAutoCloseBrackets,
       editorAutoCloseMath: PREF_DEFAULTS.editorAutoCloseMath,

@@ -84,6 +84,8 @@ pub struct ProjectMeta {
     /// source, which stays the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dictionary_locale: Option<String>,
     #[serde(default)]
     pub allow_shell_escape: bool,
     /// Book-cover color (hex). Empty means "unset" so the UI falls back to its
@@ -531,6 +533,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
     let p = meta_path(project_id)?;
     if !p.exists() {
         return Ok(ProjectMeta {
+            dictionary_locale: None,
             name: project_id.to_string(),
             main_doc: default_main_doc(),
             engine: default_engine(),
@@ -2714,6 +2717,53 @@ fn set_project_engine_unlocked(
 }
 
 #[tauri::command]
+pub async fn set_project_dictionary_locale(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    locale: Option<String>,
+) -> Result<ProjectMeta, String> {
+    let locale = validate_dictionary_locale(&app, locale.as_deref())?;
+    let owned = project_id.clone();
+    let meta = tauri::async_runtime::spawn_blocking(move || -> Result<ProjectMeta, String> {
+        with_project_metadata(&owned, || {
+            let mut meta = read_meta(&owned)?;
+            meta.dictionary_locale = locale;
+            write_meta(&owned, &meta)?;
+            Ok(meta)
+        })
+    })
+    .await
+    .map_err(|error| format!("failed to set the spelling dictionary: {error}"))??;
+    let _ = publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        meta.clone(),
+        "dictionary-changed",
+        false,
+        project_mutation_generation(project_id.clone()).ok(),
+    );
+    Ok(meta)
+}
+
+fn validate_dictionary_locale(
+    app: &tauri::AppHandle,
+    locale: Option<&str>,
+) -> Result<Option<String>, String> {
+    let Some(locale) = locale.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(None);
+    };
+    let known = crate::dictionaries::catalog(app)?
+        .iter()
+        .any(|pack| pack.id == locale);
+    if !known {
+        return Err("That spelling dictionary is not in the catalog.".into());
+    }
+    Ok(Some(locale.to_string()))
+}
+
+#[tauri::command]
 pub async fn set_project_shell_escape(
     app: tauri::AppHandle,
     state: tauri::State<'_, crate::state::AppState>,
@@ -3086,6 +3136,7 @@ fn create_markdown_project_in(
         write_meta_at(
             &dir.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name,
                 main_doc: "main.md".into(),
                 engine: "markdown".into(),
@@ -3430,6 +3481,7 @@ pub fn create_project(name: String) -> Result<String, String> {
         write_meta_at(
             &dir.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
                 engine: default_engine(),
@@ -3644,6 +3696,7 @@ fn create_project_from_ad_hoc_blocking(
         write_meta_at(
             &staging.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name: project_name,
                 main_doc,
                 engine,
@@ -3738,6 +3791,7 @@ fn create_project_from_pdf_conversion_blocking(
         write_meta_at(
             &staging.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
                 engine: default_engine(),
@@ -3785,6 +3839,7 @@ fn create_typst_project_in(
         write_meta_at(
             &dir.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name,
                 main_doc: "main.typ".into(),
                 engine: "typst".into(),
@@ -4248,6 +4303,7 @@ fn create_image_project_in(
         write_meta_at(
             &dir.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
                 engine: default_engine(),
@@ -4301,6 +4357,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
         write_meta_at(
             &dir.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
                 engine: default_engine(),
@@ -4339,6 +4396,7 @@ pub(crate) fn get_or_create_scratch_project_blocking() -> Result<String, String>
             write_meta_at(
                 &meta_file,
                 &ProjectMeta {
+                    dictionary_locale: None,
                     name: "Diagram Composer Scratch".to_string(),
                     main_doc: default_main_doc(),
                     engine: default_engine(),
@@ -5004,6 +5062,7 @@ async fn create_project_from_pandoc_source(
         write_meta_at(
             &staging.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name,
                 main_doc,
                 engine,
@@ -5374,6 +5433,7 @@ pub fn create_project_from_template(
         write_meta_at(
             &dir.join("project.json"),
             &ProjectMeta {
+                dictionary_locale: None,
                 name,
                 main_doc: manifest.main_doc,
                 engine,
@@ -8383,6 +8443,7 @@ mod tests {
     #[test]
     fn typst_project_metadata_round_trips() {
         let meta = ProjectMeta {
+            dictionary_locale: None,
             name: "Typst paper".into(),
             main_doc: "chapters/main.typ".into(),
             engine: "typst".into(),
@@ -8781,6 +8842,7 @@ mod tests {
         let projects = crate::paths::projects_root().unwrap();
 
         let project_meta = |name: &str| ProjectMeta {
+            dictionary_locale: None,
             name: name.into(),
             main_doc: "main.tex".into(),
             engine: "xetex".into(),
@@ -8832,6 +8894,7 @@ mod tests {
                 write_meta_at(
                     &staging.join("project.json"),
                     &ProjectMeta {
+                        dictionary_locale: None,
                         name: "Published".into(),
                         main_doc: "main.tex".into(),
                         engine: "xetex".into(),

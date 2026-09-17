@@ -542,6 +542,57 @@ describe("project dock layout", () => {
     expect(browserWindowMocks.toggleBrowser).toHaveBeenCalled();
   });
 
+  it("opens the shortcut reference from outside the editor and leaves it to the editor inside", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+
+    const editor = document.createElement("div");
+    editor.className = "cm-editor";
+    const content = document.createElement("div");
+    content.className = "cm-content";
+    content.tabIndex = 0;
+    editor.append(content);
+    document.body.append(editor);
+
+    await act(async () => {
+      content.dispatchEvent(
+        new window.KeyboardEvent("keydown", { key: "/", ctrlKey: true, bubbles: true }),
+      );
+    });
+    expect(useSettingsStore.getState().hotkeysOpen).toBe(false);
+
+    await act(async () => {
+      window.dispatchEvent(
+        new window.KeyboardEvent("keydown", { key: "/", ctrlKey: true, bubbles: true }),
+      );
+    });
+    expect(useSettingsStore.getState().hotkeysOpen).toBe(true);
+    useSettingsStore.setState({ hotkeysOpen: false });
+
+    await act(async () => {
+      const handled = new window.KeyboardEvent("keydown", {
+        key: "/",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      handled.preventDefault();
+      window.dispatchEvent(handled);
+    });
+    expect(useSettingsStore.getState().hotkeysOpen).toBe(false);
+
+    editor.remove();
+  });
+
   it("routes native menu history through Vim when the source editor is focused", async () => {
     const { act } = await import("react");
     const { createRoot } = await import("react-dom/client");

@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Loader2, Sparkles, Trash2, Type } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
+import { formatDownloadSize } from "@/lib/download-size";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
@@ -38,20 +39,6 @@ function isFontPackId(id: string): id is FontPackId {
   return (FONT_PACK_IDS as readonly string[]).includes(id);
 }
 
-function formatSize(bytes: number): string {
-  if (!bytes) return "";
-  const mb = bytes / 1_000_000;
-  if (mb >= 1) {
-    const digits = mb >= 10 ? 0 : 1;
-    return i18n.t(($) => $.settings.downloads.size.megabytes, {
-      value: formatNumber(mb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
-    });
-  }
-  return i18n.t(($) => $.settings.downloads.size.kilobytes, {
-    value: formatNumber(Math.max(1, Math.round(bytes / 1000))),
-  });
-}
-
 export function DownloadsSection() {
   const { t } = useTranslation(["common", "settings"]);
   const [components, setComponents] = useState<ComponentInfo[]>([]);
@@ -59,7 +46,9 @@ export function DownloadsSection() {
   const [progress, setProgress] = useState("");
 
   const templatesHeadingRef = useRef<HTMLHeadingElement>(null);
-  const [tab, setTab] = useState<"fonts" | "templates">("fonts");
+  const [tab, setTab] = useState<"fonts" | "templates" | "dictionaries">(
+    "fonts",
+  );
   const [aiOpen, setAiOpen] = useState(false);
   const [aiTemplates, setAiTemplates] = useState<TemplateInfo[]>([]);
   const [aiPreviews, setAiPreviews] = useState<Record<string, string>>({});
@@ -233,7 +222,9 @@ export function DownloadsSection() {
   return (
     <Tabs
       value={tab}
-      onValueChange={(v) => setTab(v as "fonts" | "templates")}
+      onValueChange={(v) =>
+        setTab(v as "fonts" | "templates" | "dictionaries")
+      }
       className="flex flex-col gap-5"
     >
       <TabsList className="w-fit">
@@ -243,7 +234,16 @@ export function DownloadsSection() {
         <TabsTrigger value="templates" data-testid="downloads-tab-templates">
           {t(($) => $.settings.downloads.tabs.templates)}
         </TabsTrigger>
+        <TabsTrigger
+          value="dictionaries"
+          data-testid="downloads-tab-dictionaries"
+        >
+          {t(($) => $.settings.downloads.tabs.dictionaries)}
+        </TabsTrigger>
       </TabsList>
+      <TabsContent value="dictionaries">
+        <DictionaryDownloads />
+      </TabsContent>
       <TabsContent value="fonts" className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -302,7 +302,7 @@ export function DownloadsSection() {
                     </span>
                     {c.installed && <Check className="size-3.5 text-emerald-500" />}
                     {c.approx_bytes > 0 && (
-                      <span className="text-[11px] text-muted-foreground">{formatSize(c.approx_bytes)}</span>
+                      <span className="text-[11px] text-muted-foreground">{formatDownloadSize(c.approx_bytes)}</span>
                     )}
                   </div>
                   <p className="truncate text-[11px] text-muted-foreground">
@@ -388,7 +388,7 @@ export function DownloadsSection() {
                     <span className="text-sm font-medium">{p.label}</span>
                     {p.installed && <Check className="size-3.5 text-emerald-500" />}
                     {p.approx_bytes > 0 && (
-                      <span className="text-[11px] text-muted-foreground">{formatSize(p.approx_bytes)}</span>
+                      <span className="text-[11px] text-muted-foreground">{formatDownloadSize(p.approx_bytes)}</span>
                     )}
                   </div>
                   <p className="truncate text-[11px] text-muted-foreground">

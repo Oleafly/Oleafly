@@ -62,9 +62,7 @@ import {
 import {
   useSettingsStore,
   GRAMMAR_DIALECTS,
-  DICTIONARY_LOCALES,
   type GrammarDialect,
-  type DictionaryLocale,
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
@@ -93,6 +91,7 @@ import {
 } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
+import { DictionaryLocalePicker } from "@/components/settings/DictionaryLocalePicker";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { CheckpointToggles } from "@/components/settings/CheckpointToggles";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
@@ -229,8 +228,6 @@ export function SettingsModal() {
   const setHarper = useSettingsStore((s) => s.setHarper);
   const grammarDialect = useSettingsStore((s) => s.grammarDialect);
   const setGrammarDialect = useSettingsStore((s) => s.setGrammarDialect);
-  const dictionaryLocale = useSettingsStore((s) => s.dictionaryLocale);
-  const setDictionaryLocale = useSettingsStore((s) => s.setDictionaryLocale);
   const uiLocalePreference = useSettingsStore((s) => s.uiLocalePreference);
   const setUiLocalePreference = useSettingsStore((s) => s.setUiLocalePreference);
   const { t } = useTranslation(["common", "settings", "shell"]);
@@ -1021,26 +1018,7 @@ export function SettingsModal() {
                 {t(($) => $.shell.settings.general.dictionary.description)}
               </div>
             </div>
-            <Select
-              value={dictionaryLocale}
-              onValueChange={(value) =>
-                setDictionaryLocale(value as DictionaryLocale)
-              }
-            >
-              <SelectTrigger
-                aria-label={t(($) => $.shell.settings.general.dictionary.ariaLabel)}
-                className="w-[176px]"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-[100]">
-                {DICTIONARY_LOCALES.map((locale) => (
-                  <SelectItem key={locale.id} value={locale.id}>
-                    {locale.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DictionaryLocalePicker />
           </div>
         )}
         <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

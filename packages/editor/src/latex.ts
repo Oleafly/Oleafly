@@ -29,6 +29,10 @@ import {
   type CompletionRequestGuard,
 } from "./completion-request";
 import { validateXparseArgumentSpecification } from "./latex-xparse";
+import {
+  bibliographyStyleDetailKey,
+  bibliographyStyles,
+} from "./bibliography-styles";
 import { editorMessage, type EditorMessageKey } from "./messages";
 import {
   boundedCompletionContext,
@@ -162,6 +166,7 @@ function latexCommands(): Completion[] {
     cmd(String.raw`\href`, "latex.command.href", "\\href{${1}}{${2}}"),
     cmd(String.raw`\addbibresource`, "latex.command.addbibresource", "\\addbibresource{${1}}"),
     cmd(String.raw`\bibliography`, "latex.command.bibliography", "\\bibliography{${1}}"),
+    cmd(String.raw`\bibliographystyle`, "latex.command.bibliographystyle", "\\bibliographystyle{${1}}"),
     cmd(String.raw`\printbibliography`, "latex.command.printbibliography"),
     cmd(String.raw`\frac`, "latex.command.frac", "\\frac{${1}}{${2}}"),
     cmd(String.raw`\sqrt`, "latex.command.sqrt", "\\sqrt{${1}}"),
@@ -812,7 +817,7 @@ function guardedEnvironmentCompletion(
     },
   };
 }
-function guardCompletionForSource(
+export function guardCompletionForSource(
   guard: CompletionRequestGuard,
   option: Completion,
 ): Completion {
@@ -1004,6 +1009,34 @@ const CITATION_ARGUMENT_COMMANDS = new Set([
   "autocite",
   "nocite",
 ]);
+const BIBLIOGRAPHY_STYLE_COMMANDS = new Set(["bibliographystyle"]);
+
+const PROJECT_STYLE_BOOST = 2;
+
+function bibliographyStyleCompletions(
+  context: CompletionContext,
+  guard: CompletionRequestGuard,
+): CompletionResult | null {
+  const styleMatch = openCommandArgument(
+    context,
+    BIBLIOGRAPHY_STYLE_COMMANDS,
+  );
+  if (!styleMatch) return null;
+  const query = currentArgumentQuery(styleMatch.text);
+  return {
+    from: context.pos - query.length,
+    options: uniqueCompletions(
+      bibliographyStyles().map((style) =>
+        guardCompletionForSource(guard, {
+          label: style.name,
+          type: "type",
+          detail: editorMessage(bibliographyStyleDetailKey(style.family)),
+          boost: style.family === "project" ? PROJECT_STYLE_BOOST : 0,
+        }),
+      ),
+    ),
+  };
+}
 
 function structuralArgumentCompletions(
   context: CompletionContext,
@@ -1163,6 +1196,7 @@ export function latexCompletions(
   return (
     referenceCitationCompletions(context, guard) ??
     structuralArgumentCompletions(context, guard) ??
+    bibliographyStyleCompletions(context, guard) ??
     delimiterFamilyCompletions(context, guard) ??
     commandCompletions(context, guard, true)
   );
@@ -1234,6 +1268,7 @@ export function latexCommandCompletions(
   const guard = createCompletionRequestGuard(context);
   return (
     structuralArgumentCompletions(context, guard) ??
+    bibliographyStyleCompletions(context, guard) ??
     delimiterFamilyCompletions(context, guard) ??
     commandCompletions(context, guard, false)
   );

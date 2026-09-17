@@ -29,6 +29,7 @@
     "@codemirror/view": "^6.43.6",
     "@lezer/highlight": "*",
     "@lezer/markdown": "*",
+    "@replit/codemirror-emacs": "^6.1.0",
     "@replit/codemirror-vim": "^6.4.0",
     "katex": "*",
     "react": "*"

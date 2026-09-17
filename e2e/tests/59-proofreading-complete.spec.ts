@@ -490,11 +490,11 @@ colur Farbee couleurr
   await openSettings(tauriPage, "general");
 
   const cases = [
-    ["en_US", "English (US)", "colur", "color"],
-    ["en_GB", "English (UK)", "colur", "colour"],
+    ["en_US", "English (United States)", "colur", "color"],
+    ["en_GB", "English (United Kingdom)", "colur", "colour"],
     ["en_AU", "English (Australia)", "colur", "colour"],
-    ["de_DE", "Deutsch", "Farbee", "Farbe"],
-    ["fr_FR", "Français", "couleurr", "couleur"],
+    ["de_DE", "German (Germany)", "Farbee", "Farbe"],
+    ["fr_FR", "French (France)", "couleurr", "couleur"],
   ] as const;
   for (const [locale, label, typo, expectedSuggestion] of cases) {
     const before =
@@ -1123,7 +1123,7 @@ ${globalWord} ${projectWord} colur
   await chooseSettingsOption(
     tauriPage,
     "Proofreading spelling dictionary",
-    "English (UK)",
+    "English (United Kingdom)",
   );
   await tauriPage.click('[aria-label="Close settings"]');
   await openSettings(tauriPage, "dictionary");

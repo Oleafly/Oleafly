@@ -13,6 +13,7 @@ import {
   guardProofreadingDiagnostics,
   type ProofreadingDialect,
   type ProofreadingDiagnostic,
+  type ProofreadingDictionaryDelivery,
   type ProofreadingError,
   type ProofreadingIdentity,
   type ProofreadingRequest,
@@ -38,7 +39,11 @@ import {
   isSessionIgnoredWord,
 } from "./ignored";
 import { harperDialectFor } from "./dialects";
-import { loadHunspellDictionary } from "./hunspell";
+import {
+  loadHunspellDictionary,
+  normalizeDictionaryLocaleId,
+  type DictionaryPayload,
+} from "./hunspell";
 import {
   buildLintConfig,
   isLintRuleName,
@@ -76,8 +81,9 @@ let grammarDialect: ProofreadingDialect | null = null;
 let grammarDialectValues: typeof import("harper.js").Dialect | null = null;
 let grammarRuleNames: ReadonlySet<string> | null = null;
 let grammarLintConfigKey: string | null = null;
-let spellcheckerPromise: Promise<Hunspell> | null = null;
-let spellcheckerLocale = "en_US";
+const MAX_SPELLCHECKERS = 2;
+const spellcheckers = new Map<string, Promise<Hunspell>>();
+const deliveredDictionaries = new Map<string, DictionaryPayload>();
 const queuedRequests = new Map<string, ProofreadingRequest>();
 let running = false;
 let disposed = false;
@@ -453,23 +459,58 @@ async function syncGrammarDictionary(
   }
 }
 
-async function getSpellchecker(locale = "en_US"): Promise<Hunspell> {
-  const safeLocale = locale.replace("-", "_");
-  if (!spellcheckerPromise || spellcheckerLocale !== safeLocale) {
-    const previous = spellcheckerPromise;
-    spellcheckerLocale = safeLocale;
-    spellcheckerPromise = (async () => {
-      if (previous) {
-        const previousSpellchecker = await previous.catch(() => null);
-        previousSpellchecker?.dispose();
-      }
-      return loadHunspellDictionary(safeLocale);
-    })();
-    spellcheckerPromise.catch(() => {
-      spellcheckerPromise = null;
-    });
+function evictSpellcheckers() {
+  while (spellcheckers.size > MAX_SPELLCHECKERS) {
+    const oldest = spellcheckers.keys().next();
+    if (oldest.done) return;
+    const evicted = spellcheckers.get(oldest.value);
+    spellcheckers.delete(oldest.value);
+    void evicted
+      ?.then((spellchecker) => spellchecker.dispose())
+      .catch(() => undefined);
   }
-  return spellcheckerPromise;
+}
+
+function rememberDeliveredDictionary(
+  locale: string,
+  payload: DictionaryPayload,
+) {
+  const safeLocale = normalizeDictionaryLocaleId(locale);
+  deliveredDictionaries.delete(safeLocale);
+  deliveredDictionaries.set(safeLocale, payload);
+  const stale = spellcheckers.get(safeLocale);
+  if (stale) {
+    spellcheckers.delete(safeLocale);
+    void stale.then((spellchecker) => spellchecker.dispose()).catch(
+      () => undefined,
+    );
+  }
+  while (deliveredDictionaries.size > MAX_SPELLCHECKERS) {
+    const oldest = deliveredDictionaries.keys().next();
+    if (oldest.done) return;
+    deliveredDictionaries.delete(oldest.value);
+  }
+}
+
+async function getSpellchecker(locale = "en_US"): Promise<Hunspell> {
+  const safeLocale = normalizeDictionaryLocaleId(locale);
+  const cached = spellcheckers.get(safeLocale);
+  if (cached) {
+    spellcheckers.delete(safeLocale);
+    spellcheckers.set(safeLocale, cached);
+    return cached;
+  }
+  const loading = loadHunspellDictionary(safeLocale, {
+    payload: deliveredDictionaries.get(safeLocale),
+  });
+  spellcheckers.set(safeLocale, loading);
+  evictSpellcheckers();
+  loading.catch(() => {
+    if (spellcheckers.get(safeLocale) === loading) {
+      spellcheckers.delete(safeLocale);
+    }
+  });
+  return loading;
 }
 
 function characterLimitFor(mode: ProofreadingRequest["mode"]): number {
@@ -1082,15 +1123,31 @@ workerScope.addEventListener("message", (event) => {
     latestGeneration.clear();
     cache.clear();
     cachedCharacters = 0;
-    spellcheckerPromise?.then((spellchecker) => spellchecker.dispose()).catch(
-      () => {
-        // Worker termination is authoritative.
-      },
-    );
+    for (const spellchecker of spellcheckers.values()) {
+      void spellchecker
+        .then((instance) => instance.dispose())
+        .catch(() => undefined);
+    }
+    spellcheckers.clear();
+    deliveredDictionaries.clear();
     grammarPromise?.then((linter) => linter.dispose()).catch(() => {
       // Worker termination is authoritative.
     });
     workerScope.close();
+    return;
+  }
+  if (message.type === "dictionary") {
+    const delivery = message as ProofreadingDictionaryDelivery;
+    if (
+      typeof delivery.locale === "string" &&
+      delivery.aff instanceof Uint8Array &&
+      delivery.dic instanceof Uint8Array
+    ) {
+      rememberDeliveredDictionary(delivery.locale, {
+        aff: delivery.aff,
+        dic: delivery.dic,
+      });
+    }
     return;
   }
   if (message.type !== "proofread") return;

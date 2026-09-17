@@ -1,5 +1,6 @@
 import {
   type BibliographyEngine,
+  missingBibtexRequiredFields,
   bibliographyCandidatePaths,
   bibliographyDeclarations,
   bibliographyDisplayName,
@@ -57,19 +58,20 @@ function plain(value: string): string {
     .toLowerCase();
 }
 
+const CITABLE_MINIMUM: readonly (readonly string[])[] = [
+  ["title"],
+  ["year", "date"],
+];
+
 function requiredFields(entry: NonNullable<RefsContext["bibEntries"]>[number]): string[] {
-  const fields = entry.fields;
-  const missing: string[] = [];
-  const has = (name: string) => Boolean(fields[name]?.trim());
-  if (!["misc", "online", "software", "dataset"].includes(entry.type) && !has("author") && !has("editor")) {
-    missing.push("author/editor");
-  }
-  if (!has("title")) missing.push("title");
-  if (!has("year") && !has("date")) missing.push("year/date");
-  if (entry.type === "article" && !has("journal") && !has("journaltitle")) missing.push("journal");
-  if (["inproceedings", "conference"].includes(entry.type) && !has("booktitle")) missing.push("booktitle");
-  if (entry.type === "book" && !has("publisher")) missing.push("publisher");
-  return missing;
+  const present = new Set(
+    Object.keys(entry.fields).filter((name) => entry.fields[name]?.trim()),
+  );
+  const groups = [
+    ...missingBibtexRequiredFields(entry.type, present),
+    ...CITABLE_MINIMUM.filter((group) => !group.some((name) => present.has(name))),
+  ];
+  return [...new Set(groups.map((group) => group.join("/")))];
 }
 
 type BibEntries = NonNullable<RefsContext["bibEntries"]>;

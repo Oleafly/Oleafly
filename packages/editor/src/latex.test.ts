@@ -22,6 +22,7 @@ import {
   slashCompletions,
 } from "./latex";
 import { latexPairChange, latexPairInputHandler } from "./latex-pairs";
+import { setBibStyleProvider } from "./bibliography-styles";
 import { installEnglishEditorMessages } from "./test-messages";
 
 installEnglishEditorMessages();
@@ -1098,5 +1099,74 @@ describe("labels the delimiter e2e spec depends on", () => {
       );
       expect([...new Set(matches)], name).toEqual([name]);
     }
+  });
+});
+
+describe("bibliography style completion", () => {
+  function styles(doc: string, full = true) {
+    const result = completion(doc, full);
+    return {
+      from: result?.from ?? -1,
+      labels: (result?.options ?? []).map((entry) => String(entry.label)),
+      options: result?.options ?? [],
+    };
+  }
+
+  afterEach(() => {
+    setBibStyleProvider(() => []);
+  });
+
+  it("offers the classic, natbib, journal and REVTeX families", () => {
+    const { labels } = styles("\\bibliographystyle{");
+    for (const name of [
+      "plain",
+      "unsrt",
+      "plainnat",
+      "IEEEtran",
+      "ACM-Reference-Format",
+      "apsrev4-2",
+    ]) {
+      expect(labels, name).toContain(name);
+    }
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it("describes each family in the completion detail", () => {
+    const { options } = styles("\\bibliographystyle{");
+    const detailFor = (label: string) =>
+      options.find((entry) => entry.label === label)?.detail;
+    expect(detailFor("plain")).toBe("BibTeX style");
+    expect(detailFor("plainnat")).toBe("natbib style");
+    expect(detailFor("IEEEtran")).toBe("journal style");
+    expect(detailFor("apsrev4-2")).toBe("REVTeX style");
+    expect(options.every((entry) => entry.type === "type")).toBe(true);
+  });
+
+  it("replaces only the partly typed name", () => {
+    expect(styles("\\bibliographystyle{pla").from).toBe(
+      "\\bibliographystyle{".length,
+    );
+    expect(styles("\\bibliographystyle{pla").labels).toContain("plain");
+  });
+
+  it("is offered by the command-only source the app installs", () => {
+    expect(styles("\\bibliographystyle{", false).labels).toContain("plain");
+  });
+
+  it("stays out of other braced arguments", () => {
+    expect(styles("\\bibliography{").labels).not.toContain("plain");
+    expect(styles("\\textbf{").labels).not.toContain("plain");
+  });
+
+  it("offers the style files the host reports, ranked first", () => {
+    setBibStyleProvider(() => ["styles/acmart-custom.bst", "plain.bst"]);
+    const { options, labels } = styles("\\bibliographystyle{");
+    expect(labels).toContain("acmart-custom");
+    expect(labels.filter((label) => label === "plain")).toHaveLength(1);
+    const project = options.find(
+      (entry) => entry.label === "acmart-custom",
+    );
+    expect(project?.detail).toBe("style file in this project");
+    expect(project?.boost).toBeGreaterThan(0);
   });
 });
